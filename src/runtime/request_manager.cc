@@ -620,7 +620,8 @@ BeamSearchBatchConfig
           std::ofstream outputFile(output_filepath);
           if (outputFile.is_open()) {
             outputFile << "end-to-end latency: " << std::fixed
-                       << std::setprecision(3) << total_request_run_time
+                       << std::setprecision(3)
+                       << profile_info.finish_time - profile_info.start_time
                        << std::endl;
             outputFile << "num decoding steps: " << profile_info.decoding_steps
                        << std::endl;
@@ -798,9 +799,9 @@ BeamSearchBatchConfig
         all_requests[new_request.guid].ssm_cache_size =
             new_bc.requestsInfo[i].num_tokens_in_batch;
         new_bc.request_running[i] = false;
-        std::cout << "SSM KV Cache Size: "
+        std::cout << "SSM KV Cache Size init: "
                   << all_requests[new_request.guid].ssm_cache_size << std::endl;
-        std::cout << "LLM KV Cache Size: "
+        std::cout << "LLM KV Cache Size init: "
                   << all_requests[new_request.guid].llm_cache_size << std::endl;
 
         std::cout << "load " << new_bc.requestsInfo[i].num_tokens_in_batch
@@ -869,7 +870,6 @@ BeamSearchBatchConfig
     std::cout << "Current Beam Depth: "
               << old_bc.beamRequestsInfo[0].current_depth << "\n";
   }
-
   // Step 1: Store result to the beam tree struct
   store_beam_metadata(old_bc, result);
 
@@ -891,20 +891,29 @@ BeamSearchBatchConfig
 
     // assert(processed_tokens < request.tokens.size());
     log_req_mgr.debug() << "processed_tokens: " << processed_tokens << "\n";
-    if (processed_tokens >
-        old_bc.beamRequestsInfo[i].max_depth + request.tokens.size()
-        // || ir.results[t] == 0 TODO: replace this with <EOS>
-    ) {
-      log_req_mgr.print("[Done] guid(%zu) with spec_tree_depth(%d)",
-                        old_bc.requestsInfo[i].request_guid,
-                        old_bc.beamRequestsInfo[i].max_depth);
-      // new_bc.request_completed[i] = true;
-      new_bc.request_completed[i] = false;
-      new_bc.requestsInfo[i].token_start_offset = processed_tokens;
-      new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
-      new_bc.requestsInfo[i].max_sequence_length =
-          old_bc.requestsInfo[i].max_sequence_length;
-    } else {
+    // if (processed_tokens >
+    //         old_bc.beamRequestsInfo[i].max_depth + request.tokens.size() &&
+    //     request.status == Request::RUNNING
+    //     // || ir.results[t] == 0 TODO: replace this with <EOS>
+    // ) {
+    //   // log_req_mgr.print("[Done] guid(%zu) with spec_tree_depth(%d)",
+    //   //                   old_bc.requestsInfo[i].request_guid,
+    //   //                   old_bc.beamRequestsInfo[i].max_depth);
+    //   // // new_bc.request_completed[i] = true;
+    //   // new_bc.request_completed[i] = false;
+    //   // new_bc.requestsInfo[i].token_start_offset = processed_tokens;
+    //   // new_bc.requestsInfo[i].request_guid =
+    //   // old_bc.requestsInfo[i].request_guid;
+    //   // new_bc.requestsInfo[i].max_sequence_length =
+    //   //     old_bc.requestsInfo[i].max_sequence_length;
+    //   // new_bc.beamRequestsInfo[i].current_depth =
+    //   //       old_bc.beamRequestsInfo[i].current_depth;
+    //   // new_bc.request_running[i] = false;
+    //   std::cout << "beam search end:" << request.status << i << ", "
+    //             << new_bc.requestsInfo[i].num_tokens_in_batch << "\n";
+    // }
+    // else
+    {
       log_req_mgr.debug() << "num tokens: " << old_bc.num_tokens << ", "
                           << new_bc.num_tokens;
       new_bc.request_completed[i] = false;
@@ -953,8 +962,10 @@ BeamSearchBatchConfig
                          new_bc.requestsInfo[i].token_start_offset);
         request.ssm_cache_size += new_bc.requestsInfo[i].num_tokens_in_batch;
       }
-      std::cout << "SSM KV Cache Size: " << request.ssm_cache_size << std::endl;
-      std::cout << "LLM KV Cache Size: " << request.llm_cache_size << std::endl;
+      std::cout << "SSM KV Cache Size beam: " << request.ssm_cache_size
+                << std::endl;
+      std::cout << "LLM KV Cache Size beam: " << request.llm_cache_size
+                << std::endl;
 
       // register more tokens due to the beam width
       for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
@@ -1258,8 +1269,10 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       new_bc.request_running[i] = false;
       std::cout << "[Verify] Request " << request.guid << " is pending"
                 << std::endl;
-      std::cout << "SSM KV Cache Size: " << request.ssm_cache_size << std::endl;
-      std::cout << "LLM KV Cache Size: " << request.llm_cache_size << std::endl;
+      std::cout << "SSM KV Cache Size verify: " << request.ssm_cache_size
+                << std::endl;
+      std::cout << "LLM KV Cache Size verify: " << request.llm_cache_size
+                << std::endl;
 
       if (committed_tokens.find(guid) != committed_tokens.end()) {
         for (int j = 0; j < committed_tokens.at(guid).size(); j++) {
@@ -1361,28 +1374,25 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
               << " tokens in the current batch.\n";
   }
 
-  for (int i = 0; i <= old_bc.num_tokens; i++) {
+  for (int i = 0; i < old_bc.num_tokens; i++) {
     int request_index = old_bc.tokensInfo[i].request_index;
-
-    // End of the request
-    if (i == old_bc.num_tokens ||
-        old_bc.requestsInfo[request_index].request_guid != guid) {
+    if (i == 0 || old_bc.requestsInfo[request_index].request_guid != guid) {
 
       // Each token yields (beam_width) results
       int beam_width = old_bc.beamRequestsInfo[request_index].beam_size;
 
       // Count tokens sent to model in this request to find the final token's
       // index
-      result_index +=
-          (old_bc.tokensInfo[i - 1].abs_depth_in_request - start_depth) *
-          beam_width;
+      // result_index +=
+      //     (old_bc.tokensInfo[i - 1].abs_depth_in_request - start_depth) *
+      //     beam_width;
 
       if (verbose) {
         std::cout << "i = " << i << ", result index = " << result_index
                   << ", value: " << result.token_ids[result_index] << "\n";
       }
 
-      int index = old_bc.tokensInfo[i - 1].request_index;
+      int index = old_bc.tokensInfo[i].request_index;
       int beam_size = old_bc.beamRequestsInfo[index].beam_size;
       int depth = old_bc.beamRequestsInfo[index].current_depth;
 
@@ -1802,24 +1812,27 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   return merged_tree;
 }
 
-GenerationResult FFModel::generate(std::string const &text,
+GenerationResult FFModel::generate(std::vector<std::string> &prompts,
                                    int max_seq_length) {
   RequestManager *rm = RequestManager::get_request_manager();
   if (rm->get_num_ssms() == 0) {
     // No SSMs: perform incremental decoding
-    return rm->generate_incr_decoding(this, text, max_seq_length);
+    return rm->generate_incr_decoding(this, prompts, max_seq_length);
   } else {
     // Registered SSMs: perform speculative inference
-    return rm->generate_spec_infer(this, text, max_seq_length);
+    return rm->generate_spec_infer(this, prompts, max_seq_length);
   }
 }
 
 /*static*/
-GenerationResult RequestManager::generate_incr_decoding(FFModel *llm,
-                                                        std::string const &text,
-                                                        int max_seq_length) {
+GenerationResult RequestManager::generate_incr_decoding(
+    FFModel *llm, std::vector<std::string> &prompts, int max_seq_length) {
   InferenceManager *im = InferenceManager::get_inference_manager();
-  RequestGuid guid = register_new_request(text, max_seq_length);
+  RequestGuid guid;
+  for (int i = 0; i < prompts.size(); i++) {
+    guid = register_new_request(prompts.at(i), max_seq_length);
+  }
+
   if (guid == 0) {
     std::cout
         << "=========== Discard request exceed prompt maximum... ==========="
@@ -1869,11 +1882,13 @@ GenerationResult RequestManager::generate_incr_decoding(FFModel *llm,
 }
 
 /*static*/
-GenerationResult RequestManager::generate_spec_infer(FFModel *llm,
-                                                     std::string const &text,
-                                                     int max_seq_length) {
+GenerationResult RequestManager::generate_spec_infer(
+    FFModel *llm, std::vector<std::string> &prompts, int max_seq_length) {
   InferenceManager *im = InferenceManager::get_inference_manager();
-  RequestGuid guid = register_new_request(text, max_seq_length);
+  RequestGuid guid;
+  for (int i = 0; i < prompts.size(); i++) {
+    guid = register_new_request(prompts.at(i), max_seq_length);
+  }
   if (guid == 0) {
     std::cout
         << "=========== Discard request exceed prompt maximum... ==========="
