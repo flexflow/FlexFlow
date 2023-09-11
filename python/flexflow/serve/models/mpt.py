@@ -121,8 +121,8 @@ class FlexFlowMPT(FlexFlowModel):
                     self.mpt_config.hidden_size // self.mpt_config.n_heads,
                     self.mpt_config.hidden_size // self.mpt_config.n_heads,
                     0.0,  # dropout
-                    False,  # bias
-                    False,  # add_bias_kv
+                    False,  # qkv_bias
+                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
@@ -142,8 +142,8 @@ class FlexFlowMPT(FlexFlowModel):
                     self.mpt_config.hidden_size // self.mpt_config.n_heads,
                     self.mpt_config.hidden_size // self.mpt_config.n_heads,
                     0.0,  # dropout
-                    False,  # bias
-                    False,  # add_bias_kv
+                    False,  # qkv_bias
+                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
@@ -163,8 +163,8 @@ class FlexFlowMPT(FlexFlowModel):
                     self.mpt_config.hidden_size // self.mpt_config.n_heads,
                     self.mpt_config.hidden_size // self.mpt_config.n_heads,
                     0.0,  # dropout
-                    False,  # bias
-                    False,  # add_bias_kv
+                    False,  # qkv_bias
+                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer

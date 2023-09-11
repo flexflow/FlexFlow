@@ -141,8 +141,8 @@ class FlexFlowOPT(FlexFlowModel):
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     0.0,  # dropout
-                    True,  # bias
-                    False,  # add_bias_kv
+                    True,  # qkv_bias
+                    True,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
@@ -161,8 +161,8 @@ class FlexFlowOPT(FlexFlowModel):
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     0.0,  # dropout
-                    True,  # bias
-                    False,  # add_bias_kv
+                    True,  # qkv_bias
+                    True,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
@@ -181,8 +181,8 @@ class FlexFlowOPT(FlexFlowModel):
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     0.0,  # dropout
-                    True,  # bias
-                    False,  # add_bias_kv
+                    True,  # qkv_bias
+                    True,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
