@@ -751,7 +751,8 @@ public:
   // ========================================
   // Inference APIs
   // ========================================
-  GenerationResult generate(std::string const &text, int max_seq_length);
+  GenerationResult generate(std::vector<std::string> &prompts,
+                            int max_seq_length);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],

@@ -105,10 +105,10 @@ public:
   FFModel *get_model(int model_id);
 
   GenerationResult generate_incr_decoding(FFModel *model,
-                                          std::string const &text,
+                                          std::vector<std::string> &prompts,
                                           int max_seq_length);
   GenerationResult generate_spec_infer(FFModel *model,
-                                       std::string const &text,
+                                       std::vector<std::string> &prompts,
                                        int max_seq_length);
   GenerationResult get_generation_result(RequestGuid const &guid);
   RequestGuid register_new_request(std::string const &prompt,

@@ -242,13 +242,15 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
+    std::vector<std::string> prompts;
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      GenerationResult result =
-          model.generate(text, 128 /*max_sequence_length*/);
+      prompts.push_back(text);
     }
+    GenerationResult result =
+        model.generate(prompts, 128 /*max_sequence_length*/);
   }
 
   // Execution fence
