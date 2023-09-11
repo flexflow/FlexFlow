@@ -1055,6 +1055,8 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       continue;
     } else if (old_batches.at(0).request_running[i]) {
       max_prompt_load_size -= (BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1);
+    } else {
+      max_prompt_load_size -= 1;
     }
   }
 
