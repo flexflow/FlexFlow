@@ -393,7 +393,7 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
 
   if (m->beam_search) {
     // set all parents id zero in arg top1 case.
-    checkCUDA(hipMemset(parent, 0, batch_size * sizeof(int)));
+    checkCUDA(hipMemsetAsync(parent, 0, batch_size * sizeof(int), stream));
   }
   int num_shards = 0;
   int k = 1;
