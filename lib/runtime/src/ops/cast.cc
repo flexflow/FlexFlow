@@ -29,29 +29,10 @@ namespace FlexFlow {
 
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING, PER_DEVICE_STATE, HANDLE };
 
-// declare Legion names
-// using Legion::ArgumentMap;
-// using Legion::Context;
-// using Legion::coord_t;
-// using Legion::Domain;
-// using Legion::FutureMap;
-// using Legion::IndexLauncher;
-// using Legion::PhysicalRegion;
-// using Legion::Predicate;
-// using Legion::Rect;
-// using Legion::RegionRequirement;
-// using Legion::Runtime;
-// using Legion::Task;
-// using Legion::TaskArgument;
-// using Legion::TaskLauncher;
-
 OpTaskInvocation init(CastAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(HANDLE, ff_handle());
-
-  binding.bind(INPUT, input_tensor(0));
-  binding.bind(OUTPUT, output_tensor(0));
 
   return {CAST_INIT_TASK_ID, binding};
 }
@@ -61,6 +42,7 @@ OpTaskInvocation forward(CastAttrs const &attrs) {
 
   binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<CastPerDeviceState>());
   binding.bind_arg(PROFILING, profiling_settings());
+  b.bind_arg(ATTRS, attrs);
 
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
@@ -78,12 +60,10 @@ static DeviceSpecific<CastPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
 
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
-  auto input = acc.get_tensor<Permissions::RO>(INPUT);
-  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
   DeviceSpecific<CastPerDeviceState> per_device_state =
       acc.create_device_specific<CastPerDeviceState>(
-          init_kernel(handle, input.data_type, output.data_type));
+          init_kernel(handle));
   return per_device_state;
 }
 
@@ -97,9 +77,9 @@ static DeviceSpecific<CastPerDeviceState>
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state =
-      acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state = acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto const &attrs = acc.get_argument<CastAttrs>(ATTRS);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -109,7 +89,9 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  "[Cast] forward_time = %.2lfms\n",
                  &per_device_state,
                  input,
-                 output);
+                 output,
+                 input.data_type,
+                 attrs.dtype);
 }
 
 static void forward_task(Task const *task,
@@ -121,9 +103,11 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state =
-      acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state = acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto const &attrs = acc.get_argument<CastAttrs>(ATTRS);
+  
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
 
   auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
@@ -133,7 +117,9 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  "[Cast] forward_time = %.2lfms\n",
                  &per_device_state,
                  input_grad,
-                 output_grad);
+                 output_grad,
+                 input.data_type,
+                 attrs.dtype);
 }
 
 static void backward_task(Task const *task,
@@ -163,9 +149,7 @@ void register_task<CAST_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-
-  init.add_input_slot(INPUT);
-  init.add_output_slot(OUTPUT);
+  init.add_return_value<CastPerDeviceState>();
 
   register_task(CAST_INIT_TASK_ID, "Cast Init", init, init_task);
 }
@@ -174,6 +158,7 @@ template <>
 void register_task<CAST_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
+  fwd.add_arg_slot<CastAttrs>(ATTRS);
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_unchecked_arg_slot<CastPerDeviceState>(PER_DEVICE_STATE);
 
