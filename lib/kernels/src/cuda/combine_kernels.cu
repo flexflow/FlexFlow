@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/accessor.h"
 #include "kernels/combine_kernels.h"
 #include "kernels/datatype_dispatch.h"
-#include "device.h"
 #include "kernels/device.h"
 
 namespace FlexFlow {
@@ -59,7 +59,8 @@ void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const &input_grad,
                      DataType data_type) {
-  DataTypeDispatch1<BackwardKernel>{}(data_type, stream, output_grad, input_grad);
+  DataTypeDispatch1<BackwardKernel>{}(
+      data_type, stream, output_grad, input_grad);
 }
 
 } // namespace Combine

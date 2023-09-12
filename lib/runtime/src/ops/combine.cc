@@ -30,7 +30,7 @@ enum Slots { INPUT, OUTPUT, PROFILING };
 
 OpTaskInvocation forward(CombineAttrs const &attrs) {
   OpTaskBinding binding;
-  
+
   binding.bind_arg(PROFILING, profiling_settings());
 
   binding.bind(INPUT, input_tensor(0));
@@ -103,7 +103,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 template <>
 void register_task<COMBINE_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
-  
+
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
