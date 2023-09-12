@@ -24,8 +24,8 @@ using namespace FlexFlow;
 
 class FileDataLoader {
 public:
-  FileDataLoader(std::string _input_path,
-                 std::string _weight_file_path,
+  FileDataLoader(std::string _prompts_filepath,
+                 std::string _weights_folder,
                  int _num_heads,
                  int _num_kv_heads,
                  size_t _hidden_dim,
@@ -58,6 +58,6 @@ public:
 private:
   int num_heads, num_kv_heads, tensor_parallelism_degree;
   size_t hidden_dim, qkv_inner_dim;
-  std::string input_path;
-  std::string weight_file_path;
+  std::string prompts_filepath;
+  std::string weights_folder;
 };

@@ -22,14 +22,14 @@ using namespace std;
 
 using namespace Legion;
 
-FileDataLoader::FileDataLoader(std::string _input_path,
-                               std::string _weight_file_path,
+FileDataLoader::FileDataLoader(std::string _prompts_filepath,
+                               std::string _weights_folder,
                                int _num_heads,
                                int _num_kv_heads,
                                size_t _hidden_dim,
                                size_t _qkv_inner_dim,
                                int _tensor_parallelism_degree)
-    : input_path(_input_path), weight_file_path(_weight_file_path),
+    : prompts_filepath(_prompts_filepath), weights_folder(_weights_folder),
       num_heads(_num_heads), num_kv_heads(_num_kv_heads),
       hidden_dim(_hidden_dim), qkv_inner_dim(_qkv_inner_dim),
       tensor_parallelism_degree(_tensor_parallelism_degree){};
@@ -38,7 +38,7 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
   BatchConfig::TokenId *prompts =
       (BatchConfig::TokenId *)malloc(sizeof(BatchConfig::TokenId) * 40);
-  std::ifstream in(input_path, std::ios::in | std::ios::binary);
+  std::ifstream in(prompts_filepath, std::ios::in | std::ios::binary);
   int size = num * length;
   std::vector<long> host_array(size);
   size_t loaded_data_size = sizeof(long) * size;
@@ -628,7 +628,7 @@ void FileDataLoader::load_quantization_weight(FFModel *ff,
                                        hidden_dim,
                                        qkv_inner_dim,
                                        file_path,
-                                       weight_file_path,
+                                       weights_folder,
                                        weight->data_type,
                                        use_full_precision);
     }
@@ -638,7 +638,7 @@ void FileDataLoader::load_quantization_weight(FFModel *ff,
     //                                 hidden_dim,
     //                                 qkv_inner_dim,
     //                                 file_path,
-    //                                 weight_file_path);
+    //                                 weights_folder);
     // }
 
   } else {
@@ -649,7 +649,7 @@ void FileDataLoader::load_quantization_weight(FFModel *ff,
     }
     load_from_quantized_file(data,
                              volume,
-                             weight_file_path + file_path,
+                             weights_folder + file_path,
                              weight->data_type,
                              use_full_precision);
   }
@@ -689,7 +689,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
                                 hidden_dim,
                                 qkv_inner_dim,
                                 file_path,
-                                weight_file_path,
+                                weights_folder,
                                 volume,
                                 tensor_parallelism_degree);
     } else {
@@ -699,19 +699,19 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
                              hidden_dim,
                              qkv_inner_dim,
                              file_path,
-                             weight_file_path);
+                             weights_folder);
     }
 
   } else if (file_path.find("self_attention") != std::string::npos) {
     load_attention_weights_multi_query(
-        data, file_path, weight_file_path, hidden_dim, num_heads);
+        data, file_path, weights_folder, hidden_dim, num_heads);
   } else {
     if (weight_idx > 0) {
       int index = file_path.find("_weight");
       assert(index != std::string::npos);
       file_path = file_path.substr(0, index) + "_bias";
     }
-    load_from_file(data, volume, weight_file_path + file_path);
+    load_from_file(data, volume, weights_folder + file_path);
   }
 
   ParallelTensor weight_pt;
