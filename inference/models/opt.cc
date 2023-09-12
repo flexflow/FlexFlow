@@ -184,7 +184,8 @@ void OPT::create_opt_model(FFModel &ff,
     Layer *attention_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
                            attention_layer);
-    auto pair = ff.add_bias_residual_layer_norm(mha, residual, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
+    auto pair = ff.add_bias_residual_layer_norm(
+        mha, residual, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
     Tensor added = pair.first;
     Tensor final_norm = pair.second;
     // Tensor added = ff.add(mha, residual);
@@ -244,7 +245,7 @@ void OPT::create_opt_model(FFModel &ff,
                             opt_config.hidden_size /
                                 opt_config.num_attention_heads,
                             ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, weights_layers, use_full_precision);
+  fileloader.load_weights(&ff, use_full_precision);
   std::cout << "------finished loading weights----------" << std::endl;
   im->init_operators_inference(&ff);
 }

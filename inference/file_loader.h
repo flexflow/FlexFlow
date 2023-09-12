@@ -35,19 +35,13 @@ public:
   BatchConfig::TokenId *generate_requests(int num, int length);
 
   template <typename DT>
-  void load_single_weight_tensor(FFModel *ff,
-                                 Tensor weight,
-                                 int weight_idx,
-                                 std::string const &layername);
+  void load_single_weight_tensor(FFModel *ff, Layer *l, int weight_idx);
 
   void load_quantization_weight(FFModel *ff,
-                                Tensor weight,
+                                Layer *l,
                                 int weight_idx,
-                                std::string const &layername,
                                 bool use_full_precision);
-  void load_weights(FFModel *ff,
-                    std::unordered_map<std::string, Layer *> weights_layers,
-                    bool use_full_precision);
+  void load_weights(FFModel *ff, bool use_full_precision);
 
   void load_positions(FFModel *ff,
                       Tensor pt,

@@ -972,9 +972,6 @@ void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_);
 
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
                                             flexflow_model_t model_handle_,
-                                            int num_layers,
-                                            char const **layer_names,
-                                            flexflow_op_t *layers,
                                             bool use_full_precision);
 
 #ifdef __cplusplus

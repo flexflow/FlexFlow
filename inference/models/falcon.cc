@@ -201,7 +201,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                             falcon_config.hidden_size / falcon_config.n_head,
                             ff.config.tensor_parallelism_degree);
   std::cout << "------laod weights ----------" << std::endl;
-  fileloader.load_weights(&ff, weights_layers, use_full_precision);
+  fileloader.load_weights(&ff, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators

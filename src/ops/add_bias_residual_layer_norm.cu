@@ -106,7 +106,8 @@ __global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
   // Add attention bias and residual
   CUDA_KERNEL_LOOP(i, residual_volume) {
     int bias_idx = i % attn_bias_dim;
-    added_output_ptr[i] = input_ptr[i] + attn_bias_ptr[bias_idx] + residual_ptr[i];
+    added_output_ptr[i] =
+        input_ptr[i] + attn_bias_ptr[bias_idx] + residual_ptr[i];
   }
 
   __syncthreads();
@@ -143,10 +144,10 @@ __global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
         gamma_ptr == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma_ptr[j]);
     const T_ACC beta_v =
         beta_ptr == nullptr ? T_ACC(0) : static_cast<T_ACC>(beta_ptr[j]);
-    output_ptr[index] =
-        (static_cast<T_ACC>(added_output_ptr[index]) - static_cast<T_ACC>(mean[i])) *
-            static_cast<T_ACC>(rstd[i]) * gamma_v +
-        beta_v;
+    output_ptr[index] = (static_cast<T_ACC>(added_output_ptr[index]) -
+                         static_cast<T_ACC>(mean[i])) *
+                            static_cast<T_ACC>(rstd[i]) * gamma_v +
+                        beta_v;
   }
 }
 

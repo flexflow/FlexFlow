@@ -2500,17 +2500,8 @@ void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_) {
 
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
                                             flexflow_model_t model_handle_,
-                                            int num_layers,
-                                            char const **layer_names,
-                                            flexflow_op_t *layers,
                                             bool use_full_precision) {
   FileDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_handle_);
-  std::unordered_map<std::string, Layer *> weights_layers;
-  for (int i = 0; i < num_layers; i++) {
-    std::string const layer_name(layer_names[i]);
-    Layer *layer_ptr = FFCObjectWrapper::unwrap(layers[i]);
-    weights_layers.emplace(layer_name, layer_ptr);
-  }
-  handle->load_weights(model, weights_layers, use_full_precision);
+  handle->load_weights(model, use_full_precision);
 }

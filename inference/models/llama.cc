@@ -213,7 +213,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                             llama_config.hidden_size /
                                 llama_config.num_attention_heads,
                             ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, weights_layers, use_full_precision);
+  fileloader.load_weights(&ff, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators
