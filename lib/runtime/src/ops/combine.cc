@@ -26,21 +26,11 @@ using Legion::Task;
 
 using namespace FlexFlow::Kernels::Combine;
 
-enum Slots { INPUT, OUTPUT, PROFILING, PER_DEVICE_STATE };
-
-OpTaskInvocation init(CombineAttrs const &attrs) {
-  OpTaskBinding binding;
-
-  binding.bind(INPUT, input_tensor(0));
-
-  return {COMBINE_INIT_TASK_ID, binding};
-}
+enum Slots { INPUT, OUTPUT, PROFILING };
 
 OpTaskInvocation forward(CombineAttrs const &attrs) {
   OpTaskBinding binding;
-
-  binding.bind_arg(PER_DEVICE_STATE,
-                   per_device_op_state<CombinePerDeviceState>());
+  
   binding.bind_arg(PROFILING, profiling_settings());
 
   binding.bind(INPUT, input_tensor(0));
@@ -55,29 +45,7 @@ OpTaskInvocation backward(CombineAttrs const &attrs) {
   return {COMBINE_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<CombinePerDeviceState>
-    init_task_impl(TaskArgumentAccessor const &acc) {
-
-  auto input = acc.get_tensor<Permissions::RO>(INPUT);
-
-  DeviceSpecific<CombinePerDeviceState> per_device_state =
-      acc.create_device_specific<CombinePerDeviceState>(
-          init_kernel(input.data_type));
-  return per_device_state;
-}
-
-static DeviceSpecific<CombinePerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
-
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state =
-      acc.get_argument<CombinePerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -86,7 +54,6 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(forward_kernel,
                  profiling,
                  "[Combine] forward_time = %.2lfms\n",
-                 &per_device_state,
                  input,
                  output);
 }
@@ -100,8 +67,6 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state =
-      acc.get_argument<CombinePerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
@@ -110,7 +75,6 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(backward_kernel,
                  profiling,
                  "[Combine] forward_time = %.2lfms\n",
-                 &per_device_state,
                  input_grad,
                  output_grad);
 }
@@ -137,23 +101,13 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 }
 
 template <>
-void register_task<COMBINE_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_input_slot(INPUT);
-
-  register_task(COMBINE_INIT_TASK_ID, "Combine Init", init, init_task);
-}
-
-template <>
 void register_task<COMBINE_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
-
+  
   fwd.add_arg_slot<bool>(PROFILING);
-  fwd.add_unchecked_arg_slot<CombinePerDeviceState>(PER_DEVICE_STATE);
-
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
+
   register_task(COMBINE_FWD_TASK_ID, "Combine Fwd", fwd, forward_task);
 }
 
