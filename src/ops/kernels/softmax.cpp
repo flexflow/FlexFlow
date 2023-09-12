@@ -29,6 +29,9 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(
       cudnnSetTensorDescriptorFromDomain4SoftMax(inputTensor, input_domain));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain4SoftMax(
+      outputTensor, input_domain, softmax->data_type));
   dim = softmax->dim;
   profiling = softmax->profiling;
   std::strcpy(op_name, softmax->name);
@@ -127,7 +130,7 @@ void forward_kernel(SoftmaxMeta const *m,
                                      m->inputTensor,
                                      input_ptr,
                                      &beta,
-                                     m->inputTensor,
+                                     m->outputTensor,
                                      output_ptr,
                                      MIOPEN_SOFTMAX_ACCURATE,
                                      MIOPEN_SOFTMAX_MODE_CHANNEL));
