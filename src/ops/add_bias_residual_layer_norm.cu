@@ -97,6 +97,7 @@ __global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
                                             T const *input_ptr,
                                             T const *attn_bias_ptr,
                                             T const *residual_ptr,
+                                            T *added_output_ptr,
                                             T *output_ptr,
                                             T const *gamma_ptr,
                                             T const *beta_ptr,
@@ -105,7 +106,7 @@ __global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
   // Add attention bias and residual
   CUDA_KERNEL_LOOP(i, residual_volume) {
     int bias_idx = i % attn_bias_dim;
-    output_ptr[i] = input_ptr[i] + attn_bias_ptr[bias_idx] + residual_ptr[i];
+    added_output_ptr[i] = input_ptr[i] + attn_bias_ptr[bias_idx] + residual_ptr[i];
   }
 
   __syncthreads();
@@ -119,9 +120,9 @@ __global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
   float sum2 = 0.0f;
   for (int64_t j = threadIdx.x; j < effective_num_elements; j += blockDim.x) {
     const int64_t index = i * effective_num_elements + j;
-    sum1 += static_cast<float>(output_ptr[index]);
-    sum2 += static_cast<float>(output_ptr[index]) *
-            static_cast<float>(output_ptr[index]);
+    sum1 += static_cast<float>(added_output_ptr[index]);
+    sum2 += static_cast<float>(added_output_ptr[index]) *
+            static_cast<float>(added_output_ptr[index]);
   }
   sum1 = BlockReduceSum<float>(sum1, m_shared);
   sum2 = BlockReduceSum<float>(sum2, v_shared);
@@ -143,7 +144,7 @@ __global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
     const T_ACC beta_v =
         beta_ptr == nullptr ? T_ACC(0) : static_cast<T_ACC>(beta_ptr[j]);
     output_ptr[index] =
-        (static_cast<T_ACC>(output_ptr[index]) - static_cast<T_ACC>(mean[i])) *
+        (static_cast<T_ACC>(added_output_ptr[index]) - static_cast<T_ACC>(mean[i])) *
             static_cast<T_ACC>(rstd[i]) * gamma_v +
         beta_v;
   }
@@ -158,6 +159,7 @@ void AddBiasResidualLayerNorm::inference_kernel(
     T const *input_ptr,
     T const *attn_bias_ptr,
     T const *residual_ptr,
+    T *added_output_ptr,
     T *output_ptr,
     T const *gamma_ptr,
     T const *beta_ptr,
@@ -180,6 +182,7 @@ void AddBiasResidualLayerNorm::inference_kernel(
                                                input_ptr,
                                                attn_bias_ptr,
                                                residual_ptr,
+                                               added_output_ptr,
                                                output_ptr,
                                                gamma_ptr,
                                                beta_ptr,
@@ -193,6 +196,7 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
     int attn_bias_dim,
     int residual_volume,
     GenericTensorAccessorR const &input,
+    GenericTensorAccessorW &added_output,
     GenericTensorAccessorW &output,
     GenericTensorAccessorR const &residual,
     GenericTensorAccessorR const &attn_bias,
@@ -215,6 +219,7 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
         input.get_float_ptr(),
         attn_bias.get_float_ptr(),
         residual.get_float_ptr(),
+        added_output.get_float_ptr(),
         output.get_float_ptr(),
         gamma.get_float_ptr(),
         m->use_bias ? beta.get_float_ptr() : nullptr,
@@ -227,6 +232,7 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
         input.get_half_ptr(),
         attn_bias.get_half_ptr(),
         residual.get_half_ptr(),
+        added_output.get_half_ptr(),
         output.get_half_ptr(),
         gamma.get_half_ptr(),
         m->use_bias ? beta.get_half_ptr() : nullptr,

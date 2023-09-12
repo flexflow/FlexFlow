@@ -532,7 +532,7 @@ public:
                     DataType data_type = DT_NONE,
                     char const *name = NULL);
   // Add a add_bias_residual_layer_norm layer
-  Tensor add_bias_residual_layer_norm(const Tensor input,
+  std::pair<Tensor,Tensor> add_bias_residual_layer_norm(const Tensor input,
                                       const Tensor residual,
                                       std::vector<int> const &axes,
                                       bool elementwise_affine,

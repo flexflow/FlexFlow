@@ -184,11 +184,13 @@ void OPT::create_opt_model(FFModel &ff,
     Layer *attention_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
                            attention_layer);
+    auto pair = ff.add_bias_residual_layer_norm(mha, residual, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
+    Tensor added = pair.first;
+    Tensor final_norm = pair.second;
+    // Tensor added = ff.add(mha, residual);
 
-    Tensor added = ff.add(mha, residual);
-
-    Tensor final_norm = ff.layer_norm(
-        added, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
+    // Tensor final_norm = ff.layer_norm(
+    //     added, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
     Layer *final_layer_norm = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) +
                                "_final_layer_norm_weight",
