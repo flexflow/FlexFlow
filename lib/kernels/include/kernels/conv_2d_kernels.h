@@ -11,9 +11,6 @@ namespace FlexFlow {
 
 struct Conv2DPerDeviceState {
   PerDeviceFFHandle handle;
-  optional<Activation> activation;
-  bool use_bias;
-
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t biasTensor;
   ffTensorDescriptor_t outputTensor;
@@ -22,13 +19,11 @@ struct Conv2DPerDeviceState {
   ffConvolutionDescriptor_t convDesc;
   ffConvolutionFwdAlgo_t fwdAlgo;
   ffConvolutionBwdFilterAlgo_t bwdFilterAlgo;
-  ffConvolutionBwdDataAlgo_t bwdDataAlgo;
+  req<ffConvolutionBwdDataAlgo_t> bwdDataAlgo;
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Conv2DPerDeviceState,
                                              handle,
-                                             activation,
-                                             use_bias,
                                              inputTensor,
                                              biasTensor,
                                              outputTensor,
@@ -44,7 +39,6 @@ namespace Conv2D {
 
 Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  optional<Activation> activation,
-                                 bool use_bias,
                                  int kernel_h,
                                  int kernel_w,
                                  int groups,
@@ -62,7 +56,8 @@ void forward_kernel(ffStream_t stream,
                     float const *input_ptr,
                     float *output_ptr,
                     float const *filter_ptr,
-                    float const *bias_ptr);
+                    float const *bias_ptr,
+                    optional<Activation> activation);
 
 void backward_kernel(ffStream_t stream,
                      Conv2DPerDeviceState const &m,
@@ -72,7 +67,8 @@ void backward_kernel(ffStream_t stream,
                      float *output_grad_ptr,
                      float const *filter_ptr,
                      float *filter_grad_ptr,
-                     float *bias_grad_ptr);
+                     float *bias_grad_ptr,
+                     optional<Activation> activation);
 
 } // namespace Conv2D
 } // namespace Kernels

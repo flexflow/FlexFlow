@@ -50,9 +50,6 @@ miopenConvFwdAlgorithm_t selectConvolutionForwardAlgorithm(
                                                    false));
   assert(cnt > 0);
   // checkCUDNN(perfResults[0].status);
-  printf("forwardAlgo(%d) time(%.2lf)\n",
-         perfResults[0].fwd_algo,
-         perfResults[0].time);
   if (time != nullptr) {
     *time = perfResults[0].time;
   }
@@ -90,9 +87,6 @@ miopenConvBwdWeightsAlgorithm_t selectConvolutionBackwardFilterAlgorithm(
                                                            false));
   assert(cnt > 0);
   // checkCUDNN(perfResults[0].status);
-  printf("bwdFilterAlgo(%d) time(%.2lf)\n",
-         perfResults[0].bwd_weights_algo,
-         perfResults[0].time);
   if (time != nullptr) {
     *time = perfResults[0].time;
   }
@@ -130,9 +124,6 @@ miopenConvBwdDataAlgorithm_t selectConvolutionBackwardDataAlgorithm(
                                                         false));
   assert(cnt > 0);
   // checkCUDNN(perfResults[0].status);
-  printf("bwdDataAlgo(%d) time(%.2lf)\n",
-         perfResults[0].bwd_data_algo,
-         perfResults[0].time);
   if (time != nullptr) {
     *time = perfResults[0].time;
   }
@@ -141,12 +132,11 @@ miopenConvBwdDataAlgorithm_t selectConvolutionBackwardDataAlgorithm(
 
 Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  optional<Activation> activation,
-                                 bool use_bias,
                                  int kernel_h,
                                  int kernel_w,
                                  int groups,
-                                 int pad_h,
-                                 int pad_w,
+                                 int padding_h,
+                                 int padding_w,
                                  int stride_h,
                                  int stride_w,
                                  GenericTensorAccessorR const &input,
@@ -189,11 +179,6 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
 
   // Require that input_c is divisible by conv->groups
   assert(input_c % groups == 0);
-  printf("filterDim: kernel(%d %d) c_in(%d), c_out(%d)\n",
-         kernel_h,
-         kernel_w,
-         input_c / groups,
-         output_c);
   checkCUDNN(miopenSet4dTensorDescriptor(m->filterDesc,
                                          miopenFloat,
                                          output_c,
@@ -289,12 +274,13 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   }
 }
 
-void forward_kernel(hipStream_t stream,
-                    Conv2DPerDeviceState const *m,
+void forward_kernel(ffStream_t stream,
+                    Conv2DPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
                     float const *filter_ptr,
-                    float const *bias_ptr) {
+                    float const *bias_ptr,
+                    optional<Activation> activation) {
 
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -335,15 +321,16 @@ void forward_kernel(hipStream_t stream,
   }
 }
 
-void backward_kernel(hipStream_t stream,
-                     Conv2DPerDeviceState const *m,
+void backward_kernel(ffStream_t stream,
+                     Conv2DPerDeviceState const &m,
                      float const *input_ptr,
                      float *input_grad_ptr,
                      float const *output_ptr,
                      float *output_grad_ptr,
-                     float const *kernel_ptr,
-                     float *kernel_grad_ptr,
-                     float *bias_grad_ptr) {
+                     float const *filter_ptr,
+                     float *filter_grad_ptr,
+                     float *bias_grad_ptr,
+                     optional<Activation> activation) {
 
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
