@@ -62,8 +62,7 @@ static DeviceSpecific<CastPerDeviceState>
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   DeviceSpecific<CastPerDeviceState> per_device_state =
-      acc.create_device_specific<CastPerDeviceState>(
-          init_kernel(handle));
+      acc.create_device_specific<CastPerDeviceState>(init_kernel(handle));
   return per_device_state;
 }
 
@@ -77,7 +76,8 @@ static DeviceSpecific<CastPerDeviceState>
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state = acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<CastAttrs>(ATTRS);
 
@@ -103,10 +103,11 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state = acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<CastAttrs>(ATTRS);
-  
+
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
 
   auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);

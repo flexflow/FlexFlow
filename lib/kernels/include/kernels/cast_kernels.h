@@ -10,7 +10,7 @@ namespace FlexFlow {
 
 struct CastPerDeviceState {
   PerDeviceFFHandle handle;
-  };
+};
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(CastPerDeviceState, handle);
 

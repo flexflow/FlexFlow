@@ -14,14 +14,11 @@
  */
 
 #include "kernels/cast_kernels.h"
-#include "kernels/cuda_helper.h"
 #include "kernels/datatype_dispatch.h"
+#include "device.h"
+#include "kernels/device.h"
 
 namespace FlexFlow {
-
-CastPerDeviceState::CastPerDeviceState(FFHandler handle)
-    : PerDeviceOpState(handle) {}
-
 namespace Kernels {
 namespace Cast {
 
@@ -64,20 +61,28 @@ struct BackwardKernel {
   }
 };
 
+CastPerDeviceState init_kernel(PerDeviceFFHandle const &handle) {
+  return {handle};
+}
+
 void forward_kernel(ffStream_t stream,
                     CastPerDeviceState const *m,
                     GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output) {
+                    GenericTensorAccessorW const &output,
+                    DataType input_type,
+                    DataType output_type) {
   DataTypeDispatch2<ForwardKernel>{}(
-      m->input_data_type, m->output_data_type, stream, m, input, output);
+      input_type, output_type, stream, m, input, output);
 }
 
 void backward_kernel(ffStream_t stream,
                      CastPerDeviceState const *m,
                      GenericTensorAccessorR const &input,
-                     GenericTensorAccessorW const &output) {
+                     GenericTensorAccessorW const &output,
+                     DataType input_type,
+                     DataType output_type) {
   DataTypeDispatch2<BackwardKernel>{}(
-      m->input_data_type, m->output_data_type, stream, m, input, output);
+      input_type, output_type, stream, m, input, output);
 }
 
 } // namespace Cast
