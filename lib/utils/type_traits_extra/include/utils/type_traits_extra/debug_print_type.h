@@ -2,8 +2,7 @@
 #define _FLEXFLOW_LIB_UTILS_TYPE_TRAITS_EXTRA_INCLUDE_UTILS_TYPE_TRAITS_EXTRA_DEBUG_PRINT_TYPE_H
 
 #include <type_traits>
-#include <boost/preprocessor/variadic/to_tuple.hpp>
-#include <boost/preprocessor/punctuation/remove_parens.hpp>
+#include "utils/preprocessor_extra/wrap_arg.h"
 
 namespace FlexFlow {
 
@@ -21,12 +20,6 @@ template <bool DidSucceed, typename T>
 using print_on_condition_t = std::conditional_t<DidSucceed, ALL_OK, T>;
 
 }
-
-#define WRAP_ARG(...) \
-  BOOST_PP_VARIADIC_TO_TUPLE(__VA_ARGS__)
-
-#define UNWRAP_ARG(ARGNAME) \
-  BOOST_PP_REMOVE_PARENS(ARGNAME)
 
 #define DEBUG_PRINT_TYPE(...) \
   using debug_print_proxy_type_2 = __VA_ARGS__; \

@@ -3,4 +3,6 @@ ff_add_library(
   DEPS
     nameof
     boost_preprocessor
+    utils-preprocessor_extra
+    utils-backports
 )

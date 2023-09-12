@@ -1,6 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_TYPE_TRAITS_EXTRA_INCLUDE_UTILS_TYPE_TRAITS_EXTRA_METAFUNCTION_IS_NARY_H
 #define _FLEXFLOW_LIB_UTILS_TYPE_TRAITS_EXTRA_INCLUDE_UTILS_TYPE_TRAITS_EXTRA_METAFUNCTION_IS_NARY_H
 
+#include "num_args.h"
+
 namespace FlexFlow {
 
 template <template <typename...> class Func, int N, typename Enable = void>

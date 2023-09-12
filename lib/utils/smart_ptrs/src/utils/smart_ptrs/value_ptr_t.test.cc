@@ -11,7 +11,16 @@ struct example_t {
 };
 
 TEST_CASE("value_ptr") {
-  value_ptr<example_t> v = make_value_ptr<example_t>(3, 5.0); 
+  value_ptr<example_t> v = make_value_ptr<example_t>(3, static_cast<float>(5.0)); 
   CHECK(v->x == 3);
   CHECK(v->y == 5.0);
+}
+
+TEST_CASE("value_ptr copy semantics") {
+  value_ptr<example_t> v = make_value_ptr<example_t>(3, static_cast<float>(5.0)); 
+  auto v2 = v;
+  v2->x = 4;
+
+  CHECK(v->x == 3);
+  CHECK(v2->x == 4);
 }

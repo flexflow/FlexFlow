@@ -1,8 +1,6 @@
-# utils
+# `visitable`
 
-## `visitable`
-
-### Motivation
+## Motivation
 
 FlexFlow's codebase makes heavy use of "plain old data"[^2] types[^1] (referred to as _product types_ in the rest of this document) such as the following:
 ```cpp
@@ -246,7 +244,7 @@ FlexFlow's codebase contains tens if not hundreds of these product types, and so
 [^1]: aka product types, aka Haskell's `data`. Essentially types that are just a tuple of fields with names.
 [^2]: by "plain old data" we refer to the general idea behind [C++'s POD](https://en.cppreference.com/w/cpp/named_req/PODType), but not its exact definition
 
-### Adding new `visitable` types
+## Adding new `visitable` types
 
 FlexFlow's `visitable` support provides an easy way to express product types, and prevents any of the bugs listed above.
 To express the above definition of `Person` using `visitable`, we would write the following code:
@@ -272,7 +270,7 @@ and any subset of the fields would raise an error at compile time. Without any a
 
 [^3]: The full list of properties is detailed in [Macros Details](#macro-reference)
 
-### Limitations
+## Limitations
 
 `visitable` types have two primary limitations. First, they do not support initialization with `(...)`:
 ```cpp
@@ -294,7 +292,7 @@ FF_VISITABLE_STRUCT(MyInts, list1, list2); // CORRECT
 ```
 A smaller limitation is that `FF_VISITABLE_STRUCT` only works from within the `FlexFlow` namespace (this is not much of an issue as all of the `FlexFlow` code resides in a single namespace).
 
-### Advanced Features
+## Advanced Features
 
 While `FF_VISITABLE_STRUCT` matches the behavior of many product types in FlexFlow's codebase, there are exceptions. Many of these resemble the code below:
 ```cpp
@@ -395,11 +393,11 @@ struct TownPopulation {
 };
 ```
 
-#### JSON Serialization
+### JSON Serialization
 
 TODO
 
-### Macro Reference
+## Macro Reference
 
 The properties that are checked by each macro are as follows:
 
@@ -427,20 +425,6 @@ The properties that are checked by each macro are as follows:
 
 [^4]: This is usually resolved by either wrapping the last field in a `req` or using `FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION`
 
-### Internals
+## Internals
 
 TODO
-
-## `stack_vector`, `stack_string`, `stack_map`
-
-## `strong_typedef`
-
-## `containers.h`
-
-## `graph`
-
-## `bidict`
-
-## `type_traits`
-
-## `test_types`

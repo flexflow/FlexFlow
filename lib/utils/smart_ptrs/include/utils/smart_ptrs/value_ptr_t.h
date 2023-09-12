@@ -2,6 +2,7 @@
 #define _FLEXFLOW_LIB_UTILS_SMART_PTRS_INCLUDE_UTILS_SMART_PTRS_VALUE_PTR_T_H
 
 #include "is_clonable.h" 
+#include <utility>
 
 namespace FlexFlow {
 
@@ -36,7 +37,20 @@ private:
 };
 
 template <typename T, typename... Args>
-value_ptr<T> make_value_ptr(Args &&... args) {
+std::enable_if_t<
+  std::is_constructible_v<T, Args...>,
+  value_ptr<T> 
+>
+make_value_ptr(Args &&... args) {
+  return {new T(std::forward<Args>(args)...)};
+}
+
+template <typename T, typename... Args>
+std::enable_if_t<
+  !std::is_constructible_v<T, Args...>,
+  value_ptr<T>
+>
+make_value_ptr(Args &&... args) {
   return {new T{std::forward<Args>(args)...}};
 }
 

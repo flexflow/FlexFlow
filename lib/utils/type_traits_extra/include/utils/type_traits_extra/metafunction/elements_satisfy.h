@@ -4,6 +4,7 @@
 #include <type_traits>
 #include "is_nary.h"
 #include <variant>
+#include "utils/type_traits_extra/type_list/as_type_list.h" 
 
 namespace FlexFlow {
 
@@ -33,24 +34,16 @@ struct elements_satisfy_impl<Cond> : std::true_type {};
 template <template <typename...> class Cond, typename T>
 struct elements_satisfy<Cond,
                         T,
-                        enable_if_t<(is_nary_metafunction<Cond, 1>::value &&
-                                     is_visitable<T>::value)>>
-    : elements_satisfy<Cond, visit_as_tuple_t<T>> {};
+                        std::enable_if_t<is_nary_metafunction_v<Cond, 1>>>
+    : elements_satisfy<Cond, as_type_list_t<T>> {};
 
 template <template <typename...> class Cond, typename... Ts>
 struct elements_satisfy<Cond,
-                        variant<Ts...>,
-                        enable_if_t<is_nary_metafunction<Cond, 1>::value>>
+                        type_list<Ts...>,
+                        std::enable_if_t<is_nary_metafunction_v<Cond, 1>>>
     : elements_satisfy_impl<Cond, Ts...> {};
 
-template <template <typename...> class Cond, typename... Ts>
-struct elements_satisfy<Cond,
-                        std::tuple<Ts...>,
-                        enable_if_t<is_nary_metafunction<Cond, 1>::value>>
-    : elements_satisfy_impl<Cond, Ts...> {};
-
-static_assert(
-    elements_satisfy<is_equal_comparable, std::tuple<int, float>>::value, "");
+/* static_assert(elements_satisfy_v<is_equal_comparable, std::tuple<int, float>>); */
 
 /* template <template <typename...> class Cond, typename T, typename Enable> */
 /* struct violating_element { */

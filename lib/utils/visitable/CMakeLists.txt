@@ -1,13 +1,8 @@
 ff_add_library(
-  NAME
-    visitable
+  NAME utils-visitable
   DEPS
     visit_struct
+    utils-backports
+    utils-type_traits_extra
+    utils-fmt_extra
 )      
-
-ff_add_intree_test_executable(
-  NAME
-    visitable-test
-  DEPS
-    visitable
-)

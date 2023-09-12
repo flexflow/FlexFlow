@@ -1,4 +1,3 @@
-add_library(
-  NAME
-    bidict
+ff_add_library(
+  NAME utils-bidict
 )

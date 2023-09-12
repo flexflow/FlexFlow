@@ -10,7 +10,7 @@
 namespace FlexFlow {
 
 template <typename T, typename Enable = void>
-struct as_type_list;
+struct as_type_list { };
 
 template <typename T>
 using as_type_list_t = typename as_type_list<T>::type;
