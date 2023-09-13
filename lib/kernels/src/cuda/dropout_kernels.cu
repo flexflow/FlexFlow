@@ -15,6 +15,7 @@
 
 #include "kernels/dropout_kernels.h"
 #include "kernels/ff_handle.h"
+#include "kernels/device.h"
 #include "device.h"
 
 namespace FlexFlow {
@@ -25,7 +26,7 @@ namespace Dropout {
 DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                   float rate,
                                   unsigned long long seed,
-                                  ArrayShape output_domain,
+                                  ArrayShape output_shape,
                                   Allocator allocator) {
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
@@ -38,69 +39,67 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateDropoutDescriptor(&dropoutDesc));
   checkCUDNN(cudnnDropoutGetStatesSize(handle.dnn, &(dropoutStateSize)));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, output_domain));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(inputTensor, output_shape));
+  checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
   checkCUDNN(cudnnDropoutGetReserveSpaceSize(outputTensor, &(reserveSpaceSize)));
   {
     // allocate memory for dropoutStates and reserveSpace
     size_t totalSize = dropoutStateSize + reserveSpaceSize;
-    dropoutStates = this->allocator->allocate(totalSize);
+    dropoutStates = allocator.allocate(totalSize);
     reserveSpace = ((char *)dropoutStates) + dropoutStateSize;
   }
   checkCUDNN(cudnnSetDropoutDescriptor(
       dropoutDesc, handle.dnn, rate, dropoutStates, dropoutStateSize, seed));
-  DropoutPerDeviceSate per_device_state = {handle,
-                                            rate,
-                                            seed,
-                                            &output_domain,
-                                            allocator,
-                                            inputTensor,
-                                            outputTensor,
-                                            dropoutDesc,
-                                            reserveSpace,
-                                            dropoutStates,
-                                            reserveSpaceSize,
-                                            dropoutStateSize};
+  DropoutPerDeviceState per_device_state = {handle,
+                                           allocator,
+                                           inputTensor,
+                                           outputTensor,
+                                           dropoutDesc,
+                                           reserveSpace,
+                                           dropoutStates,
+                                           reserveSpaceSize,
+                                           dropoutStateSize};
   return per_device_state;
 }
-fdcgvhbjknlm
+
 void forward_kernel(cudaStream_t stream,
-                    DropoutPerDeviceState *m,
+                    DropoutPerDeviceState &m,
                     float const *input_ptr,
                     float *output_ptr) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
-  checkCUDNN(cudnnDropoutForward(m->handle.dnn,
-                                 m->dropoutDesc,
-                                 m->inputTensor,
+  checkCUDNN(cudnnDropoutForward(m.handle.dnn,
+                                 m.dropoutDesc,
+                                 m.inputTensor,
                                  input_ptr,
-                                 m->outputTensor,
+                                 m.outputTensor,
                                  output_ptr,
-                                 m->reserveSpace,
-                                 m->reserveSpaceSize));
+                                 m.reserveSpace,
+                                 m.reserveSpaceSize));
 }
 
 void backward_kernel(cudaStream_t stream,
-                     DropoutPerDeviceState *m,
+                     DropoutPerDeviceState &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
-  checkCUDNN(cudnnDropoutBackward(m->handle.dnn,
-                                  m->dropoutDesc,
-                                  m->outputTensor,
+  checkCUDNN(cudnnDropoutBackward(m.handle.dnn,
+                                  m.dropoutDesc,
+                                  m.outputTensor,
                                   output_grad_ptr,
-                                  m->inputTensor,
+                                  m.inputTensor,
                                   input_grad_ptr,
-                                  m->reserveSpace,
-                                  m->reserveSpaceSize));
+                                  m.reserveSpace,
+                                  m.reserveSpaceSize));
 }
 
 void cleanup_kernel(Allocator allocator,
                     ffTensorDescriptor_t inputTensor,
                     ffTensorDescriptor_t outputTensor,
-                    ffDropoutDescriptor_t dropoutDesc) {
-  allocator.deallocate();
+                    ffDropoutDescriptor_t dropoutDesc,
+                    void *dropoutStates) {
+  allocator.deallocate(dropoutStates);
   checkCUDNN(cudnnDestroyTensorDescriptor(inputTensor));
   checkCUDNN(cudnnDestroyTensorDescriptor(outputTensor));
   checkCUDNN(cudnnDestroyDropoutDescriptor(dropoutDesc));

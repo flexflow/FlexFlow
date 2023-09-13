@@ -19,11 +19,11 @@ OpTaskInvocation init(DropoutAttrs const &);
 OpTaskInvocation forward(DropoutAttrs const &);
 OpTaskInvocation backward(DropoutAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
+CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   DropoutAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
+                                  InputParallelTensorDesc const &input_shape,
                                   ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
+                                  MachineView const &mv);
 
 /* class Dropout : public Op { */
 /* public: */

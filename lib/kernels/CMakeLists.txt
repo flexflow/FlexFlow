@@ -6,7 +6,8 @@ project(${project_target}
 file(GLOB_RECURSE SRC
      CONFIGURE_DEPENDS
      LIST_DIRECTORIES False
-     src/*.cc)
+     src/*.cc
+     src/*.cu)
 
 add_library(
   ${project_target}

@@ -12,9 +12,6 @@ namespace FlexFlow {
 struct DropoutPerDeviceState {
 public:
   PerDeviceFFHandle handle;
-  float rate;
-  unsigned long long seed;
-  ArrayShape output_domain;
   Allocator allocator;
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
@@ -27,9 +24,6 @@ public:
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(DropoutPerDeviceState,
                           handle,
-                          rate,
-                          seed,
-                          output_domain,
                           allocator,
                           inputTensor,
                           outputTensor,
@@ -48,15 +42,21 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                   ArrayShape const &output_domain,
                                   Allocator allocator);
 
-void forward_kernel(ffStream_t stream,
-                    DropoutPerDeviceState *m,
+void forward_kernel(cudaStream_t stream,
+                    DropoutPerDeviceState &m,
                     float const *input_ptr,
                     float *output_ptr);
 
-void backward_kernel(ffStream_t stream,
-                     DropoutPerDeviceState *m,
+void backward_kernel(cudaStream_t stream,
+                     DropoutPerDeviceState &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr);
+
+void cleanup_kernel(Allocator allocator,
+                    ffTensorDescriptor_t inputTensor,
+                    ffTensorDescriptor_t outputTensor,
+                    ffDropoutDescriptor_t dropoutDesc,
+                    void *dropoutStates);
 
 } // namespace Dropout
 } // namespace Kernels
