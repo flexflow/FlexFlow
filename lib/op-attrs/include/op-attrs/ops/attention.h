@@ -13,14 +13,14 @@ struct MultiHeadAttentionAttrs {
   req<bool> bias, add_bias_kv, add_zero_attn;
 };
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(MultiHeadAttentionAttrs,
-                    embed_dim,
-                    num_heads,
-                    kdim,
-                    vdim,
-                    dropout,
-                    bias,
-                    add_bias_kv,
-                    add_zero_attn);
+                                             embed_dim,
+                                             num_heads,
+                                             kdim,
+                                             vdim,
+                                             dropout,
+                                             bias,
+                                             add_bias_kv,
+                                             add_zero_attn);
 
 template <typename TensorType>
 struct MultiHeadAttentionInputs

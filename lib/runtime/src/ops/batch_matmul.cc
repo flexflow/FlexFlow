@@ -32,7 +32,7 @@ enum Slots {
   A_INPUT, // tensor
   B_INPUT, // tensor
   ATTRS,
-  OUTPUT,  // tensor
+  OUTPUT, // tensor
   PROFILING,
   HANDLE,
   PER_DEVICE_STATE,

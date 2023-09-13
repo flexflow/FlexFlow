@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "kernels/attention_kernels.h"
 #include "device.h"
+#include "kernels/attention_kernels.h"
 #include "kernels/device.h"
 
 namespace FlexFlow {
@@ -91,11 +91,8 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                     num_samples,
                                     maxBeamSize));
   size_t workSpaceSize;
-  checkCUDNN(cudnnGetMultiHeadAttnBuffers(handle.dnn,
-                                          attnDesc,
-                                          &weightSize,
-                                          &workSpaceSize,
-                                          &reserveSpaceSize));
+  checkCUDNN(cudnnGetMultiHeadAttnBuffers(
+      handle.dnn, attnDesc, &weightSize, &workSpaceSize, &reserveSpaceSize));
   assert(workSpaceSize <= handle.workSpaceSize);
 
   int dimA[CUDNN_SEQDATA_DIM_COUNT];
