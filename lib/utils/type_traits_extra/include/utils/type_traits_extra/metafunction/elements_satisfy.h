@@ -9,7 +9,7 @@
 namespace FlexFlow {
 
 template <template <typename...> class Cond, typename T, typename Enable = void>
-struct elements_satisfy;
+struct elements_satisfy : std::true_type {};
 
 template <template <typename...> class Cond, typename T>
 inline constexpr bool elements_satisfy_v = elements_satisfy<Cond, T>::value;
@@ -31,17 +31,17 @@ struct elements_satisfy_impl<Cond> : std::true_type {};
 /*                 "than 1 argument"); */
 /* }; */
 
-template <template <typename...> class Cond, typename T>
-struct elements_satisfy<Cond,
-                        T,
-                        std::enable_if_t<is_nary_metafunction_v<Cond, 1>>>
-    : elements_satisfy<Cond, as_type_list_t<T>> {};
+/* template <template <typename...> class Cond, typename T> */
+/* struct elements_satisfy<Cond, */
+/*                         T, */
+/*                         std::enable_if_t<is_nary_metafunction_v<Cond, 1>>> */
+/*     : elements_satisfy<Cond, as_type_list_t<T>> {}; */
 
-template <template <typename...> class Cond, typename... Ts>
-struct elements_satisfy<Cond,
-                        type_list<Ts...>,
-                        std::enable_if_t<is_nary_metafunction_v<Cond, 1>>>
-    : elements_satisfy_impl<Cond, Ts...> {};
+/* template <template <typename...> class Cond, typename... Ts> */
+/* struct elements_satisfy<Cond, */
+/*                         type_list<Ts...>, */
+/*                         std::enable_if_t<is_nary_metafunction_v<Cond, 1>>> */
+/*     : elements_satisfy_impl<Cond, Ts...> {}; */
 
 /* static_assert(elements_satisfy_v<is_equal_comparable, std::tuple<int, float>>); */
 

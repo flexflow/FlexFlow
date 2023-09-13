@@ -7,4 +7,6 @@ ff_add_library(
     rapidcheck
     doctest
     utils-backports
+    utils-preprocessor_extra
+    boost_preprocessor
 )

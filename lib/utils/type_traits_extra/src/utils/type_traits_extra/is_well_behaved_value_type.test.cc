@@ -14,7 +14,10 @@ struct hash<example_well_behaved_value_type> {
 };
 }
 
-TEST_CASE("is_well_behaved_value_type_v") {
-  CHECK(is_well_behaved_value_type_v<example_well_behaved_value_type>);
-  CHECK_FALSE(is_well_behaved_value_type_v<std::unique_ptr<int>>);
+
+TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE("is_well_behaved_value_type_v") {
+    CHECK(is_well_behaved_value_type_v<example_well_behaved_value_type>);
+    CHECK_FALSE(is_well_behaved_value_type_v<std::unique_ptr<int>>);
+  }
 }

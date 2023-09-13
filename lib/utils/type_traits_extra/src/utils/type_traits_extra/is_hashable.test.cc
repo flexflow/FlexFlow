@@ -11,7 +11,9 @@ struct hash<hashable_t> {
 };
 }
 
-TEST_CASE("is_hashable") {
-  CHECK(is_hashable_v<hashable_t>);
-  CHECK_FALSE(is_hashable_v<not_hashable_t>);
+TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE("is_hashable") {
+    CHECK(is_hashable_v<hashable_t>);
+    CHECK_FALSE(is_hashable_v<not_hashable_t>);
+  }
 }

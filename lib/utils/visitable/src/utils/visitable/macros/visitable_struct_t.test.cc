@@ -6,11 +6,16 @@
 #include "utils/visitable/type/functions/type_at.h"
 #include "utils/visitable/type/functions/get_name.h"
 #include "utils/visitable/type/functions/field_count.h"
+#include "utils/visitable/operations/eq.h"
+#include "utils/visitable/type/functions/as_type_list.h"
+#include "utils/type_traits_extra/is_equal_comparable.h"
 
-struct example_t_0 {
-  int my_first_field;
-  float my_second_field;
-};
+namespace FlexFlow {
+  struct example_t_0 {
+    int my_first_field;
+    float my_second_field;
+  };
+}
 VISITABLE_STRUCT_T(example_t_0, 0, my_first_field, my_second_field);
 
 TEST_CASE("VISITABLE_STRUCT_T<>") {
@@ -19,13 +24,22 @@ TEST_CASE("VISITABLE_STRUCT_T<>") {
   CHECK_SAME_TYPE(type_at_t<1, example_t_0>, float);
   CHECK(field_count_v<example_t_0> == 2);
   CHECK_SAME_TYPE(visit_as_tuple_t<example_t_0>, std::tuple<int, float>);
+  CHECK(is_equal_comparable_v<example_t_0>);
+
+  example_t_0 v1 { 1, 1.0f };
+  example_t_0 v2 { 2, 2.0f };
+  CHECK(v1 == v1);
+  CHECK(v2 == v2);
+  CHECK_FALSE(v1 == v2);
 }
 
-template <typename T>
-struct example_t_1 {
-  T my_first_field;
-  T my_second_field;
-};
+namespace FlexFlow {
+  template <typename T>
+  struct example_t_1 {
+    T my_first_field;
+    T my_second_field;
+  };
+}
 VISITABLE_STRUCT_T(example_t_1, 1, my_first_field, my_second_field);
 
 TEST_CASE_TEMPLATE("VISITABLE_STRUCT_T<T0>", T, int, std::string, std::vector<float>, example_t_1<std::string>) {
@@ -36,22 +50,36 @@ TEST_CASE_TEMPLATE("VISITABLE_STRUCT_T<T0>", T, int, std::string, std::vector<fl
   CHECK_SAME_TYPE(visit_as_tuple_t<example_t_1<T>>, std::tuple<T, T>);
 }
 
-template <typename T1, typename T2>
-struct example_t_2 {
-  T1 my_first_field;
-  T2 my_second_field;
-};
+namespace FlexFlow {
+  template <typename T1, typename T2>
+  struct example_t_2 {
+    T1 my_first_field;
+    T2 my_second_field;
+  };
+}
 VISITABLE_STRUCT_T(example_t_2, 2, my_first_field, my_second_field);
 
-TEST_CASE_TEMPLATE("VISITABLE_STRUCT_T<T0, T1>", T, std::pair<int, float>) {
-  using T0 = typename T::first_type;
-  using T1 = typename T::second_type;
+TEST_CASE("VISITABLE_STRUCT_T<T0, T1>") {
+  using T0 = int;
+  using T1 = float;
 
   CHECK(get_name<example_t_2<T0, T1>>() == "example_t_2");
   CHECK_SAME_TYPE(type_at_t<0, example_t_2<T0, T1>>, T0);
   CHECK_SAME_TYPE(type_at_t<1, example_t_2<T0, T1>>, T1);
   CHECK(field_count_v<example_t_2<T0, T1>> == 2);
   CHECK_SAME_TYPE(visit_as_tuple_t<example_t_2<T0, T1>>, std::tuple<T0, T1>);
+  CHECK(is_visitable_v<example_t_2<T0, T1>>);
+  CHECK(elements_satisfy_v<is_equal_comparable, example_t_2<T0, T1>>);
+
+  REQUIRE(is_equal_comparable_v<T0>);
+  REQUIRE(is_equal_comparable_v<T1>);
+  static_assert(is_equal_comparable<example_t_2<T0, T1>>::value);
+
+  example_t_2<T0, T1> v1 { 1, 1.0f };
+  example_t_2<T0, T1> v2 { 2, 2.0f };
+  CHECK(v1 == v1);
+  CHECK(v2 == v2);
+  CHECK_FALSE(v1 == v2);
 }
 
 struct opaque_type_0 { };

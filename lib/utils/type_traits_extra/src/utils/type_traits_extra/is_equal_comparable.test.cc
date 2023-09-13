@@ -9,11 +9,13 @@ struct not_equal_comparable {
   bool operator==(not_equal_comparable const &other) = delete;
 };
 
-TEST_CASE("is_equal_comparable_v") {
-  CHECK(is_equal_comparable_v<equal_comparable>);
-  CHECK_FALSE(is_equal_comparable_v<not_equal_comparable>);
-}
+TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE("is_equal_comparable_v") {
+    CHECK(is_equal_comparable_v<equal_comparable>);
+    CHECK_FALSE(is_equal_comparable_v<not_equal_comparable>);
+  }
 
-TEST_CASE_TEMPLATE("is_equal_comparable", T, equal_comparable, not_equal_comparable) {
-  CHECK(is_equal_comparable<T>::value == is_equal_comparable_v<T>);
+  TEST_CASE_TEMPLATE("is_equal_comparable", T, equal_comparable, not_equal_comparable) {
+    CHECK(is_equal_comparable<T>::value == is_equal_comparable_v<T>);
+  }
 }

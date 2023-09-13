@@ -3,6 +3,8 @@
 
 #include "testing/doctest.h"
 #include "utils/rapidcheck_extra.h"
+#include "testing/rapidcheck/doctest.h"
+#include "testing/doctest/test_case_template_n.h"
 
 namespace FlexFlow { };
 using namespace FlexFlow;
