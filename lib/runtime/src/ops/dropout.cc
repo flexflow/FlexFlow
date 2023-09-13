@@ -1,10 +1,10 @@
 #include "dropout.h"
 #include "kernels/dropout_kernels.h"
 #include "legion/legion_utilities.h"
+#include "op-attrs/get_output_shapes.h"
 #include "task_spec/op_task_invocation.h"
 #include "task_spec/task_signature.h"
 #include "utils/hash-utils.h"
-#include "op-attrs/get_output_shapes.h"
 
 namespace FlexFlow {
 
@@ -15,14 +15,7 @@ using Legion::Task;
 
 using namespace FlexFlow::Kernels::Dropout;
 
-enum Slots {
-  INPUT,
-  OUTPUT,
-  ATTRS,
-  PER_DEVICE_STATE,
-  FF_HANDLE,
-  PROFILING
-};
+enum Slots { INPUT, OUTPUT, ATTRS, PER_DEVICE_STATE, FF_HANDLE, PROFILING };
 
 OpTaskInvocation init(DropoutAttrs const &attrs) {
   OpTaskBinding binding;
@@ -41,7 +34,8 @@ OpTaskInvocation forward(DropoutAttrs const &attrs) {
   binding.bind(OUTPUT, output_tensor(0));
 
   binding.bind_arg(PROFILING, profiling_settings());
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<DropoutPerDeviceState>());
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<DropoutPerDeviceState>());
 
   return {DROPOUT_FWD_TASK_ID, binding};
 }
@@ -52,7 +46,6 @@ OpTaskInvocation backward(DropoutAttrs const &attrs) {
   return {DROPOUT_BWD_TASK_ID, b};
 }
 
-
 static DeviceSpecific<DropoutPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -61,12 +54,8 @@ static DeviceSpecific<DropoutPerDeviceState>
   auto const &attrs = acc.get_argument<DropoutAttrs>(ATTRS);
 
   DeviceSpecific<DropoutPerDeviceState> per_device_state =
-        acc.create_device_specific<DropoutPerDeviceState>(
-            init_kernel(handle,
-                        attrs.rate,
-                        attrs.seed,
-                        output.shape,
-                        allocator));
+      acc.create_device_specific<DropoutPerDeviceState>(
+          init_kernel(handle, attrs.rate, attrs.seed, output.shape, allocator));
   return per_device_state;
 }
 
@@ -80,17 +69,18 @@ static DeviceSpecific<DropoutPerDeviceState>
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state = acc.get_argument<DropoutPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<DropoutPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
   return profile(forward_kernel,
-          profiling,
-          "[Dropout] forward_time = %.2lfms\n",
-          per_device_state,
-          input.get_float_ptr(),
-          output.get_float_ptr());
+                 profiling,
+                 "[Dropout] forward_time = %.2lfms\n",
+                 per_device_state,
+                 input.get_float_ptr(),
+                 output.get_float_ptr());
 }
 
 static void forward_task(Task const *task,
@@ -111,11 +101,11 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
   return profile(backward_kernel,
-          profiling,
-          "[Dropout] backward_time = %.2lfms\n",
-          per_device_state,
-          output_grad.get_float_ptr(),
-          input_grad.get_float_ptr());
+                 profiling,
+                 "[Dropout] backward_time = %.2lfms\n",
+                 per_device_state,
+                 output_grad.get_float_ptr(),
+                 input_grad.get_float_ptr());
 }
 
 static void backward_task(Task const *task,
@@ -193,8 +183,7 @@ void register_task<DROPOUT_BWD_TASK_ID>() {
   OpTaskSignature bwd =
       infer_bwd_signature(get_op_signature(DROPOUT_FWD_TASK_ID));
 
-  register_task(
-      DROPOUT_BWD_TASK_ID, "DROPOUT Bwd", bwd, backward_task);
+  register_task(DROPOUT_BWD_TASK_ID, "DROPOUT Bwd", bwd, backward_task);
 }
 
 }; // namespace FlexFlow

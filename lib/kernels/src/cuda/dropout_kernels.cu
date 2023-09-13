@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
+#include "device.h"
+#include "kernels/device.h"
 #include "kernels/dropout_kernels.h"
 #include "kernels/ff_handle.h"
-#include "kernels/device.h"
-#include "device.h"
 
 namespace FlexFlow {
 
@@ -40,8 +40,10 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(cudnnCreateDropoutDescriptor(&dropoutDesc));
   checkCUDNN(cudnnDropoutGetStatesSize(handle.dnn, &(dropoutStateSize)));
   checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(inputTensor, output_shape));
-  checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
-  checkCUDNN(cudnnDropoutGetReserveSpaceSize(outputTensor, &(reserveSpaceSize)));
+  checkCUDNN(
+      cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
+  checkCUDNN(
+      cudnnDropoutGetReserveSpaceSize(outputTensor, &(reserveSpaceSize)));
   {
     // allocate memory for dropoutStates and reserveSpace
     size_t totalSize = dropoutStateSize + reserveSpaceSize;
@@ -51,14 +53,14 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(cudnnSetDropoutDescriptor(
       dropoutDesc, handle.dnn, rate, dropoutStates, dropoutStateSize, seed));
   DropoutPerDeviceState per_device_state = {handle,
-                                           allocator,
-                                           inputTensor,
-                                           outputTensor,
-                                           dropoutDesc,
-                                           reserveSpace,
-                                           dropoutStates,
-                                           reserveSpaceSize,
-                                           dropoutStateSize};
+                                            allocator,
+                                            inputTensor,
+                                            outputTensor,
+                                            dropoutDesc,
+                                            reserveSpace,
+                                            dropoutStates,
+                                            reserveSpaceSize,
+                                            dropoutStateSize};
   return per_device_state;
 }
 

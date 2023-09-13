@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_DROPOUT_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_DROPOUT_KERNELS_H
 
-#include "kernels/device.h"
-#include <cstddef>
-#include "kernels/ff_handle.h"
 #include "kernels/allocation.h"
 #include "kernels/array_shape.h"
+#include "kernels/device.h"
+#include "kernels/ff_handle.h"
+#include <cstddef>
 
 namespace FlexFlow {
 
@@ -23,15 +23,15 @@ public:
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(DropoutPerDeviceState,
-                          handle,
-                          allocator,
-                          inputTensor,
-                          outputTensor,
-                          dropoutDesc,
-                          reserveSpace,
-                          dropoutStates,
-                          reserveSpaceSize,
-                          dropoutStateSize);
+                                             handle,
+                                             allocator,
+                                             inputTensor,
+                                             outputTensor,
+                                             dropoutDesc,
+                                             reserveSpace,
+                                             dropoutStates,
+                                             reserveSpaceSize,
+                                             dropoutStateSize);
 
 namespace Kernels {
 namespace Dropout {
