@@ -279,6 +279,22 @@ class LayerNorm(Op):
     return self.get_parameter_by_id(1)
 
 # -----------------------------------------------------------------------
+# AddBiasResidualLayerNorm
+# -----------------------------------------------------------------------
+class AddBiasResidualLayerNorm(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(AddBiasResidualLayerNorm, self).__init__(handle, idx, name)
+
+  def get_attn_bias_tensor(self):
+    return self.get_parameter_by_id(0)
+  
+  def get_weight_tensor(self):
+    return self.get_parameter_by_id(1)
+
+  def get_bias_tensor(self):
+    return self.get_parameter_by_id(2)
+
+# -----------------------------------------------------------------------
 # Dropout
 # -----------------------------------------------------------------------
 class Dropout(Op):
@@ -554,6 +570,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return BatchNorm(handle, idx, name)
   elif op_type == OpType.LAYER_NORM:
     return LayerNorm(handle, idx, name)
+  elif op_type == OpType.OP_ADD_BIAS_RESIDUAL_LAYERNORM:
+    return AddBiasResidualLayerNorm(handle, idx, name)
   elif op_type == OpType.BATCH_MATMUL:
     return Batch_Matmul(handle, idx, name)
   elif op_type == OpType.SPLIT:
@@ -1573,6 +1591,14 @@ class FFModel(object):
     handle = ffc().flexflow_model_add_layer_norm(self.handle, input.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
     self.add_layer(OpType.LAYER_NORM, name)
     return Tensor(handle, owner_op_type=OpType.LAYER_NORM)
+  
+  def add_bias_residual_layer_norm(self, input, residual, axes, elementwise_affine=True, eps=1e-5, use_bias = True, name=None):
+    c_name = get_c_name(name)
+    c_axes = ffi.new("int[]", axes)
+    # TODO: figure out how to get two outputs from C++
+    handle1, handle2 = ffc().flexflow_model_add_add_bias_residual_layer_norm(self.handle, input.handle, residual.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
+    self.add_layer(OpType.ADD_BIAS_RESIDUAL_LAYERNORM, name)
+    return Tensor(handle, owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM)
 
   def batch_matmul(self, A, B, a_seq_length_dim=None, b_seq_length_dim=None, name=None):
     """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.

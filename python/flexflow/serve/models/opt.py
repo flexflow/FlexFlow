@@ -142,7 +142,7 @@ class FlexFlowOPT(FlexFlowModel):
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     0.0,  # dropout
                     True,  # qkv_bias
-                    True,  # final_bias
+                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
@@ -162,7 +162,7 @@ class FlexFlowOPT(FlexFlowModel):
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     0.0,  # dropout
                     True,  # qkv_bias
-                    True,  # final_bias
+                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
@@ -182,7 +182,7 @@ class FlexFlowOPT(FlexFlowModel):
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
                     0.0,  # dropout
                     True,  # qkv_bias
-                    True,  # final_bias
+                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
@@ -196,21 +196,22 @@ class FlexFlowOPT(FlexFlowModel):
             else:
                 assert False
 
-            residual = ffmodel.add(mha, residual)
+            # residual = ffmodel.add(mha, residual)
 
             # This is either a before or after attention LayerNorm. In both cases, we need to compute the LN here.
-            norm_name = (
+            """ norm_name = (
                 f"layers_{i}_final_layer_norm"
                 if self.opt_config.do_layer_norm_before
                 else f"layers_{i}_attention_layer_norm"
-            )
-            ff_norm = ffmodel.layer_norm(
-                residual,
-                axes,
-                self.opt_config.layer_norm_elementwise_affine,
-                1e-05,
-                name=norm_name,
-            )
+            ) """
+            # ff_norm = ffmodel.layer_norm(
+            #     residual,
+            #     axes,
+            #     self.opt_config.layer_norm_elementwise_affine,
+            #     1e-05,
+            #     name=norm_name,
+            # )
+            residual, ff_norm = ffmodel.add_bias_residual_layer_norm(mha, residual, axes, self.opt_config.layer_norm_elementwise_affine, 1e-05, name=f"layers_{i}_add_bias_residual_layer_norm")
 
             if not self.opt_config.do_layer_norm_before:
                 residual = ff_norm

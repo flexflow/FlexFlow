@@ -126,7 +126,7 @@ void OPT::create_opt_model(FFModel &ff,
             opt_config.hidden_size / opt_config.num_attention_heads,
             0.0f,    /*dropout*/
             true,    /*qkv_bias*/
-            true,    /*final_bias*/
+            false,   /*final_bias*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
@@ -149,7 +149,7 @@ void OPT::create_opt_model(FFModel &ff,
             opt_config.hidden_size / opt_config.num_attention_heads,
             0.0f,    /*dropout*/
             true,    /*qkv_bias*/
-            true,    /*final_bias*/
+            false,   /*final_bias*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
@@ -172,7 +172,7 @@ void OPT::create_opt_model(FFModel &ff,
             opt_config.hidden_size / opt_config.num_attention_heads,
             0.0f,    /*dropout*/
             true,    /*qkv_bias*/
-            true,    /*final_bias*/
+            false,   /*final_bias*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
@@ -195,7 +195,8 @@ void OPT::create_opt_model(FFModel &ff,
     // Tensor final_norm = ff.layer_norm(
     //     added, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
 
-    layer_name = "layers_" + std::to_string(i) + "add_bias_residual_layer_norm";
+    layer_name =
+        "layers_" + std::to_string(i) + "_add_bias_residual_layer_norm";
     auto pair = ff.add_bias_residual_layer_norm(
         mha,
         residual,

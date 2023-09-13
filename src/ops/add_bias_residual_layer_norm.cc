@@ -116,7 +116,7 @@ std::pair<Tensor, Tensor>
                  OP_ADD_BIAS_RESIDUAL_LAYERNORM,
                  data_type,
                  name,
-                 3 /*inputs*/,
+                 2 /*inputs*/,
                  num_weights,
                  2 /*outputs*/,
                  casted_input,
@@ -151,21 +151,25 @@ std::pair<Tensor, Tensor>
                                                    false /*create_grad*/,
                                                    nullptr,
                                                    CHOSEN_SYNC_TYPE);
-    ln->weights[1] = create_weight_legion_ordering(numdims,
-                                                   dims,
-                                                   input->data_type,
-                                                   ln,
-                                                   false /*create_grad*/,
-                                                   nullptr,
-                                                   CHOSEN_SYNC_TYPE);
-    if (num_weights == 3) {
-      ln->weights[2] = create_weight_legion_ordering(numdims,
+    if (num_weights > 1) {
+      assert(elementwise_affine);
+      ln->weights[1] = create_weight_legion_ordering(numdims,
                                                      dims,
                                                      input->data_type,
                                                      ln,
                                                      false /*create_grad*/,
                                                      nullptr,
                                                      CHOSEN_SYNC_TYPE);
+      if (num_weights == 3) {
+        assert(use_bias);
+        ln->weights[2] = create_weight_legion_ordering(numdims,
+                                                       dims,
+                                                       input->data_type,
+                                                       ln,
+                                                       false /*create_grad*/,
+                                                       nullptr,
+                                                       CHOSEN_SYNC_TYPE);
+      }
     }
   }
   ln->add_int_property("elementwise_affine", elementwise_affine);
@@ -236,15 +240,16 @@ AddBiasResidualLayerNorm::AddBiasResidualLayerNorm(
          2 /*inputs*/,
          1 + (_elementwise_affine ? (_use_bias ? 2 : 1) : 0) /*weights*/,
          2 /*outputs*/,
-         _input),
+         _input,
+         _residual),
       elementwise_affine(_elementwise_affine), eps(_eps), axes(_axes),
       use_bias(_use_bias) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      _input->num_dims, _input->dims, _input->data_type, this);
+      _input->num_dims, _input->dims, _input->data_type, this, 0 /*owner_idx*/);
   outputs[1] = model.create_parallel_tensor_legion_ordering(
-      _input->num_dims, _input->dims, _input->data_type, this);
+      _input->num_dims, _input->dims, _input->data_type, this, 1 /*owner_idx*/);
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 
   int M = 1;
@@ -259,12 +264,18 @@ AddBiasResidualLayerNorm::AddBiasResidualLayerNorm(
   }
   effective_num_elements = M;
   effective_batch_size = (inputs[0]->get_volume() / num_replicas) / M;
-  assert(use_bias == (numWeights == 2));
-  if (allocate_weights) {
-    ParallelTensorShape beta_gamma_shape = _input->get_shape();
-    for (int i = axes.size(); i < beta_gamma_shape.num_dims - 1; i++) {
-      beta_gamma_shape.dims[i].size = 1;
+  if (!elementwise_affine) {
+    assert(numWeights == 1); // attn bias
+  } else {
+    if (!use_bias) {
+      assert(numWeights == 2); // attn bias + weight
+    } else {
+      assert(numWeights == 3); // attn bias + weight + bias
     }
+  }
+
+  if (allocate_weights) {
+    // always need to allocate attn bias
     ParallelTensorShape attention_bias_shape = _input->get_shape();
     for (int i = 1; i < attention_bias_shape.num_dims - 1; i++) {
       attention_bias_shape.dims[i].size = 1;
@@ -273,8 +284,6 @@ AddBiasResidualLayerNorm::AddBiasResidualLayerNorm(
     int seed = std::rand();
     Initializer *attn_bias_initializer =
         new UniformInitializer(seed, 1.0f, 1.0f);
-    Initializer *gamma_initializer = new UniformInitializer(seed, 1.0f, 1.0f);
-    Initializer *beta_initializer = new UniformInitializer(seed, 0.0f, 0.0f);
 
     weights[0] = model.create_parallel_weight_legion_ordering(
         attention_bias_shape.num_dims,
@@ -285,22 +294,40 @@ AddBiasResidualLayerNorm::AddBiasResidualLayerNorm(
         attn_bias_initializer,
         CHOSEN_SYNC_TYPE);
 
-    weights[1] = model.create_parallel_weight_legion_ordering(
-        beta_gamma_shape.num_dims, // axes.size(),
-        beta_gamma_shape.dims,
-        _input->data_type,
-        NULL /*owner_op*/,
-        false /*create_grad*/,
-        gamma_initializer,
-        CHOSEN_SYNC_TYPE);
-    weights[2] = model.create_parallel_weight_legion_ordering(
-        beta_gamma_shape.num_dims, //.size(),
-        beta_gamma_shape.dims,
-        _input->data_type,
-        NULL /*owner_op*/,
-        false /*create_grad*/,
-        beta_initializer,
-        CHOSEN_SYNC_TYPE);
+    if (numWeights > 1) {
+      assert(elementwise_affine);
+
+      ParallelTensorShape beta_gamma_shape = _input->get_shape();
+      for (int i = axes.size(); i < beta_gamma_shape.num_dims - 1; i++) {
+        beta_gamma_shape.dims[i].size = 1;
+      }
+
+      // weight
+      Initializer *gamma_initializer = new UniformInitializer(seed, 1.0f, 1.0f);
+      weights[1] = model.create_parallel_weight_legion_ordering(
+          beta_gamma_shape.num_dims, // axes.size(),
+          beta_gamma_shape.dims,
+          _input->data_type,
+          NULL /*owner_op*/,
+          false /*create_grad*/,
+          gamma_initializer,
+          CHOSEN_SYNC_TYPE);
+
+      // bias
+      if (numWeights == 3) {
+        assert(use_bias);
+        Initializer *beta_initializer =
+            new UniformInitializer(seed, 0.0f, 0.0f);
+        weights[2] = model.create_parallel_weight_legion_ordering(
+            beta_gamma_shape.num_dims, //.size(),
+            beta_gamma_shape.dims,
+            _input->data_type,
+            NULL /*owner_op*/,
+            false /*create_grad*/,
+            beta_initializer,
+            CHOSEN_SYNC_TYPE);
+      }
+    }
   }
 }
 

@@ -131,13 +131,17 @@ void load_attention_bias_v2(DT *ptr,
                             int num_kv_heads,
                             size_t hidden_dim,
                             size_t qkv_inner_dim,
+                            bool final_bias,
                             std::string layer_name,
                             std::string weights_folder) {
-  std::string q_file = layer_name + "_wq_weight";
-  std::string k_file = layer_name + "_wk_weight";
-  std::string v_file = layer_name + "_wv_weight";
-  std::string o_file = layer_name + "_wo_weight";
-  std::vector<std::string> bias_files = {q_file, k_file, v_file, o_file};
+  std::string q_file = layer_name + "_wq_bias";
+  std::string k_file = layer_name + "_wk_bias";
+  std::string v_file = layer_name + "_wv_bias";
+  std::vector<std::string> bias_files = {q_file, k_file, v_file};
+  if (final_bias) {
+    std::string o_file = layer_name + "_wo_bias";
+    bias_files.push_back(o_file);
+  }
 
   int file_index = 0;
 
@@ -705,11 +709,15 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
                                   volume,
                                   tensor_parallelism_degree);
       } else {
+        long long value;
+        l->get_int_property("final_bias", value);
+        bool final_bias = (bool)value;
         load_attention_bias_v2(data,
                                num_heads,
                                num_kv_heads,
                                hidden_dim,
                                qkv_inner_dim,
+                               final_bias,
                                weight_filename,
                                weights_folder);
       }

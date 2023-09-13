@@ -148,6 +148,7 @@ class OpType(Enum):
     RMS_NORM = 2300
     ARG_TOPK = 2301
     BEAM_TOPK = 2302
+    ADD_BIAS_RESIDUAL_LAYERNORM = 2303
 
 
 def enum_to_int(enum, enum_item):
