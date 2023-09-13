@@ -52,9 +52,10 @@ public:
 
 struct Request {
   enum Status {
-    PENDING = 101,
-    RUNNING = 102,
-    COMPLETED = 103,
+    PENDING = 101,   // loading prompt
+    RUNNING = 102,   // running inference
+    COMPLETED = 103, // finished and verified
+    FINISHING = 104, // finishing request, but not yet verified
   };
   BatchConfig::RequestGuid guid;
   int max_sequence_length;

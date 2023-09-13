@@ -251,10 +251,8 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
     if (bc->request_completed[i] || !bc->request_running[i]) {
       continue;
     }
-    std::cout << "[Verifying batch]: " << i << std::endl;
 
     for (int sub_req_id = 0; sub_req_id < bc->sub_requests[i]; sub_req_id++) {
-      std::cout << "[Verifying sub request]: " << sub_req_id << std::endl;
 
       // int num_new_tokens = bc->num_processing_tokens[i];
       // int total_tokens = bc->token_last_available_idx[i] + 1;
