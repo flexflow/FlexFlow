@@ -22,12 +22,9 @@ namespace Kernels {
 namespace BatchMatmul {
 
 BMMPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
-                              Allocator const &allocator,
-                              int a_seq_length_dim,
-                              int b_seq_length_dim) {
+                              Allocator const &allocator) {
 
-  BMMPerDeviceState per_device_state = {
-      handle, allocator, a_seq_length_dim, b_seq_length_dim};
+  BMMPerDeviceState per_device_state = {handle};
   return per_device_state;
 }
 
@@ -40,7 +37,9 @@ void forward_kernel(ffStream_t stream,
                     int n,
                     int k,
                     int batch,
-                    int seq_length) {
+                    int a_seq_length_dim,
+                    int b_seq_length_dim,
+                    int seq_length = -1) {
   checkCUDA(cublasSetStream(meta.handle.blas, stream));
   checkCUDNN(cudnnSetStream(meta.handle.dnn, stream));
   int lda = k;
@@ -49,26 +48,26 @@ void forward_kernel(ffStream_t stream,
   long long int strideA = (long long int)n * k;
   long long int strideB = (long long int)k * m;
   long long int strideO = (long long int)n * m;
-  if ((meta.a_seq_length_dim == 0) && (seq_length >= 0)) {
+  if ((a_seq_length_dim == 0) && (seq_length >= 0)) {
     assert(seq_length <= k);
     k = seq_length;
-    assert(meta.b_seq_length_dim == 1);
-  } else if ((meta.a_seq_length_dim == 1) && (seq_length >= 0)) {
+    assert(b_seq_length_dim == 1);
+  } else if ((a_seq_length_dim == 1) && (seq_length >= 0)) {
     assert(seq_length <= n);
     n = seq_length;
   } else {
     // currently only support a_seq_length_dim = 0 or 1
-    assert((meta.a_seq_length_dim < 0) || (seq_length < 0));
+    assert((a_seq_length_dim < 0) || (seq_length < 0));
   }
-  if ((meta.b_seq_length_dim == 0) && (seq_length >= 0)) {
+  if ((b_seq_length_dim == 0) && (seq_length >= 0)) {
     assert(seq_length <= m);
     m = seq_length;
-  } else if ((meta.b_seq_length_dim == 1) && (seq_length >= 0)) {
-    assert(meta.a_seq_length_dim == 0);
+  } else if ((b_seq_length_dim == 1) && (seq_length >= 0)) {
+    assert(a_seq_length_dim == 0);
     assert(k == seq_length);
   } else {
     // currently only support a_seq_length_dim = 0 or 1
-    assert((meta.b_seq_length_dim < 0) || (seq_length < 0));
+    assert((b_seq_length_dim < 0) || (seq_length < 0));
   }
 
   float alpha = 1.0f, beta = 0.0f;

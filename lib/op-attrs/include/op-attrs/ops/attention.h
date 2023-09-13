@@ -12,7 +12,7 @@ struct MultiHeadAttentionAttrs {
   req<float> dropout;
   req<bool> bias, add_bias_kv, add_zero_attn;
 };
-FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs,
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(MultiHeadAttentionAttrs,
                     embed_dim,
                     num_heads,
                     kdim,
