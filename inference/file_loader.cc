@@ -649,7 +649,9 @@ void FileDataLoader::load_quantization_weight(FFModel *ff,
   } else {
     if (weight_idx > 0) {
       assert(weight_idx == 0 || weight_idx == 1);
-      weight_filename += weight_idx == 0 ? "_weight" : "_bias";
+      if (weight_filename != "embed_tokens_weight_lm_head") {
+        weight_filename += weight_idx == 0 ? "_weight" : "_bias";
+      }
     }
     load_from_quantized_file(data,
                              volume,
@@ -726,7 +728,10 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   } else {
     // default op
     assert(weight_idx == 0 || weight_idx == 1);
-    weight_filename += weight_idx == 0 ? "_weight" : "_bias";
+    // handle exception
+    if (weight_filename != "embed_tokens_weight_lm_head") {
+      weight_filename += weight_idx == 0 ? "_weight" : "_bias";
+    }
     std::cout << "Loading weight file " << weight_filename << std::endl;
     std::string weight_filepath = join_path({weights_folder, weight_filename});
     load_from_file(data, volume, weight_filepath);
