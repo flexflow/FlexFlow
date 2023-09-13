@@ -209,7 +209,7 @@ void load_attention_weights_v2(DT *ptr,
   for (auto filename : weight_filenames) {
     std::cout << "Loading weight file " << filename << std::endl;
     std::string weight_filepath = join_path({weights_folder, filename});
-    
+
     int data_index = 0;
     size_t partial_size = (file_index == 0 || file_index == 3)
                               ? one_weight_file_size
@@ -230,8 +230,8 @@ void load_attention_weights_v2(DT *ptr,
 
     if (in_get_size != loaded_data_size) {
       std::cout << "load attention data error " << in_get_size << ", "
-                << loaded_data_size << ", " << file_index << ", " << weight_filepath
-                << "\n";
+                << loaded_data_size << ", " << file_index << ", "
+                << weight_filepath << "\n";
       assert(false && "data size mismatch");
     }
     // wq, wk, wo
@@ -425,7 +425,8 @@ void load_attention_weights_quantized(char *ptr,
     std::string weight_filepath = join_path({weights_folder, filename});
 
     for (int i = 0; i < 2; i++) {
-      std::string meta_file = i == 0 ? (weight_filepath + "_offset") : (weight_filepath + "_scale");
+      std::string meta_file =
+          i == 0 ? (weight_filepath + "_offset") : (weight_filepath + "_scale");
       size_t partial_size =
           one_weight_file_size / INT4_NUM_OF_ELEMENTS_PER_GROUP;
       std::ifstream in(meta_file, std::ios::in | std::ios::binary);
@@ -610,7 +611,9 @@ void FileDataLoader::load_quantization_weight(FFModel *ff,
 
   std::string weight_filename = std::string(l->name);
 
-  if (weight_filename.find("attention") != std::string::npos && weight_filename.rfind("attention") == weight_filename.length() - strlen("attention")) {
+  if (weight_filename.find("attention") != std::string::npos &&
+      weight_filename.rfind("attention") ==
+          weight_filename.length() - strlen("attention")) {
     if (weight_idx == 0) {
       load_attention_weights_quantized(data,
                                        num_heads,
@@ -673,7 +676,9 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
     if (weight_filename.find("self_attention") != std::string::npos) {
       load_attention_weights_multi_query(
           data, weight_filename, weights_folder, hidden_dim, num_heads);
-    } else if (weight_filename.find("attention") != std::string::npos && weight_filename.rfind("attention") == weight_filename.length() - strlen("attention")) {
+    } else if (weight_filename.find("attention") != std::string::npos &&
+               weight_filename.rfind("attention") ==
+                   weight_filename.length() - strlen("attention")) {
       if (weight_idx == 0) {
         load_attention_weights_v2(data,
                                   num_heads,
@@ -697,6 +702,14 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
     } else {
       assert(false);
     }
+  } else if (l->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM) {
+    assert(weight_idx >= 0 || weight_idx <= 2);
+    weight_filename += (weight_idx == 0)
+                           ? "_attn_bias"
+                           : ((weight_idx == 1) ? "_weight" : "_bias");
+    std::cout << "Loading weight file " << weight_filename << std::endl;
+    std::string weight_filepath = join_path({weights_folder, weight_filename});
+    load_from_file(data, volume, weight_filepath);
   } else {
     // default op
     assert(weight_idx == 0 || weight_idx == 1);
