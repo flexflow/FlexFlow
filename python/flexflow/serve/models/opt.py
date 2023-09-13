@@ -287,6 +287,7 @@ class FlexFlowOPT(FlexFlowModel):
                 .replace("v_proj", "wv")
                 .replace("out_proj", "wo")
                 .replace("attention_wo_bias", "add_bias_residual_layer_norm_attn_bias")
+                .replace("_final_layer_norm", "_add_bias_residual_layer_norm") # important to use the leading "_" to avoid matching the last LayerNorm
             )
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
         # copy embedding weights
