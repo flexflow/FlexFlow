@@ -100,7 +100,7 @@ class FlexFlowOPT(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="embed_tokens_weight",
+            name="embed_tokens",
         )
         positional_embedding = ffmodel.embedding(
             position_tensor,
@@ -110,7 +110,7 @@ class FlexFlowOPT(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="embed_positions_weight",
+            name="embed_positions",
         )
 
         residual = ffmodel.add(token, positional_embedding)

@@ -64,6 +64,19 @@ BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
   return prompts;
 };
 
+std::string removeGuidOperatorName(std::string const &input) {
+  // Find the last underscore in the string
+  size_t underscorePos = input.find_last_of('_');
+
+  if (underscorePos != std::string::npos) {
+    // Remove the underscore and the characters after it
+    return input.substr(0, underscorePos);
+  } else {
+    // No underscore found, return the original string
+    return input;
+  }
+}
+
 template <typename DT>
 void load_attention_weights_multi_query(DT *ptr,
                                         std::string layer_name,
@@ -609,7 +622,7 @@ void FileDataLoader::load_quantization_weight(FFModel *ff,
   }
   char *data = (char *)malloc(sizeof(char) * volume);
 
-  std::string weight_filename = std::string(l->name);
+  std::string weight_filename = removeGuidOperatorName(std::string(l->name));
 
   if (weight_filename.find("attention") != std::string::npos &&
       weight_filename.rfind("attention") ==
@@ -668,7 +681,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   assert(data_type_size(weight->data_type) == sizeof(DT));
   DT *data = (DT *)malloc(sizeof(DT) * volume);
 
-  std::string weight_filename = std::string(l->name);
+  std::string weight_filename = removeGuidOperatorName(std::string(l->name));
 
   if (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
       l->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION ||
