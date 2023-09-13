@@ -4,7 +4,7 @@
 #include "op-attrs/datatype.h"
 #include "kernels/array_shape.h"
 #include "kernels/device.h"
-#include "kernels/datatype_dispatch.h"
+#include "op-attrs/datatype.h"
 #include "op-attrs/op.h"
 
 #if defined(FF_USE_CUDA)
@@ -29,6 +29,9 @@ typedef cudnnDataType_t ffCudnnDataType_t;
 #else
 #error "Unknown device"
 #endif
+
+using ::FlexFlow::DataType;
+using ::FlexFlow::OperatorType;
 
 #define checkCUDNN(status)                                                     \
   do {                                                                         \

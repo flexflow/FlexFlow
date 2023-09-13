@@ -34,31 +34,11 @@ public:
   ArrayShape shape;
   req<void *> ptr;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorW, data_type, shape, ptr);
 
-struct Bad {
-  constexpr Bad(int x) : thing{x} {}
-  Bad() = delete;
-	int thing;
-};
-
-static_assert(!std::is_default_constructible<req<int>>::value);
-
-
-struct MyTestStruct {
-  int x;
-  Bad y;
-};
-/* FF_VISITABLE_STRUCT(MyTestStruct, x, y); */
-//static_assert(!std::is_default_constructible<MyTestStruct>::value);
-/* FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(MyTestStruct, x, y); */
-/* static_assert(std::is_same<visit_as_tuple_t<GenericTensorAccessorW>, std::tuple<DataType, ArrayShape, void*>>::value, ""); */
-/* static_assert(is_visit_list_initializable<GenericTensorAccessorW>::value, ""); */
-/* static_assert(negation<is_list_initializable_from_tuple<GenericTensorAccessorW, tuple_head_t<-1, visit_as_tuple_t<GenericTensorAccessorW>>>>::value, ""); */
-/* static_assert(is_only_visit_list_initializable<GenericTensorAccessorW>::value, ""); */
-/* DEBUG_PRINT_TYPE(tuple_head_t<-1, visit_as_tuple_t<GenericTensorAccessorW>>); */
-/* static_assert(!is_list_initializable_from_tuple<GenericTensorAccessorW, std::tuple<DataType, ArrayShape>>::value, ""); */
-/* static_assert(std::is_same<decltype(GenericTensorAccessorW{}), void>::value, ""); */
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorW,
+                                             data_type,
+                                             shape,
+                                             ptr);
 
 class GenericTensorAccessorR {
 public:
@@ -83,7 +63,11 @@ public:
   ArrayShape shape;
   req<void const *> ptr;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorR, data_type, shape, ptr);
+
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorR,
+                                             data_type,
+                                             shape,
+                                             ptr);
 
 int32_t *get_int32_ptr(GenericTensorAccessorW const &);
 int64_t *get_int64_ptr(GenericTensorAccessorW const &);
