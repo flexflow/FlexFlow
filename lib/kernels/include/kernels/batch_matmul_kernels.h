@@ -10,21 +10,15 @@ namespace FlexFlow {
 
 struct BMMPerDeviceState {
   PerDeviceFFHandle handle;
-  Allocator allocator;
-  int a_seq_length_dim;
-  req<int> b_seq_length_dim;
 };
 
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
-    BMMPerDeviceState, handle, allocator, a_seq_length_dim, b_seq_length_dim);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(BMMPerDeviceState, handle);
 
 namespace Kernels {
 namespace BatchMatmul {
 
 BMMPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
-                              Allocator const &allocator,
-                              int a_seq_length_dim,
-                              int b_seq_length_dim);
+                              Allocator const &allocator);
 
 void forward_kernel(ffStream_t stream,
                     BMMPerDeviceState const &meta,
@@ -35,7 +29,9 @@ void forward_kernel(ffStream_t stream,
                     int n,
                     int k,
                     int batch,
-                    int seq_length = -1);
+                    int seq_length,
+                    int a_seq_length_dim,
+                    int b_seq_length_dim);
 
 void backward_kernel(ffStream_t stream,
                      BMMPerDeviceState const &meta,
