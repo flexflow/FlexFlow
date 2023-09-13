@@ -10,7 +10,7 @@ struct MultiDiGraphPatternMatch {
   using PatternNode = Node;
   using PCGNode = Node;
   using PatternEdge = OpenMultiDiEdge;
-  using PCGEdge = MultiDiEdge;
+  using PCGEdge = OpenMultiDiEdge;
 
   bidict<PatternNode, PCGNode> node_assignment;
   bidict<PatternEdge, PCGEdge> edge_assignment;
@@ -22,15 +22,15 @@ struct MatchSplit {
 };
 
 template <typename F>
-bool pattern_matches(OpenMultiDiGraphView const &,
-                     MultiDiGraphView const &,
-                     MultiDiGraphPatternMatch const &,
+bool pattern_matches(OpenMultiDiGraphView const &pattern,
+                     OpenMultiDiGraphView const &graph,
+                     MultiDiGraphPatternMatch const &match,
                      F const &additional_criterion);
 
 template <typename F>
 std::unordered_set<MultiDiGraphPatternMatch>
     find_pattern_matches(OpenMultiDiGraphView const &pattern,
-                         MultiDiGraphView const &graph,
+                         OpenMultiDiGraphView const &graph,
                          F const &additional_criterion);
 
 } // namespace FlexFlow

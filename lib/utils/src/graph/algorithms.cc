@@ -452,6 +452,38 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
   return result;
 }
 
+Node get_src_node(MultiDiEdge const &e) {
+  return e.src;
+}
+
+Node get_dst_node(MultiDiEdge const &e) {
+  return e.dst;
+}
+
+Node get_dst_node(InputMultiDiEdge const &e) {
+  return e.dst;
+}
+
+Node get_src_node(OutputMultiDiEdge const &e) {
+  return e.src;
+}
+
+NodePort get_src_idx(MultiDiEdge const &e) {
+  return e.srcIdx;
+}
+
+NodePort get_dst_idx(MultiDiEdge const &e) {
+  return e.dstIdx;
+}
+
+NodePort get_dst_idx(InputMultiDiEdge const &e) {
+  return e.dstIdx;
+}
+
+NodePort get_src_idx(OutputMultiDiEdge const &e) {
+  return e.srcIdx;
+}
+
 std::unordered_set<Node> get_neighbors(DiGraphView const &g, Node const &n) {
   UndirectedGraphView undirected = as_undirected(g);
   return get_neighbors(undirected, n);

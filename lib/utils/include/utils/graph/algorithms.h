@@ -187,8 +187,37 @@ Node get_dst_node(variant<Args...> const &t) {
 
 Node get_src_node(MultiDiEdge const &);
 Node get_dst_node(MultiDiEdge const &);
-Node get_src_node(InputMultiDiEdge const &);
-Node get_dst_node(OutputMultiDiEdge const &);
+Node get_dst_node(InputMultiDiEdge const &);
+Node get_src_node(OutputMultiDiEdge const &);
+
+struct GetSrcIdxFunctor {
+  template <typename T>
+  NodePort operator()(T const &t) const {
+    return get_src_idx(t);
+  }
+};
+
+struct GetDstIdxFunctor {
+  template <typename T>
+  NodePort operator()(T const &t) const {
+    return get_dst_idx(t);
+  }
+};
+
+template <typename... Args>
+NodePort get_src_idx(variant<Args...> const &t) {
+  return visit(GetSrcIdxFunctor{}, t);
+}
+
+template <typename... Args>
+NodePort get_dst_idx(variant<Args...> const &t) {
+  return visit(GetDstIdxFunctor{}, t);
+}
+
+NodePort get_src_idx(MultiDiEdge const &);
+NodePort get_dst_idx(MultiDiEdge const &);
+NodePort get_dst_idx(InputMultiDiEdge const &);
+NodePort get_src_idx(OutputMultiDiEdge const &);
 
 std::unordered_set<Node> get_neighbors(UndirectedGraphView const &,
                                        Node const &);
