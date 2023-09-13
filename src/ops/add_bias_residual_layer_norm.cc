@@ -510,7 +510,7 @@ OpMeta *AddBiasResidualLayerNorm::init_task(
   if (ln->elementwise_affine) {
     meta->weight_type[1] = ln->weights[1]->data_type;
     if (ln->use_bias) {
-      meta->weight_type[1] = ln->weights[2]->data_type;
+      meta->weight_type[2] = ln->weights[2]->data_type;
     }
   }
   meta->output_type[0] = ln->outputs[0]->data_type;
@@ -626,7 +626,7 @@ void AddBiasResidualLayerNorm::inference_task(
       *((AddBiasResidualLayerNormMeta **)task->local_args);
 
   assert(regions.size() ==
-         3 + (m->elementwise_affine ? (m->use_bias ? 2 : 1) : 0));
+         5 + (m->elementwise_affine ? (m->use_bias ? 2 : 1) : 0));
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
