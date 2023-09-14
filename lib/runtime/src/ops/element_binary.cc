@@ -43,7 +43,8 @@ OpTaskInvocation forward(ElementBinaryAttrs const &attrs) {
   binding.bind(OUTPUT, output_tensor(0));
 
   binding.bind_arg(PROFILING, profiling_settings());
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<ElementBinaryPerDeviceState>());
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<ElementBinaryPerDeviceState>());
 
   return {DROPOUT_FWD_TASK_ID, binding};
 }
@@ -64,15 +65,14 @@ static DeviceSpecific<ElementBinaryPerDeviceState>
   auto const &attrs = acc.get_argument<ElementBinaryAttrs>(ATTRS);
 
   DeviceSpecific<ElementBinaryPerDeviceState> per_device_state =
-        acc.create_device_specific<ElementBinaryPerDeviceState>(
-            init_kernel(handle,
-				                attrs.type
-                        attrs.compute_type,
-                        attrs.should_broadcast_lhs,
-                        attrs.should_broadcast_rhs,
-                        input_lhs.shape,
-                        input_rhs.shape,
-                        output.shape));
+      acc.create_device_specific<ElementBinaryPerDeviceState>(
+          init_kernel(handle,
+                      attrs.type attrs.compute_type,
+                      attrs.should_broadcast_lhs,
+                      attrs.should_broadcast_rhs,
+                      input_lhs.shape,
+                      input_rhs.shape,
+                      output.shape));
   return per_device_state;
 }
 
@@ -87,20 +87,20 @@ static DeviceSpecific<ElementBinaryPerDeviceState>
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  auto per_device_state = acc.get_argument<DropoutPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<DropoutPerDeviceState>(PER_DEVICE_STATE);
 
   auto input_lhs = acc.get_tensor<Permissions::RO>(LHS_INPUT);
   auto input_rhs = acc.get_tensor<Permissions::RO>(RHS_INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
   return profile(forward_task_impl,
-			  profiling,
-			  "[ElementBinary] forward_time = %.2lfms\n",
-			  &per_device_state,
-			  input_lhs.get_float_ptr(),
-			  input_rhs.get_float_ptr(),
-			  outputTensor.get_float_ptr());
-
+                 profiling,
+                 "[ElementBinary] forward_time = %.2lfms\n",
+                 &per_device_state,
+                 input_lhs.get_float_ptr(),
+                 input_rhs.get_float_ptr(),
+                 outputTensor.get_float_ptr());
 }
 
 static void forward_task(Task const *task,
@@ -112,7 +112,8 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state = acc.get_argument<DropoutPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<DropoutPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input_lhs = acc.get_tensor<Permissions::RO>(LHS_INPUT);
@@ -123,14 +124,14 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input_rhs_grad = acc.get_tensor_grad<Permissions::RW>(RHS_INPUT);
 
   return profile(backward_task_impl,
-			  profiling, 
-			  "[ElementBinary] backward_time = %.2lfms\n",
-			  &per_device_state,
-			  output_grad.get_float_ptr(),
-			  input_lhs.get_float_ptr(),
-			  input_rhs.get_float_ptr(),
-			  input_lhs_grad.get_float_ptr(),
-			  input_rhs_grad.get_float_ptr());
+                 profiling,
+                 "[ElementBinary] backward_time = %.2lfms\n",
+                 &per_device_state,
+                 output_grad.get_float_ptr(),
+                 input_lhs.get_float_ptr(),
+                 input_rhs.get_float_ptr(),
+                 input_lhs_grad.get_float_ptr(),
+                 input_rhs_grad.get_float_ptr());
 }
 
 static void backward_task(Task const *task,
@@ -141,15 +142,17 @@ static void backward_task(Task const *task,
   backward_task_impl(acc);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  ElementBinaryAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape_lhs,
-                                  InputParallelTensorDesc const &input_shape_rhs,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
+CostMetrics
+    measure_operator_cost(SimEnvFactory const &sim,
+                          ElementBinaryAttrs const &attrs,
+                          InputParallelTensorDesc const &input_shape_lhs,
+                          InputParallelTensorDesc const &input_shape_rhs,
+                          ProfilingSettings const &settings,
+                          MachineView const &mv) {
   auto env = sim.new_environment();
 
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shape_lhs.shape, input_shape_rhs.shape);
+  ParallelTensorShape output_shape =
+      get_output_shape(attrs, input_shape_lhs.shape, input_shape_rhs.shape);
 
   SimTaskBinding init_binding;
   init_binding.bind(LHS_INPUT, input_shape_lhs);
@@ -173,15 +176,16 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
-  auto fwd_accessor = env.get_fwd_accessor(ELEMENTBINARY_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(ELEMENTBINARY_BWD_TASK_ID, bwd_binding);
+  auto fwd_accessor =
+      env.get_fwd_accessor(ELEMENTBINARY_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor =
+      env.get_bwd_accessor(ELEMENTBINARY_BWD_TASK_ID, bwd_binding);
 
   float forward_time = forward_task_impl(fwd_accessor).value();
   float backward_time = backward_task_impl(bwd_accessor).value();
 
   float sync_time = default_estimate_sync_time(env);
   return make_metrics(forward_time, backward_time, sync_time, env);
-
 
   return true;
 }
@@ -198,7 +202,8 @@ void register_task<ELEMENTBINARY_INIT_TASK_ID>() {
 
   init.add_return_value<ElementBinaryPerDeviceState>();
 
-  register_task(ELEMENTBINARY_INIT_TASK_ID, "ElementBinary Init", init, init_task);
+  register_task(
+      ELEMENTBINARY_INIT_TASK_ID, "ElementBinary Init", init, init_task);
 }
 
 template <>
@@ -212,7 +217,8 @@ void register_task<ELEMENTBINARY_FWD_TASK_ID>() {
   fwd.add_input_slot(RHS_INPUT);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(ELEMENTBINARY_FWD_TASK_ID, "ElementBinary Fwd", fwd, forward_task);
+  register_task(
+      ELEMENTBINARY_FWD_TASK_ID, "ElementBinary Fwd", fwd, forward_task);
 }
 
 template <>
@@ -225,4 +231,3 @@ void register_task<ELEMENTBINARY_BWD_TASK_ID>() {
 }
 
 }; // namespace FlexFlow
-

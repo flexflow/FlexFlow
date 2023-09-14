@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "kernels/element_binary_kernels.h"
-#include "kernels/device.h"
 #include "device.h"
+#include "kernels/device.h"
+#include "kernels/element_binary_kernels.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/datatype.h"
 #include "op-attrs/op.h"
@@ -128,13 +128,11 @@ ElementBinaryPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                             CUDNN_PROPAGATE_NAN,
                                             CUDNN_REDUCE_TENSOR_NO_INDICES,
                                             CUDNN_32BIT_INDICES));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromArrayShape(inputLHSTensor, lhs_shape));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromArrayShape(inputRHSTensor, rhs_shape));
+  checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(inputLHSTensor, lhs_shape));
+  checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(inputRHSTensor, rhs_shape));
   checkCUDNN(
       cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
-    
+
   ElementBinaryPerDeviceState per_device_state = {handle,
                                                   inputLHSTensor,
                                                   inputRHSTensor,

@@ -9,7 +9,7 @@
 
 namespace FlexFlow {
 
-struct ElementBinaryPerDeviceState{
+struct ElementBinaryPerDeviceState {
   PerDeviceFFHandle handle;
   ffTensorDescriptor_t inputLHSTensor;
   ffTensorDescriptor_t inputRHSTensor;
@@ -23,12 +23,12 @@ struct ElementBinaryPerDeviceState{
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ElementBinaryPerDeviceState,
-                          handle,
-                          inputLHSTensor,
-                          inputRHSTensor,
-                          outputTensor,
-                          opDesc,
-                          reduceAddDesc);
+                                             handle,
+                                             inputLHSTensor,
+                                             inputRHSTensor,
+                                             outputTensor,
+                                             opDesc,
+                                             reduceAddDesc);
 
 namespace Kernels {
 namespace ElementBinary {
@@ -63,4 +63,3 @@ void backward_kernel(cudaStream_t stream,
 } // namespace FlexFlow
 
 #endif
-
