@@ -16,10 +16,6 @@ struct ElementBinaryPerDeviceState {
   ffTensorDescriptor_t outputTensor;
   ffOpTensorDescriptor_t opDesc;
   ffReduceTensorDescriptor_t reduceAddDesc;
-  // OperatorType op_type;
-  // DataType compute_type
-  // bool broadcast_inputLHS;
-  // bool broadcast_inputRHS;
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ElementBinaryPerDeviceState,
