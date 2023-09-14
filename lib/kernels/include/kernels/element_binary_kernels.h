@@ -3,44 +3,64 @@
 
 #include "kernels/array_shape.h"
 #include "kernels/device.h"
+#include "kernels/ff_handle.h"
+#include "op-attrs/datatype.h"
+#include "op-attrs/op.h"
 
 namespace FlexFlow {
 
-class ElementBinaryPerDeviceState : public PerDeviceOpState {
-public:
-  ElementBinaryPerDeviceState(FFHandler handle);
-  ffTensorDescriptor_t input1Tensor, input2Tensor, outputTensor;
+struct ElementBinaryPerDeviceState{
+  PerDeviceFFHandle handle;
+  ffTensorDescriptor_t inputLHSTensor;
+  ffTensorDescriptor_t inputRHSTensor;
+  ffTensorDescriptor_t outputTensor;
   ffOpTensorDescriptor_t opDesc;
   ffReduceTensorDescriptor_t reduceAddDesc;
-  OperatorType op_type;
-  bool inplace_a, has_same_operands;
-  bool broadcast_input1, broadcast_input2;
-  char op_name[MAX_OPNAME];
+  // OperatorType op_type;
+  // DataType compute_type
+  // bool broadcast_inputLHS;
+  // bool broadcast_inputRHS;
 };
+
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ElementBinaryPerDeviceState,
+                          handle,
+                          inputLHSTensor,
+                          inputRHSTensor,
+                          outputTensor,
+                          opDesc,
+                          reduceAddDesc);
 
 namespace Kernels {
 namespace ElementBinary {
 
-void init_kernel(ElementBinaryPerDeviceState *m,
-                 ArrayShape const &input1_domain,
-                 ArrayShape const &input2_domain,
-                 ArrayShape const &output_domain);
+ElementBinaryPerDeviceState init_kernel(PerDeviceFFHandle handle,
+                                        OperatorType op_type,
+                                        DataType compute_type,
+                                        bool should_broadcast_lhs,
+                                        bool should_broadcast_rhs);
 
-void forward_kernel(ffStream_t stream,
-                    ElementBinaryPerDeviceState const *m,
-                    float const *in1_ptr,
-                    float const *in2_ptr,
-                    float *out_ptr);
-void backward_kernel(ffStream_t stream,
-                     ElementBinaryPerDeviceState const *m,
+void forward_kernel(cudaStream_t stream,
+                    ElementBinaryPerDeviceState const &m,
+                    float const *lhs_ptr,
+                    float const *rhs_ptr,
+                    float *out_ptr,
+                    OperatorType op_type,
+                    bool broadcast_inputLHS);
+
+void backward_kernel(cudaStream_t stream,
+                     ElementBinaryPerDeviceState const &m,
                      float const *out_grad_ptr,
-                     float const *in1_ptr,
-                     float const *in2_ptr,
-                     float *in1_grad_ptr,
-                     float *in2_grad_ptr);
+                     float const *lhs_ptr,
+                     float const *rhs_ptr,
+                     float *lhs_grad_ptr,
+                     float *rhs_grad_ptr,
+                     OperatorType op_type,
+                     bool broadcast_inputLHS,
+                     bool broadcast_inputRHS);
 
 } // namespace ElementBinary
 } // namespace Kernels
 } // namespace FlexFlow
 
 #endif
+
