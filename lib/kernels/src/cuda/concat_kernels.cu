@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-#include "kernels/concat_kernels.h"
 #include "device.h"
+#include "kernels/concat_kernels.h"
 #include "kernels/device.h"
 #include <cassert>
 
 namespace FlexFlow {
-
 namespace Kernels {
 namespace Concat {
 
@@ -43,10 +42,10 @@ ConcatPerDeviceState init_kernel(ff_dim_t legion_axis) {
   return per_device_state;
 }
 
-void forward_kernel(cudaStream_t stream,
+void forward_kernel(ffStream_t stream,
                     ConcatPerDeviceState const &m,
                     GenericTensorAccessorW const &output,
-                    GenericTensorAccessorR const *inputs,
+                    std::vector<FlexFlow::GenericTensorAccessorR> const &inputs,
                     int num_inputs) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
@@ -68,39 +67,26 @@ void forward_kernel(cudaStream_t stream,
                                  num_blocks,
                                  output_blk_size,
                                  input_blk_sizes[i]);
-    // printf("output = %x num_blocks=%d output_blk_size=%d
-    // input_blk_size[%d]=%d\n",
-    //        output, num_blocks, output_blk_size, i, input_blk_sizes[i]);
     offset += input_blk_sizes[i];
   }
 }
 
-void backward_kernel(cudaStream_t stream,
-                     ConcatPerDeviceState const &m,
-                     GenericTensorAccessorR const &output_grad,
-                     GenericTensorAccessorW const *input_grads,
-                     int num_inputs) {
+void backward_kernel(
+    ffStream_t stream,
+    ConcatPerDeviceState const &m,
+    GenericTensorAccessorR const &output_grad,
+    std::vector<FlexFlow::GenericTensorAccessorW> const &input_grads,
+    int num_inputs) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
-  switch (output_grad.shape.get_dim()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    Rect<DIM> rect = output_grad.domain;                                       \
-    calc_blk_size<DIM>(num_blocks, output_blk_size, rect, m.legion_axis);     \
-    for (int i = 0; i < num_inputs; i++) {                                     \
-      rect = input_grads[i].domain;                                            \
-      coord_t input_num_blocks = 1;                                            \
-      calc_blk_size<DIM>(                                                      \
-          input_num_blocks, input_blk_sizes[i], rect, m.legion_axis);         \
-      assert(input_num_blocks == num_blocks);                                  \
-    }                                                                          \
-    break;                                                                     \
-  }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      fprintf(stderr, "Unsupported concat dimension number");
-      assert(false);
+
+  ArrayShape shape = output_grad.shape;
+  calc_blk_size(num_blocks, output_blk_size, shape, m.legion_axis);
+  for (int i = 0; i < num_inputs; i++) {
+    shape = input_grads[i].shape;
+    size_t input_num_blocks = 1;
+    calc_blk_size(input_num_blocks, input_blk_sizes[i], shape, m.legion_axis);
+    assert(input_num_blocks == num_blocks);
   }
 
   off_t offset = 0;
@@ -115,12 +101,6 @@ void backward_kernel(cudaStream_t stream,
                                 output_blk_size);
     offset += input_blk_sizes[i];
   }
-
-  // Rect<2> output_rect(Point<2>(0, 0), Point<2>(output_blk_size-1, batch_size
-  // - 1)); Rect<2> input_rect(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1,
-  // batch_size - 1)); print_tensor<2, float>(output_grad - output_blk_size,
-  // output_rect, "[Concat:backward:output]"); print_tensor<2,
-  // float>(input_grads[0], input_rect, "[Concat:backward:input0]");
 }
 
 } // namespace Concat
