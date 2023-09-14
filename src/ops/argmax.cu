@@ -83,6 +83,8 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
                           prob_ptr,
                           batch_size,
                           m->beam_search);
+  print_tensor<int>(indices_ptr, 32, "argmax op");
+                    
 }
 
 /*static*/
@@ -91,10 +93,8 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
                                     GenericTensorAccessorW const &indices,
                                     GenericTensorAccessorW const &parent,
                                     int batch_size) {
-  std::cout << "argmax kernel start" << "\n";                                    
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  std::cout << "argmax kernel" << "\n";
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
@@ -137,7 +137,6 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
     cudaEventDestroy(t_end);
     printf("[ArgMax] forward time = %.2lfms\n", elapsed);
   }
-  std::cout << "argmax kernel end" << "\n";
 }
 
 ArgMaxMeta::ArgMaxMeta(FFHandler handler,

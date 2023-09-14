@@ -996,7 +996,7 @@ BeamSearchBatchConfig
                 new_bc.beamRequestsInfo[i].tokens[k];
           } else {
             new_bc.tokensInfo[new_bc.num_tokens].token_id =
-                request.tokens[depth];
+                request.tokens[request.tokens.size() - 1];
           }
 
           new_bc.beamTokenInfo[new_bc.num_tokens].sub_request_index = k;
