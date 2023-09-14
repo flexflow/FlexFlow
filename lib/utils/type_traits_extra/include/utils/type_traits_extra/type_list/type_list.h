@@ -3,7 +3,7 @@
 
 namespace FlexFlow {
 
-template <typename... Ts> struct type_list;
+template <typename... Ts> struct type_list { type_list() = delete; };
 
 } // namespace FlexFlow
 

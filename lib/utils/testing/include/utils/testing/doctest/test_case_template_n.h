@@ -13,13 +13,23 @@ namespace FlexFlow {
     namespace { /* NOLINT */                                                                       \
         template <typename Tuple>                                                                  \
         struct iter;                                                                               \
-        template <typename Type, typename... Rest>                                                 \
-        struct iter<std::tuple<Type, Rest...>>                                                     \
+        template <typename... ArgTypes, typename... Rest>                                                 \
+        struct iter<std::tuple<std::tuple<ArgTypes...>, Rest...>>                                                     \
         {                                                                                          \
             iter(const char* file, unsigned line, int index) {                                     \
-                doctest::detail::regTest(doctest::detail::TestCase(func<Type>, file, line,         \
+                std::ostringstream oss; \
+                std::vector<doctest::String> arg_type_names = {doctest::toString<ArgTypes>()...}; \
+                for (int i = 0; i < arg_type_names.size(); i++) { \
+                  if (i != 0) { \
+                    oss << ", "; \
+                  } \
+                  oss << arg_type_names.at(i); \
+                } \
+                std::string s = oss.str(); \
+                doctest::String ss = doctest::toString(s); \
+                doctest::detail::regTest(doctest::detail::TestCase(func<ArgTypes...>, file, line,         \
                                             doctest_detail_test_suite_ns::getCurrentTestSuite(),   \
-                                            doctest::toString<Type>(),                             \
+                                            ss,                             \
                                             int(line) * 1000 + index)                              \
                                          * dec);                                                   \
                 iter<std::tuple<Rest...>>(file, line, index + 1);                                  \
@@ -38,7 +48,7 @@ namespace FlexFlow {
 #define DOCTEST_TEST_CASE_TEMPLATE_T_IMPL(dec, T_TUP, anon, ...)                                         \
     DOCTEST_TEST_CASE_TEMPLATE_T_DEFINE_IMPL(dec, T_TUP, DOCTEST_CAT(anon, ITERATOR), anon);             \
     DOCTEST_TEST_CASE_TEMPLATE_INSTANTIATE_IMPL(anon, anon, std::tuple<__VA_ARGS__>)               \
-    template <typename T>                                                                          \
+    template <TEMPLATE_DECL_TUPLE(T_TUP)>                                                                          \
     static void anon()
 
 #define DOCTEST_TEST_CASE_TEMPLATE_T(dec, T_TUP, ...)                                                    \

@@ -79,50 +79,17 @@ function(ff_add_intree_test_executable)
     utils-rapidcheck_extra
     utils-test_types)
 
-  define_ff_vars(${FF_TEST_EXEC_NAME})
-  ff_set_cxx_properties(${FF_TEST_EXEC_NAME})
-  doctest_discover_tests(${FF_TEST_EXEC_NAME})
-endfunction()
-
-function(ff_add_intree_test_executable)
-  ff_parse_args(
-    PREFIX 
-      FF_TEST_EXEC
-    FLAGS
-      NO_TEST_LIB
-    ARGS
-      NAME
-    VARIADIC_ARGS
-      DEPS
-    PARSE
-      ${ARGN}
-  )
-
-  project(${FF_TEST_EXEC_NAME})
-  file(GLOB_RECURSE FF_SOURCE_FILES 
-       LIST_DIRECTORIES False
-       "${CMAKE_CURRENT_SOURCE_DIR}/src/*.test.cc")
-
-  add_executable(
-    ${FF_TEST_EXEC_NAME}
-    ${FF_SOURCE_FILES})
-
-  target_link_libraries(
-    ${FF_TEST_EXEC_NAME}
-    ${FF_TEST_EXEC_DEPS}
-    utils-testing)
+  target_compile_definitions(${FF_TEST_EXEC_NAME} PRIVATE FF_TEST_SUITE="${FF_TEST_EXEC_NAME}")
 
   define_ff_vars(${FF_TEST_EXEC_NAME})
   ff_set_cxx_properties(${FF_TEST_EXEC_NAME})
-  doctest_discover_tests(${FF_TEST_EXEC_NAME})
+  doctest_discover_tests(${FF_TEST_EXEC_NAME} ADD_LABELS 1)
 endfunction()
 
 function(ff_add_library)
   ff_parse_args(
     PREFIX 
       FF_LIBRARY
-    FLAGS
-      NO_TEST_LIB
     ARGS
       NAME
     VARIADIC_ARGS

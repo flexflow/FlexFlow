@@ -12,6 +12,9 @@ template <typename...> struct type_list_concat_impl { };
 template <typename... Ts1, typename... Ts2, typename... Rest>
 struct type_list_concat_impl<type_list<Ts1...>, type_list<Ts2...>, Rest...> : type_list_concat_impl<type_list<Ts1..., Ts2...>, Rest...> { };
 
+template <typename... Ts1>
+struct type_list_concat_impl<type_list<Ts1...>> : type_identity<type_list<Ts1...>> { };
+
 template <typename... Ts> 
 struct type_list_concat : type_list_concat_impl<std::decay_t<Ts>...> { };
 
