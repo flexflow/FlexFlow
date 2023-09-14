@@ -229,7 +229,7 @@ void register_task<CONV2D_FWD_TASK_ID>() {
 
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_unchecked_arg_slot<Conv2DPerDeviceState>(PER_DEVICE_STATE);
-  init.add_arg_slot<Conv2DAttrs>(ATTRS);
+  fwd.add_arg_slot<Conv2DAttrs>(ATTRS);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
