@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "kernels/flat_kernels.h"
+#include "device.h"
 #include "kernels/accessor.h"
 #include "kernels/device.h"
-#include "device.h"
+#include "kernels/flat_kernels.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -34,16 +34,14 @@ void forward_kernel(cudaStream_t stream,
 }
 
 void backward_kernel(cudaStream_t stream,
-                    GenericTensorAccessorR input,
+                     GenericTensorAccessorR input,
                      float *input_grad_ptr,
                      float const *output_grad_ptr) {
 
   float alpha = 1.0f;
-  apply_add_with_scale<float><<<GET_BLOCKS(input.shape.num_elements()),
-                                CUDA_NUM_THREADS,
-                                0,
-                                stream>>>(
-      input_grad_ptr, output_grad_ptr, input.shape.num_elements(), alpha);
+  apply_add_with_scale<float>
+      <<<GET_BLOCKS(input.shape.num_elements()), CUDA_NUM_THREADS, 0, stream>>>(
+          input_grad_ptr, output_grad_ptr, input.shape.num_elements(), alpha);
 }
 
 } // namespace Flat
