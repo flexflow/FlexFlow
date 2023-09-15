@@ -936,6 +936,19 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("IncMultiHeadSelfAttention forward time = %.2fms\n", elapsed);
+
+    if (input.data_type == DT_HALF){
+      print_tensor<half>(input.get_half_ptr(), 32, "[IncMultiHeadSelfAttention:forward:input]");
+      print_tensor<half>(weight.get_half_ptr(), 32, "[IncMultiHeadSelfAttention:forward:weight]");
+      print_tensor<half>(output.get_half_ptr(), 32, "[IncMultiHeadSelfAttention:forward:output]");
+      print_tensor<half>(bias.get_half_ptr(), 32, "[IncMultiHeadSelfAttention:forward:bias]");
+    } else {
+      print_tensor<float>(input.get_float_ptr(), 32, "[IncMultiHeadSelfAttention:forward:input]");
+      print_tensor<float>(weight.get_float_ptr(), 32, "[IncMultiHeadSelfAttention:forward:weight]");
+      print_tensor<float>(output.get_float_ptr(), 32, "[IncMultiHeadSelfAttention:forward:output]");
+      print_tensor<float>(bias.get_float_ptr(), 32, "[IncMultiHeadSelfAttention:forward:bias]");
+    }
+
     // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
