@@ -239,6 +239,10 @@ python3 ./huggingface_inference.py --model-name "facebook/opt-125m" --prompt-fil
 # OPT (big model, half precision)
 #python3 ./huggingface_inference.py --model-name "facebook/opt-6.7b" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B_half.txt" --gpu --max-length 127
 
+# Falcon (full precision)
+python3 ./huggingface_inference.py --model-name "tiiuae/falcon-7b" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_falcon_7B.txt" --gpu --max-length 128
+
+
 diff <(tail -n +2 "../../inference/output/huggingface_llama_160M.txt") <(tail -n +5 "../../inference/output/incr_decoding_llama_160M.txt")
 diff <(tail -n +2 "../../inference/output/huggingface_llama_160M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_llama_160M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
 diff <(tail -n +2 "../../inference/output/huggingface_llama_7B.txt") <(tail -n +5 "../../inference/output/incr_decoding_llama_7B.txt")
@@ -248,3 +252,5 @@ diff <(tail -n +2 "../../inference/output/huggingface_opt_125M.txt") <(tail -n +
 diff <(tail -n +2 "../../inference/output/huggingface_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
 #diff <(tail -n +2 "../../inference/output/huggingface_opt_6B.txt") <(tail -n +5 "../../inference/output/incr_decoding_opt_6B.txt")
 #diff <(tail -n +2 "../../inference/output/huggingface_opt_6B_half.txt") <(tail -n +5 "../../inference/output/incr_decoding_opt_6B_half.txt")
+diff <(tail -n +2 "../../inference/output/huggingface_falcon_7B.txt") <(tail -n +5 "../../inference/output/incr_decoding_falcon_7B.txt")
+
