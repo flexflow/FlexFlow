@@ -472,6 +472,8 @@ CostMetrics
 
   fwd_binding.bind_arg(PROFILING, settings);
 
+  fwd_binding.bind_arg(ATTRS, attrs);
+
   auto fwd_accessor = env.get_fwd_accessor(AGGREGATE_FWD_TASK_ID, fwd_binding);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);

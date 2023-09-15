@@ -4,9 +4,11 @@
 #include "cost_metrics.h"
 #include "kernels/accessor.h"
 #include "kernels/allocation.h"
+#include "kernels/profiling.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "task_spec/op_task_invocation.h"
 #include "task_spec/task_argument_accessor.h"
+#include <unordered_map>
 #include <vector>
 
 namespace FlexFlow {
@@ -23,6 +25,11 @@ public:
   IsTrainable trainable;
 };
 
+using SimArg = variant<ProfilingSettings, AggregateAttrs>;
+using SimTensorSpec = variant<ParallelTensorShape,
+                              InputParallelTensorDesc,
+                              InputVariadicParallelTensorDesc>;
+
 struct SimTaskBinding {
   void bind(slot_id, ParallelTensorShape const &);
   void bind_untrainable(slot_id, ParallelTensorShape const &);
@@ -35,7 +42,10 @@ struct SimTaskBinding {
   void bind(slot_id, InputVariadicParallelTensorDesc const &);
 
   template <typename T>
-  void bind_arg(slot_id, T const &);
+  void bind_arg(slot_id id, T const &name);
+
+  std::unordered_map<slot_id, SimArg> arg_bindings;
+  std::unordered_map<slot_id, SimTensorSpec> tensor_shape_bindings;
 };
 
 SimTaskBinding infer_bwd_binding(SimTaskBinding const &);

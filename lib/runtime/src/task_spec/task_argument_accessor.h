@@ -4,6 +4,7 @@
 #include "accessor.h"
 #include "device_specific.h"
 #include "realm_allocator.h"
+#include "kernels/allocation.h"
 #include "runtime/config.h"
 #include "utils/exception.h"
 #include "utils/stack_map.h"
@@ -72,113 +73,69 @@ region_idx_t get_region_idx(TaskArgumentsFormat const &,
                             parallel_tensor_guid_t const &);
 DataType get_datatype(TaskArgumentsFormat const &, region_idx_t const &);
 
-struct TaskArgumentAccessor {
-  TaskArgumentAccessor(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
+struct ITaskArgumentAccessor {
+  virtual template <typename T>
+  T const &get_argument(slot_id slot) const = 0;
 
-  Allocator get_allocator() const {
-    return get_gpu_memory_allocator(this->task);
-  }
+  virtual template <Permissions PRIV>
+  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) const = 0;
 
-  template <typename T>
-  T const &get_argument(slot_id slot) const {
-    NOT_IMPLEMENTED();
-    // TaskArgumentFormat arg_fmt = this->args_fmt.args.at(slot);
-    // std::type_index actual_type = arg_fmt.type;
-    // std::type_index requested_type = {typeid(T)};
+  virtual template <Permissions PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor(slot_id slot) const = 0;
 
-    // if (actual_type != requested_type) {
-    //   throw mk_runtime_error(
-    //       "Type mismatch in argument access (\"{}\" != \"{}\")",
-    //       actual_type.name(),
-    //       requested_type.name());
-    // }
+  virtual template <typename T>
+  optional<T> get_optional_argument(slot_id) const = 0;
 
-    // void *start_ptr = &((std::uint8_t *)this->task->args)[arg_fmt.start];
-    // Legion::Deserializer dez(start_ptr, arg_fmt.start);
+  virtual template <typename T>
+  std::vector<T> get_variadic_argument(slot_id) const = 0;
 
-    // return ff_task_deserialize<T>(dez);
-  }
-
-  template <typename T>
-  optional<T> get_optional_argument(slot_id) const {
-    NOT_IMPLEMENTED();
-  }
-
-  template <typename T>
-  std::vector<T> get_variadic_argument(slot_id) const {
-    NOT_IMPLEMENTED();
-  }
-
-  template <Permissions PRIV>
+  virtual template <Permissions PRIV>
   privilege_mode_to_accessor<PRIV>
-      get_generic_accessor(region_idx_t const &idx) const {
-    auto tensor_privs = get_permissions(this->args_fmt, idx);
-    if (tensor_privs != PRIV) {
-      throw mk_runtime_error(
-          "Privilege mismatch while accessing tensor: {} != {}",
-          tensor_privs,
-          PRIV);
-    }
+      get_generic_accessor(region_idx_t const &idx) const = 0;
 
-    return helperGetGenericTensorAccessor<PRIV>(
-        get_datatype(this->args_fmt, idx),
-        regions[idx.value()],
-        task->regions[idx.value()],
-        FID_DATA,
-        ctx,
-        runtime);
-  }
+  virtual template <Permissions PRIV>
+  privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const = 0;
 
-  template <Permissions PRIV>
-  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) const {
-    auto argument_format =
-        get<NonvariadicFormat>(this->args_fmt.region_idxs.at(slot));
+  virtual template <Permissions PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor_grad(slot_id slot) const = 0;
 
-    return this->get_generic_accessor<PRIV>(argument_format);
-  }
+  virtual size_t get_device_idx() const = 0;
+};
+
+struct LegionTaskArgumentAccessor : public ITaskArgumentAccessor {
+public:
+  template <typename T>
+  T const &get_argument(slot_id slot) const override;
 
   template <Permissions PRIV>
-  privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const {
-    NOT_IMPLEMENTED();
-  }
+  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) const override;
 
   template <Permissions PRIV>
   std::vector<privilege_mode_to_accessor<PRIV>>
-      get_variadic_tensor(slot_id slot) const {
-    std::vector<privilege_mode_to_accessor<PRIV>> result;
-
-    auto argument_format =
-        get<VariadicFormat>(this->args_fmt.region_idxs.at(slot));
-    for (NonvariadicFormat const &argument : argument_format) {
-      result.push_back(this->get_generic_accessor<PRIV>(argument));
-    }
-
-    return result;
-  }
-
-  template <Permissions PRIV>
-  std::vector<privilege_mode_to_accessor<PRIV>>
-      get_variadic_tensor_grad(slot_id slot) const {
-    NOT_IMPLEMENTED();
-  }
+      get_variadic_tensor(slot_id slot) const override;
 
   template <typename T>
-  T *unwrap(DeviceSpecific<T> const &arg) const {
-    return arg.get(this->get_device_idx());
-  }
+  optional<T> get_optional_argument(slot_id) const override;
 
-  template <typename T, typename... Args>
-  DeviceSpecific<T> create_device_specific(Args &&...args) const {
-    return DeviceSpecific<T>::create(this->get_device_idx(),
-                                     std::forward<Args>(args)...);
-  }
+  template <typename T>
+  std::vector<T> get_variadic_argument(slot_id) const override;
 
-  size_t get_device_idx() const {
-    NOT_IMPLEMENTED();
-  }
+  template <Permissions PRIV>
+  privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const override;
+
+  template <Permissions PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor_grad(slot_id slot) const override;
+
+  size_t get_device_idx() const override;
+
+  LegionTaskArgumentAccessor(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime)
+      : task(task), regions(regions), ctx(ctx), runtime(runtime) {}
 
 private:
   Legion::Task const *task;
@@ -186,6 +143,84 @@ private:
   Legion::Context ctx;
   Legion::Runtime *runtime;
   TaskArgumentsFormat const &args_fmt;
+};
+
+struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
+public:
+  template <typename T>
+  T const &get_argument(slot_id slot) const override;
+
+  template <Permissions PRIV>
+  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) const override;
+
+  template <Permissions PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor(slot_id slot) const override;
+
+  template <typename T>
+  optional<T> get_optional_argument(slot_id) const override;
+
+  template <typename T>
+  std::vector<T> get_variadic_argument(slot_id) const override;
+
+  template <Permissions PRIV>
+  privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const override;
+
+  template <Permissions PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor_grad(slot_id slot) const override;
+
+  size_t get_device_idx() const override;
+
+  LocalTaskArgumentAccessor(
+      std::shared_ptr<SimTaskBinding const> &sim_task_binding)
+      : sim_task_binding(sim_task_binding), memory_usage(0) {
+    local_allocator = Allocator::create<CudaAllocator>();
+  }
+
+  size_t get_memory_usage() const {
+    return memory_usage;
+  }
+
+  void *allocate(size_t size);
+  void deallocate(void *ptr);
+
+private:
+  std::shared_ptr<SimTaskBinding const> sim_task_binding;
+  Allocator local_allocator;
+  size_t memory_usage;
+};
+
+struct TaskArgumentAccessor {
+  template <typename T>
+  T const &get_argument(slot_id slot) const {
+    return this->ptr->get_argument<T>(slot);
+  }
+
+  template <Permissions PRIV>
+  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) const {
+    return this->ptr->get_tensor<PRIV>(slot);
+  }
+
+  template <Permissions PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor(slot_id slot) const {
+    return this->ptr->get_variadic_tensor<PRIV>(slot);
+  }
+
+  template <typename T, typename... Args>
+  static
+      typename std::enable_if<std::is_base_of<ITaskArgumentAccessor, T>::value,
+                              TaskArgumentAccessor>::type
+      create(Args &&...args) {
+    return TaskArgumentAccessor(
+        std::make_shared<T>(std::forward<Args>(args)...));
+  }
+
+private:
+  TaskArgumentAccessor(std::shared_ptr<ITaskArgumentAccessor const> &ptr)
+      : ptr(ptr) {}
+  std::shared_ptr<ITaskArgumentAccessor const> ptr;
 };
 
 } // namespace FlexFlow

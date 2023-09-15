@@ -26,7 +26,6 @@ struct ParallelTensorShape : public use_visitable_cmp<ParallelTensorShape> {
   ParallelTensorShape(TensorShape const &);
 
   int num_dims() const;
-
   ParallelDim const &at(ff_dim_t const &) const;
   ParallelDim &at(ff_dim_t const &);
   ParallelDim const &operator[](ff_dim_t const &) const;
