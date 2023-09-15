@@ -1,4 +1,6 @@
 #include "flat.h"
+#include "kernels/flat_kernels.h"
+#include "op-attrs/get_output_shapes.h"
 
 namespace FlexFlow {
 
@@ -36,7 +38,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(forward_kernel,
                  profiling,
                  "[Flat] forward_time = %.2lfms\n",
-                 input.get_float_ptr(),
+                 input,
                  output.get_float_ptr());
 }
 
@@ -58,7 +60,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(backward_kernel,
                  profiling,
                  "[Flat] forward_time = %.2lfms\n",
-                 input.get_float_ptr(),
+                 input,
                  input_grad.get_float_ptr(),
                  output_grad.get_float_ptr());
 }
@@ -95,7 +97,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   float sync_time = default_estimate_sync_time(env);
   return make_metrics(forward_time, backward_time, sync_time, env);
-  return true;
 }
 
 template <>
