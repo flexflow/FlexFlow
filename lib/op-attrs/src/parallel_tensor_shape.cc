@@ -37,8 +37,4 @@ bool is_valid(ParallelTensorShape const &shape) {
   return is_valid(shape.dims);
 }
 
-bool ParallelTensorShape::is_valid() {
-  return FlexFlow::is_valid(*this);
-}
-
 } // namespace FlexFlow
