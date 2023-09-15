@@ -175,10 +175,10 @@ python3 ./huggingface_inference.py --model-name "facebook/opt-125m" --use-full-p
 python3 ./huggingface_inference.py --model-name "facebook/opt-125m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M_half.txt" --gpu --max-length 128
 
 # OPT (big model, full precision)
-#python3 ./huggingface_inference.py --model-name "facebook/opt-6.7b" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B.txt" --max-length 127
+python3 ./huggingface_inference.py --model-name "facebook/opt-6.7b" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B.txt" --max-length 128
 
 # OPT (big model, half precision)
-#python3 ./huggingface_inference.py --model-name "facebook/opt-6.7b" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B_half.txt" --gpu --max-length 127
+#python3 ./huggingface_inference.py --model-name "facebook/opt-6.7b" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_6B_half.txt" --gpu --max-length 128
 
 # Falcon (full precision)
 python3 ./huggingface_inference.py --model-name "tiiuae/falcon-7b" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_falcon_7B.txt" --gpu --max-length 128
@@ -190,6 +190,6 @@ diff <(tail -n +2 "../../inference/output/huggingface_llama_7B_half.txt" | tr -s
 
 diff <(tail -n +2 "../../inference/output/huggingface_opt_125M.txt") <(tail -n +5 "../../inference/output/incr_dec-python-opt-125m-full_prec-1_tp_4_pp.txt")
 diff <(tail -n +2 "../../inference/output/huggingface_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_dec-python-opt-125m-half_prec-1_tp_4_pp.txt" | tr -s '[:space:]' '\n' | head -n 20)
-#diff <(tail -n +2 "../../inference/output/huggingface_opt_6B.txt") <(tail -n +5 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-1_tp_4_pp.txt")
+diff <(tail -n +2 "../../inference/output/huggingface_opt_6B.txt") <(tail -n +5 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-1_tp_4_pp.txt")
 #diff <(tail -n +2 "../../inference/output/huggingface_opt_6B_half.txt") <(tail -n +5 "../../inference/output/incr_dec-python-opt-6.7b-half_prec-1_tp_4_pp.txt")
 diff <(tail -n +2 "../../inference/output/huggingface_falcon_7B.txt") <(tail -n +5 "../../inference/output/incr_dec-python-falcon-7b-full_prec-1_tp_4_pp.txt")
