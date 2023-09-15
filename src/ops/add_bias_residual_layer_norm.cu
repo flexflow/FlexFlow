@@ -73,7 +73,7 @@ __inline__ __device__ T WarpReduceSum(T val) {
 }
 
 template <typename T>
-__inline__ __device__ T BlockReduceSum(T val, T *shared) {
+__inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
   int const lid = threadIdx.x % C10_WARP_SIZE;
   int const wid = threadIdx.x / C10_WARP_SIZE;
   val = WarpReduceSum(val);
@@ -82,7 +82,9 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
     shared[wid] = val;
   }
   __syncthreads();
-  val = (threadIdx.x < blockDim.x / C10_WARP_SIZE) ? shared[lid] : 0;
+  val = (threadIdx.x < min(blockDim.x, max_num_threads) / C10_WARP_SIZE)
+            ? shared[lid]
+            : 0;
   if (wid == 0) {
     val = WarpReduceSum(val);
   }
@@ -117,39 +119,46 @@ __global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
   __shared__ float m_shared[C10_WARP_SIZE];
   __shared__ float v_shared[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
-  if (i < effective_batch_size) {
-    float sum1 = 0.0f;
-    float sum2 = 0.0f;
-    for (int64_t j = threadIdx.x; j < effective_num_elements; j += kCUDABlockReduceNumThreads) {
-      const int64_t index = i * effective_num_elements + j;
-      sum1 += static_cast<float>(added_output_ptr[index]);
-      sum2 += static_cast<float>(added_output_ptr[index]) *
-              static_cast<float>(added_output_ptr[index]);
-    }
-    sum1 = BlockReduceSum<float>(sum1, m_shared);
-    sum2 = BlockReduceSum<float>(sum2, v_shared);
-    if (threadIdx.x == 0) {
-      float const scale = float(1) / static_cast<float>(effective_num_elements);
-      sum1 *= scale;
-      sum2 = max(sum2 * scale - sum1 * sum1, float(0));
-      mean[i] = static_cast<T>(sum1);
-      rstd[i] = static_cast<T>(rsqrt(sum2 + eps));
-    }
+  if (i >= effective_batch_size) {
+    return;
   }
+  float sum1 = 0.0f;
+  float sum2 = 0.0f;
+  for (int64_t j = threadIdx.x; j < effective_num_elements;
+       j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
+    const int64_t index = i * effective_num_elements + j;
+    sum1 += static_cast<float>(added_output_ptr[index]);
+    sum2 += static_cast<float>(added_output_ptr[index]) *
+            static_cast<float>(added_output_ptr[index]);
+  }
+  if (threadIdx.x < kCUDABlockReduceNumThreads) {
+    sum1 = BlockReduceSum<float>(
+        sum1, m_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
+    sum2 = BlockReduceSum<float>(
+        sum2, v_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
+  }
+  if (threadIdx.x == 0) {
+    float const scale = float(1) / static_cast<float>(effective_num_elements);
+    sum1 *= scale;
+    sum2 = max(sum2 * scale - sum1 * sum1, float(0));
+    mean[i] = static_cast<T>(sum1);
+    rstd[i] = static_cast<T>(rsqrt(sum2 + eps));
+  }
+
   __syncthreads();
+
   using T_ACC = T;
-  if (i < effective_batch_size) {
-    for (int64_t j = threadIdx.x; j < effective_num_elements; j += kCUDANumThreads) {
-      const int64_t index = i * effective_num_elements + j;
-      const T_ACC gamma_v =
-          gamma_ptr == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma_ptr[j]);
-      const T_ACC beta_v =
-          beta_ptr == nullptr ? T_ACC(0) : static_cast<T_ACC>(beta_ptr[j]);
-      output_ptr[index] = (static_cast<T_ACC>(added_output_ptr[index]) -
-                          static_cast<T_ACC>(mean[i])) *
-                              static_cast<T_ACC>(rstd[i]) * gamma_v +
-                          beta_v;
-    }
+  for (int64_t j = threadIdx.x; j < effective_num_elements;
+       j += min(blockDim.x, kCUDANumThreads)) {
+    const int64_t index = i * effective_num_elements + j;
+    const T_ACC gamma_v =
+        gamma_ptr == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma_ptr[j]);
+    const T_ACC beta_v =
+        beta_ptr == nullptr ? T_ACC(0) : static_cast<T_ACC>(beta_ptr[j]);
+    output_ptr[index] = (static_cast<T_ACC>(added_output_ptr[index]) -
+                         static_cast<T_ACC>(mean[i])) *
+                            static_cast<T_ACC>(rstd[i]) * gamma_v +
+                        beta_v;
   }
 }
 
@@ -168,22 +177,30 @@ void AddBiasResidualLayerNorm::inference_kernel(
     T const *beta_ptr,
     cudaStream_t stream) {
 
-  int layer_norm_num_blocks = m->effective_batch_size;
-  int layer_norm_num_threads =
-      std::max(kCUDABlockReduceNumThreads, kCUDANumThreads);
-  assert(layer_norm_num_threads <= CUDA_NUM_THREADS);
-  int residual_num_blocks = GET_BLOCKS(residual_volume);
-  int num_blocks = std::max(residual_num_blocks, layer_norm_num_blocks);
-  int num_threads = std::max(layer_norm_num_threads,
-                             std::min(residual_volume, CUDA_NUM_THREADS));
-  // std::cout << "layer_norm_num_blocks: " << layer_norm_num_blocks << std::endl;
-  // std::cout << "layer_norm_num_threads: " << layer_norm_num_threads << std::endl;
-  // std::cout << "residual_num_blocks: " << residual_num_blocks << std::endl;
-  // std::cout << "num_blocks: " << num_blocks << std::endl;
-  // std::cout << "std::min(residual_volume, CUDA_NUM_THREADS): " << std::min(residual_volume, CUDA_NUM_THREADS) << std::endl;
-  // std::cout << "num_threads: " << num_threads << std::endl;
+  std::pair<int, int> kernel1_parallelism = std::make_pair(
+      GET_BLOCKS(residual_volume), std::min(residual_volume, CUDA_NUM_THREADS));
+  std::pair<int, int> kernel2_parallelism =
+      std::make_pair(m->effective_batch_size, kCUDABlockReduceNumThreads);
+  std::pair<int, int> kernel3_parallelism =
+      std::make_pair(m->effective_batch_size, kCUDANumThreads);
 
-  //print_tensor<T>(attn_bias_ptr, 32, "[AddBiasResidualLayerNorm:forward:attn_bias]3");
+  int num_blocks = std::max({kernel1_parallelism.first,
+                             kernel2_parallelism.first,
+                             kernel3_parallelism.first});
+  int num_threads = std::max({kernel1_parallelism.second,
+                              kernel2_parallelism.second,
+                              kernel3_parallelism.second});
+
+  // if (m->profiling) {
+  //   std::cout << "Subkernel 1 parallelism: (" << kernel1_parallelism.first <<
+  //   ", " << kernel1_parallelism.second << ")" << std::endl; std::cout <<
+  //   "Subkernel 2 parallelism: (" << kernel2_parallelism.first << ", " <<
+  //   kernel2_parallelism.second << ")" << std::endl; std::cout << "Subkernel 3
+  //   parallelism: (" << kernel3_parallelism.first << ", " <<
+  //   kernel3_parallelism.second << ")" << std::endl; std::cout << "Kernel
+  //   parallelism: (" << num_blocks << ", " << num_threads << ")" << std::endl;
+  // }
+
   LayerNormFusedForwardKernel<T>
       <<<num_blocks, num_threads, 0, stream>>>(attn_bias_dim,
                                                residual_volume,
@@ -199,7 +216,6 @@ void AddBiasResidualLayerNorm::inference_kernel(
                                                beta_ptr,
                                                static_cast<T *>(m->mean_ptr),
                                                static_cast<T *>(m->rstd_ptr));
-   //print_tensor<T>(attn_bias_ptr, 32, "[AddBiasResidualLayerNorm:forward:attn_bias]4");
 }
 
 /*static*/
@@ -224,7 +240,6 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
   if (m->input_type[0] == DT_FLOAT) {
-   // print_tensor<float>(attn_bias.get_float_ptr(), 32, "[AddBiasResidualLayerNorm:forward:attn_bias]");
     AddBiasResidualLayerNorm::inference_kernel<float>(
         m,
         attn_bias_dim,
@@ -253,7 +268,6 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
   } else {
     assert(false && "unsupport datatype in layernorm");
   }
-   //print_tensor<float>(attn_bias.get_float_ptr(), 32, "[AddBiasResidualLayerNorm:forward:attn_bias]5");
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -264,21 +278,45 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
     cudaEventDestroy(t_end);
     printf("[AddBiasResidualLayerNorm] forward time (CF) = %.9fms\n", elapsed);
     if (m->input_type[0] == DT_FLOAT) {
-      print_tensor<float>(input.get_float_ptr(), 32, "[AddBiasResidualLayerNorm:forward:input]");
-      print_tensor<float>(attn_bias.get_float_ptr(), 32, "[AddBiasResidualLayerNorm:forward:attn_bias]");
-      print_tensor<float>(residual.get_float_ptr(), 32, "[AddBiasResidualLayerNorm:forward:residual]");
-      print_tensor<float>(added_output.get_float_ptr(), 32, "[AddBiasResidualLayerNorm:forward:added_output]");
-      print_tensor<float>(output.get_float_ptr(), 32, "[AddBiasResidualLayerNorm:forward:output]");
-      print_tensor<float>(gamma.get_float_ptr(), 32, "[AddBiasResidualLayerNorm:forward:gamma]");
-      print_tensor<float>(beta.get_float_ptr(), 32, "[AddBiasResidualLayerNorm:forward:beta]");
+      print_tensor<float>(input.get_float_ptr(),
+                          32,
+                          "[AddBiasResidualLayerNorm:forward:input]");
+      print_tensor<float>(attn_bias.get_float_ptr(),
+                          32,
+                          "[AddBiasResidualLayerNorm:forward:attn_bias]");
+      print_tensor<float>(residual.get_float_ptr(),
+                          32,
+                          "[AddBiasResidualLayerNorm:forward:residual]");
+      print_tensor<float>(added_output.get_float_ptr(),
+                          32,
+                          "[AddBiasResidualLayerNorm:forward:added_output]");
+      print_tensor<float>(output.get_float_ptr(),
+                          32,
+                          "[AddBiasResidualLayerNorm:forward:output]");
+      print_tensor<float>(gamma.get_float_ptr(),
+                          32,
+                          "[AddBiasResidualLayerNorm:forward:gamma]");
+      print_tensor<float>(
+          beta.get_float_ptr(), 32, "[AddBiasResidualLayerNorm:forward:beta]");
     } else {
-      print_tensor<half>(input.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:input]");
-      print_tensor<half>(attn_bias.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:attn_bias]");
-      print_tensor<half>(residual.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:residual]");
-      print_tensor<half>(added_output.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:added_output]");
-      print_tensor<half>(output.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:output]");
-      print_tensor<half>(gamma.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:gamma]");
-      print_tensor<half>(beta.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:beta]");
+      print_tensor<half>(
+          input.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:input]");
+      print_tensor<half>(attn_bias.get_half_ptr(),
+                         32,
+                         "[AddBiasResidualLayerNorm:forward:attn_bias]");
+      print_tensor<half>(residual.get_half_ptr(),
+                         32,
+                         "[AddBiasResidualLayerNorm:forward:residual]");
+      print_tensor<half>(added_output.get_half_ptr(),
+                         32,
+                         "[AddBiasResidualLayerNorm:forward:added_output]");
+      print_tensor<half>(output.get_half_ptr(),
+                         32,
+                         "[AddBiasResidualLayerNorm:forward:output]");
+      print_tensor<half>(
+          gamma.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:gamma]");
+      print_tensor<half>(
+          beta.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:beta]");
     }
     // print_tensor<T>(in_ptr, 32, "[AddBiasResidualLayerNorm:forward:input]");
     // print_tensor<T>(out_ptr, 32,

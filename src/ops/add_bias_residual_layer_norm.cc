@@ -679,12 +679,14 @@ void AddBiasResidualLayerNorm::inference_task(
   // std::cout << std::endl;
   // std::cout << "residual: ";
   // for (int i=0; i<residual_domain.get_dim(); i++) {
-  //   std::cout << residual_domain.hi()[i] - residual_domain.lo()[i] + 1 << " ";
+  //   std::cout << residual_domain.hi()[i] - residual_domain.lo()[i] + 1 << "
+  //   ";
   // }
   // std::cout << std::endl;
   // std::cout << "added_output: ";
   // for (int i=0; i<added_out_domain.get_dim(); i++) {
-  //   std::cout << added_out_domain.hi()[i] - added_out_domain.lo()[i] + 1 << " ";
+  //   std::cout << added_out_domain.hi()[i] - added_out_domain.lo()[i] + 1 << "
+  //   ";
   // }
   // std::cout << std::endl;
   // std::cout << "output: ";
@@ -694,13 +696,14 @@ void AddBiasResidualLayerNorm::inference_task(
   // std::cout << std::endl;
   // std::cout << "attn_bias: ";
   // for (int i=0; i<attn_bias_domain.get_dim(); i++) {
-  //   std::cout << attn_bias_domain.hi()[i] - attn_bias_domain.lo()[i] + 1 << " ";
+  //   std::cout << attn_bias_domain.hi()[i] - attn_bias_domain.lo()[i] + 1 << "
+  //   ";
   // }
   // std::cout << std::endl;
 
-  // std::cout << "in_domain.get_volume(): " << in_domain.get_volume() << std::endl;
-  // std::cout << "(int)attn_bias_dim: " << (int)attn_bias_dim << std::endl;
-  
+  // std::cout << "in_domain.get_volume(): " << in_domain.get_volume() <<
+  // std::endl; std::cout << "(int)attn_bias_dim: " << (int)attn_bias_dim <<
+  // std::endl;
 
   if (m->elementwise_affine) {
     gamma = helperGetGenericTensorAccessorRO(m->weight_type[1],

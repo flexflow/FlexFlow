@@ -96,6 +96,26 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 }
 
 template <typename T>
+__inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
+  int const lid = threadIdx.x % C10_WARP_SIZE;
+  int const wid = threadIdx.x / C10_WARP_SIZE;
+  val = WarpReduceSum(val);
+  __syncthreads();
+  if (lid == 0) {
+    shared[wid] = val;
+  }
+  __syncthreads();
+  val = (threadIdx.x < min(blockDim.x, max_num_threads) / C10_WARP_SIZE)
+            ? shared[lid]
+            : 0;
+  if (wid == 0) {
+    val = WarpReduceSum(val);
+  }
+  return val;
+}
+
+#ifdef DEADCODE
+template <typename T>
 __global__ void RowwiseMomentsCUDAKernel(
     int64_t N, float eps, T const *X, T *mean, T *rstd) {
   __shared__ float m_shared[C10_WARP_SIZE];
@@ -140,6 +160,7 @@ __global__ void LayerNormForwardCUDAKernel(int64_t N,
                beta_v;
   }
 }
+#endif
 
 template <typename T>
 __global__ void LayerNormFusedForwardKernel(int64_t N,
@@ -155,13 +176,18 @@ __global__ void LayerNormFusedForwardKernel(int64_t N,
   const int64_t i = blockIdx.x;
   float sum1 = 0.0f;
   float sum2 = 0.0f;
-  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
+  for (int64_t j = threadIdx.x; j < N;
+       j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
     const int64_t index = i * N + j;
     sum1 += static_cast<float>(X[index]);
     sum2 += static_cast<float>(X[index]) * static_cast<float>(X[index]);
   }
-  sum1 = BlockReduceSum<float>(sum1, m_shared);
-  sum2 = BlockReduceSum<float>(sum2, v_shared);
+  if (threadIdx.x < kCUDABlockReduceNumThreads) {
+    sum1 = BlockReduceSum<float>(
+        sum1, m_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
+    sum2 = BlockReduceSum<float>(
+        sum2, v_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
+  }
   if (threadIdx.x == 0) {
     float const scale = float(1) / static_cast<float>(N);
     sum1 *= scale;
@@ -173,7 +199,7 @@ __global__ void LayerNormFusedForwardKernel(int64_t N,
   __syncthreads();
 
   using T_ACC = T;
-  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
+  for (int64_t j = threadIdx.x; j < N; j += min(blockDim.x, kCUDANumThreads)) {
     const int64_t index = i * N + j;
     const T_ACC gamma_v =
         gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
@@ -193,33 +219,26 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
                                T const *gamma_ptr,
                                T const *beta_ptr,
                                cudaStream_t stream) {
-  // RowwiseMomentsCUDAKernel<T>
-  //     <<<m->effective_batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
-  //         m->effective_num_elements,
-  //         m->eps,
-  //         in_ptr,
-  //         static_cast<T *>(m->mean_ptr),
-  //         static_cast<T *>(m->rstd_ptr));
-  // LayerNormForwardCUDAKernel<T>
-  //     <<<m->effective_batch_size, kCUDANumThreads, 0, stream>>>(
-  //         m->effective_num_elements,
-  //         in_ptr,
-  //         static_cast<T *>(m->mean_ptr),
-  //         static_cast<T *>(m->rstd_ptr),
-  //         gamma_ptr,
-  //         beta_ptr,
-  //         out_ptr);
-  int num_blocks = std::max(kCUDABlockReduceNumThreads, kCUDANumThreads);
+
+  std::pair<int, int> kernel1_parallelism =
+      std::make_pair(m->effective_batch_size, kCUDABlockReduceNumThreads);
+  std::pair<int, int> kernel2_parallelism =
+      std::make_pair(m->effective_batch_size, kCUDANumThreads);
+
+  int num_blocks =
+      std::max(kernel1_parallelism.first, kernel2_parallelism.first);
+  int num_threads =
+      std::max(kernel1_parallelism.second, kernel2_parallelism.second);
+
   LayerNormFusedForwardKernel<T>
-      <<<m->effective_batch_size, num_blocks, 0, stream>>>(
-          m->effective_num_elements,
-          m->eps,
-          in_ptr,
-          static_cast<T *>(m->mean_ptr),
-          static_cast<T *>(m->rstd_ptr),
-          gamma_ptr,
-          beta_ptr,
-          out_ptr);
+      <<<num_blocks, num_threads, 0, stream>>>(m->effective_num_elements,
+                                               m->eps,
+                                               in_ptr,
+                                               static_cast<T *>(m->mean_ptr),
+                                               static_cast<T *>(m->rstd_ptr),
+                                               gamma_ptr,
+                                               beta_ptr,
+                                               out_ptr);
 }
 
 /*static*/
