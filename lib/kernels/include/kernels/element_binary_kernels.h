@@ -31,11 +31,13 @@ namespace ElementBinary {
 
 ElementBinaryPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                         OperatorType op_type,
-                                        DataType compute_type,
                                         bool should_broadcast_lhs,
-                                        bool should_broadcast_rhs);
+                                        bool should_broadcast_rhs,
+                                        ArrayShape lhs_shape,
+                                        ArrayShape rhs_shape,
+                                        ArrayShape output_shape);
 
-void forward_kernel(cudaStream_t stream,
+void forward_kernel(ffStream_t stream,
                     ElementBinaryPerDeviceState const &m,
                     float const *lhs_ptr,
                     float const *rhs_ptr,
@@ -43,7 +45,7 @@ void forward_kernel(cudaStream_t stream,
                     OperatorType op_type,
                     bool broadcast_inputLHS);
 
-void backward_kernel(cudaStream_t stream,
+void backward_kernel(ffStream_t stream,
                      ElementBinaryPerDeviceState const &m,
                      float const *out_grad_ptr,
                      float const *lhs_ptr,

@@ -2,7 +2,6 @@
 #define _FLEXFLOW_ELEMENT_BINARY_H
 
 #include "op-attrs/ops/element_binary.h"
-#include "op_task_invocation.h"
 #include "sim_environment.h"
 
 namespace FlexFlow {

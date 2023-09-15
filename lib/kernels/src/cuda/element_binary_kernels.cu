@@ -84,7 +84,6 @@ __global__ void elewise_binary_backward_kernel(size_t volume,
 
 ElementBinaryPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                         OperatorType op_type,
-                                        DataType compute_type,
                                         bool should_broadcast_lhs,
                                         bool should_broadcast_rhs,
                                         ArrayShape lhs_shape,

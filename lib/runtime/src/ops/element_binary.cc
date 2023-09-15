@@ -1,7 +1,7 @@
 #include "element_binary.h"
 #include "kernels/element_binary_kernels.h"
 #include "legion/legion_utilities.h"
-#include "task_spec.h"
+#include "op-attrs/get_output_shapes.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -32,7 +32,7 @@ OpTaskInvocation init(ElementBinaryAttrs const &attrs) {
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(HANDLE, ff_handle());
 
-  return {DROPOUT_INIT_TASK_ID, binding};
+  return {ELEMENTBINARY_INIT_TASK_ID, binding};
 }
 
 OpTaskInvocation forward(ElementBinaryAttrs const &attrs) {
@@ -41,18 +41,18 @@ OpTaskInvocation forward(ElementBinaryAttrs const &attrs) {
   binding.bind(LHS_INPUT, input_tensor(0));
   binding.bind(RHS_INPUT, input_tensor(1));
   binding.bind(OUTPUT, output_tensor(0));
-
+  binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(PER_DEVICE_STATE,
                    per_device_op_state<ElementBinaryPerDeviceState>());
 
-  return {DROPOUT_FWD_TASK_ID, binding};
+  return {ELEMENTBINARY_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(ElementBinaryAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {DROPOUT_BWD_TASK_ID, b};
+  return {ELEMENTBINARY_BWD_TASK_ID, b};
 }
 
 static DeviceSpecific<ElementBinaryPerDeviceState>
@@ -67,7 +67,7 @@ static DeviceSpecific<ElementBinaryPerDeviceState>
   DeviceSpecific<ElementBinaryPerDeviceState> per_device_state =
       acc.create_device_specific<ElementBinaryPerDeviceState>(
           init_kernel(handle,
-                      attrs.type attrs.compute_type,
+                      attrs.type,
                       attrs.should_broadcast_lhs,
                       attrs.should_broadcast_rhs,
                       input_lhs.shape,
@@ -88,19 +88,22 @@ static DeviceSpecific<ElementBinaryPerDeviceState>
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state =
-      acc.get_argument<DropoutPerDeviceState>(PER_DEVICE_STATE);
+      acc.get_argument<ElementBinaryPerDeviceState>(PER_DEVICE_STATE);
+  auto const &attrs = acc.get_argument<ElementBinaryAttrs>(ATTRS);
 
   auto input_lhs = acc.get_tensor<Permissions::RO>(LHS_INPUT);
   auto input_rhs = acc.get_tensor<Permissions::RO>(RHS_INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
-  return profile(forward_task_impl,
+  return profile(forward_kernel,
                  profiling,
                  "[ElementBinary] forward_time = %.2lfms\n",
-                 &per_device_state,
+                 per_device_state,
                  input_lhs.get_float_ptr(),
                  input_rhs.get_float_ptr(),
-                 outputTensor.get_float_ptr());
+                 output.get_float_ptr(),
+                 attrs.type,
+                 attrs.should_broadcast_lhs);
 }
 
 static void forward_task(Task const *task,
@@ -113,8 +116,9 @@ static void forward_task(Task const *task,
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
-      acc.get_argument<DropoutPerDeviceState>(PER_DEVICE_STATE);
+      acc.get_argument<ElementBinaryPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto const &attrs = acc.get_argument<ElementBinaryAttrs>(ATTRS);
 
   auto input_lhs = acc.get_tensor<Permissions::RO>(LHS_INPUT);
   auto input_rhs = acc.get_tensor<Permissions::RO>(RHS_INPUT);
@@ -123,15 +127,18 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input_lhs_grad = acc.get_tensor_grad<Permissions::RW>(LHS_INPUT);
   auto input_rhs_grad = acc.get_tensor_grad<Permissions::RW>(RHS_INPUT);
 
-  return profile(backward_task_impl,
+  return profile(backward_kernel,
                  profiling,
                  "[ElementBinary] backward_time = %.2lfms\n",
-                 &per_device_state,
+                 per_device_state,
                  output_grad.get_float_ptr(),
                  input_lhs.get_float_ptr(),
                  input_rhs.get_float_ptr(),
                  input_lhs_grad.get_float_ptr(),
-                 input_rhs_grad.get_float_ptr());
+                 input_rhs_grad.get_float_ptr(),
+                 attrs.type,
+                 attrs.should_broadcast_lhs,
+                 attrs.should_broadcast_rhs);
 }
 
 static void backward_task(Task const *task,
@@ -186,8 +193,6 @@ CostMetrics
 
   float sync_time = default_estimate_sync_time(env);
   return make_metrics(forward_time, backward_time, sync_time, env);
-
-  return true;
 }
 
 template <>
@@ -211,7 +216,8 @@ void register_task<ELEMENTBINARY_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-  fwd.add_unchecked_arg_slot<DropoutPerDeviceState>(PER_DEVICE_STATE);
+  fwd.add_unchecked_arg_slot<ElementBinaryPerDeviceState>(PER_DEVICE_STATE);
+  fwd.add_arg_slot<ElementBinaryAttrs>(ATTRS);
 
   fwd.add_input_slot(LHS_INPUT);
   fwd.add_input_slot(RHS_INPUT);
