@@ -4,23 +4,16 @@
 #include "kernels/device.h"
 
 namespace FlexFlow {
-
-class FlatPerDeviceState : public PerDeviceOpState {
-public:
-  FlatPerDeviceState(FFHandler handle) : PerDeviceOpState(handle){};
-};
-
 namespace Kernels {
 namespace Flat {
 
 void forward_kernel(ffStream_t stream,
                     float const *input_ptr,
-                    float *output_ptr,
-                    size_t num_elements);
-void backward_kernel(ffStream_t stream,
+                    float *output_ptr);
+void backward_kernel(cudaStream_t stream,
+                     float const *input_ptr,
                      float *input_grad_ptr,
-                     float const *output_grad_ptr,
-                     size_t num_elements);
+                     float const *output_grad_ptr);
 
 } // namespace Flat
 } // namespace Kernels
