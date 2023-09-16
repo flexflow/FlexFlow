@@ -26,114 +26,15 @@
 
 namespace FlexFlow {
 
-template <typename InputIt, typename F>
-std::string join_strings(InputIt first,
-                         InputIt last,
-                         std::string const &delimiter,
-                         F const &f) {
-  std::ostringstream oss;
-  bool first_iter = true;
-  for (; first != last; first++) {
-    if (!first_iter) {
-      oss << delimiter;
-    }
-    oss << f(*first);
-    first_iter = false;
-  }
-  return oss.str();
-}
-
-template <typename InputIt>
-std::string
-    join_strings(InputIt first, InputIt last, std::string const &delimiter) {
-  return join_strings<InputIt>(
-      first, last, delimiter, [](auto const &r) { return r; });
-}
-
-template <typename Container>
-std::string join_strings(Container const &c, std::string const &delimiter) {
-  return join_strings(c.cbegin(), c.cend(), delimiter);
-}
-
-template <typename Container, typename F>
-std::string
-    join_strings(Container const &c, std::string const &delimiter, F const &f) {
-  return join_strings(c.cbegin(), c.cend(), delimiter, f);
-}
-
 template <typename Container>
 typename Container::const_iterator
     find(Container const &c, typename Container::value_type const &e) {
   return std::find(c.cbegin(), c.cend(), e);
 }
 
-template <typename Container, typename Element>
-Element sum(Container const &container) {
-  Element result = 0;
-  for (Element const &element : container) {
-    result += element;
-  }
-  return result;
-}
-
-template <typename Container, typename ConditionF, typename Element>
-Element sum_where(Container const &container, ConditionF const &condition) {
-  Element result = 0;
-  for (Element const &element : container) {
-    if (condition(element)) {
-      result += element;
-    }
-  }
-  return result;
-}
-
-template <typename Container, typename Element>
-Element product(Container const &container) {
-  Element result = 1;
-  for (Element const &element : container) {
-    result *= element;
-  }
-  return result;
-}
-
-template <typename Container, typename ConditionF, typename Element>
-Element product_where(Container const &container, ConditionF const &condition) {
-  Element result = 1;
-  for (Element const &element : container) {
-    if (condition(element)) {
-      result *= element;
-    }
-  }
-  return result;
-}
-
-template <typename It>
-typename It::value_type product(It begin, It end) {
-  using Element = typename It::value_type;
-  return std::accumulate(
-      begin, end, 1, [](Element const &lhs, Element const &rhs) {
-        return lhs * rhs;
-      });
-}
-
 template <typename Container>
 bool contains(Container const &c, typename Container::value_type const &e) {
   return find<Container>(c, e) != c.cend();
-}
-
-template <typename C>
-bool contains_key(C const &m, typename C::key_type const &k) {
-  return m.find(k) != m.end();
-}
-
-template <typename K, typename V>
-bool contains_l(bidict<K, V> const &m, K const &k) {
-  return m.find(k) != m.end();
-}
-
-template <typename K, typename V>
-bool contains_r(bidict<K, V> const &m, V const &v) {
-  return m.find(v) != m.end();
 }
 
 template <typename K, typename V, typename F, typename K2>
@@ -142,15 +43,6 @@ std::unordered_map<K2, V> map_keys(std::unordered_map<K, V> const &m,
   std::unordered_map<K2, V> result;
   for (auto const &kv : m) {
     result.insert({f(kv.first), kv.second});
-  }
-  return result;
-}
-
-template <typename K, typename V, typename F, typename K2>
-bidict<K2, V> map_keys(bidict<K, V> const &m, F const &f) {
-  bidict<K2, V> result;
-  for (auto const &kv : m) {
-    result.equate(f(kv.first), kv.second);
   }
   return result;
 }
@@ -184,15 +76,6 @@ std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m,
   std::unordered_map<K, V2> result;
   for (auto const &kv : m) {
     result.insert({kv.first, f(kv.second)});
-  }
-  return result;
-}
-
-template <typename K, typename V, typename F, typename V2>
-bidict<K, V2> map_values(bidict<K, V> const &m, F const &f) {
-  bidict<K, V2> result;
-  for (auto const &kv : m) {
-    result.equate({kv.first, f(kv.second)});
   }
   return result;
 }
@@ -315,21 +198,6 @@ std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs,
   return result;
 }
 
-template <typename K, typename V>
-bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
-  assert(are_disjoint(keys(lhs), keys(rhs)));
-
-  bidict<K, V> result;
-  for (auto const &kv : lhs) {
-    result.equate(kv.first, kv.second);
-  }
-  for (auto const &kv : rhs) {
-    result.equate(kv.first, kv.second);
-  }
-
-  return result;
-}
-
 template <typename F, typename C, typename K, typename V>
 std::unordered_map<K, V> generate_map(C const &c, F const &f) {
   static_assert(is_hashable<K>::value,
@@ -341,46 +209,9 @@ std::unordered_map<K, V> generate_map(C const &c, F const &f) {
   return {transformed.cbegin(), transformed.cend()};
 }
 
-template <typename F, typename C, typename K, typename V>
-bidict<K, V> generate_bidict(C const &c, F const &f) {
-  static_assert(is_hashable<K>::value,
-                "Key type should be hashable (but is not)");
-  static_assert(is_hashable<V>::value,
-                "Value type should be hashable (but is not)");
-
-  auto transformed = transform(c, [&](K const &k) -> std::pair<K, V> {
-    return {k, f(k)};
-  });
-  return {transformed.cbegin(), transformed.cend()};
-}
-
 template <typename K, typename V>
 std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m) {
   return [&m](K const &k) -> V { return m.at(k); };
-}
-
-template <typename L, typename R>
-std::function<R(L const &)> lookup_in_l(bidict<L, R> const &m) {
-  return [&m](L const &l) -> R { return m.at_l(l); };
-}
-
-template <typename L, typename R>
-std::function<L(R const &)> lookup_in_r(bidict<L, R> const &m) {
-  return [&m](R const &r) -> L { return m.at_r(r); };
-}
-
-template <typename T>
-std::unordered_set<T> set_union(std::unordered_set<T> const &l,
-                                std::unordered_set<T> const &r) {
-  std::unordered_set<T> result = l;
-  result.insert(r.cbegin(), r.cend());
-  return result;
-}
-
-template <typename T>
-std::unordered_set<T> set_difference(std::unordered_set<T> const &l,
-                                     std::unordered_set<T> const &r) {
-  return filter(l, [&](T const &element) { return !contains(r, element); });
 }
 
 template <typename C, typename T>
@@ -394,35 +225,11 @@ std::unordered_set<T> set_union(C const &sets) {
   return result;
 }
 
-template <typename T>
-bool is_subseteq_of(std::unordered_set<T> const &l,
-                    std::unordered_set<T> const &r) {
-  if (l.size() > r.size()) {
-    return false;
-  }
-
-  for (auto const &ll : l) {
-    if (!contains(r, ll)) {
-      return false;
-    }
-  }
-  return true;
-}
 
 template <typename T>
 bool is_supserseteq_of(std::unordered_set<T> const &l,
                        std::unordered_set<T> const &r) {
   return is_subseteq_of<T>(r, l);
-}
-
-template <typename S, typename D>
-std::unordered_set<D>
-    map_over_unordered_set(std::function<D(S const &)> const &f,
-                           std::unordered_set<S> const &input) {
-  std::unordered_set<D> result;
-  std::transform(
-      input.cbegin(), input.cend(), std::inserter(result, result.begin()), f);
-  return result;
 }
 
 template <typename C>
@@ -440,11 +247,6 @@ typename C::value_type get_only(C const &c) {
     throw mk_runtime_error("Encountered container with size {} in get_only",
                            c.size());
   });
-}
-
-template <typename T>
-T get_first(std::unordered_set<T> const &s) {
-  return *s.cbegin();
 }
 
 template <typename C, typename F>
@@ -519,35 +321,10 @@ auto transform(req<C> const &c, F const &f)
   return transform(static_cast<C>(c), f);
 }
 
-template <typename F, typename In, typename Out>
-std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
-  return transform(v, f);
-}
-
-template <typename F, typename In, typename Out>
-std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f) {
-  std::unordered_set<Out> result;
-  for (auto const &e : v) {
-    result.insert(f(e));
-  }
-  return result;
-}
-
 template <typename F>
 std::string transform(std::string const &s, F const &f) {
   std::string result;
   std::transform(s.cbegin(), s.cend(), std::back_inserter(result), f);
-  return result;
-}
-
-template <typename F, typename Out>
-std::vector<Out> repeat(int n, F const &f) {
-  assert(n >= 0);
-
-  std::vector<Out> result;
-  for (int i = 0; i < n; i++) {
-    result.push_back(f());
-  }
   return result;
 }
 
@@ -603,30 +380,9 @@ C filter(C const &v, F const &f) {
   return result;
 }
 
-template <typename T, typename F>
-std::unordered_set<T> filter(std::unordered_set<T> const &v, F const &f) {
-  std::unordered_set<T> result;
-  for (T const &t : v) {
-    if (f(t)) {
-      result.insert(t);
-    }
-  }
-  return result;
-}
-
 template <typename C, typename F, typename Elem>
 void inplace_filter(C &v, F const &f) {
   std::remove_if(v.begin(), v.end(), [&](Elem const &e) { return !f(e); });
-}
-
-template <typename T>
-std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v,
-                                                       std::size_t idx) {
-  assert(v.size() > idx);
-
-  std::vector<T> prefix(v.begin(), v.begin() + idx);
-  std::vector<T> postfix(v.begin() + idx, v.end());
-  return {prefix, postfix};
 }
 
 template <typename C>
@@ -653,109 +409,6 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
   });
 }
 
-template <typename T>
-std::vector<T> subvec(std::vector<T> const &v,
-                      optional<int> const &maybe_start,
-                      optional<int> const &maybe_end) {
-  auto begin_iter = v.cbegin();
-  auto end_iter = v.cend();
-
-  auto resolve_loc = [&](int idx) ->
-      typename std::vector<T>::iterator::difference_type {
-        if (idx < 0) {
-          return v.size() - idx;
-        } else {
-          return idx;
-        }
-      };
-
-  if (maybe_start.has_value()) {
-    begin_iter += resolve_loc(maybe_start.value());
-  }
-  if (maybe_end.has_value()) {
-    end_iter = v.cbegin() + resolve_loc(maybe_end.value());
-  }
-
-  std::vector<T> output(begin_iter, end_iter);
-  return output;
-}
-
-template <typename C>
-struct reversed_container_t {
-  reversed_container_t() = delete;
-  reversed_container_t(C const &c) : container(c) {}
-
-  reversed_container_t(reversed_container_t const &) = delete;
-  reversed_container_t(reversed_container_t &&) = delete;
-  reversed_container_t &operator=(reversed_container_t const &) = delete;
-  reversed_container_t &operator=(reversed_container_t &&) = delete;
-
-  using iterator = typename C::reverse_iterator;
-  using const_iterator = typename C::const_reverse_iterator;
-  using reverse_iterator = typename C::iterator;
-  using const_reverse_iterator = typename C::const_iterator;
-  using value_type = typename C::value_type;
-  using pointer = typename C::pointer;
-  using const_pointer = typename C::const_pointer;
-  using reference = typename C::reference;
-  using const_reference = typename C::const_reference;
-
-  iterator begin() {
-    return this->container.rend();
-  }
-
-  iterator end() {
-    return this->container.rbegin();
-  }
-
-  const_iterator cbegin() const {
-    return this->container.crend();
-  }
-
-  const_iterator cend() const {
-    return this->container.crbegin();
-  }
-
-  const_iterator begin() const {
-    return this->cbegin();
-  }
-
-  const_iterator end() const {
-    return this->cend();
-  }
-
-  reverse_iterator rbegin() {
-    return this->container.begin();
-  }
-
-  reverse_iterator rend() {
-    return this->container.end();
-  }
-
-  const_reverse_iterator crbegin() const {
-    return this->container.cbegin();
-  }
-
-  const_reverse_iterator crend() const {
-    return this->container.cend();
-  }
-
-  const_reverse_iterator rbegin() const {
-    return this->crbegin();
-  }
-
-  const_reverse_iterator rend() const {
-    return this->crend();
-  }
-
-private:
-  C const &container;
-};
-
-template <typename C>
-reversed_container_t<C> reversed_container(C const &c) {
-  return reversed_container_t<C>(c);
-}
 
 } // namespace FlexFlow
 

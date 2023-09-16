@@ -1,5 +1,4 @@
 ff_add_library(
   NAME
-    stack-containers
-  DEPS
+    utils-stack_containers
 )

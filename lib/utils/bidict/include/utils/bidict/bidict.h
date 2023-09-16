@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_UTILS_BIDICT_H
-#define _FLEXFLOW_UTILS_BIDICT_H
+#ifndef _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_BIDICT_H
+#define _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_BIDICT_H
 
 #include <cassert>
 #include <unordered_map>
@@ -16,6 +16,10 @@ struct bidict {
       this->equate(it->first, it->second);
     }
   }
+
+  bidict(std::unordered_map<L, R> const &fwd_map,
+         std::unordered_map<R, L> const &bwd_map)
+      : fwd_map(fwd_map), bwd_map(bwd_map) {}
 
   void erase_l(L const &l) {
     this->fwd_map.erase(l);
@@ -65,61 +69,6 @@ struct bidict {
   using const_reference = value_type const &;
   using key_type = L;
   using mapped_type = R;
-  /* struct const_iterator { */
-  /*   using iterator_category = std::forward_iterator_tag; */
-  /*   using difference_type = std::size_t; */
-  /*   using value_type = std::pair<L, R>; */
-  /*   using pointer = std::pair<L, R> const *; */
-  /*   using reference = std::pair<L, R> const &; */
-
-  /*   explicit const_iterator(typename std::unordered_map<tl::optional<L>,
-   * tl::optional<R>>::const_iterator); */
-
-  /*   reference operator*() const { */
-  /*     this->current = {this->it->first.value(), this->it->second.value()}; */
-  /*     return this->current.value(); */
-  /*   } */
-  /*   pointer operator->() const { */
-  /*     return &this->operator*(); */
-  /*   } */
-
-  /*   const_iterator& operator++() { */
-  /*     ++this->it; */
-  /*     return *this; */
-  /*   } */
-  /*   const_iterator operator++(int) { */
-  /*     auto tmp = *this; */
-  /*     ++(*this); */
-  /*     return tmp; */
-  /*   } */
-
-  /*   bool operator==(const_iterator const &other) const { */
-  /*     return this->it == other.it; */
-  /*   } */
-  /*   bool operator!=(const_iterator const &other) const { */
-  /*     return this->it != other.it; */
-  /*   } */
-  /* private: */
-  /*   mutable tl::optional<std::pair<L, R>> current; */
-  /*   typename std::unordered_map<tl::optional<L>,
-   * tl::optional<R>>::const_iterator it; */
-  /* }; */
-
-  /* const_iterator cbegin() const { */
-  /*   return const_iterator(this->fwd_map.cbegin()); */
-  /* } */
-
-  /* const_iterator begin() const { */
-  /*   return this->cbegin(); */
-  /* } */
-
-  /* const_iterator cend() const { */
-  /*   return const_iterator(this->fwd_map.cend()); */
-  /* } */
-
-  /* const_iterator end() const { */
-  /*   return this->cend(); */
-  /* } */
 
   const_iterator cbegin() const {
     return this->fwd_map.cbegin();
@@ -144,9 +93,6 @@ struct bidict {
   operator std::unordered_map<L, R> const &() const {
     return this->fwd_map;
   }
-  bidict(std::unordered_map<L, R> const &fwd_map,
-         std::unordered_map<R, L> const &bwd_map)
-      : fwd_map(fwd_map), bwd_map(bwd_map) {}
 
 private:
   friend struct bidict<R, L>;
@@ -158,3 +104,4 @@ private:
 } // namespace FlexFlow
 
 #endif
+
