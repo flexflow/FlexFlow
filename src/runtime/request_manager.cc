@@ -949,7 +949,11 @@ BeamSearchBatchConfig
       // i);
       if (new_bc.requestsInfo[i].token_start_offset >= request.tokens.size()) {
         // Incremental phase
-        new_bc.requestsInfo[i].num_tokens_in_batch = 1;
+        if (request.status == Request::RUNNING) {
+          new_bc.requestsInfo[i].num_tokens_in_batch = 1;
+        } else {
+          new_bc.requestsInfo[i].num_tokens_in_batch = 0;
+        }
 
         if (verbose) {
           std::cout << "[ Beam Spec] " << request.guid << std::endl;
@@ -992,9 +996,11 @@ BeamSearchBatchConfig
 
           // get value from requestinfo
           if (request.status == Request::RUNNING) {
+            std::cout << "[running ]Num of token in batch: " << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
             new_bc.tokensInfo[new_bc.num_tokens].token_id =
                 new_bc.beamRequestsInfo[i].tokens[k];
           } else {
+            std::cout << "[pending ]Num of token in batch: " << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
             new_bc.tokensInfo[new_bc.num_tokens].token_id =
                 request.tokens[request.tokens.size() - 1];
           }
