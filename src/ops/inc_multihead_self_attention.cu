@@ -1105,28 +1105,27 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_SEQ_LENGTH * num_q_heads;
     size_t attn_heads_size =
         BatchConfig::MAX_NUM_TOKENS * num_q_heads * vProjSize;
-    size_t W_out_block_size = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-    size_t W_out_contiguous_size = W_out_block_size * num_q_heads;
     size_t complex_size =
         (BatchConfig::MAX_NUM_TOKENS *
          (qProjSize * num_q_heads + kProjSize * num_kv_heads)) /
         2;
     size_t totalSize =
         (qkv_max_proj_size + key_cache_size + value_cache_size +
-         2 * qk_prod_size + attn_heads_size + W_out_contiguous_size) *
+         2 * qk_prod_size + attn_heads_size) *
             size_of_dt +
         tokeninfo_size * sizeof(BatchConfig::PerTokenInfo) +
         complex_size * sizeof(cuFloatComplex); // more components will
                                                // be added here later
     if (offload) {
       // assert that we have enough reserved work space left
+      // memory can be shared across layers
       size_t totalSharedSize =
           infer_mode == TREE_VERIFY_MODE
               ? totalSize -
                     (key_cache_size + value_cache_size + qkv_max_proj_size) *
                         size_of_dt
               : totalSize - (key_cache_size + value_cache_size) * size_of_dt;
-
+      // memory can't be shared across layers.
       size_t instance_size =
           size_of_dt *
           (infer_mode == TREE_VERIFY_MODE
@@ -1174,9 +1173,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       attn_heads = gpu_mem_allocator.allocate_reserved_untyped(attn_heads_size *
                                                                size_of_dt);
       // offset += attn_heads_size * size_of_dt;
-      W_out_contiguous = gpu_mem_allocator.allocate_reserved_untyped(
-          W_out_contiguous_size * size_of_dt);
-      // offset += W_out_contiguous_size * size_of_dt;
       complex_input =
           gpu_mem_allocator.allocate_reserved<cuFloatComplex>(complex_size);
       // offset += complex_size * sizeof(cuFloatComplex);
@@ -1190,8 +1186,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
           qk_prod_size * size_of_dt);
       attn_heads = gpu_mem_allocator.allocate_instance_untyped(attn_heads_size *
                                                                size_of_dt);
-      W_out_contiguous = gpu_mem_allocator.allocate_instance_untyped(
-          W_out_contiguous_size * size_of_dt);
       complex_input =
           gpu_mem_allocator.allocate_instance<cuFloatComplex>(complex_size);
     }
