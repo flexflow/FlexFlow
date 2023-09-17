@@ -277,47 +277,51 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("[AddBiasResidualLayerNorm] forward time (CF) = %.9fms\n", elapsed);
-    if (m->input_type[0] == DT_FLOAT) {
-      print_tensor<float>(input.get_float_ptr(),
-                          32,
-                          "[AddBiasResidualLayerNorm:forward:input]");
-      print_tensor<float>(attn_bias.get_float_ptr(),
-                          32,
-                          "[AddBiasResidualLayerNorm:forward:attn_bias]");
-      print_tensor<float>(residual.get_float_ptr(),
-                          32,
-                          "[AddBiasResidualLayerNorm:forward:residual]");
-      print_tensor<float>(added_output.get_float_ptr(),
-                          32,
-                          "[AddBiasResidualLayerNorm:forward:added_output]");
-      print_tensor<float>(output.get_float_ptr(),
-                          32,
-                          "[AddBiasResidualLayerNorm:forward:output]");
-      print_tensor<float>(gamma.get_float_ptr(),
-                          32,
-                          "[AddBiasResidualLayerNorm:forward:gamma]");
-      print_tensor<float>(
-          beta.get_float_ptr(), 32, "[AddBiasResidualLayerNorm:forward:beta]");
-    } else {
-      print_tensor<half>(
-          input.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:input]");
-      print_tensor<half>(attn_bias.get_half_ptr(),
-                         32,
-                         "[AddBiasResidualLayerNorm:forward:attn_bias]");
-      print_tensor<half>(residual.get_half_ptr(),
-                         32,
-                         "[AddBiasResidualLayerNorm:forward:residual]");
-      print_tensor<half>(added_output.get_half_ptr(),
-                         32,
-                         "[AddBiasResidualLayerNorm:forward:added_output]");
-      print_tensor<half>(output.get_half_ptr(),
-                         32,
-                         "[AddBiasResidualLayerNorm:forward:output]");
-      print_tensor<half>(
-          gamma.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:gamma]");
-      print_tensor<half>(
-          beta.get_half_ptr(), 32, "[AddBiasResidualLayerNorm:forward:beta]");
-    }
+    // if (m->input_type[0] == DT_FLOAT) {
+    //   print_tensor<float>(input.get_float_ptr(),
+    //                       32,
+    //                       "[AddBiasResidualLayerNorm:forward:input]");
+    //   print_tensor<float>(attn_bias.get_float_ptr(),
+    //                       32,
+    //                       "[AddBiasResidualLayerNorm:forward:attn_bias]");
+    //   print_tensor<float>(residual.get_float_ptr(),
+    //                       32,
+    //                       "[AddBiasResidualLayerNorm:forward:residual]");
+    //   print_tensor<float>(added_output.get_float_ptr(),
+    //                       32,
+    //                       "[AddBiasResidualLayerNorm:forward:added_output]");
+    //   print_tensor<float>(output.get_float_ptr(),
+    //                       32,
+    //                       "[AddBiasResidualLayerNorm:forward:output]");
+    //   print_tensor<float>(gamma.get_float_ptr(),
+    //                       32,
+    //                       "[AddBiasResidualLayerNorm:forward:gamma]");
+    //   print_tensor<float>(
+    //       beta.get_float_ptr(), 32,
+    //       "[AddBiasResidualLayerNorm:forward:beta]");
+    // } else {
+    //   print_tensor<half>(
+    //       input.get_half_ptr(), 32,
+    //       "[AddBiasResidualLayerNorm:forward:input]");
+    //   print_tensor<half>(attn_bias.get_half_ptr(),
+    //                      32,
+    //                      "[AddBiasResidualLayerNorm:forward:attn_bias]");
+    //   print_tensor<half>(residual.get_half_ptr(),
+    //                      32,
+    //                      "[AddBiasResidualLayerNorm:forward:residual]");
+    //   print_tensor<half>(added_output.get_half_ptr(),
+    //                      32,
+    //                      "[AddBiasResidualLayerNorm:forward:added_output]");
+    //   print_tensor<half>(output.get_half_ptr(),
+    //                      32,
+    //                      "[AddBiasResidualLayerNorm:forward:output]");
+    //   print_tensor<half>(
+    //       gamma.get_half_ptr(), 32,
+    //       "[AddBiasResidualLayerNorm:forward:gamma]");
+    //   print_tensor<half>(
+    //       beta.get_half_ptr(), 32,
+    //       "[AddBiasResidualLayerNorm:forward:beta]");
+    // }
     // print_tensor<T>(in_ptr, 32, "[AddBiasResidualLayerNorm:forward:input]");
     // print_tensor<T>(out_ptr, 32,
     // "[AddBiasResidualLayerNorm:forward:output]");
