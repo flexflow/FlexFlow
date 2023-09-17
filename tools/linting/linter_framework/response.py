@@ -4,21 +4,21 @@ import sys
 from typing import Any, Optional
 
 @dataclass(frozen=True)
-class LintResponse:
+class Response:
     return_code: int
     data: Any = None
     json_data: Any = None
     message: Optional[str] = None
     @staticmethod
-    def success(**kwargs) -> 'LintResponse':
-        return LintResponse(
+    def success(**kwargs) -> 'Response':
+        return Response(
             return_code=0,
             **kwargs,
         )
 
     @staticmethod
-    def failure(**kwargs) -> 'LintResponse':
-        return LintResponse(
+    def failure(**kwargs) -> 'Response':
+        return Response(
             return_code=1,
             **kwargs,
         )

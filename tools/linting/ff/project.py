@@ -45,6 +45,10 @@ class Project:
     @property
     def tools_download_dir(self) -> AbsolutePath:
         return self.root_path / '.tools'
+
+    @property
+    def state_dir(self) -> AbsolutePath:
+        return self.root_path / '.state'
     
     @property
     def clang_format_config_path(self) -> AbsolutePath:

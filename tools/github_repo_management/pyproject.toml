@@ -1,0 +1,9 @@
+name = 'ff_repo'
+requires-python = '>=3.6'
+readme = 'README.md'
+
+dependencies = [
+  pygithub 
+  frozendict
+  sqlitedict
+]
