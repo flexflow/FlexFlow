@@ -533,14 +533,14 @@ public:
                     char const *name = NULL);
   // Add a add_bias_residual_layer_norm layer
   void add_bias_residual_layer_norm(const Tensor input,
-                                   const Tensor residual,
-                                   Tensor *outputs,
-                                   std::vector<int> const &axes,
-                                   bool elementwise_affine,
-                                   float eps,
-                                   bool use_bias = true,
-                                   DataType data_type = DT_NONE,
-                                   char const *name = NULL);
+                                    const Tensor residual,
+                                    Tensor *outputs,
+                                    std::vector<int> const &axes,
+                                    bool elementwise_affine,
+                                    float eps,
+                                    bool use_bias = true,
+                                    DataType data_type = DT_NONE,
+                                    char const *name = NULL);
   // Add a batch_norm layer
   Tensor
       batch_norm(const Tensor input, bool relu = true, char const *name = NULL);

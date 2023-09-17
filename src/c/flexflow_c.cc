@@ -665,16 +665,23 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
                                        use_bias,
                                        input->data_type,
                                        name);
-  DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, elementwise_affine %d, eps "
+  assert(tensor_outputs[0] != nullptr);
+  assert(tensor_outputs[1] != nullptr);
+  DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, residual %p, output0: %p, "
+              "output1: %p, elementwise_affine %d, eps "
               "%f, name %s",
               tensor,
               input,
+              residual,
+              tensor_outputs[0],
+              tensor_outputs[1],
               elementwise_affine,
               eps,
               name);
-  flexflow_tensor_t tensor_outputs_wrapped[2] = {
-      FFCObjectWrapper::wrap(tensor_outputs[0]),
-      FFCObjectWrapper::wrap(tensor_outputs[1])};
+  flexflow_tensor_t *tensor_outputs_wrapped =
+      (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
+  tensor_outputs_wrapped[0] = FFCObjectWrapper::wrap(tensor_outputs[0]);
+  tensor_outputs_wrapped[1] = FFCObjectWrapper::wrap(tensor_outputs[1]);
   return tensor_outputs_wrapped;
 }
 
