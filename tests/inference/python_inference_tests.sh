@@ -157,10 +157,10 @@ check_partial_token_match "../../inference/output/incr_dec-python-opt-6.7b-half_
 ######################### Alignment tests with HuggingFace ####################################
 
 # LLAMA (small model, full precision)
-python3 ./huggingface_inference.py --model-name "JackFram/llama-160m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M.txt" --gpu
+python3 ./huggingface_inference.py --model-name "JackFram/llama-160m-base" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M.txt" --gpu
 
 # LLAMA (small model, half precision)
-python3 ./huggingface_inference.py --model-name "JackFram/llama-160m" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M_half.txt" --gpu
+python3 ./huggingface_inference.py --model-name "JackFram/llama-160m-base" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M_half.txt" --gpu
 
 # LLAMA (big model, full precision)
 python3 ./huggingface_inference.py --model-name "decapoda-research/llama-7b-hf" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_7B.txt"
