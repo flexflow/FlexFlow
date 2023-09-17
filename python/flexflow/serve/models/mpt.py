@@ -30,6 +30,7 @@ class MPTConfig:
         hf_config.num_attention_heads = hf_config.n_heads
         hf_config.hidden_size = hf_config.d_model
 
+
 class FlexFlowMPT(FlexFlowModel):
     def __init__(
         self,
@@ -57,22 +58,15 @@ class FlexFlowMPT(FlexFlowModel):
         self.maxint = 2**31 - 1
 
         # Sanity checks
-        if (
-            self.mpt_config.hidden_size
-            % self.mpt_config.n_heads
-            != 0
-        ):
+        if self.mpt_config.hidden_size % self.mpt_config.n_heads != 0:
             raise ValueError(
                 f"Hidden size ({self.mpt_config.hidden_size}) is not divisible by n_head ({self.mpt_config.n_heads})"
             )
 
         # Sanity checks
         if (
-            self.mpt_config.n_heads
-            < self.ffconfig.tensor_parallelism_degree
-            or self.mpt_config.n_heads
-            % self.ffconfig.tensor_parallelism_degree
-            != 0
+            self.mpt_config.n_heads < self.ffconfig.tensor_parallelism_degree
+            or self.mpt_config.n_heads % self.ffconfig.tensor_parallelism_degree != 0
         ):
             raise ValueError(
                 f"Number of attention heads ({self.mpt_config.n_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
@@ -131,7 +125,7 @@ class FlexFlowMPT(FlexFlowModel):
                     (self.mpt_config.hidden_size / self.mpt_config.n_heads)
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
-                    True, # qk_prod_scaling
+                    True,  # qk_prod_scaling
                     name=f"layers_{i}_attention_weight",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
@@ -152,7 +146,7 @@ class FlexFlowMPT(FlexFlowModel):
                     (self.mpt_config.hidden_size / self.mpt_config.n_heads)
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
-                    True, # qk_prod_scaling
+                    True,  # qk_prod_scaling
                     name=f"layers_{i}_attention_weight",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
@@ -173,7 +167,7 @@ class FlexFlowMPT(FlexFlowModel):
                     (self.mpt_config.hidden_size / self.mpt_config.n_heads)
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
-                    True, # qk_prod_scaling
+                    True,  # qk_prod_scaling
                     name=f"layers_{i}_attention_weight",
                 )
             else:
@@ -240,7 +234,7 @@ class FlexFlowMPT(FlexFlowModel):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
             name = name.replace("transformer.blocks.", "layers.").replace(".", "_")
-            if 'Wqkv' in name:
+            if "Wqkv" in name:
                 name_q = name.replace("attn_Wqkv", "attention_wq")
                 name_k = name.replace("attn_Wqkv", "attention_wk")
                 name_v = name.replace("attn_Wqkv", "attention_wv")
@@ -256,7 +250,7 @@ class FlexFlowMPT(FlexFlowModel):
                 q.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_q))
                 k.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_k))
                 v.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_v))
-            elif 'out_proj' in name:
+            elif "out_proj" in name:
                 name = name.replace("attn_out_proj", "attention_wo")
                 params.detach().cpu().numpy().tofile(os.path.join(dst_folder, name))
             else:
@@ -266,6 +260,7 @@ class FlexFlowMPT(FlexFlowModel):
             os.path.join(dst_folder, "transformer_wte_weight"),
             os.path.join(dst_folder, "lm_head_weight"),
         )
+
     def get_layers_with_weights(self):
         layer_names = [
             "transformer_wte_weight",
