@@ -4,6 +4,10 @@ from .file_type import file_type_of_path, FileType, find_in_path_with_file_type
 from .file import LogicalFile
 from typing import Set
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .project import Project
+
 def include_path(library_root: AbsolutePath) -> AbsolutePath:
     return library_root / 'include'
 
@@ -27,6 +31,7 @@ def get_library_name(library_root: AbsolutePath) -> str:
 class Library:
     name: str
     root_path: AbsolutePath
+    project: 'Project'
 
     @property
     def src_path(self) -> AbsolutePath:
@@ -58,6 +63,9 @@ class Library:
             return True
         return False
 
+    def get_library_relative_logical_path(self, file_path: AbsolutePath) -> LogicalPath['Library']:
+        return LogicalPath.create(self.root_path, file_path)
+
     def find_logical_files(self) -> frozenset[LogicalFile]:
         logical_files: Set[LogicalFile] = set()
         for p in find_in_path_with_file_type(self.root_path, file_types=FileType.all()):
@@ -66,10 +74,11 @@ class Library:
         return frozenset(logical_files)
 
     @classmethod
-    def create(cls, root_path: AbsolutePath) -> 'Library':
+    def create(cls, root_path: AbsolutePath, project: 'Project') -> 'Library':
         assert is_library_root(root_path)
         return cls(
             name=get_library_name(root_path),
-            root_path=root_path
+            root_path=root_path,
+            project=project
         )
 

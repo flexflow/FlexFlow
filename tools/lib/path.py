@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path, PosixPath
-from typing import Union, Iterator, List, Generator
+from typing import Union, Iterator, Generator, TypeVar, Generic
 import functools
 
 @functools.cache
@@ -49,8 +49,10 @@ class AbsolutePath(PosixPath):
 def with_all_suffixes_removed(p: Union[Path, AbsolutePath]):
     return p.with_name(p.name[:-len(''.join(p.suffixes))])
 
+T = TypeVar('T')
+
 @dataclass(frozen=True)
-class LogicalPath:
+class LogicalPath(Generic[T]):
     raw: Path
 
     @classmethod
