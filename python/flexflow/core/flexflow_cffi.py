@@ -1595,10 +1595,9 @@ class FFModel(object):
   def add_bias_residual_layer_norm(self, input, residual, axes, elementwise_affine=True, eps=1e-5, use_bias = True, name=None):
     c_name = get_c_name(name)
     c_axes = ffi.new("int[]", axes)
-    # TODO: figure out how to get two outputs from C++
-    handle1, handle2 = ffc().flexflow_model_add_add_bias_residual_layer_norm(self.handle, input.handle, residual.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
+    handles_array = ffc().flexflow_model_add_add_bias_residual_layer_norm(self.handle, input.handle, residual.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
     self.add_layer(OpType.ADD_BIAS_RESIDUAL_LAYERNORM, name)
-    return Tensor(handle, owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM)
+    return Tensor(handles_array[0], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM), Tensor(handles_array[1], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM)
 
   def batch_matmul(self, A, B, a_seq_length_dim=None, b_seq_length_dim=None, name=None):
     """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.

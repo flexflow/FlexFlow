@@ -61,15 +61,15 @@ AddBiasResidualLayerNormParams AddBiasResidualLayerNorm::get_params() const {
   return params;
 }
 
-std::pair<Tensor, Tensor>
-    FFModel::add_bias_residual_layer_norm(const Tensor input,
-                                          const Tensor residual,
-                                          std::vector<int> const &axes,
-                                          bool elementwise_affine,
-                                          float eps,
-                                          bool use_bias,
-                                          DataType data_type,
-                                          char const *name) {
+void FFModel::add_bias_residual_layer_norm(const Tensor input,
+                                           const Tensor residual,
+                                           Tensor *outputs,
+                                           std::vector<int> const &axes,
+                                           bool elementwise_affine,
+                                           float eps,
+                                           bool use_bias,
+                                           DataType data_type,
+                                           char const *name) {
   // In PyTorch, axes must be the sizes of the last axes.size() dimensions of
   // the input tensor. However, since the tensor dimensions are reversed in
   // FlexFlow (batch size is the last dimension), we require that axes must be
@@ -177,7 +177,8 @@ std::pair<Tensor, Tensor>
   ln->add_int_vector_property("axes", axes);
   ln->add_float_property("eps", eps);
   layers.push_back(ln);
-  return std::make_pair<Tensor &, Tensor &>(ln->outputs[0], ln->outputs[1]);
+  outputs[0] = ln->outputs[0];
+  outputs[1] = ln->outputs[1];
 }
 
 Op *AddBiasResidualLayerNorm::create_operator_from_layer(

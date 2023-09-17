@@ -197,17 +197,18 @@ void OPT::create_opt_model(FFModel &ff,
 
     layer_name =
         "layers_" + std::to_string(i) + "_add_bias_residual_layer_norm";
-    auto pair = ff.add_bias_residual_layer_norm(
-        mha,
-        residual,
-        axes,
-        opt_config.layer_norm_elementwise_affine,
-        1e-05,
-        true,
-        DT_NONE,
-        layer_name.c_str());
-    Tensor added = pair.first;
-    Tensor final_norm = pair.second;
+    Tensor added_final_norm[2];
+    ff.add_bias_residual_layer_norm(mha,
+                                    residual,
+                                    added_final_norm,
+                                    axes,
+                                    opt_config.layer_norm_elementwise_affine,
+                                    1e-05,
+                                    true,
+                                    DT_NONE,
+                                    layer_name.c_str());
+    Tensor added = added_final_norm[0];
+    Tensor final_norm = added_final_norm[1];
 
     //--------linear fc1 fc2 ----------
     layer_name = "layers_" + std::to_string(i) + "_fc1";

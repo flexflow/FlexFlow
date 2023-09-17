@@ -638,6 +638,46 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    const flexflow_tensor_t residual_,
+    int n,
+    int *axes,
+    bool elementwise_affine,
+    float eps,
+    bool use_bias,
+    char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor input = FFCObjectWrapper::unwrap(input_);
+  const Tensor residual = FFCObjectWrapper::unwrap(residual_);
+  Tensor tensor_outputs[2];
+  std::vector<int> axes_vec;
+  for (int i = 0; i < n; i++) {
+    axes_vec.push_back(axes[i]);
+  }
+  handle->add_bias_residual_layer_norm(input,
+                                       residual,
+                                       tensor_outputs,
+                                       axes_vec,
+                                       elementwise_affine,
+                                       eps,
+                                       use_bias,
+                                       input->data_type,
+                                       name);
+  DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, elementwise_affine %d, eps "
+              "%f, name %s",
+              tensor,
+              input,
+              elementwise_affine,
+              eps,
+              name);
+  flexflow_tensor_t tensor_outputs_wrapped[2] = {
+      FFCObjectWrapper::wrap(tensor_outputs[0]),
+      FFCObjectWrapper::wrap(tensor_outputs[1])};
+  return tensor_outputs_wrapped;
+}
+
 flexflow_tensor_t flexflow_model_add_batch_matmul(flexflow_model_t handle_,
                                                   const flexflow_tensor_t a_,
                                                   const flexflow_tensor_t b_,
