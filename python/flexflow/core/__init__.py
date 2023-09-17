@@ -86,7 +86,7 @@ ff_arg_to_sysarg = {
     "offload": "-offload",
     "offload_reserve_space_size": "-offload-reserve-space-size",
     "use_4bit_quantization": "--4bit-quantization",
-    "use_8bit_quantization": "--8bit-quantization",
+    "use_8bit_quantization": "--8bit-quantization"
 }
 
 
@@ -139,9 +139,7 @@ def init_flexflow_runtime(configs_dict: Optional[dict] = None, **kwargs):
         else:
             # print("Using FlexFlow Python")
             if configs_dict is not None or len(kwargs.items()) > 0:
-                warnings.warn(
-                    "init_flexflow_runtime are ignored when using the FlexFlow Python interpreter"
-                )
+                warnings.warn("init_flexflow_runtime are ignored when using the FlexFlow Python interpreter")
 
         flexflow_library.initialize()
         set_flexflow_initialized()
