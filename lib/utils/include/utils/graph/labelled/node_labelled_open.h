@@ -10,7 +10,7 @@ struct NodeLabelledOpenMultiDiGraph {
   NodeLabelledOpenMultiDiGraph &
       operator=(NodeLabelledOpenMultiDiGraph const &) = default;
 
-  operator OpenMultiDiGraphView();
+  operator OpenMultiDiGraphView() const;
 
   NodeLabel const &at(Node const &node) const;
 };

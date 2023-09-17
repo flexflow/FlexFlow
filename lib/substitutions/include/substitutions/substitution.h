@@ -3,6 +3,7 @@
 
 #include "graph_pattern.h"
 #include "output_graph.h"
+#include "sub_parallel_computation_graph.h"
 
 namespace FlexFlow {
 
@@ -20,9 +21,10 @@ struct Substitution {
 
 bool is_valid_substitution(Substitution const &);
 
-ParallelComputationGraph apply_substitution(ParallelComputationGraph const &,
-                                            Substitution const &,
-                                            MultiDiGraphPatternMatch const &);
+SubParallelComputationGraph
+    apply_substitution(SubParallelComputationGraph const &,
+                       Substitution const &,
+                       MultiDiGraphPatternMatch const &);
 
 } // namespace FlexFlow
 

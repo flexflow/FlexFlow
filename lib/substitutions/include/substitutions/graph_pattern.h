@@ -4,7 +4,7 @@
 #include "graph_pattern_match.h"
 #include "operator_pattern.h"
 #include "parallel_tensor_pattern.h"
-#include "pcg/parallel_computation_graph.h"
+#include "sub_parallel_computation_graph.h"
 
 namespace FlexFlow {
 
@@ -20,7 +20,7 @@ GraphSplit split_pattern(OpenMultiDiGraphView const &pattern);
 
 bool is_singleton_pattern(OpenMultiDiGraphView const &);
 
-bool assignment_satisfies(ParallelComputationGraph const &,
+bool assignment_satisfies(SubParallelComputationGraph const &,
                           GraphPattern const &,
                           MultiDiGraphPatternMatch const &);
 

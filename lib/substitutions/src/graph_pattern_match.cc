@@ -177,7 +177,8 @@ optional<MultiDiGraphPatternMatch> unsplit_matches(
     handled.insert(output_edge);
     handled.insert(input_edge);
 
-    OpenMultiDiEdge output_graph_edge = prefix.edge_assignment.at_l(output_edge);
+    OpenMultiDiEdge output_graph_edge =
+        prefix.edge_assignment.at_l(output_edge);
     OpenMultiDiEdge input_graph_edge = postfix.edge_assignment.at_l(input_edge);
     if (output_graph_edge == input_graph_edge) {
       result.edge_assignment.equate(standard_edge, output_graph_edge);

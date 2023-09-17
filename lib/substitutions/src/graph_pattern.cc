@@ -218,7 +218,7 @@ struct AlwaysTrueCriterion {
   }
 };
 
-bool assignment_satisfies(ParallelComputationGraph const &pcg,
+bool assignment_satisfies(SubParallelComputationGraph const &pcg,
                           GraphPattern const &pattern,
                           MultiDiGraphPatternMatch const &patternMatch) {
   bool result = true;
@@ -226,7 +226,7 @@ bool assignment_satisfies(ParallelComputationGraph const &pcg,
     auto patternNode = kv.first;
     auto pcgNode = kv.second;
     optional<bool> constraintResult =
-        satisfies(pcg.value().at(pcgNode), pattern.value().at(patternNode));
+        satisfies(pcg.at(pcgNode), pattern.value().at(patternNode));
     result &= constraintResult.value_or(false);
   }
 
@@ -234,7 +234,7 @@ bool assignment_satisfies(ParallelComputationGraph const &pcg,
     auto patternEdge = kv.first;
     auto pcgEdge = kv.second;
     optional<bool> constraintResult =
-        satisfies(pcg.value().at(pcgEdge), pattern.value().at(patternEdge));
+        satisfies(at(pcg, pcgEdge), pattern.value().at(patternEdge));
     result &= constraintResult.value_or(false);
   }
 
