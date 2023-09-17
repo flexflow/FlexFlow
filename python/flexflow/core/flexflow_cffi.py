@@ -570,7 +570,7 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return BatchNorm(handle, idx, name)
   elif op_type == OpType.LAYER_NORM:
     return LayerNorm(handle, idx, name)
-  elif op_type == OpType.OP_ADD_BIAS_RESIDUAL_LAYERNORM:
+  elif op_type == OpType.ADD_BIAS_RESIDUAL_LAYERNORM:
     return AddBiasResidualLayerNorm(handle, idx, name)
   elif op_type == OpType.BATCH_MATMUL:
     return Batch_Matmul(handle, idx, name)
