@@ -93,7 +93,7 @@ class FlexFlowLLAMA(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="tok_embeddings_weight",
+            name="tok_embeddings",
         )
 
         for i in range(self.llama_config.num_hidden_layers):
@@ -103,7 +103,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                 token,
                 self.llama_config.rms_norm_eps,
                 self.llama_config.hidden_size,
-                name=f"layers_{i}_attention_norm_weight",
+                name=f"layers_{i}_attention_norm",
             )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
@@ -123,7 +123,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention_weight",
+                    name=f"layers_{i}_attention",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 mha = ffmodel.inc_multiquery_self_attention_verify(
@@ -142,7 +142,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention_weight",
+                    name=f"layers_{i}_attention",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 mha = ffmodel.inc_multiquery_self_attention(
@@ -161,7 +161,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention_weight",
+                    name=f"layers_{i}_attention",
                 )
             else:
                 assert False
@@ -171,21 +171,21 @@ class FlexFlowLLAMA(FlexFlowModel):
                 token,
                 self.llama_config.rms_norm_eps,
                 self.llama_config.hidden_size,
-                name=f"layers_{i}_ffn_norm_weight",
+                name=f"layers_{i}_ffn_norm",
             )
             w1 = ffmodel.dense(
                 ff_norm,
                 self.llama_config.intermediate_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_feed_forward_w1_weight",
+                name=f"layers_{i}_feed_forward_w1",
             )
             w3 = ffmodel.dense(
                 ff_norm,
                 self.llama_config.intermediate_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_feed_forward_w3_weight",
+                name=f"layers_{i}_feed_forward_w3",
             )
             sigmoid = ffmodel.sigmoid(w1)
             silu = ffmodel.multiply(w1, sigmoid)
@@ -195,7 +195,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                 self.llama_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_feed_forward_w2_weight",
+                name=f"layers_{i}_feed_forward_w2",
             )
             token = ffmodel.add(token, w2)
 
@@ -203,14 +203,14 @@ class FlexFlowLLAMA(FlexFlowModel):
             token,
             self.llama_config.rms_norm_eps,
             self.llama_config.hidden_size,
-            name="norm_weight",
+            name="norm",
         )
         dense = ffmodel.dense(
             token,
             self.llama_config.vocab_size,
             ActiMode.AC_MODE_NONE,
             False,
-            name="output_weight",
+            name="output",
         )
 
         if self.mode == InferenceMode.BEAM_SEARCH_MODE:

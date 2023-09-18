@@ -94,7 +94,7 @@ class FlexFlowMPT(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="transformer_wte_weight",
+            name="transformer_wte",
         )
 
         axes = [
@@ -110,7 +110,7 @@ class FlexFlowMPT(FlexFlowModel):
                 True,
                 1e-05,
                 False,
-                name=f"layers_{i}_norm_1_weight",
+                name=f"layers_{i}_norm_1",
             )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
@@ -132,7 +132,7 @@ class FlexFlowMPT(FlexFlowModel):
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
                     True, # qk_prod_scaling
-                    name=f"layers_{i}_attention_weight",
+                    name=f"layers_{i}_attention",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 attn_outputs = ffmodel.inc_multihead_self_attention_verify(
@@ -153,7 +153,7 @@ class FlexFlowMPT(FlexFlowModel):
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
                     True, # qk_prod_scaling
-                    name=f"layers_{i}_attention_weight",
+                    name=f"layers_{i}_attention",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 attn_outputs = ffmodel.inc_multihead_self_attention(
@@ -174,7 +174,7 @@ class FlexFlowMPT(FlexFlowModel):
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
                     True, # qk_prod_scaling
-                    name=f"layers_{i}_attention_weight",
+                    name=f"layers_{i}_attention",
                 )
             else:
                 assert False
@@ -187,7 +187,7 @@ class FlexFlowMPT(FlexFlowModel):
                 True,
                 1e-05,
                 False,
-                name=f"layers_{i}_norm_2_weight",
+                name=f"layers_{i}_norm_2",
             )
             residual = hidden_states
             # mlp
@@ -197,7 +197,7 @@ class FlexFlowMPT(FlexFlowModel):
                 4 * self.mpt_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_ffn_up_proj_weight",
+                name=f"layers_{i}_ffn_up_proj",
             )
             layernorm_output = ffmodel.gelu(layernorm_output)
             intermediate_output = ffmodel.dense(
@@ -205,7 +205,7 @@ class FlexFlowMPT(FlexFlowModel):
                 self.mpt_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_ffn_down_proj_weight",
+                name=f"layers_{i}_ffn_down_proj",
             )
             hidden_states = ffmodel.add(intermediate_output, residual)
 
@@ -215,14 +215,14 @@ class FlexFlowMPT(FlexFlowModel):
             True,
             1e-05,
             False,
-            name=f"transformer_norm_f_weight",
+            name=f"transformer_norm_f",
         )
         lm_head = ffmodel.dense(
             all_final_norm,
             self.mpt_config.vocab_size,
             ActiMode.AC_MODE_NONE,
             False,
-            name="lm_head_weight",
+            name="lm_head",
         )
 
         if self.generation_config.do_sample:
