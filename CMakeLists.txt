@@ -502,6 +502,7 @@ if(NOT BUILD_LEGION_ONLY)
       install(PROGRAMS ${CMAKE_BINARY_DIR}/flexflow_python DESTINATION "bin")
     endif()
   endif()
+endif()
 
 if (INFERENCE_TESTS)
   target_link_libraries(flexflow "${TORCH_LIBRARIES}")
