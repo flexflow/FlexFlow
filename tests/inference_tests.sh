@@ -29,6 +29,9 @@ echo '["Give three tips for staying healthy."]' > ../inference/prompt/test.json
 # Create output folder
 mkdir -p ../inference/output
 
+# Turn on backtrace logging in case of a crash
+export LEGION_BACKTRACE=1
+
 if [[ "$PYTHON_INFERENCE_TESTS" == "ON" ]]; then
     echo "Running Python inference tests..."
     ./inference/python_inference_tests.sh
