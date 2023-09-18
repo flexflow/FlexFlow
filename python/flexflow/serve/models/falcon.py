@@ -98,7 +98,7 @@ class FlexFlowFalcon(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="word_embeddings_weight",
+            name="word_embeddings",
         )
         axes = [
             0,
@@ -112,7 +112,7 @@ class FlexFlowFalcon(FlexFlowModel):
                 axes,
                 True,
                 self.falcon_config.layer_norm_epsilon,
-                name=f"layers_{i}_input_layernorm_weight",
+                name=f"layers_{i}_input_layernorm",
             )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
@@ -130,7 +130,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention_weight",
+                    name=f"layers_{i}_attention",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 mha = ffmodel.inc_multiquery_self_attention_verify(
@@ -147,7 +147,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention_weight",
+                    name=f"layers_{i}_attention",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 mha = ffmodel.inc_multiquery_self_attention(
@@ -164,7 +164,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention_weight",
+                    name=f"layers_{i}_attention",
                 )
             else:
                 assert False
@@ -174,7 +174,7 @@ class FlexFlowFalcon(FlexFlowModel):
                 self.falcon_config.hidden_size * 4,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_mlp_dense_h_to_4h_weight",
+                name=f"layers_{i}_mlp_dense_h_to_4h",
             )
             dense_h_to_4h = ffmodel.gelu(dense_h_to_4h)
             mlp_output = ffmodel.dense(
@@ -182,21 +182,21 @@ class FlexFlowFalcon(FlexFlowModel):
                 self.falcon_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_mlp_dense_4h_to_h_weight",
+                name=f"layers_{i}_mlp_dense_4h_to_h",
             )
 
             token = ffmodel.add(token, mha)
             token = ffmodel.add(token, mlp_output)
 
         ln_f = ffmodel.layer_norm(
-            token, axes, True, self.falcon_config.layer_norm_epsilon, name="ln_f_weight"
+            token, axes, True, self.falcon_config.layer_norm_epsilon, name="ln_f"
         )
         lm_head = ffmodel.dense(
             ln_f,
             self.falcon_config.vocab_size,
             ActiMode.AC_MODE_NONE,
             False,
-            name="lm_head_weight",
+            name="lm_head",
         )
 
         if self.mode == InferenceMode.BEAM_SEARCH_MODE:
