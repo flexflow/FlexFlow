@@ -77,7 +77,7 @@ ENV CUDA_DIR /usr/local/cuda
 # Install python packages and other dependencies
 RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing
 # Install CPU-only Pytorch and related dependencies
-RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
+RUN conda install pytorch torchvision torchaudio -c pytorch
 RUN conda install -c conda-forge onnx transformers>=4.31.0 sentencepiece einops
 RUN pip3 install tensorflow notebook
 

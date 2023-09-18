@@ -1,7 +1,7 @@
 import argparse
 import json
 import os
-from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig, LlamaTokenizer
 
 def main():
     # Change working dir to folder storing this script
@@ -12,7 +12,6 @@ def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", type=str, required=True)
-    parser.add_argument("--tokenizer-model-name", type=str, required=True)
     parser.add_argument("--max-length", type=int, default=128)
     parser.add_argument("--prompt-file", type=str, required=True)
     parser.add_argument("--output-file", type=str, required=True)
@@ -46,15 +45,20 @@ def main():
 
     # Run huggingface model
     device = "cuda" if args.gpu else "cpu"
+    # Get Model
     model = AutoModelForCausalLM.from_pretrained(args.model_name).to(device)
-    if args.tokenizer_model_name == "JackFram/llama-160m":
-        tokenizer = LlamaTokenizer.from_pretrained("JackFram/llama-160m", use_fast=True)
+    # Get Tokenizer
+    hf_config = AutoConfig.from_pretrained(args.model_name, trust_remote_code=True)
+    hf_arch = getattr(hf_config, "architectures")[0]
+    if hf_arch == "LLaMAForCausalLM" or hf_arch == "LlamaForCausalLM":
+        tokenizer = LlamaTokenizer.from_pretrained(args.model_name, use_fast=True)
     else:
-        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_model_name)
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+    # Generate output
     with open(args.output_file, "w") as f:
         for i, prompt in enumerate(prompt_list):
             batch = tokenizer(
-                prompt_list, return_tensors="pt", add_special_tokens=True
+                prompt, return_tensors="pt", add_special_tokens=True
             ).to(device)
             generated = model.generate(batch["input_ids"], max_length=args.max_length)
             out = tokenizer.decode(generated[0])

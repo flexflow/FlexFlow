@@ -67,7 +67,7 @@ def get_configs():
             "ssms": [
                 {
                     # required ssm parameter
-                    "ssm_model": "JackFram/llama-160m",
+                    "ssm_model": "JackFram/llama-160m-base",
                     # optional ssm parameters
                     "cache_path": "",
                     "refresh_cache": False,
