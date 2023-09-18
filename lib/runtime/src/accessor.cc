@@ -172,7 +172,7 @@ static ArrayShape to_array_shape(Legion::Domain const &domain) {
   return {dimension_sizes};
 }
 
-GenericTensorAccessorR getGenericTensorAccessorRO(DataType datatype,
+GenericTensorAccessorR helperGetGenericTensorAccessorRO(DataType datatype,
                                                   Legion::PhysicalRegion region,
                                                   Legion::RegionRequirement req,
                                                   Legion::FieldID fid,

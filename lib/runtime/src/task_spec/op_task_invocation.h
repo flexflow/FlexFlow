@@ -24,9 +24,10 @@ enum class IsTrainable { YES, NO };
 
 struct OpTensorSpec {
   TensorRole role;
+  OpSlotOptions slot_option;
   req<int> idx;
 };
-FF_VISITABLE_STRUCT(OpTensorSpec, role, idx);
+FF_VISITABLE_STRUCT(OpTensorSpec, role, slot_option, idx);
 
 OpTensorSpec input_tensor(int);
 OpTensorSpec output_tensor(int);
@@ -51,16 +52,16 @@ struct OpArgSpecTypeAccessor {
     return spec.get_type_tag().get_type_idx();
   }
   std::type_index operator()(CheckedTypedFuture& spec) {
-    return spec.get_type_idx();
+    return spec.get_type_tag().get_type_idx();
   }
   std::type_index operator()(CheckedTypedFutureMap& spec) {
-    return spec.get_type_idx();
+    return spec.get_type_tag().get_type_idx();
   }
   std::type_index operator()(RuntimeArgRefSpec& spec) {
     return spec.get_type_tag().get_type_idx();
   }
   std::type_index operator()(TaskInvocationSpec& spec) {
-    return spec.get_type_idx();
+    return spec.get_type_tag().get_type_idx();
   }
 };
 

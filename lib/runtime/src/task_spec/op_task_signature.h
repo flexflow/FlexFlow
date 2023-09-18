@@ -95,6 +95,7 @@ private:
 };
 
 OpTaskSignature get_op_signature(task_id_t const &);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskSignature, get_tensor_slots, set_arg_types, get_arg_types);
 
 template <typename F>
 void register_task(task_id_t,
