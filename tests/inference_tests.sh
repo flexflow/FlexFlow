@@ -22,9 +22,6 @@ cleanup
 # Make sure supported version of protobuf is installed
 pip3 install protobuf==3.20.3
 
-# Download the weights in both half and full precision
-python3 ../inference/utils/download_hf_model.py "decapoda-research/llama-7b-hf" "JackFram/llama-160m-base" "facebook/opt-6.7b" "facebook/opt-125m" "tiiuae/falcon-7b"
-
 # Create test prompt file
 mkdir -p ../inference/prompt
 echo '["Give three tips for staying healthy."]' > ../inference/prompt/test.json
@@ -37,6 +34,8 @@ if [[ "$PYTHON_INFERENCE_TESTS" == "ON" ]]; then
     ./inference/python_inference_tests.sh
 fi
 if [[ "$CPP_INFERENCE_TESTS" == "ON" ]]; then
+    # Manually download the weights in both half and full precision
+    python3 ../inference/utils/download_hf_model.py "decapoda-research/llama-7b-hf" "JackFram/llama-160m-base" "facebook/opt-6.7b" "facebook/opt-125m" "tiiuae/falcon-7b"
     echo "Running C++ inference tests..."
     ./inference/cpp_inference_tests.sh
 fi
