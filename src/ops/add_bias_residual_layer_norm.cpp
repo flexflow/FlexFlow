@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/add_bias_residual_layer_norm.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
