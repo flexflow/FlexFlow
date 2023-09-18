@@ -9,9 +9,10 @@
 namespace FlexFlow {
 
 struct GatherAttrs {
-  ff_dim_t dim;
+  req<ff_dim_t> dim;
+  req<int> stride;
 };
-FF_VISITABLE_STRUCT(GatherAttrs, dim);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GatherAttrs, dim, stride);
 CHECK_VALID_OP_ATTR(GatherAttrs);
 
 } // namespace FlexFlow

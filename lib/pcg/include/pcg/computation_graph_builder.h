@@ -100,6 +100,7 @@ public:
   std::vector<Tensor> gather(Tensor const &input,
                              Tensor const &index,
                              ff_dim_t dim,
+                             int stride,
                              optional<std::string> const &name = nullopt);
   // Add a group_by layer
   void group_by(Tensor const &data,

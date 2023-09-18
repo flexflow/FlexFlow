@@ -291,8 +291,9 @@ std::vector<Tensor>
     ComputationGraphBuilder::gather(Tensor const &input,
                                     Tensor const &index,
                                     ff_dim_t dim,
+                                    int stride,
                                     optional<std::string> const &maybe_name) {
-  GatherAttrs attrs = {dim};
+  GatherAttrs attrs = {dim, stride};
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
   Layer layer = {attrs, name};
