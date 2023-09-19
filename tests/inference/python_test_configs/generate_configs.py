@@ -34,7 +34,7 @@ ssm_configs = {
     "ssms": [
         {
             # required ssm parameter
-            "ssm_model": "JackFram/llama-160m",
+            "ssm_model": "JackFram/llama-160m-base",
             # optional ssm parameters
             "cache_path": "",
             "refresh_cache": False,
@@ -46,7 +46,7 @@ ssm_configs = {
 ff_init_configs.update(llm_configs)
 
 # Test parameters to fill in
-llama_models = ["decapoda-research/llama-7b-hf", "JackFram/llama-160m"]
+llama_models = ["decapoda-research/llama-7b-hf", "JackFram/llama-160m-base"]
 opt_models = ["facebook/opt-6.7b", "facebook/opt-125m"]
 falcon_models = ["tiiuae/falcon-7b",]
 mpt_models = ["mosaicml/mpt-7b", ]
@@ -63,35 +63,35 @@ dname = os.path.dirname(abspath)
 os.chdir(dname)
 
 
-# # Generate incremental decoding configs
-# all_models = llama_models + opt_models + falcon_models + mpt_models
-# for model_name in all_models:
-#     for full_precision in (True, False):
-#         for parallelism_degrees in parallelism_settings:
+# Generate incremental decoding configs
+all_models = llama_models + opt_models + falcon_models + mpt_models
+for model_name in all_models:
+    for full_precision in (True, False):
+        for parallelism_degrees in parallelism_settings:
             
-#             tp, pp = parallelism_degrees
+            tp, pp = parallelism_degrees
 
-#             # Tensor parallelism not supported by small Falcon model atm
-#             if tp > 1 and ("falcon" in model_name or "starcoder" in model_name):
-#                 continue
-#             # skip tp=4 for big models
-#             if tp > 2 and ("7b" in model_name or "6.7b" in model_name):
-#                 continue
+            # Tensor parallelism not supported by small Falcon model atm
+            if tp > 1 and ("falcon" in model_name or "starcoder" in model_name):
+                continue
+            # skip tp=4 for big models
+            if tp > 2 and ("7b" in model_name or "6.7b" in model_name):
+                continue
             
-#             _, after_slash = model_name.rsplit("/", maxsplit=1)
-#             filename = "incr_dec-" + "python-" + after_slash + ("-full_prec-" if full_precision else "-half_prec-") + f"{tp}_tp_{pp}_pp"
-#             test_configs_file = "./" + filename + ".json"
-#             output_file = os.path.join(output_folder, filename+".txt")
+            _, after_slash = model_name.rsplit("/", maxsplit=1)
+            filename = "incr_dec-" + "python-" + after_slash + ("-full_prec-" if full_precision else "-half_prec-") + f"{tp}_tp_{pp}_pp"
+            test_configs_file = "./" + filename + ".json"
+            output_file = os.path.join(output_folder, filename+".txt")
             
-#             ff_init_configs["tensor_parallelism_degree"] = tp
-#             ff_init_configs["pipeline_parallelism_degree"] = pp
-#             ff_init_configs["llm_model"] = model_name
-#             ff_init_configs["full_precision"] = full_precision
-#             ff_init_configs["output_file"] = output_file
-#             ff_init_configs["prompt"] = prompt_file
+            ff_init_configs["tensor_parallelism_degree"] = tp
+            ff_init_configs["pipeline_parallelism_degree"] = pp
+            ff_init_configs["llm_model"] = model_name
+            ff_init_configs["full_precision"] = full_precision
+            ff_init_configs["output_file"] = output_file
+            ff_init_configs["prompt"] = prompt_file
 
-#             with open(test_configs_file, "w+") as outfile:
-#                 json.dump(ff_init_configs, outfile, indent=4)
+            with open(test_configs_file, "w+") as outfile:
+                json.dump(ff_init_configs, outfile, indent=4)
 
 # Generate speculative inference configs
 model_pairs = [llama_models, opt_models]
