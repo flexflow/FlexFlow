@@ -83,7 +83,7 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
                           prob_ptr,
                           batch_size,
                           m->beam_search);
-  print_tensor<int>(indices_ptr, 32, "argmax op");
+  // print_tensor<int>(indices_ptr, 32, "argmax op");
 }
 
 /*static*/
