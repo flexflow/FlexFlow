@@ -3,6 +3,7 @@
 
 #include "standard_labelled_interfaces.h"
 #include "utils/graph/open_graph_interfaces.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 
@@ -14,9 +15,11 @@ struct ILabelledOpenMultiDiGraphView
     : public IOpenMultiDiGraphView,
       public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
 public:
+
   std::unordered_set<MultiDiEdge>
       query_edges(MultiDiEdgeQuery const &q) const final {
-    return this->query_edges(static_cast<OpenMultiDiEdgeQuery>(q));
+    return map_over_unordered_set([](OpenMultiDiEdge const &e) { return get<MultiDiEdge>(e); },
+      IOpenMultiDiGraphView::query_edges(static_cast<OpenMultiDiEdgeQuery>(q)));
   }
 
   using ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>::at;
@@ -47,7 +50,9 @@ public:
   virtual InputLabel &at(InputMultiDiEdge const &e) = 0;
 
   virtual OutputLabel const &at(OutputMultiDiEdge const &e) const = 0;
-  virtual OutputLabel &at(DownwardOpenMultiDiEdge const &e) = 0;
+  virtual OutputLabel &at(OutputMultiDiEdge const &e) = 0;
+
+  using ILabelledMultiDiGraph<NodeLabel, EdgeLabel>::add_node;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledOpenMultiDiGraph<int, int, int, int>);
 
