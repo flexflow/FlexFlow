@@ -255,6 +255,7 @@ FutureMap Softmax::inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -429,11 +430,15 @@ void Softmax::backward_task_with_dim(Task const *task,
       m, acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
 }
 
-InferenceResult
-    Softmax::inference_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+void Softmax::inference_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
+  assert(task->regions.size() == regions.size());
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
+    return;
+  }
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
@@ -454,9 +459,6 @@ InferenceResult
     default:
       assert(false);
   }
-  // FIXME: replace this with actual result
-  InferenceResult ir;
-  return ir;
 }
 
 bool Softmax::get_int_parameter(PMParameter para, int *value) const {
