@@ -450,6 +450,7 @@ FutureMap LayerNorm::inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
