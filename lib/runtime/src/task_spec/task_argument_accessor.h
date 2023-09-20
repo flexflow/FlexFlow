@@ -76,9 +76,6 @@ region_idx_t get_region_idx(TaskArgumentsFormat const &,
                             parallel_tensor_guid_t const &);
 DataType get_datatype(TaskArgumentsFormat const &, region_idx_t const &);
 
-using ArgType = variant<TaskArgumentFormat, SimArg>;
-using ArgVariadicType = variant<std::vector<TaskArgumentFormat>, std::vector<SimArg>>;
-
 using PrivilegeType = variant<privilege_mode_to_accessor<Permissions::RW>,
                               privilege_mode_to_accessor<Permissions::RO>,
                               privilege_mode_to_accessor<Permissions::WO>>;
@@ -90,10 +87,6 @@ struct ITaskArgumentAccessor {
   virtual PrivilegeType get_tensor(slot_id slot, Permissions priv) const = 0;
 
   virtual PrivilegeVariadicType get_variadic_tensor(slot_id slot, Permissions priv) const = 0;
-
-  virtual optional<ArgType> get_optional_argument(slot_id) const = 0;
-
-  virtual ArgVariadicType get_variadic_argument(slot_id) const = 0;
 
   virtual PrivilegeType get_generic_accessor(region_idx_t const &idx, Permissions priv) const = 0;
 
@@ -213,6 +206,9 @@ private:
   size_t memory_usage;
 };
 
+using TaskArgumentAccessorBackend = variant<LegionTaskArgumentAccessor,
+                                        LocalTaskArgumentAccessor>;
+
 struct TaskArgumentAccessor {
   template <typename T>
   T const &get_argument(slot_id slot) const {
@@ -250,9 +246,9 @@ struct TaskArgumentAccessor {
   }
 
 private:
-  TaskArgumentAccessor(std::shared_ptr<ITaskArgumentAccessor const> &ptr)
+  TaskArgumentAccessor(std::shared_ptr<TaskArgumentAccessorBackend const> &ptr)
       : ptr(ptr) {}
-  std::shared_ptr<ITaskArgumentAccessor const> ptr;
+  std::shared_ptr<TaskArgumentAccessorBackend const> ptr;
 };
 
 } // namespace FlexFlow
