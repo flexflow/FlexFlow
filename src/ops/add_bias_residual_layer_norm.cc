@@ -551,6 +551,7 @@ FutureMap AddBiasResidualLayerNorm::inference(
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   // attn output
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
@@ -622,6 +623,10 @@ void AddBiasResidualLayerNorm::inference_task(
     Runtime *runtime) {
 
   assert(task->regions.size() == regions.size());
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
+    return;
+  }
 
   AddBiasResidualLayerNormMeta const *m =
       *((AddBiasResidualLayerNormMeta **)task->local_args);
