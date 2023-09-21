@@ -1,5 +1,6 @@
 from flexflow.keras.layers import Dense, Input, Maximum, Minimum
 import flexflow.keras.optimizers
+import flexflow.core as ff
 
 import numpy as np
 
@@ -54,7 +55,8 @@ def elementwise_min():
     epochs = 2
   )
 
-
 if __name__ == '__main__':
+    configs = ff.get_configs()
+    ff.init_flexflow_runtime(configs)
     elementwise_max()
     elementwise_min()

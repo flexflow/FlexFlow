@@ -52,10 +52,12 @@ enum TaskIDs {
   LOAD_IMAGES_TASK_ID,
   NORMALIZE_IMAGES_TASK_ID,
   ELEMENTBINARY_INIT_TASK_ID,
+  ELEMENTBINARY_INF_TASK_ID,
   ELEMENTBINARY_FWD_TASK_ID,
   ELEMENTBINARY_BWD_TASK_ID,
   ELEMENTUNARY_INIT_TASK_ID,
   ELEMENTUNARY_FWD_TASK_ID,
+  ELEMENTUNARY_INF_TASK_ID,
   ELEMENTUNARY_BWD_TASK_ID,
   EXPERTS_INIT_TASK_ID,
   EXPERTS_FWD_TASK_ID,
@@ -102,6 +104,7 @@ enum TaskIDs {
   BATCHMATMUL_BWD_TASK_ID,
   LAYERNORM_INIT_TASK_ID,
   LAYERNORM_FWD_TASK_ID,
+  LAYERNORM_INF_TASK_ID,
   LAYERNORM_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
@@ -150,6 +153,7 @@ enum TaskIDs {
   ATTENTION_BWD_TASK_ID,
   RMSNROM_INIT_TASK_ID,
   RMSNROM_FWD_TASK_ID,
+  RMSNROM_INF_TASK_ID,
   BEAM_TOPK_INIT_TASK_ID,
   BEAM_TOPK_INF_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
@@ -525,6 +529,7 @@ public:
                     std::vector<int> const &axes,
                     bool elementwise_affine,
                     float eps,
+                    bool use_bias = true,
                     DataType data_type = DT_NONE,
                     char const *name = NULL);
   // Add a batch_norm layer
@@ -653,6 +658,7 @@ public:
                                       bool scaling_query = false,
                                       float scaling_factor = 1.0f,
                                       bool qk_prod_scaling = true,
+                                      bool position_bias = false,
                                       char const *name = NULL);
   Tensor
       spec_inc_multihead_self_attention(const Tensor input,
@@ -670,6 +676,7 @@ public:
                                         bool scaling_query = false,
                                         float scaling_factor = 1.0f,
                                         bool qk_prod_scaling = true,
+                                        bool position_bias = false,
                                         char const *name = NULL);
   Tensor inc_multihead_self_attention_verify(
       const Tensor input,
@@ -687,6 +694,7 @@ public:
       bool scaling_query = false,
       float scaling_factor = 1.0f,
       bool qk_prod_scaling = true,
+      bool position_bias = false,
       char const *name = NULL);
   Tensor inc_multiquery_self_attention(const Tensor input,
                                        int embed_dim,
@@ -704,6 +712,7 @@ public:
                                        bool scaling_query = false,
                                        float scaling_factor = 1.0f,
                                        bool qk_prod_scaling = true,
+                                       bool position_bias = false,
                                        char const *name = NULL);
   Tensor
       spec_inc_multiquery_self_attention(const Tensor input,
@@ -722,6 +731,7 @@ public:
                                          bool scaling_query = false,
                                          float scaling_factor = 1.0f,
                                          bool qk_prod_scaling = true,
+                                         bool position_bias = false,
                                          char const *name = NULL);
   Tensor inc_multiquery_self_attention_verify(
       const Tensor input,
@@ -740,6 +750,7 @@ public:
       bool scaling_query = false,
       float scaling_factor = 1.0f,
       bool qk_prod_scaling = true,
+      bool position_bias = false,
       char const *name = NULL);
   // ========================================
   // Inference APIs

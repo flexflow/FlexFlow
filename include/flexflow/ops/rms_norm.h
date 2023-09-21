@@ -31,9 +31,9 @@ public:
           RMSNorm const &other,
           const ParallelTensor input,
           bool allocate_weights);
-  void init(FFModel const &);
-  void forward(FFModel const &);
-  void backward(FFModel const &);
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,
                       std::vector<ParallelTensor> const &,
@@ -43,7 +43,7 @@ public:
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
-  void print_layer(FFModel const &model) {
+  void print_layer(FFModel const &model) override {
     assert(0);
   }
 
@@ -69,9 +69,13 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void inference_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
-                             CostMetrics &cost_metrics) const;
+                             CostMetrics &cost_metrics) const override;
 
 public:
   float eps;

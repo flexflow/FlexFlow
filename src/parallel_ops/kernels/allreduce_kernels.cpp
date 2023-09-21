@@ -33,7 +33,20 @@ void inference_kernel_wrapper(AllReduceMeta const *m,
   checkCUDA(get_legion_stream(&stream));
   assert(input.data_type == output.data_type);
   assert(input.domain == output.domain);
-  assert(false && "To be implemented");
+  size_t hidden_dim_size = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+  size_t num_elements = bc->num_tokens * hidden_dim_size;
+#ifdef FF_USE_NCCL
+  ncclDataType_t nccl_data_type = ff_to_nccl_datatype(input.data_type);
+  checkNCCL(ncclAllReduce(input.ptr,
+                          output.ptr,
+                          num_elements,
+                          nccl_data_type,
+                          ncclSum,
+                          m->handle.ncclComm,
+                          stream));
+#else
+  assert(false && "Must enable FF_USE_NCCL to use AllReduce operators");
+#endif
 }
 
 void forward_kernel_wrapper(AllReduceMeta const *m,
@@ -43,7 +56,19 @@ void forward_kernel_wrapper(AllReduceMeta const *m,
   checkCUDA(get_legion_stream(&stream));
   assert(input.data_type == output.data_type);
   assert(input.domain == output.domain);
-  assert(false && "To be implemented");
+  size_t hidden_dim_size = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+#ifdef FF_USE_NCCL
+  ncclDataType_t nccl_data_type = ff_to_nccl_datatype(input.data_type);
+  checkNCCL(ncclAllReduce(input.ptr,
+                          output.ptr,
+                          input.domain.get_volume(),
+                          nccl_data_type,
+                          ncclSum,
+                          m->handle.ncclComm,
+                          stream));
+#else
+  assert(false && "Must enable FF_USE_NCCL to use AllReduce operators");
+#endif
 }
 
 void backward_kernel_wrapper(AllReduceMeta const *m,

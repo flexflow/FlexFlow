@@ -9,6 +9,7 @@ dependencies:
   - pybind11
   - rust
   - cmake-build-extension
+  - jq
   - pip
   - pip:
     - qualname>=0.1.0

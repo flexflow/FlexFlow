@@ -12,43 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys, os
-from typing import Union, Optional
+from typing import Optional
 from ..type import *
+from flexflow.core import *
+from .serve import LLM, SSM, GenerationConfig, GenerationResult
 
 
-def _parse_positive_int_config(name: str, variable: str, ff_cli_name: str = None):
-    if variable is not None:
-        if type(variable) is not int:
+def __check_positive_int(configs_dict: dict, key: str):
+    value = configs_dict.get(key, None)
+    if value is not None:
+        if type(value) is not int:
+            raise TypeError(f"Parameter {key} has value {value}, which is not an int!")
+        elif value <= 0:
             raise ValueError(
-                f"The following configs take positive integers only: {name}"
+                f"Parameter {key} has value {value}, which is not a positive number!"
             )
-        elif variable <= 0:
-            raise ValueError(
-                f"The following configs take positive integers only: {name}"
-            )
-        if not ff_cli_name:
-            sys.argv += ["-{name}", str(variable)]
-        else:
-            sys.argv += [f"{ff_cli_name}", str(variable)]
 
 
-def init(configs_dict: Optional[dict] = None, 
-        *, 
-        num_gpus: Optional[int] = None,
-        memory_per_gpu: Optional[int] = None,
-        zero_copy_memory_per_node: Optional[int] = None,
-        num_cpus: Optional[int] = None,
-        legion_utility_processors: Optional[int] = None,
-        data_parallelism_degree: Optional[int] = None,
-        tensor_parallelism_degree: Optional[int] = None,
-        pipeline_parallelism_degree: Optional[int] = None,
-        offload: Optional[bool] = None,
-        offload_reserve_space_size: Optional[int] = None,
-        use_4bit_quantization: Optional[bool] = None,
-        use_8bit_quantization: Optional[bool] = None,
-        profiling: Optional[bool] = None,
-        fusion: Optional[bool] = None):
+def init(
+    configs_dict: Optional[dict] = None,
+    *,
+    num_gpus: Optional[int] = None,
+    memory_per_gpu: Optional[int] = None,
+    zero_copy_memory_per_node: Optional[int] = None,
+    num_cpus: Optional[int] = None,
+    legion_utility_processors: Optional[int] = None,
+    data_parallelism_degree: Optional[int] = None,
+    tensor_parallelism_degree: Optional[int] = None,
+    pipeline_parallelism_degree: Optional[int] = None,
+    offload: Optional[bool] = None,
+    offload_reserve_space_size: Optional[int] = None,
+    use_4bit_quantization: Optional[bool] = None,
+    use_8bit_quantization: Optional[bool] = None,
+    profiling: Optional[bool] = None,
+    fusion: Optional[bool] = None,
+):
     """
     Configure FlexFlow Serve and start the runtime. 
     
@@ -113,117 +111,88 @@ def init(configs_dict: Optional[dict] = None,
     :raises TypeError: this function will raise an exception if the configs_dict is not a dictionary
     :raises ValueError: this function will raise an exception if the mandatory FlexFlow initialization parameters are missing, or are not positive integers: num_gpus, memory_per_gpu, zero_copy_memory_per_node
     """
-    
-    # Check that either configs_dict or any of individual, non-positional arguments (after the *) is passed, but not both
-    if configs_dict is not None and any([
-        num_gpus is not None,
-        memory_per_gpu is not None,
-        zero_copy_memory_per_node is not None,
-        num_cpus is not None,
-        legion_utility_processors is not None,
-        data_parallelism_degree is not None,
-        tensor_parallelism_degree is not None,
-        pipeline_parallelism_degree is not None,
-        offload is not None,
-        offload_reserve_space_size is not None,
-        use_4bit_quantization is not None,
-        use_8bit_quantization is not None,
-        profiling is not None,
-        fusion is not None,
-    ]):
+
+    # Check that if configs_dict is passed, no other key-value argument (after the *) is passed.
+    if configs_dict is not None and any(
+        [
+            num_gpus is not None,
+            memory_per_gpu is not None,
+            zero_copy_memory_per_node is not None,
+            num_cpus is not None,
+            legion_utility_processors is not None,
+            data_parallelism_degree is not None,
+            tensor_parallelism_degree is not None,
+            pipeline_parallelism_degree is not None,
+            offload is not None,
+            offload_reserve_space_size is not None,
+            use_4bit_quantization is not None,
+            use_8bit_quantization is not None,
+            profiling is not None,
+            fusion is not None,
+        ]
+    ):
         raise ValueError("Cannot pass both configs_dict and individual args")
 
     if configs_dict is not None:
-        # If configs_dict is passed, check that the type is dictionary and that the mandatory key-value pairs are present (num_gpus, memory_per_gpu, zero_copy_memory_per_node)
         if type(configs_dict) != dict:
             raise TypeError("configs_dict is not a dictionary")
-        # configs should contain the following mandatory keys with non-zero integer values:
-        num_gpus = configs_dict.get("num_gpus")
-        memory_per_gpu = configs_dict.get("memory_per_gpu")
-        zero_copy_memory_per_node = configs_dict.get("zero_copy_memory_per_node")
-        if not num_gpus or not memory_per_gpu or not zero_copy_memory_per_node:
-            raise ValueError(
-                "Missing one of the following configs in config dict: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
-            )
-        num_cpus = configs_dict.get("num_cpus")
-        legion_utility_processors = configs_dict.get("legion_utility_processors", 8)
-        data_parallelism_degree = configs_dict.get("data_parallelism_degree")
-        tensor_parallelism_degree = configs_dict.get("tensor_parallelism_degree")
-        pipeline_parallelism_degree = configs_dict.get("pipeline_parallelism_degree")
-        offload = configs_dict.get("offload", False)
-        offload_reserve_space_size = configs_dict.get("offload_reserve_space_size")
-        use_4bit_quantization = configs_dict.get("use_4bit_quantization", False)
-        use_8bit_quantization = configs_dict.get("use_8bit_quantization", False)
-        profiling = configs_dict.get("profiling", False)
-        fusion = configs_dict.get("fusion", True)
     else:
-        # If configs_dict is not passed, check that the mandatory parameters are passed directly as arguments
-        if not num_gpus or not memory_per_gpu or not zero_copy_memory_per_node:
+        # Add named key-value arguments into dictionary
+        configs_dict = {
+            "num_gpus": num_gpus,
+            "memory_per_gpu": memory_per_gpu,
+            "zero_copy_memory_per_node": zero_copy_memory_per_node,
+            "legion_utility_processors": legion_utility_processors,
+            "data_parallelism_degree": data_parallelism_degree,
+            "tensor_parallelism_degree": tensor_parallelism_degree,
+            "pipeline_parallelism_degree": pipeline_parallelism_degree,
+            "offload": offload,
+            "offload_reserve_space_size": offload_reserve_space_size,
+            "use_4bit_quantization": use_4bit_quantization,
+            "use_8bit_quantization": use_8bit_quantization,
+            "profiling": profiling,
+            "fusion": fusion
+        }
+
+    # Check that mandatory configs are present
+    required_keys = ["num_gpus", "memory_per_gpu", "zero_copy_memory_per_node"]
+    for required_key in required_keys:
+        if configs_dict.get(required_key, None) is None:
             raise ValueError(
-            "Missing one of the following configs in input params: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
-        )
-        offload = False if offload is None else offload
-        use_4bit_quantization = False if use_4bit_quantization is None else use_4bit_quantization
-        use_8bit_quantization = False if use_8bit_quantization is None else use_8bit_quantization
-        profiling = False if profiling is None else profiling
-        fusion = True if fusion is None else fusion
-        
-    # Remove the arguments to avoid interferences
-    sys.argv = [sys.argv[0]]
-               
-    # parse arguments     
-    _parse_positive_int_config("num_gpus", num_gpus, "-ll:gpu")
-    _parse_positive_int_config("memory_per_gpu", memory_per_gpu, "-ll:fsize")
-    _parse_positive_int_config(
-        "zero_copy_memory_per_node", zero_copy_memory_per_node, "-ll:zsize"
-    )
+                "Missing one of the following required configs: num_gpus, memory_per_gpu, zero_copy_memory_per_node"
+            )
 
-    # parse optional arguments
-    _parse_positive_int_config("num_cpus", num_cpus, "-ll:cpu")
-    _parse_positive_int_config(
-        "legion_utility_processors", legion_utility_processors, "-ll:util"
-    )
-    _parse_positive_int_config(
-        "data_parallelism_degree", data_parallelism_degree, "-data-parallelism-degree"
-    )
-    _parse_positive_int_config(
+    # Sanity check parameters
+    positive_int_params = required_keys + [
+        "legion_utility_processors",
+        "data_parallelism_degree",
         "tensor_parallelism_degree",
-        tensor_parallelism_degree,
-        "-tensor-parallelism-degree",
-    )
-    _parse_positive_int_config(
         "pipeline_parallelism_degree",
-        pipeline_parallelism_degree,
-        "-pipeline-parallelism-degree",
-    )
-    if offload:
-        sys.argv += ["-offload"]
-    _parse_positive_int_config(
         "offload_reserve_space_size",
-        offload_reserve_space_size,
-        "-offload-reserve-space-size",
-    )
-    if use_4bit_quantization:
-        sys.argv += ["--4bit-quantization"]
-    if use_8bit_quantization:
-        sys.argv += ["--8bit-quantization"]
-    if profiling:
-        sys.argv += ["--profiling"]
-    if fusion:
-        sys.argv += ["--fusion"]
+    ]
+    for param in positive_int_params:
+        __check_positive_int(configs_dict, param)
 
-    global LLM, SSM, GenerationConfig, GenerationResult
-    from .serve import LLM, SSM, GenerationConfig, GenerationResult
+    # Set default values
+    if configs_dict.get("legion_utility_processors", None) is None:
+        configs_dict["legion_utility_processors"] = 8
+    if configs_dict.get("data_parallelism_degree", None) is None:
+        configs_dict["data_parallelism_degree"] = 1
+    if configs_dict.get("tensor_parallelism_degree", None) is None:
+        configs_dict["tensor_parallelism_degree"] = 1
+    if configs_dict.get("pipeline_parallelism_degree", None) is None:
+        configs_dict["pipeline_parallelism_degree"] = 1
+    if configs_dict.get("offload", None) is None:
+        configs_dict["offload"] = False
+    if configs_dict.get("offload_reserve_space_size", None) is None:
+        configs_dict["offload_reserve_space_size"] = 1024 ** 2
+    if configs_dict.get("use_4bit_quantization", None) is None:
+        configs_dict["use_4bit_quantization"] = False
+    if configs_dict.get("use_8bit_quantization", None) is None:
+        configs_dict["use_8bit_quantization"] = False
+    if configs_dict.get("profiling", None) is None:
+        configs_dict["profiling"] = False
+    if configs_dict.get("fusion", None) is None:
+        configs_dict["fusion"] = True
 
-
-def init_cpu():
-    """Start the FlexFlow runtime and import the inference package without access to GPU functionalities.
-    This is useful to access the utilies from the flexflow package without using up GPU memory.
-    """
-    # Remove the arguments to avoid interferences
-    sys.argv = [sys.argv[0]]
-    # Ask the runtime to avoid using GPU/GPU memory
-    os.environ["CPU_ONLY_TEST"] = "1"
-
-    global LLM, SSM, GenerationConfig, GenerationResult
-    from .serve import LLM, SSM, GenerationConfig, GenerationResult
+    init_flexflow_runtime(configs_dict)

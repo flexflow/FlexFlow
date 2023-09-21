@@ -26,6 +26,7 @@ class LLAMAConfig:
         self.num_hidden_layers = hf_config.num_hidden_layers
         self.vocab_size = hf_config.vocab_size
         self.num_attention_heads = hf_config.num_attention_heads
+        self.num_key_value_heads = hf_config.num_attention_heads if hf_config.num_key_value_heads is None else hf_config.num_key_value_heads
         self.hidden_size = hf_config.hidden_size
         self.rms_norm_eps = hf_config.rms_norm_eps
         self.intermediate_size = hf_config.intermediate_size
@@ -106,10 +107,11 @@ class FlexFlowLLAMA(FlexFlowModel):
             )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
-                mha = ffmodel.spec_inc_multihead_self_attention(
+                mha = ffmodel.spec_inc_multiquery_self_attention(
                     attn_norm,
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
+                    self.llama_config.num_key_value_heads,
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size
@@ -124,10 +126,11 @@ class FlexFlowLLAMA(FlexFlowModel):
                     name=f"layers_{i}_attention_weight",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
-                mha = ffmodel.inc_multihead_self_attention_verify(
+                mha = ffmodel.inc_multiquery_self_attention_verify(
                     attn_norm,
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
+                    self.llama_config.num_key_value_heads,
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size
@@ -142,10 +145,11 @@ class FlexFlowLLAMA(FlexFlowModel):
                     name=f"layers_{i}_attention_weight",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
-                mha = ffmodel.inc_multihead_self_attention(
+                mha = ffmodel.inc_multiquery_self_attention(
                     attn_norm,
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
+                    self.llama_config.num_key_value_heads,
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,
                     self.llama_config.hidden_size

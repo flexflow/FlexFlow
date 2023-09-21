@@ -16,6 +16,7 @@
 #include "flexflow/inference.h"
 #include "models/falcon.h"
 #include "models/llama.h"
+#include "models/mpt.h"
 #include "models/opt.h"
 #include <filesystem>
 #include <nlohmann/json.hpp>
@@ -165,10 +166,19 @@ void get_model_meta(FilePaths &file_paths,
     } else if (str == "RWForCausalLM") {
       model_metadata.llm_model_type = ModelType::FALCON;
       break;
+    } else if (str == "MPTForCausalLM") {
+      model_metadata.llm_model_type = ModelType::MPT;
+      break;
     }
   }
-  model_metadata.bos_token_id = llm_model_config["bos_token_id"];
-  model_metadata.eos_token_id = llm_model_config["eos_token_id"];
+  model_metadata.bos_token_id =
+      llm_model_config.find("bos_token_id") == llm_model_config.end()
+          ? -1
+          : (int)llm_model_config.at("bos_token_id");
+  model_metadata.eos_token_id =
+      llm_model_config.find("eos_token_id") == llm_model_config.end()
+          ? -1
+          : (int)llm_model_config.at("eos_token_id");
 
   for (auto ssm_model_name : model_metadata.model_names.ssm_model_names) {
     std::string ssm_config_path = join_path({file_paths.cache_folder_path,
@@ -213,10 +223,21 @@ void get_model_meta(FilePaths &file_paths,
       } else if (str == "RWForCausalLM") {
         ssm_model_type = ModelType::FALCON;
         break;
+      } else if (str == "MPTForCausalLM") {
+        ssm_model_type = ModelType::MPT;
+        break;
       }
     }
-    if (ssm_model_config["bos_token_id"] != model_metadata.bos_token_id ||
-        ssm_model_config["eos_token_id"] != model_metadata.eos_token_id) {
+    int ssm_bos_id =
+        ssm_model_config.find("bos_token_id") == ssm_model_config.end()
+            ? -1
+            : (int)ssm_model_config.at("bos_token_id");
+    int ssm_eos_id =
+        ssm_model_config.find("eos_token_id") == ssm_model_config.end()
+            ? -1
+            : (int)ssm_model_config.at("eos_token_id");
+    if (ssm_bos_id != model_metadata.bos_token_id ||
+        ssm_eos_id != model_metadata.eos_token_id) {
       printf("Warning: bos/eos token id mismatch between LLM and one of the "
              "SSMs!\n");
     }
@@ -293,6 +314,13 @@ void FlexFlow::top_level_task(Task const *task,
                                 model_metadata.llm_weights_path,
                                 TREE_VERIFY_MODE,
                                 use_full_precision);
+  } else if (model_metadata.llm_model_type == ModelType::MPT) {
+    MPT::create_mpt_model(tree_model,
+                          model_metadata.llm_model_config_path,
+                          model_metadata.llm_weights_path,
+                          TREE_VERIFY_MODE,
+                          generationConfig,
+                          use_full_precision);
   } else {
     assert(false && "Invalid LLM model type passed (or no type was passed).");
   }
@@ -332,6 +360,13 @@ void FlexFlow::top_level_task(Task const *task,
           model_metadata.ssm_model_weights_paths[ssm_id],
           BEAM_SEARCH_MODE,
           use_full_precision);
+    } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::MPT) {
+      MPT::create_mpt_model(beam_model,
+                            model_metadata.ssm_model_config_paths[ssm_id],
+                            model_metadata.ssm_model_weights_paths[ssm_id],
+                            BEAM_SEARCH_MODE,
+                            generationConfig,
+                            use_full_precision);
     } else {
       assert(false && "Invalid SSM model type passed.");
     }

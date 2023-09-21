@@ -9,6 +9,7 @@ dependencies:
   - pybind11
   - rust
   - cmake-build-extension
+  - jq
   - pytest
   - pip
   - pip:

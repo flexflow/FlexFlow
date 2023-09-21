@@ -251,12 +251,14 @@ template <typename T>
 __host__ T *download_tensor(T const *ptr, size_t num_elements) {
   // device synchronize to make sure the data are ready
   // checkCUDA(hipDeviceSynchronize());
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
   checkCUDA(hipHostMalloc(&host_ptr,
                           sizeof(T) * num_elements,
                           hipHostMallocPortable | hipHostMallocMapped));
-  checkCUDA(hipMemcpy(
-      host_ptr, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost));
+  checkCUDA(hipMemcpyAsync(
+      host_ptr, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost, stream));
   // checkCUDA(hipDeviceSynchronize());
   return host_ptr;
 }
@@ -265,9 +267,11 @@ template <typename T>
 __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
   // device synchronize to make sure the data are ready
   // checkCUDA(hipDeviceSynchronize());
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   assert(dst != nullptr);
-  checkCUDA(
-      hipMemcpy(dst, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost));
+  checkCUDA(hipMemcpyAsync(
+      dst, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost, stream));
   // checkCUDA(hipDeviceSynchronize());
   return true;
 }
@@ -324,6 +328,57 @@ miopenStatus_t cudnnSetTensorDescriptorFromDomain(
   return miopenStatusBadParm;
 }
 
+miopenStatus_t
+    cudnnSetTensorDescriptorFromDomain4SoftMax(miopenTensorDescriptor_t tensor,
+                                               Domain domain) {
+  int dims[MAX_TENSOR_DIM];
+  switch (domain.get_dim()) {
+    case 1: {
+      Rect<1> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      return miopenSet4dTensorDescriptor(tensor, miopenFloat, dims[0], 1, 1, 1);
+    }
+    case 2: {
+      Rect<2> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[1], dims[0], 1, 1);
+    }
+    case 3: {
+      Rect<3> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[2] * dims[1], dims[0], 1, 1);
+    }
+    case 4: {
+      Rect<4> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[3] * dims[2] * dims[1], dims[0], 1, 1);
+    }
+    case 5: {
+      Rect<5> rect = domain;
+      int leading_dim_size = rect.hi[4] - rect.lo[4] + 1;
+      assert(leading_dim_size == 1);
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[3], dims[2], dims[1], dims[0]);
+    }
+    default:
+      assert(false && "Unsupported dim number");
+  }
+  return miopenStatusBadParm;
+}
+
 miopenDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
@@ -354,6 +409,23 @@ hipblasDatatype_t ff_to_cuda_datatype(DataType type) {
   }
   return HIPBLAS_R_32F;
 }
+#ifdef FF_USE_NCCL
+ncclDataType_t ff_to_nccl_datatype(DataType type) {
+  switch (type) {
+    case DT_HALF:
+      return ncclHalf;
+    case DT_FLOAT:
+      return ncclFloat;
+    case DT_DOUBLE:
+      return ncclDouble;
+    case DT_INT32:
+      return ncclInt;
+    default:
+      assert(false && "Unspoorted nccl data type");
+  }
+  return ncclFloat;
+}
+#endif
 
 void handle_unimplemented_hip_kernel(OperatorType op_type) {
   throw std::runtime_error("Unimplemented hip kernel for Operator: " +

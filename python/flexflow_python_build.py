@@ -42,15 +42,19 @@ lines = [
     '#! /usr/bin/env bash',
     f'BUILD_FOLDER="{build_dir}"',
     'SCRIPT_DIR="$(realpath "${BASH_SOURCE[0]%/*}")"',
+    'legion_python_args=("$@" "-ll:py" "1")',
     'if [[ "$SCRIPT_DIR" == "$BUILD_FOLDER" ]]; then',
     f'\tPYTHON_FOLDER="{script_dir}"',
     '\tPYLIB_PATH="$("$PYTHON_FOLDER"/flexflow/findpylib.py)"',
     '\tPYLIB_DIR="$(dirname "$PYLIB_PATH")"',
     '\texport LD_LIBRARY_PATH="$BUILD_FOLDER:$BUILD_FOLDER/deps/legion/lib:$PYLIB_DIR:$LD_LIBRARY_PATH"',
     '\texport PYTHONPATH="$PYTHON_FOLDER:$BUILD_FOLDER/deps/legion/bindings/python:$PYTHONPATH"',
-    '\t$BUILD_FOLDER/deps/legion/bin/legion_python "$@"',
+    '\t$BUILD_FOLDER/deps/legion/bin/legion_python "${legion_python_args[@]}"',
     'else',
-    '\tlegion_python "$@"',
+    '\tPYLIB_PATH="$(python3 -m flexflow.findpylib)"',
+    '\tPYLIB_DIR="$(dirname "$PYLIB_PATH")"',
+    '\texport LD_LIBRARY_PATH="$PYLIB_DIR:$LD_LIBRARY_PATH"',
+    '\tlegion_python "${legion_python_args[@]}"',
     'fi'
 ]
 with open(flexflow_python_path, "w+") as flexflow_python_file:

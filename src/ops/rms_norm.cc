@@ -347,7 +347,7 @@ FutureMap RMSNorm::inference(FFModel const &ff,
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
-  IndexLauncher launcher(RMSNROM_FWD_TASK_ID,
+  IndexLauncher launcher(RMSNROM_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -355,6 +355,7 @@ FutureMap RMSNorm::inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -387,6 +388,31 @@ void RMSNorm::forward_task(Task const *task,
                            Runtime *runtime) {
   assert(task->regions.size() == 3);
   assert(regions.size() == 3);
+  RMSNormMeta const *m = *((RMSNormMeta **)task->local_args);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  forward_kernel_wrapper(m, input, weight, output);
+}
+
+/*
+  regions[0](I): input
+  regions[1](O): output
+  regions[2](I/O): weight
+*/
+void RMSNorm::inference_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
+  assert(task->regions.size() == 3);
+  assert(regions.size() == 3);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
+    return;
+  }
   RMSNormMeta const *m = *((RMSNormMeta **)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -431,7 +457,7 @@ Op *RMSNorm::materialize(FFModel &ff,
                          ParallelTensor inputs[],
                          int num_inputs) const {
   RMSNormParams params = get_params();
-  return new RMSNorm(ff, params, inputs[0], this->name);
+  return new RMSNorm(ff, params, inputs[0], true, this->name);
 }
 
 void RMSNorm::backward(FFModel const &ff) {}

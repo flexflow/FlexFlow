@@ -3,7 +3,7 @@ from flexflow.keras.datasets import cifar10
 
 from accuracy import ModelAccuracy
 from PIL import Image
-import argparse
+import argparse, json
 import numpy as np
 
 
@@ -133,7 +133,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--test_acc",
                         action="store_true", help="Test accuracy flag")
+    parser.add_argument(
+        "-config-file",
+        help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
+        type=str,
+        default=None,
+    )
     args, unknown = parser.parse_known_args()
+    configs_dict = None
+    if args.config_file is not None:
+        with open(args.config_file) as f:
+            configs_dict = json.load(f)
+    init_flexflow_runtime(configs_dict)
     if args.test_acc:
         print("Testing cifar10 alexnet training accuracy")
         test_accuracy()

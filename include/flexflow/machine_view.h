@@ -4,7 +4,11 @@
 #include "legion.h"
 #include <vector>
 #ifdef FF_USE_NCCL
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include <nccl.h>
+#else
+#include <rccl/rccl.h>
+#endif
 #endif
 #include "flexflow/config.h"
 

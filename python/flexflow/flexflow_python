@@ -7,5 +7,6 @@ pylib_path="$(python "$python_packages"/flexflow/findpylib.py)"
 pylib_dir="$(dirname "$pylib_path")"
 export PATH="${python_packages}/flexflow/bin:${PATH}"
 export LD_LIBRARY_PATH="${python_packages}/flexflow/lib:${pylib_dir}:${PATH}"
+legion_python_args=("$@" "-ll:py" "1")
 
-legion_python "$@"
+legion_python "${legion_python_args[@]}"

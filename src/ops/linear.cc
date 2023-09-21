@@ -619,6 +619,9 @@ void Linear::inference_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   LinearMeta const *m = *((LinearMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
+    return;
+  }
   assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   if (m->quantization_type == DT_NONE) {

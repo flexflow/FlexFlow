@@ -6,8 +6,9 @@
 
 ## News🔥:
 
+* [09/02/2023] Adding AMD GPU support, released Docker images for ROCM 5.3->5.6
 * [08/16/2023] Adding Starcoder model support
-* [08/14/2023] Released Dockerfile for different CUDA versions
+* [08/14/2023] Released Docker images for different CUDA versions
 
 ## What is FlexFlow Serve
   
@@ -42,13 +43,13 @@ pip install flexflow
 ```
 
 ### Try it in Docker
-If you run into any issue during the install, or if you would like to use the C++ API without needing to install from source, you can also use our pre-built Docker package for different CUDA versions and the `hip_rocm` backend. To download and run our pre-built Docker container:
+If you run into any issue during the install, or if you would like to use the C++ API without needing to install from source, you can also use our pre-built Docker package for different CUDA versions (NVIDIA backend) and multiple ROCM versions (AMD backend). To download and run our pre-built Docker container:
 
 ```bash
-docker run --gpus all -it --rm --shm-size=8g ghcr.io/flexflow/flexflow-cuda-11.8:latest
+docker run --gpus all -it --rm --shm-size=8g ghcr.io/flexflow/flexflow-cuda-12.0:latest
 ```
 
-To download a Docker container for a backend other than CUDA v11.8, you can replace the `cuda-11.8` suffix with any of the following backends: `cuda-11.1`, `cuda-11.2`, `cuda-11.3`, `cuda-11.5`, `cuda-11.6`, `cuda-11.7`, `cuda-11.8`, and `hip_rocm`). More info on the Docker images, with instructions to build a new image from source, or run with additional configurations, can be found [here](../docker/README.md).
+To download a Docker container for a backend other than CUDA v12.0, you can replace the `cuda-12.0` suffix with any of the following backends: `cuda-11.1`, `cuda-11.2`, `cuda-11.3`, `cuda-11.4`, `cuda-11.5`, `cuda-11.6`, `cuda-11.7`, `cuda-11.8`, and `hip_rocm-5.3`, `hip_rocm-5.4`, `hip_rocm-5.5`, `hip_rocm-5.6`). More info on the Docker images, with instructions to build a new image from source, or run with additional configurations, can be found [here](../docker/README.md).
 
 ### Build from source
 
@@ -209,7 +210,7 @@ Below is a list of models that we have explicitly tested and for which a SSM may
 | StarCoder-15.5B | bigcode/starcoder | |
 
 ### CPU Offloading
-FlexFlow Serve also offers offloading-based inference for running large models (e.g., llama-7B) on a single GPU. CPU offloading is a choice to save tensors in CPU memory, and only copy the tensor to GPU when doing calculation. Notice that now we selectively offload the largest weight tensors (weights tensor in Linear, Attention). Besides, since the small model occupies considerably less space, it it does not pose a bottleneck for GPU memory, the offloading will bring more runtime space and computational cost, so we only do the offloading for the large model. You can run the offloading example by enabling the `-offload` and `-offload-reserve-space-size` flags.
+FlexFlow Serve also offers offloading-based inference for running large models (e.g., llama-7B) on a single GPU. CPU offloading is a choice to save tensors in CPU memory, and only copy the tensor to GPU when doing calculation. Notice that now we selectively offload the largest weight tensors (weights tensor in Linear, Attention). Besides, since the small model occupies considerably less space, it it does not pose a bottleneck for GPU memory, the offloading will bring more runtime space and computational cost, so we only do the offloading for the large model. [TODO: update instructions] You can run the offloading example by enabling the `-offload` and `-offload-reserve-space-size` flags.
 
 ### Quantization
 FlexFlow Serve supports int4 and int8 quantization. The compressed tensors are stored on the CPU side. Once copied to the GPU, these tensors undergo decompression and conversion back to their original precision. Please find the compressed weight files in our s3 bucket, or use [this script](../inference/utils/compress_llama_weights.py) from [FlexGen](https://github.com/FMInference/FlexGen) project to do the compression manually.
@@ -221,10 +222,24 @@ We provide five prompt datasets for evaluating FlexFlow Serve: [Chatbot instruct
 
 FlexFlow Serve is under active development. We currently focus on the following tasks and strongly welcome all contributions from bug fixes to new features and extensions.
 
-* AMD support. We are actively working on supporting FlexFlow Serve on AMD GPUs and welcome any contributions to this effort. 
+* AMD benchmarking. We are actively working on benchmarking FlexFlow Serve on AMD GPUs and comparing it with the performance on NVIDIA GPUs.
+* Chatbot prompt templates and Multi-round conversations
+* Support for FastAPI server
+* Integration with LangChain for document question answering
 
 ## Acknowledgements
-This project is initiated by members from CMU, Stanford, and UCSD. We will be continuing developing and supporting FlexFlow Serve. 
+This project is initiated by members from CMU, Stanford, and UCSD. We will be continuing developing and supporting FlexFlow Serve. Please cite FlexFlow Serve as:
+
+``` bibtex
+@misc{miao2023specinfer,
+      title={SpecInfer: Accelerating Generative Large Language Model Serving with Speculative Inference and Token Tree Verification}, 
+      author={Xupeng Miao and Gabriele Oliaro and Zhihao Zhang and Xinhao Cheng and Zeyu Wang and Rae Ying Yee Wong and Alan Zhu and Lijie Yang and Xiaoxiang Shi and Chunan Shi and Zhuoming Chen and Daiyaan Arfeen and Reyna Abhyankar and Zhihao Jia},
+      year={2023},
+      eprint={2305.09781},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
 
 ## License
 FlexFlow uses Apache License 2.0.

@@ -3237,6 +3237,9 @@ void FFModel::create_operators_from_layers() {
                 (l->op_type == OP_LINEAR && layer_idx >= 2 &&
                  layers[layer_idx - 1]->op_type == OP_RELU &&
                  layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+                (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+                 layers[layer_idx - 1]->op_type == OP_GELU &&
+                 layers[layer_idx - 2]->op_type == OP_LINEAR) ||
                 (l->op_type == OP_LINEAR && layer_idx >= 5 &&
                  layers[layer_idx - 1]->op_type == OP_EW_MUL &&
                  layers[layer_idx - 2]->op_type == OP_EW_MUL &&
@@ -4444,6 +4447,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
+    TaskVariantRegistrar registrar(ELEMENTUNARY_INF_TASK_ID,
+                                   "ElementWiseUnary Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ElementUnary::inference_task>(
+          registrar, "ElementWiseUnary Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ElementUnary::inference_task>(registrar);
+    }
+  }
+  {
     TaskVariantRegistrar registrar(ELEMENTUNARY_FWD_TASK_ID,
                                    "ElementWiseUnary Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -4488,6 +4506,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       }
       runtime->register_task_variant<OpMeta *, ElementBinary::init_task>(
           registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ELEMENTBINARY_INF_TASK_ID,
+                                   "ElementWiseBinary Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ElementBinary::inference_task>(
+          registrar, "ElementWiseBinary Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ElementBinary::inference_task>(registrar);
     }
   }
   {
@@ -5144,6 +5177,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
+    TaskVariantRegistrar registrar(LAYERNORM_INF_TASK_ID,
+                                   "LayerNorm Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<LayerNorm::inference_task>(
+          registrar, "LayerNorm Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LayerNorm::inference_task>(registrar);
+    }
+  }
+  {
     TaskVariantRegistrar registrar(LAYERNORM_FWD_TASK_ID, "layernorm_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -5184,6 +5232,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<RMSNorm::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RMSNROM_INF_TASK_ID, "RMS Norm Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RMSNorm::inference_task>(
+          registrar, "RMS Norm Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RMSNorm::inference_task>(registrar);
     }
   }
   {
@@ -5344,19 +5406,17 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(SOFTMAX_INF_TASK_ID, "softmax_inf_task");
+    TaskVariantRegistrar registrar(SOFTMAX_INF_TASK_ID, "Softmax Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
-      Runtime::preregister_task_variant<InferenceResult,
-                                        Softmax::inference_task>(
-          registrar, "softmax_inf_task");
+      Runtime::preregister_task_variant<Softmax::inference_task>(
+          registrar, "Softmax Inference Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<InferenceResult, Softmax::inference_task>(
-          registrar);
+      runtime->register_task_variant<Softmax::inference_task>(registrar);
     }
   }
   // compute Loss

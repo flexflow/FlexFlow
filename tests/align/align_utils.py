@@ -112,7 +112,12 @@ def parse_create_tensor_args():
     parser = ArgumentParser(description='Pytorch Aligment Test Suite')
     parser.add_argument("-o", "--operator", dest="operator",
                         required=False, metavar="", help="operator needs to be test")
-
+    parser.add_argument(
+        "-config-file",
+        help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
+        type=str,
+        default=None,
+    )
     args, unknown = parser.parse_known_args()
     return args
 

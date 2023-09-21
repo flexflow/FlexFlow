@@ -35,9 +35,6 @@ def parse_args():
 
 
 def main(args):
-    # Initialize FF serve to gain access to its utils
-    ff.init_cpu()
-
     if args.full_precision_only:
         data_types = ff.DataType.DT_FLOAT
     elif args.half_precision_only:

@@ -17,6 +17,7 @@ from flexflow.serve.models import (
     FlexFlowOPT,
     FlexFlowFalcon,
     FlexFlowSTARCODER,
+    FlexFlowMPT,
 )
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
@@ -87,6 +88,7 @@ class LLM:
             "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT),
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
             "GPTBigCodeForCausalLM": (ModelType.STARCODER, FlexFlowSTARCODER),
+            "MPTForCausalLM": (ModelType.MPT, FlexFlowMPT),
         }
         self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
         self.model_name = self.hf_config._name_or_path
@@ -358,7 +360,9 @@ class LLM:
 
         # Create request manager
         self.rm = RequestManager()
-        self.rm.register_tokenizer(self.model_type, self.hf_config.bos_token_id, self.hf_config.eos_token_id, self.tokenizer_path)
+        bos_token_id = -1 if self.hf_config.bos_token_id is None else self.hf_config.bos_token_id
+        eos_token_id = -1 if self.hf_config.eos_token_id is None else self.hf_config.eos_token_id
+        self.rm.register_tokenizer(self.model_type, bos_token_id, eos_token_id, self.tokenizer_path)
         self.rm.register_output_filepath(self.output_file)
 
         self.im.init_operators_inference(self.model.ffmodel)

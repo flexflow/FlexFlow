@@ -11,7 +11,7 @@ struct SpecIncMultiHeadSelfAttentionParams {
   int embed_dim, num_q_heads, num_kv_heads, kdim, vdim;
   float dropout, scaling_factor;
   bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
-      qk_prod_scaling;
+      qk_prod_scaling, position_bias;
 
   bool is_valid(ParallelTensorShape const &) const;
 };
