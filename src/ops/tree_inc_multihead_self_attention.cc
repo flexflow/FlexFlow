@@ -1677,7 +1677,7 @@ bool operator==(TreeIncMultiHeadSelfAttentionParams const &lhs,
          lhs.scaling_query == rhs.scaling_query &&
          lhs.scaling_factor == rhs.scaling_factor &&
          lhs.qk_prod_scaling == rhs.qk_prod_scaling &&
-         lhs.position_bias == lhs.position_bias;
+         lhs.position_bias == rhs.position_bias;
 }
 
 TreeIncMultiHeadSelfAttentionParams
