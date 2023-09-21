@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig, LlamaTokenizer
 
 def main():
@@ -39,12 +40,11 @@ def main():
 
     # Set default tensor type depending on argument indicating the float type to use
     if not args.use_full_precision:
-        import torch
-
         torch.set_default_tensor_type(torch.HalfTensor)
 
     # Run huggingface model
-    device = "cuda" if args.gpu else "cpu"
+    cuda_availble = torch.cuda.is_available()
+    device = "cuda" if args.gpu and cuda_availble else "cpu"
     # Get Model
     model = AutoModelForCausalLM.from_pretrained(args.model_name).to(device)
     # Get Tokenizer

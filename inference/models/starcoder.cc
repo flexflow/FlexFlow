@@ -206,7 +206,7 @@ void STARCODER::create_starcoder_model(
                             startcoder_config.hidden_size /
                                 startcoder_config.num_attention_heads,
                             ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, weights_layers, use_full_precision);
+  fileloader.load_weights(&ff, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators

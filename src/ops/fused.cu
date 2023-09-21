@@ -15,6 +15,7 @@
 
 #include "flexflow/accessor.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
@@ -467,6 +468,29 @@ __host__ void FusedOp::forward_task(Task const *task,
             my_output_accessor[0].domain);
         break;
       }
+      case OP_LAYERNORM: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        LayerNormMeta const *m = (LayerNormMeta *)metas->meta[op];
+        if (m->elementwise_affine) {
+          assert(fused->op_num_weights[op] == 1 + (int)(m->use_bias));
+        }
+        GenericTensorAccessorR gamma, beta;
+        if (m->elementwise_affine) {
+          gamma = my_weight_accessor[0];
+          if (m->use_bias) {
+            beta = my_weight_accessor[1];
+          }
+        }
+        LayerNorm::forward_kernel_wrapper(
+            m, my_input_accessor[0], my_output_accessor[0], gamma, beta);
+        break;
+      }
+      case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
+        assert(false && "Operator AddBiasResidualLayerNorm does not support "
+                        "the forward() task");
+        break;
+      }
       default: {
         fprintf(stderr,
                 "Fusion currently does not support type = %d\n",
@@ -823,9 +847,10 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         IncMultiHeadSelfAttentionMeta const *m =
             (IncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        assert(fused->op_num_weights[op] == (1 + (int)(*m->bias)));
+        assert(fused->op_num_weights[op] ==
+               (1 + (int)(*m->qkv_bias || *m->final_bias)));
         GenericTensorAccessorR biases;
-        if (*m->bias) {
+        if (*m->qkv_bias || *m->final_bias) {
           assert(fused->op_num_weights[op] == 2);
           biases = my_weight_accessor[1];
         }
@@ -848,9 +873,10 @@ __host__ void
         //     (TreeVerifyBatchConfig *)task->args;
         TreeVerifyBatchConfig const &tree_bc =
             Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
-        assert(fused->op_num_weights[op] == (1 + (int)(*m->bias)));
+        assert(fused->op_num_weights[op] ==
+               (1 + (int)(*m->qkv_bias || *m->final_bias)));
         GenericTensorAccessorR biases;
-        if (*m->bias) {
+        if (*m->qkv_bias || *m->final_bias) {
           assert(fused->op_num_weights[op] == 2);
           biases = my_weight_accessor[1];
         }
@@ -873,9 +899,10 @@ __host__ void
         //     (BeamSearchBatchConfig *)task->args;
         BeamSearchBatchConfig const &beam_bc =
             Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
-        assert(fused->op_num_weights[op] == (1 + (int)(*m->bias)));
+        assert(fused->op_num_weights[op] ==
+               (1 + (int)(*m->qkv_bias || *m->final_bias)));
         GenericTensorAccessorR biases;
-        if (*m->bias) {
+        if (*m->qkv_bias || *m->final_bias) {
           assert(fused->op_num_weights[op] == 2);
           biases = my_weight_accessor[1];
         }
@@ -905,6 +932,45 @@ __host__ void
         }
         LayerNorm::forward_kernel_wrapper(
             m, my_input_accessor[0], my_output_accessor[0], gamma, beta);
+        break;
+      }
+      case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
+        assert(fused->op_num_inputs[op] == 2);
+        assert(fused->op_num_outputs[op] == 2);
+        AddBiasResidualLayerNormMeta const *m =
+            (AddBiasResidualLayerNormMeta *)metas->meta[op];
+        if (!m->elementwise_affine) {
+          assert(fused->op_num_weights[op] == 1); // attn bias
+        } else {
+          if (!m->use_bias) {
+            assert(fused->op_num_weights[op] == 2); // attn bias + weight
+          } else {
+            assert(fused->op_num_weights[op] == 3); // attn bias + weight + bias
+          }
+        }
+        GenericTensorAccessorR gamma, beta;
+        if (m->elementwise_affine) {
+          gamma = my_weight_accessor[1];
+          if (m->use_bias) {
+            beta = my_weight_accessor[2];
+          }
+        }
+        Domain attn_bias_domain = my_weight_accessor[0].domain;
+        Domain residual_domain = my_input_accessor[1].domain;
+        int attn_bias_dim =
+            attn_bias_domain.hi()[0] - attn_bias_domain.lo()[0] + 1;
+        int residual_volume = residual_domain.get_volume();
+        AddBiasResidualLayerNorm::inference_kernel_wrapper(
+            m,
+            attn_bias_dim,
+            residual_volume,
+            my_input_accessor[0],
+            my_output_accessor[0],
+            my_output_accessor[1],
+            my_input_accessor[1],
+            my_weight_accessor[0],
+            gamma,
+            beta);
         break;
       }
       case OP_SOFTMAX: {
