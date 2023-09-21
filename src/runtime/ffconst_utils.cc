@@ -170,6 +170,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "Mean";
     case OP_LAYERNORM:
       return "LayerNorm";
+    case OP_ADD_BIAS_RESIDUAL_LAYERNORM:
+      return "AddBiasResidualLayerNorm";
     case OP_RMS_NORM:
       return "RMSNorm";
     case OP_GELU:

@@ -58,7 +58,8 @@ void OPT::create_opt_model(FFModel &ff,
                          AGGR_MODE_NONE,
                          DT_FLOAT,
                          NULL,
-                         embed_init);
+                         embed_init,
+                         "embed_tokens");
   } else {
     token = ff.embedding(input,
                          opt_config.vocab_size,
@@ -66,11 +67,9 @@ void OPT::create_opt_model(FFModel &ff,
                          AGGR_MODE_NONE,
                          DT_HALF,
                          NULL,
-                         embed_init);
+                         embed_init,
+                         "embed_tokens");
   }
-
-  Layer *embedding = ff.layers.back();
-  weights_layers.emplace("embed_tokens_weight", embedding);
 
   Tensor positional_embedding;
   if (use_full_precision) {
@@ -80,7 +79,8 @@ void OPT::create_opt_model(FFModel &ff,
                                         AGGR_MODE_NONE,
                                         DT_FLOAT,
                                         NULL,
-                                        embed_init);
+                                        embed_init,
+                                        "embed_positions");
   } else {
     positional_embedding = ff.embedding(position_input,
                                         opt_config.max_position_embeddings,
@@ -88,10 +88,9 @@ void OPT::create_opt_model(FFModel &ff,
                                         AGGR_MODE_NONE,
                                         DT_HALF,
                                         NULL,
-                                        embed_init);
+                                        embed_init,
+                                        "embed_positions");
   }
-  Layer *pos_embedding = ff.layers.back();
-  weights_layers.emplace("embed_positions_weight", pos_embedding);
 
   Tensor residual = ff.add(token, positional_embedding);
 
@@ -104,14 +103,19 @@ void OPT::create_opt_model(FFModel &ff,
     // https://github.com/huggingface/transformers/blob/main/src/transformers/models/opt/modeling_opt.py#LL324C1-L325C1
     // this version is before normalization
 
-    Tensor hidden_states = ff.layer_norm(
-        residual, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
-    Layer *self_attn_layer_norm = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) +
-                               "_attention_layer_norm_weight",
-                           self_attn_layer_norm);
+    std::string layer_name =
+        "layers_" + std::to_string(i) + "_attention_layer_norm";
+    Tensor hidden_states =
+        ff.layer_norm(residual,
+                      axes,
+                      opt_config.layer_norm_elementwise_affine,
+                      1e-05,
+                      true,
+                      DT_NONE,
+                      layer_name.c_str());
 
     Tensor mha;
+    layer_name = "layers_" + std::to_string(i) + "_attention";
     switch (mode) {
       case BEAM_SEARCH_MODE: {
         mha = ff.spec_inc_multihead_self_attention(
@@ -120,18 +124,20 @@ void OPT::create_opt_model(FFModel &ff,
             opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
-            0.0f,
-            true,
-            false,
-            false,
+            0.0f,    /*dropout*/
+            true,    /*qkv_bias*/
+            false,   /*final_bias*/
+            false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
-            NULL,
-            false,
-            /*scaling query*/ true,
-            /*scaling factor*/
+            NULL,    /*kernel_initializer*/
+            false,   /*apply_rotary_embedding*/
+            true,    /*scaling query*/
             pow((opt_config.hidden_size / opt_config.num_attention_heads),
-                -0.5),
-            /*qk_prod_scaling*/ false);
+                -0.5),         /*scaling factor*/
+            false,             /*qk_prod_scaling*/
+            false,             /*position_bias*/
+            layer_name.c_str() /*name*/
+        );
         break;
       }
       case TREE_VERIFY_MODE: {
@@ -141,18 +147,20 @@ void OPT::create_opt_model(FFModel &ff,
             opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
-            0.0f,
-            true,
-            false,
-            false,
+            0.0f,    /*dropout*/
+            true,    /*qkv_bias*/
+            false,   /*final_bias*/
+            false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
-            NULL,
-            false,
-            /*scaling query*/ true,
-            /*scaling factor*/
+            NULL,    /*kernel_initializer*/
+            false,   /*apply_rotary_embedding*/
+            true,    /*scaling query*/
             pow((opt_config.hidden_size / opt_config.num_attention_heads),
-                -0.5),
-            /*qk_prod_scaling*/ false);
+                -0.5),         /*scaling factor*/
+            false,             /*qk_prod_scaling*/
+            false,             /*position_bias*/
+            layer_name.c_str() /*name*/
+        );
         break;
       }
       case INC_DECODING_MODE: {
@@ -162,18 +170,20 @@ void OPT::create_opt_model(FFModel &ff,
             opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
-            0.0f,
-            true,
-            false,
-            false,
+            0.0f,    /*dropout*/
+            true,    /*qkv_bias*/
+            false,   /*final_bias*/
+            false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
-            NULL,
-            false,
-            /*scaling query*/ true,
-            /*scaling factor*/
+            NULL,    /*kernel_initializer*/
+            false,   /*apply_rotary_embedding*/
+            true,    /*scaling query*/
             pow((opt_config.hidden_size / opt_config.num_attention_heads),
-                -0.5),
-            /*qk_prod_scaling*/ false);
+                -0.5),         /*scaling factor*/
+            false,             /*qk_prod_scaling*/
+            false,             /*position_bias*/
+            layer_name.c_str() /*name*/
+        );
         break;
       }
       default: {
@@ -181,44 +191,75 @@ void OPT::create_opt_model(FFModel &ff,
       }
     }
 
-    Layer *attention_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
-                           attention_layer);
+    // Tensor added = ff.add(mha, residual);
+    // Tensor final_norm = ff.layer_norm(
+    //     added, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
 
-    Tensor added = ff.add(mha, residual);
-
-    Tensor final_norm = ff.layer_norm(
-        added, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
-    Layer *final_layer_norm = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) +
-                               "_final_layer_norm_weight",
-                           final_layer_norm);
+    layer_name =
+        "layers_" + std::to_string(i) + "_add_bias_residual_layer_norm";
+    Tensor added_final_norm[2];
+    ff.add_bias_residual_layer_norm(mha,
+                                    residual,
+                                    added_final_norm,
+                                    axes,
+                                    opt_config.layer_norm_elementwise_affine,
+                                    1e-05,
+                                    true,
+                                    DT_NONE,
+                                    layer_name.c_str());
+    Tensor added = added_final_norm[0];
+    Tensor final_norm = added_final_norm[1];
 
     //--------linear fc1 fc2 ----------
-    Tensor fc1 = ff.dense(final_norm, opt_config.ffn_dim, AC_MODE_NONE, true);
-    Layer *fc1_linear = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_fc1_weight",
-                           fc1_linear);
+    layer_name = "layers_" + std::to_string(i) + "_fc1";
+    Tensor fc1 = ff.dense(final_norm,
+                          opt_config.ffn_dim,
+                          AC_MODE_NONE,
+                          true,
+                          DT_NONE,
+                          nullptr,
+                          nullptr,
+                          nullptr,
+                          REG_MODE_NONE,
+                          0.0f,
+                          layer_name.c_str());
     Tensor activation = ff.relu(fc1, false);
-
-    Tensor fc2 =
-        ff.dense(activation, opt_config.hidden_size, AC_MODE_NONE, true);
-    Layer *fc2_linear = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_fc2_weight",
-                           fc2_linear);
+    layer_name = "layers_" + std::to_string(i) + "_fc2";
+    Tensor fc2 = ff.dense(activation,
+                          opt_config.hidden_size,
+                          AC_MODE_NONE,
+                          true,
+                          DT_NONE,
+                          nullptr,
+                          nullptr,
+                          nullptr,
+                          REG_MODE_NONE,
+                          0.0f,
+                          layer_name.c_str());
     residual = ff.add(added, fc2);
   }
 
   // final
-  Tensor all_final_norm = ff.layer_norm(
-      residual, axes, opt_config.layer_norm_elementwise_affine, 1e-05);
-  Layer *all_final_norm_layer = ff.layers.back();
-  weights_layers.emplace("final_layer_norm_weight", all_final_norm_layer);
+  Tensor all_final_norm =
+      ff.layer_norm(residual,
+                    axes,
+                    opt_config.layer_norm_elementwise_affine,
+                    1e-05,
+                    true,
+                    DT_NONE,
+                    "final_layer_norm");
 
-  Tensor lm_head =
-      ff.dense(all_final_norm, opt_config.vocab_size, AC_MODE_NONE, false);
-  Layer *lm_head_layer = ff.layers.back();
-  weights_layers.emplace("embed_tokens_weight_lm_head", lm_head_layer);
+  Tensor lm_head = ff.dense(all_final_norm,
+                            opt_config.vocab_size,
+                            AC_MODE_NONE,
+                            false,
+                            DT_NONE,
+                            nullptr,
+                            nullptr,
+                            nullptr,
+                            REG_MODE_NONE,
+                            0.0f,
+                            "embed_tokens_weight_lm_head");
 
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {
@@ -242,7 +283,7 @@ void OPT::create_opt_model(FFModel &ff,
                             opt_config.hidden_size /
                                 opt_config.num_attention_heads,
                             ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, weights_layers, use_full_precision);
+  fileloader.load_weights(&ff, use_full_precision);
   std::cout << "------finished loading weights----------" << std::endl;
   im->init_operators_inference(&ff);
 }

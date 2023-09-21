@@ -1,5 +1,7 @@
 #pragma once
 
+#include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {

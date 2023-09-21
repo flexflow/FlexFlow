@@ -279,6 +279,22 @@ class LayerNorm(Op):
     return self.get_parameter_by_id(1)
 
 # -----------------------------------------------------------------------
+# AddBiasResidualLayerNorm
+# -----------------------------------------------------------------------
+class AddBiasResidualLayerNorm(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(AddBiasResidualLayerNorm, self).__init__(handle, idx, name)
+
+  def get_attn_bias_tensor(self):
+    return self.get_parameter_by_id(0)
+  
+  def get_weight_tensor(self):
+    return self.get_parameter_by_id(1)
+
+  def get_bias_tensor(self):
+    return self.get_parameter_by_id(2)
+
+# -----------------------------------------------------------------------
 # Dropout
 # -----------------------------------------------------------------------
 class Dropout(Op):
@@ -554,6 +570,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return BatchNorm(handle, idx, name)
   elif op_type == OpType.LAYER_NORM:
     return LayerNorm(handle, idx, name)
+  elif op_type == OpType.ADD_BIAS_RESIDUAL_LAYERNORM:
+    return AddBiasResidualLayerNorm(handle, idx, name)
   elif op_type == OpType.BATCH_MATMUL:
     return Batch_Matmul(handle, idx, name)
   elif op_type == OpType.SPLIT:
@@ -1573,6 +1591,13 @@ class FFModel(object):
     handle = ffc().flexflow_model_add_layer_norm(self.handle, input.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
     self.add_layer(OpType.LAYER_NORM, name)
     return Tensor(handle, owner_op_type=OpType.LAYER_NORM)
+  
+  def add_bias_residual_layer_norm(self, input, residual, axes, elementwise_affine=True, eps=1e-5, use_bias = True, name=None):
+    c_name = get_c_name(name)
+    c_axes = ffi.new("int[]", axes)
+    handles_array = ffc().flexflow_model_add_add_bias_residual_layer_norm(self.handle, input.handle, residual.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
+    self.add_layer(OpType.ADD_BIAS_RESIDUAL_LAYERNORM, name)
+    return Tensor(handles_array[0], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM), Tensor(handles_array[1], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM)
 
   def batch_matmul(self, A, B, a_seq_length_dim=None, b_seq_length_dim=None, name=None):
     """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.
@@ -3292,21 +3317,8 @@ class FileDataLoader(object):
     self.handle = ffc().flexflow_file_data_loader_create(c_weight_file_path, num_q_heads, num_kv_heads, hidden_dim, qkv_inner_dim, tensor_parallelism_degree)
     self._handle = ffi.gc(self.handle, ffc().flexflow_file_data_loader_destroy)
   
-  def load_weights(self, model, model_layers_with_weights, data_type):
-    # Extract keys and values into arrays
-    layer_names = list(model_layers_with_weights.keys()) 
-    layers = list(model_layers_with_weights.values())
-    
-    # Convert to char** and flexflow_op_t* for CFFI
-    layer_names_c = [ffi.new("char[]", x.encode('ascii')) for x in layer_names]
-    layer_handles_list = [layer.handle for layer in layers]
-    layer_handles_c = ffi.new("flexflow_op_t[]", layer_handles_list)
-    
-    # Compute number of layers (key-value pairs)
-    num_layers = len(layer_names)
-    assert(len(layer_names) == len(layers))
-
+  def load_weights(self, model, data_type):
     # Check data type and create use_full_precision boolean
     assert(data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF)
     use_full_precision = data_type == DataType.DT_FLOAT
-    ffc().flexflow_file_data_loader_load_weights(self.handle, model.handle, num_layers, layer_names_c, layer_handles_c, use_full_precision)
+    ffc().flexflow_file_data_loader_load_weights(self.handle, model.handle, use_full_precision)

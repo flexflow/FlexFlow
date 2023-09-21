@@ -2,6 +2,7 @@
 #define _FLEXFLOW_ELEMENTARY_UNARY_PARAMS_H
 
 #include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {
