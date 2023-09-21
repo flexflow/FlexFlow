@@ -23,10 +23,6 @@
 #endif
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
-#ifdef INFERENCE_TESTS
-#include <torch/torch.h>
-using namespace at::indexing;
-#endif
 
 namespace FlexFlow {
 
