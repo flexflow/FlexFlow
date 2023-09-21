@@ -1,3 +1,3 @@
 #! /usr/bin/env bash
 
-python3 -m github_repo_management -- "$@"
+python3 -m tooling.gh_mgmt "$@"
