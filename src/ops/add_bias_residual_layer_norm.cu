@@ -92,44 +92,30 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
 }
 
 template <typename T>
-__global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
-                                            int residual_volume,
-                                            int64_t effective_num_elements,
-                                            int64_t effective_batch_size,
+__global__ void LayerNormFusedForwardKernel(int64_t N,
+                                            int64_t attn_bias_dim,
                                             float eps,
                                             T const *input_ptr,
                                             T const *attn_bias_ptr,
                                             T const *residual_ptr,
-                                            T *added_output_ptr,
-                                            T *output_ptr,
-                                            T const *gamma_ptr,
-                                            T const *beta_ptr,
+                                            T *X,
                                             T *mean,
-                                            T *rstd) {
-  // Add attention bias and residual
-  CUDA_KERNEL_LOOP(i, residual_volume) {
-    int bias_idx = i % attn_bias_dim;
-    added_output_ptr[i] =
-        input_ptr[i] + attn_bias_ptr[bias_idx] + residual_ptr[i];
-  }
-
-  __syncthreads();
-
-  // LayerNorm
+                                            T *rstd,
+                                            T const *gamma,
+                                            T const *beta,
+                                            T *Y) {
   __shared__ float m_shared[C10_WARP_SIZE];
   __shared__ float v_shared[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
-  if (i >= effective_batch_size) {
-    return;
-  }
   float sum1 = 0.0f;
   float sum2 = 0.0f;
-  for (int64_t j = threadIdx.x; j < effective_num_elements;
+  for (int64_t j = threadIdx.x; j < N;
        j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
-    const int64_t index = i * effective_num_elements + j;
-    sum1 += static_cast<float>(added_output_ptr[index]);
-    sum2 += static_cast<float>(added_output_ptr[index]) *
-            static_cast<float>(added_output_ptr[index]);
+    const int64_t index = i * N + j;
+    const int64_t bias_idx = index % attn_bias_dim;
+    X[index] = input_ptr[index] + attn_bias_ptr[bias_idx] + residual_ptr[index];
+    sum1 += static_cast<float>(X[index]);
+    sum2 += static_cast<float>(X[index]) * static_cast<float>(X[index]);
   }
   if (threadIdx.x < kCUDABlockReduceNumThreads) {
     sum1 = BlockReduceSum<float>(
@@ -138,7 +124,7 @@ __global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
         sum2, v_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
   }
   if (threadIdx.x == 0) {
-    float const scale = float(1) / static_cast<float>(effective_num_elements);
+    float const scale = float(1) / static_cast<float>(N);
     sum1 *= scale;
     sum2 = max(sum2 * scale - sum1 * sum1, float(0));
     mean[i] = static_cast<T>(sum1);
@@ -148,17 +134,15 @@ __global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
   __syncthreads();
 
   using T_ACC = T;
-  for (int64_t j = threadIdx.x; j < effective_num_elements;
-       j += min(blockDim.x, kCUDANumThreads)) {
-    const int64_t index = i * effective_num_elements + j;
+  for (int64_t j = threadIdx.x; j < N; j += min(blockDim.x, kCUDANumThreads)) {
+    const int64_t index = i * N + j;
     const T_ACC gamma_v =
-        gamma_ptr == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma_ptr[j]);
+        gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
     const T_ACC beta_v =
-        beta_ptr == nullptr ? T_ACC(0) : static_cast<T_ACC>(beta_ptr[j]);
-    output_ptr[index] = (static_cast<T_ACC>(added_output_ptr[index]) -
-                         static_cast<T_ACC>(mean[i])) *
-                            static_cast<T_ACC>(rstd[i]) * gamma_v +
-                        beta_v;
+        beta == nullptr ? T_ACC(0) : static_cast<T_ACC>(beta[j]);
+    Y[index] = (static_cast<T_ACC>(X[index]) - static_cast<T_ACC>(mean[i])) *
+                   static_cast<T_ACC>(rstd[i]) * gamma_v +
+               beta_v;
   }
 }
 
@@ -177,45 +161,29 @@ void AddBiasResidualLayerNorm::inference_kernel(
     T const *beta_ptr,
     cudaStream_t stream) {
 
-  std::pair<int, int> kernel1_parallelism = std::make_pair(
-      GET_BLOCKS(residual_volume), std::min(residual_volume, CUDA_NUM_THREADS));
-  std::pair<int, int> kernel2_parallelism =
+  std::pair<int, int> kernel1_parallelism =
       std::make_pair(m->effective_batch_size, kCUDABlockReduceNumThreads);
-  std::pair<int, int> kernel3_parallelism =
+  std::pair<int, int> kernel2_parallelism =
       std::make_pair(m->effective_batch_size, kCUDANumThreads);
 
-  int num_blocks = std::max({kernel1_parallelism.first,
-                             kernel2_parallelism.first,
-                             kernel3_parallelism.first});
-  int num_threads = std::max({kernel1_parallelism.second,
-                              kernel2_parallelism.second,
-                              kernel3_parallelism.second});
-
-  // if (m->profiling) {
-  //   std::cout << "Subkernel 1 parallelism: (" << kernel1_parallelism.first <<
-  //   ", " << kernel1_parallelism.second << ")" << std::endl; std::cout <<
-  //   "Subkernel 2 parallelism: (" << kernel2_parallelism.first << ", " <<
-  //   kernel2_parallelism.second << ")" << std::endl; std::cout << "Subkernel 3
-  //   parallelism: (" << kernel3_parallelism.first << ", " <<
-  //   kernel3_parallelism.second << ")" << std::endl; std::cout << "Kernel
-  //   parallelism: (" << num_blocks << ", " << num_threads << ")" << std::endl;
-  // }
+  int num_blocks =
+      std::max(kernel1_parallelism.first, kernel2_parallelism.first);
+  int num_threads =
+      std::max(kernel1_parallelism.second, kernel2_parallelism.second);
 
   LayerNormFusedForwardKernel<T>
-      <<<num_blocks, num_threads, 0, stream>>>(attn_bias_dim,
-                                               residual_volume,
-                                               m->effective_num_elements,
-                                               m->effective_batch_size,
+      <<<num_blocks, num_threads, 0, stream>>>(m->effective_num_elements,
+                                               attn_bias_dim,
                                                m->eps,
                                                input_ptr,
                                                attn_bias_ptr,
                                                residual_ptr,
                                                added_output_ptr,
-                                               output_ptr,
+                                               static_cast<T *>(m->mean_ptr),
+                                               static_cast<T *>(m->rstd_ptr),
                                                gamma_ptr,
                                                beta_ptr,
-                                               static_cast<T *>(m->mean_ptr),
-                                               static_cast<T *>(m->rstd_ptr));
+                                               output_ptr);
 }
 
 /*static*/
