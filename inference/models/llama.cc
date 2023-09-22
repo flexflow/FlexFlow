@@ -163,9 +163,10 @@ void LLAMA::create_llama_model(FFModel &ff,
     weights_layers.emplace(
         "layers_" + std::to_string(i) + "_feed_forward_w3_weight", w3_layer);
 
-    Tensor sigmoid = ff.sigmoid(w1);
+    /* Tensor sigmoid = ff.sigmoid(w1);
     Tensor silu = ff.multiply(w1, sigmoid);
-    Tensor multi = ff.multiply(silu, w3);
+    Tensor multi = ff.multiply(silu, w3); */
+    Tensor multi = ff.sigmoid_silu_multi(w1, w3);
 
     Tensor w2 = ff.dense(multi, llama_config.hidden_size, AC_MODE_NONE, false);
     Layer *w2_layer = ff.layers.back();

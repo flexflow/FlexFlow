@@ -187,9 +187,10 @@ class FlexFlowLLAMA(FlexFlowModel):
                 False,
                 name=f"layers_{i}_feed_forward_w3",
             )
-            sigmoid = ffmodel.sigmoid(w1)
-            silu = ffmodel.multiply(w1, sigmoid)
-            multi = ffmodel.multiply(silu, w3)
+            # sigmoid = ffmodel.sigmoid(w1)
+            # silu = ffmodel.multiply(w1, sigmoid)
+            # multi = ffmodel.multiply(silu, w3)
+            multi = ffmodel.sigmoid_silu_multi(w1, w3)
             w2 = ffmodel.dense(
                 multi,
                 self.llama_config.hidden_size,
