@@ -858,13 +858,13 @@ __host__ void
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 2);
-        RMSNormMeta const *m = (RMSNormMeta *)metas->meta[op];
-        Kernels::RMSNorm::forward_kernel_wrapper(m,
-                                                 my_input_accessor[0],
-                                                 my_input_accessor[1],
-                                                 my_weight_accessor[0],
-                                                 my_output_accessor[0],
-                                                 my_output_accessor[1]);
+        ResidualRMSNormMeta const *m = (ResidualRMSNormMeta *)metas->meta[op];
+        Kernels::ResidualRMSNorm::forward_kernel_wrapper(m,
+                                                         my_input_accessor[0],
+                                                         my_input_accessor[1],
+                                                         my_weight_accessor[0],
+                                                         my_output_accessor[0],
+                                                         my_output_accessor[1]);
         break;
       }
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {

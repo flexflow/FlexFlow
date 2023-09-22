@@ -184,8 +184,8 @@ void forward_kernel_wrapper(ResidualRMSNormMeta const *m,
     cudaEventRecord(t_start, stream);
   }
 
-  assert(input1.data_type == input2.data_type)
-      assert(output.data_type == input1.data_type);
+  assert(input1.data_type == input2.data_type);
+  assert(output.data_type == input1.data_type);
   assert(weight.data_type == output.data_type);
   assert(residual_output.data_type == output.data_type);
   if (output.data_type == DT_HALF) {
