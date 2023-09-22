@@ -484,6 +484,13 @@ class RMSNorm(Op):
     super(RMSNorm, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Residual RMS Norm
+# -----------------------------------------------------------------------
+class ResidualRMSNorm(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ResidualRMSNorm, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # ArgTopK
 # -----------------------------------------------------------------------
 class ArgTopK(Op):
