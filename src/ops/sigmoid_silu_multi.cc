@@ -80,18 +80,18 @@ Tensor FFModel::sigmoid_silu_multi(const Tensor input1,
           : input2;
 
   // Create layer
-  Layer *l = new Layer(this,
-                       OP_SIGMOID_SILU_MULTI,
-                       data_type,
-                       name,
-                       2 /*inputs*/,
-                       0 /*weights*/,
-                       1 /*outputs*/,
-                       casted_input1,
-                       casted_input2);
+  Layer *ssm = new Layer(this,
+                         OP_SIGMOID_SILU_MULTI,
+                         data_type,
+                         name,
+                         2 /*inputs*/,
+                         0 /*weights*/,
+                         1 /*outputs*/,
+                         casted_input1,
+                         casted_input2);
   ssm->outputs[0] = create_tensor_legion_ordering(
-      input1->num_dims, input1->dims, data_type, l, 0, false /*create_grad*/);
-  layers.push_back(l);
+      input1->num_dims, input1->dims, data_type, ssm, 0, false /*create_grad*/);
+  layers.push_back(ssm);
   return ssm->outputs[0];
 }
 
@@ -232,7 +232,7 @@ OpMeta *SigmoidSiluMulti::init_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
-  SigmoidSiluMulti *l = (SigmoidSiluMulti *)task->args;
+  SigmoidSiluMulti *ssm = (SigmoidSiluMulti *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
                        .only_kind(Memory::GPU_FB_MEM)
@@ -240,7 +240,7 @@ OpMeta *SigmoidSiluMulti::init_task(Task const *task,
                        .first();
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   SigmoidSiluMultiMeta *meta =
-      new SigmoidSiluMultiMeta(handle, l, gpu_mem_allocator);
+      new SigmoidSiluMultiMeta(handle, ssm, gpu_mem_allocator);
   meta->input_type[0] = ssm->inputs[0]->data_type;
   meta->input_type[1] = ssm->inputs[1]->data_type;
   meta->output_type[0] = ssm->outputs[0]->data_type;

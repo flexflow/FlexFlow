@@ -19,16 +19,11 @@
 
 namespace FlexFlow {
 
-#define C10_WARP_SIZE 32
-constexpr int kCUDABlockReduceNumThreads = 512;
-constexpr int kCUDANumThreads = 256;
-
 SigmoidSiluMultiMeta::SigmoidSiluMultiMeta(FFHandler handle,
                                            SigmoidSiluMulti const *ssm,
                                            MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   profiling = ssm->profiling;
-  DataType data_type = ssm->data_type;
 }
 
 SigmoidSiluMultiMeta::~SigmoidSiluMultiMeta(void) {
@@ -37,12 +32,12 @@ SigmoidSiluMultiMeta::~SigmoidSiluMultiMeta(void) {
   }
 }
 
-__device__ __forceinline__ double sigmoid_float(float x) {
+__device__ __forceinline__ float sigmoid_float(float x) {
   return 1.0 / (1.0 + expf(-x));
 }
 
-__device__ __forceinline__ double sigmoid_half(half x) {
-  return 1.0 / (1.0 + hexp(-x));
+__device__ __forceinline__ half sigmoid_half(half x) {
+  return (half)1.0 / ((half)1.0 + hexp(-x));
 }
 
 __global__ void SigmoidSiluMultiKernelFloat(int num_elements,
@@ -50,7 +45,8 @@ __global__ void SigmoidSiluMultiKernelFloat(int num_elements,
                                             float const *input2_ptr,
                                             float *output_ptr) {
   CUDA_KERNEL_LOOP(i, num_elements) {
-    output[i] = input1_ptr[i] * sigmoid_float(input1_ptr[i]) * input2_ptr[i];
+    output_ptr[i] =
+        input1_ptr[i] * sigmoid_float(input1_ptr[i]) * input2_ptr[i];
   }
 }
 
@@ -59,7 +55,7 @@ __global__ void SigmoidSiluMultiKernelHalf(int num_elements,
                                            half const *input2_ptr,
                                            half *output_ptr) {
   CUDA_KERNEL_LOOP(i, num_elements) {
-    output[i] = input1_ptr[i] * sigmoid_half(input1_ptr[i]) * input2_ptr[i];
+    output_ptr[i] = input1_ptr[i] * sigmoid_half(input1_ptr[i]) * input2_ptr[i];
   }
 }
 
@@ -89,7 +85,7 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
                                   stream>>>(input1.domain.get_volume(),
                                             input1.get_float_ptr(),
                                             input2.get_float_ptr(),
-                                            output.get_float_ptr())
+                                            output.get_float_ptr());
   } else if (m->input_type[0] == DT_HALF) {
     SigmoidSiluMultiKernelHalf<<<GET_BLOCKS(num_elements),
                                  min(CUDA_NUM_THREADS, num_elements),
@@ -97,7 +93,7 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
                                  stream>>>(input1.domain.get_volume(),
                                            input1.get_half_ptr(),
                                            input2.get_half_ptr(),
-                                           output.get_half_ptr())
+                                           output.get_half_ptr());
   } else {
     assert(false && "unsupport datatype in layernorm");
   }
