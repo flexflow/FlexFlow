@@ -198,11 +198,11 @@ void forward_kernel_wrapper(ResidualRMSNormMeta const *m,
                    stream);
   } else if (output.data_type == DT_FLOAT) {
     forward_kernel(m,
-                   input1.get_half_ptr(),
-                   input2.get_half_ptr(),
-                   weight.get_half_ptr(),
-                   residual_output.get_half_ptr(),
-                   output.get_half_ptr(),
+                   input1.get_float_ptr(),
+                   input2.get_float_ptr(),
+                   weight.get_float_ptr(),
+                   residual_output.get_float_ptr(),
+                   output.get_float_ptr(),
                    stream);
   } else {
     assert(false && "Unsupported data type");
