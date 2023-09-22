@@ -32,6 +32,7 @@
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/reshape_kernels.h"
+#include "flexflow/ops/kernels/residual_rms_norm_kernels.h"
 #include "flexflow/ops/kernels/rms_norm_kernels.h"
 #include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
@@ -479,6 +480,11 @@ __host__ void FusedOp::forward_task(Task const *task,
                         "the forward() task");
         break;
       }
+      case OP_RESIDUAL_RMS_NORM: {
+        assert(false && "Operator ResidualRMSNorm does not support "
+                        "the forward() task");
+        break;
+      }
       case OP_SIGMOID_SILU_MULTI: {
         assert(false && "Operator SigmoidSiluMulti does not support "
                         "the forward() task");
@@ -817,6 +823,19 @@ __host__ void
                                                  my_input_accessor[0],
                                                  my_weight_accessor[0],
                                                  my_output_accessor[0]);
+        break;
+      }
+      case OP_RESIDUAL_RMS_NORM: {
+        assert(fused->op_num_inputs[op] == 2);
+        assert(fused->op_num_weights[op] == 1);
+        assert(fused->op_num_outputs[op] == 2);
+        RMSNormMeta const *m = (RMSNormMeta *)metas->meta[op];
+        Kernels::RMSNorm::forward_kernel_wrapper(m,
+                                                 my_input_accessor[0],
+                                                 my_input_accessor[1],
+                                                 my_weight_accessor[0],
+                                                 my_output_accessor[0],
+                                                 my_output_accessor[1]);
         break;
       }
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {

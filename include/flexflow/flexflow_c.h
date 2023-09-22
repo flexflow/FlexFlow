@@ -546,6 +546,14 @@ flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
                                               int dim,
                                               char const *name);
 
+flexflow_tensor_t *
+    flexflow_model_add_residual_rms_norm(flexflow_model_t handle_,
+                                         const flexflow_tensor_t input1_,
+                                         const flexflow_tensor_t input2_,
+                                         float eps,
+                                         int dim,
+                                         char const *name);
+
 flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,
                                                int k,

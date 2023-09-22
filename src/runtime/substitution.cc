@@ -33,6 +33,7 @@
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/sigmoid_silu_multi.h"
 #include "flexflow/ops/softmax.h"
@@ -3742,6 +3743,12 @@ bool FFModel::convert_graph_to_operators(
         assert(inList.size() == 1);
         RMSNorm *rms = (RMSNorm *)node.ptr;
         new_op = new RMSNorm(*this, *rms, inputs[0], true);
+        break;
+      }
+      case OP_RESIDUAL_RMS_NORM: {
+        assert(inList.size() == 1);
+        ResidualRMSNorm *rms = (ResidualRMSNorm *)node.ptr;
+        new_op = new ResidualRMSNorm(*this, *rms, inputs[0], inputs[1], true);
         break;
       }
       case OP_SOFTMAX: {

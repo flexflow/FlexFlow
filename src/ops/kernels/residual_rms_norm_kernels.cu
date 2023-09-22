@@ -13,22 +13,23 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/kernels/rms_norm_kernels.h"
 #include "flexflow/ffconst_utils.h"
-#include "flexflow/ops/rms_norm.h"
-#include "flexflow/utils/hip_helper.h"
-#include <hip/hip_runtime.h>
+#include "flexflow/ops/kernels/residual_rms_norm_kernels.h"
+#include "flexflow/ops/residual_rms_norm.h"
+#include "flexflow/utils/cuda_helper.h"
+#include <cublas_v2.h>
 
 namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
+
 #define C10_WARP_SIZE 32
 constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 
-RMSNormMeta::RMSNormMeta(FFHandler handler,
-                         RMSNorm const *rms,
-                         MemoryAllocator &gpu_mem_allocator)
+ResidualRMSNormMeta::ResidualRMSNormMeta(FFHandler handler,
+                                         ResidualRMSNorm const *rms,
+                                         MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, rms) {
   eps = rms->eps;
   alpha = 1.0f;
@@ -48,13 +49,14 @@ RMSNormMeta::RMSNormMeta(FFHandler handler,
   norm_ptr = gpu_mem_allocator.allocate_instance_untyped(
       norm_ptr_size * data_type_size(data_type));
 }
-RMSNormMeta::~RMSNormMeta(void) {
+ResidualRMSNormMeta::~ResidualRMSNormMeta(void) {
   if (reserveInst != Realm::RegionInstance::NO_INST) {
     reserveInst.destroy();
   }
 }
+
 namespace Kernels {
-namespace RMSNorm {
+namespace ResidualRMSNorm {
 
 template <typename T>
 __device__ __forceinline__ T WARP_SHFL_DOWN(T value,
@@ -97,20 +99,24 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
 }
 
 template <typename T>
-__global__ void RMSNormFusedForwardKernel(int64_t N,
-                                          float eps,
-                                          T const *X,
-                                          T *rms,
-                                          T *Y,
-                                          T const *weights,
-                                          T *output) {
+__global__ void ResidualRMSNormFusedForwardKernel(int64_t N,
+                                                  float eps,
+                                                  T const *X1,
+                                                  T const *X2,
+                                                  T *X_out,
+                                                  T *rms,
+                                                  T *Y,
+                                                  T const *weights,
+                                                  T *output) {
   __shared__ float v_shared[C10_WARP_SIZE];
   int64_t const i = blockIdx.x;
   float sum = 0.0f;
   for (int64_t j = threadIdx.x; j < N;
        j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
     int64_t const index = i * N + j;
-    sum += (static_cast<float>(X[index]) * static_cast<float>(X[index]));
+    X_out[index] = X1[index] + X2[index];
+    sum +=
+        (static_cast<float>(X_out[index]) * static_cast<float>(X_out[index]));
   }
   sum = BlockReduceSum<float>(
       sum,
@@ -127,17 +133,20 @@ __global__ void RMSNormFusedForwardKernel(int64_t N,
   using T_ACC = T;
   for (int64_t j = threadIdx.x; j < N; j += min(blockDim.x, kCUDANumThreads)) {
     const int64_t index = i * N + j;
-    Y[index] = static_cast<T_ACC>(X[index]) * static_cast<T_ACC>(rms[i]);
+    Y[index] = static_cast<T_ACC>(X_out[index]) * static_cast<T_ACC>(rms[i]);
     output[index] = Y[index] * weights[index % N];
   }
 }
 
 template <typename T>
-void forward_kernel(RMSNormMeta const *m,
-                    T const *input_ptr,
+void forward_kernel(ResidualRMSNormMeta const *m,
+                    T const *input1_ptr,
+                    T const *input2_ptr,
                     T const *weight_ptr,
+                    T *residual_output_ptr,
                     T *output_ptr,
-                    hipStream_t stream) {
+                    cudaStream_t stream) {
+
   std::pair<int, int> kernel1_parallelism =
       std::make_pair(m->batch_size, kCUDABlockReduceNumThreads);
   std::pair<int, int> kernel2_parallelism =
@@ -148,62 +157,68 @@ void forward_kernel(RMSNormMeta const *m,
   int num_threads =
       std::max(kernel1_parallelism.second, kernel2_parallelism.second);
 
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(RMSNormFusedForwardKernel<T>),
-                     num_blocks,
-                     num_threads,
-                     0,
-                     stream,
-                     m->in_dim,
-                     m->eps,
-                     input_ptr,
-                     static_cast<T *>(m->rms_ptr),
-                     static_cast<T *>(m->norm_ptr),
-                     weight_ptr,
-                     output_ptr);
+  ResidualRMSNormFusedForwardKernel<T>
+      <<<num_blocks, num_threads, 0, stream>>>(m->in_dim,
+                                               m->eps,
+                                               input1_ptr,
+                                               input2_ptr,
+                                               residual_output_ptr,
+                                               static_cast<T *>(m->rms_ptr),
+                                               static_cast<T *>(m->norm_ptr),
+                                               weight_ptr,
+                                               output_ptr);
 }
 
-void forward_kernel_wrapper(RMSNormMeta const *m,
-                            GenericTensorAccessorR const &input,
+void forward_kernel_wrapper(ResidualRMSNormMeta const *m,
+                            GenericTensorAccessorR const &input1,
+                            GenericTensorAccessorR const &input2,
                             GenericTensorAccessorR const &weight,
+                            GenericTensorAccessorW const &residual_output,
                             GenericTensorAccessorW const &output) {
-  hipStream_t stream;
+  cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
-  hipEvent_t t_start, t_end;
+  cudaEvent_t t_start, t_end;
   if (m->profiling) {
-    checkCUDA(hipEventCreate(&t_start));
-    checkCUDA(hipEventCreate(&t_end));
-    checkCUDA(hipEventRecord(t_start, stream));
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
   }
 
-  assert(output.data_type == input.data_type);
+  assert(input1.data_type == input2.data_type)
+      assert(output.data_type == input1.data_type);
   assert(weight.data_type == output.data_type);
+  assert(residual_output.data_type == output.data_type);
   if (output.data_type == DT_HALF) {
     forward_kernel(m,
-                   input.get_half_ptr(),
+                   input1.get_half_ptr(),
+                   input2.get_half_ptr(),
                    weight.get_half_ptr(),
+                   residual_output.get_half_ptr(),
                    output.get_half_ptr(),
                    stream);
   } else if (output.data_type == DT_FLOAT) {
     forward_kernel(m,
-                   input.get_float_ptr(),
-                   weight.get_float_ptr(),
-                   output.get_float_ptr(),
+                   input1.get_half_ptr(),
+                   input2.get_half_ptr(),
+                   weight.get_half_ptr(),
+                   residual_output.get_half_ptr(),
+                   output.get_half_ptr(),
                    stream);
   } else {
     assert(false && "Unsupported data type");
   }
 
   if (m->profiling) {
-    checkCUDA(hipEventRecord(t_end, stream));
-    checkCUDA(hipEventSynchronize(t_end));
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
-    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    checkCUDA(hipEventDestroy(t_start));
-    checkCUDA(hipEventDestroy(t_end));
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[ResidualRMSNorm] forward time (CF) = %.2fms\n", elapsed);
   }
 }
 
-} // namespace RMSNorm
+} // namespace ResidualRMSNorm
 } // namespace Kernels
 } // namespace FlexFlow

@@ -158,6 +158,8 @@ enum TaskIDs {
   RMSNORM_INIT_TASK_ID,
   RMSNORM_FWD_TASK_ID,
   RMSNORM_INF_TASK_ID,
+  RESIDUAL_RMSNORM_INIT_TASK_ID,
+  RESIDUAL_RMSNORM_INF_TASK_ID,
   BEAM_TOPK_INIT_TASK_ID,
   BEAM_TOPK_INF_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
@@ -328,6 +330,7 @@ class TopK;
 class ArgTopK;
 class Transpose;
 class RMSNorm;
+class ResidualRMSNorm;
 class BeamTopK;
 class SpecIncMultiHeadSelfAttention;
 class Sampling;
@@ -568,6 +571,14 @@ public:
                   int dim,
                   DataType data_type = DT_NONE,
                   char const *name = NULL);
+  // Add a residual root mean square layer
+  void residual_rms_norm(const Tensor input1,
+                         const Tensor input2,
+                         Tensor *outputs,
+                         float eps,
+                         int dim,
+                         DataType data_type = DT_NONE,
+                         char const *name = NULL);
   // Add a beam search top k layer
   Tensor beam_top_k(const Tensor input,
                     int max_beam_size,
@@ -1182,6 +1193,10 @@ public:
                          Transpose *>,
       std::unordered_map<std::pair<ParallelTensorShape, RMSNormParams>,
                          RMSNorm *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    ResidualRMSNormParams>,
+          ResidualRMSNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
                          Repartition *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,

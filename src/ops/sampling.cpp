@@ -173,7 +173,7 @@ void Sampling::forward_kernel_wrapper(SamplingMeta const *m,
     checkCUDA(hipEventRecord(t_start, stream));
   }
 
-  handle_unimplemented_hip_kernel(OP_RMS_NORM);
+  handle_unimplemented_hip_kernel(OP_SAMPLING);
 
   if (m->profiling) {
     checkCUDA(hipEventRecord(t_end, stream));

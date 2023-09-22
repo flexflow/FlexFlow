@@ -1404,6 +1404,28 @@ flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_tensor_t *
+    flexflow_model_add_residual_rms_norm(flexflow_model_t handle_,
+                                         const flexflow_tensor_t input1_,
+                                         const flexflow_tensor_t input2_,
+                                         float eps,
+                                         int dim,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input1 = FFCObjectWrapper::unwrap(input1_);
+  Tensor input2 = FFCObjectWrapper::unwrap(input2_);
+  Tensor tensor_outputs[2];
+  handle->residual_rms_norm(
+      input1, input2, tensor_outputs, eps, dim, input1->data_type, name);
+  assert(tensor_outputs[0] != nullptr);
+  assert(tensor_outputs[1] != nullptr);
+  flexflow_tensor_t *tensor_outputs_wrapped =
+      (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
+  tensor_outputs_wrapped[0] = FFCObjectWrapper::wrap(tensor_outputs[0]);
+  tensor_outputs_wrapped[1] = FFCObjectWrapper::wrap(tensor_outputs[1]);
+  return tensor_outputs_wrapped;
+}
+
 flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,
                                                int k,

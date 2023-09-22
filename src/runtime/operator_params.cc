@@ -27,6 +27,7 @@
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/sampling.h"
@@ -133,6 +134,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((AggregateSpec *)op)->get_params();
     case OP_RMS_NORM:
       return ((RMSNorm *)op)->get_params();
+    case OP_RESIDUAL_RMS_NORM:
+      return ((ResidualRMSNorm *)op)->get_params();
     case OP_ARG_TOPK:
       return ((ArgTopK *)op)->get_params();
     case OP_BEAM_TOPK:

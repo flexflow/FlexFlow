@@ -176,6 +176,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "SigmoidSiluMulti";
     case OP_RMS_NORM:
       return "RMSNorm";
+    case OP_RESIDUAL_RMS_NORM:
+      return "ResidualRMSNorm";
     case OP_GELU:
       return "GELU";
     case OP_IDENTITY:
