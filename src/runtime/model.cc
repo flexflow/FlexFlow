@@ -3261,12 +3261,18 @@ void FFModel::create_operators_from_layers() {
                 (l->op_type == OP_LINEAR && layer_idx >= 2 &&
                  layers[layer_idx - 1]->op_type == OP_GELU &&
                  layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+                // LLAMA without element-wise operator fusion
                 (l->op_type == OP_LINEAR && layer_idx >= 5 &&
                  layers[layer_idx - 1]->op_type == OP_EW_MUL &&
                  layers[layer_idx - 2]->op_type == OP_EW_MUL &&
                  layers[layer_idx - 3]->op_type == OP_SIGMOID &&
                  layers[layer_idx - 4]->op_type == OP_LINEAR &&
-                 layers[layer_idx - 5]->op_type == OP_LINEAR))) {
+                 layers[layer_idx - 5]->op_type == OP_LINEAR) ||
+                // LLAMA with element-wise operator fusion
+                (l->op_type == OP_LINEAR && layer_idx >= 3 &&
+                 layers[layer_idx - 1]->op_type == OP_SIGMOID_SILU_MULTI &&
+                 layers[layer_idx - 2]->op_type == OP_LINEAR &&
+                 layers[layer_idx - 3]->op_type == OP_LINEAR))) {
       assert(op->numOutputs == 1);
       AllReduce *allreduce =
           new AllReduce(*this, op->outputs[0], op->outputs[0]->num_dims - 1);

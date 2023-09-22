@@ -183,10 +183,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                          0.0f,
                          layer_name.c_str());
 
-    Tensor sigmoid = ff.sigmoid(w1);
-    Tensor silu = ff.multiply(w1, sigmoid);
-    Tensor multi = ff.multiply(silu, w3);
-    // Tensor multi = ff.sigmoid_silu_multi(w1, w3);
+    Tensor multi = ff.sigmoid_silu_multi(w1, w3);
 
     layer_name = "layers_" + std::to_string(i) + "_feed_forward_w2";
     Tensor w2 = ff.dense(multi,
