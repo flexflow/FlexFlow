@@ -150,7 +150,7 @@ class OpType(Enum):
     BEAM_TOPK = 2302
     ADD_BIAS_RESIDUAL_LAYERNORM = 2303
     SIGMOID_SILU_MULTI = 2304
-    RESIDUALRMS_NORM = 2305
+    RESIDUAL_RMS_NORM = 2305
 
 
 def enum_to_int(enum, enum_item):
