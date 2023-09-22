@@ -57,6 +57,9 @@ public:
                                Legion::Deserializer &d,
                                ParallelTensor inputs[],
                                int num_inputs);
+  Op *materialize(FFModel &ff,
+                  ParallelTensor inputs[],
+                  int num_inputs) const override;
   ResidualRMSNormParams get_params() const;
 
   static OpMeta *init_task(Legion::Task const *task,

@@ -77,7 +77,7 @@ void FFModel::residual_rms_norm(const Tensor input1,
           ? cast(input2, data_type, "type cast for residual_rms_norm")
           : input2;
   Layer *rm = new Layer(this,
-                        OP_RMS_NORM,
+                        OP_RESIDUAL_RMS_NORM,
                         data_type,
                         name,
                         2 /*inputs*/,
@@ -165,7 +165,7 @@ ResidualRMSNorm::ResidualRMSNorm(FFModel &model,
                                  bool allocate_weights,
                                  char const *name)
     : Op(model,
-         OP_RMS_NORM,
+         OP_RESIDUAL_RMS_NORM,
          _input1->data_type,
          name,
          2 /*num of inputs tensor */,
@@ -372,7 +372,7 @@ FutureMap
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
-  IndexLauncher launcher(RMSNORM_INF_TASK_ID,
+  IndexLauncher launcher(RESIDUAL_RMSNORM_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -425,8 +425,8 @@ void ResidualRMSNorm::inference_task(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
-  assert(task->regions.size() == 3);
-  assert(regions.size() == 3);
+  assert(task->regions.size() == 5);
+  assert(regions.size() == 5);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
@@ -477,6 +477,13 @@ Node ResidualRMSNorm::deserialize(FFModel &ff,
 
 void ResidualRMSNorm::backward(FFModel const &ff) {
   assert(false);
+}
+Op *ResidualRMSNorm::materialize(FFModel &ff,
+                                 ParallelTensor inputs[],
+                                 int num_inputs) const {
+  ResidualRMSNormParams params = get_params();
+  return new ResidualRMSNorm(
+      ff, params, {inputs[0], inputs[1]}, true, this->name);
 }
 
 bool ResidualRMSNorm::measure_operator_cost(Simulator *sim,

@@ -143,15 +143,19 @@ void LLAMA::create_llama_model(FFModel &ff,
       }
     }
 
-    token = ff.add(token, mha);
-
     // step 2: SILU activaion
     layer_name = "layers_" + std::to_string(i) + "_ffn_norm";
-    Tensor ff_norm = ff.rms_norm(token,
-                                 llama_config.rms_norm_eps,
-                                 llama_config.hidden_size,
-                                 DT_NONE,
-                                 layer_name.c_str());
+    Tensor token_ff_norm[2];
+    ff.residual_rms_norm(token,
+                         mha,
+                         token_ff_norm,
+                         llama_config.rms_norm_eps,
+                         llama_config.hidden_size,
+                         DT_NONE,
+                         layer_name.c_str());
+
+    token = token_ff_norm[0];
+    Tensor ff_norm = token_ff_norm[1];
 
     layer_name = "layers_" + std::to_string(i) + "_feed_forward_w1";
     Tensor w1 = ff.dense(ff_norm,
