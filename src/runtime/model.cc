@@ -5290,7 +5290,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
   }
   // rms norm task
   {
-    TaskVariantRegistrar registrar(RMSNROM_INIT_TASK_ID, "rmsnorm_init_task");
+    TaskVariantRegistrar registrar(RMSNORM_INIT_TASK_ID, "rmsnorm_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
@@ -5304,7 +5304,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(RMSNROM_FWD_TASK_ID, "rmsnorm_fwd_task");
+    TaskVariantRegistrar registrar(RMSNORM_FWD_TASK_ID, "rmsnorm_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
@@ -5318,7 +5318,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(RMSNROM_INF_TASK_ID, "RMS Norm Inference");
+    TaskVariantRegistrar registrar(RMSNORM_INF_TASK_ID, "RMS Norm Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
