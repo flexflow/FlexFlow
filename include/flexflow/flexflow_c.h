@@ -270,6 +270,12 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
     bool use_bias,
     char const *name);
 
+flexflow_tensor_t *
+    flexflow_model_add_sigmoid_silu_multi(flexflow_model_t handle,
+                                          const flexflow_tensor_t input1,
+                                          const flexflow_tensor_t input2,
+                                          char const *name);
+
 flexflow_tensor_t
     flexflow_model_add_batch_matmul(flexflow_model_t handle,
                                     const flexflow_tensor_t a,

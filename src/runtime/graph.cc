@@ -42,6 +42,7 @@
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/sampling.h"
+#include "flexflow/ops/sigmoid_silu_multi.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
@@ -2705,6 +2706,10 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
         node = AddBiasResidualLayerNorm::deserialize(
             *this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_SIGMOID_SILU_MULTI: {
+        node = SigmoidSiluMulti::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_LINEAR: {

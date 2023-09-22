@@ -54,6 +54,7 @@
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/sampling.h"
+#include "flexflow/ops/sigmoid_silu_multi.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
@@ -3107,6 +3108,12 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_SIGMOID_SILU_MULTI: {
+      Op *op =
+          SigmoidSiluMulti::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_RMS_NORM: {
       Op *op = RMSNorm::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -5245,6 +5252,39 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<AddBiasResidualLayerNorm::inference_task>(
+          registrar);
+    }
+  }
+  // SigmoidSiluMulti task
+  {
+    TaskVariantRegistrar registrar(SIGMOID_SILU_MULTI_INIT_TASK_ID,
+                                   "SigmoidSiluMulti Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, SigmoidSiluMulti::init_task>(
+          registrar, "SigmoidSiluMulti Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, SigmoidSiluMulti::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(SIGMOID_SILU_MULTI_INF_TASK_ID,
+                                   "SigmoidSiluMulti Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<SigmoidSiluMulti::inference_task>(
+          registrar, "SigmoidSiluMulti Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<SigmoidSiluMulti::inference_task>(
           registrar);
     }
   }

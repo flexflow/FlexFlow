@@ -36,6 +36,7 @@
 #include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/ops/layer_norm.h"
+#include "flexflow/ops/sigmoid_silu_multi.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
@@ -475,6 +476,11 @@ __host__ void FusedOp::forward_task(Task const *task,
       }
       case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
         assert(false && "Operator AddBiasResidualLayerNorm does not support "
+                        "the forward() task");
+        break;
+      }
+      case OP_SIGMOID_SILU_MULTI: {
+        assert(false && "Operator SigmoidSiluMulti does not support "
                         "the forward() task");
         break;
       }
@@ -940,6 +946,16 @@ __host__ void
             my_weight_accessor[0],
             gamma,
             beta);
+        break;
+      }
+      case OP_SIGMOID_SILU_MULTI: {
+        assert(fused->op_num_inputs[op] == 2);
+        assert(fused->op_num_outputs[op] == 1);
+        SigmoidSiluMultiMeta const *m = (SigmoidSiluMultiMeta *)metas->meta[op];
+        SigmoidSiluMulti::inference_kernel_wrapper(m,
+                                                   my_input_accessor[0],
+                                                   my_input_accessor[1],
+                                                   my_output_accessor[0]);
         break;
       }
       case OP_SOFTMAX: {
