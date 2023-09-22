@@ -20,29 +20,11 @@
 
 namespace FlexFlow {
 
-#define C10_WARP_SIZE 32
-constexpr int kCUDABlockReduceNumThreads = 512;
-constexpr int kCUDANumThreads = 256;
-
 SigmoidSiluMultiMeta::SigmoidSiluMultiMeta(FFHandler handle,
-                                           SigmoidSiluMulti const *ln,
+                                           SigmoidSiluMulti const *ssm,
                                            MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
-  elementwise_affine = ln->elementwise_affine;
-  use_bias = ln->use_bias;
-  effective_batch_size = ln->effective_batch_size;
-  effective_num_elements = ln->effective_num_elements;
-  profiling = ln->profiling;
-  eps = ln->eps;
-  DataType data_type = ln->data_type;
-  size_t totalSize = effective_batch_size * data_type_size(data_type) * 3;
-  gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
-  mean_ptr = gpu_mem_allocator.allocate_instance_untyped(
-      data_type_size(data_type) * effective_batch_size);
-  rstd_ptr = gpu_mem_allocator.allocate_instance_untyped(
-      data_type_size(data_type) * effective_batch_size);
-  bias_ptr = gpu_mem_allocator.allocate_instance_untyped(
-      data_type_size(data_type) * effective_batch_size);
+  profiling = ssm->profiling;
 }
 
 SigmoidSiluMultiMeta::~SigmoidSiluMultiMeta(void) {
@@ -51,209 +33,85 @@ SigmoidSiluMultiMeta::~SigmoidSiluMultiMeta(void) {
   }
 }
 
-template <typename T>
-__device__ __forceinline__ T WARP_SHFL_DOWN(T value,
-                                            unsigned int delta,
-                                            int width = warpSize,
-                                            unsigned int mask = 0xffffffff) {
-#ifndef __HIP_PLATFORM_HCC__
-  return __shfl_down_sync(mask, value, delta, width);
-#else
-  return __shfl_down(value, delta, width);
-#endif
+__device__ __forceinline__ float sigmoid_float(float x) {
+  return 1.0 / (1.0 + expf(-x));
 }
 
-template <typename T>
-__inline__ __device__ T WarpReduceSum(T val) {
-#pragma unroll
-  for (int offset = (C10_WARP_SIZE >> 1); offset > 0; offset >>= 1) {
-    val += WARP_SHFL_DOWN(val, offset);
-  }
-  return val;
+__device__ __forceinline__ half sigmoid_half(half x) {
+  return (half)1.0 / ((half)1.0 + hexp(-x));
 }
 
-template <typename T>
-__inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
-  int const lid = threadIdx.x % C10_WARP_SIZE;
-  int const wid = threadIdx.x / C10_WARP_SIZE;
-  val = WarpReduceSum(val);
-  __syncthreads();
-  if (lid == 0) {
-    shared[wid] = val;
-  }
-  __syncthreads();
-  val = (threadIdx.x < min(blockDim.x, max_num_threads) / C10_WARP_SIZE)
-            ? shared[lid]
-            : 0;
-  if (wid == 0) {
-    val = WarpReduceSum(val);
-  }
-  return val;
-}
-
-template <typename T>
-__global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
-                                            int residual_volume,
-                                            int64_t effective_num_elements,
-                                            int64_t effective_batch_size,
-                                            float eps,
-                                            T const *input_ptr,
-                                            T const *attn_bias_ptr,
-                                            T const *residual_ptr,
-                                            T *added_output_ptr,
-                                            T *output_ptr,
-                                            T const *gamma_ptr,
-                                            T const *beta_ptr,
-                                            T *mean,
-                                            T *rstd) {
-  // Add attention bias and residual
-  CUDA_KERNEL_LOOP(i, residual_volume) {
-    int bias_idx = i % attn_bias_dim;
-    added_output_ptr[i] =
-        input_ptr[i] + attn_bias_ptr[bias_idx] + residual_ptr[i];
-  }
-
-  __syncthreads();
-
-  // LayerNorm
-  __shared__ float m_shared[C10_WARP_SIZE];
-  __shared__ float v_shared[C10_WARP_SIZE];
-  const int64_t i = blockIdx.x;
-  if (i >= effective_batch_size) {
-    return;
-  }
-  float sum1 = 0.0f;
-  float sum2 = 0.0f;
-  for (int64_t j = threadIdx.x; j < effective_num_elements;
-       j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
-    const int64_t index = i * effective_num_elements + j;
-    sum1 += static_cast<float>(added_output_ptr[index]);
-    sum2 += static_cast<float>(added_output_ptr[index]) *
-            static_cast<float>(added_output_ptr[index]);
-  }
-  if (threadIdx.x < kCUDABlockReduceNumThreads) {
-    sum1 = BlockReduceSum<float>(
-        sum1, m_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
-    sum2 = BlockReduceSum<float>(
-        sum2, v_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
-  }
-  if (threadIdx.x == 0) {
-    float const scale = float(1) / static_cast<float>(effective_num_elements);
-    sum1 *= scale;
-    sum2 = max(sum2 * scale - sum1 * sum1, float(0));
-    mean[i] = static_cast<T>(sum1);
-    rstd[i] = static_cast<T>(rsqrt(sum2 + eps));
-  }
-
-  __syncthreads();
-
-  using T_ACC = T;
-  for (int64_t j = threadIdx.x; j < effective_num_elements;
-       j += min(blockDim.x, kCUDANumThreads)) {
-    const int64_t index = i * effective_num_elements + j;
-    const T_ACC gamma_v =
-        gamma_ptr == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma_ptr[j]);
-    const T_ACC beta_v =
-        beta_ptr == nullptr ? T_ACC(0) : static_cast<T_ACC>(beta_ptr[j]);
-    output_ptr[index] = (static_cast<T_ACC>(added_output_ptr[index]) -
-                         static_cast<T_ACC>(mean[i])) *
-                            static_cast<T_ACC>(rstd[i]) * gamma_v +
-                        beta_v;
+__global__ void SigmoidSiluMultiKernelFloat(int num_elements,
+                                            float const *input1_ptr,
+                                            float const *input2_ptr,
+                                            float *output_ptr) {
+  CUDA_KERNEL_LOOP(i, num_elements) {
+    output_ptr[i] =
+        input1_ptr[i] * sigmoid_float(input1_ptr[i]) * input2_ptr[i];
   }
 }
 
-/*static*/
-template <typename T>
-void SigmoidSiluMulti::inference_kernel(SigmoidSiluMultiMeta const *m,
-                                        int attn_bias_dim,
-                                        int residual_volume,
-                                        T const *input_ptr,
-                                        T const *attn_bias_ptr,
-                                        T const *residual_ptr,
-                                        T *added_output_ptr,
-                                        T *output_ptr,
-                                        T const *gamma_ptr,
-                                        T const *beta_ptr,
-                                        hipStream_t stream) {
-
-  std::pair<int, int> kernel1_parallelism = std::make_pair(
-      GET_BLOCKS(residual_volume), std::min(residual_volume, CUDA_NUM_THREADS));
-  std::pair<int, int> kernel2_parallelism =
-      std::make_pair(m->effective_batch_size, kCUDABlockReduceNumThreads);
-  std::pair<int, int> kernel3_parallelism =
-      std::make_pair(m->effective_batch_size, kCUDANumThreads);
-
-  int num_blocks = std::max({kernel1_parallelism.first,
-                             kernel2_parallelism.first,
-                             kernel3_parallelism.first});
-  int num_threads = std::max({kernel1_parallelism.second,
-                              kernel2_parallelism.second,
-                              kernel3_parallelism.second});
-
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(LayerNormFusedForwardKernel<T>),
-                     num_blocks,
-                     num_threads,
-                     0,
-                     stream,
-                     attn_bias_dim,
-                     residual_volume,
-                     m->effective_num_elements,
-                     m->effective_batch_size,
-                     m->eps,
-                     input_ptr,
-                     attn_bias_ptr,
-                     residual_ptr,
-                     added_output_ptr,
-                     output_ptr,
-                     gamma_ptr,
-                     beta_ptr,
-                     static_cast<T *>(m->mean_ptr),
-                     static_cast<T *>(m->rstd_ptr));
+__global__ void SigmoidSiluMultiKernelHalf(int num_elements,
+                                           half const *input1_ptr,
+                                           half const *input2_ptr,
+                                           half *output_ptr) {
+  CUDA_KERNEL_LOOP(i, num_elements) {
+    output_ptr[i] = input1_ptr[i] * sigmoid_half(input1_ptr[i]) * input2_ptr[i];
+  }
 }
 
 /*static*/
 void SigmoidSiluMulti::inference_kernel_wrapper(
     SigmoidSiluMultiMeta const *m,
-    int attn_bias_dim,
-    int residual_volume,
-    GenericTensorAccessorR const &input,
-    GenericTensorAccessorW &added_output,
-    GenericTensorAccessorW &output,
-    GenericTensorAccessorR const &residual,
-    GenericTensorAccessorR const &attn_bias,
-    GenericTensorAccessorR const &gamma,
-    GenericTensorAccessorR const &beta) {
+    GenericTensorAccessorR const &input1,
+    GenericTensorAccessorR const &input2,
+    GenericTensorAccessorW const &output) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
+  int num_elements = input1.domain.get_volume();
+  assert(input2.domain.get_volume() == num_elements);
+  assert(output.domain.get_volume() == num_elements);
+
+  hipEvent_t t_start, t_end;
+  if (m->profiling) {
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
+  }
+
   if (m->input_type[0] == DT_FLOAT) {
-    SigmoidSiluMulti::inference_kernel<float>(m,
-                                              attn_bias_dim,
-                                              residual_volume,
-                                              input.get_float_ptr(),
-                                              attn_bias.get_float_ptr(),
-                                              residual.get_float_ptr(),
-                                              added_output.get_float_ptr(),
-                                              output.get_float_ptr(),
-                                              gamma.get_float_ptr(),
-                                              m->use_bias ? beta.get_float_ptr()
-                                                          : nullptr,
-                                              stream);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(SigmoidSiluMultiKernelFloat),
+                       GET_BLOCKS(num_elements),
+                       min(CUDA_NUM_THREADS, num_elements),
+                       0,
+                       stream,
+                       input1.domain.get_volume(),
+                       input1.get_float_ptr(),
+                       input2.get_float_ptr(),
+                       output.get_float_ptr());
   } else if (m->input_type[0] == DT_HALF) {
-    SigmoidSiluMulti::inference_kernel<half>(m,
-                                             attn_bias_dim,
-                                             residual_volume,
-                                             input.get_half_ptr(),
-                                             attn_bias.get_half_ptr(),
-                                             residual.get_half_ptr(),
-                                             added_output.get_half_ptr(),
-                                             output.get_half_ptr(),
-                                             gamma.get_half_ptr(),
-                                             m->use_bias ? beta.get_half_ptr()
-                                                         : nullptr,
-                                             stream);
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(SigmoidSiluMultiKernelHalf),
+                       GET_BLOCKS(num_elements),
+                       min(CUDA_NUM_THREADS, num_elements),
+                       0,
+                       stream,
+                       input1.domain.get_volume(),
+                       input1.get_half_ptr(),
+                       input2.get_half_ptr(),
+                       output.get_half_ptr());
   } else {
-    assert(false && "unsupport datatype in layernorm");
+    assert(false && "unsupport datatype in SigmoidSiluMulti");
+  }
+
+  if (m->profiling) {
+    checkCUDA(hipEventRecord(t_end, stream));
+    checkCUDA(hipEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
+    printf("[SigmoidSiluMulti] forward time (CF) = %.9fms\n", elapsed);
   }
 }
 

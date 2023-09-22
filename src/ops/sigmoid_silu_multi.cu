@@ -95,7 +95,7 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
                                            input2.get_half_ptr(),
                                            output.get_half_ptr());
   } else {
-    assert(false && "unsupport datatype in layernorm");
+    assert(false && "unsupport datatype in SigmoidSiluMulti");
   }
 
   if (m->profiling) {
@@ -106,54 +106,6 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("[SigmoidSiluMulti] forward time (CF) = %.9fms\n", elapsed);
-    // if (m->input_type[0] == DT_FLOAT) {
-    //   print_tensor<float>(input.get_float_ptr(),
-    //                       32,
-    //                       "[SigmoidSiluMulti:forward:input]");
-    //   print_tensor<float>(attn_bias.get_float_ptr(),
-    //                       32,
-    //                       "[SigmoidSiluMulti:forward:attn_bias]");
-    //   print_tensor<float>(residual.get_float_ptr(),
-    //                       32,
-    //                       "[SigmoidSiluMulti:forward:residual]");
-    //   print_tensor<float>(added_output.get_float_ptr(),
-    //                       32,
-    //                       "[SigmoidSiluMulti:forward:added_output]");
-    //   print_tensor<float>(output.get_float_ptr(),
-    //                       32,
-    //                       "[SigmoidSiluMulti:forward:output]");
-    //   print_tensor<float>(gamma.get_float_ptr(),
-    //                       32,
-    //                       "[SigmoidSiluMulti:forward:gamma]");
-    //   print_tensor<float>(
-    //       beta.get_float_ptr(), 32,
-    //       "[SigmoidSiluMulti:forward:beta]");
-    // } else {
-    //   print_tensor<half>(
-    //       input.get_half_ptr(), 32,
-    //       "[SigmoidSiluMulti:forward:input]");
-    //   print_tensor<half>(attn_bias.get_half_ptr(),
-    //                      32,
-    //                      "[SigmoidSiluMulti:forward:attn_bias]");
-    //   print_tensor<half>(residual.get_half_ptr(),
-    //                      32,
-    //                      "[SigmoidSiluMulti:forward:residual]");
-    //   print_tensor<half>(added_output.get_half_ptr(),
-    //                      32,
-    //                      "[SigmoidSiluMulti:forward:added_output]");
-    //   print_tensor<half>(output.get_half_ptr(),
-    //                      32,
-    //                      "[SigmoidSiluMulti:forward:output]");
-    //   print_tensor<half>(
-    //       gamma.get_half_ptr(), 32,
-    //       "[SigmoidSiluMulti:forward:gamma]");
-    //   print_tensor<half>(
-    //       beta.get_half_ptr(), 32,
-    //       "[SigmoidSiluMulti:forward:beta]");
-    // }
-    // print_tensor<T>(in_ptr, 32, "[SigmoidSiluMulti:forward:input]");
-    // print_tensor<T>(out_ptr, 32,
-    // "[SigmoidSiluMulti:forward:output]");
   }
 }
 
