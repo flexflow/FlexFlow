@@ -756,7 +756,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
 
 void FileDataLoader::load_weights(FFModel *ff, bool use_full_precision) {
   for (Layer *l : ff->layers) {
-    if (l->numWeights < 1 || !l->name || strlen(l->name) < 1) {
+    if (l->numWeights < 1 || l->name == NULL || strlen(l->name) < 1) {
       continue;
     }
     for (int i = 0; i < l->numWeights; i++) {
