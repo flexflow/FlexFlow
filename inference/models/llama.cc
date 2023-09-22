@@ -48,41 +48,29 @@ void LLAMA::create_llama_model(FFModel &ff,
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
 
-  Tensor token;
-
-  if (use_full_precision) {
-    token = ff.embedding(input,
-                         llama_config.vocab_size,
-                         llama_config.hidden_size,
-                         AGGR_MODE_NONE,
-                         DT_FLOAT,
-                         NULL,
-                         embed_init);
-  } else {
-    token = ff.embedding(input,
-                         llama_config.vocab_size,
-                         llama_config.hidden_size,
-                         AGGR_MODE_NONE,
-                         DT_HALF,
-                         NULL,
-                         embed_init);
-  }
-
-  Layer *embedding = ff.layers.back();
-  weights_layers.emplace("tok_embeddings_weight", embedding);
+  Tensor token = ff.embedding(input,
+                              llama_config.vocab_size,
+                              llama_config.hidden_size,
+                              AGGR_MODE_NONE,
+                              use_full_precision ? DT_FLOAT : DT_HALF,
+                              NULL,
+                              embed_init,
+                              "tok_embeddings");
 
   for (int i = 0; i < llama_config.num_hidden_layers; i++) {
     // set transformer layer id
     ff.set_transformer_layer_id(i);
+
     // step 1: attention
-    Tensor att_norm =
-        ff.rms_norm(token, llama_config.rms_norm_eps, llama_config.hidden_size);
-    Layer *attention_norm = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) +
-                               "_attention_norm_weight",
-                           attention_norm);
+    std::string layer_name = "layers_" + std::to_string(i) + "_attention_norm";
+    Tensor att_norm = ff.rms_norm(token,
+                                  llama_config.rms_norm_eps,
+                                  llama_config.hidden_size,
+                                  DT_NONE,
+                                  layer_name.c_str());
 
     Tensor mha;
+    layer_name = "layers_" + std::to_string(i) + "_attention";
     switch (mode) {
       case BEAM_SEARCH_MODE: {
         mha = ff.spec_inc_multihead_self_attention(
@@ -91,13 +79,18 @@ void LLAMA::create_llama_model(FFModel &ff,
             llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
-            0.0f,    /*dropout*/
-            false,   /*qkv_bias*/
-            false,   /*final_bias*/
-            false,   /*add_zero_attn*/
-            DT_NONE, /*data_type*/
-            NULL,    /*kernel_initializer*/
-            true     /*apply_rotary_embedding*/
+            0.0f,              /*dropout*/
+            false,             /*qkv_bias*/
+            false,             /*final_bias*/
+            false,             /*add_zero_attn*/
+            DT_NONE,           /*data_type*/
+            NULL,              /*kernel_initializer*/
+            true,              /*apply_rotary_embedding*/
+            false,             /*scaling query*/
+            1.0f,              /*scaling factor*/
+            true,              /*qk_prod_scaling*/
+            false,             /*position_bias*/
+            layer_name.c_str() /*name*/
         );
         break;
       }
@@ -108,13 +101,18 @@ void LLAMA::create_llama_model(FFModel &ff,
             llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
-            0.0f,    /*dropout*/
-            false,   /*qkv_bias*/
-            false,   /*final_bias*/
-            false,   /*add_zero_attn*/
-            DT_NONE, /*data_type*/
-            nullptr, /*kernel_initializer*/
-            true     /*apply_rotary_embedding*/
+            0.0f,              /*dropout*/
+            false,             /*qkv_bias*/
+            false,             /*final_bias*/
+            false,             /*add_zero_attn*/
+            DT_NONE,           /*data_type*/
+            nullptr,           /*kernel_initializer*/
+            true,              /*apply_rotary_embedding*/
+            false,             /*scaling query*/
+            1.0f,              /*scaling factor*/
+            true,              /*qk_prod_scaling*/
+            false,             /*position_bias*/
+            layer_name.c_str() /*name*/
         );
         break;
       }
@@ -125,13 +123,18 @@ void LLAMA::create_llama_model(FFModel &ff,
             llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
-            0.0f,    /*dropout*/
-            false,   /*qkv_bias*/
-            false,   /*final_bias*/
-            false,   /*add_zero_attn*/
-            DT_NONE, /*data_type*/
-            nullptr, /*kernel_initializer*/
-            true     /*apply_rotary_embedding*/
+            0.0f,              /*dropout*/
+            false,             /*qkv_bias*/
+            false,             /*final_bias*/
+            false,             /*add_zero_attn*/
+            DT_NONE,           /*data_type*/
+            nullptr,           /*kernel_initializer*/
+            true,              /*apply_rotary_embedding*/
+            false,             /*scaling query*/
+            1.0f,              /*scaling factor*/
+            true,              /*qk_prod_scaling*/
+            false,             /*position_bias*/
+            layer_name.c_str() /*name*/
         );
         break;
       }
@@ -139,51 +142,81 @@ void LLAMA::create_llama_model(FFModel &ff,
         assert(false);
       }
     }
-    Layer *attention_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
-                           attention_layer);
+
     token = ff.add(token, mha);
 
     // step 2: SILU activaion
-    Tensor ff_norm =
-        ff.rms_norm(token, llama_config.rms_norm_eps, llama_config.hidden_size);
-    Layer *ffn_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_ffn_norm_weight",
-                           ffn_layer);
+    layer_name = "layers_" + std::to_string(i) + "_ffn_norm";
+    Tensor ff_norm = ff.rms_norm(token,
+                                 llama_config.rms_norm_eps,
+                                 llama_config.hidden_size,
+                                 DT_NONE,
+                                 layer_name.c_str());
 
-    Tensor w1 =
-        ff.dense(ff_norm, llama_config.intermediate_size, AC_MODE_NONE, false);
-    Layer *w1_layer = ff.layers.back();
-    weights_layers.emplace(
-        "layers_" + std::to_string(i) + "_feed_forward_w1_weight", w1_layer);
+    layer_name = "layers_" + std::to_string(i) + "_feed_forward_w1";
+    Tensor w1 = ff.dense(ff_norm,
+                         llama_config.intermediate_size,
+                         AC_MODE_NONE,
+                         false,
+                         DT_NONE,
+                         nullptr,
+                         nullptr,
+                         nullptr,
+                         REG_MODE_NONE,
+                         0.0f,
+                         layer_name.c_str());
 
-    Tensor w3 =
-        ff.dense(ff_norm, llama_config.intermediate_size, AC_MODE_NONE, false);
-    Layer *w3_layer = ff.layers.back();
-    weights_layers.emplace(
-        "layers_" + std::to_string(i) + "_feed_forward_w3_weight", w3_layer);
+    layer_name = "layers_" + std::to_string(i) + "_feed_forward_w3";
+    Tensor w3 = ff.dense(ff_norm,
+                         llama_config.intermediate_size,
+                         AC_MODE_NONE,
+                         false,
+                         DT_NONE,
+                         nullptr,
+                         nullptr,
+                         nullptr,
+                         REG_MODE_NONE,
+                         0.0f,
+                         layer_name.c_str());
 
-    /* Tensor sigmoid = ff.sigmoid(w1);
+    Tensor sigmoid = ff.sigmoid(w1);
     Tensor silu = ff.multiply(w1, sigmoid);
-    Tensor multi = ff.multiply(silu, w3); */
-    Tensor multi = ff.sigmoid_silu_multi(w1, w3);
+    Tensor multi = ff.multiply(silu, w3);
+    // Tensor multi = ff.sigmoid_silu_multi(w1, w3);
 
-    Tensor w2 = ff.dense(multi, llama_config.hidden_size, AC_MODE_NONE, false);
-    Layer *w2_layer = ff.layers.back();
-    weights_layers.emplace(
-        "layers_" + std::to_string(i) + "_feed_forward_w2_weight", w2_layer);
+    layer_name = "layers_" + std::to_string(i) + "_feed_forward_w2";
+    Tensor w2 = ff.dense(multi,
+                         llama_config.hidden_size,
+                         AC_MODE_NONE,
+                         false,
+                         DT_NONE,
+                         nullptr,
+                         nullptr,
+                         nullptr,
+                         REG_MODE_NONE,
+                         0.0f,
+                         layer_name.c_str());
     token = ff.add(token, w2);
   }
   // final normalization and linear
   std::vector<int> axes = {2};
-  token =
-      ff.rms_norm(token, llama_config.rms_norm_eps, llama_config.hidden_size);
-  Layer *final_norm = ff.layers.back();
-  weights_layers.emplace("norm_weight", final_norm);
+  token = ff.rms_norm(token,
+                      llama_config.rms_norm_eps,
+                      llama_config.hidden_size,
+                      DT_NONE,
+                      "norm");
 
-  Tensor dense = ff.dense(token, llama_config.vocab_size, AC_MODE_NONE, false);
-  Layer *final_linear = ff.layers.back();
-  weights_layers.emplace("output_weight", final_linear);
+  Tensor dense = ff.dense(token,
+                          llama_config.vocab_size,
+                          AC_MODE_NONE,
+                          false,
+                          DT_NONE,
+                          nullptr,
+                          nullptr,
+                          nullptr,
+                          REG_MODE_NONE,
+                          0.0f,
+                          "output");
 
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {
