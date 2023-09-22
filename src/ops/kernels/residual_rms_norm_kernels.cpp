@@ -154,7 +154,7 @@ void forward_kernel(ResidualRMSNormMeta const *m,
   int num_threads =
       std::max(kernel1_parallelism.second, kernel2_parallelism.second);
 
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(RMSNormFusedForwardKernel<T>),
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(ResidualRMSNormFusedForwardKernel<T>),
                      num_blocks,
                      num_threads,
                      0,
