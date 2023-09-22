@@ -66,7 +66,7 @@ void FFModel::residual_rms_norm(const Tensor input1,
                                 DataType data_type,
                                 char const *name) {
   if (data_type == DT_NONE) {
-    data_type = input->data_type;
+    data_type = input1->data_type;
   }
   Tensor casted_input1 =
       (data_type != input1->data_type)
@@ -87,9 +87,9 @@ void FFModel::residual_rms_norm(const Tensor input1,
                         casted_input2);
 
   rm->outputs[0] = create_tensor_legion_ordering(
-      input->num_dims, input->dims, data_type, rm, 0, false /*create_grad*/);
+      input1->num_dims, input1->dims, data_type, rm, 0, false /*create_grad*/);
   rm->outputs[1] = create_tensor_legion_ordering(
-      input->num_dims, input->dims, data_type, rm, 1, false /*create_grad*/);
+      input1->num_dims, input1->dims, data_type, rm, 1, false /*create_grad*/);
 
   // weights
   int weight_dims[1] = {dim};
@@ -166,7 +166,7 @@ ResidualRMSNorm::ResidualRMSNorm(FFModel &model,
                                  char const *name)
     : Op(model,
          OP_RMS_NORM,
-         _input->data_type,
+         _input1->data_type,
          name,
          2 /*num of inputs tensor */,
          1 /*num of weights tensor */,

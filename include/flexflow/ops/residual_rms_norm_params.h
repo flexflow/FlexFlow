@@ -11,7 +11,8 @@ struct ResidualRMSNormParams {
   LayerID layer_guid;
   float eps;
   int dim;
-  bool is_valid(ParallelTensorShape const &) const;
+  bool is_valid(
+      std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const;
 };
 
 bool operator==(ResidualRMSNormParams const &, ResidualRMSNormParams const &);
