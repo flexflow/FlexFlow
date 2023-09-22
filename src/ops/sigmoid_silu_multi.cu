@@ -23,10 +23,9 @@ namespace FlexFlow {
 constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 
-SigmoidSiluMultiMeta::SigmoidSiluMultiMeta(
-    FFHandler handle,
-    SigmoidSiluMulti const *ssm,
-    MemoryAllocator &gpu_mem_allocator)
+SigmoidSiluMultiMeta::SigmoidSiluMultiMeta(FFHandler handle,
+                                           SigmoidSiluMulti const *ssm,
+                                           MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   profiling = ssm->profiling;
   DataType data_type = ssm->data_type;
@@ -84,9 +83,21 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
   if (m->input_type[0] == DT_FLOAT) {
-    SigmoidSiluMultiKernelFloat<<<GET_BLOCKS(num_elements), min(CUDA_NUM_THREADS, num_elements), 0, stream>>>(input1.domain.get_volume(), input1.get_float_ptr(), input2.get_float_ptr(), output.get_float_ptr())
+    SigmoidSiluMultiKernelFloat<<<GET_BLOCKS(num_elements),
+                                  min(CUDA_NUM_THREADS, num_elements),
+                                  0,
+                                  stream>>>(input1.domain.get_volume(),
+                                            input1.get_float_ptr(),
+                                            input2.get_float_ptr(),
+                                            output.get_float_ptr())
   } else if (m->input_type[0] == DT_HALF) {
-    SigmoidSiluMultiKernelHalf<<<GET_BLOCKS(num_elements), min(CUDA_NUM_THREADS, num_elements), 0, stream>>>(input1.domain.get_volume(), input1.get_half_ptr(), input2.get_half_ptr(), output.get_half_ptr())
+    SigmoidSiluMultiKernelHalf<<<GET_BLOCKS(num_elements),
+                                 min(CUDA_NUM_THREADS, num_elements),
+                                 0,
+                                 stream>>>(input1.domain.get_volume(),
+                                           input1.get_half_ptr(),
+                                           input2.get_half_ptr(),
+                                           output.get_half_ptr())
   } else {
     assert(false && "unsupport datatype in layernorm");
   }

@@ -12,8 +12,7 @@ struct SigmoidSiluMultiParams {
       std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;
 };
 
-bool operator==(SigmoidSiluMultiParams const &,
-                SigmoidSiluMultiParams const &);
+bool operator==(SigmoidSiluMultiParams const &, SigmoidSiluMultiParams const &);
 
 } // namespace FlexFlow
 

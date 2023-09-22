@@ -56,9 +56,9 @@ SigmoidSiluMultiParams SigmoidSiluMulti::get_params() const {
 }
 
 Tensor FFModel::sigmoid_silu_multi(const Tensor input1,
-                                  const Tensor input2,
-                                  DataType data_type,
-                                  char const *name) {
+                                   const Tensor input2,
+                                   DataType data_type,
+                                   char const *name) {
 
   // Check dims
   assert(input1->num_dims == input2->num_dims);
@@ -76,27 +76,21 @@ Tensor FFModel::sigmoid_silu_multi(const Tensor input1,
           : input1;
   Tensor casted_input2 =
       (data_type != input2->data_type)
-          ? cast(input2,
-                 data_type,
-                 "type cast for sigmoid_silu_multi")
+          ? cast(input2, data_type, "type cast for sigmoid_silu_multi")
           : input2;
-  
+
   // Create layer
   Layer *l = new Layer(this,
-                 OP_SIGMOID_SILU_MULTI,
-                 data_type,
-                 name,
-                 2 /*inputs*/,
-                 0 /*weights*/,
-                 1 /*outputs*/,
-                 casted_input1,
-                 casted_input2);
-  ssm->outputs[0] = create_tensor_legion_ordering(input1->num_dims,
-                                                 input1->dims,
-                                                 data_type,
-                                                 l,
-                                                 0,
-                                                 false /*create_grad*/);
+                       OP_SIGMOID_SILU_MULTI,
+                       data_type,
+                       name,
+                       2 /*inputs*/,
+                       0 /*weights*/,
+                       1 /*outputs*/,
+                       casted_input1,
+                       casted_input2);
+  ssm->outputs[0] = create_tensor_legion_ordering(
+      input1->num_dims, input1->dims, data_type, l, 0, false /*create_grad*/);
   layers.push_back(l);
   return ssm->outputs[0];
 }
@@ -105,12 +99,9 @@ Op *SigmoidSiluMulti::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
-  
-  return new SigmoidSiluMulti(model,
-                              layer->layer_guid,
-                              inputs[0],
-                              inputs[1],
-                              layer->name);
+
+  return new SigmoidSiluMulti(
+      model, layer->layer_guid, inputs[0], inputs[1], layer->name);
 }
 
 SigmoidSiluMulti::SigmoidSiluMulti(
@@ -118,18 +109,14 @@ SigmoidSiluMulti::SigmoidSiluMulti(
     SigmoidSiluMultiParams const &params,
     std::pair<ParallelTensor, ParallelTensor> const &inputs,
     char const *name)
-    : SigmoidSiluMulti(model,
-                      params.layer_guid,
-                      inputs.first,
-                      inputs.second,
-                      name) {}
+    : SigmoidSiluMulti(
+          model, params.layer_guid, inputs.first, inputs.second, name) {}
 
-SigmoidSiluMulti::SigmoidSiluMulti(
-    FFModel &model,
-    LayerID const &_layer_guid,
-    const ParallelTensor _input1,
-    const ParallelTensor _input2,
-    char const *name)
+SigmoidSiluMulti::SigmoidSiluMulti(FFModel &model,
+                                   LayerID const &_layer_guid,
+                                   const ParallelTensor _input1,
+                                   const ParallelTensor _input2,
+                                   char const *name)
     : Op(model,
          OP_SIGMOID_SILU_MULTI,
          _input1->data_type,
@@ -141,8 +128,11 @@ SigmoidSiluMulti::SigmoidSiluMulti(
          _input2) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
-  outputs[0] = model.create_parallel_tensor_legion_ordering(
-      _input1->num_dims, _input1->dims, _input1->data_type, this, 0 /*owner_idx*/);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(_input1->num_dims,
+                                                            _input1->dims,
+                                                            _input1->data_type,
+                                                            this,
+                                                            0 /*owner_idx*/);
 }
 
 void SigmoidSiluMulti::init_inference(
@@ -238,11 +228,10 @@ void SigmoidSiluMulti::init(FFModel const &ff) {
   regions[1](I): input 2
   regions[2](O): output
 */
-OpMeta *SigmoidSiluMulti::init_task(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
-    Runtime *runtime) {
+OpMeta *SigmoidSiluMulti::init_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   SigmoidSiluMulti *l = (SigmoidSiluMulti *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
@@ -328,14 +317,13 @@ void SigmoidSiluMulti::inference_task(
 
   assert(task->regions.size() == regions.size());
   assert(regions.size() == 3);
-  
+
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
   }
 
-  SigmoidSiluMultiMeta const *m =
-      *((SigmoidSiluMultiMeta **)task->local_args);
+  SigmoidSiluMultiMeta const *m = *((SigmoidSiluMultiMeta **)task->local_args);
 
   GenericTensorAccessorR input1 = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -353,15 +341,16 @@ void SigmoidSiluMulti::inference_task(
 
   assert(input1_domain.get_volume() == input2_domain.get_volume());
   assert(input1_domain.get_volume() == output_domain.get_volume());
-  
+
   assert(input1_domain == input2_domain);
   assert(input1_domain == output_domain);
 
   SigmoidSiluMulti::inference_kernel_wrapper(m, input1, input2, output);
 }
 
-bool SigmoidSiluMulti::measure_operator_cost(
-    Simulator *sim, MachineView const &mv, CostMetrics &cost_metrics) const {
+bool SigmoidSiluMulti::measure_operator_cost(Simulator *sim,
+                                             MachineView const &mv,
+                                             CostMetrics &cost_metrics) const {
   return false;
 }
 
@@ -373,9 +362,9 @@ void SigmoidSiluMulti::serialize(Legion::Serializer &sez) const {
 using PCG::Node;
 /*static*/
 Node SigmoidSiluMulti::deserialize(FFModel &ff,
-                                           Legion::Deserializer &dez,
-                                           ParallelTensor inputs[],
-                                           int num_inputs) {
+                                   Legion::Deserializer &dez,
+                                   ParallelTensor inputs[],
+                                   int num_inputs) {
   assert(num_inputs == 2);
   size_t id, transformer_layer_id;
   dez.deserialize(id);
@@ -384,7 +373,8 @@ Node SigmoidSiluMulti::deserialize(FFModel &ff,
 
   SigmoidSiluMultiParams params;
   params.layer_guid = layer_guid;
-  return ff.get_or_create_node<SigmoidSiluMulti>({inputs[0], inputs[1]}, params);
+  return ff.get_or_create_node<SigmoidSiluMulti>({inputs[0], inputs[1]},
+                                                 params);
 }
 
 }; // namespace FlexFlow

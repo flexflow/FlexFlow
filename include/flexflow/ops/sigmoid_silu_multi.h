@@ -12,14 +12,14 @@ public:
   using Params = SigmoidSiluMultiParams;
   using Input = std::pair<ParallelTensor, ParallelTensor>;
   SigmoidSiluMulti(FFModel &model,
-                           Params const &params,
-                           Input const &inputs,
-                           char const *name = nullptr);
+                   Params const &params,
+                   Input const &inputs,
+                   char const *name = nullptr);
   SigmoidSiluMulti(FFModel &model,
-                           LayerID const &_layer_guid,
-                           const ParallelTensor _input1,
-                           const ParallelTensor _input2,
-                           char const *name = nullptr);
+                   LayerID const &_layer_guid,
+                   const ParallelTensor _input1,
+                   const ParallelTensor _input2,
+                   char const *name = nullptr);
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,
@@ -69,14 +69,13 @@ public:
                                        GenericTensorAccessorR const &input1,
                                        GenericTensorAccessorR const &input2,
                                        GenericTensorAccessorW const &output);
-
 };
 
 class SigmoidSiluMultiMeta : public OpMeta {
 public:
   SigmoidSiluMultiMeta(FFHandler handle,
-                               SigmoidSiluMulti const *ln,
-                               MemoryAllocator &gpu_mem_allocator);
+                       SigmoidSiluMulti const *ln,
+                       MemoryAllocator &gpu_mem_allocator);
   ~SigmoidSiluMultiMeta(void);
 
 public:

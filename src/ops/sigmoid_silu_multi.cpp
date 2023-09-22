@@ -24,10 +24,9 @@ namespace FlexFlow {
 constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 
-SigmoidSiluMultiMeta::SigmoidSiluMultiMeta(
-    FFHandler handle,
-    SigmoidSiluMulti const *ln,
-    MemoryAllocator &gpu_mem_allocator)
+SigmoidSiluMultiMeta::SigmoidSiluMultiMeta(FFHandler handle,
+                                           SigmoidSiluMulti const *ln,
+                                           MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   elementwise_affine = ln->elementwise_affine;
   use_bias = ln->use_bias;
@@ -165,18 +164,17 @@ __global__ void LayerNormFusedForwardKernel(int attn_bias_dim,
 
 /*static*/
 template <typename T>
-void SigmoidSiluMulti::inference_kernel(
-    SigmoidSiluMultiMeta const *m,
-    int attn_bias_dim,
-    int residual_volume,
-    T const *input_ptr,
-    T const *attn_bias_ptr,
-    T const *residual_ptr,
-    T *added_output_ptr,
-    T *output_ptr,
-    T const *gamma_ptr,
-    T const *beta_ptr,
-    hipStream_t stream) {
+void SigmoidSiluMulti::inference_kernel(SigmoidSiluMultiMeta const *m,
+                                        int attn_bias_dim,
+                                        int residual_volume,
+                                        T const *input_ptr,
+                                        T const *attn_bias_ptr,
+                                        T const *residual_ptr,
+                                        T *added_output_ptr,
+                                        T *output_ptr,
+                                        T const *gamma_ptr,
+                                        T const *beta_ptr,
+                                        hipStream_t stream) {
 
   std::pair<int, int> kernel1_parallelism = std::make_pair(
       GET_BLOCKS(residual_volume), std::min(residual_volume, CUDA_NUM_THREADS));
@@ -229,31 +227,31 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
   checkCUDA(get_legion_stream(&stream));
 
   if (m->input_type[0] == DT_FLOAT) {
-    SigmoidSiluMulti::inference_kernel<float>(
-        m,
-        attn_bias_dim,
-        residual_volume,
-        input.get_float_ptr(),
-        attn_bias.get_float_ptr(),
-        residual.get_float_ptr(),
-        added_output.get_float_ptr(),
-        output.get_float_ptr(),
-        gamma.get_float_ptr(),
-        m->use_bias ? beta.get_float_ptr() : nullptr,
-        stream);
+    SigmoidSiluMulti::inference_kernel<float>(m,
+                                              attn_bias_dim,
+                                              residual_volume,
+                                              input.get_float_ptr(),
+                                              attn_bias.get_float_ptr(),
+                                              residual.get_float_ptr(),
+                                              added_output.get_float_ptr(),
+                                              output.get_float_ptr(),
+                                              gamma.get_float_ptr(),
+                                              m->use_bias ? beta.get_float_ptr()
+                                                          : nullptr,
+                                              stream);
   } else if (m->input_type[0] == DT_HALF) {
-    SigmoidSiluMulti::inference_kernel<half>(
-        m,
-        attn_bias_dim,
-        residual_volume,
-        input.get_half_ptr(),
-        attn_bias.get_half_ptr(),
-        residual.get_half_ptr(),
-        added_output.get_half_ptr(),
-        output.get_half_ptr(),
-        gamma.get_half_ptr(),
-        m->use_bias ? beta.get_half_ptr() : nullptr,
-        stream);
+    SigmoidSiluMulti::inference_kernel<half>(m,
+                                             attn_bias_dim,
+                                             residual_volume,
+                                             input.get_half_ptr(),
+                                             attn_bias.get_half_ptr(),
+                                             residual.get_half_ptr(),
+                                             added_output.get_half_ptr(),
+                                             output.get_half_ptr(),
+                                             gamma.get_half_ptr(),
+                                             m->use_bias ? beta.get_half_ptr()
+                                                         : nullptr,
+                                             stream);
   } else {
     assert(false && "unsupport datatype in layernorm");
   }
