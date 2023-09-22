@@ -348,7 +348,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   int k_block_size = m->kProjSize * num_tokens;
   int q_array_size = m->qProjSize * num_tokens * m->num_q_heads;
   // apply bias for q, k, v
-  if (*m->bias) {
+  if (*m->qkv_bias) {
     hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_proj_bias_qkv<DT>),
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
@@ -847,7 +847,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     tokens_previous_requests += num_new_tokens;
   }
 
-  if (*m->bias && shard_id == 0) {
+  if (*m->final_bias && shard_id == 0) {
     int parallelism = m->oProjSize * num_tokens;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
                           m->kProjSize * m->global_num_kv_heads +
@@ -878,7 +878,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorR const &bias) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->bias;
+  bool use_bias = *m->qkv_bias || *m->final_bias;
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
@@ -961,11 +961,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     attn->vProjSize,
                                     attn->oProjSize,
                                     attn->apply_rotary_embedding,
-                                    attn->bias,
+                                    attn->qkv_bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
                                     attn->position_bias,
-                                    attn->add_bias_kv,
+                                    attn->final_bias,
                                     attn->scaling_factor,
                                     weight,
                                     gpu_mem_allocator,
@@ -989,11 +989,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int _vProjSize,
     int _oProjSize,
     bool _apply_rotary_embedding,
-    bool _bias,
+    bool _qkv_bias,
     bool _scaling_query,
     bool _qk_prod_scaling,
     bool _position_bias,
-    bool _add_bias_kv,
+    bool _final_bias,
     float _scaling_factor,
     GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
@@ -1004,7 +1004,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int _num_kv_heads,
     DataType _quantization_type,
     bool _offload)
-    : OpMeta(handler, attn) {
+    : OpMeta(handler, attn), weight_ptr(nullptr), bias_ptr(nullptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(handler.dnn, stream));
@@ -1038,13 +1038,20 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     quantized_weightSize = get_quantization_to_byte_size(
         attn->data_type, quantization_type, weightSize);
   }
-  biasSize = _bias ? oProjSize * size_of_dt * 4 : 0;
+  // biasSize = _bias ? oProjSize * size_of_dt * 4 : 0;
+
+  int qkv_bias_size =
+      qProjSize * num_q_heads + (kProjSize + vProjSize) * num_kv_heads;
+  int final_bias_size = oProjSize;
+  biasSize =
+      (_qkv_bias ? qkv_bias_size : 0) + (final_bias ? final_bias_size : 0);
+
   // has_load_weights = (bool *)calloc(1, sizeof(bool));
   //*has_load_weights = false;
   apply_rotary_embedding = (bool *)calloc(1, sizeof(bool));
   *apply_rotary_embedding = _apply_rotary_embedding;
-  bias = (bool *)calloc(1, sizeof(bool));
-  *bias = _bias;
+  qkv_bias = (bool *)calloc(1, sizeof(bool));
+  *qkv_bias = _qkv_bias;
   scaling_query = (bool *)calloc(1, sizeof(bool));
   *scaling_query = _scaling_query;
   scaling_factor = _scaling_factor;
@@ -1052,8 +1059,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   *qk_prod_scaling = _qk_prod_scaling;
   position_bias = (bool *)calloc(1, sizeof(bool));
   *position_bias = _position_bias;
-  // Currently do not support adding bias to key/value projection
-  assert(!_add_bias_kv);
+  final_bias = (bool *)calloc(1, sizeof(bool));
+  *final_bias = _final_bias;
 
   // allocate weight and bias in the reserve space for cpu offloading
   if (offload) {
@@ -1201,6 +1208,22 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   checkCUDA(hipStreamSynchronize(stream));
 }
 
-IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {}
+IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
+}
+
+template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<float>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    GenericTensorAccessorR const weight,
+    DataType data_type,
+    hipStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<half>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    GenericTensorAccessorR const weight,
+    DataType data_type,
+    hipStream_t stream);
 
 }; // namespace FlexFlow

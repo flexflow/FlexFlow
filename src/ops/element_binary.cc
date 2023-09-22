@@ -540,7 +540,7 @@ FutureMap
   size_t machine_view_hash = view->hash();
   /* std::cout << "ElementBinary op machine_view: " << *(MachineView const *)mv
             << std::endl; */
-  IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID,
+  IndexLauncher launcher(ELEMENTBINARY_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -548,6 +548,7 @@ FutureMap
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   if (inplace_a) {
     assert(batch_outputs[0]->part == batch_inputs[0]->part);
     assert(batch_outputs[0]->region == batch_inputs[0]->region);
@@ -601,6 +602,111 @@ FutureMap
     }
   }
   return runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): in1
+  regions[1](I): in2
+  regions[2](O): output
+*/
+__host__ void
+    ElementBinary::inference_task(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
+  assert(task->regions.size() == regions.size());
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
+    return;
+  }
+  // const ElementBinary* ele = (const ElementBinary*) task->args;
+  ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
+  GenericTensorAccessorR in1, in2;
+  GenericTensorAccessorW out;
+  Domain in1_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+
+  if (!m->has_same_operands) {
+    Domain in2_domain = runtime->get_index_space_domain(
+        ctx, task->regions[1].region.get_index_space());
+    // Currently only support broadcast for add and sub
+    if (in1_domain != in2_domain) {
+      assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD ||
+             m->op_type == OP_EW_MUL);
+    }
+  }
+
+  if (m->inplace_a) {
+    if (m->has_same_operands) {
+      assert(regions.size() == 1);
+      assert(task->regions.size() == 1);
+      out = helperGetGenericTensorAccessorRW(m->output_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = out;
+      in1 = out;
+    } else {
+      assert(regions.size() == 2);
+      assert(task->regions.size() == 2);
+      out = helperGetGenericTensorAccessorRW(m->output_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = helperGetGenericTensorAccessorRO(m->input_type[1],
+                                             regions[1],
+                                             task->regions[1],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in1 = out;
+    }
+  } else {
+    if (m->has_same_operands) {
+      assert(regions.size() == 2);
+      assert(task->regions.size() == 2);
+      in1 = helperGetGenericTensorAccessorRO(m->input_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = in1;
+      out = helperGetGenericTensorAccessorWO(m->output_type[0],
+                                             regions[1],
+                                             task->regions[1],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+    } else {
+      assert(regions.size() == 3);
+      assert(task->regions.size() == 3);
+      in1 = helperGetGenericTensorAccessorRO(m->input_type[0],
+                                             regions[0],
+                                             task->regions[0],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      in2 = helperGetGenericTensorAccessorRO(m->input_type[1],
+                                             regions[1],
+                                             task->regions[1],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+      out = helperGetGenericTensorAccessorWO(m->output_type[0],
+                                             regions[2],
+                                             task->regions[2],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+    }
+  }
+
+  forward_kernel_wrapper(m, in1, in2, out);
 }
 
 /*

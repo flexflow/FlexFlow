@@ -1,4 +1,5 @@
 #include "flexflow/operator_params.h"
+#include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
 #include "flexflow/ops/arg_topk.h"
@@ -93,6 +94,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((TreeIncMultiHeadSelfAttention *)op)->get_params();
     case OP_LAYERNORM:
       return ((LayerNorm *)op)->get_params();
+    case OP_ADD_BIAS_RESIDUAL_LAYERNORM:
+      return ((AddBiasResidualLayerNorm *)op)->get_params();
     case OP_REDUCE_SUM:
       return ((Reduce *)op)->get_params();
     case OP_RESHAPE:

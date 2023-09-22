@@ -272,10 +272,7 @@ class LLM:
             self.ffconfig.tensor_parallelism_degree,
         )
 
-        model_layers_with_weights = self.model.get_layers_with_weights()
-        self.fileloader.load_weights(
-            self.model.ffmodel, model_layers_with_weights, self.data_type
-        )
+        self.fileloader.load_weights(self.model.ffmodel, self.data_type)
 
     def compile(
         self,

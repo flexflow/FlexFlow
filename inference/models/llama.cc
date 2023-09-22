@@ -91,13 +91,14 @@ void LLAMA::create_llama_model(FFModel &ff,
             llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
-            0.0f,
-            false,
-            false,
-            false,
-            DT_NONE,
-            NULL,
-            true);
+            0.0f,    /*dropout*/
+            false,   /*qkv_bias*/
+            false,   /*final_bias*/
+            false,   /*add_zero_attn*/
+            DT_NONE, /*data_type*/
+            NULL,    /*kernel_initializer*/
+            true     /*apply_rotary_embedding*/
+        );
         break;
       }
       case TREE_VERIFY_MODE: {
@@ -108,8 +109,8 @@ void LLAMA::create_llama_model(FFModel &ff,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             0.0f,    /*dropout*/
-            false,   /*bias*/
-            false,   /*add_bias_kv*/
+            false,   /*qkv_bias*/
+            false,   /*final_bias*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
@@ -125,8 +126,8 @@ void LLAMA::create_llama_model(FFModel &ff,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             0.0f,    /*dropout*/
-            false,   /*bias*/
-            false,   /*add_bias_kv*/
+            false,   /*qkv_bias*/
+            false,   /*final_bias*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
@@ -212,7 +213,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                             llama_config.hidden_size /
                                 llama_config.num_attention_heads,
                             ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, weights_layers, use_full_precision);
+  fileloader.load_weights(&ff, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators

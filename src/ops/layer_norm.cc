@@ -130,6 +130,7 @@ Tensor FFModel::layer_norm(const Tensor input,
                                                  0,
                                                  true /*create_grad*/);
   if (num_weights > 0) {
+    assert(elementwise_affine);
     int numdims = axes.size();
     int dims[numdims];
     for (int i = 0; i < numdims; i++) {
@@ -238,13 +239,13 @@ LayerNorm::LayerNorm(FFModel &model,
   effective_batch_size = (inputs[0]->get_volume() / num_replicas) / M;
   assert(use_bias == (numWeights == 2));
   if (numWeights > 0 && allocate_weights) {
+    assert(elementwise_affine);
     ParallelTensorShape beta_gamma_shape = _input->get_shape();
     for (int i = axes.size(); i < beta_gamma_shape.num_dims - 1; i++) {
       beta_gamma_shape.dims[i].size = 1;
     }
     int seed = std::rand();
     Initializer *gamma_initializer = new UniformInitializer(seed, 1.0f, 1.0f);
-    Initializer *beta_initializer = new UniformInitializer(seed, 0.0f, 0.0f);
     weights[0] = model.create_parallel_weight_legion_ordering(
         beta_gamma_shape.num_dims, // axes.size(),
         beta_gamma_shape.dims,
@@ -253,14 +254,18 @@ LayerNorm::LayerNorm(FFModel &model,
         true /*create_grad*/,
         gamma_initializer,
         CHOSEN_SYNC_TYPE);
-    weights[1] = model.create_parallel_weight_legion_ordering(
-        beta_gamma_shape.num_dims, //.size(),
-        beta_gamma_shape.dims,
-        _input->data_type,
-        NULL /*owner_op*/,
-        true /*create_grad*/,
-        beta_initializer,
-        CHOSEN_SYNC_TYPE);
+    if (numWeights == 2) {
+      assert(use_bias);
+      Initializer *beta_initializer = new UniformInitializer(seed, 0.0f, 0.0f);
+      weights[1] = model.create_parallel_weight_legion_ordering(
+          beta_gamma_shape.num_dims, //.size(),
+          beta_gamma_shape.dims,
+          _input->data_type,
+          NULL /*owner_op*/,
+          true /*create_grad*/,
+          beta_initializer,
+          CHOSEN_SYNC_TYPE);
+    }
   }
 }
 
@@ -442,7 +447,7 @@ FutureMap LayerNorm::inference(FFModel const &ff,
   size_t machine_view_hash = view->hash();
   /* std::cout << "LayerNorm op machine_view: " << *(MachineView const *)mv
             << std::endl; */
-  IndexLauncher launcher(LAYERNORM_FWD_TASK_ID,
+  IndexLauncher launcher(LAYERNORM_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -450,6 +455,7 @@ FutureMap LayerNorm::inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -480,6 +486,79 @@ FutureMap LayerNorm::inference(FFModel const &ff,
     }
   }
   return runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): input
+  regions[1](O): output
+  regions[2](I/O): gamma
+  regions[3](I/O): beta
+*/
+void LayerNorm::inference_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
+  assert(task->regions.size() == regions.size());
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
+    return;
+  }
+
+  LayerNormMeta const *m = *((LayerNormMeta **)task->local_args);
+  assert(task->regions.size() == regions.size());
+  float const *in_ptr = NULL;
+  float *out_ptr = NULL, *gamma_ptr = NULL, *beta_ptr = NULL;
+  GenericTensorAccessorR in, gamma, beta;
+  GenericTensorAccessorW out;
+
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  // in_ptr = helperGetTensorPointerRO<float>(
+  //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  in = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  Domain out_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  // out_ptr = helperGetTensorPointerWO<float>(
+  //     regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  out = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  assert(in_domain == out_domain);
+  assert(in_domain.get_volume() ==
+         m->effective_num_elements * m->effective_batch_size);
+  if (m->elementwise_affine) {
+    assert(m->use_bias == (regions.size() == 4));
+    Domain gamma_domain = runtime->get_index_space_domain(
+        ctx, task->regions[2].region.get_index_space());
+    gamma = helperGetGenericTensorAccessorRO(
+        m->input_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+    if (m->use_bias) {
+      Domain beta_domain = runtime->get_index_space_domain(
+          ctx, task->regions[3].region.get_index_space());
+      beta = helperGetGenericTensorAccessorRO(m->input_type[0],
+                                              regions[3],
+                                              task->regions[3],
+                                              FID_DATA,
+                                              ctx,
+                                              runtime);
+      assert(gamma_domain == beta_domain);
+    }
+
+    assert(gamma_domain.get_volume() == m->effective_num_elements);
+    int numdims = gamma_domain.get_dim();
+    size_t vol = 1;
+    int i = 0;
+    while (vol < gamma_domain.get_volume()) {
+      int g_d = gamma_domain.hi()[i] - gamma_domain.lo()[i] + 1;
+      int in_d = in_domain.hi()[i] - in_domain.lo()[i] + 1;
+      assert(g_d == in_d);
+      vol *= g_d;
+      i++;
+    }
+  } else {
+    assert(regions.size() == 2);
+  }
+  LayerNorm::forward_kernel_wrapper(m, in, out, gamma, beta);
 }
 
 /*

@@ -432,7 +432,7 @@ FutureMap
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
-  IndexLauncher launcher(ELEMENTUNARY_FWD_TASK_ID,
+  IndexLauncher launcher(ELEMENTUNARY_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -440,6 +440,7 @@ FutureMap
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   if (inplace) {
     assert(batch_outputs[0]->part == batch_inputs[0]->part);
     assert(batch_outputs[0]->region == batch_inputs[0]->region);
@@ -466,6 +467,31 @@ FutureMap
     launcher.add_field(1, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);
+}
+
+void ElementUnary::inference_task(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
+  assert(task->regions.size() == regions.size());
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
+    return;
+  }
+  ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
+  if (m->data_type == DT_HALF) {
+    forward_task_with_type<half>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_FLOAT) {
+    forward_task_with_type<float>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_DOUBLE) {
+    forward_task_with_type<double>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_INT32) {
+    forward_task_with_type<int32_t>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_INT64) {
+    forward_task_with_type<int64_t>(task, regions, ctx, runtime);
+  } else {
+    assert(false && "Unsupported data type in Embedding forward");
+  }
 }
 
 void ElementUnary::forward_task(Task const *task,

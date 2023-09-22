@@ -208,7 +208,7 @@ void MPT::create_mpt_model(FFModel &ff,
                             mpt_config.hidden_size,
                             mpt_config.hidden_size / mpt_config.n_heads,
                             ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, weights_layers, use_full_precision);
+  fileloader.load_weights(&ff, use_full_precision);
   im->init_operators_inference(&ff);
 }
 

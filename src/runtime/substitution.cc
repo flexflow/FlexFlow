@@ -18,6 +18,7 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
+#include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/concat.h"
@@ -3796,6 +3797,22 @@ bool FFModel::convert_graph_to_operators(
           parallel_ops.push_back(fused->parallel_ops[i]);
         }
         new_op = new FusedParallelOp(*this, inputs[0], parallel_ops);
+        break;
+      }
+      case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
+        assert(inList.size() == 2);
+        AddBiasResidualLayerNorm *abr_ln = (AddBiasResidualLayerNorm *)node.ptr;
+        AddBiasResidualLayerNormParams params = abr_ln->get_params();
+        new_op = new AddBiasResidualLayerNorm(*this,
+                                              abr_ln->layer_guid,
+                                              inputs[0],
+                                              inputs[1],
+                                              abr_ln->axes,
+                                              abr_ln->elementwise_affine,
+                                              abr_ln->use_bias,
+                                              abr_ln->eps,
+                                              true,
+                                              NULL);
         break;
       }
       default: {
