@@ -255,7 +255,7 @@ jobs:
   notify-slack:
     name: Notify Slack in case of failure
     runs-on: ubuntu-20.04
-    needs: docker-build
+    needs: [docker-build-rest, docker-build-oracle-rocm]
     if: ${{ failure() && github.event_name == 'schedule' && github.repository_owner == 'flexflow' }}
     steps:
       - name: Send Slack message
