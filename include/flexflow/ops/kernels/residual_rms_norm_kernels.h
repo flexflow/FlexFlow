@@ -15,8 +15,8 @@ class ResidualRMSNorm;
 class ResidualRMSNormMeta : public OpMeta {
 public:
   ResidualRMSNormMeta(FFHandler handler,
-              ResidualRMSNorm const *rms,
-              MemoryAllocator &gpu_mem_allocator);
+                      ResidualRMSNorm const *rms,
+                      MemoryAllocator &gpu_mem_allocator);
   ~ResidualRMSNormMeta(void);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
