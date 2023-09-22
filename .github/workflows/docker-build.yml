@@ -154,7 +154,6 @@ jobs:
       matrix:
         gpu_backend: ["cuda"]
         gpu_backend_version: ["11.1", "11.2", "11.3", "11.4", "11.5", "11.6", "11.7", "11.8", "12.0"]
-        exclude:
       fail-fast: false
     env:
       FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
