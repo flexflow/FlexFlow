@@ -123,19 +123,11 @@ void FFModel::add_bias_residual_layer_norm(const Tensor input,
                  residual);
   // added: attn_output + final attention bias + residual. To be added to the
   // output of FC2
-  ln->outputs[0] = create_tensor_legion_ordering(input->num_dims,
-                                                 input->dims,
-                                                 input->data_type,
-                                                 ln,
-                                                 0,
-                                                 false /*create_grad*/);
+  ln->outputs[0] = create_tensor_legion_ordering(
+      input->num_dims, input->dims, data_type, ln, 0, false /*create_grad*/);
   // layer_norm(added)
-  ln->outputs[1] = create_tensor_legion_ordering(input->num_dims,
-                                                 input->dims,
-                                                 input->data_type,
-                                                 ln,
-                                                 0,
-                                                 false /*create_grad*/);
+  ln->outputs[1] = create_tensor_legion_ordering(
+      input->num_dims, input->dims, data_type, ln, 1, false /*create_grad*/);
   {
     int numdims = axes.size();
     int dims[numdims];
@@ -146,7 +138,7 @@ void FFModel::add_bias_residual_layer_norm(const Tensor input,
     int attn_bias_dims[1] = {dims[0]};
     ln->weights[0] = create_weight_legion_ordering(1,
                                                    attn_bias_dims,
-                                                   input->data_type,
+                                                   data_type,
                                                    ln,
                                                    false /*create_grad*/,
                                                    nullptr,
@@ -155,7 +147,7 @@ void FFModel::add_bias_residual_layer_norm(const Tensor input,
       assert(elementwise_affine);
       ln->weights[1] = create_weight_legion_ordering(numdims,
                                                      dims,
-                                                     input->data_type,
+                                                     data_type,
                                                      ln,
                                                      false /*create_grad*/,
                                                      nullptr,
@@ -164,7 +156,7 @@ void FFModel::add_bias_residual_layer_norm(const Tensor input,
         assert(use_bias);
         ln->weights[2] = create_weight_legion_ordering(numdims,
                                                        dims,
-                                                       input->data_type,
+                                                       data_type,
                                                        ln,
                                                        false /*create_grad*/,
                                                        nullptr,
@@ -818,6 +810,8 @@ namespace std {
 size_t hash<FlexFlow::AddBiasResidualLayerNormParams>::operator()(
     FlexFlow::AddBiasResidualLayerNormParams const &params) const {
   size_t key = 0;
+  hash_combine(key, params.layer_guid.id);
+  hash_combine(key, params.layer_guid.transformer_layer_id);
   hash_combine(key, params.axes.size());
   for (int n : params.axes) {
     hash_combine(key, n);

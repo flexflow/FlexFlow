@@ -295,6 +295,13 @@ class AddBiasResidualLayerNorm(Op):
     return self.get_parameter_by_id(2)
 
 # -----------------------------------------------------------------------
+# SigmoidSiluMulti
+# -----------------------------------------------------------------------
+class SigmoidSiluMulti(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(SigmoidSiluMulti, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Dropout
 # -----------------------------------------------------------------------
 class Dropout(Op):
@@ -477,6 +484,13 @@ class RMSNorm(Op):
     super(RMSNorm, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Residual RMS Norm
+# -----------------------------------------------------------------------
+class ResidualRMSNorm(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ResidualRMSNorm, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # ArgTopK
 # -----------------------------------------------------------------------
 class ArgTopK(Op):
@@ -572,6 +586,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return LayerNorm(handle, idx, name)
   elif op_type == OpType.ADD_BIAS_RESIDUAL_LAYERNORM:
     return AddBiasResidualLayerNorm(handle, idx, name)
+  elif op_type == OpType.SIGMOID_SILU_MULTI:
+    return SigmoidSiluMulti(handle, idx, name)
   elif op_type == OpType.BATCH_MATMUL:
     return Batch_Matmul(handle, idx, name)
   elif op_type == OpType.SPLIT:
@@ -594,6 +610,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return TreeIncMultiHeadSelfAttention(handle, idx, name)
   elif op_type == OpType.RMS_NORM:
     return RMSNorm(handle, idx, name)
+  elif op_type == OpType.RESIDUAL_RMS_NORM:
+    return ResidualRMSNorm(handle, idx, name)
   elif op_type == OpType.ARG_TOPK:
     return ArgTopK(handle, idx, name)
   elif op_type == OpType.BEAM_TOPK:
@@ -1598,6 +1616,12 @@ class FFModel(object):
     handles_array = ffc().flexflow_model_add_add_bias_residual_layer_norm(self.handle, input.handle, residual.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
     self.add_layer(OpType.ADD_BIAS_RESIDUAL_LAYERNORM, name)
     return Tensor(handles_array[0], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM), Tensor(handles_array[1], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM)
+  
+  def sigmoid_silu_multi(self, input1, input2, name=None):
+    c_name = get_c_name(name)
+    handle = ffc().flexflow_model_add_sigmoid_silu_multi(self.handle, input1.handle, input2.handle, c_name)
+    self.add_layer(OpType.SIGMOID_SILU_MULTI, name)
+    return Tensor(handle, owner_op_type=OpType.SIGMOID_SILU_MULTI)
 
   def batch_matmul(self, A, B, a_seq_length_dim=None, b_seq_length_dim=None, name=None):
     """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.
@@ -2587,6 +2611,31 @@ class FFModel(object):
     handle = ffc().flexflow_model_add_rms_norm(self.handle, input.handle, eps, dim, c_name)
     self.add_layer(OpType.RMS_NORM, name)
     return Tensor(handle, owner_op_type=OpType.RMS_NORM)
+  
+  def residual_rms_norm(self, input1, input2, eps, dim, name=None):
+    """Defines the Residual RMS Norm layer.
+             
+    :param input: the input 1 Tensor.
+    :type input: Tensor
+
+    :param input: the input 2 Tensor.
+    :type input: Tensor
+
+    :param eps: a value added to the denominator for numerical stability
+    :type eps: float
+                          
+    :param dim: The dimension with respect to which to take the norm
+    :type dim: int
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handles_array = ffc().flexflow_model_add_residual_rms_norm(self.handle, input1.handle, input2.handle, eps, dim, c_name)
+    self.add_layer(OpType.RESIDUAL_RMS_NORM, name)
+    return Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_RMS_NORM), Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_RMS_NORM)
   
   def arg_top_k(self, input, k, sorted, name=None):
     """Defines the Arg TopK layer.
