@@ -62,13 +62,15 @@ void FALCON::create_falcon_model(FFModel &ff,
     ff.set_transformer_layer_id(i);
 
     // step 1: attention
-    Tensor att_norm = ff.layer_norm(token,
-                                    axes,
-                                    true,
-                                    falcon_config.layer_norm_epsilon,
-                                    true,
-                                    DT_NONE,
-                                    std::string("layers_" + std::to_string(i) + "_input_layernorm").c_str());
+    Tensor att_norm = ff.layer_norm(
+        token,
+        axes,
+        true,
+        falcon_config.layer_norm_epsilon,
+        true,
+        DT_NONE,
+        std::string("layers_" + std::to_string(i) + "_input_layernorm")
+            .c_str());
 
     Tensor mha;
     switch (mode) {
@@ -80,18 +82,19 @@ void FALCON::create_falcon_model(FFModel &ff,
             falcon_config.n_head_kv,
             falcon_config.hidden_size / falcon_config.n_head,
             falcon_config.hidden_size / falcon_config.n_head,
-            0.0f,              /*dropout*/
-            false,             /*qkv_bias*/
-            false,             /*final_bias*/
-            false,             /*add_zero_attn*/
-            DT_NONE,           /*data_type*/
-            NULL,              /*kernel_initializer*/
-            true,              /*apply_rotary_embedding*/
-            false,             /*scaling query*/
-            1.0f,              /*scaling factor*/
-            true,              /*qk_prod_scaling*/
-            false,             /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention").c_str() /*name*/
+            0.0f,    /*dropout*/
+            false,   /*qkv_bias*/
+            false,   /*final_bias*/
+            false,   /*add_zero_attn*/
+            DT_NONE, /*data_type*/
+            NULL,    /*kernel_initializer*/
+            true,    /*apply_rotary_embedding*/
+            false,   /*scaling query*/
+            1.0f,    /*scaling factor*/
+            true,    /*qk_prod_scaling*/
+            false,   /*position_bias*/
+            std::string("layers_" + std::to_string(i) + "_attention")
+                .c_str() /*name*/
         );
         break;
       }
@@ -104,18 +107,19 @@ void FALCON::create_falcon_model(FFModel &ff,
             falcon_config.n_head_kv,
             falcon_config.hidden_size / falcon_config.n_head,
             falcon_config.hidden_size / falcon_config.n_head,
-            0.0f,              /*dropout*/
-            false,             /*qkv_bias*/
-            false,             /*final_bias*/
-            false,             /*add_zero_attn*/
-            DT_NONE,           /*data_type*/
-            nullptr,           /*kernel_initializer*/
-            true,              /*apply_rotary_embedding*/
-            false,             /*scaling query*/
-            1.0f,              /*scaling factor*/
-            true,              /*qk_prod_scaling*/
-            false,             /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention").c_str() /*name*/
+            0.0f,    /*dropout*/
+            false,   /*qkv_bias*/
+            false,   /*final_bias*/
+            false,   /*add_zero_attn*/
+            DT_NONE, /*data_type*/
+            nullptr, /*kernel_initializer*/
+            true,    /*apply_rotary_embedding*/
+            false,   /*scaling query*/
+            1.0f,    /*scaling factor*/
+            true,    /*qk_prod_scaling*/
+            false,   /*position_bias*/
+            std::string("layers_" + std::to_string(i) + "_attention")
+                .c_str() /*name*/
         );
         break;
       }
@@ -128,18 +132,19 @@ void FALCON::create_falcon_model(FFModel &ff,
             falcon_config.n_head_kv,
             falcon_config.hidden_size / falcon_config.n_head,
             falcon_config.hidden_size / falcon_config.n_head,
-            0.0f,              /*dropout*/
-            false,             /*qkv_bias*/
-            false,             /*final_bias*/
-            false,             /*add_zero_attn*/
-            DT_NONE,           /*data_type*/
-            nullptr,           /*kernel_initializer*/
-            true,              /*apply_rotary_embedding*/
-            false,             /*scaling query*/
-            1.0f,              /*scaling factor*/
-            true,              /*qk_prod_scaling*/
-            false,             /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention").c_str() /*name*/
+            0.0f,    /*dropout*/
+            false,   /*qkv_bias*/
+            false,   /*final_bias*/
+            false,   /*add_zero_attn*/
+            DT_NONE, /*data_type*/
+            nullptr, /*kernel_initializer*/
+            true,    /*apply_rotary_embedding*/
+            false,   /*scaling query*/
+            1.0f,    /*scaling factor*/
+            true,    /*qk_prod_scaling*/
+            false,   /*position_bias*/
+            std::string("layers_" + std::to_string(i) + "_attention")
+                .c_str() /*name*/
         );
         break;
       }
@@ -148,31 +153,35 @@ void FALCON::create_falcon_model(FFModel &ff,
       }
     }
 
-    Tensor dense_h_to_4h = ff.dense(att_norm,
-                                    falcon_config.hidden_size * 4,
-                                    AC_MODE_NONE,
-                                    false,
-                                    DT_NONE,
-                                    nullptr,
-                                    nullptr,
-                                    nullptr,
-                                    REG_MODE_NONE,
-                                    0.0f,
-                                    std::string("layers_" + std::to_string(i) + "_mlp_dense_h_to_4h").c_str());
+    Tensor dense_h_to_4h = ff.dense(
+        att_norm,
+        falcon_config.hidden_size * 4,
+        AC_MODE_NONE,
+        false,
+        DT_NONE,
+        nullptr,
+        nullptr,
+        nullptr,
+        REG_MODE_NONE,
+        0.0f,
+        std::string("layers_" + std::to_string(i) + "_mlp_dense_h_to_4h")
+            .c_str());
 
     dense_h_to_4h = ff.gelu(dense_h_to_4h);
 
-    Tensor mlp_output = ff.dense(dense_h_to_4h,
-                                 falcon_config.hidden_size,
-                                 AC_MODE_NONE,
-                                 false,
-                                 DT_NONE,
-                                 nullptr,
-                                 nullptr,
-                                 nullptr,
-                                 REG_MODE_NONE,
-                                 0.0f,
-                                 std::string("layers_" + std::to_string(i) + "_mlp_dense_4h_to_h").c_str());
+    Tensor mlp_output = ff.dense(
+        dense_h_to_4h,
+        falcon_config.hidden_size,
+        AC_MODE_NONE,
+        false,
+        DT_NONE,
+        nullptr,
+        nullptr,
+        nullptr,
+        REG_MODE_NONE,
+        0.0f,
+        std::string("layers_" + std::to_string(i) + "_mlp_dense_4h_to_h")
+            .c_str());
 
     token = ff.add(token, mha);
     token = ff.add(token, mlp_output);
