@@ -23,7 +23,7 @@ jobs:
   oracle-runner-start:
     name: Start a self-hosted Oracle machine to build the ROCM Docker images
     runs-on: ubuntu-latest
-    if: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
+    if: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
     env: 
       OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
@@ -52,7 +52,7 @@ jobs:
     steps:
       - name: Determine the runner
         env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
         run: |
           if [ $deploy_needed == "true" ]; then
             echo "::set-output name=runner::[self-hosted, cpu_only]"
@@ -71,27 +71,21 @@ jobs:
     env:
       FF_GPU_BACKEND: "hip_rocm"
       hip_version: ${{ matrix.hip_version }}
-      branch_name: ${{ github.head_ref || github.ref_name }}
     steps:
       - name: Checkout Git Repository
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
         uses: actions/checkout@v3
         with:
           submodules: recursive
 
       - name: Free additional space on runner
-        env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ matrix.hip_version == '5.6' }}
-        run: |
-          if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
-            .github/workflows/helpers/free_space_on_runner.sh
-          else
-            echo "Skipping this step to save time"
-          fi
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
+        run: .github/workflows/helpers/free_space_on_runner.sh
 
       - name: Build Docker container
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
         env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
           build_needed: ${{ matrix.hip_version == '5.6' }}
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
@@ -103,33 +97,19 @@ jobs:
           elif [[ $build_needed == "true" ]]; then
             export FF_HIP_ARCH=gfx1100,gfx1036
             ./docker/build.sh flexflow
-          else
-            echo "Skipping build to save time"
           fi
 
       - name: Check availability of flexflow modules in Python
-        env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ matrix.hip_version == '5.6' }}
-        run: |
-          if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
-            docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${gpu_backend_version}:latest -c "python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
-          else
-            echo "Skipping test to save time"
-          fi
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
+        run: docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${gpu_backend_version}:latest -c "python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
 
       - name: Publish Docker environment image (on push to inference)
-        if: github.repository_owner == 'flexflow'
+        if: ${{ github.repository_owner == 'flexflow' && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
         env:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
         run: |
-          if [[ $deploy_needed == "true" ]]; then
-            ./docker/publish.sh flexflow-environment
-            ./docker/publish.sh flexflow
-          else
-            echo "No need to update Docker containers in ghrc.io registry at this time."
-          fi
+          ./docker/publish.sh flexflow-environment
+          ./docker/publish.sh flexflow
   
   docker-build-cuda:
     name: Build and Install FlexFlow in a Docker Container (CUDA backend)
@@ -144,24 +124,19 @@ jobs:
       branch_name: ${{ github.head_ref || github.ref_name }}
     steps:
       - name: Checkout Git Repository
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
         uses: actions/checkout@v3
         with:
           submodules: recursive
 
       - name: Free additional space on runner
-        env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ matrix.cuda_version == '11.8' }}
-        run: |
-          if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
-            .github/workflows/helpers/free_space_on_runner.sh
-          else
-            echo "Skipping this step to save time"
-          fi
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
+        run: .github/workflows/helpers/free_space_on_runner.sh
 
       - name: Build Docker container
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
         env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
           build_needed: ${{ matrix.cuda_version == '11.8' }}
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
@@ -173,37 +148,23 @@ jobs:
           elif [[ $build_needed == "true" ]]; then
             export FF_CUDA_ARCH=70
             ./docker/build.sh flexflow
-          else
-            echo "Skipping build to save time"
           fi
 
       - name: Check availability of flexflow modules in Python
-        env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ matrix.cuda_version == '11.8' }}
-        run: |
-          if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
-            docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
-          else
-            echo "Skipping test to save time"
-          fi
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
+        run: docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
 
       - name: Publish Docker environment image (on push to inference)
-        if: github.repository_owner == 'flexflow'
+        if: ${{ github.repository_owner == 'flexflow' && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
         env:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
         run: |
-          if [[ $deploy_needed == "true" ]]; then
-            ./docker/publish.sh flexflow-environment
-            ./docker/publish.sh flexflow
-          else
-            echo "No need to update Docker containers in ghrc.io registry at this time."
-          fi
+          ./docker/publish.sh flexflow-environment
+          ./docker/publish.sh flexflow
 
   oracle-runner-stop:
     needs: docker-build-rocm
-    if: ${{ always() && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
+    if: ${{ always() && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
     runs-on: ubuntu-latest
     name: Turn off the self-hosted Oracle machine where we built the ROCM Docker images
     env:
