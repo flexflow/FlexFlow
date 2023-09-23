@@ -39,6 +39,7 @@ public:
                                std::vector<int> &value) const;
   bool get_initializer(std::string const &key, Initializer *&initializer) const;
   Tensor get_parameter(int index);
+  void set_layer_name(std::string const &name);
   void print();
 
 public:

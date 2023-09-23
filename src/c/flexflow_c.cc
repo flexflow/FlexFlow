@@ -667,10 +667,9 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
                                        name);
   assert(tensor_outputs[0] != nullptr);
   assert(tensor_outputs[1] != nullptr);
-  DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, residual %p, output0: %p, "
+  DEBUG_PRINT("[LayerNorm] input %p, residual %p, output0: %p, "
               "output1: %p, elementwise_affine %d, eps "
               "%f, name %s",
-              tensor,
               input,
               residual,
               tensor_outputs[0],

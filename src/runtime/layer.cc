@@ -135,6 +135,13 @@ bool Layer::get_initializer(std::string const &key,
   }
 }
 
+void Layer::set_layer_name(std::string const &new_name) {
+  std::string pcname = new_name;
+  pcname = pcname + "_" + std::to_string(this->layer_guid.id);
+  assert(pcname.length() < MAX_OPNAME);
+  std::strcpy(name, pcname.c_str());
+}
+
 void Layer::print() {}
 
 Tensor Layer::get_parameter(int index) {
