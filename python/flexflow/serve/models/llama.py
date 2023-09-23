@@ -170,13 +170,6 @@ class FlexFlowLLAMA(FlexFlowModel):
             else:
                 assert False
 
-            # token = ffmodel.add(token, mha)
-            # ff_norm = ffmodel.rms_norm(
-            #     token,
-            #     self.llama_config.rms_norm_eps,
-            #     self.llama_config.hidden_size,
-            #     name=f"layers_{i}_ffn_norm",
-            # )
             token, ff_norm = ffmodel.residual_rms_norm(
                 token,
                 mha,
