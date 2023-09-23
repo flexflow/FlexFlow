@@ -57,17 +57,36 @@ void LLAMA::create_llama_model(FFModel &ff,
                               embed_init,
                               "tok_embeddings");
 
+  Tensor w2 = nullptr;
+
   for (int i = 0; i < llama_config.num_hidden_layers; i++) {
     // set transformer layer id
     ff.set_transformer_layer_id(i);
 
     // step 1: attention
-    Tensor att_norm = ff.rms_norm(
-        token,
-        llama_config.rms_norm_eps,
-        llama_config.hidden_size,
-        DT_NONE,
-        std::string("layers_" + std::to_string(i) + "_attention_norm").c_str());
+    Tensor att_norm = nullptr;
+    Tensor token_att_norm[2] = {nullptr, nullptr};
+    if (i == 0) {
+      att_norm = ff.rms_norm(
+          token,
+          llama_config.rms_norm_eps,
+          llama_config.hidden_size,
+          DT_NONE,
+          std::string("layers_" + std::to_string(i) + "_attention_norm")
+              .c_str());
+    } else {
+      ff.residual_rms_norm(
+          token,
+          w2,
+          token_att_norm,
+          llama_config.rms_norm_eps,
+          llama_config.hidden_size,
+          DT_NONE,
+          std::string("layers_" + std::to_string(i) + "_attention_norm")
+              .c_str());
+      token = token_att_norm[0];
+      att_norm = token_att_norm[1];
+    }
 
     Tensor mha;
     switch (mode) {
@@ -146,7 +165,7 @@ void LLAMA::create_llama_model(FFModel &ff,
     }
 
     // step 2: SILU activaion
-    Tensor token_ff_norm[2];
+    Tensor token_ff_norm[2] = {nullptr, nullptr};
     ff.residual_rms_norm(
         token,
         mha,
@@ -188,7 +207,7 @@ void LLAMA::create_llama_model(FFModel &ff,
 
     Tensor multi = ff.sigmoid_silu_multi(w1, w3);
 
-    Tensor w2 =
+    w2 =
         ff.dense(multi,
                  llama_config.hidden_size,
                  AC_MODE_NONE,
@@ -201,17 +220,18 @@ void LLAMA::create_llama_model(FFModel &ff,
                  0.0f,
                  std::string("layers_" + std::to_string(i) + "_feed_forward_w2")
                      .c_str());
-    token = ff.add(token, w2);
   }
   // final normalization and linear
-  std::vector<int> axes = {2};
-  token = ff.rms_norm(token,
-                      llama_config.rms_norm_eps,
-                      llama_config.hidden_size,
-                      DT_NONE,
-                      "norm");
+  Tensor final_rms_norm_output[2] = {nullptr, nullptr};
+  ff.residual_rms_norm(token,
+                       w2,
+                       final_rms_norm_output,
+                       llama_config.rms_norm_eps,
+                       llama_config.hidden_size,
+                       DT_NONE,
+                       "norm");
 
-  Tensor dense = ff.dense(token,
+  Tensor dense = ff.dense(final_rms_norm_output[1],
                           llama_config.vocab_size,
                           AC_MODE_NONE,
                           false,
