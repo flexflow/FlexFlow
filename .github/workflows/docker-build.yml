@@ -48,9 +48,10 @@ jobs:
     name: Determine what runner to use to build the ROCm Docker image(s)
     runs-on: ubuntu-latest
     outputs:
-      runner: ${{ steps.step1.outputs.runner }}
+      rocm_runner: ${{ steps.step1.outputs.runner }}
     steps:
       - name: Determine the runner
+        id: step1
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
         run: |
@@ -63,7 +64,7 @@ jobs:
   docker-build-rocm:
     needs: rocm_runner_choice
     name: Build and Install FlexFlow in a Docker Container (ROCm backend)
-    runs-on: ${{ needs.rocm_runner_choice.outputs.runner }}
+    runs-on: ${{ needs.rocm_runner_choice.outputs.rocm_runner }}
     strategy:
       matrix:
         hip_version: ["5.3", "5.4", "5.5", "5.6"]
