@@ -33,7 +33,9 @@
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/rms_norm.h"
+#include "flexflow/ops/sigmoid_silu_multi.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
@@ -3813,6 +3815,14 @@ bool FFModel::convert_graph_to_operators(
                                               abr_ln->eps,
                                               true,
                                               NULL);
+        break;
+      }
+      case OP_SIGMOID_SILU_MULTI: {
+        assert(inList.size() == 2);
+        SigmoidSiluMulti *ssm = (SigmoidSiluMulti *)node.ptr;
+        SigmoidSiluMultiParams params = ssm->get_params();
+        new_op = new SigmoidSiluMulti(
+            *this, ssm->layer_guid, inputs[0], inputs[1], NULL);
         break;
       }
       default: {

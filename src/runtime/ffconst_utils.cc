@@ -172,8 +172,12 @@ std::string get_operator_type_name(OperatorType type) {
       return "LayerNorm";
     case OP_ADD_BIAS_RESIDUAL_LAYERNORM:
       return "AddBiasResidualLayerNorm";
+    case OP_SIGMOID_SILU_MULTI:
+      return "SigmoidSiluMulti";
     case OP_RMS_NORM:
       return "RMSNorm";
+    case OP_RESIDUAL_RMS_NORM:
+      return "ResidualRMSNorm";
     case OP_GELU:
       return "GELU";
     case OP_IDENTITY:
