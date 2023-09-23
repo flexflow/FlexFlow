@@ -9,9 +9,9 @@ on:
     branches:
       - "inference"
       - "master"
-  schedule:
-    # Run every week on Sunday at midnight PT (3am ET / 8am UTC) to keep the docker images updated
-    - cron: "0 8 * * 0"
+  # schedule:
+  #   # Run every week on Sunday at midnight PT (3am ET / 8am UTC) to keep the docker images updated
+  #   - cron: "0 8 * * 0"
   workflow_dispatch:
 
 # Cancel outdated workflows if they are still running
@@ -21,8 +21,9 @@ concurrency:
 
 jobs:
   oracle-runner-start:
-    name: Start the oracle machine as runner if push or workflow_dispatch to the inference branch
-    runs-on: ubuntu-20.04
+    name: Start a self-hosted Oracle machine to build the ROCM Docker images
+    runs-on: ubuntu-latest
+    if: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
     env: 
       OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
@@ -34,53 +35,43 @@ jobs:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
 
-      - name: Install Oci
+      - name: Install Oracle Cloud Infrastructure library
         run: pip install oci
       
       - name: Start Oracle Machine
-        env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-        run: |
-          if [[ $deploy_needed == "true" ]]; then
-            python3 docker/oracle_con.py --start --instance_id $OCI_INSTANCE_ID
-          fi
+        run: python3 .github/workflows/helpers/oracle_con.py --start --instance_id $OCI_INSTANCE_ID
 
-# 1. in docker-build cases: if there are push/ workflow_dispatch to inference, 
-# the job should be run on oracle machine to build rocm and 11.8 cuda version
-# 2. add a job to turn off the oracle machine if not needed
-  runnerchoice:
+  # 1. in docker-build cases: if there are push/ workflow_dispatch to inference, 
+  # the job should be run on oracle machine to build rocm and 11.8 cuda version
+  # 2. add a job to turn off the oracle machine if not needed
+  rocm_runner_choice:
+    name: Determine what runner to use to build the ROCm Docker image(s)
     runs-on: ubuntu-latest
     outputs:
       runner: ${{ steps.step1.outputs.runner }}
     steps:
-      - name: Check action
+      - name: Determine the runner
         env:
-          check_needed: ${{ ( github.event_name == 'push' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
         run: |
-          if [ $check_needed == "true" ]; then
+          if [ $deploy_needed == "true" ]; then
             echo "::set-output name=runner::[self-hosted, cpu_only]"
           else
             echo "::set-output name=runner::ubuntu-20.04"
           fi
 
-  docker-build-oracle-rocm:
-    needs: [runnerchoice]
-    name: Build and Install FlexFlow in a Docker Container on Oracle machine with hip_rocm and 11.8
-    runs-on: ${{ needs.runnerchoice.outputs.runner }}
+  docker-build-rocm:
+    needs: rocm_runner_choice
+    name: Build and Install FlexFlow in a Docker Container (ROCm backend)
+    runs-on: ${{ needs.rocm_runner_choice.outputs.runner }}
     strategy:
       matrix:
-        gpu_backend: ["hip_rocm"]
-        gpu_backend_version: ["5.3", "5.4", "5.5", "5.6"]
-        # The CUDA version doesn't matter when building for hip_rocm, so we just pick one arbitrarily (11.8) to avoid building for hip_rocm once per number of CUDA version supported
+        hip_version: ["5.3", "5.4", "5.5", "5.6"]
       fail-fast: false
     env:
-      FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
-      gpu_backend_version: ${{ matrix.gpu_backend_version }}
-      # one of the two variables below will be unused
-      cuda_version: ${{ matrix.gpu_backend_version }}
-      hip_version: ${{ matrix.gpu_backend_version }}
+      FF_GPU_BACKEND: "hip_rocm"
+      hip_version: ${{ matrix.hip_version }}
       branch_name: ${{ github.head_ref || github.ref_name }}
-    timeout-minutes: 480
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -90,7 +81,7 @@ jobs:
       - name: Free additional space on runner
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
+          build_needed: ${{ matrix.hip_version == '5.6' }}
         run: |
           if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
             .github/workflows/helpers/free_space_on_runner.sh
@@ -101,17 +92,15 @@ jobs:
       - name: Build Docker container
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
+          build_needed: ${{ matrix.hip_version == '5.6' }}
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
           # to save time.
           if [[ $deploy_needed == "true" ]] ; then
-            export FF_CUDA_ARCH=all
             export FF_HIP_ARCH=all
             ./docker/build.sh flexflow
           elif [[ $build_needed == "true" ]]; then
-            export FF_CUDA_ARCH=70
             export FF_HIP_ARCH=gfx1100,gfx1036
             ./docker/build.sh flexflow
           else
@@ -119,17 +108,12 @@ jobs:
           fi
 
       - name: Check availability of flexflow modules in Python
-        if: ${{ matrix.gpu_backend == 'cuda' }}
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
+          build_needed: ${{ matrix.hip_version == '5.6' }}
         run: |
           if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
-            if [[ $FF_GPU_BACKEND == "cuda" ]]; then
-              docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${gpu_backend_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
-            else
-              docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${gpu_backend_version}:latest -c "python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
-            fi
+            docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${gpu_backend_version}:latest -c "python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
           else
             echo "Skipping test to save time"
           fi
@@ -147,22 +131,17 @@ jobs:
             echo "No need to update Docker containers in ghrc.io registry at this time."
           fi
   
-  docker-build-rest:
-    name: Build and Install FlexFlow in a Docker Container on normal runner
+  docker-build-cuda:
+    name: Build and Install FlexFlow in a Docker Container (CUDA backend)
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        gpu_backend: ["cuda"]
-        gpu_backend_version: ["11.1", "11.2", "11.3", "11.4", "11.5", "11.6", "11.7", "11.8", "12.0"]
+        cuda_version: ["11.1", "11.2", "11.3", "11.4", "11.5", "11.6", "11.7", "11.8", "12.0"]
       fail-fast: false
     env:
-      FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
-      gpu_backend_version: ${{ matrix.gpu_backend_version }}
-      # one of the two variables below will be unused
+      FF_GPU_BACKEND: "cuda"
       cuda_version: ${{ matrix.gpu_backend_version }}
-      hip_version: ${{ matrix.gpu_backend_version }}
       branch_name: ${{ github.head_ref || github.ref_name }}
-    timeout-minutes: 480
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -172,7 +151,7 @@ jobs:
       - name: Free additional space on runner
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
+          build_needed: ${{ matrix.cuda_version == '11.8' }}
         run: |
           if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
             .github/workflows/helpers/free_space_on_runner.sh
@@ -183,35 +162,28 @@ jobs:
       - name: Build Docker container
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
+          build_needed: ${{ matrix.cuda_version == '11.8' }}
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
           # to save time.
           if [[ $deploy_needed == "true" ]] ; then
             export FF_CUDA_ARCH=all
-            export FF_HIP_ARCH=all
             ./docker/build.sh flexflow
           elif [[ $build_needed == "true" ]]; then
             export FF_CUDA_ARCH=70
-            export FF_HIP_ARCH=gfx1100,gfx1036
             ./docker/build.sh flexflow
           else
             echo "Skipping build to save time"
           fi
 
       - name: Check availability of flexflow modules in Python
-        if: ${{ matrix.gpu_backend == 'cuda' }}
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ ( matrix.gpu_backend == 'hip_rocm' && matrix.gpu_backend_version == '5.6' ) || ( matrix.gpu_backend == 'cuda' && matrix.gpu_backend_version == '11.8' ) }}
+          build_needed: ${{ matrix.cuda_version == '11.8' }}
         run: |
           if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
-            if [[ $FF_GPU_BACKEND == "cuda" ]]; then
-              docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${gpu_backend_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
-            else
-              docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${gpu_backend_version}:latest -c "python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
-            fi
+            docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
           else
             echo "Skipping test to save time"
           fi
@@ -229,10 +201,11 @@ jobs:
             echo "No need to update Docker containers in ghrc.io registry at this time."
           fi
 
-  oracle-runner-close:
-    if: always()
+  oracle-runner-stop:
+    needs: docker-build-rocm
+    if: ${{ always() && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
     runs-on: ubuntu-latest
-    name: Turning on Oracle VM - flexflow-ci
+    name: Turn off the self-hosted Oracle machine where we built the ROCM Docker images
     env:
       OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
@@ -243,14 +216,12 @@ jobs:
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
+      
+      - name: Install Oracle Cloud Infrastructure library
+        run: pip install oci
         
-      - name: Running script (Close)
-        env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'workflow_dispatch' ) && env.branch_name == 'inference' }}
-        run: |
-          if [[ $deploy_needed == "true" ]]; then
-            python3 docker/oracle_con.py --close --instance_id $OCI_INSTANCE_ID
-          fi
+      - name: Stop Oracle Machine
+        run: python3 docker/oracle_con.py --stop --instance_id $OCI_INSTANCE_ID
 
   notify-slack:
     name: Notify Slack in case of failure
