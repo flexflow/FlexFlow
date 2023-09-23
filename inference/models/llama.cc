@@ -62,15 +62,13 @@ void LLAMA::create_llama_model(FFModel &ff,
     ff.set_transformer_layer_id(i);
 
     // step 1: attention
-    std::string layer_name = "layers_" + std::to_string(i) + "_attention_norm";
     Tensor att_norm = ff.rms_norm(token,
                                   llama_config.rms_norm_eps,
                                   llama_config.hidden_size,
                                   DT_NONE,
-                                  layer_name.c_str());
+                                  std::string("layers_" + std::to_string(i) + "_attention_norm").c_str());
 
     Tensor mha;
-    layer_name = "layers_" + std::to_string(i) + "_attention";
     switch (mode) {
       case BEAM_SEARCH_MODE: {
         mha = ff.spec_inc_multihead_self_attention(
@@ -90,7 +88,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             1.0f,              /*scaling factor*/
             true,              /*qk_prod_scaling*/
             false,             /*position_bias*/
-            layer_name.c_str() /*name*/
+            std::string("layers_" + std::to_string(i) + "_attention").c_str() /*name*/
         );
         break;
       }
@@ -112,7 +110,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             1.0f,              /*scaling factor*/
             true,              /*qk_prod_scaling*/
             false,             /*position_bias*/
-            layer_name.c_str() /*name*/
+            std::string("layers_" + std::to_string(i) + "_attention").c_str() /*name*/
         );
         break;
       }
@@ -134,7 +132,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             1.0f,              /*scaling factor*/
             true,              /*qk_prod_scaling*/
             false,             /*position_bias*/
-            layer_name.c_str() /*name*/
+            std::string("layers_" + std::to_string(i) + "_attention").c_str() /*name*/
         );
         break;
       }
@@ -144,7 +142,6 @@ void LLAMA::create_llama_model(FFModel &ff,
     }
 
     // step 2: SILU activaion
-    layer_name = "layers_" + std::to_string(i) + "_ffn_norm";
     Tensor token_ff_norm[2];
     ff.residual_rms_norm(token,
                          mha,
@@ -152,12 +149,10 @@ void LLAMA::create_llama_model(FFModel &ff,
                          llama_config.rms_norm_eps,
                          llama_config.hidden_size,
                          DT_NONE,
-                         layer_name.c_str());
-
+                         std::string("layers_" + std::to_string(i) + "_ffn_norm").c_str());
     token = token_ff_norm[0];
     Tensor ff_norm = token_ff_norm[1];
 
-    layer_name = "layers_" + std::to_string(i) + "_feed_forward_w1";
     Tensor w1 = ff.dense(ff_norm,
                          llama_config.intermediate_size,
                          AC_MODE_NONE,
@@ -168,9 +163,8 @@ void LLAMA::create_llama_model(FFModel &ff,
                          nullptr,
                          REG_MODE_NONE,
                          0.0f,
-                         layer_name.c_str());
+                         std::string("layers_" + std::to_string(i) + "_feed_forward_w1").c_str());
 
-    layer_name = "layers_" + std::to_string(i) + "_feed_forward_w3";
     Tensor w3 = ff.dense(ff_norm,
                          llama_config.intermediate_size,
                          AC_MODE_NONE,
@@ -181,11 +175,10 @@ void LLAMA::create_llama_model(FFModel &ff,
                          nullptr,
                          REG_MODE_NONE,
                          0.0f,
-                         layer_name.c_str());
+                         std::string("layers_" + std::to_string(i) + "_feed_forward_w3").c_str());
 
     Tensor multi = ff.sigmoid_silu_multi(w1, w3);
 
-    layer_name = "layers_" + std::to_string(i) + "_feed_forward_w2";
     Tensor w2 = ff.dense(multi,
                          llama_config.hidden_size,
                          AC_MODE_NONE,
@@ -196,7 +189,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                          nullptr,
                          REG_MODE_NONE,
                          0.0f,
-                         layer_name.c_str());
+                         std::string("layers_" + std::to_string(i) + "_feed_forward_w2").c_str());
     token = ff.add(token, w2);
   }
   // final normalization and linear
