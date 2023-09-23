@@ -101,7 +101,7 @@ jobs:
 
       - name: Check availability of flexflow modules in Python
         if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
-        run: docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${gpu_backend_version}:latest -c "python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
+        run: docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${hip_version}:latest -c "python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
 
       - name: Publish Docker environment image (on push to inference)
         if: ${{ github.repository_owner == 'flexflow' && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
@@ -120,7 +120,7 @@ jobs:
       fail-fast: false
     env:
       FF_GPU_BACKEND: "cuda"
-      cuda_version: ${{ matrix.gpu_backend_version }}
+      cuda_version: ${{ matrix.cuda_version }}
     steps:
       - name: Checkout Git Repository
         if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '11.8' }}
