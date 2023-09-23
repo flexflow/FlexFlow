@@ -47,40 +47,26 @@ void MPT::create_mpt_model(FFModel &ff,
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
   std::vector<int> axes = {0};
 
-  Tensor hidden_states;
-  if (use_full_precision) {
-    hidden_states = ff.embedding(input,
-                                 mpt_config.vocab_size,
-                                 mpt_config.hidden_size,
-                                 AGGR_MODE_NONE,
-                                 DT_FLOAT,
-                                 NULL,
-                                 embed_init);
-  } else {
-    hidden_states = ff.embedding(input,
-                                 mpt_config.vocab_size,
-                                 mpt_config.hidden_size,
-                                 AGGR_MODE_NONE,
-                                 DT_HALF,
-                                 NULL,
-                                 embed_init);
-  }
-
-  Layer *embedding = ff.layers.back();
-  weights_layers.emplace("transformer_wte_weight", embedding);
+  Tensor hidden_states = ff.embedding(input,
+                                      mpt_config.vocab_size,
+                                      mpt_config.hidden_size,
+                                      AGGR_MODE_NONE,
+                                      use_full_precision ? DT_FLOAT : DT_HALF,
+                                      NULL,
+                                      embed_init,
+                                      "transformer_wte");
 
   for (int i = 0; i < mpt_config.n_layers; i++) {
     ff.set_transformer_layer_id(i);
 
     Tensor residual = hidden_states;
 
-    Tensor layernorm_output =
-        ff.layer_norm(hidden_states, axes, true, 1e-05, false);
-    Layer *norm_1 = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_norm_1_weight",
-                           norm_1);
+    std::string layer_name = "layers_" + std::to_string(i) + "_norm_1";
+    Tensor layernorm_output = ff.layer_norm(
+        hidden_states, axes, true, 1e-05, false, DT_NONE, layer_name.c_str());
 
     Tensor attn_outputs;
+    layer_name = "layers_" + std::to_string(i) + "_attention";
     switch (mode) {
       case BEAM_SEARCH_MODE: {
         attn_outputs = ff.spec_inc_multihead_self_attention(
@@ -100,7 +86,9 @@ void MPT::create_mpt_model(FFModel &ff,
             /*scaling factor*/
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
             /*qk_prod_scaling*/ false,
-            /*position_bias*/ true);
+            /*position_bias*/ true,
+            layer_name.c_str() /*name*/
+        );
         break;
       }
       case TREE_VERIFY_MODE: {
@@ -121,7 +109,9 @@ void MPT::create_mpt_model(FFModel &ff,
             /*scaling factor*/
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
             /*qk_prod_scaling*/ false,
-            /*position_bias*/ true);
+            /*position_bias*/ true,
+            layer_name.c_str() /*name*/
+        );
         break;
       }
       case INC_DECODING_MODE: {
@@ -142,7 +132,9 @@ void MPT::create_mpt_model(FFModel &ff,
             /*scaling factor*/
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
             /*qk_prod_scaling*/ false,
-            /*position_bias*/ true);
+            /*position_bias*/ true,
+            layer_name.c_str() /*name*/
+        );
         break;
       }
       default: {
@@ -150,45 +142,61 @@ void MPT::create_mpt_model(FFModel &ff,
       }
     }
 
-    Layer *attention_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
-                           attention_layer);
-
     hidden_states = ff.add(attn_outputs, residual);
-    layernorm_output = ff.layer_norm(hidden_states, axes, true, 1e-05, false);
-    Layer *norm_2 = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_norm_2_weight",
-                           norm_2);
+
+    layer_name = "layers_" + std::to_string(i) + "_norm_2";
+    layernorm_output = ff.layer_norm(
+        hidden_states, axes, true, 1e-05, false, DT_NONE, layer_name.c_str());
 
     residual = hidden_states;
 
     // MLP
-    //  output = self.ffn(layernorm_output, residual)
-    layernorm_output = ff.dense(
-        layernorm_output, 4 * mpt_config.hidden_size, AC_MODE_NONE, false);
-    Layer *up_proj = ff.layers.back();
-    weights_layers.emplace(
-        "layers_" + std::to_string(i) + "_ffn_up_proj_weight", up_proj);
+    layer_name = "layers_" + std::to_string(i) + "_ffn_up_proj";
+    layernorm_output = ff.dense(layernorm_output,
+                                4 * mpt_config.hidden_size,
+                                AC_MODE_NONE,
+                                false,
+                                DT_NONE,
+                                nullptr,
+                                nullptr,
+                                nullptr,
+                                REG_MODE_NONE,
+                                0.0f,
+                                layer_name.c_str());
+
     layernorm_output = ff.gelu(layernorm_output);
-    Tensor intermediate_output =
-        ff.dense(layernorm_output, mpt_config.hidden_size, AC_MODE_NONE, false);
-    Layer *down_proj = ff.layers.back();
-    weights_layers.emplace(
-        "layers_" + std::to_string(i) + "_ffn_down_proj_weight", down_proj);
+
+    layer_name = "layers_" + std::to_string(i) + "_ffn_down_proj";
+    Tensor intermediate_output = ff.dense(layernorm_output,
+                                          mpt_config.hidden_size,
+                                          AC_MODE_NONE,
+                                          false,
+                                          DT_NONE,
+                                          nullptr,
+                                          nullptr,
+                                          nullptr,
+                                          REG_MODE_NONE,
+                                          0.0f,
+                                          layer_name.c_str());
 
     hidden_states = ff.add(intermediate_output, residual);
   }
 
   // final
-  Tensor all_final_norm =
-      ff.layer_norm(hidden_states, axes, true, 1e-05, false);
-  Layer *norm_f = ff.layers.back();
-  weights_layers.emplace("transformer_norm_f_weight", norm_f);
+  Tensor all_final_norm = ff.layer_norm(
+      hidden_states, axes, true, 1e-05, false, DT_NONE, "transformer_norm_f");
 
-  Tensor lm_head =
-      ff.dense(all_final_norm, mpt_config.vocab_size, AC_MODE_NONE, false);
-  Layer *lm_head_layer = ff.layers.back();
-  weights_layers.emplace("lm_head_weight", lm_head_layer);
+  Tensor lm_head = ff.dense(all_final_norm,
+                            mpt_config.vocab_size,
+                            AC_MODE_NONE,
+                            false,
+                            DT_NONE,
+                            nullptr,
+                            nullptr,
+                            nullptr,
+                            REG_MODE_NONE,
+                            0.0f,
+                            "lm_head");
 
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {

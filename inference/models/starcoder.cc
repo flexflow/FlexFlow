@@ -55,65 +55,43 @@ void STARCODER::create_starcoder_model(
 
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
 
-  Tensor token;
+  Tensor token = ff.embedding(input,
+                              startcoder_config.vocab_size,
+                              startcoder_config.hidden_size,
+                              AGGR_MODE_NONE,
+                              use_full_precision ? DT_FLOAT : DT_HALF,
+                              NULL,
+                              embed_init,
+                              "transformer_wte");
 
-  if (use_full_precision) {
-    token = ff.embedding(input,
-                         startcoder_config.vocab_size,
-                         startcoder_config.hidden_size,
-                         AGGR_MODE_NONE,
-                         DT_FLOAT,
-                         NULL,
-                         embed_init);
-  } else {
-    token = ff.embedding(input,
-                         startcoder_config.vocab_size,
-                         startcoder_config.hidden_size,
-                         AGGR_MODE_NONE,
-                         DT_HALF,
-                         NULL,
-                         embed_init);
-  }
-
-  Layer *embedding = ff.layers.back();
-  weights_layers.emplace("transformer_wte_weight", embedding);
-
-  Tensor positional_embedding;
-  if (use_full_precision) {
-    positional_embedding =
-        ff.embedding(position_input,
-                     startcoder_config.max_position_embeddings,
-                     startcoder_config.hidden_size,
-                     AGGR_MODE_NONE,
-                     DT_FLOAT,
-                     NULL,
-                     embed_init);
-  } else {
-    positional_embedding =
-        ff.embedding(position_input,
-                     startcoder_config.max_position_embeddings,
-                     startcoder_config.hidden_size,
-                     AGGR_MODE_NONE,
-                     DT_HALF,
-                     NULL,
-                     embed_init);
-  }
-  Layer *pos_embedding = ff.layers.back();
-  weights_layers.emplace("transformer_wpe_weight", pos_embedding);
+  Tensor positional_embedding =
+      ff.embedding(position_input,
+                   startcoder_config.max_position_embeddings,
+                   startcoder_config.hidden_size,
+                   AGGR_MODE_NONE,
+                   use_full_precision ? DT_FLOAT : DT_HALF,
+                   NULL,
+                   embed_init,
+                   "transformer_wpe");
 
   Tensor hidden_states = ff.add(token, positional_embedding);
 
   for (int i = 0; i < startcoder_config.num_hidden_layers; i++) {
     // set transformer layer id
     ff.set_transformer_layer_id(i);
+
     // step 1: attention
-    Tensor ln_1 = ff.layer_norm(
-        hidden_states, axes, true, startcoder_config.layer_norm_epsilon);
-    Layer *layer_norm = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_ln_1_weight",
-                           layer_norm);
+    std::string layer_name = "layers_" + std::to_string(i) + "_ln_1";
+    Tensor ln_1 = ff.layer_norm(hidden_states,
+                                axes,
+                                true,
+                                startcoder_config.layer_norm_epsilon,
+                                true,
+                                DT_NONE,
+                                layer_name.c_str());
 
     Tensor mha;
+    layer_name = "layers_" + std::to_string(i) + "_attention";
     switch (mode) {
       case INC_DECODING_MODE: {
         mha = ff.inc_multiquery_self_attention(
@@ -131,7 +109,12 @@ void STARCODER::create_starcoder_model(
             false,                       /*add_zero_attn*/
             DT_NONE,                     /*data_type*/
             nullptr,                     /*kernel_initializer*/
-            false                        /*apply_rotary_embedding*/
+            false,                       /*apply_rotary_embedding*/
+            false,                       /*scaling query*/
+            1.0f,                        /*scaling factor*/
+            true,                        /*qk_prod_scaling*/
+            false,                       /*position_bias*/
+            layer_name.c_str()           /*name*/
         );
         break;
       }
@@ -139,43 +122,69 @@ void STARCODER::create_starcoder_model(
         assert(false);
       }
     }
-    Layer *attention_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
-                           attention_layer);
+
     Tensor residual = ff.add(hidden_states, mha);
 
-    Tensor l2_norm = ff.layer_norm(
-        residual, axes, true, startcoder_config.layer_norm_epsilon);
-    Layer *l2_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_ln_2_weight",
-                           l2_layer);
+    layer_name = "layers_" + std::to_string(i) + "_ln_2";
+    Tensor l2_norm = ff.layer_norm(residual,
+                                   axes,
+                                   true,
+                                   startcoder_config.layer_norm_epsilon,
+                                   true,
+                                   DT_NONE,
+                                   layer_name.c_str());
 
     // mlp
-    Tensor c_fc = ff.dense(
-        l2_norm, startcoder_config.intermediate_size, AC_MODE_NONE, true);
-    Layer *c_fc_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_mlp_c_fc_weight",
-                           c_fc_layer);
+    layer_name = "layers_" + std::to_string(i) + "_mlp_c_fc";
+    Tensor c_fc = ff.dense(l2_norm,
+                           startcoder_config.intermediate_size,
+                           AC_MODE_NONE,
+                           true,
+                           DT_NONE,
+                           nullptr,
+                           nullptr,
+                           nullptr,
+                           REG_MODE_NONE,
+                           0.0f,
+                           layer_name.c_str());
+
     c_fc = ff.gelu(c_fc);
 
-    Tensor c_proj =
-        ff.dense(c_fc, startcoder_config.hidden_size, AC_MODE_NONE, true);
-    Layer *c_proj_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_mlp_c_proj_weight",
-                           c_proj_layer);
+    layer_name = "layers_" + std::to_string(i) + "_mlp_c_proj";
+    Tensor c_proj = ff.dense(c_fc,
+                             startcoder_config.hidden_size,
+                             AC_MODE_NONE,
+                             true,
+                             DT_NONE,
+                             nullptr,
+                             nullptr,
+                             nullptr,
+                             REG_MODE_NONE,
+                             0.0f,
+                             layer_name.c_str());
 
     hidden_states = ff.add(residual, c_proj);
   }
   // final normalization and linear
-  Tensor ln_f = ff.layer_norm(
-      hidden_states, axes, true, startcoder_config.layer_norm_epsilon);
-  Layer *final_norm = ff.layers.back();
-  weights_layers.emplace("transformer_ln_f_weight", final_norm);
+  Tensor ln_f = ff.layer_norm(hidden_states,
+                              axes,
+                              true,
+                              startcoder_config.layer_norm_epsilon,
+                              true,
+                              DT_NONE,
+                              "transformer_ln_f");
 
-  Tensor lm_head =
-      ff.dense(ln_f, startcoder_config.vocab_size, AC_MODE_NONE, false);
-  Layer *final_linear = ff.layers.back();
-  weights_layers.emplace("lm_head_weight", final_linear);
+  Tensor lm_head = ff.dense(ln_f,
+                            startcoder_config.vocab_size,
+                            AC_MODE_NONE,
+                            false,
+                            DT_NONE,
+                            nullptr,
+                            nullptr,
+                            nullptr,
+                            REG_MODE_NONE,
+                            0.0f,
+                            "lm_head");
 
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {

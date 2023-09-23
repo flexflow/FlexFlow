@@ -271,6 +271,12 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
     char const *name);
 
 flexflow_tensor_t
+    flexflow_model_add_sigmoid_silu_multi(flexflow_model_t handle,
+                                          const flexflow_tensor_t input1,
+                                          const flexflow_tensor_t input2,
+                                          char const *name);
+
+flexflow_tensor_t
     flexflow_model_add_batch_matmul(flexflow_model_t handle,
                                     const flexflow_tensor_t a,
                                     const flexflow_tensor_t b,
@@ -539,6 +545,14 @@ flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
                                               float eps,
                                               int dim,
                                               char const *name);
+
+flexflow_tensor_t *
+    flexflow_model_add_residual_rms_norm(flexflow_model_t handle_,
+                                         const flexflow_tensor_t input1_,
+                                         const flexflow_tensor_t input2_,
+                                         float eps,
+                                         int dim,
+                                         char const *name);
 
 flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,

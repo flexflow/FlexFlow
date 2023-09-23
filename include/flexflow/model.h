@@ -108,6 +108,8 @@ enum TaskIDs {
   LAYERNORM_BWD_TASK_ID,
   ADD_BIAS_RESIDUAL_LAYERNORM_INIT_TASK_ID,
   ADD_BIAS_RESIDUAL_LAYERNORM_INF_TASK_ID,
+  SIGMOID_SILU_MULTI_INIT_TASK_ID,
+  SIGMOID_SILU_MULTI_INF_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
   LINEAR_INF_TASK_ID,
@@ -153,9 +155,11 @@ enum TaskIDs {
   ATTENTION_INIT_TASK_ID,
   ATTENTION_FWD_TASK_ID,
   ATTENTION_BWD_TASK_ID,
-  RMSNROM_INIT_TASK_ID,
-  RMSNROM_FWD_TASK_ID,
-  RMSNROM_INF_TASK_ID,
+  RMSNORM_INIT_TASK_ID,
+  RMSNORM_FWD_TASK_ID,
+  RMSNORM_INF_TASK_ID,
+  RESIDUAL_RMSNORM_INIT_TASK_ID,
+  RESIDUAL_RMSNORM_INF_TASK_ID,
   BEAM_TOPK_INIT_TASK_ID,
   BEAM_TOPK_INF_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
@@ -312,6 +316,7 @@ class Gather;
 class Group_by;
 class LayerNorm;
 class AddBiasResidualLayerNorm;
+class SigmoidSiluMulti;
 class Linear;
 class MultiHeadAttention;
 class IncMultiHeadSelfAttention;
@@ -325,6 +330,7 @@ class TopK;
 class ArgTopK;
 class Transpose;
 class RMSNorm;
+class ResidualRMSNorm;
 class BeamTopK;
 class SpecIncMultiHeadSelfAttention;
 class Sampling;
@@ -545,6 +551,11 @@ public:
                                     bool use_bias = true,
                                     DataType data_type = DT_NONE,
                                     char const *name = NULL);
+  // Add a sigmoid_silu_multi layer
+  Tensor sigmoid_silu_multi(const Tensor input1,
+                            const Tensor input2,
+                            DataType data_type = DT_NONE,
+                            char const *name = NULL);
   // Add a batch_norm layer
   Tensor
       batch_norm(const Tensor input, bool relu = true, char const *name = NULL);
@@ -560,6 +571,14 @@ public:
                   int dim,
                   DataType data_type = DT_NONE,
                   char const *name = NULL);
+  // Add a residual root mean square layer
+  void residual_rms_norm(const Tensor input1,
+                         const Tensor input2,
+                         Tensor *outputs,
+                         float eps,
+                         int dim,
+                         DataType data_type = DT_NONE,
+                         char const *name = NULL);
   // Add a beam search top k layer
   Tensor beam_top_k(const Tensor input,
                     int max_beam_size,
@@ -1132,6 +1151,10 @@ public:
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
                     AddBiasResidualLayerNormParams>,
           AddBiasResidualLayerNorm *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    SigmoidSiluMultiParams>,
+          SigmoidSiluMulti *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
                          Linear *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
@@ -1170,6 +1193,10 @@ public:
                          Transpose *>,
       std::unordered_map<std::pair<ParallelTensorShape, RMSNormParams>,
                          RMSNorm *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    ResidualRMSNormParams>,
+          ResidualRMSNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
                          Repartition *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,
