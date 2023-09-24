@@ -81,8 +81,8 @@ static DeviceSpecific<ReshapePerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<ReshapeAttrs>(ATTRS);
 
-  DeviceSpecific<TopKPerDeviceState> per_device_state =
-      acc.create_device_specific<ReshapeAttrs>(
+  DeviceSpecific<ReshapePerDeviceState> per_device_state =
+      acc.create_device_specific<ReshapePerDeviceState>(
           init_kernel(attrs.shape.data_type));
   return per_device_state;
 }
@@ -122,7 +122,7 @@ static void forward_task(Task const *task,
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
-      acc.get_argument<DeviceSpecific<ReshapePerDeviceState>>(PER_DEVICE_STATE);
+      acc.get_argument<ReshapePerDeviceState>(PER_DEVICE_STATE);
   Profiling profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input_grad = acc.get_tensor<Permissions::RO>(INPUT);
