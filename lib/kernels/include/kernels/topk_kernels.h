@@ -9,7 +9,7 @@ struct TopKPerDeviceState {
   bool sorted; // Note: Does TopK needs a PerDeviceFFHandle handle?
 };
 
-FF_VISITABLE_STRUCT_NO_EQ(TopKPerDeviceState, sorted);
+FF_VISITABLE_STRUCT(TopKPerDeviceState, sorted);
 
 namespace Kernels {
 namespace TopK {
@@ -17,7 +17,7 @@ namespace TopK {
 TopKPerDeviceState init_kernel(bool sorted);
 
 void forward_kernel(ffStream_t stream,
-                    TopKPerDeviceState const *m,
+                    TopKPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
                     int *indices_ptr,
@@ -26,7 +26,7 @@ void forward_kernel(ffStream_t stream,
                     int k,
                     bool sorted);
 void backward_kernel(ffStream_t stream,
-                     TopKPerDeviceState const *m,
+                     TopKPerDeviceState const &m,
                      float const *out_grad_ptr,
                      int const *indices_ptr,
                      float *in_grad_ptr,
