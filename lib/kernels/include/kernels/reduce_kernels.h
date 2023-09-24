@@ -14,7 +14,7 @@ struct ReducePerDeviceState {
   size_t reduction_size;
 };
 
-FF_VISITABLE_STRUCT_NO_EQ(ReducePerDeviceState,
+FF_VISITABLE_STRUCT(ReducePerDeviceState,
                           handle,
                           inputTensor,
                           outputTensor,
@@ -26,17 +26,16 @@ namespace Kernels {
 namespace Reduce {
 
 ReducePerDeviceState init_kernel(PerDeviceFFhandle const &,
-                                 ffTensorDescriptor_t const &,
-                                 ffTensorDescriptor_t const &,
-                                 ffReduceTensorDescriptor_t const &,
                                  OperatorType const &,
-                                 size_t const &);
+                                 size_t const &,
+                                 ArrayShape input_shape,
+                                 ArrayShape output_shape);
 
-void forward_kernel_wrapper(ReducePerDeviceState const *m,
+void forward_kernel_wrapper(ReducePerDeviceState const &m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorW const &output);
 
-void backward_kernel_wrapper(ReducePerDeviceState const *m,
+void backward_kernel_wrapper(ReducePerDeviceState const &m,
                              GenericTensorAccessorR const &output_grad,
                              GenericTensorAccessorW const &input_grad);
 

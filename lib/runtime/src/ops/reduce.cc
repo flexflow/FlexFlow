@@ -62,7 +62,10 @@ OpTaskInvocation init(TransposeAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(HANDLE, ff_handle());
-  .binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(ATTRS, attrs);
+
+  binding.bind(INPUT, input_parallel_tensor_shape(0));
+  binding.bind(OUTPUT, output_parallel_tensor_shape(0));
 
   return {REDUCE_INIT_TASK_ID, binding};
 }
@@ -71,14 +74,15 @@ static DeviceSpecific<ReducePerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto attrs = acc.get_argument<ReduceAttrs>(ATTRS);
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+
   OperatorType = attrs.op_type;
   // Note: How to set the reduction size?
-  ffTensorDescriptor_t inputTensor;
-  ffTensorDescriptor_t outputTensor;
-  ffReduceTensorDescriptor_t reduceDesc;
-  size_t reduction_size DeviceSpecific<ReducePerDeviceState> per_device_state =
+  size_t reduction_size ;
+  DeviceSpecific<ReducePerDeviceState> per_device_state =
       acc.create_device_specific<ReducePerDeviceState>(init_kernel(
-          handle, input, output, reduce_desc, op_type, reduction_size));
+          handle, op_type, reduction_size, input.shape, output.shape));
   return per_device_state;
 }
 
@@ -107,7 +111,7 @@ OpTaskInvocation forward(ReduceAttrs const &attrs) {
   bind.bind_arg(PER_DEVICE_STATE, per_device_op_state<ReducePerDeviceState>());
   bind.bind_arg(PROFILING, profiling_tensor());
 
-  binding.bind(INPUT, input_tensor(0));
+  binding.bind(INPUT, input_parallel_tensor_shape(0));
   binding.bind(OUTPUT, output_tensor(0));
 
   return {REDUCE_FWD_TASK_ID, binding};
@@ -124,7 +128,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(forward_kernel,
                  profiling,
                  "[Reduce] forward_time = %.2lfms\n",
-                 &per_device_state,
+                 per_device_state,
                  input.get_float_ptr(),
                  output.get_float_ptr());
 }
@@ -142,7 +146,7 @@ void register_task<REDUCE_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FORWARD);
 
   fwd.add_unchecked_arg_slot<PerDeviceOpState>(PER_DEVICE_STATE);
-  fwd.add_arg_slot<ProfilingTensor>(PROFILING);
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
@@ -167,7 +171,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(backward_kernel,
                  profiling,
                  "[Reduce] backward_time = %.2lfms\n",
-                 &per_device_state,
+                 per_device_state,
                  input.get_float_ptr(),
                  output.get_float_ptr());
 }
