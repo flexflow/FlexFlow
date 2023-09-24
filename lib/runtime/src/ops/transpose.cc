@@ -73,7 +73,7 @@ static DeviceSpecific<TransposePerDeviceState>
   auto const &attrs = acc.get_argument<TransposeAttrs>(ATTRS);
   std::vector<int> perm = attrs.perm; // default convert stack_vector to vector
   DeviceSpecific<TransposePerDeviceState> per_device_state =
-      acc.get_per_device_state<TransposePerDeviceState>(
+      acc.create_device_specific<TransposePerDeviceState>(
           init_kernel(perm.size(), perm));
 
   return per_device_state;

@@ -45,7 +45,7 @@ TransposePerDeviceState init_kernel(int num_dim, std::vector<int> const &perm) {
 }
 
 void forward_kernel(cudaStream_t stream,
-                    TransposePerDeviceState const *m,
+                    TransposePerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
                     Domain in_domain,
@@ -53,7 +53,7 @@ void forward_kernel(cudaStream_t stream,
 
   TransposeStrides info;
   info.num_dim = out_domain.get_dim();
-  assert(info.num_dim == m->num_dim);
+  assert(info.num_dim == m.num_dim);
   for (int i = 0; i < info.num_dim; i++) {
     if (i == 0) {
       info.in_strides[i] = 1;
@@ -64,7 +64,7 @@ void forward_kernel(cudaStream_t stream,
       info.in_strides[i] = info.in_strides[i - 1] * in_dim_size;
       info.out_strides[i] = info.out_strides[i - 1] * out_dim_size;
     }
-    info.perm[i] = m->perm[i];
+    info.perm[i] = m.perm[i];
   }
   transpose_simple_kernel<<<GET_BLOCKS(out_domain.get_volume()),
                             CUDA_NUM_THREADS,
@@ -74,7 +74,7 @@ void forward_kernel(cudaStream_t stream,
 }
 
 void backward_kernel(cudaStream_t stream,
-                     TransposePerDeviceState const *m,
+                     TransposePerDeviceState const &m,
                      float *input_grad_ptr,
                      float const *output_grad_ptr,
                      Domain in_grad_domain,
@@ -82,7 +82,7 @@ void backward_kernel(cudaStream_t stream,
 
   TransposeStrides info;
   info.num_dim = in_grad_domain.get_dim();
-  assert(info.num_dim == m->num_dim);
+  assert(info.num_dim == m.num_dim);
   for (int i = 0; i < info.num_dim; i++) {
     if (i == 0) {
       info.in_strides[i] = 1;
@@ -95,7 +95,7 @@ void backward_kernel(cudaStream_t stream,
       info.in_strides[i] = info.in_strides[i - 1] * in_dim_size;
       info.out_strides[i] = info.out_strides[i - 1] * out_dim_size;
     }
-    info.perm[m->perm[i]] = i;
+    info.perm[m.perm[i]] = i;
   }
   transpose_simple_kernel<<<GET_BLOCKS(in_grad_domain.get_volume()),
                             CUDA_NUM_THREADS,
