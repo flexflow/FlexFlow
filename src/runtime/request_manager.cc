@@ -1190,7 +1190,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         }
       }
 
-      std::cout << "new_bc.num_tokens: " << new_bc.num_tokens << std::endl;
+      std::cout << "new_bc.num_tokens after dfs: " << new_bc.num_tokens << std::endl;
     } else if (request.status == Request::PENDING) {
       new_bc.request_running[i] = false;
       if (verbose) {
@@ -1251,7 +1251,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           new_bc.num_tokens++;
         }
 
-        std::cout << "new_bc.num_tokens: " << new_bc.num_tokens << std::endl;
+        std::cout << "new_bc.num_tokens init: " << new_bc.num_tokens << std::endl;
         if (new_bc.num_tokens > BatchConfig::MAX_NUM_TOKENS) {
           assert(false &&
                  "Exceeding the space available in the TreeVerify batch");
@@ -1269,7 +1269,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 
           new_bc.num_tokens++;
           new_bc.requestsInfo[i].num_tokens_in_batch++;
-          std::cout << "new_bc.num_tokens: " << new_bc.num_tokens << std::endl;
+          std::cout << "new_bc.num_tokens running: " << new_bc.num_tokens << std::endl;
           std::cout << "new_bc.requestsInfo[i].num_tokens_in_batch: "
                     << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
 
@@ -1303,25 +1303,26 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
               << " tokens in the current batch.\n";
   }
 
-  for (int i = 0; i < old_bc.num_tokens; i++) {
+  for (int i = 0; i <= old_bc.num_tokens; i++) {
     int request_index = old_bc.tokensInfo[i].request_index;
-    if (i == 0 || old_bc.requestsInfo[request_index].request_guid != guid) {
+    if (i == old_bc.num_tokens ||
+        old_bc.requestsInfo[request_index].request_guid != guid) {
 
       // Each token yields (beam_width) results
       int beam_width = old_bc.beamRequestsInfo[request_index].beam_size;
 
       // Count tokens sent to model in this request to find the final token's
       // index
-      // result_index +=
-      //     (old_bc.tokensInfo[i - 1].abs_depth_in_request - start_depth) *
-      //     beam_width;
+      result_index +=
+          (old_bc.tokensInfo[i - 1].abs_depth_in_request - start_depth) *
+          beam_width;
 
       if (verbose) {
         std::cout << "i = " << i << ", result index = " << result_index
                   << ", value: " << result.token_ids[result_index] << "\n";
       }
 
-      int index = old_bc.tokensInfo[i].request_index;
+      int index = old_bc.tokensInfo[i - 1].request_index;
       int beam_size = old_bc.beamRequestsInfo[index].beam_size;
       int depth = old_bc.beamRequestsInfo[index].current_depth;
 
