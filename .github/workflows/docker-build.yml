@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   oracle-runner-start:
-    name: Start a self-hosted Oracle machine to build the ROCM Docker images
+    name: Start an Oracle instance to build the ROCM Docker images
     runs-on: ubuntu-latest
     if: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
     env: 
@@ -30,7 +30,7 @@ jobs:
       OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
       OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
       OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }} 
-      OCI_INSTANCE_ID: ${{ secrets.INSTANCE_ID_FFCI }}
+      OCI_INSTANCE_ID: ${{ secrets.OCI_INSTANCE_ID }}
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -163,14 +163,14 @@ jobs:
     needs: docker-build-rocm
     if: ${{ always() && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
     runs-on: ubuntu-latest
-    name: Turn off the self-hosted Oracle machine where we built the ROCM Docker images
+    name: Stop the Oracle instance we used to build the ROCM Docker images
     env:
       OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
       OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
       OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
       OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }} 
-      OCI_INSTANCE_ID: ${{ secrets.INSTANCE_ID_FFCI }}
+      OCI_INSTANCE_ID: ${{ secrets.OCI_INSTANCE_ID }}
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -179,7 +179,7 @@ jobs:
         run: pip install oci
         
       - name: Stop Oracle Machine
-        run: python3 docker/oracle_con.py --stop --instance_id $OCI_INSTANCE_ID
+        run: python3 .github/workflows/helpers/oracle_con.py --stop --instance_id $OCI_INSTANCE_ID
 
   notify-slack:
     name: Notify Slack in case of failure
