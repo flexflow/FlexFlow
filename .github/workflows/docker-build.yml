@@ -41,9 +41,6 @@ jobs:
       - name: Start Oracle Machine
         run: python3 .github/workflows/helpers/oracle_con.py --start --instance_id $OCI_INSTANCE_ID
 
-  # 1. in docker-build cases: if there are push/ workflow_dispatch to inference, 
-  # the job should be run on oracle machine to build rocm and 11.8 cuda version
-  # 2. add a job to turn off the oracle machine if not needed
   rocm_runner_choice:
     name: Determine what runner to use to build the ROCm Docker image(s)
     runs-on: ubuntu-latest

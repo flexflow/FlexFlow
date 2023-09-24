@@ -20,7 +20,6 @@ config = {
 }
 
 # Initialize the OCI configuration
-# config = oci.config.from_file()
 oci.config.validate_config(config)
 
 # Initialize the ComputeClient to interact with VM instances
