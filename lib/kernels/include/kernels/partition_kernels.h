@@ -20,12 +20,12 @@ RepartitionPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                       DataType data_type);
 
 void forward_kernel(ffStream_t stream,
-                    RepartitionPerDeviceState const *m,
+                    RepartitionPerDeviceState const &m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
 void backward_kernel(ffStream_t stream,
-                     RepartitionPerDeviceState const *m,
+                     RepartitionPerDeviceState const &m,
                      GenericTensorAccessorW const &output_grad,
                      GenericTensorAccessorR const &input_grad);
 

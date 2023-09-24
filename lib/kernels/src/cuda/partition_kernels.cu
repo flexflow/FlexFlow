@@ -28,7 +28,7 @@ namespace Repartition {
 template <DataType T>
 struct ForwardKernel {
   void operator()(cudaStream_t stream,
-                  RepartitionPerDeviceState const *m,
+                  RepartitionPerDeviceState const &m,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
     checkCUDA(cudaMemcpyAsync(output.get<T>(),
@@ -42,7 +42,7 @@ struct ForwardKernel {
 template <DataType T>
 struct BackwardKernel {
   void operator()(cudaStream_t stream,
-                  RepartitionPerDeviceState const *m,
+                  RepartitionPerDeviceState const &m,
                   GenericTensorAccessorR const &output_grad,
                   GenericTensorAccessorW const &input_grad) {
     add_kernel<T><<<GET_BLOCKS(input_grad.shape.num_elements()),
@@ -56,22 +56,23 @@ struct BackwardKernel {
 
 RepartitionPerDeviceState
     init_kernel(PerDeviceFFHandle const &handle, DataType data_type) {
-  return {handle, data_type};
+  RepartitionPerDeviceState per_device_state =  {handle, data_type};
+  return per_device_state;
 }
 
 void forward_kernel(cudaStream_t stream,
-                    RepartitionPerDeviceState const *m,
+                    RepartitionPerDeviceState const &m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
-  DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output)
+  DataTypeDispatch1<ForwardKernel>{}(m.data_type, stream, m, input, output)
 }
 
 void backward_kernel(cudaStream_t stream,
-                     RepartitionPerDeviceState const *m,
+                     RepartitionPerDeviceState const &m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const &input_grad) {
   DataTypeDispatch1<BackwardKernel>{}(
-      m->data_type, stream, m, input_grad, output_grad)
+      m.data_type, stream, m, input_grad, output_grad)
 }
 
 } // namespace Repartition
