@@ -26,7 +26,11 @@ class LLAMAConfig:
         self.num_hidden_layers = hf_config.num_hidden_layers
         self.vocab_size = hf_config.vocab_size
         self.num_attention_heads = hf_config.num_attention_heads
-        self.num_key_value_heads = hf_config.num_attention_heads if hf_config.num_key_value_heads is None else hf_config.num_key_value_heads
+        self.num_key_value_heads = (
+            hf_config.num_attention_heads
+            if hf_config.num_key_value_heads is None
+            else hf_config.num_key_value_heads
+        )
         self.hidden_size = hf_config.hidden_size
         self.rms_norm_eps = hf_config.rms_norm_eps
         self.intermediate_size = hf_config.intermediate_size
@@ -166,9 +170,9 @@ class FlexFlowLLAMA(FlexFlowModel):
             else:
                 assert False
 
-            token = ffmodel.add(token, mha)
-            ff_norm = ffmodel.rms_norm(
+            token, ff_norm = ffmodel.residual_rms_norm(
                 token,
+                mha,
                 self.llama_config.rms_norm_eps,
                 self.llama_config.hidden_size,
                 name=f"layers_{i}_ffn_norm",
@@ -187,9 +191,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                 False,
                 name=f"layers_{i}_feed_forward_w3",
             )
-            sigmoid = ffmodel.sigmoid(w1)
-            silu = ffmodel.multiply(w1, sigmoid)
-            multi = ffmodel.multiply(silu, w3)
+            multi = ffmodel.sigmoid_silu_multi(w1, w3)
             w2 = ffmodel.dense(
                 multi,
                 self.llama_config.hidden_size,

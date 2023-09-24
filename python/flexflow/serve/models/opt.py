@@ -196,22 +196,15 @@ class FlexFlowOPT(FlexFlowModel):
             else:
                 assert False
 
-            # residual = ffmodel.add(mha, residual)
-
             # This is either a before or after attention LayerNorm. In both cases, we need to compute the LN here.
-            """ norm_name = (
-                f"layers_{i}_final_layer_norm"
-                if self.opt_config.do_layer_norm_before
-                else f"layers_{i}_attention_layer_norm"
-            ) """
-            # ff_norm = ffmodel.layer_norm(
-            #     residual,
-            #     axes,
-            #     self.opt_config.layer_norm_elementwise_affine,
-            #     1e-05,
-            #     name=norm_name,
-            # )
-            residual, ff_norm = ffmodel.add_bias_residual_layer_norm(mha, residual, axes, self.opt_config.layer_norm_elementwise_affine, 1e-05, name=f"layers_{i}_add_bias_residual_layer_norm")
+            residual, ff_norm = ffmodel.add_bias_residual_layer_norm(
+                mha,
+                residual,
+                axes,
+                self.opt_config.layer_norm_elementwise_affine,
+                1e-05,
+                name=f"layers_{i}_add_bias_residual_layer_norm",
+            )
 
             if not self.opt_config.do_layer_norm_before:
                 residual = ff_norm
@@ -287,7 +280,9 @@ class FlexFlowOPT(FlexFlowModel):
                 .replace("v_proj", "wv")
                 .replace("out_proj", "wo")
                 .replace("attention_wo_bias", "add_bias_residual_layer_norm_attn_bias")
-                .replace("_final_layer_norm", "_add_bias_residual_layer_norm") # important to use the leading "_" to avoid matching the last LayerNorm
+                .replace(
+                    "_final_layer_norm", "_add_bias_residual_layer_norm"
+                )  # important to use the leading "_" to avoid matching the last LayerNorm
             )
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
         # copy embedding weights

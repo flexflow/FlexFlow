@@ -50,47 +50,24 @@ void OPT::create_opt_model(FFModel &ff,
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
   std::vector<int> axes = {0};
 
-  Tensor token;
-  if (use_full_precision) {
-    token = ff.embedding(input,
-                         opt_config.vocab_size,
-                         opt_config.word_embed_proj_dim,
-                         AGGR_MODE_NONE,
-                         DT_FLOAT,
-                         NULL,
-                         embed_init,
-                         "embed_tokens");
-  } else {
-    token = ff.embedding(input,
-                         opt_config.vocab_size,
-                         opt_config.word_embed_proj_dim,
-                         AGGR_MODE_NONE,
-                         DT_HALF,
-                         NULL,
-                         embed_init,
-                         "embed_tokens");
-  }
+  Tensor token = ff.embedding(input,
+                              opt_config.vocab_size,
+                              opt_config.word_embed_proj_dim,
+                              AGGR_MODE_NONE,
+                              use_full_precision ? DT_FLOAT : DT_HALF,
+                              NULL,
+                              embed_init,
+                              "embed_tokens");
 
-  Tensor positional_embedding;
-  if (use_full_precision) {
-    positional_embedding = ff.embedding(position_input,
-                                        opt_config.max_position_embeddings,
-                                        opt_config.hidden_size,
-                                        AGGR_MODE_NONE,
-                                        DT_FLOAT,
-                                        NULL,
-                                        embed_init,
-                                        "embed_positions");
-  } else {
-    positional_embedding = ff.embedding(position_input,
-                                        opt_config.max_position_embeddings,
-                                        opt_config.hidden_size,
-                                        AGGR_MODE_NONE,
-                                        DT_HALF,
-                                        NULL,
-                                        embed_init,
-                                        "embed_positions");
-  }
+  Tensor positional_embedding =
+      ff.embedding(position_input,
+                   opt_config.max_position_embeddings,
+                   opt_config.hidden_size,
+                   AGGR_MODE_NONE,
+                   use_full_precision ? DT_FLOAT : DT_HALF,
+                   NULL,
+                   embed_init,
+                   "embed_positions");
 
   Tensor residual = ff.add(token, positional_embedding);
 

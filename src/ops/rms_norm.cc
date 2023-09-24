@@ -208,7 +208,7 @@ void RMSNorm::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(RMSNROM_INIT_TASK_ID,
+  IndexLauncher launcher(RMSNORM_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(RMSNorm)),
                          argmap,
@@ -253,7 +253,7 @@ void RMSNorm::init_inference(FFModel const &ff,
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
 
-  IndexLauncher launcher(RMSNROM_INIT_TASK_ID,
+  IndexLauncher launcher(RMSNORM_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(RMSNorm)),
                          argmap,
@@ -305,7 +305,7 @@ void RMSNorm::forward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(RMSNROM_FWD_TASK_ID,
+  IndexLauncher launcher(RMSNORM_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -347,7 +347,7 @@ FutureMap RMSNorm::inference(FFModel const &ff,
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
-  IndexLauncher launcher(RMSNROM_INF_TASK_ID,
+  IndexLauncher launcher(RMSNORM_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,

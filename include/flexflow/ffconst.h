@@ -160,9 +160,11 @@ enum OperatorType {
   OP_MEAN,  // https://pytorch.org/docs/stable/generated/torch.mean.html
   OP_LAYERNORM,
   OP_ADD_BIAS_RESIDUAL_LAYERNORM,
+  OP_SIGMOID_SILU_MULTI,
   OP_EXPERTS,
   OP_GATHER, // https://pytorch.org/docs/stable/generated/torch.gather.html
   OP_RMS_NORM,
+  OP_RESIDUAL_RMS_NORM,
   OP_BEAM_TOPK,
   OP_ARGMAX,
   OP_INC_MULTIHEAD_SELF_ATTENTION,

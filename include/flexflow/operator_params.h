@@ -26,8 +26,10 @@
 #include "flexflow/ops/pool_2d_params.h"
 #include "flexflow/ops/reduce_params.h"
 #include "flexflow/ops/reshape_params.h"
+#include "flexflow/ops/residual_rms_norm_params.h"
 #include "flexflow/ops/rms_norm_params.h"
 #include "flexflow/ops/sampling_params.h"
+#include "flexflow/ops/sigmoid_silu_multi_params.h"
 #include "flexflow/ops/softmax_params.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention_params.h"
 #include "flexflow/ops/split_params.h"
@@ -61,6 +63,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        Group_byParams,
                                        LayerNormParams,
                                        AddBiasResidualLayerNormParams,
+                                       SigmoidSiluMultiParams,
                                        LinearParams,
                                        MultiHeadAttentionParams,
                                        IncMultiHeadSelfAttentionParams,
@@ -68,6 +71,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        SpecIncMultiHeadSelfAttentionParams,
                                        TreeIncMultiHeadSelfAttentionParams,
                                        RMSNormParams,
+                                       ResidualRMSNormParams,
                                        Pool2DParams,
                                        ReduceParams,
                                        ReshapeParams,
