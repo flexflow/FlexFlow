@@ -82,9 +82,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Free additional space on runner
-        run: .github/workflows/helpers/free_space_on_runner.sh
-
       - name: Build Docker container
         # On push to inference, build for all compatible architectures, so that we can publish 
         # a pre-built general-purpose image. On all other cases, only build for one architecture
