@@ -12,6 +12,7 @@ jobs:
       run:
         shell: bash -l {0} # required to use an activated conda environment
     strategy:
+      max-parallel: 1
       matrix:
         gpu_backend: ["cuda","hip_rocm"]
         library: ["runtime", "ffi","compiler","kernels","op-attrs","pcg","substitutions","utils"]
