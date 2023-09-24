@@ -13,7 +13,6 @@ struct ReshapePerDeviceState {
 
 FF_VISITABLE_STRUCT(ReshapePerDeviceState, data_type);
 
-
 namespace Kernels {
 namespace Reshape {
 

@@ -54,6 +54,7 @@ OpTaskInvocation init(ReshapeAttrs const &attrs) {
 
   binding.bind(INPUT, input_parallel_tensor_shape(0));
   binding.bind(OUTPUT, output_tensor(0));
+  binding.bind_arg(ATTRS, attrs);
 
   return {RESHAPE_INIT_TASK_ID, binding};
 }
@@ -61,7 +62,8 @@ OpTaskInvocation init(ReshapeAttrs const &attrs) {
 OpTaskInvocation forward(ReshapeAttrs const &attrs) {
   OpTaskBinding binding;
 
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<ReshapePerDeviceState>());
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<ReshapePerDeviceState>());
   binding.bind_arg(PROFILING, profiling_settings());
 
   binding.bind(INPUT, input_parallel_tensor_shape(0));
@@ -77,7 +79,12 @@ OpTaskInvocation backward(ReshapeAttrs const &attrs) {
 
 static DeviceSpecific<ReshapePerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
-  NOT_IMPLEMENTED();
+  auto attrs = acc.get_argument<ReshapeAttrs>(ATTRS);
+
+  DeviceSpecific<TopKPerDeviceState> per_device_state =
+      acc.create_device_specific<ReshapeAttrs>(
+          init_kernel(attrs.shape.data_type));
+  return per_device_state;
 }
 
 static DeviceSpecific<ReshapePerDeviceState>
@@ -91,7 +98,7 @@ static DeviceSpecific<ReshapePerDeviceState>
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
-         acc.get_argument<ReshapePerDeviceState>(PER_DEVICE_STATE);
+      acc.get_argument<ReshapePerDeviceState>(PER_DEVICE_STATE);
   Profiling profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -143,12 +150,29 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
 
-  // reshape has no cost
   // Note(lamda):if reshape has cost, we can optimize this implementation
 
-  float forward_time = 0.0;
-  float backward_time = 0.0;
-  float sync_time = 0.0;
+  SimTaskBinding init_binding;
+  init_binding.bind_arg(ATTRS, attrs);
+  auto init_accessor =
+      env.get_init_accessor(RESHAPE_INIT_TASK_ID, init_binding);
+  auto per_device_state = init_task_impl(init_accessor);
+
+  SimTaskBinding fwd_binding;
+  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
+  fwd_binding.bind_arg(PROFILING, settings);
+  fwd_binding.bind(INPUT, input_parallel_tensor_shape(0));
+  fwd_binding.bind(OUTPUT, output_tensor(0));
+
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+
+  auto fwd_accessor = env.get_fwd_accessor(TOPK_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(TOPK_BWD_TASK_ID, bwd_binding);
+
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
+
+  float sync_time = default_estimate_sync_time(env);
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
