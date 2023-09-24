@@ -41,27 +41,34 @@ jobs:
       - name: Start Oracle Machine
         run: python3 .github/workflows/helpers/oracle_con.py --start --instance_id $OCI_INSTANCE_ID
 
-  rocm_runner_choice:
-    name: Determine what runner to use to build the ROCm Docker image(s)
-    runs-on: ubuntu-latest
-    outputs:
-      rocm_runner: ${{ steps.step1.outputs.runner }}
-    steps:
-      - name: Determine the runner
-        id: step1
-        env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
-        run: |
-          if [ $deploy_needed == "true" ]; then
-            echo "::set-output name=runner::[self-hosted, cpu_only]"
-          else
-            echo "::set-output name=runner::ubuntu-20.04"
-          fi
-
   docker-build-rocm:
-    needs: rocm_runner_choice
     name: Build and Install FlexFlow in a Docker Container (ROCm backend)
-    runs-on: ${{ needs.rocm_runner_choice.outputs.rocm_runner }}
+    runs-on: ubuntu-20.04
+    if: ${{ ( github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' ) || github.ref_name != 'inference' }}
+    env:
+      FF_GPU_BACKEND: "hip_rocm"
+      hip_version: 5.6
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Free additional space on runner
+        run: .github/workflows/helpers/free_space_on_runner.sh
+
+      - name: Build Docker container
+        run: FF_HIP_ARCH="gfx1100,gfx1036" ./docker/build.sh flexflow
+
+      - name: Check availability of flexflow modules in Python
+        run: docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${hip_version}:latest -c "python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
+  
+
+  docker-build-and-publish-rocm:
+    name: Build and Deploy FlexFlow Docker Containers (ROCm backend)
+    needs: oracle-runner-start
+    runs-on: [self-hosted, cpu_only]
+    if: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
     strategy:
       matrix:
         hip_version: ["5.3", "5.4", "5.5", "5.6"]
@@ -71,38 +78,23 @@ jobs:
       hip_version: ${{ matrix.hip_version }}
     steps:
       - name: Checkout Git Repository
-        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
         uses: actions/checkout@v3
         with:
           submodules: recursive
 
       - name: Free additional space on runner
-        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
         run: .github/workflows/helpers/free_space_on_runner.sh
 
       - name: Build Docker container
-        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
-        env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
-          build_needed: ${{ matrix.hip_version == '5.6' }}
-        run: |
-          # On push to inference, build for all compatible architectures, so that we can publish 
-          # a pre-built general-purpose image. On all other cases, only build for one architecture
-          # to save time.
-          if [[ $deploy_needed == "true" ]] ; then
-            export FF_HIP_ARCH=all
-            ./docker/build.sh flexflow
-          elif [[ $build_needed == "true" ]]; then
-            export FF_HIP_ARCH=gfx1100,gfx1036
-            ./docker/build.sh flexflow
-          fi
+        # On push to inference, build for all compatible architectures, so that we can publish 
+        # a pre-built general-purpose image. On all other cases, only build for one architecture
+        # to save time.
+        run: FF_HIP_ARCH=all ./docker/build.sh flexflow
 
       - name: Check availability of flexflow modules in Python
-        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.hip_version == '5.6' }}
         run: docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${hip_version}:latest -c "python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
 
       - name: Publish Docker environment image (on push to inference)
-        if: ${{ github.repository_owner == 'flexflow' && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
         env:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
         run: |
@@ -160,7 +152,7 @@ jobs:
           ./docker/publish.sh flexflow
 
   oracle-runner-stop:
-    needs: docker-build-rocm
+    needs: docker-build-and-publish-rocm
     if: ${{ always() && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
     runs-on: ubuntu-latest
     name: Stop the Oracle instance we used to build the ROCM Docker images
@@ -184,7 +176,7 @@ jobs:
   notify-slack:
     name: Notify Slack in case of failure
     runs-on: ubuntu-20.04
-    needs: [docker-build-cuda, docker-build-rocm]
+    needs: [docker-build-cuda, docker-build-and-publish-rocm]
     if: ${{ failure() && github.event_name == 'schedule' && github.repository_owner == 'flexflow' }}
     steps:
       - name: Send Slack message
