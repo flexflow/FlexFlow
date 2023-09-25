@@ -996,15 +996,15 @@ BeamSearchBatchConfig
 
           // get value from requestinfo
           if (request.status == Request::RUNNING) {
-            std::cout << "[running ]Num of token in batch: "
-                      << new_bc.requestsInfo[i].num_tokens_in_batch
-                      << std::endl;
+            // std::cout << "[running ]Num of token in batch: "
+            //           << new_bc.requestsInfo[i].num_tokens_in_batch
+            //           << std::endl;
             new_bc.tokensInfo[new_bc.num_tokens].token_id =
                 new_bc.beamRequestsInfo[i].tokens[k];
           } else {
-            std::cout << "[pending ]Num of token in batch: "
-                      << new_bc.requestsInfo[i].num_tokens_in_batch
-                      << std::endl;
+            // std::cout << "[pending ]Num of token in batch: "
+            //           << new_bc.requestsInfo[i].num_tokens_in_batch
+            //           << std::endl;
             new_bc.tokensInfo[new_bc.num_tokens].token_id =
                 request.tokens[request.tokens.size() - 1];
           }
@@ -1301,12 +1301,16 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
   }
 
   for (int i = 0; i <= old_bc.num_tokens; i++) {
-    int request_index = old_bc.tokensInfo[i].request_index;
     if (i == old_bc.num_tokens ||
-        old_bc.requestsInfo[request_index].request_guid != guid) {
+        old_bc.requestsInfo[old_bc.tokensInfo[i].request_index].request_guid !=
+            guid) {
+
+      int index = old_bc.tokensInfo[i - 1].request_index;
+      int beam_size = old_bc.beamRequestsInfo[index].beam_size;
+      int depth = old_bc.beamRequestsInfo[index].current_depth;
 
       // Each token yields (beam_width) results
-      int beam_width = old_bc.beamRequestsInfo[request_index].beam_size;
+      int beam_width = old_bc.beamRequestsInfo[index].beam_size;
 
       // Count tokens sent to model in this request to find the final token's
       // index
@@ -1318,10 +1322,6 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
         std::cout << "i = " << i << ", result index = " << result_index
                   << ", value: " << result.token_ids[result_index] << "\n";
       }
-
-      int index = old_bc.tokensInfo[i - 1].request_index;
-      int beam_size = old_bc.beamRequestsInfo[index].beam_size;
-      int depth = old_bc.beamRequestsInfo[index].current_depth;
 
       Request &request = all_requests[old_bc.requestsInfo[index].request_guid];
 
@@ -1366,7 +1366,7 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
 
       // update the guid and start_depth for current request
       if (i < old_bc.num_tokens) {
-        guid = old_bc.requestsInfo[request_index].request_guid;
+        guid = old_bc.requestsInfo[index].request_guid;
         start_depth = old_bc.tokensInfo[i].abs_depth_in_request;
       }
     }
