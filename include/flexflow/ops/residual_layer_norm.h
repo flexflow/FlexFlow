@@ -14,8 +14,8 @@ public:
   ResidualLayerNorm(FFModel &model,
                     Params const &params,
                     Input const &inputs,
-                    char const *name = nullptr,
-                    bool allocate_weights = false);
+                    bool allocate_weights = false,
+                    char const *name = nullptr);
   ResidualLayerNorm(FFModel &model,
                     LayerID const &_layer_guid,
                     const ParallelTensor _input,
@@ -52,7 +52,9 @@ public:
                                Legion::Deserializer &d,
                                ParallelTensor inputs[],
                                int num_inputs);
-
+  Op *materialize(FFModel &ff,
+                  ParallelTensor inputs[],
+                  int num_inputs) const override;
   ResidualLayerNormParams get_params() const;
 
   static OpMeta *init_task(Legion::Task const *task,

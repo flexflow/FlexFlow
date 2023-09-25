@@ -214,8 +214,8 @@ ResidualLayerNorm::ResidualLayerNorm(
     FFModel &model,
     ResidualLayerNormParams const &params,
     std::tuple<ParallelTensor, ParallelTensor, ParallelTensor> const &inputs,
-    char const *name,
-    bool allocate_weights)
+    bool allocate_weights,
+    char const *name)
     : ResidualLayerNorm(model,
                         params.layer_guid,
                         std::get<0>(inputs),
@@ -517,6 +517,18 @@ void ResidualLayerNorm::backward(FFModel const &ff) {
   assert(false);
 }
 
+Op *ResidualLayerNorm::materialize(FFModel &ff,
+                                   ParallelTensor inputs[],
+                                   int num_inputs) const {
+  ResidualLayerNormParams params = get_params();
+  return new ResidualLayerNorm(
+      ff,
+      params,
+      {inputs[0], inputs[1], params.use_two_residuals ? inputs[2] : nullptr},
+      true,
+      this->name);
+}
+
 FutureMap ResidualLayerNorm::inference(
     FFModel const &ff,
     BatchConfigFuture const &bc,
@@ -783,7 +795,7 @@ Node ResidualLayerNorm::deserialize(FFModel &ff,
         {inputs[0], inputs[1], inputs[2]}, params);
   } else {
     return ff.get_or_create_node<ResidualLayerNorm>(
-        {inputs[0], inputs[1], nullptr}, params);
+        {inputs[0], inputs[1], inputs[1]}, params);
   }
 }
 

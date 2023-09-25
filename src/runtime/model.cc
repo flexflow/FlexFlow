@@ -5183,6 +5183,39 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<LayerNorm::forward_task>(registrar);
     }
   }
+  // ResidualLayerNorm task
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_LAYERNORM_INIT_TASK_ID,
+                                   "residual_layernorm_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ResidualLayerNorm::init_task>(
+          registrar, "residual_layernorm_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ResidualLayerNorm::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_LAYERNORM_INF_TASK_ID,
+                                   "residual_layernorm_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ResidualLayerNorm::inference_task>(
+          registrar, "residual_layernorm_inference_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ResidualLayerNorm::inference_task>(
+          registrar);
+    }
+  }
   // AddBiasResidualLayerNorm task
   {
     TaskVariantRegistrar registrar(ADD_BIAS_RESIDUAL_LAYERNORM_INIT_TASK_ID,

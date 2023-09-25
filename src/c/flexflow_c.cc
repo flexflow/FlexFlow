@@ -673,17 +673,19 @@ flexflow_tensor_t *
                               name);
   assert(tensor_outputs[0] != nullptr);
   assert(tensor_outputs[1] != nullptr);
-  DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, residual1 %p, residual2 "
+  DEBUG_PRINT("[ResidualLayerNorm] input %p, residual1 %p, residual2 "
               "%p, output0: %p, "
-              "output1: %p, elementwise_affine %d, eps "
-              "%f, name %s",
-              tensor,
+              "output1: %p, use_two_residuals: %d, elementwise_affine %d, eps "
+              "%f, use_bias: %d, name %s",
               input,
               residual1,
-              residual2 tensor_outputs[0],
+              residual2,
+              tensor_outputs[0],
               tensor_outputs[1],
+              use_two_residuals,
               elementwise_affine,
               eps,
+              use_bias,
               name);
   flexflow_tensor_t *tensor_outputs_wrapped =
       (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
@@ -721,16 +723,16 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
                                        name);
   assert(tensor_outputs[0] != nullptr);
   assert(tensor_outputs[1] != nullptr);
-  DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, residual %p, output0: %p, "
+  DEBUG_PRINT("[AddBiasResidualLayerNorm] input %p, residual %p, output0: %p, "
               "output1: %p, elementwise_affine %d, eps "
-              "%f, name %s",
-              tensor,
+              "%f, use_bias %d, name %s",
               input,
               residual,
               tensor_outputs[0],
               tensor_outputs[1],
               elementwise_affine,
               eps,
+              use_bias,
               name);
   flexflow_tensor_t *tensor_outputs_wrapped =
       (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
