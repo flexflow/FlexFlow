@@ -260,6 +260,11 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
       int total_tokens = bc->requestsInfo[i].token_start_offset +
                          bc->requestsInfo[i].num_tokens_in_batch;
+
+      if (num_new_tokens <= 0) {
+        continue;
+      }
+
       // Compute (QK^T/sqrt(d_k))
       int m_ = num_new_tokens;
       int n = total_tokens;
