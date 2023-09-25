@@ -1190,8 +1190,6 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         }
       }
 
-      std::cout << "new_bc.num_tokens after dfs: " << new_bc.num_tokens
-                << std::endl;
     } else if (request.status == Request::PENDING) {
       new_bc.request_running[i] = false;
       if (verbose) {
@@ -1252,8 +1250,6 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           new_bc.num_tokens++;
         }
 
-        std::cout << "new_bc.num_tokens init: " << new_bc.num_tokens
-                  << std::endl;
         if (new_bc.num_tokens > BatchConfig::MAX_NUM_TOKENS) {
           assert(false &&
                  "Exceeding the space available in the TreeVerify batch");
@@ -1271,8 +1267,6 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 
           new_bc.num_tokens++;
           new_bc.requestsInfo[i].num_tokens_in_batch++;
-          std::cout << "new_bc.num_tokens running: " << new_bc.num_tokens
-                    << std::endl;
           std::cout << "new_bc.requestsInfo[i].num_tokens_in_batch: "
                     << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
 
