@@ -37,6 +37,7 @@
 #include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/ops/layer_norm.h"
+#include "flexflow/ops/residual_layer_norm.h"
 #include "flexflow/ops/sigmoid_silu_multi.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
@@ -957,6 +958,45 @@ __host__ void
         }
         LayerNorm::forward_kernel_wrapper(
             m, my_input_accessor[0], my_output_accessor[0], gamma, beta);
+        break;
+      }
+      case OP_RESIDUAL_LAYERNORM: {
+        assert(fused->op_num_outputs[op] == 2);
+        ResidualLayerNormMeta const *m =
+            (ResidualLayerNormMeta *)metas->meta[op];
+        if (m->use_two_residuals) {
+          assert(fused->op_num_inputs[op] == 3);
+        } else {
+          assert(fused->op_num_inputs[op] == 2);
+        }
+        if (!m->elementwise_affine) {
+          assert(fused->op_num_weights[op] == 0);
+        } else {
+          if (!m->use_bias) {
+            assert(fused->op_num_weights[op] == 1); // weight
+          } else {
+            assert(fused->op_num_weights[op] == 2); // weight + bias
+          }
+        }
+        GenericTensorAccessorR residual2;
+        if (m->use_two_residuals) {
+          residual2 = my_input_accessor[2];
+        }
+        GenericTensorAccessorR gamma, beta;
+        if (m->elementwise_affine) {
+          gamma = my_weight_accessor[1];
+          if (m->use_bias) {
+            beta = my_weight_accessor[2];
+          }
+        }
+        ResidualLayerNorm::inference_kernel_wrapper(m,
+                                                    my_input_accessor[0],
+                                                    my_input_accessor[1],
+                                                    residual2,
+                                                    my_output_accessor[0],
+                                                    my_output_accessor[1],
+                                                    gamma,
+                                                    beta);
         break;
       }
       case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {

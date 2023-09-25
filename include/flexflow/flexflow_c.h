@@ -259,6 +259,19 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle,
                                                 bool use_bias,
                                                 char const *name);
 
+flexflow_tensor_t *
+    flexflow_model_add_residual_layer_norm(flexflow_model_t handle,
+                                           const flexflow_tensor_t input,
+                                           const flexflow_tensor_t residual1,
+                                           const flexflow_tensor_t residual2,
+                                           bool use_two_residuals,
+                                           int n,
+                                           int *axes,
+                                           bool elementwise_affine,
+                                           float eps,
+                                           bool use_bias,
+                                           char const *name);
+
 flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
     flexflow_model_t handle,
     const flexflow_tensor_t input,

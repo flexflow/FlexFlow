@@ -279,6 +279,19 @@ class LayerNorm(Op):
     return self.get_parameter_by_id(1)
 
 # -----------------------------------------------------------------------
+# ResidualLayerNorm
+# -----------------------------------------------------------------------
+class ResidualLayerNorm(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ResidualLayerNorm, self).__init__(handle, idx, name)
+  
+  def get_weight_tensor(self):
+    return self.get_parameter_by_id(1)
+
+  def get_bias_tensor(self):
+    return self.get_parameter_by_id(2)
+  
+# -----------------------------------------------------------------------
 # AddBiasResidualLayerNorm
 # -----------------------------------------------------------------------
 class AddBiasResidualLayerNorm(Op):
@@ -584,6 +597,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return BatchNorm(handle, idx, name)
   elif op_type == OpType.LAYER_NORM:
     return LayerNorm(handle, idx, name)
+  elif op_type == OpType.RESIDUAL_LAYERNORM:
+    return ResidualLayerNorm(handle, idx, name)
   elif op_type == OpType.ADD_BIAS_RESIDUAL_LAYERNORM:
     return AddBiasResidualLayerNorm(handle, idx, name)
   elif op_type == OpType.SIGMOID_SILU_MULTI:
@@ -1609,6 +1624,16 @@ class FFModel(object):
     handle = ffc().flexflow_model_add_layer_norm(self.handle, input.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
     self.add_layer(OpType.LAYER_NORM, name)
     return Tensor(handle, owner_op_type=OpType.LAYER_NORM)
+
+  def residual_layer_norm(self, input, residual1, residual2, axes, elementwise_affine=True, eps=1e-5, use_bias = True, name=None):
+    c_name = get_c_name(name)
+    c_axes = ffi.new("int[]", axes)
+    residual2_handle = None
+    if residual2 is not None:
+      residual2_handle = residual2.handle
+    handles_array = ffc().flexflow_model_add_residual_layer_norm(self.handle, input.handle, residual1.handle, residual2_handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
+    self.add_layer(OpType.RESIDUAL_LAYER_NORM, name)
+    return Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_LAYER_NORM), Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_LAYER_NORM)
   
   def add_bias_residual_layer_norm(self, input, residual, axes, elementwise_affine=True, eps=1e-5, use_bias = True, name=None):
     c_name = get_c_name(name)

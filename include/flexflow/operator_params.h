@@ -26,6 +26,7 @@
 #include "flexflow/ops/pool_2d_params.h"
 #include "flexflow/ops/reduce_params.h"
 #include "flexflow/ops/reshape_params.h"
+#include "flexflow/ops/residual_layer_norm_params.h"
 #include "flexflow/ops/residual_rms_norm_params.h"
 #include "flexflow/ops/rms_norm_params.h"
 #include "flexflow/ops/sampling_params.h"
@@ -62,6 +63,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        GatherParams,
                                        Group_byParams,
                                        LayerNormParams,
+                                       ResidualLayerNormParams,
                                        AddBiasResidualLayerNormParams,
                                        SigmoidSiluMultiParams,
                                        LinearParams,

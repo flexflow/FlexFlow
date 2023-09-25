@@ -51,6 +51,7 @@
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/residual_layer_norm.h"
 #include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/rms_norm.h"
@@ -3100,6 +3101,12 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_LAYERNORM: {
       Op *op = LayerNorm::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_RESIDUAL_LAYERNORM: {
+      Op *op =
+          ResidualLayerNorm::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }

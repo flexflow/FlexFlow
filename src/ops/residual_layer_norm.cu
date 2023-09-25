@@ -14,7 +14,7 @@
  */
 
 #include "flexflow/ffconst_utils.h"
-#include "flexflow/ops/add_bias_residual_layer_norm.h"
+#include "flexflow/ops/residual_layer_norm.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -23,13 +23,13 @@ namespace FlexFlow {
 constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 
-AddBiasResidualLayerNormMeta::AddBiasResidualLayerNormMeta(
-    FFHandler handle,
-    AddBiasResidualLayerNorm const *ln,
-    MemoryAllocator &gpu_mem_allocator)
+ResidualLayerNormMeta::ResidualLayerNormMeta(FFHandler handle,
+                                             ResidualLayerNorm const *ln,
+                                             MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   elementwise_affine = ln->elementwise_affine;
   use_bias = ln->use_bias;
+  use_two_residuals = ln->use_two_residuals;
   effective_batch_size = ln->effective_batch_size;
   effective_num_elements = ln->effective_num_elements;
   profiling = ln->profiling;
@@ -45,7 +45,7 @@ AddBiasResidualLayerNormMeta::AddBiasResidualLayerNormMeta(
       data_type_size(data_type) * effective_batch_size);
 }
 
-AddBiasResidualLayerNormMeta::~AddBiasResidualLayerNormMeta(void) {
+ResidualLayerNormMeta::~ResidualLayerNormMeta(void) {
   if (reserveInst != Realm::RegionInstance::NO_INST) {
     reserveInst.destroy();
   }
@@ -92,18 +92,17 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
 }
 
 template <typename T>
-__global__ void LayerNormFusedForwardKernel(int64_t N,
-                                            int64_t attn_bias_dim,
-                                            float eps,
-                                            T const *input_ptr,
-                                            T const *attn_bias_ptr,
-                                            T const *residual_ptr,
-                                            T *X,
-                                            T *mean,
-                                            T *rstd,
-                                            T const *gamma,
-                                            T const *beta,
-                                            T *Y) {
+__global__ void ResidualLayerNormKernel(int64_t N,
+                                        float eps,
+                                        T const *input_ptr,
+                                        T const *residual1_ptr,
+                                        T const *residual2_ptr,
+                                        T *X,
+                                        T *mean,
+                                        T *rstd,
+                                        T const *gamma,
+                                        T const *beta,
+                                        T *Y) {
   __shared__ float m_shared[C10_WARP_SIZE];
   __shared__ float v_shared[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
@@ -112,8 +111,10 @@ __global__ void LayerNormFusedForwardKernel(int64_t N,
   for (int64_t j = threadIdx.x; j < N;
        j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
     const int64_t index = i * N + j;
-    const int64_t bias_idx = index % attn_bias_dim;
-    X[index] = input_ptr[index] + attn_bias_ptr[bias_idx] + residual_ptr[index];
+    const T residual2_val = (residual2_ptr == nullptr)
+                                ? T(0)
+                                : static_cast<T>(residual2_ptr[index]);
+    X[index] = input_ptr[index] + residual1_ptr[index] + residual2_val;
     sum1 += static_cast<float>(X[index]);
     sum2 += static_cast<float>(X[index]) * static_cast<float>(X[index]);
   }
@@ -148,18 +149,15 @@ __global__ void LayerNormFusedForwardKernel(int64_t N,
 
 /*static*/
 template <typename T>
-void AddBiasResidualLayerNorm::inference_kernel(
-    AddBiasResidualLayerNormMeta const *m,
-    int attn_bias_dim,
-    int residual_volume,
-    T const *input_ptr,
-    T const *attn_bias_ptr,
-    T const *residual_ptr,
-    T *added_output_ptr,
-    T *output_ptr,
-    T const *gamma_ptr,
-    T const *beta_ptr,
-    cudaStream_t stream) {
+void ResidualLayerNorm::inference_kernel(ResidualLayerNormMeta const *m,
+                                         T const *input_ptr,
+                                         T const *residual1_ptr,
+                                         T const *residual2_ptr,
+                                         T *added_output_ptr,
+                                         T *output_ptr,
+                                         T const *gamma_ptr,
+                                         T const *beta_ptr,
+                                         cudaStream_t stream) {
 
   std::pair<int, int> kernel1_parallelism =
       std::make_pair(m->effective_batch_size, kCUDABlockReduceNumThreads);
@@ -171,13 +169,12 @@ void AddBiasResidualLayerNorm::inference_kernel(
   int num_threads =
       std::max(kernel1_parallelism.second, kernel2_parallelism.second);
 
-  LayerNormFusedForwardKernel<T>
+  ResidualLayerNormKernel<T>
       <<<num_blocks, num_threads, 0, stream>>>(m->effective_num_elements,
-                                               attn_bias_dim,
                                                m->eps,
                                                input_ptr,
-                                               attn_bias_ptr,
-                                               residual_ptr,
+                                               residual1_ptr,
+                                               residual2_ptr,
                                                added_output_ptr,
                                                static_cast<T *>(m->mean_ptr),
                                                static_cast<T *>(m->rstd_ptr),
@@ -187,15 +184,13 @@ void AddBiasResidualLayerNorm::inference_kernel(
 }
 
 /*static*/
-void AddBiasResidualLayerNorm::inference_kernel_wrapper(
-    AddBiasResidualLayerNormMeta const *m,
-    int attn_bias_dim,
-    int residual_volume,
+void ResidualLayerNorm::inference_kernel_wrapper(
+    ResidualLayerNormMeta const *m,
     GenericTensorAccessorR const &input,
+    GenericTensorAccessorR const &residual1,
+    GenericTensorAccessorR const &residual2,
     GenericTensorAccessorW &added_output,
     GenericTensorAccessorW &output,
-    GenericTensorAccessorR const &residual,
-    GenericTensorAccessorR const &attn_bias,
     GenericTensorAccessorR const &gamma,
     GenericTensorAccessorR const &beta) {
   cudaStream_t stream;
@@ -208,26 +203,22 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
   if (m->input_type[0] == DT_FLOAT) {
-    AddBiasResidualLayerNorm::inference_kernel<float>(
+    ResidualLayerNorm::inference_kernel<float>(
         m,
-        attn_bias_dim,
-        residual_volume,
         input.get_float_ptr(),
-        attn_bias.get_float_ptr(),
-        residual.get_float_ptr(),
+        residual1.get_float_ptr(),
+        residual2.get_float_ptr(),
         added_output.get_float_ptr(),
         output.get_float_ptr(),
         m->elementwise_affine ? gamma.get_float_ptr() : nullptr,
         (m->elementwise_affine && m->use_bias) ? beta.get_float_ptr() : nullptr,
         stream);
   } else if (m->input_type[0] == DT_HALF) {
-    AddBiasResidualLayerNorm::inference_kernel<half>(
+    ResidualLayerNorm::inference_kernel<half>(
         m,
-        attn_bias_dim,
-        residual_volume,
         input.get_half_ptr(),
-        attn_bias.get_half_ptr(),
-        residual.get_half_ptr(),
+        residual1.get_half_ptr(),
+        residual2.get_half_ptr(),
         added_output.get_half_ptr(),
         output.get_half_ptr(),
         m->elementwise_affine ? gamma.get_half_ptr() : nullptr,
@@ -244,55 +235,7 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("[AddBiasResidualLayerNorm] forward time (CF) = %.9fms\n", elapsed);
-    // if (m->input_type[0] == DT_FLOAT) {
-    //   print_tensor<float>(input.get_float_ptr(),
-    //                       32,
-    //                       "[AddBiasResidualLayerNorm:forward:input]");
-    //   print_tensor<float>(attn_bias.get_float_ptr(),
-    //                       32,
-    //                       "[AddBiasResidualLayerNorm:forward:attn_bias]");
-    //   print_tensor<float>(residual.get_float_ptr(),
-    //                       32,
-    //                       "[AddBiasResidualLayerNorm:forward:residual]");
-    //   print_tensor<float>(added_output.get_float_ptr(),
-    //                       32,
-    //                       "[AddBiasResidualLayerNorm:forward:added_output]");
-    //   print_tensor<float>(output.get_float_ptr(),
-    //                       32,
-    //                       "[AddBiasResidualLayerNorm:forward:output]");
-    //   print_tensor<float>(gamma.get_float_ptr(),
-    //                       32,
-    //                       "[AddBiasResidualLayerNorm:forward:gamma]");
-    //   print_tensor<float>(
-    //       beta.get_float_ptr(), 32,
-    //       "[AddBiasResidualLayerNorm:forward:beta]");
-    // } else {
-    //   print_tensor<half>(
-    //       input.get_half_ptr(), 32,
-    //       "[AddBiasResidualLayerNorm:forward:input]");
-    //   print_tensor<half>(attn_bias.get_half_ptr(),
-    //                      32,
-    //                      "[AddBiasResidualLayerNorm:forward:attn_bias]");
-    //   print_tensor<half>(residual.get_half_ptr(),
-    //                      32,
-    //                      "[AddBiasResidualLayerNorm:forward:residual]");
-    //   print_tensor<half>(added_output.get_half_ptr(),
-    //                      32,
-    //                      "[AddBiasResidualLayerNorm:forward:added_output]");
-    //   print_tensor<half>(output.get_half_ptr(),
-    //                      32,
-    //                      "[AddBiasResidualLayerNorm:forward:output]");
-    //   print_tensor<half>(
-    //       gamma.get_half_ptr(), 32,
-    //       "[AddBiasResidualLayerNorm:forward:gamma]");
-    //   print_tensor<half>(
-    //       beta.get_half_ptr(), 32,
-    //       "[AddBiasResidualLayerNorm:forward:beta]");
-    // }
-    // print_tensor<T>(in_ptr, 32, "[AddBiasResidualLayerNorm:forward:input]");
-    // print_tensor<T>(out_ptr, 32,
-    // "[AddBiasResidualLayerNorm:forward:output]");
+    printf("[ResidualLayerNorm] forward time (CF) = %.9fms\n", elapsed);
   }
 }
 
