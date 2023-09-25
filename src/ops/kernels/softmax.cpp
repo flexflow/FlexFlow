@@ -29,7 +29,7 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(
       cudnnSetTensorDescriptorFromDomain4SoftMax(inputTensor, input_domain));
-  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   checkCUDNN(
       cudnnSetTensorDescriptorFromDomain4SoftMax(outputTensor, input_domain));
   dim = softmax->dim;
