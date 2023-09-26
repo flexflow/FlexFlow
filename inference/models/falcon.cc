@@ -57,22 +57,43 @@ void FALCON::create_falcon_model(FFModel &ff,
                               embed_init,
                               "word_embeddings");
 
+  Tensor mha = nullptr, mlp_output = nullptr;
+  Tensor res_ln_outputs[2] = {nullptr, nullptr};
+
   for (int i = 0; i < falcon_config.n_layer; i++) {
     // set transformer layer id
     ff.set_transformer_layer_id(i);
 
     // step 1: attention
-    Tensor att_norm = ff.layer_norm(
-        token,
-        axes,
-        true,
-        falcon_config.layer_norm_epsilon,
-        true,
-        DT_NONE,
-        std::string("layers_" + std::to_string(i) + "_input_layernorm")
-            .c_str());
+    Tensor att_norm = nullptr;
+    if (i == 0) {
+      att_norm = ff.layer_norm(
+          token,
+          axes,
+          true,
+          falcon_config.layer_norm_epsilon,
+          true,
+          DT_NONE,
+          std::string("layers_" + std::to_string(i) + "_input_layernorm")
+              .c_str());
+    } else {
+      ff.residual_layer_norm(
+          token,
+          mha,
+          mlp_output,
+          res_ln_outputs,
+          true,
+          axes,
+          true,
+          falcon_config.layer_norm_epsilon,
+          true,
+          DT_NONE,
+          std::string("layers_" + std::to_string(i) + "_input_layernorm")
+              .c_str());
+      token = res_ln_outputs[0];
+      att_norm = res_ln_outputs[1];
+    }
 
-    Tensor mha;
     switch (mode) {
       case BEAM_SEARCH_MODE: {
         mha = ff.spec_inc_multiquery_self_attention(
@@ -169,7 +190,7 @@ void FALCON::create_falcon_model(FFModel &ff,
 
     dense_h_to_4h = ff.gelu(dense_h_to_4h);
 
-    Tensor mlp_output = ff.dense(
+    mlp_output = ff.dense(
         dense_h_to_4h,
         falcon_config.hidden_size,
         AC_MODE_NONE,
@@ -182,18 +203,20 @@ void FALCON::create_falcon_model(FFModel &ff,
         0.0f,
         std::string("layers_" + std::to_string(i) + "_mlp_dense_4h_to_h")
             .c_str());
-
-    token = ff.add(token, mha);
-    token = ff.add(token, mlp_output);
   }
   // final normalization and linear
-  Tensor ln_f = ff.layer_norm(token,
-                              axes,
-                              true,
-                              falcon_config.layer_norm_epsilon,
-                              true,
-                              DT_NONE,
-                              "ln_f");
+  ff.residual_layer_norm(token,
+                         mha,
+                         mlp_output,
+                         res_ln_outputs,
+                         true,
+                         axes,
+                         true,
+                         falcon_config.layer_norm_epsilon,
+                         true,
+                         DT_NONE,
+                         "ln_f");
+  Tensor ln_f = res_ln_outputs[1];
 
   Tensor lm_head = ff.dense(ln_f,
                             falcon_config.vocab_size,

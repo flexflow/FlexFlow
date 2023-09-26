@@ -253,7 +253,7 @@ ResidualLayerNorm::ResidualLayerNorm(FFModel &model,
          _residual1,
          _use_two_residuals ? _residual2 : nullptr),
       elementwise_affine(_elementwise_affine), eps(_eps), axes(_axes),
-      use_bias(_use_bias) {
+      use_bias(_use_bias), use_two_residuals(_use_two_residuals) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -569,11 +569,11 @@ FutureMap ResidualLayerNorm::inference(
   launcher.add_field(field_id++, FID_DATA);
   // residual2
   if (use_two_residuals) {
-    launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
                                                       EXCLUSIVE,
-                                                      batch_inputs[1]->region));
+                                                      batch_inputs[2]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
   // added: input + residual(s)
@@ -761,7 +761,6 @@ Node ResidualLayerNorm::deserialize(FFModel &ff,
                                     Legion::Deserializer &dez,
                                     ParallelTensor inputs[],
                                     int num_inputs) {
-  assert(num_inputs == 2);
   size_t num_axes;
   std::vector<int> axes;
   bool elementwise_affine;
@@ -782,6 +781,11 @@ Node ResidualLayerNorm::deserialize(FFModel &ff,
   dez.deserialize(eps);
   dez.deserialize(use_bias);
   dez.deserialize(use_two_residuals);
+  if (use_two_residuals) {
+    assert(num_inputs == 3);
+  } else {
+    assert(num_inputs == 2);
+  }
 
   ResidualLayerNormParams params;
   params.layer_guid = layer_guid;
