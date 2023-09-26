@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/residual_layer_norm.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -171,21 +171,21 @@ void ResidualLayerNorm::inference_kernel(ResidualLayerNormMeta const *m,
       std::max(kernel1_parallelism.second, kernel2_parallelism.second);
 
   hipLaunchKernelGGL(HIP_KERNEL_NAME(ResidualLayerNormKernel<T>),
-                    num_blocks, 
-                    num_threads, 
-                    0, 
-                    stream,
-                    m->effective_num_elements,
-                    m->eps,
-                    input_ptr,
-                    residual1_ptr,
-                    residual2_ptr,
-                    added_output_ptr,
-                    static_cast<T *>(m->mean_ptr),
-                    static_cast<T *>(m->rstd_ptr),
-                    gamma_ptr,
-                    beta_ptr,
-                    output_ptr);
+                     num_blocks,
+                     num_threads,
+                     0,
+                     stream,
+                     m->effective_num_elements,
+                     m->eps,
+                     input_ptr,
+                     residual1_ptr,
+                     residual2_ptr,
+                     added_output_ptr,
+                     static_cast<T *>(m->mean_ptr),
+                     static_cast<T *>(m->rstd_ptr),
+                     gamma_ptr,
+                     beta_ptr,
+                     output_ptr);
 }
 
 /*static*/
