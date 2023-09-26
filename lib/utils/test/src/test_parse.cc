@@ -38,7 +38,7 @@ TEST_CASE("Test ArgsParser basic functionality") {
       args.get(invalid_ref)); // throw exception  because it's invalid ref
 }
 
-TEST_CASE("Test batch and fusioon=0") {
+TEST_CASE("Test batch and fusion set 0") {
   char const *test_argv[] = {
       "program_name", "batch-size", "100", "--fusion", "yes"};
   ArgsParser args;
