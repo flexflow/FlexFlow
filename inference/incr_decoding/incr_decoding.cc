@@ -177,6 +177,9 @@ void FlexFlow::top_level_task(Task const *task,
     } else if (str == "MPTForCausalLM") {
       model_type = ModelType::MPT;
       break;
+    } else if (str == "BaiChuanForCausalLM") {
+      model_type = ModelType::BAICHUAN;
+      break;
     }
   }
   int bos_token_id = model_config.find("bos_token_id") == model_config.end()
@@ -229,6 +232,12 @@ void FlexFlow::top_level_task(Task const *task,
                           INC_DECODING_MODE,
                           generationConfig,
                           use_full_precision);
+  } else if (model_type == ModelType::BAICHUAN) {
+    BAICHUAN::create_baichuan_model(model,
+                                    config_filepath,
+                                    weights_filepath INC_DECODING_MODE,
+                                    generationConfig,
+                                    use_full_precision);
   } else {
     assert(false && "unknow model type");
   }
