@@ -33,7 +33,7 @@ TEST_CASE("Test ArgsParser basic functionality") {
   CHECK(args.get(learning_rate_ref) == 0.5f);
   CHECK(args.ge(fusion_ref) == true);
   CHECK(args.get(ll_gpus_ref) == 6);
-  ArgRef<int> invalid_ref;
+  CmdlineArgRef<int> invalid_ref;
   CHECK_THROWS(
       args.get(invalid_ref)); // throw exception  because it's invalid ref
 }

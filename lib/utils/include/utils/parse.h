@@ -15,7 +15,7 @@ std::string parseKey(std::string arg);
 using AllowedArgTypes = variant<int, bool, float, std::string>;
 
 template <typename T>
-struct ArgRef {
+struct CmdlineArgRef {
   std::string key;
   T value;
 };
@@ -34,7 +34,7 @@ public:
   T get_from_variant(AllowedArgTypes const &v) const;
 
   template <typename T>
-  ArgRef<T> add_argument(std::string const &key,
+  CmdlineArgRef<T> add_argument(std::string const &key,
                          T const &value,
                          std::string const &description);
 

@@ -24,12 +24,12 @@ void ArgsParser::parse_args(int argc, char **argv) {
 }
 
 template <typename T>
-ArgRef<T> ArgsParser::add_argument(std::string const &key,
+CmdlineArgRef<T> ArgsParser::add_argument(std::string const &key,
                                    T const &value,
                                    std::string const &description) {
   mDefaultValues[parseKey(key)] = value;
   mDescriptions[key] = description;
-  return ArgRef<T>{key, value};
+  return CmdlineArgRef<T>{key, value};
 }
 
 template <>
