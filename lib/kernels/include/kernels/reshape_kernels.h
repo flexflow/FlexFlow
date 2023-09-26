@@ -24,7 +24,7 @@ void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorW const &output);
 
 void backward_kernel(ffStream_t stream,
-                     ReshapePerDeviceState const $per_device_state,
+                     ReshapePerDeviceState const &per_device_state,
                      GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output);
 
