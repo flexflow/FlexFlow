@@ -1668,7 +1668,7 @@ class FFModel(object):
     """    
     c_name = get_c_name(name)
     c_axes = ffi.new("int[]", axes)
-    residual2_handle = residual1.handle
+    residual2_handle = residual1.handle # This is intentional. Data will be ignored, and we cannot pass None
     if use_two_residuals:
       assert(residual2 is not None)
       residual2_handle = residual2.handle
