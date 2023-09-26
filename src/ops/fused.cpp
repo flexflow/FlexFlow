@@ -935,24 +935,6 @@ __host__ void
         break;
       }
       case OP_RESIDUAL_LAYERNORM: {
-        assert(fused->op_num_inputs[op] == 2);
-        assert(fused->op_num_outputs[op] == 1);
-        LayerNormMeta const *m = (LayerNormMeta *)metas->meta[op];
-        if (m->elementwise_affine) {
-          assert(fused->op_num_weights[op] == 1 + (int)(m->use_bias));
-        }
-        GenericTensorAccessorR gamma, beta;
-        if (m->elementwise_affine) {
-          gamma = my_weight_accessor[0];
-          if (m->use_bias) {
-            beta = my_weight_accessor[1];
-          }
-        }
-        LayerNorm::forward_kernel_wrapper(
-            m, my_input_accessor[0], my_output_accessor[0], gamma, beta);
-        break;
-      }
-      case OP_RESIDUAL_LAYERNORM: {
         assert(fused->op_num_outputs[op] == 2);
         ResidualLayerNormMeta const *m =
             (ResidualLayerNormMeta *)metas->meta[op];
@@ -976,9 +958,9 @@ __host__ void
         }
         GenericTensorAccessorR gamma, beta;
         if (m->elementwise_affine) {
-          gamma = my_weight_accessor[1];
+          gamma = my_weight_accessor[0];
           if (m->use_bias) {
-            beta = my_weight_accessor[2];
+            beta = my_weight_accessor[1];
           }
         }
         ResidualLayerNorm::inference_kernel_wrapper(m,

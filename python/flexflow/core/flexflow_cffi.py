@@ -1619,23 +1619,83 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
     
   def layer_norm(self, input, axes, elementwise_affine=True, eps=1e-5, use_bias = True, name=None):
+    """Add a LayerNorm layer
+
+    :param input: The input tensor
+    :type input: Tensor
+    :param axes: Indicate which axes (starting from the end) the LayerNorm should normalize over
+    :type axes: Union[int, List[int]]
+    :param elementwise_affine: Whether the LayerNorm should use the gamma weight for scaling, defaults to True
+    :type elementwise_affine: bool, optional
+    :param eps: A small float value added to the LayerNorm denominator for numerical stability, defaults to 1e-5
+    :type eps: float, optional
+    :param use_bias: Whether to add a beta bias to the LayerNorm result, defaults to True
+    :type use_bias: bool, optional
+    :param name: Name of the operator, also used for loading weights in inference mode, defaults to None
+    :type name: _type_, optional
+    :return: The LayerNorm output tensor
+    :rtype: Tensor
+    """    
     c_name = get_c_name(name)
     c_axes = ffi.new("int[]", axes)
     handle = ffc().flexflow_model_add_layer_norm(self.handle, input.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
     self.add_layer(OpType.LAYER_NORM, name)
     return Tensor(handle, owner_op_type=OpType.LAYER_NORM)
 
-  def residual_layer_norm(self, input, residual1, residual2, axes, elementwise_affine=True, eps=1e-5, use_bias = True, name=None):
+  def residual_layer_norm(self, input, residual1, residual2, use_two_residuals, axes, elementwise_affine=True, eps=1e-5, use_bias = True, name=None):
+    """ Add a fused LayerNorm + Residual layer. This operator uses a single kernel, resulting in better efficiency compared to using separate element-wise add and LayerNorm operators.
+
+    :param input: The input tensor
+    :type input: Tensor
+    :param residual1: The residual tensor to add to the input before computing the LayerNorm
+    :type residual1: Tensor
+    :param residual2: An optional second residual tensor to add to the input (in addition to residual1) before computing the LayerNorm
+    :type residual2: Tensor
+    :param use_two_residuals: A boolean that should be set to True if using the second optional residual, False otherwise
+    :type use_two_residuals: bool
+    :param axes: Indicate which axes (starting from the end) the LayerNorm should normalize over
+    :type axes: List[int]
+    :param elementwise_affine: Whether the LayerNorm should use the gamma weight for scaling, defaults to True
+    :type elementwise_affine: bool, optional
+    :param eps: A small float value added to the LayerNorm denominator for numerical stability, defaults to 1e-5
+    :type eps: float, optional
+    :param use_bias: Whether to add a beta bias to the LayerNorm result, defaults to True
+    :type use_bias: bool, optional
+    :param name: Name of the operator, also used for loading weights in inference mode, defaults to None
+    :type name: str, optional
+    :return: A tensor with the sum of the input and residual(s), and the LayerNorm output
+    :rtype: (Tensor, Tensor)
+    """    
     c_name = get_c_name(name)
     c_axes = ffi.new("int[]", axes)
     residual2_handle = None
-    if residual2 is not None:
+    if use_two_residuals:
+      assert(residual2 is not None)
       residual2_handle = residual2.handle
-    handles_array = ffc().flexflow_model_add_residual_layer_norm(self.handle, input.handle, residual1.handle, residual2_handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
-    self.add_layer(OpType.RESIDUAL_LAYER_NORM, name)
-    return Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_LAYER_NORM), Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_LAYER_NORM)
+    handles_array = ffc().flexflow_model_add_residual_layer_norm(self.handle, input.handle, residual1.handle, residual2_handle, use_two_residuals, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)
+    self.add_layer(OpType.RESIDUAL_LAYERNORM, name)
+    return Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_LAYERNORM), Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_LAYERNORM)
   
   def add_bias_residual_layer_norm(self, input, residual, axes, elementwise_affine=True, eps=1e-5, use_bias = True, name=None):
+    """Add a Attention Bias + Residual + LayerNorm layer. This operator uses a single kernel, resulting in better efficiency compared to using separate attention bias addition + element-wise residual addition + LayerNorm operators.
+
+    :param input: The input tensor
+    :type input: Tensor
+    :param residual: The residual tensor
+    :type residual: Tensor
+    :param axes: Indicate which axes (starting from the end) the LayerNorm should normalize over
+    :type axes: Union[int, List[int]]
+    :param elementwise_affine: Whether the LayerNorm should use the gamma weight for scaling, defaults to True
+    :type elementwise_affine: bool, optional
+    :param eps: A small float value added to the LayerNorm denominator for numerical stability, defaults to 1e-5
+    :type eps: float, optional
+    :param use_bias: Whether to add a beta bias to the LayerNorm result, defaults to True
+    :type use_bias: bool, optional
+    :param name: Name of the operator, also used for loading weights in inference mode, defaults to None
+    :type name: _type_, optional
+    :return: A tensor with the sum of the attention bias, input and residual(s), and the LayerNorm output
+    :rtype: (Tensor, Tensor)
+    """    
     c_name = get_c_name(name)
     c_axes = ffi.new("int[]", axes)
     handles_array = ffc().flexflow_model_add_add_bias_residual_layer_norm(self.handle, input.handle, residual.handle, len(axes), c_axes, elementwise_affine, eps, use_bias, c_name)

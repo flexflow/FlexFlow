@@ -489,6 +489,11 @@ __host__ void FusedOp::forward_task(Task const *task,
             m, my_input_accessor[0], my_output_accessor[0], gamma, beta);
         break;
       }
+      case OP_RESIDUAL_LAYERNORM: {
+        assert(false && "Operator ResidualLayerNorm does not support "
+                        "the forward() task");
+        break;
+      }
       case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
         assert(false && "Operator AddBiasResidualLayerNorm does not support "
                         "the forward() task");
@@ -984,9 +989,9 @@ __host__ void
         }
         GenericTensorAccessorR gamma, beta;
         if (m->elementwise_affine) {
-          gamma = my_weight_accessor[1];
+          gamma = my_weight_accessor[0];
           if (m->use_bias) {
-            beta = my_weight_accessor[2];
+            beta = my_weight_accessor[1];
           }
         }
         ResidualLayerNorm::inference_kernel_wrapper(m,

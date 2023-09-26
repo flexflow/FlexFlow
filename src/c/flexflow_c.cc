@@ -660,6 +660,9 @@ flexflow_tensor_t *
   for (int i = 0; i < n; i++) {
     axes_vec.push_back(axes[i]);
   }
+  if (use_two_residuals) {
+    assert(residual2 != nullptr);
+  }
   handle->residual_layer_norm(input,
                               residual1,
                               residual2,
