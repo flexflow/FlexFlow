@@ -239,8 +239,8 @@ enum TaskIDs {
   RM_LOAD_TOKENS_TASK_ID,
   RM_LOAD_POSITION_TASK_ID,
   RM_PREPARE_NEXT_BATCH_TASK_ID,
-  RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
   RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
   RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
@@ -787,7 +787,8 @@ public:
   // ========================================
   // Inference APIs
   // ========================================
-  GenerationResult generate(std::string const &text, int max_seq_length);
+  GenerationResult generate(std::vector<std::string> &prompts,
+                            int max_seq_length);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
