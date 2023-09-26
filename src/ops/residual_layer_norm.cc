@@ -150,7 +150,7 @@ void FFModel::residual_layer_norm(const Tensor input,
     for (int i = 0; i < numdims; i++) {
       dims[i] = input->dims[axes[i]];
     }
-    if (num_weights > 1) {
+    if (num_weights >= 1) {
       assert(elementwise_affine);
       ln->weights[0] = create_weight_legion_ordering(numdims,
                                                      dims,
@@ -286,7 +286,7 @@ ResidualLayerNorm::ResidualLayerNorm(FFModel &model,
 
   if (allocate_weights) {
     int seed = std::rand();
-    if (numWeights > 1) {
+    if (numWeights >= 1) {
       assert(elementwise_affine);
 
       ParallelTensorShape beta_gamma_shape = _input->get_shape();

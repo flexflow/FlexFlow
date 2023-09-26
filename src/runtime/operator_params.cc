@@ -98,7 +98,7 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
     case OP_LAYERNORM:
       return ((LayerNorm *)op)->get_params();
     case OP_RESIDUAL_LAYERNORM:
-      return ((LayerNorm *)op)->get_params();
+      return ((ResidualLayerNorm *)op)->get_params();
     case OP_ADD_BIAS_RESIDUAL_LAYERNORM:
       return ((AddBiasResidualLayerNorm *)op)->get_params();
     case OP_SIGMOID_SILU_MULTI:
