@@ -14,39 +14,29 @@ std::string parseKey(std::string arg);
 
 using AllowedArgTypes = variant<int, bool, float, std::string>;
 
+template <typename T>
+struct ArgRef {
+  std::string key;
+  T value;
+};
+
 class ArgsParser {
 private:
   std::unordered_map<std::string, std::string> mArgs;
   std::unordered_map<std::string, AllowedArgTypes> mDefaultValues;
   std::unordered_map<std::string, std::string> mDescriptions;
 
-  std::string parseKey(std::string const &arg) const {
-    if (arg.substr(0, 2) == "--") {
-      return arg.substr(2);
-    } else {
-      return arg;
-    }
-  }
-
 public:
   ArgsParser() = default;
-  void parse_args(int argc, char **argv) {
-    for (int i = 1; i < argc; i += 2) {
-      std::string key = parseKey(argv[i]);
-      if (key == "help" || key == "h") {
-        showDescriptions();
-        exit(0);
-      }
-      mArgs[key] = argv[i + 1];
-    }
-  }
+  void parse_args(int argc, char **argv);
 
   template <typename T>
   T get_from_variant(AllowedArgTypes const &v) const;
 
-  void add_argument(std::string const &key,
-                    AllowedArgTypes const &value,
-                    std::string const &description);
+  template <typename T>
+  ArgRef<T> add_argument(std::string const &key,
+                         T const &value,
+                         std::string const &description);
 
   template <typename T>
   T get(std::string const &key) const {
