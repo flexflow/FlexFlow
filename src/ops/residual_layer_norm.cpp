@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/layer_norm.h"
+#include "flexflow/ops/residual_layer_norm.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
