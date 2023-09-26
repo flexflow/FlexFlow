@@ -74,24 +74,30 @@ void STARCODER::create_starcoder_model(
                    embed_init,
                    "transformer_wpe");
 
-  Tensor hidden_states = ff.add(token, positional_embedding);
+  Tensor residual = nullptr, c_proj = nullptr;
+  Tensor res_ln_outputs[2] = {nullptr, nullptr};
 
   for (int i = 0; i < startcoder_config.num_hidden_layers; i++) {
     // set transformer layer id
     ff.set_transformer_layer_id(i);
 
     // step 1: attention
-    std::string layer_name = "layers_" + std::to_string(i) + "_ln_1";
-    Tensor ln_1 = ff.layer_norm(hidden_states,
-                                axes,
-                                true,
-                                startcoder_config.layer_norm_epsilon,
-                                true,
-                                DT_NONE,
-                                layer_name.c_str());
+    ff.residual_layer_norm(
+        (i == 0) ? token : residual,
+        (i == 0) ? positional_embedding : c_proj,
+        nullptr,
+        res_ln_outputs,
+        false,
+        axes,
+        true,
+        startcoder_config.layer_norm_epsilon,
+        true,
+        DT_NONE,
+        std::string("layers_" + std::to_string(i) + "_ln_1").c_str());
+    Tensor hidden_states = res_ln_outputs[0];
+    Tensor ln_1 = res_ln_outputs[1];
 
     Tensor mha;
-    layer_name = "layers_" + std::to_string(i) + "_attention";
     switch (mode) {
       case INC_DECODING_MODE: {
         mha = ff.inc_multiquery_self_attention(
@@ -114,7 +120,8 @@ void STARCODER::create_starcoder_model(
             1.0f,                        /*scaling factor*/
             true,                        /*qk_prod_scaling*/
             false,                       /*position_bias*/
-            layer_name.c_str()           /*name*/
+            std::string("layers_" + std::to_string(i) + "_attention")
+                .c_str() /*name*/
         );
         break;
       }
@@ -123,56 +130,63 @@ void STARCODER::create_starcoder_model(
       }
     }
 
-    Tensor residual = ff.add(hidden_states, mha);
-
-    layer_name = "layers_" + std::to_string(i) + "_ln_2";
-    Tensor l2_norm = ff.layer_norm(residual,
-                                   axes,
-                                   true,
-                                   startcoder_config.layer_norm_epsilon,
-                                   true,
-                                   DT_NONE,
-                                   layer_name.c_str());
+    ff.residual_layer_norm(
+        hidden_states,
+        mha,
+        nullptr,
+        res_ln_outputs,
+        false,
+        axes,
+        true,
+        startcoder_config.layer_norm_epsilon,
+        true,
+        DT_NONE,
+        std::string("layers_" + std::to_string(i) + "_ln_2").c_str());
+    residual = res_ln_outputs[0];
+    Tensor l2_norm = res_ln_outputs[1];
 
     // mlp
-    layer_name = "layers_" + std::to_string(i) + "_mlp_c_fc";
-    Tensor c_fc = ff.dense(l2_norm,
-                           startcoder_config.intermediate_size,
-                           AC_MODE_NONE,
-                           true,
-                           DT_NONE,
-                           nullptr,
-                           nullptr,
-                           nullptr,
-                           REG_MODE_NONE,
-                           0.0f,
-                           layer_name.c_str());
+    Tensor c_fc = ff.dense(
+        l2_norm,
+        startcoder_config.intermediate_size,
+        AC_MODE_NONE,
+        true,
+        DT_NONE,
+        nullptr,
+        nullptr,
+        nullptr,
+        REG_MODE_NONE,
+        0.0f,
+        std::string("layers_" + std::to_string(i) + "_mlp_c_fc").c_str());
 
     c_fc = ff.gelu(c_fc);
 
-    layer_name = "layers_" + std::to_string(i) + "_mlp_c_proj";
-    Tensor c_proj = ff.dense(c_fc,
-                             startcoder_config.hidden_size,
-                             AC_MODE_NONE,
-                             true,
-                             DT_NONE,
-                             nullptr,
-                             nullptr,
-                             nullptr,
-                             REG_MODE_NONE,
-                             0.0f,
-                             layer_name.c_str());
-
-    hidden_states = ff.add(residual, c_proj);
+    c_proj = ff.dense(
+        c_fc,
+        startcoder_config.hidden_size,
+        AC_MODE_NONE,
+        true,
+        DT_NONE,
+        nullptr,
+        nullptr,
+        nullptr,
+        REG_MODE_NONE,
+        0.0f,
+        std::string("layers_" + std::to_string(i) + "_mlp_c_proj").c_str());
   }
   // final normalization and linear
-  Tensor ln_f = ff.layer_norm(hidden_states,
-                              axes,
-                              true,
-                              startcoder_config.layer_norm_epsilon,
-                              true,
-                              DT_NONE,
-                              "transformer_ln_f");
+  ff.residual_layer_norm(residual,
+                         c_proj,
+                         nullptr,
+                         res_ln_outputs,
+                         false,
+                         axes,
+                         true,
+                         startcoder_config.layer_norm_epsilon,
+                         true,
+                         DT_NONE,
+                         "transformer_ln_f");
+  Tensor ln_f = res_ln_outputs[1];
 
   Tensor lm_head = ff.dense(ln_f,
                             startcoder_config.vocab_size,

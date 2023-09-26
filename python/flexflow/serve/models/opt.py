@@ -113,8 +113,6 @@ class FlexFlowOPT(FlexFlowModel):
             name="embed_positions",
         )
 
-        residual = ffmodel.add(token, positional_embedding)
-
         axes = [
             0,
         ]
@@ -123,15 +121,19 @@ class FlexFlowOPT(FlexFlowModel):
             ffmodel.set_transformer_layer_id(i)
 
             if self.opt_config.do_layer_norm_before:
-                hidden_states = ffmodel.layer_norm(
-                    residual,
+                residual, hidden_states = ffmodel.residual_layer_norm(
+                    token if i == 0 else residual,
+                    positional_embedding if i == 0 else fc2,
+                    None,
+                    False,
                     axes,
                     self.opt_config.layer_norm_elementwise_affine,
                     1e-05,
                     name=f"layers_{i}_attention_layer_norm",
                 )
             else:
-                hidden_states = residual
+                hidden_states = ffmodel.add(token, positional_embedding)
+                residual = hidden_states
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
                 mha = ffmodel.spec_inc_multihead_self_attention(
@@ -224,19 +226,24 @@ class FlexFlowOPT(FlexFlowModel):
                 True,
                 name=f"layers_{i}_fc2",
             )
-            residual = ffmodel.add(residual, fc2)
 
             if not self.opt_config.do_layer_norm_before:
-                residual = ffmodel.layer_norm(
+                _, residual = ffmodel.residual_layer_norm(
                     residual,
+                    fc2,
+                    None,
+                    False,
                     axes,
                     self.opt_config.layer_norm_elementwise_affine,
                     1e-05,
                     name=f"layers_{i}_final_layer_norm",
                 )
 
-        all_final_norm = ffmodel.layer_norm(
+        _, all_final_norm = ffmodel.residual_layer_norm(
             residual,
+            fc2,
+            None,
+            False,
             axes,
             self.opt_config.layer_norm_elementwise_affine,
             1e-05,

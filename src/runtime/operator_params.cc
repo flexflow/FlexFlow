@@ -27,6 +27,7 @@
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/residual_layer_norm.h"
 #include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/rms_norm.h"
@@ -96,6 +97,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((TreeIncMultiHeadSelfAttention *)op)->get_params();
     case OP_LAYERNORM:
       return ((LayerNorm *)op)->get_params();
+    case OP_RESIDUAL_LAYERNORM:
+      return ((ResidualLayerNorm *)op)->get_params();
     case OP_ADD_BIAS_RESIDUAL_LAYERNORM:
       return ((AddBiasResidualLayerNorm *)op)->get_params();
     case OP_SIGMOID_SILU_MULTI:

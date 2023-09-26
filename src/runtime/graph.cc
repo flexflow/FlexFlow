@@ -40,6 +40,7 @@
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/residual_layer_norm.h"
 #include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/sampling.h"
@@ -2702,6 +2703,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_LAYERNORM: {
         node = LayerNorm::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_RESIDUAL_LAYERNORM: {
+        node = ResidualLayerNorm::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {

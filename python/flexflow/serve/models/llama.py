@@ -103,12 +103,21 @@ class FlexFlowLLAMA(FlexFlowModel):
         for i in range(self.llama_config.num_hidden_layers):
             ffmodel.set_transformer_layer_id(i)
 
-            attn_norm = ffmodel.rms_norm(
-                token,
-                self.llama_config.rms_norm_eps,
-                self.llama_config.hidden_size,
-                name=f"layers_{i}_attention_norm",
-            )
+            if i == 0:
+                attn_norm = ffmodel.rms_norm(
+                    token,
+                    self.llama_config.rms_norm_eps,
+                    self.llama_config.hidden_size,
+                    name=f"layers_{i}_attention_norm",
+                )
+            else:
+                token, attn_norm = ffmodel.residual_rms_norm(
+                    token,
+                    w2,
+                    self.llama_config.rms_norm_eps,
+                    self.llama_config.hidden_size,
+                    name=f"layers_{i}_attention_norm",
+                )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
                 mha = ffmodel.spec_inc_multiquery_self_attention(
@@ -199,10 +208,10 @@ class FlexFlowLLAMA(FlexFlowModel):
                 False,
                 name=f"layers_{i}_feed_forward_w2",
             )
-            token = ffmodel.add(token, w2)
 
-        token = ffmodel.rms_norm(
+        _, token = ffmodel.residual_rms_norm(
             token,
+            w2,
             self.llama_config.rms_norm_eps,
             self.llama_config.hidden_size,
             name="norm",
