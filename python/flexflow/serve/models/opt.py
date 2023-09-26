@@ -226,7 +226,6 @@ class FlexFlowOPT(FlexFlowModel):
                 True,
                 name=f"layers_{i}_fc2",
             )
-            # residual = ffmodel.add(residual, fc2)
 
             if not self.opt_config.do_layer_norm_before:
                 _, residual = ffmodel.residual_layer_norm(

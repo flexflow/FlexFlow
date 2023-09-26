@@ -74,7 +74,6 @@ void STARCODER::create_starcoder_model(
                    embed_init,
                    "transformer_wpe");
 
-  // Tensor hidden_states = ff.add(token, positional_embedding);
   Tensor residual = nullptr, c_proj = nullptr;
   Tensor res_ln_outputs[2] = {nullptr, nullptr};
 
