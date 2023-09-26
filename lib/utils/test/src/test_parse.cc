@@ -33,12 +33,14 @@ TEST_CASE("Test ArgsParser basic functionality") {
   CHECK(args.get(learning_rate_ref) == 0.5f);
   CHECK(args.ge(fusion_ref) == true);
   CHECK(args.get(ll_gpus_ref) == 6);
-  CHECK_THROWS(args.get("epochsss")); // throw exception
+  ArgRef<int> invalid_ref;
+  CHECK_THROWS(
+      args.get(invalid_ref)); // throw exception  because it's invalid ref
 }
 
-TEST_CASE("Test size and invalid") {
+TEST_CASE("Test batch and fusioon=0") {
   char const *test_argv[] = {
-      "program_name", "batch-size", "100", "--fusion", "true"};
+      "program_name", "batch-size", "100", "--fusion", "yes"};
   ArgsParser args;
   auto batch_size_ref =
       args.add_argument("batch-size", 32, "batch size for training");
@@ -48,6 +50,6 @@ TEST_CASE("Test size and invalid") {
       "Flag to determine if fusion optimization should be used");
   args.parse_args(9, const_cast<char **>(test_argv));
 
-  CHECK(args.get(fusion_ref) == false);
+  CHECK(args.get(fusion_ref) == true);
   CHECK(args.get(batch_size_ref) == 100);
 }
