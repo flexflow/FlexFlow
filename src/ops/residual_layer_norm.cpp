@@ -185,7 +185,7 @@ void ResidualLayerNorm::inference_kernel(ResidualLayerNormMeta const *m,
                     static_cast<T *>(m->rstd_ptr),
                     gamma_ptr,
                     beta_ptr,
-                    output_ptr));
+                    output_ptr);
 }
 
 /*static*/
