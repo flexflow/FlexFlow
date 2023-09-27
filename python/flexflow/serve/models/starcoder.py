@@ -122,16 +122,18 @@ class FlexFlowSTARCODER(FlexFlowModel):
             name="transformer_wpe",
         )
 
-        hidden_states = ffmodel.add(token, positional_embedding)
-
         axes = [
             0,
         ]
 
         for i in range(self.starcoder_config.num_hidden_layers):
             ffmodel.set_transformer_layer_id(i)
-            ln_1 = ffmodel.layer_norm(
-                hidden_states,
+
+            hidden_states, ln_1 = ffmodel.residual_layer_norm(
+                token if i == 0 else residual,
+                positional_embedding if i == 0 else c_proj,
+                None,
+                False,
                 axes,
                 True,
                 self.starcoder_config.layer_norm_epsilon,
@@ -158,9 +160,11 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 name=f"layers_{i}_attention",
             )
 
-            residual = ffmodel.add(mha, hidden_states)
-
-            l2_norm = ffmodel.layer_norm(
+            residual, l2_norm = ffmodel.residual_layer_norm(
+                hidden_states,
+                mha,
+                None,
+                False,
                 residual,
                 axes,
                 True,
@@ -185,10 +189,12 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 True,
                 name=f"layers_{i}_mlp_c_proj",
             )
-            hidden_states = ffmodel.add(residual, c_proj)
 
-        ln_f = ffmodel.layer_norm(
-            hidden_states,
+        _, ln_f = ffmodel.residual_layer_norm(
+            residual,
+            c_proj,
+            None,
+            False,
             axes,
             True,
             self.starcoder_config.layer_norm_epsilon,
