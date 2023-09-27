@@ -16,7 +16,7 @@
 #include "parallel_ops/partition.h"
 #include "kernels/partition_kernels.h"
 #include "op-attrs/get_output_shape.h"
-#include "utils/exception.decl.h"
+#include "utils/exceptions.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
