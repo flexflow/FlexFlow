@@ -15,7 +15,7 @@
 
 #include "parallel_ops/replicate.h"
 #include "kernels/replicate_kernels.h"
-#include "utils/exception.decl.h"
+#include "utils/exceptions.h"
 #include "utils/hash-utils.h"
 #include <sys/types.h>
 
