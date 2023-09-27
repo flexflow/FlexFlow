@@ -170,6 +170,61 @@ void forward_kernel_wrapper(LinearMeta const *m,
   }
 }
 
+void peft_bwd_kernel_wrapper(LinearMeta const *m,
+                             void *input_grad_ptr,
+                             void *output_grad_ptr,
+                             void const *weight_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int num_infr_tokens,
+                             int num_peft_tokens) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+  if (m->input_type[0] == DT_FLOAT) {
+    Internal::peft_bwd_kernel<float>(m,
+                                     input_grad_ptr,
+                                     output_grad_ptr,
+                                     weight_ptr,
+                                     in_dim,
+                                     out_dim,
+                                     num_infr_tokens,
+                                     num_peft_tokens,
+                                     stream);
+  } else if (m->input_type[0] == DT_HALF) {
+    Internal::peft_bwd_kernel<half>(m,
+                                    input_grad_ptr,
+                                    output_grad_ptr,
+                                    weight_ptr,
+                                    in_dim,
+                                    out_dim,
+                                    num_infr_tokens,
+                                    num_peft_tokens,
+                                    stream);
+  }
+
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("%s [Linear] PEFT Bwd time = %.2lfms\n", m->op_name, elapsed);
+    // print_tensor<float>((float*)input_ptr, in_dim * batch_size,
+    // "[Linear:forward:input]"); print_tensor<float>((float*)weight_ptr, in_dim
+    // * out_dim, "[Linear:forward:kernel]");
+    // print_tensor<float>((float*)output_ptr, out_dim * batch_size,
+    // "[Linear:forward:output]");
+  }
+}
+
+
 void backward_kernel_wrapper(LinearMeta const *m,
                              void const *input_ptr,
                              void *input_grad_ptr,
@@ -377,6 +432,68 @@ void forward_kernel(LinearMeta const *m,
     // Do nothing
   } else {
     assert(false && "Unsupported activation for Linear");
+  }
+}
+
+template <typename DT>
+void peft_bwd_kernel(LinearMeta const *m,
+                     void *input_grad_ptr,
+                     void *output_grad_ptr,
+                     void const *kernel_ptr,
+                     int in_dim,
+                     int out_dim,
+                     int num_infr_tokens,
+                     int num_peft_tokens,
+                     ffStream_t stream) {
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
+  DT alpha = 1.0f;
+  cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
+  cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
+  cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
+  // update input_grad_ptr offset
+  input_grad_ptr = static_cast<DT*>(input_grad_ptr) + num_infr_tokens;
+#if CUDA_VERSION >= 11000
+  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+#else
+  cudaDataType_t compute_type = CUDA_R_32F;
+#endif
+  int output_size = out_dim * num_peft_tokens;
+  if (m->activation == AC_MODE_RELU) {
+    relu_backward_kernel(
+        m->output_type[0], output_grad_ptr, m->output_activation_buffer, output_size, stream);
+  } else if (m->activation == AC_MODE_SIGMOID) {
+    sigmoid_backward_kernel(
+        m->output_type[0], output_grad_ptr, m->output_activation_buffer, output_size, stream);
+  } else {
+    // TODO: only support relu and sigmoid for now
+    assert(m->activation == AC_MODE_NONE);
+  }
+
+  // Compute data gradiant
+  // NOTE: we use alpha=1 for input_grad to accumulate gradients
+  if (input_grad_ptr != NULL) {
+    checkCUDA(cublasGemmEx(m->handle.blas,
+                           CUBLAS_OP_N,
+                           CUBLAS_OP_N,
+                           in_dim,
+                           num_peft_tokens,
+                           out_dim,
+                           &alpha,
+                           kernel_ptr,
+                           weight_type,
+                           in_dim,
+                           output_grad_ptr,
+                           output_type,
+                           out_dim,
+                           &alpha,
+                           input_grad_ptr,
+                           input_type,
+                           in_dim,
+                           compute_type,
+                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
 }
 

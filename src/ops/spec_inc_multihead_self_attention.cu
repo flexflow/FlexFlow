@@ -168,7 +168,7 @@ template <typename DT>
 void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                             BeamSearchBatchConfig const *bc,
                             cudaStream_t stream) {
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   int curr_depth = bc->beamRequestsInfo[0].current_depth;
   // printf("curr depth: %d\n", curr_depth);
   // assert(curr_depth < 3);
@@ -234,7 +234,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   cudaDataType_t compute_type = cublas_data_type;
 #endif
   // int num_requests = bc->num_active_requests();
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   int tokens_previous_requests = 0;
   int tokens_prev_requests_squares = 0;
   // int qkv_block_size =

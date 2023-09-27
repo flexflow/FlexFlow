@@ -54,6 +54,11 @@ public:
     return static_cast<DT *>(ptr);
   }
 
+  inline void free_all() {
+    reserved_allocated_size = 0;
+    instance_allocated_size = 0;
+  }
+
 public:
   Legion::Memory memory;
   void *reserved_ptr;

@@ -144,8 +144,8 @@ Op::Op(FFModel &model,
     inputs[i] = tensors[i];
   }
   for (int i = 0; i < numInputs; i++) {
-    trainableInputs[i] = true;
-    // resetInputGrads[i] = true;
+    trainable_inputs[i] = true;
+    reset_input_grads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i] = nullptr;
@@ -188,8 +188,8 @@ Op::Op(FFModel &model,
     }
   }
   for (int i = 0; i < numInputs; i++) {
-    trainableInputs[i] = true;
-    // resetInputGrads[i] = true;
+    trainable_inputs[i] = true;
+    reset_input_grads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i] = NULL;
@@ -1463,7 +1463,8 @@ bool Op::get_weight_parameter(TNParameter tnp,
 
 OpMeta::OpMeta(FFHandler _handle) : handle(_handle), profiling(false) {
   for (int i = 0; i < MAX_NUM_INPUTS; i++) {
-    trainableInputs[i] = true;
+    trainable_inputs[i] = true;
+    reset_input_grads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_INPUTS; i++) {
     input_type[i] = DT_NONE;
@@ -3447,7 +3448,7 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numInputs; i++) {
       assert(op->inputs[i]->owner_op != nullptr);
       if (op->inputs[i]->owner_op->op_type == OP_INPUT) {
-        op->trainableInputs[i] = false;
+        op->trainable_inputs[i] = false;
       }
     }
   }
@@ -5362,6 +5363,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<Linear::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(LINEAR_PEFT_BWD_TASK_ID, "Linear PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Linear::peft_bwd_task>(
+          registrar, "Linear PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Linear::peft_bwd_task>(registrar);
     }
   }
   {

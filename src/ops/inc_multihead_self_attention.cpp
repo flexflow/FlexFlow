@@ -305,7 +305,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   int m_k = m->kProjSize;
   int m_v = m->vProjSize;
   assert(m_q == m_k && m_k == m_v); // keep things simple for now
-  int n = bc->num_active_tokens();
+  int n = bc->num_active_infr_tokens();
   int k = m->qSize;
   int m_ = m_q;
   int lda = k, ldb = k, ldc = m_q;
@@ -342,7 +342,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
   // apply rotary emmmbedding for q and k
   // step1 change the k, v to complex tensor
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
   int q_block_size = m->qProjSize * num_tokens;
   int k_block_size = m->kProjSize * num_tokens;
@@ -407,7 +407,7 @@ template <typename DT>
 void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                             BatchConfig const *bc,
                             hipStream_t stream) {
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   if (num_tokens > 0) {
     int parallelism =
         (m->kProjSize + m->vProjSize) * num_tokens * m->num_kv_heads;
@@ -508,7 +508,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
   checkCUDA(hipMemcpyAsync(m->token_infos,
                            &(bc->tokensInfo),
-                           bc->num_active_tokens() *
+                           bc->num_active_infr_tokens() *
                                sizeof(BatchConfig::PerTokenInfo),
                            hipMemcpyHostToDevice,
                            stream));
@@ -573,7 +573,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   hipblasDatatype_t compute_type = hipblas_data_type;
 #endif
   // int num_requests = bc->num_active_requests();
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   int tokens_previous_requests = 0;
   int q_block_size = m->qProjSize * num_tokens;
   int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;

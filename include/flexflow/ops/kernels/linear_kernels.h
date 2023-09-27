@@ -36,6 +36,8 @@ public:
   bool use_bias, add_bias_only_once;
   char op_name[MAX_OPNAME];
   Realm::RegionInstance reserveInst;
+  // PEFT related fields
+  void *output_activation_buffer;
 };
 
 namespace Kernels {
@@ -49,6 +51,14 @@ void forward_kernel_wrapper(LinearMeta const *m,
                             int in_dim,
                             int out_dim,
                             int batch_size);
+void peft_bwd_kernel_wrapper(LinearMeta const *m,
+                             void *input_grad_ptr,
+                             void *output_grad_ptr,
+                             void const *kernel_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int num_infr_tokens,
+                             int num_peft_tokens);
 void backward_kernel_wrapper(LinearMeta const *m,
                              void const *input_ptr,
                              void *input_grad_ptr,
@@ -74,6 +84,16 @@ void forward_kernel(LinearMeta const *m,
                     int batch_size,
                     ffStream_t stream);
 template <typename DT>
+void peft_bwd_kernel(LinearMeta const *m,
+                     void *input_grad_ptr,
+                     void *output_grad_ptr,
+                     void const *kernel_ptr,
+                     int in_dim,
+                     int out_dim,
+                     int num_infr_tokens,
+                     int num_peft_tokens,
+                     ffStream_t stream);
+template <typename DT>
 void backward_kernel(LinearMeta const *m,
                      void const *input_ptr,
                      void *input_grad_ptr,
@@ -86,6 +106,7 @@ void backward_kernel(LinearMeta const *m,
                      int out_dim,
                      int batch_size,
                      ffStream_t stream);
+
 template <typename DT>
 __global__ void build_one_ptr(DT *one_ptr, int batch_size);
 } // namespace Internal

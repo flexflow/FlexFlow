@@ -292,11 +292,11 @@ FutureMap InferenceManager::inference(FFModel *model,
 FutureMap InferenceManager::inference(FFModel *model,
                                       int index,
                                       BatchConfigFuture const &bc) {
-  // log_inf_mgr.print("mode(%d) num_active_tokens(%d) num_active_requests(%d)",
+  // log_inf_mgr.print("mode(%d) num_active_infr_tokens(%d) num_active_requests(%d)",
   //                   bc.get_mode(),
-  //                   bc.num_active_tokens(),
+  //                   bc.num_active_infr_tokens(),
   //                   bc.num_active_requests());
-  //  assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
+  //  assert(bc.num_active_infr_tokens() > 0 && bc.num_active_requests() > 0);
   //  We currently assume that the index-th batch will be placed
   //  on the device_index-th device (except for the experts layers)
   int batch_index = index % model->config.data_parallelism_degree;

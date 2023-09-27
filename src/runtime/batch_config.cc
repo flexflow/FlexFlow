@@ -24,7 +24,7 @@ LegionRuntime::Logger::Category log_bc("BatchConfig");
 using Legion::Future;
 using Legion::Memory;
 
-BatchConfig::BatchConfig() : num_tokens(0) {
+BatchConfig::BatchConfig() : num_infr_tokens(0), num_peft_tokens(0) {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     requestsInfo[i].token_start_offset = 0;
     requestsInfo[i].num_tokens_in_batch = 0;
@@ -68,8 +68,12 @@ int BatchConfig::num_active_requests() const {
   return num_requests;
 }
 
-int BatchConfig::num_active_tokens() const {
-  return num_tokens;
+int BatchConfig::num_active_infr_tokens() const {
+  return num_infr_tokens;
+}
+
+int BatchConfig::num_active_peft_tokens() const {
+  return num_peft_tokens;
 }
 
 void BatchConfig::print() const {
@@ -77,7 +81,8 @@ void BatchConfig::print() const {
             << ") @@@@@@@@@@@@@@" << std::endl;
   std::cout << "Max number of requests: " << MAX_NUM_REQUESTS << std::endl;
   std::cout << "Max number of tokens: " << MAX_NUM_TOKENS << std::endl;
-  std::cout << "Number of tokens: " << num_tokens << std::endl;
+  std::cout << "Number of infr tokens: " << num_infr_tokens << std::endl;
+  std::cout << "Number of peft tokens: " << num_peft_tokens << std::endl;
   std::cout << "Number of requests: " << num_active_requests() << std::endl;
   // std::cout << "Cached results: " << cached_results << std::endl;
 
@@ -98,7 +103,7 @@ void BatchConfig::print() const {
   }
 
   std::cout << "Per-token info:\n";
-  for (int i = 0; i < num_tokens; i++) {
+  for (int i = 0; i < num_infr_tokens + num_peft_tokens; i++) {
     std::cout << "  Token " << i << ":\n";
     std::cout << "    Absolute depth in request: "
               << tokensInfo[i].abs_depth_in_request << std::endl;

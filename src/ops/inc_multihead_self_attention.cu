@@ -281,7 +281,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   int m_k = m->kProjSize;
   int m_v = m->vProjSize;
   assert(m_q == m_k && m_k == m_v); // keep things simple for now
-  int n = bc->num_active_tokens();
+  int n = bc->num_active_infr_tokens();
   int k = m->qSize;
   int m_ = m_q;
   int lda = k, ldb = k, ldc = m_q;
@@ -317,7 +317,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // apply rotary emmmbedding for q and k
   // step1 change the k, v to complex tensor
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
   int q_block_size = m->qProjSize * num_tokens;
   int k_block_size = m->kProjSize * num_tokens;
@@ -376,7 +376,7 @@ template <typename DT>
 void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                             BatchConfig const *bc,
                             cudaStream_t stream) {
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   if (num_tokens > 0) {
     int parallelism =
         (m->kProjSize + m->vProjSize) * num_tokens * m->num_kv_heads;
@@ -475,7 +475,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
-                  bc->num_active_tokens() * sizeof(BatchConfig::PerTokenInfo),
+                  bc->num_active_infr_tokens() * sizeof(BatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
   // phase 1: Implement kernel to compute KQV for input tokens
@@ -576,7 +576,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   cudaDataType_t compute_type = cublas_data_type;
 #endif
   // int num_requests = bc->num_active_requests();
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   int tokens_previous_requests = 0;
   int q_block_size = m->qProjSize * num_tokens;
   int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;

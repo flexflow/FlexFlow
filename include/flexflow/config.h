@@ -15,7 +15,7 @@
 
 #ifndef _FLEXFLOW_CONFIG_H_
 #define _FLEXFLOW_CONFIG_H_
-#include "ffconst.h"
+#include "flexflow/ffconst.h"
 #include "legion.h"
 #include <cstring>
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -64,6 +64,7 @@ constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
 #endif
 
 class FFConfig;
+class MemoryAllocator;
 
 struct FFHandler {
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -77,6 +78,11 @@ struct FFHandler {
   size_t workSpaceSize;
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
+  // PEFT related fields
+  void *peft_activation_reserve_space;
+  size_t peft_activation_reserve_space_size;
+  MemoryAllocator* peft_activation_allocator;
+  // Quantization fields
   DataType quantization_type;
   bool allowTensorOpMathConversion;
 #ifdef FF_USE_NCCL
@@ -87,6 +93,7 @@ struct FFHandler {
 struct FFInitInfo {
   size_t workSpaceSize;
   size_t offload_reserve_space_size;
+  size_t peft_activation_reserve_space_size;
   DataType quantization_type;
   bool allowTensorOpMathConversion;
   // int myRank, allRanks;

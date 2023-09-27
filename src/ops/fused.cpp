@@ -654,7 +654,7 @@ __host__ void
         }
         assert(m->input_type[0] == my_input_accessor[0].data_type);
         assert(m->input_type[0] == my_output_accessor[0].data_type);
-        batch_size = bc->num_active_tokens();
+        batch_size = bc->num_active_infr_tokens();
         Kernels::Linear::forward_kernel_wrapper(m,
                                                 my_input_accessor[0].ptr,
                                                 my_output_accessor[0].ptr,

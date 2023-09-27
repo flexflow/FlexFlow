@@ -416,7 +416,7 @@ OpMeta *ElementBinary::init_task(Task const *task,
   FFHandler handle = *((FFHandler *)task->local_args);
   ElementBinaryMeta *m = new ElementBinaryMeta(handle, eb);
   for (int i = 0; i < eb->numInputs; i++) {
-    m->trainableInputs[i] = eb->trainableInputs[i];
+    m->trainable_inputs[i] = eb->trainable_inputs[i];
   }
   m->op_type = eb->op_type;
   m->profiling = eb->profiling;
@@ -871,7 +871,7 @@ void ElementBinary::backward(FFModel const &ff) {
                                                       inputs[0]->region));
     launcher.add_field(rid++, FID_DATA);
     // regions[2](I/O): input0_grad
-    if (trainableInputs[0]) {
+    if (trainable_inputs[0]) {
       launcher.add_region_requirement(
           RegionRequirement(inputs[0]->part_grad,
                             0 /*projection id*/,
@@ -889,7 +889,7 @@ void ElementBinary::backward(FFModel const &ff) {
                                                         inputs[1]->region));
       launcher.add_field(rid++, FID_DATA);
       // regions[4](I/O): input1_grad
-      if (trainableInputs[1]) {
+      if (trainable_inputs[1]) {
         launcher.add_region_requirement(
             RegionRequirement(inputs[1]->part_grad,
                               0 /*projection id*/,
@@ -959,7 +959,7 @@ void ElementBinary::backward_task(Task const *task,
     in0_ptr = helperGetTensorPointerRO<float>(
         regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
     rid++;
-    if (m->trainableInputs[0]) {
+    if (m->trainable_inputs[0]) {
       Domain in0_grad_domain = runtime->get_index_space_domain(
           ctx, task->regions[rid].region.get_index_space());
       assert(in0_domain == in0_grad_domain);
@@ -977,7 +977,7 @@ void ElementBinary::backward_task(Task const *task,
       in1_ptr = helperGetTensorPointerRO<float>(
           regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
       rid++;
-      if (m->trainableInputs[1]) {
+      if (m->trainable_inputs[1]) {
         Domain in1_grad_domain = runtime->get_index_space_domain(
             ctx, task->regions[rid].region.get_index_space());
         // assert(out_grad_domain == in1_domain);

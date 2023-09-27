@@ -138,7 +138,7 @@ public:
                                      float *output,
                                      float const *weights,
                                      float const *biases,
-                                     int num_active_tokens,
+                                     int num_active_infr_tokens,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim);

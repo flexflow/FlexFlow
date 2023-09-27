@@ -315,7 +315,7 @@ InferenceResult
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  int batch_size = bc->num_active_tokens();
+  int batch_size = bc->num_active_infr_tokens();
   ArgTopK::forward_kernel_wrapper(m, input, indices, batch_size);
 
   InferenceResult ir;
