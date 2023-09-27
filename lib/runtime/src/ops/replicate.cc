@@ -42,7 +42,7 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Replicate;
 
-enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
+enum Slots {INPUT, OUTPUT, PROFILING };
 
 /* Params */
 bool operator==(ReplicateParams const &lhs, ReplicateParams const &rhs) {
@@ -59,15 +59,6 @@ ReplicateParams Replicate::get_params() const {
   params.replicate_legion_dim = this->replicate_dim;
   params.replicate_degree = this->replicate_degree;
   return params;
-}
-
-OpTaskInvocation init(ReplicateAttrs const &attrs) {
-  OpTaskBinding binding;
-
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
-  binding.bind(OUTPUT, output_tensor(0));
-
-  return {REPLICATE_INIT_TASK_ID, binding};
 }
 
 OpTaskInvocation forward(ReplicateAttrs const &attrs) {
@@ -150,17 +141,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   float sync_time = default_estimate_sync_time(env);
   return make_metrics(forward_time, backward_time, sync_time, env);
-}
-
-template <>
-void register_task<REPLICATE_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_input_slot(INPUT);
-  init.add_output_slot(OUTPUT);
-
-  // TODO: should we implement the init_task? how to do it?
-  // register_task(REPLICATE_INIT_TASK_ID, "Replicate init", init , init_task);
 }
 
 template <>
