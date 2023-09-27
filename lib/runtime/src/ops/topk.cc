@@ -16,7 +16,7 @@
 #include "topk.h"
 #include "kernels/topk_kernels.h"
 #include "op-attrs/get_output_shapes.h"
-#include "utils/exception.decl.h"
+#include "utils/exceptions.h"
 
 namespace FlexFlow {
 // declare Legion names
