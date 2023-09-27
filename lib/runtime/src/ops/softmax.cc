@@ -15,7 +15,7 @@
 
 #include "softmax.h"
 #include "kernels/softmax_kernels.h"
-#include "utils/exception.decl.h"
+#include "utils/exceptions.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
