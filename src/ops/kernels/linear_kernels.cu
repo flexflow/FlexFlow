@@ -224,7 +224,6 @@ void peft_bwd_kernel_wrapper(LinearMeta const *m,
   }
 }
 
-
 void backward_kernel_wrapper(LinearMeta const *m,
                              void const *input_ptr,
                              void *input_grad_ptr,
@@ -453,7 +452,7 @@ void peft_bwd_kernel(LinearMeta const *m,
   cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   // update input_grad_ptr offset
-  input_grad_ptr = static_cast<DT*>(input_grad_ptr) + num_infr_tokens;
+  input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_tokens;
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
@@ -462,11 +461,17 @@ void peft_bwd_kernel(LinearMeta const *m,
 #endif
   int output_size = out_dim * num_peft_tokens;
   if (m->activation == AC_MODE_RELU) {
-    relu_backward_kernel(
-        m->output_type[0], output_grad_ptr, m->output_activation_buffer, output_size, stream);
+    relu_backward_kernel(m->output_type[0],
+                         output_grad_ptr,
+                         m->output_activation_buffer,
+                         output_size,
+                         stream);
   } else if (m->activation == AC_MODE_SIGMOID) {
-    sigmoid_backward_kernel(
-        m->output_type[0], output_grad_ptr, m->output_activation_buffer, output_size, stream);
+    sigmoid_backward_kernel(m->output_type[0],
+                            output_grad_ptr,
+                            m->output_activation_buffer,
+                            output_size,
+                            stream);
   } else {
     // TODO: only support relu and sigmoid for now
     assert(m->activation == AC_MODE_NONE);

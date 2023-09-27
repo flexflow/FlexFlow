@@ -224,7 +224,7 @@ public:
                                       MachineView const *mv = nullptr) {
     assert(false);
   };
-  virtual Legion::FutureMap peft_bwd(FFModel const&,
+  virtual Legion::FutureMap peft_bwd(FFModel const &,
                                      BatchConfigFuture const &,
                                      std::vector<ParallelTensor> const &,
                                      std::vector<ParallelTensor> const &,

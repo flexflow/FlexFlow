@@ -65,10 +65,10 @@ __global__ void commit_tokens_kernel(
     int k_array_size =
         kProjSize * num_active_infr_tokens_in_last_batch * num_kv_heads;
 
-    DT val =
-        devQKVProjArray[q_array_size + (k_cache ? 0 : k_array_size) +
-                        head_idx * proj_size * num_active_infr_tokens_in_last_batch +
-                        token_idx_in_last_batch * proj_size + data_idx];
+    DT val = devQKVProjArray[q_array_size + (k_cache ? 0 : k_array_size) +
+                             head_idx * proj_size *
+                                 num_active_infr_tokens_in_last_batch +
+                             token_idx_in_last_batch * proj_size + data_idx];
     int const req_id = committedTokenInfos[token_pos].request_index;
     int const tok_id = committedTokenInfos[token_pos].token_depth;
 
@@ -193,7 +193,8 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   // int num_requests = bc->num_active_requests();
   int processed_tokens_in_batch = 0;
   // int qkv_block_size =
-  //     (m->qProjSize + m->kProjSize + m->vProjSize) * bc->num_active_infr_tokens();
+  //     (m->qProjSize + m->kProjSize + m->vProjSize) *
+  //     bc->num_active_infr_tokens();
   int q_block_size = m->qProjSize * bc->num_active_infr_tokens();
   int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;
   int kt_req_block_size = kt_block_size * m->num_kv_heads;
@@ -238,7 +239,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
             m->vProjSize,
             num_new_tokens,            // num_tokens_in_branch
             processed_tokens_in_batch, // num_processed_tokens_in_batch
-            m->num_active_infr_tokens,      // total_tokens_in_batch
+            m->num_active_infr_tokens, // total_tokens_in_batch
             m->num_q_heads,
             m->num_kv_heads,
             BatchConfig::MAX_SEQ_LENGTH);

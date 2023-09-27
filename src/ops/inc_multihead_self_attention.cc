@@ -940,8 +940,9 @@ void IncMultiHeadSelfAttention::inference_task(
   // printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i, "
   //     "bc->num_active_infr_tokens(): %i, num_q_heads: %lli,
   //     BatchConfig::MAX_NUM_REQUESTS: %i, " "bc->num_active_requests(): %i\n",
-  //     m->kProjSize, BatchConfig::MAX_NUM_TOKENS, bc->num_active_infr_tokens(),
-  //     num_q_heads, BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests());
+  //     m->kProjSize, BatchConfig::MAX_NUM_TOKENS,
+  //     bc->num_active_infr_tokens(), num_q_heads,
+  //     BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests());
   // for (int t=0; t < bc->num_active_infr_tokens(); t++) {
   //   printf("token %i has request_index: %li and token_position: %li\n",
   //   t, bc->token2ids.token_indexes[t].request_index,
@@ -1035,7 +1036,8 @@ void IncMultiHeadSelfAttention::inference_task(
   std::vector<int> QKVProjArray_converted_shape = {
       m->qProjSize, bc->num_active_infr_tokens(), 3, (int)num_q_heads};
   float *QKVProjArray_converted = (float *)calloc(
-      m->qProjSize * bc->num_active_infr_tokens() * 3 * num_q_heads, sizeof(float));
+      m->qProjSize * bc->num_active_infr_tokens() * 3 * num_q_heads,
+      sizeof(float));
 
   // skip over padding at the end of QKVProjArray_cpu
   // convert from column order to 3D matrix because torch cannot automatically
@@ -1045,10 +1047,12 @@ void IncMultiHeadSelfAttention::inference_task(
     int proj_size_index = i % m->qProjSize;
     int head_index = i / (proj_sum * bc->num_active_infr_tokens());
     int token_index =
-        ((i - head_index * proj_sum * bc->num_active_infr_tokens()) / m->qProjSize) %
+        ((i - head_index * proj_sum * bc->num_active_infr_tokens()) /
+         m->qProjSize) %
         bc->num_active_infr_tokens();
-    int qkv_offset = (i - head_index * proj_sum * bc->num_active_infr_tokens()) /
-                     (m->qProjSize * bc->num_active_infr_tokens());
+    int qkv_offset =
+        (i - head_index * proj_sum * bc->num_active_infr_tokens()) /
+        (m->qProjSize * bc->num_active_infr_tokens());
     assert(proj_size_index < proj_sum);
     assert(head_index < num_q_heads);
     assert(token_index < bc->num_active_infr_tokens());
@@ -1058,10 +1062,10 @@ void IncMultiHeadSelfAttention::inference_task(
                         {proj_size_index, token_index, qkv_offset, head_index},
                         QKVProjArray_cpu[i]);
   }
-  torch::Tensor QKVProjArray_torch =
-      torch::from_blob(QKVProjArray_converted,
-                       {m->qProjSize, bc->num_active_infr_tokens(), 3, num_q_heads},
-                       torch::kFloat32);
+  torch::Tensor QKVProjArray_torch = torch::from_blob(
+      QKVProjArray_converted,
+      {m->qProjSize, bc->num_active_infr_tokens(), 3, num_q_heads},
+      torch::kFloat32);
 
   //  ----------------------- Comparing C++ & CUDA results ---------------------
   // std::cout << "QKVProjArray_torch" << std::endl;

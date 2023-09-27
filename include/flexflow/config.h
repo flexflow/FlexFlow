@@ -81,7 +81,7 @@ struct FFHandler {
   // PEFT related fields
   void *peft_activation_reserve_space;
   size_t peft_activation_reserve_space_size;
-  MemoryAllocator* peft_activation_allocator;
+  MemoryAllocator *peft_activation_allocator;
   // Quantization fields
   DataType quantization_type;
   bool allowTensorOpMathConversion;

@@ -292,7 +292,8 @@ FutureMap InferenceManager::inference(FFModel *model,
 FutureMap InferenceManager::inference(FFModel *model,
                                       int index,
                                       BatchConfigFuture const &bc) {
-  // log_inf_mgr.print("mode(%d) num_active_infr_tokens(%d) num_active_requests(%d)",
+  // log_inf_mgr.print("mode(%d) num_active_infr_tokens(%d)
+  // num_active_requests(%d)",
   //                   bc.get_mode(),
   //                   bc.num_active_infr_tokens(),
   //                   bc.num_active_requests());

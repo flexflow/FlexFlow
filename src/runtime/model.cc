@@ -5406,7 +5406,8 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(LINEAR_PEFT_BWD_TASK_ID, "Linear PEFT Backward");
+    TaskVariantRegistrar registrar(LINEAR_PEFT_BWD_TASK_ID,
+                                   "Linear PEFT Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {

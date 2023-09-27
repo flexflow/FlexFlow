@@ -176,7 +176,6 @@ void peft_bwd_kernel_wrapper(LinearMeta const *m,
   }
 }
 
-
 void backward_kernel_wrapper(LinearMeta const *m,
                              void const *input_ptr,
                              void *input_grad_ptr,
@@ -369,7 +368,7 @@ void peft_bwd_kernel(LinearMeta const *m,
   hipDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
   hipDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   // update input_grad_ptr offset
-  input_grad_ptr = static_cast<DT*>(input_grad_ptr) + num_infr_tokens;
+  input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_tokens;
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
@@ -378,11 +377,17 @@ void peft_bwd_kernel(LinearMeta const *m,
 #endif
   int output_size = out_dim * num_peft_tokens;
   if (m->activation == AC_MODE_RELU) {
-    relu_backward_kernel(
-        m->output_type[0], output_grad_ptr, m->output_activation_buffer, output_size, stream);
+    relu_backward_kernel(m->output_type[0],
+                         output_grad_ptr,
+                         m->output_activation_buffer,
+                         output_size,
+                         stream);
   } else if (m->activation == AC_MODE_SIGMOID) {
-    sigmoid_backward_kernel(
-        m->output_type[0], output_grad_ptr, m->output_activation_buffer, output_size, stream);
+    sigmoid_backward_kernel(m->output_type[0],
+                            output_grad_ptr,
+                            m->output_activation_buffer,
+                            output_size,
+                            stream);
   } else {
     // TODO: only support relu and sigmoid for now
     assert(m->activation == AC_MODE_NONE);
@@ -392,27 +397,26 @@ void peft_bwd_kernel(LinearMeta const *m,
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
     checkCUDA(hipblasGemmEx(m->handle.blas,
-                           CUBLAS_OP_N,
-                           CUBLAS_OP_N,
-                           in_dim,
-                           num_peft_tokens,
-                           out_dim,
-                           &alpha,
-                           kernel_ptr,
-                           weight_type,
-                           in_dim,
-                           output_grad_ptr,
-                           output_type,
-                           out_dim,
-                           &alpha,
-                           input_grad_ptr,
-                           input_type,
-                           in_dim,
-                           compute_type,
-                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+                            CUBLAS_OP_N,
+                            CUBLAS_OP_N,
+                            in_dim,
+                            num_peft_tokens,
+                            out_dim,
+                            &alpha,
+                            kernel_ptr,
+                            weight_type,
+                            in_dim,
+                            output_grad_ptr,
+                            output_type,
+                            out_dim,
+                            &alpha,
+                            input_grad_ptr,
+                            input_type,
+                            in_dim,
+                            compute_type,
+                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
 }
-
 
 template <typename DT>
 void backward_kernel(LinearMeta const *m,
