@@ -51,6 +51,7 @@
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/residual_layer_norm.h"
 #include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/rms_norm.h"
@@ -3103,6 +3104,12 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_RESIDUAL_LAYERNORM: {
+      Op *op =
+          ResidualLayerNorm::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
       Op *op = AddBiasResidualLayerNorm::create_operator_from_layer(
           *this, layer, inputs);
@@ -5174,6 +5181,39 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<LayerNorm::forward_task>(registrar);
+    }
+  }
+  // ResidualLayerNorm task
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_LAYERNORM_INIT_TASK_ID,
+                                   "residual_layernorm_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ResidualLayerNorm::init_task>(
+          registrar, "residual_layernorm_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ResidualLayerNorm::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_LAYERNORM_INF_TASK_ID,
+                                   "residual_layernorm_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ResidualLayerNorm::inference_task>(
+          registrar, "residual_layernorm_inference_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ResidualLayerNorm::inference_task>(
+          registrar);
     }
   }
   // AddBiasResidualLayerNorm task

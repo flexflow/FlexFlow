@@ -97,15 +97,28 @@ class FlexFlowMPT(FlexFlowModel):
 
         for i in range(self.mpt_config.n_layers):
             ffmodel.set_transformer_layer_id(i)
-            residual = hidden_states
-            layernorm_output = ffmodel.layer_norm(
-                hidden_states,
-                axes,
-                True,
-                1e-05,
-                False,
-                name=f"layers_{i}_norm_1",
-            )
+
+            if i == 0:
+                layernorm_output = ffmodel.layer_norm(
+                    hidden_states,
+                    axes,
+                    True,
+                    1e-05,
+                    False,
+                    name=f"layers_{i}_norm_1",
+                )
+            else:
+                hidden_states, layernorm_output = ffmodel.residual_layer_norm(
+                    intermediate_output,
+                    hidden_states,
+                    None,
+                    False,
+                    axes,
+                    True,
+                    1e-05,
+                    False,
+                    name=f"layers_{i}_norm_1",
+                )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
                 attn_outputs = ffmodel.spec_inc_multihead_self_attention(
@@ -173,19 +186,18 @@ class FlexFlowMPT(FlexFlowModel):
             else:
                 assert False
 
-            hidden_states = ffmodel.add(attn_outputs, residual)
-
-            layernorm_output = ffmodel.layer_norm(
+            hidden_states, layernorm_output = ffmodel.residual_layer_norm(
+                attn_outputs,
                 hidden_states,
+                None,
+                False,
                 axes,
                 True,
                 1e-05,
                 False,
                 name=f"layers_{i}_norm_2",
             )
-            residual = hidden_states
             # mlp
-
             layernorm_output = ffmodel.dense(
                 layernorm_output,
                 4 * self.mpt_config.hidden_size,
@@ -201,10 +213,12 @@ class FlexFlowMPT(FlexFlowModel):
                 False,
                 name=f"layers_{i}_ffn_down_proj",
             )
-            hidden_states = ffmodel.add(intermediate_output, residual)
 
-        all_final_norm = ffmodel.layer_norm(
+        _, all_final_norm = ffmodel.residual_layer_norm(
+            intermediate_output,
             hidden_states,
+            None,
+            False,
             axes,
             True,
             1e-05,
