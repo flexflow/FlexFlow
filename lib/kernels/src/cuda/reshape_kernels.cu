@@ -19,8 +19,9 @@
 
 namespace FlexFlow {
 
-ReshapePerDeviceState::ReshapePerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {}
+ReshapePerDeviceState init_kernel(DataType data_type) {
+  return ReshapePerDeviceState{data_type};
+}
 
 namespace Kernels {
 namespace Reshape {
