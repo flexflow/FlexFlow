@@ -2,7 +2,7 @@
 #include "kernels/reduce_kernels.h"
 #include "legion/legion_utilities.h"
 #include "op-attrs/get_output_shape.h"
-#include "utils/exception.decl.h"
+#include "utils/exceptions.h"
 #include "utils/hash-utils.h"
 #include "utils/type_traits_core.h"
 
