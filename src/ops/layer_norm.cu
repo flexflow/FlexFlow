@@ -257,20 +257,21 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
     cudaEventRecord(t_start, stream);
   }
   if (m->input_type[0] == DT_FLOAT) {
-    LayerNorm::forward_kernel<float>(m,
-                                     input.get_float_ptr(),
-                                     output.get_float_ptr(),
-                                     gamma.get_float_ptr(),
-                                     m->use_bias ? beta.get_float_ptr()
-                                                 : nullptr,
-                                     stream);
+    LayerNorm::forward_kernel<float>(
+        m,
+        input.get_float_ptr(),
+        output.get_float_ptr(),
+        m->elementwise_affine ? gamma.get_float_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_float_ptr() : nullptr,
+        stream);
   } else if (m->input_type[0] == DT_HALF) {
-    LayerNorm::forward_kernel<half>(m,
-                                    input.get_half_ptr(),
-                                    output.get_half_ptr(),
-                                    gamma.get_half_ptr(),
-                                    m->use_bias ? beta.get_half_ptr() : nullptr,
-                                    stream);
+    LayerNorm::forward_kernel<half>(
+        m,
+        input.get_half_ptr(),
+        output.get_half_ptr(),
+        m->elementwise_affine ? gamma.get_half_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_half_ptr() : nullptr,
+        stream);
   } else {
     assert(false && "unsupport datatype in layernorm");
   }

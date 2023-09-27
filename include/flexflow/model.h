@@ -106,6 +106,8 @@ enum TaskIDs {
   LAYERNORM_FWD_TASK_ID,
   LAYERNORM_INF_TASK_ID,
   LAYERNORM_BWD_TASK_ID,
+  RESIDUAL_LAYERNORM_INIT_TASK_ID,
+  RESIDUAL_LAYERNORM_INF_TASK_ID,
   ADD_BIAS_RESIDUAL_LAYERNORM_INIT_TASK_ID,
   ADD_BIAS_RESIDUAL_LAYERNORM_INF_TASK_ID,
   SIGMOID_SILU_MULTI_INIT_TASK_ID,
@@ -240,8 +242,8 @@ enum TaskIDs {
   RM_LOAD_TOKENS_TASK_ID,
   RM_LOAD_POSITION_TASK_ID,
   RM_PREPARE_NEXT_BATCH_TASK_ID,
-  RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
   RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
   RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
@@ -316,6 +318,7 @@ class Flat;
 class Gather;
 class Group_by;
 class LayerNorm;
+class ResidualLayerNorm;
 class AddBiasResidualLayerNorm;
 class SigmoidSiluMulti;
 class Linear;
@@ -542,6 +545,18 @@ public:
                     bool use_bias = true,
                     DataType data_type = DT_NONE,
                     char const *name = NULL);
+  // Add a layer_norm layer with residual(s)
+  void residual_layer_norm(const Tensor input,
+                           const Tensor residual1,
+                           const Tensor residual2,
+                           Tensor *outputs,
+                           bool use_two_residuals,
+                           std::vector<int> const &axes,
+                           bool elementwise_affine,
+                           float eps,
+                           bool use_bias = true,
+                           DataType data_type = DT_NONE,
+                           char const *name = NULL);
   // Add a add_bias_residual_layer_norm layer
   void add_bias_residual_layer_norm(const Tensor input,
                                     const Tensor residual,
@@ -788,7 +803,8 @@ public:
   // ========================================
   // Inference APIs
   // ========================================
-  GenerationResult generate(std::string const &text, int max_seq_length);
+  GenerationResult generate(std::vector<std::string> &prompts,
+                            int max_seq_length);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
@@ -1148,6 +1164,11 @@ public:
           Group_by *>,
       std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>,
                          LayerNorm *>,
+      std::unordered_map<std::pair<std::tuple<ParallelTensorShape,
+                                              ParallelTensorShape,
+                                              ParallelTensorShape>,
+                                   ResidualLayerNormParams>,
+                         ResidualLayerNorm *>,
       std::unordered_map<
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
                     AddBiasResidualLayerNormParams>,

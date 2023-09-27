@@ -33,6 +33,7 @@
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/residual_layer_norm.h"
 #include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/sigmoid_silu_multi.h"

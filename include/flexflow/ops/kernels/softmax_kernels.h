@@ -15,8 +15,10 @@ public:
               Legion::Domain const &input_domain);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor;
+  cudnnTensorDescriptor_t outputTensor;
 #else
   miopenTensorDescriptor_t inputTensor;
+  miopenTensorDescriptor_t outputTensor;
 #endif
   bool profiling;
   int dim;

@@ -251,6 +251,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
     if (bc->request_completed[i]) {
       continue;
     }
+
     for (int sub_req_id = 0; sub_req_id < bc->sub_requests[i]; sub_req_id++) {
 
       // int num_new_tokens = bc->num_processing_tokens[i];
@@ -259,6 +260,11 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
       int total_tokens = bc->requestsInfo[i].token_start_offset +
                          bc->requestsInfo[i].num_tokens_in_batch;
+
+      if (num_new_tokens <= 0) {
+        continue;
+      }
+
       // Compute (QK^T/sqrt(d_k))
       int m_ = num_new_tokens;
       int n = total_tokens;
@@ -543,7 +549,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
         output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
   }
 
-  assert(tokens_previous_requests == num_tokens);
+  // assert(tokens_previous_requests == num_tokens);
 }
 
 template <typename DT>

@@ -47,13 +47,14 @@ public:
   void print() const;
   virtual InferenceMode get_mode() const;
   static BatchConfig const *from_future(BatchConfigFuture const &future);
-  static int const MAX_NUM_REQUESTS = 1;
+  static int const MAX_NUM_REQUESTS = 4;
   static int const MAX_NUM_TOKENS = 64;
   static int const MAX_PROMPT_LENGTH = 62;
   static int const MAX_SEQ_LENGTH = 256;
 
   //  These are set by update
   int num_tokens;
+  bool loading_prompt = false;
 
   struct PerRequestInfo {
     int token_start_offset;
@@ -70,6 +71,7 @@ public:
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 
   bool request_completed[MAX_NUM_REQUESTS];
+  bool request_running[MAX_NUM_TOKENS];
 };
 
 class TreeVerifyBatchConfig : public BatchConfig {
@@ -114,7 +116,6 @@ public:
   inline static int const MAX_BEAM_DEPTH = 8;
 
   int model_id;
-  int max_init_length = 0;
 
   struct BeamSearchPerRequestInfo {
     int beam_size;

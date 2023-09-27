@@ -52,13 +52,17 @@ public:
 
 struct Request {
   enum Status {
-    PENDING = 101,
-    RUNNING = 102,
-    COMPLETED = 103,
+    PENDING = 101,   // loading prompt
+    RUNNING = 102,   // running inference
+    COMPLETED = 103, // finished and verified
+    FINISHING = 104, // finishing request, but not yet verified
   };
   BatchConfig::RequestGuid guid;
   int max_sequence_length;
   int initial_len;
+  int ssm_cache_size = 0;
+  int llm_cache_size = 0;
+
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
@@ -102,10 +106,10 @@ public:
   FFModel *get_model(int model_id);
 
   GenerationResult generate_incr_decoding(FFModel *model,
-                                          std::string const &text,
+                                          std::vector<std::string> &prompts,
                                           int max_seq_length);
   GenerationResult generate_spec_infer(FFModel *model,
-                                       std::string const &text,
+                                       std::vector<std::string> &prompts,
                                        int max_seq_length);
   GenerationResult get_generation_result(RequestGuid const &guid);
   RequestGuid register_new_request(std::string const &prompt,

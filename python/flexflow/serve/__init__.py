@@ -141,6 +141,7 @@ def init(
         configs_dict = {
             "num_gpus": num_gpus,
             "memory_per_gpu": memory_per_gpu,
+            "num_cpus": num_cpus,
             "zero_copy_memory_per_node": zero_copy_memory_per_node,
             "legion_utility_processors": legion_utility_processors,
             "data_parallelism_degree": data_parallelism_degree,
@@ -174,6 +175,8 @@ def init(
         __check_positive_int(configs_dict, param)
 
     # Set default values
+    if configs_dict.get("num_cpus", None) is None:
+        configs_dict["num_cpus"] = 4
     if configs_dict.get("legion_utility_processors", None) is None:
         configs_dict["legion_utility_processors"] = 8
     if configs_dict.get("data_parallelism_degree", None) is None:
