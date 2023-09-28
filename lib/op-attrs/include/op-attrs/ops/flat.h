@@ -9,6 +9,8 @@ namespace FlexFlow {
 
 struct FlatAttrs {};
 FF_VISITABLE_STRUCT(FlatAttrs);
+FF_VISIT_FMTABLE(FlatAttrs);
+
 CHECK_VALID_OP_ATTR(FlatAttrs);
 
 } // namespace FlexFlow

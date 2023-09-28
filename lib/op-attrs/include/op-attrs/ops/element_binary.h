@@ -10,9 +10,9 @@
 namespace FlexFlow {
 
 struct ElementBinaryAttrs {
-  req<Op> type;
-  req<DataType> compute_type;
-  req<bool> should_broadcast_lhs;
+  Op type;
+  DataType compute_type;
+  bool should_broadcast_lhs;
   req<bool> should_broadcast_rhs;
 };
 FF_VISITABLE_STRUCT(ElementBinaryAttrs,
@@ -20,6 +20,8 @@ FF_VISITABLE_STRUCT(ElementBinaryAttrs,
                     compute_type,
                     should_broadcast_lhs,
                     should_broadcast_rhs);
+FF_VISIT_FMTABLE(ElementBinaryAttrs);
+
 CHECK_VALID_OP_ATTR(ElementBinaryAttrs);
 
 } // namespace FlexFlow

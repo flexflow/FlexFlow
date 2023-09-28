@@ -27,6 +27,8 @@ FF_VISITABLE_STRUCT(Conv2DAttrs,
                     groups,
                     activation,
                     use_bias);
+FF_VISIT_FMTABLE(Conv2DAttrs);
+
 CHECK_VALID_OP_ATTR(Conv2DAttrs);
 
 TensorShape get_kernel_shape(Conv2DAttrs const &, TensorShape const &);

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = 'tooling'
+requires-python = '>=3.6'
+readme = 'README.md'
+dependencies = [ ]
+
+[project.optional-dependencies]
+gh = ["pygithub", "frozendict", "sqlitedict"]
+
+[tool.black]
+line-length = 120
+target-version = ['py36']
+
+[tool.ruff]
+line-length = 120
+target-version = "py37"
+
+[tool.mypy]
+warn_unused_configs = true
+python_version = '3.6'
+strict = true
+
+[[tool.mypy.overrides]]
+module = "sqlitedict.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "setuptools.*"
+ignore_missing_imports = true

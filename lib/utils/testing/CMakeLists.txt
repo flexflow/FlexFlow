@@ -1,0 +1,12 @@
+ff_add_library(
+  NAME
+    utils-testing
+  DEPS
+    utils-fmt_extra
+    utils-rapidcheck_extra
+    rapidcheck
+    doctest
+    utils-backports
+    utils-preprocessor_extra
+    boost_preprocessor
+)

@@ -8,9 +8,14 @@
 namespace FlexFlow {
 
 struct MultiHeadAttentionAttrs {
-  req<int> embed_dim, num_heads, kdim, vdim;
-  req<float> dropout;
-  req<bool> bias, add_bias_kv, add_zero_attn;
+  int embed_dim;
+  int num_heads;
+  int kdim;
+  int vdim;
+  float dropout;
+  bool bias;
+  bool add_bias_kv;
+  req<bool> add_zero_attn;
 };
 FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs,
                     embed_dim,
@@ -21,6 +26,7 @@ FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs,
                     bias,
                     add_bias_kv,
                     add_zero_attn);
+FF_VISIT_FMTABLE(MultiHeadAttentionAttrs);
 
 template <typename TensorType>
 struct MultiHeadAttentionInputs

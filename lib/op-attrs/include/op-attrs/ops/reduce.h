@@ -12,10 +12,12 @@ namespace FlexFlow {
 
 struct ReduceAttrs {
   stack_vector<ff_dim_t, MAX_TENSOR_DIM> axes;
-  req<Op> op_type;
+  Op op_type;
   req<bool> keepdims;
 };
 FF_VISITABLE_STRUCT(ReduceAttrs, axes, op_type, keepdims);
+FF_VISIT_FMTABLE(ReduceAttrs);
+
 CHECK_VALID_OP_ATTR(ReduceAttrs);
 
 } // namespace FlexFlow

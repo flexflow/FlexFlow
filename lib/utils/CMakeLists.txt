@@ -1,23 +1,31 @@
-ff_add_library(
-  NAME
-    utils
-  SRC_PATTERNS
-    src/*.cc
-  PUBLIC_INCLUDE
-    include/
-  PRIVATE_INCLUDE
-    src/
-  DEPS
-    optional
-    expected
-    variant
-    visit_struct
-    fmt
-    invoke
-    json
-    any
-    cuda
-)      
-
-add_subdirectory(ffi)
-add_subdirectory(test)
+add_subdirectory(algorithms)
+add_subdirectory(backports)
+add_subdirectory(bidict)
+# add_subdirectory(compile_time_sequence)
+add_subdirectory(deduplicated_priority_queue)
+add_subdirectory(disjoint_set)
+# add_subdirectory(dot_format)
+add_subdirectory(ff_exceptions)
+add_subdirectory(ffi_helper)
+add_subdirectory(fmt_extra)
+add_subdirectory(fp16)
+# add_subdirectory(graph)
+add_subdirectory(hash_extra)
+add_subdirectory(json_extra)
+add_subdirectory(optional_extra)
+add_subdirectory(overload)
+add_subdirectory(preprocessor_extra)
+add_subdirectory(random_extra)
+add_subdirectory(rapidcheck_extra)
+add_subdirectory(smart_ptrs)
+add_subdirectory(stack_containers)
+add_subdirectory(string_extra)
+add_subdirectory(strong_typedef)
+add_subdirectory(test_types)
+add_subdirectory(testing)
+add_subdirectory(tuple_extra)
+add_subdirectory(type_index_extra)
+add_subdirectory(type_list)
+add_subdirectory(type_traits_extra)
+add_subdirectory(variant_extra)
+add_subdirectory(visitable)

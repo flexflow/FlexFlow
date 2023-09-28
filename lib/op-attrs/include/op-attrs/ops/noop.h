@@ -8,6 +8,8 @@ namespace FlexFlow {
 
 struct NoopAttrs {};
 FF_VISITABLE_STRUCT(NoopAttrs);
+FF_VISIT_FMTABLE(NoopAttrs);
+
 CHECK_VALID_OP_ATTR(NoopAttrs);
 
 } // namespace FlexFlow

@@ -4,6 +4,17 @@
 
 namespace FlexFlow {
 
+std::string format_as(PoolOp o) {
+  switch (o) {
+    case PoolOp::AVG:
+      return "Avg";
+    case PoolOp::MAX:
+      return "Max";
+    default:
+      throw mk_runtime_error("Unknown PoolOp value {}", static_cast<int>(o));
+  }
+}
+
 namespace Input {
 constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
               REPLICA = 4;

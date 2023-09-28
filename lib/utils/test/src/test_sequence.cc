@@ -19,24 +19,16 @@ TEST_CASE("seq_head") {
 
 TEST_CASE("seq_tail") {
   SUBCASE("seq_tail with non-empty sequence") {
-    using Seq = seq<1, 2, 3, 4>;
-    using ResultType = typename seq_tail<Seq>::type;
-    using ExpectedType = seq<2, 3, 4>;
-    CHECK(std::is_same<ResultType, ExpectedType>::value);
+    CHECK_SAME_TYPE(seq_tail_t<seq<1, 2, 3, 4>>, seq<2, 3, 4>);
   }
 
   SUBCASE("seq_tail with empty sequence") {
-    using Seq = seq<>;
-    using ResultType = typename seq_tail<Seq>::type;
-    using ExpectedType = seq<>;
-    CHECK(std::is_same<ResultType, ExpectedType>::value);
+    CHECK_SAME_TYPE(seq_tail_t<seq<>>, seq<>);
   }
 }
 
 TEST_CASE("seq_prepend") {
-  using ResultType = typename FlexFlow::seq_prepend<1, 2, 3>::type;
-  using ExpectedType = FlexFlow::seq<1, 2, 3>;
-  CHECK(std::is_same<ResultType, ExpectedType>::value);
+  CHECK_SAME_TYPE(seq_prepend_t<1, seq<2, 3>>, seq<1, 2, 3>);
 }
 
 TEST_CASE("seq_append") {

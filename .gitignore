@@ -1,3 +1,7 @@
+# custom tooling
+/.tools/
+/.state/
+
 # ctest-created files
 Testing/
 
@@ -5,7 +9,6 @@ Testing/
 compile_commands.json
 
 # Compiled files
-/.tools/
 /python/flexflow_python
 /python/flexflow/core/legion_cffi.py
 python/flexflow/core/flexflow_cffi_header.py

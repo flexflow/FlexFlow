@@ -11,4 +11,5 @@ ff_add_library(
     utils
 )
 
+add_subdirectory(test)
 add_subdirectory(ffi)

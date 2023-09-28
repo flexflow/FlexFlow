@@ -13,6 +13,8 @@ struct ReplicateAttrs {
   req<int> replicate_degree;
 };
 FF_VISITABLE_STRUCT(ReplicateAttrs, replicate_dim, replicate_degree);
+FF_VISIT_FMTABLE(ReplicateAttrs);
+
 CHECK_VALID_OP_ATTR(ReplicateAttrs);
 
 } // namespace FlexFlow

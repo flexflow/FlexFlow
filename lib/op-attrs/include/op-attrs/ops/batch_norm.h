@@ -11,6 +11,7 @@ struct BatchNormAttrs {
   req<bool> relu;
 };
 FF_VISITABLE_STRUCT(BatchNormAttrs, relu);
+FF_VISIT_FMTABLE(BatchNormAttrs);
 
 ParallelTensorShape get_output_shape(BatchNormAttrs const &);
 
