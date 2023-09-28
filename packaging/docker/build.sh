@@ -27,7 +27,7 @@ else
 fi
 
 # Build the FlexFlow Enviroment docker image
-docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" -t "flexflow-environment-${FF_GPU_BACKEND}" -f docker/flexflow-environment/Dockerfile .
+#docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" -t "flexflow-environment-${FF_GPU_BACKEND}" -f docker/flexflow-environment/Dockerfile .
 
 # If the user only wants to build the environment image, we are done
 if [[ "$image" == "flexflow-environment" ]]; then
