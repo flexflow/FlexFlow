@@ -31,9 +31,6 @@ public:
   void parse_args(int argc, char **argv);
 
   template <typename T>
-  T get_from_variant(AllowedArgTypes const &v) const;
-
-  template <typename T>
   CmdlineArgRef<T> add_argument(std::string const &key,
                          T const &value,
                          std::string const &description);
