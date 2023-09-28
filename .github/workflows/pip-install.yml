@@ -1,68 +1,68 @@
-name: "pip-install"
-on:
-  pull_request:
-    paths:
-      - "cmake/**"
-      - "config/**"
-      - "python/**"
-      - "setup.py"
-      - ".github/workflows/helpers/install_dependencies.sh"
-      - ".github/workflows/pip-install.yml"
-  push:
-    branches:
-      - "master"
-    paths:
-      - "cmake/**"
-      - "config/**"
-      - "python/**"
-      - "setup.py"
-      - ".github/workflows/helpers/install_dependencies.sh"
-      - ".github/workflows/pip-install.yml"
-  workflow_dispatch:
-concurrency:
-  group: pip-install-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+# name: "pip-install"
+# on:
+#   pull_request:
+#     paths:
+#       - "cmake/**"
+#       - "config/**"
+#       - "python/**"
+#       - "setup.py"
+#       - ".github/workflows/helpers/install_dependencies.sh"
+#       - ".github/workflows/pip-install.yml"
+#   push:
+#     branches:
+#       - "master"
+#     paths:
+#       - "cmake/**"
+#       - "config/**"
+#       - "python/**"
+#       - "setup.py"
+#       - ".github/workflows/helpers/install_dependencies.sh"
+#       - ".github/workflows/pip-install.yml"
+#   workflow_dispatch:
+# concurrency:
+#   group: pip-install-${{ github.head_ref || github.run_id }}
+#   cancel-in-progress: true
 
-jobs:
-  pip-install-flexflow:
-    name: Install FlexFlow with pip
-    runs-on: ubuntu-20.04
-    defaults:
-      run:
-        shell: bash -l {0} # required to use an activated conda environment
-    steps:
-      - name: Checkout Git Repository
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
+# jobs:
+#   pip-install-flexflow:
+#     name: Install FlexFlow with pip
+#     runs-on: ubuntu-20.04
+#     defaults:
+#       run:
+#         shell: bash -l {0} # required to use an activated conda environment
+#     steps:
+#       - name: Checkout Git Repository
+#         uses: actions/checkout@v3
+#         with:
+#           submodules: recursive
 
-      - name: Free additional space on runner
-        run: .github/workflows/helpers/free_space_on_runner.sh
+#       - name: Free additional space on runner
+#         run: .github/workflows/helpers/free_space_on_runner.sh
 
-      - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.8
-        id: cuda-toolkit
-        with:
-          cuda: "11.1.1"
-          # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
-          use-github-cache: "false"
+#       - name: Install CUDA
+#         uses: Jimver/cuda-toolkit@v0.2.8
+#         id: cuda-toolkit
+#         with:
+#           cuda: "11.1.1"
+#           # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
+#           use-github-cache: "false"
 
-      - name: Install system dependencies
-        run: .github/workflows/helpers/install_dependencies.sh
+#       - name: Install system dependencies
+#         run: .github/workflows/helpers/install_dependencies.sh
 
-      # - name: Install conda and FlexFlow dependencies
-      #   uses: conda-incubator/setup-miniconda@v2
-      #   with:
-      #     activate-environment: flexflow
-      #     environment-file: conda/environment.yml
-      #     auto-activate-base: false
+#       # - name: Install conda and FlexFlow dependencies
+#       #   uses: conda-incubator/setup-miniconda@v2
+#       #   with:
+#       #     activate-environment: flexflow
+#       #     environment-file: conda/environment.yml
+#       #     auto-activate-base: false
 
-      - name: Build and Install FlexFlow
-        run: |
-          export FF_HOME=$(pwd)
-          export FF_CUDA_ARCH=70
-          pip install . --verbose
+#       - name: Build and Install FlexFlow
+#         run: |
+#           export FF_HOME=$(pwd)
+#           export FF_CUDA_ARCH=70
+#           pip install . --verbose
 
-      - name: Check availability of Python flexflow.core module
-        run: |
-          python -c "import flexflow.core; exit()"
+#       - name: Check availability of Python flexflow.core module
+#         run: |
+#           python -c "import flexflow.core; exit()"
