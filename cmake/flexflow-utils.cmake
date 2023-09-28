@@ -6,6 +6,7 @@ macro(ff_parse_args)
 
   cmake_parse_arguments(${FF_PARSE_ARGS_PREFIX} "${FF_PARSE_ARGS_FLAGS}" "${FF_PARSE_ARGS_ARGS}" "${FF_PARSE_ARGS_VARIADIC_ARGS}" ${FF_PARSE_ARGS_PARSE})
 endmacro()
+
 function(define_ff_vars target)
   target_compile_definitions(${target} PRIVATE 
     MAX_OPNAME=${FF_MAX_OPNAME}
@@ -33,7 +34,7 @@ endfunction()
 function(ff_set_cxx_properties target)
   set_target_properties(${target}
     PROPERTIES
-      CXX_STANDARD 11
+      CXX_STANDARD 17
       CXX_STANDARD_REQUIRED YES
       CXX_EXTENSIONS NO
   )
