@@ -22,7 +22,9 @@ target-version = "py37"
 [tool.mypy]
 warn_unused_configs = true
 python_version = '3.6'
+explicit_package_bases = true 
 strict = true
+no_implicit_optional = true
 
 [[tool.mypy.overrides]]
 module = "sqlitedict.*"
