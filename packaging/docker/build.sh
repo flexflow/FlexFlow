@@ -81,8 +81,8 @@ fi
 
 # Build FlexFlow Docker image
 # shellcheck source=/dev/null
-. config/config.linux get-docker-configs
+#. config/config.linux get-docker-configs
 # Set value of BUILD_CONFIGS
 get_build_configs
 
-docker build --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" -t "flexflow-${FF_GPU_BACKEND}" -f docker/flexflow/Dockerfile .
+#docker build --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" -t "flexflow-${FF_GPU_BACKEND}" -f docker/flexflow/Dockerfile .
