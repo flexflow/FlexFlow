@@ -1144,6 +1144,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
                         << std::endl;
             }
             new_bc.num_tokens_to_commit++;
+            request.llm_cache_size++;
           }
         }
       }
@@ -1254,6 +1255,19 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           assert(false &&
                  "Exceeding the space available in the TreeVerify batch");
           break;
+        }
+
+        if (new_bc.num_tokens + request.llm_cache_size >= request.initial_len) {
+          // launch the request into running phase after loading all prompt
+          request.status = Request::RUNNING;
+          new_bc.request_running[i] = true;
+
+          std::cout << "new_bc.requestsInfo[i].num_tokens_in_batch: "
+                    << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
+          
+          dfs_tree_inputs[guid] =
+              std::vector<std::pair<BatchConfig::TokenId, int>>{std::make_pair(
+                  request.tokens.back(), request.tokens.size() - 1)};
         }
       } else { // launch the request into running phase after loading all prompt
         if (BatchConfig::MAX_NUM_TOKENS - new_bc.num_tokens > 0) {

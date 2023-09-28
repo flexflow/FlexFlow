@@ -46,9 +46,8 @@ public:
   void print() const;
   virtual InferenceMode get_mode() const;
   static BatchConfig const *from_future(BatchConfigFuture const &future);
-  static int const MAX_NUM_REQUESTS = 4;
+  static int const MAX_NUM_REQUESTS = 8;
   static int const MAX_NUM_TOKENS = 64;
-  static int const MAX_PROMPT_LENGTH = 62;
   static int const MAX_SEQ_LENGTH = 256;
 
   //  These are set by update
@@ -112,7 +111,7 @@ public:
   size_t beam_width;
   size_t target_iterations;
   inline static int const MAX_BEAM_WIDTH = 1;
-  inline static int const MAX_BEAM_DEPTH = 8;
+  inline static int const MAX_BEAM_DEPTH = 7;
 
   int model_id;
 
