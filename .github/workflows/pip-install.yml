@@ -50,12 +50,12 @@ jobs:
       - name: Install system dependencies
         run: .github/workflows/helpers/install_dependencies.sh
 
-      - name: Install conda and FlexFlow dependencies
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          activate-environment: flexflow
-          environment-file: conda/environment.yml
-          auto-activate-base: false
+      # - name: Install conda and FlexFlow dependencies
+      #   uses: conda-incubator/setup-miniconda@v2
+      #   with:
+      #     activate-environment: flexflow
+      #     environment-file: conda/environment.yml
+      #     auto-activate-base: false
 
       - name: Build and Install FlexFlow
         run: |
