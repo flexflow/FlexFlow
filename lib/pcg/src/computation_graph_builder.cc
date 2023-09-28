@@ -310,8 +310,13 @@ std::vector<Tensor>
   return this->add_layer(layer, {input}, {}, output_shapes);
 }
 
-TensorShape get_shape(Tensor const &);
-std::vector<TensorShape> get_shape(std::vector<Tensor> const &);
+TensorShape get_shape(Tensor const &) {
+  NOT_IMPLEMENTED();
+}
+
+std::vector<TensorShape> get_shape(std::vector<Tensor> const &) {
+  NOT_IMPLEMENTED();
+}
 
 Tensor ComputationGraphBuilder::aggregate(
     Tensor const &gate_preds,
@@ -349,6 +354,88 @@ Tensor ComputationGraphBuilder::batch_norm(
   TensorShape output_shape = get_output_shape(attrs, get_shape(input));
 
   return this->add_layer(layer, {input}, {}, output_shape);
+}
+
+Tensor ComputationGraphBuilder::dense(Tensor const &input,
+             int outDim,
+             optional<Activation> activation,
+             bool use_bias,
+             DataType data_type,
+             optional<Initializer const &> kernel_initializer,
+             optional<Initializer const &> bias_initializer,
+             optional<std::string> const &name) {
+  NOT_IMPLEMENTED();
+}
+
+Tensor ComputationGraphBuilder::cast(Tensor const &input,
+            DataType dtype,
+            optional<std::string> const &name) {
+  NOT_IMPLEMENTED();
+}
+
+Tensor ComputationGraphBuilder::concat(int n,
+              std::vector<Tensor> const &tensors,
+              int axis,
+              optional<std::string> const &name) {
+  NOT_IMPLEMENTED();
+}
+
+Tensor ComputationGraphBuilder::mean(Tensor const &input,
+            std::vector<int> const &dims,
+            bool keepdims,
+            char const *name) {
+  NOT_IMPLEMENTED();
+}
+
+Tensor ComputationGraphBuilder::moe(Tensor const &input,
+           int num_exp,
+           int num_select,
+           int expert_hidden_size,
+           float alpha,
+           float lambda) {
+  NOT_IMPLEMENTED();
+}
+
+void ComputationGraphBuilder::split(Tensor const &input,
+           Tensor *outputs,
+           std::vector<int> const &split,
+           int axis,
+           optional<std::string> const &name) {
+  NOT_IMPLEMENTED();
+}
+
+Tensor ComputationGraphBuilder::broadcast(Tensor const &, TensorShape const &) {
+  NOT_IMPLEMENTED();
+}
+
+void ComputationGraphBuilder::add_layer(Layer const &layer,
+                                        std::vector<Tensor> const &inputs,
+                                        std::vector<Tensor> const &weights,
+                                        std::vector<Tensor> const &outputs) {
+  NOT_IMPLEMENTED();
+}
+
+Tensor ComputationGraphBuilder::add_layer(
+    Layer const &layer,
+    std::vector<Tensor> const &inputs,
+    std::vector<std::pair<TensorShape, optional<Initializer>>> const
+        &weight_shapes,
+    TensorShape const &output_shape) {
+  NOT_IMPLEMENTED();
+}
+
+std::vector<Tensor> ComputationGraphBuilder::add_layer(
+    Layer const &layer,
+    std::vector<Tensor> const &inputs,
+    std::vector<std::pair<TensorShape, optional<Initializer>>> const
+        &weight_shapes,
+    std::vector<TensorShape> const &output_shapes) {
+  NOT_IMPLEMENTED();
+}
+
+TensorShape ComputationGraphBuilder::get_broadcast_target_shape(
+    std::vector<TensorShape> const &) {
+  NOT_IMPLEMENTED();
 }
 
 } // namespace FlexFlow

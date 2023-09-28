@@ -5,11 +5,6 @@
 
 namespace FlexFlow {
 
-DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
-                                     DirectedEdgeQuery const &rhs) {
-  NOT_IMPLEMENTED();
-}
-
 void swap(DiGraph &lhs, DiGraph &rhs) {
   using std::swap;
 
@@ -103,22 +98,10 @@ DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
   return result;
 }
 
-DiGraph::operator DiGraphView() const {
-  return GraphInternal::create_digraphview(this->ptr.get());
-}
-
 DiGraphView::DiGraphView(std::shared_ptr<IDiGraphView const> ptr) : ptr(ptr) {}
 
 DiGraph::operator DiGraphView() const {
-  return DiGraphView(this->ptr.get());
-}
-
-DiGraphView::DiGraphView(std::shared_ptr<IDiGraphView const>) {
-  NOT_IMPLEMENTED();
-}
-
-DiGraphView::operator GraphView() const {
-  NOT_IMPLEMENTED();
+  return GraphInternal::create_digraphview(this->ptr.get());
 }
 
 } // namespace FlexFlow

@@ -26,6 +26,22 @@ int get_oProjSize(MultiHeadAttentionAttrs const &attrs) {
   return attrs.embed_dim;
 }
 
+int get_qSize(MultiHeadAttentionInputs<ParallelTensorShape> const &) {
+  NOT_IMPLEMENTED();
+}
+
+int get_kSize(MultiHeadAttentionInputs<ParallelTensorShape> const &) {
+  NOT_IMPLEMENTED();
+}
+
+int get_vSize(MultiHeadAttentionInputs<ParallelTensorShape> const &) {
+  NOT_IMPLEMENTED();
+}
+
+int get_oSize(ParallelTensorShape const &) {
+  NOT_IMPLEMENTED();
+}
+
 int get_qSize(TensorShape const &query_shape) {
   return query_shape.at(ff_dim_t(0));
 }
@@ -78,6 +94,11 @@ TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
                        static_cast<ParallelTensorShape>(key_shape),
                        static_cast<ParallelTensorShape>(value_shape));
   return get_tensor_shape_unsafe(parallel_shape);
+}
+
+TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
+                             MultiHeadAttentionInputs<TensorShape> const &) {
+  NOT_IMPLEMENTED();
 }
 
 } // namespace FlexFlow

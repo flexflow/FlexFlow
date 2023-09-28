@@ -47,9 +47,17 @@ public:
   OutputLabelledMultiDiGraph &
       operator=(OutputLabelledMultiDiGraph const &other) = default;
 
-  operator LabelledMultiDiGraphView<NodeLabel, OutputLabel>() const;
-  operator MultiDiGraphView() const;
-  operator GraphView() const;
+  operator LabelledMultiDiGraphView<NodeLabel, OutputLabel>() const {
+    NOT_IMPLEMENTED();
+  }
+
+  operator MultiDiGraphView() const {
+    NOT_IMPLEMENTED();
+  }
+
+  operator GraphView() const {
+    NOT_IMPLEMENTED();
+  }
 
   friend void swap(OutputLabelledMultiDiGraph &lhs,
                    OutputLabelledMultiDiGraph &rhs) {

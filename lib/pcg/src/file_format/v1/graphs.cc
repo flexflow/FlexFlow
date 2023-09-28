@@ -3,6 +3,10 @@
 
 namespace FlexFlow {
 
+V1Layer to_v1(Layer const &l) {
+  return {to_v1(l.attrs), l.name};
+}
+
 V1MultiDiGraph to_v1(MultiDiGraphView const &g) {
   return to_v1(g,
                enumerate(get_nodes(g)).reversed(),

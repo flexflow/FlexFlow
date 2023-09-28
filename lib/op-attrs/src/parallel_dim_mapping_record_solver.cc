@@ -183,6 +183,22 @@ void construct_weight_parallel_dims(
       input_idx, input_dim, weight_idx, weight_dim, operation));
 }
 
+ParallelDimMappingRecord
+    construct_weight_parallel_dims(int input_dim,
+                                   int weight_dim,
+                                   int input_idx,
+                                   int weight_idx,
+                                   tl::optional<MappingOperation> operation) {
+  NOT_IMPLEMENTED();
+}
+
+std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
+    std::vector<std::tuple<int, MappingOperation, int>> mappings,
+    int input_idx,
+    int weight_idx) {
+  NOT_IMPLEMENTED();
+}
+
 /* void ParallelDimMappingRecordSolver::register_weight_parallel_dims( */
 /*     std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx)
  * { */
@@ -226,6 +242,15 @@ void construct_output_parallel_dims(
   }
 }
 
+ParallelDimMappingRecord
+    construct_output_parallel_dims(int input_dim,
+                                   int output_dim,
+                                   int input_idx,
+                                   int output_idx,
+                                   tl::optional<MappingOperation> operation) {
+  NOT_IMPLEMENTED();
+}
+
 void construct_output_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
     std::vector<std::pair<int, int>> mappings,
@@ -246,6 +271,18 @@ void construct_output_parallel_dims(
     tl::optional<MappingOperation> operation) {
   records.push_back(ParallelDimMappingRecord::input_output_record(
       input_idx, input_dim, output_idx, output_dim, operation));
+}
+
+std::vector<ParallelDimMappingRecord> construct_output_parallel_dims(
+    std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx) {
+  NOT_IMPLEMENTED();
+}
+
+std::vector<ParallelDimMappingRecord> construct_output_parallel_dims(
+    std::vector<std::tuple<int, MappingOperation, int>> mappings,
+    int input_idx,
+    int output_idx) {
+  NOT_IMPLEMENTED();
 }
 
 /* void register_output_parallel_dims( */
@@ -319,5 +356,18 @@ void construct_output_parallel_dims(
 
 /*   return solution; */
 /* } */
+
+ParallelDimMappingSolution solve_parallel_dim_mappings(
+    std::vector<ParallelDimMappingRecord> const &mappings,
+    std::vector<ParallelTensorShape> const &input,
+    int numWeights,
+    int numOutputs) {
+  // There is a definition of this function earlier in this file that might be
+  // the actual implementation, but is commented out for whatever reason. Rather
+  // than enabling that, just fail for now so someone else can take a look and
+  // decide whether to enable it.
+  NOT_IMPLEMENTED();
+}
+
 
 } // namespace FlexFlow

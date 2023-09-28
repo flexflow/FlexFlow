@@ -17,9 +17,6 @@ FF_VISITABLE_STRUCT(Layer, attrs, name);
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::Layer, attrs, name);
-MAKE_VISIT_HASHABLE(::FlexFlow::Layer);
-
 namespace FlexFlow {
 
 FF_VISIT_FMTABLE(Layer);

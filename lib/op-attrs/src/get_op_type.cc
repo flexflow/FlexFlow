@@ -32,6 +32,9 @@ OperatorType get_op_type(DropoutAttrs const &) {
 OperatorType get_op_type(ElementBinaryAttrs const &attrs) {
   return attrs.type;
 }
+OperatorType get_op_type(ElementScalarUnaryAttrs const &) {
+  NOT_IMPLEMENTED();
+}
 OperatorType get_op_type(ElementUnaryAttrs const &attrs) {
   return attrs.op;
 }
@@ -70,6 +73,9 @@ OperatorType get_op_type(ReduceAttrs const &) {
 }
 OperatorType get_op_type(ReshapeAttrs const &) {
   return Op::RESHAPE;
+}
+OperatorType get_op_type(ReverseAttrs const &) {
+  return Op::REVERSE;
 }
 OperatorType get_op_type(SplitAttrs const &) {
   return Op::SPLIT;
