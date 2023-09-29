@@ -33,13 +33,14 @@ public:
                                 int _kdim,
                                 int _vdim,
                                 float _dropout,
-                                bool _bias,
-                                bool _add_bias_kv,
+                                bool _qkv_bias,
+                                bool _final_bias,
                                 bool _add_zero_attn,
                                 bool _apply_rotary_embedding,
                                 bool _scaling_query,
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
+                                bool _position_bias,
                                 bool allocate_weights,
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
@@ -51,13 +52,14 @@ public:
                                 int _kdim,
                                 int _vdim,
                                 float _dropout,
-                                bool _bias,
-                                bool _add_bias_kv,
+                                bool _qkv_bias,
+                                bool _final_bias,
                                 bool _add_zero_attn,
                                 bool _apply_rotary_embedding,
                                 bool _scaling_query,
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
+                                bool _position_bias,
                                 bool allocate_weights,
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
@@ -118,9 +120,9 @@ public:
 public:
   int num_q_heads, num_kv_heads, tensor_parallelism_degree;
   float dropout, scaling_factor;
-  bool bias;
-  bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
-      qk_prod_scaling;
+  bool qkv_bias;
+  bool final_bias, add_zero_attn, apply_rotary_embedding, scaling_query,
+      qk_prod_scaling, position_bias;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
 };

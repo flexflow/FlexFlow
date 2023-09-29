@@ -97,6 +97,26 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 }
 
 template <typename T>
+__inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
+  int const lid = threadIdx.x % C10_WARP_SIZE;
+  int const wid = threadIdx.x / C10_WARP_SIZE;
+  val = WarpReduceSum(val);
+  __syncthreads();
+  if (lid == 0) {
+    shared[wid] = val;
+  }
+  __syncthreads();
+  val = (threadIdx.x < (min(blockDim.x, max_num_threads) / C10_WARP_SIZE))
+            ? shared[lid]
+            : T(0);
+  if (wid == 0) {
+    val = WarpReduceSum(val);
+  }
+  return val;
+}
+
+#ifdef DEADCODE
+template <typename T>
 __global__ void
     RowwiseRootMeanSquareKernel(long long N, float eps, T const *X, T *rms) {
   __shared__ float v_shared[C10_WARP_SIZE];
@@ -134,6 +154,43 @@ __global__ void elewise_apply_weights(int64_t batch_size,
     output[i] = norm[i] * weights[i % in_dim];
   }
 }
+#endif
+
+template <typename T>
+__global__ void RMSNormFusedForwardKernel(int64_t N,
+                                          float eps,
+                                          T const *X,
+                                          T *rms,
+                                          T *Y,
+                                          T const *weights,
+                                          T *output) {
+  __shared__ float v_shared[C10_WARP_SIZE];
+  int64_t const i = blockIdx.x;
+  float sum = 0.0f;
+  for (int64_t j = threadIdx.x; j < N;
+       j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
+    int64_t const index = i * N + j;
+    sum += (static_cast<float>(X[index]) * static_cast<float>(X[index]));
+  }
+  sum = BlockReduceSum<float>(
+      sum,
+      v_shared,
+      min(blockDim.x,
+          kCUDABlockReduceNumThreads)); // use BlockReduceSum() to sum X_ij^2
+
+  if (threadIdx.x == 0) {
+    rms[i] = static_cast<T>(rsqrt((sum / static_cast<float>(N)) + eps));
+  }
+
+  __syncthreads();
+
+  using T_ACC = T;
+  for (int64_t j = threadIdx.x; j < N; j += min(blockDim.x, kCUDANumThreads)) {
+    const int64_t index = i * N + j;
+    Y[index] = static_cast<T_ACC>(X[index]) * static_cast<T_ACC>(rms[i]);
+    output[index] = Y[index] * weights[index % N];
+  }
+}
 
 template <typename T>
 void forward_kernel(RMSNormMeta const *m,
@@ -141,23 +198,25 @@ void forward_kernel(RMSNormMeta const *m,
                     T const *weight_ptr,
                     T *output_ptr,
                     cudaStream_t stream) {
-  int parallelism = m->batch_size * m->in_dim;
-  RowwiseRootMeanSquareKernel<T>
-      <<<m->batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
-          m->in_dim, m->eps, input_ptr, static_cast<T *>(m->rms_ptr));
-  NormKernel<T><<<m->batch_size, kCUDANumThreads, 0, stream>>>(
-      m->in_dim,
-      input_ptr,
-      static_cast<T *>(m->rms_ptr),
-      static_cast<T *>(m->norm_ptr));
-  elewise_apply_weights<<<GET_BLOCKS(parallelism),
-                          min(CUDA_NUM_THREADS, parallelism),
-                          0,
-                          stream>>>(m->batch_size,
-                                    m->in_dim,
-                                    static_cast<T *>(m->norm_ptr),
-                                    weight_ptr,
-                                    output_ptr);
+
+  std::pair<int, int> kernel1_parallelism =
+      std::make_pair(m->batch_size, kCUDABlockReduceNumThreads);
+  std::pair<int, int> kernel2_parallelism =
+      std::make_pair(m->batch_size, kCUDANumThreads);
+
+  int num_blocks =
+      std::max(kernel1_parallelism.first, kernel2_parallelism.first);
+  int num_threads =
+      std::max(kernel1_parallelism.second, kernel2_parallelism.second);
+
+  RMSNormFusedForwardKernel<T>
+      <<<num_blocks, num_threads, 0, stream>>>(m->in_dim,
+                                               m->eps,
+                                               input_ptr,
+                                               static_cast<T *>(m->rms_ptr),
+                                               static_cast<T *>(m->norm_ptr),
+                                               weight_ptr,
+                                               output_ptr);
 }
 
 void forward_kernel_wrapper(RMSNormMeta const *m,

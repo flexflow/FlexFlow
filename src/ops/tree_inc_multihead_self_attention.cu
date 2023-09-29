@@ -318,6 +318,21 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
         }
       }
+      // add alibi position bias to qk production
+      // add alibi position bias to qk production
+      if (*m->position_bias) {
+        size_t parallelism =
+            m->num_q_heads * total_tokens_in_request * num_new_tokens;
+        apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
+                                    min((size_t)CUDA_NUM_THREADS, parallelism),
+                                    0,
+                                    stream>>>(C,
+                                              num_new_tokens,
+                                              total_tokens_in_request,
+                                              m->num_q_heads,
+                                              m->global_num_q_heads,
+                                              shard_id);
+      }
 
       // Fill all elements above diagonal in qk prods with -inf to force
       // causal attention.
@@ -485,7 +500,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
     // check that we have finished all tokens of the request
     assert(last_token_idx_of_the_request + 1 == processed_tokens_in_batch);
   }
-  if (*m->bias && shard_id == 0) {
+  if (*m->final_bias && shard_id == 0) {
     int parallelism = m->oProjSize * processed_tokens_in_batch;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
                           m->kProjSize * m->global_num_kv_heads +
@@ -590,7 +605,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorR const &bias) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->bias;
+  bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -674,10 +689,11 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     attn->vProjSize,
                                     attn->oProjSize,
                                     attn->apply_rotary_embedding,
-                                    attn->bias,
+                                    attn->qkv_bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
-                                    attn->add_bias_kv,
+                                    attn->position_bias,
+                                    attn->final_bias,
                                     attn->scaling_factor,
                                     weight,
                                     gpu_mem_allocator,

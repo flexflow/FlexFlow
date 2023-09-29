@@ -29,6 +29,7 @@ LayerNormMeta::LayerNormMeta(FFHandler handle,
                              MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   elementwise_affine = ln->elementwise_affine;
+  use_bias = ln->use_bias;
   effective_batch_size = ln->effective_batch_size;
   effective_num_elements = ln->effective_num_elements;
   profiling = ln->profiling;
@@ -87,13 +88,33 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
     shared[wid] = val;
   }
   __syncthreads();
-  val = (threadIdx.x < blockDim.x / C10_WARP_SIZE) ? shared[lid] : 0;
+  val = (threadIdx.x < (blockDim.x / C10_WARP_SIZE)) ? shared[lid] : T(0);
   if (wid == 0) {
     val = WarpReduceSum(val);
   }
   return val;
 }
 
+template <typename T>
+__inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
+  int const lid = threadIdx.x % C10_WARP_SIZE;
+  int const wid = threadIdx.x / C10_WARP_SIZE;
+  val = WarpReduceSum(val);
+  __syncthreads();
+  if (lid == 0) {
+    shared[wid] = val;
+  }
+  __syncthreads();
+  val = (threadIdx.x < (min(blockDim.x, max_num_threads) / C10_WARP_SIZE))
+            ? shared[lid]
+            : T(0);
+  if (wid == 0) {
+    val = WarpReduceSum(val);
+  }
+  return val;
+}
+
+#ifdef DEADCODE
 template <typename T>
 __global__ void RowwiseMomentsCUDAKernel(
     int64_t N, float eps, T const *X, T *mean, T *rstd) {
@@ -139,6 +160,56 @@ __global__ void LayerNormForwardCUDAKernel(int64_t N,
                beta_v;
   }
 }
+#endif
+
+template <typename T>
+__global__ void LayerNormFusedForwardKernel(int64_t N,
+                                            float eps,
+                                            T const *X,
+                                            T *mean,
+                                            T *rstd,
+                                            T const *gamma,
+                                            T const *beta,
+                                            T *Y) {
+  __shared__ float m_shared[C10_WARP_SIZE];
+  __shared__ float v_shared[C10_WARP_SIZE];
+  const int64_t i = blockIdx.x;
+  float sum1 = 0.0f;
+  float sum2 = 0.0f;
+  for (int64_t j = threadIdx.x; j < N;
+       j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
+    const int64_t index = i * N + j;
+    sum1 += static_cast<float>(X[index]);
+    sum2 += static_cast<float>(X[index]) * static_cast<float>(X[index]);
+  }
+  if (threadIdx.x < kCUDABlockReduceNumThreads) {
+    sum1 = BlockReduceSum<float>(
+        sum1, m_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
+    sum2 = BlockReduceSum<float>(
+        sum2, v_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
+  }
+  if (threadIdx.x == 0) {
+    float const scale = float(1) / static_cast<float>(N);
+    sum1 *= scale;
+    sum2 = max(sum2 * scale - sum1 * sum1, float(0));
+    mean[i] = static_cast<T>(sum1);
+    rstd[i] = static_cast<T>(rsqrt(sum2 + eps));
+  }
+
+  __syncthreads();
+
+  using T_ACC = T;
+  for (int64_t j = threadIdx.x; j < N; j += min(blockDim.x, kCUDANumThreads)) {
+    const int64_t index = i * N + j;
+    const T_ACC gamma_v =
+        gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
+    const T_ACC beta_v =
+        beta == nullptr ? T_ACC(0) : static_cast<T_ACC>(beta[j]);
+    Y[index] = (static_cast<T_ACC>(X[index]) - static_cast<T_ACC>(mean[i])) *
+                   static_cast<T_ACC>(rstd[i]) * gamma_v +
+               beta_v;
+  }
+}
 
 /*static*/
 template <typename T>
@@ -148,22 +219,26 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
                                T const *gamma_ptr,
                                T const *beta_ptr,
                                cudaStream_t stream) {
-  RowwiseMomentsCUDAKernel<T>
-      <<<m->effective_batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
-          m->effective_num_elements,
-          m->eps,
-          in_ptr,
-          static_cast<T *>(m->mean_ptr),
-          static_cast<T *>(m->rstd_ptr));
-  LayerNormForwardCUDAKernel<T>
-      <<<m->effective_batch_size, kCUDANumThreads, 0, stream>>>(
-          m->effective_num_elements,
-          in_ptr,
-          static_cast<T *>(m->mean_ptr),
-          static_cast<T *>(m->rstd_ptr),
-          gamma_ptr,
-          beta_ptr,
-          out_ptr);
+
+  std::pair<int, int> kernel1_parallelism =
+      std::make_pair(m->effective_batch_size, kCUDABlockReduceNumThreads);
+  std::pair<int, int> kernel2_parallelism =
+      std::make_pair(m->effective_batch_size, kCUDANumThreads);
+
+  int num_blocks =
+      std::max(kernel1_parallelism.first, kernel2_parallelism.first);
+  int num_threads =
+      std::max(kernel1_parallelism.second, kernel2_parallelism.second);
+
+  LayerNormFusedForwardKernel<T>
+      <<<num_blocks, num_threads, 0, stream>>>(m->effective_num_elements,
+                                               m->eps,
+                                               in_ptr,
+                                               static_cast<T *>(m->mean_ptr),
+                                               static_cast<T *>(m->rstd_ptr),
+                                               gamma_ptr,
+                                               beta_ptr,
+                                               out_ptr);
 }
 
 /*static*/
@@ -182,19 +257,21 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
     cudaEventRecord(t_start, stream);
   }
   if (m->input_type[0] == DT_FLOAT) {
-    LayerNorm::forward_kernel<float>(m,
-                                     input.get_float_ptr(),
-                                     output.get_float_ptr(),
-                                     gamma.get_float_ptr(),
-                                     beta.get_float_ptr(),
-                                     stream);
+    LayerNorm::forward_kernel<float>(
+        m,
+        input.get_float_ptr(),
+        output.get_float_ptr(),
+        m->elementwise_affine ? gamma.get_float_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_float_ptr() : nullptr,
+        stream);
   } else if (m->input_type[0] == DT_HALF) {
-    LayerNorm::forward_kernel<half>(m,
-                                    input.get_half_ptr(),
-                                    output.get_half_ptr(),
-                                    gamma.get_half_ptr(),
-                                    beta.get_half_ptr(),
-                                    stream);
+    LayerNorm::forward_kernel<half>(
+        m,
+        input.get_half_ptr(),
+        output.get_half_ptr(),
+        m->elementwise_affine ? gamma.get_half_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_half_ptr() : nullptr,
+        stream);
   } else {
     assert(false && "unsupport datatype in layernorm");
   }
@@ -206,7 +283,7 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("[LayerNorm] forward time (CF) = %.2fms\n", elapsed);
+    printf("[LayerNorm] forward time (CF) = %.9fms\n", elapsed);
     // print_tensor<T>(in_ptr, 32, "[LayerNorm:forward:input]");
     // print_tensor<T>(out_ptr, 32, "[LayerNorm:forward:output]");
   }

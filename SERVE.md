@@ -16,19 +16,18 @@ existing systems by 1.3-2.0x for single-node, multi-GPU inference and by
 
 
 ## Quickstart
-The following example shows how to deploy an LLM using FlexFlow Serve and accelerate its serving using [speculative inference](#speculative-inference). First, we import `flexflow.serve` and initialize the FlexFlow Serve runtime. Note that `memory_per_gpu` and `zero_copy_memory_per_node` specify the size of device memory on each GPU (in MB) and zero-copy memory on each node (in MB), respectively. FlexFlow Serve combines tensor and pipeline model parallelism for LLM serving.
+The following example shows how to deploy an LLM using FlexFlow Serve and accelerate its serving using [speculative inference](#speculative-inference). First, we import `flexflow.serve` and initialize the FlexFlow Serve runtime. Note that `memory_per_gpu` and `zero_copy_memory_per_node` specify the size of device memory on each GPU (in MB) and zero-copy memory on each node (in MB), respectively. 
+We need to make sure the aggregated GPU memory and zero-copy memory are **both** sufficient to store LLM parameters in non-offloading serving. FlexFlow Serve combines tensor and pipeline model parallelism for LLM serving.
 ```python
 import flexflow.serve as ff
 
 ff.init(
-    {
-        "num_gpus": 4,
-        "memory_per_gpu": 14000,
-        "zero_copy_memory_per_node": 30000,
-        "tensor_parallelism_degree": 4,
-        "pipeline_parallelism_degree": 1,
-    }
-)
+        num_gpus=4,
+        memory_per_gpu=14000,
+        zero_copy_memory_per_node=30000,
+        tensor_parallelism_degree=4,
+        pipeline_parallelism_degree=1
+    )
 ```
 Second, we specify the LLM to serve and the SSM(s) used to accelerate LLM serving. The list of supported LLMs and SSMs is available at [supported models](#supported-llms-and-ssms).
 ```python
@@ -69,16 +68,14 @@ result = llm.generate("Here are some travel tips for Tokyo:\n")
 
 import flexflow.serve as ff
 
-# Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
+# Initialize the FlexFlow runtime. ff.init() takes a dictionary (as a positional argument) or named key-value parameters
 ff.init(
-    {
-        "num_gpus": 4,
-        "memory_per_gpu": 14000,
-        "zero_copy_memory_per_gpu": 30000,
-        "tensor_parallelism_degree": 4,
-        "pipeline_parallelism_degree": 1,
-    }
-)
+        num_gpus=4,
+        memory_per_gpu=14000,
+        zero_copy_memory_per_node=30000,
+        tensor_parallelism_degree=4,
+        pipeline_parallelism_degree=1
+    )
 
 # Create the FlexFlow LLM
 llm = ff.LLM("decapoda-research/llama-7b-hf")
@@ -189,7 +186,10 @@ We provide five prompt datasets for evaluating FlexFlow Serve: [Chatbot instruct
 
 FlexFlow Serve is still under active development. We currently focus on the following tasks and strongly welcome all contributions from bug fixes to new features and extensions.
 
-* AMD support. We are actively working on supporting FlexFlow Serve on AMD GPUs and welcome any contributions to this effort. 
+* AMD benchmarking. We are actively working on benchmarking FlexFlow Serve on AMD GPUs and comparing it with the performance on NVIDIA GPUs.
+* Chatbot prompt templates and Multi-round conversations
+* Support for FastAPI server
+* Integration with LangChain for document question answering
 
 ## Acknowledgements
 This project is initiated by members from CMU, Stanford, and UCSD. We will be continuing developing and supporting FlexFlow Serve. Please cite FlexFlow Serve as:

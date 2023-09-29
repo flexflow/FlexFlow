@@ -79,6 +79,7 @@ class ModelType(Enum):
     OPT = 3004
     FALCON = 3005
     STARCODER = 3006
+    MPT = 3007
 
 
 class OpType(Enum):
@@ -147,6 +148,10 @@ class OpType(Enum):
     RMS_NORM = 2300
     ARG_TOPK = 2301
     BEAM_TOPK = 2302
+    ADD_BIAS_RESIDUAL_LAYERNORM = 2303
+    SIGMOID_SILU_MULTI = 2304
+    RESIDUAL_RMS_NORM = 2305
+    RESIDUAL_LAYERNORM = 2306
 
 
 def enum_to_int(enum, enum_item):

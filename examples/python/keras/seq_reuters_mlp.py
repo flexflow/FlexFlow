@@ -19,6 +19,7 @@ import flexflow.keras.optimizers
 from flexflow.keras.datasets import reuters
 from flexflow.keras.preprocessing.text import Tokenizer
 from flexflow.keras.callbacks import Callback, VerifyMetrics
+import flexflow.core as ff
 
 import numpy as np
 from accuracy import ModelAccuracy
@@ -61,6 +62,9 @@ def top_level_task():
 
   model.fit(x_train, y_train, epochs=epochs, callbacks=[VerifyMetrics(ModelAccuracy.REUTERS_MLP)])
 
+
 if __name__ == "__main__":
   print("Sequential model, reuters mlp")
+  configs = ff.get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()

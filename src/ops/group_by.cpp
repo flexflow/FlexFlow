@@ -134,8 +134,8 @@ void Group_by::forward_kernel_wrapper(GroupByMeta const *m,
   checkCUDA(get_legion_stream(&stream));
 
   // call forward kernel
-  hipMemcpy(
-      m->dev_region_ptrs, outputs, n * sizeof(float *), hipMemcpyHostToDevice);
+  checkCUDA(hipMemcpy(
+      m->dev_region_ptrs, outputs, n * sizeof(float *), hipMemcpyHostToDevice));
 
   hipLaunchKernelGGL(gb_forward_kernel,
                      GET_BLOCKS(batch_size * k * data_dim),
@@ -168,10 +168,10 @@ void Group_by::backward_kernel_wrapper(GroupByMeta const *m,
   checkCUDA(get_legion_stream(&stream));
 
   // call forward kernel
-  hipMemcpy(m->dev_region_ptrs,
-            output_grads,
-            n * sizeof(float *),
-            hipMemcpyHostToDevice);
+  checkCUDA(hipMemcpy(m->dev_region_ptrs,
+                      output_grads,
+                      n * sizeof(float *),
+                      hipMemcpyHostToDevice));
 
   hipLaunchKernelGGL(gb_backward_kernel,
                      GET_BLOCKS(batch_size * k * data_dim),

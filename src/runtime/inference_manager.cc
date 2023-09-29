@@ -107,7 +107,7 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
     std::vector<MachineView> machine_views;
     for (int j = 0; j < model->config.data_parallelism_degree; j++) {
       MachineView mv;
-      mv.device_type == MachineView::GPU;
+      mv.device_type = MachineView::GPU;
       mv.ndims = 1;
       // mv.start_device_id = 0;
       mv.stride[0] = 1;

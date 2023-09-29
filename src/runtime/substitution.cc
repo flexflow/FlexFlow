@@ -18,6 +18,7 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
+#include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/concat.h"
@@ -32,7 +33,10 @@
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/residual_layer_norm.h"
+#include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/rms_norm.h"
+#include "flexflow/ops/sigmoid_silu_multi.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
@@ -1488,6 +1492,8 @@ OpX *create_opx(sl::Operator const &op,
         case OP_REPLICATE:
           degree_key = PM_REPLICATE_DEGREE;
           break;
+        default:
+          break;
       }
 
       if (degree_key.has_value()) {
@@ -1509,6 +1515,8 @@ OpX *create_opx(sl::Operator const &op,
           break;
         case OP_REPLICATE:
           dim_key = PM_REPLICATE_DIM;
+          break;
+        default:
           break;
       }
 
@@ -3792,6 +3800,30 @@ bool FFModel::convert_graph_to_operators(
           parallel_ops.push_back(fused->parallel_ops[i]);
         }
         new_op = new FusedParallelOp(*this, inputs[0], parallel_ops);
+        break;
+      }
+      case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
+        assert(inList.size() == 2);
+        AddBiasResidualLayerNorm *abr_ln = (AddBiasResidualLayerNorm *)node.ptr;
+        AddBiasResidualLayerNormParams params = abr_ln->get_params();
+        new_op = new AddBiasResidualLayerNorm(*this,
+                                              abr_ln->layer_guid,
+                                              inputs[0],
+                                              inputs[1],
+                                              abr_ln->axes,
+                                              abr_ln->elementwise_affine,
+                                              abr_ln->use_bias,
+                                              abr_ln->eps,
+                                              true,
+                                              NULL);
+        break;
+      }
+      case OP_SIGMOID_SILU_MULTI: {
+        assert(inList.size() == 2);
+        SigmoidSiluMulti *ssm = (SigmoidSiluMulti *)node.ptr;
+        SigmoidSiluMultiParams params = ssm->get_params();
+        new_op = new SigmoidSiluMulti(
+            *this, ssm->layer_guid, inputs[0], inputs[1], NULL);
         break;
       }
       default: {

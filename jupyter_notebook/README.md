@@ -9,7 +9,7 @@ the in-browser jupyter notebook UI.
 ## Quick Start
 ### Pre-requisite
 * Python >= 3.6
-* FlexFlow Python binding needs to be installed, please check the [installation guide](https://github.com/flexflow/FlexFlow/blob/master/INSTALL.md)
+* FlexFlow Python binding needs to be installed, please check the [installation guide](https://flexflow.readthedocs.io/en/latest/installation.html)
 * Install Jupyter notebook
 
         pip install notebook

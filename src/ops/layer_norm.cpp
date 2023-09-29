@@ -31,6 +31,7 @@ LayerNormMeta::LayerNormMeta(FFHandler handle,
   elementwise_affine = ln->elementwise_affine;
   effective_batch_size = ln->effective_batch_size;
   effective_num_elements = ln->effective_num_elements;
+  use_bias = ln->use_bias;
   eps = ln->eps;
   checkCUDA(hipMalloc(&mean_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(hipMalloc(&rstd_ptr, sizeof(float) * effective_batch_size));
@@ -47,12 +48,10 @@ __device__ __forceinline__ T WARP_SHFL_DOWN(T value,
                                             unsigned int delta,
                                             int width = warpSize,
                                             unsigned int mask = 0xffffffff) {
-#if 0
 #ifndef __HIP_PLATFORM_HCC__
-    return __shfl_down_sync(mask, value, delta, width);
+  return __shfl_down_sync(mask, value, delta, width);
 #else
-    return __shfl_down(value, delta, width);
-#endif
+  return __shfl_down(value, delta, width);
 #endif
 }
 
@@ -173,14 +172,15 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
                                      input.get_float_ptr(),
                                      output.get_float_ptr(),
                                      gamma.get_float_ptr(),
-                                     beta.get_float_ptr(),
+                                     m->use_bias ? beta.get_float_ptr()
+                                                 : nullptr,
                                      stream);
   } else if (m->input_type[0] == DT_HALF) {
     LayerNorm::forward_kernel<half>(m,
                                     input.get_half_ptr(),
                                     output.get_half_ptr(),
                                     gamma.get_half_ptr(),
-                                    beta.get_half_ptr(),
+                                    m->use_bias ? beta.get_half_ptr() : nullptr,
                                     stream);
   } else {
     assert(false && "unsupport datatype in layernorm");

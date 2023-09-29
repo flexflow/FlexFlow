@@ -70,6 +70,10 @@ def top_level_task():
   if accuracy < ModelAccuracy.CIFAR10_CNN.value:
     assert 0, 'Check Accuracy'
 
+
+
 if __name__ == "__main__":
   print("cifar10 cnn concat")
+  configs = get_configs()
+  init_flexflow_runtime(configs)
   top_level_task()

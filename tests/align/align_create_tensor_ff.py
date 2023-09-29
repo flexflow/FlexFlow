@@ -1,7 +1,7 @@
 import os
 import sys
 import torch
-import argparse
+import json
 from flexflow.core import *
 from flexflow.core.flexflow_cffi import Linear, Op, Parameter
 from flexflow.type import AggrMode
@@ -20,8 +20,14 @@ param_weight_op = {'conv2d': Conv2D, 'embedding': Embedding,
 param_bias_op = {'conv2d': Conv2D, 'layernorm': LayerNorm, 'linear': Linear}
 
 
-def create_single_operator_ff():
+def top_level_task():
     args = parse_create_tensor_args()
+    configs_dict = None
+    if args.config_file is not None:
+        with open(args.config_file) as f:
+            configs_dict = json.load(f)
+    init_flexflow_runtime(configs_dict)
+
     operator_name = args.operator
     OUT_DIR = os.path.join("tests", "align", "out", operator_name)
 
@@ -669,4 +675,4 @@ def create_tensors_for_gather_ff(ffmodel):
 
 
 if __name__ == "__main__":
-    create_single_operator_ff()
+    top_level_task()

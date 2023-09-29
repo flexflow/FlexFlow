@@ -14,6 +14,9 @@
 #include "math.h"
 #include <cfloat>
 #include <complex>
+#if defined(FF_USE_HIP_ROCM)
+#include <hip/hip_complex.h>
+#endif
 
 namespace FlexFlow {
 
@@ -33,13 +36,14 @@ public:
                             int _kdim,
                             int _vdim,
                             float _dropout,
-                            bool _bias,
-                            bool _add_bias_kv,
+                            bool _qkv_bias,
+                            bool _final_bias,
                             bool _add_zero_attn,
                             bool _apply_rotary_embedding,
                             bool _scaling_query,
                             float _scaling_factor,
                             bool _qk_prod_scaling,
+                            bool _position_bias,
                             bool allocate_weights,
                             DataType _quantization_type,
                             bool _offload,
@@ -54,13 +58,14 @@ public:
                             int _kdim,
                             int _vdim,
                             float _dropout,
-                            bool _bias,
-                            bool _add_bias_kv,
+                            bool _qkv_bias,
+                            bool _final_bias,
                             bool _add_zero_attn,
                             bool _apply_rotary_embedding,
                             bool _scaling_query,
                             float _scaling_factor,
                             bool _qk_prod_scaling,
+                            bool _position_bias,
                             bool allocate_weights,
                             DataType _quantization_type,
                             bool _offload,
@@ -120,9 +125,9 @@ public:
 public:
   int num_q_heads, num_kv_heads, tensor_parallelism_degree;
   float dropout, scaling_factor;
-  bool bias;
-  bool add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
-      qk_prod_scaling;
+  bool qkv_bias;
+  bool final_bias, add_zero_attn, apply_rotary_embedding, scaling_query,
+      qk_prod_scaling, position_bias;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
   DataType quantization_type;
@@ -149,10 +154,11 @@ public:
                                 int _vProjSize,
                                 int _oProjSize,
                                 bool _apply_rotary_embedding,
-                                bool _bias,
+                                bool _qkv_bias,
                                 bool _scaling_query,
                                 bool _qk_prod_scaling,
-                                bool _add_bias_kv,
+                                bool _position_bias,
+                                bool _final_bias,
                                 float _scaling_factor,
                                 GenericTensorAccessorR const &weight,
                                 MemoryAllocator &gpu_mem_allocator,
@@ -173,9 +179,11 @@ public:
   int global_num_q_heads, global_num_kv_heads, num_q_heads, num_kv_heads;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
-  bool *bias;
+  bool *qkv_bias;
+  bool *final_bias;
   bool *scaling_query;
   bool *qk_prod_scaling;
+  bool *position_bias;
   float scaling_factor;
 #ifdef INFERENCE_TESTS
   float *kcache, *vcache;
@@ -191,6 +199,10 @@ public:
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t qk_tensor;
   cuFloatComplex *complex_input;
+#elif defined(FF_USE_HIP_ROCM)
+  miopenTensorDescriptor_t qk_tensor;
+  //  typedef hipFloatComplex attFloatComplex;
+  hipFloatComplex *complex_input;
 #endif
 };
 

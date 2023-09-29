@@ -1,7 +1,7 @@
 from flexflow.keras.layers import Dense, Input, Reshape
 from flexflow.keras.backend.internal import gather
 import flexflow.keras.optimizers
-
+import flexflow.core as ff
 import numpy as np
 
 
@@ -42,4 +42,6 @@ def gather_example():
 
 
 if __name__ == '__main__':
+    configs = ff.get_configs()
+    ff.init_flexflow_runtime(configs)
     gather_example()
