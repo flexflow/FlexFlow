@@ -1264,7 +1264,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 
           std::cout << "new_bc.requestsInfo[i].num_tokens_in_batch: "
                     << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
-          
+
           dfs_tree_inputs[guid] =
               std::vector<std::pair<BatchConfig::TokenId, int>>{std::make_pair(
                   request.tokens.back(), request.tokens.size() - 1)};
