@@ -242,6 +242,11 @@ class FlexFlowFalcon(FlexFlowModel):
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
+        n_head = (
+            model.config.n_head
+            if "n_head" in model.config.__dict__
+            else model.config.num_attention_heads
+        )
         for name, params in model.named_parameters():
             name = (
                 name.replace(".", "_")
@@ -258,8 +263,8 @@ class FlexFlowFalcon(FlexFlowModel):
                     params,
                     [
                         model.config.hidden_size,
-                        model.config.hidden_size // model.config.n_head,
-                        model.config.hidden_size // model.config.n_head,
+                        model.config.hidden_size // n_head,
+                        model.config.hidden_size // n_head,
                     ],
                     0,
                 )
