@@ -47,9 +47,8 @@ public:
   void print() const;
   virtual InferenceMode get_mode() const;
   static BatchConfig const *from_future(BatchConfigFuture const &future);
-  static int const MAX_NUM_REQUESTS = 4;
+  static int const MAX_NUM_REQUESTS = 7;
   static int const MAX_NUM_TOKENS = 64;
-  static int const MAX_PROMPT_LENGTH = 62;
   static int const MAX_SEQ_LENGTH = 256;
 
   //  These are set by update
