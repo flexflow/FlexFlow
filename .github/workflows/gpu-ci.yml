@@ -56,7 +56,8 @@ jobs:
         run: |
           pip3 install pip --upgrade
           pip3 install pyopenssl --upgrade
-          pip3 install urllib3>=1.26.0 --upgrade
+          pip3 install urllib3 --upgrade
+          pip3 show urllib3
           pip3 install pygithub
           python3 .github/workflows/helpers/gpu_ci_helper.py
 
