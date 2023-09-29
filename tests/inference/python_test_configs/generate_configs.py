@@ -34,7 +34,7 @@ ssm_configs = {
     "ssms": [
         {
             # required ssm parameter
-            "ssm_model": "JackFram/llama-160m",
+            "ssm_model": "JackFram/llama-160m-base",
             # optional ssm parameters
             "cache_path": "",
             "refresh_cache": False,
@@ -46,7 +46,7 @@ ssm_configs = {
 ff_init_configs.update(llm_configs)
 
 # Test parameters to fill in
-llama_models = ["decapoda-research/llama-7b-hf", "JackFram/llama-160m"]
+llama_models = ["decapoda-research/llama-7b-hf", "JackFram/llama-160m-base"]
 opt_models = ["facebook/opt-6.7b", "facebook/opt-125m"]
 falcon_models = ["tiiuae/falcon-7b",]
 mpt_models = ["mosaicml/mpt-7b", ]

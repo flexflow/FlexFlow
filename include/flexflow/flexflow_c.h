@@ -259,6 +259,36 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle,
                                                 bool use_bias,
                                                 char const *name);
 
+flexflow_tensor_t *
+    flexflow_model_add_residual_layer_norm(flexflow_model_t handle,
+                                           const flexflow_tensor_t input,
+                                           const flexflow_tensor_t residual1,
+                                           const flexflow_tensor_t residual2,
+                                           bool use_two_residuals,
+                                           int n,
+                                           int *axes,
+                                           bool elementwise_affine,
+                                           float eps,
+                                           bool use_bias,
+                                           char const *name);
+
+flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
+    flexflow_model_t handle,
+    const flexflow_tensor_t input,
+    const flexflow_tensor_t residual,
+    int n,
+    int *axes,
+    bool elementwise_affine,
+    float eps,
+    bool use_bias,
+    char const *name);
+
+flexflow_tensor_t
+    flexflow_model_add_sigmoid_silu_multi(flexflow_model_t handle,
+                                          const flexflow_tensor_t input1,
+                                          const flexflow_tensor_t input2,
+                                          char const *name);
+
 flexflow_tensor_t
     flexflow_model_add_batch_matmul(flexflow_model_t handle,
                                     const flexflow_tensor_t a,
@@ -528,6 +558,14 @@ flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
                                               float eps,
                                               int dim,
                                               char const *name);
+
+flexflow_tensor_t *
+    flexflow_model_add_residual_rms_norm(flexflow_model_t handle_,
+                                         const flexflow_tensor_t input1_,
+                                         const flexflow_tensor_t input2_,
+                                         float eps,
+                                         int dim,
+                                         char const *name);
 
 flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,
@@ -984,9 +1022,6 @@ void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_);
 
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
                                             flexflow_model_t model_handle_,
-                                            int num_layers,
-                                            char const **layer_names,
-                                            flexflow_op_t *layers,
                                             bool use_full_precision);
 
 #ifdef __cplusplus

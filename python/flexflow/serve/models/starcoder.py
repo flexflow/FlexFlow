@@ -89,7 +89,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
             raise ValueError(
                 f"Number of k/v attention heads ({self.starcoder_config.n_head_kv}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
-            
+
         self.build_model()
 
     def build_model(self):
@@ -109,7 +109,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="transformer_wte_weight",
+            name="transformer_wte",
         )
         positional_embedding = ffmodel.embedding(
             position_tensor,
@@ -119,10 +119,8 @@ class FlexFlowSTARCODER(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="transformer_wpe_weight",
+            name="transformer_wpe",
         )
-
-        hidden_states = ffmodel.add(token, positional_embedding)
 
         axes = [
             0,
@@ -130,12 +128,16 @@ class FlexFlowSTARCODER(FlexFlowModel):
 
         for i in range(self.starcoder_config.num_hidden_layers):
             ffmodel.set_transformer_layer_id(i)
-            ln_1 = ffmodel.layer_norm(
-                hidden_states,
+
+            hidden_states, ln_1 = ffmodel.residual_layer_norm(
+                token if i == 0 else residual,
+                positional_embedding if i == 0 else c_proj,
+                None,
+                False,
                 axes,
                 True,
                 self.starcoder_config.layer_norm_epsilon,
-                name=f"layers_{i}_ln_1_weight",
+                name=f"layers_{i}_ln_1",
             )
 
             assert self.mode == InferenceMode.INC_DECODING_MODE
@@ -149,23 +151,25 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 self.starcoder_config.hidden_size
                 // self.starcoder_config.num_attention_heads,
                 0.0,  # dropout
-                True,  # bias
-                False,  # add_bias_kv
+                True,  # qkv_bias
+                False,  # final_bias
                 False,  # add_zero_attn
                 DataType.DT_NONE,  # data_type
                 None,  # kernel initializer
                 False,  # apply_rotary_embedding
-                name=f"layers_{i}_attention_weight",
+                name=f"layers_{i}_attention",
             )
 
-            residual = ffmodel.add(mha, hidden_states)
-
-            l2_norm = ffmodel.layer_norm(
+            residual, l2_norm = ffmodel.residual_layer_norm(
+                hidden_states,
+                mha,
+                None,
+                False,
                 residual,
                 axes,
                 True,
                 self.starcoder_config.layer_norm_epsilon,
-                name=f"layers_{i}_ln_2_weight",
+                name=f"layers_{i}_ln_2",
             )
 
             # mlp
@@ -175,7 +179,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 self.starcoder_config.intermediate_size,
                 ActiMode.AC_MODE_NONE,
                 True,
-                name=f"layers_{i}_mlp_c_fc_weight",
+                name=f"layers_{i}_mlp_c_fc",
             )
             activation = ffmodel.gelu(c_fc, False)
             c_proj = ffmodel.dense(
@@ -183,23 +187,25 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 self.starcoder_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 True,
-                name=f"layers_{i}_mlp_c_proj_weight",
+                name=f"layers_{i}_mlp_c_proj",
             )
-            hidden_states = ffmodel.add(residual, c_proj)
 
-        ln_f = ffmodel.layer_norm(
-            hidden_states,
+        _, ln_f = ffmodel.residual_layer_norm(
+            residual,
+            c_proj,
+            None,
+            False,
             axes,
             True,
             self.starcoder_config.layer_norm_epsilon,
-            name=f"transformer_ln_f_weight",
+            name=f"transformer_ln_f",
         )
         lm_head = ffmodel.dense(
             ln_f,
             self.starcoder_config.vocab_size,
             ActiMode.AC_MODE_NONE,
             False,
-            name="lm_head_weight",
+            name="lm_head",
         )
 
         if self.generation_config.do_sample:

@@ -22,6 +22,7 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
 #include "flexflow/mapper.h"
+#include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
 #include "flexflow/ops/arg_topk.h"
@@ -50,9 +51,12 @@
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/residual_layer_norm.h"
+#include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/sampling.h"
+#include "flexflow/ops/sigmoid_silu_multi.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
@@ -3100,8 +3104,32 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_RESIDUAL_LAYERNORM: {
+      Op *op =
+          ResidualLayerNorm::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
+      Op *op = AddBiasResidualLayerNorm::create_operator_from_layer(
+          *this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_SIGMOID_SILU_MULTI: {
+      Op *op =
+          SigmoidSiluMulti::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_RMS_NORM: {
       Op *op = RMSNorm::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_RESIDUAL_RMS_NORM: {
+      Op *op =
+          ResidualRMSNorm::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -3240,74 +3268,24 @@ void FFModel::create_operators_from_layers() {
                 (l->op_type == OP_LINEAR && layer_idx >= 2 &&
                  layers[layer_idx - 1]->op_type == OP_GELU &&
                  layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+                // LLAMA without element-wise operator fusion
                 (l->op_type == OP_LINEAR && layer_idx >= 5 &&
                  layers[layer_idx - 1]->op_type == OP_EW_MUL &&
                  layers[layer_idx - 2]->op_type == OP_EW_MUL &&
                  layers[layer_idx - 3]->op_type == OP_SIGMOID &&
                  layers[layer_idx - 4]->op_type == OP_LINEAR &&
-                 layers[layer_idx - 5]->op_type == OP_LINEAR))) {
+                 layers[layer_idx - 5]->op_type == OP_LINEAR) ||
+                // LLAMA with element-wise operator fusion
+                (l->op_type == OP_LINEAR && layer_idx >= 3 &&
+                 layers[layer_idx - 1]->op_type == OP_SIGMOID_SILU_MULTI &&
+                 layers[layer_idx - 2]->op_type == OP_LINEAR &&
+                 layers[layer_idx - 3]->op_type == OP_LINEAR))) {
       assert(op->numOutputs == 1);
       AllReduce *allreduce =
           new AllReduce(*this, op->outputs[0], op->outputs[0]->num_dims - 1);
       operators.push_back(allreduce);
       op = allreduce;
     }
-#ifdef DEADCODE
-    if (config.computationMode == COMP_MODE_INFERENCE &&
-        config.tensor_parallelism_degree > 1 &&
-        (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
-         l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
-         (l->op_type == OP_LINEAR && layer_idx + 3 <= layers.size() &&
-          layers[layer_idx + 1]->op_type == OP_RELU &&
-          layers[layer_idx + 2]->op_type == OP_LINEAR) ||
-         (l->op_type == OP_LINEAR && layer_idx + 6 <= layers.size() &&
-          layers[layer_idx + 1]->op_type == OP_LINEAR &&
-          layers[layer_idx + 2]->op_type == OP_SIGMOID &&
-          layers[layer_idx + 3]->op_type == OP_EW_MUL &&
-          layers[layer_idx + 4]->op_type == OP_EW_MUL &&
-          layers[layer_idx + 5]->op_type == OP_LINEAR) ||
-         (l->op_type == OP_LINEAR && layer_idx + 5 <= layers.size() &&
-          layer_idx >= 1 && layers[layer_idx - 1]->op_type == OP_LINEAR &&
-          layers[layer_idx + 1]->op_type == OP_SIGMOID &&
-          layers[layer_idx + 2]->op_type == OP_EW_MUL &&
-          layers[layer_idx + 3]->op_type == OP_EW_MUL &&
-          layers[layer_idx + 4]->op_type == OP_LINEAR))) {
-      std::vector<ParallelTensor> partitioned_inputs;
-      assert(inputs.size() == 1);
-      Replicate *repl = new Replicate(*this,
-                                      inputs[0],
-                                      inputs[0]->num_dims - 1,
-                                      config.tensor_parallelism_degree);
-      partitioned_inputs.push_back(repl->outputs[0]);
-      operators.push_back(repl);
-      op = create_operator_from_layer(l, partitioned_inputs);
-    } else {
-      op = create_operator_from_layer(l, inputs);
-    }
-    // Op *op = create_operator_from_layer(l, inputs);
-    //  add reduce operators if needed
-    if (config.computationMode == COMP_MODE_INFERENCE &&
-        config.tensor_parallelism_degree > 1 &&
-        (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
-         l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
-         (l->op_type == OP_LINEAR && layer_idx >= 2 &&
-          layers[layer_idx - 1]->op_type == OP_RELU &&
-          layers[layer_idx - 2]->op_type == OP_LINEAR) ||
-         (l->op_type == OP_LINEAR && layer_idx >= 5 &&
-          layers[layer_idx - 1]->op_type == OP_EW_MUL &&
-          layers[layer_idx - 2]->op_type == OP_EW_MUL &&
-          layers[layer_idx - 3]->op_type == OP_SIGMOID &&
-          layers[layer_idx - 4]->op_type == OP_LINEAR &&
-          layers[layer_idx - 5]->op_type == OP_LINEAR))) {
-      assert(op->numOutputs == 1);
-      Reduction *reduct = new Reduction(*this,
-                                        op->outputs[0],
-                                        op->outputs[0]->num_dims - 1,
-                                        config.tensor_parallelism_degree);
-      operators.push_back(reduct);
-      op = reduct;
-    }
-#endif
     assert(op->numOutputs == l->numOutputs);
     for (int i = 0; i < op->numOutputs; i++) {
       tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
@@ -4447,6 +4425,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
+    TaskVariantRegistrar registrar(ELEMENTUNARY_INF_TASK_ID,
+                                   "ElementWiseUnary Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ElementUnary::inference_task>(
+          registrar, "ElementWiseUnary Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ElementUnary::inference_task>(registrar);
+    }
+  }
+  {
     TaskVariantRegistrar registrar(ELEMENTUNARY_FWD_TASK_ID,
                                    "ElementWiseUnary Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -4491,6 +4484,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       }
       runtime->register_task_variant<OpMeta *, ElementBinary::init_task>(
           registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ELEMENTBINARY_INF_TASK_ID,
+                                   "ElementWiseBinary Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ElementBinary::inference_task>(
+          registrar, "ElementWiseBinary Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ElementBinary::inference_task>(registrar);
     }
   }
   {
@@ -5147,6 +5155,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
+    TaskVariantRegistrar registrar(LAYERNORM_INF_TASK_ID,
+                                   "LayerNorm Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<LayerNorm::inference_task>(
+          registrar, "LayerNorm Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LayerNorm::inference_task>(registrar);
+    }
+  }
+  {
     TaskVariantRegistrar registrar(LAYERNORM_FWD_TASK_ID, "layernorm_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -5160,9 +5183,111 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<LayerNorm::forward_task>(registrar);
     }
   }
+  // ResidualLayerNorm task
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_LAYERNORM_INIT_TASK_ID,
+                                   "residual_layernorm_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ResidualLayerNorm::init_task>(
+          registrar, "residual_layernorm_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ResidualLayerNorm::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_LAYERNORM_INF_TASK_ID,
+                                   "residual_layernorm_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ResidualLayerNorm::inference_task>(
+          registrar, "residual_layernorm_inference_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ResidualLayerNorm::inference_task>(
+          registrar);
+    }
+  }
+  // AddBiasResidualLayerNorm task
+  {
+    TaskVariantRegistrar registrar(ADD_BIAS_RESIDUAL_LAYERNORM_INIT_TASK_ID,
+                                   "add_bias_residual_layernorm_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *,
+                                        AddBiasResidualLayerNorm::init_task>(
+          registrar, "add_bias_residual_layernorm_init_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *,
+                                     AddBiasResidualLayerNorm::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ADD_BIAS_RESIDUAL_LAYERNORM_INF_TASK_ID,
+                                   "add_bias_residual_layernorm_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          AddBiasResidualLayerNorm::inference_task>(
+          registrar, "add_bias_residual_layernorm_inference_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AddBiasResidualLayerNorm::inference_task>(
+          registrar);
+    }
+  }
+  // SigmoidSiluMulti task
+  {
+    TaskVariantRegistrar registrar(SIGMOID_SILU_MULTI_INIT_TASK_ID,
+                                   "SigmoidSiluMulti Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, SigmoidSiluMulti::init_task>(
+          registrar, "SigmoidSiluMulti Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, SigmoidSiluMulti::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(SIGMOID_SILU_MULTI_INF_TASK_ID,
+                                   "SigmoidSiluMulti Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<SigmoidSiluMulti::inference_task>(
+          registrar, "SigmoidSiluMulti Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<SigmoidSiluMulti::inference_task>(
+          registrar);
+    }
+  }
   // rms norm task
   {
-    TaskVariantRegistrar registrar(RMSNROM_INIT_TASK_ID, "rmsnorm_init_task");
+    TaskVariantRegistrar registrar(RMSNORM_INIT_TASK_ID, "rmsnorm_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
@@ -5176,7 +5301,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(RMSNROM_FWD_TASK_ID, "rmsnorm_fwd_task");
+    TaskVariantRegistrar registrar(RMSNORM_FWD_TASK_ID, "rmsnorm_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
@@ -5187,6 +5312,53 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<RMSNorm::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RMSNORM_INF_TASK_ID, "RMS Norm Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RMSNorm::inference_task>(
+          registrar, "RMS Norm Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RMSNorm::inference_task>(registrar);
+    }
+  }
+  // rms norm task
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_RMSNORM_INIT_TASK_ID,
+                                   "Residual RMS Norm Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ResidualRMSNorm::init_task>(
+          registrar, "Residual RMS Norm Init");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ResidualRMSNorm::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_RMSNORM_INF_TASK_ID,
+                                   "Residual RMS Norm Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ResidualRMSNorm::inference_task>(
+          registrar, "RMS Norm Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ResidualRMSNorm::inference_task>(
+          registrar);
     }
   }
   {
@@ -5347,19 +5519,17 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(SOFTMAX_INF_TASK_ID, "softmax_inf_task");
+    TaskVariantRegistrar registrar(SOFTMAX_INF_TASK_ID, "Softmax Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
-      Runtime::preregister_task_variant<InferenceResult,
-                                        Softmax::inference_task>(
-          registrar, "softmax_inf_task");
+      Runtime::preregister_task_variant<Softmax::inference_task>(
+          registrar, "Softmax Inference Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<InferenceResult, Softmax::inference_task>(
-          registrar);
+      runtime->register_task_variant<Softmax::inference_task>(registrar);
     }
   }
   // compute Loss

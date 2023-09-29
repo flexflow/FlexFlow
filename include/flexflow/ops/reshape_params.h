@@ -1,6 +1,8 @@
 #ifndef _FLEXFLOW_RESHAPE_PARAMS_H
 #define _FLEXFLOW_RESHAPE_PARAMS_H
 
+#include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {

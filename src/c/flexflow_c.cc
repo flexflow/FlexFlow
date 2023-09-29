@@ -638,6 +638,130 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_tensor_t *
+    flexflow_model_add_residual_layer_norm(flexflow_model_t handle_,
+                                           const flexflow_tensor_t input_,
+                                           const flexflow_tensor_t residual1_,
+                                           const flexflow_tensor_t residual2_,
+                                           bool use_two_residuals,
+                                           int n,
+                                           int *axes,
+                                           bool elementwise_affine,
+                                           float eps,
+                                           bool use_bias,
+                                           char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor input = FFCObjectWrapper::unwrap(input_);
+  const Tensor residual1 = FFCObjectWrapper::unwrap(residual1_);
+  const Tensor residual2 =
+      use_two_residuals ? FFCObjectWrapper::unwrap(residual2_) : nullptr;
+  Tensor tensor_outputs[2];
+  std::vector<int> axes_vec;
+  for (int i = 0; i < n; i++) {
+    axes_vec.push_back(axes[i]);
+  }
+  if (use_two_residuals) {
+    assert(residual2 != nullptr);
+  }
+  handle->residual_layer_norm(input,
+                              residual1,
+                              residual2,
+                              tensor_outputs,
+                              use_two_residuals,
+                              axes_vec,
+                              elementwise_affine,
+                              eps,
+                              use_bias,
+                              input->data_type,
+                              name);
+  assert(tensor_outputs[0] != nullptr);
+  assert(tensor_outputs[1] != nullptr);
+  DEBUG_PRINT("[ResidualLayerNorm] input %p, residual1 %p, residual2 "
+              "%p, output0: %p, "
+              "output1: %p, use_two_residuals: %d, elementwise_affine %d, eps "
+              "%f, use_bias: %d, name %s",
+              input,
+              residual1,
+              residual2,
+              tensor_outputs[0],
+              tensor_outputs[1],
+              use_two_residuals,
+              elementwise_affine,
+              eps,
+              use_bias,
+              name);
+  flexflow_tensor_t *tensor_outputs_wrapped =
+      (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
+  tensor_outputs_wrapped[0] = FFCObjectWrapper::wrap(tensor_outputs[0]);
+  tensor_outputs_wrapped[1] = FFCObjectWrapper::wrap(tensor_outputs[1]);
+  return tensor_outputs_wrapped;
+}
+
+flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    const flexflow_tensor_t residual_,
+    int n,
+    int *axes,
+    bool elementwise_affine,
+    float eps,
+    bool use_bias,
+    char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor input = FFCObjectWrapper::unwrap(input_);
+  const Tensor residual = FFCObjectWrapper::unwrap(residual_);
+  Tensor tensor_outputs[2];
+  std::vector<int> axes_vec;
+  for (int i = 0; i < n; i++) {
+    axes_vec.push_back(axes[i]);
+  }
+  handle->add_bias_residual_layer_norm(input,
+                                       residual,
+                                       tensor_outputs,
+                                       axes_vec,
+                                       elementwise_affine,
+                                       eps,
+                                       use_bias,
+                                       input->data_type,
+                                       name);
+  assert(tensor_outputs[0] != nullptr);
+  assert(tensor_outputs[1] != nullptr);
+  DEBUG_PRINT("[AddBiasResidualLayerNorm] input %p, residual %p, output0: %p, "
+              "output1: %p, elementwise_affine %d, eps "
+              "%f, use_bias %d, name %s",
+              input,
+              residual,
+              tensor_outputs[0],
+              tensor_outputs[1],
+              elementwise_affine,
+              eps,
+              use_bias,
+              name);
+  flexflow_tensor_t *tensor_outputs_wrapped =
+      (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
+  tensor_outputs_wrapped[0] = FFCObjectWrapper::wrap(tensor_outputs[0]);
+  tensor_outputs_wrapped[1] = FFCObjectWrapper::wrap(tensor_outputs[1]);
+  return tensor_outputs_wrapped;
+}
+
+flexflow_tensor_t
+    flexflow_model_add_sigmoid_silu_multi(flexflow_model_t handle_,
+                                          const flexflow_tensor_t input1_,
+                                          const flexflow_tensor_t input2_,
+                                          char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor input1 = FFCObjectWrapper::unwrap(input1_);
+  const Tensor input2 = FFCObjectWrapper::unwrap(input2_);
+  Tensor tensor =
+      handle->sigmoid_silu_multi(input1, input2, input1->data_type, name);
+  DEBUG_PRINT("[SigmoidSiluMulti] new Tensor %p, input1 %p, input2 %p, name %s",
+              tensor,
+              input1,
+              input2,
+              name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
 flexflow_tensor_t flexflow_model_add_batch_matmul(flexflow_model_t handle_,
                                                   const flexflow_tensor_t a_,
                                                   const flexflow_tensor_t b_,
@@ -1339,6 +1463,28 @@ flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_tensor_t *
+    flexflow_model_add_residual_rms_norm(flexflow_model_t handle_,
+                                         const flexflow_tensor_t input1_,
+                                         const flexflow_tensor_t input2_,
+                                         float eps,
+                                         int dim,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input1 = FFCObjectWrapper::unwrap(input1_);
+  Tensor input2 = FFCObjectWrapper::unwrap(input2_);
+  Tensor tensor_outputs[2];
+  handle->residual_rms_norm(
+      input1, input2, tensor_outputs, eps, dim, input1->data_type, name);
+  assert(tensor_outputs[0] != nullptr);
+  assert(tensor_outputs[1] != nullptr);
+  flexflow_tensor_t *tensor_outputs_wrapped =
+      (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
+  tensor_outputs_wrapped[0] = FFCObjectWrapper::wrap(tensor_outputs[0]);
+  tensor_outputs_wrapped[1] = FFCObjectWrapper::wrap(tensor_outputs[1]);
+  return tensor_outputs_wrapped;
+}
+
 flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,
                                                int k,
@@ -1442,8 +1588,10 @@ flexflow_generation_result_t
                             int max_seq_length,
                             int *output_length_and_tokens) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  std::vector<std::string> prompts;
   std::string const text_str(input_text);
-  GenerationResult result = handle->generate(text_str, max_seq_length);
+  prompts.push_back(input_text);
+  GenerationResult result = handle->generate(prompts, max_seq_length);
   DEBUG_PRINT("[Model] generate %p %s %i", handle, text_str, max_seq_length);
   assert(result.output_tokens.size() <= max_seq_length);
   output_length_and_tokens[0] = result.output_tokens.size();
@@ -2528,17 +2676,8 @@ void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_) {
 
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
                                             flexflow_model_t model_handle_,
-                                            int num_layers,
-                                            char const **layer_names,
-                                            flexflow_op_t *layers,
                                             bool use_full_precision) {
   FileDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_handle_);
-  std::unordered_map<std::string, Layer *> weights_layers;
-  for (int i = 0; i < num_layers; i++) {
-    std::string const layer_name(layer_names[i]);
-    Layer *layer_ptr = FFCObjectWrapper::unwrap(layers[i]);
-    weights_layers.emplace(layer_name, layer_ptr);
-  }
-  handle->load_weights(model, weights_layers, use_full_precision);
+  handle->load_weights(model, use_full_precision);
 }

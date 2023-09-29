@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_SPEC_INC_MULTIHEAD_SELF_ATTENTION_PARAMS_H
 #define _FLEXFLOW_SPEC_INC_MULTIHEAD_SELF_ATTENTION_PARAMS_H
 
+#include "flexflow/ffconst.h"
 #include "flexflow/fftype.h"
 #include "flexflow/parallel_tensor.h"
 
@@ -10,8 +11,8 @@ struct SpecIncMultiHeadSelfAttentionParams {
   LayerID layer_guid;
   int embed_dim, num_q_heads, num_kv_heads, kdim, vdim;
   float dropout, scaling_factor;
-  bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding, scaling_query,
-      qk_prod_scaling, position_bias;
+  bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
+      scaling_query, qk_prod_scaling, position_bias;
 
   bool is_valid(ParallelTensorShape const &) const;
 };
