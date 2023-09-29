@@ -3,6 +3,7 @@
 
 #include "utils/containers.h"
 #include "utils/exception.h"
+#include "utils/optional.h"
 #include "utils/variant.h"
 #include <ostream>
 #include <string>
@@ -10,9 +11,8 @@
 
 namespace FlexFlow {
 
-std::string parseKey(std::string arg);
-
-using AllowedArgTypes = variant<int, bool, float, std::string>;
+using AllowedArgTypes =
+    variant<int, bool, float, std::string>; // we can add more types here
 
 template <typename T>
 struct CmdlineArgRef {
@@ -20,40 +20,43 @@ struct CmdlineArgRef {
   T value;
 };
 
-class ArgsParser {
-private:
-  std::unordered_map<std::string, std::string> mArgs;
-  std::unordered_map<std::string, AllowedArgTypes> mDefaultValues;
-  std::unordered_map<std::string, std::string> mDescriptions;
-
-public:
-  ArgsParser() = default;
-  void parse_args(int argc, char **argv);
-
-  template <typename T>
-  CmdlineArgRef<T> add_argument(std::string const &key,
-                         T const &value,
-                         std::string const &description);
-
-  template <typename T>
-  T get(std::string const &key) const {
-    if (contains_key(mArgs, key)) {
-      return convert<T>(mArgs.at(key));
-    } else {
-      if (contains_key(mDefaultValues, key)) {
-        return mpark::get<T>(mDefaultValues.at(key));
-      }
-    }
-    throw mk_runtime_error("Key not found: " + key);
-  }
-
-  void showDescriptions() const;
-
-  template <typename T>
-  T convert(std::string const &s) const;
-
-  friend std::ostream &operator<<(std::ostream &out, ArgsParser const &args);
+struct Argument {
+  optional<std::string> value; // Change value type to optional<string>
+  std::string description;
+  bool default_value;
 };
+
+struct ArgsParser {
+  std::unordered_map<std::string, Argument> mArguments;
+};
+
+// currently we only support "--xx" or "-x"
+std::string parseKey(std::string arg);
+
+void parse_args(ArgsParser &mArgs, int argc, char **argv);
+
+template <typename T>
+CmdlineArgRef<T> add_argument(ArgsParser &parser,
+                              std::string key,
+                              optional<T> default_value,
+                              std::string const &description);
+
+template <typename T>
+T get(ArgsParser const &parser, CmdlineArgRef<T> const &ref);
+
+void showDescriptions(ArgsParser const &parser);
+
+template <typename T>
+T convert(std::string const &s);
+
+template <>
+int convert<int>(std::string const &s);
+
+template <>
+float convert<float>(std::string const &s);
+
+template <>
+bool convert<bool>(std::string const &s);
 
 } // namespace FlexFlow
 
