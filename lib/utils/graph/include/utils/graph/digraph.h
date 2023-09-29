@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
-#define _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
+#ifndef UTILS_GRAPH_INCLUDE_UTILS_GRAPH_DIGRAPH
+#define UTILS_GRAPH_INCLUDE_UTILS_GRAPH_DIGRAPH
 
 #include "cow_ptr_t.h"
 #include "digraph_interfaces.h"
@@ -11,7 +11,7 @@
 
 namespace FlexFlow {
 
-struct DiGraphView {
+struct DiGraphView : virtual public GraphView {
 public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
@@ -38,15 +38,13 @@ public:
 
 private:
   DiGraphView(std::shared_ptr<IDiGraphView const> ptr);
+  std::shared_ptr<IDiGraphView const> get_ptr() const;
 
   friend struct GraphInternal;
-
-private:
-  std::shared_ptr<IDiGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
 
-struct DiGraph {
+struct DiGraph : virtual public Graph {
 public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
@@ -54,8 +52,6 @@ public:
   DiGraph() = delete;
   DiGraph(DiGraph const &) = default;
   DiGraph &operator=(DiGraph const &) = default;
-
-  operator DiGraphView() const;
 
   friend void swap(DiGraph &, DiGraph &);
 
@@ -77,12 +73,10 @@ public:
   }
 
 private:
-  DiGraph(cow_ptr_t<IDiGraph>);
+  DiGraph(cow_ptr_t<IDiGraph const>);
+  cow_ptr_t<IDiGraph const> get_ptr() const;
 
   friend struct GraphInternal;
-
-private:
-  cow_ptr_t<IDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraph);
 

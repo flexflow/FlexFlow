@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_INTERFACES_H
-#define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_INTERFACES_H
+#ifndef UTILS_GRAPH_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_INTERFACES
+#define UTILS_GRAPH_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_INTERFACES
 
 #include "multidiedge.h"
 #include "node.h"
@@ -10,28 +10,7 @@
 
 namespace FlexFlow {
 
-struct MultiDiEdgeQuery {
-  query_set<Node> srcs;
-  query_set<Node> dsts;
-  query_set<NodePort> srcIdxs;
-  query_set<NodePort> dstIdxs;
-
-  MultiDiEdgeQuery with_src_nodes(query_set<Node> const &) const;
-  MultiDiEdgeQuery with_dst_nodes(query_set<Node> const &) const;
-  MultiDiEdgeQuery with_src_idxs(query_set<NodePort> const &) const;
-  MultiDiEdgeQuery with_dst_idxs(query_set<NodePort> const &) const;
-
-  static MultiDiEdgeQuery all();
-  static MultiDiEdgeQuery none();
-};
-FF_VISITABLE_STRUCT(MultiDiEdgeQuery, srcs, dsts, srcIdxs, dstIdxs);
-
-MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &,
-                                    MultiDiEdgeQuery const &);
-MultiDiEdgeQuery query_union(MultiDiEdgeQuery const &,
-                             MultiDiEdgeQuery const &);
-
-struct IMultiDiGraphView : public IGraphView {
+struct IMultiDiGraphView : virtual public IDiGraphView {
   using Edge = MultiDiEdge;
   using EdgeQuery = MultiDiEdgeQuery;
 
@@ -40,7 +19,7 @@ struct IMultiDiGraphView : public IGraphView {
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraphView);
 
-struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
+struct IMultiDiGraph : virtual public IMultiDiGraphView, virtual public IGraph {
   virtual NodePort add_node_port() = 0;
   virtual void add_node_port_unsafe(NodePort const &) = 0;
   virtual void add_edge(Edge const &) = 0;

@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_UTILS_ADJACENCY_MULTIGRAPH_H
-#define _FLEXFLOW_UTILS_ADJACENCY_MULTIGRAPH_H
+#ifndef UTILS_GRAPH_INCLUDE_UTILS_GRAPH_ADJACENCY_MULTIDIGRAPH
+#define UTILS_GRAPH_INCLUDE_UTILS_GRAPH_ADJACENCY_MULTIDIGRAPH
 
 #include "multidigraph.h"
 #include "utils/type_traits.h"
@@ -8,7 +8,7 @@
 
 namespace FlexFlow {
 
-class AdjacencyMultiDiGraph : public IMultiDiGraph {
+class AdjacencyMultiDiGraph : virtual public IMultiDiGraph {
 public:
   AdjacencyMultiDiGraph() = default;
   Node add_node() override;

@@ -10,14 +10,12 @@
 
 namespace FlexFlow {
 
-struct OpenMultiDiGraphView {
+struct OpenMultiDiGraphView : MultiDiGraphView {
 public:
   using Edge = OpenMultiDiEdge;
   using EdgeQuery = OpenMultiDiEdgeQuery;
 
   OpenMultiDiGraphView() = delete;
-
-  operator MultiDiGraphView() const;
 
   friend void swap(OpenMultiDiGraphView &, OpenMultiDiGraphView &);
 
@@ -35,13 +33,12 @@ public:
 
 private:
   OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const> ptr);
+  std::shared_ptr<IOpenMultiDiGraphView const> get_ptr() const;
 
   friend struct GraphInternal;
-
-  std::shared_ptr<IOpenMultiDiGraphView const> ptr;
 };
 
-struct OpenMultiDiGraph {
+struct OpenMultiDiGraph : virtual MultiDiGraph {
 public:
   using Edge = OpenMultiDiEdge;
   using EdgeQuery = OpenMultiDiEdgeQuery;
@@ -71,22 +68,20 @@ public:
 
 private:
   OpenMultiDiGraph(cow_ptr_t<IOpenMultiDiGraph> ptr);
+  cow_ptr_t<IOpenMultiDiGraph> get_ptr();
 
   friend struct GraphInternal;
-
-private:
-  cow_ptr_t<IOpenMultiDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(OpenMultiDiGraph);
 
-struct UpwardOpenMultiDiGraphView {
+struct UpwardOpenMultiDiGraphView : MultiDiGraphView {
 public:
   using Edge = UpwardOpenMultiDiEdge;
   using EdgeQuery = UpwardOpenMultiDiEdgeQuery;
 
   UpwardOpenMultiDiGraphView() = delete;
 
-  friend void swap(OpenMultiDiGraphView &, OpenMultiDiGraphView &);
+  friend void swap(UpwardOpenMultiDiGraphView &, UpwardOpenMultiDiGraphView &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);

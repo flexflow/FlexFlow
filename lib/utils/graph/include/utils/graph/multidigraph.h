@@ -6,12 +6,10 @@
 #include "node.h"
 
 namespace FlexFlow {
-struct MultiDiGraphView {
+struct MultiDiGraphView : virtual DiGraphView {
 public:
   using Edge = MultiDiEdge;
   using EdgeQuery = MultiDiEdgeQuery;
-
-  operator GraphView() const;
 
   friend void swap(MultiDiGraphView &, MultiDiGraphView &);
 
@@ -31,15 +29,13 @@ public:
 
 private:
   MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr);
+  std::shared_ptr<IMultiDiGraphView const> get_ptr() const;
 
   friend struct GraphInternal;
-
-private:
-  std::shared_ptr<IMultiDiGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraphView);
 
-struct MultiDiGraph {
+struct MultiDiGraph : virtual DiGraph {
 public:
   using Edge = MultiDiEdge;
   using EdgeQuery = MultiDiEdgeQuery;
@@ -48,7 +44,6 @@ public:
   MultiDiGraph(MultiDiGraph const &) = default;
   MultiDiGraph &operator=(MultiDiGraph const &) = default;
 
-  operator GraphView() const;
   operator MultiDiGraphView() const;
 
   friend void swap(MultiDiGraph &, MultiDiGraph &);
@@ -74,11 +69,10 @@ public:
 
 private:
   MultiDiGraph(cow_ptr_t<IMultiDiGraph>);
+  cow_ptr_t<IMultiDiGraph> get_ptr() const;
 
   friend struct GraphInternal;
 
-private:
-  cow_ptr_t<IMultiDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraph);
 

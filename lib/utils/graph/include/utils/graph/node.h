@@ -61,16 +61,17 @@ struct GraphView {
   }
 
 private:
+  GraphView(std::shared_ptr<void const> ptr);
   GraphView(std::shared_ptr<IGraphView const> ptr);
 
   friend struct GraphInternal;
 
 private:
-  std::shared_ptr<IGraphView const> ptr;
+  std::shared_ptr<void const> ptr;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraphView);
 
-struct IGraph : IGraphView {
+struct IGraph : virtual IGraphView {
   IGraph() = default;
   IGraph(IGraph const &) = delete;
   IGraph &operator=(IGraph const &) = delete;
