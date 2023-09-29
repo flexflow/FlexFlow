@@ -10,7 +10,7 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename EdgeLabel>
-struct LabelledMultiDiGraphView {
+struct LabelledMultiDiGraphView : virtual public NodeLabelledMultiDiGraphView<NodeLabel> {
 private:
   using Interface = ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>;
 
@@ -20,38 +20,20 @@ public:
   LabelledMultiDiGraphView &
       operator=(LabelledMultiDiGraphView const &) = default;
 
-  operator NodeLabelledMultiDiGraphView<NodeLabel>() const;
-
-  template <typename InputLabel, typename OutputLabel>
-  operator LabelledOpenMultiDiGraphView<NodeLabel,
-                                        EdgeLabel,
-                                        InputLabel,
-                                        OutputLabel>() const;
-
-  template <typename InputLabel>
-  operator LabelledUpwardOpenMultiDiGraphView<NodeLabel,
-                                              EdgeLabel,
-                                              InputLabel>() const;
-
-  template <typename OutputLabel>
-  operator LabelledDownwardOpenMultiDiGraphView<NodeLabel,
-                                                EdgeLabel,
-                                                OutputLabel>() const;
-
   NodeLabel const &at(Node const &n) const {
-    return this->ptr->at(n);
+    return get_ptr()->at(n);
   }
 
   EdgeLabel const &at(MultiDiEdge const &e) const {
-    return this->ptr->at(e);
+    return get_ptr()->at(e);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return this->ptr->query_nodes(q);
+    return get_ptr()->query_nodes(q);
   }
 
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
-    return this->ptr->query_edges(q);
+    return get_ptr()->query_edges(q);
   }
 
   template <typename BaseImpl, typename... Args>
@@ -62,8 +44,11 @@ public:
         std::make_shared<BaseImpl>(std::forward<Args>(args)...));
   }
 
-private:
-  std::shared_ptr<Interface const> ptr;
+protected:
+  LabelledMultiDiGraphView(std::shared_ptr<Interface const> ptr) : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {}
+  std::shared_ptr<Interface const> get_ptr() const {
+    return static_assert<std::shared_ptr<Interface const>>(ptr);
+  }
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(LabelledMultiDiGraphView<int, int>);
 
@@ -74,14 +59,8 @@ private:
 
 public:
   LabelledMultiDiGraph() = delete;
-  LabelledMultiDiGraph(LabelledMultiDiGraph const &other)
-      : ptr(other.ptr->clone()) {}
-  LabelledMultiDiGraph &operator=(LabelledMultiDiGraph other) {
-    swap(*this, other);
-    return *this;
-  }
-
-  operator LabelledMultiDiGraphView<NodeLabel, EdgeLabel>() const;
+  LabelledMultiDiGraph(LabelledMultiDiGraph const &other) = default;
+  LabelledMultiDiGraph &operator=(LabelledMultiDiGraph other) = default;
 
   friend void swap(LabelledMultiDiGraph &lhs, LabelledMultiDiGraph &rhs) {
     using std::swap;
@@ -89,7 +68,7 @@ public:
     swap(lhs.ptr, rhs.ptr);
   }
 
-  operator MultiDiGraphView() const;
+  operator LabelledMultiDiGraphView() const;
 
   Node add_node(NodeLabel const &l) {
     return this->ptr->add_node(l);
@@ -128,7 +107,7 @@ public:
   }
 
 private:
-  LabelledMultiDiGraph(std::unique_ptr<Interface> ptr) : ptr(std::move(ptr)) {}
+  LabelledMultiDiGraph(cow_ptr_t<Interface> ptr) : ptr(ptr) {}
 
 private:
   cow_ptr_t<Interface> ptr;

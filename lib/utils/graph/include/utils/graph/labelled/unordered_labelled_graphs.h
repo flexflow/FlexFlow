@@ -11,8 +11,7 @@ namespace FlexFlow {
 
 template <typename NodeLabel>
 struct UnorderedNodeLabelledMultiDiGraph
-    : public INodeLabelledMultiDiGraph<NodeLabel>,
-      protected MultiDiGraph {
+    : public INodeLabelledMultiDiGraph<NodeLabel> {
 public:
   UnorderedNodeLabelledMultiDiGraph() = delete;
 

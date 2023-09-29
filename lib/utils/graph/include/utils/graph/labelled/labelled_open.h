@@ -10,40 +10,28 @@
 
 namespace FlexFlow {
 
-// LabelledOpenMultiDiGraphView
-template <typename N, typename E, typename I, typename O>
-LabelledOpenMultiDiGraphView<N, E, I, O>::operator OpenMultiDiGraphView()
-    const {
-  return GraphInternal::create_open_multidigraph_view(this->ptr);
-}
-
-// template <typename N, typename E, typename I, typename O>
-// LabelledOpenMultiDiGraphView<N, E, I, O>::operator MultiDiGraphView() const {
-//   return GraphInternal::create_multidigraphview(this->ptr);
-// }
-
 template <typename NodeLabel, typename E, typename I, typename O>
 NodeLabel const &
     LabelledOpenMultiDiGraphView<NodeLabel, E, I, O>::at(Node const &n) const {
-  return this->ptr->at(n);
+  return get_ptr()->at(n);
 }
 
 template <typename N, typename EdgeLabel, typename I, typename O>
 EdgeLabel const &LabelledOpenMultiDiGraphView<N, EdgeLabel, I, O>::at(
     MultiDiEdge const &e) const {
-  return this->ptr->at(e);
+  return get_ptr()->at(e);
 }
 
 template <typename N, typename E, typename InputLabel, typename O>
 InputLabel const &LabelledOpenMultiDiGraphView<N, E, InputLabel, O>::at(
     InputMultiDiEdge const &e) const {
-  return this->ptr->at(e);
+  return get_ptr()->at(e);
 }
 
 template <typename N, typename E, typename I, typename OutputLabel>
 OutputLabel const &LabelledOpenMultiDiGraphView<N, E, I, OutputLabel>::at(
     OutputMultiDiEdge const &e) const {
-  return this->ptr->at(e);
+  return get_ptr()->at(e);
 }
 
 template <typename N, typename E, typename I, typename O>
@@ -56,17 +44,18 @@ enable_if_t<std::is_base_of<
   return LabelledOpenMultiDiGraphView<N, E, I, O>(std::make_shared<BaseImpl>());
 }
 
+LabelledOpenMultiDiGraphView::LabelledOpenMultiDiGraphView(std::shared_ptr<Interface const> ptr) : OpenMultiDiGraphView(ptr) {}
+
+std::shared_ptr<LabelledOpenMultiDiGraphView const> LabelledOpenMultiDiGraphView::get_ptr() const {
+  return static_cast<std::shared_ptr<LabelledOpenMultiDiGraphView const>>(ptr);
+}
+
 // LabelledOpenMultiDiGraph
 template <typename N, typename E, typename I, typename O>
 LabelledOpenMultiDiGraph<N, E, I, O>::
     operator LabelledOpenMultiDiGraphView<N, E, I, O>() const {
   return GraphInternal::create_labelled_open_multidigraph_view<N, E, I, O>(
       this->ptr);
-}
-
-template <typename N, typename E, typename I, typename O>
-LabelledOpenMultiDiGraph<N, E, I, O>::operator OpenMultiDiGraphView() const {
-  return GraphInternal::create_open_multidigraph_view(this->ptr.get());
 }
 
 template <typename NodeLabel, typename E, typename I, typename O>

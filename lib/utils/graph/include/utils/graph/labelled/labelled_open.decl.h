@@ -11,7 +11,8 @@ template <typename NodeLabel,
           typename EdgeLabel,
           typename InputLabel = EdgeLabel,
           typename OutputLabel = InputLabel>
-struct LabelledOpenMultiDiGraphView {
+struct LabelledOpenMultiDiGraphView : virtual public OpenMultiDiGraphView,
+                                      virtual public LabelledMultiDiGraphView {
 private:
   using Interface = ILabelledOpenMultiDiGraphView<NodeLabel,
                                                   EdgeLabel,
@@ -20,9 +21,8 @@ private:
 
 public:
   LabelledOpenMultiDiGraphView() = delete;
-
-  operator OpenMultiDiGraphView() const;
-  // operator MultiDiGraphView() const;
+  LabelledOpenMultiDiGraphView(LabelledOpenMultiDiGraphView const &);
+  LabelledOpenMultiDiGraphView &operator=(LabelledOpenMultiDiGraphView const &);
 
   NodeLabel const &at(Node const &n) const;
   EdgeLabel const &at(MultiDiEdge const &e) const;
@@ -35,7 +35,8 @@ public:
       create();
 
 private:
-  std::shared_ptr<Interface const> ptr;
+  LabelledOpenMultiDiGraphView(std::shared_ptr<Interface const> ptr);
+  std::shared_ptr<LabelledOpenMultiDiGraphView const> get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(
     LabelledOpenMultiDiGraphView<int, int, int, int>);
@@ -59,8 +60,6 @@ public:
                                         EdgeLabel,
                                         InputLabel,
                                         OutputLabel>() const;
-
-  operator OpenMultiDiGraphView() const;
 
   friend void swap(LabelledOpenMultiDiGraph &lhs,
                    LabelledOpenMultiDiGraph &rhs) {

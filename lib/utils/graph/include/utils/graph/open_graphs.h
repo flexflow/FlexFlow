@@ -38,7 +38,7 @@ private:
   friend struct GraphInternal;
 };
 
-struct OpenMultiDiGraph : virtual MultiDiGraph {
+struct OpenMultiDiGraph {
 public:
   using Edge = OpenMultiDiEdge;
   using EdgeQuery = OpenMultiDiEdgeQuery;
@@ -68,13 +68,13 @@ public:
 
 private:
   OpenMultiDiGraph(cow_ptr_t<IOpenMultiDiGraph> ptr);
-  cow_ptr_t<IOpenMultiDiGraph> get_ptr();
+  cow_ptr_t<IOpenMultiDiGraph> ptr;
 
   friend struct GraphInternal;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(OpenMultiDiGraph);
 
-struct UpwardOpenMultiDiGraphView : MultiDiGraphView {
+struct UpwardOpenMultiDiGraphView : virtual MultiDiGraphView {
 public:
   using Edge = UpwardOpenMultiDiEdge;
   using EdgeQuery = UpwardOpenMultiDiEdgeQuery;
@@ -100,7 +100,7 @@ private:
       std::shared_ptr<IUpwardOpenMultiDiGraphView const>);
 
 private:
-  std::shared_ptr<IUpwardOpenMultiDiGraphView const> ptr;
+  std::shared_ptr<IUpwardOpenMultiDiGraphView const> get_ptr();
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UpwardOpenMultiDiGraphView);
 
@@ -141,10 +141,11 @@ private:
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UpwardOpenMultiDiGraph);
 
-struct DownwardOpenMultiDiGraphView {
+struct DownwardOpenMultiDiGraphView : virtual OpenMultiDiSubgraphView {
 public:
   using Edge = DownwardOpenMultiDiEdge;
   using EdgeQuery = DownwardOpenMultiDiEdgeQuery;
+  using Interface = IDownwardOpenMultiDiGraphView;
 
   DownwardOpenMultiDiGraphView() = delete;
 
@@ -164,10 +165,10 @@ public:
 
 private:
   DownwardOpenMultiDiGraphView(
-      std::shared_ptr<IDownwardOpenMultiDiGraphView const>);
+      std::shared_ptr<Interface const>);
 
 private:
-  std::shared_ptr<IDownwardOpenMultiDiGraphView const> ptr;
+  std::shared_ptr<Interface const> get_ptr();
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DownwardOpenMultiDiGraphView);
 

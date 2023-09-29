@@ -7,7 +7,8 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename EdgeLabel, typename OutputLabel>
-struct LabelledDownwardOpenMultiDiGraphView {
+struct LabelledDownwardOpenMultiDiGraphView : virtual LabelledMultiDiGraphView<NodeLabel, EdgeLabel>,
+                                              virtual DownwardOpenMultiDiGraphView {
 private:
   using Interface =
       ILabelledDownwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, OutputLabel>;
@@ -20,24 +21,24 @@ public:
                                         OutputLabel>() const;
 
   OutputLabel const &at(OutputMultiDiEdge const &e) const {
-    return this->ptr->at(e);
+    return this->get_ptr()->at(e);
   }
 
   EdgeLabel const &at(MultiDiEdge const &e) const {
-    return this->ptr->at(e);
+    return this->get_ptr()->at(e);
   }
 
   NodeLabel const &at(Node const &n) const {
-    return this->ptr->at(n);
+    return this->get_ptr()->at(n);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return this->ptr->query_nodes(q);
+    return this->get_ptr()->query_nodes(q);
   }
 
   std::unordered_set<DownwardOpenMultiDiEdge>
       query_edges(DownwardOpenMultiDiEdgeQuery const &q) const {
-    return this->ptr->query_edges(q);
+    return this->get_ptr()->query_edges(q);
   }
 
   template <typename BaseImpl, typename... Args>
@@ -49,7 +50,10 @@ public:
   }
 
 private:
-  std::shared_ptr<Interface const> ptr;
+  LabelledDownardOpenMultiDiGraphView(std::shared_ptr<Interface const> ptr) : DownwardOpenMultiDiGraphView(ptr) {}
+  std::shared_ptr<Interface const> get_ptr() const {
+    return static_cast<std::shared_ptr<Interface const>>(ptr);
+  }
 };
 
 template <typename NodeLabel, typename EdgeLabel, typename OutputLabel>

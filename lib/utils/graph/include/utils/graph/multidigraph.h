@@ -35,7 +35,7 @@ private:
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraphView);
 
-struct MultiDiGraph : virtual DiGraph {
+struct MultiDiGraph {
 public:
   using Edge = MultiDiEdge;
   using EdgeQuery = MultiDiEdgeQuery;
@@ -69,7 +69,7 @@ public:
 
 private:
   MultiDiGraph(cow_ptr_t<IMultiDiGraph>);
-  cow_ptr_t<IMultiDiGraph> get_ptr() const;
+  cow_ptr_t<IMultiDiGraph> ptr;
 
   friend struct GraphInternal;
 

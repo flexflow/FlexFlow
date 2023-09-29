@@ -7,33 +7,36 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename OutputLabel>
-struct OutputLabelledMultiDiGraphView {
+struct OutputLabelledMultiDiGraphView : virtual public NodeLabelledMultiDiGraphView<NodeLabel> {
 private:
   using Interface = IOutputLabelledMultiDiGraphView<NodeLabel, OutputLabel>;
 
 public:
   OutputLabelledMultiDiGraphView() = delete;
-
-  operator LabelledMultiDiGraphView<NodeLabel, OutputLabel>();
+  OutputLabelledMultiDiGraphView(OutputLabelledMultiDiGraphView const &) = default;
+  OutputLabelledMultiDiGraphView &operator=(OutputLabelledMultiDiGraphView const &) = default;
 
   NodeLabel const &at(Node const &n) const {
-    return this->ptr->at(n);
+    return get_ptr()->at(n);
   }
 
   OutputLabel const &at(MultiDiOutput const &o) const {
-    return this->ptr->at(o);
+    return get_ptr()->at(o);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return this->ptr->query_nodes(q);
+    return get_ptr()->query_nodes(q);
   }
 
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
-    return this->ptr->query_edges(q);
+    return get_ptr()->query_edges(q);
   }
 
 private:
-  std::shared_ptr<Interface> ptr;
+  OutputLabelledMultiDiGraphView(std::shared_ptr<Interface const> ptr) : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {}
+  std::shared_ptr<Interface const> get_ptr() const {
+    return static_assert<std::shared_ptr<Interface const>>(ptr);
+  }
 };
 
 template <typename NodeLabel, typename OutputLabel>
@@ -47,9 +50,7 @@ public:
   OutputLabelledMultiDiGraph &
       operator=(OutputLabelledMultiDiGraph const &other) = default;
 
-  operator LabelledMultiDiGraphView<NodeLabel, OutputLabel>() const;
-  operator MultiDiGraphView() const;
-  operator GraphView() const;
+  operator OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel>() const;
 
   friend void swap(OutputLabelledMultiDiGraph &lhs,
                    OutputLabelledMultiDiGraph &rhs) {

@@ -4,8 +4,7 @@
 namespace FlexFlow {
 
 template <typename NodeLabel,
-          typename InputLabel,
-          typename OutputLabel = InputLabel>
+          typename EdgeLabel>
 struct OutputLabelledOpenMultiDiGraph {
   OutputLabelledOpenMultiDiGraph() = delete;
   OutputLabelledOpenMultiDiGraph(OutputLabelledOpenMultiDiGraph const &) =
@@ -51,7 +50,7 @@ struct OutputLabelledOpenMultiDiGraph {
     NOT_IMPLEMENTED();
   }
 
-  void add_output(MultiDiOutput const &, OutputLabel const &) {
+  void add_output(MultiDiOutput const &, EdgeLabel const &) {
     NOT_IMPLEMENTED();
   }
   OutputLabel const &at(MultiDiOutput const &) const {

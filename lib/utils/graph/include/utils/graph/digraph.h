@@ -18,8 +18,6 @@ public:
 
   DiGraphView() = delete;
 
-  operator GraphView() const;
-
   friend void swap(DiGraphView &, DiGraphView &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
@@ -44,7 +42,7 @@ private:
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
 
-struct DiGraph : virtual public Graph {
+struct DiGraph {
 public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
@@ -73,8 +71,8 @@ public:
   }
 
 private:
-  DiGraph(cow_ptr_t<IDiGraph const>);
-  cow_ptr_t<IDiGraph const> get_ptr() const;
+  DiGraph(cow_ptr_t<IDiGraph>);
+  cow_ptr_t<IDiGraph> ptr;
 
   friend struct GraphInternal;
 };

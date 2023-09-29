@@ -12,8 +12,8 @@ template <typename NodeLabel,
           typename InputLabel = EdgeLabel,
           typename OutputLabel = InputLabel>
 struct ILabelledOpenMultiDiGraphView
-    : public IOpenMultiDiGraphView,
-      public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
+    : virtual public IOpenMultiDiGraphView,
+      virtual public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
 public:
 
   std::unordered_set<MultiDiEdge>
