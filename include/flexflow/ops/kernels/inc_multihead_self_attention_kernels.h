@@ -27,6 +27,21 @@ __global__ void apply_proj_bias_w(DT *input_ptr,
                                   int oProjSize);
 
 template <typename DT>
+__global__ void copy_output(DT const *padded_output,
+                            DT *output,
+                            int num_total_tokens,
+                            int oProjSize,
+                            int *real_token_idx);
+
+template <typename DT>
+__global__ void pad_input_ptr(DT *input_ptr,
+                              DT *padded_input,
+                              BatchConfig const *bc,
+                              int num_padded_tokens,
+                              int hidden_size,
+                              int max_req_length);
+
+template <typename DT>
 __global__ void apply_proj_bias_qkv(DT *input_ptr,
                                     DT const *bias_ptr,
                                     int shard_id,

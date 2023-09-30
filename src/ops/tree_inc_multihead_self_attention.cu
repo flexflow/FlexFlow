@@ -323,15 +323,15 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       if (*m->position_bias) {
         size_t parallelism =
             m->num_q_heads * total_tokens_in_request * num_new_tokens;
-        apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
-                                    min((size_t)CUDA_NUM_THREADS, parallelism),
-                                    0,
-                                    stream>>>(C,
-                                              num_new_tokens,
-                                              total_tokens_in_request,
-                                              m->num_q_heads,
-                                              m->global_num_q_heads,
-                                              shard_id);
+        // apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
+        //                             min((size_t)CUDA_NUM_THREADS, parallelism),
+        //                             0,
+        //                             stream>>>(C,
+        //                                       num_new_tokens,
+        //                                       total_tokens_in_request,
+        //                                       m->num_q_heads,
+        //                                       m->global_num_q_heads,
+        //                                       shard_id);
       }
 
       // Fill all elements above diagonal in qk prods with -inf to force

@@ -204,6 +204,15 @@ public:
   //  typedef hipFloatComplex attFloatComplex;
   hipFloatComplex *complex_input;
 #endif
+  // metadata for pad
+  void *query, *key, *value, *padded_output,
+      *padded_input; // temporary storage fot key, value, output
+
+  //if positive, it indicates the real token idx in the origin request
+  // if negative, it indicates it is a padding token
+  int *real_token_idx, *total_tokens_per_req;
+  int *real_token_idx_gpu, *total_tokens_per_req_gpu;
+  int *max_req_length, *max_total_tokens;
 };
 
 }; // namespace FlexFlow
