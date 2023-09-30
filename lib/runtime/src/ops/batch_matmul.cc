@@ -152,7 +152,6 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
 
   auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RW>(OUTPUT);
-  // is this equivalent to checking `Domain` equality?
   assert(output.shape == output_grad.shape);
 
   auto a_input = acc.get_tensor<Permissions::RO>(A_INPUT);

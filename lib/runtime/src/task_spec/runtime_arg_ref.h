@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-enum class RuntimeArgRefType { FF_HANDLE, PROFILING_SETTINGS };
+enum class RuntimeArgRefType { FF_HANDLE, PROFILING_SETTINGS, FF_ITERATION_CONFIG };
 
 template <typename T>
 using RuntimeArgRef = ArgRef<RuntimeArgRefType, T>;
