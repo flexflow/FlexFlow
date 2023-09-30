@@ -10,7 +10,7 @@ SerialParallelDecomposition
 std::vector<MultiDiEdge>
     get_sorted_node_input_edges(ParallelComputationGraph const &pcg,
                                 Node const &n) {
-  std::unordered_map<size_t, std::unordered_set<MultiDiEdge>> incoming_edges =
+  std::unordered_map<NodePort, std::unordered_set<MultiDiEdge>> incoming_edges =
       get_incoming_edges_by_idx(pcg, n);
 
   std::vector<MultiDiEdge> result;
@@ -36,11 +36,11 @@ std::unordered_map<MultiDiEdge, ParallelTensorShape>
 
     auto outgoing_edges = get_outgoing_edges_by_idx(pcg, n);
 
-    for (std::size_t i = 0; i < output_tensor_shapes.size(); i++) {
-      if (contains_key(outgoing_edges, i)) {
-        for (MultiDiEdge const &e : outgoing_edges.at(i)) {
-          result.insert({e, output_tensor_shapes[i]});
-        }
+    int i = 0;
+
+    for (auto const &[node_port, edges] : outgoing_edges) {
+      for (MultiDiEdge const &e : edges) {
+        result.insert({e, output_tensor_shapes[i++]});
       }
     }
   }
