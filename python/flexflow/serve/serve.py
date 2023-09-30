@@ -299,7 +299,7 @@ class LLM:
     def compile(
         self,
         generation_config: GenerationConfig = GenerationConfig(),
-        max_batch_size: int = 1,
+        max_requests_per_batch: int = 1,
         max_seq_length: int = 256,
         max_tokens_per_batch: int = 64,
         model_specific_data_parallelism_degree: int = None,
@@ -328,9 +328,9 @@ class LLM:
         :param ssms: The SSMs to use when operating in speculative inference mode, defaults to []
         :type ssms: list, optional
         """
-        self.max_batch_size = max_batch_size
-        self.max_seq_length = max_seq_length
-        self.max_tokens_per_batch = max_tokens_per_batch
+        #self.max_batch_size = max_batch_size
+        #self.max_seq_length = max_seq_length
+        #self.max_tokens_per_batch = max_tokens_per_batch
         self.ssms = ssms
         self.generation_config = GenerationConfig()
         self.ffconfig = FFConfig()
@@ -364,21 +364,12 @@ class LLM:
             self.ffconfig,
             self.hf_config,
             self.data_type,
-            max_batch_size,
-            max_seq_length,
-            max_tokens_per_batch,
         )
-
-        # Create inference manager
-        self.im = InferenceManager()
-        self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
-
-        # Download the weights and tokenizer from huggingface (if needed) and load them
-        self.__load_hf_weights()
-        self.download_hf_tokenizer_if_needed()
-
         # Create request manager
         self.rm = RequestManager()
+        self.rm.set_max_requests_per_batch(max_requests_per_batch)
+        self.rm.set_max_tokens_per_batch(max_tokens_per_batch)
+        self.rm.set_max_sequence_length(max_seq_length)
         bos_token_id = (
             -1 if self.hf_config.bos_token_id is None else self.hf_config.bos_token_id
         )
@@ -389,6 +380,14 @@ class LLM:
             self.model_type, bos_token_id, eos_token_id, self.tokenizer_path
         )
         self.rm.register_output_filepath(self.output_file)
+
+        # Create inference manager
+        self.im = InferenceManager()
+        self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
+
+        # Download the weights and tokenizer from huggingface (if needed) and load them
+        self.__load_hf_weights()
+        self.download_hf_tokenizer_if_needed()
 
         self.im.init_operators_inference(self.model.ffmodel)
 

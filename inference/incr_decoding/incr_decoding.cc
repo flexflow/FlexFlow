@@ -43,7 +43,10 @@ void parse_input_args(char **argv,
                       bool &verbose,
                       bool &do_sample,
                       float &temperature,
-                      float &topp) {
+                      float &topp,
+                      int &max_requests_per_batch,
+                      int &max_tokens_per_batch,
+                      int &max_sequence_length) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -89,6 +92,18 @@ void parse_input_args(char **argv,
       topp = std::stof(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--max-requests-per-batch")) {
+      max_requests_per_batch = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-tokens-per-batch")) {
+      max_tokens_per_batch = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-sequence-length")) {
+      max_sequence_length = std::stoi(argv[++i]);
+      continue;
+    }
   }
   if (paths.cache_folder_path.empty()) {
     paths.cache_folder_path = "~/.cache/flexflow";
@@ -115,6 +130,9 @@ void FlexFlow::top_level_task(Task const *task,
   bool do_sample = false;
   float temperature = 0.0f;
   float topp = 0.0f;
+  int max_requests_per_batch = 16;
+  int max_tokens_per_batch = 256;
+  int max_sequence_length = 1024;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -127,7 +145,10 @@ void FlexFlow::top_level_task(Task const *task,
                    verbose,
                    do_sample,
                    temperature,
-                   topp);
+                   topp,
+                   max_requests_per_batch,
+                   max_tokens_per_batch,
+                   max_sequence_length);
 
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
@@ -191,6 +212,9 @@ void FlexFlow::top_level_task(Task const *task,
 
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
+  rm->set_max_requests_per_batch(max_requests_per_batch);
+  rm->set_max_tokens_per_batch(max_tokens_per_batch);
+  rm->set_max_sequence_length(max_sequence_length);
   rm->register_tokenizer(
       model_type, bos_token_id, eos_token_id, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);

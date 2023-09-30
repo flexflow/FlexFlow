@@ -48,7 +48,7 @@ RequestManager::RequestManager()
   // Initialize them to -1 to make sure no one
   // gets an incorrect value of them before
   // ffmodel.compile()
-  max_requests_per_batch - 1;
+  max_requests_per_batch = -1;
   max_tokens_per_batch = -1;
   max_sequence_length = -1;
   {
