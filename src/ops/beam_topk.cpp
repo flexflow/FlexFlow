@@ -510,7 +510,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   int parent_ids[max_total_requests];
   DT acc_probs[max_total_requests];
 
-  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
     }
@@ -683,10 +683,8 @@ BeamTopKMeta::BeamTopKMeta(FFHandler handler,
                            MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler) {
   DataType data_type = op->inputs[0]->data_type;
-  int max_tokens_per_batch =
-      RequestManager()::get_request_manager()->get_max_tokens_per_batch();
-  int max_requests_per_batch =
-      RequestManager()::get_request_manager()->get_max_requests_per_batch();
+  int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
+  int max_requests_per_batch = BatchConfig::max_requests_per_batch();
   size_t parent_id_size =
       BeamSearchBatchConfig::MAX_BEAM_WIDTH * max_requests_per_batch;
   size_t acc_probs_size =

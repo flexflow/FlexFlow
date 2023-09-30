@@ -61,7 +61,7 @@ InferenceMode BatchConfig::get_mode() const {
 
 int BatchConfig::num_active_requests() const {
   int num_requests = 0;
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < max_requests_per_batch(); i++) {
     if (!request_completed[i]) {
       num_requests++;
     }
@@ -73,22 +73,28 @@ int BatchConfig::num_active_tokens() const {
   return num_tokens;
 }
 
+/*static*/
+int BatchConfig::max_requests_per_batch() {
+  return RequestManager::get_request_manager()->get_max_requests_per_batch();
+}
+
+/*static*/
+int BatchConfig::max_tokens_per_batch() {
+  return RequestManager::get_request_manager()->get_max_tokens_per_batch();
+}
+
 void BatchConfig::print() const {
-  int max_requests_per_batch =
-      RequestManager::get_request_manager()->get_max_requests_per_batch();
-  int max_tokens_per_batch =
-      RequestManager::get_request_manager()->get_max_tokens_per_batch();
   std::cout << "@@@@@@@@@@@@@@ Batch Config (mode " << get_mode()
             << ") @@@@@@@@@@@@@@" << std::endl;
-  std::cout << "Max number of requests: " << max_requests_per_batch
+  std::cout << "Max number of requests: " << max_requests_per_batch()
             << std::endl;
-  std::cout << "Max number of tokens: " << max_tokens_per_batch << std::endl;
+  std::cout << "Max number of tokens: " << max_tokens_per_batch() << std::endl;
   std::cout << "Number of tokens: " << num_tokens << std::endl;
   std::cout << "Number of requests: " << num_active_requests() << std::endl;
   // std::cout << "Cached results: " << cached_results << std::endl;
 
   std::cout << "Per-request info:\n";
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < max_requests_per_batch(); i++) {
     if (!request_completed[i]) {
       std::cout << "  Request " << i << ":\n";
       std::cout << "    Token start offset: "

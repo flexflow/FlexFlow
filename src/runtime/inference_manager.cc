@@ -82,9 +82,7 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
   // TODO: currently assume there is a single data-parallel pipeline
   // (i.e., data-parallel-degree == 1)
   assert(model->config.data_parallelism_degree == 1);
-  int max_tokens_per_batch =
-      RequestManager::get_request_manager()->get_max_tokens_per_batch();
-  model->config.batchSize = max_tokens_per_batch;
+  model->config.batchSize = BatchConfig::max_tokens_per_batch();
   model->compile_inference();
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;

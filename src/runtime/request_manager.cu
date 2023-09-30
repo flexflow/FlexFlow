@@ -32,13 +32,11 @@ void RequestManager::load_tokens_task(
   BatchConfig const *batch_config = BatchConfig::from_future(task->futures[0]);
   BatchConfig::TokenId dram_copy[BatchConfig::MAX_NUM_TOKENS];
 
-  int max_tokens_per_batch =
-      RequestManager::get_request_manager()->get_max_tokens_per_batch();
   // Extreme long prompts are not supported, only load up to
-  // max_tokens_per_batch as prompt
-  if (batch_config->num_tokens > max_tokens_per_batch) {
+  // BatchConfig::max_tokens_per_batch() as prompt
+  if (batch_config->num_tokens > BatchConfig::max_tokens_per_batch()) {
     printf("Warning: too many tokens in prompt, only load up to %d tokens\n",
-           max_tokens_per_batch);
+           BatchConfig::max_tokens_per_batch());
     printf("Got: %d tokens\n", batch_config->num_tokens);
   }
 

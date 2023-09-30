@@ -582,7 +582,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   int vt_req_block_size = vt_block_size * m->num_kv_heads;
   assert(m->qProjSize == m->kProjSize);
 
-  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
     }
@@ -1081,20 +1081,22 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       case INC_DECODING_MODE:
       case TREE_VERIFY_MODE: {
         key_cache_size = num_kv_heads * kProjSize *
-                         BatchConfig::MAX_NUM_REQUESTS *
+                         BatchConfig::max_requests_per_batch() *
                          BatchConfig::MAX_SEQ_LENGTH;
         value_cache_size = num_kv_heads * vProjSize *
-                           BatchConfig::MAX_NUM_REQUESTS *
+                           BatchConfig::max_requests_per_batch() *
                            BatchConfig::MAX_SEQ_LENGTH;
         break;
       }
       case BEAM_SEARCH_MODE: {
-        key_cache_size =
-            num_kv_heads * kProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-            BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-        value_cache_size =
-            num_kv_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-            BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+        key_cache_size = num_kv_heads * kProjSize *
+                         BeamSearchBatchConfig::max_requests_per_batch() *
+                         BatchConfig::MAX_SEQ_LENGTH *
+                         BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+        value_cache_size = num_kv_heads * vProjSize *
+                           BeamSearchBatchConfig::max_requests_per_batch() *
+                           BatchConfig::MAX_SEQ_LENGTH *
+                           BeamSearchBatchConfig::MAX_BEAM_WIDTH;
         break;
       }
       default:

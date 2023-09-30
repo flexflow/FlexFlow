@@ -231,7 +231,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   int vt_req_block_size = vt_block_size * m->num_kv_heads;
   assert(m->qProjSize == m->kProjSize);
 
-  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
     }
@@ -542,20 +542,19 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       DT const *bias_ptr,
                       hipStream_t stream) {
   // here because we need postion info in infernece 1
-  int max_tokens_per_batch =
-      RequestManager()::get_request_manager()->get_max_tokens_per_batch();
+  int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
   checkCUDA(
       hipMemcpyAsync(m->token_infos,
                      &(bc->tokensInfo),
                      max_tokens_per_batch * sizeof(BatchConfig::PerTokenInfo),
                      hipMemcpyHostToDevice,
                      stream));
-  checkCUDA(
-      hipMemcpyAsync(m->request_infos,
-                     &(bc->requestsInfo),
-                     bc->MAX_NUM_REQUESTS * sizeof(BatchConfig::PerRequestInfo),
-                     hipMemcpyHostToDevice,
-                     stream));
+  checkCUDA(hipMemcpyAsync(m->request_infos,
+                           &(bc->requestsInfo),
+                           bc->max_requests_per_batch() *
+                               sizeof(BatchConfig::PerRequestInfo),
+                           hipMemcpyHostToDevice,
+                           stream));
   checkCUDA(
       hipMemcpyAsync(m->beam_token_infos,
                      &(bc->beamTokenInfo),
@@ -566,7 +565,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   checkCUDA(hipMemcpyAsync(
       m->beam_request_infos,
       &(bc->beamRequestsInfo),
-      bc->MAX_NUM_REQUESTS *
+      bc->max_requests_per_batch() *
           sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo),
       hipMemcpyHostToDevice,
       stream));
@@ -694,12 +693,12 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    int max_tokens_per_batch =
-        RequestManager()::get_request_manager()->get_max_tokens_per_batch();
+    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
     size_t beam_tokeninfo_size =
         max_tokens_per_batch * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-    size_t requestinfo_size = BeamSearchBatchConfig::MAX_NUM_REQUESTS;
-    size_t beam_requestinfo_size = BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+    size_t requestinfo_size = BeamSearchBatchConfig::max_requests_per_batch();
+    size_t beam_requestinfo_size =
+        BeamSearchBatchConfig::max_requests_per_batch();
     size_t total_size =
         requestinfo_size * sizeof(BatchConfig::PerRequestInfo) +
         beam_tokeninfo_size *

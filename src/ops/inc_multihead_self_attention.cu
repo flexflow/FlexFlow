@@ -19,7 +19,6 @@
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/kernels/decompress_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
-#include "flexflow/request_manager.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -586,7 +585,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   int vt_req_block_size = vt_block_size * m->num_kv_heads;
   assert(m->qProjSize == m->kProjSize);
 
-  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
     }
@@ -1099,18 +1098,19 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   }
 
 #ifdef INFERENCE_TESTS
-  kcache = (float *)calloc(kProjSize * BatchConfig::MAX_SEQ_LENGTH *
-                               num_q_heads * BatchConfig::MAX_NUM_REQUESTS,
-                           sizeof(float));
-  vcache = (float *)calloc(vProjSize * BatchConfig::MAX_SEQ_LENGTH *
-                               num_q_heads * BatchConfig::MAX_NUM_REQUESTS,
-                           sizeof(float));
+  kcache =
+      (float *)calloc(kProjSize * BatchConfig::MAX_SEQ_LENGTH * num_q_heads *
+                          BatchConfig::max_requests_per_batch(),
+                      sizeof(float));
+  vcache =
+      (float *)calloc(vProjSize * BatchConfig::MAX_SEQ_LENGTH * num_q_heads *
+                          BatchConfig::max_requests_per_batch(),
+                      sizeof(float));
 #endif
 
   // allocate memory for the seqArray and reserve space
   {
-    int max_tokens_per_batch =
-        RequestManager::get_request_manager()->get_max_tokens_per_batch();
+    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
     size_t qkv_max_proj_size =
         max_tokens_per_batch *
         (qProjSize * num_q_heads + kProjSize * num_kv_heads +
@@ -1120,20 +1120,22 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       case INC_DECODING_MODE:
       case TREE_VERIFY_MODE: {
         key_cache_size = num_kv_heads * kProjSize *
-                         BatchConfig::MAX_NUM_REQUESTS *
+                         BatchConfig::max_requests_per_batch() *
                          BatchConfig::MAX_SEQ_LENGTH;
         value_cache_size = num_kv_heads * vProjSize *
-                           BatchConfig::MAX_NUM_REQUESTS *
+                           BatchConfig::max_requests_per_batch() *
                            BatchConfig::MAX_SEQ_LENGTH;
         break;
       }
       case BEAM_SEARCH_MODE: {
-        key_cache_size =
-            num_kv_heads * kProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-            BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-        value_cache_size =
-            num_kv_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-            BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+        key_cache_size = num_kv_heads * kProjSize *
+                         BeamSearchBatchConfig::max_requests_per_batch() *
+                         BatchConfig::MAX_SEQ_LENGTH *
+                         BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+        value_cache_size = num_kv_heads * vProjSize *
+                           BeamSearchBatchConfig::max_requests_per_batch() *
+                           BatchConfig::MAX_SEQ_LENGTH *
+                           BeamSearchBatchConfig::MAX_BEAM_WIDTH;
         break;
       }
       default:

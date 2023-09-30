@@ -201,7 +201,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   int vt_req_block_size = vt_block_size * m->num_kv_heads;
   assert(m->qProjSize == m->kProjSize);
 
-  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
     }
@@ -714,8 +714,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    int max_tokens_per_batch =
-        RequestManager::get_request_manager()->get_max_tokens_per_batch();
+    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
     size_t committed_tokeninfo_size = max_tokens_per_batch;
     size_t total_size = committed_tokeninfo_size *
                         sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);

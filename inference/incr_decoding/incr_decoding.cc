@@ -130,9 +130,9 @@ void FlexFlow::top_level_task(Task const *task,
   bool do_sample = false;
   float temperature = 0.0f;
   float topp = 0.0f;
-  int max_requests_per_batch = 16;
-  int max_tokens_per_batch = 256;
-  int max_sequence_length = 1024;
+  int max_requests_per_batch = 8;
+  int max_tokens_per_batch = 128;
+  int max_sequence_length = 256;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;

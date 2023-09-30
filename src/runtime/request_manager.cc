@@ -77,6 +77,7 @@ void RequestManager::set_max_requests_per_batch(int max_num_requests) {
   assert(max_requests_per_batch == -1 ||
          max_requests_per_batch == max_num_requests);
   max_requests_per_batch = max_num_requests;
+  assert(max_requests_per_batch <= BatchConfig::max_requests_per_batch());
 }
 
 int RequestManager::get_max_requests_per_batch() {
@@ -87,6 +88,7 @@ int RequestManager::get_max_requests_per_batch() {
 void RequestManager::set_max_tokens_per_batch(int max_num_tokens) {
   assert(max_tokens_per_batch == -1 || max_tokens_per_batch == max_num_tokens);
   max_tokens_per_batch = max_num_tokens;
+  assert(max_tokens_per_batch <= BatchConfig::MAX_NUM_TOKENS);
 }
 
 int RequestManager::get_max_tokens_per_batch() {
@@ -97,6 +99,7 @@ int RequestManager::get_max_tokens_per_batch() {
 void RequestManager::set_max_sequence_length(int max_seq_length) {
   assert(max_sequence_length == -1 || max_sequence_length == max_seq_length);
   max_sequence_length = max_seq_length;
+  assert(max_sequence_length <= BatchConfig::MAX_SEQ_LENGTH);
 }
 
 int RequestManager::get_max_sequence_length() {
@@ -356,7 +359,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   }
   // Step 2: prepare the next batch for existing requests
   BatchConfig new_bc;
-  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (old_bc.request_completed[i]) {
       continue;
     }
@@ -461,7 +464,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     }
   }
   // Step 3: add new requests to the next batch
-  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (new_bc.request_completed[i]) {
       if (!pending_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
@@ -549,7 +552,7 @@ BeamSearchBatchConfig
   new_bc.model_id = model_id;
   int result_index = 0;
 
-  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (old_bc.request_completed[i]) {
       continue;
     }
@@ -770,7 +773,7 @@ BeamSearchBatchConfig
   }
 
   // Step 2: Initialize new request
-  for (int i = 0; i < BeamSearchBatchConfig::MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < BeamSearchBatchConfig::max_requests_per_batch(); i++) {
     if (new_bc.request_completed[i]) {
       if (!pending_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
@@ -915,7 +918,7 @@ BeamSearchBatchConfig
   new_bc.model_id = old_bc.model_id;
   // std::cout << "old_bc.model_id: " << old_bc.model_id << "\n";
 
-  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (old_bc.request_completed[i]) {
       continue;
     }
@@ -961,7 +964,8 @@ BeamSearchBatchConfig
 
       // update the beam search metadata
       // how many sub request in current request
-      // why is sub_requests has MAX_NUM_REQUESTS * MAX_BEAM_WIDTH entries?
+      // why is sub_requests has max_requests_per_batch() * MAX_BEAM_WIDTH
+      // entries?
       new_bc.sub_requests[i] = old_bc.beamRequestsInfo[i].beam_size;
 
       // update the parentid, accumalated_probs, depth, and token_ids
@@ -1004,7 +1008,7 @@ BeamSearchBatchConfig
         // Prompt phase
         new_bc.requestsInfo[i].num_tokens_in_batch =
             std::min(get_max_tokens_per_batch() - new_bc.num_tokens -
-                         BatchConfig::MAX_NUM_REQUESTS + i,
+                         BatchConfig::max_requests_per_batch() + i,
                      (int)request.tokens.size() -
                          new_bc.requestsInfo[i].token_start_offset);
         request.ssm_cache_size += new_bc.requestsInfo[i].num_tokens_in_batch;
@@ -1106,7 +1110,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
   new_bc.num_tokens = 0;
 
   int max_prompt_load_size = get_max_tokens_per_batch();
-  for (int i = 0; i < TreeVerifyBatchConfig::MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < TreeVerifyBatchConfig::max_requests_per_batch(); i++) {
     if (old_batches.at(0).request_completed[i]) {
       continue;
     } else if (old_batches.at(0).request_running[i]) {
@@ -1116,7 +1120,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
     }
   }
 
-  for (int i = 0; i < TreeVerifyBatchConfig::MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < TreeVerifyBatchConfig::max_requests_per_batch(); i++) {
     if (old_batches.at(0).request_completed[i]) {
       continue;
     }
