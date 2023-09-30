@@ -15,13 +15,13 @@ TEST_CASE("Test ArgsParser basic functionality") {
                              "6"};
   ArgsParser args;
   auto batch_size_ref =
-      add_argument(args, "--batch-size", 32, "batch size for training");
+      add_argument(args, "--batch-size", optional<int>(32), "batch size for training");
   auto learning_rate_ref = add_argument(
-      args, "--learning-rate", 0.01f, "Learning rate for the optimizer");
+      args, "--learning-rate", optional<float>(0.01f), "Learning rate for the optimizer");
   auto fusion_ref =
       add_argument(args,
                    "--fusion",
-                   "yes",
+                   optional<bool>("yes"),
                    "Flag to determine if fusion optimization should be used");
   auto ll_gpus_ref = add_argument<int>(
       args,
@@ -41,7 +41,7 @@ TEST_CASE("Test invald command") {
   char const *test_argv[] = {"program_name", "batch-size", "100"};
   ArgsParser args;
   auto batch_size_ref =
-      add_argument(args, "batch-size", 32, "batch size for training");
+      add_argument(args, "batch-size", optional<int>(32), "batch size for training");
   parse_args(args, 3, const_cast<char **>(test_argv));
 
   CHECK_THROWS(
