@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os, platform
+import site, os, platform
 from typing import Any, Union
 
 from .flexflow_cffi_header import flexflow_header
@@ -47,14 +47,14 @@ class FlexFlowLib(object):
         libname = "libflexflow" + self.get_library_extension()
         
         # If we installed with pip, use the full path instead of just the library name, because the library will not be in the LD_LIBRARY_PATH
-        packages_dir = sysconfig.get_python_lib(plat_specific=False, standard_lib=False)
-        ff_lib_path = os.path.join(packages_dir, "flexflow", "lib", libname)
-        installed_with_pip = os.path.exists(ff_lib_path)
-
-        if installed_with_pip:
-            return ff_lib_path
-        else:
-            return libname
+        candidate_package_dirs = [pkg for func in (site.getsitepackages(), site.getusersitepackages()) for pkg in ([func] if isinstance(func, str) else func)]
+        candidate_package_dirs += sysconfig.get_python_lib(plat_specific=False, standard_lib=False)
+        for packages_dir in candidate_package_dirs:
+            ff_lib_path = os.path.join(packages_dir, "flexflow", "lib", libname)
+            installed_with_pip = os.path.exists(ff_lib_path)
+            if installed_with_pip:
+                return ff_lib_path
+        return libname
 
     def get_c_header(self) -> str:
         return self._header
