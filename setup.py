@@ -104,7 +104,7 @@ try:
     subprocess.check_output(['cargo', '--version'])
 except FileNotFoundError:
     print("Rust/Cargo not found, installing it...")
-    install_command = "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    install_command = "curl https://sh.rustup.rs -sSf | sh -s -- -y"
     # Rust is not installed, so install it using rustup
     try:
         subprocess.run(install_command, shell=True, check=True)
