@@ -266,27 +266,3 @@ class FlexFlowSTARCODER(FlexFlowModel):
         model.lm_head.weight.detach().cpu().numpy().tofile(
             os.path.join(dst_folder, "lm_head_weight")
         )
-
-    def get_layers_with_weights(self):
-        layer_names = [
-            "transformer_wte_weight",
-            "transformer_wpe_weight",
-            "transformer_ln_f_weight",
-            "lm_head_weight",
-        ] + [
-            expr
-            for i in range(self.starcoder_config.num_hidden_layers)
-            for expr in (
-                f"layers_{i}_ln_1_weight",
-                f"layers_{i}_attention_weight",
-                f"layers_{i}_ln_2_weight",
-                f"layers_{i}_mlp_c_fc_weight",
-                f"layers_{i}_mlp_c_proj_weight",
-            )
-        ]
-        layers_with_weights = {
-            layer_name: self.ffmodel.get_layer_by_name(layer_name)
-            for layer_name in layer_names
-        }
-
-        return layers_with_weights

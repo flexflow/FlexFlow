@@ -297,27 +297,3 @@ class FlexFlowOPT(FlexFlowModel):
             os.path.join(dst_folder, "embed_tokens_weight"),
             os.path.join(dst_folder, "embed_tokens_weight_lm_head"),
         )
-
-    def get_layers_with_weights(self):
-        layer_names = [
-            "embed_tokens_weight",
-            "embed_positions_weight",
-            "final_layer_norm_weight",
-            "embed_tokens_weight_lm_head",
-        ] + [
-            expr
-            for i in range(self.opt_config.num_hidden_layers)
-            for expr in (
-                f"layers_{i}_attention_layer_norm_weight",
-                f"layers_{i}_attention_weight",
-                f"layers_{i}_final_layer_norm_weight",
-                f"layers_{i}_fc1_weight",
-                f"layers_{i}_fc2_weight",
-            )
-        ]
-        layers_with_weights = {
-            layer_name: self.ffmodel.get_layer_by_name(layer_name)
-            for layer_name in layer_names
-        }
-
-        return layers_with_weights

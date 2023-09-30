@@ -34,6 +34,3 @@ class FlexFlowModel:
 
     def convert_hf_model(model, dst_folder):
         assert False, "Not implemented yet"
-
-    def get_layers_with_weights(self):
-        assert False, "Not implemented yet"

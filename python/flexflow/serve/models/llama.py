@@ -262,23 +262,3 @@ class FlexFlowLLAMA(FlexFlowModel):
                 .replace("model_", "")
             )
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
-
-    def get_layers_with_weights(self):
-        layer_names = ["tok_embeddings_weight", "norm_weight", "output_weight"] + [
-            expr
-            for i in range(self.llama_config.num_hidden_layers)
-            for expr in (
-                f"layers_{i}_attention_norm_weight",
-                f"layers_{i}_attention_weight",
-                f"layers_{i}_ffn_norm_weight",
-                f"layers_{i}_feed_forward_w1_weight",
-                f"layers_{i}_feed_forward_w3_weight",
-                f"layers_{i}_feed_forward_w2_weight",
-            )
-        ]
-        layers_with_weights = {
-            layer_name: self.ffmodel.get_layer_by_name(layer_name)
-            for layer_name in layer_names
-        }
-
-        return layers_with_weights
