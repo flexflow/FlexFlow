@@ -18,6 +18,7 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
+#include "flexflow/request_manager.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -567,7 +568,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   }
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
-                  bc->MAX_NUM_TOKENS *
+                  bc->num_active_tokens() *
                       sizeof(TreeVerifyBatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
@@ -711,7 +712,9 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    size_t committed_tokeninfo_size = TreeVerifyBatchConfig::MAX_NUM_TOKENS;
+    int max_tokens_per_batch =
+        RequestManager::get_request_manager()->get_max_tokens_per_batch();
+    size_t committed_tokeninfo_size = max_tokens_per_batch;
     size_t total_size = committed_tokeninfo_size *
                         sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);
     if (offload) {

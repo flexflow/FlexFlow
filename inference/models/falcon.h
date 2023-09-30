@@ -55,8 +55,8 @@ public:
                   << std::endl;
         assert(false);
       }
-      max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
-      max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
+      // max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
+      // max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
       max_beam_width = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
       max_beam_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
     }
@@ -73,8 +73,8 @@ public:
       std::cout << "\tparallel_attn: " << parallel_attn << std::endl;
       std::cout << "\tvocab_size: " << vocab_size << std::endl;
 
-      std::cout << "\tmax_seq_len: " << max_seq_len << std::endl;
-      std::cout << "\tmax_num_tokens: " << max_num_tokens << std::endl;
+      // std::cout << "\tmax_seq_len: " << max_seq_len << std::endl;
+      // std::cout << "\tmax_num_tokens: " << max_num_tokens << std::endl;
       std::cout << "\tmax_beam_width: " << max_beam_width << std::endl;
       std::cout << "\tmax_beam_depth: " << max_beam_depth << std::endl;
     }
@@ -82,7 +82,8 @@ public:
     bool bias, multi_query, parallel_attn;
     int hidden_size, n_head, n_head_kv, n_layer, vocab_size;
     float layer_norm_epsilon;
-    int max_seq_len, max_num_tokens, max_beam_width, max_beam_depth;
+    // int max_seq_len, max_num_tokens;
+    int max_beam_width, max_beam_depth;
   };
 
   static void create_falcon_model(FFModel &ff,

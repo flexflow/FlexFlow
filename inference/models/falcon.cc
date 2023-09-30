@@ -40,8 +40,10 @@ void FALCON::create_falcon_model(FFModel &ff,
 
   Tensor input;
   {
-    assert(falcon_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
-    int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
+    int max_tokens_per_batch =
+        RequestManager::get_request_manager()->get_max_tokens_per_batch();
+    // assert(falcon_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
+    int const token_dims[] = {max_tokens_per_batch, 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 

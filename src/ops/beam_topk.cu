@@ -15,6 +15,7 @@
 
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/beam_topk.h"
+#include "flexflow/request_manager.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -715,16 +716,18 @@ BeamTopKMeta::BeamTopKMeta(FFHandler handler,
                            MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler) {
   DataType data_type = op->inputs[0]->data_type;
-  size_t parent_id_size = BeamSearchBatchConfig::MAX_BEAM_WIDTH *
-                          BeamSearchBatchConfig::MAX_NUM_REQUESTS;
-  size_t acc_probs_size = BeamSearchBatchConfig::MAX_BEAM_WIDTH *
-                          BeamSearchBatchConfig::MAX_NUM_REQUESTS;
-  size_t block_start_index_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                                  BeamSearchBatchConfig::MAX_NUM_REQUESTS;
-  size_t request_id_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                           BeamSearchBatchConfig::MAX_NUM_REQUESTS;
-  size_t tokens_per_request_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                                   BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+  int max_tokens_per_batch =
+      RequestManager::get_request_manager()->get_max_tokens_per_batch();
+  int max_requests_per_batch =
+      RequestManager::get_request_manager()->get_max_requests_per_batch();
+  size_t parent_id_size =
+      BeamSearchBatchConfig::MAX_BEAM_WIDTH * max_requests_per_batch;
+  size_t acc_probs_size =
+      BeamSearchBatchConfig::MAX_BEAM_WIDTH * max_requests_per_batch;
+  size_t block_start_index_size = max_tokens_per_batch * max_requests_per_batch;
+  size_t request_id_size = max_tokens_per_batch * max_requests_per_batch;
+  size_t tokens_per_request_size =
+      max_tokens_per_batch * max_requests_per_batch;
   size_t totalSize = sizeof(int) * parent_id_size +
                      data_type_size(data_type) * acc_probs_size +
                      sizeof(int) * block_start_index_size +

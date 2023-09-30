@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/batch_config.h"
+#include "flexflow/request_manager.h"
 #include "legion.h"
 #include <cassert>
 #include <climits>
@@ -31,10 +32,15 @@ InferenceMode TreeVerifyBatchConfig::get_mode() const {
 }
 
 void TreeVerifyBatchConfig::print() const {
+  int max_requests_per_batch =
+      RequestManager::get_request_manager()->get_max_requests_per_batch();
+  int max_tokens_per_batch =
+      RequestManager::get_request_manager()->get_max_tokens_per_batch();
   std::cout << "@@@@@@@@@@@@@@ TreeVerifyBatchConfig (mode " << get_mode()
             << ") @@@@@@@@@@@@@@" << std::endl;
-  std::cout << "Max number of requests: " << MAX_NUM_REQUESTS << std::endl;
-  std::cout << "Max number of tokens: " << MAX_NUM_TOKENS << std::endl;
+  std::cout << "Max number of requests: " << max_requests_per_batch
+            << std::endl;
+  std::cout << "Max number of tokens: " << max_tokens_per_batch << std::endl;
   std::cout << "Number of tokens: " << num_tokens << std::endl;
   std::cout << "Number of requests: " << num_active_requests() << std::endl;
   // std::cout << "Cached results: " << cached_results << std::endl;

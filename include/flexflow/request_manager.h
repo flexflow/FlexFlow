@@ -30,7 +30,7 @@ using tokenizers::Tokenizer;
 
 class InferenceManager {
 public:
-  InferenceManager(FFConfig const &config, int max_num_tokens_per_batch);
+  InferenceManager(FFConfig const &config);
   static InferenceManager *get_inference_manager();
   void compile_model_and_allocate_buffer(FFModel *model);
   void init_operators_inference(FFModel *model);
@@ -46,7 +46,6 @@ public:
 public:
   FFConfig ff_config;
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
-  int max_num_tokens_per_batch;
   int num_devices;
 };
 

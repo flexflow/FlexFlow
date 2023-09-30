@@ -18,6 +18,7 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
+#include "flexflow/request_manager.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -561,10 +562,12 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
+  int max_tokens_per_batch =
+      RequestManager::get_request_manager()->get_max_tokens_per_batch();
   // here because we need postion info in infernece 1
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
-                  bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
+                  max_tokens_per_batch * sizeof(BatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
   cudaMemcpyAsync(m->request_infos,
@@ -574,7 +577,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                   stream);
   cudaMemcpyAsync(m->beam_token_infos,
                   &(bc->beamTokenInfo),
-                  bc->MAX_NUM_TOKENS * bc->MAX_BEAM_WIDTH *
+                  max_tokens_per_batch * bc->MAX_BEAM_WIDTH *
                       sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
@@ -711,8 +714,10 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    size_t beam_tokeninfo_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                                 BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+    int max_tokens_per_batch =
+        RequestManager::get_request_manager()->get_max_tokens_per_batch();
+    size_t beam_tokeninfo_size =
+        max_tokens_per_batch * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
     size_t requestinfo_size = BeamSearchBatchConfig::MAX_NUM_REQUESTS;
     size_t beam_requestinfo_size = BeamSearchBatchConfig::MAX_NUM_REQUESTS;
     size_t total_size =

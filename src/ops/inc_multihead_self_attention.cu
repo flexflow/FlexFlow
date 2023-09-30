@@ -19,6 +19,7 @@
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/kernels/decompress_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
+#include "flexflow/request_manager.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -1108,8 +1109,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
+    int max_tokens_per_batch =
+        RequestManager::get_request_manager()->get_max_tokens_per_batch();
     size_t qkv_max_proj_size =
-        BatchConfig::MAX_NUM_TOKENS *
+        max_tokens_per_batch *
         (qProjSize * num_q_heads + kProjSize * num_kv_heads +
          vProjSize * num_kv_heads);
     size_t key_cache_size = 0, value_cache_size = 0;
@@ -1136,17 +1139,15 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       default:
         assert(false && "Unkown inference mode");
     }
-    size_t tokeninfo_size = BatchConfig::MAX_NUM_TOKENS;
+    size_t tokeninfo_size = max_tokens_per_batch;
     size_t qk_prod_size =
-        BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_SEQ_LENGTH * num_q_heads;
-    size_t attn_heads_size =
-        BatchConfig::MAX_NUM_TOKENS * num_q_heads * vProjSize;
+        max_tokens_per_batch * BatchConfig::MAX_SEQ_LENGTH * num_q_heads;
+    size_t attn_heads_size = max_tokens_per_batch * num_q_heads * vProjSize;
     size_t W_out_block_size = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
     size_t W_out_contiguous_size = W_out_block_size * num_q_heads;
-    size_t complex_size =
-        (BatchConfig::MAX_NUM_TOKENS *
-         (qProjSize * num_q_heads + kProjSize * num_kv_heads)) /
-        2;
+    size_t complex_size = (max_tokens_per_batch * (qProjSize * num_q_heads +
+                                                   kProjSize * num_kv_heads)) /
+                          2;
     size_t totalSize =
         (qkv_max_proj_size + key_cache_size + value_cache_size +
          2 * qk_prod_size + attn_heads_size + W_out_contiguous_size) *
