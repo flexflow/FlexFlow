@@ -98,6 +98,16 @@ long_description = (Path(__file__).parent / "README.md").read_text()
 with open(Path(__file__).parent / "requirements.txt", "r") as reqs_file:
     requirements = reqs_file.read().strip().split("\n")
 
+# Install Rust if not yet available
+try:
+    # Attempt to run a Rust command to check if Rust is installed
+    subprocess.check_output(['cargo', '--version'])
+except FileNotFoundError:
+    # Rust is not installed, so install it using rustup
+    subprocess.run(['curl', '--proto', '=https', '--tlsv1.2', '-sSf', 'https://sh.rustup.rs', '-sS', '--', '-y'])
+    # Add the cargo binary directory to the PATH
+    os.environ["PATH"] = f"{os.path.join(os.environ.get('HOME', '/root'), '.cargo', 'bin')}:{os.environ.get('PATH', '')}"
+
 setup(
     name="flexflow",
     version=compute_version(),
