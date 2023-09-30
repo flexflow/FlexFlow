@@ -52,11 +52,14 @@ class GenerationConfig:
         self.topp = topp
         self.topk = topk
 
+
 class GenerationResult:
     """A class to store the output of a generation request."""
+
     def __init__(self, text: str = None, tokens: list = None):
         self.output_text = text
         self.output_tokens = tokens
+
 
 class LLM:
     """This class creates a LLM (Large-Language Model) object based on a model from HuggingFace"""
@@ -87,6 +90,7 @@ class LLM:
             "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
             "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT),
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
+            "FalconForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
             "GPTBigCodeForCausalLM": (ModelType.STARCODER, FlexFlowSTARCODER),
             "MPTForCausalLM": (ModelType.MPT, FlexFlowMPT),
         }
@@ -124,21 +128,27 @@ class LLM:
 
     def __get_revision_hashes(self, model_name: str, weights: bool):
         ff_revision = None
-        ff_revision_file = os.path.join(self.weights_path, "rev_sha.txt") if weights else os.path.join(self.tokenizer_path, "rev_sha.txt")
+        ff_revision_file = (
+            os.path.join(self.weights_path, "rev_sha.txt")
+            if weights
+            else os.path.join(self.tokenizer_path, "rev_sha.txt")
+        )
         if os.path.exists(ff_revision_file):
             ff_revision = "".join(open(ff_revision_file).read().split())
-        
+
         if os.path.exists(model_name) and os.path.isdir(model_name):
             # Local model
             files = os.listdir(model_name)
-            state = files + [os.path.getmtime(os.path.join(model_name, f)) for f in files]
-            latest_revision = hashlib.md5(str(state).encode('utf-8')).hexdigest() 
+            state = files + [
+                os.path.getmtime(os.path.join(model_name, f)) for f in files
+            ]
+            latest_revision = hashlib.md5(str(state).encode("utf-8")).hexdigest()
         else:
             # Remote HuggingFace model
             hf_api = HfApi()
             latest_revision = hf_api.model_info(self.model_name).sha
         return ff_revision, ff_revision_file, latest_revision
-    
+
     def download_hf_weights_if_needed(self):
         """Check in the folder specified by the cache_path whether the LLM's model weights are available and up to date.
         If not, or if the refresh_cache parameter is set to True, download new weights.
@@ -168,7 +178,9 @@ class LLM:
         os.makedirs(self.weights_path, exist_ok=True)
         print(f"Creating directory {self.weights_path} (if it doesn't exist)...")
 
-        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(self.model_name, weights=True)
+        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
+            self.model_name, weights=True
+        )
 
         # Download if needed
         if ff_revision != latest_revision:
@@ -179,9 +191,13 @@ class LLM:
                 )
             else:
                 # Remote model
-                print(f"'{self.model_name}' local model weights were updated! Converting new weights now...")
+                print(
+                    f"'{self.model_name}' local model weights were updated! Converting new weights now..."
+                )
             # Download model from HuggingFace, or load it from the local folder
-            hf_model = AutoModelForCausalLM.from_pretrained(self.model_name, trust_remote_code=True)
+            hf_model = AutoModelForCausalLM.from_pretrained(
+                self.model_name, trust_remote_code=True
+            )
             # Print log message to notify user download of model has finished
             if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
                 print("Done downloading HF weights. Converting them now...")
@@ -217,15 +233,21 @@ class LLM:
             os.makedirs(self.tokenizer_path, exist_ok=True)
 
         # Get local revision SHA, check if it matches latest one on huggingface
-        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(self.model_name, weights=False)
+        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
+            self.model_name, weights=False
+        )
 
         if ff_revision != latest_revision:
             if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
                 # Local model
-                print(f"'{self.model_name}' tokenizer not found in cache or outdated. Downloading from huggingface.co ...")
+                print(
+                    f"'{self.model_name}' tokenizer not found in cache or outdated. Downloading from huggingface.co ..."
+                )
             else:
                 # Remote model
-                print(f"'{self.model_name}' local tokenizer was updated! Saving new tokenizer now...")
+                print(
+                    f"'{self.model_name}' local tokenizer was updated! Saving new tokenizer now..."
+                )
             # Download tokenizer from HuggingFace, or load it from the local folder
             if self.model_type == ModelType.LLAMA:
                 hf_tokenizer = LlamaTokenizer.from_pretrained(
@@ -242,7 +264,7 @@ class LLM:
             # Save new revision hash to file
             with open(ff_revision_file, "w+") as f:
                 f.write(latest_revision)
-            
+
         else:
             print(f"Loading '{self.model_name}' tokenizer from the cache...")
 
@@ -357,9 +379,15 @@ class LLM:
 
         # Create request manager
         self.rm = RequestManager()
-        bos_token_id = -1 if self.hf_config.bos_token_id is None else self.hf_config.bos_token_id
-        eos_token_id = -1 if self.hf_config.eos_token_id is None else self.hf_config.eos_token_id
-        self.rm.register_tokenizer(self.model_type, bos_token_id, eos_token_id, self.tokenizer_path)
+        bos_token_id = (
+            -1 if self.hf_config.bos_token_id is None else self.hf_config.bos_token_id
+        )
+        eos_token_id = (
+            -1 if self.hf_config.eos_token_id is None else self.hf_config.eos_token_id
+        )
+        self.rm.register_tokenizer(
+            self.model_type, bos_token_id, eos_token_id, self.tokenizer_path
+        )
         self.rm.register_output_filepath(self.output_file)
 
         self.im.init_operators_inference(self.model.ffmodel)
@@ -382,7 +410,9 @@ class LLM:
         elif type(prompts) == list:
             if len(prompts) == 0:
                 return []
-            return [self.model.ffmodel.generate(prompt, max_length) for prompt in prompts]
+            return [
+                self.model.ffmodel.generate(prompt, max_length) for prompt in prompts
+            ]
         else:
             assert False, "Please pass a non-empty string or list of strings"
 
