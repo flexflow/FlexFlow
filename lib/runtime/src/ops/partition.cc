@@ -42,7 +42,7 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Repartition;
 
-enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
+enum Slots { INPUT, OUTPUT, ATTRS, PROFILING, HANDLE, PER_DEVICE_STATE }; 
 
 /* Params */
 bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
@@ -80,6 +80,7 @@ OpTaskInvocation forward(RepartitionAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(PER_DEVICE_STATE, per_device_state<RepartitionPerDeviceState>());
   binding.bind(INPUT, input_parallel_tensor_shape(0));
   binding.bind(OUTPUT, output_tensor(0));
 
@@ -89,7 +90,6 @@ OpTaskInvocation forward(RepartitionAttrs const &attrs) {
 OpTaskInvocation backward(CastAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
-  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   return {REPARTITION_BWD_TASK_ID, binding};
 }
 
@@ -224,7 +224,7 @@ void register_task<REPARTITION_BWD_TASK_ID>() {
   OpTaskSignature bwd =
       infer_bwd_signature(get_op_signature(REPARTITION_FWD_TASK_ID));
 
-  registar_task(REPARTITION_BWD_TASK_ID, "Repartition Bwd", bwd, backward_task);
+  register_task(REPARTITION_BWD_TASK_ID, "Repartition Bwd", bwd, backward_task);
 }
 
 }; // namespace FlexFlow
