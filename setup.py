@@ -103,8 +103,13 @@ try:
     # Attempt to run a Rust command to check if Rust is installed
     subprocess.check_output(['cargo', '--version'])
 except FileNotFoundError:
+    print("Rust/Cargo not found, installing it...")
     # Rust is not installed, so install it using rustup
-    subprocess.run(['curl', '--proto', '=https', '--tlsv1.2', '-sSf', 'https://sh.rustup.rs', '-sS', '--', '-y'])
+    try:
+        subprocess.run(['curl', '--proto', '=https', '--tlsv1.2', '-sSf', 'https://sh.rustup.rs', '-sS', '--', '-y'], shell=True, check=True)
+        print("Rust and Cargo installed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
     # Add the cargo binary directory to the PATH
     os.environ["PATH"] = f"{os.path.join(os.environ.get('HOME', '/root'), '.cargo', 'bin')}:{os.environ.get('PATH', '')}"
 
