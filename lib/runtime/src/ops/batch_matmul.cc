@@ -255,9 +255,9 @@ OpTaskSignature init_signature() {
 
 template <>
 void register_task<BATCHMATMUL_INIT_TASK_ID>() {
-   register_task(BATCHMATMUL_INIT_TASK_ID, 
-                "BatchMatmul Init", 
-                init_signature(), 
+  register_task(BATCHMATMUL_INIT_TASK_ID,
+                "BatchMatmul Init",
+                init_signature(),
                 init_task);
 }
 
@@ -276,9 +276,9 @@ OpTaskSignature fwd_signature() {
 
 template <>
 void register_task<BATCHMATMUL_FWD_TASK_ID>() {
-   register_task(BATCHMATMUL_FWD_TASK_ID, 
-                "BatchMatmul Fwd", 
-                fwd_signature(), 
+  register_task(BATCHMATMUL_FWD_TASK_ID,
+                "BatchMatmul Fwd",
+                fwd_signature(),
                 forward_task);
 }
 
@@ -291,9 +291,9 @@ OpTaskSignature bwd_signature() {
 
 template <>
 void register_task<BATCHMATMUL_BWD_TASK_ID>() {
-   register_task(BATCHMATMUL_BWD_TASK_ID, 
-                "BatchMatmul Bwd", 
-                bwd_signature(), 
+  register_task(BATCHMATMUL_BWD_TASK_ID,
+                "BatchMatmul Bwd",
+                bwd_signature(),
                 backward_task);
 }
 
