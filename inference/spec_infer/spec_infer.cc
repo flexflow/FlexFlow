@@ -163,7 +163,7 @@ void get_model_meta(FilePaths &file_paths,
     } else if (str == "OPTForCausalLM") {
       model_metadata.llm_model_type = ModelType::OPT;
       break;
-    } else if (str == "RWForCausalLM") {
+    } else if (str == "RWForCausalLM" || str == "FalconForCausalLM") {
       model_metadata.llm_model_type = ModelType::FALCON;
       break;
     } else if (str == "MPTForCausalLM") {
