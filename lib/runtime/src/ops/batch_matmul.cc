@@ -244,18 +244,24 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-void register_task<BATCHMATMUL_INIT_TASK_ID>() {
+OpTaskSignature init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_return_value<BMMPerDeviceState>();
 
-  register_task(BATCHMATMUL_INIT_TASK_ID, "BatchMatmul Init", init, init_task);
+  return init;
 }
 
 template <>
-void register_task<BATCHMATMUL_FWD_TASK_ID>() {
+void register_task<BATCHMATMUL_INIT_TASK_ID>() {
+   register_task(BATCHMATMUL_INIT_TASK_ID, 
+                "BatchMatmul Init", 
+                init_signature(), 
+                init_task);
+}
+
+OpTaskSignature fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(A_INPUT);
@@ -265,15 +271,30 @@ void register_task<BATCHMATMUL_FWD_TASK_ID>() {
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<BMMPerDeviceState>(PER_DEVICE_STATE);
 
-  register_task(BATCHMATMUL_FWD_TASK_ID, "BatchMatmul Fwd", fwd, forward_task);
+  return fwd;
+}
+
+template <>
+void register_task<BATCHMATMUL_FWD_TASK_ID>() {
+   register_task(BATCHMATMUL_FWD_TASK_ID, 
+                "BatchMatmul Fwd", 
+                fwd_signature(), 
+                forward_task);
+}
+
+OpTaskSignature bwd_signature() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(BATCHMATMUL_BWD_TASK_ID));
+
+  return bwd;
 }
 
 template <>
 void register_task<BATCHMATMUL_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(ATTENTION_FWD_TASK_ID));
-
-  register_task(BATCHMATMUL_BWD_TASK_ID, "BatchMatmul Bwd", bwd, backward_task);
+   register_task(BATCHMATMUL_BWD_TASK_ID, 
+                "BatchMatmul Bwd", 
+                bwd_signature(), 
+                backward_task);
 }
 
 }; // namespace FlexFlow

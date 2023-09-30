@@ -4,13 +4,19 @@
 #include "op-attrs/ops/batch_matmul.h"
 #include "sim_environment.h"
 #include "task_spec/op_task_invocation.h"
+#include "task_spec/op_task_signature.h"
 
 namespace FlexFlow {
 
+OpTaskSignature init_signature();
 template <>
 void register_task<BATCHMATMUL_INIT_TASK_ID>();
+
+OpTaskSignature fwd_signature();
 template <>
 void register_task<BATCHMATMUL_FWD_TASK_ID>();
+
+OpTaskSignature bwd_signature();
 template <>
 void register_task<BATCHMATMUL_BWD_TASK_ID>();
 
