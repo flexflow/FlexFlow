@@ -95,10 +95,10 @@ static DeviceSpecific<TransposePerDeviceState>
   return init_task_impl(acc);
 }
 
-plate<> void register_task<TRANSPOSE_INIT_TASK_ID>() {
+template<> void register_task<TRANSPOSE_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT)
 
-      init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_arg_slot<ReduceAttrs>(ATTRS);
 
   register_task(REDUCE_INIT_TASK_ID, "Reduce::init", init, init_task);
