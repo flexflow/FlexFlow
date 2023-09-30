@@ -29,8 +29,8 @@ OpTaskInvocation init(ElementBinaryAttrs const &attrs) {
   binding.bind(LHS_INPUT, input_tensor(0));
   binding.bind(RHS_INPUT, input_tensor(1));
   binding.bind(OUTPUT, output_tensor(0));
-  binding.bind_arg<ElementBinaryAttrs>(ATTRS, attrs);
-  binding.bind_arg<PerDeviceFFHandle>(HANDLE, ff_handle());
+  binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(HANDLE, ff_handle());
 
   return {ELEMENTBINARY_INIT_TASK_ID, binding};
 }
@@ -41,9 +41,9 @@ OpTaskInvocation forward(ElementBinaryAttrs const &attrs) {
   binding.bind(LHS_INPUT, input_tensor(0));
   binding.bind(RHS_INPUT, input_tensor(1));
   binding.bind(OUTPUT, output_tensor(0));
-  binding.bind_arg<ElementBinaryAttrs>(ATTRS, attrs);
-  binding.bind_arg<ProfilingSettings>(PROFILING, profiling_settings());
-  binding.bind_arg<PerDeviceFFHandle>(PER_DEVICE_STATE,
+  binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(PROFILING, profiling_settings());
+  binding.bind_arg(PER_DEVICE_STATE,
                    per_device_op_state<ElementBinaryPerDeviceState>());
 
   return {ELEMENTBINARY_FWD_TASK_ID, binding};
@@ -165,8 +165,8 @@ CostMetrics
   init_binding.bind(LHS_INPUT, input_shape_lhs);
   init_binding.bind(RHS_INPUT, input_shape_rhs);
   init_binding.bind(OUTPUT, output_shape);
-  init_binding.bind_arg<ElementBinaryAttrs>(ATTRS, attrs);
-  init_binding.bind_arg<PerDeviceFFHandle>(HANDLE, ff_handle());
+  init_binding.bind_arg(ATTRS, attrs);
+  init_binding.bind_arg(HANDLE, ff_handle());
 
   auto init_accessor =
       env.get_init_accessor(ELEMENTBINARY_INIT_TASK_ID, init_binding);
@@ -178,8 +178,8 @@ CostMetrics
   fwd_binding.bind(RHS_INPUT, input_shape_rhs);
   fwd_binding.bind(OUTPUT, output_shape);
 
-  fwd_binding.bind_arg<ProfilingSettings>(PROFILING, settings);
-  fwd_binding.bind_arg<PerDeviceFFHandle>(PER_DEVICE_STATE, per_device_state);
+  fwd_binding.bind_arg(PROFILING, settings);
+  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
@@ -195,14 +195,13 @@ CostMetrics
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-OpTaskSignature init_signature<ELEMENTBINARY_INIT_TASK_ID>() {
+OpTaskSignature init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(LHS_INPUT);
   init.add_input_slot(RHS_INPUT);
   init.add_output_slot(OUTPUT);
-  init.add_arg_slot<ElementBinaryAttrs>(ATTRS);
+  init.add_arg_slot<BatchMatmulAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   init.add_return_value<ElementBinaryPerDeviceState>();
@@ -212,14 +211,13 @@ OpTaskSignature init_signature<ELEMENTBINARY_INIT_TASK_ID>() {
 
 template <>
 void register_task<ELEMENTBINARY_INIT_TASK_ID>() {
-   register_task(ELEMENTBINARY_INIT_TASK_ID, 
-                "ElementBinary Init", 
-                init_signature<ELEMENTBINARY_INIT_TASK_ID>(), 
+  register_task(ELEMENTBINARY_INIT_TASK_ID,
+                "ElementBinary Init",
+                init_signature(),
                 init_task);
 }
 
-template <>
-OpTaskSignature fwd_signature<ELEMENTBINARY_FWD_TASK_ID>() {
+OpTaskSignature fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -235,26 +233,24 @@ OpTaskSignature fwd_signature<ELEMENTBINARY_FWD_TASK_ID>() {
 
 template <>
 void register_task<ELEMENTBINARY_FWD_TASK_ID>() {
-   register_task(ELEMENTBINARY_FWD_TASK_ID, 
-                "ElementBinary Fwd", 
-                fwd_signature<ELEMENTBINARY_FWD_TASK_ID>(), 
+  register_task(ELEMENTBINARY_FWD_TASK_ID,
+                "ElementBinary Fwd",
+                fwd_signature(),
                 forward_task);
 }
 
-template <>
-OpTaskSignature bwd_signature<ELEMENTBINARY_BWD_TASK_ID>() {
+OpTaskSignature bwd_signature() {
   OpTaskSignature bwd =
       infer_bwd_signature(get_op_signature(ELEMENTBINARY_FWD_TASK_ID));
 
-  register_task(
-      ELEMENTBINARY_BWD_TASK_ID, "ElementBinary Bwd", bwd, backward_task);
+  return bwd;
 }
 
 template <>
 void register_task<ELEMENTBINARY_BWD_TASK_ID>() {
-   register_task(ELEMENTBINARY_BWD_TASK_ID, 
-                "ElementBinary Bwd", 
-                bwd_signature<ELEMENTBINARY_BWD_TASK_ID>(), 
+  register_task(ELEMENTBINARY_BWD_TASK_ID,
+                "ElementBinary Bwd",
+                bwd_signature(),
                 backward_task);
 }
 
