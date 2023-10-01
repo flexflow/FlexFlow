@@ -48,7 +48,7 @@ class FlexFlowOPT(FlexFlowModel):
         data_type,
         #max_batch_size=1,
         #max_seq_length=256,
-        #max_tokens_per_batch=64,
+        max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
     ):
@@ -82,12 +82,12 @@ class FlexFlowOPT(FlexFlowModel):
                 f"Number of attention heads ({self.opt_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
 
-        self.build_model()
+        self.build_model(max_tokens_per_batch)
 
-    def build_model(self):
+    def build_model(self, max_tokens_per_batch):
         ffmodel = FFModel(self.ffconfig)
 
-        tokens_dims = [self.opt_config.max_num_tokens, 1]
+        tokens_dims = [max_tokens_per_batch, 1]
         input_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
         position_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
 

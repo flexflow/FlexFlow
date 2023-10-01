@@ -363,6 +363,12 @@ class LLM:
                 model_specific_pipeline_parallelism_degree
             )
 
+        # Create request manager and set serving configuration
+        self.rm = RequestManager()
+        self.rm.set_max_requests_per_batch(max_requests_per_batch)
+        self.rm.set_max_tokens_per_batch(max_tokens_per_batch)
+        self.rm.set_max_sequence_length(max_seq_length)
+
         # Instantiate the relevant model
         self.model = self.model_class(
             mode,
@@ -370,12 +376,18 @@ class LLM:
             self.ffconfig,
             self.hf_config,
             self.data_type,
+            max_tokens_per_batch
         )
-        # Create request manager
-        self.rm = RequestManager()
-        self.rm.set_max_requests_per_batch(max_requests_per_batch)
-        self.rm.set_max_tokens_per_batch(max_tokens_per_batch)
-        self.rm.set_max_sequence_length(max_seq_length)
+
+        # Create inference manager
+        self.im = InferenceManager()
+        self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
+
+        # Download the weights and tokenizer from huggingface (if needed) and load them
+        self.__load_hf_weights()
+        self.download_hf_tokenizer_if_needed()
+
+        # Create tokenizer (this must be done after we have downloaded the tokenizer
         bos_token_id = (
             -1 if self.hf_config.bos_token_id is None else self.hf_config.bos_token_id
         )
@@ -386,14 +398,6 @@ class LLM:
             self.model_type, bos_token_id, eos_token_id, self.tokenizer_path
         )
         self.rm.register_output_filepath(self.output_file)
-
-        # Create inference manager
-        self.im = InferenceManager()
-        self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
-
-        # Download the weights and tokenizer from huggingface (if needed) and load them
-        self.__load_hf_weights()
-        self.download_hf_tokenizer_if_needed()
 
         self.im.init_operators_inference(self.model.ffmodel)
 
