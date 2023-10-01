@@ -28,13 +28,13 @@ struct Argument {
       false; // Add a new field to indicate whether the argument is store_true
   bool is_store_passed =
       false; // Add a new field to indicate whether the argument is passed
+  bool is_optional = false;
 };
 
 struct ArgsParser {
-  std::unordered_map<std::string, Argument> requeiredArguments;
-  std::unordered_map<std::string, Argument> optionalArguments;
-  int num_optional_args = 0;
-  int pass_optional_args = 0;
+  std::unordered_map<std::string, Argument> mArguments;
+  int num_required_args = 0;
+  int pass_required_args = 0;
 };
 
 // currently we only support "--xx" or "-x"
@@ -42,6 +42,7 @@ std::string parseKey(std::string const &arg);
 
 ArgsParser parse_args(ArgsParser const &mArgs, int argc, char const **argv)
 
+    // default_value is std::nullopt for optional arguments
     template <typename T>
     CmdlineArgRef<T> add_required_argument(
         ArgsParser &parser,
@@ -50,7 +51,6 @@ ArgsParser parse_args(ArgsParser const &mArgs, int argc, char const **argv)
         std::string const &description,
         bool is_store_true = false);
 
-// default_value is std::nullopt for optional arguments
 template <typename T>
 CmdlineArgRef<T> add_optional_argument(ArgsParser &parser,
                                        std::string const &key,
