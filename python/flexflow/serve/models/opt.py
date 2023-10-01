@@ -30,10 +30,12 @@ class OPTConfig:
         self.hidden_size = hf_config.hidden_size
         self.layer_norm_elementwise_affine = hf_config.layer_norm_elementwise_affine
         self.max_position_embeddings = hf_config.max_position_embeddings
-        self.num_attention_heads = hf_config.num_attention_heads
         self.num_hidden_layers = hf_config.num_hidden_layers
         self.vocab_size = hf_config.vocab_size
         self.word_embed_proj_dim = hf_config.word_embed_proj_dim
+        # Standardized FlexFlow num heads fields below
+        self.num_attention_heads = hf_config.num_attention_heads
+        self.num_key_value_heads = hf_config.num_attention_heads
 
 
 class FlexFlowOPT(FlexFlowModel):
@@ -297,27 +299,3 @@ class FlexFlowOPT(FlexFlowModel):
             os.path.join(dst_folder, "embed_tokens_weight"),
             os.path.join(dst_folder, "embed_tokens_weight_lm_head"),
         )
-
-    def get_layers_with_weights(self):
-        layer_names = [
-            "embed_tokens_weight",
-            "embed_positions_weight",
-            "final_layer_norm_weight",
-            "embed_tokens_weight_lm_head",
-        ] + [
-            expr
-            for i in range(self.opt_config.num_hidden_layers)
-            for expr in (
-                f"layers_{i}_attention_layer_norm_weight",
-                f"layers_{i}_attention_weight",
-                f"layers_{i}_final_layer_norm_weight",
-                f"layers_{i}_fc1_weight",
-                f"layers_{i}_fc2_weight",
-            )
-        ]
-        layers_with_weights = {
-            layer_name: self.ffmodel.get_layer_by_name(layer_name)
-            for layer_name in layer_names
-        }
-
-        return layers_with_weights

@@ -124,7 +124,8 @@ def init_flexflow_runtime(configs_dict: Optional[dict] = None, **kwargs):
             # Pass parameters to the FlexFlow C++ runtime via command line arguments
             for arg in ff_args:
                 if arg not in ff_arg_to_sysarg:
-                    warnings.warn(f"Ignoring parameter {arg}: not recognized.")
+                    # warnings.warn(f"Ignoring parameter {arg}: not recognized.")
+                    continue
                 else:
                     sys_arg = [ff_arg_to_sysarg[arg]]
                     if type(ff_args[arg]) == bool:

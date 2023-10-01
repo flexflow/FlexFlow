@@ -27,8 +27,9 @@ class MPTConfig:
         self.n_heads = hf_config.n_heads
         self.n_layers = hf_config.n_layers
         self.vocab_size = hf_config.vocab_size
-        hf_config.num_attention_heads = hf_config.n_heads
-        hf_config.hidden_size = hf_config.d_model
+        # Standardized FlexFlow num heads fields below
+        self.num_attention_heads = hf_config.n_heads
+        self.num_key_value_heads = hf_config.n_heads
 
 
 class FlexFlowMPT(FlexFlowModel):
@@ -274,26 +275,3 @@ class FlexFlowMPT(FlexFlowModel):
             os.path.join(dst_folder, "transformer_wte_weight"),
             os.path.join(dst_folder, "lm_head_weight"),
         )
-
-    def get_layers_with_weights(self):
-        layer_names = [
-            "transformer_wte_weight",
-            "transformer_norm_f_weight",
-            "lm_head_weight",
-        ] + [
-            expr
-            for i in range(self.mpt_config.n_layers)
-            for expr in (
-                f"layers_{i}_norm_1_weight",
-                f"layers_{i}_attention_weight",
-                f"layers_{i}_norm_2_weight",
-                f"layers_{i}_ffn_up_proj_weight",
-                f"layers_{i}_ffn_down_proj_weight",
-            )
-        ]
-        layers_with_weights = {
-            layer_name: self.ffmodel.get_layer_by_name(layer_name)
-            for layer_name in layer_names
-        }
-
-        return layers_with_weights
