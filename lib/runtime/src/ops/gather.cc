@@ -27,13 +27,7 @@ using Legion::Task;
 
 using namespace FlexFlow::Kernels::Gather;
 
-enum Slots {
-  INPUT,
-  OUTPUT,
-  INDEX,
-  ATTRS,
-  PROFILING
-};
+enum Slots { INPUT, OUTPUT, INDEX, ATTRS, PROFILING };
 
 OpTaskInvocation forward(GatherAttrs const &attrs) {
   OpTaskBinding binding;
@@ -81,7 +75,7 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-    ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto attrs = acc.get_argument<GatherAttrs>(ATTRS);
 
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
@@ -115,7 +109,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   auto env = sim.new_environment();
 
-  std::vector<ParallelTensorShape> output_shape = get_output_shapes(attrs, input_shape.shape, index_shape.shape);
+  std::vector<ParallelTensorShape> output_shape =
+      get_output_shapes(attrs, input_shape.shape, index_shape.shape);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PROFILING, settings);
@@ -174,7 +169,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 //                 bwd_signature(),
 //                 backward_task);
 // }
-
 
 template <>
 void register_task<GATHER_FWD_TASK_ID>() {

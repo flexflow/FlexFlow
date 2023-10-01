@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "kernels/datatype_dispatch.h"
-#include "kernels/gather_kernels.h"
-#include "kernels/device.h"
 #include "device.h"
+#include "kernels/datatype_dispatch.h"
+#include "kernels/device.h"
+#include "kernels/gather_kernels.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -31,8 +31,8 @@ void gather_forward(float const *input_ptr,
   CUDA_KERNEL_LOOP(o, output_size) {
     size_t outer_index = o / (stride * dim.value());
     size_t left_over = o % stride;
-    size_t input_idx =
-        outer_index * (stride * dim.value()) + index_ptr[o] * stride + left_over;
+    size_t input_idx = outer_index * (stride * dim.value()) +
+                       index_ptr[o] * stride + left_over;
     output_ptr[o] = input_ptr[input_idx];
   }
 }
@@ -46,9 +46,9 @@ void gather_backward(float const *output_grad_ptr,
   CUDA_KERNEL_LOOP(o, output_size) {
     size_t outer_index = o / (stride * dim.value());
     size_t left_over = o % stride;
-    size_t input_idx =
-        outer_index * (stride * dim.value()) + index_ptr[o] * stride + left_over;
-  input_grad_ptr[input_idx] = output_grad_ptr[o];
+    size_t input_idx = outer_index * (stride * dim.value()) +
+                       index_ptr[o] * stride + left_over;
+    input_grad_ptr[input_idx] = output_grad_ptr[o];
   }
 }
 
