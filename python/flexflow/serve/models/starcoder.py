@@ -27,11 +27,13 @@ class STARCODERConfig:
         self.hidden_size = hf_config.n_embd
         self.layer_norm_epsilon = hf_config.layer_norm_epsilon
         self.max_position_embeddings = hf_config.n_positions
-        self.num_attention_heads = hf_config.n_head
         self.num_hidden_layers = hf_config.n_layer
         self.vocab_size = hf_config.vocab_size
         self.intermediate_size = hf_config.n_inner
         self.n_head_kv = 1 if hf_config.multi_query else hf_config.n_head
+        # Standardized FlexFlow num heads fields below
+        self.num_attention_heads = hf_config.n_head
+        self.num_key_value_heads = self.n_head_kv
 
 
 class FlexFlowSTARCODER(FlexFlowModel):
@@ -266,27 +268,3 @@ class FlexFlowSTARCODER(FlexFlowModel):
         model.lm_head.weight.detach().cpu().numpy().tofile(
             os.path.join(dst_folder, "lm_head_weight")
         )
-
-    def get_layers_with_weights(self):
-        layer_names = [
-            "transformer_wte_weight",
-            "transformer_wpe_weight",
-            "transformer_ln_f_weight",
-            "lm_head_weight",
-        ] + [
-            expr
-            for i in range(self.starcoder_config.num_hidden_layers)
-            for expr in (
-                f"layers_{i}_ln_1_weight",
-                f"layers_{i}_attention_weight",
-                f"layers_{i}_ln_2_weight",
-                f"layers_{i}_mlp_c_fc_weight",
-                f"layers_{i}_mlp_c_proj_weight",
-            )
-        ]
-        layers_with_weights = {
-            layer_name: self.ffmodel.get_layer_by_name(layer_name)
-            for layer_name in layer_names
-        }
-
-        return layers_with_weights

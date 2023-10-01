@@ -189,7 +189,7 @@ void FlexFlow::top_level_task(Task const *task,
     } else if (str == "OPTForCausalLM") {
       model_type = ModelType::OPT;
       break;
-    } else if (str == "RWForCausalLM") {
+    } else if (str == "RWForCausalLM" || str == "FalconForCausalLM") {
       model_type = ModelType::FALCON;
       break;
     } else if (str == "GPTBigCodeForCausalLM") {
