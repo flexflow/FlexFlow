@@ -104,7 +104,7 @@ public:
   int python_data_loader_type = 2;
 };
 
-FFConfig parse_args(char **argv, int argc);
+FFConfig parse_args(int argc, const char ** argv);
 
 class FFIterationConfig {
 public:

@@ -4,7 +4,7 @@
 
 namespace FlexFlow {
 
-FFConfig parse_args(char **argv, int argc) {
+FFConfig parse_args(int argc, const char ** argv) {
   NOT_IMPLEMENTED(); // TODO: implement this after we have the new parser
   //   ArgsParser args;
   //   auto epochs_ref =
