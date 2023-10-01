@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
 #include "kernels/groupby_kernels.h"
 #include <math.h>
 #include <stdio.h>
+#include "device.h"
+#include "kernels/device.h"
 
 #define MAX_K 4
 #define MAX_BATCH_SIZE 64
@@ -107,11 +108,18 @@ __global__ void
   }
 }
 
+GroupByPerDeviceState init_kernel( int n ) {
+  float **dev_region_ptrs;
+  checkCUDA(cudaMalloc(&dev_region_ptrs, n * sizeof(float *)));
+  GroupByPerDeviceState per_device_state = { dev_region_ptrs };
+  return per_device_state;
+}
+
 void forward_kernel(cudaStream_t stream,
-                    GroupByPerDeviceState const *m,
+                    GroupByPerDeviceState &m,
                     float const *input,
                     int const *exp_assign,
-                    float **outputs,
+                    float *outputs,
                     int n,       // num experts
                     int k,       // chosen experts
                     float alpha, // factor additional memory assigned
@@ -120,7 +128,7 @@ void forward_kernel(cudaStream_t stream,
   // TODO: why cublas/cudnn stream is needed here?
 
   // call forward kernel
-  cudaMemcpyAsync(m->dev_region_ptrs,
+  cudaMemcpyAsync(m.dev_region_ptrs,
                   outputs,
                   n * sizeof(float *),
                   cudaMemcpyHostToDevice,
@@ -130,14 +138,14 @@ void forward_kernel(cudaStream_t stream,
                       min(CUDA_NUM_THREADS, (int)(batch_size * k * data_dim)),
                       0,
                       stream>>>(
-      input, exp_assign, m->dev_region_ptrs, n, k, alpha, batch_size, data_dim);
+      input, exp_assign, m.dev_region_ptrs, n, k, alpha, batch_size, data_dim);
 }
 
 void backward_kernel(cudaStream_t stream,
-                     GroupByPerDeviceState const *m,
+                     GroupByPerDeviceState &m,
                      float *input_grad,
                      int const *exp_assign,
-                     float **output_grads,
+                     float *output_grads,
                      int n,       // num experts
                      int k,       // chosen experts
                      float alpha, // factor additional memory assigned
@@ -145,7 +153,7 @@ void backward_kernel(cudaStream_t stream,
                      int data_dim) {
 
   // call forward kernel
-  cudaMemcpyAsync(m->dev_region_ptrs,
+  cudaMemcpyAsync(m.dev_region_ptrs,
                   output_grads,
                   n * sizeof(float *),
                   cudaMemcpyHostToDevice,
@@ -155,7 +163,7 @@ void backward_kernel(cudaStream_t stream,
                        0,
                        stream>>>(input_grad,
                                  exp_assign,
-                                 m->dev_region_ptrs,
+                                 m.dev_region_ptrs,
                                  n,
                                  k,
                                  alpha,
@@ -163,15 +171,10 @@ void backward_kernel(cudaStream_t stream,
                                  data_dim);
 }
 
+void cleanup_kernel(float **dev_region_ptrs) {
+    checkCUDA(cudaFree(&dev_region_ptrs));
+}
+
 } // namespace GroupBy
 } // namespace Kernels
-
-GroupByPerDeviceState::GroupByPerDeviceState(FFHandler handler, int n)
-    : OpPerDeviceState(handler) {
-  checkCUDA(cudaMalloc(&dev_region_ptrs, n * sizeof(float *)));
-}
-GroupByPerDeviceState::~GroupByPerDeviceState(void) {
-  checkCUDA(cudaFree(&dev_region_ptrs));
-}
-
 }; // namespace FlexFlow
