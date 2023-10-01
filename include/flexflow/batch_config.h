@@ -45,6 +45,7 @@ public:
   int num_active_tokens() const;
   static int max_requests_per_batch();
   static int max_tokens_per_batch();
+  static int max_sequence_length();
   void print() const;
   virtual InferenceMode get_mode() const;
   static BatchConfig const *from_future(BatchConfigFuture const &future);
@@ -53,7 +54,6 @@ public:
   // across workers
   static int const MAX_NUM_REQUESTS = 64;
   static int const MAX_NUM_TOKENS = 1024;
-  static int const MAX_SEQ_LENGTH = 1024;
 
   //  These are set by update
   int num_tokens;

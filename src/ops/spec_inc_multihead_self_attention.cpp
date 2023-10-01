@@ -175,7 +175,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                        num_tokens,
                        m->num_q_heads,
                        m->num_kv_heads,
-                       BatchConfig::MAX_SEQ_LENGTH,
+                       BatchConfig::max_sequence_length(),
                        BeamSearchBatchConfig::MAX_BEAM_WIDTH,
                        /*root*/ curr_depth == 0);
   }
@@ -225,9 +225,9 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   //     (m->qProjSize + m->kProjSize + m->vProjSize) * num_tokens;
   int q_block_size = m->qProjSize * num_tokens;
 
-  int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;
+  int kt_block_size = m->kProjSize * BatchConfig::max_sequence_length();
   int kt_req_block_size = kt_block_size * m->num_kv_heads;
-  int vt_block_size = m->vProjSize * BatchConfig::MAX_SEQ_LENGTH;
+  int vt_block_size = m->vProjSize * BatchConfig::max_sequence_length();
   int vt_req_block_size = vt_block_size * m->num_kv_heads;
   assert(m->qProjSize == m->kProjSize);
 

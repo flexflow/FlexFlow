@@ -77,7 +77,7 @@ void RequestManager::set_max_requests_per_batch(int max_num_requests) {
   assert(max_requests_per_batch == -1 ||
          max_requests_per_batch == max_num_requests);
   max_requests_per_batch = max_num_requests;
-  assert(max_requests_per_batch <= BatchConfig::max_requests_per_batch());
+  assert(max_requests_per_batch <= BatchConfig::MAX_NUM_REQUESTS);
 }
 
 int RequestManager::get_max_requests_per_batch() {
@@ -99,7 +99,6 @@ int RequestManager::get_max_tokens_per_batch() {
 void RequestManager::set_max_sequence_length(int max_seq_length) {
   assert(max_sequence_length == -1 || max_sequence_length == max_seq_length);
   max_sequence_length = max_seq_length;
-  assert(max_sequence_length <= BatchConfig::MAX_SEQ_LENGTH);
 }
 
 int RequestManager::get_max_sequence_length() {
@@ -185,9 +184,9 @@ RequestManager::RequestGuid
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
 
-  if (prompt.size() >= BatchConfig::MAX_SEQ_LENGTH) {
+  if (prompt.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
-              << BatchConfig::MAX_SEQ_LENGTH << " tokens, but got "
+              << get_max_sequence_length() << " tokens, but got "
               << prompt.size() << ".\n";
 
     printf("tokens size: %zu\n", request.tokens.size());
@@ -243,9 +242,9 @@ RequestManager::RequestGuid
     request.tokens.push_back(bos_token_id);
   }
   std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
-  if (tokens.size() >= BatchConfig::MAX_SEQ_LENGTH) {
+  if (tokens.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
-              << BatchConfig::MAX_SEQ_LENGTH << " tokens, but got "
+              << get_max_sequence_length() << " tokens, but got "
               << tokens.size() << ".\n";
 
     printf("tokens size: %zu\n", tokens.size());

@@ -83,6 +83,11 @@ int BatchConfig::max_tokens_per_batch() {
   return RequestManager::get_request_manager()->get_max_tokens_per_batch();
 }
 
+/*static*/
+int BatchConfig::max_sequence_length() {
+  return RequestManager::get_request_manager()->get_max_sequence_length();
+}
+
 void BatchConfig::print() const {
   std::cout << "@@@@@@@@@@@@@@ Batch Config (mode " << get_mode()
             << ") @@@@@@@@@@@@@@" << std::endl;
