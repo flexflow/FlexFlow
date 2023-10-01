@@ -28,12 +28,12 @@ void gather_forward(float const *input_ptr,
                     float *output_ptr,
                     size_t output_size,
                     size_t stride,
-                    legion_dim_t dim) {
+                    ff_dim_t dim) {
   CUDA_KERNEL_LOOP(o, output_size) {
-    size_t outer_index = o / (stride * dim.value);
+    size_t outer_index = o / (stride * dim.value());
     size_t left_over = o % stride;
     size_t input_idx =
-        outer_index * (stride * dim.value) + index_ptr[o] * stride + left_over;
+        outer_index * (stride * dim.value()) + index_ptr[o] * stride + left_over;
     output_ptr[o] = input_ptr[input_idx];
   }
 }
@@ -43,12 +43,12 @@ void gather_backward(float const *output_grad_ptr,
                      float *input_grad_ptr,
                      size_t output_size,
                      size_t stride,
-                     legion_dim_t dim) {
+                     ff_dim_t dim) {
   CUDA_KERNEL_LOOP(o, output_size) {
-    size_t outer_index = o / (stride * dim.value);
+    size_t outer_index = o / (stride * dim.value());
     size_t left_over = o % stride;
     size_t input_idx =
-        outer_index * (stride * dim.value) + index_ptr[o] * stride + left_over;
+        outer_index * (stride * dim.value()) + index_ptr[o] * stride + left_over;
   input_grad_ptr[input_idx] = output_grad_ptr[o];
   }
 }
@@ -58,7 +58,7 @@ void forward_kernel(cudaStream_t stream,
                     GenericTensorAccessorR const &index,
                     GenericTensorAccessorW const &output,
                     size_t stride,
-                    legion_dim_t dim) {
+                    ff_dim_t dim) {
   gather_forward(input.get_float_ptr(),
                  index.get_float_ptr(),
                  output.get_float_ptr(),
@@ -72,7 +72,7 @@ void backward_kernel(cudaStream_t stream,
                      GenericTensorAccessorR const &index,
                      GenericTensorAccessorW const &input_grad,
                      size_t stride,
-                     legion_dim_t dim) {
+                     ff_dim_t dim) {
   gather_backward(output_grad.get_float_ptr(),
                   index.get_float_ptr(),
                   input_grad.get_float_ptr(),

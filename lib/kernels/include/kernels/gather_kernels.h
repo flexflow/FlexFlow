@@ -12,13 +12,13 @@ void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &index,
                     GenericTensorAccessorW const &output,
                     size_t stride,
-                    legion_dim_t dim);
+                    ff_dim_t dim);
 void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorR const &index,
                      GenericTensorAccessorW const &input_grad,
                      size_t stride,
-                     legion_dim_t dim);
+                     ff_dim_t dim);
 } // namespace Gather
 } // namespace Kernels
 } // namespace FlexFlow
