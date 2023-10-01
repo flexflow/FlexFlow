@@ -1070,8 +1070,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    int max_tokens_per_batch =
-        RequestManager()::get_request_manager()->get_max_tokens_per_batch();
+    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
     size_t qkv_max_proj_size =
         max_tokens_per_batch *
         (qProjSize * num_q_heads + kProjSize * num_kv_heads +

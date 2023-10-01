@@ -134,7 +134,7 @@ def main():
     for ssm in ssms:
         ssm.compile(
             generation_config,
-            max_batch_size=1,
+            max_requests_per_batch=1,
             max_seq_length=256,
             max_tokens_per_batch=64,
         )
@@ -142,7 +142,7 @@ def main():
     # Compile the LLM for inference and load the weights into memory
     llm.compile(
         generation_config,
-        max_batch_size=1,
+        max_requests_per_batch=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
         ssms=ssms,
