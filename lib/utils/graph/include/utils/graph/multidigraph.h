@@ -35,7 +35,7 @@ private:
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraphView);
 
-struct MultiDiGraph {
+struct MultiDiGraph : virtual MultiDiGraphView {
 public:
   using Edge = MultiDiEdge;
   using EdgeQuery = MultiDiEdgeQuery;
@@ -43,8 +43,6 @@ public:
   MultiDiGraph() = delete;
   MultiDiGraph(MultiDiGraph const &) = default;
   MultiDiGraph &operator=(MultiDiGraph const &) = default;
-
-  operator MultiDiGraphView() const;
 
   friend void swap(MultiDiGraph &, MultiDiGraph &);
 
@@ -69,10 +67,9 @@ public:
 
 private:
   MultiDiGraph(cow_ptr_t<IMultiDiGraph>);
-  cow_ptr_t<IMultiDiGraph> ptr;
+  cow_ptr_t<IMultiDiGraph> get_ptr() const;
 
   friend struct GraphInternal;
-
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraph);
 

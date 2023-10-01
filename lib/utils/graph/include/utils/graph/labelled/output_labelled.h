@@ -40,17 +40,17 @@ private:
 };
 
 template <typename NodeLabel, typename OutputLabel>
-struct OutputLabelledMultiDiGraph {
+struct OutputLabelledMultiDiGraph : virtual OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel> {
 private:
   using Interface = IOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>;
+  using INodeLabel = ILabel<Node, NodeLabel>;
+  using IOutputLabel = ILabel<MultiDiOutput, OutputLabel>;
 
 public:
   OutputLabelledMultiDiGraph() = delete;
   OutputLabelledMultiDiGraph(OutputLabelledMultiDiGraph const &other) = default;
   OutputLabelledMultiDiGraph &
       operator=(OutputLabelledMultiDiGraph const &other) = default;
-
-  operator OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel>() const;
 
   friend void swap(OutputLabelledMultiDiGraph &lhs,
                    OutputLabelledMultiDiGraph &rhs) {
@@ -99,21 +99,29 @@ public:
     return this->ptr->query_edges(q);
   }
 
-  template <typename BaseImpl, typename... Args>
-  static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
-                                 OutputLabelledMultiDiGraph>::type
-      create(Args &&...args) {
+  template <typename BaseImpl, typename N, typename O>
+  static typename std::enable_if<std::conjunction<
+                                  std::is_base_of<Interface, BaseImpl>,
+                                  std::is_base_of<INodeLabel, N>,
+                                  std::is_base_of<IOutputLabel, O>
+                                >::value, OutputLabelledMultiDiGraph>::type
+      create() {
     return OutputLabelledMultiDiGraph(
-        std::make_shared<BaseImpl>(std::forward<Args>(args)...));
+        make_cow_ptr<BaseImpl>(),
+        make_cow_ptr<N>(),
+        make_cow_ptr<O>());
   }
 
 private:
   OutputLabelledMultiDiGraph(
-      std::unique_ptr<IOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>> ptr)
-      : ptr(std::move(ptr)) {}
+      cow_ptr_t<Interface> ptr,
+      cow_ptr_t<INodeLabel> nl,
+      cow_ptr_t<IOutputLabel> ol)
+      : ptr(ptr), nl(nl), ol(ol) {}
 
 private:
-  cow_ptr_t<Interface> ptr;
+  cow_ptr_t<INodeLabel> nl;
+  cow_ptr_t<IOutputLabel> ol;
 };
 
 template <typename NodeLabel,

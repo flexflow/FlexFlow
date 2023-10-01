@@ -61,13 +61,12 @@ struct GraphView {
   }
 
 private:
-  GraphView(std::shared_ptr<void const> ptr);
-  GraphView(std::shared_ptr<IGraphView const> ptr);
+  GraphView(cos_ptr_t<IGraphView const> ptr);
 
   friend struct GraphInternal;
 
 private:
-  std::shared_ptr<void const> ptr;
+  cow_ptr_t<IGraphView const> ptr;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraphView);
 
@@ -83,7 +82,7 @@ struct IGraph : virtual IGraphView {
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraph);
 
-struct Graph {
+struct Graph : virtual GraphView {
 public:
   Graph() = delete;
   Graph(Graph const &) = default;
@@ -106,11 +105,9 @@ public:
 
 private:
   Graph(cow_ptr_t<IGraph>);
+  cow_ptr_t<IGraph> get_ptr() const;
 
   friend struct GraphInternal;
-
-private:
-  cow_ptr_t<IGraph> ptr;
 };
 
 } // namespace FlexFlow

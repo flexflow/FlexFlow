@@ -9,7 +9,7 @@ namespace FlexFlow {
 template <typename NodeLabel, typename EdgeLabel>
 struct ILabelledMultiDiGraphView
     : public INodeLabelledMultiDiGraphView<NodeLabel> {
-  ILabelledMultiDiGraphView() = delete;
+  ILabelledMultiDiGraphView() = default;
   ILabelledMultiDiGraphView(ILabelledMultiDiGraphView const &) = delete;
   ILabelledMultiDiGraphView &
       operator=(ILabelledMultiDiGraphView const &) = delete;
@@ -24,7 +24,7 @@ CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledMultiDiGraphView<int, int>);
 template <typename NodeLabel, typename EdgeLabel>
 struct ILabelledMultiDiGraph
     : public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
-  ILabelledMultiDiGraph() = delete;
+  ILabelledMultiDiGraph() = default;
   ILabelledMultiDiGraph(ILabelledMultiDiGraph const &) = delete;
   ILabelledMultiDiGraph &operator=(ILabelledMultiDiGraph const &) = delete;
 

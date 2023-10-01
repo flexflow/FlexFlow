@@ -11,6 +11,14 @@ struct ILabel {
   ILabel *clone() const;
 };
 
+template <typename Label>
+struct IOutputOpenLabel {
+  Label const &get_label(MultiDiOutput const &) const;
+  Label &get_label(MultiDiOutput const &);
+  void add_label(OpenMultiDiEdge const &, Label const &);
+  IOutputOpenLabel *clone() const;
+};
+
 };
 
 #endif

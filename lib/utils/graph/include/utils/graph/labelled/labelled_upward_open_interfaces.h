@@ -11,8 +11,8 @@ template <typename NodeLabel,
           typename EdgeLabel,
           typename InputLabel = EdgeLabel>
 struct ILabelledUpwardOpenMultiDiGraphView
-    : public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>,
-      public IUpwardOpenMultiDiGraphView {
+    : virtual public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>,
+      virtual public IUpwardOpenMultiDiGraphView {
   virtual ~ILabelledUpwardOpenMultiDiGraphView() = default;
 
   std::unordered_set<MultiDiEdge>
@@ -22,7 +22,6 @@ struct ILabelledUpwardOpenMultiDiGraphView
   virtual std::unordered_set<UpwardOpenMultiDiEdge>
       query_edges(UpwardOpenMultiDiEdgeQuery const &q) const = 0;
 
-  using ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>::at;
   virtual InputLabel const &at(InputMultiDiEdge const &) const = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(
@@ -32,14 +31,12 @@ template <typename NodeLabel,
           typename EdgeLabel,
           typename InputLabel = EdgeLabel>
 struct ILabelledUpwardOpenMultiDiGraph
-    : public ILabelledUpwardOpenMultiDiGraphView<NodeLabel,
+    : virtual public ILabelledUpwardOpenMultiDiGraphView<NodeLabel,
                                                  EdgeLabel,
-                                                 InputLabel>,
-      public ILabelledMultiDiGraph<NodeLabel, EdgeLabel> {
+                                                 InputLabel> {
 
-  using ILabelledUpwardOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel>::
-      at;
-  using ILabelledMultiDiGraph<NodeLabel, EdgeLabel>::at;
+  virtual NodeLabel &at(NodeLabel const &) = 0;
+  virtual EdgeLabel &at(EdgeLabel const &) = 0;
   virtual InputLabel &at(InputLabel const &) = 0;
 
   using ILabelledMultiDiGraph<NodeLabel, EdgeLabel>::add_edge;

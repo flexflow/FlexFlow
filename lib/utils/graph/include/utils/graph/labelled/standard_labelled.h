@@ -53,9 +53,11 @@ protected:
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(LabelledMultiDiGraphView<int, int>);
 
 template <typename NodeLabel, typename EdgeLabel>
-struct LabelledMultiDiGraph {
+struct LabelledMultiDiGraph : virtual LabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
 private:
   using Interface = ILabelledMultiDiGraph<NodeLabel, EdgeLabel>;
+  using INodeLabel = ILabel<Node, NodeLabel>;
+  using IEdgeLabel = ILabel<MultiDiEdge, EdgeLabel>;
 
 public:
   LabelledMultiDiGraph() = delete;
@@ -67,8 +69,6 @@ public:
 
     swap(lhs.ptr, rhs.ptr);
   }
-
-  operator LabelledMultiDiGraphView() const;
 
   Node add_node(NodeLabel const &l) {
     return this->ptr->add_node(l);
@@ -99,18 +99,25 @@ public:
     return this->ptr->query_edges(q);
   }
 
-  template <typename BaseImpl>
-  static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
+  template <typename BaseImpl, typename N, typename E>
+  static typename std::enable_if<std::conjunction<is_base_of<Interface, BaseImpl>,
+                                                  is_base_of<INodeLabel, N>,
+                                                  is_base_of<IEdgeLabel, E>>::value,
                                  LabelledMultiDiGraph>::type
       create() {
-    return LabelledMultiDiGraph(make_unique<BaseImpl>());
+    return LabelledMultiDiGraph(make_cow_ptr<BaseImpl>(),
+                                make_cow_ptr<N>(),
+                                make_cow_ptr<E>());
   }
 
-private:
-  LabelledMultiDiGraph(cow_ptr_t<Interface> ptr) : ptr(ptr) {}
+protected:
+  LabelledMultiDiGraph(cow_ptr_t<Interface> ptr,
+                       cow_ptr_t<INodeLabel> nl,
+                       cow_ptr_t<IEdgeLabel> el) : LabelledMultiDiGraphView(ptr), nl(nl), el(el) {}
 
 private:
-  cow_ptr_t<Interface> ptr;
+  cow_ptr_t<INodeLabel> nl;
+  cow_ptr_t<IEdgeLabel> el;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(LabelledMultiDiGraph<int, int>);
 

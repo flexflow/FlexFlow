@@ -33,7 +33,6 @@ public:
 
   virtual Node add_node(NodeLabel const &) = 0;
   virtual NodeLabel &at(Node const &n) = 0;
-  virtual NodeLabel const &at(Node const &n) const = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(INodeLabelledMultiDiGraph<int>);
 

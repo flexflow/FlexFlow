@@ -32,13 +32,13 @@ public:
   }
 
 private:
-  OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const> ptr);
-  std::shared_ptr<IOpenMultiDiGraphView const> get_ptr() const;
+  OpenMultiDiGraphView(cow_ptr_t<IOpenMultiDiGraphView const> ptr);
+  cow_ptr_t<IOpenMultiDiGraphView const> get_ptr() const;
 
   friend struct GraphInternal;
 };
 
-struct OpenMultiDiGraph {
+struct OpenMultiDiGraph : virtual OpenMultiDiGraphView {
 public:
   using Edge = OpenMultiDiEdge;
   using EdgeQuery = OpenMultiDiEdgeQuery;
@@ -68,7 +68,7 @@ public:
 
 private:
   OpenMultiDiGraph(cow_ptr_t<IOpenMultiDiGraph> ptr);
-  cow_ptr_t<IOpenMultiDiGraph> ptr;
+  cow_ptr_t<IOpenMultiDiGraph> get_ptr() const;
 
   friend struct GraphInternal;
 };

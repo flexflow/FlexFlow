@@ -46,20 +46,16 @@ protected:
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(NodeLabelledMultiDiGraphView<int>);
 
 template <typename NodeLabel>
-struct NodeLabelledMultiDiGraph : virtual public MultiDiGraph {
+struct NodeLabelledMultiDiGraph : virtual NodeLabelledMultiDiGraphView<NodeLabel> {
 private:
   using GraphIf = IMultiDiGraph<NodeLabel>;
   using NodeLabelIf = ILabel<Node, NodeLabel>;
 
 public:
   NodeLabelledMultiDiGraph() = delete;
-  NodeLabelledMultiDiGraph(NodeLabelledMultiDiGraph const &other)
-    : MultiDiGraph(other), nl(nl->clone()) {}
+  NodeLabelledMultiDiGraph(NodeLabelledMultiDiGraph const &) = default;
   NodeLabelledMultiDiGraph &
-      operator=(NodeLabelledMultiDiGraph const &other) {
-        swap(*this, other);
-        return *this;
-      }
+      operator=(NodeLabelledMultiDiGraph const &) = default;
 
   friend void swap(NodeLabelledMultiDiGraph &lhs,
                    NodeLabelledMultiDiGraph &rhs) {
@@ -76,8 +72,9 @@ public:
   NodeLabel &at(Node const &n) {
     return nl->get_label(n);
   }
-  NodeLabel const &at(Node const &n) const {
-    return nl->get_label(n);
+
+  void add_edge(MultiDiEdge const &e) {
+    return get_ptr()->add_edge(e);
   }
 
   template <typename GraphImpl, typename NLImpl>
@@ -90,7 +87,7 @@ public:
 
 protected:
   NodeLabelledMultiDiGraph(cow_ptr_t<GraphIf> ptr, cow_ptr_t<NodeLabelIf> nl)
-      : MultiDiGraph(ptr), nl(nl) {}
+      : NodeLabelledMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
 
   cow_ptr_t<NodeLabelIf> nl;
 };

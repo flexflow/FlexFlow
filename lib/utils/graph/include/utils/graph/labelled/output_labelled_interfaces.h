@@ -9,7 +9,7 @@ template <typename NodeLabel, typename OutputLabel>
 struct IOutputLabelledMultiDiGraphView
     : public INodeLabelledMultiDiGraphView<NodeLabel> {
 
-  virtual OutputLabel &at(MultiDiOutput const &) = 0;
+  virtual OutputLabel const &at(MultiDiOutput const &) = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOutputLabelledMultiDiGraphView<int, int>);
 
@@ -23,11 +23,14 @@ public:
                           OutputLabel const &label) = 0;
   virtual void add_edge(MultiDiOutput const &output,
                         MultiDiInput const &input) = 0;
+  virtual void add_edge(MultiDiEdge const &e) final {
+    add_edge(MultiDiOutput{e.src, e.src_idx}, MultiDiInput{e.dst, e.dst_idx});
+  }
+  virtual Node add_node(NodeLabel const &n) = 0;
   virtual NodePort add_node_ports() = 0;
 
   virtual NodeLabel &at(Node const &) = 0;
-  virtual NodeLabel const &at(Node const &) const = 0;
-  virtual OutputLabel const &at(MultiDiOutput const &) const = 0;
+  virtual OutputLabel &at(MultiDiOutput const &) const = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOutputLabelledMultiDiGraph<int, int>);
 
