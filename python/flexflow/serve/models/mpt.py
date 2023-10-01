@@ -27,8 +27,9 @@ class MPTConfig:
         self.n_heads = hf_config.n_heads
         self.n_layers = hf_config.n_layers
         self.vocab_size = hf_config.vocab_size
-        hf_config.num_attention_heads = hf_config.n_heads
-        hf_config.hidden_size = hf_config.d_model
+        # Standardized FlexFlow num heads fields below
+        self.num_attention_heads = hf_config.n_heads
+        self.num_key_value_heads = hf_config.n_heads
 
 
 class FlexFlowMPT(FlexFlowModel):

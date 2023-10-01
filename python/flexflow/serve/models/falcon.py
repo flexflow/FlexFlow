@@ -40,6 +40,9 @@ class FalconConfig:
         )
         self.parallel_attn = hf_config.parallel_attn
         self.vocab_size = hf_config.vocab_size
+        # Standardized FlexFlow num heads fields below
+        self.num_attention_heads = self.n_head
+        self.num_key_value_heads = self.n_head_kv
 
 
 class FlexFlowFalcon(FlexFlowModel):

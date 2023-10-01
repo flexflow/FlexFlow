@@ -30,10 +30,12 @@ class OPTConfig:
         self.hidden_size = hf_config.hidden_size
         self.layer_norm_elementwise_affine = hf_config.layer_norm_elementwise_affine
         self.max_position_embeddings = hf_config.max_position_embeddings
-        self.num_attention_heads = hf_config.num_attention_heads
         self.num_hidden_layers = hf_config.num_hidden_layers
         self.vocab_size = hf_config.vocab_size
         self.word_embed_proj_dim = hf_config.word_embed_proj_dim
+        # Standardized FlexFlow num heads fields below
+        self.num_attention_heads = hf_config.num_attention_heads
+        self.num_key_value_heads = hf_config.num_attention_heads
 
 
 class FlexFlowOPT(FlexFlowModel):

@@ -27,11 +27,13 @@ class STARCODERConfig:
         self.hidden_size = hf_config.n_embd
         self.layer_norm_epsilon = hf_config.layer_norm_epsilon
         self.max_position_embeddings = hf_config.n_positions
-        self.num_attention_heads = hf_config.n_head
         self.num_hidden_layers = hf_config.n_layer
         self.vocab_size = hf_config.vocab_size
         self.intermediate_size = hf_config.n_inner
         self.n_head_kv = 1 if hf_config.multi_query else hf_config.n_head
+        # Standardized FlexFlow num heads fields below
+        self.num_attention_heads = hf_config.n_head
+        self.num_key_value_heads = self.n_head_kv
 
 
 class FlexFlowSTARCODER(FlexFlowModel):
