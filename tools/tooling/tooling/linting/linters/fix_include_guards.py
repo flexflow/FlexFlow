@@ -26,8 +26,8 @@ def fix_incorrect_include_guards(project: Project) -> None:
         _l.info(f'Fixing include guard for component with path {component.path}')
         rewrite_to_use_conventional_include_guard(component)
 
-def run(settings: Settings, project: Project) -> Response:
-    is_fix = settings.method == Method.FIX
+def run(settings: Settings, project: Project, method: Method) -> Response:
+    is_fix = method == Method.FIX
     error = check_unstaged_changes(project, is_fix, settings.force)
     if error is not None:
         return error
@@ -38,6 +38,7 @@ def run(settings: Settings, project: Project) -> Response:
     if is_fix:
         fix_incorrect_include_guards(project)
         return FixResponse(
+            did_succeed=True,
             num_fixes=len(incorrect),
             json_data=incorrect_jsonable,
         )

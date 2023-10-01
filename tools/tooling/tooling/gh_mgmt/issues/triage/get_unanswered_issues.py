@@ -1,9 +1,9 @@
-from .config import get_auth_token
+from tooling.gh_mgmt.issues.triage.config import get_auth_token
 from github import Github
 from github import Auth
-from .cache import Cache
+from tooling.gh_mgmt.cache.cache import Cache
 from datetime import timedelta
-from .data_model.issue_info import IssueInfo 
+from tooling.gh_mgmt.issues.triage.data_model.issue_info import IssueInfo 
 from typing import Mapping
 
 def get_unanswered_issues() -> Mapping[int, IssueInfo]:

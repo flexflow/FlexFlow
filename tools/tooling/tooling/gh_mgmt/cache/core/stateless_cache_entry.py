@@ -1,6 +1,6 @@
 from typing import Optional, TypeVar
-from .cache_entry import CacheEntry
-from .previous_value_tag import PreviousValueTag
+from tooling.gh_mgmt.cache.core.cache_entry import CacheEntry
+from tooling.gh_mgmt.cache.core.previous_value_tag import PreviousValueTag
 from abc import abstractmethod
 from github import Github
 

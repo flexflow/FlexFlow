@@ -1,10 +1,9 @@
 from tooling.layout.project import Project
-from tooling.layout.library import Library
 from tooling.layout.cpp.file_group.file_group import FileGroup
 from tooling.layout.file_type import FileAttribute, FileAttributes 
 from tooling.layout.cpp.file_group.component_type import ComponentType 
 from tooling.layout.path import AbsolutePath
-from tooling.linting.framework.response import Response
+from tooling.linting.framework.response import CheckResponse 
 from tooling.linting.framework.specification import Specification 
 from tooling.linting.framework.method import Method
 from tooling.linting.framework.settings import Settings
@@ -12,7 +11,6 @@ from tooling.linting.framework.settings import Settings
 from enum import Enum, auto
 from dataclasses import dataclass
 from typing import Iterator, Dict, List, DefaultDict, FrozenSet
-from pathlib import Path
 import logging
 
 _l = logging.getLogger(__name__)
@@ -64,11 +62,16 @@ def find_invalid_files(project: Project) -> Iterator[InvalidFileFound]:
             FileAttribute.CPP_TEST
         ])
     ):
+        _l.debug(f'Checking if file {file} is invalid...')
         lib = project.cpp_code.get_containing_library(file)
         if lib is None:
+            _l.debug('File was found to be invalid: no containing library')
             yield InvalidFileFound.create(file)
         elif not lib.is_valid_path(file):
+            _l.debug('File was found to be invalid: invalid location in library')
             yield InvalidFileFound.create(file)
+        else:
+            _l.debug('File was found to be valid.')
 
 @dataclass(frozen=True)
 class MissingFile:
@@ -105,12 +108,8 @@ def find_missing_files(project: Project) -> Iterator[MissingFile]:
                         because_of_paths=file_group.existing_components
                     )
 
-@dataclass
-class Args:
-    path: Path
-    log_level: int
-
-def run(settings: Settings, project: Project) -> Response:
+def run(settings: Settings, project: Project, method: Method) -> CheckResponse:
+    assert method == Method.CHECK
     invalid_files: Dict[RequiredComponent, List[str]] = { t: [] for t in RequiredComponent.all() }
     missing_files: Dict[RequiredComponent, List[Dict[str, List[str]]]] = DefaultDict(list)
 
@@ -129,7 +128,7 @@ def run(settings: Settings, project: Project) -> Response:
     num_invalid_files = sum(len(v) for v in invalid_files.values())
     num_missing_files = sum(len(v) for v in missing_files.values())
 
-    return Response(
+    return CheckResponse(
         num_errors=num_invalid_files + num_missing_files,
         json_data={
             'invalid_header_file_paths': invalid_files[RequiredComponent.HEADER],

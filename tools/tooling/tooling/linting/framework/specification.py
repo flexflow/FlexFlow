@@ -8,14 +8,14 @@ from tooling.linting.framework.settings import Settings
 @dataclass(frozen=True)
 class Specification:
     name: str
-    func: Callable[[Settings, Project], Response]
+    func: Callable[[Settings, Project, Method], Response]
     supported_methods: FrozenSet[Method]
     requires: FrozenSet[str]
 
     @classmethod
     def create(cls, 
                name: str, 
-               func: Callable[[Settings, Project], Response], 
+               func: Callable[[Settings, Project, Method], Response], 
                supported_methods: Iterable[Method], 
                requires: Iterable[str] = frozenset()
         ) -> 'Specification':

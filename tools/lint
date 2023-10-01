@@ -3,12 +3,12 @@
 import sys
 from pathlib import Path
 
-DIR = Path(__file__).parent.absolute()
+DIR = Path(__file__).parent.absolute() / 'tooling'
 
 sys.path.append(str(DIR))
 
-from tooling.linting.main import lint_main
+from tooling.linting.__main__ import main
 
-lint_main()
+main()
 
 # python3 -m tooling.linting -- "$@"

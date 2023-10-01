@@ -1,6 +1,6 @@
-from pathlib import Path, PosixPath, PurePath, PurePosixPath
+from pathlib import Path, PosixPath 
 from os import PathLike
-from typing import Union, Generator, cast, Any
+from typing import Union, Generator, cast, Any, Optional
 import functools
 
 @functools.lru_cache()
@@ -15,10 +15,12 @@ def cached_is_dir(p: 'AbsolutePath') -> bool:
 def cached_exists(p: 'AbsolutePath') -> bool:
     return super(AbsolutePath, p).exists()
 
-class AbsolutePath(Path):
+class AbsolutePath(PosixPath):
     @classmethod
-    def create(cls, base_path: Path, path: Path) -> 'AbsolutePath':
-        return cls(path.absolute())
+    def create(cls, path: Path, base_path: Optional[Path] = None) -> 'AbsolutePath':
+        if base_path is None:
+            base_path = Path.cwd()
+        return cls(base_path / path)
 
     def relative_to(self, other: Union[str, PathLike[str]]) -> Path: # type: ignore
         return super().relative_to(other)

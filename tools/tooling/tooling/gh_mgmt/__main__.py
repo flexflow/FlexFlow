@@ -1,9 +1,9 @@
-from .issues.cli import get_issues_parser
+from tooling.gh_mgmt.issues.cli import get_issues_parser 
 import argparse
 import sys
 import json
-from .verbosity import add_verbosity_args, calculate_log_level
-from .parsing import instantiate, parser_root
+from tooling.cli.verbosity import add_verbosity_args, calculate_log_level 
+from tooling.cli.parsing import instantiate, parser_root
 
 def main() -> int:
     PROGRAM_NAME = "repo"
@@ -22,7 +22,9 @@ def main() -> int:
     result = args.func(args)
     if not args.silent and result is not None:
         print(json.dumps(result, indent=2))
-    return 0
+        return 0
+    else:
+        return 1
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-from ..parsing import instantiate, setup_logging
+from tooling.cli.parsing import instantiate, setup_logging 
 import argparse
 from typing import Any
 import logging

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import FrozenSet, Optional, Any
 from datetime import datetime
-from .issue_state import IssueState
-from .json import Json
+from tooling.gh_mgmt.issues.triage.data_model.issue_state import IssueState
+from tooling.json import Json
 
 
 @dataclass(frozen=True)

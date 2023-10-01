@@ -2,12 +2,16 @@ from dataclasses import dataclass
 from typing import Optional, FrozenSet
 from tooling.layout.cpp.file_group.component_type import ComponentType 
 from tooling.layout.path import AbsolutePath, with_all_suffixes_removed, full_suffix 
-from tooling.layout.cpp.library import Library
-from tooling.layout.project import Project
 from tooling.layout.file_type import FileAttribute, FileAttributes 
 from tooling.layout.cpp.file_group.file_group_component import FileGroupComponent 
-from tooling.layout.cpp.cpp_code import CppCode
 from pathlib import Path
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from tooling.layout.cpp.cpp_code import CppCode
+    from tooling.layout.cpp.library import Library
+    from tooling.layout.project import Project
+
 
 @dataclass(frozen=True)
 class FileGroup:

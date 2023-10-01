@@ -10,8 +10,8 @@ from typing import Optional, Dict
 _l = logging.getLogger(__name__)
 
 class Tool(Enum):
-    clang_format = 'clang-format'
-    clang_tidy = 'clang-tidy'
+    clang_format = 'format'
+    clang_tidy = 'tidy'
 
     def __str__(self) -> str:
         return self.value
@@ -63,7 +63,7 @@ class ClangToolsConfig:
 
     def clang_tool_binary_path(self, tool: Tool) -> Path:
         tool_config = self.get_tool_config(tool)
-        return self.tools_dir / f'{tool}-{tool_config.llvm_version}-{tool_config.release}'
+        return self.tools_dir / f'clang-{tool}-{tool_config.llvm_version}-{tool_config.release}'
 
     def get_tool_config(self, tool: Tool) -> ToolConfig:
         return self.tool_configs[tool]

@@ -1,12 +1,13 @@
 from typing import Generic, Optional, TypeVar, Callable
 from typing_extensions import TypeAlias 
 from abc import ABC, abstractmethod
-from .previous_value_tag import PreviousValueTag
-from ...config import get_now, get_beginning_of_time, get_cache
+from tooling.gh_mgmt.cache.core.previous_value_tag import PreviousValueTag
+from tooling.gh_mgmt.issues.triage.config import get_beginning_of_time, get_cache, get_now
+from sqlitedict import SqliteDict
+from tooling.json import Json
 import logging
 from github import Github
 from datetime import timedelta
-from ...data_model.json import Json
 
 _l = logging.getLogger(__name__)
 
@@ -15,10 +16,11 @@ Lazy: TypeAlias = Callable[[], T]
 
 
 class CacheEntry(ABC, Generic[T]):
-    def _get_previous_value(self, cache=None) -> PreviousValueTag[Optional[T]]:
+    def _get_previous_value(self, cache: Optional[SqliteDict[str, Json]] = None) -> PreviousValueTag[Optional[T]]:
         if cache is None:
             cache = get_cache()
         cache_key = self._cache_entry_name()
+        tag: PreviousValueTag[Optional[T]]
         if cache_key in cache:
             tag = PreviousValueTag.from_jsonable(self._from_jsonable, cache[cache_key])
             _l.debug(f'Cache key {cache_key} found in cache. Returning previous value tag: {tag}')
@@ -28,7 +30,7 @@ class CacheEntry(ABC, Generic[T]):
             _l.debug(f'Cache key {cache_key} not found in cache. Hallucinating previous value tag: {tag}')
             return tag
 
-    def _save_in_cache(self, value: Lazy[T], cache=None) -> T:
+    def _save_in_cache(self, value: Lazy[T], cache: Optional[SqliteDict[str, Json]] = None) -> T:
         if cache is None:
             cache = get_cache()
         prev = self._get_previous_value(cache)

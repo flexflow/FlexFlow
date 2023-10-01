@@ -1,12 +1,13 @@
 from dataclasses import dataclass
-from typing import FrozenSet, Callable, Iterator, cast
+from typing import FrozenSet, Callable, cast, Optional
 from tooling.layout.file_type import FileAttribute, FileAttributes
 from tooling.layout.cpp.file_group.file_group import FileGroup
 from tooling.layout.path import AbsolutePath
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .cpp_code import CppCode 
+    from tooling.layout.cpp.cpp_code import CppCode 
+    from tooling.layout.project import Project
 
 def include_path(library_root: AbsolutePath) -> AbsolutePath:
     return library_root / 'include'
@@ -34,6 +35,10 @@ class Library:
     cpp_code: 'CppCode'
 
     @property
+    def project(self) -> 'Project':
+        return self.cpp_code.project
+
+    @property
     def src_path(self) -> AbsolutePath:
         return src_path(self.root_path)
 
@@ -48,19 +53,6 @@ class Library:
     def contains(self, file_path: AbsolutePath) -> bool:
         return file_path.is_relative_to(self.root_path)
 
-    def files_satisfying(self, f: Callable[[AbsolutePath], bool], base_path: Optional[AbsolutePath] = None) -> FrozenSet[AbsolutePath]:
-        if base_path is None:
-            base_path = self.root_path
-
-        def _recurse(p: AbsolutePath) -> Iterator[AbsolutePath]:
-            if p.is_dir():
-                for child in p.iterdir():
-                    yield from _recurse(child)
-            elif p.is_file() and f(p):
-                yield p
-    
-        return frozenset(_recurse(self.root_path))
-
     def is_valid_path(self, file_path: AbsolutePath) -> bool:
         attrs = FileAttributes.for_path(file_path)
         if file_path.is_relative_to(self.include_path) and attrs.implies(FileAttribute.CPP_PUBLIC_HEADER):
@@ -68,6 +60,11 @@ class Library:
         if file_path.is_relative_to(self.src_path) and attrs.implies_any_of([FileAttribute.CPP, FileAttribute.IMPL]):
             return True
         return False
+
+    def files_satisfying(self, f: Callable[[AbsolutePath], bool], base_path: Optional[AbsolutePath] = None) -> FrozenSet[AbsolutePath]:
+        if base_path is None:
+            base_path = self.root_path
+        return self.project.files_satisfying(f, base_path)
 
     def find_file_groups(self) -> FrozenSet[FileGroup]:
         results = set(FileGroup.try_create(path, library=self) for path in self.files_satisfying(
@@ -78,7 +75,8 @@ class Library:
                 FileAttribute.CPP_TEST
             ])
         ))
-        results.remove(None)
+        if None in results:
+            results.remove(None)
         return frozenset(cast(FrozenSet[FileGroup], results))
 
     @classmethod

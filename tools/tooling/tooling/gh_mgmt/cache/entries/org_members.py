@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Set
-from ..core.stateless_cache_entry import StatelessCacheEntry
+from tooling.gh_mgmt.cache.core.stateless_cache_entry import StatelessCacheEntry
 from datetime import timedelta
-from ...data_model.json import Json
+from tooling.json import Json
 from github import Github
 
 

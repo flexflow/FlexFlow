@@ -52,13 +52,39 @@ class Project:
             elif p.is_file() and f(p):
                 yield p
     
-        return frozenset(_recurse(self.root_path))
+        return frozenset(_recurse(base_path))
+
+    def directories_satisfying(
+        self, 
+        f: Callable[[AbsolutePath], bool], 
+        base_path: Optional[AbsolutePath] = None, 
+        allow_nesting: bool = True
+    ) -> FrozenSet[AbsolutePath]:
+        if base_path is None:
+            base_path = self.root_path
+
+        def _recurse(p: AbsolutePath) -> Iterator[AbsolutePath]:
+            if p.is_dir() and f(p):
+                yield p
+                if not allow_nesting:
+                    for child in p.iterdir():
+                        yield from _recurse(child)
+
+        return frozenset(_recurse(base_path))
+
+    def find_build_directories(self) -> FrozenSet[AbsolutePath]:
+        return self.directories_satisfying(
+            lambda p: (p / 'CMakeCache.txt').is_file(),
+            allow_nesting=False
+        )
 
     @classmethod
     def for_path(cls, p: Path) -> 'Project':
-        abs_path = AbsolutePath(subprocess.check_output(
+        if p.is_file():
+            p = p.parent
+        abs_path = AbsolutePath.create(Path(subprocess.check_output(
             ['git', 'rev-parse', '--show-toplevel'],
             cwd=p
-        ).decode().strip())
+        ).decode().strip()))
         assert abs_path.is_dir()
         return cls(root_path=abs_path)

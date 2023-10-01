@@ -1,18 +1,18 @@
 import argparse
-from .get_unanswered_issues import get_unanswered_issues
+from tooling.gh_mgmt.issues.triage.get_unanswered_issues import get_unanswered_issues 
 from pathlib import Path
 from datetime import timedelta
-from typing import Any, Optional, Sequence
-from .argparse_env import EnvStore
-from .config import get_default_cache_dir, get_auth_token_from_gh_cli, init_config, get_cache_path
+from typing import Any, Optional
+from tooling.gh_mgmt.issues.triage.argparse_env import EnvStore
+from tooling.gh_mgmt.issues.triage.config import get_default_cache_dir, get_auth_token_from_gh_cli, init_config, get_cache_path
 import re
-from .data_model.json import Json
+from tooling.json import Json
 import logging
-from ...parsing import instantiate 
+from tooling.cli.parsing import instantiate 
 
 def main(raw_args: Any) -> Optional[Json]:
     logging.basicConfig()
-    _l = logging.getLogger(__name__[:__name__.rfind('.')])
+    _l = logging.getLogger(__name__)
     _l.setLevel(raw_args.log_level)
 
     auth_token = raw_args.auth_token
@@ -34,16 +34,19 @@ def main(raw_args: Any) -> Optional[Json]:
     else:
         return {str(k) : v.as_jsonable() for k, v in get_unanswered_issues().items()}
 
-def clear_cache(raw_args):
+def clear_cache(raw_args: Any) -> None:
     logging.basicConfig()
-    _l = logging.getLogger(__name__[:__name__.rfind('.')])
+    _l = logging.getLogger(__name__)
     _l.setLevel(raw_args.log_level)
     init_config(cache_dir=raw_args.cache_dir)
     cache_path = get_cache_path()
     _l.info(f'Removing cache at {cache_path}')
-    cache_path.unlink(missing_ok=True)
+    try:
+        cache_path.unlink()
+    except FileNotFoundError:
+        _l.debug(f'Could not find cache file at {cache_path} to unlink')
 
-def parse_timedelta(s: str):
+def parse_timedelta(s: str) -> timedelta:
     m = re.match(r'(?P<number>\d+)(?P<period>[dmyDMY])', s)
     if m is None:
         raise argparse.ArgumentTypeError(f'Invalid timedelta {s}')

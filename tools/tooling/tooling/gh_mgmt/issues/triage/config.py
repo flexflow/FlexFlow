@@ -1,13 +1,11 @@
-from dataclasses import dataclass, field
 from datetime import timedelta, datetime, date
 from pathlib import Path
 import subprocess
-from typing import Optional, ClassVar
+from typing import Optional
 import json
-from .data_model.json import Json
-from typing import Mapping
 from sqlitedict import SqliteDict
 import os
+from tooling.json import Json
 
 def get_auth_token_from_gh_cli() -> Optional[str]:
     try:
@@ -18,7 +16,7 @@ def get_auth_token_from_gh_cli() -> Optional[str]:
 def get_default_cache_dir() -> Path:
     return Path.home() / os.environ.get("XDG_CACHE_HOME", ".cache") / "ff" / "issue-triage"
 
-def to_datetime(d: date):
+def to_datetime(d: date) -> datetime:
     return datetime.combine(d, datetime.min.time())
 
 def get_cache_path() -> Path:
@@ -26,7 +24,7 @@ def get_cache_path() -> Path:
     TriageConfig._CACHE_DIR.mkdir(exist_ok=True, parents=True)
     return TriageConfig._CACHE_DIR / "cache.sqlite"
 
-def get_cache() -> Mapping[str, Json]:
+def get_cache() -> SqliteDict[str, Json]:
     return SqliteDict(get_cache_path(), encode=json.dumps, decode=json.loads)
 
 def get_now() -> datetime:
@@ -50,7 +48,11 @@ class TriageConfig:
     _AUTH_TOKEN: Optional[str] = None
     _NOW: datetime = datetime.now()
 
-def init_config(max_lookback: timedelta=None, cache_dir: Path=None, auth_token: str=None):
+def init_config(
+    max_lookback: Optional[timedelta] = None, 
+    cache_dir: Optional[Path] = None, 
+    auth_token: Optional[str] = None,
+) -> None:
     TriageConfig._MAX_LOOKBACK = max_lookback
     TriageConfig._CACHE_DIR = cache_dir 
     TriageConfig._AUTH_TOKEN = auth_token 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from ..core.stateless_cache_entry import StatelessCacheEntry
+from tooling.gh_mgmt.cache.core.stateless_cache_entry import StatelessCacheEntry
 from typing import Set, Any
 from github import Github
 from datetime import timedelta
