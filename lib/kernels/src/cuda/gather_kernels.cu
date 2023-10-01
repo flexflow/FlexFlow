@@ -22,7 +22,6 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Gather {
 
-
 void gather_forward(float const *input_ptr,
                     float const *index_ptr,
                     float *output_ptr,

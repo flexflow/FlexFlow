@@ -6,13 +6,8 @@
 
 namespace FlexFlow {
 
-template <task_id_t>
-OpTaskSignature fwd_signature();
 template <>
 void register_task<GATHER_FWD_TASK_ID>();
-
-template <task_id_t>
-OpTaskSignature bwd_signature();
 template <>
 void register_task<GATHER_BWD_TASK_ID>();
 
