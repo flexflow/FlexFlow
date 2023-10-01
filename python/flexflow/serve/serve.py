@@ -19,6 +19,13 @@ from flexflow.serve.models import (
     FlexFlowSTARCODER,
     FlexFlowMPT,
 )
+from flexflow.serve.models import (
+    LLAMAConfig,
+    OPTConfig,
+    FalconConfig,
+    STARCODERConfig,
+    MPTConfig,
+)
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from huggingface_hub import HfApi
@@ -86,17 +93,25 @@ class LLM:
         :type output_file: str, optional
         """
         self.supported_models = {
-            "LlamaForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
-            "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
-            "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT),
-            "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
-            "FalconForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
-            "GPTBigCodeForCausalLM": (ModelType.STARCODER, FlexFlowSTARCODER),
-            "MPTForCausalLM": (ModelType.MPT, FlexFlowMPT),
+            "LlamaForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA, LLAMAConfig),
+            "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA, LLAMAConfig),
+            "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT, OPTConfig),
+            "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon, FalconConfig),
+            "FalconForCausalLM": (ModelType.FALCON, FlexFlowFalcon, FalconConfig),
+            "GPTBigCodeForCausalLM": (
+                ModelType.STARCODER,
+                FlexFlowSTARCODER,
+                STARCODERConfig,
+            ),
+            "MPTForCausalLM": (ModelType.MPT, FlexFlowMPT, MPTConfig),
         }
         self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
         self.model_name = self.hf_config._name_or_path
-        self.model_type, self.model_class = self.__get_ff_model_type()
+        (
+            self.model_type,
+            self.model_class,
+            self.config_class,
+        ) = self.__get_ff_model_type()
         self.data_type = data_type
         assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT
         self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
@@ -274,23 +289,14 @@ class LLM:
         self.download_hf_weights_if_needed()
 
         # Create file data loader, load weights into tensors
-        if (
-            self.model_type == ModelType.FALCON
-            or self.model_type == ModelType.STARCODER
-        ):
-            n_q_heads = self.hf_config.num_attention_heads
-            if "n_head_kv" in self.hf_config.__dict__:
-                n_kv_heads = self.hf_config.n_head_kv
-            else:
-                n_kv_heads = 1
-        else:
-            n_q_heads = n_kv_heads = self.hf_config.num_attention_heads
+        model_configs = self.config_class(self.hf_config)
+
         self.fileloader = FileDataLoader(
             self.weights_path,
-            n_q_heads,
-            n_kv_heads,
-            self.hf_config.hidden_size,
-            self.hf_config.hidden_size // n_q_heads,
+            model_configs.num_attention_heads,
+            model_configs.num_key_value_heads,
+            model_configs.hidden_size,
+            model_configs.hidden_size // model_configs.num_attention_heads,
             self.ffconfig.tensor_parallelism_degree,
         )
 

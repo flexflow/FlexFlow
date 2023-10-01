@@ -40,6 +40,9 @@ class FalconConfig:
         )
         self.parallel_attn = hf_config.parallel_attn
         self.vocab_size = hf_config.vocab_size
+        # Standardized FlexFlow num heads fields below
+        self.num_attention_heads = self.n_head
+        self.num_key_value_heads = self.n_head_kv
 
 
 class FlexFlowFalcon(FlexFlowModel):
@@ -277,25 +280,3 @@ class FlexFlowFalcon(FlexFlowModel):
         model.lm_head.weight.detach().cpu().numpy().tofile(
             os.path.join(dst_folder, "lm_head_weight")
         )
-
-    def get_layers_with_weights(self):
-        layer_names = [
-            "word_embeddings_weight",
-            "ln_f_weight",
-            "lm_head_weight",
-        ] + [
-            expr
-            for i in range(self.falcon_config.n_layer)
-            for expr in (
-                f"layers_{i}_input_layernorm_weight",
-                f"layers_{i}_attention_weight",
-                f"layers_{i}_mlp_dense_h_to_4h_weight",
-                f"layers_{i}_mlp_dense_4h_to_h_weight",
-            )
-        ]
-        layers_with_weights = {
-            layer_name: self.ffmodel.get_layer_by_name(layer_name)
-            for layer_name in layer_names
-        }
-
-        return layers_with_weights

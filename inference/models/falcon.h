@@ -37,13 +37,17 @@ public:
           hidden_size = model_config["hidden_size"];
           layer_norm_epsilon = model_config["layer_norm_epsilon"];
           multi_query = model_config["multi_query"];
-          n_head = model_config["n_head"];
+          n_head = (model_config.find("n_head") != model_config.end())
+                       ? model_config["n_head"]
+                       : model_config["num_attention_heads"];
           if (model_config.contains("n_head_kv")) {
             n_head_kv = model_config["n_head_kv"];
           } else {
             n_head_kv = 1;
           }
-          n_layer = model_config["n_layer"];
+          n_layer = (model_config.find("n_layer") != model_config.end())
+                        ? model_config["n_layer"]
+                        : model_config["num_hidden_layers"];
           parallel_attn = model_config["parallel_attn"];
           vocab_size = model_config["vocab_size"];
         } catch (json::exception const &e) {

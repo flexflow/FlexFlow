@@ -25,15 +25,16 @@ class LLAMAConfig:
         self.max_beam_depth = 8
         self.num_hidden_layers = hf_config.num_hidden_layers
         self.vocab_size = hf_config.vocab_size
+        self.hidden_size = hf_config.hidden_size
+        self.rms_norm_eps = hf_config.rms_norm_eps
+        self.intermediate_size = hf_config.intermediate_size
+        # Standardized FlexFlow num heads fields below
         self.num_attention_heads = hf_config.num_attention_heads
         self.num_key_value_heads = (
             hf_config.num_attention_heads
             if hf_config.num_key_value_heads is None
             else hf_config.num_key_value_heads
         )
-        self.hidden_size = hf_config.hidden_size
-        self.rms_norm_eps = hf_config.rms_norm_eps
-        self.intermediate_size = hf_config.intermediate_size
 
 
 class FlexFlowLLAMA(FlexFlowModel):
@@ -262,23 +263,3 @@ class FlexFlowLLAMA(FlexFlowModel):
                 .replace("model_", "")
             )
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
-
-    def get_layers_with_weights(self):
-        layer_names = ["tok_embeddings_weight", "norm_weight", "output_weight"] + [
-            expr
-            for i in range(self.llama_config.num_hidden_layers)
-            for expr in (
-                f"layers_{i}_attention_norm_weight",
-                f"layers_{i}_attention_weight",
-                f"layers_{i}_ffn_norm_weight",
-                f"layers_{i}_feed_forward_w1_weight",
-                f"layers_{i}_feed_forward_w3_weight",
-                f"layers_{i}_feed_forward_w2_weight",
-            )
-        ]
-        layers_with_weights = {
-            layer_name: self.ffmodel.get_layer_by_name(layer_name)
-            for layer_name in layer_names
-        }
-
-        return layers_with_weights
