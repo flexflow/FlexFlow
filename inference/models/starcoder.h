@@ -51,15 +51,16 @@ public:
                   << std::endl;
         assert(false);
       }
-      max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
-      max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
+      // max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
+      // max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
       max_beam_width = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
       max_beam_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
     }
 
     void print() const {}
 
-    int max_seq_len, max_num_tokens, max_beam_width, max_beam_depth;
+    // int max_seq_len, max_num_tokens;
+    int max_beam_width, max_beam_depth;
     int num_hidden_layers, vocab_size, num_attention_heads, hidden_size,
         intermediate_size, max_position_embeddings;
     float layer_norm_epsilon, dropout_p;
