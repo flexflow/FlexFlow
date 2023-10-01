@@ -65,7 +65,7 @@ public:
 
   FFConfig() = default;
   static Legion::MappingTagID get_hash_id(std::string const &pcname);
-  
+
 public:
   int epochs = 1;
   int batchSize = 64;

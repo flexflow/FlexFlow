@@ -21,25 +21,42 @@ struct CmdlineArgRef {
 };
 
 struct Argument {
-  optional<std::string> value; // Change value type to optional<string>
+  std::optional<std::string> value; // Change value type to optional<string>
   std::string description;
-  bool default_value;
+  bool default_value = false;
+  bool is_store_true =
+      false; // Add a new field to indicate whether the argument is store_true
+  bool is_store_passed =
+      false; // Add a new field to indicate whether the argument is passed
 };
 
 struct ArgsParser {
-  std::unordered_map<std::string, Argument> mArguments;
+  std::unordered_map<std::string, Argument> requeiredArguments;
+  std::unordered_map<std::string, Argument> optionalArguments;
+  int num_optional_args = 0;
+  int pass_optional_args = 0;
 };
 
 // currently we only support "--xx" or "-x"
-std::string parseKey(std::string arg);
+std::string parseKey(std::string const &arg);
 
-void parse_args(ArgsParser &mArgs, int argc, char **argv);
+ArgsParser parse_args(ArgsParser const &mArgs, int argc, char const **argv)
 
+    template <typename T>
+    CmdlineArgRef<T> add_required_argument(
+        ArgsParser &parser,
+        std::string const &key,
+        std::optional<T> const &default_value,
+        std::string const &description,
+        bool is_store_true = false);
+
+// default_value is std::nullopt for optional arguments
 template <typename T>
-CmdlineArgRef<T> add_argument(ArgsParser &parser,
-                              std::string key,
-                              optional<T> default_value,
-                              std::string const &description);
+CmdlineArgRef<T> add_optional_argument(ArgsParser &parser,
+                                       std::string const &key,
+                                       std::optional<T> const &default_value,
+                                       std::string const &description,
+                                       bool is_store_true = false);
 
 template <typename T>
 T get(ArgsParser const &parser, CmdlineArgRef<T> const &ref);
