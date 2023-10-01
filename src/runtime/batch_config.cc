@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/batch_config.h"
+#include "flexflow/request_manager.h"
 #include "legion.h"
 #include <cassert>
 #include <climits>
@@ -60,7 +61,7 @@ InferenceMode BatchConfig::get_mode() const {
 
 int BatchConfig::num_active_requests() const {
   int num_requests = 0;
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < max_requests_per_batch(); i++) {
     if (!request_completed[i]) {
       num_requests++;
     }
@@ -72,17 +73,33 @@ int BatchConfig::num_active_tokens() const {
   return num_tokens;
 }
 
+/*static*/
+int BatchConfig::max_requests_per_batch() {
+  return RequestManager::get_request_manager()->get_max_requests_per_batch();
+}
+
+/*static*/
+int BatchConfig::max_tokens_per_batch() {
+  return RequestManager::get_request_manager()->get_max_tokens_per_batch();
+}
+
+/*static*/
+int BatchConfig::max_sequence_length() {
+  return RequestManager::get_request_manager()->get_max_sequence_length();
+}
+
 void BatchConfig::print() const {
   std::cout << "@@@@@@@@@@@@@@ Batch Config (mode " << get_mode()
             << ") @@@@@@@@@@@@@@" << std::endl;
-  std::cout << "Max number of requests: " << MAX_NUM_REQUESTS << std::endl;
-  std::cout << "Max number of tokens: " << MAX_NUM_TOKENS << std::endl;
+  std::cout << "Max number of requests: " << max_requests_per_batch()
+            << std::endl;
+  std::cout << "Max number of tokens: " << max_tokens_per_batch() << std::endl;
   std::cout << "Number of tokens: " << num_tokens << std::endl;
   std::cout << "Number of requests: " << num_active_requests() << std::endl;
   // std::cout << "Cached results: " << cached_results << std::endl;
 
   std::cout << "Per-request info:\n";
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < max_requests_per_batch(); i++) {
     if (!request_completed[i]) {
       std::cout << "  Request " << i << ":\n";
       std::cout << "    Token start offset: "

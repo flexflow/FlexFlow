@@ -305,7 +305,7 @@ class LLM:
     def compile(
         self,
         generation_config: GenerationConfig = GenerationConfig(),
-        max_batch_size: int = 1,
+        max_requests_per_batch: int = 1,
         max_seq_length: int = 256,
         max_tokens_per_batch: int = 64,
         model_specific_data_parallelism_degree: int = None,
@@ -319,8 +319,8 @@ class LLM:
         :type mode: InferenceMode, optional
         :param generation_config: The GenerationConfig object with the configurations to use for sampling, defaults to GenerationConfig()
         :type generation_config: GenerationConfig, optional
-        :param max_batch_size: The maximum batch size to allow, defaults to 1
-        :type max_batch_size: int, optional
+        :param max_requests_per_batch: The maximum batch size to allow, defaults to 1
+        :type max_requests_per_batch: int, optional
         :param max_seq_length: The maximum sequence length to allow per batch, defaults to 256
         :type max_seq_length: int, optional
         :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 64
@@ -334,9 +334,9 @@ class LLM:
         :param ssms: The SSMs to use when operating in speculative inference mode, defaults to []
         :type ssms: list, optional
         """
-        self.max_batch_size = max_batch_size
-        self.max_seq_length = max_seq_length
-        self.max_tokens_per_batch = max_tokens_per_batch
+        #self.max_requests_per_batch = max_requests_per_batch
+        #self.max_seq_length = max_seq_length
+        #self.max_tokens_per_batch = max_tokens_per_batch
         self.ssms = ssms
         self.generation_config = GenerationConfig()
         self.ffconfig = FFConfig()
@@ -363,6 +363,12 @@ class LLM:
                 model_specific_pipeline_parallelism_degree
             )
 
+        # Create request manager and set serving configuration
+        self.rm = RequestManager()
+        self.rm.set_max_requests_per_batch(max_requests_per_batch)
+        self.rm.set_max_tokens_per_batch(max_tokens_per_batch)
+        self.rm.set_max_sequence_length(max_seq_length)
+
         # Instantiate the relevant model
         self.model = self.model_class(
             mode,
@@ -370,9 +376,7 @@ class LLM:
             self.ffconfig,
             self.hf_config,
             self.data_type,
-            max_batch_size,
-            max_seq_length,
-            max_tokens_per_batch,
+            max_tokens_per_batch
         )
 
         # Create inference manager
@@ -383,8 +387,7 @@ class LLM:
         self.__load_hf_weights()
         self.download_hf_tokenizer_if_needed()
 
-        # Create request manager
-        self.rm = RequestManager()
+        # Create tokenizer (this must be done after we have downloaded the tokenizer
         bos_token_id = (
             -1 if self.hf_config.bos_token_id is None else self.hf_config.bos_token_id
         )
@@ -458,7 +461,7 @@ class SSM(LLM):
     def compile(
         self,
         generation_config: GenerationConfig = GenerationConfig(),
-        max_batch_size: int = 1,
+        max_requests_per_batch: int = 1,
         max_seq_length: int = 256,
         max_tokens_per_batch: int = 64,
         model_specific_data_parallelism_degree: int = 1,
@@ -472,8 +475,8 @@ class SSM(LLM):
         :type mode: InferenceMode, optional
         :param generation_config: The GenerationConfig object with the configurations to use for sampling, defaults to GenerationConfig()
         :type generation_config: GenerationConfig, optional
-        :param max_batch_size: The maximum batch size to allow, defaults to 1
-        :type max_batch_size: int, optional
+        :param max_requests_per_batch: The maximum batch size to allow, defaults to 1
+        :type max_requests_per_batch: int, optional
         :param max_seq_length: The maximum sequence length to allow per batch, defaults to 256
         :type max_seq_length: int, optional
         :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 64
@@ -489,7 +492,7 @@ class SSM(LLM):
         """
         super().compile(
             generation_config,
-            max_batch_size,
+            max_requests_per_batch,
             max_seq_length,
             max_tokens_per_batch,
             model_specific_data_parallelism_degree,

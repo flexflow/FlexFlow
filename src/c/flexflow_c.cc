@@ -2551,6 +2551,28 @@ flexflow_request_manager_t flexflow_request_manager_get_request_manager(void) {
   return FFCObjectWrapper::wrap(rm);
 }
 
+void flexflow_request_manager_set_max_requests_per_batch(
+    flexflow_request_manager_t handle_, int max_num_requests) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_requests_per_batch(max_num_requests);
+  DEBUG_PRINT("[RequestManager] set max_requests_per_batch %d",
+              max_num_requests);
+}
+
+void flexflow_request_manager_set_max_tokens_per_batch(
+    flexflow_request_manager_t handle_, int max_num_tokens) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_tokens_per_batch(max_num_tokens);
+  DEBUG_PRINT("[RequestManager] set max_tokens_per_batch %d", max_num_tokens);
+}
+
+void flexflow_request_manager_set_max_sequence_length(
+    flexflow_request_manager_t handle_, int max_seq_length) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_sequence_length(max_seq_length);
+  DEBUG_PRINT("[RequestManager] set max_sequence_length %d", max_seq_length);
+}
+
 void flexflow_request_manager_register_tokenizer(
     flexflow_request_manager_t handle_,
     enum ModelType model_type,

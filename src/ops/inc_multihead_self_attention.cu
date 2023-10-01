@@ -393,7 +393,7 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                num_tokens,
                                m->num_q_heads,
                                m->num_kv_heads,
-                               BatchConfig::MAX_SEQ_LENGTH);
+                               BatchConfig::max_sequence_length());
   }
 }
 
@@ -579,13 +579,13 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
   int q_block_size = m->qProjSize * num_tokens;
-  int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;
+  int kt_block_size = m->kProjSize * BatchConfig::max_sequence_length();
   int kt_req_block_size = kt_block_size * m->num_kv_heads;
-  int vt_block_size = m->vProjSize * BatchConfig::MAX_SEQ_LENGTH;
+  int vt_block_size = m->vProjSize * BatchConfig::max_sequence_length();
   int vt_req_block_size = vt_block_size * m->num_kv_heads;
   assert(m->qProjSize == m->kProjSize);
 
-  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
     }
@@ -1098,18 +1098,21 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   }
 
 #ifdef INFERENCE_TESTS
-  kcache = (float *)calloc(kProjSize * BatchConfig::MAX_SEQ_LENGTH *
-                               num_q_heads * BatchConfig::MAX_NUM_REQUESTS,
-                           sizeof(float));
-  vcache = (float *)calloc(vProjSize * BatchConfig::MAX_SEQ_LENGTH *
-                               num_q_heads * BatchConfig::MAX_NUM_REQUESTS,
-                           sizeof(float));
+  kcache =
+      (float *)calloc(kProjSize * BatchConfig::max_sequence_length() *
+                          num_q_heads * BatchConfig::max_requests_per_batch(),
+                      sizeof(float));
+  vcache =
+      (float *)calloc(vProjSize * BatchConfig::max_sequence_length() *
+                          num_q_heads * BatchConfig::max_requests_per_batch(),
+                      sizeof(float));
 #endif
 
   // allocate memory for the seqArray and reserve space
   {
+    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
     size_t qkv_max_proj_size =
-        BatchConfig::MAX_NUM_TOKENS *
+        max_tokens_per_batch *
         (qProjSize * num_q_heads + kProjSize * num_kv_heads +
          vProjSize * num_kv_heads);
     size_t key_cache_size = 0, value_cache_size = 0;
@@ -1117,36 +1120,36 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       case INC_DECODING_MODE:
       case TREE_VERIFY_MODE: {
         key_cache_size = num_kv_heads * kProjSize *
-                         BatchConfig::MAX_NUM_REQUESTS *
-                         BatchConfig::MAX_SEQ_LENGTH;
+                         BatchConfig::max_requests_per_batch() *
+                         BatchConfig::max_sequence_length();
         value_cache_size = num_kv_heads * vProjSize *
-                           BatchConfig::MAX_NUM_REQUESTS *
-                           BatchConfig::MAX_SEQ_LENGTH;
+                           BatchConfig::max_requests_per_batch() *
+                           BatchConfig::max_sequence_length();
         break;
       }
       case BEAM_SEARCH_MODE: {
-        key_cache_size =
-            num_kv_heads * kProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-            BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-        value_cache_size =
-            num_kv_heads * vProjSize * BeamSearchBatchConfig::MAX_NUM_REQUESTS *
-            BatchConfig::MAX_SEQ_LENGTH * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+        key_cache_size = num_kv_heads * kProjSize *
+                         BeamSearchBatchConfig::max_requests_per_batch() *
+                         BatchConfig::max_sequence_length() *
+                         BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+        value_cache_size = num_kv_heads * vProjSize *
+                           BeamSearchBatchConfig::max_requests_per_batch() *
+                           BatchConfig::max_sequence_length() *
+                           BeamSearchBatchConfig::MAX_BEAM_WIDTH;
         break;
       }
       default:
         assert(false && "Unkown inference mode");
     }
-    size_t tokeninfo_size = BatchConfig::MAX_NUM_TOKENS;
+    size_t tokeninfo_size = max_tokens_per_batch;
     size_t qk_prod_size =
-        BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_SEQ_LENGTH * num_q_heads;
-    size_t attn_heads_size =
-        BatchConfig::MAX_NUM_TOKENS * num_q_heads * vProjSize;
+        max_tokens_per_batch * BatchConfig::max_sequence_length() * num_q_heads;
+    size_t attn_heads_size = max_tokens_per_batch * num_q_heads * vProjSize;
     size_t W_out_block_size = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
     size_t W_out_contiguous_size = W_out_block_size * num_q_heads;
-    size_t complex_size =
-        (BatchConfig::MAX_NUM_TOKENS *
-         (qProjSize * num_q_heads + kProjSize * num_kv_heads)) /
-        2;
+    size_t complex_size = (max_tokens_per_batch * (qProjSize * num_q_heads +
+                                                   kProjSize * num_kv_heads)) /
+                          2;
     size_t totalSize =
         (qkv_max_proj_size + key_cache_size + value_cache_size +
          2 * qk_prod_size + attn_heads_size + W_out_contiguous_size) *
