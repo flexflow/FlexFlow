@@ -3972,7 +3972,7 @@ struct DefaultConfig {
   const static bool profiling = false;
   constexpr static float learningRate = 0.01f;
   constexpr static float weightDecay = 0.0001f;
-  const static size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
+  const static size_t workSpaceSize = (size_t)128 * 1024 * 1024; // 128 MB
   const static int numNodes = 1;
   const static int workersPerNode = 0;
   const static int cpusPerNode = 0;

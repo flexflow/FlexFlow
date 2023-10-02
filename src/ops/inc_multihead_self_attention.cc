@@ -937,13 +937,14 @@ void IncMultiHeadSelfAttention::inference_task(
   // load weight manually because Torch can't easily read a tensor serialized in
   // column-major order.
 
-  // printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i, "
-  //     "bc->num_active_infr_tokens(): %i, num_q_heads: %lli,
-  //     BatchConfig::MAX_NUM_REQUESTS: %i, " "bc->num_active_requests(): %i\n",
-  //     m->kProjSize, BatchConfig::MAX_NUM_TOKENS,
-  //     bc->num_active_infr_tokens(), num_q_heads,
-  //     BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests());
-  // for (int t=0; t < bc->num_active_infr_tokens(); t++) {
+  // printf("m->kProjSize: %i, BatchConfig::max_tokens_per_batch(): %i, "
+  //     "bc->num_active_tokens(): %i, num_q_heads: %lli,
+  //     BatchConfig::max_requests_per_batch(): %i, "
+  //     "bc->num_active_requests(): %i\n", m->kProjSize,
+  //     BatchConfig::max_tokens_per_batch(), bc->num_active_tokens(),
+  //     num_q_heads, BatchConfig::max_requests_per_batch(),
+  //     bc->num_active_requests());
+  // for (int t=0; t < bc->num_active_tokens(); t++) {
   //   printf("token %i has request_index: %li and token_position: %li\n",
   //   t, bc->token2ids.token_indexes[t].request_index,
   //   bc->token2ids.token_indexes[t].token_position);
@@ -1030,7 +1031,7 @@ void IncMultiHeadSelfAttention::inference_task(
   //  ----------------------- Loading CUDA results for this step ---------------
   float *QKVProjArray_cpu = download_tensor<float>(
       m->devQKVProjArray,
-      BatchConfig::MAX_NUM_TOKENS * proj_sum * m->num_q_heads);
+      BatchConfig::max_tokens_per_batch() * proj_sum * m->num_q_heads);
   assert(QKVProjArray_cpu != nullptr);
 
   std::vector<int> QKVProjArray_converted_shape = {
@@ -1093,21 +1094,25 @@ void IncMultiHeadSelfAttention::inference_task(
   for (size_t h = 0; h < num_q_heads; h++) {
     for (size_t t = 0; t < bc->num_active_infr_tokens(); t++) {
       for (size_t d = 0; d < m->kProjSize; d++) {
-        size_t kcache_idx =
-            d * MAX_SEQ_LEN * m->num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-            bc->tokensInfo[t].abs_depth_in_request * m->num_q_heads *
-                BatchConfig::MAX_NUM_REQUESTS +
-            h * BatchConfig::MAX_NUM_REQUESTS + bc->tokensInfo[t].request_index;
+        size_t kcache_idx = d * MAX_SEQ_LEN * m->num_q_heads *
+                                BatchConfig::max_requests_per_batch() +
+                            bc->tokensInfo[t].abs_depth_in_request *
+                                m->num_q_heads *
+                                BatchConfig::max_requests_per_batch() +
+                            h * BatchConfig::max_requests_per_batch() +
+                            bc->tokensInfo[t].request_index;
         m->kcache[kcache_idx] =
             qkv_projs.index({(int64_t)d, (int64_t)t, 1, (int64_t)h})
                 .item<float>();
       }
       for (size_t d = 0; d < m->vProjSize; d++) {
-        size_t vcache_idx =
-            d * MAX_SEQ_LEN * m->num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-            bc->tokensInfo[t].abs_depth_in_request * m->num_q_heads *
-                BatchConfig::MAX_NUM_REQUESTS +
-            h * BatchConfig::MAX_NUM_REQUESTS + bc->tokensInfo[t].request_index;
+        size_t vcache_idx = d * MAX_SEQ_LEN * m->num_q_heads *
+                                BatchConfig::max_requests_per_batch() +
+                            bc->tokensInfo[t].abs_depth_in_request *
+                                m->num_q_heads *
+                                BatchConfig::max_requests_per_batch() +
+                            h * BatchConfig::max_requests_per_batch() +
+                            bc->tokensInfo[t].request_index;
         m->vcache[vcache_idx] =
             qkv_projs.index({(int64_t)d, (int64_t)t, 2, (int64_t)h})
                 .item<float>();
@@ -1115,14 +1120,18 @@ void IncMultiHeadSelfAttention::inference_task(
     }
   }
   // Create torch tensors from the arrays
-  torch::Tensor K_t = torch::from_blob(
-      m->kcache,
-      {m->kProjSize, MAX_SEQ_LEN, num_q_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
-  torch::Tensor V_t = torch::from_blob(
-      m->vcache,
-      {m->vProjSize, MAX_SEQ_LEN, num_q_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
+  torch::Tensor K_t = torch::from_blob(m->kcache,
+                                       {m->kProjSize,
+                                        MAX_SEQ_LEN,
+                                        num_q_heads,
+                                        BatchConfig::max_requests_per_batch()},
+                                       torch::kFloat32);
+  torch::Tensor V_t = torch::from_blob(m->vcache,
+                                       {m->vProjSize,
+                                        MAX_SEQ_LEN,
+                                        num_q_heads,
+                                        BatchConfig::max_requests_per_batch()},
+                                       torch::kFloat32);
 
   // Compute useful indices
   std::vector<size_t> req_idxs;
@@ -1147,30 +1156,30 @@ void IncMultiHeadSelfAttention::inference_task(
          bc->num_active_infr_tokens());
 
   //  ----------------------- Loading CUDA results for this step ---------------
-  float *keyCache_cpu =
-      download_tensor<float>(m->keyCache,
-                             m->num_q_heads * m->kProjSize *
-                                 BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN);
-  float *valueCache_cpu =
-      download_tensor<float>(m->valueCache,
-                             m->num_q_heads * m->vProjSize *
-                                 BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN);
+  float *keyCache_cpu = download_tensor<float>(
+      m->keyCache,
+      m->num_q_heads * m->kProjSize * BatchConfig::max_requests_per_batch() *
+          MAX_SEQ_LEN);
+  float *valueCache_cpu = download_tensor<float>(
+      m->valueCache,
+      m->num_q_heads * m->vProjSize * BatchConfig::max_requests_per_batch() *
+          MAX_SEQ_LEN);
   assert(keyCache_cpu != nullptr);
   assert(valueCache_cpu != nullptr);
 
   float *kcache_cuda =
       (float *)calloc(m->kProjSize * MAX_SEQ_LEN * m->num_q_heads *
-                          BatchConfig::MAX_NUM_REQUESTS,
+                          BatchConfig::max_requests_per_batch(),
                       sizeof(float));
   float *vcache_cuda =
       (float *)calloc(m->vProjSize * MAX_SEQ_LEN * m->num_q_heads *
-                          BatchConfig::MAX_NUM_REQUESTS,
+                          BatchConfig::max_requests_per_batch(),
                       sizeof(float));
   int index = 0;
   for (int i = 0; i < m->kProjSize; i++) {
     for (int j = 0; j < MAX_SEQ_LEN; j++) {
       for (int k = 0; k < m->num_q_heads; k++) {
-        for (int l = 0; l < BatchConfig::MAX_NUM_REQUESTS; l++) {
+        for (int l = 0; l < BatchConfig::max_requests_per_batch(); l++) {
           int col_major_index =
               l * m->kProjSize * MAX_SEQ_LEN * m->num_q_heads +
               k * m->kProjSize * MAX_SEQ_LEN + j * m->kProjSize + i;
@@ -1183,7 +1192,7 @@ void IncMultiHeadSelfAttention::inference_task(
   for (int i = 0; i < m->vProjSize; i++) {
     for (int j = 0; j < MAX_SEQ_LEN; j++) {
       for (int k = 0; k < m->num_q_heads; k++) {
-        for (int l = 0; l < BatchConfig::MAX_NUM_REQUESTS; l++) {
+        for (int l = 0; l < BatchConfig::max_requests_per_batch(); l++) {
           int col_major_index =
               l * m->vProjSize * MAX_SEQ_LEN * m->num_q_heads +
               k * m->vProjSize * MAX_SEQ_LEN + j * m->vProjSize + i;
@@ -1192,14 +1201,20 @@ void IncMultiHeadSelfAttention::inference_task(
       }
     }
   }
-  torch::Tensor K_t_cuda = torch::from_blob(
-      kcache_cuda,
-      {m->kProjSize, MAX_SEQ_LEN, num_q_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
-  torch::Tensor V_t_cuda = torch::from_blob(
-      vcache_cuda,
-      {m->vProjSize, MAX_SEQ_LEN, num_q_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
+  torch::Tensor K_t_cuda =
+      torch::from_blob(kcache_cuda,
+                       {m->kProjSize,
+                        MAX_SEQ_LEN,
+                        num_q_heads,
+                        BatchConfig::max_requests_per_batch()},
+                       torch::kFloat32);
+  torch::Tensor V_t_cuda =
+      torch::from_blob(vcache_cuda,
+                       {m->vProjSize,
+                        MAX_SEQ_LEN,
+                        num_q_heads,
+                        BatchConfig::max_requests_per_batch()},
+                       torch::kFloat32);
 
   //  ----------------------- Comparing C++ & CUDA results ---------------------
 
@@ -1209,11 +1224,11 @@ void IncMultiHeadSelfAttention::inference_task(
   //     for (int l=0; l < m->kProjSize; l++) {
   //       for (int k=0; k < MAX_SEQ_LEN; k++) {
   //         size_t kcache_idx =
-  //           l * MAX_SEQ_LEN * num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-  //           k * num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-  //           j * BatchConfig::MAX_NUM_REQUESTS +
-  //           i;
-  //           if ( abs(m->kcache[kcache_idx] - keyCache_cpu[
+  //           l * MAX_SEQ_LEN * num_q_heads *
+  //           BatchConfig::max_requests_per_batch() + k * num_q_heads *
+  //           BatchConfig::max_requests_per_batch() + j *
+  //           BatchConfig::max_requests_per_batch() + i; if (
+  //           abs(m->kcache[kcache_idx] - keyCache_cpu[
   //               i * m->kProjSize * MAX_SEQ_LEN * num_q_heads +
   //               j * m->kProjSize * MAX_SEQ_LEN +
   //               k * m->kProjSize +
@@ -1274,10 +1289,10 @@ void IncMultiHeadSelfAttention::inference_task(
   //       for (int l=0; l < m->kProjSize; l++) {
   //         for (int k=0; k < MAX_SEQ_LEN; k++) {
   //           size_t kcache_idx =
-  //             l * MAX_SEQ_LEN * num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-  //             k * num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-  //             j * BatchConfig::MAX_NUM_REQUESTS +
-  //             i;
+  //             l * MAX_SEQ_LEN * num_q_heads *
+  //             BatchConfig::max_requests_per_batch() + k * num_q_heads *
+  //             BatchConfig::max_requests_per_batch() + j *
+  //             BatchConfig::max_requests_per_batch() + i;
   //           printf("%f ", m->kcache[kcache_idx]);
   //         }
   //         printf("\n");
@@ -1293,9 +1308,10 @@ void IncMultiHeadSelfAttention::inference_task(
   //       for (int l=0; l<m->vProjSize; l++) {
   //         for (int k=0; k< MAX_SEQ_LEN; k++) {
   //             size_t vcache_idx =
-  //               l * MAX_SEQ_LEN * num_q_heads * BatchConfig::MAX_NUM_REQUESTS
-  //               + k * num_q_heads * BatchConfig::MAX_NUM_REQUESTS + j *
-  //               BatchConfig::MAX_NUM_REQUESTS + i;
+  //               l * MAX_SEQ_LEN * num_q_heads *
+  //               BatchConfig::max_requests_per_batch()
+  //               + k * num_q_heads * BatchConfig::max_requests_per_batch() + j
+  //               * BatchConfig::max_requests_per_batch() + i;
   //             printf("%f ", m->vcache[vcache_idx]);
   //         }
   //         printf("\n");
@@ -1384,17 +1400,19 @@ void IncMultiHeadSelfAttention::inference_task(
   //  ----------------------- Loading CUDA results for this step ---------------
   float *qk_prods_cpu = download_tensor<float>(
       m->qk_prods,
-      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_q_heads);
+      BatchConfig::max_tokens_per_batch() *
+          BatchConfig::max_tokens_per_batch() * num_q_heads);
   assert(qk_prods_cpu != nullptr);
 
   float *qk_prods_softmax_cpu = download_tensor<float>(
       m->qk_prods_softmax,
-      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_q_heads);
+      BatchConfig::max_tokens_per_batch() *
+          BatchConfig::max_tokens_per_batch() * num_q_heads);
   assert(qk_prods_softmax_cpu != nullptr);
 
   float *attn_heads_cpu = download_tensor<float>(
       m->attn_heads,
-      BatchConfig::MAX_NUM_TOKENS * m->num_q_heads * m->vProjSize);
+      BatchConfig::max_tokens_per_batch() * m->num_q_heads * m->vProjSize);
   assert(attn_heads_cpu != nullptr);
 
   //  ----------------------- Main loop (request by request) -------------------

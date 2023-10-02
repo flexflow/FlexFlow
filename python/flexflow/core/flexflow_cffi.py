@@ -4187,6 +4187,17 @@ class RequestManager(object):
             self.handle, model.handle
         )
 
+    def set_max_requests_per_batch(self, max_requests):
+        return ffc().flexflow_request_manager_set_max_requests_per_batch(
+            self.handle, max_requests)
+    
+    def set_max_tokens_per_batch(self, max_tokens):
+        return ffc().flexflow_request_manager_set_max_tokens_per_batch(
+            self.handle, max_tokens)
+    
+    def set_max_sequence_length(self, max_length):
+        return ffc().flexflow_request_manager_set_max_sequence_length(
+            self.handle, max_length)
 
 # -----------------------------------------------------------------------
 # InferenceManager

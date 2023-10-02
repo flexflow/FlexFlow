@@ -21,9 +21,9 @@ class FlexFlowModel:
         ffconfig,
         hf_config,
         data_type,
-        max_batch_size=1,
-        max_seq_length=256,
-        max_tokens_per_batch=64,
+        #max_batch_size=1,
+        #max_seq_length=256,
+        #max_tokens_per_batch=64,
         weights_filepath="",
         tokenizer_filepath="",
     ):
@@ -33,7 +33,4 @@ class FlexFlowModel:
         assert False, "Not implemented yet"
 
     def convert_hf_model(model, dst_folder):
-        assert False, "Not implemented yet"
-
-    def get_layers_with_weights(self):
         assert False, "Not implemented yet"

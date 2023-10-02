@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .llama import FlexFlowLLAMA
-from .opt import FlexFlowOPT
-from .falcon import FlexFlowFalcon
-from .starcoder import FlexFlowSTARCODER
-from .mpt import FlexFlowMPT
+from .llama import FlexFlowLLAMA, LLAMAConfig
+from .opt import FlexFlowOPT, OPTConfig
+from .falcon import FlexFlowFalcon, FalconConfig
+from .starcoder import FlexFlowSTARCODER, STARCODERConfig
+from .mpt import FlexFlowMPT, MPTConfig

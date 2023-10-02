@@ -40,7 +40,7 @@ void MPT::create_mpt_model(FFModel &ff,
   //------------------------------ build the model --------------------------
   Tensor input;
   {
-    int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
+    int const token_dims[] = {BatchConfig::max_tokens_per_batch(), 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 

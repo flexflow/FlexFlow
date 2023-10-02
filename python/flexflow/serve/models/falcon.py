@@ -19,19 +19,30 @@ import random, torch
 
 class FalconConfig:
     def __init__(self, hf_config):
-        self.max_seq_len = 256
-        self.max_num_tokens = 64
+        #self.max_seq_len = 256
+        #self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
         self.bias = hf_config.bias
         self.hidden_size = hf_config.hidden_size
         self.layer_norm_epsilon = hf_config.layer_norm_epsilon
         self.multi_query = hf_config.multi_query
-        self.n_head = hf_config.n_head
+        self.n_head = (
+            hf_config.n_head
+            if "n_head" in hf_config.__dict__
+            else hf_config.num_attention_heads
+        )
         self.n_head_kv = hf_config.n_head_kv if "n_head_kv" in hf_config.__dict__ else 1
-        self.n_layer = hf_config.n_layer
+        self.n_layer = (
+            hf_config.n_layer
+            if "n_layer" in hf_config.__dict__
+            else hf_config.num_hidden_layers
+        )
         self.parallel_attn = hf_config.parallel_attn
         self.vocab_size = hf_config.vocab_size
+        # Standardized FlexFlow num heads fields below
+        self.num_attention_heads = self.n_head
+        self.num_key_value_heads = self.n_head_kv
 
 
 class FlexFlowFalcon(FlexFlowModel):
@@ -42,20 +53,20 @@ class FlexFlowFalcon(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
-        max_batch_size=1,
-        max_seq_length=256,
-        max_tokens_per_batch=64,
+        #max_batch_size=1,
+        #max_seq_length=256,
+        max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
     ):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
-        self.max_batch_size = max_batch_size
+        #self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.falcon_config = FalconConfig(hf_config)
-        self.falcon_config.max_seq_length = max_seq_length
-        self.falcon_config.max_num_tokens = max_tokens_per_batch
+        #self.falcon_config.max_seq_length = max_seq_length
+        #self.falcon_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
@@ -81,12 +92,12 @@ class FlexFlowFalcon(FlexFlowModel):
                 f"Number of k/v attention heads ({self.falcon_config.n_head_kv}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
 
-        self.build_model()
+        self.build_model(max_tokens_per_batch)
 
-    def build_model(self):
+    def build_model(self, max_tokens_per_batch):
         ffmodel = FFModel(self.ffconfig)
 
-        tokens_dims = [self.falcon_config.max_num_tokens, 1]
+        tokens_dims = [max_tokens_per_batch, 1]
         input_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
 
         embed_init = UniformInitializer(random.randint(0, self.maxint), 0, 0)
@@ -234,6 +245,11 @@ class FlexFlowFalcon(FlexFlowModel):
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
+        n_head = (
+            model.config.n_head
+            if "n_head" in model.config.__dict__
+            else model.config.num_attention_heads
+        )
         for name, params in model.named_parameters():
             name = (
                 name.replace(".", "_")
@@ -250,8 +266,8 @@ class FlexFlowFalcon(FlexFlowModel):
                     params,
                     [
                         model.config.hidden_size,
-                        model.config.hidden_size // model.config.n_head,
-                        model.config.hidden_size // model.config.n_head,
+                        model.config.hidden_size // n_head,
+                        model.config.hidden_size // n_head,
                     ],
                     0,
                 )
@@ -264,25 +280,3 @@ class FlexFlowFalcon(FlexFlowModel):
         model.lm_head.weight.detach().cpu().numpy().tofile(
             os.path.join(dst_folder, "lm_head_weight")
         )
-
-    def get_layers_with_weights(self):
-        layer_names = [
-            "word_embeddings_weight",
-            "ln_f_weight",
-            "lm_head_weight",
-        ] + [
-            expr
-            for i in range(self.falcon_config.n_layer)
-            for expr in (
-                f"layers_{i}_input_layernorm_weight",
-                f"layers_{i}_attention_weight",
-                f"layers_{i}_mlp_dense_h_to_4h_weight",
-                f"layers_{i}_mlp_dense_4h_to_h_weight",
-            )
-        ]
-        layers_with_weights = {
-            layer_name: self.ffmodel.get_layer_by_name(layer_name)
-            for layer_name in layer_names
-        }
-
-        return layers_with_weights
