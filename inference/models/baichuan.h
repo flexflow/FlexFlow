@@ -56,7 +56,13 @@ public:
                 max_beam_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
         }
 
-        void print() const;
+        void print() const {
+            std::cout<<"BaiChuan Config: "<<std::endl;
+            std::cout << "\thidden_size: " << hidden_size << std::endl;
+            std::cout << "\tn_heads: " << num_attention_heads << std::endl;
+            std::cout << "\tn_layers: " << num_hidden_layers << std::endl;
+            std::cout << "\tvocab_size: " << vocab_size << std::endl;
+        }
 
         int max_seq_len, max_num_tokens, max_beam_width, max_beam_depth;
         int num_hidden_layers, vocab_size, num_attention_heads, hidden_size, intermediate_size, max_position_embeddings;
@@ -70,6 +76,6 @@ public:
                                      InferenceMode mode,
                                      GenerationConfig generationConfig,
                                      bool use_full_precision = false);
-}
+};
 
 } // namespace FlexFlow

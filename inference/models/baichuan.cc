@@ -25,7 +25,7 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
                                      std::string const &weight_file_path,
                                      InferenceMode mode,
                                      GenerationConfig generationConfig,
-                                     bool use_full_precision = false) {
+                                     bool use_full_precision ) {
    BAICHUANConfig baichuan_config(model_config_file_path);
    baichuan_config.print();
 
@@ -76,7 +76,7 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
     ff.set_transformer_layer_id(i);
 
     //step 1: rms_norm
-    Tensor rms_norm = ff.rms_norm(token, baichuan_config.rms_norm_eps, bachuan_config.hidden_size);
+    Tensor rms_norm = ff.rms_norm(token, baichuan_config.rms_norm_eps, baichuan_config.hidden_size);
     Layer *attention_norm = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) +
                                "_attention_norm_weight",
@@ -146,7 +146,7 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
 
     //step 3:add token, mhs, then rms_norm ,use the residual_rms_norm kernel 
     //token + mha, then rms_norm(token + mha)
-    layer_name = "layers_" + std::to_string(i) + "_ffn_norm";
+    std::string layer_name = "layers_" + std::to_string(i) + "_ffn_norm";
     
     Tensor token_ff_norm[2];
     ff.residual_rms_norm(token,
@@ -233,10 +233,10 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
     output = ff.argmax(softmax, /*beam_Search*/ true);
   } else {
     // Tensor softmax = ff.softmax(dense, -1);
-    if (generation_config.do_sample) {
-      dense = ff.scalar_truediv(dense, generation_config.temperature, false);
+    if (generationConfig.do_sample) {
+      dense = ff.scalar_truediv(dense, generationConfig.temperature, false);
       Tensor softmax = ff.softmax(dense, -1);
-      output = ff.sampling(softmax, generation_config.topp);
+      output = ff.sampling(softmax, generationConfig.topp);
     } else {
       // output = ff.arg_top_k(dense, /*k=*/1, false);
       output = ff.argmax(dense, /*beam_Search*/ false);
@@ -245,6 +245,7 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
 
     // Compile the model
   std::cout << "------start compile ----------" << std::endl;
+  InferenceManager *im = InferenceManager::get_inference_manager();
   im->compile_model_and_allocate_buffer(&ff);
   FileDataLoader fileloader("",
                             weight_file_path,
@@ -261,4 +262,5 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
   im->init_operators_inference(&ff);
 
 }
+
 } // namespace FlexFlow

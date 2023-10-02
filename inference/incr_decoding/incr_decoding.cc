@@ -20,6 +20,7 @@
 #include "models/mpt.h"
 #include "models/opt.h"
 #include "models/starcoder.h"
+#include "models/baichuan.h"
 #include <wordexp.h>
 
 #include <nlohmann/json.hpp>
@@ -235,7 +236,8 @@ void FlexFlow::top_level_task(Task const *task,
   } else if (model_type == ModelType::BAICHUAN) {
     BAICHUAN::create_baichuan_model(model,
                                     config_filepath,
-                                    weights_filepath INC_DECODING_MODE,
+                                    weights_filepath,
+                                    INC_DECODING_MODE,
                                     generationConfig,
                                     use_full_precision);
   } else {
