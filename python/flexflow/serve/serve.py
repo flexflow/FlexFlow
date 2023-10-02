@@ -18,6 +18,7 @@ from flexflow.serve.models import (
     FlexFlowFalcon,
     FlexFlowSTARCODER,
     FlexFlowMPT,
+    FlexFlowBAICHUAN
 )
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
@@ -89,6 +90,7 @@ class LLM:
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
             "GPTBigCodeForCausalLM": (ModelType.STARCODER, FlexFlowSTARCODER),
             "MPTForCausalLM": (ModelType.MPT, FlexFlowMPT),
+            "BaiChuanForCausalLM": {ModelType.BAICHUAN, FlexFlowBAICHUAN}
         }
         self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
         self.model_name = self.hf_config._name_or_path
@@ -102,6 +104,7 @@ class LLM:
     def __get_ff_model_type(self):
         architectures = getattr(self.hf_config, "architectures", [])
         ff_arch = None
+        print(f"architectures: {architectures}")
         if next(iter(architectures), None) is not None:
             ff_arch = self.supported_models.get(architectures[0])
         if ff_arch is None:

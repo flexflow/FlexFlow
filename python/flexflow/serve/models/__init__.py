@@ -17,3 +17,4 @@ from .opt import FlexFlowOPT
 from .falcon import FlexFlowFalcon
 from .starcoder import FlexFlowSTARCODER
 from .mpt import FlexFlowMPT
+from .baichuan import FlexFlowBAICHUAN
