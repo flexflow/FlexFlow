@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_PARALLEL_TENSOR_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_PARALLEL_TENSOR_H
 
-#include "data_type.h"
+#include "datatype.h"
 #include "initializer.h"
 #include "param_sync.h"
 #include "pcg/parallel_tensor.h"
