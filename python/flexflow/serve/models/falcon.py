@@ -107,13 +107,25 @@ class FlexFlowFalcon(FlexFlowModel):
         for i in range(self.falcon_config.n_layer):
             ffmodel.set_transformer_layer_id(i)
 
-            att_norm = ffmodel.layer_norm(
-                token,
-                axes,
-                True,
-                self.falcon_config.layer_norm_epsilon,
-                name=f"layers_{i}_input_layernorm",
-            )
+            if i == 0:
+                att_norm = ffmodel.layer_norm(
+                    token,
+                    axes,
+                    True,
+                    self.falcon_config.layer_norm_epsilon,
+                    name=f"layers_{i}_input_layernorm",
+                )
+            else:
+                token, att_norm = ffmodel.residual_layer_norm(
+                    token,
+                    mha,
+                    mlp_output,
+                    True,
+                    axes,
+                    True,
+                    self.falcon_config.layer_norm_epsilon,
+                    name=f"layers_{i}_input_layernorm",
+                )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
                 mha = ffmodel.spec_inc_multiquery_self_attention(
@@ -185,11 +197,15 @@ class FlexFlowFalcon(FlexFlowModel):
                 name=f"layers_{i}_mlp_dense_4h_to_h",
             )
 
-            token = ffmodel.add(token, mha)
-            token = ffmodel.add(token, mlp_output)
-
-        ln_f = ffmodel.layer_norm(
-            token, axes, True, self.falcon_config.layer_norm_epsilon, name="ln_f"
+        _, ln_f = ffmodel.residual_layer_norm(
+            token,
+            mha,
+            mlp_output,
+            True,
+            axes,
+            True,
+            self.falcon_config.layer_norm_epsilon,
+            name="ln_f",
         )
         lm_head = ffmodel.dense(
             ln_f,
