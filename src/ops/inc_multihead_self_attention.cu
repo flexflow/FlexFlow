@@ -525,14 +525,6 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                               *m->max_total_tokens * bc->num_active_requests(),
                               m->num_kv_heads,
                               BatchConfig::MAX_SEQ_LENGTH);
-
-    // print_tensor<float>((float *)m->key, 32, "key");
-    // print_tensor<float>((float *)m->key + 64 * 10 - 1, 32, "key1");
-    // print_tensor<float>((float *)m->keyCache, 32, "keycache");
-    // print_tensor<float>((float *)m->keyCache + 64 * 10 - 1, 32, "keycache1");
-    // print_tensor<float>((float *)m->key + 64 * 10, 32, "key2");
-    // print_tensor<float>((float *)m->key, 32, "key");
-    //  assert(false);
   }
 }
 
@@ -660,7 +652,7 @@ void pad_input(IncMultiHeadSelfAttentionMeta const *m,
                             static_cast<DT *>(m->padded_input),
                             bc,
                             max_length * bc->num_active_requests(),
-                            m->qProjSize * m->num_q_heads,
+                            m->qSize,
                             max_length);
 }
 
@@ -692,9 +684,6 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                   bc->num_active_tokens() * sizeof(BatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
-
-  // print_tensor<float>((float *)input_ptr, 32, "inputtttt1");
-  // print_tensor<float>((float *)m->padded_input, 32, "inputtttt2");
 
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
@@ -859,18 +848,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   int max_total_tokens = *m->max_total_tokens;
 
   assert(m->qProjSize == m->kProjSize);
-  // for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
-  //   if (bc->request_completed[i]) {
-  //     continue;
-  //   }
-  //   // int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-  //   int total_tokens = bc->requestsInfo[i].token_start_offset +
-  //                      bc->requestsInfo[i].num_tokens_in_batch;
-  //   max_total_tokens = std::max(max_total_tokens, total_tokens);
-  //   // bc->token_last_available_idx[i] + 1;
-  //   // Compute (QK^T/sqrt(d_k))
-  //   // a flag of using this scaling alpha
-  // }
 
   int q_block_size = m->qProjSize * max_new_tokens;
   int kt_block_size = m->kProjSize * max_total_tokens;
@@ -922,7 +899,10 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                          m->num_q_heads * num_activate_req,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
+    // save_tensor<float>((float *)A, 64 * 3 * 10,
+    // ("/home/ubuntu/FlexFlow/inference/query" + std::to_string(shard_id) +
+    // ".txt").c_str()); print_tensor<float>((float *)C, 32, "qkprod",
+    // shard_id); print_tensor<float>((float *)B, 32, "key", shard_id);
     // print_tensor<float>((float *)m->qk_prods, 32, "qkprod");
     // save_tensor<float>((float *)m->qk_prods, 10 * 10 * 12,
     // "/home/xinhaoc/FlexFlow/inference/qk.txt");
@@ -1491,8 +1471,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t total_tokens_per_req_size = BatchConfig::MAX_NUM_REQUESTS;
     size_t output_size =
         BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_REQUESTS * oProjSize;
-    size_t input_size =
-        BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_REQUESTS * oProjSize;
+    size_t input_size = BatchConfig::MAX_NUM_TOKENS *
+                        BatchConfig::MAX_NUM_REQUESTS * num_q_heads * qProjSize;
     size_t query_size = BatchConfig::MAX_NUM_TOKENS *
                         BatchConfig::MAX_NUM_REQUESTS * qProjSize * num_q_heads;
     size_t totalSize =
@@ -1503,7 +1483,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         complex_size * sizeof(cuFloatComplex) +
         real_token_idx_size * sizeof(int) +
         total_tokens_per_req_size * sizeof(int) +
-        (key_cache_size + value_cache_size + output_size + query_size) *
+        (key_cache_size + value_cache_size + output_size + query_size +
+         input_size) *
             size_of_dt; // temporary storage for key, value, output
                         // more components will
                         // be added here later
@@ -1580,10 +1561,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
       key = gpu_mem_allocator.allocate_reserved_untyped(key_cache_size *
                                                         size_of_dt);
-      query = gpu_mem_allocator.allocate_reserved_untyped(value_cache_size *
-                                                          size_of_dt);
-      value =
+      query =
           gpu_mem_allocator.allocate_reserved_untyped(query_size * size_of_dt);
+      value = gpu_mem_allocator.allocate_reserved_untyped(value_cache_size *
+                                                          size_of_dt);
 
       padded_input =
           gpu_mem_allocator.allocate_reserved_untyped(input_size * size_of_dt);
