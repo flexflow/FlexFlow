@@ -184,6 +184,7 @@ class LLM:
                 # Remote model
                 print(f"'{self.model_name}' local model weights were updated! Converting new weights now...")
             # Download model from HuggingFace, or load it from the local folder
+            print(f"slef.model_name: {self.model_name}")
             hf_model = AutoModelForCausalLM.from_pretrained(self.model_name, trust_remote_code=True)
             # Print log message to notify user download of model has finished
             if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
