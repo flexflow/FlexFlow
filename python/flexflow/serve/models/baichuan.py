@@ -98,13 +98,13 @@ class FlexFlowBAICHUAN(FlexFlowModel):
                 )
 
             else:
-            token, attn_norm = ffmodel.residual_rms_norm(
-                token,
-                w2,
-                self.baichuan_config.rms_norm_eps,
-                self.baichuan_config.hidden_size,
-            name=f"layers_{i}_attention_norm",
-            )     
+                token, attn_norm = ffmodel.residual_rms_norm(
+                    token,
+                    w2,
+                    self.baichuan_config.rms_norm_eps,
+                    self.baichuan_config.hidden_size,
+                name=f"layers_{i}_attention_norm",
+                )     
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
                 mha = ffmodel.inc_multihead_self_attention(
