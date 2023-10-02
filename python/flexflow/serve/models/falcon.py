@@ -235,23 +235,26 @@ class FlexFlowFalcon(FlexFlowModel):
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
-            name = (
+            new_name = (
                 name.replace(".", "_")
                 .replace("transformer_h_", "layers_")
                 .replace("transformer_", "")
                 .replace("self_attention_dense", "attention_wo")
             )
+            print(f"name: {name}, params.shape: {params.shape}, new_name: {new_name}")
+            name = new_name
             # Split Q,K,V attention weights
             if "self_attention_query_key_value" in name:
                 name_q = name.replace("self_attention_query_key_value", "attention_wq")
                 name_k = name.replace("self_attention_query_key_value", "attention_wk")
                 name_v = name.replace("self_attention_query_key_value", "attention_wv")
+                print(f"model_config:{model.config}")
                 q, k, v = torch.split(
                     params,
                     [
                         model.config.hidden_size,
-                        model.config.hidden_size // model.config.n_head,
-                        model.config.hidden_size // model.config.n_head,
+                        model.config.hidden_size // model.config.num_kv_heads,
+                        model.config.hidden_size // model.config.num_kv_heads,
                     ],
                     0,
                 )

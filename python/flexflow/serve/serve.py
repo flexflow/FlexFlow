@@ -90,9 +90,10 @@ class LLM:
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
             "GPTBigCodeForCausalLM": (ModelType.STARCODER, FlexFlowSTARCODER),
             "MPTForCausalLM": (ModelType.MPT, FlexFlowMPT),
-            "BaiChuanForCausalLM": {ModelType.BAICHUAN, FlexFlowBAICHUAN}
+            "BaiChuanForCausalLM": {ModelType.BAICHUAN, FlexFlowBAICHUAN},
+            "FalconForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
         }
-        self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
+        self.hf_config = AutoConfig.from_pretrained(model_name)
         self.model_name = self.hf_config._name_or_path
         self.model_type, self.model_class = self.__get_ff_model_type()
         self.data_type = data_type
@@ -236,7 +237,7 @@ class LLM:
                     self.model_name, use_fast=True
                 )
             else:
-                hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+                hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
             # Print log message to notify user download of tokenizer has finished
             if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
                 print("Done downloading tokenizer. Saving it now...")
