@@ -1,5 +1,6 @@
 from tooling.layout.project import Project
-from tooling.layout.file_type import FileAttributes, FileAttribute
+from tooling.layout.file_type_inference.file_attribute import FileAttribute
+from tooling.layout.file_type_inference.rules.rule import Rule, OpaqueFunction, HasAnyOfAttributes, HasAttribute, HasAllOfAttributes, Attrs, ExprExtra, Not
 from tooling.linting.framework.response import CheckResponse, FixResponse, Response
 from tooling.linting.framework.method import Method
 from tooling.linting.framework.settings import Settings
@@ -9,7 +10,7 @@ from tooling.layout.path import AbsolutePath
 from tooling.linting.framework.specification import Specification
 from os import PathLike
 
-from typing import FrozenSet, List, Sequence
+from typing import FrozenSet, Sequence
 import subprocess
 import logging
 
@@ -24,27 +25,76 @@ def run_clang_format(project: Project, config: ClangToolsConfig, args: Sequence[
         f'--style=file:{style_file}',
         *args
     ]
-    _l.debug('Running command %s on %d files', command, len(files))
+    if len(files) == 1:
+        _l.debug(f'Running command {command} on 1 file: {files[0]}')
+    else:
+        _l.debug(f'Running command {command} on {len(files)} files')
     return subprocess.check_output(command + [*files], stderr=subprocess.STDOUT).decode()
 
-def get_files(project: Project) -> FrozenSet[AbsolutePath]:
-    return project.files_satisfying(
-        lambda p: FileAttributes.for_path(p).implies_any_of([FileAttribute.CPP, FileAttribute.C])
+supported_by_clang_format = Rule(
+    HasAnyOfAttributes.from_iter([FileAttribute.CPP, FileAttribute.C, FileAttribute.HEADER]), 
+    FileAttribute.SUPPORTED_BY_CLANG_FORMAT
+)
+
+def get_clang_check_rules(project: Project, config: ClangToolsConfig) -> FrozenSet[Rule]:
+    def check_if_path_is_not_formatted(p: AbsolutePath, attrs: Attrs, extra: ExprExtra, project: Project = project, config: ClangToolsConfig = config) -> bool:
+        output = run_clang_format(project, config, args=['--dry-run'], files=[p])
+        extra.save(output)
+        return len(output.splitlines()) > 0
+
+    incorrectly_formatted = Rule(
+        OpaqueFunction(
+            precondition=HasAllOfAttributes.from_iter([
+                FileAttribute.SUPPORTED_BY_CLANG_FORMAT, 
+                FileAttribute.IS_VALID_FILE,
+            ]), 
+            func=check_if_path_is_not_formatted
+        ),
+        FileAttribute.FAILED_CLANG_FORMAT 
+    )
+    correctly_formatted = Rule(
+        HasAllOfAttributes.from_iter([
+            FileAttribute.SUPPORTED_BY_CLANG_FORMAT,
+            FileAttribute.IS_VALID_FILE,
+        ]) & Not(HasAttribute(FileAttribute.FAILED_CLANG_FORMAT)),
+        FileAttribute.IS_CLANG_FORMATTED
     )
 
+    return frozenset([
+        supported_by_clang_format,
+        incorrectly_formatted,
+        correctly_formatted
+    ])
+
+def get_clang_fix_rules(project: Project, config: ClangToolsConfig) -> FrozenSet[Rule]:
+    def format_path(p: AbsolutePath, attrs: Attrs, extra: ExprExtra, project: Project = project, config: ClangToolsConfig = config) -> bool:
+        output = run_clang_format(project, config, args=['-i'], files=[p])
+        extra.save(output)
+        return True # clang format seems to always succeed
+
+    run_formatter = Rule(
+        OpaqueFunction(
+            precondition=HasAllOfAttributes.from_iter([
+                FileAttribute.SUPPORTED_BY_CLANG_FORMAT,
+                FileAttribute.IS_VALID_FILE,
+            ]),
+            func=format_path
+        ),
+        FileAttribute.IS_CLANG_FORMATTED
+    )
+
+    return frozenset([
+        supported_by_clang_format,
+        run_formatter
+    ])
+
 def check_format(project: Project, config: ClangToolsConfig) -> CheckResponse:
-    failed_files: List[str] = []
-    for file in get_files(project):
-        output = run_clang_format(project, config, args=[
-            '--dry-run'
-        ], files=[file])
-        if len(output.splitlines()) > 0:
-            failed_files.append(str(file))
+    project.add_rules(get_clang_check_rules(project, config))
+    failed_files = [str(failed_file) for failed_file in project.file_types.with_attr(FileAttribute.FAILED_CLANG_FORMAT)]
     return CheckResponse(num_errors=len(failed_files), json_data=list(sorted(failed_files)))
 
 def fix_format(project: Project, config: ClangToolsConfig) -> FixResponse:
-    run_clang_format(project, config, args=['-i'], files=[path for path in get_files(project)])
-
+    project.add_rules(get_clang_fix_rules(project, config))
     return FixResponse(did_succeed=True)
 
 def run(settings: Settings, project: Project, method: Method) -> Response:

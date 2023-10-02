@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional, FrozenSet
 from tooling.layout.cpp.file_group.component_type import ComponentType 
 from tooling.layout.path import AbsolutePath, with_all_suffixes_removed, full_suffix 
-from tooling.layout.file_type import FileAttribute, FileAttributes 
+from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from tooling.layout.cpp.file_group.file_group_component import FileGroupComponent 
 from pathlib import Path
 
@@ -102,36 +102,10 @@ class FileGroup:
 
     @classmethod
     def try_create(cls, path: AbsolutePath, library: 'Library') -> Optional['FileGroup']:
-        attrs = FileAttributes.for_path(path)
-        if not attrs.implies_any_of([
-            FileAttribute.CPP_SOURCE,
-            FileAttribute.CPP_PUBLIC_HEADER,
-            FileAttribute.CPP_PRIVATE_HEADER,
-            FileAttribute.CPP_TEST
-        ]):
-            return None
-
-        if path.is_relative_to(library.src_path):
-            assert attrs.implies_any_of([
-                FileAttribute.CPP_SOURCE,
-                FileAttribute.CPP_TEST,
-                FileAttribute.CPP_PRIVATE_HEADER
-            ])
-            relative_path = path.relative_to(library.src_path)
-        elif path.is_relative_to(library.include_path):
-            assert attrs.implies(FileAttribute.CPP_PUBLIC_HEADER)
-
-            relative_path = path.relative_to(library.include_path)
+        if FileAttribute.CPP_FILE_GROUP_MEMBER in library.file_types.for_path(path):
+            base_path = next(parent for parent in path.parents if FileAttribute.CPP_FILE_GROUP_BASE in library.file_types.for_path(parent))
+            return FileGroup(
+                library=library, _logical_path=with_all_suffixes_removed(path.relative_to(base_path))
+            )
         else:
             return None
-
-        assert attrs.extension is not None
-        assert full_suffix(relative_path) == attrs.extension
-
-        logical_path = with_all_suffixes_removed(relative_path)
-
-        return cls(
-            library=library,
-            _logical_path=logical_path
-        )
-

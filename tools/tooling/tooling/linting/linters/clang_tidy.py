@@ -10,19 +10,17 @@ from os import PathLike
 from typing import Sequence, Union, FrozenSet
 import logging
 import subprocess
-from tooling.layout.file_type import FileAttributes, FileAttribute
+from tooling.layout.file_type_inference.file_attribute import FileAttribute
 
 _l = logging.getLogger(__name__)
 
 def find_compile_commands(project: Project) -> Union[AbsolutePath, ErrorResponse]:
-    build_dirs = project.find_build_directories()
-    compile_command_paths = list(filter(lambda p: p.is_file(), 
-        (d / 'compile_commands.json' for d in build_dirs)
-    ))
+    compile_command_paths = project.file_types.with_attr(FileAttribute.COMPILE_COMMANDS_JSON)
+
     if len(compile_command_paths) == 1:
-        return compile_command_paths[0]
+        return list(compile_command_paths)[0]
     elif len(compile_command_paths) == 0:
-        return ErrorResponse(f'Could not find any compile_commands.json in build_dirs {list(sorted(build_dirs))}')
+        return ErrorResponse('Could not find any compile_commands.json')
     else:
         assert len(compile_command_paths) > 1
         return ErrorResponse(f'Found multiple compile_commands.json, disambiguation required: {list(sorted(compile_command_paths))}')
@@ -52,12 +50,8 @@ def run_clang_tidy(
     return subprocess.check_output(command + [*files], stderr=subprocess.STDOUT).decode()
 
 
-    # project.files_satisfying(
-
 def get_files(project: Project) -> FrozenSet[AbsolutePath]:
-    return project.files_satisfying(
-        lambda p: FileAttributes.for_path(p).implies(FileAttribute.CPP)
-    )
+    return project.file_types.with_all_of_attrs([FileAttribute.CPP, FileAttribute.IS_VALID_FILE])
 
 def check_tidy(project: Project, config: ClangToolsConfig, compile_commands_path: AbsolutePath) -> Union[CheckResponse, ErrorResponse]:
     output = run_clang_tidy(

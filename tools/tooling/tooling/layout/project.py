@@ -1,14 +1,20 @@
-from dataclasses import dataclass
 from tooling.layout.cpp.cpp_code import CppCode
 from tooling.layout.path import AbsolutePath
-from typing import FrozenSet, Optional, Iterator, Callable
+from tooling.layout.file_type_inference.all_rules import run_all_rules
+from tooling.layout.file_type_inference.file_attribute import FileAttribute
+from tooling.layout.file_type_inference.rules.rule import Rule
+from typing import FrozenSet, Optional, Iterator, Callable, Iterable
 import subprocess
 from pathlib import Path
 import string
 
-@dataclass(frozen=True)
 class Project:
-    root_path: AbsolutePath
+    def __init__(self, root_path: AbsolutePath):
+        self.root_path = root_path
+        self.file_types = run_all_rules(root_path)
+
+    def add_rules(self, rules: Iterable[Rule]) -> None:
+        raise NotImplementedError()
 
     @property
     def cpp_code(self) -> CppCode:
@@ -72,11 +78,9 @@ class Project:
 
         return frozenset(_recurse(base_path))
 
-    def find_build_directories(self) -> FrozenSet[AbsolutePath]:
-        return self.directories_satisfying(
-            lambda p: (p / 'CMakeCache.txt').is_file(),
-            allow_nesting=False
-        )
+    @property
+    def build_directories(self) -> FrozenSet[AbsolutePath]:
+        return self.file_types.with_attr(FileAttribute.BUILD_DIRECTORY)
 
     @classmethod
     def for_path(cls, p: Path) -> 'Project':

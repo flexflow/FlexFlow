@@ -1,44 +1,149 @@
 from tooling.layout.project import Project
 from tooling.layout.cpp.file_group.file_group import FileGroup
-from tooling.layout.file_type import FileAttribute, FileAttributes 
+from tooling.layout.file_type_inference.file_attribute import FileAttribute
+from tooling.layout.file_type_inference.rules.rule import (
+    Rule, HasAttribute, make_update_rules, OpaqueFunction, ExprExtra, Attrs, AncestorSatisfies
+)
 from tooling.layout.cpp.file_group.component_type import ComponentType 
-from tooling.layout.path import AbsolutePath
+from tooling.layout.path import AbsolutePath, with_all_suffixes_removed
 from tooling.linting.framework.response import CheckResponse 
 from tooling.linting.framework.specification import Specification 
 from tooling.linting.framework.method import Method
 from tooling.linting.framework.settings import Settings
+from pathlib import Path
 
 from enum import Enum, auto
 from dataclasses import dataclass
-from typing import Iterator, Dict, List, DefaultDict, FrozenSet
+from typing import Iterator, Dict, List, DefaultDict, FrozenSet, Tuple
 import logging
 
 _l = logging.getLogger(__name__)
 
-class RequiredComponent(Enum):
-    HEADER = auto()
-    SOURCE = auto()
-    TEST = auto()
+is_supported_rule = Rule(
+    HasAttribute(FileAttribute.CPP_FILE_GROUP_MEMBER),
+    FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER
+)
+header_update_rules = make_update_rules(
+    is_supported=FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER,
+    old_incorrect=FileAttribute.ORIGINALLY_WAS_MISSING_HEADER_FILE,
+    old_correct=FileAttribute.ORIGINALLY_HAD_HEADER_FILE,
+    new_incorrect=FileAttribute.NOW_IS_MISSING_HEADER_FILE,
+    new_correct=FileAttribute.NOW_HAS_HEADER_FILE
+)
+source_update_rules = make_update_rules(
+    is_supported=FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER,
+    old_incorrect=FileAttribute.ORIGINALLY_WAS_MISSING_SOURCE_FILE,
+    old_correct=FileAttribute.ORIGINALLY_HAD_SOURCE_FILE,
+    new_incorrect=FileAttribute.NOW_IS_MISSING_SOURCE_FILE,
+    new_correct=FileAttribute.NOW_HAS_SOURCE_FILE,
+    did_fix=FileAttribute.DID_FIX_MISSING_SOURCE_FILE,
+)
+test_update_rules = make_update_rules(
+    is_supported=FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER,
+    old_incorrect=FileAttribute.ORIGINALLY_WAS_MISSING_TEST_FILE,
+    old_correct=FileAttribute.ORIGINALLY_HAD_TEST_FILE,
+    new_incorrect=FileAttribute.NOW_IS_MISSING_TEST_FILE,
+    new_correct=FileAttribute.NOW_HAS_TEST_FILE,
+)
+update_rules = header_update_rules.union(source_update_rules, test_update_rules)
+common_rules = update_rules.union([is_supported_rule])
 
-    @staticmethod
-    def all() -> FrozenSet['RequiredComponent']:
-        return frozenset({
-            RequiredComponent.HEADER,
-            RequiredComponent.SOURCE,
-            RequiredComponent.TEST,
-        })
-
-    @staticmethod
-    def from_file_attributes(attrs: FileAttributes) -> 'RequiredComponent':
-        component: RequiredComponent 
-        if attrs.implies(FileAttribute.CPP_SOURCE):
-            component = RequiredComponent.SOURCE
-        elif attrs.implies(FileAttribute.CPP_TEST):
-            component = RequiredComponent.TEST
+def get_check_missing_files_rules(project: Project) -> FrozenSet[Rule]:
+    def _get_file_group_dirs(p: AbsolutePath, attrs: Attrs) -> Tuple[AbsolutePath, AbsolutePath, Path]:
+        for parent in p.parents:
+            if FileAttribute.CPP_FILE_GROUP_BASE in attrs(parent):
+                break
         else:
-            assert attrs.implies_any_of([FileAttribute.CPP_PUBLIC_HEADER, FileAttribute.CPP_PRIVATE_HEADER])
-            component = RequiredComponent.HEADER
-        return component
+            assert False
+
+        file_group_base = parent
+        assert FileAttribute.CPP_LIBRARY in attrs(file_group_base.parent)
+        library_dir = file_group_base.parent
+        include_dir = library_dir / 'include'
+        src_dir = library_dir / 'src'
+        file_group_path = with_all_suffixes_removed(p.relative_to(file_group_base))
+        return include_dir, src_dir, file_group_path
+
+    def _check_has_header(p: AbsolutePath, attrs: Attrs, extra: ExprExtra, project: Project = project) -> bool:
+        include_dir, src_dir, file_group_path = _get_file_group_dirs(p, attrs)
+
+        public_header_path = include_dir / file_group_path.with_suffix('.h')
+        private_header_path = src_dir / file_group_path.with_suffix('.h')
+
+        return public_header_path.is_file() or private_header_path.is_file()
+
+    def _check_has_source(p: AbsolutePath, attrs: Attrs, extra: ExprExtra, project: Project = project) -> bool:
+        include_dir, src_dir, file_group_path = _get_file_group_dirs(p, attrs)
+        source_path = src_dir / file_group_path.with_suffix('.cc')
+        return source_path.is_file()
+
+    def _check_has_test(p: AbsolutePath, attrs: Attrs, extra: ExprExtra, project: Project = project) -> bool:
+        include_dir, src_dir, file_group_path = _get_file_group_dirs(p, attrs)
+        test_path = src_dir / file_group_path.with_suffix('.test.cc')
+        return test_path.is_file()
+
+    has_header_rule = Rule(
+        OpaqueFunction(
+            precondition=And.from_iter([
+                HasAttribute(FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER),
+                AncestorSatisfies(FileAttribute.CPP_FILE_GROUP_BASE),
+                AncestorSatisfies(FileATtribute.CPP_LIBRARY),
+            ]),
+            func=_check_has_header,
+        ),
+        FileAttribute.ORIGINALLY_HAD_HEADER_FILE,
+    )
+
+    has_source_rule = Rule(
+        OpaqueFunction(
+            precondition=And.from_iter([
+                HasAttribute(FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER),
+                AncestorSatisfies(FileAttribute.CPP_FILE_GROUP_BASE),
+                AncestorSatisfies(FileATtribute.CPP_LIBRARY),
+            ]),
+            func=_check_has_source,
+        ),
+        FileAttribute.ORIGINALLY_HAD_SOURCE_FILE,
+    )
+
+    has_test_rule = Rule(
+        OpaqueFunction(
+            precondition=And.from_iter([
+                HasAttribute(FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER),
+                AncestorSatisfies(FileAttribute.CPP_FILE_GROUP_BASE),
+                AncestorSatisfies(FileATtribute.CPP_LIBRARY),
+            ]),
+            func=_check_has_test,
+        ),
+        FileAttribute.ORIGINALLY_HAD_TEST_FILE,
+    )
+
+    return common_rules.union([
+        has_header_rule,
+        has_source_rule,
+        has_test_rule,
+    ])
+    
+
+def get_fix_missing_files_rules(project: Project) -> FrozenSet[Rule]:
+    def _create_missing_source_file(p: AbsolutePath, attrs: Attrs, extra: ExprExtra, project: Project = project) -> bool:
+        pass 
+
+    fix_missing_src_file_rule = Rule(
+        OpaqueFunction(
+            precondition=HasAttribute(FileAttribute.ORIGINALLY_WAS_MISSING_SOURCE_FILE),
+            func=_create_missing_source_file,
+        ),
+        FileAttribute.DID_FIX_MISSING_SOURCE_FILE
+    )
+
+    return get_check_missing_files_rules(project).union([fix_missing_src_file_rule])
+
+def check_missing_files(project: Project) -> CheckResponse:
+    pass
+
+def fix_missing_files(project: Project) -> FixResponse:
+    pass
 
 @dataclass(frozen=True)
 class InvalidFileFound:
@@ -46,32 +151,17 @@ class InvalidFileFound:
     path: AbsolutePath
 
     @classmethod
-    def create(cls, path: AbsolutePath) -> 'InvalidFileFound':
-        attrs = FileAttributes.for_path(path)
-
+    def create(cls, path: AbsolutePath, attrs: FrozenSet[FileAttribute]) -> 'InvalidFileFound':
         return cls(
             component_type=RequiredComponent.from_file_attributes(attrs),
             path=path,
         )
 
 def find_invalid_files(project: Project) -> Iterator[InvalidFileFound]:
-    for file in project.files_satisfying(
-        lambda p: FileAttributes.for_path(p).implies_any_of([
-            FileAttribute.HEADER,
-            FileAttribute.CPP_SOURCE,
-            FileAttribute.CPP_TEST
-        ])
-    ):
-        _l.debug(f'Checking if file {file} is invalid...')
-        lib = project.cpp_code.get_containing_library(file)
-        if lib is None:
-            _l.debug('File was found to be invalid: no containing library')
-            yield InvalidFileFound.create(file)
-        elif not lib.is_valid_path(file):
-            _l.debug('File was found to be invalid: invalid location in library')
-            yield InvalidFileFound.create(file)
-        else:
-            _l.debug('File was found to be valid.')
+    yield from (
+        InvalidFileFound.create(path, project.file_types.for_path(path))
+        for path in project.file_types.with_attr(FileAttribute.IS_INVALID_FILE)
+    )
 
 @dataclass(frozen=True)
 class MissingFile:
@@ -96,8 +186,8 @@ def possible_paths_of_required_component(file_group: FileGroup, req: RequiredCom
 
 
 def find_missing_files(project: Project) -> Iterator[MissingFile]:
-    for library in project.cpp_code.find_libraries():
-        for file_group in library.find_file_groups():
+    for library in project.cpp_code.libraries:
+        for file_group in library.file_groups:
             for required_component in RequiredComponent.all():
                 if not any(
                     p.is_file() for p in possible_paths_of_required_component(file_group, required_component)

@@ -1,6 +1,6 @@
 from pathlib import Path, PosixPath 
 from os import PathLike
-from typing import Union, Generator, cast, Any, Optional
+from typing import Union, Generator, cast, Any, Optional, Iterator, Callable
 import functools
 
 @functools.lru_cache()
@@ -55,3 +55,10 @@ def with_all_suffixes_removed(p: Union[Path, AbsolutePath]) -> Path:
 
 def full_suffix(p: Union[Path, AbsolutePath]) -> str:
     return ''.join(p.suffixes)
+
+def children(p: AbsolutePath, traverse_children: Optional[Callable[[AbsolutePath], bool]] = None) -> Iterator[AbsolutePath]:
+    for child in p.iterdir():
+        yield child
+        if child.is_dir() and (traverse_children is None or traverse_children(child)):
+            yield from children(child, traverse_children=traverse_children)
+

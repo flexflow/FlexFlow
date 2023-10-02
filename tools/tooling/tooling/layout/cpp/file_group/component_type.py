@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from tooling.layout.file_type import FileAttribute, FileAttributes
+from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from typing import FrozenSet
 
 class ComponentType(Enum):

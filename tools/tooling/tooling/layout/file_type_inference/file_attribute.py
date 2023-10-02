@@ -1,4 +1,3 @@
-from tooling.layout.file_type_inference.solver import Solver
 from enum import Enum, auto
 
 class FileAttribute(Enum):
@@ -20,6 +19,37 @@ class FileAttribute(Enum):
     CPP_LIBRARY_INCLUDE_DIR = auto()
     CPP_LIBRARY_IN_SRC = auto()
     CPP_LIBRARY_IN_INCLUDE = auto()
+    BUILD_DIRECTORY = auto()
+    COMPILE_COMMANDS_JSON = auto()
+    CPP_FILE_GROUP_MEMBER = auto()
+    CPP_LIBRARY_IS_VALID_FILE = auto()
+    IN_CPP_LIBRARY = auto()
+    CPP_FILE_GROUP_BASE = auto()
+    SUPPORTED_BY_CLANG_FORMAT = auto()
+    IS_CLANG_FORMATTED = auto()
+    FAILED_CLANG_FORMAT = auto()
+    HAS_UNCONVENTIONAL_INCLUDE_GUARDS = auto()
+    SUPPORTED_BY_FIX_INCLUDE_GUARDS = auto()
+    ORIGINALLY_HAD_CORRECT_INCLUDE_GUARD = auto()
+    ORIGINALLY_HAD_INCORRECT_INCLUDE_GUARD = auto()
+    NOW_HAS_CORRECT_INCLUDE_GUARD = auto()
+    NOW_HAS_INCORRECT_INCLUDE_GUARD = auto()
+    DID_FIX_INCLUDE_GUARD = auto()
+
+    IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER = auto()
+    ORIGINALLY_WAS_MISSING_HEADER_FILE = auto()
+    ORIGINALLY_HAD_HEADER_FILE = auto()
+    ORIGINALLY_WAS_MISSING_SOURCE_FILE = auto()
+    ORIGINALLY_HAD_SOURCE_FILE = auto()
+    ORIGINALLY_WAS_MISSING_TEST_FILE = auto()
+    ORIGINALLY_HAD_TEST_FILE = auto()
+    DID_FIX_MISSING_SOURCE_FILE = auto()
+    NOW_IS_MISSING_HEADER_FILE = auto()
+    NOW_HAS_HEADER_FILE = auto()
+    NOW_IS_MISSING_SOURCE_FILE = auto()
+    NOW_HAS_SOURCE_FILE = auto()
+    NOW_IS_MISSING_TEST_FILE = auto()
+    NOW_HAS_TEST_FILE = auto()
 
     HEADER = auto()
     IMPL = auto()
@@ -33,49 +63,5 @@ class FileAttribute(Enum):
     EXTERNAL_FFI_HEADER = auto()
     INTERNAL_FFI_HEADER = auto()
 
-    @staticmethod
-    def _solver() -> Solver['FileAttribute']:
-        solver: Solver['FileAttribute'] = Solver()
-
-        solver.add_disjunction_rules([
-            (
-                FileAttribute.CPP, 
-                (
-                    FileAttribute.CPP_PUBLIC_HEADER, 
-                    FileAttribute.CPP_PRIVATE_HEADER, 
-                    FileAttribute.CPP_FWDING_HEADER, 
-                    FileAttribute.CPP_TEST, 
-                    FileAttribute.IS_CPU_KERNEL,
-                    FileAttribute.IS_CUDA_KERNEL,
-                    FileAttribute.IS_HIP_KERNEL,
-                )
-            ),
-            (
-                FileAttribute.CPP_PRIVATE_HEADER,
-                (
-                    FileAttribute.INTERNAL_FFI_HEADER,
-                )
-            ),
-            (
-                FileAttribute.C,
-                (
-                    FileAttribute.EXTERNAL_FFI_HEADER,
-                )
-            ),
-            (
-                FileAttribute.IMPL, 
-                (
-                    FileAttribute.CPP_SOURCE, 
-                    FileAttribute.CPP_TEST,
-                )
-            ),
-            (
-                FileAttribute.PYTHON,
-                (
-                    FileAttribute.PYTHON_FF_TOOLS,
-                )
-            ),
-        ])
-
-        return solver
-
+    IS_INVALID_FILE = auto()
+    IS_VALID_FILE = auto()

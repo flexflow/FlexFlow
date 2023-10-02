@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from tooling.layout.path import AbsolutePath
 from tooling.layout.cpp.library import Library, is_library_root 
-from typing import Optional, Iterator, FrozenSet, Container
-import functools
+from tooling.layout.file_type_inference.file_attribute import FileAttribute
+from typing import Optional, FrozenSet
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -33,41 +33,14 @@ class CppCode:
     def clang_format_config_path(self) -> AbsolutePath:
         return self.root_path / '.clang-format-for-format-sh'
 
-    @functools.lru_cache()
-    def find_libraries(self) -> FrozenSet[Library]:
-        def iter_find_libraries(
-                within: AbsolutePath, 
-                to_skip: Container[AbsolutePath]
-        ) -> Iterator[Library]:
-            if within.is_file():
-                return
-
-            if within in to_skip:
-                return
-            if is_library_root(within):
-                yield Library.create(root_path=within, cpp_code=self)
-            else:
-                for p in within.iterdir():
-                    yield from iter_find_libraries(p, to_skip)
-
-        return frozenset(iter_find_libraries(self.lib_dir, self.blacklisted))
+    @property
+    def libraries(self) -> FrozenSet[Library]:
+        return frozenset({
+            Library.create(p, self) for p in self.project.file_types.with_attr(FileAttribute.CPP_LIBRARY)
+        })
 
     def get_containing_library(self, path: AbsolutePath) -> Optional[Library]:
-        for library in self.find_libraries():
+        for library in self.libraries:
             if library.contains(path):
                 return library
         return None
-
-    # def find_files_of_type(self, file_types: frozenset[FileType]) -> frozenset[AbsolutePath]:
-    #     return find_in_path_with_file_type(
-    #         path=self.lib_dir,
-    #         file_types=file_types,
-    #         skip_directories=self.blacklisted
-    #     )
-
-    # def all_files(self, file_types: Iterator[FileType]) -> FrozenSet[AbsolutePath]:
-    #     _file_types = frozenset(file_types)
-    #     assert all(ft.implies(FileType.CPP) for ft in _file_types)
-
-    #     raise NotImplementedError()
-

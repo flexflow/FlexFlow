@@ -1,8 +1,12 @@
 from tooling.layout.project import Project
 from tooling.layout.cpp.preprocessor import (
-    with_unconventional_include_guards, rewrite_to_use_conventional_include_guard
+    get_include_guard_var, set_include_guard_var
 )
-from tooling.layout.cpp.file_group.file_group_component import FileGroupComponent 
+from tooling.layout.file_type_inference.rules.rule import (
+    Rule, HasAttribute, HasAllOfAttributes, And, ExprExtra, OpaqueFunction, Attrs, HasAnyOfAttributes, Not, Or
+)
+from tooling.layout.file_type_inference.file_attribute import FileAttribute 
+from tooling.layout.path import AbsolutePath
 from tooling.linting.framework.response import Response, FixResponse, CheckResponse
 from tooling.linting.framework.specification import Specification
 from tooling.linting.framework.settings import Settings
@@ -10,21 +14,103 @@ from tooling.linting.framework.helpers import check_unstaged_changes
 from tooling.linting.framework.method import Method
 
 import logging
-from typing import FrozenSet, Set
+from typing import FrozenSet
 
 _l = logging.getLogger(__name__)
 
-def find_incorrect_include_guards(project: Project) -> FrozenSet[FileGroupComponent]:
-    incorrect: Set[FileGroupComponent] = set()
-    for library in project.cpp_code.find_libraries():
-        for logical_file in library.find_file_groups():
-            incorrect |= with_unconventional_include_guards(logical_file)
-    return frozenset(incorrect)
+supported_by_fix_include_guards = Rule(
+    And.from_iter([
+        HasAttribute(FileAttribute.IS_VALID_FILE),
+        HasAttribute(FileAttribute.CPP_FILE_GROUP_MEMBER),
+        HasAnyOfAttributes.from_iter([
+            FileAttribute.CPP_PUBLIC_HEADER,
+            FileAttribute.CPP_PRIVATE_HEADER
+        ])
+    ]),
+    FileAttribute.SUPPORTED_BY_FIX_INCLUDE_GUARDS
+)
 
-def fix_incorrect_include_guards(project: Project) -> None:
-    for component in find_incorrect_include_guards(project):
-        _l.info(f'Fixing include guard for component with path {component.path}')
-        rewrite_to_use_conventional_include_guard(component)
+originally_incorrect_include_guards_rule = Rule(
+    And.from_iter([
+        HasAttribute(FileAttribute.SUPPORTED_BY_FIX_INCLUDE_GUARDS),
+        Not(HasAttribute(FileAttribute.ORIGINALLY_HAD_CORRECT_INCLUDE_GUARD))
+    ]),
+    FileAttribute.ORIGINALLY_HAD_INCORRECT_INCLUDE_GUARD
+)
+
+original_to_now_rule = Rule(
+    Or.from_iter([
+        HasAttribute(FileAttribute.ORIGINALLY_HAD_CORRECT_INCLUDE_GUARD),
+        HasAllOfAttributes.from_iter([
+            FileAttribute.ORIGINALLY_HAD_INCORRECT_INCLUDE_GUARD,
+            FileAttribute.DID_FIX_INCLUDE_GUARD
+        ]),
+    ]),
+    FileAttribute.NOW_HAS_CORRECT_INCLUDE_GUARD
+)
+
+def get_include_guard_check_rules(project: Project) -> FrozenSet[Rule]:
+    def _check_include_guards(p: AbsolutePath, attrs: Attrs, extra: ExprExtra, project: Project = project) -> bool:
+        return get_include_guard_var(p) == project.include_guard_for_path(p)
+
+    check_include_guards_rule = Rule(
+        OpaqueFunction(
+            precondition=HasAttribute(FileAttribute.SUPPORTED_BY_FIX_INCLUDE_GUARDS),
+            func=_check_include_guards
+        ),
+        FileAttribute.ORIGINALLY_HAD_CORRECT_INCLUDE_GUARD
+    )
+
+    return frozenset({
+        supported_by_fix_include_guards,
+        original_to_now_rule,
+        originally_incorrect_include_guards_rule,
+        check_include_guards_rule
+    })
+
+def get_include_guard_fix_rules(project: Project) -> FrozenSet[Rule]:
+    def _fix_include_guards(p: AbsolutePath, attrs: Attrs, extra: ExprExtra, project: Project = project) -> bool:
+        set_include_guard_var(p, project.include_guard_for_path(p))
+        return True
+
+    fix_include_guards_rule = Rule(
+        OpaqueFunction(
+            precondition=HasAttribute(FileAttribute.ORIGINALLY_HAD_INCORRECT_INCLUDE_GUARD),
+            func=_fix_include_guards
+        ),
+        FileAttribute.DID_FIX_INCLUDE_GUARD
+    )
+
+    return get_include_guard_check_rules(project).union({fix_include_guards_rule})
+
+def check_include_guards(project: Project) -> CheckResponse:
+    project.add_rules(get_include_guard_check_rules(project))
+    incorrect_guards = [
+        str(p) for p in project.file_types.with_attr(FileAttribute.NOW_HAS_INCORRECT_INCLUDE_GUARD)
+    ]
+    return CheckResponse(
+        num_errors=len(incorrect_guards),
+        json_data=list(sorted(incorrect_guards))
+    )
+
+def fix_include_guards(project: Project) -> FixResponse:
+    project.add_rules(get_include_guard_fix_rules(project))
+
+    still_incorrect_guards = [
+        str(p) for p in project.file_types.with_attr(FileAttribute.NOW_HAS_INCORRECT_INCLUDE_GUARD)
+    ]
+
+    fixed_guards = [
+        str(p) for p in project.file_types.with_attr(FileAttribute.DID_FIX_INCLUDE_GUARD)
+    ]
+
+    return FixResponse(
+        did_succeed=(len(still_incorrect_guards) == 0),
+        json_data={
+            'failed_to_fix': sorted(list(still_incorrect_guards)),
+            'fixed': sorted(list(fixed_guards))
+        }
+    )
 
 def run(settings: Settings, project: Project, method: Method) -> Response:
     is_fix = method == Method.FIX
@@ -32,21 +118,10 @@ def run(settings: Settings, project: Project, method: Method) -> Response:
     if error is not None:
         return error
  
-    incorrect = find_incorrect_include_guards(project)
-
-    incorrect_jsonable = list(sorted([str(inc.path) for inc in incorrect]))
     if is_fix:
-        fix_incorrect_include_guards(project)
-        return FixResponse(
-            did_succeed=True,
-            num_fixes=len(incorrect),
-            json_data=incorrect_jsonable,
-        )
+        return fix_include_guards(project)
     else:
-        return CheckResponse(
-            num_errors=len(incorrect),
-            json_data=incorrect_jsonable,
-        )
+        return check_include_guards(project)
 
 spec = Specification.create(
     name='include_guards',
