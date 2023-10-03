@@ -20,12 +20,12 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::Domain;
 
-SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &handle) {
+SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &handle, int dim) {
   ffTensorDescriptor_t inputTensor;
 
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
 
-  SoftmaxPerDeviceState per_device_state = {handle, inputTensor};
+  SoftmaxPerDeviceState per_device_state = {handle, inputTensor, dim};
   return per_device_state;
 }
 

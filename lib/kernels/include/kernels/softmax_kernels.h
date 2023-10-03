@@ -11,14 +11,15 @@ namespace FlexFlow {
 struct SoftmaxPerDeviceState {
   PerDeviceFFHandle handle;
   ffTensorDescriptor_t inputTensor;
+  int dim;
 };
 
-FF_VISITABLE_STRUCT(SoftmaxPerDeviceState, handle, inputTensor);
+FF_VISITABLE_STRUCT(SoftmaxPerDeviceState, handle, inputTensor, dim);
 
 namespace Kernels {
 namespace Softmax {
 
-SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &);
+SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &, int);
 
 void forward_kernel(ffStream_t stream,
                     SoftmaxPerDeviceState const &m,

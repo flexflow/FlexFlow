@@ -39,25 +39,11 @@ using namespace FlexFlow::Kernels::Softmax;
 
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING, PER_DEVICE_STATE, HANDLE };
 
-/* Params */
-bool operator==(SoftmaxParams const &lhs, SoftmaxParams const &rhs) {
-  return lhs.dim == rhs.dim;
-}
-
-bool SoftmaxParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
-SoftmaxParams Softmax::get_params() const {
-  SoftmaxParams params;
-  params.dim = this->dim;
-  return params;
-}
-
 OpTaskInvocation init(SoftmaxAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(HANDLE, ff_handle());
+  binding.bind_arg(ATTRS, attrs);
   return {SOFTMAX_INIT_TASK_ID, binding};
 }
 
@@ -84,8 +70,11 @@ static DeviceSpecific<SoftmaxPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
+  auto const &attrs = acc.get_argument<SoftmaxAttrs>(ATTRS);
+
   DeviceSpecific<SoftmaxPerDeviceState> per_device_state =
-      acc.create_device_specific<SoftmaxPerDeviceState>(init_kernel(handle));
+      acc.create_device_specific<SoftmaxPerDeviceState>(
+          init_kernel(handle, attrs.dim));
   return per_device_state;
 }
 
@@ -161,8 +150,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   SimTaskBinding init_binding;
   // Note: what should init_binding?
-  init_binding.bind(INPUT, input);
-  init_binding.bind(OUTPUT, output_shape);
   init_binding.bind_arg(ATTRS, attrs);
   init_binding.bind_arg(PROFILING, settings);
   init_binding.bind_arg(HANDLE, ff_handle());
@@ -195,6 +182,7 @@ void register_task<SOFTMAX_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+  init.add_arg_slot<SoftmaxAttrs>(ATTRS);
 
   // Note: we don't add_input(INPUT) and add_output_slot(OUTPUT) here, because
   // init_task_impl doesn't need input, output, just need PerDeviceFFHandle
