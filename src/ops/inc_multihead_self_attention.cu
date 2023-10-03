@@ -899,13 +899,15 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                          m->num_q_heads * num_activate_req,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // save_tensor<float>((float *)A, 64 * 3 * 10,
-    // ("/home/ubuntu/FlexFlow/inference/query" + std::to_string(shard_id) +
-    // ".txt").c_str()); print_tensor<float>((float *)C, 32, "qkprod",
-    // shard_id); print_tensor<float>((float *)B, 32, "key", shard_id);
-    // print_tensor<float>((float *)m->qk_prods, 32, "qkprod");
-    // save_tensor<float>((float *)m->qk_prods, 10 * 10 * 12,
-    // "/home/xinhaoc/FlexFlow/inference/qk.txt");
+    // save_tensor<float>((float *)A, 64 * 3 * 20,
+    // ("/home/ubuntu/FlexFlow/inference/query" + std::to_string(0) +
+    // ".txt").c_str());
+
+    // print_tensor<float>((float *)C, 32, "qkprod",
+    //  shard_id); print_tensor<float>((float *)B, 32, "key", shard_id);
+    //  print_tensor<float>((float *)m->qk_prods, 32, "qkprod");
+    //  save_tensor<float>((float *)m->qk_prods, 10 * 10 * 12,
+    //  "/home/xinhaoc/FlexFlow/inference/qk.txt");
   } else {
     strideB = 0;
     // use cublasGemmStridedBatchedEx
@@ -1068,7 +1070,10 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                          m->num_q_heads * num_activate_req,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
+    // save_tensor<float>((float *)C, max_new_tokens * m->vProjSize *
+    // m->num_q_heads * num_activate_req, ("/home/ubuntu/FlexFlow/inference/kvp"
+    // + std::to_string(0) +
+    // ".txt").c_str());
     // print_tensor<float>((float *)A + 500, 32, "qk");
     // print_tensor<float>((float *)m->value + 500, 32, "value");
     // print_tensor<float>((float *)C + 3000, 32, "kv prod");
@@ -1118,33 +1123,40 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   alpha = 1.0f, beta = 0.0f;
   m_ = m->oProjSize;
   k = m->vProjSize * m->num_q_heads;
-  n = max_new_tokens * num_activate_req;
+  n = max_new_tokens;
   lda = k, ldb = n, ldc = m_;
   A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
                                m->kProjSize * m->num_kv_heads +
                                m->vProjSize * m->num_kv_heads);
   B = C;
   C = static_cast<DT *>(m->padded_output);
+  strideA = 0;
+  strideB = n * k;
+  strideC = m_ * n;
 
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_T,
-                         m_,
-                         n,
-                         k,
-                         &alpha,
-                         A,
-                         cublas_data_type,
-                         lda,
-                         B,
-                         cublas_data_type,
-                         ldb,
-                         &beta,
-                         C,
-                         cublas_data_type,
-                         ldc,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                       CUBLAS_OP_T,
+                                       CUBLAS_OP_T,
+                                       m_,
+                                       n,
+                                       k,
+                                       &alpha,
+                                       A,
+                                       cublas_data_type,
+                                       lda,
+                                       strideA,
+                                       B,
+                                       cublas_data_type,
+                                       ldb,
+                                       strideB,
+                                       &beta,
+                                       C,
+                                       cublas_data_type,
+                                       ldc,
+                                       strideC,
+                                       num_activate_req,
+                                       compute_type,
+                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
   if (*m->final_bias && shard_id == 0) {
     int parallelism = m->oProjSize * max_new_tokens;
