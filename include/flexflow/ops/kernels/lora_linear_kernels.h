@@ -10,8 +10,7 @@ namespace FlexFlow {
 
 class LoraLinearMeta : public OpMeta {
 public:
-  LoraLinearMeta(FFHandler handle,
-                 LoraLinear const *li);
+  LoraLinearMeta(FFHandler handle, LoraLinear const *li);
   ~LoraLinearMeta(void);
   char op_name[MAX_OPNAME];
   // PEFT related fields

@@ -15,9 +15,10 @@ public:
   int rank;
   DataType data_type;
 
-  bool is_valid(
-      std::pair<ParallelTensorShape, ParallelTensorShape> const &input_shape) const;
-  friend bool operator==(LoraLinearParams const &lhs, LoraLinearParams const &rhs);
+  bool is_valid(std::pair<ParallelTensorShape, ParallelTensorShape> const
+                    &input_shape) const;
+  friend bool operator==(LoraLinearParams const &lhs,
+                         LoraLinearParams const &rhs);
 };
 
 } // namespace FlexFlow
