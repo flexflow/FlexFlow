@@ -38,22 +38,11 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Reshape;
 
-/* Params */
-bool operator==(ReshapeParams const &lhs, ReshapeParams const &rhs) {
-  return lhs.shape == rhs.shape;
-}
-
-bool ReshapeParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 enum slots { INPUT, OUTPUT, ATTRS, PROFILING, PER_DEVICE_STATE };
 
 OpTaskInvocation init(ReshapeAttrs const &attrs) {
   OpTaskBinding binding;
 
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
-  binding.bind(OUTPUT, output_tensor(0));
   binding.bind_arg(ATTRS, attrs);
 
   return {RESHAPE_INIT_TASK_ID, binding};
@@ -150,8 +139,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
 
-  // Note(lamda):if reshape has cost, we can optimize this implementation
-
   SimTaskBinding init_binding;
   init_binding.bind_arg(ATTRS, attrs);
   auto init_accessor =
@@ -166,8 +153,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
-  auto fwd_accessor = env.get_fwd_accessor(TOPK_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(TOPK_BWD_TASK_ID, bwd_binding);
+  auto fwd_accessor = env.get_fwd_accessor(RESHAPE_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(RESHAPE_BWD_TASK_ID, bwd_binding);
 
   float forward_time = forward_task_impl(fwd_accessor).value();
   float backward_time = backward_task_impl(bwd_accessor).value();
