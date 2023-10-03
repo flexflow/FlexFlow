@@ -365,7 +365,9 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
         dims,
         quantization_type == DT_NONE ? this->data_type : quantization_type,
         nullptr /*owner_op*/,
-        true /*create_grad*/,
+        model.config.computationMode == COMP_MODE_INFERENCE
+            ? false
+            : true /*create_grad*/,
         initializer,
         CHOSEN_SYNC_TYPE);
     if (qkv_bias || final_bias) {

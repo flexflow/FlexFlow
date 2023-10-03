@@ -451,8 +451,10 @@ void peft_bwd_kernel(LinearMeta const *m,
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
   cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
-  // update input_grad_ptr offset
-  input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_tokens;
+  // update input_grad_ptr and output_grad_ptr offset
+  input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_tokens * in_dim;
+  output_grad_ptr =
+      static_cast<DT *>(output_grad_ptr) + num_infr_tokens * out_dim;
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;

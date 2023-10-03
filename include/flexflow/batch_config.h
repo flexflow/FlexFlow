@@ -42,6 +42,7 @@ public:
   using TokenId = int;
   BatchConfig();
   int num_active_requests() const;
+  int num_active_tokens() const;
   int num_active_infr_tokens() const;
   int num_active_peft_tokens() const;
   static int max_requests_per_batch();

@@ -120,6 +120,9 @@ enum TaskIDs {
   LINEAR_BWD_TASK_ID,
   LINEAR_BWD2_TASK_ID,
   LINEAR_UPD_TASK_ID,
+  LORA_LINEAR_INIT_TASK_ID,
+  LORA_LINEAR_INF_TASK_ID,
+  LORA_LINEAR_PEFT_BWD_TASK_ID,
   FLAT_INIT_TASK_ID,
   FLAT_FWD_TASK_ID,
   FLAT_BWD_TASK_ID,
@@ -322,6 +325,7 @@ class ResidualLayerNorm;
 class AddBiasResidualLayerNorm;
 class SigmoidSiluMulti;
 class Linear;
+class LoraLinear;
 class MultiHeadAttention;
 class IncMultiHeadSelfAttention;
 class TreeIncMultiHeadSelfAttention;
@@ -801,6 +805,15 @@ public:
       bool position_bias = false,
       char const *name = NULL);
   // ========================================
+  // PEFT Layers
+  // ========================================
+  void lora_linear(Tensor const input,
+                   Tensor const output,
+                   int rank,
+                   DataType data_type = DT_NONE,
+                   Initializer *kernel_initializer = nullptr,
+                   char const *name = nullptr);
+  // ========================================
   // Inference APIs
   // ========================================
   GenerationResult generate(std::vector<std::string> &prompts,
@@ -1179,6 +1192,10 @@ public:
           SigmoidSiluMulti *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
                          Linear *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    LoraLinearParams>,
+          LoraLinear *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
                          Pool2D *>,
       std::unordered_map<std::pair<std::tuple<ParallelTensorShape,

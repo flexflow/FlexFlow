@@ -47,6 +47,7 @@
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
+#include "flexflow/ops/lora_linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
@@ -6211,6 +6212,54 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           TreeIncMultiHeadSelfAttention::inference_task>(registrar);
     }
   }
+  // PEFT tasks
+  // LoraLinear tasks
+  {
+    TaskVariantRegistrar registrar(LORA_LINEAR_INIT_TASK_ID, "LoraLinear Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, LoraLinear::init_task>(
+          registrar, "LoraLinear Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, LoraLinear::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(LORA_LINEAR_INF_TASK_ID,
+                                   "LoraLinear Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<LoraLinear::inference_task>(
+          registrar, "LoraLinear Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LoraLinear::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(LORA_LINEAR_PEFT_BWD_TASK_ID,
+                                   "LoraLinear PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<LoraLinear::peft_bwd_task>(
+          registrar, "LoraLinear PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LoraLinear::peft_bwd_task>(registrar);
+    }
+  }
+
   // NoOp
   {
     TaskVariantRegistrar registrar(NOOP_INIT_TASK_ID, "Weight NCCL Init");

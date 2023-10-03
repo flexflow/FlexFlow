@@ -69,6 +69,10 @@ int BatchConfig::num_active_requests() const {
   return num_requests;
 }
 
+int BatchConfig::num_active_tokens() const {
+  return num_tokens;
+}
+
 int BatchConfig::num_active_infr_tokens() const {
   return num_tokens;
 }
