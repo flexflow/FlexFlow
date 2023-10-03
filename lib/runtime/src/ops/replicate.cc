@@ -44,23 +44,6 @@ using namespace FlexFlow::Kernels::Replicate;
 
 enum Slots {INPUT, OUTPUT, PROFILING };
 
-/* Params */
-bool operator==(ReplicateParams const &lhs, ReplicateParams const &rhs) {
-  return lhs.replicate_legion_dim == rhs.replicate_legion_dim &&
-         lhs.replicate_degree == rhs.replicate_degree;
-}
-
-bool ReplicateParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
-ReplicateParams Replicate::get_params() const {
-  ReplicateParams params;
-  params.replicate_legion_dim = this->replicate_dim;
-  params.replicate_degree = this->replicate_degree;
-  return params;
-}
-
 OpTaskInvocation forward(ReplicateAttrs const &attrs) {
   OpTaskBinding binding;
 
