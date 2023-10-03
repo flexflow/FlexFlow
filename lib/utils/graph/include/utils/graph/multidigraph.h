@@ -25,11 +25,10 @@ public:
         make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
-  static MultiDiGraphView
-      unsafe_create_without_ownership(IMultiDiGraphView const &);
-
-private:
+protected:
   MultiDiGraphView(cow_ptr_t<IMultiDiGraphView> ptr);
+  
+private:
   cow_ptr_t <IMultiDiGraphView> get_ptr() const;
 
   friend struct GraphInternal;
@@ -66,8 +65,10 @@ public:
     return MultiDiGraph(make_cow_ptr<T>());
   }
 
-private:
+protected:
   MultiDiGraph(cow_ptr_t<IMultiDiGraph>);
+
+private:
   cow_ptr_t<IMultiDiGraph> get_ptr() const;
 
   friend struct GraphInternal;

@@ -51,8 +51,6 @@ struct GraphView {
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
 
-  static GraphView unsafe_create_without_ownership(IGraphView const &);
-
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IGraphView, T>::value,
                                  GraphView>::type
@@ -87,7 +85,7 @@ public:
   Graph() = delete;
   Graph(Graph const &) = default;
 
-  Graph &operator=(Graph);
+  Graph &operator=(Graph) = default;
 
   friend void swap(Graph &, Graph &);
 

@@ -19,9 +19,6 @@ struct MultiDiOutput : virtual DiOutput {
 };
 FF_VISITABLE_STRUCT(MultiDiOutput, src, src_idx);
 
-MultiDiInput get_input(MultiDiEdge const &);
-MultiDiOutput get_output(MultiDiEdge const &);
-
 using edge_uid_t = std::pair<std::size_t, std::size_t>;
 
 struct InputMultiDiEdge : virtual MultiDiInput {

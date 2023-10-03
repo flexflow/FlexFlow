@@ -131,7 +131,7 @@ private:
                        cow_ptr_t<INodeLabel> nl,
                        cow_ptr_t<IEdgeLabel> el) : LabelledMultiDiGraphView(ptr), nl(nl), el(el) {}
 
-  cow_ptr_t<Interface> get_ptr() {
+  cow_ptr_t<Interface> get_ptr() const {
     return static_cast<cow_ptr_t<Interface>>(ptr);
   }
 

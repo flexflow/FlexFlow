@@ -1,6 +1,7 @@
 #ifndef UTILS_GRAPH_INCLUDE_UTILS_GRAPH_UNDIRECTED_EDGE
 #define UTILS_GRAPH_INCLUDE_UTILS_GRAPH_UNDIRECTED_EDGE
 
+#include "node.h"
 
 namespace FlexFlow {
 

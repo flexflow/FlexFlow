@@ -31,11 +31,10 @@ public:
     return DiGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
-  static DiGraphView
-      unsafe_create_without_ownership(IDiGraphView const &graphView);
+protected:
+  DiGraphView(cow_ptr_t<IDiGraphView> ptr);
 
 private:
-  DiGraphView(cow_ptr_t<IDiGraphView> ptr);
   cow_ptr_t<IDiGraphView> get_ptr() const;
 
   friend struct GraphInternal;
@@ -70,8 +69,10 @@ public:
     return DiGraph(make_cow_ptr<T>());
   }
 
-private:
+protected:
   DiGraph(cow_ptr_t<IDiGraph>);
+
+private:
   cow_ptr_t<IDiGraph> get_ptr();
 
   friend struct GraphInternal;

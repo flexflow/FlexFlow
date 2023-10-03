@@ -117,7 +117,7 @@ public:
 protected:
   NodeLabelledMultiDiGraph(cow_ptr_t<Interface> ptr, cow_ptr_t<NodeLabelIf> nl)
       : NodeLabelledMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
-  cow_ptr_t<Interface> get_ptr() {
+  cow_ptr_t<Interface> get_ptr() const {
     return static_cast<cow_ptr_t<Interface>>(ptr);
   }
 

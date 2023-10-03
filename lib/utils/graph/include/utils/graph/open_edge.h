@@ -20,26 +20,17 @@ struct OpenMultiDiEdgeQuery {
   OpenMultiDiEdgeQuery() = delete;
   OpenMultiDiEdgeQuery(InputMultiDiEdgeQuery const &input_edge_query,
                        MultiDiEdgeQuery const &standard_edge_query,
-                       OutputMultiDiEdgeQuery const &output_edge_query)
-      : input_edge_query(input_edge_query),
-        standard_edge_query(standard_edge_query),
-        output_edge_query(output_edge_query) {}
+                       OutputMultiDiEdgeQuery const &output_edge_query);
 
-  OpenMultiDiEdgeQuery(MultiDiEdgeQuery const &q)
-      : OpenMultiDiEdgeQuery(
-            InputMultiDiEdgeQuery::none(), q, OutputMultiDiEdgeQuery::none()) {}
-  OpenMultiDiEdgeQuery(InputMultiDiEdgeQuery const &q)
-      : OpenMultiDiEdgeQuery(
-            q, MultiDiEdgeQuery::none(), OutputMultiDiEdgeQuery::none()) {}
-  OpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery const &q)
-      : OpenMultiDiEdgeQuery(
-            InputMultiDiEdgeQuery::none(), MultiDiEdgeQuery::none(), q) {}
+  OpenMultiDiEdgeQuery(MultiDiEdgeQuery const &q);
+  OpenMultiDiEdgeQuery(InputMultiDiEdgeQuery const &q);
+  OpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery const &q);
 
   InputMultiDiEdgeQuery input_edge_query;
   MultiDiEdgeQuery standard_edge_query;
   OutputMultiDiEdgeQuery output_edge_query;
 };
-FF_VISITABLE_STRUCT(OpenMultiDiEdgeQuery,
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpenMultiDiEdgeQuery,
                     input_edge_query,
                     standard_edge_query,
                     output_edge_query);
@@ -47,19 +38,11 @@ FF_VISITABLE_STRUCT(OpenMultiDiEdgeQuery,
 struct DownwardOpenMultiDiEdgeQuery {
   DownwardOpenMultiDiEdgeQuery() = delete;
   DownwardOpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery const &output_edge_query,
-                               MultiDiEdgeQuery const &standard_edge_query)
-      : output_edge_query(output_edge_query),
-        standard_edge_query(standard_edge_query) {}
-  DownwardOpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery const &output_edge_query)
-      : DownwardOpenMultiDiEdgeQuery(output_edge_query,
-                                     MultiDiEdgeQuery::none()) {}
-  DownwardOpenMultiDiEdgeQuery(MultiDiEdgeQuery const &standard_edge_query)
-      : DownwardOpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery::all(),
-                                     standard_edge_query){};
+                               MultiDiEdgeQuery const &standard_edge_query);
+  DownwardOpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery const &output_edge_query);
+  DownwardOpenMultiDiEdgeQuery(MultiDiEdgeQuery const &standard_edge_query);
 
-  operator OpenMultiDiEdgeQuery() const {
-    NOT_IMPLEMENTED();
-  }
+  operator OpenMultiDiEdgeQuery() const;
 
   OutputMultiDiEdgeQuery output_edge_query;
   MultiDiEdgeQuery standard_edge_query;
@@ -74,9 +57,7 @@ struct UpwardOpenMultiDiEdgeQuery {
                              MultiDiEdgeQuery const &);
   UpwardOpenMultiDiEdgeQuery(InputMultiDiEdgeQuery const &);
   UpwardOpenMultiDiEdgeQuery(MultiDiEdgeQuery const &);
-  operator OpenMultiDiEdgeQuery() const {
-    NOT_IMPLEMENTED();
-  }
+  operator OpenMultiDiEdgeQuery() const;
 
   InputMultiDiEdgeQuery input_edge_query;
   MultiDiEdgeQuery standard_edge_query;
