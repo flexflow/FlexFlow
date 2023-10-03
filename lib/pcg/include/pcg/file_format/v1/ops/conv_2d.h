@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_OPS_CONV_2D_ATTRS_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_OPS_CONV_2D_ATTRS_H
 
-#include "op-attrs/activation.h"
 #include "op-attrs/ops/conv_2d.h"
+#include "pcg/file_format/v1/activation.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
@@ -10,7 +10,7 @@ namespace FlexFlow {
 struct V1Conv2DAttrs {
   req<int> out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h,
       padding_w, groups;
-  req<optional<Activation>> activation;
+  req<optional<V1Activation>> activation;
   req<bool> use_bias;
 };
 

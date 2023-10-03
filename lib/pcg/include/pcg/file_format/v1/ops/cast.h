@@ -2,13 +2,14 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_OPS_CAST_ATTRS_H
 
 #include "op-attrs/ops/cast.h"
-#include "op-attrs/datatype.h"
+#include "pcg/file_format/v1/datatype.h"
+#include "utils/json.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
 struct V1CastAttrs {
-  req<DataType> dtype;
+  req<V1DataType> dtype;
 };
 FF_VISITABLE_STRUCT(V1CastAttrs, dtype);
 CHECK_IS_JSONABLE(V1CastAttrs);

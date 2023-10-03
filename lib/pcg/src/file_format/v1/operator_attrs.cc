@@ -3,19 +3,12 @@
 
 namespace FlexFlow {
 
-V1Conv2DAttrs to_v1(Conv2DAttrs const &attrs) {
-  return {
-    attrs.out_channels,
-    attrs.kernel_h,
-    attrs.kernel_w,
-    attrs.stride_h,
-    attrs.stride_w,
-    attrs.padding_h,
-    attrs.padding_w,
-    attrs.groups,
-    attrs.activation,
-    attrs.use_bias,
-  };
+V1CompGraphOperatorAttrs to_v1(CompGraphOperatorAttrs const &attrs) {
+  NOT_IMPLEMENTED();
+}
+
+V1PCGOperatorAttrs to_v1(PCGOperatorAttrs const &attrs) {
+  NOT_IMPLEMENTED();
 }
 
 } // namespace FlexFlow

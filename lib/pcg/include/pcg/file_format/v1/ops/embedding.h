@@ -16,6 +16,8 @@ NLOHMANN_JSON_SERIALIZE_ENUM(V1AggregateOp,
                              {{V1AggregateOp::SUM, "SUM"},
                               {V1AggregateOp::AVG, "AVG"}});
 
+V1AggregateOp to_v1(AggregateOp const &op);
+
 struct V1EmbeddingAttrs {
   req<int> num_entries, out_channels;
   req<V1AggregateOp> aggr;

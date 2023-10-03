@@ -8,11 +8,11 @@ namespace FlexFlow {
 
 enum class V1ParamSync { PARAM_SERVER, NCCL };
 
-V1ParamSync to_v1(ParamSync const &);
-
 NLOHMANN_JSON_SERIALIZE_ENUM(V1ParamSync,
                              {{V1ParamSync::PARAM_SERVER, "PARAM_SERVER"},
                               {V1ParamSync::NCCL, "NCCL"}});
+
+V1ParamSync to_v1(ParamSync const &);
 
 } // namespace FlexFlow
 

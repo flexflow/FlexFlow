@@ -17,8 +17,12 @@ struct V1GlorotInitializer {
 FF_VISITABLE_STRUCT(V1GlorotInitializer, seed);
 CHECK_IS_JSONABLE(V1GlorotInitializer);
 
+V1GlorotInitializer to_v1(GlorotUniform const &i);
+
 struct V1ZeroInitializer {};
 FF_VISITABLE_STRUCT(V1ZeroInitializer);
+
+V1ZeroInitializer to_v1(ZeroInitializer const &i);
 
 struct V1UniformInitializer {
   req<int> seed;
@@ -28,6 +32,8 @@ struct V1UniformInitializer {
 FF_VISITABLE_STRUCT(V1UniformInitializer, seed, min_val, max_val);
 CHECK_IS_JSONABLE(V1UniformInitializer);
 
+V1UniformInitializer to_v1(UniformInitializer const &i);
+
 struct V1NormInitializer {
   req<int> seed;
   req<float> mean;
@@ -36,11 +42,15 @@ struct V1NormInitializer {
 FF_VISITABLE_STRUCT(V1NormInitializer, seed, mean, stddev);
 CHECK_IS_JSONABLE(V1NormInitializer);
 
+V1NormInitializer to_v1(NormInitializer const &i);
+
 struct V1ConstantInitializer {
   req<V1DataTypeValue> value;
 };
 FF_VISITABLE_STRUCT(V1ConstantInitializer, value);
 CHECK_IS_JSONABLE(V1ConstantInitializer);
+
+V1ConstantInitializer to_v1(ConstantInitializer const &i);
 
 using V1Initializer = variant<V1GlorotInitializer,
                               V1ZeroInitializer,

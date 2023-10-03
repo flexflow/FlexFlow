@@ -1,14 +1,13 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_OPS_COMBINE_ATTRS_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_OPS_COMBINE_ATTRS_H
 
-#include "op-attrs/ff_dim.h"
 #include "op-attrs/ops/combine.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
 struct V1CombineAttrs {
-  ff_dim_t combine_dim;
+  int combine_dim;
   req<int> combine_degree;
 };
 FF_VISITABLE_STRUCT(V1CombineAttrs, combine_dim, combine_degree);
