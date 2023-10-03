@@ -45,11 +45,9 @@ CHECK_FMTABLE(req<int>);
 CHECK_FMTABLE(std::vector<std::string>);
 CHECK_FMTABLE(required_inheritance_impl<std::vector<std::string>>);
 static_assert(
-  std::is_base_of<
-    required_inheritance_impl<std::vector<std::string>>,
-    req<std::vector<std::string>>
-  >::value, ""
-);
+    std::is_base_of<required_inheritance_impl<std::vector<std::string>>,
+                    req<std::vector<std::string>>>::value,
+    "");
 CHECK_FMTABLE(req<std::vector<std::string>>);
 
 } // namespace FlexFlow

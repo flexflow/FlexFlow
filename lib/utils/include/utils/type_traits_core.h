@@ -146,10 +146,10 @@ template <typename T>
 struct is_equal_comparable<
     T,
     void_t<decltype(std::declval<T>() == std::declval<T>())>>
-      /* std::is_same< */
-      /*   decltype(), */
-      /*   bool */
-      /* >::value */
+    /* std::is_same< */
+    /*   decltype(), */
+    /*   bool */
+    /* >::value */
     /* >> */
     : std::true_type {};
 
@@ -175,9 +175,8 @@ template <typename T, typename Enable = void>
 struct is_plusable : std::false_type {};
 
 template <typename T>
-struct is_plusable<
-    T,
-    void_t<decltype((T)(std::declval<T>() + std::declval<T>()))>>
+struct is_plusable<T,
+                   void_t<decltype((T)(std::declval<T>() + std::declval<T>()))>>
     : std::true_type {};
 
 static_assert(is_plusable<int>::value, "");
@@ -199,9 +198,6 @@ struct is_timesable<
     T,
     void_t<decltype((T)(std::declval<T>() * std::declval<T>()))>>
     : std::true_type {};
-
-
-
 
 template <typename T>
 struct is_well_behaved_value_type_no_hash
@@ -240,7 +236,6 @@ struct is_well_behaved_value_type
 #define CHECK_WELL_BEHAVED_VALUE_TYPE(...)                                     \
   CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(__VA_ARGS__);                          \
   CHECK_HASHABLE(__VA_ARGS__)
-
 
 } // namespace FlexFlow
 

@@ -369,5 +369,4 @@ ParallelDimMappingSolution solve_parallel_dim_mappings(
   NOT_IMPLEMENTED();
 }
 
-
 } // namespace FlexFlow
