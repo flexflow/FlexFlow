@@ -15,7 +15,10 @@ template <typename Label>
 struct IOutputOpenLabel {
   Label const &get_label(MultiDiOutput const &) const;
   Label &get_label(MultiDiOutput const &);
-  void add_label(OpenMultiDiEdge const &, Label const &);
+  Label const &get_label(InputMultiDiEdge const &) const;
+  Label &get_label(InputMultiDiEdge const &);
+  void add_label(InputMultiDiEdge const &, Label const &);
+  void add_label(MultiDiOutput const &, Label const &);
   IOutputOpenLabel *clone() const;
 };
 

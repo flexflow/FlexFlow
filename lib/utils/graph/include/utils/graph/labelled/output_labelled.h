@@ -7,6 +7,17 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename OutputLabel>
+struct IOutputLabelledMultiDiGraphView
+    : public INodeLabelledMultiDiGraphView<NodeLabel> {
+  IOutputLabelledMultiDiGraphView() = default;
+  IOutputLabelledMultiDiGraphView(IOutputLabelledMultiDiGraphView const &) = delete;
+  IOutputLabelledMultiDiGraphView &operator=(IOutputLabelledMultiDiGraphView const &) = delete;
+
+  virtual OutputLabel const &at(MultiDiOutput const &) = 0;
+};
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOutputLabelledMultiDiGraphView<int, int>);
+
+template <typename NodeLabel, typename OutputLabel>
 struct OutputLabelledMultiDiGraphView : virtual public NodeLabelledMultiDiGraphView<NodeLabel> {
 private:
   using Interface = IOutputLabelledMultiDiGraphView<NodeLabel, OutputLabel>;
@@ -32,10 +43,18 @@ public:
     return get_ptr()->query_edges(q);
   }
 
+  template <typename BaseImpl, typename... Args>
+  static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
+                                 OutputLabelledMultiDiGraphView>::type
+      create(Args &&...args) {
+    return OutputLabelledMultiDiGraphView(
+        make_cow_ptr<BaseImpl>(std::forward<Args>(args)...));
+  }
+
 private:
-  OutputLabelledMultiDiGraphView(std::shared_ptr<Interface const> ptr) : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {}
-  std::shared_ptr<Interface const> get_ptr() const {
-    return static_assert<std::shared_ptr<Interface const>>(ptr);
+  OutputLabelledMultiDiGraphView(cow_ptr_t<Interface const> ptr) : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {}
+  cow_ptr_t<Interface const> get_ptr() const {
+    return static_assert<cow_ptr_t<Interface const>>(ptr);
   }
 };
 
@@ -60,36 +79,40 @@ public:
   }
 
   Node add_node(NodeLabel const &l) {
-    return this->ptr->add_node(l);
+    Node n = MultiDiGraph::add_node();
+    nl->add_label(n, l);
+    return n;
   }
 
   NodePort add_node_port() {
-    return this->ptr->add_node_port();
+    return get_ptr()->add_node_port();
   }
 
   NodeLabel &at(Node const &n) {
-    return this->ptr->at(n);
+    return nl->get_label(n);
   }
 
   NodeLabel const &at(Node const &n) const {
-    return this->ptr->at(n);
+    return nl->get_label(n);
   }
 
   void add_output(MultiDiOutput const &o, OutputLabel const &l) {
-    return this->ptr->add_output(o, l);
+    ol->add_label(o, l);
   };
+  
   void add_edge(MultiDiOutput const &o, MultiDiInput const &i) {
-    return this->ptr->add_edge(o, i);
+    return get_ptr()->add_edge(o, i);
   };
 
+  void add_edge(MultiDiEdge const &e) {
+    return get_ptr()->add_edge(e);
+  }
+
   OutputLabel &at(MultiDiOutput const &o) {
-    return this->ptr->at(o);
+    return ol->get_label(o);
   }
   OutputLabel const &at(MultiDiOutput const &o) const {
-    return this->ptr->at(o);
-  }
-  OutputLabel const &at(MultiDiEdge const &e) const {
-    return at(MultiDiOutput{e.src, e.srcIdx});
+    return ol->get_label(o);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {

@@ -57,16 +57,16 @@ struct GraphView {
   static typename std::enable_if<std::is_base_of<IGraphView, T>::value,
                                  GraphView>::type
       create(Args &&...args) {
-    return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
+    return GraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
 private:
-  GraphView(cos_ptr_t<IGraphView const> ptr);
+  GraphView(cow_ptr_t<IGraphView> ptr);
 
   friend struct GraphInternal;
 
 private:
-  cow_ptr_t<IGraphView const> ptr;
+  cow_ptr_t<IGraphView> ptr;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraphView);
 

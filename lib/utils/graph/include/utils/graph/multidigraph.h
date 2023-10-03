@@ -3,6 +3,7 @@
 
 #include "cow_ptr_t.h"
 #include "multidigraph_interfaces.h"
+#include "multidiedge.h"
 #include "node.h"
 
 namespace FlexFlow {
@@ -21,15 +22,15 @@ public:
                                  MultiDiGraphView>::type
       create(Args &&...args) {
     return MultiDiGraphView(
-        std::make_shared<T const>(std::forward<Args>(args)...));
+        make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
   static MultiDiGraphView
       unsafe_create_without_ownership(IMultiDiGraphView const &);
 
 private:
-  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr);
-  std::shared_ptr<IMultiDiGraphView const> get_ptr() const;
+  MultiDiGraphView(cow_ptr_t<IMultiDiGraphView> ptr);
+  cow_ptr_t <IMultiDiGraphView> get_ptr() const;
 
   friend struct GraphInternal;
 };

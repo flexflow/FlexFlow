@@ -19,7 +19,7 @@ struct IMultiDiGraphView : virtual public IDiGraphView {
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraphView);
 
-struct IMultiDiGraph : virtual public IMultiDiGraphView, virtual public IGraph {
+struct IMultiDiGraph : virtual public IMultiDiGraphView {
   virtual NodePort add_node_port() = 0;
   virtual void add_node_port_unsafe(NodePort const &) = 0;
   virtual void add_edge(Edge const &) = 0;

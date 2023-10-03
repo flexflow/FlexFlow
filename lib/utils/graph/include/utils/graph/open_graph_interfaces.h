@@ -50,16 +50,14 @@ struct IOpenMultiDiGraph : virtual public IOpenMultiDiGraphView {
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOpenMultiDiGraph);
 
-struct IUpwardOpenMultiDiGraph : virtual public IUpwardOpenMultiDiGraphView,
-                                 virtual public IGraph {
+struct IUpwardOpenMultiDiGraph : virtual public IUpwardOpenMultiDiGraphView {
   virtual void add_edge(UpwardOpenMultiDiEdge const &) = 0;
   virtual void remove_edge(UpwardOpenMultiDiEdge const &) = 0;
   virtual IUpwardOpenMultiDiGraph *clone() const = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IUpwardOpenMultiDiGraph);
 
-struct IDownwardOpenMultiDiGraph : virtual public IDownwardOpenMultiDiGraphView,
-                                   virtual public IGraph {
+struct IDownwardOpenMultiDiGraph : virtual public IDownwardOpenMultiDiGraphView {
   virtual void add_edge(DownwardOpenMultiDiEdge const &) = 0;
   virtual void remove_edge(DownwardOpenMultiDiEdge const &) = 0;
   virtual IDownwardOpenMultiDiGraph *clone() const = 0;

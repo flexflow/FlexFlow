@@ -28,21 +28,21 @@ public:
   static typename std::enable_if<std::is_base_of<IDiGraphView, T>::value,
                                  DiGraphView>::type
       create(Args &&...args) {
-    return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
+    return DiGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
   static DiGraphView
       unsafe_create_without_ownership(IDiGraphView const &graphView);
 
 private:
-  DiGraphView(std::shared_ptr<IDiGraphView const> ptr);
-  std::shared_ptr<IDiGraphView const> get_ptr() const;
+  DiGraphView(cow_ptr_t<IDiGraphView> ptr);
+  cow_ptr_t<IDiGraphView> get_ptr() const;
 
   friend struct GraphInternal;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
 
-struct DiGraph {
+struct DiGraph : virtual DiGraphView {
 public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
@@ -72,7 +72,7 @@ public:
 
 private:
   DiGraph(cow_ptr_t<IDiGraph>);
-  cow_ptr_t<IDiGraph> ptr;
+  cow_ptr_t<IDiGraph> get_ptr();
 
   friend struct GraphInternal;
 };
