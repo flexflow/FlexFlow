@@ -5,6 +5,7 @@
 #include <functional>
 #include <string>
 #include <type_traits>
+#include "utils/json.h"
 
 namespace FlexFlow {
 
@@ -193,7 +194,27 @@ struct numerical_typedef : strong_typedef<StrongTypedef, T> {
   }
 };
 
+template <typename T, typename Enable = void> struct is_strong_typedef : std::false_type {};
+
+template <typename T>
+struct is_strong_typedef<T, std::void_t<underlying_type_t<T>>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_strong_typedef_v = is_strong_typedef<T>::value;
 } // namespace FlexFlow
+
+namespace nlohmann {
+template <typename T>
+struct adl_serializer<T, std::enable_if_t<::FlexFlow::is_strong_typedef_v<T>>> {
+  static T from_json(json const &j) {
+    return {j.template get<::FlexFlow::underlying_type_t<T>>()};
+  }
+
+  static void to_json(json &j, T const &t) {
+    j = static_cast<::FlexFlow::underlying_type_t<T>>(t);
+  }
+};
+} // namespace nlohmann
 
 #define MAKE_TYPEDEF_HASHABLE(TYPEDEF_NAME)                                    \
   namespace std {                                                              \
