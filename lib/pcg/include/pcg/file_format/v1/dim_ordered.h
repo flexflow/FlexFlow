@@ -10,7 +10,7 @@ template <typename Idx, typename T>
 struct V1DimOrdered {
   std::vector<T> contents;
 
-  bool operator!=(const V1DimOrdered &o) {
+  bool operator!=(V1DimOrdered const &o) {
     return this->contents != o.contents;
   }
 };
@@ -22,7 +22,7 @@ template <typename T>
 using V1FFOrdered = V1DimOrdered<ff_dim_t, T>;
 
 template <typename T>
-V1FFOrdered<T> to_v1(FFOrdered<T> const& o);
+V1FFOrdered<T> to_v1(FFOrdered<T> const &o);
 
 } // namespace FlexFlow
 
