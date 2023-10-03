@@ -50,7 +50,8 @@ enum Slots { INPUT, OUTPUT, OUTPUT, ATTRS, PROFILING, PER_DEVICE_STATE };
 OpTaskInvocation init(TopKAttrs const &attrs) {
   OpTaskBinding binding;
 
-  bind.bind_arg(ATTRS, attrs); // Note: we just bind SplitAttrs here, for init_task_impl
+  bind.bind_arg(
+      ATTRS, attrs); // Note: we just bind SplitAttrs here, for init_task_impl
 
   return {TOPK_INIT_TASK_ID, binding};
 }
@@ -102,10 +103,10 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
-  int length = input.shape.at(legion_dim_t(0)) +1;
+  int length = input.shape.at(legion_dim_t(0)) + 1;
   size_t batch_size = input.shape.get_volume() / length;
 
-  int * index_ptr;//TODO NOT_IMPLEMENTED 
+  int *index_ptr; // TODO NOT_IMPLEMENTED
 
   return profiling(forward_kernel,
                    profiling,
@@ -138,8 +139,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
 
   // Question: what's the indice_ptr, I think the value_grad_ptr is output_grad
-  int const *indices_ptr ;//TODO NOT_IMPLEMENTED
-  int length = input.shape.at(legion_dim_t(0)) +1;
+  int const *indices_ptr; // TODO NOT_IMPLEMENTED
+  int length = input.shape.at(legion_dim_t(0)) + 1;
   size_t batch_size = input.shape.get_volume() / length;
 
   return profiling(backward_kernel,
