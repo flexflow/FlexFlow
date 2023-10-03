@@ -130,23 +130,19 @@ __global__ void copy_output(DT const *padded_output,
 template <typename DT>
 __global__ void pad_input_ptr(DT const *input_ptr,
                               DT *padded_input,
-                              BatchConfig const *bc,
                               int num_padded_tokens,
                               int hidden_size,
-                              int max_length) {
+                              int max_length,
+                              int *real_token_idx) {
   CUDA_KERNEL_LOOP(i, num_padded_tokens * hidden_size) {
     int token_id = (i / hidden_size);
-    int req_id = token_id / max_length;
-    // if (bc->requestsInfo[req_id].num_tokens_in_batch > token_id) {
-    //   padded_input[i] = input_ptr[i];
-    // } else {
-    //   padded_input[i] = (DT)0;
-    // }
-    padded_input[i] = input_ptr[i];
-    // if(i == 0){
-    //   printf("?? %d, %d, %d\n", token_id, req_id,
-    //   bc->requestsInfo[req_id].num_tokens_in_batch);
-    // }
+    int offset = i % hidden_size;
+    int real_token_id = real_token_idx[token_id];
+    if (real_token_id >= 0) {
+      padded_input[i] = input_ptr[hidden_size * real_token_id + offset];
+    } else {
+      padded_input[i] = (DT)0;
+    }
   }
 }
 
@@ -609,7 +605,6 @@ void pad_input(IncMultiHeadSelfAttentionMeta const *m,
     max_length = std::max(max_length, bc->requestsInfo[i].num_tokens_in_batch);
   }
   *m->max_req_length = max_length;
-
   memset(m->real_token_idx,
          -1,
          sizeof(int) * BatchConfig::MAX_NUM_TOKENS *
@@ -641,7 +636,6 @@ void pad_input(IncMultiHeadSelfAttentionMeta const *m,
                       BatchConfig::MAX_NUM_REQUESTS,
                   cudaMemcpyHostToDevice,
                   stream);
-
   // pad input
   int parallelism =
       m->qProjSize * m->num_q_heads * max_length * bc->num_active_requests();
@@ -650,10 +644,10 @@ void pad_input(IncMultiHeadSelfAttentionMeta const *m,
                   0,
                   stream>>>(input_ptr,
                             static_cast<DT *>(m->padded_input),
-                            bc,
                             max_length * bc->num_active_requests(),
                             m->qSize,
-                            max_length);
+                            max_length,
+                            m->real_token_idx_gpu);
 }
 
 // request afer padding
@@ -670,21 +664,20 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
   // here because we need position info in inference 1
-  // print_tensor<float>((float *)input_ptr, 32, "inputtttt0");
+
   if (m->offload && m->biasSize > 0) {
     cudaMemcpyAsync(
         m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
-  pad_input(m, bc, input_ptr, stream);
-
-  // padd all request and copy token infos,
+  // copy token infos,
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
                   bc->num_active_tokens() * sizeof(BatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
-
+  // pad requests
+  pad_input(m, bc, input_ptr, stream);
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
@@ -694,7 +687,6 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
                      stream);
-
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
 
@@ -906,8 +898,8 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     // print_tensor<float>((float *)C, 32, "qkprod",
     //  shard_id); print_tensor<float>((float *)B, 32, "key", shard_id);
     //  print_tensor<float>((float *)m->qk_prods, 32, "qkprod");
-    //  save_tensor<float>((float *)m->qk_prods, 10 * 10 * 12,
-    //  "/home/xinhaoc/FlexFlow/inference/qk.txt");
+    //  save_tensor<float>((float *)m->qk_prods, 12 * 12 * 12,
+    //  "/home/ubuntu/FlexFlow/inference/qk.txt");
   } else {
     strideB = 0;
     // use cublasGemmStridedBatchedEx
@@ -1072,11 +1064,9 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     // save_tensor<float>((float *)C, max_new_tokens * m->vProjSize *
     // m->num_q_heads * num_activate_req, ("/home/ubuntu/FlexFlow/inference/kvp"
-    // + std::to_string(0) +
-    // ".txt").c_str());
-    // print_tensor<float>((float *)A + 500, 32, "qk");
-    // print_tensor<float>((float *)m->value + 500, 32, "value");
-    // print_tensor<float>((float *)C + 3000, 32, "kv prod");
+    // + std::to_string(0) + ".txt").c_str()); print_tensor<float>((float *)A +
+    // 500, 32, "qk"); print_tensor<float>((float *)m->value + 500, 32,
+    // "value"); print_tensor<float>((float *)C + 3000, 32, "kv prod");
   } else {
     int one_step_heads = m->num_q_heads / m->num_kv_heads;
     n = m->vProjSize;
