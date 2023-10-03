@@ -32,11 +32,6 @@ T to_v1(req<T> const &t) {
   return T(t);
 }
 
-template <typename V1T, typename T>
-V1T to_v1(req<T> const &t) {
-  return to_v1(*t);
-}
-
 } // namespace FlexFlow
 
 #endif
