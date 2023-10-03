@@ -14,6 +14,7 @@
  */
 
 #include "split.h"
+#include "kernels/array_shape.h"
 #include "kernels/split_kernels.h"
 #include "utils/exceptions.h"
 #include "utils/hash-utils.h"
@@ -38,36 +39,13 @@ using PCG::Node;
 
 using namespace FlexFlow::Kernels::Split;
 
-bool operator==(SplitParams const &lhs, SplitParams const &rhs) {
-  return lhs.splits == rhs.splits && lhs.legion_axis == rhs.legion_axis;
-}
-
-bool SplitParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
-SplitParams Split::get_params() const {
-  SplitParams params;
-  params.splits = this->splits;
-  params.legion_axis = this->legion_axis;
-  return params;
-}
-
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
-
-OpTaskInvocation init(SplitAttrs const &attr) {
-  OpTaskBinding binding;
-
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
-  binding.bind(OUTPUT, output_tensor(0));
-
-  return {SPLIT_INIT_TASK_ID, binding};
-}
 
 OpTaskInvocation forward(SplitAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(PROFILING, profiling_settings());
+  binding.bind_arg(ATTRS, attrs);
   binding.bind(INPUT, input_parallel_tensor_shape(0));
   binding.bind(OUTPUT, output_tensor(0));
 
@@ -83,14 +61,27 @@ OpTaskInvocation backward(SplitAttrs const &attrs) {
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  auto attrs = acc.get_argument<SplitAttrs>(ATTRS);
 
-  // Note: forward_kernel needs parameter Legion::coord_t const
-  // *out_blk_sizes,Legion::coord_t in_blk_size, Legion::coord_t num_blks, int
-  // numOutputs how to get these parameter?
-  NOT_IMPLEMENTED();
+  coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
+  calc_block_size(num_blks, in_blk_size, input.shape, attrs.axis);
+
+  for (int i = 0; i < attrs.splits.size(); i++) {
+    coord_t out_num_blks;
+    calc_block_size(
+        out_num_blks, out_blk_size[i], output.shape, split->legion_axis);
+  }
+  return profile(forward_kernel,
+                 profiling,
+                 "Split forward_time = %.2lfms\n",
+                 &output.get_float_ptr(),
+                 input.get_float_ptr(),
+                 out_blk_size,
+                 in_blk_size,
+                 num_blks,
+                 attrs.splits.size());
 }
 
 static void forward_task(Task const *task,
@@ -101,15 +92,45 @@ static void forward_task(Task const *task,
   forward_task_impl(acc);
 }
 
+// maybe we should add assert like the original code
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
-  // Note: backward_kernel needs parameter Legion::coord_t const
-  // *out_blk_sizes,Legion::coord_t in_blk_size, Legion::coord_t num_blks, int
-  // numOutputs how to get these parameter?
-  NOT_IMPLEMENTED();
+  auto attrs = acc.get_argument<SplitAttrs>(ATTRS);
+
+  coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
+  calc_block_size(num_blks, in_blk_size, input_grade.shape, attrs.axis);
+  for (int i = 0; i < attrs.splits.size(); i++) {
+    coord_t out_num_blks;
+    calc_block_size(
+        out_num_blks, out_blk_size[i], output_grad.shape, split->legion_axis);
+  }
+  return profile(backward_kernel,
+                 profiling,
+                 "Split backward_time = %.2lfms\n",
+                 input_grad.get_float_ptr(),
+                 &output_grad.get_float_ptr(),
+                 out_blk_size,
+                 in_blk_size,
+                 num_blks,
+                 attrs.splits.size());
+}
+
+void calc_block_size(coord_t &num_blks,
+                     coord_t &blk_size,
+                     ArrayShape const &array_shape,
+                     int axis) {
+  num_blks = 1;
+  blk_size = 1;
+  for (int d = 0; d < array_shape.get_dim(); d++) {
+    if (d <= axis) {
+      blk_size *= (domain.hi()[d] - domain.lo()[d] + 1);
+      blk_size *= array_shape.at(legion_dim_t(d)) + 1
+    } else {
+      num_blks *= array_shape.at(legion_dim_t(d)) + 1
+    }
+  }
 }
 
 static void backward_task(Task const *task,
@@ -122,7 +143,7 @@ static void backward_task(Task const *task,
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   SplitAttrs const &attrs,
-                                  InputParallelTensorDes const &input,
+                                  InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
   auto env = sim.new_environment();
@@ -144,16 +165,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   float sync_time = default_estimate_sync_time(env);
   return make_metrics(forward_time, backward_time, sync_time, env);
-}
-
-template <>
-void register_task<SPLIT_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_input_slot(INPUT);
-  init.add_output_slot(OUTPUT);
-  // TODO Note: split operator does not need SplitDeviceState, how to register
-  // the init_task and how to implement the init_task like cast OP?
 }
 
 template <>
