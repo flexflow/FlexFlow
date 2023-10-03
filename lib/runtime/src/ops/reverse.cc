@@ -14,8 +14,8 @@
  */
 
 #include "reverse.h"
-#include "kernels/reverse_kernels.h"
 #include "kernels/accessor.h"
+#include "kernels/reverse_kernels.h"
 #include "op-attrs/get_output_shapes.h"
 
 namespace FlexFlow {
@@ -39,7 +39,7 @@ using namespace FlexFlow::Kernels::Reverse;
 
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
 
-OpTaskInvocation init(ReverseAttrs const & attrs) {
+OpTaskInvocation init(ReverseAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind(INPUT, input_parallel_tensor_shape(0));
@@ -48,49 +48,41 @@ OpTaskInvocation init(ReverseAttrs const & attrs) {
   return {REVERSE_INIT_TASK_ID, binding};
 }
 
-OpTaskInvocation forward(ReverseAttrs const & attrs) {
+OpTaskInvocation forward(ReverseAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(PROFILING, profiling_settings());
+  bind.bind_arg(ATTRS, attrs);
 
   binding.bind(INPUT, input_parallel_tensor_shape(0));
   binding.bind(OUTPUT, output_tensor(0));
+
   return {REVERSE_FWD_TASK_ID, binding};
 }
-OpTaskInvocation backward(ReverseAttrs const & attrs) {
+OpTaskInvocation backward(ReverseAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
-  return {REVERSE_BWD_TASK_ID, binding};  
+  return {REVERSE_BWD_TASK_ID, binding};
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  auto attrs = acc.get_argument<ReverseAttrs>(ATTRS);
 
-  Context ctx = acc.ctx;
-  Runtime *runtime = acc.runtime;
-  Task *task = acc.task;
+  int output_size = outtput.shape.get_volume();
 
-  Domain in_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Domain out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-
-  Reverse const *reverse = (Reverse const *)task->args;
-  int axis = in_domain.get_dim() - reverse->axis - 1;
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
-  for (int i = 0; i < out_domain.get_dim(); i++) {
+  for (int i = 0; i < output.shape.get_dim(); i++) {
     if (i < axis) {
-      in_blk_size *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
+      in_blk_size *= output.shape[i];
     } else if (i == axis) {
-      reverse_dim_size = out_domain.hi()[i] - out_domain.lo()[i] + 1;
+      reverse_dim_size = output.shape[i];
     } else {
-      num_out_blks *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
+      num_out_blks *= output.shape[i];
     }
   }
-  int output_size = out_domain.get_volume();
 
   return profile(forward_kernel,
                  profiling,
@@ -113,30 +105,19 @@ static void forward_task(Task const *task,
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-
   auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
+  auto attrs = acc.get_argument<ReverseAttrs>(ATTRS);
 
-  Context ctx = acc.ctx;
-  Runtime *runtime = acc.runtime;
-  Task *task = acc.task;
-
-  Domain out_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Domain in_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  assert(out_grad_domain == in_grad_domain);
-
-  Reverse const *reverse = (Reverse const *)task->args;
-  int axis = in_grad_domain.get_dim() - reverse->axis - 1;
-
-  for (int i = 0; i < in_grad_domain.get_dim(); i++) {
+  int axis = input.shape.get_dim() - attrs.axis - 1;
+  coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
+  for (int i = 0; i < input_grad.shape.get_dim(); i++) {
     if (i < axis) {
-      in_blk_size *= in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
+      in_blk_size *= input_grad.shape[i];
     } else if (i == axis) {
-      reverse_dim_size = in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
+      reverse_dim_size = input_grad.shape[i];
     } else {
-      num_out_blks *= in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
+      num_out_blks *= input_grad.shape[i];
     }
   }
 
@@ -148,7 +129,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  num_out_blks,
                  reverse_dim_size,
                  in_blk_size,
-                 in_grad_domain.get_volume());
+                 input.shape.get_volume());
 }
 
 static void backward_task(Task const *task,
@@ -167,18 +148,20 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   auto env = sim.new_environment();
 
   SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input);
 
   ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
 
+  fwd_binding.bind(INPUT, input);
   fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(PROFILING, settings);
+  fwd_binding.bind_arg(ATTRS, attrs);
 
   auto fwd_accessor = env.get_fwd_accessor(REVERSE_FWD_TASK_ID, fwd_binding);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-  //TODO Note: what should bwd_bindinig  bind?
-  //according to aggregate.cc, bwd_binding bind the full_gate_gradients and true_gate_assign
+  // TODO Note: what should bwd_bindinig  bind?
+  // according to aggregate.cc, bwd_binding bind the full_gate_gradients and
+  // true_gate_assign
   auto bwd_accessor = env.get_bwd_accessor(REVERSE_BWD_TASK_ID, bwd_binding);
 
   float forward_time = forward_task_impl(fwd_accessor).value();
@@ -187,16 +170,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   float sync_time = default_estimate_sync_time(env);
 
   return make_metrics(forward_time, backward_time, sync_time, env);
-}
-
-template <>
-void register_task<REVERSE_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_input_slot(INPUT);
-  init.add_output_slot(OUTPUT);
-    // TODO: should we implement the init_task? how to do it? because reverse doesn't need ReversePerDeviceOpState like cast 
-  // register_task(REVERSE_INIT_TASK_ID, "Reverse init", init , init_task);
 }
 
 template <>
@@ -212,7 +185,8 @@ void register_task<REVERSE_FWD_TASK_ID>()) {
 
 template <>
 void register_task<REVERSE_BWD_TASK_ID>() {
-  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(REVERSE_BWD_TASK_ID));
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(REVERSE_BWD_TASK_ID));
   register_task(REVERSE_BWD_TASK_ID, "Reverse backward", bwd, backward_task);
 }
 

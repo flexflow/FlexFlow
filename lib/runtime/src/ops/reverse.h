@@ -2,8 +2,8 @@
 #define _FLEXFLOW_REVERSE_H_
 
 #include "op-attrs/ops/reverse.h"
-#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 
@@ -23,39 +23,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);
-
-/* class Reverse : public Op { */
-/* public: */
-/*   Reverse(FFModel &model, */
-/*           const ParallelTensor input, */
-/*           int axis, */
-/*           char const *name); */
-/*   void init(FFModel const &) override; */
-/*   void forward(FFModel const &) override; */
-/*   void backward(FFModel const &) override; */
-
-/*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const
- * &regions, */
-/*                            Legion::Context ctx, */
-/*                            Legion::Runtime *runtime); */
-/*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const
- * &regions, */
-/*                            Legion::Context ctx, */
-/*                            Legion::Runtime *runtime); */
-/*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const
- * &regions, */
-/*                             Legion::Context ctx, */
-/*                             Legion::Runtime *runtime); */
-/*   bool measure_operator_cost(Simulator *sim, */
-/*                              MachineView const &pc, */
-/*                              CostMetrics &cost_metrics) const override; */
-
-/* public: */
-/*   int axis; */
-/* }; */
 
 } // namespace FlexFlow
 
