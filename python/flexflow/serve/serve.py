@@ -18,7 +18,7 @@ from flexflow.serve.models import (
     FlexFlowFalcon,
     FlexFlowSTARCODER,
     FlexFlowMPT,
-    FlexFlowBAICHUAN
+    FlexFlowBAICHUAN,
 )
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
@@ -93,10 +93,11 @@ class LLM:
             "BaiChuanForCausalLM": {ModelType.BAICHUAN, FlexFlowBAICHUAN},
             "FalconForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
         }
-        self.hf_config = AutoConfig.from_pretrained(model_name)
+        self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
         self.model_name = self.hf_config._name_or_path
         self.model_type, self.model_class = self.__get_ff_model_type()
         self.data_type = data_type
+        print(f"model_type: {self.model_type}, model_class: {self.model_class} and data_type: {self.data_type}")
         assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT
         self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
         self.refresh_cache = refresh_cache
@@ -185,12 +186,12 @@ class LLM:
                 # Remote model
                 print(f"'{self.model_name}' local model weights were updated! Converting new weights now...")
             # Download model from HuggingFace, or load it from the local folder
-            print(f"slef.model_name: {self.model_name}")
             hf_model = AutoModelForCausalLM.from_pretrained(self.model_name, trust_remote_code=True)
             # Print log message to notify user download of model has finished
             if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
                 print("Done downloading HF weights. Converting them now...")
             # Convert the model to FlexFlow format
+            print(f"hf_model:{hf_model} and self.weights_path:{self.weights_path}")
             self.model_class.convert_hf_model(hf_model, self.weights_path)
             # Save new revision hash to file
             with open(ff_revision_file, "w+") as f:

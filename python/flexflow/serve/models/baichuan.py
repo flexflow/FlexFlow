@@ -223,14 +223,12 @@ class FlexFlowBAICHUAN(FlexFlowModel):
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
+        print(f"model: {model} and dst_folder: {dst_folder}")
         for name, params in model.named_parameters():
-            
-            new_name = (
+            name = (
                 name.replace(".", "_")
                 .replace("self_attn", "attention")
-                .replace("q_proj", "wq")
-                .replace("k_proj", "wk")
-                .replace("v_proj", "wv")
+                .replace("W_pack", "Wqkv")
                 .replace("o_proj", "wo")
                 .replace("mlp", "feed_forward")
                 .replace("gate_proj", "w1")
@@ -242,8 +240,28 @@ class FlexFlowBAICHUAN(FlexFlowModel):
                 .replace("lm_head", "output")
                 .replace("model_", "")
             )
-            print("name: ", name, "params.shape: ", params.shape, "new_name: ", new_name)
-            # params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
+            print(f"0 name:{name} and params.shape: {params.shape} and")
+            if "attention_Wqkv" in name:
+                name_q = name.replace("attention_Wqkv", "attention_wq")
+                name_k = name.replace("attention_Wqkv", "attention_wk")
+                name_v = name.replace("attention_Wqkv", "attention_wv")
+                q, k, v = torch.split(
+                    params,
+                    [
+                        model.config.hidden_size,
+                        model.config.hidden_size,
+                        model.config.hidden_size,
+                    ],
+                    0,
+                )
+                q.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_q))
+                k.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_k))
+                v.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_v))
+                print(f"1 name:{name}  and name_q: {name_q} and name_k: {name_k} and name_v: {name_v}")
+                print(f"2 q.shape: {q.shape} and k.shape: {k.shape} and v.shape: {v.shape}")
+            else:
+                print(f"3 name:{name} and params.shape: {params.shape} ")
+                params.detach().cpu().numpy().tofile(os.path.join(dst_folder, name))
 
 
     
