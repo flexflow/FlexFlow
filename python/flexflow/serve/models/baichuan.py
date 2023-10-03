@@ -18,6 +18,7 @@ import random, torch, shutil
 
 class BAICHUANConfig:
     def __init__(self, hf_config):
+        print(f"hf_config: {hf_config}")
         self.max_beam_width = 1
         self.max_beam_depth = 8 
         self.num_hidden_layers = hf_config.num_hidden_layers
@@ -36,11 +37,9 @@ class FlexFlowBAICHUAN(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
-        #max_batch_size=1,
-        #max_seq_length=256,
         max_tokens_per_batch,
         weights_filepath="",
-        tokenizer_filepath="",
+        tokenizer_filepath=""
     ):
         self.mode = mode 
         self.generation_config = generation_config
@@ -52,18 +51,18 @@ class FlexFlowBAICHUAN(FlexFlowModel):
         self.maxint = 2 ** 31 -1
 
         # Sanity checks
-        if self.baichuna_config.hidden_size % self.baichuan_config.n_heads != 0:
+        if self.baichuan_config.hidden_size % self.baichuan_config.num_attention_heads != 0:
             raise ValueError(
-                f"Hidden size ({self.baichuan_config.hidden_size}) is not divisible by n_head ({self.baichuan_config.n_heads})"
+                f"Hidden size ({self.baichuan_config.hidden_size}) is not divisible by n_head ({self.baichuan_config.num_attention_heads})"
             )
 
         # Sanity checks
         if (
-            self.baichuan_config.n_heads < self.ffconfig.tensor_parallelism_degree
-            or self.baichuan_config.n_heads % self.ffconfig.tensor_parallelism_degree != 0
+            self.baichuan_config.num_attention_heads < self.ffconfig.tensor_parallelism_degree
+            or self.baichuan_config.num_attention_heads % self.ffconfig.tensor_parallelism_degree != 0
         ):
             raise ValueError(
-                f"Number of attention heads ({self.baichuan_config.n_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
+                f"Number of attention heads ({self.baichuan_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
         self.build_model(max_tokens_per_batch)
 
@@ -86,7 +85,7 @@ class FlexFlowBAICHUAN(FlexFlowModel):
             name = "token_embedding",
         )
 
-        for i in range(self.baicuan_config.num_hidden_layers):
+        for i in range(self.baichuan_config.num_hidden_layers):
             ffmodel.set_transformer_layer_id(i)
 
             if i == 0:

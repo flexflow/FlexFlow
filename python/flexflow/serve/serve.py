@@ -348,9 +348,7 @@ class LLM:
             self.ffconfig,
             self.hf_config,
             self.data_type,
-            max_batch_size,
-            max_seq_length,
-            max_tokens_per_batch,
+            max_tokens_per_batch
         )
 
         # Create inference manager
