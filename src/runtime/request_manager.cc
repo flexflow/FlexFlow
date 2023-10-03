@@ -297,10 +297,11 @@ bool RequestManager::is_request_completed(RequestGuid const &guid) {
   return request.status == Request::COMPLETED;
 }
 
-bool RequestManager::all_request_completed(std::vector<RequestGuid> const &guids) {
-  for(RequestGuid guid : guids){
-    if(!is_request_completed(guid)){
-       return false;
+bool RequestManager::all_request_completed(
+    std::vector<RequestGuid> const &guids) {
+  for (RequestGuid guid : guids) {
+    if (!is_request_completed(guid)) {
+      return false;
     }
   }
   return true;
