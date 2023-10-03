@@ -2,9 +2,9 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_TENSOR_H
 
 #include "initializer.h"
-#include "tensor_shape.h"
 #include "param_sync.h"
 #include "pcg/tensor.h"
+#include "tensor_shape.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {

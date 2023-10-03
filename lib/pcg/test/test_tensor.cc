@@ -9,6 +9,11 @@
 using namespace FlexFlow;
 
 TEST_CASE("Tensor") {
-  Tensor t{{3, 4, 5}, DataType::FLOAT, false, nullopt, nullopt, std::string("tensor")};
+  Tensor t{{3, 4, 5},
+           DataType::FLOAT,
+           false,
+           nullopt,
+           nullopt,
+           std::string("tensor")};
   to_v1(t);
 }

@@ -3,6 +3,10 @@
 
 namespace FlexFlow {
 
+V1Operator to_v1(Operator const &op) {
+  NOT_IMPLEMENTED();
+}
+
 V1Layer to_v1(Layer const &l) {
   return {to_v1(l.attrs), l.name};
 }

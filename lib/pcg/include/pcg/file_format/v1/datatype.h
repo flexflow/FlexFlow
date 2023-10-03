@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_DATA_TYPE_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_DATA_TYPE_H
 
+#include "op-attrs/datatype.h"
 #include "utils/fp16.h"
 #include "utils/json.h"
 #include "utils/variant.h"
@@ -25,6 +26,8 @@ NLOHMANN_JSON_SERIALIZE_ENUM(V1DataType,
                               {V1DataType::HALF, "HALF"},
                               {V1DataType::FLOAT, "FLOAT"},
                               {V1DataType::DOUBLE, "DOUBLE"}});
+
+V1DataType to_v1(DataType const &d);
 
 } // namespace FlexFlow
 

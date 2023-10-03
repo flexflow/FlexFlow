@@ -2,6 +2,7 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_OPS_INPUT_H
 
 #include "op-attrs/ops/input.h"
+#include "utils/json.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {

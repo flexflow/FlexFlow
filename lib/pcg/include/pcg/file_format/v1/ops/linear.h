@@ -2,7 +2,6 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_OPS_LINEAR_ATTRS_H
 
 #include "op-attrs/ops/linear.h"
-#include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/file_format/v1/activation.h"
 #include "pcg/file_format/v1/datatype.h"
 #include "utils/visitable.h"
@@ -26,6 +25,7 @@ CHECK_IS_JSONABLE(V1L2RegularizerAttrs);
 V1L2RegularizerAttrs to_v1(L2RegularizerAttrs const &attrs);
 
 using V1RegularizerAttrs = variant<V1L1RegularizerAttrs, V1L2RegularizerAttrs>;
+V1RegularizerAttrs to_v1(RegularizerAttrs const &);
 
 struct V1LinearAttrs {
   req<int> out_channels;
