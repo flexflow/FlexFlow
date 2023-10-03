@@ -35,29 +35,6 @@ std::unordered_set<Node>
   return g.query_nodes(q);
 }
 
-std::unordered_set<Node> ViewOpenMultiDiGraphAsMultiDiGraph::query_nodes(
-    NodeQuery const &query) const {
-  return g.query_nodes(query);
-}
-
-std::unordered_set<MultiDiEdge> ViewOpenMultiDiGraphAsMultiDiGraph::query_edges(
-    MultiDiEdgeQuery const &query) const {
-
-  InputMultiDiEdgeQuery input_edge_query = InputMultiDiEdgeQuery::all();
-  OutputMultiDiEdgeQuery output_edge_query = OutputMultiDiEdgeQuery::all();
-
-  OpenMultiDiEdgeQuery q{input_edge_query, query, output_edge_query};
-
-  std::unordered_set<OpenMultiDiEdge> edges = g.query_edges(q);
-
-  return transform(
-      filter(edges,
-             [](OpenMultiDiEdge const &edge) {
-               return holds_alternative<MultiDiEdge>(edge);
-             }),
-      [](OpenMultiDiEdge const &edge) { return get<MultiDiEdge>(edge); });
-}
-
 DirectedEdge flipped(DirectedEdge const &e) {
   return {e.src, e.dst};
 }
@@ -411,6 +388,71 @@ std::unordered_set<DirectedEdge> ViewMultiDiGraphAsDiGraph::query_edges(
 std::unordered_set<Node>
     ViewMultiDiGraphAsDiGraph::query_nodes(NodeQuery const &query) const {
   return this->g.query_nodes(query);
+}
+
+OpenMultiDiSubgraphView::OpenMultiDiSubgraphView(OpenMultiDiGraphView const &g,
+                          std::unordered_set<Node> const &nodes) : g(g), nodes(nodes) {}
+
+std::unordered_set<OpenMultiDiEdge>
+    OpenMultiDiSubgraphView::query_edges(OpenMultiDiEdgeQuery const &q) const override {
+  OpenMultiDiEdgeQuery subgraph_query(
+    q.input_edge_query.with_dst_nodes(nodes),
+    q.standard_edge_query.with_src_nodes(nodes).with_dst_nodes(nodes),
+    q.output_edge_query.with_src_nodes(nodes)
+  );
+  return g.query_edges(subgraph_query);
+}
+
+std::unordered_set<Node> OpenMultiDiSubgraphView::query_nodes(NodeQuery const &q) const override {
+  return g.query_nodes(query_intersection(q, NodeQuery(nodes)));
+}
+
+UpwardOpenMultiDiSubgraphView::UpwardOpenMultiDiSubgraphView(OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
+  : g(g), nodes(nodes) {}
+
+std::unordered_set<OpenMultiDiEdge>
+    UpwardOpenMultiDiSubgraphView::query_edges(OpenMultiDiEdgeQuery const &q) const override {
+  return g.query_edges(
+    OpenMultiDiEdgeQuery(
+      q.input_edge_query.with_dst_nodes(nodes),
+      q.standard_edge_query.with_src_ndoes(nodes).with_dst_nodes(nodes),
+      OutputMultiDiEdgeQuery::none()
+    )
+  );
+}
+
+std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
+  return g.query_nodes(query_intersection(q, NodeQuery(nodes)));
+}
+
+DownwardOpenMultiDiSubgraphView::DownwardOpenMultiDiSubgraphView(OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
+  : g(g), nodes(nodes) {}
+
+std::unordered_set<OpenMultiDiEdge>
+    DownwardOpenMultiDiSubgraphView::query_edges(OpenMultiDiEdgeQuery const &) const override {
+  return g.query_edges(
+    OpenMultiDiEdgeQuery(
+      InputMultiDiEdgeQuery::none(),
+      q.standard_edge_query.with_src_ndoes(nodes).with_dst_nodes(nodes),
+      q.output_edge_query.with_src_nodes(nodes)
+    )
+  );
+}
+
+std::unordered_set<Node> DownwardOpenMultiDiSubgraphView::query_nodes(NodeQuery const &) const override {
+  return g.query_nodes(query_intersection(q, NodeQuery(nodes)));
+}
+
+ClosedMultiDiSubgraphView(OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
+  : g(g), nodes(nodes) {}
+
+std::unordered_set<OpenMultiDiEdge>
+    ClosedMultiDiSubgraphView::query_edges(OpenMultiDiEdgeQuery const &q) const override {
+  return g.query_edges(q.standard_edge_query.with_src_nodes(nodes).with_dst_nodes(nodes));
+}
+
+std::unordered_set<Node> ClosedMultiDiSubgraphView::query_nodes(NodeQuery const &) const override {
+  return g.query_nodes(query_intersection(q, NodeQuery(nodes)));
 }
 
 } // namespace FlexFlow

@@ -38,6 +38,8 @@ struct OutputMultiDiEdgeQuery {
   query_set<Node> srcs;
   query_set<NodePort> srcIdxs;
 
+  OutputMultiDiEdgeQuery with_src_nodes(query_set<Node> const &) const;
+
   static OutputMultiDiEdgeQuery all();
   static OutputMultiDiEdgeQuery none();
 };
@@ -46,6 +48,8 @@ FF_VISITABLE_STRUCT(OutputMultiDiEdgeQuery, srcs, srcIdxs);
 struct InputMultiDiEdgeQuery {
   query_set<Node> dsts;
   query_set<NodePort> dstIdxs;
+
+  InputMultiDiEdgeQuery with_dst_nodes(query_set<Node> const &) const;
 
   static InputMultiDiEdgeQuery all();
   static InputMultiDiEdgeQuery none();
