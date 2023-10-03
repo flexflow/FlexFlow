@@ -122,6 +122,7 @@ public:
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
                                    int max_sequence_length);
   bool is_request_completed(RequestGuid const &guid);
+  bool all_request_completed(std::vector<RequestGuid> const &guids);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
   BatchConfigFuture prepare_next_batch(BatchConfigFuture const &bc,
