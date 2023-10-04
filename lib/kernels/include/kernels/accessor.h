@@ -34,7 +34,10 @@ public:
   ArrayShape shape;
   req<void *> ptr;
 };
-FF_VISITABLE_STRUCT(GenericTensorAccessorW, data_type, shape, ptr);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorW,
+                                             data_type,
+                                             shape,
+                                             ptr);
 
 class GenericTensorAccessorR {
 public:
@@ -59,7 +62,10 @@ public:
   ArrayShape shape;
   req<void const *> ptr;
 };
-FF_VISITABLE_STRUCT(GenericTensorAccessorR, data_type, shape, ptr);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorR,
+                                             data_type,
+                                             shape,
+                                             ptr);
 
 int32_t *get_int32_ptr(GenericTensorAccessorW const &);
 int64_t *get_int64_ptr(GenericTensorAccessorW const &);
