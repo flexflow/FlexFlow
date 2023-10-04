@@ -189,7 +189,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-  init_binding.bind_arg(ATTRS, attrs);
+  fwd_binding.bind_arg(ATTRS, attrs);
 
   fwd_binding.bind(INPUT, input_shape);
   fwd_binding.bind(OUTPUT, output_shape);
