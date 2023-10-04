@@ -74,6 +74,31 @@ __global__ void get_key_value(DT *key,
   }
 }
 
+// change the layout of query
+// from num_total_tokens * qProjSize * num_heads
+// -> num_new_tokens * qProjSize * num_heads * num_reqs
+template <typename DT>
+__global__ void get_query(DT const *devQKVProjArray,
+                          DT *query,
+                          BatchConfig::PerTokenInfo const *tokenInfos,
+                          int qProjSize,
+                          int total_tokens,
+                          int max_new_tokens,
+                          int num_q_heads) {
+  CUDA_KERNEL_LOOP(i, total_tokens * qProjSize * num_q_heads) {
+    int head_id = i / (total_tokens * qProjSize);
+    int tokens_id = (i - (head_id * total_tokens * qProjSize)) / qProjSize;
+
+    int token_id_in_req = tokens_id % max_new_tokens;
+    int req_id = tokens_id / max_new_tokens;
+    int offset = i % qProjSize;
+
+    query[req_id * max_new_tokens * qProjSize * num_q_heads +
+          head_id * max_new_tokens * qProjSize + token_id_in_req * qProjSize +
+          offset] = devQKVProjArray[i];
+  }
+}
+
 // only used by MPT model. https://arxiv.org/abs/2108.12409
 template <typename DT>
 __global__ void apply_position_bias_qkprd(DT *input_ptr,
@@ -584,8 +609,6 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
-void unpad_output();
-
 template <typename DT>
 void pad_input(IncMultiHeadSelfAttentionMeta const *m,
                BatchConfig const *bc,
@@ -704,30 +727,6 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
 using namespace Kernels::IncMultiHeadAttention;
 
-// change the layout of query
-// from num_total_tokens * qProjSize * num_heads
-// -> num_new_tokens * qProjSize * num_heads * num_reqs
-template <typename DT>
-__global__ void get_query(DT const *devQKVProjArray,
-                          DT *query,
-                          BatchConfig::PerTokenInfo const *tokenInfos,
-                          int qProjSize,
-                          int total_tokens,
-                          int max_new_tokens,
-                          int num_q_heads) {
-  CUDA_KERNEL_LOOP(i, total_tokens * qProjSize * num_q_heads) {
-    int head_id = i / (total_tokens * qProjSize);
-    int tokens_id = (i - (head_id * total_tokens * qProjSize)) / qProjSize;
-
-    int token_id_in_req = tokens_id % max_new_tokens;
-    int req_id = tokens_id / max_new_tokens;
-    int offset = i % qProjSize;
-
-    query[req_id * max_new_tokens * qProjSize * num_q_heads +
-          head_id * max_new_tokens * qProjSize + token_id_in_req * qProjSize +
-          offset] = devQKVProjArray[i];
-  }
-}
 
 template <typename DT>
 __global__ void store_kv_cache(DT const *devQKVProjArray,
@@ -781,7 +780,7 @@ __global__ void fill_entries_above_diagonal(DT *matrix,
                                             DT value) {
   CUDA_KERNEL_LOOP(i, entries_above_diagonal * num_q_heads * num_activate_req) {
     int req_id = i / (entries_above_diagonal * num_q_heads);
-    int pre_eles = entries_above_diagonal * num_q_heads * req_id;
+    size_t pre_eles = entries_above_diagonal * num_q_heads * req_id;
     size_t in_req_idx = i - pre_eles;
     size_t head_idx = in_req_idx / entries_above_diagonal;
     size_t entry_idx = in_req_idx % entries_above_diagonal;
@@ -960,7 +959,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
   // Fill all elements above diagonal in qk prods with -inf to force
   // causal attention.
-  // assert(num_new_tokens <= total_tokens);
+  assert(max_new_tokens <= max_total_tokens);
   size_t entries_above_diagonal = max_new_tokens * (max_new_tokens - 1) / 2;
   if (entries_above_diagonal > 0) {
     size_t parallelism =
@@ -1149,7 +1148,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
   if (*m->final_bias && shard_id == 0) {
-    int parallelism = m->oProjSize * max_new_tokens;
+    int parallelism = m->oProjSize * max_new_tokens * num_activate_req;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
                           m->kProjSize * m->global_num_kv_heads +
                           m->vProjSize * m->global_num_kv_heads;
@@ -1159,14 +1158,12 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         0,
                         stream>>>(static_cast<DT *>(m->padded_output),
                                   bias_ptr,
-                                  max_new_tokens,
+                                  max_new_tokens * num_activate_req,
                                   qkv_weight_size,
                                   m->oProjSize);
   }
 
-  // copy the output tokens
-  // m->padded_output, output_ptr
-  // print_tensor<float>((float *)m->padded_output, 32, "padded op");
+  // copy the output tokens from m->padded_output to output_ptr
   int parallelism = m->oProjSize * max_new_tokens * bc->num_active_requests();
   copy_output<<<GET_BLOCKS(parallelism),
                 min(CUDA_NUM_THREADS, parallelism),
@@ -1177,7 +1174,6 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                           m->oProjSize,
                           m->real_token_idx_gpu);
 
-  // assert(tokens_previous_requests == num_tokens);
 }
 
 /*static*/

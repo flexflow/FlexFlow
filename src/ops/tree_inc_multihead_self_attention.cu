@@ -115,40 +115,44 @@ __global__ void update_tree_branch_kv_cache(
     int qProjSize,
     int kProjSize,
     int vProjSize,
-    int num_tokens_in_branch,
+    int num_total_new_tokens,
     int processed_tokens_in_batch,
     int total_tokens_in_batch,
     int num_q_heads,
     int num_kv_heads,
-    int max_seq_len) {
+    int max_seq_len,
+    int *real_token_idx) {
   CUDA_KERNEL_LOOP(
-      i, num_tokens_in_branch * (kProjSize + vProjSize) * num_kv_heads) {
+      i, num_total_new_tokens * (kProjSize + vProjSize) * num_kv_heads) {
 
     int q_array_size = qProjSize * total_tokens_in_batch * num_q_heads;
     int k_array_size = kProjSize * total_tokens_in_batch * num_kv_heads;
 
-    bool k_cache = i < (num_tokens_in_branch * kProjSize * num_kv_heads);
+    bool k_cache = i < (num_total_new_tokens * kProjSize * num_kv_heads);
     int real_i =
-        k_cache ? i : i - (num_tokens_in_branch * kProjSize * num_kv_heads);
+        k_cache ? i : i - (num_total_new_tokens * kProjSize * num_kv_heads);
 
     int proj_size = k_cache ? kProjSize : vProjSize;
     int data_idx = real_i % proj_size;
+
     int token_idx =
-        (real_i / proj_size) % num_tokens_in_branch; // index in the tree branch
-    int head_idx = real_i / (proj_size * num_tokens_in_branch);
+        (real_i / proj_size) % num_total_new_tokens; // index in the tree branch
+    int head_idx = real_i / (proj_size * num_total_new_tokens);
 
     token_idx += processed_tokens_in_batch; // get index in the whole batch
     DT val = devQKVProjArray[q_array_size + (k_cache ? 0 : k_array_size) +
                              head_idx * proj_size * total_tokens_in_batch +
                              token_idx * proj_size + data_idx];
 
-    int const req_id = tokenInfos[token_idx].request_index;
-    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
-    DT *cache_ptr = k_cache ? kCache_ptr : vCache_ptr;
-
-    cache_ptr[req_id * (num_kv_heads * max_seq_len * proj_size) +
-              head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
-              data_idx] = val;
+    if (real_token_idx[token_idx] >= 0) {
+      token_idx = real_token_idx[token_idx];
+      int const req_id = tokenInfos[token_idx].request_index;
+      int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
+      DT *cache_ptr = k_cache ? kCache_ptr : vCache_ptr;
+      cache_ptr[req_id * (num_kv_heads * max_seq_len * proj_size) +
+                head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
+                data_idx] = val;
+    }
   }
 }
 
@@ -157,11 +161,21 @@ __global__ void tree_fill_entries_above_diagonal(DT *matrix,
                                                  size_t new_tokens,
                                                  size_t total_tokens_in_request,
                                                  size_t num_q_heads,
+                                                 int num_activate_req,
                                                  DT value) {
-  CUDA_KERNEL_LOOP(i, new_tokens * total_tokens_in_request * num_q_heads) {
+  CUDA_KERNEL_LOOP(i,
+                   new_tokens * total_tokens_in_request * num_q_heads *
+                       num_activate_req) {
     // size_t head_idx = i / (new_tokens * total_tokens_in_request);
-    size_t src_idx = (i / new_tokens) % total_tokens_in_request;
-    size_t dst_idx = i % new_tokens + total_tokens_in_request - new_tokens;
+    int req_id = i / (new_tokens * total_tokens_in_request * num_q_heads);
+    size_t pre_eles =
+        new_tokens * total_tokens_in_request * num_q_heads * req_id;
+
+    size_t in_req_idx = i - pre_eles;
+
+    size_t src_idx = (in_req_idx / new_tokens) % total_tokens_in_request;
+    size_t dst_idx =
+        in_req_idx % new_tokens + total_tokens_in_request - new_tokens;
     // Casual Mask
     if (src_idx > dst_idx) {
       matrix[i] = value;
@@ -188,110 +202,131 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
 #else
   cudaDataType_t compute_type = cublas_data_type;
 #endif
-  // int num_requests = bc->num_active_requests();
-  int processed_tokens_in_batch = 0;
-  // int qkv_block_size =
-  //     (m->qProjSize + m->kProjSize + m->vProjSize) * bc->num_active_tokens();
-  int q_block_size = m->qProjSize * bc->num_active_tokens();
-  int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;
-  int kt_req_block_size = kt_block_size * m->num_kv_heads;
-  int vt_block_size = m->vProjSize * BatchConfig::MAX_SEQ_LENGTH;
-  int vt_req_block_size = vt_block_size * m->num_kv_heads;
-  assert(m->qProjSize == m->kProjSize);
 
-  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
-    if (bc->request_completed[i]) {
-      continue;
+  int max_new_tokens = 0;
+  int num_activate_req = bc->num_active_requests();
+  assert(BeamSearchBatchConfig::MAX_BEAM_WIDTH == 1);
+  // in this case, all tokens in this req is in one verified path
+  if (BeamSearchBatchConfig::MAX_BEAM_WIDTH == 1) {
+    max_new_tokens = *m->max_req_length;
+    int max_total_tokens = *m->max_total_tokens;
+
+    int q_block_size = m->qProjSize * max_new_tokens;
+    int kt_block_size = m->kProjSize * max_total_tokens;
+    int vt_block_size = m->vProjSize * max_total_tokens;
+    assert(m->qProjSize == m->kProjSize);
+
+    {
+      // update K-V cache
+      int parallelism =
+          (m->kProjSize + m->vProjSize) * max_new_tokens * m->num_kv_heads;
+      update_tree_branch_kv_cache<<<GET_BLOCKS(parallelism),
+                                    min(CUDA_NUM_THREADS, parallelism),
+                                    0,
+                                    stream>>>(
+          static_cast<DT *>(m->devQKVProjArray),
+          static_cast<DT *>(m->keyCache),
+          static_cast<DT *>(m->valueCache),
+          m->token_infos,
+          m->qProjSize,
+          m->kProjSize,
+          m->vProjSize,
+          max_new_tokens * num_activate_req, // num_tokens_in_branch
+          0,                                 // num_processed_tokens_in_batch
+          max_new_tokens * num_activate_req, // total_tokens_in_batch
+          m->num_q_heads,
+          m->num_kv_heads,
+          BatchConfig::MAX_SEQ_LENGTH,
+          m->real_token_idx_gpu);
+
+      parallelism = m->num_q_heads * max_new_tokens * num_activate_req;
+      get_query<<<GET_BLOCKS(parallelism),
+                  min(CUDA_NUM_THREADS, parallelism),
+                  0,
+                  stream>>>(static_cast<DT *>(m->devQKVProjArray),
+                            static_cast<DT *>(m->query),
+                            m->token_infos,
+                            m->qProjSize,
+                            max_new_tokens * num_activate_req,
+                            *m->max_req_length,
+                            m->num_q_heads);
+      // get query, get key, value
+      parallelism = (m->kProjSize + m->vProjSize) * max_new_tokens *
+                    num_activate_req * m->num_kv_heads;
+      get_key_value<<<GET_BLOCKS(parallelism),
+                      min(CUDA_NUM_THREADS, parallelism),
+                      0,
+                      stream>>>(static_cast<DT *>(m->key),
+                                static_cast<DT *>(m->value),
+                                static_cast<DT *>(m->keyCache),
+                                static_cast<DT *>(m->valueCache),
+                                m->total_tokens_per_req_gpu,
+                                m->kProjSize,
+                                m->vProjSize,
+                                *m->max_total_tokens,
+                                *m->max_total_tokens * num_activate_req,
+                                m->num_kv_heads,
+                                BatchConfig::MAX_SEQ_LENGTH);
     }
-    int last_token_idx_of_the_request =
-        processed_tokens_in_batch + bc->requestsInfo[i].num_tokens_in_batch - 1;
-    while (processed_tokens_in_batch <= last_token_idx_of_the_request) {
-      int num_new_tokens = 1;
-      int j = processed_tokens_in_batch;
-      while ((j + 1 <= last_token_idx_of_the_request) &&
-             (bc->tokensInfo[j].abs_depth_in_request + 1 ==
-              bc->tokensInfo[j + 1].abs_depth_in_request)) {
-        j++;
-        num_new_tokens++;
-      }
 
-      int total_tokens_in_request = bc->tokensInfo[j].abs_depth_in_request + 1;
-      assert(num_new_tokens >= 1 && total_tokens_in_request >= num_new_tokens);
-      {
-        // update K-V cache
-        int parallelism =
-            (m->kProjSize + m->vProjSize) * num_new_tokens * m->num_kv_heads;
-        update_tree_branch_kv_cache<<<GET_BLOCKS(parallelism),
-                                      min(CUDA_NUM_THREADS, parallelism),
-                                      0,
-                                      stream>>>(
-            static_cast<DT *>(m->devQKVProjArray),
-            static_cast<DT *>(m->keyCache),
-            static_cast<DT *>(m->valueCache),
-            m->token_infos,
-            m->qProjSize,
-            m->kProjSize,
-            m->vProjSize,
-            num_new_tokens,            // num_tokens_in_branch
-            processed_tokens_in_batch, // num_processed_tokens_in_batch
-            m->num_active_tokens,      // total_tokens_in_batch
-            m->num_q_heads,
-            m->num_kv_heads,
-            BatchConfig::MAX_SEQ_LENGTH);
-      }
+    // bc->token_last_available_idx[i] + 1;
+    // Compute (QK^T/sqrt(d_k))
+    int m_ = max_new_tokens;
+    int n = max_total_tokens;
+    int k = m->qProjSize;
+    int lda = k, ldb = k, ldc = m_;
+    int strideA = q_block_size;
+    int strideB = kt_block_size;
+    int strideC = max_new_tokens * max_total_tokens;
 
-      // bc->token_last_available_idx[i] + 1;
-      // Compute (QK^T/sqrt(d_k))
-      int m_ = num_new_tokens;
-      int n = total_tokens_in_request;
-      int k = m->qProjSize;
-      int lda = k, ldb = k, ldc = m_;
-      int strideA = q_block_size;
-      int strideB = kt_block_size;
-      int strideC = num_new_tokens * total_tokens_in_request;
+    // a flag of using this scaling alpha
+    DT alpha = 1.0f, beta = 0.0f;
+    if (*m->qk_prod_scaling) {
+      alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
+    }
+    // To get A, skip over Q entries from previous requests (same head)
+    DT const *A = static_cast<DT *>(m->query);
+    // To get B, skip over K entries from previous requests (all heads +
+    // padding)
+    DT const *B = static_cast<DT *>(m->key);
+    // To get C, skip over QK^T products from previous requests
+    DT *C = static_cast<DT *>(m->qk_prods);
 
-      // a flag of using this scaling alpha
-      DT alpha = 1.0f, beta = 0.0f;
-      if (*m->qk_prod_scaling) {
-        alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
-      }
-      // To get A, skip over Q entries from previous requests (same head)
-      DT const *A = static_cast<DT *>(m->devQKVProjArray) +
-                    processed_tokens_in_batch * m->qProjSize;
-      // To get B, skip over K entries from previous requests (all heads +
-      // padding)
-      DT const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
-      // To get C, skip over QK^T products from previous requests
-      DT *C = static_cast<DT *>(m->qk_prods);
-
-      if (m->num_q_heads == m->num_kv_heads) {
-        checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                             CUBLAS_OP_T,
-                                             CUBLAS_OP_N,
-                                             m_,
-                                             n,
-                                             k,
-                                             &alpha,
-                                             A,
-                                             cublas_data_type,
-                                             lda,
-                                             strideA,
-                                             B,
-                                             cublas_data_type,
-                                             ldb,
-                                             strideB,
-                                             &beta,
-                                             C,
-                                             cublas_data_type,
-                                             ldc,
-                                             strideC,
-                                             m->num_q_heads,
-                                             compute_type,
-                                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      } else {
-        strideB = 0;
-        int one_step_heads = m->num_q_heads / m->num_kv_heads;
-        for (int step = 0; step < m->num_kv_heads; step++) {
+    if (m->num_q_heads == m->num_kv_heads) {
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_T,
+                                           CUBLAS_OP_N,
+                                           m_,
+                                           n,
+                                           k,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_q_heads * num_activate_req,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    } else {
+      strideB = 0;
+      int one_step_heads = m->num_q_heads / m->num_kv_heads;
+      for (int step = 0; step < m->num_kv_heads; step++) {
+        for (int req = 0; req < num_activate_req; req++) {
+          A = static_cast<DT *>(m->query) +
+              req * max_new_tokens * m->qProjSize * m->num_q_heads;
+          B = static_cast<DT *>(m->key) +
+              req * max_total_tokens * m->qProjSize * m->num_kv_heads;
+          C = static_cast<DT *>(m->qk_prods) +
+              req * max_new_tokens * max_total_tokens * m->num_q_heads;
           checkCUDA(
               cublasGemmStridedBatchedEx(m->handle.blas,
                                          CUBLAS_OP_T,
@@ -318,123 +353,128 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
         }
       }
-      // add alibi position bias to qk production
-      // add alibi position bias to qk production
-      if (*m->position_bias) {
-        size_t parallelism =
-            m->num_q_heads * total_tokens_in_request * num_new_tokens;
-        // apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
-        //                             min((size_t)CUDA_NUM_THREADS, parallelism),
-        //                             0,
-        //                             stream>>>(C,
-        //                                       num_new_tokens,
-        //                                       total_tokens_in_request,
-        //                                       m->num_q_heads,
-        //                                       m->global_num_q_heads,
-        //                                       shard_id);
-      }
+    }
+    // add alibi position bias to qk production
+    // add alibi position bias to qk production
+    if (*m->position_bias) {
+      size_t parallelism =
+          m->num_q_heads * max_total_tokens * max_new_tokens;
+      // apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
+      //                             min((size_t)CUDA_NUM_THREADS,
+      //                             parallelism), 0, stream>>>(C,
+      //                                       num_new_tokens,
+      //                                       total_tokens_in_request,
+      //                                       m->num_q_heads,
+      //                                       m->global_num_q_heads,
+      //                                       shard_id);
+    }
 
-      // Fill all elements above diagonal in qk prods with -inf to force
-      // causal attention.
-      assert(num_new_tokens <= total_tokens_in_request);
-      if (num_new_tokens > 1) {
-        size_t parallelism =
-            m->num_q_heads * num_new_tokens * total_tokens_in_request;
-        tree_fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
-                                           min((size_t)CUDA_NUM_THREADS,
-                                               parallelism),
-                                           0,
-                                           stream>>>(
-            C,
-            num_new_tokens,
-            total_tokens_in_request,
-            m->num_q_heads,
-            static_cast<DT>(-INFINITY));
-      }
-      // Compute Softmax(QK^T/sqrt(d_k))
-      // Before modifying the parameters below, make sure to read the following
-      // description of the CUDNN_TENSOR_NCHW tensor layout, from
-      // https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnTensorFormat_t:
-      // This tensor format specifies that the data is laid out in the following
-      // order: batch size, feature maps, rows, columns. The strides are
-      // implicitly defined in such a way that the data are contiguous in memory
-      // with no padding between images, feature maps, rows, and columns; the
-      // columns are the inner dimension and the images are the outermost
-      // dimension.
-      int n_param = m->num_q_heads;
-      int c_param = total_tokens_in_request;
-      int h_param = 1;
-      int w_param = num_new_tokens;
-      checkCUDNN(cudnnSetTensor4dDescriptor(m->qk_tensor,
-                                            CUDNN_TENSOR_NCHW,
-                                            cudnn_data_type,
-                                            n_param,
-                                            c_param,
-                                            h_param,
-                                            w_param));
-      float softmax_alpha = 1.0f, softmax_beta = 0.0f;
-      DT *C_softmax = static_cast<DT *>(m->qk_prods_softmax);
-      // The softmax operation below is executed according to the
-      // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
-      // softmax operation is computed per spatial location (H,W) per image (N)
-      // across dimension C.
-      checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
-                                     CUDNN_SOFTMAX_ACCURATE,
-                                     CUDNN_SOFTMAX_MODE_CHANNEL,
-                                     &softmax_alpha,
-                                     m->qk_tensor,
-                                     C,
-                                     &softmax_beta,
-                                     m->qk_tensor,
-                                     C_softmax));
-      // Matmul softmax(QK^T/sqrt(d_k)) by V
-      alpha = 1.0f, beta = 0.0f;
-      m_ = num_new_tokens;
-      n = m->vProjSize;
-      k = total_tokens_in_request;
-      lda = m_, ldb = n, ldc = m_;
-      strideA = num_new_tokens * total_tokens_in_request;
-      strideB = vt_block_size;
-      strideC = num_new_tokens * m->vProjSize;
-      // To get A, skip over softmax(QK^T/sqrt(d_k)) entries from previous
-      // requests (all heads)
-      A = C_softmax;
-      // To get B, skip over V^T entries from previous requests (all heads +
-      // padding)
-      B = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
-      // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
-      // requests
-      C = static_cast<DT *>(m->attn_heads) +
-          processed_tokens_in_batch * m->num_q_heads * m->vProjSize;
+    // Fill all elements above diagonal in qk prods with -inf to force
+    // causal attention.
+    assert(max_new_tokens <= max_total_tokens);
+    if (max_new_tokens > 1) {
+      size_t parallelism = m->num_q_heads * max_new_tokens * max_total_tokens;
+      tree_fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
+                                         min((size_t)CUDA_NUM_THREADS,
+                                             parallelism),
+                                         0,
+                                         stream>>>(C,
+                                                   max_new_tokens,
+                                                   max_total_tokens,
+                                                   m->num_q_heads,
+                                                   num_activate_req,
+                                                   static_cast<DT>(-INFINITY));
+    }
+    // Compute Softmax(QK^T/sqrt(d_k))
+    // Before modifying the parameters below, make sure to read the
+    // following description of the CUDNN_TENSOR_NCHW tensor layout, from
+    // https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnTensorFormat_t:
+    // This tensor format specifies that the data is laid out in the
+    // following order: batch size, feature maps, rows, columns. The strides
+    // are implicitly defined in such a way that the data are contiguous in
+    // memory with no padding between images, feature maps, rows, and
+    // columns; the columns are the inner dimension and the images are the
+    // outermost dimension.
+    int n_param = m->num_q_heads * num_activate_req;
+    int c_param = max_total_tokens;
+    int h_param = 1;
+    int w_param = max_new_tokens;
+    checkCUDNN(cudnnSetTensor4dDescriptor(m->qk_tensor,
+                                          CUDNN_TENSOR_NCHW,
+                                          cudnn_data_type,
+                                          n_param,
+                                          c_param,
+                                          h_param,
+                                          w_param));
+    float softmax_alpha = 1.0f, softmax_beta = 0.0f;
+    DT *C_softmax = static_cast<DT *>(m->qk_prods_softmax);
+    // The softmax operation below is executed according to the
+    // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
+    // softmax operation is computed per spatial location (H,W) per image
+    // (N) across dimension C.
+    checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
+                                   CUDNN_SOFTMAX_ACCURATE,
+                                   CUDNN_SOFTMAX_MODE_CHANNEL,
+                                   &softmax_alpha,
+                                   m->qk_tensor,
+                                   C,
+                                   &softmax_beta,
+                                   m->qk_tensor,
+                                   C_softmax));
+    // Matmul softmax(QK^T/sqrt(d_k)) by V
+    alpha = 1.0f, beta = 0.0f;
+    m_ = max_new_tokens;
+    n = m->vProjSize;
+    k = max_total_tokens;
+    lda = m_, ldb = n, ldc = m_;
+    strideA = max_new_tokens * max_total_tokens;
+    strideB = vt_block_size;
+    strideC = max_new_tokens * m->vProjSize;
+    // To get A, skip over softmax(QK^T/sqrt(d_k)) entries from previous
+    // requests (all heads)
+    A = C_softmax;
+    // To get B, skip over V^T entries from previous requests (all heads +
+    // padding)
+    B = static_cast<DT *>(m->value);
+    // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
+    // requests
+    C = static_cast<DT *>(m->attn_heads);
 
-      if (m->num_q_heads == m->num_kv_heads) {
-        checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                             CUBLAS_OP_N,
-                                             CUBLAS_OP_T,
-                                             m_,
-                                             n,
-                                             k,
-                                             &alpha,
-                                             A,
-                                             cublas_data_type,
-                                             lda,
-                                             strideA,
-                                             B,
-                                             cublas_data_type,
-                                             ldb,
-                                             strideB,
-                                             &beta,
-                                             C,
-                                             cublas_data_type,
-                                             ldc,
-                                             strideC,
-                                             m->num_q_heads,
-                                             compute_type,
-                                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      } else {
-        int one_step_heads = m->num_q_heads / m->num_kv_heads;
-        strideB = 0;
-        for (int step = 0; step < m->num_kv_heads; step++) {
+    if (m->num_q_heads == m->num_kv_heads) {
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_N,
+                                           CUBLAS_OP_T,
+                                           m_,
+                                           n,
+                                           k,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_q_heads * num_activate_req,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    } else {
+      int one_step_heads = m->num_q_heads / m->num_kv_heads;
+      strideB = 0;
+      for (int step = 0; step < m->num_kv_heads; step++) {
+        for (int req = 0; req < num_activate_req; req++) {
+          A = C_softmax +
+              req * max_new_tokens * max_total_tokens * m->num_q_heads;
+          B = static_cast<DT *>(m->value) +
+              req * max_total_tokens * m->vProjSize * m->num_kv_heads;
+          C = static_cast<DT *>(m->attn_heads) +
+              req * max_new_tokens * m->vProjSize * m->num_kv_heads;
           checkCUDA(
               cublasGemmStridedBatchedEx(m->handle.blas,
                                          CUBLAS_OP_N,
@@ -461,47 +501,369 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
         }
       }
-
-      // Project to output, save result directly on output tensor
-      alpha = 1.0f, beta = 0.0f;
-      m_ = m->oProjSize;
-      k = m->vProjSize * m->num_q_heads;
-      n = num_new_tokens;
-      lda = k, ldb = n, ldc = m_;
-      A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
-                                   m->kProjSize * m->num_kv_heads +
-                                   m->vProjSize * m->num_kv_heads);
-      B = C;
-      C = static_cast<DT *>(output_ptr) +
-          processed_tokens_in_batch * m->oProjSize;
-
-      checkCUDA(cublasGemmEx(m->handle.blas,
-                             CUBLAS_OP_T,
-                             CUBLAS_OP_T,
-                             m_,
-                             n,
-                             k,
-                             &alpha,
-                             A,
-                             cublas_data_type,
-                             lda,
-                             B,
-                             cublas_data_type,
-                             ldb,
-                             &beta,
-                             C,
-                             cublas_data_type,
-                             ldc,
-                             compute_type,
-                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      processed_tokens_in_batch += num_new_tokens;
     }
-    // Before moving to the next request
-    // check that we have finished all tokens of the request
-    assert(last_token_idx_of_the_request + 1 == processed_tokens_in_batch);
+
+    // Project to output, save result directly on output tensor
+    alpha = 1.0f, beta = 0.0f;
+    m_ = m->oProjSize;
+    k = m->vProjSize * m->num_q_heads;
+    n = max_new_tokens;
+    lda = k, ldb = n, ldc = m_;
+    A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
+                                 m->kProjSize * m->num_kv_heads +
+                                 m->vProjSize * m->num_kv_heads);
+    B = C;
+    C = static_cast<DT *>(m->padded_output);
+    strideA = 0;
+    strideB = n * k;
+    strideC = m_ * n;
+
+    checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                         CUBLAS_OP_T,
+                                         CUBLAS_OP_T,
+                                         m_,
+                                         n,
+                                         k,
+                                         &alpha,
+                                         A,
+                                         cublas_data_type,
+                                         lda,
+                                         strideA,
+                                         B,
+                                         cublas_data_type,
+                                         ldb,
+                                         strideB,
+                                         &beta,
+                                         C,
+                                         cublas_data_type,
+                                         ldc,
+                                         strideC,
+                                         num_activate_req,
+                                         compute_type,
+                                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
+  } else {
+    // int num_requests = bc->num_active_requests();
+    int processed_tokens_in_batch = 0;
+    // int qkv_block_size =
+    //     (m->qProjSize + m->kProjSize + m->vProjSize) *
+    //     bc->num_active_tokens();
+    int q_block_size = m->qProjSize * bc->num_active_tokens();
+    int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;
+    int kt_req_block_size = kt_block_size * m->num_kv_heads;
+    int vt_block_size = m->vProjSize * BatchConfig::MAX_SEQ_LENGTH;
+    int vt_req_block_size = vt_block_size * m->num_kv_heads;
+    assert(m->qProjSize == m->kProjSize);
+
+    for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+      if (bc->request_completed[i]) {
+        continue;
+      }
+      int last_token_idx_of_the_request =
+          processed_tokens_in_batch + bc->requestsInfo[i].num_tokens_in_batch -
+          1;
+      while (processed_tokens_in_batch <= last_token_idx_of_the_request) {
+        int num_new_tokens = 1;
+        int j = processed_tokens_in_batch;
+        while ((j + 1 <= last_token_idx_of_the_request) &&
+               (bc->tokensInfo[j].abs_depth_in_request + 1 ==
+                bc->tokensInfo[j + 1].abs_depth_in_request)) {
+          j++;
+          num_new_tokens++;
+        }
+
+        int total_tokens_in_request =
+            bc->tokensInfo[j].abs_depth_in_request + 1;
+        assert(num_new_tokens >= 1 &&
+               total_tokens_in_request >= num_new_tokens);
+        {
+          // update K-V cache
+          int parallelism =
+              (m->kProjSize + m->vProjSize) * num_new_tokens * m->num_kv_heads;
+          update_tree_branch_kv_cache<<<GET_BLOCKS(parallelism),
+                                        min(CUDA_NUM_THREADS, parallelism),
+                                        0,
+                                        stream>>>(
+              static_cast<DT *>(m->devQKVProjArray),
+              static_cast<DT *>(m->keyCache),
+              static_cast<DT *>(m->valueCache),
+              m->token_infos,
+              m->qProjSize,
+              m->kProjSize,
+              m->vProjSize,
+              num_new_tokens,            // num_tokens_in_branch
+              processed_tokens_in_batch, // num_processed_tokens_in_batch
+              m->num_active_tokens,      // total_tokens_in_batch
+              m->num_q_heads,
+              m->num_kv_heads,
+              BatchConfig::MAX_SEQ_LENGTH,
+              m->real_token_idx_gpu);
+        }
+
+        // bc->token_last_available_idx[i] + 1;
+        // Compute (QK^T/sqrt(d_k))
+        int m_ = num_new_tokens;
+        int n = total_tokens_in_request;
+        int k = m->qProjSize;
+        int lda = k, ldb = k, ldc = m_;
+        int strideA = q_block_size;
+        int strideB = kt_block_size;
+        int strideC = num_new_tokens * total_tokens_in_request;
+
+        // a flag of using this scaling alpha
+        DT alpha = 1.0f, beta = 0.0f;
+        if (*m->qk_prod_scaling) {
+          alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
+        }
+        // To get A, skip over Q entries from previous requests (same head)
+        DT const *A = static_cast<DT *>(m->devQKVProjArray) +
+                      processed_tokens_in_batch * m->qProjSize;
+        // To get B, skip over K entries from previous requests (all heads +
+        // padding)
+        DT const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
+        // To get C, skip over QK^T products from previous requests
+        DT *C = static_cast<DT *>(m->qk_prods);
+
+        if (m->num_q_heads == m->num_kv_heads) {
+          checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                               CUBLAS_OP_T,
+                                               CUBLAS_OP_N,
+                                               m_,
+                                               n,
+                                               k,
+                                               &alpha,
+                                               A,
+                                               cublas_data_type,
+                                               lda,
+                                               strideA,
+                                               B,
+                                               cublas_data_type,
+                                               ldb,
+                                               strideB,
+                                               &beta,
+                                               C,
+                                               cublas_data_type,
+                                               ldc,
+                                               strideC,
+                                               m->num_q_heads,
+                                               compute_type,
+                                               CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        } else {
+          strideB = 0;
+          int one_step_heads = m->num_q_heads / m->num_kv_heads;
+          for (int step = 0; step < m->num_kv_heads; step++) {
+            checkCUDA(
+                cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_T,
+                                           CUBLAS_OP_N,
+                                           m_,
+                                           n,
+                                           k,
+                                           &alpha,
+                                           A + step * strideA * one_step_heads,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B + step * kt_block_size,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C + step * strideC * one_step_heads,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           one_step_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+          }
+        }
+        // add alibi position bias to qk production
+        // add alibi position bias to qk production
+        if (*m->position_bias) {
+          size_t parallelism =
+              m->num_q_heads * total_tokens_in_request * num_new_tokens;
+          // apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
+          //                             min((size_t)CUDA_NUM_THREADS,
+          //                             parallelism), 0, stream>>>(C,
+          //                                       num_new_tokens,
+          //                                       total_tokens_in_request,
+          //                                       m->num_q_heads,
+          //                                       m->global_num_q_heads,
+          //                                       shard_id);
+        }
+
+        // Fill all elements above diagonal in qk prods with -inf to force
+        // causal attention.
+        assert(num_new_tokens <= total_tokens_in_request);
+        if (num_new_tokens > 1) {
+          size_t parallelism =
+              m->num_q_heads * num_new_tokens * total_tokens_in_request;
+          tree_fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
+                                             min((size_t)CUDA_NUM_THREADS,
+                                                 parallelism),
+                                             0,
+                                             stream>>>(
+              C,
+              num_new_tokens,
+              total_tokens_in_request,
+              m->num_q_heads,
+              1,
+              static_cast<DT>(-INFINITY));
+        }
+        // Compute Softmax(QK^T/sqrt(d_k))
+        // Before modifying the parameters below, make sure to read the
+        // following description of the CUDNN_TENSOR_NCHW tensor layout, from
+        // https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnTensorFormat_t:
+        // This tensor format specifies that the data is laid out in the
+        // following order: batch size, feature maps, rows, columns. The strides
+        // are implicitly defined in such a way that the data are contiguous in
+        // memory with no padding between images, feature maps, rows, and
+        // columns; the columns are the inner dimension and the images are the
+        // outermost dimension.
+        int n_param = m->num_q_heads;
+        int c_param = total_tokens_in_request;
+        int h_param = 1;
+        int w_param = num_new_tokens;
+        checkCUDNN(cudnnSetTensor4dDescriptor(m->qk_tensor,
+                                              CUDNN_TENSOR_NCHW,
+                                              cudnn_data_type,
+                                              n_param,
+                                              c_param,
+                                              h_param,
+                                              w_param));
+        float softmax_alpha = 1.0f, softmax_beta = 0.0f;
+        DT *C_softmax = static_cast<DT *>(m->qk_prods_softmax);
+        // The softmax operation below is executed according to the
+        // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
+        // softmax operation is computed per spatial location (H,W) per image
+        // (N) across dimension C.
+        checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
+                                       CUDNN_SOFTMAX_ACCURATE,
+                                       CUDNN_SOFTMAX_MODE_CHANNEL,
+                                       &softmax_alpha,
+                                       m->qk_tensor,
+                                       C,
+                                       &softmax_beta,
+                                       m->qk_tensor,
+                                       C_softmax));
+        // Matmul softmax(QK^T/sqrt(d_k)) by V
+        alpha = 1.0f, beta = 0.0f;
+        m_ = num_new_tokens;
+        n = m->vProjSize;
+        k = total_tokens_in_request;
+        lda = m_, ldb = n, ldc = m_;
+        strideA = num_new_tokens * total_tokens_in_request;
+        strideB = vt_block_size;
+        strideC = num_new_tokens * m->vProjSize;
+        // To get A, skip over softmax(QK^T/sqrt(d_k)) entries from previous
+        // requests (all heads)
+        A = C_softmax;
+        // To get B, skip over V^T entries from previous requests (all heads +
+        // padding)
+        B = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
+        // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
+        // requests
+        C = static_cast<DT *>(m->attn_heads) +
+            processed_tokens_in_batch * m->num_q_heads * m->vProjSize;
+
+        if (m->num_q_heads == m->num_kv_heads) {
+          checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                               CUBLAS_OP_N,
+                                               CUBLAS_OP_T,
+                                               m_,
+                                               n,
+                                               k,
+                                               &alpha,
+                                               A,
+                                               cublas_data_type,
+                                               lda,
+                                               strideA,
+                                               B,
+                                               cublas_data_type,
+                                               ldb,
+                                               strideB,
+                                               &beta,
+                                               C,
+                                               cublas_data_type,
+                                               ldc,
+                                               strideC,
+                                               m->num_q_heads,
+                                               compute_type,
+                                               CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        } else {
+          int one_step_heads = m->num_q_heads / m->num_kv_heads;
+          strideB = 0;
+          for (int step = 0; step < m->num_kv_heads; step++) {
+            checkCUDA(
+                cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_N,
+                                           CUBLAS_OP_T,
+                                           m_,
+                                           n,
+                                           k,
+                                           &alpha,
+                                           A + step * one_step_heads * strideA,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B + step * vt_block_size,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C + step * one_step_heads * strideC,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           one_step_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+          }
+        }
+
+        // Project to output, save result directly on output tensor
+        alpha = 1.0f, beta = 0.0f;
+        m_ = m->oProjSize;
+        k = m->vProjSize * m->num_q_heads;
+        n = num_new_tokens;
+        lda = k, ldb = n, ldc = m_;
+        A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
+                                     m->kProjSize * m->num_kv_heads +
+                                     m->vProjSize * m->num_kv_heads);
+        B = C;
+        C = static_cast<DT *>(output_ptr) +
+            processed_tokens_in_batch * m->oProjSize;
+
+        checkCUDA(cublasGemmEx(m->handle.blas,
+                               CUBLAS_OP_T,
+                               CUBLAS_OP_T,
+                               m_,
+                               n,
+                               k,
+                               &alpha,
+                               A,
+                               cublas_data_type,
+                               lda,
+                               B,
+                               cublas_data_type,
+                               ldb,
+                               &beta,
+                               C,
+                               cublas_data_type,
+                               ldc,
+                               compute_type,
+                               CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        processed_tokens_in_batch += num_new_tokens;
+      }
+      // Before moving to the next request
+      // check that we have finished all tokens of the request
+      assert(last_token_idx_of_the_request + 1 == processed_tokens_in_batch);
+    }
   }
+
   if (*m->final_bias && shard_id == 0) {
-    int parallelism = m->oProjSize * processed_tokens_in_batch;
+    int parallelism = m->oProjSize * max_new_tokens * num_activate_req;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
                           m->kProjSize * m->global_num_kv_heads +
                           m->vProjSize * m->global_num_kv_heads;
@@ -510,12 +872,21 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                         0,
                         stream>>>(output_ptr,
                                   bias_ptr,
-                                  processed_tokens_in_batch,
+                                  max_new_tokens * num_activate_req,
                                   qkv_weight_size,
                                   m->oProjSize);
   }
 
-  assert(processed_tokens_in_batch == bc->num_active_tokens());
+  int parallelism = m->oProjSize * max_new_tokens * num_activate_req;
+  copy_output<<<GET_BLOCKS(parallelism),
+                min(CUDA_NUM_THREADS, parallelism),
+                0,
+                stream>>>(static_cast<DT *>(m->padded_output),
+                          output_ptr,
+                          max_new_tokens * num_activate_req,
+                          m->oProjSize,
+                          m->real_token_idx_gpu);
+
 }
 
 template <typename DT>
@@ -565,17 +936,20 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
         m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
+
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
                   bc->MAX_NUM_TOKENS *
                       sizeof(TreeVerifyBatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
+
+  pad_input(m, bc, input_ptr, stream);
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
-                     input_ptr,
+                     static_cast<DT *>(m->padded_input),
                      weight_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
@@ -741,5 +1115,4 @@ TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {
     committed_token_reserve_inst.destroy();
   }
 }
-
 }; // namespace FlexFlow

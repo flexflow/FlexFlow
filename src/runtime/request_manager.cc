@@ -135,7 +135,7 @@ size_t RequestManager::get_num_ssms() {
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::vector<TokenId> const &prompt,
                                          int max_sequence_length) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   // Add a new request
   Request request;
@@ -191,7 +191,7 @@ RequestManager::RequestGuid
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::string const &prompt,
                                          int max_sequence_length) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   // Add a new request
   Request request;
   request.status = Request::PENDING;
@@ -254,6 +254,16 @@ bool RequestManager::is_request_completed(RequestGuid const &guid) {
   Request const &request = all_requests[guid];
   // return request.tokens.size() >= request.max_sequence_length;
   return request.status == Request::COMPLETED;
+}
+
+bool RequestManager::all_request_completed(
+    std::vector<RequestGuid> const &guids) {
+  for (RequestGuid guid : guids) {
+    if (!is_request_completed(guid)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 GenerationResult
@@ -1770,8 +1780,10 @@ GenerationResult RequestManager::generate_incr_decoding(
     FFModel *llm, std::vector<std::string> &prompts, int max_seq_length) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid;
+  std::vector<RequestGuid> guids;
   for (int i = 0; i < prompts.size(); i++) {
     guid = register_new_request(prompts.at(i), max_seq_length);
+    guids.emplace_back(guid);
   }
 
   if (guid == 0) {
@@ -1785,7 +1797,7 @@ GenerationResult RequestManager::generate_incr_decoding(
   std::queue<std::pair<BatchConfigFuture, InferenceResultFuture>>
       batch_pipeline;
   { batch_pipeline.push(std::make_pair(last_bcf, last_irf)); }
-  while (!is_request_completed(guid)) {
+  while (true) {
     if (batch_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
       auto const &batch = batch_pipeline.front();
@@ -1800,7 +1812,7 @@ GenerationResult RequestManager::generate_incr_decoding(
         break;
       }
     }
-    if (is_request_completed(guid)) {
+    if (all_request_completed(guids)) {
       break;
     }
     Runtime *runtime = Runtime::get_runtime();
@@ -1827,8 +1839,10 @@ GenerationResult RequestManager::generate_spec_infer(
     FFModel *llm, std::vector<std::string> &prompts, int max_seq_length) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid;
+  std::vector<RequestGuid> guids;
   for (int i = 0; i < prompts.size(); i++) {
     guid = register_new_request(prompts.at(i), max_seq_length);
+     guids.emplace_back(guid);
   }
   if (guid == 0) {
     std::cout
@@ -1840,7 +1854,11 @@ GenerationResult RequestManager::generate_spec_infer(
   std::queue<std::pair<TreeVerifyBatchConfigFuture, InferenceResultFuture>>
       batch_pipeline;
   batch_pipeline.push(std::make_pair(last_tree_bcf, last_tree_irf));
-  while (!is_request_completed(guid)) {
+  while (true) {
+    
+    if (all_request_completed(guids)) {
+      break;
+    }
     if (batch_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
       auto const &batch = batch_pipeline.front();

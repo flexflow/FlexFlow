@@ -34,12 +34,25 @@ __global__ void copy_output(DT const *padded_output,
                             int *real_token_idx);
 
 template <typename DT>
-__global__ void pad_input_ptr(DT *input_ptr,
-                              DT *padded_input,
-                              BatchConfig const *bc,
-                              int num_padded_tokens,
-                              int hidden_size,
-                              int max_req_length);
+__global__ void get_key_value(DT *key,
+                              DT *value,
+                              DT *kCache_ptr,
+                              DT *vCache_ptr,
+                              int *total_tokens_per_req,
+                              int kProjSize,
+                              int vProjSize,
+                              int max_total_tokens,
+                              int max_total_tokens_all,
+                              int num_kv_heads,
+                              int max_seq_len);
+template <typename DT>
+__global__ void get_query(DT const *devQKVProjArray,
+                          DT *query,
+                          BatchConfig::PerTokenInfo const *tokenInfos,
+                          int qProjSize,
+                          int total_tokens,
+                          int max_new_tokens,
+                          int num_q_heads);
 
 template <typename DT>
 __global__ void apply_proj_bias_qkv(DT *input_ptr,
@@ -96,6 +109,11 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         DT const *bias_ptr,
                         ffStream_t stream);
 
+template <typename DT>
+void pad_input(IncMultiHeadSelfAttentionMeta const *m,
+               BatchConfig const *bc,
+               DT const *input_ptr,
+               cudaStream_t stream);
 template <typename DT>
 void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              GenericTensorAccessorR const weight,
