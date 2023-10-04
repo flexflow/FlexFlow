@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_ELEMENT_BINARY_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_ELEMENT_BINARY_KERNELS_H
 
+#include "ff_handle.h"
 #include "kernels/array_shape.h"
 #include "kernels/device.h"
-#include "kernels/ff_handle.h"
 #include "op-attrs/datatype.h"
 #include "op-attrs/op.h"
 
@@ -43,7 +43,8 @@ void forward_kernel(ffStream_t stream,
                     float const *rhs_ptr,
                     float *out_ptr,
                     OperatorType op_type,
-                    bool broadcast_inputLHS);
+                    bool broadcast_inputLHS,
+                    PerDeviceFFHandle handle);
 
 void backward_kernel(ffStream_t stream,
                      ElementBinaryPerDeviceState const &m,
@@ -54,7 +55,8 @@ void backward_kernel(ffStream_t stream,
                      float *rhs_grad_ptr,
                      OperatorType op_type,
                      bool broadcast_inputLHS,
-                     bool broadcast_inputRHS);
+                     bool broadcast_inputRHS,
+                     PerDeviceFFHandle handle);
 
 } // namespace ElementBinary
 } // namespace Kernels
