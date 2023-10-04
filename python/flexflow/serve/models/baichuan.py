@@ -159,7 +159,7 @@ class FlexFlowBAICHUAN(FlexFlowModel):
                 mha,
                 self.baichuan_config.rms_norm_eps,
                 self.baichuan_config.hidden_size,
-                name=f"layers_{i}_residual_rms_norm",
+                name=f"layers_{i}_ffn_norm",
             )
             
             w1 = ffmodel.dense(
@@ -192,7 +192,7 @@ class FlexFlowBAICHUAN(FlexFlowModel):
             token,
             self.baichuan_config.rms_norm_eps,
             self.baichuan_config.hidden_size,
-            name=f"layers_{i}_output_norm",
+            name="norm",
         )
 
         dense = ffmodel.dense(
@@ -235,7 +235,7 @@ class FlexFlowBAICHUAN(FlexFlowModel):
                 .replace("up_proj", "w3")
                 .replace("input_layernorm", "attention_norm")
                 .replace("post_attention_layernorm", "ffn_norm")
-                .replace("embed_tokens", "tok_embeddings")
+                .replace("embed_tokens", "token_embedding")
                 .replace("lm_head", "output")
                 .replace("model_", "")
             )
