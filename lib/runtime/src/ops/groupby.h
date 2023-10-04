@@ -2,8 +2,8 @@
 #define _FLEXFLOW_GROUPBY_H_
 
 #include "op-attrs/ops/groupby.h"
-#include "task_spec/op_task_invocation.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 

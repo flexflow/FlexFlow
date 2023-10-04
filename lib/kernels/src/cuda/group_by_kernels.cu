@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
+#include "device.h"
+#include "kernels/device.h"
 #include "kernels/groupby_kernels.h"
 #include <math.h>
 #include <stdio.h>
-#include "device.h"
-#include "kernels/device.h"
 
 #define MAX_K 4
 #define MAX_BATCH_SIZE 64
@@ -108,10 +108,10 @@ __global__ void
   }
 }
 
-GroupByPerDeviceState init_kernel( int n ) {
+GroupByPerDeviceState init_kernel(int n) {
   float **dev_region_ptrs;
   checkCUDA(cudaMalloc(&dev_region_ptrs, n * sizeof(float *)));
-  GroupByPerDeviceState per_device_state = { dev_region_ptrs };
+  GroupByPerDeviceState per_device_state = {dev_region_ptrs};
   return per_device_state;
 }
 
@@ -172,7 +172,7 @@ void backward_kernel(cudaStream_t stream,
 }
 
 void cleanup_kernel(float **dev_region_ptrs) {
-    checkCUDA(cudaFree(&dev_region_ptrs));
+  checkCUDA(cudaFree(&dev_region_ptrs));
 }
 
 } // namespace GroupBy

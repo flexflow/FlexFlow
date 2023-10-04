@@ -10,12 +10,13 @@ struct GroupByPerDeviceState {
   float **dev_region_ptrs;
 };
 
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GroupByPerDeviceState, dev_region_ptrs);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GroupByPerDeviceState,
+                                             dev_region_ptrs);
 
 namespace Kernels {
 namespace GroupBy {
 
-GroupByPerDeviceState init_kernel( int n );
+GroupByPerDeviceState init_kernel(int n);
 
 void forward_kernel(ffStream_t stream,
                     GroupByPerDeviceState &m,
@@ -41,8 +42,8 @@ void backward_kernel(ffStream_t stream,
 
 void cleanup_kernel(float **dev_region_ptrs);
 
-} // GroupBy
-} // Kernels
+} // namespace GroupBy
+} // namespace Kernels
 } // namespace FlexFlow
 
 #endif
