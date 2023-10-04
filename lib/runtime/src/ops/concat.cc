@@ -17,6 +17,7 @@
 #include "kernels/concat_kernels.h"
 #include "legion/legion_utilities.h"
 #include "op-attrs/get_output_shapes.h"
+#include "task_spec/op_task_signature.h"
 #include "task_spec/variadic_tensor_ref.h"
 #include "utils/hash-utils.h"
 
@@ -29,33 +30,15 @@ using Legion::PhysicalRegion;
 using Legion::Runtime;
 using Legion::Task;
 
-enum Slots {
-  INPUTS,
-  OUTPUT,
-  ATTRS,
-  PROFILING,
-  HANDLE,
-  PER_DEVICE_STATE,
-  NUM_INPUTS
-};
-
-OpTaskInvocation init(ConcatAttrs const &attrs) {
-  OpTaskBinding binding;
-
-  binding.bind_arg(PROFILING, profiling_settings());
-  binding.bind_arg(ATTRS, attrs);
-
-  return {CONCAT_INIT_TASK_ID, binding};
-}
+enum Slots { INPUTS, OUTPUT, ATTRS, PROFILING, HANDLE, NUM_INPUTS };
 
 OpTaskInvocation forward(ConcatAttrs const &attrs) {
   OpTaskBinding binding;
-  binding.bind_arg(PER_DEVICE_STATE,
-                   per_device_op_state<ConcatPerDeviceState>());
   binding.bind(INPUTS, get_input_tensors());
   binding.bind(OUTPUT, output_tensor(0));
   binding.bind(NUM_INPUTS, get_number_inputs());
   binding.bind_arg(PROFILING, profiling_settings());
+  binding.bind_arg(ATTRS, attrs);
 
   return {CONCAT_FWD_TASK_ID, binding};
 }
@@ -66,30 +49,10 @@ OpTaskInvocation backward(ConcatAttrs const &attrs) {
   return {CONCAT_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<ConcatPerDeviceState>
-    init_task_impl(TaskArgumentAccessor const &acc) {
-  auto const &attrs = acc.get_argument<ConcatAttrs>(ATTRS);
-  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
-
-  DeviceSpecific<ConcatPerDeviceState> per_device_state =
-      acc.create_device_specific<ConcatPerDeviceState>(init_kernel(attrs.axis));
-  return per_device_state;
-}
-
-static DeviceSpecific<ConcatPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
-
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state =
-      acc.get_argument<ConcatPerDeviceState>(PER_DEVICE_STATE);
   int number_of_inputs = acc.get_argument<int>(NUM_INPUTS);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto const &attrs = acc.get_argument<ConcatAttrs>(ATTRS);
 
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto inputs = acc.get_variadic_tensor<Permissions::RO>(INPUTS);
@@ -97,10 +60,10 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(forward_kernel,
                  profiling,
                  "[Concat] forward_time = %.2lfms\n",
-                 &per_device_state,
                  output,
                  inputs,
-                 number_of_inputs);
+                 number_of_inputs,
+                 attrs.axis);
 }
 
 static void forward_task(Task const *task,
@@ -112,10 +75,9 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state =
-      acc.get_argument<ConcatPerDeviceState>(PER_DEVICE_STATE);
   int number_of_inputs = acc.get_argument<int>(NUM_INPUTS);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto const &attrs = acc.get_argument<ConcatAttrs>(ATTRS);
 
   auto input_grads = acc.get_variadic_tensor_grad<Permissions::RW>(INPUTS);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
@@ -125,10 +87,10 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(backward_kernel,
                  profiling,
                  "[Concat] backward_time = %.2lfms\n",
-                 &per_device_state,
                  output_grad,
                  input_grads,
-                 number_of_inputs);
+                 number_of_inputs,
+                 attrs.axis);
 }
 
 static void backward_task(Task const *task,
@@ -153,16 +115,8 @@ CostMetrics
   ParallelTensorShape output_shape =
       get_output_shape(attrs, inputs_shape.shapes);
 
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(PROFILING, settings);
-  init_binding.bind_arg(ATTRS, attrs);
-
-  auto init_accessor = env.get_init_accessor(CONCAT_INIT_TASK_ID, init_binding);
-  DeviceSpecific<ConcatPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
-
   SimTaskBinding fwd_binding;
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
+  fwd_binding.bind_arg(ATTRS, attrs);
   fwd_binding.bind(INPUTS, inputs_shape);
   fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(NUM_INPUTS, numInputs);
@@ -181,34 +135,39 @@ CostMetrics
 }
 
 template <>
-void register_task<CONCAT_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_arg_slot<ConcatAttrs>(ATTRS);
-  init.add_arg_slot<bool>(PROFILING);
-
-  register_task(CONCAT_INIT_TASK_ID, "Concat Init", init, init_task);
-}
-
-template <>
-void register_task<CONCAT_FWD_TASK_ID>() {
+OpTaskSignature fwd_signature<CONCAT_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
-
+  fwd.add_arg_slot<ConcatAttrs>(ATTRS);
   fwd.add_arg_slot<int>(NUM_INPUTS);
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_input_slot(INPUTS, SlotType::VARIADIC);
   fwd.add_output_slot(OUTPUT);
-  fwd.add_unchecked_arg_slot<ConcatPerDeviceState>(PER_DEVICE_STATE);
 
-  register_task(CONCAT_FWD_TASK_ID, "Concat Fwd", fwd, forward_task);
+  return fwd;
+}
+
+template <>
+void register_task<CONCAT_FWD_TASK_ID>() {
+  register_task(CONCAT_FWD_TASK_ID,
+                "Concat Fwd",
+                fwd_signature<CONCAT_FWD_TASK_ID>(),
+                forward_task);
+}
+
+template <>
+OpTaskSignature bwd_signature<CONCAT_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(CONCAT_FWD_TASK_ID));
+
+  return bwd;
 }
 
 template <>
 void register_task<CONCAT_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(CONCAT_FWD_TASK_ID));
-
-  register_task(CONCAT_BWD_TASK_ID, "BatchMatmul Bwd", bwd, backward_task);
+  register_task(CONCAT_BWD_TASK_ID,
+                "Concat Bwd",
+                bwd_signature<CONCAT_BWD_TASK_ID>(),
+                backward_task);
 }
 
 }; // namespace FlexFlow

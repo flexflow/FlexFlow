@@ -37,23 +37,18 @@ void calc_blk_size(size_t &num_blocks,
   }
 }
 
-ConcatPerDeviceState init_kernel(ff_dim_t legion_axis) {
-  ConcatPerDeviceState per_device_state = {legion_axis};
-  return per_device_state;
-}
-
 void forward_kernel(ffStream_t stream,
-                    ConcatPerDeviceState const &m,
                     GenericTensorAccessorW const &output,
                     std::vector<FlexFlow::GenericTensorAccessorR> const &inputs,
-                    int num_inputs) {
+                    int num_inputs,
+                    ff_dim_t legion_axis) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
-  calc_blk_size(num_blocks, output_blk_size, output.shape, m.legion_axis);
+  calc_blk_size(num_blocks, output_blk_size, output.shape, legion_axis);
   for (int i = 0; i < num_inputs; i++) {
     size_t input_num_blocks = 1;
     calc_blk_size(
-        input_num_blocks, input_blk_sizes[i], inputs[i].shape, m.legion_axis);
+        input_num_blocks, input_blk_sizes[i], inputs[i].shape, legion_axis);
     assert(input_num_blocks == num_blocks);
   }
 
@@ -73,19 +68,19 @@ void forward_kernel(ffStream_t stream,
 
 void backward_kernel(
     ffStream_t stream,
-    ConcatPerDeviceState const &m,
     GenericTensorAccessorR const &output_grad,
     std::vector<FlexFlow::GenericTensorAccessorW> const &input_grads,
-    int num_inputs) {
+    int num_inputs,
+    ff_dim_t legion_axis) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
 
   ArrayShape shape = output_grad.shape;
-  calc_blk_size(num_blocks, output_blk_size, shape, m.legion_axis);
+  calc_blk_size(num_blocks, output_blk_size, shape, legion_axis);
   for (int i = 0; i < num_inputs; i++) {
     shape = input_grads[i].shape;
     size_t input_num_blocks = 1;
-    calc_blk_size(input_num_blocks, input_blk_sizes[i], shape, m.legion_axis);
+    calc_blk_size(input_num_blocks, input_blk_sizes[i], shape, legion_axis);
     assert(input_num_blocks == num_blocks);
   }
 
