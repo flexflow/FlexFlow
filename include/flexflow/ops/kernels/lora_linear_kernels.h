@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_OPS_KERNELS_LINEAR_KERNELS_H
-#define _FLEXFLOW_OPS_KERNELS_LINEAR_KERNELS_H
+#ifndef _FLEXFLOW_OPS_KERNELS_LORA_LINEAR_KERNELS_H
+#define _FLEXFLOW_OPS_KERNELS_LORA_LINEAR_KERNELS_H
 
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
@@ -76,4 +76,4 @@ void peft_bwd_kernel(LoraLinearMeta *m,
 } // namespace Kernels
 } // namespace FlexFlow
 
-#endif // _FLEXFLOW_OPS_KERNELS_LINEAR_KERNELS_H
+#endif // _FLEXFLOW_OPS_KERNELS_LORA_LINEAR_KERNELS_H

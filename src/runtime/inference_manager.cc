@@ -142,7 +142,28 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
     for (int i = 0; i < op->numOutputs; i++) {
       ParallelTensor pt_base = op->outputs[i];
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
-
+      // no need to map inplace tensor
+      // A tensor is inplace if it shares the same region as another tensor
+      {
+        bool inplace = false;
+        for (int j = 0; j < op->numInputs; j++) {
+          if (op->inputs[j]->region == op->outputs[i]->region) {
+            assert(tensor_buffer.find(op->inputs[j]) != tensor_buffer.end());
+            tensor_buffer[pt_base] = tensor_buffer[op->inputs[j]];
+            inplace = true;
+          }
+        }
+        for (int j = 0; j < i; j++) {
+          if (op->outputs[j]->region == op->outputs[i]->region) {
+            assert(tensor_buffer.find(op->outputs[j]) != tensor_buffer.end());
+            tensor_buffer[pt_base] = tensor_buffer[op->outputs[j]];
+            inplace = true;
+          }
+        }
+        if (inplace) {
+          continue;
+        }
+      }
       if (op->op_type == OP_REPLICATE) {
         assert(op->numInputs == 1 && op->numOutputs == 1);
       }

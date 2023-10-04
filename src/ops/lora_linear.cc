@@ -219,8 +219,10 @@ void LoraLinear::init_inference(
   assert(check_output_input_weight_same_parallel_is());
   assert(batch_inputs.size() == 2);
   assert(batch_outputs.size() == 1);
-  // Assert that the output is the same as the second input
-  assert(batch_outputs[0] == batch_inputs[1]);
+  // Assert that the output and the second input are mapped to the same
+  // region/part
+  assert(batch_outputs[0]->region == batch_inputs[1]->region);
+  assert(batch_outputs[0]->part == batch_inputs[1]->part);
   // assert(check_output_input_weight_same_machine_view());
   // output is considered as an input to allow in-place optimization
   ParallelTensor output_tensor = batch_outputs[0];
@@ -253,13 +255,13 @@ void LoraLinear::init_inference(
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(weights[1]->part,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     weights[1]->region));
   launcher.add_field(3, FID_DATA);
@@ -335,8 +337,10 @@ FutureMap
   assert(check_output_input_weight_same_parallel_is());
   assert(batch_inputs.size() == 2);
   assert(batch_outputs.size() == 1);
-  // Assert that the output is the same as the second input
-  assert(batch_outputs[0] == batch_inputs[1]);
+  // Assert that the output and the second input are mapped to the same
+  // region/part
+  assert(batch_outputs[0]->region == batch_inputs[1]->region);
+  assert(batch_outputs[0]->part == batch_inputs[1]->part);
   // assert(check_output_input_weight_same_machine_view());
   // output is considered as an input to allow in-place optimization
   ParallelTensor output_tensor = batch_outputs[0];
@@ -431,8 +435,10 @@ FutureMap LoraLinear::peft_bwd(FFModel const &ff,
                                MachineView const *mv) {
   assert(batch_inputs.size() == 2);
   assert(batch_outputs.size() == 1);
-  // Assert that the output is the same as the second input
-  assert(batch_outputs[0] == batch_inputs[1]);
+  // Assert that the output and the second input are mapped to the same
+  // region/part
+  assert(batch_outputs[0]->region == batch_inputs[1]->region);
+  assert(batch_outputs[0]->part == batch_inputs[1]->part);
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;

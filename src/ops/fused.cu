@@ -30,6 +30,7 @@
 #include "flexflow/ops/kernels/embedding_kernels.h"
 #include "flexflow/ops/kernels/flat_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
+#include "flexflow/ops/kernels/lora_linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/kernels/residual_rms_norm_kernels.h"
@@ -634,10 +635,11 @@ __host__ void
       my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
     }
     for (int i = 0; i < fused->op_num_outputs[op]; i++) {
+      int my_off = fused->op_output_idx[i + ooff];
       assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
       // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
       // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
-      my_output_accessor[i] = output_accessor[i + ooff];
+      my_output_accessor[i] = output_accessor[my_off];
     }
     switch (fused->op_op_type[op]) {
       case OP_CONCAT: {
@@ -698,6 +700,43 @@ __host__ void
                                                 in_dim,
                                                 out_dim,
                                                 batch_size);
+        break;
+      }
+      case OP_LORA_LINEAR: {
+        assert(fused->op_num_inputs[op] == 2);
+        assert(fused->op_num_outputs[op] == 1);
+        Domain input_domain = my_input_accessor[0].domain;
+        Domain output_domain = my_output_accessor[0].domain;
+        Domain weight_first_domain = my_weight_accessor[0].domain;
+        Domain weight_second_domain = my_weight_accessor[1].domain;
+        int in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
+        int out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
+        int rank = weight_first_domain.get_volume() / in_dim;
+        assert(in_dim * rank == weight_first_domain.get_volume());
+        assert(out_dim * rank == weight_second_domain.get_volume());
+        int batch_size = my_input_accessor[0].domain.get_volume() / in_dim;
+        assert(my_output_accessor[0].domain.get_volume() ==
+               out_dim * batch_size);
+        assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
+        LoraLinearMeta *m = (LoraLinearMeta *)metas->meta[op];
+        assert(fused->op_num_weights[op] == 2);
+        assert(m->input_type[0] == my_input_accessor[0].data_type);
+        assert(m->output_type[0] == my_output_accessor[0].data_type);
+        int num_infr_tokens = bc->num_active_infr_tokens();
+        int num_peft_tokens = bc->num_active_peft_tokens();
+        // Assert that the output and the second input are at the same place
+        // since we ``inplace'' the output for LoRA
+        assert(my_input_accessor[1].ptr == my_output_accessor[0].ptr);
+        Kernels::LoraLinear::inference_kernel_wrapper(m,
+                                                      my_input_accessor[0].ptr,
+                                                      my_output_accessor[0].ptr,
+                                                      my_weight_accessor[0].ptr,
+                                                      my_weight_accessor[1].ptr,
+                                                      in_dim,
+                                                      out_dim,
+                                                      rank,
+                                                      num_infr_tokens,
+                                                      num_peft_tokens);
         break;
       }
       case OP_BATCHMATMUL: {

@@ -175,7 +175,7 @@ void inference_kernel(LoraLinearMeta *m,
   DT alpha = 1.0f, beta = 0.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
   cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
-  assert(m->weight_type[1] == weight_type);
+  assert(m->weight_type[1] == m->weight_type[0]);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->input_type[1]);
   cudaDataType_t lr_actv_type = output_type;
   assert(input_type == weight_type && weight_type == output_type);
