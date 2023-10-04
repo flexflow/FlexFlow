@@ -105,7 +105,7 @@ public:
 };
 
 struct FFIterationConfig {
-  FFIterationConfig();
+  FFIterationConfig() = delete;
   void reset();
   int seq_length;
 };
