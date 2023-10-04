@@ -8,13 +8,10 @@
 namespace FlexFlow {
 
 template <>
-void register_task<COMBINE_INIT_TASK_ID>();
-template <>
 void register_task<COMBINE_FWD_TASK_ID>();
 template <>
 void register_task<COMBINE_BWD_TASK_ID>();
 
-OpTaskInvocation init(CombineAttrs const &);
 OpTaskInvocation forward(CombineAttrs const &);
 OpTaskInvocation backward(CombineAttrs const &);
 

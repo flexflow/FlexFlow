@@ -15,6 +15,7 @@
 
 #include "combine.h"
 #include "kernels/combine_kernels.h"
+#include "task_spec/op_task_invocation.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -55,7 +56,8 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  profiling,
                  "[Combine] forward_time = %.2lfms\n",
                  input,
-                 output);
+                 output,
+                 input.data_type);
 }
 
 static void forward_task(Task const *task,
@@ -76,7 +78,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  profiling,
                  "[Combine] forward_time = %.2lfms\n",
                  input_grad,
-                 output_grad);
+                 output_grad,
+                 input_grad.data_type);
 }
 
 static void backward_task(Task const *task,
@@ -101,22 +104,38 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 }
 
 template <>
-void register_task<COMBINE_FWD_TASK_ID>() {
+OpTaskSignature fwd_signature<COMBINE_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(COMBINE_FWD_TASK_ID, "Combine Fwd", fwd, forward_task);
+  return fwd;
+}
+
+template <>
+void register_task<COMBINE_FWD_TASK_ID>() {
+  register_task(COMBINE_FWD_TASK_ID,
+                "Combine Fwd",
+                fwd_signature<COMBINE_FWD_TASK_ID>(),
+                forward_task);
+}
+
+template <>
+OpTaskSignature bwd_signature<COMBINE_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(COMBINE_FWD_TASK_ID));
+
+  return bwd;
 }
 
 template <>
 void register_task<COMBINE_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(COMBINE_FWD_TASK_ID));
-
-  register_task(COMBINE_BWD_TASK_ID, "Combine Bwd", bwd, backward_task);
+  register_task(COMBINE_BWD_TASK_ID,
+                "Combine Bwd",
+                bwd_signature<COMBINE_BWD_TASK_ID>(),
+                backward_task);
 }
 
 }; // namespace FlexFlow
