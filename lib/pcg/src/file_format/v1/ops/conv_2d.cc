@@ -4,16 +4,16 @@
 namespace FlexFlow {
 
 V1Conv2DAttrs to_v1(Conv2DAttrs const &a) {
-  return {to_v1(a.out_channels),
-          to_v1(a.kernel_h),
-          to_v1(a.kernel_w),
-          to_v1(a.stride_h),
-          to_v1(a.stride_w),
-          to_v1(a.padding_h),
-          to_v1(a.padding_w),
-          to_v1(a.groups),
+  return {a.out_channels,
+          a.kernel_h,
+          a.kernel_w,
+          a.stride_h,
+          a.stride_w,
+          a.padding_h,
+          a.padding_w,
+          a.groups,
           to_v1<V1Activation>(a.activation),
-          to_v1(a.use_bias)};
+          a.use_bias};
 }
 
 } // namespace FlexFlow

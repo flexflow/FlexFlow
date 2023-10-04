@@ -3,7 +3,8 @@
 namespace FlexFlow {
 
 V1TensorShape to_v1(TensorShape const &shape) {
-  NOT_IMPLEMENTED();
+  return {std::vector<size_t>(shape.dims.begin(), shape.dims.end()),
+          to_v1(shape.data_type)};
 }
 
 } // namespace FlexFlow

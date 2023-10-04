@@ -12,10 +12,7 @@ T to_v1(T const &t) {
   return t;
 }
 
-template <typename V1T, typename... Args>
-V1T to_v1(variant<Args...> const &v) {
-  NOT_IMPLEMENTED();
-}
+std::string to_v1(std::string const &s);
 
 template <typename V1T, typename T>
 optional<V1T> to_v1(optional<T> const &t) {
@@ -24,12 +21,6 @@ optional<V1T> to_v1(optional<T> const &t) {
   } else {
     return nullopt;
   }
-}
-
-template <typename T,
-          typename std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-T to_v1(req<T> const &t) {
-  return T(t);
 }
 
 } // namespace FlexFlow

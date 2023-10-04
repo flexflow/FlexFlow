@@ -4,7 +4,7 @@
 namespace FlexFlow {
 
 V1Operator to_v1(Operator const &op) {
-  NOT_IMPLEMENTED();
+  return {to_v1(op.attrs), op.name};
 }
 
 V1Layer to_v1(Layer const &l) {

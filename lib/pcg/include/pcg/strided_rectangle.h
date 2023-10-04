@@ -3,7 +3,6 @@
 
 #include "op-attrs/dim_ordered.h"
 #include "op-attrs/ff_dim.h"
-#include "utils/stack_vector.h"
 #include "utils/strong_typedef.h"
 #include "utils/visitable.h"
 

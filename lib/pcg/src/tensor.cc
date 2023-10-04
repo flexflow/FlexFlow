@@ -6,7 +6,7 @@ size_t Tensor::get_volume() const {
 }
 
 TensorShape Tensor::get_shape() const {
-  NOT_IMPLEMENTED();
+  return {dims, data_type};
 }
 
 int Tensor::num_dims() const {
@@ -14,7 +14,7 @@ int Tensor::num_dims() const {
 }
 
 Tensor::operator TensorShape() const {
-  NOT_IMPLEMENTED();
+  return get_shape();
 }
 
 } // namespace FlexFlow

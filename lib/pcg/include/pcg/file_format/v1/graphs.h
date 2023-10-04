@@ -16,7 +16,6 @@ struct V1GraphOutput {
   req<size_t> srcNode;
   req<size_t> srcIdx;
 };
-
 FF_VISITABLE_STRUCT(V1GraphOutput, srcNode, srcIdx);
 CHECK_IS_JSONABLE(V1GraphOutput);
 
@@ -38,6 +37,7 @@ struct V1MultiDiGraph {
 
 FF_VISITABLE_STRUCT(V1MultiDiGraph, nodes, ports, edges);
 CHECK_IS_JSONABLE(V1MultiDiGraph);
+
 V1MultiDiGraph to_v1(MultiDiGraphView const &);
 V1MultiDiGraph to_v1(MultiDiGraphView const &,
                      std::unordered_map<Node, size_t> const &,
@@ -58,30 +58,31 @@ struct V1Layer {
   V1CompGraphOperatorAttrs attrs;
   req<optional<std::string>> name;
 };
-
 FF_VISITABLE_STRUCT(V1Layer, attrs, name);
+
 V1Layer to_v1(Layer const &);
 
 using V1ComputationGraph = V1JsonableGraph<V1Layer, V1Tensor>;
 FF_VISITABLE_STRUCT(
     V1ComputationGraph, node_labels, outputs, output_labels, graph);
 CHECK_IS_JSONABLE(V1ComputationGraph);
+
 V1ComputationGraph to_v1(ComputationGraph const &);
 
 struct V1Operator {
   V1PCGOperatorAttrs attrs;
   req<optional<std::string>> name;
 };
-
 FF_VISITABLE_STRUCT(V1Operator, attrs, name);
+
 V1Operator to_v1(Operator const &);
 
 using V1ParallelComputationGraph =
     V1JsonableGraph<V1Operator, V1ParallelTensor>;
-
 FF_VISITABLE_STRUCT(
     V1ParallelComputationGraph, node_labels, outputs, output_labels, graph);
 CHECK_IS_JSONABLE(V1ParallelComputationGraph);
+
 V1ParallelComputationGraph to_v1(ParallelComputationGraph const &);
 
 } // namespace FlexFlow

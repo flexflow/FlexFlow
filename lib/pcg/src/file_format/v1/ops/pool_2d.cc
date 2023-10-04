@@ -4,16 +4,24 @@
 namespace FlexFlow {
 
 V1PoolOp to_v1(PoolOp const &op) {
-  NOT_IMPLEMENTED();
+  // There should be a better way of doing this.
+  switch (op) {
+    case PoolOp::MAX:
+      return V1PoolOp::MAX;
+    case PoolOp::AVG:
+      return V1PoolOp::AVG;
+    default:
+      NOT_REACHABLE();
+  }
 }
 
 V1Pool2DAttrs to_v1(Pool2DAttrs const &a) {
-  return {to_v1(a.kernel_h),
-          to_v1(a.kernel_w),
-          to_v1(a.stride_h),
-          to_v1(a.stride_w),
-          to_v1(a.padding_h),
-          to_v1(a.padding_w),
+  return {a.kernel_h,
+          a.kernel_w,
+          a.stride_h,
+          a.stride_w,
+          a.padding_h,
+          a.padding_w,
           to_v1(a.pool_type),
           to_v1(a.activation)};
 }

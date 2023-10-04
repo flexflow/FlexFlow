@@ -2,7 +2,6 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_OPERATOR_ATTRS_H
 
 #include "op-attrs/operator_attrs.h"
-#include "op-attrs/ops/core.h"
 #include "ops/aggregate.h"
 #include "ops/aggregate_spec.h"
 #include "ops/attention.h"
@@ -21,15 +20,11 @@
 #include "ops/gather.h"
 #include "ops/groupby.h"
 #include "ops/input.h"
-// FIXME: Re-enable this once the JSON issues with std::vector have been
-// resolved.
-// #include "ops/layer_norm.h"
+#include "ops/layer_norm.h"
 #include "ops/linear.h"
 #include "ops/noop.h"
 #include "ops/pool_2d.h"
-// FIXME: Re-enable this once the JSON issues with std::vector have been
-// resolved.
-// #include "ops/reduce.h"
+#include "ops/reduce.h"
 #include "ops/reduction.h"
 #include "ops/repartition.h"
 #include "ops/replicate.h"
@@ -38,18 +33,12 @@
 #include "ops/softmax.h"
 #include "ops/split.h"
 #include "ops/topk.h"
-// FIXME: Re-enable this once the JSON issues with std::vector have been
-// resolved.
-// #include "ops/transpose.h"
+#include "ops/transpose.h"
 #include "utils/json.h"
 #include "utils/variant.h"
 
 namespace FlexFlow {
 
-// TODO: Re-enable V1LayerNormAttrs, V1ReduceAttrs, V1TransposeAttrs are
-// disabled because they use std::vector which triggers an error saying that
-// it cannot be serialized to JSON (when it actually ought to be serializable).
-// To get this to build for the moment, they have been disabled.
 using V1SharedOperatorAttrs = variant<V1AggregateAttrs,
                                       V1AggregateSpecAttrs,
                                       V1BatchMatmulAttrs,
@@ -66,19 +55,18 @@ using V1SharedOperatorAttrs = variant<V1AggregateAttrs,
                                       V1GatherAttrs,
                                       V1Group_byAttrs,
                                       V1InputAttrs,
-                                      // V1LayerNormAttrs,
+                                      V1LayerNormAttrs,
                                       V1LinearAttrs,
                                       V1MultiHeadAttentionAttrs,
                                       V1NoopAttrs,
                                       V1Pool2DAttrs,
-                                      // V1ReduceAttrs,
+                                      V1ReduceAttrs,
                                       V1ReverseAttrs,
                                       V1ReshapeAttrs,
                                       V1SplitAttrs,
                                       V1SoftmaxAttrs,
-                                      V1TopKAttrs
-                                      // V1TransposeAttrs
-                                      >;
+                                      V1TopKAttrs,
+                                      V1TransposeAttrs>;
 
 using V1ParallelOperatorAttrs = variant<V1CombineAttrs,
                                         V1ReductionAttrs,

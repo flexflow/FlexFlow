@@ -25,6 +25,7 @@
 #include "initializer.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/param_sync.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -34,39 +35,31 @@ namespace FlexFlow {
  * @details Parallel tensor is the fundamental component to support the
  * representation and exploration of parallelization strategies.
  */
-struct ParallelTensor : public use_visitable_cmp<ParallelTensor> {
-  ParallelTensor() = delete;
+struct ParallelTensor {
+  size_t get_volume() const;
+  ParallelTensorShape get_shape() const;
+  int num_dims() const;
 
-  ParallelTensor(ParallelTensorShape const &,
-                 CreateGrad create_gradients,
-                 optional<ParamSync> sync_type = nullopt,
-                 optional<Initializer> initializer = nullopt);
-  ParallelTensor(ParallelTensorDims const &,
-                 DataType,
-                 CreateGrad create_gradients,
-                 optional<ParamSync> sync_type = nullopt,
-                 optional<Initializer> initializer = nullopt);
+  operator ParallelTensorShape() const;
 
 public:
   ParallelTensorDims dims;
   DataType data_type;
   CreateGrad create_gradients;
-  optional<ParamSync> sync_type = nullopt;
-  optional<Initializer> initializer = nullopt;
-  optional<std::string> name = nullopt;
+  req<optional<ParamSync>> sync_type;
+  req<optional<Initializer>> initializer;
+  req<optional<std::string>> name;
 };
+FF_VISITABLE_STRUCT(ParallelTensor,
+                    dims,
+                    data_type,
+                    create_gradients,
+                    sync_type,
+                    initializer,
+                    name);
 
 using ParallelParameter = ParallelTensor;
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::ParallelTensor,
-                 dims,
-                 data_type,
-                 sync_type,
-                 initializer,
-                 create_gradients,
-                 name);
-MAKE_VISIT_HASHABLE(::FlexFlow::ParallelTensor);
 
 #endif

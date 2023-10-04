@@ -4,7 +4,7 @@
 namespace FlexFlow {
 
 V1BatchMatmulAttrs to_v1(BatchMatmulAttrs const &a) {
-  return {to_v1(a.a_seq_length_dim), to_v1(a.b_seq_length_dim)};
+  return {a.a_seq_length_dim, a.b_seq_length_dim};
 }
 
 } // namespace FlexFlow

@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_TENSOR_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_TENSOR_H
 
+#include "create_grad.h"
 #include "initializer.h"
 #include "param_sync.h"
 #include "pcg/tensor.h"
@@ -11,7 +12,7 @@ namespace FlexFlow {
 
 struct V1Tensor {
   V1TensorShape shape;
-  req<bool> create_gradients;
+  req<V1CreateGrad> create_gradients;
   req<optional<V1Initializer>> initializer;
   req<optional<V1ParamSync>> sync_type;
   req<optional<std::string>> name;

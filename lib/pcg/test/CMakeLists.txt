@@ -21,8 +21,6 @@ target_link_libraries(
 set_target_properties(
   ${test_target}
   PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS NO
 )
 doctest_discover_tests(${test_target})

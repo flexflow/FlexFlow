@@ -11,7 +11,7 @@ using namespace FlexFlow;
 TEST_CASE("Tensor") {
   Tensor t{{3, 4, 5},
            DataType::FLOAT,
-           false,
+           CreateGrad::NO,
            nullopt,
            nullopt,
            std::string("tensor")};

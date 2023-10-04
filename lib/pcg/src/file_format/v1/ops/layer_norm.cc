@@ -6,8 +6,8 @@ namespace FlexFlow {
 
 V1LayerNormAttrs to_v1(LayerNormAttrs const &a) {
   return {std::vector<int>(a.axes.begin(), a.axes.end()),
-          to_v1(a.elementwise_affine),
-          to_v1(a.eps)};
+          a.elementwise_affine,
+          a.eps};
 }
 
 } // namespace FlexFlow

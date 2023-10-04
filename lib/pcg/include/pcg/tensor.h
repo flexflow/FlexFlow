@@ -18,7 +18,7 @@ struct Tensor {
 public:
   TensorDims dims;
   DataType data_type;
-  req<bool> create_gradients;
+  CreateGrad create_gradients;
   req<optional<Initializer>> initializer;
   req<optional<ParamSync>> sync_type;
   req<optional<std::string>> name;
