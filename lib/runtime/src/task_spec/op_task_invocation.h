@@ -65,7 +65,7 @@ struct OpArgSpecTypeAccessor {
   }
 };
 
-struct OpTaskBinding {
+struct OpTaskBinding: public use_visitable_cmp<OpTaskBinding> {
   OpTaskBinding() = default;
 
   static_assert(is_subeq_variant<IndexTaskArgSpec, OpArgSpec>::value, "");
@@ -115,12 +115,6 @@ struct OpTaskBinding {
   void bind_tensors_from_fwd(OpTaskBinding const &fwd) {
     this->tensor_bindings = fwd.get_tensor_bindings();
   }
-
-  bool operator==(const OpTaskBinding& rhs) {
-    return this->get_arg_bindings() == rhs.get_arg_bindings() &&
-           this->get_tensor_bindings() == rhs.get_tensor_bindings();
-  }
-
 
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
       get_tensor_bindings() const;
