@@ -154,7 +154,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 }
 
 template <>
-void register_task<DROPOUT_INIT_TASK_ID>() {
+OpTaskSignature fwd_signature<DROPOUT_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
   init.add_arg_slot<DropoutAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(FF_HANDLE);
@@ -162,11 +162,19 @@ void register_task<DROPOUT_INIT_TASK_ID>() {
 
   init.add_return_value<DropoutPerDeviceState>();
 
-  register_task(DROPOUT_INIT_TASK_ID, "Dropout Init", init, init_task);
+  return init;
 }
 
 template <>
-void register_task<DROPOUT_FWD_TASK_ID>() {
+void register_task<DROPOUT_INIT_TASK_ID>() {
+  register_task(DROPOUT_INIT_TASK_ID,
+                "Dropout Init",
+                init_signature<DROPOUT_INIT_TASK_ID>(),
+                init_task);
+}
+
+template <>
+OpTaskSignature fwd_signature<DROPOUT_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_unchecked_arg_slot<DropoutPerDeviceState>(PER_DEVICE_STATE);
@@ -175,15 +183,31 @@ void register_task<DROPOUT_FWD_TASK_ID>() {
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(DROPOUT_FWD_TASK_ID, "Dropout Fwd", fwd, forward_task);
+  return fwd;
+}
+
+template <>
+void register_task<DROPOUT_FWD_TASK_ID>() {
+  register_task(DROPOUT_FWD_TASK_ID,
+                "Dropout Fwd",
+                fwd_signature<DROPOUT_FWD_TASK_ID>(),
+                forward_task);
+}
+
+template <>
+OpTaskSignature bwd_signature<DROPOUT_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(DROPOUT_FWD_TASK_ID));
+
+  return bwd;
 }
 
 template <>
 void register_task<DROPOUT_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(DROPOUT_FWD_TASK_ID));
-
-  register_task(DROPOUT_BWD_TASK_ID, "DROPOUT Bwd", bwd, backward_task);
+  register_task(DROPOUT_BWD_TASK_ID,
+                "Dropout Bwd",
+                bwd_signature<DROPOUT_BWD_TASK_ID>(),
+                backward_task);
 }
 
 }; // namespace FlexFlow

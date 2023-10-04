@@ -19,7 +19,6 @@
 #include "kernels/ff_handle.h"
 
 namespace FlexFlow {
-
 namespace Kernels {
 namespace Dropout {
 
