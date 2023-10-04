@@ -39,26 +39,26 @@ void FFModel::lora_linear(Tensor const input,
   if (data_type == DT_NONE) {
     data_type = input->data_type;
   }
+  assert(data_type == input->data_type);
+  assert(data_type == output->data_type);
   Layer *li = nullptr;
-  if (data_type != input->data_type) {
-    Tensor casted_input = cast(input, data_type, "type cast for dense");
-    li = new Layer(this,
-                   OP_LORA_LINEAR,
-                   data_type,
-                   name,
-                   2 /*inputs*/,
-                   2 /*weights*/,
-                   0 /*outputs*/,
-                   casted_input);
-  } else {
-    li = new Layer(this,
-                   OP_LORA_LINEAR,
-                   data_type,
-                   name,
-                   2 /*inputs*/,
-                   2 /*weights*/,
-                   0 /*outputs*/,
-                   input);
+  li = new Layer(this,
+                 OP_LORA_LINEAR,
+                 data_type,
+                 name,
+                 2 /*inputs*/,
+                 2 /*weights*/,
+                 1 /*outputs*/,
+                 input,
+                 output);
+  {
+    int numdims = output->num_dims;
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < numdims; i++) {
+      dims[i] = output->dims[i];
+    }
+    li->outputs[0] = create_tensor_legion_ordering(
+        numdims, dims, data_type, li, 0, true /*create_grad*/);
   }
   {
     int dims[2] = {input->dims[0], rank};
@@ -144,7 +144,7 @@ LoraLinear::LoraLinear(FFModel &model,
          2 /*inputs*/,
          2 /*weights*/,
          allocate_weights,
-         0 /*outputs*/,
+         1 /*outputs*/,
          _input,
          _output),
       rank(_rank) {
@@ -194,7 +194,16 @@ LoraLinear::LoraLinear(FFModel &model,
                                                        CHOSEN_SYNC_TYPE);
     }
   }
-
+  // Create output tensor
+  {
+    int numdim = inputs[1]->num_dims;
+    ParallelDim dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < numdim; i++) {
+      dims[i] = inputs[1]->dims[i];
+    }
+    outputs[0] = model.create_parallel_tensor_legion_ordering(
+        numdim, dims, inputs[1]->data_type, this);
+  }
   // assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
@@ -209,10 +218,12 @@ void LoraLinear::init_inference(
     MachineView const *mv) {
   assert(check_output_input_weight_same_parallel_is());
   assert(batch_inputs.size() == 2);
-  assert(batch_outputs.size() == 0);
+  assert(batch_outputs.size() == 1);
+  // Assert that the output is the same as the second input
+  assert(batch_outputs[0] == batch_inputs[1]);
   // assert(check_output_input_weight_same_machine_view());
   // output is considered as an input to allow in-place optimization
-  ParallelTensor output_tensor = batch_inputs[1];
+  ParallelTensor output_tensor = batch_outputs[0];
   parallel_is = output_tensor->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -276,7 +287,7 @@ OpMeta *LoraLinear::init_task(Task const *task,
                                        ctx,
                                        runtime);
   GenericTensorAccessorW output =
-      helperGetGenericTensorAccessorRW(lora->inputs[1]->data_type,
+      helperGetGenericTensorAccessorRW(lora->outputs[0]->data_type,
                                        regions[1],
                                        task->regions[1],
                                        FID_DATA,
@@ -323,10 +334,12 @@ FutureMap
                           MachineView const *mv) {
   assert(check_output_input_weight_same_parallel_is());
   assert(batch_inputs.size() == 2);
-  assert(batch_outputs.size() == 0);
+  assert(batch_outputs.size() == 1);
+  // Assert that the output is the same as the second input
+  assert(batch_outputs[0] == batch_inputs[1]);
   // assert(check_output_input_weight_same_machine_view());
   // output is considered as an input to allow in-place optimization
-  ParallelTensor output_tensor = batch_inputs[1];
+  ParallelTensor output_tensor = batch_outputs[0];
   parallel_is = output_tensor->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -416,10 +429,14 @@ FutureMap LoraLinear::peft_bwd(FFModel const &ff,
                                std::vector<ParallelTensor> const &batch_inputs,
                                std::vector<ParallelTensor> const &batch_outputs,
                                MachineView const *mv) {
+  assert(batch_inputs.size() == 2);
+  assert(batch_outputs.size() == 1);
+  // Assert that the output is the same as the second input
+  assert(batch_outputs[0] == batch_inputs[1]);
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  ParallelTensor output_tensor = batch_inputs[1];
+  ParallelTensor output_tensor = batch_outputs[0];
   parallel_is = output_tensor->parallel_is;
   MachineView const *view = mv ? mv : &output_tensor->machine_view;
   set_argumentmap_for_inference(ff, argmap, output_tensor);
@@ -494,11 +511,11 @@ void LoraLinear::peft_bwd_task(Task const *task,
   GenericTensorAccessorR weight_first = helperGetGenericTensorAccessorRO(
       m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight_second = helperGetGenericTensorAccessorRO(
-      m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
+      m->weight_type[1], regions[3], task->regions[3], FID_DATA, ctx, runtime);
   GenericTensorAccessorW weight_first_grad = helperGetGenericTensorAccessorRW(
       m->weight_type[0], regions[4], task->regions[4], FID_DATA, ctx, runtime);
   GenericTensorAccessorW weight_second_grad = helperGetGenericTensorAccessorRW(
-      m->weight_type[0], regions[5], task->regions[5], FID_DATA, ctx, runtime);
+      m->weight_type[1], regions[5], task->regions[5], FID_DATA, ctx, runtime);
 
   int in_dim = input_grad.domain.hi()[0] - input_grad.domain.lo()[0] + 1;
   int out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
@@ -529,6 +546,17 @@ void LoraLinear::backward(FFModel const &ff) {
 }
 
 void LoraLinear::print_layer(FFModel const &ff) {}
+
+void LoraLinear::map_output_tensors(FFModel &ff) {
+  assert(numOutputs == 1);
+  assert(numInputs == 2);
+  assert(outputs[0]->get_volume() == inputs[1]->get_volume());
+  outputs[0]->parallel_is = inputs[1]->parallel_is;
+  outputs[0]->region = inputs[1]->region;
+  outputs[0]->part = inputs[1]->part;
+  outputs[0]->region_grad = inputs[1]->region_grad;
+  outputs[0]->part_grad = inputs[1]->part_grad;
+}
 
 bool LoraLinear::measure_operator_cost(Simulator *sim,
                                        MachineView const &mv,
@@ -569,6 +597,13 @@ Node LoraLinear::deserialize(FFModel &ff,
   params.data_type = data_type;
   params.layer_guid = layer_guid;
   return ff.get_or_create_node<LoraLinear>({inputs[0], inputs[1]}, params);
+}
+
+Op *LoraLinear::materialize(FFModel &ff,
+                            ParallelTensor inputs[],
+                            int num_inputs) const {
+  LoraLinearParams params = get_params();
+  return new LoraLinear(ff, params, {inputs[0], inputs[1]}, this->name);
 }
 
 LoraLinearParams LoraLinear::get_params() const {

@@ -36,6 +36,7 @@
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
+#include "flexflow/ops/lora_linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
@@ -1995,6 +1996,7 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
         mv.device_type = MachineView::GPU;
         mv.ndims = 1;
         int total_parallel_degree = 1;
+        assert(op->numOutputs > 0);
         for (int i = 0; i < op->outputs[0]->num_dims; i++) {
           total_parallel_degree *= op->outputs[0]->dims[i].degree;
         }
@@ -2720,6 +2722,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_LINEAR: {
         node = Linear::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_LORA_LINEAR: {
+        node = LoraLinear::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_MULTIHEAD_ATTENTION: {

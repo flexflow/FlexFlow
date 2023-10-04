@@ -54,6 +54,7 @@ public:
                              std::vector<ParallelTensor> const &,
                              MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override;
+  void map_output_tensors(FFModel &model) override;
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -86,7 +87,9 @@ public:
                                Legion::Deserializer &d,
                                ParallelTensor inputs[],
                                int num_inputs);
-
+  Op *materialize(FFModel &ff,
+                  ParallelTensor inputs[],
+                  int num_inputs) const override;
   // size_t get_params_hash() const override;
   LoraLinearParams get_params() const;
 
