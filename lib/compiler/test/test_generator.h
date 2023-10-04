@@ -3,6 +3,7 @@
 
 #include "compiler/machine_mapping.h"
 #include "compiler/sub_parallel_computation_graph.h"
+#include "pcg/computation_graph.h"
 #include "rapidcheck.h"
 
 using namespace FlexFlow;
@@ -38,7 +39,7 @@ ParallelComputationGraph
 }
 
 rc::Gen<int> small_integer_generator() {
-  return gen::inRange(1, 4);
+  return rc::gen::inRange(1, 4);
 }
 
 namespace rc {
@@ -51,15 +52,16 @@ Gen<MultiDiGraph> serialParallelMultiDiGraph() {
 template <>
 struct Arbitrary<ComputationGraph> {
   static Gen<ComputationGraph> arbitrary() {
-    return gen::map(serialParallelMultiDiGraph, test_computataion_graph);
+    return gen::map(gen::cast<MultiDiGraphView>(serialParallelMultiDiGraph()),
+                    test_computataion_graph);
   }
 };
 
 template <>
 struct Arbitrary<ParallelComputationGraph> {
   static Gen<ParallelComputationGraph> arbitrary() {
-    return gen::map(serialParallelMultiDiGraph,
-                    test_parallel_computataion_graph);
+    return gen::map(gen::cast<MultiDiGraphView>(serialParallelMultiDiGraph()),
+                    test_parallel_computation_graph);
   }
 };
 
@@ -67,7 +69,9 @@ template <>
 struct Arbitrary<variant<Serial, Node>> {
   static Gen<variant<Serial, Node>> arbitrary() {
     return gen::mapcat(gen::arbitrary<bool>(), [](bool is_node) {
-      return is_node ? gen::arbitrary<Node>() : gen::arbitrary<Serial>();
+      return is_node
+                 ? gen::cast<variant<Serial, Node>>(gen::arbitrary<Node>())
+                 : gen::cast<variant<Serial, Node>>(gen::arbitrary<Serial>());
     });
   }
 };
@@ -76,7 +80,10 @@ template <>
 struct Arbitrary<variant<Parallel, Node>> {
   static Gen<variant<Parallel, Node>> arbitrary() {
     return gen::mapcat(gen::arbitrary<bool>(), [](bool is_node) {
-      return is_node ? gen::arbitrary<Node>() : gen::arbitrary<Parallel>();
+      return is_node
+                 ? gen::cast<variant<Parallel, Node>>(gen::arbitrary<Node>())
+                 : gen::cast<variant<Parallel, Node>>(
+                       gen::arbitrary<Parallel>());
     });
   }
 };
