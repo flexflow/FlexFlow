@@ -103,6 +103,20 @@ static void backward_task(Task const *task,
   backward_task_impl(acc);
 }
 
+CostMetrics measure_operator_cost(SimEnvFactory const &sim,
+                                  CastAttrs const &attrs,
+                                  InputParallelTensorDesc const &input_shape,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &mv) {
+  auto env = sim.new_environment();
+
+  // Assume cast has no cost
+  float forward_time = 0.0;
+  float backward_time = 0.0;
+  float sync_time = 0.0;
+  return make_metrics(forward_time, backward_time, sync_time, env);
+}
+
 template <>
 OpTaskSignature fwd_signature<CAST_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
