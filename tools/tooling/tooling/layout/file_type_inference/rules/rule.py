@@ -1,20 +1,15 @@
 from abc import ABC, abstractmethod, abstractproperty
 from tooling.layout.path import AbsolutePath, full_suffix, children
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
-from typing import FrozenSet, Callable, Iterable, Any, Set
+from typing import FrozenSet, Callable, Iterable, Any, Set, Optional
 from dataclasses import dataclass
 
 Attrs = Callable[[AbsolutePath], FrozenSet[FileAttribute]]
 SaveFunc = Callable[[Any], None]
 
-def throwaway_value(thing: Any) -> None:
-    return None
-
 @dataclass(frozen=True)
 class ExprExtra:
-    save: SaveFunc = throwaway_value
-
-default_extra = ExprExtra()
+    save: SaveFunc
 
 class Expr(ABC):
     def __and__(self, other: 'Expr') -> 'Expr':
@@ -42,6 +37,9 @@ class HasAttribute(Expr):
     def inputs(self) -> FrozenSet[FileAttribute]:
         return frozenset([self.attribute])
 
+    def __repr__(self) -> str:
+        return f'?{self.attribute}'
+
 @dataclass(frozen=True)
 class HasAnyOfAttributes(Expr):
     attributes: FrozenSet[FileAttribute]
@@ -56,6 +54,9 @@ class HasAnyOfAttributes(Expr):
     @property
     def inputs(self) -> FrozenSet[FileAttribute]:
         return self.attributes
+
+    def __repr__(self) -> str:
+        return 'HasAny(' + ', '.join(repr(a) for a in self.attributes) + ')'
 
 @dataclass(frozen=True)
 class HasAllOfAttributes(Expr):
@@ -97,6 +98,9 @@ class And(Expr):
             result |= child.inputs
         return result
 
+    def __repr__(self) -> str:
+        return 'And(' + ', '.join(repr(c) for c in self.children) + ')'
+
 @dataclass(frozen=True)
 class Or(Expr):
     children: FrozenSet[Expr]
@@ -126,6 +130,9 @@ class Not(Expr):
     def inputs(self) -> FrozenSet[FileAttribute]:
         return self.expr.inputs
 
+    def __repr__(self) -> str:
+        return f'!{self.expr}'
+
 @dataclass(frozen=True)
 class ChildSatisfies(Expr):
     name: str
@@ -138,6 +145,9 @@ class ChildSatisfies(Expr):
     def inputs(self) -> FrozenSet[FileAttribute]:
         return self.expr.inputs
 
+    def __repr__(self) -> str:
+        return f'v@/{self.name}/{self.expr}'
+
 @dataclass(frozen=True)
 class IsNamed(Expr):
     name: str
@@ -149,6 +159,9 @@ class IsNamed(Expr):
     def inputs(self) -> FrozenSet[FileAttribute]:
         return frozenset()
 
+    def __repr__(self) -> str:
+        return f'?/{self.name}/'
+
 @dataclass(frozen=True)
 class IsFile(Expr):
     def evaluate(self, p: AbsolutePath, attrs: Attrs, extra: ExprExtra) -> bool:
@@ -157,6 +170,9 @@ class IsFile(Expr):
     @property
     def inputs(self) -> FrozenSet[FileAttribute]:
         return frozenset()
+
+    def __repr__(self) -> str:
+        return '?F?'
 
 @dataclass(frozen=True)
 class IsDir(Expr):
@@ -167,6 +183,8 @@ class IsDir(Expr):
     def inputs(self) -> FrozenSet[FileAttribute]:
         return frozenset()
 
+    def __repr__(self) -> str:
+        return '?D?'
 
 @dataclass(frozen=True)
 class HasExtension(Expr):
@@ -179,6 +197,9 @@ class HasExtension(Expr):
     def inputs(self) -> FrozenSet[FileAttribute]:
         return frozenset()
 
+    def __repr__(self) -> str:
+        return f'?/*{self.extension}/'
+
 @dataclass(frozen=True)
 class ParentSatisfies(Expr):
     expr: Expr
@@ -190,6 +211,9 @@ class ParentSatisfies(Expr):
     def inputs(self) -> FrozenSet[FileAttribute]:
         return self.expr.inputs
 
+    def __repr__(self) -> str:
+        return f'^{self.expr}'
+
 @dataclass(frozen=True)
 class AncestorSatisfies(Expr):
     expr: Expr
@@ -200,6 +224,9 @@ class AncestorSatisfies(Expr):
     @property
     def inputs(self) -> FrozenSet[FileAttribute]:
         return self.expr.inputs
+
+    def __repr__(self) -> str:
+        return f'^^{self.expr}'
 
 @dataclass(frozen=True)
 class FileContentsSatisfy(Expr):
@@ -249,6 +276,9 @@ class DoesNotCreateNesting(Expr):
     def inputs(self) -> FrozenSet[FileAttribute]:
         return self.expr.inputs
 
+    def __repr__(self) -> str:
+        return f'<!>{self.expr}'
+
 @dataclass(frozen=True)
 class Rule:
     condition: Expr
@@ -261,6 +291,9 @@ class Rule:
     @property
     def outputs(self) -> FrozenSet[FileAttribute]:
         return frozenset({self.result})
+
+    def __repr__(self) -> str:
+        return f'({self.condition} -> {self.result})'
 
 def make_update_rules(
         is_supported: FileAttribute,

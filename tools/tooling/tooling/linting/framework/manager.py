@@ -1,4 +1,4 @@
-from typing import Dict, FrozenSet, Union, cast
+from typing import Dict, FrozenSet, Union, cast, Iterator
 from tooling.linting.framework.response import Response, did_succeed, ErrorResponse, FixResponse, CheckResponse 
 from tooling.linting.framework.specification import Specification
 from tooling.linting.framework.settings import Settings
@@ -59,3 +59,7 @@ class Manager:
             assert isinstance(v, (CheckResponse, ErrorResponse))
         return cast(Dict[str, Union[FixResponse, ErrorResponse]],
                     responses)
+
+    @classmethod
+    def from_iter(cls, it: Iterator[Specification]):
+        return cls(frozenset(it))

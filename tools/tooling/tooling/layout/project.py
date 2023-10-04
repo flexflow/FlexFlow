@@ -1,8 +1,9 @@
 from tooling.layout.cpp.cpp_code import CppCode
 from tooling.layout.path import AbsolutePath
-from tooling.layout.file_type_inference.all_rules import run_all_rules
+from tooling.layout.file_type_inference.all_rules import all_rules_set
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from tooling.layout.file_type_inference.rules.rule import Rule
+from tooling.layout.file_type_inference.rules.infer import InferenceResult, RuleCollection
 from typing import FrozenSet, Optional, Iterator, Callable, Iterable
 import subprocess
 from pathlib import Path
@@ -11,10 +12,17 @@ import string
 class Project:
     def __init__(self, root_path: AbsolutePath):
         self.root_path = root_path
-        self.file_types = run_all_rules(root_path)
+        self._file_types: Optional[InferenceResult] = None
+        self._rules: FrozenSet[Rule] = all_rules_set
+
+    @property
+    def file_types(self) -> InferenceResult:
+        if self._file_types is None:
+            self._file_types = RuleCollection(self._rules).run(root=self.root_path)
+        return self._file_types
 
     def add_rules(self, rules: Iterable[Rule]) -> None:
-        raise NotImplementedError()
+        self._rules = self._rules.union(rules)
 
     @property
     def cpp_code(self) -> CppCode:

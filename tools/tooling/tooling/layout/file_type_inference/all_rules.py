@@ -12,7 +12,7 @@ import tooling.layout.file_type_inference.rules.is_valid_file as is_valid_file
 import tooling.layout.file_type_inference.rules.file_group as file_group
 from tooling.layout.path import AbsolutePath
 
-all_rules = RuleCollection(cmake.rules.union(
+all_rules_set = cmake.rules.union(
     cpp_library.rules,
     file_extension.rules,
     forwarding_header.rules,
@@ -22,8 +22,10 @@ all_rules = RuleCollection(cmake.rules.union(
     compile_commands.rules,
     subtyping.rules,
     is_valid_file.rules,
-    file_group.rules
-))
+    file_group.rules)
+
+
+all_rules = RuleCollection(all_rules_set)
 
 def run_all_rules(root: AbsolutePath) -> InferenceResult:
     return all_rules.run(root=root)

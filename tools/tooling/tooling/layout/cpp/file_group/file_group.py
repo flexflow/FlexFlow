@@ -8,9 +8,7 @@ from pathlib import Path
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from tooling.layout.cpp.cpp_code import CppCode
     from tooling.layout.cpp.library import Library
-    from tooling.layout.project import Project
 
 
 @dataclass(frozen=True)
@@ -18,14 +16,6 @@ class FileGroup:
     library: 'Library'
     _logical_path: Path
     
-    @property
-    def project(self) -> 'Project':
-        return self.cpp_code.project
-
-    @property
-    def cpp_code(self) -> 'CppCode':
-        return self.library.cpp_code
-
     @property
     def source_extension(self) -> str:
         return '.cc'
@@ -66,6 +56,14 @@ class FileGroup:
     @property
     def source_file(self) -> FileGroupComponent:
         return self.get_component(ComponentType.SOURCE)
+
+    @property
+    def public_header_include_path(self) -> Path:
+        return self._logical_path.with_suffix(self.header_extension)
+
+    @property
+    def private_header_include_path(self) -> Path:
+        return Path(self.public_header_include_path.name)
 
     @property
     def test_file(self) -> FileGroupComponent:

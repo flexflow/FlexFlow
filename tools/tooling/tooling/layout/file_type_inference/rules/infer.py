@@ -1,14 +1,37 @@
-from tooling.layout.file_type_inference.rules.rule import Rule
+from abc import ABC, abstractmethod
+from tooling.layout.file_type_inference.rules.rule import Rule, ExprExtra
 from tooling.layout.path import AbsolutePath, children
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from dataclasses import dataclass, field
-from typing import Dict, Generic, TypeVar, Set, DefaultDict, Union, Iterator, Optional, FrozenSet, Iterable
+from typing import Dict, Generic, TypeVar, Set, DefaultDict, Union, Iterator, Optional, FrozenSet, Iterable, Any, Callable, List, Sequence
 from collections import defaultdict
 import logging
 
 _l = logging.getLogger(__name__)
 
 T = TypeVar('T')
+
+class ExprExtraBackend(ABC):
+    @abstractmethod
+    def for_rule(self, rule: Rule) -> ExprExtra:
+        ...
+
+    @abstractmethod
+    def result(self) -> Callable[[FileAttribute], Sequence[Any]]:
+        ...
+
+@dataclass
+class DictBackend(ExprExtraBackend):
+    _d: DefaultDict[FileAttribute, List[Any]] = field(default_factory=lambda: defaultdict(list))
+
+    def for_rule(self, rule: Rule) -> ExprExtra:
+        def save_func(to_save: Any, backend: 'DictBackend' = self, rule: Rule = rule) -> None:
+            self._d[rule.result].append(to_save)
+        return ExprExtra(save_func)
+
+    def result(self) -> Callable[[FileAttribute], Sequence[Any]]:
+        return lambda attr: self._d[attr]
+
 
 @dataclass
 class DiGraph(Generic[T]):
@@ -26,25 +49,34 @@ class DiGraph(Generic[T]):
         self.add_node(src)
         self.add_node(dst)
         self.connectivity[src].add(dst)
-        self.connectivity[dst].add(src)
+        self.reverse_connectivity[dst].add(src)
 
-    def _inplace_transitive_reduction(self) -> None:
+    def _inplace_transitive_closure(self) -> None:
         did_update = True
         while did_update:
             did_update = False
             for src, dsts in self.connectivity.items():
-                for dst in dsts:
+                for dst in dsts.copy():
                     if len(self.connectivity[dst] - self.connectivity[src]) > 0:
                         self.connectivity[src].update(self.connectivity[dst])
                         did_update = True
 
-    def transitive_reduction(self) -> 'DiGraph[T]':
+    def transitive_closure(self) -> 'DiGraph[T]':
         result = self.copy()
-        result._inplace_transitive_reduction()
+        result._inplace_transitive_closure()
         return result
 
+    def __repr__(self) -> str:
+        return '\n\n'.join([
+            'DiGraph {',
+            *(f'  {k} --> {v}' for k, v in self.connectivity.items()),
+            '}'
+        ])
+
+
     def is_acyclic(self) -> bool:
-        tr = self.transitive_reduction()
+        _l.debug(f'Checking presence of cycles in \n{self}')
+        tr = self.transitive_closure()
         for src, dsts in tr.connectivity.items():
             if src in dsts:
                 return False
@@ -76,6 +108,7 @@ class RuleCollection:
     rules: FrozenSet[Rule]
 
     def run(self, root: AbsolutePath) -> 'InferenceResult':
+        backend = DictBackend()
         dependency_graph: DiGraph[Union[Rule, FileAttribute]] = DiGraph()
 
         for rule in self.rules:
@@ -85,6 +118,7 @@ class RuleCollection:
             for out in rule.outputs:
                 dependency_graph.add_edge(out, rule)
 
+        _l.debug('Checking dependency graph for cycles')
         assert dependency_graph.is_acyclic()
 
         all_children = list(children(root))
@@ -92,18 +126,23 @@ class RuleCollection:
         for node in dependency_graph.topological_order():
             if isinstance(node, Rule):
                 _l.debug(f'Running rule {node}')
+                extra = backend.for_rule(node)
                 for p in all_children:
-                    if node.condition.evaluate(p, lambda path: attrs[path]):
+                    if node.condition.evaluate(p, lambda path: attrs[path], extra=extra):
                         attrs[p] |= node.outputs
-        return InferenceResult(dict(attrs))
+        return InferenceResult(dict(attrs), get_saved=backend.result())
 
 class InferenceResult:
-    def __init__(self, attrs: Dict[AbsolutePath, FrozenSet[FileAttribute]]) -> None:
+    def __init__(self, attrs: Dict[AbsolutePath, FrozenSet[FileAttribute]], get_saved: Callable[[FileAttribute], Any]) -> None:
         self._attrs = attrs
         self._reverse_attrs: DefaultDict[FileAttribute, Set[AbsolutePath]] = defaultdict(set)
+        self._get_saved = get_saved
         for k, v in attrs.items():
             for a in v:
                 self._reverse_attrs[a].add(k)
+
+    def get_saved(self, attr: FileAttribute) -> Any:
+        return self._get_saved(attr)
 
     def for_path(self, p: AbsolutePath) -> FrozenSet[FileAttribute]:
         return frozenset(self._attrs[p])

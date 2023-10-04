@@ -44,3 +44,9 @@ class CppCode:
             if library.contains(path):
                 return library
         return None
+
+    def library_for_path(self, p: AbsolutePath) -> Optional[Library]:
+        for lib in self.libraries:
+            if lib.root_path == p:
+                return lib
+        return None

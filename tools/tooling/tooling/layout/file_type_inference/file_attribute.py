@@ -65,3 +65,9 @@ class FileAttribute(Enum):
 
     IS_INVALID_FILE = auto()
     IS_VALID_FILE = auto()
+
+    def __str__(self) -> str:
+        return repr(self)
+
+    def __repr__(self) -> str:
+        return str(self.name)
