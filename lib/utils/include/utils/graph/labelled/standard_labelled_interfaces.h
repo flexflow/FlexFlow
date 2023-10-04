@@ -39,6 +39,7 @@ struct ILabelledMultiDiGraph
   virtual NodeLabel &at(Node const &) = 0;
   virtual EdgeLabel &at(MultiDiEdge const &) = 0;
   virtual void add_edge(MultiDiEdge const &, EdgeLabel const &) = 0;
+  virtual Node add_node(NodeLabel const &) = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledMultiDiGraph<int, int>);
 
