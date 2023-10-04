@@ -35,16 +35,8 @@ enum Slots {
   OUTPUT, // tensor
   PROFILING,
   HANDLE,
-  PER_DEVICE_STATE,
   ITERATION_CONFIG
 };
-
-OpTaskInvocation init(BatchMatmulAttrs const &attrs) {
-  OpTaskBinding init;
-  init.bind_arg(HANDLE, ff_handle());
-
-  return {BATCHMATMUL_INIT_TASK_ID, init};
-}
 
 OpTaskInvocation forward(BatchMatmulAttrs const &attrs) {
   OpTaskBinding fwd;
@@ -54,9 +46,8 @@ OpTaskInvocation forward(BatchMatmulAttrs const &attrs) {
   fwd.bind(OUTPUT, output_tensor(0));
 
   fwd.bind_arg(ATTRS, attrs);
-
+  fwd.bind_arg(HANDLE, ff_handle());
   fwd.bind_arg(PROFILING, profiling_settings());
-  fwd.bind_arg(PER_DEVICE_STATE, per_device_op_state<BMMPerDeviceState>());
   fwd.bind_arg(ITERATION_CONFIG, iteration_config());
 
   return {BATCHMATMUL_FWD_TASK_ID, fwd};
@@ -68,35 +59,14 @@ OpTaskInvocation backward(BatchMatmulAttrs const &attrs) {
   return {BATCHMATMUL_BWD_TASK_ID, bwd};
 }
 
-static DeviceSpecific<BMMPerDeviceState>
-    init_task_impl(TaskArgumentAccessor const &acc) {
-  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
-  Allocator allocator = acc.get_allocator();
-
-  DeviceSpecific<BMMPerDeviceState> per_device_state =
-      acc.create_device_specific<BMMPerDeviceState>(
-          init_kernel(handle, allocator));
-
-  return per_device_state;
-}
-
-static DeviceSpecific<BMMPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
-
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto a_input = acc.get_tensor<Permissions::RO>(A_INPUT);
   auto b_input = acc.get_tensor<Permissions::RO>(B_INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto attrs = acc.get_argument<BatchMatmulAttrs>(ATTRS);
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  auto per_device_state = acc.get_argument<BMMPerDeviceState>(PER_DEVICE_STATE);
   FFIterationConfig iter_config =
       acc.get_argument<FFIterationConfig>(ITERATION_CONFIG);
 
@@ -122,7 +92,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(forward_kernel,
                  profiling,
                  "[BatchMatmul] forward_time = %.2lfms\n",
-                 per_device_state,
+                 handle,
                  output.get_float_ptr(),
                  a_input.get_float_ptr(),
                  b_input.get_float_ptr(),
@@ -148,7 +118,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   FFIterationConfig iter_config =
       acc.get_argument<FFIterationConfig>(ITERATION_CONFIG);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  auto per_device_state = acc.get_argument<BMMPerDeviceState>(PER_DEVICE_STATE);
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RW>(OUTPUT);
@@ -182,7 +152,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(backward_kernel,
                  profiling,
                  "[BatchMatmul] backward_time = %.2lfms\n",
-                 per_device_state,
+                 handle,
                  output.get_float_ptr(),
                  output_grad.get_float_ptr(),
                  a_input.get_float_ptr(),
@@ -214,21 +184,13 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   ParallelTensorShape output_shape =
       get_output_shape(attrs, a_input.shape, b_input.shape);
 
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(HANDLE, ff_handle());
-
-  auto init_accessor =
-      env.get_init_accessor(BATCHMATMUL_INIT_TASK_ID, init_binding);
-  DeviceSpecific<BMMPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
-
   SimTaskBinding fwd_binding;
   fwd_binding.bind(A_INPUT, a_input);
   fwd_binding.bind(B_INPUT, b_input);
   fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(ATTRS, attrs);
   fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
+  fwd_binding.bind_arg(HANDLE, ff_handle());
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
@@ -244,23 +206,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-OpTaskSignature init_signature() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-  init.add_return_value<BMMPerDeviceState>();
-
-  return init;
-}
-
-template <>
-void register_task<BATCHMATMUL_INIT_TASK_ID>() {
-  register_task(BATCHMATMUL_INIT_TASK_ID,
-                "BatchMatmul Init",
-                init_signature(),
-                init_task);
-}
-
 OpTaskSignature fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
@@ -269,7 +214,7 @@ OpTaskSignature fwd_signature() {
   fwd.add_output_slot(OUTPUT);
   fwd.add_arg_slot<BatchMatmulAttrs>(ATTRS);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-  fwd.add_unchecked_arg_slot<BMMPerDeviceState>(PER_DEVICE_STATE);
+  fwd.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   return fwd;
 }
@@ -284,7 +229,7 @@ void register_task<BATCHMATMUL_FWD_TASK_ID>() {
 
 OpTaskSignature bwd_signature() {
   OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(BATCHMATMUL_BWD_TASK_ID));
+      infer_bwd_signature(get_op_signature(BATCHMATMUL_FWD_TASK_ID));
 
   return bwd;
 }

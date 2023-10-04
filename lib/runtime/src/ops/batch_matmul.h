@@ -8,19 +8,11 @@
 
 namespace FlexFlow {
 
-OpTaskSignature init_signature();
-template <>
-void register_task<BATCHMATMUL_INIT_TASK_ID>();
-
-OpTaskSignature fwd_signature();
 template <>
 void register_task<BATCHMATMUL_FWD_TASK_ID>();
-
-OpTaskSignature bwd_signature();
 template <>
 void register_task<BATCHMATMUL_BWD_TASK_ID>();
 
-OpTaskInvocation init(BatchMatmulAttrs const &);
 OpTaskInvocation forward(BatchMatmulAttrs const &);
 OpTaskInvocation backward(BatchMatmulAttrs const &);
 

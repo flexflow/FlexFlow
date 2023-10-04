@@ -7,21 +7,11 @@
 #include "utils/visitable.h"
 
 namespace FlexFlow {
-
-struct BMMPerDeviceState {
-  PerDeviceFFHandle handle;
-};
-
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(BMMPerDeviceState, handle);
-
 namespace Kernels {
 namespace BatchMatmul {
 
-BMMPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
-                              Allocator const &allocator);
-
 void forward_kernel(ffStream_t stream,
-                    BMMPerDeviceState const &meta,
+                    PerDeviceFFHandle const &handle,
                     float *output_ptr,
                     float const *a_input_ptr,
                     float const *b_input_ptr,
@@ -34,7 +24,7 @@ void forward_kernel(ffStream_t stream,
                     int b_seq_length_dim);
 
 void backward_kernel(ffStream_t stream,
-                     BMMPerDeviceState const &meta,
+                     PerDeviceFFHandle const &handle,
                      float const *o_ptr,
                      float const *o_grad_ptr,
                      float const *a_ptr,

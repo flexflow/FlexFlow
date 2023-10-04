@@ -21,15 +21,8 @@ namespace FlexFlow {
 namespace Kernels {
 namespace BatchMatmul {
 
-BMMPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
-                              Allocator const &allocator) {
-
-  BMMPerDeviceState per_device_state = {handle};
-  return per_device_state;
-}
-
 void forward_kernel(ffStream_t stream,
-                    BMMPerDeviceState const &meta,
+                    PerDeviceFFHandle const &handle,
                     float *output_ptr,
                     float const *a_input_ptr,
                     float const *b_input_ptr,
@@ -40,8 +33,8 @@ void forward_kernel(ffStream_t stream,
                     int a_seq_length_dim,
                     int b_seq_length_dim,
                     int seq_length = -1) {
-  checkCUDA(cublasSetStream(meta.handle.blas, stream));
-  checkCUDNN(cudnnSetStream(meta.handle.dnn, stream));
+  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
   int lda = k;
   int ldb = m;
   int ldo = m;
@@ -71,7 +64,7 @@ void forward_kernel(ffStream_t stream,
   }
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDA(cublasSgemmStridedBatched(meta.handle.blas,
+  checkCUDA(cublasSgemmStridedBatched(handle.blas,
                                       CUBLAS_OP_N,
                                       CUBLAS_OP_N,
                                       m,
@@ -94,7 +87,7 @@ void forward_kernel(ffStream_t stream,
 }
 
 void backward_kernel(ffStream_t stream,
-                     BMMPerDeviceState const &meta,
+                     PerDeviceFFHandle const &handle,
                      float const *o_ptr,
                      float const *o_grad_ptr,
                      float const *a_ptr,
@@ -105,14 +98,14 @@ void backward_kernel(ffStream_t stream,
                      int n,
                      int k,
                      int batch) {
-  checkCUDA(cublasSetStream(meta.handle.blas, stream));
-  checkCUDNN(cudnnSetStream(meta.handle.dnn, stream));
+  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
   int a_stride = n * k;
   int b_stride = m * k;
   int o_stride = n * m;
   float alpha = 1.0f;
-  checkCUDA(cublasSgemmStridedBatched(meta.handle.blas,
+  checkCUDA(cublasSgemmStridedBatched(handle.blas,
                                       CUBLAS_OP_T,
                                       CUBLAS_OP_N,
                                       k,
@@ -130,7 +123,7 @@ void backward_kernel(ffStream_t stream,
                                       k,
                                       a_stride,
                                       batch));
-  checkCUDA(cublasSgemmStridedBatched(meta.handle.blas,
+  checkCUDA(cublasSgemmStridedBatched(handle.blas,
                                       CUBLAS_OP_N,
                                       CUBLAS_OP_T,
                                       m,
