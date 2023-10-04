@@ -18,6 +18,7 @@
 #include "legion.h"
 #include "op-attrs/get_output_shapes.h"
 #include "op-attrs/ops/batch_matmul.h"
+#include "task_spec/op_task_signature.h"
 
 namespace FlexFlow {
 
@@ -206,7 +207,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-OpTaskSignature fwd_signature() {
+template <>
+OpTaskSignature fwd_signature<BATCHMATMUL_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(A_INPUT);
@@ -223,11 +225,12 @@ template <>
 void register_task<BATCHMATMUL_FWD_TASK_ID>() {
   register_task(BATCHMATMUL_FWD_TASK_ID,
                 "BatchMatmul Fwd",
-                fwd_signature(),
+                fwd_signature<BATCHMATMUL_FWD_TASK_ID>(),
                 forward_task);
 }
 
-OpTaskSignature bwd_signature() {
+template <>
+OpTaskSignature bwd_signature<BATCHMATMUL_BWD_TASK_ID>() {
   OpTaskSignature bwd =
       infer_bwd_signature(get_op_signature(BATCHMATMUL_FWD_TASK_ID));
 
@@ -238,7 +241,7 @@ template <>
 void register_task<BATCHMATMUL_BWD_TASK_ID>() {
   register_task(BATCHMATMUL_BWD_TASK_ID,
                 "BatchMatmul Bwd",
-                bwd_signature(),
+                bwd_signature<BATCHMATMUL_BWD_TASK_ID>(),
                 backward_task);
 }
 
