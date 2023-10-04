@@ -360,9 +360,11 @@ OpMeta *ElementUnary::init_task(Task const *task,
   // Input and output should have the same data type
   assert(eu->outputs[0]->data_type == eu->inputs[0]->data_type);
   m->profiling = eu->profiling;
+  m->inference_debugging = eu->inference_debugging;
   m->inplace = eu->inplace;
   m->scalar = eu->scalar;
   std::strcpy(m->op_name, eu->name);
+  m->layer_guid = eu->layer_guid;
   if (m->inplace) {
     assert(regions.size() == 1);
     assert(task->regions.size() == 1);

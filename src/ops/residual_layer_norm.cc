@@ -493,6 +493,8 @@ OpMeta *ResidualLayerNorm::init_task(Task const *task,
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   ResidualLayerNormMeta *meta =
       new ResidualLayerNormMeta(handle, ln, gpu_mem_allocator);
+  std::strcpy(meta->op_name, ln->name);
+  meta->layer_guid = ln->layer_guid;
   meta->input_type[0] = ln->inputs[0]->data_type;
   meta->input_type[1] = ln->inputs[1]->data_type;
   if (ln->use_two_residuals) {

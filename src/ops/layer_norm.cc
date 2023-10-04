@@ -383,6 +383,8 @@ OpMeta *LayerNorm::init_task(Task const *task,
                        .first();
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   LayerNormMeta *meta = new LayerNormMeta(handle, ln, gpu_mem_allocator);
+  std::strcpy(meta->op_name, ln->name);
+  meta->layer_guid = ln->layer_guid;
   meta->input_type[0] = ln->inputs[0]->data_type;
   meta->output_type[0] = ln->outputs[0]->data_type;
   return meta;

@@ -592,8 +592,10 @@ OpMeta *Conv2D::init_task(Task const *task,
   m->relu = conv->activation == AC_MODE_RELU;
   m->use_bias = conv->use_bias;
   m->profiling = conv->profiling;
+  m->inference_debugging = conv->inference_debugging;
   m->trainableInputs[0] = conv->trainableInputs[0];
   std::strcpy(m->op_name, conv->name);
+  m->layer_guid = conv->layer_guid;
 
   int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;

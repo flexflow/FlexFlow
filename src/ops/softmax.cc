@@ -230,6 +230,8 @@ OpMeta *Softmax::init_task(Task const *task,
   m->input_type = softmax->inputs[0]->data_type;
   m->output_type = softmax->outputs[0]->data_type;
   // checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
+  std::strcpy(m->op_name, softmax->name);
+  m->layer_guid = softmax->layer_guid;
   return m;
 }
 

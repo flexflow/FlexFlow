@@ -658,6 +658,9 @@ OpMeta *SpecIncMultiHeadSelfAttention::init_task(
   assert(gpu_mem_allocator.instance_allocated_size ==
          gpu_mem_allocator.instance_total_size);
   m->profiling = attn->profiling;
+  m->inference_debugging = attn->inference_debugging;
+  std::strcpy(m->op_name, attn->name);
+  m->layer_guid = attn->layer_guid;
   assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
          m->weightSize);
   return m;

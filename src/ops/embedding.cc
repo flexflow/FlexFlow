@@ -416,7 +416,10 @@ OpMeta *Embedding::init_task(Task const *task,
   FFHandler handle = *((FFHandler const *)task->local_args);
   EmbeddingMeta *m = new EmbeddingMeta(handle, embed);
   m->profiling = embed->profiling;
+  m->inference_debugging = embed->inference_debugging;
   m->aggr = embed->aggr;
+  std::strcpy(m->op_name, embed->name);
+  m->layer_guid = embed->layer_guid;
   return m;
 }
 

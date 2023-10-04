@@ -33,6 +33,7 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
       outputTensor, input_domain, softmax->data_type));
   dim = softmax->dim;
   profiling = softmax->profiling;
+  inference_debugging = softmax->inference_debugging;
   std::strcpy(op_name, softmax->name);
 }
 

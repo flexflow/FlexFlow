@@ -181,6 +181,8 @@ OpMeta *Reshape::init_task(Task const *task,
   Reshape const *reshape = (Reshape *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   ReshapeMeta *m = new ReshapeMeta(handle);
+  std::strcpy(m->op_name, reshape->name);
+  m->layer_guid = reshape->layer_guid;
   m->data_type = reshape->outputs[0]->data_type;
   return m;
 }

@@ -297,6 +297,8 @@ OpMeta *RMSNorm::init_task(Task const *task,
                        .first();
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   RMSNormMeta *meta = new RMSNormMeta(handle, rn, gpu_mem_allocator);
+  std::strcpy(meta->op_name, rn->name);
+  meta->layer_guid = rn->layer_guid;
   return meta;
 }
 

@@ -593,6 +593,9 @@ OpMeta *Experts::init_task(Task const *task,
                                    exp->use_bias,
                                    exp->activation);
   m->profiling = exp->profiling;
+  m->inference_debugging = exp->inference_debugging;
+  std::strcpy(m->op_name, exp->name);
+  m->layer_guid = exp->layer_guid;
   return m;
 }
 

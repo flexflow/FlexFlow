@@ -508,6 +508,8 @@ OpMeta *AddBiasResidualLayerNorm::init_task(
   }
   meta->output_type[0] = ln->outputs[0]->data_type;
   meta->output_type[1] = ln->outputs[1]->data_type;
+  std::strcpy(meta->op_name, ln->name);
+  meta->layer_guid = ln->layer_guid;
   return meta;
 }
 

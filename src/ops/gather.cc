@@ -243,6 +243,8 @@ OpMeta *Gather::init_task(Task const *task,
   Gather const *gather = (Gather const *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   GatherMeta *m = new GatherMeta(handle, gather);
+  std::strcpy(m->op_name, gather->name);
+  m->layer_guid = gather->layer_guid;
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR index = helperGetGenericTensorAccessorRO(

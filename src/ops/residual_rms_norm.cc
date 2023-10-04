@@ -351,6 +351,8 @@ OpMeta *ResidualRMSNorm::init_task(Task const *task,
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   ResidualRMSNormMeta *meta =
       new ResidualRMSNormMeta(handle, rn, gpu_mem_allocator);
+  std::strcpy(meta->op_name, rn->name);
+  meta->layer_guid = rn->layer_guid;
   return meta;
 }
 

@@ -183,6 +183,7 @@ public:
      const ParallelTensor input4 = NULL);
   Op(int guid,
      bool profiling,
+     bool inference_debugging,
      OperatorType otype,
      DataType dtype,
      char const *name,
@@ -316,6 +317,7 @@ public:
   std::map<ParallelTensor, OpMeta *[MAX_NUM_WORKERS]> inference_meta;
   int numInputs, numWeights, numOutputs;
   bool profiling;
+  bool inference_debugging;
   bool add_bias_only_once;
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;

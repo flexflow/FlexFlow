@@ -244,6 +244,8 @@ OpMeta *SigmoidSiluMulti::init_task(Task const *task,
   meta->input_type[0] = ssm->inputs[0]->data_type;
   meta->input_type[1] = ssm->inputs[1]->data_type;
   meta->output_type[0] = ssm->outputs[0]->data_type;
+  std::strcpy(meta->op_name, ssm->name);
+  meta->layer_guid = ssm->layer_guid;
   return meta;
 }
 

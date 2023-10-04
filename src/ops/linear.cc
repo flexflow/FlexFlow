@@ -504,11 +504,13 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   m->use_bias = linear->use_bias;
   m->add_bias_only_once = linear->add_bias_only_once;
   m->profiling = linear->profiling;
+  m->inference_debugging = linear->inference_debugging;
   m->trainableInputs[0] = linear->trainableInputs[0];
   m->weight_ptr_type = m->input_type[0];
   m->quantization_type = linear->quantization_type;
   m->offload = linear->offload;
   std::strcpy(m->op_name, linear->name);
+  m->layer_guid = linear->layer_guid;
 
   init_kernel(m, batch_size, out_dim);
 

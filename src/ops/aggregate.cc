@@ -235,6 +235,9 @@ OpMeta *Aggregate::init_task(Task const *task,
   FFHandler handle = *((FFHandler *)task->local_args);
   AggregateMeta *m = new AggregateMeta(handle, agg->n);
   m->profiling = agg->profiling;
+  m->inference_debugging = agg->inference_debugging;
+  std::strcpy(m->op_name, agg->name);
+  m->layer_guid = agg->layer_guid;
   return m;
 }
 

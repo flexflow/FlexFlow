@@ -266,6 +266,9 @@ OpMeta *Group_by::init_task(Task const *task,
   FFHandler handle = *((FFHandler *)task->local_args);
   GroupByMeta *m = new GroupByMeta(handle, gb->n, gb->alpha);
   m->profiling = gb->profiling;
+  m->inference_debugging = gb->inference_debugging;
+  std::strcpy(m->op_name, gb->name);
+  m->layer_guid = gb->layer_guid;
   return m;
 }
 

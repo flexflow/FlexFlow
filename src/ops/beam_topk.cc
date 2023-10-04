@@ -278,6 +278,9 @@ OpMeta *BeamTopK::init_task(Task const *task,
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   BeamTopKMeta *m = new BeamTopKMeta(handle, topk, gpu_mem_allocator);
   m->profiling = topk->profiling;
+  m->inference_debugging = topk->inference_debugging;
+  std::strcpy(m->op_name, topk->name);
+  m->layer_guid = topk->layer_guid;
   m->sorted = topk->sorted;
   m->max_beam_width = topk->max_beam_width;
   m->input_type[0] = topk->inputs[0]->data_type;

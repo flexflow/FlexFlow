@@ -12,7 +12,6 @@ class ConcatMeta : public OpMeta {
 public:
   ConcatMeta(FFHandler handle) : OpMeta(handle){};
   int legion_axis;
-  char op_name[MAX_OPNAME];
 };
 
 namespace Kernels {

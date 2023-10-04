@@ -210,6 +210,8 @@ OpMeta *Reduce::init_task(Task const *task,
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       DT_FLOAT, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   ReduceMeta *m = new ReduceMeta(handle, rd, input.domain);
+  std::strcpy(m->op_name, rd->name);
+  m->layer_guid = rd->layer_guid;
   return m;
 }
 
