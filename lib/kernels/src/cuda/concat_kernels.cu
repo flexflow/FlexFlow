@@ -39,7 +39,7 @@ void calc_blk_size(size_t &num_blocks,
 
 void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorW const &output,
-                    std::vector<FlexFlow::GenericTensorAccessorR> const &inputs,
+                    std::vector<GenericTensorAccessorR> const &inputs,
                     int num_inputs,
                     ff_dim_t legion_axis) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
@@ -69,7 +69,7 @@ void forward_kernel(ffStream_t stream,
 void backward_kernel(
     ffStream_t stream,
     GenericTensorAccessorR const &output_grad,
-    std::vector<FlexFlow::GenericTensorAccessorW> const &input_grads,
+    std::vector<GenericTensorAccessorW> const &input_grads,
     int num_inputs,
     ff_dim_t legion_axis) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
