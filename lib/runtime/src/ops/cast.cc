@@ -16,6 +16,7 @@
 #include "cast.h"
 #include "kernels/cast_kernels.h"
 #include "legion/legion_utilities.h"
+#include "task_spec/op_task_signature.h"
 #include "utils/hash-utils.h"
 
 using namespace FlexFlow::Kernels::Cast;
@@ -27,22 +28,14 @@ using Legion::Task;
 
 namespace FlexFlow {
 
-enum Slots { INPUT, OUTPUT, ATTRS, PROFILING, PER_DEVICE_STATE, HANDLE };
-
-OpTaskInvocation init(CastAttrs const &attrs) {
-  OpTaskBinding binding;
-
-  binding.bind_arg(HANDLE, ff_handle());
-
-  return {CAST_INIT_TASK_ID, binding};
-}
+enum Slots { INPUT, OUTPUT, ATTRS, PROFILING, HANDLE };
 
 OpTaskInvocation forward(CastAttrs const &attrs) {
   OpTaskBinding binding;
 
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<CastPerDeviceState>());
+  binding.bind_arg(HANDLE, ff_handle());
   binding.bind_arg(PROFILING, profiling_settings());
-  b.bind_arg(ATTRS, attrs);
+  binding.bind_arg(ATTRS, attrs);
 
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
@@ -56,30 +49,10 @@ OpTaskInvocation backward(CastAttrs const &attrs) {
   return {CAST_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<CastPerDeviceState>
-    init_task_impl(TaskArgumentAccessor const &acc) {
-
-  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
-
-  DeviceSpecific<CastPerDeviceState> per_device_state =
-      acc.create_device_specific<CastPerDeviceState>(init_kernel(handle));
-  return per_device_state;
-}
-
-static DeviceSpecific<CastPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
-
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state =
-      acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<CastAttrs>(ATTRS);
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -87,11 +60,11 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(forward_kernel,
                  profiling,
                  "[Cast] forward_time = %.2lfms\n",
-                 &per_device_state,
                  input,
                  output,
                  input.data_type,
-                 attrs.dtype);
+                 attrs.dtype,
+                 handle);
 }
 
 static void forward_task(Task const *task,
@@ -103,10 +76,9 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state =
-      acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<CastAttrs>(ATTRS);
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
 
@@ -116,11 +88,11 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(backward_kernel,
                  profiling,
                  "[Cast] forward_time = %.2lfms\n",
-                 &per_device_state,
                  input_grad,
                  output_grad,
                  input.data_type,
-                 attrs.dtype);
+                 attrs.dtype,
+                 handle);
 }
 
 static void backward_task(Task const *task,
@@ -146,34 +118,40 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 }
 
 template <>
-void register_task<CAST_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-  init.add_return_value<CastPerDeviceState>();
-
-  register_task(CAST_INIT_TASK_ID, "Cast Init", init, init_task);
-}
-
-template <>
-void register_task<CAST_FWD_TASK_ID>() {
+OpTaskSignature fwd_signature<CAST_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<CastAttrs>(ATTRS);
   fwd.add_arg_slot<bool>(PROFILING);
-  fwd.add_unchecked_arg_slot<CastPerDeviceState>(PER_DEVICE_STATE);
+  fwd.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(CAST_FWD_TASK_ID, "Cast Fwd", fwd, forward_task);
+  return fwd;
+}
+
+template <>
+void register_task<CAST_FWD_TASK_ID>() {
+  register_task(CAST_FWD_TASK_ID,
+                "Cast Fwd",
+                fwd_signature<CAST_FWD_TASK_ID>(),
+                forward_task);
+}
+
+template <>
+OpTaskSignature fwd_signature<CAST_BWD_TASK_ID>() {
+  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(CAST_FWD_TASK_ID));
+
+  return bwd;
 }
 
 template <>
 void register_task<CAST_BWD_TASK_ID>() {
-  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(CAST_FWD_TASK_ID));
-
-  register_task(CAST_BWD_TASK_ID, "Cast Bwd", bwd, backward_task);
+  register_task(CAST_BWD_TASK_ID,
+                "Cast Bwd",
+                bwd_signature<CAST_BWD_TASK_ID>(),
+                backward_task);
 }
 
 }; // namespace FlexFlow

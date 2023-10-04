@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/cast_kernels.h"
 #include "kernels/datatype_dispatch.h"
-#include "device.h"
 #include "kernels/device.h"
 
 namespace FlexFlow {
@@ -40,7 +40,7 @@ __global__ void
 template <DataType IDT, DataType ODT>
 struct ForwardKernel {
   void operator()(ffStream_t stream,
-                  CastPerDeviceState const *m,
+                  PerDeviceFFHandle handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
     size_t volume = input.shape.get_volume();
@@ -52,7 +52,7 @@ struct ForwardKernel {
 template <DataType IDT, DataType ODT>
 struct BackwardKernel {
   void operator()(ffStream_t stream,
-                  CastPerDeviceState const *m,
+                  PerDeviceFFHandle handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
     size_t volume = input.shape.get_volume();
@@ -61,28 +61,24 @@ struct BackwardKernel {
   }
 };
 
-CastPerDeviceState init_kernel(PerDeviceFFHandle const &handle) {
-  return {handle};
-}
-
 void forward_kernel(ffStream_t stream,
-                    CastPerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
                     DataType input_type,
-                    DataType output_type) {
+                    DataType output_type,
+                    PerDeviceFFHandle handle) {
   DataTypeDispatch2<ForwardKernel>{}(
-      input_type, output_type, stream, m, input, output);
+      input_type, output_type, stream, handle, input, output);
 }
 
 void backward_kernel(ffStream_t stream,
-                     CastPerDeviceState const *m,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &output,
                      DataType input_type,
-                     DataType output_type) {
+                     DataType output_type,
+                     PerDeviceFFHandle handle) {
   DataTypeDispatch2<BackwardKernel>{}(
-      input_type, output_type, stream, m, input, output);
+      input_type, output_type, stream, handle, input, output);
 }
 
 } // namespace Cast

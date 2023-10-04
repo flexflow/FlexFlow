@@ -7,31 +7,22 @@
 #include "op-attrs/activation.h"
 
 namespace FlexFlow {
-
-struct CastPerDeviceState {
-  PerDeviceFFHandle handle;
-};
-
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(CastPerDeviceState, handle);
-
 namespace Kernels {
 namespace Cast {
 
-CastPerDeviceState init_kernel(PerDeviceFFHandle const &handle);
-
 void forward_kernel(ffStream_t stream,
-                    CastPerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
                     DataType input_type,
-                    DataType output_type);
+                    DataType output_type,
+                    PerDeviceFFHandle handle);
 
 void backward_kernel(ffStream_t stream,
-                     CastPerDeviceState const *m,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &output,
                      DataType input_type,
-                     DataType output_type);
+                     DataType output_type,
+                     PerDeviceFFHandle handle);
 
 } // namespace Cast
 } // namespace Kernels
