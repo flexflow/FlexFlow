@@ -100,21 +100,37 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 }
 
 template <>
-void register_task<FLAT_FWD_TASK_ID>() {
+OpTaskSignature fwd_signature<FLAT_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(FLAT_FWD_TASK_ID, "Flat Fwd", fwd, forward_task);
+  return fwd;
+}
+
+template <>
+void register_task<FLAT_FWD_TASK_ID>() {
+  register_task(FLAT_FWD_TASK_ID,
+                "Flat Fwd",
+                fwd_signature<FLAT_FWD_TASK_ID>(),
+                forward_task);
+}
+
+template <>
+OpTaskSignature bwd_signature<FLAT_BWD_TASK_ID>() {
+  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(FLAT_FWD_TASK_ID));
+
+  return bwd;
 }
 
 template <>
 void register_task<FLAT_BWD_TASK_ID>() {
-  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(FLAT_FWD_TASK_ID));
-
-  register_task(FLAT_BWD_TASK_ID, "FLAT Bwd", bwd, backward_task);
+  register_task(FLAT_BWD_TASK_ID,
+                "Flat Bwd",
+                bwd_signature<FLAT_BWD_TASK_ID>(),
+                backward_task);
 }
 
 }; // namespace FlexFlow
