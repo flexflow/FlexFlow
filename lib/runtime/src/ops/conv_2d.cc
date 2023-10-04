@@ -209,7 +209,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 }
 
 template <>
-void register_task<CONV2D_INIT_TASK_ID>() {
+OpTaskSignature init_signature<CONV2D_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -224,7 +224,15 @@ void register_task<CONV2D_INIT_TASK_ID>() {
 }
 
 template <>
-void register_task<CONV2D_FWD_TASK_ID>() {
+void register_task<CONV2D_INIT_TASK_ID>() {
+  register_task(CONV2D_INIT_TASK_ID,
+                "Conv2d Init",
+                init_signature<CONV2D_INIT_TASK_ID>(),
+                init_task);
+}
+
+template <>
+OpTaskSignature fwd_signature<CONV2D_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
@@ -240,11 +248,27 @@ void register_task<CONV2D_FWD_TASK_ID>() {
 }
 
 template <>
-void register_task<CONV2D_BWD_TASK_ID>() {
+void register_task<CONV2D_FWD_TASK_ID>() {
+  register_task(CONV2D_FWD_TASK_ID,
+                "Conv2d Fwd",
+                fwd_signature<CONV2D_FWD_TASK_ID>(),
+                forward_task);
+}
+
+template <>
+OpTaskSignature bwd_signature<CONV2D_BWD_TASK_ID>() {
   OpTaskSignature bwd =
       infer_bwd_signature(get_op_signature(CONV2D_FWD_TASK_ID));
 
   register_task(CONV2D_BWD_TASK_ID, "Conv2D Bwd", bwd, backward_task);
+}
+
+template <>
+void register_task<CONV2D_BWD_TASK_ID>() {
+  register_task(CONV2D_BWD_TASK_ID,
+                "Conv2d Fwd",
+                bwd_signature<CONV2D_BWD_TASK_ID>(),
+                backward_task);
 }
 
 } // namespace FlexFlow
