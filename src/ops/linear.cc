@@ -1237,6 +1237,7 @@ bool operator==(LinearParams const &lhs, LinearParams const &rhs) {
 void Linear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->out_channels);
   sez.serialize(this->activation);
   sez.serialize(this->kernel_reg_type);
@@ -1262,10 +1263,11 @@ Node Linear::deserialize(FFModel &ff,
   DataType data_type;
   DataType quantization_type;
   bool offload;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(out_channels);
   dez.deserialize(activation);
   dez.deserialize(kernel_reg_type);

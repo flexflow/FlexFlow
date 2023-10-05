@@ -1106,6 +1106,7 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
 void ElementBinary::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->op_type);
   sez.serialize(this->inplace_a);
 }
@@ -1118,11 +1119,12 @@ Node ElementBinary::deserialize(FFModel &ff,
                                 int num_inputs) {
   assert(num_inputs == 2);
   OperatorType op_type;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   bool inplace_a;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(op_type);
   dez.deserialize(inplace_a);
 

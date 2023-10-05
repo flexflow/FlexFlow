@@ -398,6 +398,7 @@ void Experts::serialize(Legion::Serializer &sez) const {
   ExpertsParams params = get_params();
   sez.serialize(params.layer_guid.id);
   sez.serialize(params.layer_guid.transformer_layer_id);
+  sez.serialize(params.layer_guid.model_id);
   sez.serialize(params.num_experts);
   sez.serialize(params.experts_start_idx);
   sez.serialize(params.experts_output_dim_size);
@@ -418,10 +419,11 @@ Node Experts::deserialize(FFModel &ff,
   float alpha;
   ActiMode activation;
   bool use_bias;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(num_experts);
   dez.deserialize(experts_start_idx);
   dez.deserialize(experts_output_dim_size);

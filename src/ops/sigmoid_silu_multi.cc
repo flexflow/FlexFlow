@@ -359,6 +359,7 @@ bool SigmoidSiluMulti::measure_operator_cost(Simulator *sim,
 void SigmoidSiluMulti::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
 }
 
 using PCG::Node;
@@ -368,10 +369,11 @@ Node SigmoidSiluMulti::deserialize(FFModel &ff,
                                    ParallelTensor inputs[],
                                    int num_inputs) {
   assert(num_inputs == 2);
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
   SigmoidSiluMultiParams params;
   params.layer_guid = layer_guid;
@@ -387,6 +389,7 @@ size_t hash<FlexFlow::SigmoidSiluMultiParams>::operator()(
   size_t key = 0;
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.layer_guid.transformer_layer_id);
+  hash_combine(key, params.layer_guid.model_id);
   return key;
 }
 }; // namespace std

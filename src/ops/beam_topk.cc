@@ -438,6 +438,7 @@ void BeamTopK::backward(FFModel const &ff) {
 void BeamTopK::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->sorted);
   sez.serialize(this->max_beam_width);
 }
@@ -448,11 +449,12 @@ Node BeamTopK::deserialize(FFModel &ff,
                            int num_inputs) {
   assert(num_inputs == 1);
   bool sorted;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   int max_beam_width;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(sorted);
   dez.deserialize(max_beam_width);
   BeamTopKParams params;
