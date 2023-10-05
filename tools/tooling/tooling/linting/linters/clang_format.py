@@ -1,6 +1,6 @@
 from tooling.layout.project import Project
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
-from tooling.layout.file_type_inference.rules.rule import Rule, OpaqueFunction, HasAnyOfAttributes, HasAttribute, HasAllOfAttributes, Attrs, ExprExtra, Not, And, make_update_rules
+from tooling.layout.file_type_inference.rules.rule import Rule, OpaqueFunction, HasAnyOfAttributes, HasAttribute, HasAllOfAttributes, Attrs, ExprExtra, And, make_update_rules
 from tooling.linting.framework.response import CheckResponse, FixResponse, Response
 from tooling.linting.framework.method import Method
 from tooling.linting.framework.settings import Settings

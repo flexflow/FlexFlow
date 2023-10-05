@@ -1,36 +1,36 @@
-from tooling.layout.file_type_inference.rules.rule import Rule, HasExtension
+from tooling.layout.file_type_inference.rules.rule import Rule, HasExtension, exclude_blacklisted
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from typing import FrozenSet
 
 rules: FrozenSet[Rule] = frozenset({
     Rule(
         'extension.cc',
-        HasExtension('.cc'), 
+        exclude_blacklisted(HasExtension('.cc')), 
         FileAttribute.CPP_SOURCE
     ),
     Rule(
         'extension.cu',
-        HasExtension('.cu'), 
+        exclude_blacklisted(HasExtension('.cu')), 
         FileAttribute.IS_CUDA_KERNEL
     ),
     Rule(
         'extension.h',
-        HasExtension('.h'), 
+        exclude_blacklisted(HasExtension('.h')), 
         FileAttribute.HEADER
     ),
     Rule(
         'extension.py',
-        HasExtension('.py'), 
+        exclude_blacklisted(HasExtension('.py')), 
         FileAttribute.PYTHON
     ),
     Rule(
         'extension.c',
-        HasExtension('.c'), 
+        exclude_blacklisted(HasExtension('.c')), 
         FileAttribute.C
     ),
     Rule(
         'extension.test.cc',
-        HasExtension('.test.cc'), 
+        exclude_blacklisted(HasExtension('.test.cc')), 
         FileAttribute.CPP_TEST
     ),
 })

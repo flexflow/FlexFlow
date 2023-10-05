@@ -9,6 +9,8 @@ import logging
 from tooling.layout.project import Project
 from pathlib import Path
 from tooling.linting.framework.settings import Settings
+from enum import Enum 
+import json
 
 _l: logging.Logger
 
@@ -70,12 +72,20 @@ def get_fix_parser(p: argparse.ArgumentParser) -> argparse.ArgumentParser:
     }
     return instantiate(p, func=all_linters_fix, **specific_linter_parsers)
 
+class OutputFormat(Enum):
+    plaintext = 'plaintext'
+    json = 'json'
+
+    def __str__(self) -> str:
+        return self.value
+
 def main() -> int:
     PROGRAM_NAME = "lint"
 
     _p = argparse.ArgumentParser(prog=PROGRAM_NAME, add_help=False)
     add_verbosity_args(_p)
-    _p.add_argument('-f', '--force', action='store_true')
+    _p.add_argument('--force', action='store_true')
+    _p.add_argument('-f', '--format', type=OutputFormat, default=OutputFormat.plaintext, choices=list(OutputFormat))
 
     p = parser_root(instantiate(
         _p,
@@ -91,7 +101,23 @@ def main() -> int:
     responses = args.func(args)
 
     if not args.silent:
-        print(responses)
+        if args.format == OutputFormat.plaintext:
+            for k, r in responses.items():
+                if isinstance(r, CheckResponse):
+                    print(f'- {k} found {r.num_errors} errors')
+                elif isinstance(r, FixResponse):
+                    print(f'- {k} fixed {r.num_fixes} errors')
+                elif isinstance(r, ErrorResponse):
+                    print(f'- {k} crashed with the following error:')
+                    print('  ' + r.message)
+        elif args.format == OutputFormat.json:
+            json_output = {}
+            for k, r in responses.items():
+                json_output[k] = {
+                    '_type': r.__class__.__name__,
+                    'data': r.as_json()
+                }
+            print(json.dumps(json_output, indent=2))
 
     return 0
 

@@ -72,6 +72,13 @@ class FileAttribute(Enum):
     IS_INVALID_FILE = auto()
     IS_VALID_FILE = auto()
 
+    IS_PROJECT_ROOT = auto()
+    IS_LIB_DIR = auto()
+    IS_CHILD_OF_LIB = auto()
+    IS_DEPS_DIR = auto()
+    IS_BLACKLISTED = auto()
+    IS_WHITELISTED = auto()
+
     def __str__(self) -> str:
         return repr(self)
 

@@ -10,9 +10,9 @@ import tooling.layout.file_type_inference.rules.compile_commands as compile_comm
 import tooling.layout.file_type_inference.rules.subtyping as subtyping
 import tooling.layout.file_type_inference.rules.is_valid_file as is_valid_file
 import tooling.layout.file_type_inference.rules.file_group as file_group
-from tooling.layout.path import AbsolutePath
+import tooling.layout.file_type_inference.rules.directory_blacklist as directory_blacklist
 
-all_rules_set = cmake.rules.union(
+all_rules = cmake.rules.union(
     cpp_library.rules,
     file_extension.rules,
     forwarding_header.rules,
@@ -22,10 +22,6 @@ all_rules_set = cmake.rules.union(
     compile_commands.rules,
     subtyping.rules,
     is_valid_file.rules,
-    file_group.rules)
-
-
-all_rules = RuleCollection(all_rules_set)
-
-def run_all_rules(root: AbsolutePath) -> InferenceResult:
-    return all_rules.run(root=root)
+    file_group.rules,
+    directory_blacklist.rules,
+)

@@ -7,6 +7,13 @@ class CheckResponse:
     num_errors: int
     json_data: Json = None
 
+    def as_json(self) -> Json:
+        return {
+            '_t' : 'CheckResponse',
+            'num_errors' : self.num_errors,
+            'json_data' : self.json_data,
+        }
+
 @dataclass(frozen=True)
 class FixResponse:
     did_succeed: bool
@@ -14,9 +21,22 @@ class FixResponse:
     message: Optional[str] = None
     json_data: Json = None
 
+    def as_json(self) -> Json:
+        return {
+            'did_succeed' : self.did_succeed,
+            'num_fixes': self.num_fixes,
+            'message': self.message,
+            'json_data': self.json_data,
+        }
+
 @dataclass(frozen=True)
 class ErrorResponse:
     message: str
+
+    def as_json(self) -> Json:
+        return {
+            'message': self.message
+        }
 
 Response = Union[CheckResponse, FixResponse, ErrorResponse]
 

@@ -13,14 +13,16 @@ from tooling.linting.framework.helpers import check_unstaged_changes
 from pathlib import Path
 from tooling.json import Json
 
-from typing import Dict, List, DefaultDict, FrozenSet, Tuple
+from typing import FrozenSet, Tuple
 import logging
 
 _l = logging.getLogger(__name__)
 
 is_supported_rule = Rule(
     'missing_files.is_supported',
-    HasAttribute(FileAttribute.CPP_FILE_GROUP_MEMBER),
+    And.from_iter([
+        HasAttribute(FileAttribute.CPP_FILE_GROUP_MEMBER),
+    ]),
     FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER
 )
 header_update_rules = make_update_rules(
@@ -175,13 +177,13 @@ def get_fix_missing_files_rules(project: Project) -> FrozenSet[Rule]:
 
 def _get_json_data(project: Project) -> Tuple[int, Json]:
     missing_header_files = list(sorted([
-        str(p) for p in project.file_types.with_attr(FileAttribute.NOW_IS_MISSING_HEADER_FILE)
+        str(p.relative_to(project.root_path)) for p in project.file_types.with_attr(FileAttribute.NOW_IS_MISSING_HEADER_FILE)
     ]))
     missing_test_files = list(sorted([
-        str(p) for p in project.file_types.with_attr(FileAttribute.NOW_IS_MISSING_TEST_FILE)
+        str(p.relative_to(project.root_path)) for p in project.file_types.with_attr(FileAttribute.NOW_IS_MISSING_TEST_FILE)
     ]))
     missing_source_files = list(sorted([
-        str(p) for p in project.file_types.with_attr(FileAttribute.NOW_IS_MISSING_SOURCE_FILE)
+        str(p.relative_to(project.root_path)) for p in project.file_types.with_attr(FileAttribute.NOW_IS_MISSING_SOURCE_FILE)
     ]))
     num_missing = len(set(missing_header_files).union(missing_test_files, missing_source_files))
     return (

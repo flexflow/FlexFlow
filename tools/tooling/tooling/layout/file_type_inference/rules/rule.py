@@ -228,6 +228,17 @@ class AncestorSatisfies(Expr):
     def __repr__(self) -> str:
         return f'^^{self.expr}'
 
+
+@dataclass(frozen=True)
+class DescendantSatisfies(Expr):
+    expr: Expr
+    
+    def evaluate(self, p: AbsolutePath, attrs: Attrs, extra: ExprExtra) -> bool:
+        for child in children(p):
+            if self.expr.evaluate(child, attrs, extra):
+                return True
+        return False
+
 @dataclass(frozen=True)
 class FileContentsSatisfy(Expr):
     condition: Callable[[AbsolutePath, str], bool]
@@ -303,6 +314,12 @@ class Rule:
     @property
     def signature(self) -> str:
         return f'{self.name} :: ({", ".join(map(str, self.inputs))}) -> {self.result}'
+
+def exclude_blacklisted(expr: Expr) -> Expr:
+    return And.from_iter([
+        expr,
+        Not(HasAttribute(FileAttribute.IS_BLACKLISTED))
+    ])
 
 def make_update_rules(
         base_name: str,

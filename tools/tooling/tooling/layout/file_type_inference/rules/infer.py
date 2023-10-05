@@ -3,9 +3,10 @@ from tooling.layout.file_type_inference.rules.rule import Rule, ExprExtra
 from tooling.layout.path import AbsolutePath, children
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from dataclasses import dataclass, field
-from typing import Dict, Generic, TypeVar, Set, DefaultDict, Union, Iterator, Optional, FrozenSet, Iterable, Any, Callable, List, Sequence, Tuple
+from typing import Dict, Generic, TypeVar, Set, DefaultDict, Union, Iterator, Optional, FrozenSet, Iterable, Any, Callable, List, Sequence, Tuple, Mapping
 from collections import defaultdict
 import logging
+import time
 
 _l = logging.getLogger(__name__)
 
@@ -127,6 +128,7 @@ class DiGraph(Generic[T]):
 
 @dataclass(frozen=True)
 class RuleCollection:
+    predefined: Mapping[AbsolutePath, FrozenSet[FileAttribute]]
     rules: FrozenSet[Rule]
 
     def run(self, root: AbsolutePath) -> 'InferenceResult':
@@ -148,16 +150,21 @@ class RuleCollection:
 
         all_children = list(children(root))
         attrs: DefaultDict[AbsolutePath, FrozenSet[FileAttribute]] = defaultdict(frozenset)
+        for k, v in self.predefined.items():
+            attrs[k] = v
         for node in dependency_graph.topological_order():
             if isinstance(node, Rule):
                 _l.debug(f'Running rule {node.signature}')
+                start_time = time.perf_counter()
                 extra = backend.for_rule(node)
                 num_added = 0
                 for p in all_children:
                     if node.condition.evaluate(p, lambda path: attrs[path], extra=extra):
                         num_added += 1
                         attrs[p] |= node.outputs
-                _l.debug(f'Rule {node.name} found {num_added} paths that satisfy {node.result}')
+                end_time = time.perf_counter()
+                rule_time = end_time - start_time
+                _l.debug(f'Rule {node.name} found {num_added} paths that satisfy {node.result} (took {rule_time*1000:.4f}ms)')
         return InferenceResult(dict(attrs), get_saved=backend.result())
 
 class InferenceResult:
