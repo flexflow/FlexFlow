@@ -308,9 +308,6 @@ private:
   static_assert(
       implies<is_lt_comparable<T>, is_lt_comparable<stack_vector>>::value, "");
 };
-
-CHECK_FMTABLE(stack_vector<test_types::fmtable, 5>);
-
 } // namespace FlexFlow
 
 namespace std {
