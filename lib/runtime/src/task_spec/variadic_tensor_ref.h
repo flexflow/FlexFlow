@@ -6,17 +6,13 @@
 
 namespace FlexFlow {
 
-enum class VariadicTensorRefType { INPUT_TENSORS, NUM_INPUTS };
+enum class VariadicTensorRefType { INPUT_TENSORS };
 
 template <typename T>
 using VariadicTensorRef = ArgRef<VariadicTensorRefType, T>;
 
 VariadicTensorRef<OpTensorSpec> get_input_tensors() {
   return {VariadicTensorRefType::INPUT_TENSORS};
-}
-
-VariadicTensorRef<int> get_number_inputs() {
-  return {VariadicTensorRefType::NUM_INPUTS};
 }
 
 } // namespace FlexFlow

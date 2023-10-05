@@ -10,6 +10,7 @@ namespace FlexFlow {
 
 struct ConcatAttrs {
   ff_dim_t axis;
+  int num_inputs;
 };
 FF_VISITABLE_STRUCT(ConcatAttrs, axis);
 CHECK_VALID_OP_ATTR(ConcatAttrs);

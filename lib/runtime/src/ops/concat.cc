@@ -36,7 +36,6 @@ OpTaskInvocation forward(ConcatAttrs const &attrs) {
   OpTaskBinding binding;
   binding.bind(INPUTS, get_input_tensors());
   binding.bind(OUTPUT, output_tensor(0));
-  binding.bind(NUM_INPUTS, get_number_inputs());
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
 
@@ -50,21 +49,20 @@ OpTaskInvocation backward(ConcatAttrs const &attrs) {
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  int number_of_inputs = acc.get_argument<int>(NUM_INPUTS);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<ConcatAttrs>(ATTRS);
 
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto inputs = acc.get_variadic_tensor<Permissions::RO>(INPUTS);
 
-  assert(number_of_inputs <= MAX_NUM_INPUTS);
+  assert(attrs.num_inputs <= MAX_NUM_INPUTS);
 
   return profile(forward_kernel,
                  profiling,
                  "[Concat] forward_time = %.2lfms\n",
                  output,
                  inputs,
-                 number_of_inputs,
+                 attrs.num_inputs,
                  attrs.axis);
 }
 
@@ -77,21 +75,20 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  int number_of_inputs = acc.get_argument<int>(NUM_INPUTS);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<ConcatAttrs>(ATTRS);
 
   auto input_grads = acc.get_variadic_tensor_grad<Permissions::RW>(INPUTS);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
-  assert(number_of_inputs <= MAX_NUM_INPUTS);
+  assert(attrs.num_inputs <= MAX_NUM_INPUTS);
 
   return profile(backward_kernel,
                  profiling,
                  "[Concat] backward_time = %.2lfms\n",
                  output_grad,
                  input_grads,
-                 number_of_inputs,
+                 attrs.num_inputs,
                  attrs.axis);
 }
 
@@ -109,8 +106,7 @@ CostMetrics
                           InputVariadicParallelTensorDesc const &inputs_shape,
                           ProfilingSettings const &settings,
                           MachineView const &mv) {
-  int numInputs = (inputs_shape.shapes).size();
-  assert(numInputs <= MAX_NUM_INPUTS);
+  assert(attrs.num_inputs <= MAX_NUM_INPUTS);
 
   auto env = sim.new_environment();
 
@@ -121,7 +117,6 @@ CostMetrics
   fwd_binding.bind_arg(ATTRS, attrs);
   fwd_binding.bind(INPUTS, inputs_shape);
   fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(NUM_INPUTS, numInputs);
   fwd_binding.bind_arg(PROFILING, settings);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
@@ -140,7 +135,6 @@ template <>
 OpTaskSignature fwd_signature<CONCAT_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
   fwd.add_arg_slot<ConcatAttrs>(ATTRS);
-  fwd.add_arg_slot<int>(NUM_INPUTS);
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_input_slot(INPUTS, SlotType::VARIADIC);
   fwd.add_output_slot(OUTPUT);

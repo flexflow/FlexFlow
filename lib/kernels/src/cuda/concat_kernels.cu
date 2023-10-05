@@ -66,12 +66,11 @@ void forward_kernel(ffStream_t stream,
   }
 }
 
-void backward_kernel(
-    ffStream_t stream,
-    GenericTensorAccessorR const &output_grad,
-    std::vector<GenericTensorAccessorW> const &input_grads,
-    int num_inputs,
-    ff_dim_t legion_axis) {
+void backward_kernel(ffStream_t stream,
+                     GenericTensorAccessorR const &output_grad,
+                     std::vector<GenericTensorAccessorW> const &input_grads,
+                     int num_inputs,
+                     ff_dim_t legion_axis) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
 

@@ -14,12 +14,11 @@ void forward_kernel(ffStream_t stream,
                     int num_inputs,
                     ff_dim_t legion_axis);
 
-void backward_kernel(
-    ffStream_t stream,
-    GenericTensorAccessorR const &output_grad,
-    std::vector<GenericTensorAccessorW> const &input_grads,
-    int num_inputs,
-    ff_dim_t legion_axis);
+void backward_kernel(ffStream_t stream,
+                     GenericTensorAccessorR const &output_grad,
+                     std::vector<GenericTensorAccessorW> const &input_grads,
+                     int num_inputs,
+                     ff_dim_t legion_axis);
 
 } // namespace Concat
 } // namespace Kernels
