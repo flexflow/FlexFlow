@@ -535,6 +535,7 @@ __host__ void
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
+  assert(false);
   // const FusedOp* fused = (FusedOp*) task->args;
   FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;

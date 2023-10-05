@@ -1478,6 +1478,7 @@ OpMeta::OpMeta(FFHandler _handle)
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     output_type[i] = DT_NONE;
   }
+  decoding_step = 0;
 }
 
 OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
@@ -1490,6 +1491,7 @@ OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
   for (int i = 0; i < op->numOutputs; i++) {
     output_type[i] = op->outputs[i]->data_type;
   }
+  decoding_step = 0;
 }
 
 FFRuntime::FFRuntime(FFConfig &config) {

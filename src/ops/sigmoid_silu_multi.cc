@@ -18,12 +18,6 @@
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <string>
-namespace fs = std::filesystem;
-
 namespace FlexFlow {
 
 // declare Legion names
@@ -331,7 +325,7 @@ void SigmoidSiluMulti::inference_task(
     return;
   }
 
-  SigmoidSiluMultiMeta const *m = *((SigmoidSiluMultiMeta **)task->local_args);
+  SigmoidSiluMultiMeta *m = *((SigmoidSiluMultiMeta **)task->local_args);
 
   GenericTensorAccessorR input1 = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -354,32 +348,11 @@ void SigmoidSiluMulti::inference_task(
   assert(input1_domain == output_domain);
 
   SigmoidSiluMulti::inference_kernel_wrapper(m, input1, input2, output);
-  //// Begin of printing tensors
-  // Check if the directory exists
-  if (!fs::exists("tensors_dump")) {
-    // Create the directory if it does not exist
-    if (!fs::create_directory("tensors_dump")) {
-      std::cerr << "Failed to create directory tensors_dump!" << std::endl;
-      assert(false);
-    }
-  }
-  assert(task->index_point.get_dim() == 1);
-  int decoding_step = 0;
-  std::string filepath =
-      "./tensors_dump/model_" + std::to_string(m->layer_guid.model_id) +
-      "_decoding-step_" + std::to_string(decoding_step) + "_layer-num_" +
-      std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
-      m->op_name + "_shard-id_" +
-      std::to_string(task->index_point.point_data[0]);
-  while (std::ifstream(filepath)) {
-    decoding_step++;
-  }
-  std::ofstream file(filepath);
-  if (file.is_open()) {
-    std::cout << "File '" << filepath << "' created successfully." << std::endl;
-    file.close(); // Close the file after creating it
-  } else {
-    std::cerr << "Failed to create file '" << filepath << "'." << std::endl;
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    SigmoidSiluMulti::save_inference_tensors_to_file(
+        m, shard_id, {input1, input2}, {}, {output});
   }
 }
 

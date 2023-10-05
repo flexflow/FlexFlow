@@ -1,6 +1,7 @@
 #ifndef _OPERATOR_H
 #define _OPERATOR_H
 
+#include "flexflow/accessor.h"
 #include "flexflow/batch_config.h"
 #include "flexflow/fftype.h"
 #include "flexflow/machine_view.h"
@@ -226,6 +227,12 @@ public:
     assert(false);
   };
   virtual void print_layer(FFModel const &model) = 0;
+  static void save_inference_tensors_to_file(
+      OpMeta *m,
+      int shard_id,
+      std::vector<GenericTensorAccessorR> input_tensors,
+      std::vector<GenericTensorAccessorR> weight_tensors,
+      std::vector<GenericTensorAccessorW> output_tensors);
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
                                      CostMetrics &cost_metrics) const = 0;
