@@ -1,4 +1,5 @@
 #include "op-attrs/ops/attention.h"
+#include "op-attrs/parallel_tensor_shape.h"
 
 namespace FlexFlow {
 
@@ -9,6 +10,14 @@ namespace FlexFlow {
 /*   bool is_valid = true; */
 /*   return is_valid; */
 /* } */
+
+bool MultiHeadAttentionAttrs::is_valid(MultiHeadAttentionInputs<ParallelTensorShape> const & input) const {
+  bool valid = true;
+  valid &= is_valid(input.key);
+  valid &= is_valid(input.query);
+  valid &= is_valid(input.value);
+  return valid;
+}
 
 int get_qProjSize(MultiHeadAttentionAttrs const &attrs) {
   return attrs.kdim;
@@ -52,32 +61,39 @@ TensorShape
 
   return {dims, DataType::FLOAT};
 }
+//these two functions are not defined in the attention.h
+// ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
+//                                      ParallelTensorShape const &query_shape,
+//                                      ParallelTensorShape const &key_shape,
+//                                      ParallelTensorShape const &value_shape) {
+//   /* ParallelDim replica_dim = query_shape.at(ff_dim_t(query_shape.num_dims() -
+//    * 2)); */
+//   /* replica_dim.size = replica_dim.degree; */
 
-ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
-                                     ParallelTensorShape const &query_shape,
-                                     ParallelTensorShape const &key_shape,
-                                     ParallelTensorShape const &value_shape) {
-  /* ParallelDim replica_dim = query_shape.at(ff_dim_t(query_shape.num_dims() -
-   * 2)); */
-  /* replica_dim.size = replica_dim.degree; */
+//   /* ParallelDim */
 
-  /* ParallelDim */
+//   ParallelTensorShape output_shape = query_shape;
+//   output_shape.at(ff_dim_t(output_shape.num_dims() - 1)).size = attrs.embed_dim;
+//   return output_shape;
+// }
 
-  ParallelTensorShape output_shape = query_shape;
+// TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
+//                              TensorShape const &query_shape,
+//                              TensorShape const &key_shape,
+//                              TensorShape const &value_shape) {
+//   ParallelTensorShape parallel_shape =
+//       get_output_shape(attrs,
+//                        static_cast<ParallelTensorShape>(query_shape),
+//                        static_cast<ParallelTensorShape>(key_shape),
+//                        static_cast<ParallelTensorShape>(value_shape));
+//   return get_tensor_shape_unsafe(parallel_shape);
+// }
+
+ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const & attrs,
+                                     MultiHeadAttentionInputs<ParallelTensorShape> const &inputs) {
+  ParallelTensorShape output_shape = inputs.query;
   output_shape.at(ff_dim_t(output_shape.num_dims() - 1)).size = attrs.embed_dim;
   return output_shape;
-}
-
-TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
-                             TensorShape const &query_shape,
-                             TensorShape const &key_shape,
-                             TensorShape const &value_shape) {
-  ParallelTensorShape parallel_shape =
-      get_output_shape(attrs,
-                       static_cast<ParallelTensorShape>(query_shape),
-                       static_cast<ParallelTensorShape>(key_shape),
-                       static_cast<ParallelTensorShape>(value_shape));
-  return get_tensor_shape_unsafe(parallel_shape);
 }
 
 } // namespace FlexFlow

@@ -7,20 +7,6 @@
 
 namespace FlexFlow {
 
-struct MultiHeadAttentionAttrs {
-  req<int> embed_dim, num_heads, kdim, vdim;
-  req<float> dropout;
-  req<bool> bias, add_bias_kv, add_zero_attn;
-};
-FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs,
-                    embed_dim,
-                    num_heads,
-                    kdim,
-                    vdim,
-                    dropout,
-                    bias,
-                    add_bias_kv,
-                    add_zero_attn);
 
 template <typename TensorType>
 struct MultiHeadAttentionInputs
@@ -42,6 +28,24 @@ public:
   TensorType key;
   TensorType value;
 };
+
+struct MultiHeadAttentionAttrs {
+  req<int> embed_dim, num_heads, kdim, vdim;
+  req<float> dropout;
+  req<bool> bias, add_bias_kv, add_zero_attn;
+  bool is_valid(MultiHeadAttentionInputs<ParallelTensorShape> const &) const;
+};
+
+FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs,
+                    embed_dim,
+                    num_heads,
+                    kdim,
+                    vdim,
+                    dropout,
+                    bias,
+                    add_bias_kv,
+                    add_zero_attn);
+CHECK_VALID_OP_ATTR(MultiHeadAttentionAttrs);
 
 int get_qProjSize(MultiHeadAttentionAttrs const &);
 int get_vProjSize(MultiHeadAttentionAttrs const &);
@@ -67,6 +71,7 @@ ParallelTensorShape
 ParallelTensorShape
     get_output_shape(MultiHeadAttentionAttrs const &,
                      MultiHeadAttentionInputs<ParallelTensorShape> const &);
+
 TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
                              MultiHeadAttentionInputs<TensorShape> const &);
 
