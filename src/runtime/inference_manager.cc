@@ -28,9 +28,8 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_inf_mgr("InferenceManager");
 LegionRuntime::Logger::Category log_offload("Offloading");
 
-InferenceManager::InferenceManager(FFConfig const &_config,
-                                   int _max_num_tokens_per_batch)
-    : ff_config(_config), max_num_tokens_per_batch(_max_num_tokens_per_batch) {
+InferenceManager::InferenceManager(FFConfig const &_config)
+    : ff_config(_config) {
   num_devices = ff_config.workersPerNode * ff_config.numNodes;
   // Check parallelization degrees
   assert(ff_config.data_parallelism_degree <= num_devices &&
@@ -62,8 +61,7 @@ InferenceManager *inference_manager_singleton = nullptr;
 InferenceManager *InferenceManager::get_inference_manager() {
   if (inference_manager_singleton == nullptr) {
     FFConfig ffconfig;
-    inference_manager_singleton =
-        new InferenceManager(ffconfig, BatchConfig::MAX_NUM_TOKENS);
+    inference_manager_singleton = new InferenceManager(ffconfig);
   }
   return inference_manager_singleton;
 }
@@ -84,7 +82,7 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
   // TODO: currently assume there is a single data-parallel pipeline
   // (i.e., data-parallel-degree == 1)
   assert(model->config.data_parallelism_degree == 1);
-  model->config.batchSize = max_num_tokens_per_batch;
+  model->config.batchSize = BatchConfig::max_tokens_per_batch();
   model->compile_inference();
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;

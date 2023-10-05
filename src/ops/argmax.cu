@@ -59,7 +59,7 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
   DT alpha = 1.0f, beta = 0.0f;
   if (m->beam_search) {
     // set all parents id zero in arg top1 case.
-    checkCUDA(cudaMemset(parent, 0, batch_size * sizeof(int)));
+    checkCUDA(cudaMemsetAsync(parent, 0, batch_size * sizeof(int), stream));
   }
   size_t temp_storage_bytes = m->temp_storage_bytes;
   // use cub
@@ -83,6 +83,7 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
                           prob_ptr,
                           batch_size,
                           m->beam_search);
+  // print_tensor<int>(indices_ptr, 32, "argmax op");
 }
 
 /*static*/
@@ -93,7 +94,6 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
                                     int batch_size) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);

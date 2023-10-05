@@ -69,7 +69,7 @@ bool BeamSearchBatchConfig::done() const {
 
 int BeamSearchBatchConfig::max_beam_depth_all_requests() const {
   int max_depth_all_requests = 0;
-  for (int i = 0; i < BeamSearchBatchConfig::MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < BeamSearchBatchConfig::max_requests_per_batch(); i++) {
     if (!request_completed[i] &&
         beamRequestsInfo[i].max_depth > max_depth_all_requests) {
       /* printf("\treq %i has max_depth=%i. Increasing max_depth_all_requests "
@@ -86,7 +86,7 @@ int BeamSearchBatchConfig::max_beam_depth_all_requests() const {
 
 int BeamSearchBatchConfig::current_depth_all_requests() const {
   int current_depth = 0;
-  for (int i = 0; i < BeamSearchBatchConfig::MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < BeamSearchBatchConfig::max_requests_per_batch(); i++) {
     if (!request_completed[i] &&
         beamRequestsInfo[i].current_depth > current_depth) {
       /* printf("\treq %i has current_depth=%i. Increasing "
@@ -104,8 +104,9 @@ int BeamSearchBatchConfig::current_depth_all_requests() const {
 void BeamSearchBatchConfig::print() const {
   std::cout << "@@@@@@@@@@@@@@ BeamSearchBatchConfig (mode " << get_mode()
             << ") @@@@@@@@@@@@@@" << std::endl;
-  std::cout << "Max number of requests: " << MAX_NUM_REQUESTS << std::endl;
-  std::cout << "Max number of tokens: " << MAX_NUM_TOKENS << std::endl;
+  std::cout << "Max number of requests: " << max_requests_per_batch()
+            << std::endl;
+  std::cout << "Max number of tokens: " << max_tokens_per_batch() << std::endl;
   std::cout << "Number of tokens: " << num_tokens << std::endl;
   std::cout << "Number of requests: " << num_active_requests() << std::endl;
   std::cout << "Beam width: " << beam_width << std::endl;
@@ -113,7 +114,7 @@ void BeamSearchBatchConfig::print() const {
   std::cout << "Current Iterations: " << current_iteration << std::endl;
 
   std::cout << "Per-request info:\n";
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < max_requests_per_batch(); i++) {
     // assert(beamRequestsInfo[i].request_completed == request_completed[i]);
     if (!request_completed[i]) {
       std::cout << "  Request " << i << ":\n";

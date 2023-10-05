@@ -1,4 +1,5 @@
 #include "flexflow/operator_params.h"
+#include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
 #include "flexflow/ops/arg_topk.h"
@@ -26,9 +27,12 @@
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/residual_layer_norm.h"
+#include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/sampling.h"
+#include "flexflow/ops/sigmoid_silu_multi.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
@@ -93,6 +97,12 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((TreeIncMultiHeadSelfAttention *)op)->get_params();
     case OP_LAYERNORM:
       return ((LayerNorm *)op)->get_params();
+    case OP_RESIDUAL_LAYERNORM:
+      return ((ResidualLayerNorm *)op)->get_params();
+    case OP_ADD_BIAS_RESIDUAL_LAYERNORM:
+      return ((AddBiasResidualLayerNorm *)op)->get_params();
+    case OP_SIGMOID_SILU_MULTI:
+      return ((SigmoidSiluMulti *)op)->get_params();
     case OP_REDUCE_SUM:
       return ((Reduce *)op)->get_params();
     case OP_RESHAPE:
@@ -127,6 +137,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((AggregateSpec *)op)->get_params();
     case OP_RMS_NORM:
       return ((RMSNorm *)op)->get_params();
+    case OP_RESIDUAL_RMS_NORM:
+      return ((ResidualRMSNorm *)op)->get_params();
     case OP_ARG_TOPK:
       return ((ArgTopK *)op)->get_params();
     case OP_BEAM_TOPK:

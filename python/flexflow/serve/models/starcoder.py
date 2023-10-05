@@ -19,19 +19,21 @@ import random, torch
 
 class STARCODERConfig:
     def __init__(self, hf_config):
-        self.max_seq_len = 256
-        self.max_num_tokens = 64
+        #self.max_seq_len = 256
+        #self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
         self.dropout_p = hf_config.attn_pdrop
         self.hidden_size = hf_config.n_embd
         self.layer_norm_epsilon = hf_config.layer_norm_epsilon
         self.max_position_embeddings = hf_config.n_positions
-        self.num_attention_heads = hf_config.n_head
         self.num_hidden_layers = hf_config.n_layer
         self.vocab_size = hf_config.vocab_size
         self.intermediate_size = hf_config.n_inner
         self.n_head_kv = 1 if hf_config.multi_query else hf_config.n_head
+        # Standardized FlexFlow num heads fields below
+        self.num_attention_heads = hf_config.n_head
+        self.num_key_value_heads = self.n_head_kv
 
 
 class FlexFlowSTARCODER(FlexFlowModel):
@@ -42,20 +44,20 @@ class FlexFlowSTARCODER(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
-        max_batch_size=1,
-        max_seq_length=256,
-        max_tokens_per_batch=64,
+        #max_batch_size=1,
+        #max_seq_length=256,
+        max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
     ):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
-        self.max_batch_size = max_batch_size
+        #self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.starcoder_config = STARCODERConfig(hf_config)
-        self.starcoder_config.max_seq_length = max_seq_length
-        self.starcoder_config.max_num_tokens = max_tokens_per_batch
+        #self.starcoder_config.max_seq_length = max_seq_length
+        #self.starcoder_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
@@ -89,13 +91,13 @@ class FlexFlowSTARCODER(FlexFlowModel):
             raise ValueError(
                 f"Number of k/v attention heads ({self.starcoder_config.n_head_kv}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
-            
-        self.build_model()
 
-    def build_model(self):
+        self.build_model(max_tokens_per_batch)
+
+    def build_model(self, max_tokens_per_batch):
         ffmodel = FFModel(self.ffconfig)
 
-        tokens_dims = [self.starcoder_config.max_num_tokens, 1]
+        tokens_dims = [max_tokens_per_batch, 1]
         input_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
         position_tensor = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
 
@@ -109,7 +111,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="transformer_wte_weight",
+            name="transformer_wte",
         )
         positional_embedding = ffmodel.embedding(
             position_tensor,
@@ -119,10 +121,8 @@ class FlexFlowSTARCODER(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="transformer_wpe_weight",
+            name="transformer_wpe",
         )
-
-        hidden_states = ffmodel.add(token, positional_embedding)
 
         axes = [
             0,
@@ -130,12 +130,16 @@ class FlexFlowSTARCODER(FlexFlowModel):
 
         for i in range(self.starcoder_config.num_hidden_layers):
             ffmodel.set_transformer_layer_id(i)
-            ln_1 = ffmodel.layer_norm(
-                hidden_states,
+
+            hidden_states, ln_1 = ffmodel.residual_layer_norm(
+                token if i == 0 else residual,
+                positional_embedding if i == 0 else c_proj,
+                None,
+                False,
                 axes,
                 True,
                 self.starcoder_config.layer_norm_epsilon,
-                name=f"layers_{i}_ln_1_weight",
+                name=f"layers_{i}_ln_1",
             )
 
             assert self.mode == InferenceMode.INC_DECODING_MODE
@@ -149,23 +153,25 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 self.starcoder_config.hidden_size
                 // self.starcoder_config.num_attention_heads,
                 0.0,  # dropout
-                True,  # bias
-                False,  # add_bias_kv
+                True,  # qkv_bias
+                False,  # final_bias
                 False,  # add_zero_attn
                 DataType.DT_NONE,  # data_type
                 None,  # kernel initializer
                 False,  # apply_rotary_embedding
-                name=f"layers_{i}_attention_weight",
+                name=f"layers_{i}_attention",
             )
 
-            residual = ffmodel.add(mha, hidden_states)
-
-            l2_norm = ffmodel.layer_norm(
+            residual, l2_norm = ffmodel.residual_layer_norm(
+                hidden_states,
+                mha,
+                None,
+                False,
                 residual,
                 axes,
                 True,
                 self.starcoder_config.layer_norm_epsilon,
-                name=f"layers_{i}_ln_2_weight",
+                name=f"layers_{i}_ln_2",
             )
 
             # mlp
@@ -175,7 +181,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 self.starcoder_config.intermediate_size,
                 ActiMode.AC_MODE_NONE,
                 True,
-                name=f"layers_{i}_mlp_c_fc_weight",
+                name=f"layers_{i}_mlp_c_fc",
             )
             activation = ffmodel.gelu(c_fc, False)
             c_proj = ffmodel.dense(
@@ -183,23 +189,25 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 self.starcoder_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 True,
-                name=f"layers_{i}_mlp_c_proj_weight",
+                name=f"layers_{i}_mlp_c_proj",
             )
-            hidden_states = ffmodel.add(residual, c_proj)
 
-        ln_f = ffmodel.layer_norm(
-            hidden_states,
+        _, ln_f = ffmodel.residual_layer_norm(
+            residual,
+            c_proj,
+            None,
+            False,
             axes,
             True,
             self.starcoder_config.layer_norm_epsilon,
-            name=f"transformer_ln_f_weight",
+            name=f"transformer_ln_f",
         )
         lm_head = ffmodel.dense(
             ln_f,
             self.starcoder_config.vocab_size,
             ActiMode.AC_MODE_NONE,
             False,
-            name="lm_head_weight",
+            name="lm_head",
         )
 
         if self.generation_config.do_sample:
@@ -260,27 +268,3 @@ class FlexFlowSTARCODER(FlexFlowModel):
         model.lm_head.weight.detach().cpu().numpy().tofile(
             os.path.join(dst_folder, "lm_head_weight")
         )
-
-    def get_layers_with_weights(self):
-        layer_names = [
-            "transformer_wte_weight",
-            "transformer_wpe_weight",
-            "transformer_ln_f_weight",
-            "lm_head_weight",
-        ] + [
-            expr
-            for i in range(self.starcoder_config.num_hidden_layers)
-            for expr in (
-                f"layers_{i}_ln_1_weight",
-                f"layers_{i}_attention_weight",
-                f"layers_{i}_ln_2_weight",
-                f"layers_{i}_mlp_c_fc_weight",
-                f"layers_{i}_mlp_c_proj_weight",
-            )
-        ]
-        layers_with_weights = {
-            layer_name: self.ffmodel.get_layer_by_name(layer_name)
-            for layer_name in layer_names
-        }
-
-        return layers_with_weights

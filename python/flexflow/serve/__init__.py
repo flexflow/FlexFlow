@@ -48,19 +48,19 @@ def init(
     fusion: Optional[bool] = None,
 ):
     """
-    Configure FlexFlow Serve and start the runtime. 
-    
+    Configure FlexFlow Serve and start the runtime.
+
     The function takes, alternatively, configs_dict (a positional argument of type dictionary),
     or three mandatory named parameters, plus some additional optional named parameters. When passing
     a configs_dict, no named parameter should be specified, and the dictionary should have keys matching
     at least the mandatory named parameters.
-    
+
     The three mandatory parameters, which cannot be changed after starting the runtime, are:
     - num_gpus: the number of GPUs to reserve for the runtime
     - memory_per_gpu: the amount of memory (in MB) to pre-allocate on each GPU
     - zero_copy_memory_per_node: the amount of zero-copy memory (in MB) to pre-allocate for each node
-    
-    The optional parameters are: 
+
+    The optional parameters are:
     - num_cpus: the number of CPU processors to reserve for the runtime, defaults to 4
     - legion_utility_processors: number of Legion utility threads to create per process, defaults to 1
     - data_parallelism_degree: the degree of parallelization in the data parallel dimension, defaults to 1
@@ -72,7 +72,7 @@ def init(
     - use_8bit_quantization: whether to use 8-bit quantization, defaults to False
     - profiling: whether to enable the FlexFlow profiling mode, defaults to False
     - fusion: whether to enable the FlexFlow operator fusion optimization, defaults to True
-    
+
     The configurations are passed down to the FlexFlow runtime (implemented in C++) via command line arguments.
 
 
@@ -106,7 +106,7 @@ def init(
     :type profiling: Optional[bool], optional
     :param fusion: whether to enable the FlexFlow operator fusion optimization, defaults to True
     :type fusion: Optional[bool], optional
-    
+
     :raises ValueError: this function will raise an exception if the user passes both a configs_dict and some named parameters
     :raises TypeError: this function will raise an exception if the configs_dict is not a dictionary
     :raises ValueError: this function will raise an exception if the mandatory FlexFlow initialization parameters are missing, or are not positive integers: num_gpus, memory_per_gpu, zero_copy_memory_per_node
@@ -141,6 +141,7 @@ def init(
         configs_dict = {
             "num_gpus": num_gpus,
             "memory_per_gpu": memory_per_gpu,
+            "num_cpus": num_cpus,
             "zero_copy_memory_per_node": zero_copy_memory_per_node,
             "legion_utility_processors": legion_utility_processors,
             "data_parallelism_degree": data_parallelism_degree,
@@ -151,7 +152,7 @@ def init(
             "use_4bit_quantization": use_4bit_quantization,
             "use_8bit_quantization": use_8bit_quantization,
             "profiling": profiling,
-            "fusion": fusion
+            "fusion": fusion,
         }
 
     # Check that mandatory configs are present
@@ -174,6 +175,8 @@ def init(
         __check_positive_int(configs_dict, param)
 
     # Set default values
+    if configs_dict.get("num_cpus", None) is None:
+        configs_dict["num_cpus"] = 4
     if configs_dict.get("legion_utility_processors", None) is None:
         configs_dict["legion_utility_processors"] = 8
     if configs_dict.get("data_parallelism_degree", None) is None:
@@ -185,7 +188,7 @@ def init(
     if configs_dict.get("offload", None) is None:
         configs_dict["offload"] = False
     if configs_dict.get("offload_reserve_space_size", None) is None:
-        configs_dict["offload_reserve_space_size"] = 1024 ** 2
+        configs_dict["offload_reserve_space_size"] = 1024**2
     if configs_dict.get("use_4bit_quantization", None) is None:
         configs_dict["use_4bit_quantization"] = False
     if configs_dict.get("use_8bit_quantization", None) is None:

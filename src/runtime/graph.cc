@@ -15,6 +15,7 @@
 #include "flexflow/graph.h"
 #include "flexflow/dominators.h"
 #include "flexflow/ffconst_utils.h"
+#include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/arg_topk.h"
 #include "flexflow/ops/argmax.h"
@@ -39,8 +40,11 @@
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/residual_layer_norm.h"
+#include "flexflow/ops/residual_rms_norm.h"
 #include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/sampling.h"
+#include "flexflow/ops/sigmoid_silu_multi.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/split.h"
@@ -2316,8 +2320,8 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qProjSize);
         sez.serialize(attn->vProjSize);
         sez.serialize(attn->dropout);
-        sez.serialize(attn->bias);
-        sez.serialize(attn->add_bias_kv);
+        sez.serialize(attn->qkv_bias);
+        sez.serialize(attn->final_bias);
         sez.serialize(attn->add_zero_attn);
         sez.serialize(attn->apply_rotary_embedding);
         sez.serialize(attn->scaling_query);
@@ -2340,8 +2344,8 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qProjSize);
         sez.serialize(attn->vProjSize);
         sez.serialize(attn->dropout);
-        sez.serialize(attn->bias);
-        sez.serialize(attn->add_bias_kv);
+        sez.serialize(attn->qkv_bias);
+        sez.serialize(attn->final_bias);
         sez.serialize(attn->add_zero_attn);
         sez.serialize(attn->apply_rotary_embedding);
         sez.serialize(attn->scaling_query);
@@ -2361,8 +2365,8 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qProjSize);
         sez.serialize(attn->vProjSize);
         sez.serialize(attn->dropout);
-        sez.serialize(attn->bias);
-        sez.serialize(attn->add_bias_kv);
+        sez.serialize(attn->qkv_bias);
+        sez.serialize(attn->final_bias);
         sez.serialize(attn->add_zero_attn);
         sez.serialize(attn->apply_rotary_embedding);
         sez.serialize(attn->scaling_query);
@@ -2701,6 +2705,19 @@ void FFModel::deserialize_graph_optimal_view(
         node = LayerNorm::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
+      case OP_RESIDUAL_LAYERNORM: {
+        node = ResidualLayerNorm::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
+        node = AddBiasResidualLayerNorm::deserialize(
+            *this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_SIGMOID_SILU_MULTI: {
+        node = SigmoidSiluMulti::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
       case OP_LINEAR: {
         node = Linear::deserialize(*this, dez, inputs, num_inputs);
         break;
@@ -2742,7 +2759,7 @@ void FFModel::deserialize_graph_optimal_view(
         int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads,
             tensor_parallelism_degree;
         float dropout, scaling_factor;
-        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
+        bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling, offload, position_bias;
         DataType quantization_type;
         size_t id, transformer_layer_id;
@@ -2754,8 +2771,8 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(k_dim);
         dez.deserialize(v_dim);
         dez.deserialize(dropout);
-        dez.deserialize(bias);
-        dez.deserialize(add_bias_kv);
+        dez.deserialize(qkv_bias);
+        dez.deserialize(final_bias);
         dez.deserialize(add_zero_attn);
         dez.deserialize(apply_rotary_embedding);
         dez.deserialize(scaling_query);
@@ -2773,8 +2790,8 @@ void FFModel::deserialize_graph_optimal_view(
         params.kdim = k_dim;
         params.vdim = v_dim;
         params.dropout = dropout;
-        params.bias = bias;
-        params.add_bias_kv = add_bias_kv;
+        params.qkv_bias = qkv_bias;
+        params.final_bias = final_bias;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
         params.apply_rotary_embedding = apply_rotary_embedding;
@@ -2793,7 +2810,7 @@ void FFModel::deserialize_graph_optimal_view(
         assert(num_inputs == 1);
         int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads;
         float dropout, scaling_factor;
-        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
+        bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling, position_bias;
         size_t id, transformer_layer_id;
         dez.deserialize(id);
@@ -2804,8 +2821,8 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(k_dim);
         dez.deserialize(v_dim);
         dez.deserialize(dropout);
-        dez.deserialize(bias);
-        dez.deserialize(add_bias_kv);
+        dez.deserialize(qkv_bias);
+        dez.deserialize(final_bias);
         dez.deserialize(add_zero_attn);
         dez.deserialize(apply_rotary_embedding);
         dez.deserialize(scaling_query);
@@ -2820,8 +2837,8 @@ void FFModel::deserialize_graph_optimal_view(
         params.kdim = k_dim;
         params.vdim = v_dim;
         params.dropout = dropout;
-        params.bias = bias;
-        params.add_bias_kv = add_bias_kv;
+        params.qkv_bias = qkv_bias;
+        params.final_bias = final_bias;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
         params.apply_rotary_embedding = apply_rotary_embedding;
@@ -2839,7 +2856,7 @@ void FFModel::deserialize_graph_optimal_view(
         int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads,
             tensor_parallelism_degree;
         float dropout, scaling_factor;
-        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding,
+        bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling, offload, position_bias;
         DataType quantization_type;
         size_t id, transformer_layer_id;
@@ -2851,8 +2868,8 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(k_dim);
         dez.deserialize(v_dim);
         dez.deserialize(dropout);
-        dez.deserialize(bias);
-        dez.deserialize(add_bias_kv);
+        dez.deserialize(qkv_bias);
+        dez.deserialize(final_bias);
         dez.deserialize(add_zero_attn);
         dez.deserialize(apply_rotary_embedding);
         dez.deserialize(scaling_query);
@@ -2870,8 +2887,8 @@ void FFModel::deserialize_graph_optimal_view(
         params.kdim = k_dim;
         params.vdim = v_dim;
         params.dropout = dropout;
-        params.bias = bias;
-        params.add_bias_kv = add_bias_kv;
+        params.qkv_bias = qkv_bias;
+        params.final_bias = final_bias;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
         params.apply_rotary_embedding = apply_rotary_embedding;
@@ -2952,6 +2969,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_RMS_NORM: {
         node = RMSNorm::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_RESIDUAL_RMS_NORM: {
+        node = ResidualRMSNorm::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_COMBINE: {

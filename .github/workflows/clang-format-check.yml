@@ -11,7 +11,6 @@ jobs:
             exclude: '\.proto$'
           - check: "include"
           - check: "inference"
-          - check: "nmt"
           - check: "python"
           - check: "scripts"
           - check: "tests"

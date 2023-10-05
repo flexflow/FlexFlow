@@ -19,6 +19,13 @@ from flexflow.serve.models import (
     FlexFlowSTARCODER,
     FlexFlowMPT,
 )
+from flexflow.serve.models import (
+    LLAMAConfig,
+    OPTConfig,
+    FalconConfig,
+    STARCODERConfig,
+    MPTConfig,
+)
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from huggingface_hub import HfApi
@@ -52,11 +59,14 @@ class GenerationConfig:
         self.topp = topp
         self.topk = topk
 
+
 class GenerationResult:
     """A class to store the output of a generation request."""
+
     def __init__(self, text: str = None, tokens: list = None):
         self.output_text = text
         self.output_tokens = tokens
+
 
 class LLM:
     """This class creates a LLM (Large-Language Model) object based on a model from HuggingFace"""
@@ -83,16 +93,25 @@ class LLM:
         :type output_file: str, optional
         """
         self.supported_models = {
-            "LlamaForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
-            "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA),
-            "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT),
-            "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon),
-            "GPTBigCodeForCausalLM": (ModelType.STARCODER, FlexFlowSTARCODER),
-            "MPTForCausalLM": (ModelType.MPT, FlexFlowMPT),
+            "LlamaForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA, LLAMAConfig),
+            "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA, LLAMAConfig),
+            "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT, OPTConfig),
+            "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon, FalconConfig),
+            "FalconForCausalLM": (ModelType.FALCON, FlexFlowFalcon, FalconConfig),
+            "GPTBigCodeForCausalLM": (
+                ModelType.STARCODER,
+                FlexFlowSTARCODER,
+                STARCODERConfig,
+            ),
+            "MPTForCausalLM": (ModelType.MPT, FlexFlowMPT, MPTConfig),
         }
         self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
         self.model_name = self.hf_config._name_or_path
-        self.model_type, self.model_class = self.__get_ff_model_type()
+        (
+            self.model_type,
+            self.model_class,
+            self.config_class,
+        ) = self.__get_ff_model_type()
         self.data_type = data_type
         assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT
         self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
@@ -124,21 +143,27 @@ class LLM:
 
     def __get_revision_hashes(self, model_name: str, weights: bool):
         ff_revision = None
-        ff_revision_file = os.path.join(self.weights_path, "rev_sha.txt") if weights else os.path.join(self.tokenizer_path, "rev_sha.txt")
+        ff_revision_file = (
+            os.path.join(self.weights_path, "rev_sha.txt")
+            if weights
+            else os.path.join(self.tokenizer_path, "rev_sha.txt")
+        )
         if os.path.exists(ff_revision_file):
             ff_revision = "".join(open(ff_revision_file).read().split())
-        
+
         if os.path.exists(model_name) and os.path.isdir(model_name):
             # Local model
             files = os.listdir(model_name)
-            state = files + [os.path.getmtime(os.path.join(model_name, f)) for f in files]
-            latest_revision = hashlib.md5(str(state).encode('utf-8')).hexdigest() 
+            state = files + [
+                os.path.getmtime(os.path.join(model_name, f)) for f in files
+            ]
+            latest_revision = hashlib.md5(str(state).encode("utf-8")).hexdigest()
         else:
             # Remote HuggingFace model
             hf_api = HfApi()
             latest_revision = hf_api.model_info(self.model_name).sha
         return ff_revision, ff_revision_file, latest_revision
-    
+
     def download_hf_weights_if_needed(self):
         """Check in the folder specified by the cache_path whether the LLM's model weights are available and up to date.
         If not, or if the refresh_cache parameter is set to True, download new weights.
@@ -168,7 +193,9 @@ class LLM:
         os.makedirs(self.weights_path, exist_ok=True)
         print(f"Creating directory {self.weights_path} (if it doesn't exist)...")
 
-        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(self.model_name, weights=True)
+        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
+            self.model_name, weights=True
+        )
 
         # Download if needed
         if ff_revision != latest_revision:
@@ -179,9 +206,13 @@ class LLM:
                 )
             else:
                 # Remote model
-                print(f"'{self.model_name}' local model weights were updated! Converting new weights now...")
+                print(
+                    f"'{self.model_name}' local model weights were updated! Converting new weights now..."
+                )
             # Download model from HuggingFace, or load it from the local folder
-            hf_model = AutoModelForCausalLM.from_pretrained(self.model_name, trust_remote_code=True)
+            hf_model = AutoModelForCausalLM.from_pretrained(
+                self.model_name, trust_remote_code=True
+            )
             # Print log message to notify user download of model has finished
             if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
                 print("Done downloading HF weights. Converting them now...")
@@ -217,15 +248,21 @@ class LLM:
             os.makedirs(self.tokenizer_path, exist_ok=True)
 
         # Get local revision SHA, check if it matches latest one on huggingface
-        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(self.model_name, weights=False)
+        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
+            self.model_name, weights=False
+        )
 
         if ff_revision != latest_revision:
             if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
                 # Local model
-                print(f"'{self.model_name}' tokenizer not found in cache or outdated. Downloading from huggingface.co ...")
+                print(
+                    f"'{self.model_name}' tokenizer not found in cache or outdated. Downloading from huggingface.co ..."
+                )
             else:
                 # Remote model
-                print(f"'{self.model_name}' local tokenizer was updated! Saving new tokenizer now...")
+                print(
+                    f"'{self.model_name}' local tokenizer was updated! Saving new tokenizer now..."
+                )
             # Download tokenizer from HuggingFace, or load it from the local folder
             if self.model_type == ModelType.LLAMA:
                 hf_tokenizer = LlamaTokenizer.from_pretrained(
@@ -242,7 +279,7 @@ class LLM:
             # Save new revision hash to file
             with open(ff_revision_file, "w+") as f:
                 f.write(latest_revision)
-            
+
         else:
             print(f"Loading '{self.model_name}' tokenizer from the cache...")
 
@@ -252,35 +289,23 @@ class LLM:
         self.download_hf_weights_if_needed()
 
         # Create file data loader, load weights into tensors
-        if (
-            self.model_type == ModelType.FALCON
-            or self.model_type == ModelType.STARCODER
-        ):
-            n_q_heads = self.hf_config.num_attention_heads
-            if "n_head_kv" in self.hf_config.__dict__:
-                n_kv_heads = self.hf_config.n_head_kv
-            else:
-                n_kv_heads = 1
-        else:
-            n_q_heads = n_kv_heads = self.hf_config.num_attention_heads
+        model_configs = self.config_class(self.hf_config)
+
         self.fileloader = FileDataLoader(
             self.weights_path,
-            n_q_heads,
-            n_kv_heads,
-            self.hf_config.hidden_size,
-            self.hf_config.hidden_size // n_q_heads,
+            model_configs.num_attention_heads,
+            model_configs.num_key_value_heads,
+            model_configs.hidden_size,
+            model_configs.hidden_size // model_configs.num_attention_heads,
             self.ffconfig.tensor_parallelism_degree,
         )
 
-        model_layers_with_weights = self.model.get_layers_with_weights()
-        self.fileloader.load_weights(
-            self.model.ffmodel, model_layers_with_weights, self.data_type
-        )
+        self.fileloader.load_weights(self.model.ffmodel, self.data_type)
 
     def compile(
         self,
         generation_config: GenerationConfig = GenerationConfig(),
-        max_batch_size: int = 1,
+        max_requests_per_batch: int = 1,
         max_seq_length: int = 256,
         max_tokens_per_batch: int = 64,
         model_specific_data_parallelism_degree: int = None,
@@ -294,8 +319,8 @@ class LLM:
         :type mode: InferenceMode, optional
         :param generation_config: The GenerationConfig object with the configurations to use for sampling, defaults to GenerationConfig()
         :type generation_config: GenerationConfig, optional
-        :param max_batch_size: The maximum batch size to allow, defaults to 1
-        :type max_batch_size: int, optional
+        :param max_requests_per_batch: The maximum batch size to allow, defaults to 1
+        :type max_requests_per_batch: int, optional
         :param max_seq_length: The maximum sequence length to allow per batch, defaults to 256
         :type max_seq_length: int, optional
         :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 64
@@ -309,9 +334,9 @@ class LLM:
         :param ssms: The SSMs to use when operating in speculative inference mode, defaults to []
         :type ssms: list, optional
         """
-        self.max_batch_size = max_batch_size
-        self.max_seq_length = max_seq_length
-        self.max_tokens_per_batch = max_tokens_per_batch
+        #self.max_requests_per_batch = max_requests_per_batch
+        #self.max_seq_length = max_seq_length
+        #self.max_tokens_per_batch = max_tokens_per_batch
         self.ssms = ssms
         self.generation_config = GenerationConfig()
         self.ffconfig = FFConfig()
@@ -338,6 +363,12 @@ class LLM:
                 model_specific_pipeline_parallelism_degree
             )
 
+        # Create request manager and set serving configuration
+        self.rm = RequestManager()
+        self.rm.set_max_requests_per_batch(max_requests_per_batch)
+        self.rm.set_max_tokens_per_batch(max_tokens_per_batch)
+        self.rm.set_max_sequence_length(max_seq_length)
+
         # Instantiate the relevant model
         self.model = self.model_class(
             mode,
@@ -345,9 +376,7 @@ class LLM:
             self.ffconfig,
             self.hf_config,
             self.data_type,
-            max_batch_size,
-            max_seq_length,
-            max_tokens_per_batch,
+            max_tokens_per_batch
         )
 
         # Create inference manager
@@ -358,11 +387,16 @@ class LLM:
         self.__load_hf_weights()
         self.download_hf_tokenizer_if_needed()
 
-        # Create request manager
-        self.rm = RequestManager()
-        bos_token_id = -1 if self.hf_config.bos_token_id is None else self.hf_config.bos_token_id
-        eos_token_id = -1 if self.hf_config.eos_token_id is None else self.hf_config.eos_token_id
-        self.rm.register_tokenizer(self.model_type, bos_token_id, eos_token_id, self.tokenizer_path)
+        # Create tokenizer (this must be done after we have downloaded the tokenizer
+        bos_token_id = (
+            -1 if self.hf_config.bos_token_id is None else self.hf_config.bos_token_id
+        )
+        eos_token_id = (
+            -1 if self.hf_config.eos_token_id is None else self.hf_config.eos_token_id
+        )
+        self.rm.register_tokenizer(
+            self.model_type, bos_token_id, eos_token_id, self.tokenizer_path
+        )
         self.rm.register_output_filepath(self.output_file)
 
         self.im.init_operators_inference(self.model.ffmodel)
@@ -385,7 +419,9 @@ class LLM:
         elif type(prompts) == list:
             if len(prompts) == 0:
                 return []
-            return [self.model.ffmodel.generate(prompt, max_length) for prompt in prompts]
+            return [
+                self.model.ffmodel.generate(prompt, max_length) for prompt in prompts
+            ]
         else:
             assert False, "Please pass a non-empty string or list of strings"
 
@@ -425,7 +461,7 @@ class SSM(LLM):
     def compile(
         self,
         generation_config: GenerationConfig = GenerationConfig(),
-        max_batch_size: int = 1,
+        max_requests_per_batch: int = 1,
         max_seq_length: int = 256,
         max_tokens_per_batch: int = 64,
         model_specific_data_parallelism_degree: int = 1,
@@ -439,8 +475,8 @@ class SSM(LLM):
         :type mode: InferenceMode, optional
         :param generation_config: The GenerationConfig object with the configurations to use for sampling, defaults to GenerationConfig()
         :type generation_config: GenerationConfig, optional
-        :param max_batch_size: The maximum batch size to allow, defaults to 1
-        :type max_batch_size: int, optional
+        :param max_requests_per_batch: The maximum batch size to allow, defaults to 1
+        :type max_requests_per_batch: int, optional
         :param max_seq_length: The maximum sequence length to allow per batch, defaults to 256
         :type max_seq_length: int, optional
         :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 64
@@ -456,7 +492,7 @@ class SSM(LLM):
         """
         super().compile(
             generation_config,
-            max_batch_size,
+            max_requests_per_batch,
             max_seq_length,
             max_tokens_per_batch,
             model_specific_data_parallelism_degree,

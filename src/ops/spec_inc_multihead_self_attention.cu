@@ -191,7 +191,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                     num_tokens,
                                     m->num_q_heads,
                                     m->num_kv_heads,
-                                    BatchConfig::MAX_SEQ_LENGTH,
+                                    BatchConfig::max_sequence_length(),
                                     BeamSearchBatchConfig::MAX_BEAM_WIDTH,
                                     /*root*/ curr_depth == 0);
   }
@@ -241,16 +241,17 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   //     (m->qProjSize + m->kProjSize + m->vProjSize) * num_tokens;
   int q_block_size = m->qProjSize * num_tokens;
 
-  int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;
+  int kt_block_size = m->kProjSize * BatchConfig::max_sequence_length();
   int kt_req_block_size = kt_block_size * m->num_kv_heads;
-  int vt_block_size = m->vProjSize * BatchConfig::MAX_SEQ_LENGTH;
+  int vt_block_size = m->vProjSize * BatchConfig::max_sequence_length();
   int vt_req_block_size = vt_block_size * m->num_kv_heads;
   assert(m->qProjSize == m->kProjSize);
 
-  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
     }
+
     for (int sub_req_id = 0; sub_req_id < bc->sub_requests[i]; sub_req_id++) {
 
       // int num_new_tokens = bc->num_processing_tokens[i];
@@ -259,6 +260,11 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
       int total_tokens = bc->requestsInfo[i].token_start_offset +
                          bc->requestsInfo[i].num_tokens_in_batch;
+
+      if (num_new_tokens <= 0) {
+        continue;
+      }
+
       // Compute (QK^T/sqrt(d_k))
       int m_ = num_new_tokens;
       int n = total_tokens;
@@ -531,7 +537,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       tokens_prev_requests_squares += num_new_tokens * total_tokens;
     }
   }
-  if (*m->bias && shard_id == 0) {
+  if (*m->final_bias && shard_id == 0) {
     int parallelism = m->oProjSize * num_tokens;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
                           m->kProjSize * m->global_num_kv_heads +
@@ -543,7 +549,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
         output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
   }
 
-  assert(tokens_previous_requests == num_tokens);
+  // assert(tokens_previous_requests == num_tokens);
 }
 
 template <typename DT>
@@ -558,23 +564,24 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // here because we need postion info in infernece 1
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
-                  bc->MAX_NUM_TOKENS * sizeof(BatchConfig::PerTokenInfo),
+                  bc->num_active_tokens() * sizeof(BatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
   cudaMemcpyAsync(m->request_infos,
                   &(bc->requestsInfo),
-                  bc->MAX_NUM_REQUESTS * sizeof(BatchConfig::PerRequestInfo),
+                  bc->max_requests_per_batch() *
+                      sizeof(BatchConfig::PerRequestInfo),
                   cudaMemcpyHostToDevice,
                   stream);
   cudaMemcpyAsync(m->beam_token_infos,
                   &(bc->beamTokenInfo),
-                  bc->MAX_NUM_TOKENS * bc->MAX_BEAM_WIDTH *
+                  bc->num_active_tokens() * bc->MAX_BEAM_WIDTH *
                       sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
   cudaMemcpyAsync(m->beam_request_infos,
                   &(bc->beamRequestsInfo),
-                  bc->MAX_NUM_REQUESTS *
+                  bc->max_requests_per_batch() *
                       sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo),
                   cudaMemcpyHostToDevice,
                   stream);
@@ -610,7 +617,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorR const &bias) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->bias;
+  bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -684,11 +691,11 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     attn->vProjSize,
                                     attn->oProjSize,
                                     attn->apply_rotary_embedding,
-                                    attn->bias,
+                                    attn->qkv_bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
                                     attn->position_bias,
-                                    attn->add_bias_kv,
+                                    attn->final_bias,
                                     attn->scaling_factor,
                                     weight,
                                     gpu_mem_allocator,
@@ -705,10 +712,12 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    size_t beam_tokeninfo_size = BeamSearchBatchConfig::MAX_NUM_TOKENS *
-                                 BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-    size_t requestinfo_size = BeamSearchBatchConfig::MAX_NUM_REQUESTS;
-    size_t beam_requestinfo_size = BeamSearchBatchConfig::MAX_NUM_REQUESTS;
+    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
+    size_t beam_tokeninfo_size =
+        max_tokens_per_batch * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+    size_t requestinfo_size = BeamSearchBatchConfig::max_requests_per_batch();
+    size_t beam_requestinfo_size =
+        BeamSearchBatchConfig::max_requests_per_batch();
     size_t total_size =
         requestinfo_size * sizeof(BatchConfig::PerRequestInfo) +
         beam_tokeninfo_size *

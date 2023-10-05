@@ -130,6 +130,7 @@ Tensor FFModel::layer_norm(const Tensor input,
                                                  0,
                                                  true /*create_grad*/);
   if (num_weights > 0) {
+    assert(elementwise_affine);
     int numdims = axes.size();
     int dims[numdims];
     for (int i = 0; i < numdims; i++) {
@@ -238,13 +239,13 @@ LayerNorm::LayerNorm(FFModel &model,
   effective_batch_size = (inputs[0]->get_volume() / num_replicas) / M;
   assert(use_bias == (numWeights == 2));
   if (numWeights > 0 && allocate_weights) {
+    assert(elementwise_affine);
     ParallelTensorShape beta_gamma_shape = _input->get_shape();
     for (int i = axes.size(); i < beta_gamma_shape.num_dims - 1; i++) {
       beta_gamma_shape.dims[i].size = 1;
     }
     int seed = std::rand();
     Initializer *gamma_initializer = new UniformInitializer(seed, 1.0f, 1.0f);
-    Initializer *beta_initializer = new UniformInitializer(seed, 0.0f, 0.0f);
     weights[0] = model.create_parallel_weight_legion_ordering(
         beta_gamma_shape.num_dims, // axes.size(),
         beta_gamma_shape.dims,
@@ -253,14 +254,18 @@ LayerNorm::LayerNorm(FFModel &model,
         true /*create_grad*/,
         gamma_initializer,
         CHOSEN_SYNC_TYPE);
-    weights[1] = model.create_parallel_weight_legion_ordering(
-        beta_gamma_shape.num_dims, //.size(),
-        beta_gamma_shape.dims,
-        _input->data_type,
-        NULL /*owner_op*/,
-        true /*create_grad*/,
-        beta_initializer,
-        CHOSEN_SYNC_TYPE);
+    if (numWeights == 2) {
+      assert(use_bias);
+      Initializer *beta_initializer = new UniformInitializer(seed, 0.0f, 0.0f);
+      weights[1] = model.create_parallel_weight_legion_ordering(
+          beta_gamma_shape.num_dims, //.size(),
+          beta_gamma_shape.dims,
+          _input->data_type,
+          NULL /*owner_op*/,
+          true /*create_grad*/,
+          beta_initializer,
+          CHOSEN_SYNC_TYPE);
+    }
   }
 }
 

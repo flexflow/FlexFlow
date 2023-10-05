@@ -54,8 +54,8 @@ public:
                   << std::endl;
         assert(false);
       }
-      max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
-      max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
+      // max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
+      // max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
       max_beam_width = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
       max_beam_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
     }
@@ -79,13 +79,14 @@ public:
       std::cout << "\tword_embed_proj_dim: " << word_embed_proj_dim
                 << std::endl;
 
-      std::cout << "\tmax_seq_len: " << max_seq_len << std::endl;
-      std::cout << "\tmax_num_tokens: " << max_num_tokens << std::endl;
+      // std::cout << "\tmax_seq_len: " << max_seq_len << std::endl;
+      // std::cout << "\tmax_num_tokens: " << max_num_tokens << std::endl;
       std::cout << "\tmax_beam_width: " << max_beam_width << std::endl;
       std::cout << "\tmax_beam_depth: " << max_beam_depth << std::endl;
     }
 
-    int max_seq_len, max_num_tokens, max_beam_width, max_beam_depth;
+    // int max_seq_len, max_num_tokens;
+    int max_beam_width, max_beam_depth;
     bool do_layer_norm_before, enable_bias, layer_norm_elementwise_affine;
     float dropout;
     int ffn_dim, hidden_size, max_position_embeddings, num_attention_heads,

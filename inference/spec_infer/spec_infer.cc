@@ -58,7 +58,10 @@ void parse_input_args(char **argv,
                       FilePaths &paths,
                       ModelNames &model_names,
                       bool &use_full_precision,
-                      bool &verbose) {
+                      bool &verbose,
+                      int &max_requests_per_batch,
+                      int &max_tokens_per_batch,
+                      int &max_sequence_length) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -99,6 +102,18 @@ void parse_input_args(char **argv,
     // verbose logging to stdout
     if (!strcmp(argv[i], "--verbose")) {
       verbose = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-requests-per-batch")) {
+      max_requests_per_batch = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-tokens-per-batch")) {
+      max_tokens_per_batch = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-sequence-length")) {
+      max_sequence_length = std::stoi(argv[++i]);
       continue;
     }
   }
@@ -163,7 +178,7 @@ void get_model_meta(FilePaths &file_paths,
     } else if (str == "OPTForCausalLM") {
       model_metadata.llm_model_type = ModelType::OPT;
       break;
-    } else if (str == "RWForCausalLM") {
+    } else if (str == "RWForCausalLM" || str == "FalconForCausalLM") {
       model_metadata.llm_model_type = ModelType::FALCON;
       break;
     } else if (str == "MPTForCausalLM") {
@@ -265,6 +280,9 @@ void FlexFlow::top_level_task(Task const *task,
   ModelMeta model_metadata;
   bool use_full_precision = false;
   bool verbose = false;
+  int max_requests_per_batch = 16;
+  int max_tokens_per_batch = 256;
+  int max_sequence_length = 1024;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -274,7 +292,10 @@ void FlexFlow::top_level_task(Task const *task,
                    file_paths,
                    model_metadata.model_names,
                    use_full_precision,
-                   verbose);
+                   verbose,
+                   max_requests_per_batch,
+                   max_tokens_per_batch,
+                   max_sequence_length);
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
 
@@ -286,6 +307,9 @@ void FlexFlow::top_level_task(Task const *task,
   GenerationConfig generationConfig;
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestManager *rm = RequestManager::get_request_manager();
+  rm->set_max_requests_per_batch(max_requests_per_batch);
+  rm->set_max_tokens_per_batch(max_tokens_per_batch);
+  rm->set_max_sequence_length(max_sequence_length);
   rm->register_tokenizer(model_metadata.llm_model_type,
                          model_metadata.bos_token_id,
                          model_metadata.eos_token_id,
@@ -384,12 +408,16 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
+
+    std::vector<std::string> prompts;
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      tree_model.generate(text, 128 /*max_sequence_length*/);
+      prompts.push_back(text);
+      // tree_model.generate(text, 128 /*max_sequence_length*/);
     }
+    tree_model.generate(prompts, 128 /*max_sequence_length*/);
   }
 
   // Execution fence

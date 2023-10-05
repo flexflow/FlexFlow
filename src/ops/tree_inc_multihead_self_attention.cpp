@@ -104,7 +104,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
         m->num_active_tokens, // number of active tokens in previous batch
         m->num_q_heads,
         m->num_kv_heads,
-        BatchConfig::MAX_SEQ_LENGTH);
+        BatchConfig::max_sequence_length());
   }
 }
 
@@ -195,13 +195,13 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   // int qkv_block_size =
   //     (m->qProjSize + m->kProjSize + m->vProjSize) * bc->num_active_tokens();
   int q_block_size = m->qProjSize * bc->num_active_tokens();
-  int kt_block_size = m->kProjSize * BatchConfig::MAX_SEQ_LENGTH;
+  int kt_block_size = m->kProjSize * BatchConfig::max_sequence_length();
   int kt_req_block_size = kt_block_size * m->num_kv_heads;
-  int vt_block_size = m->vProjSize * BatchConfig::MAX_SEQ_LENGTH;
+  int vt_block_size = m->vProjSize * BatchConfig::max_sequence_length();
   int vt_req_block_size = vt_block_size * m->num_kv_heads;
   assert(m->qProjSize == m->kProjSize);
 
-  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
     }
@@ -241,7 +241,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
             m->num_active_tokens,      // total_tokens_in_batch
             m->num_q_heads,
             m->num_kv_heads,
-            BatchConfig::MAX_SEQ_LENGTH);
+            BatchConfig::max_sequence_length());
       }
 
       // bc->token_last_available_idx[i] + 1;
@@ -500,7 +500,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
     // check that we have finished all tokens of the request
     assert(last_token_idx_of_the_request + 1 == processed_tokens_in_batch);
   }
-  if (*m->bias && shard_id == 0) {
+  if (*m->final_bias && shard_id == 0) {
     int parallelism = m->oProjSize * processed_tokens_in_batch;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
                           m->kProjSize * m->global_num_kv_heads +
@@ -570,7 +570,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   }
   checkCUDA(hipMemcpyAsync(m->token_infos,
                            &(bc->tokensInfo),
-                           bc->MAX_NUM_TOKENS *
+                           bc->num_active_tokens() *
                                sizeof(TreeVerifyBatchConfig::PerTokenInfo),
                            hipMemcpyHostToDevice,
                            stream));
@@ -608,7 +608,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorR const &bias) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->bias;
+  bool use_bias = *m->qkv_bias || *m->final_bias;
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
@@ -692,11 +692,11 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     attn->vProjSize,
                                     attn->oProjSize,
                                     attn->apply_rotary_embedding,
-                                    attn->bias,
+                                    attn->qkv_bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
                                     attn->position_bias,
-                                    attn->add_bias_kv,
+                                    attn->final_bias,
                                     attn->scaling_factor,
                                     weight,
                                     gpu_mem_allocator,
@@ -714,7 +714,8 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    size_t committed_tokeninfo_size = TreeVerifyBatchConfig::MAX_NUM_TOKENS;
+    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
+    size_t committed_tokeninfo_size = max_tokens_per_batch;
     size_t total_size = committed_tokeninfo_size *
                         sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);
     if (offload) {

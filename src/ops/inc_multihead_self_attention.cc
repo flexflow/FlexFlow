@@ -64,8 +64,8 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                              int kdim,
                                              int vdim,
                                              float dropout,
-                                             bool bias,
-                                             bool add_bias_kv,
+                                             bool qkv_bias,
+                                             bool final_bias,
                                              bool add_zero_attn,
                                              DataType data_type,
                                              Initializer *kernel_initializer,
@@ -82,8 +82,8 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                        kdim,
                                        vdim,
                                        dropout,
-                                       bias,
-                                       add_bias_kv,
+                                       qkv_bias,
+                                       final_bias,
                                        add_zero_attn,
                                        data_type,
                                        kernel_initializer,
@@ -102,8 +102,8 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
                                               int kdim,
                                               int vdim,
                                               float dropout,
-                                              bool bias,
-                                              bool add_bias_kv,
+                                              bool qkv_bias,
+                                              bool final_bias,
                                               bool add_zero_attn,
                                               DataType data_type,
                                               Initializer *kernel_initializer,
@@ -119,7 +119,7 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
   DataType quantization_type = cpu_offload ? config.quantization_type : DT_NONE;
   bool offload = cpu_offload;
   Layer *li = nullptr;
-  int weight_num = bias ? 2 : 1;
+  int weight_num = (qkv_bias || final_bias) ? 2 : 1;
   if (data_type != input->data_type) {
     Tensor casted_input = cast(input, data_type, "type cast for IncMHA");
     li = new Layer(this,
@@ -178,10 +178,12 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
         kernel_initializer,
         CHOSEN_SYNC_TYPE);
   }
-  if (bias) {
+  if (qkv_bias || final_bias) {
     // q, k, v, o
-    int dims[1] = {qProjSize * num_q_heads +
-                   (kProjSize + vProjSize) * num_kv_heads + oProjSize};
+    int qkv_bias_size =
+        qProjSize * num_q_heads + (kProjSize + vProjSize) * num_kv_heads;
+    int dims[1] = {(qkv_bias ? qkv_bias_size : 0) +
+                   (final_bias ? oProjSize : 0)};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
                                                    data_type,
@@ -196,8 +198,8 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
   li->add_int_property("num_kv_heads", num_kv_heads);
   li->add_int_property("kdim", kdim);
   li->add_int_property("vdim", vdim);
-  li->add_int_property("bias", bias);
-  li->add_int_property("add_bias_kv", add_bias_kv);
+  li->add_int_property("qkv_bias", qkv_bias);
+  li->add_int_property("final_bias", final_bias);
   li->add_int_property("add_zero_attn", add_zero_attn);
   li->add_float_property("dropout", dropout);
   li->add_int_property("apply_rotary_embedding", apply_rotary_embedding);
@@ -231,10 +233,10 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
   int vdim = value;
   float dropout;
   layer->get_float_property("dropout", dropout);
-  layer->get_int_property("bias", value);
-  bool bias = (bool)value;
-  layer->get_int_property("add_bias_kv", value);
-  bool add_bias_kv = (bool)value;
+  layer->get_int_property("qkv_bias", value);
+  bool qkv_bias = (bool)value;
+  layer->get_int_property("final_bias", value);
+  bool final_bias = (bool)value;
   layer->get_int_property("add_zero_attn", value);
   bool add_zero_attn = (bool)value;
   layer->get_int_property("apply_rotary_embedding", value);
@@ -264,8 +266,8 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
                                        kdim,
                                        vdim,
                                        dropout,
-                                       bias,
-                                       add_bias_kv,
+                                       qkv_bias,
+                                       final_bias,
                                        add_zero_attn,
                                        apply_rotary_embedding,
                                        scaling_query,
@@ -289,8 +291,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     int _kdim,
     int _vdim,
     float _dropout,
-    bool _bias,
-    bool _add_bias_kv,
+    bool _qkv_bias,
+    bool _final_bias,
     bool _add_zero_attn,
     bool _apply_rotary_embedding,
     bool _scaling_query,
@@ -308,11 +310,12 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
          _input->data_type,
          name,
          1 /*inputs*/,
-         (_bias ? 2 : 1), /*weights*/
+         (_qkv_bias || _final_bias ? 2 : 1), /*weights*/
          1 /*outputs*/,
          _input),
       num_q_heads(_num_q_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
-      bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      qkv_bias(_qkv_bias), final_bias(_final_bias),
+      add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
@@ -365,11 +368,12 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
         true /*create_grad*/,
         initializer,
         CHOSEN_SYNC_TYPE);
-    if (bias) {
+    if (qkv_bias || final_bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size = qProjSize * num_q_heads +
-                                (kProjSize + vProjSize) * num_kv_heads +
-                                oProjSize;
+      int qkv_bias_size =
+          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_kv_heads;
+      bias_shape.dims[0].size =
+          (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -401,8 +405,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     int _kdim,
     int _vdim,
     float _dropout,
-    bool _bias,
-    bool _add_bias_kv,
+    bool _qkv_bias,
+    bool _final_bias,
     bool _add_zero_attn,
     bool _apply_rotary_embedding,
     bool _scaling_query,
@@ -420,12 +424,13 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
          _input->data_type,
          name,
          1 /*inputs*/,
-         (_bias ? 2 : 1), /*weights*/
+         (_qkv_bias || _final_bias ? 2 : 1), /*weights*/
          1 /*outputs*/,
          _input,
          _weight),
       num_q_heads(_num_q_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
-      bias(_bias), add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      qkv_bias(_qkv_bias), final_bias(_final_bias),
+      add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
@@ -477,11 +482,12 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
         true /*create_grad*/,
         initializer,
         CHOSEN_SYNC_TYPE);
-    if (bias) {
+    if (qkv_bias || final_bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      bias_shape.dims[0].size = qProjSize * num_q_heads +
-                                (kProjSize + vProjSize) * num_kv_heads +
-                                oProjSize;
+      int qkv_bias_size =
+          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_kv_heads;
+      bias_shape.dims[0].size =
+          (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -520,8 +526,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 other.qProjSize,
                                 other.vProjSize,
                                 other.dropout,
-                                other.bias,
-                                other.add_bias_kv,
+                                other.qkv_bias,
+                                other.final_bias,
                                 other.add_zero_attn,
                                 other.apply_rotary_embedding,
                                 other.scaling_query,
@@ -549,8 +555,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 params.kdim,
                                 params.vdim,
                                 params.dropout,
-                                params.bias,
-                                params.add_bias_kv,
+                                params.qkv_bias,
+                                params.final_bias,
                                 params.add_zero_attn,
                                 params.apply_rotary_embedding,
                                 params.scaling_query,
@@ -779,7 +785,7 @@ FutureMap IncMultiHeadSelfAttention::inference(
                                                     batch_outputs[0]->region));
   launcher.add_field(idx++, FID_DATA);
 
-  if (bias) {
+  if (qkv_bias || final_bias) {
     launcher.add_region_requirement(
         RegionRequirement(weights[1]->part,
                           0 /*projection id*/,
@@ -817,7 +823,8 @@ void IncMultiHeadSelfAttention::inference_task(
   IncMultiHeadSelfAttentionMeta const *m =
       *((IncMultiHeadSelfAttentionMeta **)task->local_args);
 
-  assert((*m->bias ? regions.size() == 4 : regions.size() == 3));
+  assert(((*m->qkv_bias || *m->final_bias) ? regions.size() == 4
+                                           : regions.size() == 3));
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -826,7 +833,7 @@ void IncMultiHeadSelfAttention::inference_task(
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   GenericTensorAccessorR biases;
-  if (*m->bias) {
+  if (*m->qkv_bias || *m->final_bias) {
     biases = helperGetGenericTensorAccessorRO(m->weight_type[1],
                                               regions[3],
                                               task->regions[3],
@@ -930,11 +937,13 @@ void IncMultiHeadSelfAttention::inference_task(
   // load weight manually because Torch can't easily read a tensor serialized in
   // column-major order.
 
-  // printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i, "
+  // printf("m->kProjSize: %i, BatchConfig::max_tokens_per_batch(): %i, "
   //     "bc->num_active_tokens(): %i, num_q_heads: %lli,
-  //     BatchConfig::MAX_NUM_REQUESTS: %i, " "bc->num_active_requests(): %i\n",
-  //     m->kProjSize, BatchConfig::MAX_NUM_TOKENS, bc->num_active_tokens(),
-  //     num_q_heads, BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests());
+  //     BatchConfig::max_requests_per_batch(): %i, "
+  //     "bc->num_active_requests(): %i\n", m->kProjSize,
+  //     BatchConfig::max_tokens_per_batch(), bc->num_active_tokens(),
+  //     num_q_heads, BatchConfig::max_requests_per_batch(),
+  //     bc->num_active_requests());
   // for (int t=0; t < bc->num_active_tokens(); t++) {
   //   printf("token %i has request_index: %li and token_position: %li\n",
   //   t, bc->token2ids.token_indexes[t].request_index,
@@ -1022,7 +1031,7 @@ void IncMultiHeadSelfAttention::inference_task(
   //  ----------------------- Loading CUDA results for this step ---------------
   float *QKVProjArray_cpu = download_tensor<float>(
       m->devQKVProjArray,
-      BatchConfig::MAX_NUM_TOKENS * proj_sum * m->num_q_heads);
+      BatchConfig::max_tokens_per_batch() * proj_sum * m->num_q_heads);
   assert(QKVProjArray_cpu != nullptr);
 
   std::vector<int> QKVProjArray_converted_shape = {
@@ -1082,21 +1091,25 @@ void IncMultiHeadSelfAttention::inference_task(
   for (size_t h = 0; h < num_q_heads; h++) {
     for (size_t t = 0; t < bc->num_active_tokens(); t++) {
       for (size_t d = 0; d < m->kProjSize; d++) {
-        size_t kcache_idx =
-            d * MAX_SEQ_LEN * m->num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-            bc->tokensInfo[t].abs_depth_in_request * m->num_q_heads *
-                BatchConfig::MAX_NUM_REQUESTS +
-            h * BatchConfig::MAX_NUM_REQUESTS + bc->tokensInfo[t].request_index;
+        size_t kcache_idx = d * MAX_SEQ_LEN * m->num_q_heads *
+                                BatchConfig::max_requests_per_batch() +
+                            bc->tokensInfo[t].abs_depth_in_request *
+                                m->num_q_heads *
+                                BatchConfig::max_requests_per_batch() +
+                            h * BatchConfig::max_requests_per_batch() +
+                            bc->tokensInfo[t].request_index;
         m->kcache[kcache_idx] =
             qkv_projs.index({(int64_t)d, (int64_t)t, 1, (int64_t)h})
                 .item<float>();
       }
       for (size_t d = 0; d < m->vProjSize; d++) {
-        size_t vcache_idx =
-            d * MAX_SEQ_LEN * m->num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-            bc->tokensInfo[t].abs_depth_in_request * m->num_q_heads *
-                BatchConfig::MAX_NUM_REQUESTS +
-            h * BatchConfig::MAX_NUM_REQUESTS + bc->tokensInfo[t].request_index;
+        size_t vcache_idx = d * MAX_SEQ_LEN * m->num_q_heads *
+                                BatchConfig::max_requests_per_batch() +
+                            bc->tokensInfo[t].abs_depth_in_request *
+                                m->num_q_heads *
+                                BatchConfig::max_requests_per_batch() +
+                            h * BatchConfig::max_requests_per_batch() +
+                            bc->tokensInfo[t].request_index;
         m->vcache[vcache_idx] =
             qkv_projs.index({(int64_t)d, (int64_t)t, 2, (int64_t)h})
                 .item<float>();
@@ -1104,14 +1117,18 @@ void IncMultiHeadSelfAttention::inference_task(
     }
   }
   // Create torch tensors from the arrays
-  torch::Tensor K_t = torch::from_blob(
-      m->kcache,
-      {m->kProjSize, MAX_SEQ_LEN, num_q_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
-  torch::Tensor V_t = torch::from_blob(
-      m->vcache,
-      {m->vProjSize, MAX_SEQ_LEN, num_q_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
+  torch::Tensor K_t = torch::from_blob(m->kcache,
+                                       {m->kProjSize,
+                                        MAX_SEQ_LEN,
+                                        num_q_heads,
+                                        BatchConfig::max_requests_per_batch()},
+                                       torch::kFloat32);
+  torch::Tensor V_t = torch::from_blob(m->vcache,
+                                       {m->vProjSize,
+                                        MAX_SEQ_LEN,
+                                        num_q_heads,
+                                        BatchConfig::max_requests_per_batch()},
+                                       torch::kFloat32);
 
   // Compute useful indices
   std::vector<size_t> req_idxs;
@@ -1136,30 +1153,30 @@ void IncMultiHeadSelfAttention::inference_task(
          bc->num_active_tokens());
 
   //  ----------------------- Loading CUDA results for this step ---------------
-  float *keyCache_cpu =
-      download_tensor<float>(m->keyCache,
-                             m->num_q_heads * m->kProjSize *
-                                 BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN);
-  float *valueCache_cpu =
-      download_tensor<float>(m->valueCache,
-                             m->num_q_heads * m->vProjSize *
-                                 BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN);
+  float *keyCache_cpu = download_tensor<float>(
+      m->keyCache,
+      m->num_q_heads * m->kProjSize * BatchConfig::max_requests_per_batch() *
+          MAX_SEQ_LEN);
+  float *valueCache_cpu = download_tensor<float>(
+      m->valueCache,
+      m->num_q_heads * m->vProjSize * BatchConfig::max_requests_per_batch() *
+          MAX_SEQ_LEN);
   assert(keyCache_cpu != nullptr);
   assert(valueCache_cpu != nullptr);
 
   float *kcache_cuda =
       (float *)calloc(m->kProjSize * MAX_SEQ_LEN * m->num_q_heads *
-                          BatchConfig::MAX_NUM_REQUESTS,
+                          BatchConfig::max_requests_per_batch(),
                       sizeof(float));
   float *vcache_cuda =
       (float *)calloc(m->vProjSize * MAX_SEQ_LEN * m->num_q_heads *
-                          BatchConfig::MAX_NUM_REQUESTS,
+                          BatchConfig::max_requests_per_batch(),
                       sizeof(float));
   int index = 0;
   for (int i = 0; i < m->kProjSize; i++) {
     for (int j = 0; j < MAX_SEQ_LEN; j++) {
       for (int k = 0; k < m->num_q_heads; k++) {
-        for (int l = 0; l < BatchConfig::MAX_NUM_REQUESTS; l++) {
+        for (int l = 0; l < BatchConfig::max_requests_per_batch(); l++) {
           int col_major_index =
               l * m->kProjSize * MAX_SEQ_LEN * m->num_q_heads +
               k * m->kProjSize * MAX_SEQ_LEN + j * m->kProjSize + i;
@@ -1172,7 +1189,7 @@ void IncMultiHeadSelfAttention::inference_task(
   for (int i = 0; i < m->vProjSize; i++) {
     for (int j = 0; j < MAX_SEQ_LEN; j++) {
       for (int k = 0; k < m->num_q_heads; k++) {
-        for (int l = 0; l < BatchConfig::MAX_NUM_REQUESTS; l++) {
+        for (int l = 0; l < BatchConfig::max_requests_per_batch(); l++) {
           int col_major_index =
               l * m->vProjSize * MAX_SEQ_LEN * m->num_q_heads +
               k * m->vProjSize * MAX_SEQ_LEN + j * m->vProjSize + i;
@@ -1181,14 +1198,20 @@ void IncMultiHeadSelfAttention::inference_task(
       }
     }
   }
-  torch::Tensor K_t_cuda = torch::from_blob(
-      kcache_cuda,
-      {m->kProjSize, MAX_SEQ_LEN, num_q_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
-  torch::Tensor V_t_cuda = torch::from_blob(
-      vcache_cuda,
-      {m->vProjSize, MAX_SEQ_LEN, num_q_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
+  torch::Tensor K_t_cuda =
+      torch::from_blob(kcache_cuda,
+                       {m->kProjSize,
+                        MAX_SEQ_LEN,
+                        num_q_heads,
+                        BatchConfig::max_requests_per_batch()},
+                       torch::kFloat32);
+  torch::Tensor V_t_cuda =
+      torch::from_blob(vcache_cuda,
+                       {m->vProjSize,
+                        MAX_SEQ_LEN,
+                        num_q_heads,
+                        BatchConfig::max_requests_per_batch()},
+                       torch::kFloat32);
 
   //  ----------------------- Comparing C++ & CUDA results ---------------------
 
@@ -1198,11 +1221,11 @@ void IncMultiHeadSelfAttention::inference_task(
   //     for (int l=0; l < m->kProjSize; l++) {
   //       for (int k=0; k < MAX_SEQ_LEN; k++) {
   //         size_t kcache_idx =
-  //           l * MAX_SEQ_LEN * num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-  //           k * num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-  //           j * BatchConfig::MAX_NUM_REQUESTS +
-  //           i;
-  //           if ( abs(m->kcache[kcache_idx] - keyCache_cpu[
+  //           l * MAX_SEQ_LEN * num_q_heads *
+  //           BatchConfig::max_requests_per_batch() + k * num_q_heads *
+  //           BatchConfig::max_requests_per_batch() + j *
+  //           BatchConfig::max_requests_per_batch() + i; if (
+  //           abs(m->kcache[kcache_idx] - keyCache_cpu[
   //               i * m->kProjSize * MAX_SEQ_LEN * num_q_heads +
   //               j * m->kProjSize * MAX_SEQ_LEN +
   //               k * m->kProjSize +
@@ -1263,10 +1286,10 @@ void IncMultiHeadSelfAttention::inference_task(
   //       for (int l=0; l < m->kProjSize; l++) {
   //         for (int k=0; k < MAX_SEQ_LEN; k++) {
   //           size_t kcache_idx =
-  //             l * MAX_SEQ_LEN * num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-  //             k * num_q_heads * BatchConfig::MAX_NUM_REQUESTS +
-  //             j * BatchConfig::MAX_NUM_REQUESTS +
-  //             i;
+  //             l * MAX_SEQ_LEN * num_q_heads *
+  //             BatchConfig::max_requests_per_batch() + k * num_q_heads *
+  //             BatchConfig::max_requests_per_batch() + j *
+  //             BatchConfig::max_requests_per_batch() + i;
   //           printf("%f ", m->kcache[kcache_idx]);
   //         }
   //         printf("\n");
@@ -1282,9 +1305,10 @@ void IncMultiHeadSelfAttention::inference_task(
   //       for (int l=0; l<m->vProjSize; l++) {
   //         for (int k=0; k< MAX_SEQ_LEN; k++) {
   //             size_t vcache_idx =
-  //               l * MAX_SEQ_LEN * num_q_heads * BatchConfig::MAX_NUM_REQUESTS
-  //               + k * num_q_heads * BatchConfig::MAX_NUM_REQUESTS + j *
-  //               BatchConfig::MAX_NUM_REQUESTS + i;
+  //               l * MAX_SEQ_LEN * num_q_heads *
+  //               BatchConfig::max_requests_per_batch()
+  //               + k * num_q_heads * BatchConfig::max_requests_per_batch() + j
+  //               * BatchConfig::max_requests_per_batch() + i;
   //             printf("%f ", m->vcache[vcache_idx]);
   //         }
   //         printf("\n");
@@ -1373,17 +1397,19 @@ void IncMultiHeadSelfAttention::inference_task(
   //  ----------------------- Loading CUDA results for this step ---------------
   float *qk_prods_cpu = download_tensor<float>(
       m->qk_prods,
-      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_q_heads);
+      BatchConfig::max_tokens_per_batch() *
+          BatchConfig::max_tokens_per_batch() * num_q_heads);
   assert(qk_prods_cpu != nullptr);
 
   float *qk_prods_softmax_cpu = download_tensor<float>(
       m->qk_prods_softmax,
-      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_q_heads);
+      BatchConfig::max_tokens_per_batch() *
+          BatchConfig::max_tokens_per_batch() * num_q_heads);
   assert(qk_prods_softmax_cpu != nullptr);
 
   float *attn_heads_cpu = download_tensor<float>(
       m->attn_heads,
-      BatchConfig::MAX_NUM_TOKENS * m->num_q_heads * m->vProjSize);
+      BatchConfig::max_tokens_per_batch() * m->num_q_heads * m->vProjSize);
   assert(attn_heads_cpu != nullptr);
 
   //  ----------------------- Main loop (request by request) -------------------
@@ -1643,7 +1669,7 @@ bool operator==(IncMultiHeadSelfAttentionParams const &lhs,
   return lhs.layer_guid == rhs.layer_guid && lhs.embed_dim == rhs.embed_dim &&
          lhs.num_q_heads == rhs.num_q_heads && lhs.kdim == rhs.kdim &&
          lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
-         lhs.bias == rhs.bias && lhs.add_bias_kv == rhs.add_bias_kv &&
+         lhs.qkv_bias == rhs.qkv_bias && lhs.final_bias == rhs.final_bias &&
          lhs.add_zero_attn == rhs.add_zero_attn &&
          lhs.apply_rotary_embedding == rhs.apply_rotary_embedding &&
          lhs.scaling_query == rhs.scaling_query &&
@@ -1660,8 +1686,8 @@ IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   params.kdim = this->kProjSize;
   params.vdim = this->vProjSize;
   params.dropout = this->dropout;
-  params.bias = this->bias;
-  params.add_bias_kv = this->add_bias_kv;
+  params.qkv_bias = this->qkv_bias;
+  params.final_bias = this->final_bias;
   params.add_zero_attn = this->add_zero_attn;
   params.apply_rotary_embedding = this->apply_rotary_embedding;
   params.scaling_query = this->scaling_query;
@@ -1689,8 +1715,8 @@ size_t hash<FlexFlow::IncMultiHeadSelfAttentionParams>::operator()(
   hash_combine(key, params.kdim);
   hash_combine(key, params.vdim);
   hash_combine(key, params.dropout);
-  hash_combine(key, params.bias);
-  hash_combine(key, params.add_bias_kv);
+  hash_combine(key, params.qkv_bias);
+  hash_combine(key, params.final_bias);
   hash_combine(key, params.add_zero_attn);
   hash_combine(key, params.apply_rotary_embedding);
   hash_combine(key, params.scaling_query);

@@ -106,6 +106,12 @@ enum TaskIDs {
   LAYERNORM_FWD_TASK_ID,
   LAYERNORM_INF_TASK_ID,
   LAYERNORM_BWD_TASK_ID,
+  RESIDUAL_LAYERNORM_INIT_TASK_ID,
+  RESIDUAL_LAYERNORM_INF_TASK_ID,
+  ADD_BIAS_RESIDUAL_LAYERNORM_INIT_TASK_ID,
+  ADD_BIAS_RESIDUAL_LAYERNORM_INF_TASK_ID,
+  SIGMOID_SILU_MULTI_INIT_TASK_ID,
+  SIGMOID_SILU_MULTI_INF_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
   LINEAR_INF_TASK_ID,
@@ -151,9 +157,11 @@ enum TaskIDs {
   ATTENTION_INIT_TASK_ID,
   ATTENTION_FWD_TASK_ID,
   ATTENTION_BWD_TASK_ID,
-  RMSNROM_INIT_TASK_ID,
-  RMSNROM_FWD_TASK_ID,
-  RMSNROM_INF_TASK_ID,
+  RMSNORM_INIT_TASK_ID,
+  RMSNORM_FWD_TASK_ID,
+  RMSNORM_INF_TASK_ID,
+  RESIDUAL_RMSNORM_INIT_TASK_ID,
+  RESIDUAL_RMSNORM_INF_TASK_ID,
   BEAM_TOPK_INIT_TASK_ID,
   BEAM_TOPK_INF_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
@@ -233,8 +241,8 @@ enum TaskIDs {
   RM_LOAD_TOKENS_TASK_ID,
   RM_LOAD_POSITION_TASK_ID,
   RM_PREPARE_NEXT_BATCH_TASK_ID,
-  RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
   RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
   RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
@@ -309,6 +317,9 @@ class Flat;
 class Gather;
 class Group_by;
 class LayerNorm;
+class ResidualLayerNorm;
+class AddBiasResidualLayerNorm;
+class SigmoidSiluMulti;
 class Linear;
 class MultiHeadAttention;
 class IncMultiHeadSelfAttention;
@@ -322,6 +333,7 @@ class TopK;
 class ArgTopK;
 class Transpose;
 class RMSNorm;
+class ResidualRMSNorm;
 class BeamTopK;
 class SpecIncMultiHeadSelfAttention;
 class Sampling;
@@ -532,6 +544,33 @@ public:
                     bool use_bias = true,
                     DataType data_type = DT_NONE,
                     char const *name = NULL);
+  // Add a layer_norm layer with residual(s)
+  void residual_layer_norm(const Tensor input,
+                           const Tensor residual1,
+                           const Tensor residual2,
+                           Tensor *outputs,
+                           bool use_two_residuals,
+                           std::vector<int> const &axes,
+                           bool elementwise_affine,
+                           float eps,
+                           bool use_bias = true,
+                           DataType data_type = DT_NONE,
+                           char const *name = NULL);
+  // Add a add_bias_residual_layer_norm layer
+  void add_bias_residual_layer_norm(const Tensor input,
+                                    const Tensor residual,
+                                    Tensor *outputs,
+                                    std::vector<int> const &axes,
+                                    bool elementwise_affine,
+                                    float eps,
+                                    bool use_bias = true,
+                                    DataType data_type = DT_NONE,
+                                    char const *name = NULL);
+  // Add a sigmoid_silu_multi layer
+  Tensor sigmoid_silu_multi(const Tensor input1,
+                            const Tensor input2,
+                            DataType data_type = DT_NONE,
+                            char const *name = NULL);
   // Add a batch_norm layer
   Tensor
       batch_norm(const Tensor input, bool relu = true, char const *name = NULL);
@@ -547,6 +586,14 @@ public:
                   int dim,
                   DataType data_type = DT_NONE,
                   char const *name = NULL);
+  // Add a residual root mean square layer
+  void residual_rms_norm(const Tensor input1,
+                         const Tensor input2,
+                         Tensor *outputs,
+                         float eps,
+                         int dim,
+                         DataType data_type = DT_NONE,
+                         char const *name = NULL);
   // Add a beam search top k layer
   Tensor beam_top_k(const Tensor input,
                     int max_beam_size,
@@ -755,7 +802,8 @@ public:
   // ========================================
   // Inference APIs
   // ========================================
-  GenerationResult generate(std::string const &text, int max_seq_length);
+  GenerationResult generate(std::vector<std::string> &prompts,
+                            int max_seq_length);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
@@ -1115,6 +1163,19 @@ public:
           Group_by *>,
       std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>,
                          LayerNorm *>,
+      std::unordered_map<std::pair<std::tuple<ParallelTensorShape,
+                                              ParallelTensorShape,
+                                              ParallelTensorShape>,
+                                   ResidualLayerNormParams>,
+                         ResidualLayerNorm *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    AddBiasResidualLayerNormParams>,
+          AddBiasResidualLayerNorm *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    SigmoidSiluMultiParams>,
+          SigmoidSiluMulti *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
                          Linear *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
@@ -1153,6 +1214,10 @@ public:
                          Transpose *>,
       std::unordered_map<std::pair<ParallelTensorShape, RMSNormParams>,
                          RMSNorm *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    ResidualRMSNormParams>,
+          ResidualRMSNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
                          Repartition *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,
