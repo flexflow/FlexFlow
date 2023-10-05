@@ -57,6 +57,8 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto inputs = acc.get_variadic_tensor<Permissions::RO>(INPUTS);
 
+  assert(number_of_inputs <= MAX_NUM_INPUTS);
+
   return profile(forward_kernel,
                  profiling,
                  "[Concat] forward_time = %.2lfms\n",
