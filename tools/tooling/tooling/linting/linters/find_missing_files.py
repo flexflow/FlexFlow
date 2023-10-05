@@ -56,9 +56,11 @@ def _get_file_group_dirs(p: AbsolutePath, attrs: Attrs) -> Tuple[AbsolutePath, A
         if FileAttribute.CPP_FILE_GROUP_BASE in attrs(parent):
             break
     else:
+        _l.error(f'Could not find file group base of {p}')
         assert False
 
     file_group_base = parent
+    _l.debug(f'Found file group base {file_group_base} for path {p}')
     assert FileAttribute.CPP_LIBRARY in attrs(file_group_base.parent)
     library_dir = file_group_base.parent
     include_dir = library_dir / 'include'

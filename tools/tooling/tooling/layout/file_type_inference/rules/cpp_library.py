@@ -10,7 +10,7 @@ rules: FrozenSet[Rule] = frozenset({
             ChildSatisfies('src', IsDir()),
             ChildSatisfies('include', IsDir()),
             ChildSatisfies('CMakeLists.txt', HasAttribute(FileAttribute.CMAKELISTS)),
-            DoesNotCreateNesting(HasAttribute(FileAttribute.CPP_LIBRARY)),
+            # DoesNotCreateNesting(HasAttribute(FileAttribute.CPP_LIBRARY)),
         ]), 
         FileAttribute.CPP_LIBRARY
     ),

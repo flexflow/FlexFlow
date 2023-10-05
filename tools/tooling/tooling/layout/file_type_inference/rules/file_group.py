@@ -5,7 +5,7 @@ from typing import FrozenSet
 rules: FrozenSet[Rule] = frozenset({
     Rule(
         'file_group_base.find',
-        HasAnyOfAttributes.from_iter([FileAttribute.CPP_LIBRARY_IN_INCLUDE, FileAttribute.CPP_LIBRARY_IN_SRC]),
+        HasAnyOfAttributes.from_iter([FileAttribute.CPP_LIBRARY_INCLUDE_DIR, FileAttribute.CPP_LIBRARY_SRC_DIR]),
         FileAttribute.CPP_FILE_GROUP_BASE
     ),
     Rule(

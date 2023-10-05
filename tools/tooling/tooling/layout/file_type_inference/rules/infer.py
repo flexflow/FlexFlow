@@ -3,7 +3,7 @@ from tooling.layout.file_type_inference.rules.rule import Rule, ExprExtra
 from tooling.layout.path import AbsolutePath, children
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from dataclasses import dataclass, field
-from typing import Dict, Generic, TypeVar, Set, DefaultDict, Union, Iterator, Optional, FrozenSet, Iterable, Any, Callable, List, Sequence
+from typing import Dict, Generic, TypeVar, Set, DefaultDict, Union, Iterator, Optional, FrozenSet, Iterable, Any, Callable, List, Sequence, Tuple
 from collections import defaultdict
 import logging
 
@@ -35,30 +35,30 @@ class DictBackend(ExprExtraBackend):
 
 @dataclass
 class DiGraph(Generic[T]):
-    nodes: Set[T] = field(default_factory=set)
-    connectivity: Dict[T, Set[T]] = field(default_factory=dict)
-    reverse_connectivity: Dict[T, Set[T]] = field(default_factory=dict)
+    _nodes: Set[T] = field(default_factory=set)
+    _connectivity: Dict[T, Set[T]] = field(default_factory=dict)
+    _reverse_connectivity: Dict[T, Set[T]] = field(default_factory=dict)
 
     def add_node(self, node: T) -> None:
-        self.nodes.add(node)
-        if node not in self.connectivity:
-            self.connectivity[node] = set()
-            self.reverse_connectivity[node] = set()
+        self._nodes.add(node)
+        if node not in self._connectivity:
+            self._connectivity[node] = set()
+            self._reverse_connectivity[node] = set()
 
     def add_edge(self, src: T, dst: T) -> None:
         self.add_node(src)
         self.add_node(dst)
-        self.connectivity[src].add(dst)
-        self.reverse_connectivity[dst].add(src)
+        self._connectivity[src].add(dst)
+        self._reverse_connectivity[dst].add(src)
 
     def _inplace_transitive_closure(self) -> None:
         did_update = True
         while did_update:
             did_update = False
-            for src, dsts in self.connectivity.items():
+            for src, dsts in self._connectivity.items():
                 for dst in dsts.copy():
-                    if len(self.connectivity[dst] - self.connectivity[src]) > 0:
-                        self.connectivity[src].update(self.connectivity[dst])
+                    if len(self._connectivity[dst] - self._connectivity[src]) > 0:
+                        self._connectivity[src].update(self._connectivity[dst])
                         did_update = True
 
     def transitive_closure(self) -> 'DiGraph[T]':
@@ -69,41 +69,61 @@ class DiGraph(Generic[T]):
     def __repr__(self) -> str:
         return '\n\n'.join([
             'DiGraph {',
-            *(f'  {k} --> {v}' for k, v in self.connectivity.items()),
+            *(f'  {k} --> {v}' for k, v in self._connectivity.items()),
             '}'
         ])
 
+    @property
+    def nodes(self) -> FrozenSet[T]:
+        return frozenset(self._nodes)
+
+    @property
+    def edges(self) -> FrozenSet[Tuple[T, T]]:
+        return frozenset(sum(
+            [[(src, dst) for dst in dsts] for src, dsts in self._connectivity.items()],
+            start=list()
+        ))
+
     def dot(self) -> str:
+        lines = []
+        lines.append('digraph {')
+        node_nums = {}
+        for i, node in enumerate(self.nodes):
+            node_nums[node] = i
+            lines.append(f'  n{i} [label="{node}"];')
+        for src, dst in self.edges:
+            lines.append(f'  n{node_nums[src]} -> n{node_nums[dst]};')
+        lines.append('}')
+        return '\n'.join(lines)
 
 
     def is_acyclic(self) -> bool:
         _l.debug(f'Checking presence of cycles in \n{self}')
         tr = self.transitive_closure()
-        for src, dsts in tr.connectivity.items():
+        for src, dsts in tr._connectivity.items():
             if src in dsts:
                 return False
         return True
 
     def copy(self) -> 'DiGraph[T]':
-        return DiGraph(nodes=set(self.nodes), connectivity={k : set(v) for k, v in self.connectivity.items()})
+        return DiGraph(_nodes=set(self.nodes), _connectivity={k : set(v) for k, v in self._connectivity.items()})
 
     def topological_order(self) -> Iterator[T]:
         assert self.is_acyclic()
-        queue = []
-        for dst, srcs in self.reverse_connectivity.items():
-            if len(srcs) == 0 and dst not in queue:
-                queue.append(dst)
 
-        visited = set()
+        queue = list(self.nodes)
+        visited: Set[T] = set()
         while len(queue) > 0:
             node = queue.pop(0)
             if node in visited:
                 continue
-            yield nodk
+            if not visited.issuperset(self._reverse_connectivity[node]):
+                continue
+            yield node
             visited.add(node)
-            for dst in self.connectivity[node]:
+            for dst in self._connectivity[node]:
                 if dst not in visited:
-                    queue.append(dst)
+                        queue.append(dst)
 
 @dataclass(frozen=True)
 class RuleCollection:
@@ -121,6 +141,7 @@ class RuleCollection:
             for out in rule.outputs:
                 _l.debug(f'Adding dependency from {rule.name} to {out}')
                 dependency_graph.add_edge(rule, out)
+        _l.debug('Built dependency graph:\n' + dependency_graph.dot())
 
         _l.debug('Checking dependency graph for cycles')
         assert dependency_graph.is_acyclic()
@@ -129,15 +150,14 @@ class RuleCollection:
         attrs: DefaultDict[AbsolutePath, FrozenSet[FileAttribute]] = defaultdict(frozenset)
         for node in dependency_graph.topological_order():
             if isinstance(node, Rule):
-                _l.debug(f'Running rule {node.name}')
-                _l.debug(f'Rule code: {node}')
+                _l.debug(f'Running rule {node.signature}')
                 extra = backend.for_rule(node)
                 num_added = 0
                 for p in all_children:
                     if node.condition.evaluate(p, lambda path: attrs[path], extra=extra):
                         num_added += 1
                         attrs[p] |= node.outputs
-                _l.debug(f'Found {num_added} files that satisfy {node.outputs}')
+                _l.debug(f'Rule {node.name} found {num_added} paths that satisfy {node.result}')
         return InferenceResult(dict(attrs), get_saved=backend.result())
 
 class InferenceResult:

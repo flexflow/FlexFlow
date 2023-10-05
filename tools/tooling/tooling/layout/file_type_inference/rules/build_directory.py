@@ -8,7 +8,7 @@ rules: FrozenSet[Rule] = frozenset({
         And.from_iter([
             IsDir(),
             ChildSatisfies('CMakeCache.txt', IsFile()),
-            DoesNotCreateNesting(HasAttribute(FileAttribute.BUILD_DIRECTORY))
+            # DoesNotCreateNesting(HasAttribute(FileAttribute.BUILD_DIRECTORY))
         ]), 
         FileAttribute.BUILD_DIRECTORY
     )

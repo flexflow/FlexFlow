@@ -298,7 +298,11 @@ class Rule:
         return frozenset({self.result})
 
     def __repr__(self) -> str:
-        return f'({self.condition} -> {self.result})'
+        return self.name
+
+    @property
+    def signature(self) -> str:
+        return f'{self.name} :: ({", ".join(map(str, self.inputs))}) -> {self.result}'
 
 def make_update_rules(
         base_name: str,
