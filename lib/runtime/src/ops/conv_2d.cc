@@ -220,7 +220,7 @@ OpTaskSignature init_signature<CONV2D_INIT_TASK_ID>() {
 
   init.add_return_value<Conv2DPerDeviceState>();
 
-  register_task(CONV2D_INIT_TASK_ID, "Conv2D Init", init, init_task);
+  return init;
 }
 
 template <>
@@ -244,7 +244,7 @@ OpTaskSignature fwd_signature<CONV2D_FWD_TASK_ID>() {
   fwd.add_weight_slot(FILTER);
   fwd.add_weight_slot(BIAS);
 
-  register_task(CONV2D_FWD_TASK_ID, "Conv2D Fwd", fwd, forward_task);
+  return fwd;
 }
 
 template <>
@@ -258,15 +258,15 @@ void register_task<CONV2D_FWD_TASK_ID>() {
 template <>
 OpTaskSignature bwd_signature<CONV2D_BWD_TASK_ID>() {
   OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(CONV2D_FWD_TASK_ID));
+      infer_bwd_signature(fwd_signature<CONV2D_FWD_TASK_ID>());
 
-  register_task(CONV2D_BWD_TASK_ID, "Conv2D Bwd", bwd, backward_task);
+  return bwd;
 }
 
 template <>
 void register_task<CONV2D_BWD_TASK_ID>() {
   register_task(CONV2D_BWD_TASK_ID,
-                "Conv2d Fwd",
+                "Conv2d Bwd",
                 bwd_signature<CONV2D_BWD_TASK_ID>(),
                 backward_task);
 }
