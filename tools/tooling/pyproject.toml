@@ -22,7 +22,10 @@ target-version = "py37"
 [tool.mypy]
 warn_unused_configs = true
 python_version = '3.6'
+explicit_package_bases = true 
 strict = true
+no_implicit_optional = true
+mypy_path = "$MYPY_CONFIG_FILE_DIR/third-party-stubs"
 
 [[tool.mypy.overrides]]
 module = "sqlitedict.*"

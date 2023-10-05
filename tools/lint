@@ -1,3 +1,14 @@
-#! /usr/bin/env bash
+#! /usr/bin/env python3
 
-python3 -m tooling.linting -- "$@"
+import sys
+from pathlib import Path
+
+DIR = Path(__file__).parent.absolute() / 'tooling'
+
+sys.path.append(str(DIR))
+
+from tooling.linting.__main__ import main
+
+main()
+
+# python3 -m tooling.linting -- "$@"

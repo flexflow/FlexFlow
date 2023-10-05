@@ -17,13 +17,6 @@ struct bidict {
     }
   }
 
-  bool contains_l(L const &l) const {
-    return fwd_map.find(l) != fwd_map.end();
-  }
-
-  bool contains_r(R const &r) const {
-    return bwd_map.find(r) != bwd_map.end();
-  }
   bidict(std::unordered_map<L, R> const &fwd_map,
          std::unordered_map<R, L> const &bwd_map)
       : fwd_map(fwd_map), bwd_map(bwd_map) {}
