@@ -32,7 +32,7 @@ jobs:
     name: Multinode GPU Test with MPI
     # Prevent Github from running the workflow on forks
     if: github.repository_owner == 'flexflow'
-    runs-on: [self-hosted, gpu]
+    runs-on: self-hosted
     needs: gpu-ci-concierge
     # 10h timeout, instead of default of 360min (6h)
     timeout-minutes: 600
@@ -83,7 +83,7 @@ jobs:
     name: Multinode GPU Test with UCX
     # Prevent Github from running the workflow on forks
     if: github.repository_owner == 'flexflow'
-    runs-on: [self-hosted, gpu]
+    runs-on: self-hosted
     needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
@@ -134,7 +134,7 @@ jobs:
     name: Multinode GPU Test with native UCX
     # Prevent Github from running the workflow on forks
     if: github.repository_owner == 'flexflow'
-    runs-on: [self-hosted, gpu]
+    runs-on: self-hosted
     needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
