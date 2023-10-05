@@ -5,6 +5,7 @@ LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
 LABEL org.opencontainers.image.description="FlexFlow container"
 
 # Copy FlexFlow repository
+RUN rm -rf /usr/FlexFlow
 RUN mkdir FlexFlow
 ENV FF_HOME /usr/FlexFlow
 WORKDIR ${FF_HOME}
@@ -15,8 +16,11 @@ ARG BUILD_CONFIGS
 ARG N_BUILD_CORES
 
 # Build and install C++ and Python versions of FlexFlow
+RUN rm -rf /usr/FlexFlow/
+RUN git clone --recursive  -b repo-refactor https://github.com/flexflow/FlexFlow.git /usr/FlexFlow
+
 RUN mkdir -p build && cd build && \
-    eval "$BUILD_CONFIGS" ../config/config.linux && \
+    eval "$BUILD_CONFIGS" ../config/config.linux && \   
     make -j $N_BUILD_CORES && \
     eval "$BUILD_CONFIGS" ../config/config.linux && \
     make install && \
