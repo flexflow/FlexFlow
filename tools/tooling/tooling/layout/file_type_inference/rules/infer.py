@@ -73,6 +73,8 @@ class DiGraph(Generic[T]):
             '}'
         ])
 
+    def dot(self) -> str:
+
 
     def is_acyclic(self) -> bool:
         _l.debug(f'Checking presence of cycles in \n{self}')
@@ -97,7 +99,7 @@ class DiGraph(Generic[T]):
             node = queue.pop(0)
             if node in visited:
                 continue
-            yield node
+            yield nodk
             visited.add(node)
             for dst in self.connectivity[node]:
                 if dst not in visited:
@@ -114,9 +116,11 @@ class RuleCollection:
         for rule in self.rules:
             dependency_graph.add_node(rule)
             for inp in rule.inputs:
+                _l.debug(f'Adding dependency from {inp} to {rule.name}')
                 dependency_graph.add_edge(inp, rule)
             for out in rule.outputs:
-                dependency_graph.add_edge(out, rule)
+                _l.debug(f'Adding dependency from {rule.name} to {out}')
+                dependency_graph.add_edge(rule, out)
 
         _l.debug('Checking dependency graph for cycles')
         assert dependency_graph.is_acyclic()
@@ -125,11 +129,15 @@ class RuleCollection:
         attrs: DefaultDict[AbsolutePath, FrozenSet[FileAttribute]] = defaultdict(frozenset)
         for node in dependency_graph.topological_order():
             if isinstance(node, Rule):
-                _l.debug(f'Running rule {node}')
+                _l.debug(f'Running rule {node.name}')
+                _l.debug(f'Rule code: {node}')
                 extra = backend.for_rule(node)
+                num_added = 0
                 for p in all_children:
                     if node.condition.evaluate(p, lambda path: attrs[path], extra=extra):
+                        num_added += 1
                         attrs[p] |= node.outputs
+                _l.debug(f'Found {num_added} files that satisfy {node.outputs}')
         return InferenceResult(dict(attrs), get_saved=backend.result())
 
 class InferenceResult:

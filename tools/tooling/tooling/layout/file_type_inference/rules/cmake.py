@@ -3,6 +3,13 @@ from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from typing import FrozenSet
 
 rules: FrozenSet[Rule] = frozenset({
-    Rule(HasExtension('.cmake'), FileAttribute.CMAKE),
-    Rule(IsNamed('CMakeLists.txt'), FileAttribute.CMAKELISTS)
+    Rule(
+        'cmake.find_cmake_modules',
+        HasExtension('.cmake'), FileAttribute.CMAKE
+    ),
+    Rule(
+        'cmake.find_cmakelists',
+        IsNamed('CMakeLists.txt'), 
+        FileAttribute.CMAKELISTS
+    )
 })

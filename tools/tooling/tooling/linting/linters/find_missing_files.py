@@ -19,10 +19,12 @@ import logging
 _l = logging.getLogger(__name__)
 
 is_supported_rule = Rule(
+    'missing_files.is_supported',
     HasAttribute(FileAttribute.CPP_FILE_GROUP_MEMBER),
     FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER
 )
 header_update_rules = make_update_rules(
+    'missing_files.header.update',
     is_supported=FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER,
     old_incorrect=FileAttribute.ORIGINALLY_WAS_MISSING_HEADER_FILE,
     old_correct=FileAttribute.ORIGINALLY_HAD_HEADER_FILE,
@@ -30,6 +32,7 @@ header_update_rules = make_update_rules(
     new_correct=FileAttribute.NOW_HAS_HEADER_FILE
 )
 source_update_rules = make_update_rules(
+    'missing_files.source.update',
     is_supported=FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER,
     old_incorrect=FileAttribute.ORIGINALLY_WAS_MISSING_SOURCE_FILE,
     old_correct=FileAttribute.ORIGINALLY_HAD_SOURCE_FILE,
@@ -38,6 +41,7 @@ source_update_rules = make_update_rules(
     did_fix=FileAttribute.DID_FIX_MISSING_SOURCE_FILE,
 )
 test_update_rules = make_update_rules(
+    'missing_files.test.update',
     is_supported=FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER,
     old_incorrect=FileAttribute.ORIGINALLY_WAS_MISSING_TEST_FILE,
     old_correct=FileAttribute.ORIGINALLY_HAD_TEST_FILE,
@@ -88,6 +92,7 @@ def get_check_missing_files_rules(project: Project) -> FrozenSet[Rule]:
         return test_path.is_file()
 
     has_header_rule = Rule(
+        'missing_files.has_header',
         OpaqueFunction(
             precondition=And.from_iter([
                 HasAttribute(FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER),
@@ -102,6 +107,7 @@ def get_check_missing_files_rules(project: Project) -> FrozenSet[Rule]:
     )
 
     has_source_rule = Rule(
+        'missing_files.has_source', 
         OpaqueFunction(
             precondition=And.from_iter([
                 HasAttribute(FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER),
@@ -115,6 +121,7 @@ def get_check_missing_files_rules(project: Project) -> FrozenSet[Rule]:
     )
 
     has_test_rule = Rule(
+        'missing_files.has_test',
         OpaqueFunction(
             precondition=And.from_iter([
                 HasAttribute(FileAttribute.IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER),
@@ -150,6 +157,7 @@ def get_fix_missing_files_rules(project: Project) -> FrozenSet[Rule]:
         return True
 
     fix_missing_src_file_rule = Rule(
+        'missing_files.create_missing_source',
         OpaqueFunction(
             precondition=And.from_iter([
                 HasAttribute(FileAttribute.ORIGINALLY_WAS_MISSING_SOURCE_FILE),

@@ -1,4 +1,4 @@
-from typing import Dict, FrozenSet, Union, cast, Iterator
+from typing import Dict, FrozenSet, Union, cast, Iterable
 from tooling.linting.framework.response import Response, did_succeed, ErrorResponse, FixResponse, CheckResponse 
 from tooling.linting.framework.specification import Specification
 from tooling.linting.framework.settings import Settings
@@ -61,5 +61,5 @@ class Manager:
                     responses)
 
     @classmethod
-    def from_iter(cls, it: Iterator[Specification]):
+    def from_iter(cls, it: Iterable[Specification]) -> 'Manager':
         return cls(frozenset(it))

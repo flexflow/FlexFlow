@@ -4,6 +4,7 @@ from typing import FrozenSet
 
 rules: FrozenSet[Rule] = frozenset({
     Rule(
+        'invalid_file.find',
         Or.from_iter([
             HasAttribute(FileAttribute.IN_CPP_LIBRARY) & Not(HasAttribute(FileAttribute.CPP_FILE_GROUP_MEMBER)),
             HasAttribute(FileAttribute.CPP) & Not(HasAnyOfAttributes.from_iter([
@@ -15,6 +16,7 @@ rules: FrozenSet[Rule] = frozenset({
         FileAttribute.IS_INVALID_FILE
     ),
     Rule(
+        'valid_file.from_invalid_files',
         Not(HasAttribute(FileAttribute.IS_INVALID_FILE)),
         FileAttribute.IS_VALID_FILE
     ),

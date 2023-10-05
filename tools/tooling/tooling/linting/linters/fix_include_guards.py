@@ -3,7 +3,7 @@ from tooling.layout.cpp.preprocessor import (
     get_include_guard_var, set_include_guard_var
 )
 from tooling.layout.file_type_inference.rules.rule import (
-    Rule, HasAttribute, HasAllOfAttributes, And, ExprExtra, OpaqueFunction, Attrs, HasAnyOfAttributes, Not, Or
+    Rule, HasAttribute, HasAllOfAttributes, And, ExprExtra, OpaqueFunction, Attrs, HasAnyOfAttributes, Not, make_update_rules
 )
 from tooling.layout.file_type_inference.file_attribute import FileAttribute 
 from tooling.layout.path import AbsolutePath
@@ -19,6 +19,7 @@ from typing import FrozenSet
 _l = logging.getLogger(__name__)
 
 supported_by_fix_include_guards = Rule(
+    'include_guards.is_supported',
     And.from_iter([
         HasAttribute(FileAttribute.IS_VALID_FILE),
         HasAttribute(FileAttribute.CPP_FILE_GROUP_MEMBER),
@@ -30,23 +31,14 @@ supported_by_fix_include_guards = Rule(
     FileAttribute.SUPPORTED_BY_FIX_INCLUDE_GUARDS
 )
 
-originally_incorrect_include_guards_rule = Rule(
-    And.from_iter([
-        HasAttribute(FileAttribute.SUPPORTED_BY_FIX_INCLUDE_GUARDS),
-        Not(HasAttribute(FileAttribute.ORIGINALLY_HAD_CORRECT_INCLUDE_GUARD))
-    ]),
-    FileAttribute.ORIGINALLY_HAD_INCORRECT_INCLUDE_GUARD
-)
-
-original_to_now_rule = Rule(
-    Or.from_iter([
-        HasAttribute(FileAttribute.ORIGINALLY_HAD_CORRECT_INCLUDE_GUARD),
-        HasAllOfAttributes.from_iter([
-            FileAttribute.ORIGINALLY_HAD_INCORRECT_INCLUDE_GUARD,
-            FileAttribute.DID_FIX_INCLUDE_GUARD
-        ]),
-    ]),
-    FileAttribute.NOW_HAS_CORRECT_INCLUDE_GUARD
+update_rules = make_update_rules(
+    'include_guards.update',
+    is_supported=FileAttribute.SUPPORTED_BY_FIX_INCLUDE_GUARDS,
+    old_incorrect=FileAttribute.ORIGINALLY_HAD_INCORRECT_INCLUDE_GUARD,
+    old_correct=FileAttribute.ORIGINALLY_HAD_CORRECT_INCLUDE_GUARD,
+    new_incorrect=FileAttribute.NOW_HAS_INCORRECT_INCLUDE_GUARD,
+    new_correct=FileAttribute.NOW_HAS_CORRECT_INCLUDE_GUARD,
+    did_fix=FileAttribute.DID_FIX_INCLUDE_GUARD
 )
 
 def get_include_guard_check_rules(project: Project) -> FrozenSet[Rule]:
@@ -54,6 +46,7 @@ def get_include_guard_check_rules(project: Project) -> FrozenSet[Rule]:
         return get_include_guard_var(p) == project.include_guard_for_path(p)
 
     check_include_guards_rule = Rule(
+        'include_guards.check',
         OpaqueFunction(
             precondition=HasAttribute(FileAttribute.SUPPORTED_BY_FIX_INCLUDE_GUARDS),
             func=_check_include_guards
@@ -61,12 +54,10 @@ def get_include_guard_check_rules(project: Project) -> FrozenSet[Rule]:
         FileAttribute.ORIGINALLY_HAD_CORRECT_INCLUDE_GUARD
     )
 
-    return frozenset({
+    return update_rules.union([
         supported_by_fix_include_guards,
-        original_to_now_rule,
-        originally_incorrect_include_guards_rule,
-        check_include_guards_rule
-    })
+        check_include_guards_rule,
+    ])
 
 def get_include_guard_fix_rules(project: Project) -> FrozenSet[Rule]:
     def _fix_include_guards(p: AbsolutePath, attrs: Attrs, extra: ExprExtra, project: Project = project) -> bool:
@@ -74,6 +65,7 @@ def get_include_guard_fix_rules(project: Project) -> FrozenSet[Rule]:
         return True
 
     fix_include_guards_rule = Rule(
+        'include_guards.fix',
         OpaqueFunction(
             precondition=HasAttribute(FileAttribute.ORIGINALLY_HAD_INCORRECT_INCLUDE_GUARD),
             func=_fix_include_guards
