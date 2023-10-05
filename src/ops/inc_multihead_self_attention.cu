@@ -607,8 +607,10 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
       alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
     }
     // To get A, skip over Q entries from previous requests (same head)
+    // get the first token id in this request
+    int request_start_offset = bc->requestsInfo[i].first_position_in_tokens;
     DT const *A = static_cast<DT *>(m->devQKVProjArray) +
-                  tokens_previous_requests * m->qProjSize;
+                  request_start_offset * m->qProjSize;
     // To get B, skip over K entries from previous requests (all heads +
     // padding)
     DT const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
@@ -828,7 +830,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                  m->kProjSize * m->num_kv_heads +
                                  m->vProjSize * m->num_kv_heads);
     B = C;
-    C = static_cast<DT *>(output_ptr) + tokens_previous_requests * m->oProjSize;
+    C = static_cast<DT *>(output_ptr) + request_start_offset * m->oProjSize;
 
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,

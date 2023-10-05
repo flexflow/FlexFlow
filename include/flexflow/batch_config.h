@@ -63,6 +63,8 @@ public:
     int token_start_offset;
     int num_tokens_in_batch;
     int max_sequence_length;
+    // the first token index of this request
+    int first_position_in_tokens;
     RequestGuid request_guid;
   };
   struct PerTokenInfo {

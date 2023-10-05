@@ -450,6 +450,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                      (int)request.tokens.size() -
                          new_bc.requestsInfo[i].token_start_offset);
       }
+      new_bc.requestsInfo[i].first_position_in_tokens = new_bc.num_tokens;
       for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
         int depth = new_bc.requestsInfo[i].token_start_offset + j;
         new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
@@ -483,6 +484,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         profile_info.decoding_steps = 1;
         profile_info.start_time = Realm::Clock::current_time_in_microseconds();
         profiling_requests[new_request.guid] = profile_info;
+
+        new_bc.requestsInfo[i].first_position_in_tokens = new_bc.num_tokens;
         for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
           int depth = new_bc.requestsInfo[i].token_start_offset + j;
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
