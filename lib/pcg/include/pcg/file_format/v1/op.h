@@ -186,6 +186,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(V1Op,
                               {V1Op::FUSED_PARALLEL, "FUSED_PARALLEL"}});
 
 V1Op to_v1(Op const &op);
+Op from_v1(V1Op const &vop);
 
 } // namespace FlexFlow
 

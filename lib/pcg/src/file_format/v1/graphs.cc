@@ -7,8 +7,16 @@ V1Operator to_v1(Operator const &op) {
   return {to_v1(op.attrs), op.name};
 }
 
+Operator from_v1(V1Operator const &vop) {
+  return {from_v1(vop.attrs), vop.name};
+}
+
 V1Layer to_v1(Layer const &l) {
   return {to_v1(l.attrs), l.name};
+}
+
+Layer from_v1(V1Layer const &vl) {
+  return {from_v1(vl.attrs), vl.name};
 }
 
 V1MultiDiGraph to_v1(MultiDiGraphView const &g) {
@@ -63,8 +71,16 @@ V1ComputationGraph to_v1(ComputationGraph const &g) {
   return to_v1<Layer, Tensor>(g.value());
 }
 
+ComputationGraph from_v1(V1ComputationGraph const &vg) {
+  NOT_IMPLEMENTED();
+}
+
 V1ParallelComputationGraph to_v1(ParallelComputationGraph const &g) {
   return to_v1<Operator, ParallelTensor>(g.value());
+}
+
+ParallelComputationGraph from_v1(V1ParallelComputationGraph const &vg) {
+  NOT_IMPLEMENTED();
 }
 
 } // namespace FlexFlow

@@ -13,7 +13,8 @@ struct V1TopKAttrs {
 FF_VISITABLE_STRUCT(V1TopKAttrs, k, sorted);
 CHECK_IS_JSONABLE(V1TopKAttrs);
 
-V1TopKAttrs to_v1(TopKAttrs const &attrs);
+V1TopKAttrs to_v1(TopKAttrs const &a);
+TopKAttrs from_v1(V1TopKAttrs const &va);
 
 } // namespace FlexFlow
 

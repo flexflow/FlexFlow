@@ -13,6 +13,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(V1CreateGrad,
                               {V1CreateGrad::NO, "NO"}});
 
 V1CreateGrad to_v1(CreateGrad const &cg);
+CreateGrad from_v1(V1CreateGrad const &vcg);
 
 } // namespace FlexFlow
 

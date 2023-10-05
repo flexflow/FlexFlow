@@ -27,7 +27,8 @@ FF_VISITABLE_STRUCT(V1Conv2DAttrs,
                     use_bias);
 CHECK_IS_JSONABLE(V1Conv2DAttrs);
 
-V1Conv2DAttrs to_v1(Conv2DAttrs const &attrs);
+V1Conv2DAttrs to_v1(Conv2DAttrs const &a);
+Conv2DAttrs from_v1(V1Conv2DAttrs const &va);
 
 } // namespace FlexFlow
 

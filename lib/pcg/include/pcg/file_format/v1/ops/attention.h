@@ -22,7 +22,8 @@ FF_VISITABLE_STRUCT(V1MultiHeadAttentionAttrs,
                     add_zero_attn);
 CHECK_IS_JSONABLE(V1MultiHeadAttentionAttrs);
 
-V1MultiHeadAttentionAttrs to_v1(MultiHeadAttentionAttrs const &attrs);
+V1MultiHeadAttentionAttrs to_v1(MultiHeadAttentionAttrs const &a);
+MultiHeadAttentionAttrs from_v1(V1MultiHeadAttentionAttrs const &va);
 
 } // namespace FlexFlow
 

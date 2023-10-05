@@ -14,7 +14,8 @@ struct V1SplitAttrs {
 FF_VISITABLE_STRUCT(V1SplitAttrs, splits, axis);
 CHECK_IS_JSONABLE(V1SplitAttrs);
 
-V1SplitAttrs to_v1(SplitAttrs const &attrs);
+V1SplitAttrs to_v1(SplitAttrs const &a);
+SplitAttrs from_v1(V1SplitAttrs const &va);
 
 } // namespace FlexFlow
 

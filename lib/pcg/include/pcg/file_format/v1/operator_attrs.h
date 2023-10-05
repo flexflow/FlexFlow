@@ -77,11 +77,14 @@ using V1ComputationGraphAttrs =
     variant_join<V1SharedOperatorAttrs, variant<V1BroadcastAttrs>>;
 using V1CompGraphOperatorAttrs = V1ComputationGraphAttrs;
 
+V1CompGraphOperatorAttrs to_v1(CompGraphOperatorAttrs const &attrs);
+CompGraphOperatorAttrs from_v1(V1CompGraphOperatorAttrs const &attrs);
+
 using V1PCGOperatorAttrs =
     variant_join<V1SharedOperatorAttrs, V1ParallelOperatorAttrs>;
 
-V1CompGraphOperatorAttrs to_v1(CompGraphOperatorAttrs const &attrs);
 V1PCGOperatorAttrs to_v1(PCGOperatorAttrs const &attrs);
+PCGOperatorAttrs from_v1(V1PCGOperatorAttrs const &attrs);
 
 } // namespace FlexFlow
 

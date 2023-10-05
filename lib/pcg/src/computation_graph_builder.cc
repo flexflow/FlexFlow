@@ -310,12 +310,15 @@ std::vector<Tensor>
   return this->add_layer(layer, {input}, {}, output_shapes);
 }
 
-TensorShape get_shape(Tensor const &) {
-  NOT_IMPLEMENTED();
+TensorShape get_shape(Tensor const &t) {
+  return t.get_shape();
 }
 
-std::vector<TensorShape> get_shape(std::vector<Tensor> const &) {
-  NOT_IMPLEMENTED();
+std::vector<TensorShape> get_shape(std::vector<Tensor> const &ts) {
+  std::vector<TensorShape> shps;
+  for (const Tensor& t : ts)
+    shps.emplace_back(t.get_shape());
+  return shps;
 }
 
 Tensor ComputationGraphBuilder::aggregate(

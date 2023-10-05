@@ -13,4 +13,15 @@ V1ParamSync to_v1(ParamSync const &p) {
   };
 }
 
+ParamSync from_v1(V1ParamSync const &vp) {
+  switch (vp) {
+    case V1ParamSync::PARAM_SERVER:
+      return ParamSync::PS;
+    case V1ParamSync::NCCL:
+      return ParamSync::NCCL;
+    default:
+      NOT_REACHABLE();
+  };
+}
+
 } // namespace FlexFlow

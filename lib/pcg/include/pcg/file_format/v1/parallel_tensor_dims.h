@@ -8,12 +8,13 @@
 namespace FlexFlow {
 
 struct V1ParallelTensorDims {
-  req<FFOrdered<V1ParallelDim>> data;
+  req<std::vector<V1ParallelDim>> data;
 };
 FF_VISITABLE_STRUCT(V1ParallelTensorDims, data);
 CHECK_IS_JSONABLE(V1ParallelTensorDims);
 
 V1ParallelTensorDims to_v1(ParallelTensorDims const &dims);
+ParallelTensorDims from_v1(V1ParallelTensorDims const &vdims);
 
 } // namespace FlexFlow
 

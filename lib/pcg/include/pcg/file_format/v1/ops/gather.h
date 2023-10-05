@@ -12,7 +12,8 @@ struct V1GatherAttrs {
 FF_VISITABLE_STRUCT(V1GatherAttrs, dim);
 CHECK_IS_JSONABLE(V1GatherAttrs);
 
-V1GatherAttrs to_v1(GatherAttrs const &attrs);
+V1GatherAttrs to_v1(GatherAttrs const &a);
+GatherAttrs from_v1(V1GatherAttrs const &va);
 
 } // namespace FlexFlow
 

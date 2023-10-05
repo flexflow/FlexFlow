@@ -10,12 +10,13 @@ namespace FlexFlow {
 
 struct V1ParallelTensorShape {
   V1ParallelTensorDims dims;
-  V1DataType data_type;
+  req<V1DataType> data_type;
 };
 FF_VISITABLE_STRUCT(V1ParallelTensorShape, dims, data_type);
 CHECK_IS_JSONABLE(V1ParallelTensorShape);
 
 V1ParallelTensorShape to_v1(ParallelTensorShape const &t);
+ParallelTensorShape from_v1(V1ParallelTensorShape const &vt);
 
 } // namespace FlexFlow
 

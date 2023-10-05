@@ -16,6 +16,7 @@ FF_VISITABLE_STRUCT(V1ParallelDim, size, degree, is_replica_dim);
 CHECK_IS_JSONABLE(V1ParallelDim);
 
 V1ParallelDim to_v1(ParallelDim const &dim);
+ParallelDim from_v1(V1ParallelDim const &vdim);
 
 } // namespace FlexFlow
 

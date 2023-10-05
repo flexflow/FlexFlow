@@ -14,7 +14,8 @@ struct V1BroadcastAttrs {
 FF_VISITABLE_STRUCT(V1BroadcastAttrs, target_dims);
 CHECK_IS_JSONABLE(V1BroadcastAttrs);
 
-V1BroadcastAttrs to_v1(BroadcastAttrs const &attrs);
+V1BroadcastAttrs to_v1(BroadcastAttrs const &a);
+BroadcastAttrs from_v1(V1BroadcastAttrs const &va);
 
 } // namespace FlexFlow
 

@@ -13,7 +13,8 @@ struct V1DropoutAttrs {
 FF_VISITABLE_STRUCT(V1DropoutAttrs, rate, seed);
 CHECK_IS_JSONABLE(V1DropoutAttrs);
 
-V1DropoutAttrs to_v1(DropoutAttrs const &attrs);
+V1DropoutAttrs to_v1(DropoutAttrs const &a);
+DropoutAttrs from_v1(V1DropoutAttrs const &va);
 
 } // namespace FlexFlow
 

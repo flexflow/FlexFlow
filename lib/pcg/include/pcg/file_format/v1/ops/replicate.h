@@ -14,7 +14,8 @@ struct V1ReplicateAttrs {
 FF_VISITABLE_STRUCT(V1ReplicateAttrs, replicate_dim, replicate_degree);
 CHECK_IS_JSONABLE(V1ReplicateAttrs);
 
-V1ReplicateAttrs to_v1(ReplicateAttrs const &attrs);
+V1ReplicateAttrs to_v1(ReplicateAttrs const &a);
+ReplicateAttrs from_v1(V1ReplicateAttrs const &va);
 
 } // namespace FlexFlow
 

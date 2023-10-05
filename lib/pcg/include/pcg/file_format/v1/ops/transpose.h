@@ -14,7 +14,8 @@ struct V1TransposeAttrs {
 FF_VISITABLE_STRUCT(V1TransposeAttrs, perm);
 CHECK_IS_JSONABLE(V1TransposeAttrs);
 
-V1TransposeAttrs to_v1(TransposeAttrs const &attrs);
+V1TransposeAttrs to_v1(TransposeAttrs const &a);
+TransposeAttrs from_v1(V1TransposeAttrs const &va);
 
 } // namespace FlexFlow
 

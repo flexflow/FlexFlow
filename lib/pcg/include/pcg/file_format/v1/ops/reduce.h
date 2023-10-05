@@ -17,7 +17,8 @@ struct V1ReduceAttrs {
 FF_VISITABLE_STRUCT(V1ReduceAttrs, axes, op_type, keepdims);
 CHECK_IS_JSONABLE(V1ReduceAttrs);
 
-V1ReduceAttrs to_v1(ReduceAttrs const &attrs);
+V1ReduceAttrs to_v1(ReduceAttrs const &a);
+ReduceAttrs from_v1(V1ReduceAttrs const &va);
 
 } // namespace FlexFlow
 

@@ -7,4 +7,9 @@ V1TensorShape to_v1(TensorShape const &shape) {
           to_v1(shape.data_type)};
 }
 
+TensorShape from_v1(V1TensorShape const &vshp) {
+  return {TensorDims(vshp.dims.begin(), vshp.dims.end()),
+          from_v1(vshp.data_type)};
+}
+
 } // namespace FlexFlow

@@ -14,7 +14,8 @@ struct V1L1RegularizerAttrs {
 FF_VISITABLE_STRUCT(V1L1RegularizerAttrs, lambda);
 CHECK_IS_JSONABLE(V1L1RegularizerAttrs);
 
-V1L1RegularizerAttrs to_v1(L1RegularizerAttrs const &attrs);
+V1L1RegularizerAttrs to_v1(L1RegularizerAttrs const &a);
+L1RegularizerAttrs from_v1(V1L1RegularizerAttrs const &va);
 
 struct V1L2RegularizerAttrs {
   req<float> lambda;
@@ -22,10 +23,14 @@ struct V1L2RegularizerAttrs {
 FF_VISITABLE_STRUCT(V1L2RegularizerAttrs, lambda);
 CHECK_IS_JSONABLE(V1L2RegularizerAttrs);
 
-V1L2RegularizerAttrs to_v1(L2RegularizerAttrs const &attrs);
+V1L2RegularizerAttrs to_v1(L2RegularizerAttrs const &a);
+L2RegularizerAttrs from_v1(V1L2RegularizerAttrs const &va);
 
 using V1RegularizerAttrs = variant<V1L1RegularizerAttrs, V1L2RegularizerAttrs>;
-V1RegularizerAttrs to_v1(RegularizerAttrs const &);
+CHECK_IS_JSONABLE(V1RegularizerAttrs);
+
+V1RegularizerAttrs to_v1(RegularizerAttrs const &a);
+RegularizerAttrs from_v1(V1RegularizerAttrs const &va);
 
 struct V1LinearAttrs {
   req<int> out_channels;
@@ -38,7 +43,8 @@ FF_VISITABLE_STRUCT(
     V1LinearAttrs, out_channels, use_bias, data_type, activation, regularizer);
 CHECK_IS_JSONABLE(V1LinearAttrs);
 
-V1LinearAttrs to_v1(LinearAttrs const &attrs);
+V1LinearAttrs to_v1(LinearAttrs const &a);
+LinearAttrs from_v1(V1LinearAttrs const &va);
 
 } // namespace FlexFlow
 

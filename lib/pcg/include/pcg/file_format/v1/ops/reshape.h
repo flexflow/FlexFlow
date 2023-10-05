@@ -13,7 +13,8 @@ struct V1ReshapeAttrs {
 FF_VISITABLE_STRUCT(V1ReshapeAttrs, shape);
 CHECK_IS_JSONABLE(V1ReshapeAttrs);
 
-V1ReshapeAttrs to_v1(ReshapeAttrs const &attrs);
+V1ReshapeAttrs to_v1(ReshapeAttrs const &a);
+ReshapeAttrs from_v1(V1ReshapeAttrs const &va);
 
 } // namespace FlexFlow
 

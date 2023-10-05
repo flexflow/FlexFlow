@@ -14,7 +14,8 @@ struct V1RepartitionAttrs {
 FF_VISITABLE_STRUCT(V1RepartitionAttrs, repartition_dim, repartition_degree);
 CHECK_IS_JSONABLE(V1RepartitionAttrs);
 
-V1RepartitionAttrs to_v1(RepartitionAttrs const &attrs);
+V1RepartitionAttrs to_v1(RepartitionAttrs const &a);
+RepartitionAttrs from_v1(V1RepartitionAttrs const &va);
 
 } // namespace FlexFlow
 

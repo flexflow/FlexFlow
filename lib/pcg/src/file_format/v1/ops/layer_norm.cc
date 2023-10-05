@@ -10,4 +10,12 @@ V1LayerNormAttrs to_v1(LayerNormAttrs const &a) {
           a.eps};
 }
 
+LayerNormAttrs from_v1(V1LayerNormAttrs const &va) {
+
+  return {
+      stack_vector<ff_dim_t, MAX_TENSOR_DIM>(va.axes.begin(), va.axes.end()),
+      va.elementwise_affine,
+      va.eps};
+}
+
 } // namespace FlexFlow

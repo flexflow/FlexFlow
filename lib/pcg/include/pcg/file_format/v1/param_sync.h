@@ -12,7 +12,8 @@ NLOHMANN_JSON_SERIALIZE_ENUM(V1ParamSync,
                              {{V1ParamSync::PARAM_SERVER, "PARAM_SERVER"},
                               {V1ParamSync::NCCL, "NCCL"}});
 
-V1ParamSync to_v1(ParamSync const &);
+V1ParamSync to_v1(ParamSync const &p);
+ParamSync from_v1(V1ParamSync const &vp);
 
 } // namespace FlexFlow
 

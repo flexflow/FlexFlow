@@ -13,7 +13,8 @@ struct V1ConcatAttrs {
 FF_VISITABLE_STRUCT(V1ConcatAttrs, axis);
 CHECK_IS_JSONABLE(V1ConcatAttrs);
 
-V1ConcatAttrs to_v1(ConcatAttrs const &attrs);
+V1ConcatAttrs to_v1(ConcatAttrs const &a);
+ConcatAttrs from_v1(V1ConcatAttrs const &va);
 
 } // namespace FlexFlow
 

@@ -9,4 +9,10 @@ V1NoopAttrs to_v1(NoopAttrs const &a) {
   };
 }
 
+NoopAttrs from_v1(V1NoopAttrs const &va) {
+  return {
+      // No fields in NoopAttrs.
+  };
+}
+
 } // namespace FlexFlow

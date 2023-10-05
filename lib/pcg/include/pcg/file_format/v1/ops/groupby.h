@@ -13,7 +13,8 @@ struct V1Group_byAttrs {
 FF_VISITABLE_STRUCT(V1Group_byAttrs, n, alpha);
 CHECK_IS_JSONABLE(V1Group_byAttrs);
 
-V1Group_byAttrs to_v1(Group_byAttrs const &attrs);
+V1Group_byAttrs to_v1(Group_byAttrs const &a);
+Group_byAttrs from_v1(V1Group_byAttrs const &va);
 
 } // namespace FlexFlow
 

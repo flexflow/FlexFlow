@@ -16,4 +16,17 @@ V1Conv2DAttrs to_v1(Conv2DAttrs const &a) {
           a.use_bias};
 }
 
+Conv2DAttrs from_v1(V1Conv2DAttrs const &va) {
+  return {va.out_channels,
+          va.kernel_h,
+          va.kernel_w,
+          va.stride_h,
+          va.stride_w,
+          va.padding_h,
+          va.padding_w,
+          va.groups,
+          from_v1<Activation>(va.activation),
+          va.use_bias};
+}
+
 } // namespace FlexFlow

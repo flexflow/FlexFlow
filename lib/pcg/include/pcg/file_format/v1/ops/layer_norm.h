@@ -16,7 +16,8 @@ struct V1LayerNormAttrs {
 FF_VISITABLE_STRUCT(V1LayerNormAttrs, axes, elementwise_affine, eps);
 CHECK_IS_JSONABLE(V1LayerNormAttrs);
 
-V1LayerNormAttrs to_v1(LayerNormAttrs const &attrs);
+V1LayerNormAttrs to_v1(LayerNormAttrs const &a);
+LayerNormAttrs from_v1(V1LayerNormAttrs const &va);
 
 } // namespace FlexFlow
 

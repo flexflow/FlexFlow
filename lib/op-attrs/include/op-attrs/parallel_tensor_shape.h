@@ -17,13 +17,11 @@ namespace FlexFlow {
  * @brief Represent the shape of a ParallelTensor.
  */
 struct ParallelTensorShape {
-  ParallelTensorShape() = delete;
+  ParallelTensorShape(TensorShape const &);
 
   template <typename Dims>
   ParallelTensorShape(Dims const &dims, DataType data_type)
       : dims(dims), data_type(data_type) {}
-
-  ParallelTensorShape(TensorShape const &);
 
   int num_dims() const;
 
@@ -33,10 +31,10 @@ struct ParallelTensorShape {
   ParallelDim &operator[](ff_dim_t const &);
 
 public:
-  ParallelTensorDims dims;
-  DataType data_type;
+  req<ParallelTensorDims> dims;
+  req<DataType> data_type;
 };
-FF_VISITABLE_STRUCT(ParallelTensorShape, dims, data_type);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ParallelTensorShape, dims, data_type);
 
 TensorShape get_piece_shape(ParallelTensorShape const &);
 int get_num_replica_dims(ParallelTensorShape const &);

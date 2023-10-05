@@ -9,4 +9,10 @@ V1InputAttrs to_v1(InputAttrs const &a) {
   };
 }
 
+InputAttrs from_v1(V1InputAttrs const &va) {
+  return {
+      // No fields in InputAttrs
+  };
+}
+
 } // namespace FlexFlow

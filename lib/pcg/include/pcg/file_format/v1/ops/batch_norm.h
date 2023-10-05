@@ -12,7 +12,8 @@ struct V1BatchNormAttrs {
 FF_VISITABLE_STRUCT(V1BatchNormAttrs, relu);
 CHECK_IS_JSONABLE(V1BatchNormAttrs);
 
-V1BatchNormAttrs to_v1(BatchNormAttrs const &attrs);
+V1BatchNormAttrs to_v1(BatchNormAttrs const &a);
+BatchNormAttrs from_v1(V1BatchNormAttrs const &va);
 
 } // namespace FlexFlow
 

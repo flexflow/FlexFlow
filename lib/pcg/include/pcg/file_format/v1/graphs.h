@@ -39,9 +39,12 @@ FF_VISITABLE_STRUCT(V1MultiDiGraph, nodes, ports, edges);
 CHECK_IS_JSONABLE(V1MultiDiGraph);
 
 V1MultiDiGraph to_v1(MultiDiGraphView const &);
+// FIXME: Add a from_v1 for a MultiDiGraph.
+
 V1MultiDiGraph to_v1(MultiDiGraphView const &,
                      std::unordered_map<Node, size_t> const &,
                      std::unordered_map<NodePort, size_t> const &);
+// FIXME: Do we need to add an equivalent from_v1 for this?
 
 template <typename NodeT, typename TensorT>
 struct V1JsonableGraph {
@@ -61,6 +64,7 @@ struct V1Layer {
 FF_VISITABLE_STRUCT(V1Layer, attrs, name);
 
 V1Layer to_v1(Layer const &);
+Layer from_v1(V1Layer const &);
 
 using V1ComputationGraph = V1JsonableGraph<V1Layer, V1Tensor>;
 FF_VISITABLE_STRUCT(
@@ -68,6 +72,7 @@ FF_VISITABLE_STRUCT(
 CHECK_IS_JSONABLE(V1ComputationGraph);
 
 V1ComputationGraph to_v1(ComputationGraph const &);
+ComputationGraph from_V1(V1ComputationGraph const &);
 
 struct V1Operator {
   V1PCGOperatorAttrs attrs;
@@ -76,6 +81,7 @@ struct V1Operator {
 FF_VISITABLE_STRUCT(V1Operator, attrs, name);
 
 V1Operator to_v1(Operator const &);
+Operator from_v1(V1Operator const &);
 
 using V1ParallelComputationGraph =
     V1JsonableGraph<V1Operator, V1ParallelTensor>;
@@ -84,6 +90,7 @@ FF_VISITABLE_STRUCT(
 CHECK_IS_JSONABLE(V1ParallelComputationGraph);
 
 V1ParallelComputationGraph to_v1(ParallelComputationGraph const &);
+ParallelComputationGraph from_v1(V1ParallelComputationGraph const &);
 
 } // namespace FlexFlow
 

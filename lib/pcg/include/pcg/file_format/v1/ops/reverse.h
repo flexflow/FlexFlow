@@ -14,7 +14,8 @@ struct V1ReverseAttrs {
 FF_VISITABLE_STRUCT(V1ReverseAttrs, axis);
 CHECK_IS_JSONABLE(V1ReverseAttrs);
 
-V1ReverseAttrs to_v1(ReverseAttrs const &);
+V1ReverseAttrs to_v1(ReverseAttrs const &a);
+ReverseAttrs from_v1(V1ReverseAttrs const &va);
 
 } // namespace FlexFlow
 

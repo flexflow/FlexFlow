@@ -18,4 +18,19 @@ V1Activation to_v1(Activation const &a) {
   }
 }
 
+Activation from_v1(V1Activation const &va) {
+  switch (va) {
+    case V1Activation::RELU:
+      return Activation::RELU;
+    case V1Activation::SIGMOID:
+      return Activation::SIGMOID;
+    case V1Activation::TANH:
+      return Activation::TANH;
+    case V1Activation::GELU:
+      return Activation::GELU;
+    default:
+      NOT_REACHABLE();
+  }
+}
+
 } // namespace FlexFlow

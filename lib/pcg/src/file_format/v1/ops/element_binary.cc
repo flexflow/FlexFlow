@@ -9,4 +9,11 @@ V1ElementBinaryAttrs to_v1(ElementBinaryAttrs const &a) {
           a.should_broadcast_rhs};
 }
 
+ElementBinaryAttrs from_v1(V1ElementBinaryAttrs const &va) {
+  return {from_v1(va.type),
+          from_v1(va.compute_type),
+          va.should_broadcast_lhs,
+          va.should_broadcast_rhs};
+}
+
 } // namespace FlexFlow

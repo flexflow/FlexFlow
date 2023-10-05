@@ -46,16 +46,16 @@ public:
   ParallelTensorDims dims;
   DataType data_type;
   CreateGrad create_gradients;
-  req<optional<ParamSync>> sync_type;
   req<optional<Initializer>> initializer;
+  req<optional<ParamSync>> sync_type;
   req<optional<std::string>> name;
 };
 FF_VISITABLE_STRUCT(ParallelTensor,
                     dims,
                     data_type,
                     create_gradients,
-                    sync_type,
                     initializer,
+                    sync_type,
                     name);
 
 using ParallelParameter = ParallelTensor;

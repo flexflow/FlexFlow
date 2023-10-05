@@ -12,7 +12,8 @@ struct V1SoftmaxAttrs {
 FF_VISITABLE_STRUCT(V1SoftmaxAttrs, dim);
 CHECK_IS_JSONABLE(V1SoftmaxAttrs);
 
-V1SoftmaxAttrs to_v1(SoftmaxAttrs const &attrs);
+V1SoftmaxAttrs to_v1(SoftmaxAttrs const &a);
+SoftmaxAttrs from_v1(V1SoftmaxAttrs const &va);
 
 } // namespace FlexFlow
 

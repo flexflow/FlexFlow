@@ -21,7 +21,8 @@ FF_VISITABLE_STRUCT(V1ElementBinaryAttrs,
                     should_broadcast_rhs);
 CHECK_IS_JSONABLE(V1ElementBinaryAttrs);
 
-V1ElementBinaryAttrs to_v1(ElementBinaryAttrs const &attrs);
+V1ElementBinaryAttrs to_v1(ElementBinaryAttrs const &a);
+ElementBinaryAttrs from_v1(V1ElementBinaryAttrs const &va);
 
 } // namespace FlexFlow
 

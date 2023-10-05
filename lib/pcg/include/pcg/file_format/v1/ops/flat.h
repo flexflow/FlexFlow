@@ -10,7 +10,8 @@ struct V1FlatAttrs {};
 FF_VISITABLE_STRUCT(V1FlatAttrs);
 CHECK_IS_JSONABLE(V1FlatAttrs);
 
-V1FlatAttrs to_v1(FlatAttrs const &attrs);
+V1FlatAttrs to_v1(FlatAttrs const &a);
+FlatAttrs from_v1(V1FlatAttrs const &va);
 
 } // namespace FlexFlow
 

@@ -15,8 +15,25 @@ V1AggregateOp to_v1(AggregateOp const &op) {
   }
 }
 
+AggregateOp from_v1(V1AggregateOp const &vop) {
+  // There should be a better way of doing this.
+  switch (vop) {
+    case V1AggregateOp::SUM:
+      return AggregateOp::SUM;
+    case V1AggregateOp::AVG:
+      return AggregateOp::AVG;
+    default:
+      NOT_REACHABLE();
+  }
+}
+
 V1EmbeddingAttrs to_v1(EmbeddingAttrs const &a) {
   return {a.num_entries, a.out_channels, to_v1(a.aggr), to_v1(a.data_type)};
+}
+
+EmbeddingAttrs from_v1(V1EmbeddingAttrs const &va) {
+  return {
+      va.num_entries, va.out_channels, from_v1(va.aggr), from_v1(va.data_type)};
 }
 
 } // namespace FlexFlow

@@ -13,7 +13,8 @@ struct V1CombineAttrs {
 FF_VISITABLE_STRUCT(V1CombineAttrs, combine_dim, combine_degree);
 CHECK_IS_JSONABLE(V1CombineAttrs);
 
-V1CombineAttrs to_v1(CombineAttrs const &attrs);
+V1CombineAttrs to_v1(CombineAttrs const &a);
+CombineAttrs from_v1(V1CombineAttrs const &va);
 
 } // namespace FlexFlow
 

@@ -9,4 +9,12 @@ V1ReduceAttrs to_v1(ReduceAttrs const &a) {
           a.keepdims};
 }
 
+ReduceAttrs from_v1(V1ReduceAttrs const &va) {
+  stack_vector<ff_dim_t, MAX_TENSOR_DIM> axes;
+  for (int const &d : va.axes) {
+    axes.push_back(ff_dim_t(d));
+  }
+  return {axes, from_v1(va.op_type), va.keepdims};
+}
+
 } // namespace FlexFlow

@@ -15,6 +15,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(V1Activation,
                               {V1Activation::GELU, "GELU"}});
 
 V1Activation to_v1(Activation const &a);
+Activation from_v1(V1Activation const &va);
 
 } // namespace FlexFlow
 

@@ -17,6 +17,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(V1PoolOp,
                              {{V1PoolOp::MAX, "MAX"}, {V1PoolOp::AVG, "AVG"}});
 
 V1PoolOp to_v1(PoolOp const &op);
+PoolOp from_v1(V1PoolOp const &vop);
 
 struct V1Pool2DAttrs {
   req<int> kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
@@ -34,7 +35,8 @@ FF_VISITABLE_STRUCT(V1Pool2DAttrs,
                     activation);
 CHECK_IS_JSONABLE(V1Pool2DAttrs);
 
-V1Pool2DAttrs to_v1(Pool2DAttrs const &attrs);
+V1Pool2DAttrs to_v1(Pool2DAttrs const &a);
+Pool2DAttrs from_v1(V1Pool2DAttrs const &va);
 
 } // namespace FlexFlow
 

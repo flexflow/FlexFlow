@@ -12,7 +12,8 @@ struct V1BatchMatmulAttrs {
 FF_VISITABLE_STRUCT(V1BatchMatmulAttrs, a_seq_length_dim, b_seq_length_dim);
 CHECK_IS_JSONABLE(V1BatchMatmulAttrs);
 
-V1BatchMatmulAttrs to_v1(BatchMatmulAttrs const &attrs);
+V1BatchMatmulAttrs to_v1(BatchMatmulAttrs const &a);
+BatchMatmulAttrs from_v1(V1BatchMatmulAttrs const &va);
 
 } // namespace FlexFlow
 

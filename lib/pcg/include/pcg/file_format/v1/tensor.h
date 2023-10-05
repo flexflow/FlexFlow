@@ -22,6 +22,7 @@ FF_VISITABLE_STRUCT(
 CHECK_IS_JSONABLE(V1Tensor);
 
 V1Tensor to_v1(Tensor const &);
+Tensor from_v1(V1Tensor const &);
 
 } // namespace FlexFlow
 

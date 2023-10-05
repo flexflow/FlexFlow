@@ -28,7 +28,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(V1DataType,
                               {V1DataType::DOUBLE, "DOUBLE"}});
 
 V1DataType to_v1(DataType const &d);
+DataType from_v1(V1DataType const &vd);
+
 V1DataTypeValue to_v1(DataTypeValue const &dv);
+DataTypeValue from_v1(V1DataTypeValue const &vdv);
 
 } // namespace FlexFlow
 

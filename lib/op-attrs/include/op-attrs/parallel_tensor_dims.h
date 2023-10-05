@@ -2,12 +2,16 @@
 #define _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_PARALLEL_TENSOR_DIMS_H
 
 #include "parallel_dim.h"
+#include "tensor_shape.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
 struct ParallelTensorDims {
   explicit ParallelTensorDims(TensorDims const &);
+
+  template <typename Dims>
+  ParallelTensorDims(std::vector<Dims> const &dims) : data(dims) {}
 
   size_t get_volume() const;
   size_t num_dims() const;

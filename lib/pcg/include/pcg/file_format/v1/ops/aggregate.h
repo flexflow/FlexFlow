@@ -14,7 +14,8 @@ struct V1AggregateAttrs {
 FF_VISITABLE_STRUCT(V1AggregateAttrs, n, lambda_bal);
 CHECK_IS_JSONABLE(V1AggregateAttrs);
 
-V1AggregateAttrs to_v1(AggregateAttrs const &attrs);
+V1AggregateAttrs to_v1(AggregateAttrs const &a);
+AggregateAttrs from_v1(V1AggregateAttrs const &va);
 
 } // namespace FlexFlow
 

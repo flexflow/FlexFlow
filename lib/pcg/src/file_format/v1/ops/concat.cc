@@ -8,4 +8,8 @@ V1ConcatAttrs to_v1(ConcatAttrs const &a) {
   return {to_v1(a.axis)};
 }
 
+ConcatAttrs from_v1(V1ConcatAttrs const &va) {
+  return {ff_dim_t(va.axis)};
+}
+
 } // namespace FlexFlow

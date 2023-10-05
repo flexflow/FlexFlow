@@ -11,7 +11,8 @@ struct V1NoopAttrs {};
 FF_VISITABLE_STRUCT(V1NoopAttrs);
 CHECK_IS_JSONABLE(NoopAttrs);
 
-V1NoopAttrs to_v1(NoopAttrs const &attrs);
+V1NoopAttrs to_v1(NoopAttrs const &a);
+NoopAttrs from_v1(V1NoopAttrs const &va);
 
 } // namespace FlexFlow
 

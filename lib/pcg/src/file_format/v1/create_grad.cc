@@ -14,4 +14,15 @@ V1CreateGrad to_v1(CreateGrad const &cg) {
   }
 }
 
+CreateGrad from_v1(V1CreateGrad const &vcg) {
+  switch (vcg) {
+    case V1CreateGrad::YES:
+      return CreateGrad::YES;
+    case V1CreateGrad::NO:
+      return CreateGrad::NO;
+    default:
+      NOT_REACHABLE();
+  }
+}
+
 } // namespace FlexFlow
