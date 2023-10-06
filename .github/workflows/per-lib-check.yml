@@ -33,6 +33,9 @@ jobs:
           # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
           use-github-cache: "false"
 
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+
       - name: Install system dependencies
         run: FF_GPU_BACKEND=${{ matrix.gpu_backend }} .github/workflows/helpers/install_dependencies.sh
 
@@ -58,7 +61,7 @@ jobs:
           #  export FF_BUILD_ALL_EXAMPLES=ON 
           #  export FF_BUILD_UNIT_TESTS=ON
           #fi
-          ../config/config.linux
+          ../config/config.linux -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build utils
         run: |
