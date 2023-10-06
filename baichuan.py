@@ -2,10 +2,10 @@ import flexflow.serve as ff
 
 # Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
 ff.init(
-        num_gpus=1,
-        memory_per_gpu=8000,
-        zero_copy_memory_per_node=10000,
-        tensor_parallelism_degree=1,
+        num_gpus=4,
+        memory_per_gpu=14000,
+        zero_copy_memory_per_node=30000,
+        tensor_parallelism_degree=4,
         pipeline_parallelism_degree=1
     )
 
@@ -19,6 +19,7 @@ generation_config = ff.GenerationConfig(
 
 # Compile the LLM for inference and load the weights into memory
 llm.compile(generation_config)
-
+print(f"llm:{llm}")
 # Generation begins!
 result = llm.generate("Here are some travel tips for Tokyo:\n")
+print("result:",result)

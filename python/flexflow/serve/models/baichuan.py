@@ -135,6 +135,7 @@ class FlexFlowBAICHUAN(FlexFlowModel):
                     DataType.DT_NONE, #data_type
                     None, #kernel_initializer
                     True, #apply_rotary_pos_emb
+                    name=f"layers_{i}_attention",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 mha = ffmodel.inc_multihead_self_attention(

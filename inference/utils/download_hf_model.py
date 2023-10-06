@@ -44,6 +44,7 @@ def main(args):
 
     for model_name in args.model_names:
         print(f"Downloading {model_name}")
+        data_types = {ff.DataType.DT_HALF}
         for data_type in data_types:
             llm = ff.LLM(
                 model_name,

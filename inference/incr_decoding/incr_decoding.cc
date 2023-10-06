@@ -24,6 +24,7 @@
 #include <wordexp.h>
 
 #include <nlohmann/json.hpp>
+#include <iostream>
 
 using namespace Legion;
 using json = nlohmann::json;
@@ -156,6 +157,7 @@ void FlexFlow::top_level_task(Task const *task,
   ModelType model_type = ModelType::UNKNOWN;
   auto architectures = model_config["architectures"];
   for (auto const &str : architectures) {
+    std::cout<<"str:"<<str<<std::endl;
     if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM") {
       std::string nameOrPath = model_config["_name_or_path"];
       // TODO: support LLAMA-2 models not from Meta
@@ -200,6 +202,8 @@ void FlexFlow::top_level_task(Task const *task,
   rm->register_output_filepath(file_paths.output_file_path);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
+  std::cout<<"1, file_paths.prompt_file_path:"<<std::endl;
+
   if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
     LLAMA::create_llama_model(model,
                               config_filepath,
@@ -243,7 +247,7 @@ void FlexFlow::top_level_task(Task const *task,
   } else {
     assert(false && "unknow model type");
   }
-
+  std::cout<<"2, file_paths.prompt_file_path:"<<file_paths.prompt_file_path <<std::endl;
   int total_num_requests = 0;
   {
     using json = nlohmann::json;
@@ -260,6 +264,7 @@ void FlexFlow::top_level_task(Task const *task,
       total_num_requests++;
       prompts.push_back(text);
     }
+    std::cout<<"prompts.size():"<<prompts.size()<<std::endl;
     GenerationResult result =
         model.generate(prompts, 128 /*max_sequence_length*/);
   }

@@ -191,6 +191,7 @@ RequestManager::RequestGuid
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::string const &prompt,
                                          int max_sequence_length) {
+  std::cout<<"RequestManager::register_new_request, the prompt:"<<prompt <<" max_sequence_lenght:"<<max_sequence_length<<std::endl;
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Add a new request
   Request request;
@@ -1742,6 +1743,7 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 GenerationResult FFModel::generate(std::vector<std::string> &prompts,
                                    int max_seq_length) {
   RequestManager *rm = RequestManager::get_request_manager();
+  std::cout<<"1 FFModel::generate, rm->get_num_ssms():"<<rm->get_num_ssms()<<" and prompts.size():"<<prompts.size()<<std::endl;
   if (rm->get_num_ssms() == 0) {
     // No SSMs: perform incremental decoding
     return rm->generate_incr_decoding(this, prompts, max_seq_length);
@@ -1756,7 +1758,9 @@ GenerationResult RequestManager::generate_incr_decoding(
     FFModel *llm, std::vector<std::string> &prompts, int max_seq_length) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid;
+  std::cout<<"1 RequestManager::generate_incr_decoding:"<<prompts.size()<<std::endl;
   for (int i = 0; i < prompts.size(); i++) {
+    std::cout<<"2 RequestManager::generate_incr_decoding, i:"<<i<<", prompts.at(i):"<<prompts.at(i)<<std::endl;
     guid = register_new_request(prompts.at(i), max_seq_length);
   }
 
@@ -1889,9 +1893,12 @@ RequestManager *request_manager_singleton = nullptr;
 
 /*static*/
 RequestManager *RequestManager::get_request_manager() {
+  std::cout<<"1 RequestManager::get_request_manager"<<std::endl;
   if (request_manager_singleton == nullptr) {
     request_manager_singleton = new RequestManager();
   }
+  std::cout<<"2 RequestManager::get_request_manager"<<std::endl;
+
   return request_manager_singleton;
 }
 

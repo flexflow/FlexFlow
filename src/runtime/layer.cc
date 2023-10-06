@@ -20,6 +20,7 @@ Layer::Layer(FFModel *model,
                  model->current_transformer_layer_id),
       numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs) {
   std::string pcname;
+  std::cout<<"layer:layer, _name:"<<_name << std::endl;
   if (_name == nullptr) {
     pcname = get_operator_type_name(op_type);
   } else {

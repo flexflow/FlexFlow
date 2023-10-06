@@ -370,6 +370,7 @@ void MultiHeadAttention::init_inference(
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     MachineView const *mv) {
+  std::cout<<"1 MultiHeadAttention::init_inference:"<<std::endl;
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -469,6 +470,8 @@ void MultiHeadAttention::init(FFModel const &ff) {
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
+  std::cout<<"2 MultiHeadAttention::init_inference:"<<std::endl;
+
 }
 
 /*

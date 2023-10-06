@@ -688,6 +688,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   DT *data = (DT *)malloc(sizeof(DT) * volume);
 
   std::string weight_filename = removeGuidOperatorName(std::string(l->name));
+  std::cout<<"weigth_file:"<<weight_filename<<" and l->name:"<<std::string(l->name)<<std::endl;
 
   if (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
       l->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION ||

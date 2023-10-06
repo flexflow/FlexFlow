@@ -57,7 +57,8 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
                          AGGR_MODE_NONE,
                          DT_FLOAT,
                          NULL,
-                         embed_init);
+                         embed_init,
+                         "token_embedding");
   } else {
     token = ff.embedding(input,
                          baichuan_config.vocab_size,
@@ -65,22 +66,49 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
                          AGGR_MODE_NONE,
                          DT_HALF,
                          NULL,
-                         embed_init);
+                         embed_init,
+                         "token_embedding");
   }
 
   Layer *embedding = ff.layers.back();
-  weights_layers.emplace("tok_embeddings_weight", embedding);
-
+  weights_layers.emplace("token_embedding_weight", embedding);
+  Tensor w2 = nullptr;
+  std::cout<<"baichuan_config.num_hidden_layers:"<<baichuan_config.num_hidden_layers<<" and use_full_precision:"<<use_full_precision <<std::endl;
   for(int i = 0; i < baichuan_config.num_hidden_layers; i++) {
     //set transformer layer id
     ff.set_transformer_layer_id(i);
-
+    std::cout<<"BAICHUAN::create_baichuan_model,i:"<<i<<" mode:"<<mode <<std::endl;
     //step 1: rms_norm
-    Tensor rms_norm = ff.rms_norm(token, baichuan_config.rms_norm_eps, baichuan_config.hidden_size);
+    /*Tensor rms_norm = ff.rms_norm(token, baichuan_config.rms_norm_eps, baichuan_config.hidden_size, DT_NONE, std::string("layers_" + std::to_string(i) + "_attention_norm")
+              .c_str());
     Layer *attention_norm = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) +
                                "_attention_norm_weight",
-                           attention_norm);
+                           attention_norm);*/
+    //step 1: attention
+    Tensor rms_norm = nullptr;
+    Tensor token_rms_norm[2] = {nullptr, nullptr};
+    if(i == 0) {
+      rms_norm = ff.rms_norm(
+        token,
+        baichuan_config.rms_norm_eps,
+        baichuan_config.hidden_size,
+        DT_NONE, 
+        std::string("layers_" + std::to_string(i) + "_attention_norm").c_str());
+    } else {
+      ff.residual_rms_norm(
+        token,
+        w2,
+        token_rms_norm,
+        baichuan_config.rms_norm_eps,
+        baichuan_config.hidden_size,
+        DT_NONE, 
+        std::string("layers_" + std::to_string(i) + "_attention_norm").c_str());
+        token = token_rms_norm[0];
+        rms_norm = token_rms_norm[1];
+    }
+
+
     //step 2: self attention
     //TODO: we should modify the kernel to support baichuan model
     Tensor mha;
@@ -92,13 +120,18 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
             baichuan_config.num_attention_heads,
             baichuan_config.hidden_size / baichuan_config.num_attention_heads,
             baichuan_config.hidden_size / baichuan_config.num_attention_heads,
-            0.0f,
-            false,
-            false,
-            false,
-            DT_NONE,
-            NULL,
-            true);
+            0.0f,    /*dropout*/
+            false,   /*qkv_bias*/
+            false,   /*final_bias*/
+            false,   /*add_zero_attn*/
+            DT_NONE, /*data_type*/
+            nullptr,    /*kernel_initializer*/
+            true,    /*apply_rotary_embedding*/
+            false,   /*scaling query*/
+            1.0f,    /*scaling factor*/
+            true,    /*qk_prod_scaling*/
+            false,   /*position_bias*/
+            std::string("layers_" + std::to_string(i) + "_attention").c_str());
         break;
       }
       case TREE_VERIFY_MODE: {
@@ -114,11 +147,16 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
-            true     /*apply_rotary_embedding*/
-        );
+            true,     /*apply_rotary_embedding*/
+            false,   /*scaling query*/
+            1.0f,    /*scaling factor*/
+            true,    /*qk_prod_scaling*/
+            false,   /*position_bias*/
+            std::string("layers_" + std::to_string(i) + "_attention").c_str());
         break;
       }
       case INC_DECODING_MODE: {
+        std::cout<<"ff.inc_multihead_self_attention"<<std::endl;
         mha = ff.inc_multihead_self_attention(
             rms_norm,
             baichuan_config.hidden_size,
@@ -131,8 +169,12 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
-            true     /*apply_rotary_embedding*/
-        );
+            true ,    /*apply_rotary_embedding*/
+            false,   /*scaling query*/
+            1.0f,    /*scaling factor*/
+            true,    /*qk_prod_scaling*/
+            false,   /*position_bias*/
+            std::string("layers_" + std::to_string(i) + "_attention").c_str());
         break;
       }
       default: {
@@ -189,7 +231,7 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
     Tensor multi = ff.sigmoid_silu_multi(w1, w3);
 
     layer_name = "layers_" + std::to_string(i) + "_feed_forward_w2";
-    Tensor w2 = ff.dense(multi,
+    w2 = ff.dense(multi,
                          baichuan_config.hidden_size,
                          AC_MODE_NONE,
                          false,

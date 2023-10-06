@@ -33,13 +33,13 @@ public:
                 try {
                     json model_config;
                     config_file >> model_config;
-                    num_hidden_layers = model_config["n_layer"];
+                    num_hidden_layers = model_config["num_hidden_layers"];
                     vocab_size = model_config["vocab_size"];   
-                    num_attention_heads = model_config["n_head"];
-                    hidden_size = model_config["n_embd"];
+                    num_attention_heads = model_config["num_attention_heads"];
+                    hidden_size = model_config["hidden_size"];
                     rms_norm_eps = model_config["rms_norm_eps"];
                     intermediate_size = model_config["intermediate_size"];
-                    max_position_embeddings = model_config["n_positions"];
+                    max_position_embeddings = model_config["max_position_embeddings"];
                 } catch (json::exception const &e) {
                     std::cerr << "Error parsing BAICHUAN config from JSON file: "
                     << e.what() << std::endl;
@@ -59,8 +59,8 @@ public:
         void print() const {
             std::cout<<"BaiChuan Config: "<<std::endl;
             std::cout << "\thidden_size: " << hidden_size << std::endl;
-            std::cout << "\tn_heads: " << num_attention_heads << std::endl;
-            std::cout << "\tn_layers: " << num_hidden_layers << std::endl;
+            std::cout << "\tnum_attention_heads: " << num_attention_heads << std::endl;
+            std::cout << "\tnum_hidden_layers: " << num_hidden_layers << std::endl;
             std::cout << "\tvocab_size: " << vocab_size << std::endl;
         }
 
