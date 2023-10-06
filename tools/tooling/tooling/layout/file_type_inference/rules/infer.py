@@ -79,8 +79,8 @@ class DiGraph(Generic[T]):
         return frozenset(self._nodes)
 
     @property
-    def edges(self) -> FrozenSet[Tuple[T, T]]:
-        return frozenset(sum(
+    def edges(self) -> FrozenSet[Tuple[T, T]]: 
+        return frozenset(sum( # type: ignore
             [[(src, dst) for dst in dsts] for src, dsts in self._connectivity.items()],
             start=list()
         ))

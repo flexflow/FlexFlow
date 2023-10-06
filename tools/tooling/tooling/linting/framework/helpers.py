@@ -1,6 +1,8 @@
 from tooling.layout.project import Project
 from tooling.linting.framework.response import FixResponse
-from typing import Optional
+from tooling.layout.path import AbsolutePath
+from typing import Optional, List, Iterable
+from tooling.layout.file_type_inference.file_attribute import FileAttribute 
 
 def check_unstaged_changes(project: Project, fix: bool, force: bool) -> Optional[FixResponse]:
     if fix:
@@ -13,3 +15,9 @@ def check_unstaged_changes(project: Project, fix: bool, force: bool) -> Optional
                 )
             )
     return None
+
+def jsonify_files(project: Project, files: Iterable[AbsolutePath]) -> List[str]:
+    return list(sorted(str(p.relative_to(project.root_path)) for p in files))
+
+def jsonify_files_with_attr(project: Project, attr: FileAttribute) -> List[str]:
+    return jsonify_files(project, project.file_types.with_attr(attr))

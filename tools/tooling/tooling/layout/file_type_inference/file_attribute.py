@@ -34,6 +34,7 @@ class FileAttribute(Enum):
     IS_NOW_IMPROPERLY_CLANG_FORMATTED = auto()
     DID_FIX_CLANG_FORMATTING = auto()
 
+    # include_guards linter
     HAS_UNCONVENTIONAL_INCLUDE_GUARDS = auto()
     SUPPORTED_BY_FIX_INCLUDE_GUARDS = auto()
     ORIGINALLY_HAD_CORRECT_INCLUDE_GUARD = auto()
@@ -42,6 +43,7 @@ class FileAttribute(Enum):
     NOW_HAS_INCORRECT_INCLUDE_GUARD = auto()
     DID_FIX_INCLUDE_GUARD = auto()
 
+    # missing_files linter
     IS_SUPPORTED_BY_FIND_MISSING_FILES_LINTER = auto()
     ORIGINALLY_WAS_MISSING_HEADER_FILE = auto()
     ORIGINALLY_HAD_HEADER_FILE = auto()
@@ -56,6 +58,15 @@ class FileAttribute(Enum):
     NOW_HAS_SOURCE_FILE = auto()
     NOW_IS_MISSING_TEST_FILE = auto()
     NOW_HAS_TEST_FILE = auto()
+
+    # clang_tidy linter
+    IS_SUPPORTED_BY_CLANG_TIDY = auto()
+    ORIGINALLY_FAILED_CLANG_TIDY_CHECKS = auto()
+    ORIGINALLY_PASSED_CLANG_TIDY_CHECKS = auto()
+    NOW_FAILS_CLANG_TIDY_CHECKS = auto()
+    NOW_PASSES_CLANG_TIDY_CHECKS = auto()
+    DID_FIX_CLANG_TIDY_FAILED_CHECKS = auto()
+
 
     HEADER = auto()
     IMPL = auto()

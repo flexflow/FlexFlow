@@ -7,6 +7,7 @@ from tooling.linting.framework.specification import Specification
 from tooling.linting.framework.method import Method
 from typing import cast, Any
 from enum import Enum, auto
+import argparse
 
 class SpecificLinter(Enum):
     missing_files = auto()
@@ -25,6 +26,10 @@ class SpecificLinter(Enum):
         elif self == SpecificLinter.clang_tidy:
             return clang_tidy
 
+    def get_parser(self, p: argparse.ArgumentParser) -> argparse.ArgumentParser:
+        p.set_defaults(linter_name=self.name)
+        return cast(argparse.ArgumentParser, self._module.get_parser(p))
+
     @property
     def spec(self) -> Specification:
         return cast(Specification, self._module.spec)
@@ -41,6 +46,10 @@ class SpecificLinter(Enum):
     @property
     def supports_check(self) -> bool:
         return Method.CHECK in self.spec.supported_methods
+
+    @property
+    def cli_name(self) -> str:
+        return self.name
 
 
 def all_linters() -> Manager:

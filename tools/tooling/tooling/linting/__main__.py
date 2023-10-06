@@ -4,72 +4,49 @@ from tooling.cli.verbosity import add_verbosity_args, calculate_log_level
 from tooling.linting.framework.response import FixResponse, CheckResponse, ErrorResponse
 import argparse
 from tooling.cli.parsing import instantiate, parser_root
-from typing import Union, Mapping, Any, Callable
+from typing import Union, Mapping, Any
 import logging
 from tooling.layout.project import Project
 from pathlib import Path
 from tooling.linting.framework.settings import Settings
 from enum import Enum 
 import json
+from tooling.linting.framework.method import Method
 
 _l: logging.Logger
 
-def setup_logging(raw_args: Any) -> logging.Logger:
+def setup_logging(name: str, raw_args: Any) -> logging.Logger:
     logging.basicConfig(level=raw_args.log_level)
-    return logging.getLogger(__name__)
+    return logging.getLogger(name)
 
 def all_linters_fix(raw_args: Any) -> Mapping[str, Union[FixResponse, ErrorResponse]]:
-    _l = setup_logging(raw_args)
+    _l = setup_logging(__name__, raw_args)
     mgr = all_linters()
     _l.debug(f'Found project with root at {raw_args.project.root_path}')
     return mgr.fix(settings=raw_args.settings, project=raw_args.project)
 
 def all_linters_check(raw_args: Any) -> Mapping[str, Union[CheckResponse, ErrorResponse]]:
-    _l = setup_logging(raw_args)
+    _l = setup_logging(__name__, raw_args)
     mgr = all_linters()
     _l.debug(f'Found project with root at {raw_args.project.root_path}')
     return mgr.check(settings=raw_args.settings, project=raw_args.project)
 
-def specific_linter_fix(linter: SpecificLinter) -> Callable[[Any], Mapping[str, Union[FixResponse, ErrorResponse]]]:
-    def _f(raw_args: Any, linter: SpecificLinter=linter) -> Mapping[str, Union[FixResponse, ErrorResponse]]:
-        _l = setup_logging(raw_args)
-        mgr = linter.get_manager()
-        _l.debug(f'Found project with root at {raw_args.project.root_path}')
-        return mgr.fix(settings=raw_args.settings, project=raw_args.project)
-    return _f
-
-def specific_linter_check(linter: SpecificLinter) -> Callable[[Any], Mapping[str, Union[CheckResponse, ErrorResponse]]]:
-    def _f(raw_args: Any, linter: SpecificLinter=linter) -> Mapping[str, Union[CheckResponse, ErrorResponse]]:
-        _l = setup_logging(raw_args)
-        mgr = linter.get_manager()
-        _l.debug(f'Found project with root at {raw_args.project.root_path}')
-        return mgr.check(settings=raw_args.settings, project=raw_args.project)
-    return _f
-
-def specific_linter_check_parser(linter: SpecificLinter) -> Callable[[argparse.ArgumentParser], argparse.ArgumentParser]:
-    def _f(p: argparse.ArgumentParser, linter: SpecificLinter = linter) -> argparse.ArgumentParser:
-        return instantiate(p, func=specific_linter_check(linter))
-    return _f
-
-def specific_linter_fix_parser(linter: SpecificLinter) -> Callable[[argparse.ArgumentParser], argparse.ArgumentParser]:
-    def _f(p: argparse.ArgumentParser, linter: SpecificLinter = linter) -> argparse.ArgumentParser:
-        return instantiate(p, func=specific_linter_fix(linter))
-    return _f
-
 def get_check_parser(p: argparse.ArgumentParser) -> argparse.ArgumentParser:
     specific_linter_parsers = {
-        linter.name : specific_linter_check_parser(linter)
+        linter.name : linter.get_parser
         for linter in SpecificLinter
         if linter.supports_check
     }
+    p.set_defaults(method=Method.CHECK)
     return instantiate(p, func=all_linters_check, **specific_linter_parsers)
 
 def get_fix_parser(p: argparse.ArgumentParser) -> argparse.ArgumentParser:
     specific_linter_parsers = {
-        linter.name : specific_linter_fix_parser(linter)
+        linter.name : linter.get_parser
         for linter in SpecificLinter
         if linter.supports_fix
     }
+    p.set_defaults(method=Method.FIX)
     return instantiate(p, func=all_linters_fix, **specific_linter_parsers)
 
 class OutputFormat(Enum):
@@ -95,6 +72,7 @@ def main() -> int:
 
     args = p.parse_args()
     args.log_level = calculate_log_level(args)
+    args.setup_logging = setup_logging
     args.project = Project.for_path(Path(__file__))
     args.settings = Settings(force=args.force)
 

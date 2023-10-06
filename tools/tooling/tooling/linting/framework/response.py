@@ -9,7 +9,6 @@ class CheckResponse:
 
     def as_json(self) -> Json:
         return {
-            '_t' : 'CheckResponse',
             'num_errors' : self.num_errors,
             'json_data' : self.json_data,
         }

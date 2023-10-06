@@ -87,7 +87,8 @@ TOOL_CONFIGS: Dict[Tool, ToolConfig] = {
         checksums={
             System.linux: '7a83f8969c7c650c460512ccd270cfd058eb2d49b35d4612145b62e3b4078235d5a6301881f883fba2ae68746137d4e0624f982bc5ae7f05131ebe00af2f4ec7',
             System.macos: 'b80003275e2a5d0fc5ca76b6585af404d4ed19abbdd503ca645a6a08b25331cb9702ec6a79c5afd86bf283f5c86135efeea1743be502ffb809aa6681079fb9cb',
-        }
+        },
+        config_path=Path('.clang-tidy-for-linting.yml')
     ),
 }
 

@@ -10,11 +10,13 @@ from tooling.layout.path import AbsolutePath
 from tooling.linting.framework.response import Response, FixResponse, CheckResponse
 from tooling.linting.framework.specification import Specification
 from tooling.linting.framework.settings import Settings
-from tooling.linting.framework.helpers import check_unstaged_changes 
+from tooling.linting.framework.helpers import check_unstaged_changes, jsonify_files_with_attr
 from tooling.linting.framework.method import Method
+import argparse
+from tooling.cli.parsing import instantiate
 
 import logging
-from typing import FrozenSet
+from typing import FrozenSet, Any, Dict
 
 _l = logging.getLogger(__name__)
 
@@ -77,30 +79,24 @@ def get_include_guard_fix_rules(project: Project) -> FrozenSet[Rule]:
 
 def check_include_guards(project: Project) -> CheckResponse:
     project.add_rules(get_include_guard_check_rules(project))
-    incorrect_guards = [
-        str(p) for p in project.file_types.with_attr(FileAttribute.NOW_HAS_INCORRECT_INCLUDE_GUARD)
-    ]
+    incorrect_guards = jsonify_files_with_attr(project, FileAttribute.NOW_HAS_INCORRECT_INCLUDE_GUARD)
+
     return CheckResponse(
         num_errors=len(incorrect_guards),
-        json_data=list(sorted(incorrect_guards))
+        json_data=incorrect_guards,
     )
 
 def fix_include_guards(project: Project) -> FixResponse:
     project.add_rules(get_include_guard_fix_rules(project))
 
-    still_incorrect_guards = [
-        str(p) for p in project.file_types.with_attr(FileAttribute.NOW_HAS_INCORRECT_INCLUDE_GUARD)
-    ]
-
-    fixed_guards = [
-        str(p) for p in project.file_types.with_attr(FileAttribute.DID_FIX_INCLUDE_GUARD)
-    ]
+    still_incorrect_guards = jsonify_files_with_attr(project, FileAttribute.NOW_HAS_INCORRECT_INCLUDE_GUARD)
+    fixed_guards = jsonify_files_with_attr(project, FileAttribute.DID_FIX_INCLUDE_GUARD)
 
     return FixResponse(
         did_succeed=(len(still_incorrect_guards) == 0),
         json_data={
-            'failed_to_fix': sorted(list(still_incorrect_guards)),
-            'fixed': sorted(list(fixed_guards))
+            'failed_to_fix': still_incorrect_guards,
+            'fixed': fixed_guards
         }
     )
 
@@ -114,6 +110,18 @@ def run(settings: Settings, project: Project, method: Method) -> Response:
         return fix_include_guards(project)
     else:
         return check_include_guards(project)
+
+def main_include_guards(raw_args: Any) -> Dict[str, Response]:
+    _l = raw_args.setup_logging(__name__)
+    return {
+        raw_args.linter_name : run(settings=raw_args.settings, project=raw_args.projec, method=raw_args.method),
+    }
+
+def get_parser(p: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    return instantiate(
+        p, 
+        func=main_include_guards
+    )
 
 spec = Specification.create(
     name='include_guards',

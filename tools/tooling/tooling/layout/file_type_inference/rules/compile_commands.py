@@ -5,7 +5,7 @@ from typing import FrozenSet
 rules: FrozenSet[Rule] = frozenset({
     Rule(
         'compile_commands.find',
-        exclude_blacklisted(IsFile() & IsNamed('compile_commands.json')), 
+        IsFile() & IsNamed('compile_commands.json'), 
         FileAttribute.COMPILE_COMMANDS_JSON
     )
 })

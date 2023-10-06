@@ -5,16 +5,18 @@ from tooling.linting.framework.response import CheckResponse, FixResponse, Respo
 from tooling.linting.framework.method import Method
 from tooling.linting.framework.settings import Settings
 from tooling.linting.framework.clang_tools import ClangToolsConfig, TOOL_CONFIGS, System, Arch, Tool, download_tool
-from tooling.linting.framework.helpers import check_unstaged_changes 
+from tooling.linting.framework.helpers import check_unstaged_changes, jsonify_files_with_attr
 from tooling.layout.path import AbsolutePath 
 from tooling.linting.framework.specification import Specification
 from os import PathLike
+from tooling.cli.parsing import instantiate
+import argparse
 
-from typing import FrozenSet, Sequence
+from typing import FrozenSet, Sequence, Any, Dict
 import subprocess
 import logging
 
-_l = logging.getLogger(__name__)
+_l: logging.Logger = logging.getLogger(__name__)
 
 def run_clang_format(project: Project, config: ClangToolsConfig, args: Sequence[str], files: Sequence[PathLike[str]]) -> str:
     config_file = config.config_file_for_tool(Tool.clang_format)
@@ -93,13 +95,13 @@ def get_clang_fix_rules(project: Project, config: ClangToolsConfig) -> FrozenSet
 
 def check_format(project: Project, config: ClangToolsConfig) -> CheckResponse:
     project.add_rules(get_clang_check_rules(project, config))
-    failed_files = list(sorted(str(failed_file) for failed_file in project.file_types.with_attr(FileAttribute.IS_NOW_IMPROPERLY_CLANG_FORMATTED)))
-    return CheckResponse(num_errors=len(failed_files), json_data=list(sorted(failed_files)))
+    failed_files = jsonify_files_with_attr(project, FileAttribute.IS_NOW_IMPROPERLY_CLANG_FORMATTED)
+    return CheckResponse(num_errors=len(failed_files), json_data=failed_files)
 
 def fix_format(project: Project, config: ClangToolsConfig) -> FixResponse:
     project.add_rules(get_clang_fix_rules(project, config))
-    failed_files = list(sorted(str(failed_file) for failed_file in project.file_types.with_attr(FileAttribute.IS_NOW_IMPROPERLY_CLANG_FORMATTED)))
-    fixed_files = list(sorted(str(fixed_file) for fixed_file in project.file_types.with_attr(FileAttribute.DID_FIX_CLANG_FORMATTING)))
+    failed_files = jsonify_files_with_attr(project, FileAttribute.IS_NOW_IMPROPERLY_CLANG_FORMATTED)
+    fixed_files = jsonify_files_with_attr(project, FileAttribute.DID_FIX_CLANG_FORMATTING)
     return FixResponse(
         did_succeed=len(failed_files) == 0,
         num_fixes=len(fixed_files),
@@ -126,6 +128,18 @@ def run(settings: Settings, project: Project, method: Method) -> Response:
         return fix_format(project, config)
     else:
         return check_format(project, config)
+
+def main_format(raw_args: Any) -> Dict[str, Response]:
+    _l = raw_args.setup_loggin(__name__, raw_args)
+    return {
+        raw_args.linter_name : run(settings=raw_args.settings, project=raw_args.project, method=raw_args.method)
+    }
+
+def get_parser(p: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    return instantiate(
+        p,
+        func=main_format
+    )
 
 spec = Specification.create(
     name='clang_format',

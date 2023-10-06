@@ -165,7 +165,7 @@ class IsNamed(Expr):
 @dataclass(frozen=True)
 class IsFile(Expr):
     def evaluate(self, p: AbsolutePath, attrs: Attrs, extra: ExprExtra) -> bool:
-        return p.is_file()
+        return p.is_file() and not p.is_symlink()
 
     @property
     def inputs(self) -> FrozenSet[FileAttribute]:

@@ -1,0 +1,58 @@
+---
+Checks: >-
+  bugprone-*,
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  google-global-names-in-headers,
+  google-build-namespaces,
+  misc-header-include-cycle,
+  misc-include-cleaner,
+  misc-const-correctness,
+  misc-use-anonymous-namespace,
+  misc-misplaced-const,
+  modernize-loop-convert,
+  modernize-type-traits,
+  modernize-use-equals-default,
+  readability-*
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+AnalyzeTemporaryDtors: false
+FormatStyle:     none
+CheckOptions:
+  - key:             llvm-else-after-return.WarnOnConditionVariables
+    value:           'false'
+  - key:             modernize-loop-convert.MinConfidence
+    value:           reasonable
+  - key:             modernize-replace-auto-ptr.IncludeStyle
+    value:           llvm
+  - key:             modernize-pass-by-value.IncludeStyle
+    value:           llvm
+  - key:             google-readability-namespace-comments.ShortNamespaceLines
+    value:           '10'
+  - key:             google-readability-namespace-comments.SpacesBeforeComments
+    value:           '2'
+  - key:             cppcoreguidelines-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value:           'true'
+  - key:             google-readability-braces-around-statements.ShortStatementLines
+    value:           '1'
+  - key:             cert-oop54-cpp.WarnOnlyIfThisHasSuspiciousField
+    value:           'false'
+  - key:             modernize-loop-convert.MaxCopySize
+    value:           '16'
+  - key:             cert-dcl16-c.NewSuffixes
+    value:           'L;LL;LU;LLU'
+  - key:             cert-str34-c.DiagnoseSignedUnsignedCharComparisons
+    value:           'false'
+  - key:             cppcoreguidelines-explicit-virtual-functions.IgnoreDestructors
+    value:           'true'
+  - key:             modernize-use-nullptr.NullMacros
+    value:           'NULL'
+  - key:             llvm-qualified-auto.AddConstToQualified
+    value:           'false'
+  - key:             modernize-loop-convert.NamingStyle
+    value:           CamelCase
+  - key:             llvm-else-after-return.WarnOnUnfixable
+    value:           'false'
+  - key:             google-readability-function-size.StatementThreshold
+    value:           '800'

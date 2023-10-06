@@ -9,14 +9,16 @@ from tooling.linting.framework.response import CheckResponse, FixResponse, Respo
 from tooling.linting.framework.specification import Specification 
 from tooling.linting.framework.method import Method
 from tooling.linting.framework.settings import Settings
-from tooling.linting.framework.helpers import check_unstaged_changes
+from tooling.linting.framework.helpers import check_unstaged_changes, jsonify_files_with_attr
 from pathlib import Path
 from tooling.json import Json
+from tooling.cli.parsing import instantiate
+import argparse
 
-from typing import FrozenSet, Tuple
+from typing import FrozenSet, Tuple, Any, Dict
 import logging
 
-_l = logging.getLogger(__name__)
+_l: logging.Logger = logging.getLogger(__name__)
 
 is_supported_rule = Rule(
     'missing_files.is_supported',
@@ -176,22 +178,16 @@ def get_fix_missing_files_rules(project: Project) -> FrozenSet[Rule]:
     return get_check_missing_files_rules(project).union([fix_missing_src_file_rule])
 
 def _get_json_data(project: Project) -> Tuple[int, Json]:
-    missing_header_files = list(sorted([
-        str(p.relative_to(project.root_path)) for p in project.file_types.with_attr(FileAttribute.NOW_IS_MISSING_HEADER_FILE)
-    ]))
-    missing_test_files = list(sorted([
-        str(p.relative_to(project.root_path)) for p in project.file_types.with_attr(FileAttribute.NOW_IS_MISSING_TEST_FILE)
-    ]))
-    missing_source_files = list(sorted([
-        str(p.relative_to(project.root_path)) for p in project.file_types.with_attr(FileAttribute.NOW_IS_MISSING_SOURCE_FILE)
-    ]))
-    num_missing = len(set(missing_header_files).union(missing_test_files, missing_source_files))
+    missing_header_file_for = jsonify_files_with_attr(project, FileAttribute.NOW_IS_MISSING_HEADER_FILE)
+    missing_test_file_for = jsonify_files_with_attr(project, FileAttribute.NOW_IS_MISSING_TEST_FILE)
+    missing_source_file_for = jsonify_files_with_attr(project, FileAttribute.NOW_IS_MISSING_SOURCE_FILE)
+    num_missing = len(set(missing_header_file_for).union(missing_test_file_for, missing_source_file_for))
     return (
         num_missing,
         {
-            'missing_header_files': missing_header_files,
-            'missing_test_files': missing_test_files,
-            'missing_source_files': missing_source_files,
+            'missing_header_file_for': missing_header_file_for,
+            'missing_test_file_for': missing_test_file_for,
+            'missing_source_file_for': missing_source_file_for,
         }
     )
 
@@ -206,9 +202,7 @@ def check_missing_files(project: Project) -> CheckResponse:
 def fix_missing_files(project: Project) -> FixResponse:
     project.add_rules(get_fix_missing_files_rules(project))
     num_errors, json_data = _get_json_data(project)
-    fixed = list(sorted([
-        str(p) for p in project.file_types.with_attr(FileAttribute.DID_FIX_MISSING_SOURCE_FILE)
-    ]))
+    fixed = jsonify_files_with_attr(project, FileAttribute.DID_FIX_MISSING_SOURCE_FILE)
     return FixResponse(
         did_succeed=(num_errors == 0),
         num_fixes=len(fixed),
@@ -225,6 +219,18 @@ def run(settings: Settings, project: Project, method: Method) -> Response:
         return fix_missing_files(project)
     else:
         return check_missing_files(project)
+
+def main_missing_files(raw_args: Any) -> Dict[str, Response]:
+    _l = raw_args.setup_logging(__name__)
+    return {
+        raw_args.linter_name : run(settings=raw_args.settings, project=raw_args.project, method=raw_args.method),
+    }
+
+def get_parser(p: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    return instantiate(
+        p,
+        func=main_missing_files,
+    )
 
 spec = Specification.create(
     name='find_missing_files',
