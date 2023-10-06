@@ -16,537 +16,154 @@
 #include "concat.h"
 #include "kernels/concat_kernels.h"
 #include "legion/legion_utilities.h"
-#include "task_spec.h"
+#include "op-attrs/get_output_shapes.h"
+#include "task_spec/op_task_signature.h"
+#include "task_spec/variadic_tensor_ref.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
-enum Slots {
-  INPUTS,
-  OUTPUT,
-  INPUT_GRADS,
-  OUTPUT_GRAD,
-  ATTRS,
-  PROFILING
-}
-
-// declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
-using PCG::Node;
-
 using namespace FlexFlow::Kernels::Concat;
 
-bool operator==(ConcatParams const &lhs, ConcatParams const &rhs) {
-  return lhs.axis == rhs.axis;
-}
+using Legion::Context;
+using Legion::PhysicalRegion;
+using Legion::Runtime;
+using Legion::Task;
 
-ConcatParams Concat::get_params() const {
-  ConcatParams params;
-  params.axis = legion_axis;
-  return params;
-}
+enum Slots { INPUTS, OUTPUT, ATTRS, PROFILING, HANDLE, NUM_INPUTS };
 
-Tensor
-    FFModel::concat(int n, Tensor const *tensors, int axis, char const *name) {
-  Layer *concat = new Layer(this,
-                            OP_CONCAT,
-                            DT_FLOAT,
-                            name,
-                            n /*inputs*/,
-                            0 /*weights*/,
-                            1 /*outputs*/,
-                            tensors);
-  int numdim = tensors[0]->num_dims;
-  // Making sure axis is between [0, numdim)
-  axis = (axis % numdim + numdim) % numdim;
-  int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++) {
-    dims[i] = tensors[0]->dims[i];
-  }
-  for (int i = 1; i < n; i++) {
-    assert(tensors[i]->data_type == tensors[0]->data_type);
-    assert(tensors[i]->num_dims == tensors[0]->num_dims);
-    for (int j = 0; j < numdim; j++) {
-      if (j != numdim - axis - 1) {
-        assert(tensors[i]->dims[j] == tensors[0]->dims[j]);
-      } else {
-        dims[j] += tensors[i]->dims[j];
-      }
-    }
-  }
-  concat->outputs[0] = create_tensor_legion_ordering(
-      numdim, dims, tensors[0]->data_type, concat, 0, true /*create_grad*/);
-  concat->add_int_property("legion_axis", numdim - axis - 1);
-  layers.push_back(concat);
-  return concat->outputs[0];
-}
-
-Op *Concat::create_operator_from_layer(
-    FFModel &model,
-    Layer const *layer,
-    std::vector<ParallelTensor> const &inputs) {
-  long long value;
-  layer->get_int_property("legion_axis", value);
-  int legion_axis = value;
-  return new Concat(
-      model, inputs.size(), inputs.data(), legion_axis, layer->name);
-}
-
-Concat::Concat(FFModel &model,
-               int _n,
-               ParallelTensor const *_tensors,
-               int _legion_axis,
-               char const *name)
-    : Op(model,
-         OP_CONCAT,
-         DT_FLOAT,
-         name,
-         _n /*inputs*/,
-         0 /*weights*/,
-         1 /*outputs*/,
-         _tensors),
-      legion_axis(_legion_axis) {
-  int num_dim = inputs[0]->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < num_dim; i++) {
-    dims[i] = inputs[0]->dims[i];
-  }
-  for (int i = 1; i < numInputs; i++) {
-    assert(inputs[i]->data_type == inputs[0]->data_type);
-    assert(inputs[i]->num_dims == inputs[0]->num_dims);
-    for (int j = 0; j < num_dim; j++) {
-      if (j != legion_axis) {
-        assert(inputs[i]->dims[j] == inputs[0]->dims[j]);
-      } else {
-        // Assert that the concat dim cannot be parallelized
-        assert(inputs[i]->dims[j].parallel_idx == -1);
-        assert(inputs[i]->dims[j].degree == 1);
-        dims[j].size += inputs[i]->dims[j].size;
-      }
-    }
-  }
-  numOutputs = 1;
-  outputs[0] = model.create_parallel_tensor_legion_ordering(
-      num_dim, dims, inputs[0]->data_type, this);
-}
-
-Concat::Concat(FFModel &model,
-               ConcatParams const &params,
-               std::vector<ParallelTensor> const &inputs,
-               char const *name)
-    : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
-
-static OpTaskSignature get_init_task_signature() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_arg_slot<ConcatAttrs>(ATTRS);
-  init.add_arg_slot<bool>(PROFILING);
-
-  init.add_input_slot(INPUTS, SlotType::VARIADIC);
-  init.add_output_slot(OUTPUT);
-
-  return init;
-}
-
-static OpTaskSignature get_fwd_task_signature() {
-  OpTaskSignature fwd(OpTaskType::FWD);
-
-  fwd.add_arg_slot<ConcatAttrs>(ATTRS);
-
-  fwd.add_input_slot(INPUTS, SlotType::VARIADIC);
-  fwd.add_output_slot(OUTPUT);
-
-  return init;
-}
-
-static OpTaskSignature get_bwd_task_signature() {
-  OpTaskSignature bwd(OpTaskType::BWD);
-
-  bwd.add_arg_slot<ConcatAttrs>(ATTRS);
-
-  bwd.add_input_grad_slot(INPUT_GRADS, SlotType::VARIADIC);
-  bwd.add_output_grad_slot(OUTPUT_GRAD);
-
-  return bwd;
-}
-
-OpTaskBinding Concat::get_init_task_binding() const {
+OpTaskInvocation forward(ConcatAttrs const &attrs) {
   OpTaskBinding binding;
-
-  binding.bind_arg(PROFILING, this->profiling);
-  binding.bind_arg(ATTRS, this->attrs);
-
-  return binding;
-}
-
-OpTaskBinding Concat::get_fwd_task_binding() const {
-  OpTaskBinding binding;
-
-  binding.bind_arg(ATTRS, this->attrs);
-
-  for (int i = 0; i < this->attrs.n; i++) {
-    binding.bind(INPUTS, input_tensor(i));
-  }
-
+  binding.bind(INPUTS, get_input_tensors());
   binding.bind(OUTPUT, output_tensor(0));
+  binding.bind_arg(PROFILING, profiling_settings());
+  binding.bind_arg(ATTRS, attrs);
 
-  return binding;
+  return {CONCAT_FWD_TASK_ID, binding};
 }
 
-OpTaskBinding Concat::get_bwd_task_binding() const {
-  OpTaskBinding binding;
+OpTaskInvocation backward(ConcatAttrs const &attrs) {
+  OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  binding.bind_arg(ATTRS, this->attrs);
-
-  for (int i = 0; i < this->attrs.n; i++) {
-    binding.bind(INPUT_GRADS, input_tensor(i).grad());
-  }
-
-  binding.bind(OUTPUT_GRAD, output_tensor(0).grad());
-
-  return binding;
+  return {CONCAT_BWD_TASK_ID, b};
 }
 
-void Concat::init(FFModel const &ff) {
-  this->execute_task(ff, CONCAT_INIT_TASK_ID, get_init_task_signature());
-  // assert(check_output_input_weight_same_parallel_is());
-  // parallel_is = outputs[0]->parallel_is;
-  // ArgumentMap argmap;
-  // Context ctx = ff.config.lg_ctx;
-  // Runtime *runtime = ff.config.lg_hlr;
-  // set_argumentmap_for_init(ff, argmap);
-  // IndexLauncher launcher(CONCAT_INIT_TASK_ID,
-  //                        parallel_is,
-  //                        TaskArgument(this, sizeof(Concat)),
-  //                        argmap,
-  //                        Predicate::TRUE_PRED,
-  //                        false /*must*/,
-  //                        0 /*mapper_id*/,
-  //                        outputs[0]->machine_view.hash());
-  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-  //                                                   0 /*projection id*/,
-  //                                                   WRITE_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   outputs[0]->region));
-  // launcher.add_field(0, FID_DATA);
-  // for (int i = 0; i < numInputs; i++) {
-  //   launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
-  //                                                     0 /*projection id*/,
-  //                                                     READ_ONLY,
-  //                                                     EXCLUSIVE,
-  //                                                     inputs[i]->region));
-  //   launcher.add_field(i + 1, FID_DATA);
-  // }
-  // for (int i = 0; i < numInputs; i++) {
-  //   launcher.add_region_requirement(RegionRequirement(inputs[i]->part_grad,
-  //                                                     0 /*projection id*/,
-  //                                                     WRITE_ONLY,
-  //                                                     EXCLUSIVE,
-  //                                                     inputs[i]->region_grad));
-  //   launcher.add_field(i + numInputs + 1, FID_DATA);
-  // }
-  // FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  // fm.wait_all_results();
-  // set_opmeta_from_futuremap(ff, fm);
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto const &attrs = acc.get_argument<ConcatAttrs>(ATTRS);
+
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  auto inputs = acc.get_variadic_tensor<Permissions::RO>(INPUTS);
+
+  assert(attrs.num_inputs <= MAX_NUM_INPUTS);
+
+  return profile(forward_kernel,
+                 profiling,
+                 "[Concat] forward_time = %.2lfms\n",
+                 output,
+                 inputs,
+                 attrs.num_inputs,
+                 attrs.axis);
 }
 
-PerDeviceOpState *Concat::init_task(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime) {
+static void forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  auto const &attrs = acc.get_argument<AggregateSpecAttrs>(ATTRS);
-  bool profiling = acc.get_argument<bool>(PROFILING);
-
-  FFHandler handler = *((FFHandler const *)task->local_args);
-  ConcatPerDeviceState *m = new ConcatPerDeviceState(handler);
-  // Note that our internal axis index ordering is opposite to other frameworks
-  init_meta(m, attrs.legion_axis);
-  m->profiling = profiling;
-  std::strcpy(m->op_name, attrs.name);
-  return m;
+  forward_task_impl(acc);
 }
 
-void Concat::forward(FFModel const &ff) {
-  this->execute_task(ff, CONCAT_FWD_TASK_ID, get_fwd_task_signature());
-  // ArgumentMap argmap;
-  // Context ctx = ff.config.lg_ctx;
-  // Runtime *runtime = ff.config.lg_hlr;
-  // set_argumentmap_for_forward(ff, argmap);
-  // IndexLauncher launcher(CONCAT_FWD_TASK_ID,
-  //                        parallel_is,
-  //                        TaskArgument(this, sizeof(Concat)),
-  //                        argmap,
-  //                        Predicate::TRUE_PRED,
-  //                        false /*must*/,
-  //                        0 /*mapper_id*/,
-  //                        outputs[0]->machine_view.hash());
-  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-  //                                                   0 /*projection id*/,
-  //                                                   WRITE_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   outputs[0]->region));
-  // launcher.add_field(0, FID_DATA);
-  // for (int i = 0; i < numInputs; i++) {
-  //   launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
-  //                                                     0 /*projection id*/,
-  //                                                     READ_ONLY,
-  //                                                     EXCLUSIVE,
-  //                                                     inputs[i]->region));
-  //   launcher.add_field(i + 1, FID_DATA);
-  // }
-  // runtime->execute_index_space(ctx, launcher);
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto const &attrs = acc.get_argument<ConcatAttrs>(ATTRS);
+
+  auto input_grads = acc.get_variadic_tensor_grad<Permissions::RW>(INPUTS);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
+
+  assert(attrs.num_inputs <= MAX_NUM_INPUTS);
+
+  return profile(backward_kernel,
+                 profiling,
+                 "[Concat] backward_time = %.2lfms\n",
+                 output_grad,
+                 input_grads,
+                 attrs.num_inputs,
+                 attrs.axis);
 }
 
-/*
-  regions[0](O): output
-  regions[1..numInputs](I): inputs
-*/
-void Concat::forward_task(Task const *task,
+static void backward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  // Concat const *cc = (Concat *)task->args;
-  ConcatPerDeviceState const *m = *((ConcatPerDeviceState **)task->local_args);
-  // Note that our internal axis index ordering is opposite to other frameworks
-  assert(regions.size() == attrs.n + 1);
-  assert(task->regions.size() == attrs.n + 1);
-  // Domain out_domain = runtime->get_index_space_domain(
-  //     ctx, task->regions[0].region.get_index_space());
-  // GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-  //     DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  // assert(out_domain.get_dim() == cc->outputs[0].num_dims);
-  // Domain in_domain[MAX_NUM_INPUTS];
-  // for (int i = 0; i < cc->numInputs; i++)
-  //  in_domain[i] = runtime->get_index_space_domain(
-  //      ctx, task->regions[i + 1].region.get_index_space());
-  // float *output = helperGetTensorPointerWO<float>(
-  //    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-
-  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
-  auto inputs = acc.get_variadic_tensor<READ_ONLY>(INPUTS);
-
-  // GenericTensorAccessorR inputs[MAX_NUM_INPUTS];
-  //  for (int i = 0; i < attrs.n; i++) {
-  //    // inputs[i] = helperGetTensorPointerRO<float>(
-  //    //     regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
-  //    inputs[i] = helperGetGenericTensorAccessorRO(
-  //        DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx,
-  //        runtime);
-  //  }
-  profile(forward_kernel,
-          m->profiling,
-          "[Concat] forward_time = %.2lfms\n",
-          m,
-          output,
-          inputs,
-          attrs.n)
+  backward_task_impl(acc);
 }
 
-void Concat::backward(FFModel const &ff) {
-  this->execute_task(ff, CONCAT_BWD_TASK_ID, get_bwd_task_signature());
-  // ArgumentMap argmap;
-  // Context ctx = ff.config.lg_ctx;
-  // Runtime *runtime = ff.config.lg_hlr;
-  // set_argumentmap_for_backward(ff, argmap);
-  // IndexLauncher launcher(CONCAT_BWD_TASK_ID,
-  //                        parallel_is,
-  //                        TaskArgument(this, sizeof(Concat)),
-  //                        argmap,
-  //                        Predicate::TRUE_PRED,
-  //                        false /*must*/,
-  //                        0 /*mapper_id*/,
-  //                        outputs[0]->machine_view.hash());
-  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-  //                                                   0 /*projection id*/,
-  //                                                   READ_ONLY,
-  //                                                   EXCLUSIVE,
-  //                                                   outputs[0]->region_grad));
-  // launcher.add_field(0, FID_DATA);
-  // for (int i = 0; i < numInputs; i++) {
-  //   launcher.add_region_requirement(RegionRequirement(inputs[i]->part_grad,
-  //                                                     0 /*projection id*/,
-  //                                                     READ_WRITE,
-  //                                                     EXCLUSIVE,
-  //                                                     inputs[i]->region_grad));
-  //   // LogicalRegion lr = inputs[i]->region_grad;
-  //   // printf("concat[%d]: region(%d,%d,%d)\n", i+1,
-  //   // lr.get_index_space().get_id(), lr.get_field_space().get_id(),
-  //   // lr.get_tree_id());
-  //   launcher.add_field(i + 1, FID_DATA);
-  // }
-  // runtime->execute_index_space(ctx, launcher);
+CostMetrics
+    measure_operator_cost(SimEnvFactory const &sim,
+                          ConcatAttrs const &attrs,
+                          InputVariadicParallelTensorDesc const &inputs_shape,
+                          ProfilingSettings const &settings,
+                          MachineView const &mv) {
+  assert(attrs.num_inputs <= MAX_NUM_INPUTS);
+
+  auto env = sim.new_environment();
+
+  ParallelTensorShape output_shape =
+      get_output_shape(attrs, inputs_shape.shapes);
+
+  SimTaskBinding fwd_binding;
+  fwd_binding.bind_arg(ATTRS, attrs);
+  fwd_binding.bind(INPUTS, inputs_shape);
+  fwd_binding.bind(OUTPUT, output_shape);
+  fwd_binding.bind_arg(PROFILING, settings);
+
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+
+  auto fwd_accessor = env.get_fwd_accessor(CONCAT_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(CONCAT_BWD_TASK_ID, bwd_binding);
+
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
+
+  float sync_time = default_estimate_sync_time(env);
+  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-/*
-  regions[0](I): output_grad
-  regions[1..numInputs](I/O): input_grad
-*/
-void Concat::backward_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  // Concat const *cc = (Concat *)task->args;
-  ConcatPerDeviceState const *m = *((ConcatPerDeviceState **)task->local_args);
-  // Note that our internal axis index ordering is opposite to other frameworks
-  assert(regions.size() == attrs.n + 1);
-  assert(task->regions.size() == attrs.n + 1);
-  assert(attrs.n <= MAX_NUM_INPUTS);
-  // Domain out_grad_domain = runtime->get_index_space_domain(
-  //     ctx, task->regions[0].region.get_index_space());
-  //  assert(out_grad_domain.get_dim() == cc->outputs[0].num_dims);
-  // Domain in_grad_domains[MAX_NUM_INPUTS];
-  // for (int i = 0; i < cc->numInputs; i++)
-  //   in_grad_domains[i] = runtime->get_index_space_domain(
-  //       ctx, task->regions[i + 1].region.get_index_space());
-  // float const *output_grad = helperGetTensorPointerRO<float>(
-  //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
+template <>
+OpTaskSignature fwd_signature<CONCAT_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+  fwd.add_arg_slot<ConcatAttrs>(ATTRS);
+  fwd.add_arg_slot<bool>(PROFILING);
+  fwd.add_input_slot(INPUTS, SlotType::VARIADIC);
+  fwd.add_output_slot(OUTPUT);
 
-  auto input_grads = acc.get_variadic_tensor<READ_WRITE>(INPUT_GRADS);
-  auto output_grad = acc.get_tensor<READ_ONLY>(OUTPUT_GRAD);
-
-  // GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
-  //     DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  // GenericTensorAccessorW input_grads[MAX_NUM_INPUTS];
-  // for (int i = 0; i < attrs.n; i++) {
-  //   // input_grads[i] = helperGetTensorPointerRW<float>(
-  //   //     regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
-  //   input_grads[i] = helperGetGenericTensorAccessorRW(
-  //       DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx,
-  //       runtime);
-  // }
-
-  profile(backward_kernel,
-          m->profiling,
-          "[Concat] backward_time = %.2lfms\n",
-          m,
-          output_grad,
-          input_grads,
-          attrs.n)
+  return fwd;
 }
 
-bool Concat::get_int_parameter(PMParameter para, int *value) const {
-  switch (para) {
-    case PM_AXIS:
-      *value = legion_axis;
-      return true;
-    default:
-      return Op::get_int_parameter(para, value);
-  }
+template <>
+void register_task<CONCAT_FWD_TASK_ID>() {
+  register_task(CONCAT_FWD_TASK_ID,
+                "Concat Fwd",
+                fwd_signature<CONCAT_FWD_TASK_ID>(),
+                forward_task);
 }
 
-bool Concat::measure_operator_cost(Simulator *sim,
-                                   MachineView const &mv,
-                                   CostMetrics &cost_metrics) const {
-  assert(numInputs <= MAX_NUM_INPUTS);
-  ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_output;
-  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
-    return false;
-  }
-  for (int i = 0; i < numInputs; i++) {
-    if (!inputs[i]->get_sub_tensor(mv, sub_inputs[i])) {
-      return false;
-    }
-  }
+template <>
+OpTaskSignature bwd_signature<CONCAT_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(CONCAT_FWD_TASK_ID));
 
-  ConcatPerDeviceState *m = sim->concat_meta;
-  init_meta(m, this->legion_axis);
+  return bwd;
+}
 
-  sim->free_all();
-  float *input_ptrs[MAX_NUM_INPUTS];
-  float *input_grad_ptrs[MAX_NUM_INPUTS];
-  bool out_of_memory = false;
-  for (int i = 0; i < numInputs; i++) {
-    input_ptrs[i] =
-        (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
-    out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
-  }
-  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-
-  Domain out_domain = sub_output.get_domain();
-  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  GenericTensorAccessorW output_acc(DT_FLOAT, out_domain, output_ptr);
-  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-
-  out_of_memory = out_of_memory || (output_ptr == NULL);
-  if (out_of_memory) {
-    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
-    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
-    return true;
-  }
-
-  Domain in_domains[MAX_NUM_INPUTS];
-  GenericTensorAccessorR input_acc[MAX_NUM_INPUTS];
-  for (int i = 0; i < numInputs; i++) {
-    in_domains[i] = sub_inputs[i].get_domain();
-    input_acc[i] =
-        GenericTensorAccessorR(DT_FLOAT, in_domains[i], input_ptrs[i]);
-  }
-
-  assert(m->profiling == false);
-
-  std::function<void()> forward, backward;
-  forward = [&](ffStream_t stream) {
-    forward_kernel(stream, m, output_acc, input_acc, numInputs);
-  };
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    GenericTensorAccessorW input_grad_accs[MAX_NUM_INPUTS];
-    for (int i = 0; i < numInputs; i++) {
-      input_grad_ptrs[i] =
-          (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
-      out_of_memory = out_of_memory || (input_grad_ptrs[i] == NULL);
-      input_grad_accs[i] =
-          GenericTensorAccessorW(DT_FLOAT, in_domains[i], input_grad_ptrs[i]);
-    }
-    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-    float *output_grad_ptr =
-        (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    GenericTensorAccessorR output_grad_acc(
-        DT_FLOAT, out_domain, output_grad_ptr);
-    cost_metrics.outputs_memory +=
-        cost_metrics.total_mem_diff_from(sim->offset);
-
-    out_of_memory = out_of_memory || (output_grad_ptr == NULL);
-    if (out_of_memory) {
-      cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
-      cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
-      return true;
-    }
-    backward = [&](ffStream_t stream) {
-      backward_kernel(stream, m, output_grad_acc, input_grad_accs, numInputs);
-    };
-  }
-
-  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf(
-        "[Measure Concat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-        name,
-        cost_metrics.forward_time,
-        cost_metrics.backward_time);
-  } else {
-    printf("[Measure Concat] name(%s) forward_time(%.4lf)\n",
-           name,
-           cost_metrics.forward_time);
-  }
-
-  return true;
+template <>
+void register_task<CONCAT_BWD_TASK_ID>() {
+  register_task(CONCAT_BWD_TASK_ID,
+                "Concat Bwd",
+                bwd_signature<CONCAT_BWD_TASK_ID>(),
+                backward_task);
 }
 
 }; // namespace FlexFlow
