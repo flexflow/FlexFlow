@@ -62,7 +62,7 @@ jobs:
 
   python-interface-check:
     name: Check Python Interface
-    runs-on: [self-hosted, gpu]
+    runs-on: self-hosted
     defaults:
       run:
         shell: bash -l {0} # required to use an activated conda environment
@@ -136,7 +136,7 @@ jobs:
 
   inference-tests:
     name: Inference Tests
-    runs-on: [self-hosted, gpu]
+    runs-on: self-hosted
     defaults:
       run:
         shell: bash -l {0} # required to use an activated conda environment
@@ -211,7 +211,7 @@ jobs:
 
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
-    runs-on: [self-hosted, gpu]
+    runs-on: self-hosted
     # skip this time-consuming test for PRs to the inference branch
     # if: ${{ github.event_name != 'pull_request' || github.base_ref != 'inference' }}
     defaults:
