@@ -565,8 +565,8 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
 
   // FIXME please add gamma_ptr and beta_ptr after finish the implementation
   float *gamma_ptr = NULL, *beta_ptr = NULL;
-  GenericTensorAccessorW gamma_acc;
-  GenericTensorAccessorW beta_acc;
+  GenericTensorAccessorR gamma_acc;
+  GenericTensorAccessorR beta_acc;
 
   bool out_of_memory =
       (in_ptr == NULL) || (out_ptr == NULL) ||

@@ -173,8 +173,8 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
 void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
                                        GenericTensorAccessorR const &input,
                                        GenericTensorAccessorW &output,
-                                       GenericTensorAccessorW &gamma,
-                                       GenericTensorAccessorW &beta) {
+                                       GenericTensorAccessorR const &gamma,
+                                       GenericTensorAccessorR const &beta) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // LayerNorm::forward_kernel<float>(

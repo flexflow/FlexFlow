@@ -63,14 +63,14 @@ public:
   static void forward_kernel(LayerNormMeta const *m,
                              T const *input_ptr,
                              T *output_ptr,
-                             T *gamma_ptr,
-                             T *beta_ptr,
+                             T const *gamma_ptr,
+                             T const *beta_ptr,
                              ffStream_t stream);
   static void forward_kernel_wrapper(LayerNormMeta const *m,
                                      GenericTensorAccessorR const &input,
                                      GenericTensorAccessorW &output,
-                                     GenericTensorAccessorW &gamma,
-                                     GenericTensorAccessorW &beta);
+                                     GenericTensorAccessorR const &gamma,
+                                     GenericTensorAccessorR const &beta);
   template <typename T>
   static void backward_kernel(LayerNormMeta const *m,
                               T const *output_grad_ptr,

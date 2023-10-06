@@ -21,6 +21,7 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/kernels/batch_matmul_kernels.h"
+#include "flexflow/ops/kernels/cast_kernels.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/kernels/dropout_kernels.h"
@@ -30,7 +31,9 @@
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/reshape_kernels.h"
+#include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
+#include "flexflow/ops/layer_norm.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -294,8 +297,8 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
-        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
+        // assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
+        // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
         Kernels::ElementBinary::forward_kernel_wrapper(
             m,
@@ -358,7 +361,8 @@ __host__ void FusedOp::forward_task(Task const *task,
                  my_input_accessor[0].domain.get_volume());
         }
 
-        assert(my_input_accessor[0].data_type == DT_INT64);
+        assert(my_input_accessor[0].data_type == DT_INT32 ||
+               my_input_accessor[0].data_type == DT_INT64);
         Kernels::Embedding::forward_kernel_wrapper(m,
                                                    my_input_accessor[0],
                                                    my_output_accessor[0],
@@ -368,10 +372,15 @@ __host__ void FusedOp::forward_task(Task const *task,
                                                    effective_batch_size);
         break;
       }
+      case OP_GELU:
       case OP_RELU:
       case OP_SIGMOID:
       case OP_TANH:
-      case OP_ELU: {
+      case OP_ELU:
+      case OP_SCALAR_ADD:
+      case OP_SCALAR_MULTIPLY:
+      case OP_SCALAR_SUB:
+      case OP_SCALAR_TRUE_DIV: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -428,11 +437,28 @@ __host__ void FusedOp::forward_task(Task const *task,
               my_input_accessor[0].domain.get_volume());
         } else if (my_input_accessor[0].data_type == DT_FLOAT) {
           Kernels::Reshape::forward_kernel_wrapper(
-              my_input_accessor[0].get_int64_ptr(),
-              my_output_accessor[0].get_int64_ptr(),
+              my_input_accessor[0].get_float_ptr(),
+              my_output_accessor[0].get_float_ptr(),
               my_input_accessor[0].domain.get_volume());
         } else {
           assert(false && "Unsupported data type");
+        }
+        break;
+      }
+      case OP_SOFTMAX: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_accessor[0].domain.get_volume() ==
+               my_output_accessor[0].domain.get_volume());
+        SoftmaxMeta *m = (SoftmaxMeta *)metas->meta[op];
+        if (my_input_accessor[0].data_type == DT_FLOAT) {
+          Kernels::Softmax::forward_kernel_wrapper(
+              m,
+              my_input_accessor[0].get_float_ptr(),
+              my_output_accessor[0].get_float_ptr());
+        } else {
+          assert(false);
         }
         break;
       }
@@ -451,6 +477,43 @@ __host__ void FusedOp::forward_task(Task const *task,
             my_output_accessor[0].get_float_ptr(),
             my_input_accessor[0].domain,
             my_output_accessor[0].domain);
+        break;
+      }
+      case OP_LAYERNORM: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        LayerNormMeta const *m = (LayerNormMeta *)metas->meta[op];
+        assert(fused->op_num_weights[op] == 2 * (int)(m->elementwise_affine));
+        GenericTensorAccessorR gamma, beta;
+        if (m->elementwise_affine) {
+          gamma = my_weight_accessor[0];
+          beta = my_weight_accessor[1];
+        }
+        LayerNorm::forward_kernel_wrapper(
+            m, my_input_accessor[0], my_output_accessor[0], gamma, beta);
+        break;
+      }
+      case OP_CAST: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        CastMeta const *m = (CastMeta *)metas->meta[op];
+        if (m->input_data_type == DT_INT32 && m->output_data_type == DT_INT64) {
+          Kernels::Cast::forward_kernel_wrapper<int32_t, int64_t>(
+              m,
+              my_input_accessor[0].get_int32_ptr(),
+              my_output_accessor[0].get_int64_ptr(),
+              my_output_accessor[0].domain.get_volume());
+        } else if (m->input_data_type == DT_INT32 &&
+                   m->output_data_type == DT_FLOAT) {
+          Kernels::Cast::forward_kernel_wrapper<int32_t, float>(
+              m,
+              my_input_accessor[0].get_int32_ptr(),
+              my_output_accessor[0].get_float_ptr(),
+              my_output_accessor[0].domain.get_volume());
+        } else {
+          assert(false);
+        }
+
         break;
       }
       default: {
@@ -770,8 +833,8 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
-        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
+        // assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
+        // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
         Kernels::ElementBinary::backward_kernel_wrapper(
             m,
@@ -787,7 +850,8 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         EmbeddingMeta *m = (EmbeddingMeta *)metas->meta[op];
-        assert(my_input_accessor[0].data_type == DT_INT64);
+        assert(my_input_accessor[0].data_type == DT_INT64 ||
+               my_input_accessor[0].data_type == DT_INT32);
         int in_dim, out_dim, effective_batch_size;
         if (m->aggr == AGGR_MODE_NONE) {
           in_dim = 1;
@@ -848,10 +912,15 @@ __host__ void FusedOp::backward_task(Task const *task,
             batch_size);
         break;
       }
+      case OP_GELU:
       case OP_RELU:
       case OP_SIGMOID:
       case OP_TANH:
-      case OP_ELU: {
+      case OP_ELU:
+      case OP_SCALAR_ADD:
+      case OP_SCALAR_MULTIPLY:
+      case OP_SCALAR_SUB:
+      case OP_SCALAR_TRUE_DIV: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -898,10 +967,43 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                my_output_grad_accessor[0].domain.get_volume());
-        Kernels::Reshape::backward_kernel_wrapper(
-            my_input_grad_accessor[0].get_float_ptr(),
-            my_output_grad_accessor[0].get_float_ptr(),
-            my_input_grad_accessor[0].domain.get_volume());
+        if (my_input_grad_accessor[0].data_type == DT_INT64) {
+          Kernels::Reshape::backward_kernel_wrapper(
+              my_input_grad_accessor[0].get_int64_ptr(),
+              my_output_grad_accessor[0].get_int64_ptr(),
+              my_input_grad_accessor[0].domain.get_volume());
+        } else if (my_input_grad_accessor[0].data_type == DT_INT32) {
+          Kernels::Reshape::forward_kernel_wrapper(
+              my_input_grad_accessor[0].get_int32_ptr(),
+              my_output_grad_accessor[0].get_int32_ptr(),
+              my_input_grad_accessor[0].domain.get_volume());
+        } else if (my_input_grad_accessor[0].data_type == DT_FLOAT) {
+          Kernels::Reshape::backward_kernel_wrapper(
+              my_input_grad_accessor[0].get_float_ptr(),
+              my_output_grad_accessor[0].get_float_ptr(),
+              my_input_grad_accessor[0].domain.get_volume());
+        } else {
+          assert(false);
+        }
+        break;
+      }
+      case OP_SOFTMAX: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_accessor[0].domain.get_volume() ==
+               my_output_accessor[0].domain.get_volume());
+        SoftmaxMeta *m = (SoftmaxMeta *)metas->meta[op];
+        if (my_input_accessor[0].data_type == DT_FLOAT) {
+          Kernels::Softmax::backward_kernel_wrapper(
+              m,
+              my_input_grad_accessor[0].get_float_ptr(),
+              my_output_grad_accessor[0].get_float_ptr(),
+              my_output_accessor[0].get_float_ptr(),
+              my_input_accessor[0].domain.get_volume());
+        } else {
+          assert(false);
+        }
         break;
       }
       case OP_TRANSPOSE: {
@@ -917,6 +1019,47 @@ __host__ void FusedOp::backward_task(Task const *task,
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].domain,
             my_output_grad_accessor[0].domain);
+        break;
+      }
+      case OP_LAYERNORM: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        LayerNormMeta const *m = (LayerNormMeta *)metas->meta[op];
+        assert(fused->op_num_weights[op] == 2 * (int)(m->elementwise_affine));
+        GenericTensorAccessorR gamma, beta;
+        if (m->elementwise_affine) {
+          gamma = my_weight_accessor[0];
+          beta = my_weight_accessor[1];
+        }
+        LayerNorm::backward_kernel_wrapper(
+            m,
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            gamma.get_float_ptr(),
+            my_weight_grad_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[1].get_float_ptr());
+        break;
+      }
+      case OP_CAST: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        CastMeta const *m = (CastMeta *)metas->meta[op];
+        if (m->input_data_type == DT_INT32 && m->output_data_type == DT_INT64) {
+          Kernels::Cast::backward_kernel_wrapper<int64_t, int32_t>(
+              my_output_grad_accessor[0].get_int64_ptr(),
+              my_input_grad_accessor[0].get_int32_ptr(),
+              my_output_grad_accessor[0].domain.get_volume());
+        } else if (m->input_data_type == DT_INT32 &&
+                   m->output_data_type == DT_FLOAT) {
+          Kernels::Cast::backward_kernel_wrapper<float, int32_t>(
+              my_output_grad_accessor[0].get_float_ptr(),
+              my_input_grad_accessor[0].get_int32_ptr(),
+              my_output_grad_accessor[0].domain.get_volume());
+        } else {
+          assert(false);
+        }
+
         break;
       }
       default:
