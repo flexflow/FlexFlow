@@ -14,7 +14,8 @@ using SubParallelComputationGraph =
 
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(SubParallelComputationGraph);
 
-ParallelTensor at(SubParallelComputationGraph const &g, OpenMultiDiEdge const &e);
+ParallelTensor at(SubParallelComputationGraph const &g,
+                  OpenMultiDiEdge const &e);
 
 } // namespace FlexFlow
 

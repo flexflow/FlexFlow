@@ -2,8 +2,9 @@
 
 namespace FlexFlow {
 
-ParallelTensor at(SubParallelComputationGraph const &g, OpenMultiDiEdge const &e) {
-  return visit([&](const auto &e) { return g.at(e); }, e);
+ParallelTensor at(SubParallelComputationGraph const &g,
+                  OpenMultiDiEdge const &e) {
+  return visit([&](auto const &e) { return g.at(e); }, e);
 }
 
-}
+} // namespace FlexFlow

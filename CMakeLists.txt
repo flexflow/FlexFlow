@@ -3,6 +3,18 @@ project(FlexFlow)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
+# Detect OS type and Linux version (if it applies)
+set(LINUX_VERSION "")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  find_program(LSB_RELEASE_EXEC lsb_release)
+  if(LSB_RELEASE_EXEC)
+    execute_process(COMMAND ${LSB_RELEASE_EXEC} -r --short 
+                    OUTPUT_VARIABLE LINUX_VERSION 
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message(STATUS "Linux Version: ${LINUX_VERSION}")
+  endif()
+endif()
+
 set(FF_MAX_DIM "5" CACHE STRING "Maximum tensor order")
 set(FF_MAX_OPNAME "128" CACHE STRING "Maximum op name length")
 set(FF_MAX_NUM_OUTPUTS "256" CACHE STRING "Maximum number of outputs (per operator)")
