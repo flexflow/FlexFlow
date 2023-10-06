@@ -43,7 +43,7 @@ lines = [
     f'BUILD_FOLDER="{build_dir}"',
     'SCRIPT_DIR="$(realpath "${BASH_SOURCE[0]%/*}")"',
     'legion_python_args=("$@" "-ll:py" "1")',
-    'if [[ "$SCRIPT_DIR" == "$BUILD_FOLDER" ]]; then',
+    'if [[ "$SCRIPT_DIR" -ef "$BUILD_FOLDER" ]]; then',
     f'\tPYTHON_FOLDER="{script_dir}"',
     '\tPYLIB_PATH="$("$PYTHON_FOLDER"/flexflow/findpylib.py)"',
     '\tPYLIB_DIR="$(dirname "$PYLIB_PATH")"',
