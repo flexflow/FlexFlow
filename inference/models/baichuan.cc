@@ -40,8 +40,7 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
 
    Tensor input;
   {
-    assert(baichuan_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
-    int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
+    int const token_dims[] = {BatchConfig::max_tokens_per_batch(), 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 
@@ -190,7 +189,7 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
     //token + mha, then rms_norm(token + mha)
     std::string layer_name = "layers_" + std::to_string(i) + "_ffn_norm";
 
-    Tensor token_ff_norm[2];
+    Tensor token_ff_norm[2] = {nullptr, nullptr};
     ff.residual_rms_norm(token,
                          mha,
                          token_ff_norm,
@@ -247,14 +246,16 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
   }
 
   // final normalization and linear
-  std::vector<int> axes = {2};
-  token = ff.rms_norm(token,
-                      baichuan_config.rms_norm_eps,
-                      baichuan_config.hidden_size,
-                      DT_NONE,
-                      "norm");
+  Tensor final_rms_norm_output[2] = {nullptr, nullptr};
+  ff.residual_rms_norm(token,
+                       w2,
+                       final_rms_norm_output,
+                       baichuan_config.rms_norm_eps,
+                       baichuan_config.hidden_size,
+                       DT_NONE,
+                       "norm");
 
-  Tensor dense = ff.dense(token,
+  Tensor dense = ff.dense(final_rms_norm_output[1],
                           baichuan_config.vocab_size,
                           AC_MODE_NONE,
                           false,

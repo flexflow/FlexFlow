@@ -20,6 +20,7 @@
 #include "models/mpt.h"
 #include "models/opt.h"
 #include "models/starcoder.h"
+#include "models/baichuan.h"
 #include <wordexp.h>
 
 #include <nlohmann/json.hpp>
