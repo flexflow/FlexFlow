@@ -60,22 +60,22 @@ jobs:
           #fi
           ../config/config.linux
 
-        - name: Build utils
-          run: |
-            cd build 
-            make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
+      - name: Build utils
+        run: |
+          cd build 
+          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
 
-        - name: Build op-attrs
-          run: |
-            cd build 
-            make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
+      - name: Build op-attrs
+        run: |
+          cd build 
+          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
 
-        - name: Build pcg
-          run: |
-            cd build
-            make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
+      - name: Build pcg
+        run: |
+          cd build
+          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
 
-        - name: Build kernels
-          run: |
-            cd build
-            make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
+      - name: Build kernels
+        run: |
+          cd build
+          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils

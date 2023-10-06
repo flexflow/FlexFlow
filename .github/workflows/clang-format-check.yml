@@ -13,6 +13,7 @@ jobs:
           - check: "examples"
           - check: "bindings"
           - check: "bin"
+            exclude: '\.proto$'
     steps:
       - uses: actions/checkout@v2
       - name: Run clang-format style check for C/C++/Protobuf programs.
