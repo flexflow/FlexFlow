@@ -62,7 +62,7 @@ jobs:
           #  export FF_BUILD_ALL_EXAMPLES=ON 
           #  export FF_BUILD_UNIT_TESTS=ON
           #fi
-          ../config/config.linux -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          ../config/config.linux -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
 
       - name: Build utils
         run: |
