@@ -90,6 +90,13 @@ private:
 };
 
 template <task_id_t>
+OpTaskSignature init_signature();
+template <task_id_t>
+OpTaskSignature fwd_signature();
+template <task_id_t>
+OpTaskSignature bwd_signature();
+
+template <task_id_t>
 OpTaskSignature get_signature();
 
 template <typename F>
