@@ -14,7 +14,6 @@ template <typename NodeLabel,
 struct ILabelledOpenMultiDiGraphView
     : public IOpenMultiDiGraphView,
       public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
-
 public:
   std::unordered_set<MultiDiEdge>
       query_edges(MultiDiEdgeQuery const &q) const final {
