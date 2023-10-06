@@ -80,6 +80,7 @@ class ModelType(Enum):
     FALCON = 3005
     STARCODER = 3006
     MPT = 3007
+    BAICHUAN = 3008 
 
 
 class OpType(Enum):
