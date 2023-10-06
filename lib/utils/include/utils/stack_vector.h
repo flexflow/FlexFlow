@@ -1,8 +1,11 @@
 #ifndef _FLEXFLOW_UTILS_STACK_VECTOR_H
 #define _FLEXFLOW_UTILS_STACK_VECTOR_H
 
+#include "containers.h"
 #include "hash-utils.h"
 #include "optional.h"
+#include "utils/fmt.h"
+#include "utils/test_types.h"
 #include "utils/type_traits.h"
 #include <array>
 #include <cassert>
@@ -12,6 +15,23 @@ namespace FlexFlow {
 
 template <typename T, std::size_t MAXSIZE>
 struct stack_vector {
+private:
+  using element_type =
+      conditional_t<std::is_default_constructible<T>::value, T, optional<T>>;
+
+  static T const &get_value(T const &t) {
+    return t;
+  }
+  static T const &get_value(optional<T> const &t) {
+    return t.value();
+  }
+  static T &get_value(T &t) {
+    return t;
+  }
+  static T &get_value(optional<T> &t) {
+    return t.value();
+  }
+
 public:
   stack_vector() = default;
 
@@ -24,8 +44,8 @@ public:
     }
   }
 
-  operator std::vector<T>() {
-    return {this->begin(), this->end()};
+  operator std::vector<T>() const {
+    return {this->cbegin(), this->cend()};
   }
 
   void push_back(T const &t) {
@@ -36,27 +56,29 @@ public:
 
   template <class... Args>
   void emplace_back(Args &&...args) {
-    this->contents.emplace_back(std::forward<Args>(args)...);
+    assert(this->m_size < MAXSIZE);
+    this->contents[this->m_size] = {std::forward<Args>(args)...};
+    this->m_size++;
   }
 
   T const &back() const {
     assert(this->m_size >= 1);
-    return this->contents[this->m_size - 1].value();
+    return get_value(this->contents[this->m_size - 1]);
   }
 
   T &back() {
     assert(this->m_size >= 1);
-    return this->contents[this->m_size - 1].value();
+    return get_value(this->contents[this->m_size - 1]);
   }
 
   T const &at(std::size_t idx) const {
     assert(idx < MAXSIZE);
-    return this->contents[idx].value();
+    return get_value(this->contents[idx]);
   }
 
   T &at(std::size_t idx) {
     assert(idx < MAXSIZE);
-    return this->contents[idx].value();
+    return get_value(this->contents[idx]);
   }
 
   T const &operator[](std::size_t idx) const {
@@ -75,12 +97,12 @@ public:
     using reference = typename std::conditional<IS_CONST, T const &, T &>::type;
     using pointer = typename std::conditional<IS_CONST, T const *, T *>::type;
 
-    typename std::conditional<IS_CONST, optional<T> const *, optional<T> *>::
+    typename std::conditional<IS_CONST, element_type const *, element_type *>::
         type ptr;
 
     Iterator(typename std::conditional<IS_CONST,
-                                       optional<T> const *,
-                                       optional<T> *>::type ptr)
+                                       element_type const *,
+                                       element_type *>::type ptr)
         : ptr(ptr) {}
 
     template <bool WAS_CONST,
@@ -88,10 +110,10 @@ public:
     Iterator(Iterator<WAS_CONST> const &rhs) : ptr(rhs.ptr) {}
 
     reference operator*() const {
-      return ptr->value();
+      return get_value(*ptr);
     }
     pointer operator->() const {
-      return &ptr->value();
+      return &get_value(*ptr);
     }
 
     Iterator &operator++() {
@@ -147,7 +169,7 @@ public:
     }
 
     reference operator[](difference_type const &diff) const {
-      return this->ptr[diff].value();
+      return get_value(this->ptr[diff]);
     }
 
     bool operator<(Iterator const &rhs) const {
@@ -177,7 +199,7 @@ public:
   using const_reference = T const &;
 
   iterator begin() {
-    optional<T> *ptr = this->contents.data();
+    element_type *ptr = this->contents.data();
     return iterator(ptr);
   }
 
@@ -186,7 +208,7 @@ public:
   }
 
   const_iterator cbegin() const {
-    optional<T> const *ptr = this->contents.data();
+    element_type const *ptr = this->contents.data();
     return const_iterator(ptr);
   }
 
@@ -263,9 +285,19 @@ public:
     return (this->m_size == 0);
   }
 
+  T const *data() const {
+    return this->contents.data();
+  }
+
+  friend std::vector<T> format_as(stack_vector<T, MAXSIZE> const &v) {
+    // CHECK_FMTABLE(std::vector<T>);
+
+    return static_cast<std::vector<T>>(v);
+  }
+
 private:
   std::size_t m_size = 0;
-  std::array<optional<T>, MAXSIZE> contents;
+  std::array<element_type, MAXSIZE> contents;
 
   static_assert(
       implies<is_equal_comparable<T>, is_equal_comparable<stack_vector>>::value,
@@ -277,6 +309,8 @@ private:
       implies<is_lt_comparable<T>, is_lt_comparable<stack_vector>>::value, "");
 };
 
+// CHECK_FMTABLE(stack_vector<test_types::fmtable, 5>);
+
 } // namespace FlexFlow
 
 namespace std {
@@ -285,7 +319,7 @@ template <typename T, std::size_t MAXSIZE>
 struct hash<::FlexFlow::stack_vector<T, MAXSIZE>> {
   size_t operator()(::FlexFlow::stack_vector<T, MAXSIZE> const &v) {
     static_assert(::FlexFlow::is_hashable<T>::value,
-                  "Elements must be hashable");
+                  "stack_vector elements must be hashable");
     size_t result = 0;
     iter_hash(result, v.cbegin(), v.cend());
     return result;

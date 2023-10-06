@@ -3,26 +3,35 @@
 
 #include "cow_ptr_t.h"
 #include "node.h"
+#include "utils/exception.h"
 #include "utils/optional.h"
+#include "utils/type_traits.h"
 #include "utils/unique.h"
 #include <unordered_set>
 
 namespace FlexFlow {
 
 struct UndirectedEdge {
+public:
+  UndirectedEdge() = delete;
+  UndirectedEdge(Node const &src, Node const &dst);
+
+public:
   Node smaller;
   Node bigger;
 };
-FF_VISITABLE_STRUCT(UndirectedEdge, smaller, bigger);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(UndirectedEdge, smaller, bigger);
+FF_VISIT_FMTABLE(UndirectedEdge);
+
+bool is_connected_to(UndirectedEdge const &, Node const &);
 
 struct UndirectedEdgeQuery {
   query_set<Node> nodes;
 
-  static UndirectedEdgeQuery all() {
-    NOT_IMPLEMENTED();
-  }
+  static UndirectedEdgeQuery all();
 };
 FF_VISITABLE_STRUCT(UndirectedEdgeQuery, nodes);
+FF_VISIT_FMTABLE(UndirectedEdgeQuery);
 
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &,
                                        UndirectedEdgeQuery const &);
@@ -36,14 +45,12 @@ struct IUndirectedGraphView : public IGraphView {
 
   virtual std::unordered_set<Edge>
       query_edges(UndirectedEdgeQuery const &) const = 0;
-  virtual ~IUndirectedGraphView();
+  virtual ~IUndirectedGraphView() = default;
 
 protected:
   IUndirectedGraphView() = default;
 };
-
-static_assert(is_rc_copy_virtual_compliant<IUndirectedGraphView>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(IUndirectedGraphView);
 
 struct UndirectedGraphView {
 public:
@@ -52,17 +59,12 @@ public:
 
   UndirectedGraphView() = delete;
 
-  operator GraphView const &() const;
-  operator GraphView &();
+  operator GraphView() const;
 
   friend void swap(UndirectedGraphView &, UndirectedGraphView &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
-  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-
-  IUndirectedGraphView const *unsafe() const {
-    return this->ptr.get();
-  }
+  std::unordered_set<Edge> query_edges(EdgeQuery const &query) const;
 
   template <typename T, typename... Args>
   static
@@ -73,10 +75,13 @@ public:
         std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-private:
-  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const>);
+  static UndirectedGraphView
+      unsafe_create_without_ownership(IUndirectedGraphView const &);
 
-  friend UndirectedGraphView unsafe(IUndirectedGraphView const &);
+private:
+  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr);
+
+  friend struct GraphInternal;
 
 private:
   std::shared_ptr<IUndirectedGraphView const> ptr;
@@ -87,7 +92,12 @@ struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
   virtual void add_edge(UndirectedEdge const &) = 0;
   virtual void remove_edge(UndirectedEdge const &) = 0;
 
-  virtual IUndirectedGraph *clone() const = 0;
+  virtual std::unordered_set<Node>
+      query_nodes(NodeQuery const &query) const override {
+    return static_cast<IUndirectedGraphView const *>(this)->query_nodes(query);
+  }
+
+  virtual IUndirectedGraph *clone() const override = 0;
 };
 
 struct UndirectedGraph {
@@ -111,17 +121,20 @@ public:
   void add_edge(Edge const &);
   void remove_edge(Edge const &);
 
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T>
   static typename std::enable_if<std::is_base_of<IUndirectedGraph, T>::value,
                                  UndirectedGraph>::type
       create() {
-    return UndirectedGraph(make_unique<T>());
+    return UndirectedGraph(make_cow_ptr<T>());
   }
 
 private:
-  UndirectedGraph(std::unique_ptr<IUndirectedGraph>);
+  UndirectedGraph(cow_ptr_t<IUndirectedGraph>);
+
+  friend struct GraphInternal;
 
 private:
   cow_ptr_t<IUndirectedGraph> ptr;

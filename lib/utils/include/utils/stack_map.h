@@ -5,6 +5,16 @@
 #include "optional.h"
 #include "stack_vector.h"
 
+namespace std {
+
+template <typename T1, typename T2>
+ostream &operator<<(ostream &os, pair<T1, T2> const &p) {
+  os << "{" << p.first << ", " << p.second << "}";
+  return os;
+}
+
+} // namespace std
+
 namespace FlexFlow {
 
 template <typename K, typename V, std::size_t MAXSIZE>
@@ -18,6 +28,10 @@ struct stack_map {
       idx = this->contents.size() - 1;
     }
     return this->contents.at(idx.value()).second;
+  }
+
+  operator std::vector<std::pair<K, V>>() {
+    return {this->contents.begin(), this->contents.end()};
   }
 
   void insert(K const &k, V const &v) {

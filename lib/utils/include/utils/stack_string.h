@@ -1,7 +1,10 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_STACK_STRING_H
 #define _FLEXFLOW_UTILS_INCLUDE_STACK_STRING_H
 
+#include "fmt/core.h"
 #include "stack_vector.h"
+#include "utils/fmt.h"
+#include "utils/type_traits.h"
 #include <cstring>
 #include <string>
 
@@ -49,6 +52,11 @@ struct stack_basic_string {
 
   friend struct std::hash<stack_basic_string>;
 
+  friend fmt::basic_string_view<Char>
+      format_as(stack_basic_string<Char, MAXSIZE> const &s) {
+    return {s.contents.data(), s.length()};
+  }
+
 private:
   stack_vector<Char, MAXSIZE> contents;
 };
@@ -88,8 +96,9 @@ static_assert(is_neq_comparable<stack_string<1>>::value,
               "stack_string must support !=");
 static_assert(is_lt_comparable<stack_string<1>>::value,
               "stack_string must support <");
-static_assert(is_hashable<stack_string<1>>::value,
-              "stack_string must be hashable");
+CHECK_WELL_BEHAVED_VALUE_TYPE(stack_string<1>);
+CHECK_HASHABLE(stack_string<1>);
+// CHECK_FMTABLE(stack_string<1>);
 
 } // namespace FlexFlow
 

@@ -1,10 +1,9 @@
 #ifndef _FLEXFLOW_INCLUDE_UTILS_VISITABLE_H
 #define _FLEXFLOW_INCLUDE_UTILS_VISITABLE_H
 
-#include "rapidcheck.h"
-#include "utils/any.h"
 #include "utils/exception.h"
 #include "utils/hash-utils.h"
+#include "utils/required_core.h"
 #include "utils/sequence.h"
 #include "utils/tuple.h"
 #include "utils/type_traits.h"
@@ -133,17 +132,15 @@ T make_visitable(Args &&...args) {
   return t;
 }
 
-template <typename T, typename... Args>
-T visitable_from_tuple(std::tuple<Args...> const &t) {
-  using Idxs = typename seq_count<std::tuple_size<decltype(t)>::value>::type;
-
-  return visitable_from_tuple<T>(Idxs{}, t);
-};
-
 template <typename T, typename Tup, int... S>
 T visitable_from_tuple_impl(seq<S...>, Tup const &tup) {
   return T{std::get<S>(tup)...};
 }
+
+template <typename T, typename... Args>
+T visitable_from_tuple(std::tuple<Args...> const &t) {
+  return visitable_from_tuple_impl<T>(seq_enumerate_args_t<Args...>{}, t);
+};
 
 template <typename T>
 struct GetFunctor {
@@ -228,6 +225,30 @@ struct is_well_behaved_visitable_type
                                          std::integral_constant<size_t, 0>>,
                                 std::is_default_constructible<T>>> {};
 
+struct fmt_visitor {
+  std::ostringstream &oss;
+
+  template <typename T>
+  void operator()(char const *field_name, T const &field_value) {
+    oss << " " << field_name << "=" << field_value;
+  }
+};
+
+template <typename T>
+std::string visit_format(T const &t) {
+  static_assert(is_visitable<T>::value,
+                "visit_format can only be applied to visitable types");
+  static_assert(elements_satisfy<is_fmtable, T>::value,
+                "Visitable fields must be fmtable");
+
+  std::ostringstream oss;
+  oss << "<" << ::visit_struct::get_name<T>();
+  visit_struct::for_each(t, fmt_visitor{oss});
+  oss << ">";
+
+  return oss.str();
+}
+
 template <typename T>
 auto operator==(T const &lhs, T const &rhs)
     -> enable_if_t<conjunction<is_visitable<T>,
@@ -270,43 +291,23 @@ auto operator!=(T const &lhs, T const &rhs) -> enable_if_t<
   return as_tuple(lhs) != as_tuple(rhs);
 }
 
-/* template <typename T> */
-/* auto operator<(T const &lhs, T const &rhs) -> enable_if_t< */
-/*   conjunction<is_visitable<T>, elements_satisfy<is_lt_comparable, T>>::value,
- */
-/* bool> { */
-/*   return as_tuple(lhs) < as_tuple(rhs); */
-/* } */
-
-} // namespace FlexFlow
-
-namespace rc {
-
-struct gen_visitor {
-  template <typename Member>
-  auto operator()(Member const &m) -> Gen<Member> {
-    return gen::set(m);
-  }
-};
-
 template <typename T>
-Gen<T> build_visitable(T const &t) {
-  static_assert(::FlexFlow::is_visitable<T>::value, "Type must be visitable");
-
-  gen_visitor vis;
-  return gen::build<T>(visit_struct::for_each(t, vis));
+auto operator<(T const &lhs, T const &rhs) -> enable_if_t<
+    conjunction<is_visitable<T>, elements_satisfy<is_lt_comparable, T>>::value,
+    bool> {
+  return as_tuple(lhs) < as_tuple(rhs);
 }
 
 template <typename T>
-struct Arbitrary<
-    T,
-    typename std::enable_if<::FlexFlow::is_visitable<T>::value>::type> {
-  static Gen<T> arbitrary() {
-    return build_visitable<T>();
+struct visitable_formatter : public ::fmt::formatter<std::string> {
+  template <typename FormatContext>
+  auto format(T const &t, FormatContext &ctx) const -> decltype(ctx.out()) {
+    std::string fmted = visit_format(t);
+    return formatter<std::string>::format(fmted, ctx);
   }
 };
 
-} // namespace rc
+} // namespace FlexFlow
 
 #define CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION(TYPENAME)       \
   CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION_NO_EQ(TYPENAME);      \
@@ -319,6 +320,25 @@ struct Arbitrary<
   static_assert(sizeof(visit_as_tuple_raw_t<TYPENAME>) == sizeof(TYPENAME),    \
                 #TYPENAME " should be fully visitable");                       \
   CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(TYPENAME);
+
+#define FF_VISIT_FMTABLE(TYPENAME)                                             \
+  static_assert(is_visitable<TYPENAME>::value,                                 \
+                #TYPENAME " must be visitable to use FF_VISIT_FMTABLE");       \
+  static_assert(elements_satisfy<is_streamable, TYPENAME>::value,              \
+                #TYPENAME "'s elements must use be streamable");               \
+  }                                                                            \
+  namespace fmt {                                                              \
+  template <>                                                                  \
+  struct formatter<::FlexFlow::TYPENAME>                                       \
+      : ::FlexFlow::visitable_formatter<::FlexFlow::TYPENAME> {};              \
+  }                                                                            \
+  namespace FlexFlow {                                                         \
+  static_assert(is_fmtable<TYPENAME>::value,                                   \
+                #TYPENAME                                                      \
+                " failed sanity check on is_fmtable and FF_VISIT_FMTABLE");    \
+  static_assert(is_streamable<TYPENAME>::value,                                \
+                #TYPENAME                                                      \
+                " failed sanity check on is_streamable and FF_VISIT_FMTABLE");
 
 #define CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME)                                \
   CHECK_WELL_BEHAVED_VISIT_TYPE_NONSTANDARD_CONSTRUCTION(TYPENAME);            \

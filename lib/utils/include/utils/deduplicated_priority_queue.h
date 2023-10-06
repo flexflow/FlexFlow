@@ -1,6 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_DEDUPLICATED_PRIORITY_QUEUE_H
 #define _FLEXFLOW_UTILS_DEDUPLICATED_PRIORITY_QUEUE_H
 
+#include "utils/containers.h"
+#include <queue>
 #include <unordered_set>
 #include <vector>
 
@@ -25,21 +27,20 @@ public:
   }
 
   void push(Elem const &e) {
-    size_t hash = Hash{}(e);
     if (!contains(hashmap, e)) {
       impl.push(e);
-      hashmap.insert(hash);
+      hashmap.insert(e);
     }
   }
 
   void pop() {
-    hashmap.erase(Hash{}(impl.top()));
+    hashmap.erase(impl.top());
     impl.pop();
   }
 
 private:
   std::priority_queue<Elem, Container, Compare> impl;
-  std::unordered_set<size_t> hashmap;
+  std::unordered_set<Elem, Hash> hashmap;
 };
 
 } // namespace FlexFlow

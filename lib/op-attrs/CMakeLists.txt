@@ -1,32 +1,14 @@
-set(project_target op-attrs)
-project(${project_target})
-
-file(GLOB_RECURSE SRC
-     CONFIGURE_DEPENDS
-     LIST_DIRECTORIES False
-     src/*.cc)
-
-add_library(
-  ${project_target}
-  SHARED
-  ${SRC}
-)
-target_include_directories(
-  ${project_target}
-  PRIVATE
-    src/
-  PUBLIC
+ff_add_library(
+  NAME
+    op-attrs
+  SRC_PATTERNS
+    src/*.cc
+  PUBLIC_INCLUDE
     include/
+  PRIVATE_INCLUDE
+    src/ 
+  DEPS
+    utils
 )
-target_link_libraries(
-  ${project_target}
-  variant
-  optional
-  utils
-  visit_struct
-)
-
-define_ff_vars(${project_target})
-ff_set_cxx_properties(${project_target})
 
 add_subdirectory(ffi)

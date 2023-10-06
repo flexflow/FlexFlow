@@ -1,6 +1,38 @@
 #include "utils/graph/open_graphs.h"
+#include "utils/graph/algorithms.h"
+#include "utils/graph/internal.h"
+#include "utils/graph/multidigraph.h"
+#include "utils/graph/query_set.h"
 
 namespace FlexFlow {
+
+InputMultiDiEdgeQuery InputMultiDiEdgeQuery::all() {
+  return {matchall<Node>(), matchall<NodePort>()};
+}
+
+OutputMultiDiEdgeQuery OutputMultiDiEdgeQuery::all() {
+  return {matchall<Node>(), matchall<NodePort>()};
+}
+
+std::unordered_set<Node>
+    OpenMultiDiGraphView::query_nodes(NodeQuery const &q) const {
+  return this->ptr->query_nodes(q);
+}
+std::unordered_set<OpenMultiDiEdge>
+    OpenMultiDiGraphView::query_edges(OpenMultiDiEdgeQuery const &q) const {
+  return this->ptr->query_edges(q);
+}
+
+OpenMultiDiGraphView::operator MultiDiGraphView() const {
+  return as_multidigraph(*this);
+}
+
+OpenMultiDiGraphView::OpenMultiDiGraphView(
+    std::shared_ptr<IOpenMultiDiGraphView const> ptr)
+    : ptr(ptr) {}
+
+OpenMultiDiGraph::OpenMultiDiGraph(OpenMultiDiGraph const &other)
+    : ptr(other.ptr) {}
 
 void swap(OpenMultiDiGraph &lhs, OpenMultiDiGraph &rhs) {
   using std::swap;
@@ -33,7 +65,7 @@ std::unordered_set<OpenMultiDiEdge>
   return this->ptr->query_edges(q);
 }
 
-OpenMultiDiGraph::OpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph> _ptr)
+OpenMultiDiGraph::OpenMultiDiGraph(cow_ptr_t<IOpenMultiDiGraph> _ptr)
     : ptr(std::move(_ptr)) {}
 
 UpwardOpenMultiDiGraph &

@@ -1,11 +1,12 @@
 #include "pcg/file_format/v1/graphs.h"
+#include "utils/graph/algorithms.h"
 
 namespace FlexFlow {
 
 V1MultiDiGraph to_v1(MultiDiGraphView const &g) {
   return to_v1(g,
                enumerate(get_nodes(g)).reversed(),
-               enumerate(get_node_ports(g)).reversed());
+               enumerate(get_present_node_ports(g)).reversed());
 }
 
 V1MultiDiGraph to_v1(MultiDiGraphView const &g,
@@ -34,7 +35,7 @@ V1JsonableGraph<decltype(to_v1(std::declval<NodeLabel>())),
   using V1OutputLabel = decltype(to_v1(std::declval<OutputLabel>()));
 
   bidict<size_t, Node> nodes = enumerate(get_nodes(g));
-  bidict<size_t, NodePort> node_ports = enumerate(get_node_ports(g));
+  bidict<size_t, NodePort> node_ports = enumerate(get_present_node_ports(g));
 
   V1MultiDiGraph unlabelled = to_v1(g, nodes.reversed(), node_ports.reversed());
   std::unordered_map<size_t, V1NodeLabel> node_labels =

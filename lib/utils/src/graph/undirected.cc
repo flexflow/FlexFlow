@@ -1,8 +1,21 @@
 #include "utils/graph/undirected.h"
 #include "utils/containers.h"
+#include "utils/graph/internal.h"
+#include "utils/graph/node.h"
 #include <cassert>
 
 namespace FlexFlow {
+
+UndirectedEdge::UndirectedEdge(Node const &n1, Node const &n2)
+    : smaller(std::min(n1, n2)), bigger(std::max(n1, n2)) {}
+
+bool is_connected_to(UndirectedEdge const &e, Node const &n) {
+  return e.bigger == n || e.smaller == n;
+}
+
+UndirectedEdgeQuery UndirectedEdgeQuery::all() {
+  return {matchall<Node>()};
+}
 
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &lhs,
                                        UndirectedEdgeQuery const &rhs) {
@@ -42,7 +55,43 @@ std::unordered_set<UndirectedEdge>
   return this->ptr->query_edges(q);
 }
 
-UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
+std::unordered_set<Node>
+    UndirectedGraph::query_nodes(NodeQuery const &q) const {
+  return this->ptr->query_nodes(q);
+}
+
+UndirectedGraph::UndirectedGraph(cow_ptr_t<IUndirectedGraph> _ptr)
     : ptr(std::move(_ptr)) {}
+
+UndirectedGraph::operator UndirectedGraphView() const {
+  return GraphInternal::create_undirectedgraphview(this->ptr.get());
+}
+
+UndirectedGraphView::UndirectedGraphView(
+    std::shared_ptr<IUndirectedGraphView const> ptr)
+    : ptr(ptr) {}
+
+std::unordered_set<UndirectedEdge>
+    UndirectedGraphView::query_edges(UndirectedEdgeQuery const &q) const {
+  return this->ptr->query_edges(q);
+}
+
+std::unordered_set<Node>
+    UndirectedGraphView::query_nodes(NodeQuery const &q) const {
+  return this->ptr->query_nodes(q);
+}
+
+// Set the shared_ptr's destructor to a nop so that effectively there is no
+// ownership
+UndirectedGraphView UndirectedGraphView::unsafe_create_without_ownership(
+    IUndirectedGraphView const &g) {
+  std::shared_ptr<IUndirectedGraphView const> ptr(
+      (&g), [](IUndirectedGraphView const *) {});
+  return UndirectedGraphView(ptr);
+}
+
+UndirectedGraphView::operator GraphView() const {
+  return GraphInternal::create_graphview(this->ptr);
+}
 
 } // namespace FlexFlow

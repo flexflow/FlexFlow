@@ -13,12 +13,17 @@
 #error "Unknown device"
 #endif
 
-#include "utils/fp16.h"
+#if defined(FF_USE_CUDA)
+#include <cuda_fp16.h>
+#elif defined(FF_USE_HIP_CUDA)
+#include <cuda_fp16.h>
+#elif defined(FF_USE_HIP_ROCM)
+#include <hip/hip_fp16.h>
+#endif
+
 #include <cassert>
 #include <iostream>
 #include <sstream>
-
-namespace FlexFlow {
 
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 typedef cudaStream_t ffStream_t;
@@ -71,6 +76,8 @@ typedef hipError_t ffError_t;
 #else
 #error "Unknown device"
 #endif
+
+namespace FlexFlow {
 
 #define FatalError(s)                                                          \
   do {                                                                         \
