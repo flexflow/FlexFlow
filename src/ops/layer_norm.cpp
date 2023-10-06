@@ -142,8 +142,8 @@ template <typename T>
 void LayerNorm::forward_kernel(LayerNormMeta const *m,
                                T const *in_ptr,
                                T *out_ptr,
-                               T *gamma_ptr,
-                               T *beta_ptr,
+                               T const *gamma_ptr,
+                               T const *beta_ptr,
                                hipStream_t stream) {
   hipLaunchKernelGGL(HIP_KERNEL_NAME(RowwiseMomentsCUDAKernel<T>),
                      m->effective_batch_size,
