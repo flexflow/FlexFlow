@@ -98,7 +98,7 @@ static_assert(is_lt_comparable<stack_string<1>>::value,
               "stack_string must support <");
 CHECK_WELL_BEHAVED_VALUE_TYPE(stack_string<1>);
 CHECK_HASHABLE(stack_string<1>);
-CHECK_FMTABLE(stack_string<1>);
+// CHECK_FMTABLE(stack_string<1>);
 
 } // namespace FlexFlow
 

@@ -72,6 +72,8 @@ public:
   Node add_node(NodeLabel const &l);
   NodeLabel &at(Node const &n);
 
+  NodePort add_node_port();
+
   NodeLabel const &at(Node const &n) const;
 
   void add_node_unsafe(Node const &n, NodeLabel const &l);
@@ -79,6 +81,17 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const;
   std::unordered_set<OpenMultiDiEdge>
       query_edges(OpenMultiDiEdgeQuery const &q) const;
+
+  void add_edge(
+      MultiDiEdge const &e); // We should allow adding edges without labels. For
+                             // example, we may want to first construct a PCG
+                             // and infer its tensor shapes later.
+  void add_edge(InputMultiDiEdge const &e);
+  void add_edge(OutputMultiDiEdge const &e);
+
+  void add_label(MultiDiEdge const &e, EdgeLabel const &l);
+  void add_label(InputMultiDiEdge const &e, EdgeLabel const &l);
+  void add_label(OutputMultiDiEdge const &e, EdgeLabel const &l);
 
   void add_edge(MultiDiEdge const &e, EdgeLabel const &l);
   EdgeLabel &at(MultiDiEdge const &e);
