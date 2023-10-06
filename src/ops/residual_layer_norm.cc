@@ -624,8 +624,7 @@ void ResidualLayerNorm::inference_task(
     return;
   }
 
-  ResidualLayerNormMeta const *m =
-      *((ResidualLayerNormMeta **)task->local_args);
+  ResidualLayerNormMeta *m = *((ResidualLayerNormMeta **)task->local_args);
 
   assert(regions.size() ==
          4 + m->use_two_residuals +
@@ -736,6 +735,29 @@ void ResidualLayerNorm::inference_task(
 
   ResidualLayerNorm::inference_kernel_wrapper(
       m, input, residual1, residual2, added_output, output, gamma, beta);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> input_accessors;
+    input_accessors.push_back(input);
+    input_accessors.push_back(residual1);
+    if (m->use_two_residuals) {
+      input_accessors.push_back(residual2);
+    }
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    if (m->elementwise_affine) {
+      weights_accessors.push_back(gamma);
+      if (m->use_bias) {
+        weights_accessors.push_back(beta);
+      }
+    }
+    ResidualLayerNorm::save_inference_tensors_to_file(m,
+                                                      shard_id,
+                                                      input_accessors,
+                                                      weights_accessors,
+                                                      {added_output, output});
+  }
 }
 
 bool ResidualLayerNorm::measure_operator_cost(Simulator *sim,

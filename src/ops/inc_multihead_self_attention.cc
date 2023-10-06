@@ -823,7 +823,7 @@ void IncMultiHeadSelfAttention::inference_task(
     return;
   }
 
-  IncMultiHeadSelfAttentionMeta const *m =
+  IncMultiHeadSelfAttentionMeta *m =
       *((IncMultiHeadSelfAttentionMeta **)task->local_args);
 
   assert(((*m->qkv_bias || *m->final_bias) ? regions.size() == 4
@@ -863,6 +863,19 @@ void IncMultiHeadSelfAttention::inference_task(
 
   IncMultiHeadSelfAttention::inference_kernel_wrapper(
       m, bc, task->index_point.point_data[0], input, weight, output, biases);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    weights_accessors.push_back(weight);
+    if (*m->qkv_bias || *m->final_bias) {
+      weights_accessors.push_back(biases);
+    }
+    IncMultiHeadSelfAttention::save_inference_tensors_to_file(
+        m, shard_id, {input}, weights_accessors, {output});
+  }
+
 #ifdef INFERENCE_TESTS
   printf("Checking IncMultiHeadSelfAttention computations...\n");
 

@@ -506,7 +506,7 @@ void LayerNorm::inference_task(Task const *task,
     return;
   }
 
-  LayerNormMeta const *m = *((LayerNormMeta **)task->local_args);
+  LayerNormMeta *m = *((LayerNormMeta **)task->local_args);
   assert(task->regions.size() == regions.size());
   float const *in_ptr = NULL;
   float *out_ptr = NULL, *gamma_ptr = NULL, *beta_ptr = NULL;
@@ -560,7 +560,22 @@ void LayerNorm::inference_task(Task const *task,
   } else {
     assert(regions.size() == 2);
   }
+
   LayerNorm::forward_kernel_wrapper(m, in, out, gamma, beta);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    if (m->elementwise_affine) {
+      weights_accessors.push_back(gamma);
+      if (m->use_bias) {
+        weights_accessors.push_back(beta);
+      }
+    }
+    LayerNorm::save_inference_tensors_to_file(
+        m, shard_id, {in}, weights_accessors, {out});
+  }
 }
 
 /*
