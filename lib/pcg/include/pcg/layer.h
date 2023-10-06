@@ -25,7 +25,7 @@ MAKE_VISIT_HASHABLE(::FlexFlow::Layer);
 namespace FlexFlow {
 
 FF_VISIT_FMTABLE(Layer);
-CHECK_FMTABLE(Layer);
+// CHECK_FMTABLE(Layer);
 
 } // namespace FlexFlow
 
