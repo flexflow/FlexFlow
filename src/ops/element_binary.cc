@@ -622,7 +622,7 @@ __host__ void
     return;
   }
   // const ElementBinary* ele = (const ElementBinary*) task->args;
-  ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
+  ElementBinaryMeta *m = *((ElementBinaryMeta **)task->local_args);
   GenericTensorAccessorR in1, in2;
   GenericTensorAccessorW out;
   Domain in1_domain = runtime->get_index_space_domain(
@@ -707,8 +707,14 @@ __host__ void
                                              runtime);
     }
   }
-
   forward_kernel_wrapper(m, in1, in2, out);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    ElementBinary::save_inference_tensors_to_file(
+        m, shard_id, {in1, in2}, {}, {out});
+  }
 }
 
 /*

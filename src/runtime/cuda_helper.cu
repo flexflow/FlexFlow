@@ -283,6 +283,7 @@ __host__ void
   cudaDeviceSynchronize();
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
+  assert(tensor_file != NULL);
   for (unsigned i = 0; i < num_elements; i++) {
     fprintf(tensor_file, "%.20f, ", (float)host_ptr[i]);
   }

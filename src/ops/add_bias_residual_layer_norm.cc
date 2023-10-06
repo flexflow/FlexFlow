@@ -622,7 +622,7 @@ void AddBiasResidualLayerNorm::inference_task(
     return;
   }
 
-  AddBiasResidualLayerNormMeta const *m =
+  AddBiasResidualLayerNormMeta *m =
       *((AddBiasResidualLayerNormMeta **)task->local_args);
 
   assert(regions.size() ==
@@ -751,6 +751,25 @@ void AddBiasResidualLayerNorm::inference_task(
       attn_bias,
       gamma,
       beta);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    weights_accessors.push_back(attn_bias);
+    if (m->elementwise_affine) {
+      weights_accessors.push_back(gamma);
+      if (m->use_bias) {
+        weights_accessors.push_back(beta);
+      }
+    }
+    AddBiasResidualLayerNorm::save_inference_tensors_to_file(
+        m,
+        shard_id,
+        {input, residual},
+        weights_accessors,
+        {added_output, output});
+  }
 }
 
 bool AddBiasResidualLayerNorm::measure_operator_cost(

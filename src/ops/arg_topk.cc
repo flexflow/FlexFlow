@@ -311,7 +311,7 @@ InferenceResult
     InferenceResult ir;
     return ir;
   }
-  ArgTopKMeta const *m = *((ArgTopKMeta **)task->local_args);
+  ArgTopKMeta *m = *((ArgTopKMeta **)task->local_args);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -320,6 +320,13 @@ InferenceResult
 
   int batch_size = bc->num_active_tokens();
   ArgTopK::forward_kernel_wrapper(m, input, indices, batch_size);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    ArgTopK::save_inference_tensors_to_file(
+        m, shard_id, {input}, {}, {indices});
+  }
 
   InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(

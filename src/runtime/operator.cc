@@ -42,7 +42,7 @@ void Op::save_inference_tensors_to_file(
   }
   // output base filepath, shared by all tensors from the same operator
   std::string base_filepath =
-      "./tensors_dump/model_" + std::to_string(m->layer_guid.model_id) +
+      "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
       "_decoding-step_" + std::to_string(m->decoding_step) + "_layer-num_" +
       std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
       m->op_name + "_shard-id_" + std::to_string(shard_id);
