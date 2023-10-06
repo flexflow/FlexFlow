@@ -31,7 +31,7 @@ jobs:
         with:
           cuda: "12.1.0"
           # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
-          use-github-cache: "true"
+          use-github-cache: "false"
           linux-local-args: '["--toolkit"]'
 
       - name: ccache
