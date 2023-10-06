@@ -325,7 +325,7 @@ InferenceResult
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     ArgTopK::save_inference_tensors_to_file(
-        m, shard_id, {input}, {}, {indices});
+        m, shard_id, bc, {input}, {}, {indices});
   }
 
   InferenceResult ir;

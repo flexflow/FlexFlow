@@ -305,48 +305,23 @@ void Softmax::forward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  switch (in_domain.get_dim()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM:                                                                    \
-    if (m->output_type == DT_HALF) {                                           \
-      return forward_task_with_dim<half, DIM>(task, regions, ctx, runtime);    \
-    } else if (m->output_type == DT_FLOAT) {                                   \
-      return forward_task_with_dim<float, DIM>(task, regions, ctx, runtime);   \
-    } else {                                                                   \
-      assert(false && "Unsupported data type");                                \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-}
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->output_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-/*
-  regions[0](I): input
-  regions[1](O): output
-*/
-template <typename DT, int NDIM>
-void Softmax::forward_task_with_dim(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime) {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  // const Softmax* softmax = (Softmax*) task->args;
-  SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  TensorAccessorR<DT, NDIM> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<DT, NDIM> acc_output(regions[1],
-                                       task->regions[1],
-                                       FID_DATA,
-                                       ctx,
-                                       runtime,
-                                       false /*readOutput*/);
-  forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr);
+  if (m->output_type == DT_HALF) {
+    forward_kernel_wrapper(m, input.get_half_ptr(), output.get_half_ptr());
+  } else if (m->output_type == DT_FLOAT) {
+    forward_kernel_wrapper(m, input.get_float_ptr(), output.get_float_ptr());
+  } else {
+    assert(false && "Unsupported data type");
+  }
 }
 
 void Softmax::backward(FFModel const &ff) {
@@ -437,29 +412,31 @@ void Softmax::inference_task(Task const *task,
                              Context ctx,
                              Runtime *runtime) {
   assert(task->regions.size() == regions.size());
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
   }
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  switch (in_domain.get_dim()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM:                                                                    \
-    if (m->output_type == DT_HALF) {                                           \
-      forward_task_with_dim<half, DIM>(task, regions, ctx, runtime);           \
-      break;                                                                   \
-    } else if (m->output_type == DT_FLOAT) {                                   \
-      forward_task_with_dim<float, DIM>(task, regions, ctx, runtime);          \
-      break;                                                                   \
-    } else {                                                                   \
-      assert(false && "Unsupported data type");                                \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
+  SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->output_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  if (m->output_type == DT_HALF) {
+    forward_kernel_wrapper(m, input.get_half_ptr(), output.get_half_ptr());
+  } else if (m->output_type == DT_FLOAT) {
+    forward_kernel_wrapper(m, input.get_float_ptr(), output.get_float_ptr());
+  } else {
+    assert(false && "Unsupported data type");
+  }
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Softmax::save_inference_tensors_to_file(
+        m, shard_id, bc, {input}, {}, {output});
   }
 }
 

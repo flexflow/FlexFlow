@@ -279,8 +279,7 @@ __host__ void
                           cudaHostAllocPortable | cudaHostAllocMapped));
   checkCUDA(cudaMemcpyAsync(
       host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
-  // checkCUDA(cudaDeviceSynchronize());
-  cudaDeviceSynchronize();
+  checkCUDA(cudaDeviceSynchronize());
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
   assert(tensor_file != NULL);

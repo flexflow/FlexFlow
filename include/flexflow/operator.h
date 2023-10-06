@@ -230,6 +230,7 @@ public:
   static void save_inference_tensors_to_file(
       OpMeta *m,
       int shard_id,
+      BatchConfig const *bc,
       std::vector<GenericTensorAccessorR> input_tensors,
       std::vector<GenericTensorAccessorR> weight_tensors,
       std::vector<GenericTensorAccessorW> output_tensors);

@@ -415,7 +415,7 @@ void RMSNorm::inference_task(Task const *task,
   if (bc->num_tokens == 0) {
     return;
   }
-  RMSNormMeta const *m = *((RMSNormMeta **)task->local_args);
+  RMSNormMeta *m = *((RMSNormMeta **)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
@@ -423,6 +423,12 @@ void RMSNorm::inference_task(Task const *task,
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
       m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   forward_kernel_wrapper(m, input, weight, output);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    RMSNorm::save_inference_tensors_to_file(
+        m, shard_id, bc, {input}, {weight}, {output});
+  }
 }
 
 void RMSNorm::serialize(Legion::Serializer &sez) const {

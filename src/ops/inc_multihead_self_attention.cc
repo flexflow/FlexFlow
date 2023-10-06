@@ -814,7 +814,6 @@ void IncMultiHeadSelfAttention::inference_task(
 
   assert(task->regions.size() == regions.size());
 
-  // BatchConfig const *bc = (BatchConfig *)task->args;
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
                     bc->num_tokens,
@@ -873,7 +872,7 @@ void IncMultiHeadSelfAttention::inference_task(
       weights_accessors.push_back(biases);
     }
     IncMultiHeadSelfAttention::save_inference_tensors_to_file(
-        m, shard_id, {input}, weights_accessors, {output});
+        m, shard_id, bc, {input}, weights_accessors, {output});
   }
 
 #ifdef INFERENCE_TESTS

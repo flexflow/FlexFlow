@@ -713,7 +713,7 @@ __host__ void
     int shard_id = task->index_point.point_data[0];
     std::vector<GenericTensorAccessorR> weights_accessors;
     ElementBinary::save_inference_tensors_to_file(
-        m, shard_id, {in1, in2}, {}, {out});
+        m, shard_id, bc, {in1, in2}, {}, {out});
   }
 }
 

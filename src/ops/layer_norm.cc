@@ -574,7 +574,7 @@ void LayerNorm::inference_task(Task const *task,
       }
     }
     LayerNorm::save_inference_tensors_to_file(
-        m, shard_id, {in}, weights_accessors, {out});
+        m, shard_id, bc, {in}, weights_accessors, {out});
   }
 }
 

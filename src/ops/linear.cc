@@ -670,7 +670,7 @@ void Linear::inference_task(Task const *task,
       weights_accessors.push_back(bias);
     }
     Linear::save_inference_tensors_to_file(
-        m, shard_id, {input}, weights_accessors, {output});
+        m, shard_id, bc, {input}, weights_accessors, {output});
   }
 }
 

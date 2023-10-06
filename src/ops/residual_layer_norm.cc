@@ -754,6 +754,7 @@ void ResidualLayerNorm::inference_task(
     }
     ResidualLayerNorm::save_inference_tensors_to_file(m,
                                                       shard_id,
+                                                      bc,
                                                       input_accessors,
                                                       weights_accessors,
                                                       {added_output, output});

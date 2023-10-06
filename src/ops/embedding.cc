@@ -517,7 +517,7 @@ void Embedding::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
-  EmbeddingMeta const *m = *((EmbeddingMeta **)task->local_args);
+  EmbeddingMeta *m = *((EmbeddingMeta **)task->local_args);
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // Assert that weight and output must have the same data type
@@ -564,75 +564,13 @@ void Embedding::forward_task(Task const *task,
   }
   forward_kernel_wrapper(
       m, input, output, kernel, in_dim, out_dim, effective_batch_size);
-}
-
-#ifdef DEADCODE
-template <typename TI>
-void Embedding::forward_task_with_type(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
-    Runtime *runtime) {
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
-  // const Embedding* embed = (Embedding*) task->args;
-  EmbeddingMeta const *m = *((EmbeddingMeta **)task->local_args);
-  Domain input_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Domain output_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  Domain kernel_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-  if (m->aggr == AGGR_MODE_NONE) {
-    // assert(kernel_domain.get_dim() == 2);
-    assert(input_domain.get_dim() + 1 == output_domain.get_dim());
-    for (size_t i = 0; i < input_domain.get_dim(); i++) {
-      assert(input_domain.hi()[i] == output_domain.hi()[i + 1]);
-      assert(input_domain.lo()[i] == output_domain.lo()[i + 1]);
-    }
-    assert(kernel_domain.hi()[0] - kernel_domain.lo()[0] ==
-           output_domain.hi()[0] - output_domain.lo()[0]);
-  } else {
-    // assert(kernel_domain.get_dim() == 2);
-    assert(input_domain.get_dim() == output_domain.get_dim());
-    for (size_t i = 1; i < input_domain.get_dim(); i++) {
-      assert(input_domain.hi()[i] == output_domain.hi()[i]);
-      assert(input_domain.lo()[i] == output_domain.lo()[i]);
-    }
-    assert(kernel_domain.hi()[0] - kernel_domain.lo()[0] ==
-           output_domain.hi()[0] - output_domain.lo()[0]);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Embedding::save_inference_tensors_to_file(
+        m, shard_id, nullptr, {input}, {kernel}, {output});
   }
-  const TI *input_ptr = helperGetTensorPointerRO<TI>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float *output_ptr = helperGetTensorPointerWO<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  float const *kernel_ptr = helperGetTensorPointerRO<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-
-  int in_dim, out_dim, effective_batch_size;
-  if (m->aggr == AGGR_MODE_NONE) {
-    in_dim = 1;
-    out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
-    effective_batch_size = output_domain.get_volume() / out_dim;
-    assert(effective_batch_size * in_dim == input_domain.get_volume());
-  } else {
-    in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
-    out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
-    effective_batch_size = output_domain.get_volume() / out_dim;
-    assert(effective_batch_size * in_dim == input_domain.get_volume());
-  }
-
-  forward_kernel_wrapper<TI>(m,
-                             input_ptr,
-                             output_ptr,
-                             kernel_ptr,
-                             in_dim,
-                             out_dim,
-                             effective_batch_size,
-                             m->aggr,
-                             output_domain.get_volume());
 }
-#endif
 
 void Embedding::backward(FFModel const &ff) {
   ArgumentMap argmap;

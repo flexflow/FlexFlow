@@ -736,14 +736,13 @@ void SpecIncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(task->regions.size() == regions.size());
 
-  // BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
   BeamSearchBatchConfig const &bc =
       Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
   if (bc.num_tokens == 0) {
     return;
   }
 
-  SpecIncMultiHeadSelfAttentionMeta const *m =
+  SpecIncMultiHeadSelfAttentionMeta *m =
       *((SpecIncMultiHeadSelfAttentionMeta **)task->local_args);
   assert(((*m->qkv_bias || *m->final_bias) ? regions.size() == 4
                                            : regions.size() == 3));
@@ -780,14 +779,17 @@ void SpecIncMultiHeadSelfAttention::inference_task(
   assert(task->index_point.get_dim() == 1);
   SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
       m, &bc, task->index_point.point_data[0], input, weight, output, biases);
-
-  // print_tensor<float>(input.get_float_ptr(), 20, "attention input");
-  // print_tensor<float>(output.get_float_ptr(), 20, "attention output");
-  // if(bc.beam_slots.at(0).current_depth == 1){
-  //     print_beam_tensor<float>(input.get_float_ptr(), 50, 4096, 40, "mha topk
-  //     input"); print_beam_tensor<float>(output.get_float_ptr(), 50, 4096, 40,
-  //     "mha topk output");
-  // }
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    weights_accessors.push_back(weight);
+    if (*m->qkv_bias || *m->final_bias) {
+      weights_accessors.push_back(biases);
+    }
+    SpecIncMultiHeadSelfAttention::save_inference_tensors_to_file(
+        m, shard_id, &bc, {input}, weights_accessors, {output});
+  }
 }
 
 void SpecIncMultiHeadSelfAttention::backward(FFModel const &ff) {

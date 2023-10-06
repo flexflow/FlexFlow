@@ -737,7 +737,7 @@ void Experts::inference_task(Task const *task,
                              Runtime *runtime) {
   assert(regions.size() == task->regions.size());
 
-  ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
+  ExpertsMeta *m = *((ExpertsMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
@@ -748,14 +748,19 @@ void Experts::inference_task(Task const *task,
   assert(regions.size() - 4 == (1 + use_bias));
 
   // get input, indices, topk_gate_preds, outputs
-  float const *input_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  int const *indices_ptr = helperGetTensorPointerRO<int>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  float const *topk_gate_pred_ptr = helperGetTensorPointerRO<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  float *output_ptr = helperGetTensorPointerWO<float>(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR indices = helperGetGenericTensorAccessorRO(
+      DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR topk_gate_preds = helperGetGenericTensorAccessorRO(
+      DT_FLOAT, regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      DT_FLOAT, regions[3], task->regions[3], FID_DATA, ctx, runtime);
+
+  float const *input_ptr = input.get_float_ptr();
+  int const *indices_ptr = indices.get_int32_ptr();
+  float const *topk_gate_pred_ptr = topk_gate_preds.get_float_ptr();
+  float *output_ptr = output.get_float_ptr();
   assert(input_ptr != nullptr && indices_ptr != nullptr &&
          topk_gate_pred_ptr != nullptr && output_ptr != nullptr);
 
@@ -1112,6 +1117,13 @@ void Experts::inference_task(Task const *task,
     free(cpu_output_ptr);
   }
 #endif
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Experts::save_inference_tensors_to_file(
+        m, shard_id, bc, {input, indices, topk_gate_preds}, {}, {output});
+  }
 }
 
 void Experts::forward_task(Task const *task,
