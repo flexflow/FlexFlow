@@ -140,4 +140,3 @@ void register_task<COMBINE_BWD_TASK_ID>() {
 
 }; // namespace FlexFlow
 
-namespace std {}; // namespace std
