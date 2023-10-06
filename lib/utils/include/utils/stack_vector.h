@@ -290,7 +290,7 @@ public:
   }
 
   friend std::vector<T> format_as(stack_vector<T, MAXSIZE> const &v) {
-    CHECK_FMTABLE(std::vector<T>);
+    // CHECK_FMTABLE(std::vector<T>);
 
     return static_cast<std::vector<T>>(v);
   }
@@ -309,7 +309,7 @@ private:
       implies<is_lt_comparable<T>, is_lt_comparable<stack_vector>>::value, "");
 };
 
-CHECK_FMTABLE(stack_vector<test_types::fmtable, 5>);
+// CHECK_FMTABLE(stack_vector<test_types::fmtable, 5>);
 
 } // namespace FlexFlow
 

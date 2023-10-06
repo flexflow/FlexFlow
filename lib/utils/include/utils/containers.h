@@ -122,12 +122,12 @@ bool contains_key(C const &m, typename C::key_type const &k) {
 
 template <typename K, typename V>
 bool contains_l(bidict<K, V> const &m, K const &k) {
-  return m.find(k) != m.end();
+  return m.contains_l(k);
 }
 
 template <typename K, typename V>
 bool contains_r(bidict<K, V> const &m, V const &v) {
-  return m.find(v) != m.end();
+  return m.contains_r(v);
 }
 
 template <typename K, typename V, typename F, typename K2>
