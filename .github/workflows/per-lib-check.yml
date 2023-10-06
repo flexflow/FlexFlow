@@ -71,14 +71,14 @@ jobs:
       - name: Build op-attrs
         run: |
           cd build 
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
+          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) op-attrs
 
       - name: Build pcg
         run: |
           cd build
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
+          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) pcg
 
       - name: Build kernels
         run: |
           cd build
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
+          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) kernels
