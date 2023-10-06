@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
+#include "flexflow/ops/fused.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
-#include "flexflow/ops/fused.h"
 #include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/ops/kernels/cast_kernels.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
@@ -365,7 +365,11 @@ __host__ void FusedOp::forward_task(Task const *task,
       case OP_RELU:
       case OP_SIGMOID:
       case OP_TANH:
-      case OP_ELU: {
+      case OP_ELU:
+      case OP_SCALAR_ADD:
+      case OP_SCALAR_MULTIPLY:
+      case OP_SCALAR_SUB:
+      case OP_SCALAR_TRUE_DIV: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -424,10 +428,24 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        Kernels::Reshape::forward_kernel_wrapper(
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr(),
-            my_input_accessor[0].domain.get_volume());
+        if (my_input_accessor[0].data_type == DT_INT64) {
+          Kernels::Reshape::forward_kernel_wrapper(
+              my_input_accessor[0].get_int64_ptr(),
+              my_output_accessor[0].get_int64_ptr(),
+              my_input_accessor[0].domain.get_volume());
+        } else if (my_input_accessor[0].data_type == DT_INT32) {
+          Kernels::Reshape::forward_kernel_wrapper(
+              my_input_accessor[0].get_int32_ptr(),
+              my_output_accessor[0].get_int32_ptr(),
+              my_input_accessor[0].domain.get_volume());
+        } else if (my_input_accessor[0].data_type == DT_FLOAT) {
+          Kernels::Reshape::forward_kernel_wrapper(
+              my_input_accessor[0].get_float_ptr(),
+              my_output_accessor[0].get_float_ptr(),
+              my_input_accessor[0].domain.get_volume());
+        } else {
+          assert(false && "Unsupported data type");
+        }
         break;
       }
       case OP_TRANSPOSE: {
