@@ -5,20 +5,15 @@ jobs:
     name: Formatting Check
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         path:
-          - check: "lib/compiler"
-          - check: "lib/ffi"
-          - check: "lib/kernels"
-          - check: "lib/op-attrs"
-          - check: "lib/pcg"
-          - check: "lib/runtime"
-          - check: "lib/substitutions"
-          - check: "lib/utils"
+          - check: "lib"
           - check: "tests"
           - check: "examples"
           - check: "bindings"
+          - check: "bin"
+            exclude: '\.proto$'
     steps:
       - uses: actions/checkout@v2
       - name: Run clang-format style check for C/C++/Protobuf programs.
