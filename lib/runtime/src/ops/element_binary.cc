@@ -213,7 +213,7 @@ OpTaskSignature init_signature<ELEMENTBINARY_INIT_TASK_ID>() {
 
   init.add_return_value<ElementBinaryPerDeviceState>();
 
-  return init;//todo:this may be wrong, because the headfile retrun void 
+  return init;//todo:this may be wrong, because the headfile retrun void
 }
 
 template <>
