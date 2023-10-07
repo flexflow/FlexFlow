@@ -47,6 +47,10 @@ void Op::save_inference_tensors_to_file(
       "_decoding-step_" + std::to_string(m->decoding_step) + "_layer-num_" +
       std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
       m->op_name + "_shard-id_" + std::to_string(shard_id);
+  // save batch config, if passed
+  if (bc != nullptr) {
+    bc->save_to_file(base_filepath + "_batch-config");
+  }
   // save all inputs
   for (int i = 0; i < input_tensors.size(); i++) {
     std::string filename = base_filepath + "_input_" + std::to_string(i);
