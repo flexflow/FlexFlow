@@ -12,7 +12,7 @@ ff_add_library(
     utils
     optional
     legion
-    compiler
+    #compiler
     kernels
     pcg
 )

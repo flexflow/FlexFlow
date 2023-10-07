@@ -106,6 +106,7 @@ void execute_task(LegionConfig const &config,
   }
 }
 
+// TODO: deprecate
 TaskSignature get_signature(TaskID task_id) {
   switch (task_id) {
     case AGGREGATE_INIT_TASK_ID:

@@ -15,7 +15,6 @@ TEST_CASE("Serialization") {
       variant_join<PCGOperatorAttrs, CompGraphOperatorAttrs>;
 
   std::vector<CompleteOperatorAttrs> operator_attrs {
-    AggregateSpecAttrs agg_spec_attrs, AggregateAttrs aggregate_attrs,
         BatchMatmulAttrs batch_mm_attrs, BatchNormAttrs batch_norm_attrs,
         BroadcastAttrs broadcast_attrs, CastAttrs cast_attrs,
         CombineAttrs combine_attrs, ConcatAttrs concat_attrs,
@@ -24,7 +23,7 @@ TEST_CASE("Serialization") {
         ElementScalarUnaryAttrs elem_scalar_unary_attrs,
         ElementUnaryAttrs elem_unary_attrs, EmbeddingAttrs embedding_attrs,
         FlatAttrs flat_attrs, GatherAttrs gather_attrs,
-        Group_byAttrs group_by_attrs, InputAttrs input_attrs,
+        InputAttrs input_attrs,
         LayerNormAttrs layer_norm_attrs, LinearAttrs linear_attrs,
         MultiHeadAttentionAttrs mha_attrs, NoopAttrs noop_attrs,
         Pool2DAttrs pool2d_attrs, ReduceAttrs reduce_attrs,
