@@ -110,10 +110,24 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   MachineView const &mv) {
   auto env = sim.new_environment();
 
-  // Assume cast has no cost
-  float forward_time = 0.0;
-  float backward_time = 0.0;
-  float sync_time = 0.0;
+  SimTaskBinding fwd_binding;
+  fwd_binding.bind_arg(HANDLE, ff_handle());
+  fwd_binding.bind_arg(PROFILING, settings);
+  fwd_binding.bind_arg(ATTRS, attrs);
+
+  fwd_binding.bind(INPUT, input_shape);
+  fwd_binding.bind(OUTPUT, input_shape); // cast does not change shape
+
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+
+  auto fwd_accessor = env.get_fwd_accessor(CAST_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(CAST_BWD_TASK_ID, bwd_binding);
+
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
+
+  float sync_time = default_estimate_sync_time(env);
+
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
@@ -140,8 +154,8 @@ void register_task<CAST_FWD_TASK_ID>() {
 }
 
 template <>
-OpTaskSignature fwd_signature<CAST_BWD_TASK_ID>() {
-  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(CAST_FWD_TASK_ID));
+OpTaskSignature bwd_signature<CAST_BWD_TASK_ID>() {
+  OpTaskSignature bwd = infer_bwd_signature(fwd_signature<CAST_FWD_TASK_ID>());
 
   return bwd;
 }

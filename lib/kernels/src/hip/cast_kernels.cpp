@@ -19,10 +19,6 @@
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-
-CastPerDeviceState::CastPerDeviceState(FFHandler handle)
-    : PerDeviceOpState(handle) {}
-
 namespace Kernels {
 namespace Cast {
 
@@ -44,7 +40,7 @@ __global__ void
 template <DataType IDT, DataType ODT>
 struct ForwardKernel {
   void operator()(ffStream_t stream,
-                  CastPerDeviceState const *m,
+                  PerDeviceFFHandle handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
     size_t volume = input.shape.get_volume();
@@ -62,7 +58,7 @@ struct ForwardKernel {
 template <DataType IDT, DataType ODT>
 struct BackwardKernel {
   void operator()(ffStream_t stream,
-                  CastPerDeviceState const *m,
+                  PerDeviceFFHandle handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
     size_t volume = input.shape.get_volume();
@@ -79,17 +75,21 @@ struct BackwardKernel {
 };
 
 void forward_kernel(ffStream_t stream,
-                    CastPerDeviceState const *m,
                     GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output) {
+                    GenericTensorAccessorW const &output,
+                    DataType input_type,
+                    DataType output_type,
+                    PerDeviceFFHandle handle) {
   DataTypeDispatch2<ForwardKernel>{}(
       m->input_data_type, m->output_data_type, stream, m, input, output);
 }
 
 void backward_kernel(ffStream_t stream,
-                     CastPerDeviceState const *m,
                      GenericTensorAccessorR const &input,
-                     GenericTensorAccessorW const &output) {
+                     GenericTensorAccessorW const &output,
+                     DataType input_type,
+                     DataType output_type,
+                     PerDeviceFFHandle handle) {
   DataTypeDispatch2<BackwardKernel>{}(
       m->input_data_type, m->output_data_type, stream, m, input, output);
 }
