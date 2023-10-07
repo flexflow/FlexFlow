@@ -157,20 +157,22 @@ void backward_kernel(cudaStream_t stream,
                                              m->saveVar));
 }
 
-} // namespace BatchNorm
-} // namespace Kernels
-
-BatchNormPerDeviceState::BatchNormPerDeviceState(
-    FFHandler handler,
-    std::unique_ptr<IAllocator> allocator,
+BatchNormPerDeviceState init_kernel(
+    PerDeviceFFHandle handler,
+    Allocator allocator,
+    float *runningMean,
+    float *runningVar,
+    float *saveMean,
+    float *saveVar,
     int output_n,
     int output_c,
     int output_h,
     int output_w,
-    bool relu,
-    bool profiling)
-    : PerDeviceOpState(handler), relu(relu), profiling(profiling),
-      allocator(std::move(allocator)) {
+    bool relu) {
+  ffTensorDescriptor_t inputTensor;
+  ffTensorDescriptor_t outputTensor;
+  ffTensorDescriptor_t biasTensor;
+  ffActivationDescriptor_t actiDesc;
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
@@ -199,7 +201,7 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(
   // allocate memory for runningMean, runningVar, saveMean, saveVar
   {
     size_t totalSize = sizeof(float) * output_c * 4;
-    runningMean = (float *)this->allocator->allocate(totalSize);
+    runningMean = (float *)allocator.allocate(totalSize);
     runningVar = (float *)runningMean + output_c;
     saveMean = (float *)runningVar + output_c;
     saveVar = (float *)saveMean + output_c;
@@ -215,9 +217,32 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(
     checkCUDNN(cudnnSetActivationDescriptor(
         actiDesc, CUDNN_ACTIVATION_RELU, CUDNN_PROPAGATE_NAN, 0.0));
   }
+
+  BatchNormPerDeviceState per_device_state = {handle,
+                                              allocator,
+                                              inputTensor,
+                                              outputTensor,
+                                              biasTensor,
+                                              actiDesc,
+                                              mode,
+                                              runningMean,
+                                              runningVar,
+                                              saveMean,
+                                              saveVar,
+                                              output_n,
+                                              output_c,
+                                              output_h,
+                                              output_w,
+                                              relu};
+  return per_device_state;
 }
 
-BatchNormPerDeviceState::~BatchNormPerDeviceState() {
+void cleanup_kernel(Allocator allocator,
+                    ffTensorDescriptor_t inputTensor,
+                    ffTensorDescriptor_t biasTensor,
+                    ffTensorDescriptor_t outputTensor,
+                    ffActivationDescriptor_t actiDesc,
+                    bool relu) {
   checkCUDNN(cudnnDestroyTensorDescriptor(inputTensor));
   checkCUDNN(cudnnDestroyTensorDescriptor(biasTensor));
   checkCUDNN(cudnnDestroyTensorDescriptor(outputTensor));
@@ -226,4 +251,7 @@ BatchNormPerDeviceState::~BatchNormPerDeviceState() {
   }
 }
 
+
+} // namespace BatchNorm
+} // namespace Kernels
 } // namespace FlexFlow
