@@ -224,7 +224,6 @@ void register_flexflow_internal_tasks() {
         registrar, "Gather Backward Task");
   }
 
-
   // Pool2D task
   {
     TaskVariantRegistrar registrar(POOL2D_INIT_TASK_ID, "pool2d_init_task");

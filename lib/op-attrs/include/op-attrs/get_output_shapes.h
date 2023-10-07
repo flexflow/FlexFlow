@@ -37,7 +37,6 @@ struct has_multi_input_t<
 /* template <typename T, typename Enable = void> struct output_type_t { using
  * type = std::vector<ParallelTensorShape>; }; */
 
-
 template <typename T>
 typename std::enable_if<has_unary_input_t<T>::value, bool>::type
     is_valid(T const &t, std::vector<ParallelTensorShape> const &shapes) {
