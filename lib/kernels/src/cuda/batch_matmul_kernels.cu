@@ -21,7 +21,7 @@ namespace FlexFlow {
 namespace Kernels {
 namespace BatchMatmul {
 
-void forward_kernel(ffStream_t stream,
+void forward_kernel(cudaStream_t stream,
                     PerDeviceFFHandle const &handle,
                     float *output_ptr,
                     float const *a_input_ptr,
@@ -82,11 +82,9 @@ void forward_kernel(ffStream_t stream,
                                       ldo,
                                       strideO,
                                       batch));
-  // current assume c is null
-  assert(c_ptr == NULL);
 }
 
-void backward_kernel(ffStream_t stream,
+void backward_kernel(cudaStream_t stream,
                      PerDeviceFFHandle const &handle,
                      float const *o_ptr,
                      float const *o_grad_ptr,
@@ -141,10 +139,8 @@ void backward_kernel(ffStream_t stream,
                                       m,
                                       b_stride,
                                       batch));
-  assert(c_grad_ptr == NULL);
 }
 
-/* } // namespace Internal */
 } // namespace BatchMatmul
 } // namespace Kernels
 } // namespace FlexFlow

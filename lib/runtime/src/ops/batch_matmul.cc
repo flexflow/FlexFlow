@@ -82,8 +82,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   assert(a_input.shape.get_volume() == output.shape.get_volume());
 
   int batch = 1;
-  for (int i = 2; i < a_input.shape.get_dim();
-       i++) { // get_dim() or get_volume()?
+  for (int i = 2; i < a_input.shape.get_dim(); i++) {
     int dim_size = a_input.shape[legion_dim_t(i)];
     assert(dim_size == b_input.shape[legion_dim_t(i)]);
     assert(dim_size == output.shape[legion_dim_t(i)]);
@@ -101,9 +100,9 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  n,
                  k,
                  batch,
-                 iter_config.seq_length,
                  attrs.a_seq_length_dim,
-                 attrs.b_seq_length_dim);
+                 attrs.b_seq_length_dim,
+                 iter_config.seq_length);
 }
 
 static void forward_task(Task const *task,
@@ -232,7 +231,7 @@ void register_task<BATCHMATMUL_FWD_TASK_ID>() {
 template <>
 OpTaskSignature bwd_signature<BATCHMATMUL_BWD_TASK_ID>() {
   OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(BATCHMATMUL_FWD_TASK_ID));
+      infer_bwd_signature(fwd_signature<BATCHMATMUL_FWD_TASK_ID>());
 
   return bwd;
 }

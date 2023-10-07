@@ -18,7 +18,6 @@
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-
 namespace Kernels {
 namespace BatchMatmul {
 
@@ -29,21 +28,19 @@ O: (batch, n, m)
 O = A * B
 */
 void forward_kernel(hipStream_t stream,
-                    BatchMatmulPerDeviceState const &meta,
-                    float *o_ptr,
-                    float const *a_ptr,
-                    float const *b_ptr,
-                    float const *c_ptr,
+                    PerDeviceFFHandle const &handle,
+                    float *output_ptr,
+                    float const *a_input_ptr,
+                    float const *b_input_ptr,
                     int m,
                     int n,
                     int k,
                     int batch,
-                    hipStream_t stream,
-                    int seq_length) {
-  int a_seq_length_dim = meta->a_seq_length_dim;
-  int b_seq_length_dim = meta->b_seq_length_dim;
-  checkCUDA(hipblasSetStream(meta->handle.blas, stream));
-  checkCUDNN(miopenSetStream(meta->handle.dnn, stream));
+                    int a_seq_length_dim,
+                    int b_seq_length_dim,
+                    int seq_length = -1) {
+  checkCUDA(hipblasSetStream(handle.blas, stream));
+  checkCUDNN(miopenSetStream(handle.dnn, stream));
 
   // int a_stride = n * k;
   // int b_stride = m * k;
@@ -77,7 +74,7 @@ void forward_kernel(hipStream_t stream,
   }
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas,
+  checkCUDA(hipblasSgemmStridedBatched(handle.blas,
                                        HIPBLAS_OP_N,
                                        HIPBLAS_OP_N,
                                        m,
@@ -95,8 +92,6 @@ void forward_kernel(hipStream_t stream,
                                        ldo,
                                        strideO,
                                        batch));
-  // current assume c is null
-  assert(c_ptr == NULL);
 }
 
 /*
@@ -107,26 +102,25 @@ AGrad = OGrad * B^T
 BGrad = A^T * OGrad
 */
 void backward_kernel(hipStream_t stream,
-                     BatchMatmulPerDeviceState const *meta,
+                     PerDeviceFFHandle const &handle,
                      float const *o_ptr,
                      float const *o_grad_ptr,
                      float const *a_ptr,
                      float *a_grad_ptr,
                      float const *b_ptr,
                      float *b_grad_ptr,
-                     float *c_grad_ptr,
                      int m,
                      int n,
                      int k,
                      int batch) {
-  checkCUDA(hipblasSetStream(meta->handle.blas, stream));
-  checkCUDNN(miopenSetStream(meta->handle.dnn, stream));
+  checkCUDA(hipblasSetStream(handle.blas, stream));
+  checkCUDNN(miopenSetStream(handle.dnn, stream));
 
   int a_stride = n * k;
   int b_stride = m * k;
   int o_stride = n * m;
   float alpha = 1.0f;
-  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas,
+  checkCUDA(hipblasSgemmStridedBatched(handle.blas,
                                        HIPBLAS_OP_T,
                                        HIPBLAS_OP_N,
                                        k,
@@ -144,7 +138,7 @@ void backward_kernel(hipStream_t stream,
                                        k,
                                        a_stride,
                                        batch));
-  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas,
+  checkCUDA(hipblasSgemmStridedBatched(handle.blas,
                                        HIPBLAS_OP_N,
                                        HIPBLAS_OP_T,
                                        m,
@@ -162,10 +156,8 @@ void backward_kernel(hipStream_t stream,
                                        m,
                                        b_stride,
                                        batch));
-  assert(c_grad_ptr == NULL);
 }
 
-} // namespace Internal
 } // namespace BatchMatmul
 } // namespace Kernels
 } // namespace FlexFlow
