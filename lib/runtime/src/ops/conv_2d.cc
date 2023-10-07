@@ -189,7 +189,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-  init_binding.bind_arg(ATTRS, attrs);
+  fwd_binding.bind_arg(ATTRS, attrs);
 
   fwd_binding.bind(INPUT, input_shape);
   fwd_binding.bind(OUTPUT, output_shape);
@@ -209,7 +209,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 }
 
 template <>
-void register_task<CONV2D_INIT_TASK_ID>() {
+OpTaskSignature init_signature<CONV2D_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -220,11 +220,19 @@ void register_task<CONV2D_INIT_TASK_ID>() {
 
   init.add_return_value<Conv2DPerDeviceState>();
 
-  register_task(CONV2D_INIT_TASK_ID, "Conv2D Init", init, init_task);
+  return init;
 }
 
 template <>
-void register_task<CONV2D_FWD_TASK_ID>() {
+void register_task<CONV2D_INIT_TASK_ID>() {
+  register_task(CONV2D_INIT_TASK_ID,
+                "Conv2d Init",
+                init_signature<CONV2D_INIT_TASK_ID>(),
+                init_task);
+}
+
+template <>
+OpTaskSignature fwd_signature<CONV2D_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
@@ -236,15 +244,31 @@ void register_task<CONV2D_FWD_TASK_ID>() {
   fwd.add_weight_slot(FILTER);
   fwd.add_weight_slot(BIAS);
 
-  register_task(CONV2D_FWD_TASK_ID, "Conv2D Fwd", fwd, forward_task);
+  return fwd;
+}
+
+template <>
+void register_task<CONV2D_FWD_TASK_ID>() {
+  register_task(CONV2D_FWD_TASK_ID,
+                "Conv2d Fwd",
+                fwd_signature<CONV2D_FWD_TASK_ID>(),
+                forward_task);
+}
+
+template <>
+OpTaskSignature bwd_signature<CONV2D_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(fwd_signature<CONV2D_FWD_TASK_ID>());
+
+  return bwd;
 }
 
 template <>
 void register_task<CONV2D_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(CONV2D_FWD_TASK_ID));
-
-  register_task(CONV2D_BWD_TASK_ID, "Conv2D Bwd", bwd, backward_task);
+  register_task(CONV2D_BWD_TASK_ID,
+                "Conv2d Bwd",
+                bwd_signature<CONV2D_BWD_TASK_ID>(),
+                backward_task);
 }
 
 } // namespace FlexFlow
