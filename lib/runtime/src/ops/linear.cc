@@ -943,7 +943,7 @@ LinearParams Linear::get_params() const {
   return params;
 }
 
-enum slots {INPUT, OUTPUT, WEIGHT, BIAS, ATTR, PROFILING, HANDLE}; //Note: this needs add more 
+enum slots {INPUT, OUTPUT, WEIGHT, BIAS, ATTR, PROFILING, HANDLE, }; //Note: this needs add more 
 
 OpTaskInvocation init(LinearAttrs const & attrs) {
   OpTaskBinding binding; 
@@ -1022,11 +1022,12 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   auto state = acc.get_device_specific<LinearPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto attrs = acc.get_argument<LinearAttrs>(ATTRS);
 
   int in_dim = input.shape.at(ff_dim_t{0}) + 1;
   int out_dim = output.shape.at(ff_dim_t{0}) + 1;
   int batch_size = output.shape.get_volume() / out_dim;
-  auto attrs = acc.get_argument<LinearAttrs>(ATTRS);
+  
 
   float const *bias_ptr = NULL;
   if(attrs.use_bias) {
@@ -1055,7 +1056,41 @@ static void forward_task(Task const *task,
 };
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  NOT_IMPLEMENTED();
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto weight = acc.get_tensor<Permissions::RO>(WEIGHT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  auto bias = acc.get_tensor<Permissions::RO>(BIAS);
+
+  auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
+  auto weight_grad = acc.get_tensor_grad<Permissions::RW>(WEIGHT);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
+  auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto attrs = acc.get_argument<LinearAttrs>(ATTRS);
+
+  float const *bias_ptr = NULL;
+  if(attrs.use_bias) {
+    bias_ptr = bias.get_float_ptr();
+  }
+
+  int in_dim = input.shape.at(ff_dim_t{0}) + 1;
+  int out_dim = output.shape.at(ff_dim_t{0}) + 1;
+  int batch_size = output.shape.get_volume() / out_dim;
+
+  return profile(backward_kernel,
+                profiling,
+                "[Linear] backward_time = %.2lfms\n",
+                per_device_state,
+                input.get_float_ptr(),
+                input_grad.get_float_ptr(),
+                output.get_float_ptr(),
+                output_grad.get_float_ptr(),
+                weight.get_float_ptr(),
+                weight_grad.get_float_ptr(),
+                bias_ptr,
+                in_dim,
+                out_dim,
+                batch_size);
 }
 
 static void backward_task(Task const *task,
