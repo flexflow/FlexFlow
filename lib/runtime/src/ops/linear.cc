@@ -4,6 +4,7 @@
 #include "legion/legion_utilities.h"
 #include "op-attrs/ff_dim.h"
 #include "utils/exception.decl.h"
+#include "utils/graph/views.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -943,7 +944,7 @@ LinearParams Linear::get_params() const {
   return params;
 }
 
-enum slots {INPUT, OUTPUT, WEIGHT, BIAS, ATTR, PROFILING, HANDLE, }; //Note: this needs add more 
+enum slots {INPUT, OUTPUT, WEIGHT, BIAS, ATTR, PROFILING, HANDLE}; //Note: this needs add more 
 
 OpTaskInvocation init(LinearAttrs const & attrs) {
   OpTaskBinding binding; 
@@ -998,7 +999,7 @@ static DeviceSpecific<LinearPerDeviceState> init_task_impl(TaskArgumentAccessor 
                                                        attrs.regularizer,
                                                        attrs.use_bias,
                                                        input.shape,
-                                                        weight.shape,
+                                                      weight.shape,
                                                         output.shape,
                                                         batch_size,
                                                         attrs.out_channels));
@@ -1109,6 +1110,46 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   ProfilingSettings const &settings,
                                   MachineView const &mv) {
   NOT_IMPLEMENTED();
+}
+
+template <>
+void register_task<LINEAR_INIT_TASK_ID>() {
+  OpTaskSignature init(OpTaskType::INIT);
+
+  init.add_input_slot(INPUT);
+  init.add_input_slot(WEIGHT);  
+  init.add_input_slot(BIAS);
+  init.add_output_slot(OUTPUT);
+
+  init.add_arg_slot<LinearAttrs>(ATTRS);
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+
+  init.add_return_value<LinearPerDeviceState>();
+  
+  register_task(LINEAR_INIT_TASK_ID, "Linear::init_task", init, init_task);
+}
+
+template <>
+void register_task<LINEAR_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+  fwd.add_input_slot(INPUT);
+  fwd.add_input_slot(WEIGHT);
+  fwd.add_input_slot(BIAS);
+  fwd.add_output_slot(OUTPUT);
+
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+  fwd.add_arg_slot<LinearAttrs>(ATTRS);
+  fwd.add_unchecked_arg_slot<MHAPerDeviceState>(PER_DEVICE_STATE);
+
+  register_task(LINEAR_FWD_TASK_ID, "Linear::fwd_task", fwd, forward_task);
+}
+
+template <>
+void register_task<LINEAR_BWD_TASK_ID>() {
+  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(LINEAR_FWD_TASK_ID));
+
+  register_task(LINEAR_BWD_TASK_ID, "Linear::bwd_task", bwd, backward_task);  
 }
 
 /* void LinearParams::solve_dims(const ParallelTensor input, */
