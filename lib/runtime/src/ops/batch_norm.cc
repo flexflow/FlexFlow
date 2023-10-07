@@ -233,7 +233,10 @@ OpTaskSignature init_signature<BATCHNORM_INIT_TASK_ID>() {
 
 template <>
 void register_task<BATCHNORM_INIT_TASK_ID>() {
-  register_task(BATCHNORM_INIT_TASK_ID, "BatchNorm Init", init_signature<BATCHNORM_INIT_TASK_ID>(), init_task);
+  register_task(BATCHNORM_INIT_TASK_ID,
+                "BatchNorm Init",
+                init_signature<BATCHNORM_INIT_TASK_ID>(),
+                init_task);
 }
 
 template <>
@@ -252,20 +255,26 @@ OpTaskSignature fwd_signature<BATCHNORM_FWD_TASK_ID>() {
 
 template <>
 void register_task<BATCHNORM_FWD_TASK_ID>() {
-  register_task(BATCHNORM_FWD_TASK_ID, "BatchNorm Fwd", fwd_signature<BATCHNORM_FWD_TASK_ID>(), forward_task);
+  register_task(BATCHNORM_FWD_TASK_ID,
+                "BatchNorm Fwd",
+                fwd_signature<BATCHNORM_FWD_TASK_ID>(),
+                forward_task);
 }
 
 template <>
 OpTaskSignature bwd_signature<BATCHNORM_BWD_TASK_ID>() {
   OpTaskSignature bwd =
       infer_bwd_signature(fwd_signature<BATCHNORM_FWD_TASK_ID>());
-  
+
   return bwd;
 }
 
 template <>
 void register_task<BATCHNORM_BWD_TASK_ID>() {
-  register_task(BATCHNORM_BWD_TASK_ID, "BatchNorm Bwd", bwd_signature<BATCHNORM_BWD_TASK_ID>(), backward_task);
+  register_task(BATCHNORM_BWD_TASK_ID,
+                "BatchNorm Bwd",
+                bwd_signature<BATCHNORM_BWD_TASK_ID>(),
+                backward_task);
 }
 
 }; // namespace FlexFlow

@@ -111,16 +111,14 @@ void backward_kernel(hipStream_t stream,
                                               m->saveVar));
 }
 
-
-BatchNormPerDeviceState init_kernel(
-    PerDeviceFFHandle handler,
-    Allocator allocator,
-    float *runningMean,
-    int output_n,
-    int output_c,
-    int output_h,
-    int output_w,
-    bool relu) {
+BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handler,
+                                    Allocator allocator,
+                                    float *runningMean,
+                                    int output_n,
+                                    int output_c,
+                                    int output_h,
+                                    int output_w,
+                                    bool relu) {
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
   ffTensorDescriptor_t biasTensor;
@@ -189,7 +187,6 @@ void cleanup_kernel(Allocator allocator,
     checkCUDNN(miopenDestroyActivationDescriptor(actiDesc));
   }
 }
-
 
 } // namespace BatchNorm
 } // namespace Kernels
