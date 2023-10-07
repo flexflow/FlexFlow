@@ -15,6 +15,7 @@
 
 #include "kernels/cuda_helper.h"
 #include "kernels/linear_kernels.h"
+#include "kernels/allocation.h"
 
 namespace FlexFlow {
 
@@ -55,34 +56,67 @@ bool use_activation(ActiMode mode) {
   return false;
 }
 
-void init_kernel(LinearPerDeviceState *m, int batch_size, int channel) {
-  if (use_activation(m->activation)) {
-    cudnnActivationMode_t mode;
-    switch (m->activation) {
-      case AC_MODE_RELU:
-        mode = CUDNN_ACTIVATION_RELU;
-        break;
-      case AC_MODE_SIGMOID:
-        mode = CUDNN_ACTIVATION_SIGMOID;
-        break;
-      default:
-        // Unsupported activation mode
-        assert(false);
-    }
-    checkCUDNN(cudnnSetActivationDescriptor(
-        m->actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
-    checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
+//what's the float * one_ptr 
+LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
+                                Allocator allocator,
+                                 float * one_ptr; 
+                                 Activation activation, 
+                                 Regularizer regularizer, 
+                                 bool use_bias,
+                                 DataType input_type,
+                                 DataType weight_type,
+                                 DataType output_type,
+                                 int batch_size, 
+                                 int channel) {
+  ffTensorDescriptor_t outputTensor;    
+  ffActivationDescriptor_t actiDesc;
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
+  checkCUDNN(cudnnSetTensor4dDescriptor(outputTensor,
                                           CUDNN_TENSOR_NCHW,
-                                          ff_to_cudnn_datatype(m->output_type),
+                                          ff_to_cudnn_datatype(output_type),
                                           batch_size,
                                           channel,
                                           1,
                                           1));
+  cudnnActivationMode_t mode;
+  switch(activation) {
+      case RELU:
+        mode = CUDNN_ACTIVATION_RELU;
+        break;
+      case SIGMOID:
+        mode = CUDNN_ACTIVATION_SIGMOID;
+        break;
+      case TANH:
+        mode = CUDNN_ACTIVATION_TANH;
+        break;
+      case GELU:
+        mode = CUDNN_ACTIVATION_GELU;
+        break;
+      default:
+        // Unsupported activation mode
+        assert(false);
   }
+  checkCUDNN(cudnnSetActivationDescriptor(actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
+  checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
+  
+  //todo: how to use allocator to allocate memory for float * one_ptr, how many bytes to allocate?
+  LinearPerDeviceState per_device_state = {handle,  
+                                           outputTensor,
+                                           actiDesc,
+                                            one_ptr,
+                                            activation,
+                                            regularizer,
+                                            use_bias,
+                                            input_type,
+                                            weight_type,
+                                            output_type};
+  return per_device_state;
+      
 }
 
 void forward_kernel(cudaStream_t stream,
-                    LinearPerDeviceState const *m,
+                    LinearPerDeviceState const &m,
                     void const *input_ptr,
                     void *output_ptr,
                     void const *weight_ptr,
@@ -91,19 +125,19 @@ void forward_kernel(cudaStream_t stream,
                     int out_dim,
                     int batch_size) {
 
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDA(cublasSetStream(m.handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
-  cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
-  cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type);
-  cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
+  cudaDataType_t input_type = ff_to_cuda_datatype(m.input_type);
+  cudaDataType_t weight_type = ff_to_cuda_datatype(m.weight_type);
+  cudaDataType_t output_type = ff_to_cuda_datatype(m.output_type);
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
   cudaDataType_t compute_type = CUDA_R_32F;
 #endif
-  checkCUDA(cublasGemmEx(m->handle.blas,
+  checkCUDA(cublasGemmEx(m.handle.blas,
                          CUBLAS_OP_T,
                          CUBLAS_OP_N,
                          out_dim,
@@ -124,7 +158,7 @@ void forward_kernel(cudaStream_t stream,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // use_bias = True
   if (bias_ptr != NULL) {
-    checkCUDA(cublasGemmEx(m->handle.blas,
+    checkCUDA(cublasGemmEx(m.handle.blas,
                            CUBLAS_OP_T,
                            CUBLAS_OP_N,
                            out_dim,
@@ -134,7 +168,7 @@ void forward_kernel(cudaStream_t stream,
                            bias_ptr,
                            weight_type,
                            1,
-                           m->one_ptr,
+                           m.one_ptr,
                            CUDA_R_32F,
                            1,
                            &alpha,
@@ -144,22 +178,22 @@ void forward_kernel(cudaStream_t stream,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
-  if (use_activation(m->activation)) {
-    checkCUDNN(cudnnActivationForward(m->handle.dnn,
-                                      m->actiDesc,
+  if (use_activation(m.activation)) {
+    checkCUDNN(cudnnActivationForward(m.handle.dnn,
+                                      m.actiDesc,
                                       &alpha,
-                                      m->outputTensor,
+                                      m.outputTensor,
                                       output_ptr,
                                       &beta,
-                                      m->outputTensor,
+                                      m.outputTensor,
                                       output_ptr));
-  } else if (m->activation == AC_MODE_GELU) {
+  } else if (m.activation == AC_MODE_GELU) {
     size_t elements = (size_t)out_dim * (size_t)batch_size;
     constexpr float B = 0.7978845608028654f;   // sqrt(2.0/M_PI)
     constexpr float C = 0.035677408136300125f; // 0.044715 * sqrt(2.0/M_PI)
     gelu_forward_kernel<<<GET_BLOCKS(elements), CUDA_NUM_THREADS>>>(
         elements, B, C, (float *)output_ptr);
-  } else if (m->activation == AC_MODE_NONE) {
+  } else if (m.activation == AC_MODE_NONE) {
     // Do nothing
   } else {
     assert(false && "Unsupported activation for Linear");
@@ -167,7 +201,7 @@ void forward_kernel(cudaStream_t stream,
 }
 
 void backward_kernel(cudaStream_t stream,
-                     LinearPerDeviceState const *m,
+                     LinearPerDeviceState const &m,
                      void const *input_ptr,
                      void *input_grad_ptr,
                      void const *output_ptr,
@@ -179,13 +213,13 @@ void backward_kernel(cudaStream_t stream,
                      int out_dim,
                      int batch_size) {
 
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDA(cublasSetStream(m.handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f;
-  cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
-  cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type);
-  cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
+  cudaDataType_t input_type = ff_to_cuda_datatype(m.input_type);
+  cudaDataType_t weight_type = ff_to_cuda_datatype(m.weight_type);
+  cudaDataType_t output_type = ff_to_cuda_datatype(m.output_type);
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
@@ -193,19 +227,19 @@ void backward_kernel(cudaStream_t stream,
   cudaDataType_t compute_type = CUDA_R_32F;
 #endif
   int output_size = out_dim * batch_size;
-  if (m->activation == AC_MODE_RELU) {
+  if (m.activation == AC_MODE_RELU) {
     relu_backward_kernel(
-        m->output_type, output_grad_ptr, output_ptr, output_size, stream);
-  } else if (m->activation == AC_MODE_SIGMOID) {
+        m.output_type, output_grad_ptr, output_ptr, output_size, stream);
+  } else if (m.activation == AC_MODE_SIGMOID) {
     sigmoid_backward_kernel(
-        m->output_type, output_grad_ptr, output_ptr, output_size, stream);
+        m.output_type, output_grad_ptr, output_ptr, output_size, stream);
   } else {
     // TODO: only support relu and sigmoid for now
-    assert(m->activation == AC_MODE_NONE);
+    assert(m.activation == AC_MODE_NONE);
   }
   // Compute weight gradiant
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
-  checkCUDA(cublasGemmEx(m->handle.blas,
+  checkCUDA(cublasGemmEx(m.handle.blas,
                          CUBLAS_OP_N,
                          CUBLAS_OP_T,
                          in_dim,
@@ -224,10 +258,10 @@ void backward_kernel(cudaStream_t stream,
                          in_dim,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  if (m->kernel_reg_type == REG_MODE_NONE) {
+  if (m.kernel_reg_type == REG_MODE_NONE) {
     // do nothing
-  } else if (m->kernel_reg_type == REG_MODE_L2) {
-    checkCUDA(cublasSgeam(m->handle.blas,
+  } else if (m.kernel_reg_type == REG_MODE_L2) {
+    checkCUDA(cublasSgeam(m.handle.blas,
                           CUBLAS_OP_N,
                           CUBLAS_OP_N,
                           in_dim,
@@ -235,7 +269,7 @@ void backward_kernel(cudaStream_t stream,
                           &alpha,
                           (float *)kernel_grad_ptr,
                           in_dim,
-                          &(m->kernel_reg_lambda),
+                          &(m.kernel_reg_lambda),
                           (float *)kernel_ptr,
                           in_dim,
                           (float *)kernel_grad_ptr,
@@ -248,14 +282,14 @@ void backward_kernel(cudaStream_t stream,
   // NOTE: we use alpha=1 for bias_grad to accumulate gradients
   // use_bias = True
   if (bias_grad_ptr != NULL) {
-    checkCUDA(cublasGemmEx(m->handle.blas,
+    checkCUDA(cublasGemmEx(m.handle.blas,
                            CUBLAS_OP_N,
                            CUBLAS_OP_T,
                            1,
                            out_dim,
                            batch_size,
                            &alpha,
-                           m->one_ptr,
+                           m.one_ptr,
                            CUDA_R_32F,
                            1,
                            output_grad_ptr,
@@ -271,7 +305,7 @@ void backward_kernel(cudaStream_t stream,
   // Compute data gradiant
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
-    checkCUDA(cublasGemmEx(m->handle.blas,
+    checkCUDA(cublasGemmEx(m.handle.blas,
                            CUBLAS_OP_N,
                            CUBLAS_OP_N,
                            in_dim,

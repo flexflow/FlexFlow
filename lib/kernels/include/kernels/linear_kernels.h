@@ -3,29 +3,49 @@
 
 #include "kernels/device.h"
 
-namespace FlexFlow {
+namespace FlexFlow {    
 
-class LinearPerDeviceState : public PerDeviceOpState {
-public:
-  LinearPerDeviceState(FFHandler handle, int batch_size);
-  ffTensorDescriptor_t outputTensor;
+struct LinearPerDeviceState {
+  PerDeviceFFHandle handle;
+  ffTensorDescriptor_t outputTensor;    
   ffActivationDescriptor_t actiDesc;
-
-public:
-  float const *one_ptr;
-  ActiMode activation;
+  float const *one_ptr;//how to handle this?
+  cudnnActivationMode_t activation;
   optional<Regularizer> regularizer;
   bool use_bias;
   DataType input_type, weight_type, output_type;
 };
 
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(LinearPerDeviceState,
+                                             handle,
+                                             outputTensor,
+                                             actiDesc,
+                                             one_ptr,
+                                             activation,
+                                             regularizer,
+                                             use_bias,
+                                             input_type,
+                                             weight_type,
+                                             output_type);
+
 namespace Kernels {
 namespace Linear {
-void init_kernel(LinearPerDeviceState *m, int batch_size, int channel);
+
+LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
+                                 Allocator allocator,
+                                 float * one_ptr; 
+                                 optional<Regularizer> regularizer, 
+                                 bool use_bias,
+                                 DataType input_type,
+                                 DataType weight_type,
+                                 DataType output_type,
+                                 int batch_size, 
+                                 int channel);
+
 bool use_activation(ActiMode mode);
 
 void forward_kernel(ffStream_t stream,
-                    LinearPerDeviceState const *m,
+                    LinearPerDeviceState const &m,
                     void const *input_ptr,
                     void *output_ptr,
                     void const *filter_ptr,
@@ -34,7 +54,7 @@ void forward_kernel(ffStream_t stream,
                     int out_dim,
                     int batch_size);
 void backward_kernel(ffStream_t stream,
-                     LinearPerDeviceState const *m,
+                     LinearPerDeviceState const &m,
                      void const *input_ptr,
                      void *input_grad_ptr,
                      void const *output_ptr,
