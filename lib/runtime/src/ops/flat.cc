@@ -120,7 +120,7 @@ void register_task<FLAT_FWD_TASK_ID>() {
 
 template <>
 OpTaskSignature bwd_signature<FLAT_BWD_TASK_ID>() {
-  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(FLAT_FWD_TASK_ID));
+  OpTaskSignature bwd = infer_bwd_signature(fwd_signature<FLAT_FWD_TASK_ID>());
 
   return bwd;
 }
