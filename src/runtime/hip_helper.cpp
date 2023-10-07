@@ -270,7 +270,7 @@ __host__ void
   }
 
   fclose(tensor_file);
-  checkCUDA(hipFreeHost(host_ptr));
+  checkCUDA(hipHostFree(host_ptr));
 }
 
 template <>
@@ -296,7 +296,7 @@ __host__ void
   }
 
   fclose(tensor_file);
-  checkCUDA(hipFreeHost(host_ptr));
+  checkCUDA(hipHostFree(host_ptr));
 }
 
 template <>
@@ -323,7 +323,7 @@ __host__ void save_tensor(int32_t const *ptr,
   }
 
   fclose(tensor_file);
-  checkCUDA(hipFreeHost(host_ptr));
+  checkCUDA(hipHostFree(host_ptr));
 }
 
 template <>
@@ -350,7 +350,7 @@ __host__ void save_tensor(int64_t const *ptr,
   }
 
   fclose(tensor_file);
-  checkCUDA(hipFreeHost(host_ptr));
+  checkCUDA(hipHostFree(host_ptr));
 }
 
 template <typename T>
