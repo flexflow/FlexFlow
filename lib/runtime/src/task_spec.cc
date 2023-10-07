@@ -106,14 +106,9 @@ void execute_task(LegionConfig const &config,
   }
 }
 
+// TODO: deprecate
 TaskSignature get_signature(TaskID task_id) {
   switch (task_id) {
-    case AGGREGATE_INIT_TASK_ID:
-      return get_signature<AGGREGATE_INIT_TASK_ID>();
-    case AGGREGATE_FWD_TASK_ID:
-      return get_signature<AGGREGATE_FWD_TASK_ID>();
-    case AGGREGATE_BWD_TASK_ID:
-      return get_signature<AGGREGATE_BWD_TASK_ID>();
     case CONV2D_BWD_TASK_ID:
       return get_signature<CONV2D_BWD_TASK_ID>();
     default:

@@ -37,13 +37,6 @@ struct has_multi_input_t<
 /* template <typename T, typename Enable = void> struct output_type_t { using
  * type = std::vector<ParallelTensorShape>; }; */
 
-template <>
-struct has_unary_output_t<AggregateAttrs> : std::true_type {};
-template <>
-struct has_unary_output_t<AggregateSpecAttrs> : std::true_type {};
-
-template <>
-struct has_unary_input_t<AggregateSpecAttrs> : std::true_type {};
 
 template <typename T>
 typename std::enable_if<has_unary_input_t<T>::value, bool>::type
@@ -107,21 +100,6 @@ template <typename Attrs>
 std::vector<TensorShape> get_output_shapes(Attrs const &attrs,
                                            std::vector<TensorShape> const &);
 
-TensorShape get_output_shape(AggregateAttrs const &,
-                             TensorShape const &,
-                             TensorShape const &,
-                             TensorShape const &,
-                             TensorShape const &,
-                             std::vector<TensorShape> const &);
-ParallelTensorShape
-    get_output_shape(AggregateAttrs const &,
-                     ParallelTensorShape const &gate_preds,
-                     ParallelTensorShape const &gate_assign,
-                     ParallelTensorShape const &true_gate_assign,
-                     ParallelTensorShape const &full_gate_gradients,
-                     std::vector<ParallelTensorShape> const &exp_preds);
-ParallelTensorShape get_output_shape(AggregateSpecAttrs const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &,
                                      std::vector<ParallelTensorShape> const &);
 ParallelTensorShape get_output_shape(BatchMatmulAttrs const &,
@@ -149,9 +127,6 @@ ParallelTensorShape get_output_shape(FlatAttrs const &,
 std::vector<ParallelTensorShape> get_output_shapes(GatherAttrs const &,
                                                    ParallelTensorShape const &,
                                                    ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(Group_byAttrs const &,
-                                     ParallelTensorShape const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(LayerNormAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(LinearAttrs const &,
@@ -237,9 +212,6 @@ typename std::enable_if<has_binary_input_t<T>::value, bool>::type
   return is_valid_internal(t, shapes.at(0), shapes.at(1));
 }
 
-bool is_valid_internal(AggregateAttrs const &,
-                       std::vector<ParallelTensorShape> const &);
-bool is_valid_internal(AggregateSpecAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(MultiHeadAttentionAttrs const &,
                        std::vector<ParallelTensorShape> const &);
 bool is_valid_internal(BatchMatmulAttrs const &,
@@ -257,9 +229,6 @@ bool is_valid_internal(ElementUnaryAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(EmbeddingAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(FlatAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(GatherAttrs const &,
-                       ParallelTensorShape const &,
-                       ParallelTensorShape const &);
-bool is_valid_internal(Group_byAttrs const &,
                        ParallelTensorShape const &,
                        ParallelTensorShape const &);
 bool is_valid_internal(LayerNormAttrs const &, ParallelTensorShape const &);
