@@ -39,8 +39,7 @@ public:
 
   size_t get_device_idx() const override;
 
-  LocalTaskArgumentAccessor(
-      std::shared_ptr<SimTaskBinding const> &sim_task_binding)
+  LocalTaskArgumentAccessor(SimTaskBinding const &sim_task_binding)
       : sim_task_binding(sim_task_binding), memory_usage(0) {
     local_allocator = Allocator::create<CudaAllocator>();
   }
@@ -53,7 +52,7 @@ public:
   void deallocate(void *ptr);
 
 private:
-  std::shared_ptr<SimTaskBinding const> sim_task_binding;
+  SimTaskBinding sim_task_binding;
   Allocator local_allocator;
   size_t memory_usage;
 };

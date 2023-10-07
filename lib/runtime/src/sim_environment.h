@@ -25,7 +25,7 @@ public:
   IsTrainable trainable;
 };
 
-using SimArg = variant<ProfilingSettings, AggregateAttrs>;
+using SimArg = ConcreteArgSpec;
 using SimTensorSpec = variant<ParallelTensorShape,
                               InputParallelTensorDesc,
                               InputVariadicParallelTensorDesc>;

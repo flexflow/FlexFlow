@@ -16,6 +16,10 @@
 
 namespace FlexFlow {
 
+template <Permissions PRIV>
+using privilege_mode_to_accessor =
+    typename privilege_mode_to_accessor_t<PRIV>::type;
+
 struct region_idx_t : strong_typedef<region_idx_t, int> {
   using strong_typedef::strong_typedef;
 };
