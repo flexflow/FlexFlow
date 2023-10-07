@@ -577,7 +577,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   cudaDataType_t compute_type = cublas_data_type;
 #endif
   // int num_requests = bc->num_active_requests();
-  int num_tokens = bc->num_active_infr_tokens();
+  int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
   int q_block_size = m->qProjSize * num_tokens;
   int kt_block_size = m->kProjSize * BatchConfig::max_sequence_length();

@@ -65,6 +65,7 @@ constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
 
 class FFConfig;
 class MemoryAllocator;
+class PEFTWeightAllocator;
 
 struct FFHandler {
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -82,6 +83,7 @@ struct FFHandler {
   void *peft_activation_reserve_space;
   size_t peft_activation_reserve_space_size;
   MemoryAllocator *peft_activation_allocator;
+  PEFTWeightAllocator *peft_weight_allocator;
   // Quantization fields
   DataType quantization_type;
   bool allowTensorOpMathConversion;

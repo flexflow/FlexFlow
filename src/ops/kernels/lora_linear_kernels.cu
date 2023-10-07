@@ -29,18 +29,15 @@ namespace Kernels {
 namespace LoraLinear {
 
 void inference_kernel_wrapper(LoraLinearMeta *m,
-                              void const *input_ptr,
-                              void *output_ptr,
-                              void const *weight_first_ptr,
-                              void const *weight_second_ptr,
-                              int in_dim,
-                              int out_dim,
-                              int rank,
-                              int num_infr_tokens,
-                              int num_peft_tokens) {
+                              BatchConfig const *bc,
+                              GenericTensorAccessorR const &input,
+                              GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   cudaEvent_t t_start, t_end;
+  int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+  int out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
@@ -48,27 +45,19 @@ void inference_kernel_wrapper(LoraLinearMeta *m,
   }
   if (m->input_type[0] == DT_FLOAT) {
     Internal::inference_kernel<float>(m,
-                                      input_ptr,
-                                      output_ptr,
-                                      weight_first_ptr,
-                                      weight_second_ptr,
+                                      bc,
+                                      input.get_float_ptr(),
+                                      output.get_float_ptr(),
                                       in_dim,
                                       out_dim,
-                                      rank,
-                                      num_infr_tokens,
-                                      num_peft_tokens,
                                       stream);
   } else if (m->input_type[0] == DT_HALF) {
     Internal::inference_kernel<half>(m,
-                                     input_ptr,
-                                     output_ptr,
-                                     weight_first_ptr,
-                                     weight_second_ptr,
+                                     bc,
+                                     input.get_half_ptr(),
+                                     output.get_half_ptr(),
                                      in_dim,
                                      out_dim,
-                                     rank,
-                                     num_infr_tokens,
-                                     num_peft_tokens,
                                      stream);
   }
 
@@ -90,17 +79,9 @@ void inference_kernel_wrapper(LoraLinearMeta *m,
 }
 
 void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
-                             void *input_grad_ptr,
-                             void const *output_grad_ptr,
-                             void const *weight_first_ptr,
-                             void const *weight_second_ptr,
-                             void *weight_first_grad_ptr,
-                             void *weight_second_grad_ptr,
-                             int in_dim,
-                             int out_dim,
-                             int rank,
-                             int num_infr_tokens,
-                             int num_peft_tokens) {
+                             BatchConfig const *bc,
+                             GenericTensorAccessorW const &input_grad,
+                             GenericTensorAccessorR const &output_grad) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   cudaEvent_t t_start, t_end;
@@ -109,33 +90,23 @@ void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
+  int in_dim = input_grad.domain.hi()[0] - input_grad.domain.lo()[0] + 1;
+  int out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
   if (m->input_type[0] == DT_FLOAT) {
     Internal::peft_bwd_kernel<float>(m,
-                                     input_grad_ptr,
-                                     output_grad_ptr,
-                                     weight_first_ptr,
-                                     weight_second_ptr,
-                                     weight_first_grad_ptr,
-                                     weight_second_grad_ptr,
+                                     bc,
+                                     input_grad.get_float_ptr(),
+                                     output_grad.get_float_ptr(),
                                      in_dim,
                                      out_dim,
-                                     rank,
-                                     num_infr_tokens,
-                                     num_peft_tokens,
                                      stream);
   } else if (m->input_type[0] == DT_HALF) {
     Internal::peft_bwd_kernel<half>(m,
-                                    input_grad_ptr,
-                                    output_grad_ptr,
-                                    weight_first_ptr,
-                                    weight_second_ptr,
-                                    weight_first_grad_ptr,
-                                    weight_second_grad_ptr,
+                                    bc,
+                                    input_grad.get_half_ptr(),
+                                    output_grad.get_half_ptr(),
                                     in_dim,
                                     out_dim,
-                                    rank,
-                                    num_infr_tokens,
-                                    num_peft_tokens,
                                     stream);
   }
 
@@ -160,15 +131,11 @@ namespace Internal {
 
 template <typename DT>
 void inference_kernel(LoraLinearMeta *m,
-                      void const *input_ptr,
-                      void *output_ptr,
-                      void const *weight_first_ptr,
-                      void const *weight_second_ptr,
+                      BatchConfig const *bc,
+                      DT const *input_ptr,
+                      DT *output_ptr,
                       int in_dim,
                       int out_dim,
-                      int rank,
-                      int num_infr_tokens,
-                      int num_peft_tokens,
                       ffStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -179,10 +146,6 @@ void inference_kernel(LoraLinearMeta *m,
   cudaDataType_t output_type = ff_to_cuda_datatype(m->input_type[1]);
   cudaDataType_t lr_actv_type = output_type;
   assert(input_type == weight_type && weight_type == output_type);
-  // adjust input_ptr and output_ptr offset
-  // TODO: we currently assume that all inference tokens do not use LoRA
-  input_ptr = static_cast<DT const *>(input_ptr) + num_infr_tokens * in_dim;
-  output_ptr = static_cast<DT *>(output_ptr) + num_infr_tokens * out_dim;
 
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
@@ -190,75 +153,105 @@ void inference_kernel(LoraLinearMeta *m,
 #else
   cudaDataType_t compute_type = input_type;
 #endif
-  MemoryAllocator *allocator = m->handle.peft_activation_allocator;
-  m->input_activation = allocator->allocate_instance_untyped(
-      data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
-  m->low_rank_activation = allocator->allocate_instance_untyped(
-      data_type_size(m->input_type[1]) * num_peft_tokens * rank);
-  // copy input activation
-  checkCUDA(cudaMemcpyAsync(m->input_activation,
-                            input_ptr,
-                            data_type_size(m->input_type[0]) * num_peft_tokens *
-                                in_dim,
-                            cudaMemcpyDeviceToDevice,
-                            stream));
-  // buffer = weight_first * input
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_N,
-                         rank,
-                         num_peft_tokens,
-                         in_dim,
-                         &alpha,
-                         weight_first_ptr,
-                         weight_type,
-                         in_dim,
-                         input_ptr,
-                         input_type,
-                         in_dim,
-                         &beta,
-                         m->low_rank_activation,
-                         lr_actv_type,
-                         rank,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  // output = weight_second * buffer
-  // Note that we use alpha in both places since we do
-  // an in-place update for LoraLinear
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_N,
-                         out_dim,
-                         num_peft_tokens,
-                         rank,
-                         &alpha,
-                         weight_second_ptr,
-                         weight_type,
-                         rank,
-                         m->low_rank_activation,
-                         lr_actv_type,
-                         rank,
-                         &alpha,
-                         output_ptr,
-                         output_type,
-                         out_dim,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  int num_peft_requests = 0;
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+      continue;
+    }
+    if (bc->requestsInfo[i].peft_bwd) {
+      num_peft_requests++;
+    }
+  }
+  // Assert that we have at most one request that requires peft_bwd
+  assert(num_peft_requests <= 1);
+  int tokens_previous_requests = 0;
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    // Skip non-PEFT requests
+    if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+      // FIXME: use the new approach to computing token offset
+      tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
+      continue;
+    }
+    int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    assert(m->model_weights.find(bc->requestsInfo[i].peft_model_id) !=
+           m->model_weights.end());
+    LoraLinearWeight weight =
+        m->model_weights[bc->requestsInfo[i].peft_model_id];
+    int rank = weight.rank;
+    if (bc->requestsInfo[i].peft_bwd) {
+      MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+      m->input_activation = allocator->allocate_instance_untyped(
+          data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
+      m->low_rank_activation = allocator->allocate_instance_untyped(
+          data_type_size(m->input_type[1]) * num_peft_tokens * rank);
+      // copy input activation
+      checkCUDA(cudaMemcpyAsync(m->input_activation,
+                                input_ptr + tokens_previous_requests * in_dim,
+                                data_type_size(m->input_type[0]) *
+                                    num_peft_tokens * in_dim,
+                                cudaMemcpyDeviceToDevice,
+                                stream));
+    }
+    // buffer = weight_first * input
+    checkCUDA(cublasGemmEx(m->handle.blas,
+                           CUBLAS_OP_T,
+                           CUBLAS_OP_N,
+                           rank,
+                           num_peft_tokens,
+                           in_dim,
+                           &alpha,
+                           weight.w0_ptr,
+                           weight_type,
+                           in_dim,
+                           input_ptr + tokens_previous_requests * in_dim,
+                           input_type,
+                           in_dim,
+                           &beta,
+                           m->low_rank_activation,
+                           lr_actv_type,
+                           rank,
+                           compute_type,
+                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    // output = weight_second * buffer
+    // Note that we use alpha in both places since we do
+    // an in-place update for LoraLinear
+    checkCUDA(cublasGemmEx(m->handle.blas,
+                           CUBLAS_OP_T,
+                           CUBLAS_OP_N,
+                           out_dim,
+                           num_peft_tokens,
+                           rank,
+                           &alpha,
+                           weight.w1_ptr,
+                           weight_type,
+                           rank,
+                           m->low_rank_activation,
+                           lr_actv_type,
+                           rank,
+                           &alpha,
+                           output_ptr + tokens_previous_requests * out_dim,
+                           output_type,
+                           out_dim,
+                           compute_type,
+                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    tokens_previous_requests += num_peft_tokens;
+  }
+  assert(tokens_previous_requests == bc->num_active_tokens());
 }
 
 template <typename DT>
 void peft_bwd_kernel(LoraLinearMeta *m,
-                     void *input_grad_ptr,
-                     void const *output_grad_ptr,
-                     void const *weight_first_ptr,
-                     void const *weight_second_ptr,
-                     void *weight_first_grad_ptr,
-                     void *weight_second_grad_ptr,
+                     BatchConfig const *bc,
+                     DT *input_grad_ptr,
+                     DT const *output_grad_ptr,
                      int in_dim,
                      int out_dim,
-                     int rank,
-                     int num_infr_tokens,
-                     int num_peft_tokens,
                      ffStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -268,103 +261,124 @@ void peft_bwd_kernel(LoraLinearMeta *m,
   assert(weight_type == ff_to_cuda_datatype(m->weight_type[1]));
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   cudaDataType_t lr_actv_type = output_type;
-  // update input_grad_ptr and output_grad_ptr offset
-  input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_tokens * in_dim;
-  output_grad_ptr =
-      static_cast<DT const *>(output_grad_ptr) + num_infr_tokens * out_dim;
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
   cudaDataType_t compute_type = CUDA_R_32F;
 #endif
-  // Compute weight_second gradiant
-  // NOTE: we use alpha=1 for weight_second_grad to accumulate gradients
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_N,
-                         CUBLAS_OP_T,
-                         rank,
-                         out_dim,
-                         num_peft_tokens,
-                         &alpha,
-                         m->low_rank_activation,
-                         lr_actv_type,
-                         rank,
-                         output_grad_ptr,
-                         output_type,
-                         out_dim,
-                         &alpha,
-                         weight_second_grad_ptr,
-                         weight_type,
-                         rank,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  // Compute gradiants w.r.t. low_rank activation
-  // and save the results to low_rank_activation
-  // NOTE: we use alpha=1 for input_grad to accumulate gradients
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_N,
-                         CUBLAS_OP_N,
-                         rank,
-                         num_peft_tokens,
-                         out_dim,
-                         &alpha,
-                         weight_second_ptr,
-                         weight_type,
-                         rank,
-                         output_grad_ptr,
-                         output_type,
-                         out_dim,
-                         &alpha,
-                         m->low_rank_activation,
-                         lr_actv_type,
-                         rank,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  // Compute weight_first gradiant
-  // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_N,
-                         CUBLAS_OP_T,
-                         in_dim,
-                         rank,
-                         num_peft_tokens,
-                         &alpha,
-                         m->input_activation,
-                         input_type,
-                         in_dim,
-                         m->low_rank_activation,
-                         lr_actv_type,
-                         rank,
-                         &alpha,
-                         weight_first_grad_ptr,
-                         weight_type,
-                         in_dim,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  // Compute input gradiant
-  // NOTE: we use alpha=1 for input_grad to accumulate gradients
-  if (input_grad_ptr != nullptr) {
+
+  int tokens_previous_requests = 0;
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    // Skip non-PEFT requests
+    if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+      tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
+      continue;
+    }
+    // Skip PEFT forward-only requests
+    if (!bc->requestsInfo[i].peft_bwd) {
+      tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
+      continue;
+    }
+    int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    assert(m->model_weights.find(bc->requestsInfo[i].peft_model_id) !=
+           m->model_weights.end());
+    LoraLinearWeight weight =
+        m->model_weights[bc->requestsInfo[i].peft_model_id];
+    int rank = weight.rank;
+    // Compute w1's gradiant
+    // NOTE: we use alpha=1 for w1_grad to accumulate gradients
+    checkCUDA(cublasGemmEx(m->handle.blas,
+                           CUBLAS_OP_N,
+                           CUBLAS_OP_T,
+                           rank,
+                           out_dim,
+                           num_peft_tokens,
+                           &alpha,
+                           m->low_rank_activation,
+                           lr_actv_type,
+                           rank,
+                           output_grad_ptr + tokens_previous_requests * out_dim,
+                           output_type,
+                           out_dim,
+                           &alpha,
+                           weight.w1_grad_ptr,
+                           weight_type,
+                           rank,
+                           compute_type,
+                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    // Compute gradiants w.r.t. low_rank activation
+    // and save the results to low_rank_activation
+    // NOTE: we use alpha=1 for input_grad to accumulate gradients
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_N,
                            CUBLAS_OP_N,
-                           in_dim,
-                           num_peft_tokens,
                            rank,
+                           num_peft_tokens,
+                           out_dim,
                            &alpha,
-                           weight_first_ptr,
+                           weight.w1_ptr,
                            weight_type,
+                           rank,
+                           output_grad_ptr + tokens_previous_requests * out_dim,
+                           output_type,
+                           out_dim,
+                           &alpha,
+                           m->low_rank_activation,
+                           lr_actv_type,
+                           rank,
+                           compute_type,
+                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    // Compute w0's gradiant
+    // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
+    checkCUDA(cublasGemmEx(m->handle.blas,
+                           CUBLAS_OP_N,
+                           CUBLAS_OP_T,
+                           in_dim,
+                           rank,
+                           num_peft_tokens,
+                           &alpha,
+                           m->input_activation,
+                           input_type,
                            in_dim,
                            m->low_rank_activation,
                            lr_actv_type,
                            rank,
                            &alpha,
-                           input_grad_ptr,
-                           input_type,
+                           weight.w0_grad_ptr,
+                           weight_type,
                            in_dim,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    // Compute input gradiant
+    // NOTE: we use alpha=1 for input_grad to accumulate gradients
+    if (input_grad_ptr != nullptr) {
+      checkCUDA(cublasGemmEx(m->handle.blas,
+                             CUBLAS_OP_N,
+                             CUBLAS_OP_N,
+                             in_dim,
+                             num_peft_tokens,
+                             rank,
+                             &alpha,
+                             weight.w0_ptr,
+                             weight_type,
+                             in_dim,
+                             m->low_rank_activation,
+                             lr_actv_type,
+                             rank,
+                             &alpha,
+                             input_grad_ptr + tokens_previous_requests * in_dim,
+                             input_type,
+                             in_dim,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    }
+    tokens_previous_requests += num_peft_tokens;
   }
+  assert(tokens_previous_requests == bc->num_active_tokens());
 }
 
 } // namespace Internal

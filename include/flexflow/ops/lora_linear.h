@@ -21,19 +21,14 @@ public:
              LayerID const &layer_guid,
              ParallelTensor const input,
              ParallelTensor const output,
-             int rank,
-             DataType _data_type,
-             bool allocate_weights,
-             char const *name);
+             char const *name = nullptr);
   LoraLinear(FFModel &model,
              LoraLinear const &other,
              ParallelTensor const input,
-             ParallelTensor const output,
-             bool allocate_weights);
+             ParallelTensor const output);
   LoraLinear(FFModel &model,
              Params const &params,
              Input const &inputs,
-             bool allocate_weights = false,
              char const *name = nullptr);
 
   void init(FFModel const &) override;
@@ -43,6 +38,12 @@ public:
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
+  void register_peft_model(FFModel const &ff,
+                           std::vector<ParallelTensor> const &batch_inputs,
+                           std::vector<ParallelTensor> const &batch_outputs,
+                           MachineView const *mv,
+                           PEFTModelID const &model_id,
+                           int rank);
   Legion::FutureMap inference(FFModel const &,
                               BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
@@ -63,6 +64,11 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void
+      register_model_task(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
   static void inference_task(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
@@ -92,22 +98,6 @@ public:
                   int num_inputs) const override;
   // size_t get_params_hash() const override;
   LoraLinearParams get_params() const;
-
-private:
-  LoraLinear(int guid,
-             bool profiling,
-             ParallelTensor const input,
-             ParallelTensor const output,
-             int rank,
-             bool allocate_weights,
-             char const *name);
-
-  void register_mappings();
-  void register_output_mappings();
-  void register_weight_mappings();
-
-public:
-  int rank;
 };
 
 }; // namespace FlexFlow

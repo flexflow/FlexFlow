@@ -12,8 +12,6 @@ namespace FlexFlow {
 class LoraLinearParams {
 public:
   LayerID layer_guid;
-  int rank;
-  DataType data_type;
 
   bool is_valid(std::pair<ParallelTensorShape, ParallelTensorShape> const
                     &input_shape) const;

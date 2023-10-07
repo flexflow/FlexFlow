@@ -16,6 +16,7 @@
 #pragma once
 
 #include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "legion.h"
 #include <cstddef>
 #include <cstdlib>
@@ -62,10 +63,21 @@ public:
   bool loading_prompt = false;
 
   struct PerRequestInfo {
+    PerRequestInfo() {
+      token_start_offset = 0;
+      num_tokens_in_batch = 0;
+      max_sequence_length = 0;
+      request_guid = 0;
+      peft_model_id = PEFTModelID::NO_ID;
+      peft_bwd = false;
+    }
     int token_start_offset;
     int num_tokens_in_batch;
     int max_sequence_length;
     RequestGuid request_guid;
+    // PEFT fields
+    PEFTModelID peft_model_id;
+    bool peft_bwd;
   };
   struct PerTokenInfo {
     int abs_depth_in_request;

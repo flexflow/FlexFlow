@@ -727,16 +727,8 @@ __host__ void
         // Assert that the output and the second input are at the same place
         // since we ``inplace'' the output for LoRA
         assert(my_input_accessor[1].ptr == my_output_accessor[0].ptr);
-        Kernels::LoraLinear::inference_kernel_wrapper(m,
-                                                      my_input_accessor[0].ptr,
-                                                      my_output_accessor[0].ptr,
-                                                      my_weight_accessor[0].ptr,
-                                                      my_weight_accessor[1].ptr,
-                                                      in_dim,
-                                                      out_dim,
-                                                      rank,
-                                                      num_infr_tokens,
-                                                      num_peft_tokens);
+        Kernels::LoraLinear::inference_kernel_wrapper(
+            m, bc, my_input_accessor[0], my_output_accessor[0]);
         break;
       }
       case OP_BATCHMATMUL: {

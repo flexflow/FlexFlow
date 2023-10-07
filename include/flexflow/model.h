@@ -121,6 +121,7 @@ enum TaskIDs {
   LINEAR_BWD2_TASK_ID,
   LINEAR_UPD_TASK_ID,
   LORA_LINEAR_INIT_TASK_ID,
+  LORA_LINEAR_REG_TASK_ID,
   LORA_LINEAR_INF_TASK_ID,
   LORA_LINEAR_PEFT_BWD_TASK_ID,
   FLAT_INIT_TASK_ID,
@@ -809,9 +810,6 @@ public:
   // ========================================
   void lora_linear(Tensor const input,
                    Tensor const output,
-                   int rank,
-                   DataType data_type = DT_NONE,
-                   Initializer *kernel_initializer = nullptr,
                    char const *name = nullptr);
   // ========================================
   // Inference APIs

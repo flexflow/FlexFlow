@@ -3,6 +3,7 @@
 
 #include "flexflow/ffconst.h"
 #include <cstddef>
+#include <functional>
 
 namespace FlexFlow {
 
@@ -18,6 +19,27 @@ public:
   size_t id, transformer_layer_id;
 };
 
+class PEFTModelID {
+public:
+  static const PEFTModelID NO_ID;
+  PEFTModelID();
+  PEFTModelID(size_t id);
+  bool is_valid_id() const;
+  friend bool operator==(PEFTModelID const &lhs, PEFTModelID const &rhs);
+
+public:
+  size_t id;
+};
+
 }; // namespace FlexFlow
+
+namespace std {
+template <>
+struct hash<FlexFlow::PEFTModelID> {
+  size_t operator()(FlexFlow::PEFTModelID const &n) const {
+    return n.id;
+  }
+};
+} // namespace std
 
 #endif // _FF_TYPE_H
