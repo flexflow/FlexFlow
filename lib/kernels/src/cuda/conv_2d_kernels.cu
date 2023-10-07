@@ -235,11 +235,11 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                                filterDesc,
                                                filter_grad_ptr,
                                                nullptr);
-                                               
+
   // select backward data algorithm
-  bwdDataAlgo = selectConvolutionBackwardDataAlgorithm(handle.dnn,    
+  bwdDataAlgo = selectConvolutionBackwardDataAlgorithm(handle.dnn,
                                                        filterDesc,
-                                                    filter_ptr,
+                                                       filter_ptr,
                                                        outputTensor,
                                                        output.get_float_ptr(),
                                                        convDesc,

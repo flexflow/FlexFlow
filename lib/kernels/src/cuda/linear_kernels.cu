@@ -13,73 +13,74 @@
  * limitations under the License.
  */
 
+#include "kernels/allocation.h"
 #include "kernels/cuda_helper.h"
 #include "kernels/linear_kernels.h"
-#include "kernels/allocation.h"
 
 namespace FlexFlow {
 
 namespace Kernels {
 namespace Linear {
 
-//what's the float * one_ptr 
-LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                                Allocator allocator,
-                                 float * one_ptr; 
-                                 Activation activation, 
-                                 Regularizer regularizer, 
-                                 bool use_bias,
-                                 DataType input_type,
-                                 DataType weight_type,
-                                 DataType output_type,
-                                 int batch_size, 
-                                 int channel) {
-  ffTensorDescriptor_t outputTensor;    
+// what's the float * one_ptr
+LinearPerDeviceState
+    init_kernel(PerDeviceFFHandle handle, Allocator allocator, float *one_ptr;
+                Activation activation,
+                Regularizer regularizer,
+                bool use_bias,
+                DataType input_type,
+                DataType weight_type,
+                DataType output_type,
+                int batch_size,
+                int channel) {
+  ffTensorDescriptor_t outputTensor;
   ffActivationDescriptor_t actiDesc;
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
   checkCUDNN(cudnnSetTensor4dDescriptor(outputTensor,
-                                          CUDNN_TENSOR_NCHW,
-                                          ff_to_cudnn_datatype(output_type),
-                                          batch_size,
-                                          channel,
-                                          1,
-                                          1));
+                                        CUDNN_TENSOR_NCHW,
+                                        ff_to_cudnn_datatype(output_type),
+                                        batch_size,
+                                        channel,
+                                        1,
+                                        1));
   cudnnActivationMode_t mode;
-  switch(activation) {
-      case RELU:
-        mode = CUDNN_ACTIVATION_RELU;
-        break;
-      case SIGMOID:
-        mode = CUDNN_ACTIVATION_SIGMOID;
-        break;
-      case TANH:
-        mode = CUDNN_ACTIVATION_TANH;
-        break;
-      case GELU:
-        mode = CUDNN_ACTIVATION_GELU;
-        break;
-      default:
-        // Unsupported activation mode
-        assert(false);
+  switch (activation) {
+    case RELU:
+      mode = CUDNN_ACTIVATION_RELU;
+      break;
+    case SIGMOID:
+      mode = CUDNN_ACTIVATION_SIGMOID;
+      break;
+    case TANH:
+      mode = CUDNN_ACTIVATION_TANH;
+      break;
+    case GELU:
+      mode = CUDNN_ACTIVATION_GELU;
+      break;
+    default:
+      // Unsupported activation mode
+      assert(false);
   }
-  checkCUDNN(cudnnSetActivationDescriptor(actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
-  checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
-  
-  //todo: how to use allocator to allocate memory for float * one_ptr, how many bytes to allocate?
-  
-  LinearPerDeviceState per_device_state = {handle,  
+  checkCUDNN(
+      cudnnSetActivationDescriptor(actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
+  checkCUDNN(
+      cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
+
+  // todo: how to use allocator to allocate memory for float * one_ptr, how many
+  // bytes to allocate?
+
+  LinearPerDeviceState per_device_state = {handle,
                                            outputTensor,
                                            actiDesc,
-                                            one_ptr,
-                                            activation,
-                                            regularizer,
-                                            use_bias,
-                                            input_type,
-                                            weight_type,
-                                            output_type};
+                                           one_ptr,
+                                           activation,
+                                           regularizer,
+                                           use_bias,
+                                           input_type,
+                                           weight_type,
+                                           output_type};
   return per_device_state;
-      
 }
 
 void forward_kernel(cudaStream_t stream,

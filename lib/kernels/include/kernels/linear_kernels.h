@@ -3,13 +3,13 @@
 
 #include "kernels/device.h"
 
-namespace FlexFlow {    
+namespace FlexFlow {
 
 struct LinearPerDeviceState {
   PerDeviceFFHandle handle;
-  ffTensorDescriptor_t outputTensor;    
+  ffTensorDescriptor_t outputTensor;
   ffActivationDescriptor_t actiDesc;
-  float const *one_ptr;//how to handle this?
+  float const *one_ptr; // how to handle this?
   cudnnActivationMode_t activation;
   optional<Regularizer> regularizer;
   bool use_bias;
@@ -31,16 +31,15 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(LinearPerDeviceState,
 namespace Kernels {
 namespace Linear {
 
-LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                                 Allocator allocator,
-                                 float * one_ptr; 
-                                 optional<Regularizer> regularizer, 
-                                 bool use_bias,
-                                 DataType input_type,
-                                 DataType weight_type,
-                                 DataType output_type,
-                                 int batch_size, 
-                                 int channel);
+LinearPerDeviceState
+    init_kernel(PerDeviceFFHandle handle, Allocator allocator, float *one_ptr;
+                optional<Regularizer> regularizer,
+                bool use_bias,
+                DataType input_type,
+                DataType weight_type,
+                DataType output_type,
+                int batch_size,
+                int channel);
 
 bool use_activation(ActiMode mode);
 

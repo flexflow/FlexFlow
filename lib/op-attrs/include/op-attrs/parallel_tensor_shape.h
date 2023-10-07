@@ -32,7 +32,7 @@ struct ParallelTensorShape : public use_visitable_cmp<ParallelTensorShape> {
   ParallelDim const &operator[](ff_dim_t const &) const;
   ParallelDim &operator[](ff_dim_t const &);
 
-public: 
+public:
   ParallelTensorDims dims;
   DataType data_type;
 };
