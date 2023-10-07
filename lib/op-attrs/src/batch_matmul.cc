@@ -2,6 +2,23 @@
 
 namespace FlexFlow {
 
+ bool BatchMatmulAttrs::is_valid(ParallelTensorShape const & lhs, ParallelTensorShape const & rhs) {
+    if (!lhs.is_valid() || !rhs.is_valid()) {
+          return false;
+    }
+    if (lhs.num_dims() != rhs.num_dims()) {
+          return false;
+    }
+    return true;
+}
+
+ParallelTensorShape get_output_shape(BatchMatmulAttrs const &,
+                                     ParallelTensorShape const &,
+                                     ParallelTensorShape const &) {
+
+}
+
+
 /* bool BatchMatmulAttrs::is_valid( */
 /*     ParallelTensorShape const &lhs, ParallelTensorShape const &rhs) const {
  */

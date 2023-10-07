@@ -9,10 +9,16 @@ namespace FlexFlow {
 
 struct BatchMatmulAttrs {
   req<int> a_seq_length_dim, b_seq_length_dim;
+  bool is_valid(ParallelTensorShape const &,
+                                     ParallelTensorShape const &);
 };
 FF_VISITABLE_STRUCT(BatchMatmulAttrs, a_seq_length_dim, b_seq_length_dim);
 
 CHECK_VALID_OP_ATTR(BatchMatmulAttrs);
+
+ParallelTensorShape get_output_shape(BatchMatmulAttrs const &,
+                                     ParallelTensorShape const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

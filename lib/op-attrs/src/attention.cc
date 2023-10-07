@@ -13,9 +13,9 @@ namespace FlexFlow {
 
 bool MultiHeadAttentionAttrs::is_valid(MultiHeadAttentionInputs<ParallelTensorShape> const & input) const {
   bool valid = true;
-  valid &= is_valid(input.key);
-  valid &= is_valid(input.query);
-  valid &= is_valid(input.value);
+  valid &= input.key.is_valid();
+  valid &= input.query.is_valid();
+  valid &= input.value.is_valid();
   return valid;
 }
 
