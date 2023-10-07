@@ -6,15 +6,12 @@
 
 namespace FlexFlow {
 
-OpTaskSignature init_signature();
 template <>
 void register_task<ELEMENTBINARY_INIT_TASK_ID>();
 
-OpTaskSignature fwd_signature();
 template <>
 void register_task<ELEMENTBINARY_FWD_TASK_ID>();
 
-OpTaskSignature bwd_signature();
 template <>
 void register_task<ELEMENTBINARY_BWD_TASK_ID>();
 
