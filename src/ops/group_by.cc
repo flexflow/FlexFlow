@@ -379,7 +379,7 @@ void Group_by::forward_task(Task const *task,
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR assign = helperGetGenericTensorAccessorRO(
-      DT_INT32, regions[1], task->regions[0], FID_DATA, ctx, runtime);
+      DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain assign_domain = runtime->get_index_space_domain(
