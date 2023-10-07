@@ -25,7 +25,7 @@ namespace Concat {
 void calc_blk_size(size_t &num_blocks,
                    size_t &blk_size,
                    ArrayShape const &shape,
-                   req<ff_dim_t> legion_axis) {
+                   ff_dim_t legion_axis) {
   num_blocks = 1;
   blk_size = 1;
   for (int d = 0; d < shape.num_dims(); d++) {
@@ -37,7 +37,7 @@ void calc_blk_size(size_t &num_blocks,
   }
 }
 
-void forward_kernel(ffStream_t stream,
+void forward_kernel(cudaStream_t stream,
                     GenericTensorAccessorW const &output,
                     std::vector<GenericTensorAccessorR> const &inputs,
                     int num_inputs,
@@ -66,7 +66,7 @@ void forward_kernel(ffStream_t stream,
   }
 }
 
-void backward_kernel(ffStream_t stream,
+void backward_kernel(cudaStream_t stream,
                      GenericTensorAccessorR const &output_grad,
                      std::vector<GenericTensorAccessorW> const &input_grads,
                      int num_inputs,
