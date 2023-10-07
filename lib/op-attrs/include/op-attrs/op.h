@@ -30,7 +30,10 @@ enum class Op {
   CONCAT,
   SPLIT,
   EMBEDDING,
+  GROUP_BY,
   CACHE,
+  AGGREGATE,
+  AGG_SPEC,
   // OP_ELEMENTWISE,
   RESHAPE,
   REVERSE,
@@ -151,8 +154,14 @@ struct formatter<::FlexFlow::Op> : formatter<string_view> {
         name = "Embedding";
       case Op::GATHER:
         name = "Gather";
+      case Op::GROUP_BY:
+        name = "Group_by";
       case Op::CACHE:
         name = "Cache";
+      case Op::AGGREGATE:
+        name = "Aggregate cooperation";
+      case Op::AGG_SPEC:
+        name = "Aggregate specification";
       case Op::RESHAPE:
         name = "Reshape";
       case Op::REVERSE:

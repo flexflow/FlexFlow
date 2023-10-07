@@ -101,12 +101,33 @@ public:
                              Tensor const &index,
                              ff_dim_t dim,
                              optional<std::string> const &name = nullopt);
+  // Add a group_by layer
+  void group_by(Tensor const &data,
+                Tensor const &assign,
+                Tensor *outputs,
+                int n,
+                float alpha,
+                optional<std::string> const &name = nullopt);
   // Add a cache layer
   Tensor cache(Tensor const &input,
                int num_batches,
                std::function<float(float *, void const *, void const *, int)>
                    score_f = {},
                optional<std::string> const &name = nullopt);
+  // Add aggregate layer
+  Tensor aggregate(Tensor const &gate_preds,
+                   Tensor const &gate_assign,
+                   Tensor const &true_gate_assign,
+                   Tensor const &full_gate_gradients,
+                   std::vector<Tensor> const &exp_preds,
+                   int n,
+                   float lambda_bal,
+                   optional<std::string> const &maybe_name);
+  // Add aggregate_spec layer
+  Tensor aggregate_spec(std::vector<Tensor> const &inputs,
+                        int n,
+                        float lambda_bal,
+                        optional<std::string> const &name = nullopt);
   // Add a 2D pooling layer
   Tensor pool2d(Tensor const &input,
                 int kernelH,
@@ -153,6 +174,13 @@ public:
               std::vector<int> const &dims,
               bool keepdims,
               char const *name);
+  // Add a moe layer (wrapping topk, group_by and aggregate operators)
+  Tensor moe(Tensor const &input,
+             int num_exp,
+             int num_select,
+             int expert_hidden_size,
+             float alpha,
+             float lambda);
   // Add a split layer
   void split(Tensor const &input,
              Tensor *outputs,

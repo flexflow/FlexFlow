@@ -2,6 +2,12 @@
 
 namespace FlexFlow {
 
+OperatorType get_op_type(AggregateAttrs const &) {
+  return Op::AGGREGATE;
+}
+OperatorType get_op_type(AggregateSpecAttrs const &) {
+  return Op::AGG_SPEC;
+}
 OperatorType get_op_type(BatchMatmulAttrs const &) {
   return Op::BATCHMATMUL;
 }
@@ -37,6 +43,9 @@ OperatorType get_op_type(FlatAttrs const &) {
 }
 OperatorType get_op_type(GatherAttrs const &) {
   return Op::GATHER;
+}
+OperatorType get_op_type(Group_byAttrs const &) {
+  return Op::GROUP_BY;
 }
 OperatorType get_op_type(InputAttrs const &) {
   return Op::INPUT;

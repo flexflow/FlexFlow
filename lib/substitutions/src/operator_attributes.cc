@@ -2,6 +2,22 @@
 
 namespace FlexFlow {
 
+optional<OperatorAttributeValue> get_attribute(AggregateAttrs const &p,
+                                               OperatorAttributeKey key) {
+  switch (key) {
+    default:
+      return nullopt;
+  }
+}
+
+optional<OperatorAttributeValue> get_attribute(AggregateSpecAttrs const &p,
+                                               OperatorAttributeKey key) {
+  switch (key) {
+    default:
+      return nullopt;
+  }
+}
+
 optional<OperatorAttributeValue> get_attribute(BatchMatmulAttrs const &p,
                                                OperatorAttributeKey key) {
   switch (key) {
@@ -121,6 +137,14 @@ optional<OperatorAttributeValue> get_attribute(GatherAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::AXIS:
       return p.dim;
+    default:
+      return nullopt;
+  }
+}
+
+optional<OperatorAttributeValue> get_attribute(Group_byAttrs const &p,
+                                               OperatorAttributeKey key) {
+  switch (key) {
     default:
       return nullopt;
   }

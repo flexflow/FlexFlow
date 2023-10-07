@@ -225,6 +225,14 @@ flexflow_error_t
                                              flexflow_tensor_t *outs,
                                              int dim,
                                              char *name = NULL);
+flexflow_error_t
+    flexflow_computation_graph_add_op_group_by(flexflow_computation_graph_t,
+                                               flexflow_tensor_t data,
+                                               flexflow_tensor_t assign,
+                                               flexflow_tensor_t *outs,
+                                               int n,
+                                               float alpha,
+                                               char *name = NULL);
 flexflow_error_t flexflow_computation_graph_add_op_cache(
     flexflow_computation_graph_t,
     flexflow_tensor_t,
@@ -235,6 +243,24 @@ flexflow_error_t flexflow_computation_graph_add_op_cache(
     flexflow_tensor_t *outs,
     int n,
     float alpha,
+    char *name = NULL);
+flexflow_error_t flexflow_computation_graph_add_op_aggregate(
+    flexflow_computation_graph_t,
+    flexflow_tensor_t gate_preds,
+    flexflow_tensor_t gate_assign,
+    flexflow_tensor_t true_gate_assign,
+    flexflow_tensor_t full_gate_gradients,
+    flexflow_tensor_t *exp_preds,
+    flexflow_tensor_t *out,
+    int n,
+    float lambda_bal,
+    char *name = NULL);
+flexflow_error_t flexflow_computation_graph_add_op_aggregate_spec(
+    flexflow_computation_graph_t,
+    flexflow_tensor_t *inputs,
+    flexflow_tensor_t *out,
+    int n,
+    float lambda_bal,
     char *name = NULL);
 flexflow_error_t flexflow_computation_graph_add_op_pool2d(
     flexflow_computation_graph_t,
@@ -302,6 +328,16 @@ flexflow_error_t
                                            int *dims,
                                            bool keepdims,
                                            char *name = NULL);
+flexflow_error_t
+    flexflow_computation_graph_add_op_moe(flexflow_computation_graph_t,
+                                          flexflow_tensor_t,
+                                          flexflow_tensor_t *out,
+                                          int num_exp,
+                                          int num_select,
+                                          int expert_hidden_size,
+                                          float alpha,
+                                          float lambda,
+                                          char *name = NULL);
 flexflow_error_t
     flexflow_computation_graph_add_op_split(flexflow_computation_graph_t,
                                             flexflow_tensor_t,
