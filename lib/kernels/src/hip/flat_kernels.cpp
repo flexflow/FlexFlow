@@ -23,32 +23,31 @@ namespace Kernels {
 namespace Flat {
 
 void forward_kernel(hipStream_t stream,
-                    float const *input_ptr,
-                    float *output_ptr,
-                    size_t num_elements) {
+                    GenericTensorAccessorR input,
+                    float *output_ptr) {
 
   checkCUDA(hipMemcpyAsync(output_ptr,
-                           input_ptr,
-                           num_elements * sizeof(float),
+                           input.get_float_ptr(),
+                           (input.shape.num_elements()) * sizeof(float),
                            hipMemcpyDeviceToDevice,
                            stream));
   // checkCUDA(hipDeviceSynchronize());
 }
 
 void backward_kernel(hipStream_t stream,
+                     GenericTensorAccessorR input,
                      float *input_grad_ptr,
-                     float const *output_grad_ptr,
-                     size_t num_elements) {
+                     float const *output_grad_ptr) {
 
   float alpha = 1.0f;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale<float>),
-                     GET_BLOCKS(num_elements),
+                     GET_BLOCKS(input.shape.num_elements()),
                      CUDA_NUM_THREADS,
                      0,
                      stream,
                      input_grad_ptr,
                      output_grad_ptr,
-                     num_elements,
+                     input.shape.num_elements(),
                      alpha);
   // checkCUDA(hipMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
   //                           acc_input_grad.rect.volume() * sizeof(float),
