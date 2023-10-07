@@ -28,13 +28,7 @@ using Legion::Task;
 
 using namespace FlexFlow::Kernels::Embedding;
 
-enum Slots {
-  INPUT,
-  WEIGHT,
-  OUTPUT,
-  ATTRS,
-  PROFILING
-};
+enum Slots { INPUT, WEIGHT, OUTPUT, ATTRS, PROFILING };
 
 OpTaskInvocation forward(EmbeddingAttrs const &attrs) {
   OpTaskBinding b;
@@ -123,7 +117,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   auto env = sim.new_environment();
 
   ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-  TensorShape weight_shape = get_weights_shape(attrs, get_piece_shape(input.shape));
+  TensorShape weight_shape =
+      get_weights_shape(attrs, get_piece_shape(input.shape));
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind(INPUT, input.shape);
@@ -151,7 +146,7 @@ OpTaskSignature fwd_signature<EMBED_FWD_TASK_ID>() {
   fwd.add_input_slot(INPUT);
   fwd.add_input_slot(OUTPUT);
   fwd.add_input_slot(WEIGHT);
-  
+
   fwd.add_arg_slot<EmbeddingAttrs>(ATTRS);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 
@@ -160,21 +155,24 @@ OpTaskSignature fwd_signature<EMBED_FWD_TASK_ID>() {
 
 template <>
 void register_task<EMBED_FWD_TASK_ID>() {
-  register_task(
-      EMBED_FWD_TASK_ID, "Embed Fwd", fwd_signature<EMBED_FWD_TASK_ID>(), forward_task);
+  register_task(EMBED_FWD_TASK_ID,
+                "Embed Fwd",
+                fwd_signature<EMBED_FWD_TASK_ID>(),
+                forward_task);
 }
 
 template <>
 OpTaskSignature bwd_signature<EMBED_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<EMBED_FWD_TASK_ID>());
+  OpTaskSignature bwd = infer_bwd_signature(fwd_signature<EMBED_FWD_TASK_ID>());
   return bwd;
 }
 
 template <>
 void register_task<EMBED_BWD_TASK_ID>() {
-  register_task(
-      EMBED_BWD_TASK_ID, "Embed Bwd", bwd_signature<EMBED_BWD_TASK_ID>(), backward_task);
+  register_task(EMBED_BWD_TASK_ID,
+                "Embed Bwd",
+                bwd_signature<EMBED_BWD_TASK_ID>(),
+                backward_task);
 }
 
 } // namespace FlexFlow
