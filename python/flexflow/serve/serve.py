@@ -106,15 +106,12 @@ class LLM:
                 STARCODERConfig,
             ),
             "MPTForCausalLM": (ModelType.MPT, FlexFlowMPT, MPTConfig),
-            "BaiChuanForCausalLM": {ModelType.BAICHUAN, FlexFlowBAICHUAN, BAICHUANConfig},
+            "BaiChuanForCausalLM": (ModelType.BAICHUAN, FlexFlowBAICHUAN, BAICHUANConfig),
         }
         self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
         self.model_name = self.hf_config._name_or_path
-        (
-            self.model_type,
-            self.model_class,
-            self.config_class,
-        ) = self.__get_ff_model_type()
+        self.model_type, self.model_class, self.config_class = self.__get_ff_model_type()
+        print(f"self.model_type:{self.model_type} and self.model_class:{self.model_class} and self.config_class:{self.config_class}")
         self.data_type = data_type
         assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT
         self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
@@ -220,6 +217,7 @@ class LLM:
             if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
                 print("Done downloading HF weights. Converting them now...")
             # Convert the model to FlexFlow format
+            print(f"self.model_class:{self.mode_clas}")
             self.model_class.convert_hf_model(hf_model, self.weights_path)
             # Save new revision hash to file
             with open(ff_revision_file, "w+") as f:
