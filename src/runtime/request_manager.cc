@@ -115,7 +115,8 @@ void RequestManager::register_tokenizer(ModelType type,
   this->eos_token_id = eos_token_id;
   std::string tokenizer_folder =
       (!path.empty() && path.back() != '/') ? path + '/' : path;
-  if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
+  if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2 ||
+      ModelType::BAICHUAN) {
     bool path_to_file = !path.empty() &&
                         (path.size() >= strlen("tokenizer.model")) &&
                         path.find("tokenizer.model") ==
@@ -149,6 +150,8 @@ void RequestManager::register_tokenizer(ModelType type,
     std::string falcon_tokenizer_path = join_path({path, "tokenizer.json"});
     this->tokenizer_ =
         Tokenizer::FromBlobJSON(LoadBytesFromFile(falcon_tokenizer_path));
+  } else {
+    assert(false && "no tokenzier registered!");
   }
 }
 
