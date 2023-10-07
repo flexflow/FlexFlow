@@ -161,9 +161,6 @@ BatchNormPerDeviceState init_kernel(
     PerDeviceFFHandle handler,
     Allocator allocator,
     float *runningMean,
-    float *runningVar,
-    float *saveMean,
-    float *saveVar,
     int output_n,
     int output_c,
     int output_h,
@@ -173,6 +170,7 @@ BatchNormPerDeviceState init_kernel(
   ffTensorDescriptor_t outputTensor;
   ffTensorDescriptor_t biasTensor;
   ffActivationDescriptor_t actiDesc;
+  ffBatchNormMode_t mode;
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
@@ -202,9 +200,9 @@ BatchNormPerDeviceState init_kernel(
   {
     size_t totalSize = sizeof(float) * output_c * 4;
     runningMean = (float *)allocator.allocate(totalSize);
-    runningVar = (float *)runningMean + output_c;
-    saveMean = (float *)runningVar + output_c;
-    saveVar = (float *)saveMean + output_c;
+    float *runningVar = (float *)runningMean + output_c;
+    float *saveMean = (float *)runningVar + output_c;
+    float *saveVar = (float *)saveMean + output_c;
     cudaStream_t stream;
 
     assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
@@ -242,7 +240,9 @@ void cleanup_kernel(Allocator allocator,
                     ffTensorDescriptor_t biasTensor,
                     ffTensorDescriptor_t outputTensor,
                     ffActivationDescriptor_t actiDesc,
-                    bool relu) {
+                    bool relu,
+                    float *runningMean) {
+  allocator.deallocate(runningMean);
   checkCUDNN(cudnnDestroyTensorDescriptor(inputTensor));
   checkCUDNN(cudnnDestroyTensorDescriptor(biasTensor));
   checkCUDNN(cudnnDestroyTensorDescriptor(outputTensor));

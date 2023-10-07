@@ -85,36 +85,17 @@ static DeviceSpecific<BatchNormPerDeviceState>
   int output_c = output.shape[legion_dim_t(2)];
   int output_n = output.shape[legion_dim_t(3)];
 
-  ffTensorDescriptor_t inputTensor;
-  ffTensorDescriptor_t outputTensor;
-  ffTensorDescriptor_t biasTensor;
-  ffActivationDescriptor_t actiDesc;
-  ffBatchNormMode_t mode;
-
-  size_t totalSize = sizeof(float) * output_c * 4;
-  float *runningMean = (float *)allocator.allocate(totalSize);
-  float *runningVar = (float *)runningMean + output_c;
-  float *saveMean = (float *)runningVar + output_c;
-  float *saveVar = (float *)saveMean + output_c;
+  float *runningMean;
 
   DeviceSpecific<BatchNormPerDeviceState> per_device_state =
       acc.create_device_specific<BatchNormPerDeviceState>(
           init_kernel(handle,
                       allocator,
-                      inputTensor,
-                      outputTensor,
-                      biasTensor,
-                      actiDesc,
-                      mode,
                       runningMean,
-                      runningVar,
-                      saveMean,
-                      saveVar,
                       output_n,
                       output_c,
                       output_h,
                       output_w,
-                      profiling,
                       attrs.relu));
 
   return per_device_state;
@@ -199,31 +180,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   InputParallelTensorDesc const &bias_shape,
                                   ProfilingSettings const &settings,
                                   MachineView const &mv) {
-
-  // int output_w = sub_output.dims[0].size;
-  // int output_h = sub_output.dims[1].size;
-  // int output_c = sub_output.dims[2].size;
-  // int output_n = sub_output.dims[3].size;
-  // BatchNormPerDeviceState *m = new BatchNormPerDeviceState(
-  //     sim->handler, this, sim->memory, output_n, output_c, output_h,
-  //     output_w);
-
-  // sim->free_all();
-  // float *input_ptr = (float *)sim->allocate(sub_input.get_volume(),
-  // DT_FLOAT); assert(input_ptr != NULL); cost_metrics.inputs_memory +=
-  // cost_metrics.total_mem_diff_from(sim->offset);
-
-  // float *output_ptr = (float *)sim->allocate(sub_output.get_volume(),
-  // DT_FLOAT); assert(output_ptr != NULL); cost_metrics.outputs_memory +=
-  // cost_metrics.total_mem_diff_from(sim->offset);
-
-  // float *bias_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
-  // assert(bias_ptr != NULL);
-  // float *scale_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
-  // assert(scale_ptr != NULL);
-  // cost_metrics.weights_memory +=
-  // cost_metrics.total_mem_diff_from(sim->offset);
-
   auto env = sim.new_environment();
 
   ParallelTensorShape output_shape = get_output_shape(attrs);
@@ -263,7 +219,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 }
 
 template <>
-void register_task<BATCHNORM_INIT_TASK_ID>() {
+OpTaskSignature init_signature<BATCHNORM_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
   init.add_input_slot(INPUT);
   init.add_input_slot(BIAS);
@@ -272,11 +228,16 @@ void register_task<BATCHNORM_INIT_TASK_ID>() {
   init.add_arg_slot<bool>(PROFILING);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
-  register_task(BATCHNORM_INIT_TASK_ID, "BatchNorm Init", init, init_task);
+  return init;
 }
 
 template <>
-void register_task<BATCHNORM_FWD_TASK_ID>() {
+void register_task<BATCHNORM_INIT_TASK_ID>() {
+  register_task(BATCHNORM_INIT_TASK_ID, "BatchNorm Init", init_signature<BATCHNORM_INIT_TASK_ID>(), init_task);
+}
+
+template <>
+OpTaskSignature fwd_signature<BATCHNORM_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -286,15 +247,25 @@ void register_task<BATCHNORM_FWD_TASK_ID>() {
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_unchecked_arg_slot<BatchNormPerDeviceState>(PER_DEVICE_STATE);
 
-  register_task(BATCHNORM_FWD_TASK_ID, "BatchNorm Fwd", fwd, forward_task);
+  return fwd;
+}
+
+template <>
+void register_task<BATCHNORM_FWD_TASK_ID>() {
+  register_task(BATCHNORM_FWD_TASK_ID, "BatchNorm Fwd", fwd_signature<BATCHNORM_FWD_TASK_ID>(), forward_task);
+}
+
+template <>
+OpTaskSignature bwd_signature<BATCHNORM_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(fwd_signature<BATCHNORM_FWD_TASK_ID>());
+  
+  return bwd;
 }
 
 template <>
 void register_task<BATCHNORM_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(BATCHNORM_FWD_TASK_ID));
-
-  register_task(BATCHNORM_BWD_TASK_ID, "BatchNorm Bwd", bwd, backward_task);
+  register_task(BATCHNORM_BWD_TASK_ID, "BatchNorm Bwd", bwd_signature<BATCHNORM_BWD_TASK_ID>(), backward_task);
 }
 
 }; // namespace FlexFlow

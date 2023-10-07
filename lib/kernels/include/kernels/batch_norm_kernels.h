@@ -51,9 +51,6 @@ namespace BatchNorm {
 BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                     Allocator allocator,
                                     float *runningMean,
-                                    float *runningVar,
-                                    float *saveMean,
-                                    float *saveVar,
                                     int output_n,
                                     int output_c,
                                     int output_h,
@@ -83,7 +80,8 @@ void cleanup_kernel(Allocator allocator,
                     ffTensorDescriptor_t biasTensor,
                     ffTensorDescriptor_t outputTensor,
                     ffActivationDescriptor_t actiDesc,
-                    bool relu);
+                    bool relu,
+                    float *runningMean);
 
 } // namespace BatchNorm
 } // namespace Kernels
