@@ -62,8 +62,11 @@ void Op::save_inference_tensors_to_file(
       save_tensor(input_tensors[i].get_half_ptr(),
                   input_tensors[i].domain.get_volume(),
                   filename.c_str());
-    } else if (input_tensors[i].data_type == DT_INT32 ||
-               input_tensors[i].data_type == DT_INT64) {
+    } else if (input_tensors[i].data_type == DT_INT32) {
+      save_tensor(input_tensors[i].get_int32_ptr(),
+                  input_tensors[i].domain.get_volume(),
+                  filename.c_str());
+    } else if (input_tensors[i].data_type == DT_INT64) {
       save_tensor(input_tensors[i].get_int64_ptr(),
                   input_tensors[i].domain.get_volume(),
                   filename.c_str());
@@ -83,8 +86,11 @@ void Op::save_inference_tensors_to_file(
         save_tensor(weight_tensors[i].get_half_ptr(),
                     weight_tensors[i].domain.get_volume(),
                     filename.c_str());
-      } else if (weight_tensors[i].data_type == DT_INT32 ||
-                 weight_tensors[i].data_type == DT_INT64) {
+      } else if (weight_tensors[i].data_type == DT_INT32) {
+        save_tensor(weight_tensors[i].get_int32_ptr(),
+                    weight_tensors[i].domain.get_volume(),
+                    filename.c_str());
+      } else if (weight_tensors[i].data_type == DT_INT64) {
         save_tensor(weight_tensors[i].get_int64_ptr(),
                     weight_tensors[i].domain.get_volume(),
                     filename.c_str());
@@ -104,8 +110,11 @@ void Op::save_inference_tensors_to_file(
       save_tensor(output_tensors[i].get_half_ptr(),
                   output_tensors[i].domain.get_volume(),
                   filename.c_str());
-    } else if (output_tensors[i].data_type == DT_INT32 ||
-               output_tensors[i].data_type == DT_INT64) {
+    } else if (output_tensors[i].data_type == DT_INT32) {
+      save_tensor(output_tensors[i].get_int32_ptr(),
+                  output_tensors[i].domain.get_volume(),
+                  filename.c_str());
+    } else if (output_tensors[i].data_type == DT_INT64) {
       save_tensor(output_tensors[i].get_int64_ptr(),
                   output_tensors[i].domain.get_volume(),
                   filename.c_str());

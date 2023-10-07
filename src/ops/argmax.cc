@@ -396,7 +396,7 @@ InferenceResult
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     ArgMax::save_inference_tensors_to_file(
-        m, shard_id, bc, {}, {}, {input, indices, parent});
+        m, shard_id, bc, {}, {}, {input, indices});
   }
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);

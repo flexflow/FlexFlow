@@ -247,23 +247,106 @@ __host__ void
   checkCUDA(hipHostFree(host_ptr));
 }
 
-template <typename T>
+template <>
 __host__ void
-    save_tensor(T const *ptr, size_t num_elements, char const *file_name) {
+    save_tensor(float const *ptr, size_t num_elements, char const *file_name) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  T *host_ptr;
+  float *host_ptr;
   checkCUDA(hipHostMalloc(&host_ptr,
-                          sizeof(T) * num_elements,
+                          sizeof(float) * num_elements,
                           hipHostMallocPortable | hipHostMallocMapped));
-  checkCUDA(hipMemcpyAsync(
-      host_ptr, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost, stream));
+  checkCUDA(hipMemcpyAsync(host_ptr,
+                           ptr,
+                           sizeof(float) * num_elements,
+                           hipMemcpyDeviceToHost,
+                           stream));
   checkCUDA(hipDeviceSynchronize());
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
   assert(tensor_file != NULL);
   for (unsigned i = 0; i < num_elements; i++) {
-    fprintf(tensor_file, "%.20f, ", (float)host_ptr[i]);
+    fprintf(tensor_file, "%.9f, ", host_ptr[i]);
+  }
+
+  fclose(tensor_file);
+  checkCUDA(hipFreeHost(host_ptr));
+}
+
+template <>
+__host__ void
+    save_tensor(half const *ptr, size_t num_elements, char const *file_name) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  half *host_ptr;
+  checkCUDA(hipHostMalloc(&host_ptr,
+                          sizeof(half) * num_elements,
+                          hipHostMallocPortable | hipHostMallocMapped));
+  checkCUDA(hipMemcpyAsync(host_ptr,
+                           ptr,
+                           sizeof(half) * num_elements,
+                           hipMemcpyDeviceToHost,
+                           stream));
+  checkCUDA(hipDeviceSynchronize());
+  FILE *tensor_file;
+  tensor_file = fopen(file_name, "w");
+  assert(tensor_file != NULL);
+  for (unsigned i = 0; i < num_elements; i++) {
+    fprintf(tensor_file, "%.9f, ", (float)host_ptr[i]);
+  }
+
+  fclose(tensor_file);
+  checkCUDA(hipFreeHost(host_ptr));
+}
+
+template <>
+__host__ void save_tensor(int32_t const *ptr,
+                          size_t num_elements,
+                          char const *file_name) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  int32_t *host_ptr;
+  checkCUDA(hipHostMalloc(&host_ptr,
+                          sizeof(int32_t) * num_elements,
+                          hipHostMallocPortable | hipHostMallocMapped));
+  checkCUDA(hipMemcpyAsync(host_ptr,
+                           ptr,
+                           sizeof(int32_t) * num_elements,
+                           hipMemcpyDeviceToHost,
+                           stream));
+  checkCUDA(hipDeviceSynchronize());
+  FILE *tensor_file;
+  tensor_file = fopen(file_name, "w");
+  assert(tensor_file != NULL);
+  for (unsigned i = 0; i < num_elements; i++) {
+    fprintf(tensor_file, "%d, ", host_ptr[i]);
+  }
+
+  fclose(tensor_file);
+  checkCUDA(hipFreeHost(host_ptr));
+}
+
+template <>
+__host__ void save_tensor(int64_t const *ptr,
+                          size_t num_elements,
+                          char const *file_name) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  int64_t *host_ptr;
+  checkCUDA(hipHostMalloc(&host_ptr,
+                          sizeof(int64_t) * num_elements,
+                          hipHostMallocPortable | hipHostMallocMapped));
+  checkCUDA(hipMemcpyAsync(host_ptr,
+                           ptr,
+                           sizeof(int64_t) * num_elements,
+                           hipMemcpyDeviceToHost,
+                           stream));
+  checkCUDA(hipDeviceSynchronize());
+  FILE *tensor_file;
+  tensor_file = fopen(file_name, "w");
+  assert(tensor_file != NULL);
+  for (unsigned i = 0; i < num_elements; i++) {
+    fprintf(tensor_file, "%ld, ", host_ptr[i]);
   }
 
   fclose(tensor_file);
@@ -518,6 +601,9 @@ template __host__ void
 
 template __host__ void
     save_tensor<float>(float const *ptr, size_t rect, char const *file_name);
+template __host__ void save_tensor<int32_t>(int32_t const *ptr,
+                                            size_t rect,
+                                            char const *file_name);
 template __host__ void save_tensor<int64_t>(int64_t const *ptr,
                                             size_t rect,
                                             char const *file_name);
