@@ -179,12 +179,8 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
 
   // Require that input_c is divisible by conv->groups
   assert(input_c % groups == 0);
-  checkCUDNN(miopenSet4dTensorDescriptor(filterDesc,
-                                         miopenFloat,
-                                         output_c,
-                                         input_c / groups,
-                                         kernel_h,
-                                         kernel_w));
+  checkCUDNN(miopenSet4dTensorDescriptor(
+      filterDesc, miopenFloat, output_c, input_c / groups, kernel_h, kernel_w));
 
   checkCUDNN(miopenInitConvolutionDescriptor(convDesc,
                                              miopenConvolution,
@@ -221,16 +217,16 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   float time;
   // select forward algorithm
   fwdAlgo = selectConvolutionForwardAlgorithm(handle.dnn,
-                                                 inputTensor,
-                                                 input.get_float_ptr(),
-                                                 filterDesc,
-                                                 filter_ptr,
-                                                 convDesc,
-                                                 handle.workSpace,
-                                                 handle.workSpaceSize,
-                                                 outputTensor,
-                                                 output.get_float_ptr(),
-                                                 nullptr);
+                                              inputTensor,
+                                              input.get_float_ptr(),
+                                              filterDesc,
+                                              filter_ptr,
+                                              convDesc,
+                                              handle.workSpace,
+                                              handle.workSpaceSize,
+                                              outputTensor,
+                                              output.get_float_ptr(),
+                                              nullptr);
 
   // select backward filter algorithm
   bwdFilterAlgo =

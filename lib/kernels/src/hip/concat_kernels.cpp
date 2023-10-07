@@ -43,10 +43,11 @@ void forward_kernel(hipStream_t stream,
                     ff_dim_t legion_axis) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
-  for (int i = 0; i < num_inputs; i++) {                            
-    size_t input_num_blocks = 1;                                        
-    calc_blk_size(input_num_blocks, input_blk_sizes[i], inputs[i].shape, legion_axis);
-    assert(input_num_blocks == num_blocks);                              
+  for (int i = 0; i < num_inputs; i++) {
+    size_t input_num_blocks = 1;
+    calc_blk_size(
+        input_num_blocks, input_blk_sizes[i], inputs[i].shape, legion_axis);
+    assert(input_num_blocks == num_blocks);
   }
 
   off_t offset = 0;
@@ -72,13 +73,13 @@ void backward_kernel(hipStream_t stream,
                      ff_dim_t legion_axis) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
-  ArrayShape shape = output_grad.shape;                            
-  calc_blk_size(num_blocks, output_blk_size, shape, legion_axis);           
-  for (int i = 0; i < num_inputs; i++) {                                 
-    shape = input_grads[i].shape;                                        
-    size_t input_num_blocks = 1;                                        
+  ArrayShape shape = output_grad.shape;
+  calc_blk_size(num_blocks, output_blk_size, shape, legion_axis);
+  for (int i = 0; i < num_inputs; i++) {
+    shape = input_grads[i].shape;
+    size_t input_num_blocks = 1;
     calc_blk_size(input_num_blocks, input_blk_sizes[i], shape, legion_axis);
-    assert(input_num_blocks == num_blocks);                              
+    assert(input_num_blocks == num_blocks);
   }
 
   off_t offset = 0;

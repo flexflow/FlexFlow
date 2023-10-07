@@ -58,7 +58,8 @@ ElementBinaryPerDeviceState init_kernel(PerDeviceFFHandle handle,
     default:
       assert(false);
   }
-  checkCUDNN(miopenSetOpTensorDescriptor(opDesc, mode, miopenFloat, MIOPEN_PROPAGATE_NAN));
+  checkCUDNN(miopenSetOpTensorDescriptor(
+      opDesc, mode, miopenFloat, MIOPEN_PROPAGATE_NAN));
   checkCUDNN(miopenSetReduceTensorDescriptor(reduceAddDesc,
                                              MIOPEN_REDUCE_TENSOR_ADD,
                                              miopenFloat,
