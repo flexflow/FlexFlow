@@ -67,6 +67,7 @@ LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
   
   //todo: how to use allocator to allocate memory for float * one_ptr, how many bytes to allocate?
+  
   LinearPerDeviceState per_device_state = {handle,  
                                            outputTensor,
                                            actiDesc,

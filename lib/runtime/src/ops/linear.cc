@@ -2,6 +2,8 @@
 #include "kernels/linear_kernels.h"
 #include "layer.h"
 #include "legion/legion_utilities.h"
+#include "op-attrs/ff_dim.h"
+#include "utils/exception.decl.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -939,6 +941,139 @@ LinearParams Linear::get_params() const {
   params.activation = this->activation;
 
   return params;
+}
+
+enum slots {INPUT, OUTPUT, WEIGHT, BIAS, ATTR, PROFILING, HANDLE}; //Note: this needs add more 
+
+OpTaskInvocation init(LinearAttrs const & attrs) {
+  OpTaskBinding binding; 
+  
+  bind.bind_arg(HANDLE, ff_handle());
+  bind.bind_arg(ATTR, attrs);
+
+  bind.bind(INPUT, input_tensor(0));//input
+  bind.bind(WEIGHT, weight_tensor(0));//weight
+  bind.bind(OUTPUT, output_tensor(0));//output
+
+  return {LINEAR_INIT_TASK_ID, binding};
+}
+
+OpTaskInvocation forward(LinearAttrs const & attrs) {
+  OpTaskBinding binding; 
+  bind.bind(INPUT, input_tensor(0));//input
+  bind.bind(WEIGHT, weight_tensor(0));//weight
+  bind.bind(OUTPUT, output_tensor(0));//output
+  bind.bind(BIAS, bias_tensor(0));//bias
+
+  b.bind_arg(PROFILING, profiling_settings());
+  b.bind_arg(PER_DEVICE_STATE, per_device_state<LinearPerDeviceState>());
+  bind.bind_arg(ATTRS, attrs);  
+
+  return {LINEAR_FWD_TASK_ID, binding};
+}
+
+OpTaskInvocation backward(LinearAttrs const & attrs) {
+   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
+
+   return {LINEAR_BWD_TASK_ID, b};
+}
+
+static DeviceSpecific<LinearPerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
+  auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
+  Allocator allocator = acc.get_allocator();
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
+
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto weight = acc.get_tensor<Permissions::RO>(WEIGHT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  int out_dim = output.shape.at(ff_dim_t{0}) + 1;
+  int batch_size = output.shape.get_volume() / out_dim;
+
+  float *one_ptr;
+
+  DeviceSpecific<LinearPerDeviceState> state = acc.create_device_specific<LinearPerDeviceState>(
+                                           init_kernel(handle,
+                                                       allocator,
+                                                       one_ptr,
+                                                       attrs.regularizer,
+                                                       attrs.use_bias,
+                                                       input.shape,
+                                                        weight.shape,
+                                                        output.shape,
+                                                        batch_size,
+                                                        attrs.out_channels));
+  return state;
+}
+
+static DeviceSpecific<MHAPerDeviceState>
+    init_task(Task const *task,
+              std::vector<PhysicalRegion> const &regions,
+              Context ctx,
+              Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return init_task_impl(acc);
+}
+
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto weight = acc.get_tensor<Permissions::RO>(WEIGHT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  auto bias = acc.get_tensor<Permissions::RO>(BIAS);
+
+  auto state = acc.get_device_specific<LinearPerDeviceState>(PER_DEVICE_STATE);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+
+  int in_dim = input.shape.at(ff_dim_t{0}) + 1;
+  int out_dim = output.shape.at(ff_dim_t{0}) + 1;
+  int batch_size = output.shape.get_volume() / out_dim;
+  auto attrs = acc.get_argument<LinearAttrs>(ATTRS);
+
+  float const *bias_ptr = NULL;
+  if(attrs.use_bias) {
+    bias_ptr = bias.get_float_ptr();
+  }
+  
+  return profile(forward_kernel,
+                profiling,
+                "[Linear] forward_time = %.2lfms\n",
+                per_device_state,
+                input.get_float_ptr(),
+                output.get_float_ptr(),
+                weight.get_float_ptr(),
+                bias_ptr,
+                in_dim,
+                out_dim,
+                batch_size);
+}
+
+static void forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  forward_task_impl(acc);
+};
+
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+  NOT_IMPLEMENTED();
+}
+
+static void backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  backward_task_impl(acc);
+}
+
+CostMetrics measure_operator_cost(SimEnvFactory const &sim,
+                                  MultiHeadAttentionAttrs const &attrs,
+                                  InputParallelTensorDesc const &query_shape,
+                                  InputParallelTensorDesc const &key_shape,
+                                  InputParallelTensorDesc const &value_shape,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &mv) {
+  NOT_IMPLEMENTED();
 }
 
 /* void LinearParams::solve_dims(const ParallelTensor input, */
