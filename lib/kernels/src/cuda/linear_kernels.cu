@@ -19,42 +19,8 @@
 
 namespace FlexFlow {
 
-LinearPerDeviceState::LinearPerDeviceState(FFHandler handler, int batch_size)
-    : PerDeviceOpState(handler) {
-  // Allocate an all-one's vector
-  float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
-  for (int i = 0; i < batch_size; i++) {
-    dram_one_ptr[i] = 1.0f;
-  }
-  float *fb_one_ptr;
-  checkCUDA(cudaMalloc(&fb_one_ptr, sizeof(float) * batch_size));
-  checkCUDA(cudaMemcpy(fb_one_ptr,
-                       dram_one_ptr,
-                       sizeof(float) * batch_size,
-                       cudaMemcpyHostToDevice));
-  one_ptr = (float const *)fb_one_ptr;
-  // Allocate descriptors
-  checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
-  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
-}
-
 namespace Kernels {
 namespace Linear {
-
-bool use_activation(ActiMode mode) {
-  switch (mode) {
-    case AC_MODE_RELU:
-    case AC_MODE_SIGMOID:
-    case AC_MODE_TANH:
-      return true;
-    case AC_MODE_NONE:
-      return false;
-    default:
-      assert(0);
-      break;
-  }
-  return false;
-}
 
 //what's the float * one_ptr 
 LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
