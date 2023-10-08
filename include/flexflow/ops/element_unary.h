@@ -26,7 +26,6 @@ public:
   DataType data_type;
   bool inplace;
   float scalar;
-  char op_name[MAX_OPNAME];
 };
 
 class ElementUnary : public Op {

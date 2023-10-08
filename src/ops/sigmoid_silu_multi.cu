@@ -24,6 +24,7 @@ SigmoidSiluMultiMeta::SigmoidSiluMultiMeta(FFHandler handle,
                                            MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
   profiling = ssm->profiling;
+  inference_debugging = ssm->inference_debugging;
 }
 
 SigmoidSiluMultiMeta::~SigmoidSiluMultiMeta(void) {

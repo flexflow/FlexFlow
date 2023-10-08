@@ -46,7 +46,9 @@ public:
   static int max_requests_per_batch();
   static int max_tokens_per_batch();
   static int max_sequence_length();
+  friend std::ostream &operator<<(std::ostream &os, BatchConfig const &bc);
   void print() const;
+  void save_to_file(std::string const &filename) const;
   virtual InferenceMode get_mode() const;
   static BatchConfig const *from_future(BatchConfigFuture const &future);
   // Maximum possible values for different parameters
@@ -55,9 +57,8 @@ public:
   static int const MAX_NUM_REQUESTS = 64;
   static int const MAX_NUM_TOKENS = 1024;
 
-  //  These are set by update
+  //  Set by update
   int num_tokens;
-  bool loading_prompt = false;
 
   struct PerRequestInfo {
     int token_start_offset;
@@ -74,7 +75,7 @@ public:
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 
   bool request_completed[MAX_NUM_REQUESTS];
-  bool request_running[MAX_NUM_TOKENS];
+  bool request_running[MAX_NUM_REQUESTS];
 };
 
 class TreeVerifyBatchConfig : public BatchConfig {
@@ -82,7 +83,10 @@ public:
   TreeVerifyBatchConfig();
   ~TreeVerifyBatchConfig();
   InferenceMode get_mode() const;
+  friend std::ostream &operator<<(std::ostream &os,
+                                  TreeVerifyBatchConfig const &bc);
   void print() const;
+  void save_to_file(std::string const &filename) const;
   struct CommittedTokensInfo {
     int token_index;   // the index of the token in the previous batch
     int request_index; // request index in the batch
@@ -108,7 +112,10 @@ public:
 
   ~BeamSearchBatchConfig();
 
+  friend std::ostream &operator<<(std::ostream &os,
+                                  BeamSearchBatchConfig const &bc);
   void print() const;
+  void save_to_file(std::string const &filename) const;
   bool done() const;
   int max_beam_depth_all_requests() const;
   int current_depth_all_requests() const;

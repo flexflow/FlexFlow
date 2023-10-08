@@ -508,6 +508,8 @@ OpMeta *AddBiasResidualLayerNorm::init_task(
   }
   meta->output_type[0] = ln->outputs[0]->data_type;
   meta->output_type[1] = ln->outputs[1]->data_type;
+  std::strcpy(meta->op_name, ln->name);
+  meta->layer_guid = ln->layer_guid;
   return meta;
 }
 
@@ -620,7 +622,7 @@ void AddBiasResidualLayerNorm::inference_task(
     return;
   }
 
-  AddBiasResidualLayerNormMeta const *m =
+  AddBiasResidualLayerNormMeta *m =
       *((AddBiasResidualLayerNormMeta **)task->local_args);
 
   assert(regions.size() ==
@@ -669,40 +671,6 @@ void AddBiasResidualLayerNorm::inference_task(
   assert(in_domain.get_volume() ==
          m->effective_num_elements * m->effective_batch_size);
 
-  // std::cout << std::endl << "INFERENCE task tensor dims:" << std::endl;
-  // std::cout << "input: ";
-  // for (int i=0; i<in_domain.get_dim(); i++) {
-  //   std::cout << in_domain.hi()[i] - in_domain.lo()[i] + 1 << " ";
-  // }
-  // std::cout << std::endl;
-  // std::cout << "residual: ";
-  // for (int i=0; i<residual_domain.get_dim(); i++) {
-  //   std::cout << residual_domain.hi()[i] - residual_domain.lo()[i] + 1 << "
-  //   ";
-  // }
-  // std::cout << std::endl;
-  // std::cout << "added_output: ";
-  // for (int i=0; i<added_out_domain.get_dim(); i++) {
-  //   std::cout << added_out_domain.hi()[i] - added_out_domain.lo()[i] + 1 << "
-  //   ";
-  // }
-  // std::cout << std::endl;
-  // std::cout << "output: ";
-  // for (int i=0; i<out_domain.get_dim(); i++) {
-  //   std::cout << out_domain.hi()[i] - out_domain.lo()[i] + 1 << " ";
-  // }
-  // std::cout << std::endl;
-  // std::cout << "attn_bias: ";
-  // for (int i=0; i<attn_bias_domain.get_dim(); i++) {
-  //   std::cout << attn_bias_domain.hi()[i] - attn_bias_domain.lo()[i] + 1 << "
-  //   ";
-  // }
-  // std::cout << std::endl;
-
-  // std::cout << "in_domain.get_volume(): " << in_domain.get_volume() <<
-  // std::endl; std::cout << "(int)attn_bias_dim: " << (int)attn_bias_dim <<
-  // std::endl;
-
   if (m->elementwise_affine) {
     gamma = helperGetGenericTensorAccessorRO(m->weight_type[1],
                                              regions[5],
@@ -749,6 +717,26 @@ void AddBiasResidualLayerNorm::inference_task(
       attn_bias,
       gamma,
       beta);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    weights_accessors.push_back(attn_bias);
+    if (m->elementwise_affine) {
+      weights_accessors.push_back(gamma);
+      if (m->use_bias) {
+        weights_accessors.push_back(beta);
+      }
+    }
+    AddBiasResidualLayerNorm::save_inference_tensors_to_file(
+        m,
+        shard_id,
+        bc,
+        {input, residual},
+        weights_accessors,
+        {added_output, output});
+  }
 }
 
 bool AddBiasResidualLayerNorm::measure_operator_cost(
@@ -759,6 +747,7 @@ bool AddBiasResidualLayerNorm::measure_operator_cost(
 void AddBiasResidualLayerNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->axes.size());
   for (size_t i = 0; i < this->axes.size(); i++) {
     sez.serialize(this->axes[i]);
@@ -780,10 +769,11 @@ Node AddBiasResidualLayerNorm::deserialize(FFModel &ff,
   bool elementwise_affine;
   bool use_bias;
   float eps;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(num_axes);
   for (size_t i = 0; i < num_axes; i++) {
     int axis_idx;
@@ -812,6 +802,7 @@ size_t hash<FlexFlow::AddBiasResidualLayerNormParams>::operator()(
   size_t key = 0;
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.layer_guid.transformer_layer_id);
+  hash_combine(key, params.layer_guid.model_id);
   hash_combine(key, params.axes.size());
   for (int n : params.axes) {
     hash_combine(key, n);

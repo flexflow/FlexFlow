@@ -33,6 +33,7 @@ AddBiasResidualLayerNormMeta::AddBiasResidualLayerNormMeta(
   effective_batch_size = ln->effective_batch_size;
   effective_num_elements = ln->effective_num_elements;
   profiling = ln->profiling;
+  inference_debugging = ln->inference_debugging;
   eps = ln->eps;
   DataType data_type = ln->data_type;
   size_t totalSize = effective_batch_size * data_type_size(data_type) * 3;
