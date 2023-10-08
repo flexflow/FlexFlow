@@ -3,16 +3,18 @@
 
 namespace FlexFlow {
 
-/* bool CombineAttrs::is_valid(ParallelTensorShape const &input) const { */
-/*   return input.at(this->combine_legion_dim).degree % this->combine_degree ==
- * 0; */
-/* } */
+bool CombineAttrs::is_valid(ParallelTensorShape const &input) const {
+    if (!input.is_valid()) {
+        return false;
+    }
+    return true;
+}
 
-/* ParallelTensorShape CombineAttrs::output_shape(ParallelTensorShape const
- * &input_shape) const { */
-/*   ParallelTensorShape output = input_shape; */
-/*   output.at(this->combine_legion_dim).degree /= this->combine_degree; */
-/*   return output; */
-/* } */
+ParallelTensorShape get_output_shape(CombineAttrs const & attrs,
+                                     ParallelTensorShape const & input) {
+  ParallelTensorShape output = input_shape;
+  output.at(attrs.combine_dim).degree /= attrs.combine_degree;
+  return output;                                     
+}
 
 } // namespace FlexFlow
