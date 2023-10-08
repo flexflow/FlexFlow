@@ -10,9 +10,13 @@ namespace FlexFlow {
 struct DropoutAttrs {
   req<float> rate;
   req<unsigned long long> seed;
+  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(DropoutAttrs, rate, seed);
 CHECK_VALID_OP_ATTR(DropoutAttrs);
+
+ParallelTensorShape get_output_shape(DropoutAttrs const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 
