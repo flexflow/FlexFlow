@@ -18,34 +18,33 @@ struct Pool2DPerDeviceState {
 }
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Pool2DPerDeviceState,
-                                            handle,
-                                            inputTensor,
-                                            outputTensor,
-                                            actiDesc,
-                                            poolDesc,
-                                            relu);
+                                             handle,
+                                             inputTensor,
+                                             outputTensor,
+                                             actiDesc,
+                                             poolDesc,
+                                             relu);
 
 namespace Kernels {
 namespace Pool2D {
 
 Pool2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                                optional<Activation> activation,
-                                int input_w,
-                                int input_h,
-                                int input_c,
-                                int input_n,
-                                int output_w,
-                                int output_h,
-                                int output_c,
-                                int output_n,
-                                int pad_h,
-                                int pad_w,
-                                int kernel_h,
-                                int kernel_w,
-                                int stride_h,
-                                int stride_w,
-                                PoolOp pool_type);  
-                                
+                                 optional<Activation> activation,
+                                 int input_w,
+                                 int input_h,
+                                 int input_c,
+                                 int input_n,
+                                 int output_w,
+                                 int output_h,
+                                 int output_c,
+                                 int output_n,
+                                 int pad_h,
+                                 int pad_w,
+                                 int kernel_h,
+                                 int kernel_w,
+                                 int stride_h,
+                                 int stride_w,
+                                 PoolOp pool_type);
 
 void init_kernel(Pool2DPerDeviceState *m,
                  int input_w,
