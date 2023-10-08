@@ -2,8 +2,9 @@
 #include "kernels/pool_2d_kernels.h"
 #include "legion/legion_utilities.h"
 #include "op-attrs/ops/pool_2d.h"
-#include "utils/exception.decl.h"
+#include "utils/exceptions.h"
 #include "utils/hash-utils.h"
+#include "op-attrs/get_output_shapes.h"
 
 using namespace FlexFlow::Kernels::Pool2D;
 
@@ -706,13 +707,34 @@ static DeviceSpecific<Pool2dPerDeviceState> init_task_impl(TaskArgumentAccessor 
   return state;
 }
 
-
-static DeviceSpecific<Pool2dPerDeviceState>     init_task(Task const *task,
+static DeviceSpecific<Pool2dPerDeviceState>  init_task(Task const *task,
               std::vector<PhysicalRegion> const &regions,
               Context ctx,
               Runtime *runtime) {
   TaskArgumentAccessor acc(task, regions, ctx, runtime);
   return init_task_impl(acc);
+}
+
+CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
+                                  Pool2DAttrs const &attrs,
+                                  ParallelTensorShape const &input_shape,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &machine_view) {
+  auto env = sim.new_environment();
+  ParallelTensorShape output_shape =
+      get_output_shape(attrs, input_shape);
+  
+  SimTaskBinding init_binding;
+  init_binding.bind(INPUT, input_shape);
+  init_binding.bind(OUTPUT, output_shape);
+  init_binding.bind_arg(ATTRS, attrs);
+  init_binding.bind_arg(HANDLE, ff_handle());
+
+  auto init_accessor =
+      env.get_init_accessor(POOL2D_INIT_TASK_ID, init_binding);
+  
+  DeviceSpecific<Pool2dPerDeviceState> per_device_state = init_task_impl(init_accessor);
+  
 }
 
 }; // namespace std
