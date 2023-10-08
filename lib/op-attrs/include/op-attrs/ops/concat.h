@@ -13,6 +13,9 @@ struct ConcatAttrs {
   bool is_valid(std::vector<ParallelTensorShape> const & input) const;
 };
 
+ParallelTensorShape get_output_shape(ConcatAttrs const &,
+                                     std::vector<ParallelTensorShape> const &);
+
 FF_VISITABLE_STRUCT(ConcatAttrs, axis);
 CHECK_VALID_OP_ATTR(ConcatAttrs);
 
