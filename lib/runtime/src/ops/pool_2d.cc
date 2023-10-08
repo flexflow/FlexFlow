@@ -823,12 +823,23 @@ void register_task<POOL2D_INIT_TASK_ID>() {
 
 template <>
 void register_task<POOL2D_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FWD);
 
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+
+  fwd.add_arg_slot<Pool2DPerDeviceState>(PER_DEVICE_STATE);
+
+  register_task(POOL2D_FWD_TASK_ID, "Pool2D::forward", fwd, forward_task);
 }
 
 template <>
 void register_task<POOL2D_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(POOL2D_FWD_TASK_ID));
 
+  register_task(POOL2D_BWD_TASK_ID, "Pool2D::backward", bwd, backward_task);
 }
 
 
