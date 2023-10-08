@@ -12,6 +12,7 @@ bool BatchMatmulAttrs::is_valid(ParallelTensorShape const & lhs, ParallelTensorS
     if (lhs.num_dims() != rhs.num_dims()) {
           return false;
     }
+    
     return true;
 }
 

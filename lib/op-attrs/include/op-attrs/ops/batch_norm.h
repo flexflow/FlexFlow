@@ -9,10 +9,11 @@ namespace FlexFlow {
 
 struct BatchNormAttrs {
   req<bool> relu;
+  bool is_valid(ParallelTensorShape const &);
 };
 FF_VISITABLE_STRUCT(BatchNormAttrs, relu);
 
-ParallelTensorShape get_output_shape(BatchNormAttrs const &);
+ParallelTensorShape get_output_shape(BatchNormAttrs const &, ParallelTensorShape const &);
 
 CHECK_VALID_OP_ATTR(BatchNormAttrs);
 
