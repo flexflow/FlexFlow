@@ -183,6 +183,7 @@ void inference_kernel(LoraLinearMeta *m,
     LoraLinearWeight weight =
         m->model_weights[bc->requestsInfo[i].peft_model_id];
     int rank = weight.rank;
+    void *intermediate_result_ptr = nullptr;
     if (bc->requestsInfo[i].peft_bwd) {
       MemoryAllocator *allocator = m->handle.peft_activation_allocator;
       m->input_activation = allocator->allocate_instance_untyped(
@@ -196,6 +197,12 @@ void inference_kernel(LoraLinearMeta *m,
                                     num_peft_tokens * in_dim,
                                 cudaMemcpyDeviceToDevice,
                                 stream));
+      intermediate_result_ptr = m->low_rank_activation;
+    } else {
+      // use workspace to save intermediate result
+      assert(m->handle.workSpaceSize >=
+             data_type_size(m->input_type[1]) * num_peft_tokens * rank);
+      intermediate_result_ptr = m->handle.workSpace;
     }
     // buffer = weight_first * input
     checkCUDA(cublasGemmEx(m->handle.blas,
@@ -212,7 +219,7 @@ void inference_kernel(LoraLinearMeta *m,
                            input_type,
                            in_dim,
                            &beta,
-                           m->low_rank_activation,
+                           intermediate_result_ptr,
                            lr_actv_type,
                            rank,
                            compute_type,
@@ -230,7 +237,7 @@ void inference_kernel(LoraLinearMeta *m,
                            weight.w1_ptr,
                            weight_type,
                            rank,
-                           m->low_rank_activation,
+                           intermediate_result_ptr,
                            lr_actv_type,
                            rank,
                            &alpha,

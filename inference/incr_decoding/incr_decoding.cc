@@ -257,6 +257,11 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false && "unknow model type");
   }
 
+  // Register PEFT layer
+  std::map<std::string, int> peft_config;
+  peft_config["lora_mlp_linear_second"] = 4;
+  PEFTModelID peft_model_id = model.register_peft_model(peft_config);
+
   int total_num_requests = 0;
   {
     using json = nlohmann::json;
@@ -274,7 +279,7 @@ void FlexFlow::top_level_task(Task const *task,
       prompts.push_back(text);
     }
     GenerationResult result =
-        model.generate(prompts, 128 /*max_sequence_length*/);
+        model.generate(prompts, 128 /*max_sequence_length*/, peft_model_id);
   }
 
   // Execution fence

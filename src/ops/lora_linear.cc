@@ -261,8 +261,10 @@ void LoraLinear::register_model_task(Task const *task,
   int out_dim = lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree;
   DataType dt = m->input_type[0];
   assert(dt == m->input_type[1]);
-  assert(dt == m->output_type[1]);
+  assert(dt == m->output_type[0]);
   assert(dt == lora->inputs[0]->data_type);
+  assert(dt == lora->inputs[1]->data_type);
+  assert(dt == lora->outputs[0]->data_type);
   assert(m->model_weights.find(info->model_id) == m->model_weights.end());
   LoraLinearWeight weight;
   PEFTWeightAllocator *allocator = m->handle.peft_weight_allocator;

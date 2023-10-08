@@ -1508,6 +1508,9 @@ FFRuntime::FFRuntime(FFConfig &config) {
     info.workSpaceSize = config.workSpaceSize;
     info.offload_reserve_space_size =
         config.cpu_offload ? config.offload_reserve_space_size : 0;
+    info.peft_activation_reserve_space_size =
+        config.peft_activation_reserve_space_size;
+    info.peft_weight_reserve_space_size = config.peft_weight_reserve_space_size;
     info.quantization_type = config.quantization_type;
     info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
@@ -3991,6 +3994,11 @@ struct DefaultConfig {
   const static bool searchOverlapBackwardUpdate = false;
   const static size_t offloadReserveSpaceSize =
       (size_t)8 * 1024 * 1024 * 1024; // 8 GB
+  // PEFT related fields
+  const static size_t peftActivationReserveSpaceSize =
+      (size_t)1 * 1024 * 1024 * 1024; // 1GB
+  const static size_t peftWeightReserveSpaceSize =
+      (size_t)1 * 1024 * 1024 * 1024; // 1GB
   const static bool cpuOffload = false;
   const static bool onlyDataParallel = true;
   const static bool enableSampleParallel = true;
@@ -4025,6 +4033,10 @@ FFConfig::FFConfig() {
   computationMode = COMP_MODE_TRAINING;
   cpu_offload = DefaultConfig::cpuOffload;
   offload_reserve_space_size = DefaultConfig::offloadReserveSpaceSize;
+  // PEFT related fields
+  peft_activation_reserve_space_size =
+      DefaultConfig::peftActivationReserveSpaceSize;
+  peft_weight_reserve_space_size = DefaultConfig::peftWeightReserveSpaceSize;
   quantization_type = DT_NONE;
   only_data_parallel = DefaultConfig::onlyDataParallel;
   data_parallelism_degree = 1;

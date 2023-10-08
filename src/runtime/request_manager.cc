@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/request_manager.h"
+#include "flexflow/ops/fused.h"
 #include "flexflow/ops/lora_linear.h"
 #include "flexflow/parallel_ops/parallel_op.h"
 // #include "flexflow/tokenizers.h"
@@ -1817,42 +1818,66 @@ GenerationResult FFModel::generate(std::vector<std::string> &prompts,
   }
 }
 
+std::string find_layer_name_from_guid(FFModel *model, LayerID guid) {
+  for (size_t i = 0; i < model->layers.size(); i++) {
+    if (model->layers[i]->layer_guid == guid) {
+      std::string layer_name(model->layers[i]->name);
+      return layer_name;
+    }
+  }
+  assert(false);
+  return "invalid_layer_name";
+}
+
 PEFTModelID FFModel::register_peft_model(std::map<std::string, int> configs) {
   PEFTModelID peft_model_id(peft_model_global_guid++);
   InferenceManager *im = InferenceManager::get_inference_manager();
+  std::vector<Op *> peft_operators;
   for (size_t op = 0; op < operators.size(); op++) {
     if (operators[op]->op_type == OP_LORA_LINEAR) {
-      std::string opname(operators[op]->name);
-      // Remove the guid and the ``_'' char from opname: guid has 7 digits
-      // and ``_'' occupies 1 char
-      opname.erase(opname.length() - 8);
-      assert(configs.find(opname) != configs.end());
-      int rank = configs[opname];
-      LoraLinear *lora = static_cast<LoraLinear *>(operators[op]);
-      // Currently assume only a single data pipeline
-      assert(config.data_parallelism_degree == 1);
-      std::vector<ParallelTensor> inputs(lora->numInputs);
-      std::vector<ParallelTensor> outputs(lora->numOutputs);
+      peft_operators.push_back(operators[op]);
+    } else if (operators[op]->op_type == OP_FUSED) {
+      FusedOp *fused = static_cast<FusedOp *>(operators[op]);
+      for (size_t op2 = 0; op2 < fused->numOperators; op2++) {
+        if (fused->operators[op2]->op_type == OP_LORA_LINEAR) {
+          peft_operators.push_back(fused->operators[op2]);
+        }
+      }
+    }
+  }
+  for (size_t op = 0; op < peft_operators.size(); op++) {
+    std::string layer_name =
+        find_layer_name_from_guid(this, peft_operators[op]->layer_guid);
+    switch (peft_operators[op]->op_type) {
+      case OP_LORA_LINEAR: {
+        // Remove the guid and the ``_'' char from opname: guid has 7 digits
+        // and ``_'' occupies 1 char
+        layer_name = layer_name.erase(layer_name.length() - 8);
+        assert(configs.find(layer_name) != configs.end());
+        int rank = configs[layer_name];
+        LoraLinear *lora = static_cast<LoraLinear *>(peft_operators[op]);
+        // Currently assume only a single data pipeline
+        assert(config.data_parallelism_degree == 1);
+        std::vector<ParallelTensor> inputs(lora->numInputs);
+        std::vector<ParallelTensor> outputs(lora->numOutputs);
 
-      for (int i = 0; i < lora->numInputs; i++) {
-        assert(im->tensor_buffer.find(lora->inputs[i]) !=
-               im->tensor_buffer.end());
-        assert(lora->inputs[i] != nullptr);
-        assert(lora->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
-        assert(im->tensor_buffer[lora->inputs[i]].size() == 1);
-        inputs[i] = im->tensor_buffer[lora->inputs[i]][0];
-        assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        for (int i = 0; i < lora->numInputs; i++) {
+          assert(im->tensor_buffer.find(lora->inputs[i]) !=
+                 im->tensor_buffer.end());
+          assert(lora->inputs[i] != nullptr);
+          assert(lora->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+          assert(im->tensor_buffer[lora->inputs[i]].size() == 1);
+          inputs[i] = im->tensor_buffer[lora->inputs[i]][0];
+          assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        }
+        assert(lora->numOutputs == 1);
+        outputs[0] = inputs[1];
+        lora->register_peft_model(*this, inputs, outputs, peft_model_id, rank);
+        break;
       }
-      for (int i = 0; i < lora->numOutputs; i++) {
-        assert(im->tensor_buffer.find(lora->outputs[i]) !=
-               im->tensor_buffer.end());
-        assert(lora->outputs[i] != nullptr);
-        assert(lora->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
-        assert(im->tensor_buffer[lora->outputs[i]].size() == 1);
-        outputs[i] = im->tensor_buffer[lora->outputs[i]][0];
-        assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      default: {
+        assert(false && "Unsupported PEFT Operator type");
       }
-      lora->register_peft_model(*this, inputs, outputs, peft_model_id, rank);
     }
   }
   return peft_model_id;

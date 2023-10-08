@@ -80,10 +80,10 @@ struct FFHandler {
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
   // PEFT related fields
-  void *peft_activation_reserve_space;
-  size_t peft_activation_reserve_space_size;
   MemoryAllocator *peft_activation_allocator;
+  size_t peft_activation_reserve_space_size;
   PEFTWeightAllocator *peft_weight_allocator;
+  size_t peft_weight_reserve_space_size;
   // Quantization fields
   DataType quantization_type;
   bool allowTensorOpMathConversion;
@@ -96,6 +96,7 @@ struct FFInitInfo {
   size_t workSpaceSize;
   size_t offload_reserve_space_size;
   size_t peft_activation_reserve_space_size;
+  size_t peft_weight_reserve_space_size;
   DataType quantization_type;
   bool allowTensorOpMathConversion;
   // int myRank, allRanks;
@@ -151,6 +152,9 @@ public:
   bool cpu_offload;
   size_t offload_reserve_space_size;
   DataType quantization_type;
+  // PEFT related fields
+  size_t peft_activation_reserve_space_size;
+  size_t peft_weight_reserve_space_size;
   // Control parallelizable dimensions
   bool only_data_parallel;
   bool enable_sample_parallel;
