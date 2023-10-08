@@ -19,7 +19,6 @@ CHECK_VALID_OP_ATTR(BatchMatmulAttrs);
 ParallelTensorShape get_output_shape(BatchMatmulAttrs const &,
                                      ParallelTensorShape const &,
                                      ParallelTensorShape const &);
-
 } // namespace FlexFlow
 
 #endif
