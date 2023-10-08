@@ -18,15 +18,76 @@
 
 namespace FlexFlow {
 
-Pool2DPerDeviceState::Pool2DPerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {
-  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(cudnnCreatePoolingDescriptor(&poolDesc));
-}
-
 namespace Kernels {
 namespace Pool2D {
+
+Pool2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
+                                optional<Activation> activation,
+                                int input_w,
+                                int input_h,
+                                int input_c,
+                                int input_n,
+                                int output_w,
+                                int output_h,
+                                int output_c,
+                                int output_n,
+                                int pad_h,
+                                int pad_w,
+                                int kernel_h,
+                                int kernel_w,
+                                int stride_h,
+                                int stride_w,
+                                PoolOp pool_type) {
+    ffTensorDescriptor_t inputTensor;
+    ffTensorDescriptor_t outputTensor;
+    ffActivationDescriptor_t actiDesc;
+    ffPoolingDescriptor_t poolDesc;
+
+    checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+    checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+    checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
+    checkCUDNN(cudnnCreatePoolingDescriptor(&poolDesc));
+
+    checkCUDNN(cudnnSetTensor4dDescriptor(inputTensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT,
+                                        input_n,
+                                        input_c,
+                                        input_h,
+                                        input_w));
+    cudnnPoolingMode_t mode;
+    if (pool_type == PoolOp::MAX) {
+      mode = CUDNN_POOLING_MAX;
+    } else {
+      assert(pool_type == PoolOp::AVG);
+      mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    }
+
+    checkCUDNN(cudnnSetPooling2dDescriptor(poolDesc,
+                                         mode,
+                                         CUDNN_PROPAGATE_NAN,
+                                         kernel_h,
+                                         kernel_w,
+                                         pad_h,
+                                         pad_w,
+                                         stride_h,
+                                         stride_w));
+    
+  int n, c, h, w;
+  checkCUDNN(cudnnGetPooling2dForwardOutputDim(poolDesc, inputTensor, &n, &c, &h, &w));
+  assert(n == output_n);
+  assert(c == output_c);
+  assert(h == output_h);
+  assert(w == output_w);
+
+  checkCUDNN(cudnnSetTensor4dDescriptor(outputTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, n, c, h, w));
+  bool relu = false;
+  if(activation == Activation::RELU) {
+    relu = true;
+  }
+  Pool2DPerDeviceState state = {handle, inputTensor, outputTensor, actiDesc, poolDesc, relu};
+  return state;
+} 
 
 void init_kernel(Pool2DPerDeviceState *m,
                  int input_w,
