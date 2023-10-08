@@ -81,27 +81,17 @@ std::vector<ParallelDimMappingRecord>
   return mappings;
 }
 
-/* bool Conv2DAttrs::is_valid(ParallelTensorShape const &input_shape) const { */
-/*   bool is_valid = true; */
-/*   is_valid &= input_shape.is_valid(); */
-/*   is_valid &= this->calculate_output_shape(input_shape).is_valid(); */
-/*   is_valid &= this->calculate_kernel_shape(input_shape).is_valid(); */
-/*   if (use_bias) { */
-/*     is_valid &= this->calculate_bias_shape(input_shape).is_valid(); */
-/*   } */
+bool Conv2DAttrs::is_valid(TensorShape const &input) const {
+  if (!input.is_valid()) {
+    return false;
+  }
+  return true;
+}
 
-/*   // TODO FIXME: Currently disable parallelizing the height and width
- * dimension */
-/*   if (input_shape.at(0).degree > 1 || input_shape.at(1).degree > 1) { */
-/*     return false; */
-/*   } */
+//according to pytorch, the input shape: []
+ParallelTensorShape get_output_shape(Conv2DAttrs const & attrs,
+                                     ParallelTensorShape const & input) {
 
-/*   return is_valid; */
-
-/* } */
-
-/* OperatorType Conv2DAttrs::op_type() const { */
-/*   return OP_CONV2D; */
-/* } */
+}
 
 } // namespace FlexFlow

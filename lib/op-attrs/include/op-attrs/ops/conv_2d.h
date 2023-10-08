@@ -14,6 +14,7 @@ struct Conv2DAttrs {
       padding_w, groups;
   req<optional<Activation>> activation;
   req<bool> use_bias;
+  bool is_valid(TensorShape const & input) const;
 };
 
 FF_VISITABLE_STRUCT(Conv2DAttrs,
@@ -31,6 +32,9 @@ CHECK_VALID_OP_ATTR(Conv2DAttrs);
 
 TensorShape get_kernel_shape(Conv2DAttrs const &, TensorShape const &);
 TensorShape get_bias_shape(Conv2DAttrs const &, TensorShape const &);
+
+ParallelTensorShape get_output_shape(Conv2DAttrs const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 
