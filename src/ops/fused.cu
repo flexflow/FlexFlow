@@ -712,8 +712,7 @@ __host__ void
         int batch_size = my_input_accessor[0].domain.get_volume() / in_dim;
         assert(my_output_accessor[0].domain.get_volume() ==
                out_dim * batch_size);
-        assert(my_input_accessor[0].domain.get_volume() ==
-               in_dim * batch_size);
+        assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
         LoraLinearMeta *m = (LoraLinearMeta *)metas->meta[op];
         assert(m->input_type[0] == my_input_accessor[0].data_type);
         assert(m->output_type[0] == my_output_accessor[0].data_type);
