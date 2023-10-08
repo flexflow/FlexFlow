@@ -212,7 +212,6 @@ void LoraLinear::register_peft_model(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
-    MachineView const *mv,
     PEFTModelID const &model_id,
     int rank) {
   assert(check_output_input_weight_same_parallel_is());
@@ -229,7 +228,7 @@ void LoraLinear::register_peft_model(
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  MachineView const *view = mv ? mv : &output_tensor->machine_view;
+  MachineView const *view = &output_tensor->machine_view;
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_inference(ff, argmap, output_tensor);
   LoraLinearRegisterInfo info;

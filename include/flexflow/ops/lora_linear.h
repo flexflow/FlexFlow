@@ -41,7 +41,6 @@ public:
   void register_peft_model(FFModel const &ff,
                            std::vector<ParallelTensor> const &batch_inputs,
                            std::vector<ParallelTensor> const &batch_outputs,
-                           MachineView const *mv,
                            PEFTModelID const &model_id,
                            int rank);
   Legion::FutureMap inference(FFModel const &,

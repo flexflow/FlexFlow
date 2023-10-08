@@ -815,7 +815,10 @@ public:
   // Inference APIs
   // ========================================
   GenerationResult generate(std::vector<std::string> &prompts,
-                            int max_seq_length);
+                            int max_seq_length,
+                            PEFTModelID peft_model_id = PEFTModelID::NO_ID);
+
+  PEFTModelID register_peft_model(std::map<std::string, int> config);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
@@ -1112,7 +1115,7 @@ public:
   void clear_graph_search_cache();
 
 public:
-  size_t op_global_guid, layer_global_guid;
+  size_t op_global_guid, layer_global_guid, peft_model_global_guid;
   size_t tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
   size_t current_transformer_layer_id;
   // positional embedding start offset

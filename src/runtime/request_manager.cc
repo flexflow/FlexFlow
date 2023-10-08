@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/request_manager.h"
+#include "flexflow/ops/lora_linear.h"
 #include "flexflow/parallel_ops/parallel_op.h"
 // #include "flexflow/tokenizers.h"
 #include <filesystem>
@@ -175,7 +176,8 @@ size_t RequestManager::get_num_ssms() {
 
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::vector<TokenId> const &prompt,
-                                         int max_sequence_length) {
+                                         int max_sequence_length,
+                                         PEFTModelID peft_model_id) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
 
   // Add a new request
@@ -183,6 +185,7 @@ RequestManager::RequestGuid
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
+  request.peft_model_id = peft_model_id;
 
   if (prompt.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
@@ -231,13 +234,15 @@ RequestManager::RequestGuid
 
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::string const &prompt,
-                                         int max_sequence_length) {
+                                         int max_sequence_length,
+                                         PEFTModelID peft_model_id) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Add a new request
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
+  request.peft_model_id = peft_model_id;
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
@@ -439,6 +444,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
       new_bc.requestsInfo[i].max_sequence_length =
           old_bc.requestsInfo[i].max_sequence_length;
+      new_bc.requestsInfo[i].peft_model_id =
+          old_bc.requestsInfo[i].peft_model_id;
       if (new_bc.requestsInfo[i].token_start_offset + 1 ==
           request.tokens.size()) {
         // Incremental phase
@@ -477,6 +484,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                      (int)new_request.tokens.size());
         new_bc.requestsInfo[i].max_sequence_length =
             new_request.max_sequence_length;
+        new_bc.requestsInfo[i].peft_model_id = new_request.peft_model_id;
         new_bc.request_completed[i] = false;
         // add profile_info for the new request
         ProfileInfo profile_info;
@@ -1795,24 +1803,71 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 }
 
 GenerationResult FFModel::generate(std::vector<std::string> &prompts,
-                                   int max_seq_length) {
+                                   int max_seq_length,
+                                   PEFTModelID peft_model_id) {
   RequestManager *rm = RequestManager::get_request_manager();
   if (rm->get_num_ssms() == 0) {
     // No SSMs: perform incremental decoding
-    return rm->generate_incr_decoding(this, prompts, max_seq_length);
+    return rm->generate_incr_decoding(
+        this, prompts, max_seq_length, peft_model_id);
   } else {
     // Registered SSMs: perform speculative inference
-    return rm->generate_spec_infer(this, prompts, max_seq_length);
+    return rm->generate_spec_infer(
+        this, prompts, max_seq_length, peft_model_id);
   }
 }
 
+PEFTModelID FFModel::register_peft_model(std::map<std::string, int> configs) {
+  PEFTModelID peft_model_id(peft_model_global_guid++);
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  for (size_t op = 0; op < operators.size(); op++) {
+    if (operators[op]->op_type == OP_LORA_LINEAR) {
+      std::string opname(operators[op]->name);
+      // Remove the guid and the ``_'' char from opname: guid has 7 digits
+      // and ``_'' occupies 1 char
+      opname.erase(opname.length() - 8);
+      assert(configs.find(opname) != configs.end());
+      int rank = configs[opname];
+      LoraLinear *lora = static_cast<LoraLinear *>(operators[op]);
+      // Currently assume only a single data pipeline
+      assert(config.data_parallelism_degree == 1);
+      std::vector<ParallelTensor> inputs(lora->numInputs);
+      std::vector<ParallelTensor> outputs(lora->numOutputs);
+
+      for (int i = 0; i < lora->numInputs; i++) {
+        assert(im->tensor_buffer.find(lora->inputs[i]) !=
+               im->tensor_buffer.end());
+        assert(lora->inputs[i] != nullptr);
+        assert(lora->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        assert(im->tensor_buffer[lora->inputs[i]].size() == 1);
+        inputs[i] = im->tensor_buffer[lora->inputs[i]][0];
+        assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      }
+      for (int i = 0; i < lora->numOutputs; i++) {
+        assert(im->tensor_buffer.find(lora->outputs[i]) !=
+               im->tensor_buffer.end());
+        assert(lora->outputs[i] != nullptr);
+        assert(lora->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        assert(im->tensor_buffer[lora->outputs[i]].size() == 1);
+        outputs[i] = im->tensor_buffer[lora->outputs[i]][0];
+        assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      }
+      lora->register_peft_model(*this, inputs, outputs, peft_model_id, rank);
+    }
+  }
+  return peft_model_id;
+}
+
 /*static*/
-GenerationResult RequestManager::generate_incr_decoding(
-    FFModel *llm, std::vector<std::string> &prompts, int max_seq_length) {
+GenerationResult
+    RequestManager::generate_incr_decoding(FFModel *llm,
+                                           std::vector<std::string> &prompts,
+                                           int max_seq_length,
+                                           PEFTModelID peft_model_id) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid;
   for (int i = 0; i < prompts.size(); i++) {
-    guid = register_new_request(prompts.at(i), max_seq_length);
+    guid = register_new_request(prompts.at(i), max_seq_length, peft_model_id);
   }
 
   if (guid == 0) {
@@ -1864,12 +1919,15 @@ GenerationResult RequestManager::generate_incr_decoding(
 }
 
 /*static*/
-GenerationResult RequestManager::generate_spec_infer(
-    FFModel *llm, std::vector<std::string> &prompts, int max_seq_length) {
+GenerationResult
+    RequestManager::generate_spec_infer(FFModel *llm,
+                                        std::vector<std::string> &prompts,
+                                        int max_seq_length,
+                                        PEFTModelID peft_model_id) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid;
   for (int i = 0; i < prompts.size(); i++) {
-    guid = register_new_request(prompts.at(i), max_seq_length);
+    guid = register_new_request(prompts.at(i), max_seq_length, peft_model_id);
   }
   if (guid == 0) {
     std::cout

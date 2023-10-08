@@ -1535,6 +1535,7 @@ FFRuntime *ffruntime_singleton = nullptr;
 FFModel::FFModel(FFConfig &_config, bool cpu_offload)
     : op_global_guid(OP_GUID_FIRST_VALID),
       layer_global_guid(LAYER_GUID_FIRST_VALID),
+      peft_model_global_guid(PEFT_MODEL_ID_FIRST_VALID),
       tensor_global_guid(TENSOR_GUID_FIRST_VALID),
       parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
       node_global_guid(NODE_GUID_FIRST_VALID), current_transformer_layer_id(0),

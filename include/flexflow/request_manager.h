@@ -57,6 +57,7 @@ struct Request {
     FINISHING = 104, // finishing request, but not yet verified
   };
   BatchConfig::RequestGuid guid;
+  PEFTModelID peft_model_id;
   int max_sequence_length;
   int initial_len;
   int ssm_cache_size = 0;
@@ -112,15 +113,19 @@ public:
 
   GenerationResult generate_incr_decoding(FFModel *model,
                                           std::vector<std::string> &prompts,
-                                          int max_seq_length);
+                                          int max_seq_length,
+                                          PEFTModelID peft_model_id);
   GenerationResult generate_spec_infer(FFModel *model,
                                        std::vector<std::string> &prompts,
-                                       int max_seq_length);
+                                       int max_seq_length,
+                                       PEFTModelID peft_model_id);
   GenerationResult get_generation_result(RequestGuid const &guid);
   RequestGuid register_new_request(std::string const &prompt,
-                                   int max_sequence_length);
+                                   int max_sequence_length,
+                                   PEFTModelID peft_model_id);
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
-                                   int max_sequence_length);
+                                   int max_sequence_length,
+                                   PEFTModelID peft_model_id);
   bool is_request_completed(RequestGuid const &guid);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
