@@ -65,12 +65,12 @@ void init_kernel(Pool2DPerDeviceState *m,
                  PoolType pool_type);
 
 void forward_kernel(ffStream_t stream,
-                    Pool2DPerDeviceState const *m,
+                    Pool2DPerDeviceState const &m,
                     void const *input_ptr,
                     void *output_ptr);
 
 void backward_kernel(ffStream_t stream,
-                     Pool2DPerDeviceState const *m,
+                     Pool2DPerDeviceState const &m,
                      void const *input_ptr,
                      void *input_grad_ptr,
                      void const *output_ptr,

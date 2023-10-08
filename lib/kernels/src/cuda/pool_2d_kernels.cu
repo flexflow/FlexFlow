@@ -105,7 +105,7 @@ void init_kernel(Pool2DPerDeviceState *m,
                  int stride_h,
                  int stride_w,
                  PoolType pool_type) {
-  checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
+  checkCUDNN(cudnnSetTensor4dDescriptor(m.inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
                                         input_n,
@@ -120,7 +120,7 @@ void init_kernel(Pool2DPerDeviceState *m,
     assert(pool_type == POOL_AVG);
     mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
   }
-  checkCUDNN(cudnnSetPooling2dDescriptor(m->poolDesc,
+  checkCUDNN(cudnnSetPooling2dDescriptor(m.poolDesc,
                                          mode,
                                          CUDNN_PROPAGATE_NAN,
                                          kernel_h,
@@ -131,55 +131,55 @@ void init_kernel(Pool2DPerDeviceState *m,
                                          stride_w));
   int n, c, h, w;
   checkCUDNN(cudnnGetPooling2dForwardOutputDim(
-      m->poolDesc, m->inputTensor, &n, &c, &h, &w));
+      m.poolDesc, m.inputTensor, &n, &c, &h, &w));
   assert(n == output_n);
   assert(c == output_c);
   assert(h == output_h);
   assert(w == output_w);
 
   checkCUDNN(cudnnSetTensor4dDescriptor(
-      m->outputTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, n, c, h, w));
+      m.outputTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, n, c, h, w));
 }
 
 void forward_kernel(cudaStream_t stream,
-                    Pool2DPerDeviceState const *m,
+                    Pool2DPerDeviceState const &m,
                     void const *input_ptr,
                     void *output_ptr) {
 
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(cudnnPoolingForward(m->handle.dnn,
-                                 m->poolDesc,
+  checkCUDNN(cudnnPoolingForward(m.handle.dnn,
+                                 m.poolDesc,
                                  &alpha,
-                                 m->inputTensor,
+                                 m.inputTensor,
                                  input_ptr,
                                  &beta,
-                                 m->outputTensor,
+                                 m.outputTensor,
                                  output_ptr));
 }
 
 void backward_kernel(cudaStream_t stream,
-                     Pool2DPerDeviceState const *m,
+                     Pool2DPerDeviceState const &m,
                      void const *input_ptr,
                      void *input_grad_ptr,
                      void const *output_ptr,
                      void const *output_grad_ptr) {
 
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f;
-  checkCUDNN(cudnnPoolingBackward(m->handle.dnn,
-                                  m->poolDesc,
+  checkCUDNN(cudnnPoolingBackward(m.handle.dnn,
+                                  m.poolDesc,
                                   &alpha,
-                                  m->outputTensor,
+                                  m.outputTensor,
                                   output_ptr,
-                                  m->outputTensor,
+                                  m.outputTensor,
                                   output_grad_ptr,
-                                  m->inputTensor,
+                                  m.inputTensor,
                                   input_ptr,
                                   &alpha,
-                                  m->inputTensor,
+                                  m.inputTensor,
                                   input_grad_ptr));
 }
 
