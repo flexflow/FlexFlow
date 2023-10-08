@@ -734,7 +734,33 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
       env.get_init_accessor(POOL2D_INIT_TASK_ID, init_binding);
   
   DeviceSpecific<Pool2dPerDeviceState> per_device_state = init_task_impl(init_accessor);
-  
+
 }
+
+template <>
+void register_task<POOL2D_INIT_TASK_ID>() {
+  OpTaskSignature init(OpTaskType::INIT);
+
+  init.add_input_slot(INPUT);
+  init.add_output_slot(OUTPUT);
+
+  init.add_arg_slot<Pool2DAttrs>(ATTRS);
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+
+  init.add_return_value<FlexFlow::Pool2DPerDeviceState>();
+
+  register_task(POOL2D_INIT_TASK_ID, "Pool2D::init", init, init_taks); 
+}
+
+template <>
+void register_task<POOL2D_FWD_TASK_ID>() {
+
+}
+
+template <>
+void register_task<POOL2D_BWD_TASK_ID>() {
+
+}
+
 
 }; // namespace std
