@@ -1,6 +1,8 @@
 #include "pool_2d.h"
 #include "kernels/pool_2d_kernels.h"
 #include "legion/legion_utilities.h"
+#include "op-attrs/ops/pool_2d.h"
+#include "utils/exception.decl.h"
 #include "utils/hash-utils.h"
 
 using namespace FlexFlow::Kernels::Pool2D;
@@ -631,4 +633,86 @@ size_t hash<FlexFlow::Pool2DParams>::operator()(
   hash_combine(key, params.activation);
   return key;
 }
+
+enum Slots { INPUT, OUTPUT, ATTRS, PROFILING, PER_DEVICE, HANDLE};
+
+OpTaskInvocation init(Pool2DAttrs const & attrs) {
+  OpTaskBinding binding;
+  binding.bind(INPUT, input_tensor(0));
+  binding.bind(OUTPUT, output_tensor(0));
+  binding.bind_arg(ATTRS, attrs);
+  binding.bind_arg(HANDLE,ff_handle());
+
+  return {POOL2D_INIT_TASK_ID, binding};
+}
+
+static DeviceSpecific<Pool2dPerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
+  NOT_IMPLEMENTED();
+  auto const &attrs = acc.get_argument<Pool2DAttrs>(ATTRS);
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
+
+  auto input = acc.get_tensor<Permission::RO>(INPUT);
+  auto output = acc.get_tensor<Permission::WO>(OUTPUT);
+
+  int input_w = input.shape.at(ff_dim_t(0)) + 1
+  int input_h = input.shape.at(ff_dim_t(1)) + 1
+  int input_c = input.shape.at(ff_dim_t(2)) + 1
+  int input_n = input.shape.at(ff_dim_t(3)) + 1
+  int output_w = output.shape.at(ff_dim_t(0)) + 1
+  int output_h = output.shape.at(ff_dim_t(1)) + 1
+  int output_c = output.shape.at(ff_dim_t(2)) + 1
+  int output_n = output.shape.at(ff_dim_t(3)) + 1
+
+  printf("init pool (input): n(%d) c(%d) h(%d) w(%d)\n",
+         input_n,
+         input_c,
+         input_h,
+         input_w);
+  printf("init pool (output): n(%d) c(%d) h(%d) w(%d)\n",
+         output_n,
+         output_c,
+         output_h,
+         output_w);
+
+  int pad_h = ((output_h - 1) * attrs.stride_h + attrs.kernel_h - input_h + 1) / 2;
+  int pad_w = ((output_w - 1) * attrs.stride_w + attrs.kernel_w - input_w + 1) / 2;
+  if (pad_h != attrs.padding_h) {
+    printf("Warning: changing pool_padding_h to satisfy output_h size\n");
+  }
+
+  if (pad_w != attrs.padding_w) {
+    printf("Warning: changing pool_padding_w to satisfy output_w size\n");
+  }
+
+  DeviceSpecific<Pool2dPerDeviceState> state = acc.create_device_specific<Pool2dPerDeviceState>(
+              init_kernel(handle,
+                          attrs.activation,
+                          input_w,
+                          input_h,
+                          input_c,
+                          input_n,
+                          output_w,
+                          output_h,
+                          output_c,
+                          output_n,
+                          pad_h,
+                          pad_w,
+                          attrs.kernel_h,
+                          attrs.kernel_w,
+                          attrs.stride_h,
+                          attrs.stride_w,
+                          attrs.pool_type);
+
+  return state;
+}
+
+
+static DeviceSpecific<Pool2dPerDeviceState>     init_task(Task const *task,
+              std::vector<PhysicalRegion> const &regions,
+              Context ctx,
+              Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return init_task_impl(acc);
+}
+
 }; // namespace std
