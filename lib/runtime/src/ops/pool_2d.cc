@@ -804,6 +804,27 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   
   DeviceSpecific<Pool2dPerDeviceState> per_device_state = init_task_impl(init_accessor);
 
+  SimTaskBinding fwd_binding;
+
+  fwd_binding.bind(INPUT, input_shape);
+  fwd_binding.bind(OUTPUT, output_shape);
+  fwd_binding.bind_arg(PROFILING, settings);
+  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
+
+  auto fwd_accessor =
+      env.get_accessor(POOL2D_FWD_TASK_ID, fwd_binding);
+  
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
+
+  auto bwd_accessor =
+      env.get_accessor(POOL2D_BWD_TASK_ID, bwd_binding);
+  
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
+
+  float sync_time = default_estimate_sync_time(env);
+
+  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
 template <>
