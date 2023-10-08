@@ -18,9 +18,13 @@ CHECK_VALID_OP_ATTR(ElementScalarUnaryAttrs);
 
 struct ElementUnaryAttrs {
   req<Op> op;
+  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(ElementUnaryAttrs, op);
 CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
+
+ParallelTensorShape get_output_shape(ElementUnaryAttrs const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 
