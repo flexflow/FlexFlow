@@ -141,11 +141,10 @@ void inference_kernel(LoraLinearMeta *m,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   DT alpha = 1.0f, beta = 0.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
-  cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
-  assert(m->weight_type[1] == m->weight_type[0]);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->input_type[1]);
   cudaDataType_t lr_actv_type = output_type;
-  assert(input_type == weight_type && weight_type == output_type);
+  assert(input_type == output_type);
+  cudaDataType_t weight_type = output_type;
 
 #if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance

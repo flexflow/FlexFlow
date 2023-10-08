@@ -707,23 +707,16 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         Domain input_domain = my_input_accessor[0].domain;
         Domain output_domain = my_output_accessor[0].domain;
-        Domain weight_first_domain = my_weight_accessor[0].domain;
-        Domain weight_second_domain = my_weight_accessor[1].domain;
         int in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
         int out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
-        int rank = weight_first_domain.get_volume() / in_dim;
-        assert(in_dim * rank == weight_first_domain.get_volume());
-        assert(out_dim * rank == weight_second_domain.get_volume());
         int batch_size = my_input_accessor[0].domain.get_volume() / in_dim;
         assert(my_output_accessor[0].domain.get_volume() ==
                out_dim * batch_size);
-        assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
+        assert(my_input_accessor[0].domain.get_volume() ==
+               in_dim * batch_size);
         LoraLinearMeta *m = (LoraLinearMeta *)metas->meta[op];
-        assert(fused->op_num_weights[op] == 2);
         assert(m->input_type[0] == my_input_accessor[0].data_type);
         assert(m->output_type[0] == my_output_accessor[0].data_type);
-        int num_infr_tokens = bc->num_active_infr_tokens();
-        int num_peft_tokens = bc->num_active_peft_tokens();
         // Assert that the output and the second input are at the same place
         // since we ``inplace'' the output for LoRA
         assert(my_input_accessor[1].ptr == my_output_accessor[0].ptr);
