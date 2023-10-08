@@ -14,6 +14,22 @@ namespace Output {
 constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
 }
 
+//flat is like the pytorch view 
+//tensor = torch.randn(2, 3, 4)  ,flattened_tensor = tensor.view(-1) #shape: (24) 
+ParallelTensorShape get_output_shape(FlatAttrs const &attrs,
+                                     ParallelTensorShape const &input) {
+  ParallelTensorShape output_shape(input.dims, input.data_type);
+
+  output_shape.at(ff_dim_t(Output::CHANNEL)).size =
+      input.at(ff_dim_t(Input::CHANNEL)).size *
+      input.at(ff_dim_t(Input::HEIGHT)).size *
+      input.at(ff_dim_t(Input::WIDTH)).size;
+  output_shape.at(ff_dim_t(Output::CHANNEL)).degree =
+      input.at(ff_dim_t(Input::CHANNEL)).degree;
+
+  return output_shape;
+}
+
 /* bool FlatAttrs::is_valid(ParallelTensorShape const &input) const { */
 /*   ParallelTensorShape output_shape = this->calculate_output_shape(input); */
 
