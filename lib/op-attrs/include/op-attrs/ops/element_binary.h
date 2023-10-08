@@ -14,6 +14,8 @@ struct ElementBinaryAttrs {
   req<DataType> compute_type;
   req<bool> should_broadcast_lhs;
   req<bool> should_broadcast_rhs;
+  bool is_valid(ParallelTensorShape const & lhs,
+                ParallelTensorShape const & rhs) const;
 };
 FF_VISITABLE_STRUCT(ElementBinaryAttrs,
                     type,
@@ -21,6 +23,10 @@ FF_VISITABLE_STRUCT(ElementBinaryAttrs,
                     should_broadcast_lhs,
                     should_broadcast_rhs);
 CHECK_VALID_OP_ATTR(ElementBinaryAttrs);
+
+ParallelTensorShape get_output_shape(ElementBinaryAttrs const &,
+                                     ParallelTensorShape const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 
