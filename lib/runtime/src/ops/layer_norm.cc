@@ -16,6 +16,8 @@
 #include "layer_norm.h"
 #include "kernels/layer_norm_kernels.h"
 #include "legion/legion_utilities.h"
+#include "op-attrs/ops/layer_norm.h"
+#include "utils/exception.decl.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -577,5 +579,72 @@ Op *LayerNorm::materialize(FFModel &ff,
   return new LayerNorm(
       ff, params, inputs[0], this->name, true /*allocate_weights*/);
 }
+
+enum Slots {INPUT, OUTPUT, GAMMA, BETA, PER_DEVICE_STATE, ATTRS, HANDLE };
+
+OpTaskInvocation init(LayerNormAttrs const & attrs) {
+  OpTaskBinding b;
+
+  b.bind_arg(HANDLE, ff_handle());
+  b.bind_arg(ATTRS, attrs);
+
+  return {LAYERNORM_INIT_TASK_ID, b};
+}
+
+static DeviceSpecific<LayerNormPerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
+  auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
+  Allocator allocator = acc.get_allocator();
+  FFHandler handle = acc.get_argument<FFHandler>(HANDLE);
+  //question: how to get batch_size and effective_num_elements
+  int64_t effective_batch_size, effective_num_elements;
+
+  DeviceSpecific<LayerNormPerDeviceState> per_device_state = 
+      acc.create_device_specific<LayerNormPerDeviceState>(
+        init_kernel(handle,
+                    allocator,
+                    attrs.elementwise_affine,
+                    effective_batch_size,
+                    effective_num_elements,
+                    attrs.eps)
+      );
+}
+
+static DeviceSpecific<LayerNormPerDeviceState>  init_task(Task const *task,
+              std::vector<PhysicalRegion> const &regions,
+              Context ctx,
+              Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return init_task_impl(acc);
+}
+
+CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
+                                  LayerNormAttrs const & attrs,
+                                  ParallelTensorShape const &input_shape,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &machine_view) {
+    auto env = sim.new_environment(); 
+    ParallelTensorShape output_shape =get_output_shape(attrs, input_shape);
+
+    SimTaskBinding init_binding;
+    init_binding.bind_arg(HANDLE, ff_handle());
+    init_binding.bind_arg(ATTRS, attrs);
+
+    auto init_accessor = env.get_init_accessor(LAYERNORM_INIT_TASK_ID, init_binding);
+
+     DeviceSpecific<LayerNormPerDeviceState> = init_task_impl(init_accessor);
+
+}
+
+template <>
+void register_task<LAYERNORM_INIT_TASK_ID>() {
+  OpTaskSignature init(OpTaskType::INIT);
+  init.add_arg_slot<LayerNormAttrs>(ATTRS); 
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+
+  init.add_return_value<LayerNormPerDeviceState>();
+
+  register_task(LAYERNORM_INIT_TASK_ID, "LayerNorm init", init, init_task);
+}
+
 
 }; // namespace FlexFlow

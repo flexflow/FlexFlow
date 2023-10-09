@@ -48,6 +48,39 @@ LayerNormPerDeviceState::LayerNormPerDeviceState(
 namespace Kernels {
 namespace LayerNorm {
 
+//todo: this may have some problem.
+LayerNormPerDeviceState init_kernel(PerDeviceFFHandle const & handle,
+                              Allocator const & allocator,
+                              bool elementwise_affine_,
+                              int64_t effective_batch_size_,
+                              int64_t effective_num_elements_,
+                              float eps_) {
+  elementwise_affine = elementwise_affine_;
+  effective_batch_size = effective_batch_size_;
+  effective_num_elements = effective_num_elements_;
+  eps = eps_;
+  mean = allocator.allocate(sizeof(float) * effective_batch_size);
+  rstd = allocator.allocate(sizeof(float) * effective_batch_size);
+  ds= allocator.allocate(sizeof(float) * effective_batch_size);
+  db = allocator.allocate(sizeof(float) * effective_batch_size);
+  scale= allocator.allocate(sizeof(float) * effective_batch_size);
+  bias = allocator.allocate(sizeof(float) * effective_batch_size);
+  LayerNormPerDeviceState per_device_state = LayerNormPerDeviceState(handle,
+                                                                     elementwise_affine,
+                                                                     effective_batch_size,
+                                                                     effective_num_elements,
+                                                                      eps,
+                                                                      mean,
+                                                                      rstd,
+                                                                      ds,
+                                                                      db,
+                                                                      scale,
+                                                                      bias);
+    return per_device_state;
+
+  }
+
+
 template <DataType T>
 struct ForwardKernel {
   void operator()(cudaStream_t stream,
@@ -137,7 +170,7 @@ struct BackwardKernel {
 }
 
 void forward_kernel(cudaStream_t stream,
-                    LayerNormPerDeviceState const *m,
+                    LayerNormPerDeviceState const &m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
                     GenericTensorAccessorW const &gamma,
@@ -147,7 +180,7 @@ void forward_kernel(cudaStream_t stream,
 }
 
 void backward_kernel(cudaStream_t stream,
-                     LayerNormPerDeviceState const *m,
+                     LayerNormPerDeviceState const &m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &input_grad,
