@@ -14,9 +14,13 @@ struct ReduceAttrs {
   stack_vector<ff_dim_t, MAX_TENSOR_DIM> axes;
   req<Op> op_type;
   req<bool> keepdims;
+  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(ReduceAttrs, axes, op_type, keepdims);
 CHECK_VALID_OP_ATTR(ReduceAttrs);
+
+ParallelTensorShape get_output_shape(ReduceAttrs const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 
