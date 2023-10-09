@@ -106,15 +106,4 @@ void execute_task(LegionConfig const &config,
   }
 }
 
-// TODO: deprecate
-TaskSignature get_signature(TaskID task_id) {
-  switch (task_id) {
-    case CONV2D_BWD_TASK_ID:
-      return get_signature<CONV2D_BWD_TASK_ID>();
-    default:
-      throw mk_runtime_error(
-          "Unknown task id {}. Please report this as an issue.", task_id);
-  }
-}
-
 } // namespace FlexFlow
