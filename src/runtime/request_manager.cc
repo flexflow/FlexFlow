@@ -297,8 +297,7 @@ bool RequestManager::is_request_completed(RequestGuid const &guid) {
   return request.status == Request::COMPLETED;
 }
 
-bool RequestManager::all_request_completed(
-    std::vector<RequestGuid> const &guids) {
+bool RequestManager::all_request_completed(std::vector<RequestGuid> &guids) {
   for (RequestGuid guid : guids) {
     if (!is_request_completed(guid)) {
       return false;
@@ -1824,7 +1823,9 @@ GenerationResult RequestManager::generate_incr_decoding(
   std::vector<RequestGuid> guids;
   for (int i = 0; i < prompts.size(); i++) {
     guid = register_new_request(prompts.at(i), max_seq_length);
-    guids.emplace_back(guid);
+    if (guid != 0) {
+      guids.emplace_back(guid);
+    }
   }
 
   if (guid == 0) {
@@ -1883,7 +1884,9 @@ GenerationResult RequestManager::generate_spec_infer(
   std::vector<RequestGuid> guids;
   for (int i = 0; i < prompts.size(); i++) {
     guid = register_new_request(prompts.at(i), max_seq_length);
-    guids.emplace_back(guid);
+    if (guid != 0) {
+      guids.emplace_back(guid);
+    }
   }
   if (guid == 0) {
     std::cout
