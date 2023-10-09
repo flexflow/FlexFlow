@@ -29,10 +29,14 @@ struct LinearAttrs {
   req<DataType> data_type;
   req<Activation> activation;
   req<optional<RegularizerAttrs>> regularizer;
+  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(
     LinearAttrs, out_channels, use_bias, data_type, activation, regularizer);
 CHECK_VALID_OP_ATTR(LinearAttrs);
+
+ParallelTensorShape get_output_shape(LinearAttrs const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 
