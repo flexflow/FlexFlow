@@ -6,6 +6,9 @@ bool LayerNormAttrs::is_valid(ParallelTensorShape const & input) const {
     if(!input.is_valid()) {
         return false;
     }
+    if(input.num_dims() < 2) {
+        return false;
+    }
     return true;
 }
 
