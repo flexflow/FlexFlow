@@ -11,9 +11,13 @@ namespace FlexFlow {
 struct RepartitionAttrs {
   ff_dim_t repartition_dim;
   req<int> repartition_degree;
+  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(RepartitionAttrs, repartition_dim, repartition_degree);
 CHECK_VALID_OP_ATTR(RepartitionAttrs);
+
+ParallelTensorShape get_output_shape(RepartitionAttrs const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 
