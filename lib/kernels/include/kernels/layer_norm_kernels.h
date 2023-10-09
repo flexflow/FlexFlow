@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_LAYER_NORM_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_LAYER_NORM_KERNELS_H
 
-#include "kernels/device.h"
 #include "kernels/allocation.h"
+#include "kernels/device.h"
 #include "kernels/ff_handle.h"
 
 namespace FlexFlow {
@@ -26,11 +26,11 @@ public:
 };
 
 struct LayerNormPerDeviceState {
-    bool elementwise_affine;
-    int64_t effective_batch_size, effective_num_elements;
-    float eps;
-    float *mean, *rstd, *ds, *db, *scale, *bias;
-    DataType data_type;
+  bool elementwise_affine;
+  int64_t effective_batch_size, effective_num_elements;
+  float eps;
+  float *mean, *rstd, *ds, *db, *scale, *bias;
+  DataType data_type;
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(LayerNormPerDeviceState,
@@ -46,18 +46,16 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(LayerNormPerDeviceState,
                                              bias,
                                              data_type);
 
-
 namespace Kernels {
 namespace LayerNorm {
 
-//todo: this may have some problem.
+// todo: this may have some problem.
 LayerNormPerDeviceState init_kernel(PerDeviceFFHandle const &,
-                              Allocator const &,
-                              bool elementwise_affine,
-                              int64_t effective_batch_size,
-                              int64_t effective_num_elements,
-                              float eps);
-
+                                    Allocator const &,
+                                    bool elementwise_affine,
+                                    int64_t effective_batch_size,
+                                    int64_t effective_num_elements,
+                                    float eps);
 
 void forward_kernel(ffStream_t stream,
                     LayerNormPerDeviceState const &m,
