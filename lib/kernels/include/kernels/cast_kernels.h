@@ -14,15 +14,13 @@ void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
                     DataType input_type,
-                    DataType output_type,
-                    PerDeviceFFHandle handle);
+                    DataType output_type);
 
 void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &output,
                      DataType input_type,
-                     DataType output_type,
-                     PerDeviceFFHandle handle);
+                     DataType output_type);
 
 } // namespace Cast
 } // namespace Kernels

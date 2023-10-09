@@ -28,12 +28,11 @@ using Legion::Task;
 
 namespace FlexFlow {
 
-enum Slots { INPUT, OUTPUT, ATTRS, PROFILING, HANDLE };
+enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
 
 OpTaskInvocation forward(CastAttrs const &attrs) {
   OpTaskBinding binding;
 
-  binding.bind_arg(HANDLE, ff_handle());
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
 
@@ -52,7 +51,6 @@ OpTaskInvocation backward(CastAttrs const &attrs) {
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<CastAttrs>(ATTRS);
-  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -63,8 +61,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  input,
                  output,
                  input.data_type,
-                 attrs.dtype,
-                 handle);
+                 attrs.dtype);
 }
 
 static void forward_task(Task const *task,
@@ -78,7 +75,6 @@ static void forward_task(Task const *task,
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<CastAttrs>(ATTRS);
-  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
 
@@ -91,8 +87,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  input_grad,
                  output_grad,
                  input.data_type,
-                 attrs.dtype,
-                 handle);
+                 attrs.dtype);
 }
 
 static void backward_task(Task const *task,
@@ -111,7 +106,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   auto env = sim.new_environment();
 
   SimTaskBinding fwd_binding;
-  fwd_binding.bind_arg(HANDLE, ff_handle());
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(ATTRS, attrs);
 
@@ -137,7 +131,6 @@ OpTaskSignature fwd_signature<CAST_FWD_TASK_ID>() {
 
   fwd.add_arg_slot<CastAttrs>(ATTRS);
   fwd.add_arg_slot<bool>(PROFILING);
-  fwd.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
