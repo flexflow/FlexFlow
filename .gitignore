@@ -185,3 +185,5 @@ gpt_tokenizer
 
 # pip version
 python/flexflow/version.txt
+
+inference_tensors

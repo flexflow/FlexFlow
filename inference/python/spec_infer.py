@@ -55,6 +55,7 @@ def get_configs():
             "use_4bit_quantization": False,
             "use_8bit_quantization": False,
             "profiling": False,
+            "inference_debugging": False,
             "fusion": True,
         }
         llm_configs = {

@@ -14,7 +14,6 @@ public:
   ffActivationDescriptor_t actiDesc;
   ffPoolingDescriptor_t poolDesc;
   bool relu;
-  char op_name[MAX_OPNAME];
 };
 
 namespace Kernels {

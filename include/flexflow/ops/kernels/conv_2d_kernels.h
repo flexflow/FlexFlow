@@ -28,7 +28,6 @@ public:
   miopenConvBwdDataAlgorithm_t bwdDataAlgo;
 #endif
   bool relu, use_bias;
-  char op_name[MAX_OPNAME];
 };
 
 namespace Kernels {
