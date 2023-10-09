@@ -10,9 +10,14 @@ namespace FlexFlow {
 struct Group_byAttrs {
   req<int> n;
   req<float> alpha;
+  bool is_valid(ParallelTensorShape const &, ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(Group_byAttrs, n, alpha);
 CHECK_VALID_OP_ATTR(Group_byAttrs);
+
+ParallelTensorShape get_output_shape(Group_byAttrs const &,
+                                     ParallelTensorShape const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

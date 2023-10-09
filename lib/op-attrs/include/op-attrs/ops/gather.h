@@ -15,10 +15,10 @@ struct GatherAttrs {
 FF_VISITABLE_STRUCT(GatherAttrs, dim);
 CHECK_VALID_OP_ATTR(GatherAttrs);
 
-std::vector<ParallelTensorShape> get_output_shapes(GatherAttrs const &,
-                                                   ParallelTensorShape const &,
-                                                   ParallelTensorShape const &);
 
+std::vector<ParallelTensorShape> get_output_shapes(GatherAttrs const &,
+                                                   ParallelTensorShape const & ,
+                                                   ParallelTensorShape const &);
 } // namespace FlexFlow
 
 #endif

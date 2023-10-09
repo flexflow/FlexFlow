@@ -1,4 +1,5 @@
 #include "op-attrs/ops/gather.h"
+#include "utils/exception.decl.h"
 
 namespace FlexFlow {
 
@@ -16,10 +17,11 @@ bool GatherAttrs::is_valid(ParallelTensorShape const &lhs,
   return true;
 }
 
+//todo: why return a vector?
 std::vector<ParallelTensorShape> get_output_shapes(GatherAttrs const & attrs,
                                                    ParallelTensorShape const & lhs,
                                                    ParallelTensorShape const & rhs ) {
-
+  NOT_IMPLEMENTED();
 }
 
 /* bool GatherAttrs::is_valid(ParallelTensorShape const &lhs,
