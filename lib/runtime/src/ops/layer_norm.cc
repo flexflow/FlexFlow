@@ -19,6 +19,7 @@
 #include "op-attrs/ops/layer_norm.h"
 #include "utils/exception.decl.h"
 #include "utils/hash-utils.h"
+#include <type_traits>
 
 namespace FlexFlow {
 
@@ -591,6 +592,86 @@ OpTaskInvocation init(LayerNormAttrs const & attrs) {
   return {LAYERNORM_INIT_TASK_ID, b};
 }
 
+OpTaskInvocation forward(LayerNormAttrs const & attrs) {
+  OpTaskBinding b;
+
+  b.bind(INPUT, input_tensor(0));
+  b.bind(OUTPUT, output_tensor(0));
+  b.bind(GAMMA, weight_tensor(0));//todo, this may have some problem
+  b.bind(BETA, weight_tensor(1));//how to get gmmam and beta
+  b.bind_arg(PROFILING, profiling_settings());
+  b.bind_arg(PER_DEVICE_STATE, per_device_state<LayerNormPerDeviceState>());
+
+  return {LAYERNORM_FWD_TASK_ID, b};
+}
+
+OpTaskInvocation backward(LayerNormAttrs const & attrs) {
+  OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
+
+  return {LAYERNORM_BWD_TASK_ID, b};
+}
+
+
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+    auto input = acc.get_tensor<Permission::RO>(INPUT);
+    auto output = acc.get_tensor<Permission::WO>(OUTPUT);
+    auto gamma = acc.get_tensor<Permission::WO>(GAMMA);
+    auto beta = acc.get_tensor<Permission::WO>(BETA);
+
+    ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+    auto &state = acc.get_argument<LayerNormPerDeviceState>(PER_DEVICE_STATE);
+
+    return profile(forward_kernel,
+                  profiling,
+                  "[LayerNorm] forward time = %.2lfms\n",
+                  state,
+                  input.get_float_ptr(),
+                  output.get_float_ptr(),
+                  gamma.get_float_ptr(),
+                  beta.get_float_ptr());
+}
+
+static void forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  forward_task_impl(acc);
+}
+
+
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+  auto input = acc.get_tensor<Permission::RO>(INPUT);
+  auto gamma = acc.get_tensor<Permission::RO>(GAMMA);
+
+  auto input_grad = acc.get_tensor<Permission::RW>(INPUT_GRAD);
+  auto gamma_grad = acc.get_tensor<Permission::RW>(GAMMA_GRAD);
+  auto beta_grad = acc.get_tensor<Permission::RW>(BETA_GRAD);
+  auto output_grad = acc.get_tensor<Permission::RO>(OUTPUT_GRAD);
+
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto &state = acc.get_argument<LayerNormPerDeviceState>(PER_DEVICE_STATE);
+
+  return profile(backward_kernel,
+                  profiling,
+                  "[LayerNorm] backward time = %.2lfms\n",
+                  state,
+                  output_grad.get_float_ptr(),
+                  input.get_float_ptr(),
+                  input_grad.get_float_ptr(),
+                  gamma.get_float_ptr(),
+                  gamma_grad.get_float_ptr(),
+                  beta_grad.get_float_ptr());
+}
+
+static void backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  backward_task_impl(acc);
+}
+
 static DeviceSpecific<LayerNormPerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   Allocator allocator = acc.get_allocator();
@@ -631,7 +712,9 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
     auto init_accessor = env.get_init_accessor(LAYERNORM_INIT_TASK_ID, init_binding);
 
-     DeviceSpecific<LayerNormPerDeviceState> = init_task_impl(init_accessor);
+    DeviceSpecific<LayerNormPerDeviceState> = init_task_impl(init_accessor);
+
+    
 
 }
 
@@ -645,6 +728,31 @@ void register_task<LAYERNORM_INIT_TASK_ID>() {
 
   register_task(LAYERNORM_INIT_TASK_ID, "LayerNorm init", init, init_task);
 }
+
+template <>
+void register_task<LAYERNORM_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+  //how to hande gamma and beta, this may have some problem
+  fwd.add_input_slot(GAMMA);
+  fwd.add_input_slot(BETA);
+
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+  fwd.add_unchecked_arg_slot<LayerNormPerDeviceState>(PER_DEVICE_STATE);
+
+  register_task(LAYERNORM_FWD_TASK_ID, "LayerNorm forward", fwd, forward_task);
+}
+
+template <>
+void register_task<LAYERNORM_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(LAYERNORM_FWD_TASK_ID));
+
+  register_task(LAYERNORM_BWD_TASK_ID, "LayerNorm backward", bwd, backward_task); 
+}
+
 
 
 }; // namespace FlexFlow
