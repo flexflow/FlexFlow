@@ -278,6 +278,9 @@ OpMeta *BeamTopK::init_task(Task const *task,
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   BeamTopKMeta *m = new BeamTopKMeta(handle, topk, gpu_mem_allocator);
   m->profiling = topk->profiling;
+  m->inference_debugging = topk->inference_debugging;
+  std::strcpy(m->op_name, topk->name);
+  m->layer_guid = topk->layer_guid;
   m->sorted = topk->sorted;
   m->max_beam_width = topk->max_beam_width;
   m->input_type[0] = topk->inputs[0]->data_type;
@@ -346,60 +349,36 @@ BeamInferenceResult
 
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  // BeamSearchBatchConfig const *bc = (BeamSearchBatchConfig *)task->args;
 
+  BeamTopKMeta *m = *((BeamTopKMeta **)task->local_args);
   BeamSearchBatchConfig const &bc =
       Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
-  // std::cout << "beam search topk inference: "
-  //           << "\n";
+
   if (bc.num_tokens == 0) {
     BeamInferenceResult ir;
     return ir;
   }
 
-  BeamTopKMeta const *m = *((BeamTopKMeta **)task->local_args);
-  Domain in1_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  //   Domain out1_domain = runtime->get_index_space_domain(
-  //       ctx, task->regions[1].region.get_index_space());
-  Domain out2_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  int numdims = in1_domain.get_dim();
-
-  // float const *in_ptr = helperGetTensorPointerRO<float>(
-  //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  //   float *value_ptr = helperGetTensorPointerWO<float>(
-  //       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  int *index_ptr = helperGetTensorPointerWO<int>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW index = helperGetGenericTensorAccessorWO(
+      DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW value = helperGetGenericTensorAccessorWO(
+      DT_FLOAT, regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
+      DT_FLOAT, regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
-  // );
-  float *value_ptr = helperGetTensorPointerWO<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  Domain input_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
 
-  int *parent_ptr = helperGetTensorPointerWO<int>(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  int *index_ptr = index.get_int32_ptr();
+  float *value_ptr = value.get_float_ptr();
+  int *parent_ptr = parent.get_int32_ptr();
+
   // embedding size: eg. 4096
-  int length = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
-
-  // int k = out2_domain.hi()[0] - out2_domain.lo()[0] + 1;
-
+  int length = input_domain.hi()[0] - input_domain.lo()[0] + 1;
   // total token nums
-  // size_t tokens_per_request = in1_domain.hi()[1] - in1_domain.lo()[1] + 1;
-  // size_t batch_size = in1_domain.get_volume() / length;
   size_t batch_size = bc.num_active_tokens();
-  // std::vector<int> beam_width;
-  // std::unordered_map<size_t, int> sub_requests = bc->sub_requests;
-  // for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
-  //   if (bc->request_completed[i]) {
-  //     continue;
-  //   }
-  //   // add beam width for each main request
-  //   beam_width.push_back(sub_requests[i]);
-  //   std::cout << "sub req num: " <<sub_requests[i] << "\n";
-  // }
 
   // need meta for: how many sub requests in a main request
   BeamTopK::forward_kernel_wrapper(m,
@@ -416,15 +395,16 @@ BeamInferenceResult
 
   download_tensor<int>(index_ptr, ir.token_ids, batch_size * m->max_beam_width);
   download_tensor<float>(value_ptr, ir.probs, batch_size * m->max_beam_width);
-  // if(m->output_type[0] == DT_FLOAT){
-  //     download_tensor<float>(value.get_float_ptr(), ir.probs, batch_size *
-  //     m->max_beam_width);
-  // }else if(m->output_type[0] == DT_HALF){
-  //     download_tensor<float>(value.get_half_ptr(), ir.probs, batch_size *
-  //     m->max_beam_width);
-  // }
   download_tensor<int>(
       parent_ptr, ir.parent_id, batch_size * m->max_beam_width);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    BeamTopK::save_inference_tensors_to_file(
+        m, shard_id, &bc, {input}, {}, {index, value, parent});
+  }
+
   return ir;
 }
 
@@ -435,6 +415,7 @@ void BeamTopK::backward(FFModel const &ff) {
 void BeamTopK::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->sorted);
   sez.serialize(this->max_beam_width);
 }
@@ -445,11 +426,12 @@ Node BeamTopK::deserialize(FFModel &ff,
                            int num_inputs) {
   assert(num_inputs == 1);
   bool sorted;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   int max_beam_width;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(sorted);
   dez.deserialize(max_beam_width);
   BeamTopKParams params;

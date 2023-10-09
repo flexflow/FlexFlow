@@ -167,6 +167,7 @@ void Gather::serialize(Legion::Serializer &sez) const {
   sez.serialize(params.legion_dim);
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
 }
 
 using PCG::Node;
@@ -178,10 +179,11 @@ Node Gather::deserialize(FFModel &ff,
   assert(num_inputs == 2);
   int legion_dim;
   dez.deserialize(legion_dim);
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
   GatherParams params;
   params.legion_dim = legion_dim;
@@ -243,6 +245,8 @@ OpMeta *Gather::init_task(Task const *task,
   Gather const *gather = (Gather const *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   GatherMeta *m = new GatherMeta(handle, gather);
+  std::strcpy(m->op_name, gather->name);
+  m->layer_guid = gather->layer_guid;
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR index = helperGetGenericTensorAccessorRO(

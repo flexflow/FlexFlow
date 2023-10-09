@@ -37,7 +37,6 @@ public:
   int in_dim;
   int batch_size;
   int num_elements;
-  char op_name[MAX_OPNAME];
   Realm::RegionInstance reserveInst;
 };
 

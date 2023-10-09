@@ -201,7 +201,9 @@ OpMeta *Concat::init_task(Task const *task,
   // Note that our internal axis index ordering is opposite to other frameworks
   init_meta(m, cc->legion_axis);
   m->profiling = cc->profiling;
+  m->inference_debugging = cc->inference_debugging;
   std::strcpy(m->op_name, cc->name);
+  m->layer_guid = cc->layer_guid;
   return m;
 }
 

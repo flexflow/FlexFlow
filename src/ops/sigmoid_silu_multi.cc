@@ -244,6 +244,8 @@ OpMeta *SigmoidSiluMulti::init_task(Task const *task,
   meta->input_type[0] = ssm->inputs[0]->data_type;
   meta->input_type[1] = ssm->inputs[1]->data_type;
   meta->output_type[0] = ssm->outputs[0]->data_type;
+  std::strcpy(meta->op_name, ssm->name);
+  meta->layer_guid = ssm->layer_guid;
   return meta;
 }
 
@@ -323,7 +325,7 @@ void SigmoidSiluMulti::inference_task(
     return;
   }
 
-  SigmoidSiluMultiMeta const *m = *((SigmoidSiluMultiMeta **)task->local_args);
+  SigmoidSiluMultiMeta *m = *((SigmoidSiluMultiMeta **)task->local_args);
 
   GenericTensorAccessorR input1 = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -346,6 +348,12 @@ void SigmoidSiluMulti::inference_task(
   assert(input1_domain == output_domain);
 
   SigmoidSiluMulti::inference_kernel_wrapper(m, input1, input2, output);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    SigmoidSiluMulti::save_inference_tensors_to_file(
+        m, shard_id, bc, {input1, input2}, {}, {output});
+  }
 }
 
 bool SigmoidSiluMulti::measure_operator_cost(Simulator *sim,
@@ -357,6 +365,7 @@ bool SigmoidSiluMulti::measure_operator_cost(Simulator *sim,
 void SigmoidSiluMulti::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
 }
 
 using PCG::Node;
@@ -366,10 +375,11 @@ Node SigmoidSiluMulti::deserialize(FFModel &ff,
                                    ParallelTensor inputs[],
                                    int num_inputs) {
   assert(num_inputs == 2);
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
   SigmoidSiluMultiParams params;
   params.layer_guid = layer_guid;
@@ -385,6 +395,7 @@ size_t hash<FlexFlow::SigmoidSiluMultiParams>::operator()(
   size_t key = 0;
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.layer_guid.transformer_layer_id);
+  hash_combine(key, params.layer_guid.model_id);
   return key;
 }
 }; // namespace std

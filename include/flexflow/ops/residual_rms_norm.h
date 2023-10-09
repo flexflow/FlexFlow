@@ -80,7 +80,6 @@ public:
 
 public:
   float eps;
-  char op_name[MAX_OPNAME];
   int effective_batch_size;
   int dim, data_dim;
 };

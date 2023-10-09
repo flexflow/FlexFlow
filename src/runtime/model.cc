@@ -122,7 +122,8 @@ Op::Op(FFModel &model,
        const ParallelTensor _input4)
     : op_type(_otype), data_type(_dtype), op_guid(model.op_global_guid++),
       numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
-      profiling(model.config.profiling) {
+      profiling(model.config.profiling),
+      inference_debugging(model.config.inference_debugging) {
   for (int i = 0; i < MAX_NUM_INPUTS; i++) {
     inputs[i] = NULL;
   }
@@ -167,7 +168,8 @@ Op::Op(FFModel &model,
        ParallelTensor const *_inputs)
     : op_type(_otype), data_type(_dtype), op_guid(model.op_global_guid++),
       numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
-      profiling(model.config.profiling) {
+      profiling(model.config.profiling),
+      inference_debugging(model.config.inference_debugging) {
   std::string pcname;
   if (_name == NULL) {
     pcname = get_operator_type_name(op_type);
@@ -1462,7 +1464,8 @@ bool Op::get_weight_parameter(TNParameter tnp,
   return true;
 }
 
-OpMeta::OpMeta(FFHandler _handle) : handle(_handle), profiling(false) {
+OpMeta::OpMeta(FFHandler _handle)
+    : handle(_handle), profiling(false), inference_debugging(false) {
   for (int i = 0; i < MAX_NUM_INPUTS; i++) {
     trainableInputs[i] = true;
   }
@@ -1475,6 +1478,7 @@ OpMeta::OpMeta(FFHandler _handle) : handle(_handle), profiling(false) {
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     output_type[i] = DT_NONE;
   }
+  decoding_step = 0;
 }
 
 OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
@@ -1487,6 +1491,7 @@ OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
   for (int i = 0; i < op->numOutputs; i++) {
     output_type[i] = op->outputs[i]->data_type;
   }
+  decoding_step = 0;
 }
 
 FFRuntime::FFRuntime(FFConfig &config) {
@@ -1530,6 +1535,8 @@ FFRuntime::FFRuntime(FFConfig &config) {
 
 FFRuntime *ffruntime_singleton = nullptr;
 
+int FFModel::model_counter = 0;
+
 FFModel::FFModel(FFConfig &_config, bool cpu_offload)
     : op_global_guid(OP_GUID_FIRST_VALID),
       layer_global_guid(LAYER_GUID_FIRST_VALID),
@@ -1570,6 +1577,7 @@ FFModel::FFModel(FFConfig &_config, bool cpu_offload)
   for (int idx = 0; idx < config.workersPerNode * config.numNodes; idx++) {
     handlers[idx] = ffruntime_singleton->handlers[idx];
   }
+  model_id = model_counter++;
 }
 
 void FFModel::clear_graph_search_cache() {
@@ -3969,6 +3977,7 @@ struct DefaultConfig {
   // const static int iterations = 1;
   const static int batchSize = 64;
   const static bool profiling = false;
+  const static bool inference_debugging = false;
   constexpr static float learningRate = 0.01f;
   constexpr static float weightDecay = 0.0001f;
   const static size_t workSpaceSize = (size_t)128 * 1024 * 1024; // 128 MB
@@ -4003,6 +4012,7 @@ FFConfig::FFConfig() {
   // iterations = DefaultConfig::iterations;
   batchSize = DefaultConfig::batchSize;
   profiling = DefaultConfig::profiling;
+  inference_debugging = DefaultConfig::inference_debugging;
   learningRate = DefaultConfig::learningRate;
   weightDecay = DefaultConfig::weightDecay;
   workSpaceSize = DefaultConfig::workSpaceSize;
@@ -4186,6 +4196,10 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if (!strcmp(argv[i], "--profiling")) {
       profiling = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--inference-debugging")) {
+      inference_debugging = true;
       continue;
     }
     if (!strcmp(argv[i], "--allow-tensor-op-math-conversion")) {

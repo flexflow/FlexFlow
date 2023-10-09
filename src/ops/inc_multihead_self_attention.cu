@@ -1097,17 +1097,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     bias_ptr = gpu_mem_allocator.allocate_reserved_untyped(biasSize);
   }
 
-#ifdef INFERENCE_TESTS
-  kcache =
-      (float *)calloc(kProjSize * BatchConfig::max_sequence_length() *
-                          num_q_heads * BatchConfig::max_requests_per_batch(),
-                      sizeof(float));
-  vcache =
-      (float *)calloc(vProjSize * BatchConfig::max_sequence_length() *
-                          num_q_heads * BatchConfig::max_requests_per_batch(),
-                      sizeof(float));
-#endif
-
   // allocate memory for the seqArray and reserve space
   {
     int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
@@ -1253,10 +1242,6 @@ IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
   if (reserveInst != Realm::RegionInstance::NO_INST) {
     reserveInst.destroy();
   }
-#ifdef INFERENCE_TESTS
-  free(kcache);
-  free(vcache);
-#endif
 }
 
 template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<float>(

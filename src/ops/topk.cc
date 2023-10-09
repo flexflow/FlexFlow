@@ -225,7 +225,10 @@ OpMeta *TopK::init_task(Task const *task,
   FFHandler handle = *((FFHandler *)task->local_args);
   TopKMeta *m = new TopKMeta(handle);
   m->profiling = topk->profiling;
+  m->inference_debugging = topk->inference_debugging;
   m->sorted = topk->sorted;
+  std::strcpy(m->op_name, topk->name);
+  m->layer_guid = topk->layer_guid;
   return m;
 }
 
