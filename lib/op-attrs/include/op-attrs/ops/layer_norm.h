@@ -12,9 +12,13 @@ struct LayerNormAttrs {
   stack_vector<ff_dim_t, MAX_TENSOR_DIM> axes;
   req<bool> elementwise_affine;
   req<float> eps;
+  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(LayerNormAttrs, axes, elementwise_affine, eps);
 CHECK_VALID_OP_ATTR(LayerNormAttrs);
+
+ParallelTensorShape get_output_shape(LayerNormAttrs const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 
