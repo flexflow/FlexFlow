@@ -55,7 +55,7 @@ OpTaskInvocation forward(ReshapeAttrs const &attrs) {
                    per_device_op_state<ReshapePerDeviceState>());
   binding.bind_arg(PROFILING, profiling_settings());
 
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
+  binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
   return {RESHAPE_FWD_TASK_ID, binding};
 }
@@ -146,10 +146,11 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   auto per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
+  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
   fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind(INPUT, input_parallel_tensor_shape(0));
-  fwd_binding.bind(OUTPUT, output_tensor(0));
+  fwd_binding.bind(INPUT, input.shape);
+  fwd_binding.bind(OUTPUT, output_shape);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
@@ -167,8 +168,9 @@ template <>
 void register_task<RESHAPE_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
-  init.add_input_slot(INPUT);
-  init.add_output_slot(OUTPUT);
+  init.add_arg_slot<ReshapeAttrs>(ATTRS);
+
+  init.add_return_value<ReshapePerDeviceState>(PER_DEVICE_STATE);
 
   register_task(RESHAPE_INIT_TASK_ID, "Reshape Init", init, init_task);
 }
