@@ -39,15 +39,6 @@ using namespace FlexFlow::Kernels::Reverse;
 
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
 
-OpTaskInvocation init(ReverseAttrs const &attrs) {
-  OpTaskBinding binding;
-
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
-  binding.bind(OUTPUT, output_tensor(0));
-
-  return {REVERSE_INIT_TASK_ID, binding};
-}
-
 OpTaskInvocation forward(ReverseAttrs const &attrs) {
   OpTaskBinding binding;
 
@@ -72,7 +63,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<ReverseAttrs>(ATTRS);
 
   int output_size = outtput.shape.get_volume();
-
+  auto axis = attrs.axis;
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < output.shape.get_dim(); i++) {
     if (i < axis) {
@@ -151,7 +142,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
 
-  fwd_binding.bind(INPUT, input);
+  fwd_binding.bind(INPUT, input.shape);
   fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(ATTRS, attrs);
