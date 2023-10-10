@@ -205,8 +205,9 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
       case OP_GELU: {
         input_grad[i] =
             (T)(output_grad[i] *
-                (0.5 * static_cast<T>(erfc(-input[i] * M_SQRT1_2)) -
-                 0.5 * M_SQRT1_2 * input[i] * exp(-input[i] * input[i] * 0.5)));
+                (0.5 * static_cast<T>(erfc(-input[i] * M_SQRT1_2)) +
+                 0.5 * M_SQRT1_2 * input[i] *
+                     ((2 / sqrt(M_PI)) * exp(-input[i] * input[i] * 0.5))));
         break;
       }
       case OP_RSQRT: {
