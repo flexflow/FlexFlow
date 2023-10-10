@@ -66,13 +66,13 @@ LabelledOpenMultiDiGraph<N, E, I, O>::
 
 template <typename N, typename E, typename I, typename O>
 LabelledOpenMultiDiGraph<N, E, I, O>::operator OpenMultiDiGraphView() const {
-  return GraphInternal::create_open_multidigraph_view(this->ptr);
+  return GraphInternal::create_open_multidigraph_view(this->ptr.get());
 }
 
 template <typename NodeLabel, typename E, typename I, typename O>
 Node LabelledOpenMultiDiGraph<NodeLabel, E, I, O>::add_node(
     NodeLabel const &l) {
-  return this->ptr->add_node(l);
+  return this->ptr.get_mutable()->add_node(l);
 }
 
 template <typename NodeLabel, typename E, typename I, typename O>
@@ -83,7 +83,7 @@ NodeLabel &LabelledOpenMultiDiGraph<NodeLabel, E, I, O>::at(Node const &n) {
 template <typename NodeLabel, typename E, typename I, typename O>
 NodeLabel const &
     LabelledOpenMultiDiGraph<NodeLabel, E, I, O>::at(Node const &n) const {
-  return this->ptr->at(n);
+  return this->ptr->ILabelledMultiDiGraph<NodeLabel, E>::at(n);
 }
 
 template <typename NodeLabel, typename E, typename I, typename O>
@@ -120,7 +120,7 @@ EdgeLabel &
 template <typename N, typename EdgeLabel, typename I, typename O>
 EdgeLabel const &LabelledOpenMultiDiGraph<N, EdgeLabel, I, O>::at(
     MultiDiEdge const &e) const {
-  return this->ptr->at(e);
+  return this->ptr->ILabelledMultiDiGraph<N, EdgeLabel>::at(e);
 }
 
 template <typename N, typename E, typename InputLabel, typename O>
