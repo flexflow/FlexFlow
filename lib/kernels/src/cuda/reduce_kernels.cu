@@ -70,22 +70,24 @@ namespace Reduce {
 ReducePerDeviceState init_kernel(PerDeviceFFhandle const &handle,
                                  OperatorType const &op_type,
                                  size_t const &reduction_size,
-                                 ArrayShape const & input_shape,
-                                 ArrayShape const & output_shape) {
-  
+                                 ArrayShape const &input_shape,
+                                 ArrayShape const &output_shape) {
+
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
   ffReduceTensorDescriptor_t reduceDesc;
 
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));;
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  ;
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
 
   checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(inputTensor, input_shape));
-  checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
+  checkCUDNN(
+      cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
 
-  ReducePerDeviceState per_device = {handle, inputTensor, outputTensor, reduceDesc, op_type, reduction_size};
-
+  ReducePerDeviceState per_device = {
+      handle, inputTensor, outputTensor, reduceDesc, op_type, reduction_size};
 }
 
 void forward_kernel(cudaStream_t stream,

@@ -56,7 +56,7 @@ static DeviceSpecific<ReducePerDeviceState>
 
   OperatorType = attrs.op_type;
   // Note: How to set the reduction size?
-  size_t reduction_size ;
+  size_t reduction_size;
   DeviceSpecific<ReducePerDeviceState> per_device_state =
       acc.create_device_specific<ReducePerDeviceState>(init_kernel(
           handle, op_type, reduction_size, input.shape, output.shape));
@@ -72,10 +72,11 @@ static DeviceSpecific<TransposePerDeviceState>
   return init_task_impl(acc);
 }
 
-template<> void register_task<TRANSPOSE_INIT_TASK_ID>() {
+template <>
+void register_task<TRANSPOSE_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT)
 
-  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+      init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_arg_slot<ReduceAttrs>(ATTRS);
 
   init.add_return_value<ReducePerDeviceState>();

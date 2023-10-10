@@ -15,12 +15,12 @@ struct ReducePerDeviceState {
 };
 
 FF_VISITABLE_STRUCT(ReducePerDeviceState,
-                          handle,
-                          inputTensor,
-                          outputTensor,
-                          reduceDesc,
-                          op_type,
-                          reduction_size);
+                    handle,
+                    inputTensor,
+                    outputTensor,
+                    reduceDesc,
+                    op_type,
+                    reduction_size);
 
 namespace Kernels {
 namespace Reduce {
