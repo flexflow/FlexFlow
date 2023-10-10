@@ -15,7 +15,10 @@
 
 #include "parallel_ops/replicate.h"
 #include "kernels/replicate_kernels.h"
+#include "op-attrs/get_output_shapes.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "utils/exceptions.h"
+#include "utils/graph/serialparallel.h"
 #include "utils/hash-utils.h"
 #include <sys/types.h>
 
@@ -49,7 +52,7 @@ OpTaskInvocation forward(ReplicateAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
 
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
+  binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
   return {REPLICATE_FWD_TASK_ID, binding};
@@ -112,8 +115,9 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   auto env = sim.new_environment();
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind(INPUT, input_parallel_tensor_shape(0));
-  fwd_binding.bind(OUTPUT, output_tensor(0));
+  ParallelTensorShape output = get_output_shape(input, attrs);
+  fwd_binding.bind(INPUT, input.shape);
+  fwd_binding.bind(OUTPUT, output);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
   auto fwd_accessor = env.get_fwd_accessor(TOPK_FWD_TASK_ID, fwd_binding);
