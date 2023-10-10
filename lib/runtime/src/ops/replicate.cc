@@ -45,7 +45,7 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Replicate;
 
-enum Slots {INPUT, OUTPUT, PROFILING };
+enum Slots { INPUT, OUTPUT, PROFILING };
 
 OpTaskInvocation forward(ReplicateAttrs const &attrs) {
   OpTaskBinding binding;
