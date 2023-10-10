@@ -56,7 +56,7 @@ struct BackwardKernel {
 
 RepartitionPerDeviceState
     init_kernel(PerDeviceFFHandle const &handle, DataType data_type) {
-  RepartitionPerDeviceState per_device_state =  {handle, data_type};
+  RepartitionPerDeviceState per_device_state = {handle, data_type};
   return per_device_state;
 }
 

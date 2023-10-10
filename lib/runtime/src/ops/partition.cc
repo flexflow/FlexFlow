@@ -42,35 +42,13 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Repartition;
 
-enum Slots { INPUT, OUTPUT, ATTRS, PROFILING, HANDLE, PER_DEVICE_STATE }; 
-
-/* Params */
-bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
-  return lhs.repartition_legion_dim == rhs.repartition_legion_dim &&
-         lhs.repartition_degree == rhs.repartition_degree;
-}
-
-bool RepartitionParams::is_valid(ParallelTensorShape const &input) const {
-  bool valid = input.is_valid();
-  valid &= (input.dims[this->repartition_legion_dim].size %
-                (this->repartition_degree *
-                 input.dims[this->repartition_legion_dim].degree) ==
-            0);
-  return valid;
-}
-
-RepartitionParams Repartition::get_params() const {
-  RepartitionParams params;
-  params.repartition_legion_dim = this->repartition_dim;
-  params.repartition_degree = this->repartition_degree;
-  return params;
-}
+enum Slots { INPUT, OUTPUT, ATTRS, PROFILING, HANDLE, PER_DEVICE_STATE };
 
 OpTaskInvocation init(RepartitionAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(HANDLE, ff_handle());
-  binding.bind(INPUT, input_parallel_tensor_shape(0)); // use the input data type
+  binding.bind(INPUT, input_tensor(0));
 
   return {REPARTITION_INIT_TASK_ID, binding};
 }
@@ -80,8 +58,9 @@ OpTaskInvocation forward(RepartitionAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind_arg(PER_DEVICE_STATE, per_device_state<RepartitionPerDeviceState>());
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_state<RepartitionPerDeviceState>());
+  binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
   return {REPARTITION_FWD_TASK_ID, binding};
@@ -171,7 +150,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   SimTaskBinding init_binding;
   init_binding.bind_arg(HANDLE, ff_handle());
-  init_binding.bind(INPUT, input); // use the input data type
+  init_binding.bind(INPUT, input.shape); // use the input data type
   auto init_accessor =
       env.get_init_accessor(REPARTITION_INIT_TASK_ID, init_binding);
 
@@ -179,7 +158,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
       init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
-  fwd_binding.bind(INTPUT, input);
+  fwd_binding.bind(INTPUT, input.shape);
   fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
@@ -203,6 +182,8 @@ void register_task<REPARTITION_INIT_TASK_ID>() {
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   init.add_input_slot(INPUT);
+
+  init.add_return_value<RepartitionPerDeviceState>();
 
   register_task(REPARTITION_INIT_TASK_ID, "Repartition Init", init, init_task);
 }
