@@ -22,7 +22,7 @@ namespace Kernels {
 namespace MultiHeadAttention {
 
 MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
-                              Allocator allocator,
+                              Allocator &allocator,
                               int num_samples,
                               int num_heads,
                               int qSize,
@@ -206,45 +206,47 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                         hiWinIdx,
                                         reserveSpace,
                                         allocator};
-  free(qoSeqArray);
-  free(kvSeqArray);
+  allocator.deallocate(qoSeqArray);
+  allocator.deallocate(kvSeqArray);
+
+  return per_device_state;
 }
 
 void forward_kernel(cudaStream_t stream,
-                    MHAPerDeviceState *m,
+                    MHAPerDeviceState const &device_state,
                     float const *query_ptr,
                     float const *key_ptr,
                     float const *value_ptr,
                     float const *weight_ptr,
                     float *output_ptr) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(cudnnSetStream(device_state.handle.dnn, stream));
 
-  checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
-                                       m->attnDesc,
+  checkCUDNN(cudnnMultiHeadAttnForward(device_state.handle.dnn,
+                                       device_state.attnDesc,
                                        -1,
-                                       m->loWinIdx,
-                                       m->hiWinIdx,
-                                       m->devQoSeqArray,
-                                       m->devKvSeqArray,
-                                       m->qDesc,
+                                       device_state.loWinIdx,
+                                       device_state.hiWinIdx,
+                                       device_state.devQoSeqArray,
+                                       device_state.devKvSeqArray,
+                                       device_state.qDesc,
                                        query_ptr,
                                        nullptr /*residual*/,
-                                       m->kDesc,
+                                       device_state.kDesc,
                                        key_ptr,
-                                       m->vDesc,
+                                       device_state.vDesc,
                                        value_ptr,
-                                       m->oDesc,
+                                       device_state.oDesc,
                                        output_ptr,
-                                       m->weightSize,
+                                       device_state.weightSize,
                                        weight_ptr,
-                                       m->handle.workSpaceSize,
-                                       m->handle.workSpace,
-                                       m->reserveSpaceSize,
-                                       m->reserveSpace));
+                                       device_state.handle.workSpaceSize,
+                                       device_state.handle.workSpace,
+                                       device_state.reserveSpaceSize,
+                                       device_state.reserveSpace));
 }
 
 void backward_kernel(cudaStream_t stream,
-                     MHAPerDeviceState *m,
+                     MHAPerDeviceState const &device_state,
                      float const *query_ptr,
                      float *query_grad_ptr,
                      float const *key_ptr,
@@ -254,65 +256,61 @@ void backward_kernel(cudaStream_t stream,
                      float const *weight_ptr,
                      float *weight_grad_ptr,
                      float const *output_grad_ptr) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(cudnnSetStream(device_state.handle.dnn, stream));
 
-  checkCUDNN(cudnnMultiHeadAttnBackwardData(m->handle.dnn,
-                                            m->attnDesc,
-                                            m->loWinIdx,
-                                            m->hiWinIdx,
-                                            m->devQoSeqArray,
-                                            m->devKvSeqArray,
-                                            m->oDesc,
+  checkCUDNN(cudnnMultiHeadAttnBackwardData(device_state.handle.dnn,
+                                            device_state.attnDesc,
+                                            device_state.loWinIdx,
+                                            device_state.hiWinIdx,
+                                            device_state.devQoSeqArray,
+                                            device_state.devKvSeqArray,
+                                            device_state.oDesc,
                                             output_grad_ptr,
-                                            m->qDesc,
+                                            device_state.qDesc,
                                             query_grad_ptr,
                                             query_ptr,
-                                            m->kDesc,
+                                            device_state.kDesc,
                                             key_grad_ptr,
                                             key_ptr,
-                                            m->vDesc,
+                                            device_state.vDesc,
                                             value_grad_ptr,
                                             value_ptr,
-                                            m->weightSize,
+                                            device_state.weightSize,
                                             weight_ptr,
-                                            m->handle.workSpaceSize,
-                                            m->handle.workSpace,
-                                            m->reserveSpaceSize,
-                                            m->reserveSpace));
-  checkCUDNN(cudnnMultiHeadAttnBackwardWeights(m->handle.dnn,
-                                               m->attnDesc,
-                                               CUDNN_WGRAD_MODE_ADD,
-                                               m->qDesc,
-                                               query_ptr,
-                                               m->kDesc,
-                                               key_ptr,
-                                               m->vDesc,
-                                               value_ptr,
-                                               m->oDesc,
-                                               output_grad_ptr,
-                                               m->weightSize,
-                                               weight_ptr,
-                                               weight_grad_ptr,
-                                               m->handle.workSpaceSize,
-                                               m->handle.workSpace,
-                                               m->reserveSpaceSize,
-                                               m->reserveSpace));
+                                            device_state.handle.workSpaceSize,
+                                            device_state.handle.workSpace,
+                                            device_state.reserveSpaceSize,
+                                            device_state.reserveSpace));
+  checkCUDNN(
+      cudnnMultiHeadAttnBackwardWeights(device_state.handle.dnn,
+                                        device_state.attnDesc,
+                                        CUDNN_WGRAD_MODE_ADD,
+                                        device_state.qDesc,
+                                        query_ptr,
+                                        device_state.kDesc,
+                                        key_ptr,
+                                        device_state.vDesc,
+                                        value_ptr,
+                                        device_state.oDesc,
+                                        output_grad_ptr,
+                                        device_state.weightSize,
+                                        weight_ptr,
+                                        weight_grad_ptr,
+                                        device_state.handle.workSpaceSize,
+                                        device_state.handle.workSpace,
+                                        device_state.reserveSpaceSize,
+                                        device_state.reserveSpace));
 }
 
-void cleanup_kernel(int *loWinIdx,
-                    int *hiWinIdx,
-                    ffAttnDescriptor_t attnDesc,
-                    ffSeqDataDescriptor_t qDesc,
-                    ffSeqDataDescriptor_t kDesc,
-                    ffSeqDataDescriptor_t vDesc,
-                    ffSeqDataDescriptor_t oDesc) {
-  free(loWinIdx);
-  free(hiWinIdx);
-  checkCUDNN(cudnnDestroyAttnDescriptor(attnDesc));
-  checkCUDNN(cudnnDestroySeqDataDescriptor(qDesc));
-  checkCUDNN(cudnnDestroySeqDataDescriptor(kDesc));
-  checkCUDNN(cudnnDestroySeqDataDescriptor(vDesc));
-  checkCUDNN(cudnnDestroySeqDataDescriptor(oDesc));
+void cleanup_kernel(Allocator &allocator,
+                    MHAPerDeviceState const &device_state) {
+  allocator.deallocate(device_state.loWinIdx);
+  allocator.deallocate(device_state.hiWinIdx);
+  checkCUDNN(cudnnDestroyAttnDescriptor(device_state.attnDesc));
+  checkCUDNN(cudnnDestroySeqDataDescriptor(device_state.qDesc));
+  checkCUDNN(cudnnDestroySeqDataDescriptor(device_state.kDesc));
+  checkCUDNN(cudnnDestroySeqDataDescriptor(device_state.vDesc));
+  checkCUDNN(cudnnDestroySeqDataDescriptor(device_state.oDesc));
 }
 
 } // namespace MultiHeadAttention

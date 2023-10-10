@@ -32,7 +32,7 @@ void forward_kernel(cudaStream_t stream,
                     int batch,
                     int a_seq_length_dim,
                     int b_seq_length_dim,
-                    int seq_length = -1) {
+                    int seq_length) {
   checkCUDA(cublasSetStream(handle.blas, stream));
   checkCUDNN(cudnnSetStream(handle.dnn, stream));
   int lda = k;
