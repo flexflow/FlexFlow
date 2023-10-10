@@ -34,6 +34,7 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
       cudnnSetTensorDescriptorFromDomain4SoftMax(outputTensor, input_domain));
   dim = softmax->dim;
   profiling = softmax->profiling;
+  inference_debugging = softmax->inference_debugging;
   std::strcpy(op_name, softmax->name);
 }
 

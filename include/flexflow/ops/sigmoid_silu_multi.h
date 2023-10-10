@@ -79,7 +79,6 @@ public:
   ~SigmoidSiluMultiMeta(void);
 
 public:
-  char op_name[MAX_OPNAME];
   Realm::RegionInstance reserveInst;
 };
 

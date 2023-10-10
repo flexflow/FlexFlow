@@ -231,6 +231,9 @@ OpMeta *Sampling::init_task(Task const *task,
   SamplingMeta *m = new SamplingMeta(
       handle, s, batch_size, length * batch_size, acc_input, gpu_mem_allocator);
   m->profiling = s->profiling;
+  m->inference_debugging = s->inference_debugging;
+  std::strcpy(m->op_name, s->name);
+  m->layer_guid = s->layer_guid;
   m->top_p = s->top_p;
   return m;
 }
@@ -287,7 +290,7 @@ InferenceResult
   assert(task->regions.size() == 2);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   // BatchConfig const *bc = (BatchConfig *)task->args;
-  SamplingMeta const *m = *((SamplingMeta **)task->local_args);
+  SamplingMeta *m = *((SamplingMeta **)task->local_args);
   if (bc->num_tokens == 0) {
     // Directly return for empty batch config
     InferenceResult ir;
@@ -301,6 +304,13 @@ InferenceResult
 
   int batch_size = bc->num_active_infr_tokens();
   Sampling::forward_kernel_wrapper(m, input, indices, batch_size);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Sampling::save_inference_tensors_to_file(
+        m, shard_id, bc, {}, {}, {input, indices});
+  }
 
   InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(

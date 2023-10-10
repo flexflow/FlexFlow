@@ -138,6 +138,9 @@ template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
 template <typename T>
+void save_tensor(T const *ptr, size_t num_elements, char const *file_name);
+
+template <typename T>
 T *download_tensor(T const *ptr, size_t num_elements);
 
 template <typename T>

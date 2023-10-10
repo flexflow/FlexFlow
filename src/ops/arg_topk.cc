@@ -241,7 +241,10 @@ OpMeta *ArgTopK::init_task(Task const *task,
   FFHandler handle = *((FFHandler *)task->local_args);
   ArgTopKMeta *m = new ArgTopKMeta(handle, topk);
   m->profiling = topk->profiling;
+  m->inference_debugging = topk->inference_debugging;
   m->sorted = topk->sorted;
+  std::strcpy(m->op_name, topk->name);
+  m->layer_guid = topk->layer_guid;
   return m;
 }
 
@@ -308,7 +311,7 @@ InferenceResult
     InferenceResult ir;
     return ir;
   }
-  ArgTopKMeta const *m = *((ArgTopKMeta **)task->local_args);
+  ArgTopKMeta *m = *((ArgTopKMeta **)task->local_args);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -317,6 +320,13 @@ InferenceResult
 
   int batch_size = bc->num_active_infr_tokens();
   ArgTopK::forward_kernel_wrapper(m, input, indices, batch_size);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    ArgTopK::save_inference_tensors_to_file(
+        m, shard_id, bc, {input}, {}, {indices});
+  }
 
   InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
@@ -332,6 +342,7 @@ void ArgTopK::backward(FFModel const &ff) {
 void ArgTopK::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->k);
   sez.serialize(this->sorted);
 }
@@ -341,10 +352,11 @@ Node ArgTopK::deserialize(FFModel &ff,
                           ParallelTensor inputs[],
                           int num_inputs) {
   assert(num_inputs == 1);
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   int k;
   bool sorted;
   dez.deserialize(k);

@@ -274,8 +274,11 @@ OpMeta *BatchMatmul::init_task(Task const *task,
   FFHandler handle = *((FFHandler const *)task->local_args);
   BatchMatmulMeta *m = new BatchMatmulMeta(handle);
   m->profiling = bmm->profiling;
+  m->inference_debugging = bmm->inference_debugging;
   m->a_seq_length_dim = bmm->a_seq_length_dim;
   m->b_seq_length_dim = bmm->b_seq_length_dim;
+  std::strcpy(m->op_name, bmm->name);
+  m->layer_guid = bmm->layer_guid;
   return m;
 }
 

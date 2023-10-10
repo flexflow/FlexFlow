@@ -279,6 +279,7 @@ BatchNormMeta::BatchNormMeta(FFHandler handler,
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   relu = bn->relu;
   profiling = bn->profiling;
+  inference_debugging = bn->inference_debugging;
   mode = CUDNN_BATCHNORM_SPATIAL;
 #if CUDNN_VERSION >= 7000
   mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;

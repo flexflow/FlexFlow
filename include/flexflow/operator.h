@@ -1,6 +1,7 @@
 #ifndef _OPERATOR_H
 #define _OPERATOR_H
 
+#include "flexflow/accessor.h"
 #include "flexflow/batch_config.h"
 #include "flexflow/fftype.h"
 #include "flexflow/machine_view.h"
@@ -183,6 +184,7 @@ public:
      const ParallelTensor input4 = NULL);
   Op(int guid,
      bool profiling,
+     bool inference_debugging,
      OperatorType otype,
      DataType dtype,
      char const *name,
@@ -232,6 +234,13 @@ public:
     assert(false);
   }
   virtual void print_layer(FFModel const &model) = 0;
+  static void save_inference_tensors_to_file(
+      OpMeta *m,
+      int shard_id,
+      BatchConfig const *bc,
+      std::vector<GenericTensorAccessorR> input_tensors,
+      std::vector<GenericTensorAccessorR> weight_tensors,
+      std::vector<GenericTensorAccessorW> output_tensors);
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
                                      CostMetrics &cost_metrics) const = 0;
@@ -324,6 +333,7 @@ public:
   std::map<ParallelTensor, OpMeta *[MAX_NUM_WORKERS]> inference_meta;
   int numInputs, numWeights, numOutputs;
   bool profiling;
+  bool inference_debugging;
   bool add_bias_only_once;
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;

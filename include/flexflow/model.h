@@ -1253,6 +1253,8 @@ public:
   std::unordered_map<size_t, NoOp *> cached_noop_ops;
   std::unordered_map<size_t, NoOp *> cached_input_ops;
   std::vector<MachineView> all_valid_views;
+  int model_id; // unique incremental id assigned to each model. Used in the
+                // inference_debugging mode.
 #ifdef FF_USE_NCCL
   std::unordered_map<size_t, ncclComm_t *> view_hash_to_nccl_comms;
 #endif
@@ -1281,6 +1283,9 @@ private:
   ElementUnary *
       unary(OperatorType op, char const *name = NULL, float scalar = 0.0);
   PCG::Node new_node(Op *);
+  static int model_counter; // number of instantiated FFModel objects. Used to
+                            // assign a unique incremental id to each model.
+                            // Used in the inference_debugging mode.
 };
 
 class UtilityTasks {

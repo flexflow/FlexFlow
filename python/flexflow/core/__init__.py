@@ -41,6 +41,7 @@ ff_arg_to_sysarg = {
     "num_cpus": "-ll:cpu",
     "legion_utility_processors": "-ll:util",
     "profiling": "--profiling",
+    "inference_debugging": "--inference-debugging",
     "fusion": "--fusion",
     "disable_control_replication": "--disable-control-replication",
     # Training args

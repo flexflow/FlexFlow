@@ -34,7 +34,6 @@ public:
   RegularizerMode kernel_reg_type;
   float kernel_reg_lambda;
   bool use_bias, add_bias_only_once;
-  char op_name[MAX_OPNAME];
   Realm::RegionInstance reserveInst;
   // PEFT related fields
   void *output_activation_buffer;

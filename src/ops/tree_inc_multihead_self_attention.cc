@@ -722,6 +722,9 @@ OpMeta *TreeIncMultiHeadSelfAttention::init_task(
            gpu_mem_allocator.reserved_total_size);
   }
   m->profiling = attn->profiling;
+  m->inference_debugging = attn->inference_debugging;
+  std::strcpy(m->op_name, attn->name);
+  m->layer_guid = attn->layer_guid;
 
   if (attn->quantization_type == DT_NONE) {
     assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
@@ -803,7 +806,6 @@ void TreeIncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(task->regions.size() == regions.size());
 
-  // TreeVerifyBatchConfig const *bc = (TreeVerifyBatchConfig *)task->args;
   TreeVerifyBatchConfig const &bc =
       Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
   log_tree_verify.debug(
@@ -857,6 +859,18 @@ void TreeIncMultiHeadSelfAttention::inference_task(
 
   TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
       m, &bc, task->index_point.point_data[0], input, weight, output, biases);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    weights_accessors.push_back(weight);
+    if (*m->qkv_bias || *m->final_bias) {
+      weights_accessors.push_back(biases);
+    }
+    TreeIncMultiHeadSelfAttention::save_inference_tensors_to_file(
+        m, shard_id, &bc, {input}, weights_accessors, {output});
+  }
 }
 
 void TreeIncMultiHeadSelfAttention::backward(FFModel const &ff) {

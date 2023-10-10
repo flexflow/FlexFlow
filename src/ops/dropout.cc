@@ -170,6 +170,8 @@ OpMeta *Dropout::init_task(Task const *task,
                        .first();
   assert(input_domain == output_domain);
   DropoutMeta *m = new DropoutMeta(handle, dropout, gpu_mem, output_domain);
+  std::strcpy(m->op_name, dropout->name);
+  m->layer_guid = dropout->layer_guid;
   return m;
 }
 

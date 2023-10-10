@@ -185,9 +185,6 @@ public:
   bool *qk_prod_scaling;
   bool *position_bias;
   float scaling_factor;
-#ifdef INFERENCE_TESTS
-  float *kcache, *vcache;
-#endif
   void *weight_ptr, *bias_ptr; // for weight offload
   void *devQKVProjArray, *keyCache, *valueCache;
   void *qk_prods, *qk_prods_softmax;
