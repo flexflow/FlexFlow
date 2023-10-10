@@ -217,7 +217,7 @@ class LLM:
             if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
                 print("Done downloading HF weights. Converting them now...")
             # Convert the model to FlexFlow format
-            print(f"self.model_class:{self.mode_clas}")
+            #print(f"self.model_class:{self.model_clas}")
             self.model_class.convert_hf_model(hf_model, self.weights_path)
             # Save new revision hash to file
             with open(ff_revision_file, "w+") as f:
@@ -386,7 +386,7 @@ class LLM:
 
         # Download the weights and tokenizer from huggingface (if needed) and load them
         self.__load_hf_weights()
-        self.download_hf_tokenizer_if_needed()
+        #self.download_hf_tokenizer_if_needed()
 
         # Create tokenizer (this must be done after we have downloaded the tokenizer
         bos_token_id = (
@@ -395,6 +395,7 @@ class LLM:
         eos_token_id = (
             -1 if self.hf_config.eos_token_id is None else self.hf_config.eos_token_id
         )
+        self.tokenizer_path = "/home/lambda/.cache/flexflow/tokenizers/baichuan-inc/baichuan-7b"
         self.rm.register_tokenizer(
             self.model_type, bos_token_id, eos_token_id, self.tokenizer_path
         )

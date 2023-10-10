@@ -43,6 +43,7 @@ def main(args):
         data_types = (ff.DataType.DT_FLOAT, ff.DataType.DT_HALF)
 
     data_types = (ff.DataType.DT_HALF, ff.DataType.DT_HALF)
+    data_types = [ff.DataType.DT_HALF]
     for model_name in args.model_names:
         for data_type in data_types:
             llm = ff.LLM(
@@ -51,9 +52,9 @@ def main(args):
                 cache_path=args.cache_folder,
                 refresh_cache=args.refresh_cache,
             )
-            llm.download_hf_weights_if_needed()
+            #llm.download_hf_weights_if_needed()
             llm.download_hf_tokenizer_if_needed()
-            llm.download_hf_config()
+            #llm.download_hf_config()
 
 
 if __name__ == "__main__":

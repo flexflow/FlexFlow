@@ -28,6 +28,7 @@ class BAICHUANConfig:
         self.intermediate_size = hf_config.intermediate_size
         self.num_attention_heads = hf_config.num_attention_heads
         self.max_position_embeddings = hf_config.max_position_embeddings
+        self.num_key_value_heads = hf_config.num_attention_heads
 
 class FlexFlowBAICHUAN(FlexFlowModel):
     def __init__(

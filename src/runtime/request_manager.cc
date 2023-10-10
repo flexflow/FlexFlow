@@ -123,6 +123,7 @@ void RequestManager::register_tokenizer(ModelType type,
                             (path.size() - strlen("tokenizer.model"));
     std::string tokenizer_filepath =
         path_to_file ? path : tokenizer_folder + "tokenizer.model";
+    std::cout<<"tokenizer_filepath:"<<tokenizer_filepath<<std::endl;
     this->tokenizer_ =
         Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(tokenizer_filepath));
   } else if (model_type == ModelType::OPT) {
