@@ -10,6 +10,7 @@ ff_add_library(
   DEPS
     utils
     op-attrs
+    pcg
 )
 
 add_subdirectory(ffi)

@@ -1,299 +1,245 @@
 #include "substitutions/graph_pattern.h"
-#include "utils/hash-utils.h"
-#include <memory>
+#include "op-attrs/operator_attrs.h"
+#include "op-attrs/parallel_tensor_shape.h"
+#include "pcg/parallel_computation_graph.h"
+#include "substitutions/get_attribute.h"
+#include "substitutions/graph_pattern_match.h"
+#include "substitutions/operator_pattern.h"
+#include "substitutions/parallel_tensor_pattern.h"
 
 namespace FlexFlow {
-namespace substitutions {
 
-DiGraphPatternMatch narrow_match(DiGraphPatternMatch const &match,
-                                 IOpenMultiDiGraphView const &pattern) {
-  DiGraphPatternMatch result;
-  std::unordered_set<Node> nodes = get_nodes(pattern);
-  for (auto const &kv : match.nodeAssignment) {
-    Node pattern_node = kv.first;
-    if (contains(nodes, pattern_node)) {
-      result.nodeAssignment.equate(kv.first, kv.second);
-    }
+optional<OperatorAttributeValue>
+    evaluate_list_index_access(int index,
+                               optional<OperatorAttributeValue> const &v) {
+  if (!v.has_value() ||
+      !holds_alternative<stack_vector<int, MAX_TENSOR_DIM>>(v.value()) ||
+      !holds_alternative<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(v.value())) {
+    return nullopt;
   }
 
-  std::unordered_set<OpenMultiDiEdge> edges = get_edges(pattern);
-  for (auto const &kv : match.edgeAssignment) {
-    OpenMultiDiEdge pattern_edge = kv.first;
-    if (contains(edges, pattern_edge)) {
-      result.edgeAssignment.equate(kv.first, kv.second);
-    }
+  if (index >= MAX_TENSOR_DIM) {
+    return nullopt;
   }
 
-  return result;
-}
-
-GraphSplit split_pattern(IOpenMultiDiGraphView const &pattern) {
-  std::vector<Node> topological_ordering = get_topological_ordering(pattern);
-  assert(topological_ordering.size() >= 2);
-
-  int split_point = topological_ordering.size() / 2;
-  auto split = vector_split(topological_ordering, split_point);
-  std::unordered_set<Node> prefix(split.first.begin(), split.first.end());
-  std::unordered_set<Node> postfix(split.second.begin(), split.second.end());
-  return {prefix, postfix};
-}
-
-std::pair<std::unique_ptr<IOpenMultiDiGraphView>,
-          std::unique_ptr<IOpenMultiDiGraphView>>
-    apply_split(IOpenMultiDiGraphView const &pattern, GraphSplit const &split) {
-  return {unsafe_view_as_subgraph(pattern, split.first),
-          unsafe_view_as_subgraph(pattern, split.second)};
-}
-
-std::unordered_set<Node> get_nodes(OpenMultiDiEdge const &pattern_edge) {
-  if (is_input_edge(pattern_edge)) {
-    return {mpark::get<InputMultiDiEdge>(pattern_edge).dst};
-  } else if (is_output_edge(pattern_edge)) {
-    return {mpark::get<OutputMultiDiEdge>(pattern_edge).src};
+  if (holds_alternative<stack_vector<int, MAX_TENSOR_DIM>>(v.value())) {
+    return get<stack_vector<int, MAX_TENSOR_DIM>>(v.value()).at(index);
   } else {
-    assert(is_standard_edge(pattern_edge));
-    auto standard_edge = mpark::get<MultiDiEdge>(pattern_edge);
-    return {standard_edge.src, standard_edge.dst};
+    return get<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(v.value()).at(index);
   }
 }
 
-bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
-    get_edge_splits(IOpenMultiDiGraphView const &pattern,
-                    GraphSplit const &split) {
-  auto prefix = split.first;
-  auto postfix = split.second;
-
-  bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>> result;
-
-  for (OpenMultiDiEdge const &pattern_edge : get_edges(pattern)) {
-    if (!is_standard_edge(pattern_edge)) {
-      continue;
-    }
-
-    auto standard_edge = mpark::get<MultiDiEdge>(pattern_edge);
-    if (is_subseteq_of(get_nodes(standard_edge), prefix) ||
-        is_subseteq_of(get_nodes(standard_edge), postfix)) {
-      continue;
-    }
-
-    auto divided = split_edge(standard_edge);
-    result.equate(standard_edge, divided);
+optional<TensorAttributeValue>
+    evaluate_list_index_access(int const &index,
+                               optional<TensorAttributeValue> const &v) {
+  if (!v.has_value() || !holds_alternative<std::vector<int>>(v.value())) {
+    return nullopt;
   }
 
-  return result;
+  auto vec = get<std::vector<int>>(v.value());
+
+  if (index >= vec.size()) {
+    return nullopt;
+  }
+
+  return vec.at(index);
 }
 
-MatchSplit apply_split(IOpenMultiDiGraphView const &pattern,
-                       DiGraphPatternMatch const &match,
-                       GraphSplit const &split) {
-  auto prefix = split.first;
-  auto postfix = split.second;
+optional<OperatorAttributeValue>
+    evaluate_list_size(optional<OperatorAttributeValue> const &v) {
+  return MAX_TENSOR_DIM;
+}
 
-  MatchSplit result;
+optional<TensorAttributeValue>
+    evaluate_list_size(optional<TensorAttributeValue> const &v) {
+  if (!v.has_value() || !holds_alternative<std::vector<int>>(v.value())) {
+    return nullopt;
+  }
 
-  for (auto const &kv : match.nodeAssignment) {
-    Node pattern_node = kv.first;
-    Node graph_node = kv.second;
-    if (contains(split.first, pattern_node)) {
-      result.prefix_submatch.nodeAssignment.equate(pattern_node, graph_node);
-    } else {
-      assert(contains(split.second, pattern_node));
-      result.postfix_submatch.nodeAssignment.equate(pattern_node, graph_node);
+  return (int)get<std::vector<int>>(v.value()).size();
+}
+
+struct EvaluateOperatorAttributeExpr {
+  EvaluateOperatorAttributeExpr(Operator const &attrs) : attrs(attrs) {}
+
+  optional<OperatorAttributeValue> operator()(OperatorAttributeKey const &key) {
+    return get_attribute(this->attrs, key);
+  }
+
+  optional<OperatorAttributeValue>
+      operator()(ListIndexAccess<OperatorAttributeKey> const &index_access) {
+    optional<OperatorAttributeValue> v =
+        get_attribute(this->attrs, index_access.attribute_key);
+    return evaluate_list_index_access(index_access.index, v);
+  }
+
+  optional<OperatorAttributeValue>
+      operator()(ListSize<OperatorAttributeKey> const &list_size) {
+    optional<OperatorAttributeValue> v =
+        get_attribute(this->attrs, list_size.attribute_key);
+    return evaluate_list_size(v);
+  }
+
+private:
+  Operator attrs;
+};
+
+optional<TensorAttributeValue>
+    evaluate_tensor_attribute_expr(ParallelTensor const &,
+                                   AttributeExpr<TensorAttributeKey> const &);
+
+struct EvaluateTensorAttributeExpr {
+  EvaluateTensorAttributeExpr(ParallelTensor const &tensor_shape)
+      : tensor_shape(tensor_shape) {}
+
+  template <typename T>
+  optional<TensorAttributeValue> evaluate(T const &t) {
+    return this->operator()(t);
+  }
+
+  optional<TensorAttributeValue> operator()(TensorAttributeKey key) {
+    switch (key) {
+      case TensorAttributeKey::DIM_SIZES: {
+        std::vector<int> result;
+        for (ParallelDim const &dim : this->tensor_shape.dims) {
+          result.push_back(dim.size);
+        }
+        return result;
+      }
+      case TensorAttributeKey::DIM_DEGREES: {
+        std::vector<int> result;
+        for (ParallelDim const &dim : this->tensor_shape.dims) {
+          result.push_back(dim.degree);
+        }
+        return result;
+      }
+      default:
+        throw std::runtime_error("Unknown TensorAttributeKey");
     }
   }
 
-  auto edge_splits = get_edge_splits(pattern, split);
-
-  std::function<void(OpenMultiDiEdge const &)> handle_edge =
-      [&](OpenMultiDiEdge const &pattern_edge) -> void {
-    MultiDiEdge graph_edge = match.edgeAssignment.at_l(pattern_edge);
-    auto edge_nodes = get_nodes(pattern_edge);
-    if (is_subseteq_of(edge_nodes, prefix)) {
-      result.prefix_submatch.edgeAssignment.equate(pattern_edge, graph_edge);
-    } else if (is_subseteq_of(edge_nodes, postfix)) {
-      result.postfix_submatch.edgeAssignment.equate(pattern_edge, graph_edge);
-    } else {
-      assert(is_standard_edge(pattern_edge));
-      auto standard_edge = mpark::get<MultiDiEdge>(pattern_edge);
-      auto divided = edge_splits.at_l(standard_edge);
-      handle_edge(divided.first);
-      handle_edge(divided.second);
-    }
-  };
-
-  for (auto const &kv : match.edgeAssignment) {
-    OpenMultiDiEdge pattern_edge = kv.first;
-    handle_edge(pattern_edge);
+  optional<TensorAttributeValue>
+      operator()(ListIndexAccess<TensorAttributeKey> const &index_access) {
+    optional<TensorAttributeValue> v =
+        this->evaluate(index_access.attribute_key);
+    return evaluate_list_index_access(index_access.index, v);
   }
 
-  return result;
+  optional<TensorAttributeValue>
+      operator()(ListSize<TensorAttributeKey> const &list_size) {
+    return evaluate_list_size(this->evaluate(list_size.attribute_key));
+  }
+
+private:
+  ParallelTensor tensor_shape;
+};
+
+optional<TensorAttributeValue>
+    evaluate_attribute_expr(ParallelTensor const &tensor_shape,
+                            AttributeExpr<TensorAttributeKey> const &expr) {
+  return visit(EvaluateTensorAttributeExpr(tensor_shape), expr);
 }
 
-bool is_singleton_pattern(IOpenMultiDiGraphView const &pattern) {
-  return num_nodes(pattern) == 1;
+optional<OperatorAttributeValue>
+    evaluate_attribute_expr(Operator const &attrs,
+                            AttributeExpr<OperatorAttributeKey> const &expr) {
+  return visit(EvaluateOperatorAttributeExpr(attrs), expr);
 }
 
-template <typename F>
-bool pattern_matches(IOpenMultiDiGraphView const &pattern,
-                     IMultiDiGraph const &graph,
-                     DiGraphPatternMatch const &match,
-                     F const &additional_criterion) {
-  if (is_singleton_pattern(pattern)) {
-    Node pattern_node = get_only(get_nodes(pattern));
-    Node graph_matched_node = match.nodeAssignment.at_l(pattern_node);
-    if (!additional_criterion(pattern_node, graph_matched_node)) {
+template <typename V>
+optional<bool> satisfies(ConstraintType constraint_type,
+                         V const &constraint_value,
+                         optional<V> const &maybe_attribute_value) {
+  if (!maybe_attribute_value.has_value()) {
+    return nullopt;
+  }
+  V attr_val = maybe_attribute_value.value();
+
+  if (attr_val.index() != constraint_value.index()) {
+    return nullopt;
+  }
+
+  if (constraint_type == ConstraintType::EQUAL) {
+    return attr_val == constraint_value;
+  } else {
+    throw std::runtime_error("Unknown constraint_type");
+  }
+}
+
+optional<bool> satisfies(ParallelTensor const &tensor_shape,
+                         TensorAttributeConstraint const &constraint) {
+  auto value = evaluate_attribute_expr(tensor_shape, constraint.attribute_expr);
+  return satisfies(
+      constraint.constraint_type, constraint.attribute_value, value);
+}
+
+optional<bool> satisfies(Operator const &params,
+                         OperatorAttributeConstraint const &constraint) {
+  auto value = evaluate_attribute_expr(params, constraint.attribute_expr);
+  return satisfies(
+      constraint.constraint_type, constraint.attribute_value, value);
+}
+
+template <typename Container, typename Function>
+optional<bool> optional_all_of(Container const &container,
+                               Function const &func) {
+  for (auto const &element : container) {
+    optional<bool> condition = func(element);
+    if (!condition.has_value()) {
+      return nullopt;
+    }
+
+    if (!condition.value()) {
       return false;
     }
-    for (OpenMultiDiEdge const &e : get_edges(pattern)) {
-      MultiDiEdge graph_matched_edge = match.edgeAssignment.at_l(e);
+  }
+  return true;
+}
 
-      assert(is_input_edge(e) || is_output_edge(e));
-      if (is_input_edge(e)) {
-        InputMultiDiEdge input_edge = mpark::get<InputMultiDiEdge>(e);
-        if (match.nodeAssignment.at_l(input_edge.dst) !=
-                graph_matched_edge.dst ||
-            input_edge.dstIdx != graph_matched_edge.dstIdx) {
-          return false;
-        }
-      } else {
-        OutputMultiDiEdge output_edge = mpark::get<OutputMultiDiEdge>(e);
-        if (match.nodeAssignment.at_l(output_edge.src) !=
-                graph_matched_edge.src ||
-            output_edge.srcIdx != graph_matched_edge.srcIdx) {
-          return false;
-        }
-      }
+optional<bool> satisfies(Operator const &params,
+                         OperatorPattern const &pattern) {
+  return optional_all_of(pattern.attribute_constraints,
+                         [&](OperatorAttributeConstraint const &c) {
+                           return satisfies(params, c);
+                         });
+}
 
-      if (!additional_criterion(e, graph_matched_edge)) {
-        return false;
-      }
-    }
+optional<bool> satisfies(ParallelTensor const &params,
+                         ParallelTensorPattern const &pattern) {
+  return optional_all_of(
+      pattern.attribute_constraints,
+      [&](TensorAttributeConstraint const &c) { return satisfies(params, c); });
+}
 
+struct AlwaysTrueCriterion {
+  template <typename T>
+  bool operator()(T const &t) const {
     return true;
   }
+};
 
-  auto split = split_pattern(pattern);
-  auto subpatterns = apply_split(pattern, split);
-  auto submatches = apply_split(pattern, match, split);
-
-  return pattern_matches(*subpatterns.first,
-                         graph,
-                         submatches.prefix_submatch,
-                         additional_criterion) &&
-         pattern_matches(*subpatterns.second,
-                         graph,
-                         submatches.postfix_submatch,
-                         additional_criterion);
-}
-
-tl::optional<DiGraphPatternMatch>
-    get_candidate_singleton_match(IOpenMultiDiGraphView const &pattern,
-                                  IMultiDiGraphView const &graph,
-                                  Node const &graph_node) {
-  assert(is_singleton_pattern(pattern));
-
-  Node pattern_node = get_only(get_nodes(pattern));
-
-  DiGraphPatternMatch match;
-  match.nodeAssignment.equate(pattern_node, graph_node);
-
-  auto incoming = get_incoming_edges_by_idx(graph, graph_node);
-  auto outgoing = get_outgoing_edges_by_idx(graph, graph_node);
-  for (OpenMultiDiEdge const &pattern_edge : get_edges(pattern)) {
-    assert(is_input_edge(pattern_edge) || is_output_edge(pattern_edge));
-    if (is_input_edge(pattern_edge)) {
-      InputMultiDiEdge input_edge = mpark::get<InputMultiDiEdge>(pattern_edge);
-      if (!contains_key(incoming, input_edge.dstIdx)) {
-        return tl::nullopt;
-      }
-      match.edgeAssignment.equate(input_edge,
-                                  get_only(incoming.at(input_edge.dstIdx)));
-    } else {
-      OutputMultiDiEdge output_edge =
-          mpark::get<OutputMultiDiEdge>(pattern_edge);
-      if (!contains_key(outgoing, output_edge.srcIdx)) {
-        return tl::nullopt;
-      }
-      match.edgeAssignment.equate(output_edge,
-                                  get_only(outgoing.at(output_edge.srcIdx)));
-    }
+bool assignment_satisfies(SubParallelComputationGraph const &pcg,
+                          GraphPattern const &pattern,
+                          MultiDiGraphPatternMatch const &patternMatch) {
+  bool result = true;
+  for (auto const &kv : patternMatch.node_assignment) {
+    auto patternNode = kv.first;
+    auto pcgNode = kv.second;
+    optional<bool> constraintResult =
+        satisfies(pcg.at(pcgNode), pattern.value().at(patternNode));
+    result &= constraintResult.value_or(false);
   }
 
-  return match;
-}
-
-tl::optional<DiGraphPatternMatch> unsplit_matches(
-    DiGraphPatternMatch const &prefix,
-    DiGraphPatternMatch const &postfix,
-    bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>> const
-        &edge_splits) {
-  DiGraphPatternMatch result;
-  std::unordered_set<OpenMultiDiEdge> handled;
-  for (auto const &kv : edge_splits) {
-    MultiDiEdge standard_edge = kv.first;
-    OutputMultiDiEdge output_edge = kv.second.first;
-    InputMultiDiEdge input_edge = kv.second.second;
-    handled.insert(output_edge);
-    handled.insert(input_edge);
-
-    MultiDiEdge output_graph_edge = prefix.edgeAssignment.at_l(output_edge);
-    MultiDiEdge input_graph_edge = postfix.edgeAssignment.at_l(input_edge);
-    if (output_graph_edge == input_graph_edge) {
-      result.edgeAssignment.equate(standard_edge, output_graph_edge);
-    } else {
-      return tl::nullopt;
-    }
+  for (auto const &kv : patternMatch.edge_assignment) {
+    auto patternEdge = kv.first;
+    auto pcgEdge = kv.second;
+    optional<bool> constraintResult =
+        satisfies(at(pcg, pcgEdge), pattern.value().at(patternEdge));
+    result &= constraintResult.value_or(false);
   }
 
-  for (auto const &kv :
-       merge_maps(prefix.edgeAssignment, postfix.edgeAssignment)) {
-    if (!contains(handled, kv.first)) {
-      result.edgeAssignment.equate(kv.first, kv.second);
-    }
-  }
-
-  result.nodeAssignment =
-      merge_maps(prefix.nodeAssignment, postfix.nodeAssignment);
+  result &= pattern_matches(pattern, pcg, patternMatch, AlwaysTrueCriterion{});
 
   return result;
 }
-
-template <typename F>
-std::unordered_set<DiGraphPatternMatch>
-    find_pattern_matches(IOpenMultiDiGraphView const &pattern,
-                         IMultiDiGraph const &graph,
-                         F const &additional_criterion) {
-  std::unordered_set<DiGraphPatternMatch> matches;
-  if (is_singleton_pattern(pattern)) {
-    for (Node const &graph_node : get_nodes(graph)) {
-      tl::optional<DiGraphPatternMatch> candidate =
-          get_candidate_singleton_match(pattern, graph, graph_node);
-      if (candidate.has_value() ||
-          pattern_matches<F>(pattern, graph, candidate.value())) {
-        matches.insert(candidate.value());
-      }
-    }
-  } else {
-    GraphSplit split = split_pattern(pattern);
-    auto subpatterns = apply_split(pattern, split);
-    auto prefix_matches =
-        find_pattern_matches(subpatterns.first, graph, additional_criterion);
-    auto postfix_matches =
-        find_pattern_matches(subpatterns.first, graph, additional_criterion);
-    auto edge_splits = get_edge_splits(pattern, split);
-    for (DiGraphPatternMatch const &prefix_match : prefix_matches) {
-      for (DiGraphPatternMatch const &postfix_match : postfix_matches) {
-        tl::optional<DiGraphPatternMatch> unsplit =
-            unsplit_matches(prefix_match, postfix_match, edge_splits);
-        if (unsplit.has_value()) {
-          matches.insert(unsplit.value());
-        }
-      }
-    }
-  }
-
-  return matches;
-}
-
-} // namespace substitutions
 } // namespace FlexFlow
