@@ -17,7 +17,7 @@ public:
   UnorderedNodeLabelledMultiDiGraph() = delete;
 
   Node add_node(NodeLabel const &label) override {
-    Node n = this->add_node();
+    Node n = MultiDiGraph::add_node();
     node_map.insert({n, label});
     return n;
   }
@@ -42,9 +42,8 @@ struct UnorderedLabelledMultiDiGraph
     : public ILabelledMultiDiGraph<NodeLabel, EdgeLabel>,
       public UnorderedNodeLabelledMultiDiGraph<NodeLabel> {
   void add_edge(MultiDiEdge const &e, EdgeLabel const &label) override {
-    this->add_edge(e);
+    MultiDiGraph::add_edge(e);
     edge_map.insert({e, label});
-    return label;
   }
 
   EdgeLabel &at(MultiDiEdge const &n) override {
@@ -123,6 +122,10 @@ public:
 
   OutputLabel &at(DownwardOpenMultiDiEdge const &e) {
     return this->output_map.at(e);
+  }
+
+  UnorderedLabelledOpenMultiDiGraph() {
+    NOT_IMPLEMENTED();
   }
 
 private:
