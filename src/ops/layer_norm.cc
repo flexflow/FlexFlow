@@ -383,6 +383,8 @@ OpMeta *LayerNorm::init_task(Task const *task,
                        .first();
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   LayerNormMeta *meta = new LayerNormMeta(handle, ln, gpu_mem_allocator);
+  std::strcpy(meta->op_name, ln->name);
+  meta->layer_guid = ln->layer_guid;
   meta->input_type[0] = ln->inputs[0]->data_type;
   meta->output_type[0] = ln->outputs[0]->data_type;
   return meta;
@@ -504,7 +506,7 @@ void LayerNorm::inference_task(Task const *task,
     return;
   }
 
-  LayerNormMeta const *m = *((LayerNormMeta **)task->local_args);
+  LayerNormMeta *m = *((LayerNormMeta **)task->local_args);
   assert(task->regions.size() == regions.size());
   float const *in_ptr = NULL;
   float *out_ptr = NULL, *gamma_ptr = NULL, *beta_ptr = NULL;
@@ -558,7 +560,22 @@ void LayerNorm::inference_task(Task const *task,
   } else {
     assert(regions.size() == 2);
   }
+
   LayerNorm::forward_kernel_wrapper(m, in, out, gamma, beta);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    if (m->elementwise_affine) {
+      weights_accessors.push_back(gamma);
+      if (m->use_bias) {
+        weights_accessors.push_back(beta);
+      }
+    }
+    LayerNorm::save_inference_tensors_to_file(
+        m, shard_id, bc, {in}, weights_accessors, {out});
+  }
 }
 
 /*
@@ -858,6 +875,7 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
 void LayerNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->axes.size());
   for (size_t i = 0; i < this->axes.size(); i++) {
     sez.serialize(this->axes[i]);
@@ -879,10 +897,11 @@ Node LayerNorm::deserialize(FFModel &ff,
   bool elementwise_affine;
   bool use_bias;
   float eps;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(num_axes);
   for (size_t i = 0; i < num_axes; i++) {
     int axis_idx;

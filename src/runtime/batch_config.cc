@@ -88,43 +88,61 @@ int BatchConfig::max_sequence_length() {
   return RequestManager::get_request_manager()->get_max_sequence_length();
 }
 
-void BatchConfig::print() const {
-  std::cout << "@@@@@@@@@@@@@@ Batch Config (mode " << get_mode()
-            << ") @@@@@@@@@@@@@@" << std::endl;
-  std::cout << "Max number of requests: " << max_requests_per_batch()
-            << std::endl;
-  std::cout << "Max number of tokens: " << max_tokens_per_batch() << std::endl;
-  std::cout << "Number of tokens: " << num_tokens << std::endl;
-  std::cout << "Number of requests: " << num_active_requests() << std::endl;
-  // std::cout << "Cached results: " << cached_results << std::endl;
+std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
+  os << "@@@@@@@@@@@@@@ Batch Config (mode " << bc.get_mode()
+     << ") @@@@@@@@@@@@@@" << std::endl;
+  // Max values
+  os << "Max number of requests: " << bc.max_requests_per_batch() << std::endl;
+  os << "Max number of tokens: " << bc.max_tokens_per_batch() << std::endl;
+  os << "Max sequence length: " << bc.max_sequence_length() << std::endl;
+  // Current values
+  os << "Number of tokens: " << bc.num_active_tokens() << std::endl;
+  os << "Number of requests: " << bc.num_active_requests() << std::endl;
 
-  std::cout << "Per-request info:\n";
-  for (int i = 0; i < max_requests_per_batch(); i++) {
-    if (!request_completed[i]) {
-      std::cout << "  Request " << i << ":\n";
-      std::cout << "    Token start offset: "
-                << requestsInfo[i].token_start_offset << std::endl;
-      std::cout << "    Number of tokens in batch: "
-                << requestsInfo[i].num_tokens_in_batch << std::endl;
-      std::cout << "    GUID: " << requestsInfo[i].request_guid << std::endl;
-      std::cout << "    Max sequence length: "
-                << requestsInfo[i].max_sequence_length << std::endl;
-      std::cout << "    Request completed: " << request_completed[i]
-                << std::endl;
+  // Per-request info
+  os << "Per-request info:\n";
+  for (int i = 0; i < bc.max_requests_per_batch(); i++) {
+    if (!bc.request_completed[i]) {
+      os << "  Request " << i << ":\n";
+      os << "    Token start offset: " << bc.requestsInfo[i].token_start_offset
+         << std::endl;
+      os << "    Number of tokens in batch: "
+         << bc.requestsInfo[i].num_tokens_in_batch << std::endl;
+      os << "    GUID: " << bc.requestsInfo[i].request_guid << std::endl;
+      os << "    Max sequence length: "
+         << bc.requestsInfo[i].max_sequence_length << std::endl;
+      os << "    Request completed: " << bc.request_completed[i] << std::endl;
+      os << "    Request running: " << bc.request_running[i] << std::endl;
     }
   }
 
-  std::cout << "Per-token info:\n";
-  for (int i = 0; i < num_tokens; i++) {
-    std::cout << "  Token " << i << ":\n";
-    std::cout << "    Absolute depth in request: "
-              << tokensInfo[i].abs_depth_in_request << std::endl;
-    std::cout << "    Request index: " << tokensInfo[i].request_index
-              << std::endl;
-    std::cout << "    Token id: " << tokensInfo[i].token_id << std::endl;
+  // Per-token info
+  os << "Per-token info:\n";
+  for (int i = 0; i < bc.num_tokens; i++) {
+    os << "  Token " << i << ":\n";
+    os << "    Absolute depth in request: "
+       << bc.tokensInfo[i].abs_depth_in_request << std::endl;
+    os << "    Request index: " << bc.tokensInfo[i].request_index << std::endl;
+    os << "    Token id: " << bc.tokensInfo[i].token_id << std::endl;
   }
-  std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-            << std::endl;
+  os << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
+  return os;
+}
+
+void BatchConfig::print() const {
+  std::cout << *this << std::endl;
+}
+
+void BatchConfig::save_to_file(std::string const &filename) const {
+  std::ofstream outputFile(filename);
+  if (outputFile.is_open()) {
+    outputFile << *this << std::endl;
+    outputFile.close();
+  } else {
+    std::cerr << "Error: Unable to open the batch config output file: "
+              << filename << std::endl;
+    assert(false);
+  }
 }
 
 }; // namespace FlexFlow

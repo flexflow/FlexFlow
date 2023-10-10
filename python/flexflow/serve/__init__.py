@@ -45,6 +45,7 @@ def init(
     use_4bit_quantization: Optional[bool] = None,
     use_8bit_quantization: Optional[bool] = None,
     profiling: Optional[bool] = None,
+    inference_debugging: Optional[bool] = None,
     fusion: Optional[bool] = None,
 ):
     """
@@ -71,6 +72,7 @@ def init(
     - use_4bit_quantization: whether to use 4-bit quantization, defaults to False
     - use_8bit_quantization: whether to use 8-bit quantization, defaults to False
     - profiling: whether to enable the FlexFlow profiling mode, defaults to False
+    - inference_debugging: whether to run inference in debugging mode, saving all inputs/outputs/weights to file, defaults to False
     - fusion: whether to enable the FlexFlow operator fusion optimization, defaults to True
 
     The configurations are passed down to the FlexFlow runtime (implemented in C++) via command line arguments.
@@ -104,6 +106,8 @@ def init(
     :type use_8bit_quantization: Optional[bool], optional
     :param profiling: whether to enable the FlexFlow profiling mode, defaults to False
     :type profiling: Optional[bool], optional
+    :param inference_debugging: whether to run inference in debugging mode, saving all inputs/outputs/weights to file, defaults to False
+    :type inference_debugging: Optional[bool], optional
     :param fusion: whether to enable the FlexFlow operator fusion optimization, defaults to True
     :type fusion: Optional[bool], optional
 
@@ -128,6 +132,7 @@ def init(
             use_4bit_quantization is not None,
             use_8bit_quantization is not None,
             profiling is not None,
+            inference_debugging is not None,
             fusion is not None,
         ]
     ):
@@ -152,6 +157,7 @@ def init(
             "use_4bit_quantization": use_4bit_quantization,
             "use_8bit_quantization": use_8bit_quantization,
             "profiling": profiling,
+            "inference_debugging": inference_debugging,
             "fusion": fusion,
         }
 
@@ -195,6 +201,8 @@ def init(
         configs_dict["use_8bit_quantization"] = False
     if configs_dict.get("profiling", None) is None:
         configs_dict["profiling"] = False
+    if configs_dict.get("inference_debugging", None) is None:
+        configs_dict["inference_debugging"] = False
     if configs_dict.get("fusion", None) is None:
         configs_dict["fusion"] = True
 

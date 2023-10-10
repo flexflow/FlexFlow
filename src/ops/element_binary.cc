@@ -420,11 +420,13 @@ OpMeta *ElementBinary::init_task(Task const *task,
   }
   m->op_type = eb->op_type;
   m->profiling = eb->profiling;
+  m->inference_debugging = eb->inference_debugging;
   m->inplace_a = eb->inplace_a;
   m->has_same_operands = eb->has_same_operands;
   m->broadcast_input1 = eb->broadcast_input1;
   m->broadcast_input2 = eb->broadcast_input2;
   std::strcpy(m->op_name, eb->name);
+  m->layer_guid = eb->layer_guid;
   Domain input1_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain input2_domain, output_domain;
@@ -620,7 +622,7 @@ __host__ void
     return;
   }
   // const ElementBinary* ele = (const ElementBinary*) task->args;
-  ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
+  ElementBinaryMeta *m = *((ElementBinaryMeta **)task->local_args);
   GenericTensorAccessorR in1, in2;
   GenericTensorAccessorW out;
   Domain in1_domain = runtime->get_index_space_domain(
@@ -705,8 +707,14 @@ __host__ void
                                              runtime);
     }
   }
-
   forward_kernel_wrapper(m, in1, in2, out);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    ElementBinary::save_inference_tensors_to_file(
+        m, shard_id, bc, {in1, in2}, {}, {out});
+  }
 }
 
 /*
@@ -1011,6 +1019,7 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
   ElementBinaryMeta *m = new ElementBinaryMeta(sim->handler, this);
   m->op_type = op_type;
   m->profiling = this->profiling;
+  m->inference_debugging = this->inference_debugging;
   m->inplace_a = this->inplace_a;
   m->has_same_operands = this->has_same_operands;
   m->broadcast_input1 = this->broadcast_input1;
@@ -1103,6 +1112,7 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
 void ElementBinary::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->op_type);
   sez.serialize(this->inplace_a);
 }
@@ -1115,11 +1125,12 @@ Node ElementBinary::deserialize(FFModel &ff,
                                 int num_inputs) {
   assert(num_inputs == 2);
   OperatorType op_type;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   bool inplace_a;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(op_type);
   dez.deserialize(inplace_a);
 

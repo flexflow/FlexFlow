@@ -592,8 +592,10 @@ OpMeta *Conv2D::init_task(Task const *task,
   m->relu = conv->activation == AC_MODE_RELU;
   m->use_bias = conv->use_bias;
   m->profiling = conv->profiling;
+  m->inference_debugging = conv->inference_debugging;
   m->trainableInputs[0] = conv->trainableInputs[0];
   std::strcpy(m->op_name, conv->name);
+  m->layer_guid = conv->layer_guid;
 
   int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
@@ -1013,6 +1015,7 @@ bool Conv2D::estimate_sync_cost(Simulator *sim,
 void Conv2D::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->out_channels);
   sez.serialize(this->kernel_h);
   sez.serialize(this->kernel_w);
@@ -1037,10 +1040,11 @@ Node Conv2D::deserialize(FFModel &ff,
       padding_w, groups;
   bool use_bias;
   ActiMode activation;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(out_channels);
   dez.deserialize(kernel_h);
   dez.deserialize(kernel_w);

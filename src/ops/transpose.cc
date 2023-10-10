@@ -193,6 +193,9 @@ OpMeta *Transpose::init_task(Task const *task,
   TransposeMeta *m = new TransposeMeta(handle);
   transpose->init_meta(m, in_domain, out_domain);
   m->profiling = transpose->profiling;
+  m->inference_debugging = transpose->inference_debugging;
+  std::strcpy(m->op_name, transpose->name);
+  m->layer_guid = transpose->layer_guid;
   return m;
 }
 
