@@ -46,7 +46,7 @@ OpTaskInvocation forward(SplitAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
+  binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
   return {SPLIT_FWD_TASK_ID, binding};
