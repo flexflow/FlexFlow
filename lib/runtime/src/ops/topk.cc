@@ -63,7 +63,7 @@ OpTaskInvocation forward(TopKAttrs const &attrs) {
   binding.bind_arg(PROFILING, profiling_settings());
   bind.bind_arg(ATTRS, attrs);
 
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
+  binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
   return {TOPK_FWD_TASK_ID, binding};
@@ -105,8 +105,8 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   int length = input.shape.at(legion_dim_t(0)) + 1;
   size_t batch_size = input.shape.get_volume() / length;
-
-  int *index_ptr; // TODO NOT_IMPLEMENTED
+  Allocator allocator = acc.get_allocator();
+  int *index_ptr = allocator.allocate(sizeof(int) * attrs.k);
 
   return profiling(forward_kernel,
                    profiling,
@@ -135,11 +135,12 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
       acc.get_device_specific<TopKPerDeviceState>(PER_DEVICE_STATE);
   auto profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
-  auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
-  auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
+  auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
-  // Question: what's the indice_ptr, I think the value_grad_ptr is output_grad
-  int const *indices_ptr; // TODO NOT_IMPLEMENTED
+  Allocator allocator = acc.get_allocator();
+  int *indice_ptr = allocator.allocate(sizeof(int) * attrs.k);
+
   int length = input.shape.at(legion_dim_t(0)) + 1;
   size_t batch_size = input.shape.get_volume() / length;
 
@@ -170,7 +171,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   MachineView const &machine_view) {
   auto env = sim.new_environment();
 
-  ParallelTensorShape output_shape = get_output_shapes(input, attrs);
+  ParallelTensorShape output_shape = get_output_shapes(attrs, input.shape);
 
   SimTaskBinding init_binding;
   init_binding.bind_arg(ATTRS, attrs);
@@ -182,8 +183,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
   fwd_binding.bind_arg(PROFILING, profiling_settings());
-  fwd_binding.bind(INPUT, input_parallel_tensor_shape(0));
-  fwd_binding.bind(OUTPUT, output_tensor(0));
+  fwd_binding.bind(INPUT, input.shape);
+  fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(ATTRS, attrs);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
@@ -203,7 +204,7 @@ void register_task<TOPK_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<SplitAttrs>(ATTRS); // Note: this may have some question
-
+  init.add_return_value<SplitPerDeviceState>();
   register_task(SPLIT_INIT_TASK_ID, "Split Init", init, init_task);
 }
 
