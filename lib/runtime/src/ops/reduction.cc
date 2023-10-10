@@ -42,13 +42,6 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Reduction;
 
-ReductionParams Reduction::get_params() const {
-  ReductionParams params;
-  params.reduction_legion_dim = this->reduction_dim;
-  params.reduction_degree = this->reduction_degree;
-  return params;
-}
-
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
 
 OpTaskInvocation forward(ReductionAttrs const &attrs) {
@@ -56,7 +49,7 @@ OpTaskInvocation forward(ReductionAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
+  binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
   return {REDUCTION_FWD_TASK_ID, binding};
@@ -119,14 +112,14 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
-  ParallelTensorShape output_shape = get_output_shape(input, attrs);
+  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
 
   auto env = sim.new_environment();
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(ATTRS, attrs);
-  fwd_binding.bind(INPUT, input);
+  fwd_binding.bind(INPUT, input.shape);
   fwd.binding.bind(OUTPUT, output_shape);
 
   auto fwd_accessor = env.get_fwd_accessor(REDUCTION_FWD_TASK_ID, fwd_binding);
