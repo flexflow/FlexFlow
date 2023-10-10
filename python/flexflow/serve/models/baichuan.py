@@ -224,7 +224,6 @@ class FlexFlowBAICHUAN(FlexFlowModel):
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
-        print(f"model: {model} and dst_folder: {dst_folder}")
         for name, params in model.named_parameters():
             name = (
                 name.replace(".", "_")
@@ -258,8 +257,5 @@ class FlexFlowBAICHUAN(FlexFlowModel):
                 q.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_q))
                 k.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_k))
                 v.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_v))
-                print(f"1 name:{name}  and name_q: {name_q} and name_k: {name_k} and name_v: {name_v}")
-                print(f"2 q.shape: {q.shape} and k.shape: {k.shape} and v.shape: {v.shape}")
             else:
-                print(f"3 name:{name} and params.shape: {params.shape} ")
                 params.detach().cpu().numpy().tofile(os.path.join(dst_folder, name))

@@ -52,9 +52,9 @@ def main(args):
                 cache_path=args.cache_folder,
                 refresh_cache=args.refresh_cache,
             )
-            #llm.download_hf_weights_if_needed()
+            llm.download_hf_weights_if_needed()
             llm.download_hf_tokenizer_if_needed()
-            #llm.download_hf_config()
+            llm.download_hf_config()
 
 
 if __name__ == "__main__":

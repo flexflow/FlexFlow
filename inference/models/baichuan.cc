@@ -76,15 +76,6 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
   for(int i = 0; i < baichuan_config.num_hidden_layers; i++) {
     //set transformer layer id
     ff.set_transformer_layer_id(i);
-    std::cout<<"BAICHUAN::create_baichuan_model,i:"<<i<<" mode:"<<mode <<std::endl;
-    //step 1: rms_norm
-    /*Tensor rms_norm = ff.rms_norm(token, baichuan_config.rms_norm_eps, baichuan_config.hidden_size, DT_NONE, std::string("layers_" + std::to_string(i) + "_attention_norm")
-              .c_str());
-    Layer *attention_norm = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) +
-                               "_attention_norm_weight",
-                           attention_norm);*/
-    //step 1: attention
     Tensor rms_norm = nullptr;
     Tensor token_rms_norm[2] = {nullptr, nullptr};
     if(i == 0) {
@@ -109,7 +100,6 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
 
 
     //step 2: self attention
-    //TODO: we should modify the kernel to support baichuan model
     Tensor mha;
     switch (mode) {
       case BEAM_SEARCH_MODE: {
@@ -185,8 +175,6 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
     weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
                            attention_layer);
 
-    //step 3:add token, mhs, then rms_norm ,use the residual_rms_norm kernel 
-    //token + mha, then rms_norm(token + mha)
     std::string layer_name = "layers_" + std::to_string(i) + "_ffn_norm";
 
     Tensor token_ff_norm[2] = {nullptr, nullptr};
@@ -269,7 +257,6 @@ void BAICHUAN::create_baichuan_model(FFModel &ff,
 
   Tensor output;
 
-  //todo(note): how to do next
   if (mode == BEAM_SEARCH_MODE) {
     Tensor softmax = ff.softmax(dense, -1);
     // output = ff.beam_top_k(softmax, baichuan_config.max_beam_width, false);
