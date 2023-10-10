@@ -17,6 +17,14 @@ struct bidict {
     }
   }
 
+  bool contains_l(L const &l) const {
+    return fwd_map.find(l) != fwd_map.end();
+  }
+
+  bool contains_r(R const &r) const {
+    return bwd_map.find(r) != bwd_map.end();
+  }
+
   void erase_l(L const &l) {
     this->fwd_map.erase(l);
     for (auto const &kv : this->bwd_map) {

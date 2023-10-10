@@ -23,6 +23,7 @@ public:
                           OutputLabel const &label) = 0;
   virtual void add_edge(MultiDiOutput const &output,
                         MultiDiInput const &input) = 0;
+  virtual NodePort add_node_ports() = 0;
 
   virtual NodeLabel &at(Node const &) = 0;
   virtual NodeLabel const &at(Node const &) const = 0;

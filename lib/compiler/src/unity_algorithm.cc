@@ -1,6 +1,6 @@
 #include "compiler/unity_algorithm.h"
 #include "graph_utils.h"
-#include "substitutions_implementation.h"
+#include "substitutions/substitution.h"
 #include "utils/deduplicated_priority_queue.h"
 
 namespace FlexFlow {
@@ -14,7 +14,9 @@ std::unordered_set<Substitution>
 
 std::unordered_set<ParallelComputationGraph>
     apply_substitution(ParallelComputationGraph const &pcg,
-                       Substitution const &);
+                       Substitution const &) {
+  NOT_IMPLEMENTED();
+}
 
 Strategy
     graph_optimize(ComputationGraph &cg,
