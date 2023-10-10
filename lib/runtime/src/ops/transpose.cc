@@ -38,20 +38,6 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Transpose;
 
-bool operator==(TransposeParams const &lhs, TransposeParams const &rhs) {
-  return lhs.perm == rhs.perm;
-}
-
-TransposeParams Transpose::get_params() const {
-  TransposeParams params;
-  params.perm.clear();
-  assert(inputs[0]->num_dims == outputs[0]->num_dims);
-  for (int i = 0; i < outputs[0]->num_dims; i++) {
-    params.perm.push_back(this->perm[i]);
-  }
-  return params;
-}
-
 namespace FlexFlow {
 
 enum Slots {
