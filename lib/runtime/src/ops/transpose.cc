@@ -89,8 +89,8 @@ OpTaskInvocation forward(TransposeAttrs const &) {
                    per_device_op_state<TransposePerDeviceState>());
   binding.bind_arg(PROFILEING, profiling_settings());
 
-  bind.bind(INPUT, input_tensor());// Note: this may have some problem
-  bind.bind(OUTPUT, output_tensor());
+  bind.bind(INPUT, input_tensor(0));// Note: this may have some problem
+  bind.bind(OUTPUT, output_tensor(0));
 
   return {TRANSPOSE_FWD_TASK_ID, binding};
 }

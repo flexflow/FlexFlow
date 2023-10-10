@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
+#include "kernels/accessor.h"
 #include "kernels/cuda_helper.h"
 #include "kernels/transpose_kernels.h"
 #include "utils/exception.h"
+#include "kernel/accessor.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -48,8 +50,8 @@ void forward_kernel(cudaStream_t stream,
                     TransposePerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
-                    Domain in_domain,
-                    Domain out_domain) {
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output) {
 
   TransposeStrides info;
   info.num_dim = out_domain.get_dim();
@@ -73,12 +75,11 @@ void forward_kernel(cudaStream_t stream,
       out_domain.get_volume(), input_ptr, output_ptr, info, 0.0f /*beta*/);
 }
 
-void backward_kernel(cudaStream_t stream,
-                     TransposePerDeviceState const &m,
-                     float *input_grad_ptr,
-                     float const *output_grad_ptr,
-                     Domain in_grad_domain,
-                     Domain out_grad_domain) {
+void backward_kernel(TransposePerDeviceState const &m,
+                             float *input_grad_ptr,
+                             float const *output_grad_ptr,
+                             GenericTensorAccessorW const & in_grad,
+                             GenericTensorAccessorR const & out_grad) {
 
   TransposeStrides info;
   info.num_dim = in_grad_domain.get_dim();
