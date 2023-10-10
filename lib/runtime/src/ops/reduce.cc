@@ -25,29 +25,6 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Reduce;
 
-bool operator==(ReduceParams const &lhs, ReduceParams const &rhs) {
-  return (lhs.axes == rhs.axes) && (lhs.keepdims == rhs.keepdims);
-}
-
-bool ReduceParams::is_valid(ParallelTensorShape const &input) const {
-  for (size_t i = 0; i < axes.size(); i++) {
-    if (axes[i] >= input.num_dims) {
-      return false;
-    }
-  }
-  return input.is_valid();
-}
-
-ReduceParams Reduce::get_params() const {
-  ReduceParams params;
-  params.axes.clear();
-  for (int i = 0; i < num_axes; i++) {
-    params.axes.push_back(this->axes[i]);
-  }
-  params.keepdims = keepdims;
-  return params;
-}
-
 enum Slots {
   INPUT,
   OUTPUT,
@@ -64,8 +41,8 @@ OpTaskInvocation init(TransposeAttrs const &attrs) {
   binding.bind_arg(HANDLE, ff_handle());
   binding.bind_arg(ATTRS, attrs);
 
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
-  binding.bind(OUTPUT, output_parallel_tensor_shape(0));
+  binding.bind(INPUT, input_tensor(0));
+  binding.bind(OUTPUT, output_tensor(0));
 
   return {REDUCE_INIT_TASK_ID, binding};
 }
@@ -101,6 +78,8 @@ template<> void register_task<TRANSPOSE_INIT_TASK_ID>() {
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_arg_slot<ReduceAttrs>(ATTRS);
 
+  init.add_return_value<ReducePerDeviceState>();
+
   register_task(REDUCE_INIT_TASK_ID, "Reduce::init", init, init_task);
 }
 
@@ -111,7 +90,7 @@ OpTaskInvocation forward(ReduceAttrs const &attrs) {
   bind.bind_arg(PER_DEVICE_STATE, per_device_op_state<ReducePerDeviceState>());
   bind.bind_arg(PROFILING, profiling_tensor());
 
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
+  binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
   return {REDUCE_FWD_TASK_ID, binding};
@@ -209,7 +188,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   SimTaskBinding fwd_binding;
   ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-  fwd.bind(INPUT, input);
+  fwd.bind(INPUT, input.shape);
   fwd.bind(OUTPUT, output_shape);
   fwd.bind_arg(PROFILING, settings);
   fwd.bind_arg(PER_DEVICE_STATE, per_device_state);
