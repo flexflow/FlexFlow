@@ -15,6 +15,8 @@
 
 #include "softmax.h"
 #include "kernels/softmax_kernels.h"
+#include "op-attrs/get_output_shapes.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "utils/exceptions.h"
 #include "utils/hash-utils.h"
 
@@ -54,7 +56,7 @@ OpTaskInvocation forward(SoftmaxAttrs const &attrs) {
                    per_device_op_state<SoftmaxPerDeviceState>());
   binding.bind_arg(PROFILING, profiling_settings());
 
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
+  binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
   return {SOFTMAX_FWD_TASK_ID, binding};
@@ -160,7 +162,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
       init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input);
+  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
+  fwd_binding.bind(INPUT, input.shape);
   fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
@@ -183,9 +186,8 @@ void register_task<SOFTMAX_INIT_TASK_ID>() {
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_arg_slot<SoftmaxAttrs>(ATTRS);
+  init.add_return_value_slot<SoftmaxPerDeviceState>();
 
-  // Note: we don't add_input(INPUT) and add_output_slot(OUTPUT) here, because
-  // init_task_impl doesn't need input, output, just need PerDeviceFFHandle
   register_task(SOFTMAX_INIT_TASK_ID, "SoftMax Init", init, init_task);
 }
 
