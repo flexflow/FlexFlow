@@ -25,8 +25,6 @@
 #include <iostream>
 #include <sstream>
 
-namespace FlexFlow {
-
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 typedef cudaStream_t ffStream_t;
 cudaError_t get_legion_stream(cudaStream_t *stream);
@@ -78,6 +76,8 @@ typedef hipError_t ffError_t;
 #else
 #error "Unknown device"
 #endif
+
+namespace FlexFlow {
 
 #define FatalError(s)                                                          \
   do {                                                                         \
