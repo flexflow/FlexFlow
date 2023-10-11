@@ -407,6 +407,95 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                                            effective_batch_size);
         break;
       }
+
+      case OP_RELU:
+      case OP_SIGMOID:
+      case OP_TANH:
+      case OP_ELU: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+
+        assert(my_input_accessor[0].shape == my_output_accessor[0].shape);
+
+        ElementUnaryPerDeviceState state =
+            mpack::get<ElementUnaryPerDeviceState>(state.all_device);
+
+        Kernels::ElementUnary::forward_kernel(
+            state, my_input_accessor[0], my_output_accessor[0]);
+        break;
+      }
+
+      case OP_POOL2D: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+
+        Pool2DPerDeviceState state =
+            mpack::get<Pool2DPerDeviceState>(state.all_device);
+
+        Kernels::Pool2D::forward_kernel(state,
+                                        my_input_accessor[0].get_float_ptr(),
+                                        my_output_accessor[0].get_float_ptr());
+
+        break;
+      }
+
+      case OP_FLAT: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+
+        assert(my_input_accessor[0].shape.get_volume() ==
+               my_output_accessor[0].shape.get_volume());
+
+        Kernels::Flat::forward_kernel(my_input_accessor[0].get_float_ptr(),
+                                      my_output_accessor[0].get_float_ptr(),
+                                      my_input_accessor[0].shape.get_volume());
+        break;
+      }
+
+      case OP_RESHAPE: {
+
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+
+        assert(my_input_accessor[0].shape.get_volume() ==
+               my_output_accessor[0].shape.get_volume());
+
+        Kernels::Reshape::forward_kernel(
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].shape.get_volume());
+        break;
+      }
+
+      case OP_TRANSPOSE: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+
+        assert(my_input_accessor[0].shape.get_volume() ==
+               my_output_accessor[0].shape.get_volume());
+
+        TransposePerDeviceState state =
+            mpack::get<TransposePerDeviceState>(state.all_device);
+
+        Kernels::Transpose::forward_kernel(
+            state,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].shape,
+            my_output_accessor[0].shape);
+        break;
+      }
+      default: {
+        fprintf(stderr,
+                "Fusion currently does not support type = %d\n",
+                fused->op_op_type[op]);
+        assert(false && "Fusion currently does not support type");
+      }
     }
 
     ioff += fused->op_num_inputs[op];
