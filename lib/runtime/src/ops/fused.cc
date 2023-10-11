@@ -512,4 +512,35 @@ static void forward_task(Task const *task,
   forward_task_impl(acc);
 }
 
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {}
+
+static void backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  backward_task_impl(acc);
+}
+
+template <>
+void register_task<FUSEDOP_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+  fwd.add_input_slot(WEIGHT);
+
+  fwd.add_arg_slot<FusedPerDeviceOpState>(PER_DEVICE_STATE);
+
+  register_task(FUSEDOP_FWD_TASK_ID, "fused_fwd", fwd, forward_task);
+}
+
+template <>
+void register_task<FUSEDOP_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(FUSEDOP_FWD_TASK_ID));
+
+  register_task(FUSEDOP_BWD_TASK_ID, "fused_bwd", bwd, backward_task);
+}
+
 }; // namespace FlexFlow
