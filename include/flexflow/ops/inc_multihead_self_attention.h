@@ -188,7 +188,7 @@ public:
   void *weight_ptr, *bias_ptr; // for weight offload
   void *devQKVProjArray, *keyCache, *valueCache;
   void *qk_prods, *qk_prods_softmax;
-  void *attn_heads, *W_out_contiguous;
+  void *attn_heads;
   char *quantized_weight_ptr;
   BatchConfig::PerTokenInfo *token_infos;
   DataType quantization_type;
@@ -201,6 +201,9 @@ public:
   //  typedef hipFloatComplex attFloatComplex;
   hipFloatComplex *complex_input;
 #endif
+ // metadata for pad
+  // void *padded_output, *padded_input; // temporary storage fot key, value, output
+  // int *max_req_length, *max_total_tokens;
 };
 
 }; // namespace FlexFlow
