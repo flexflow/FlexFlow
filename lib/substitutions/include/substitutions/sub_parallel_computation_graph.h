@@ -10,7 +10,7 @@
 namespace FlexFlow {
 
 using SubParallelComputationGraph =
-    LabelledOpenMultiDiGraph<Operator, ParallelTensor>;
+    OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>;
 
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(SubParallelComputationGraph);
 

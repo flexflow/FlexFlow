@@ -40,37 +40,32 @@ struct IGraphView {
   IGraphView(IGraphView const &) = delete;
   IGraphView &operator=(IGraphView const &) = delete;
 
+  virtual IGraphView *clone() const = 0;
+
   virtual std::unordered_set<Node> query_nodes(NodeQuery const &) const = 0;
   virtual ~IGraphView(){};
 };
 
 struct GraphView {
-  GraphView() = delete;
-
-  friend void swap(GraphView &, GraphView &);
-
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
-
-  static GraphView unsafe_create_without_ownership(IGraphView const &);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IGraphView, T>::value,
                                  GraphView>::type
       create(Args &&...args) {
-    return GraphView(std::make_shared<T>(std::forward<Args>(args)...));
+    return GraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
-private:
-  GraphView(std::shared_ptr<IGraphView const> ptr);
+protected:
+  GraphView() : ptr(nullptr) {}
+  cow_ptr_t<IGraphView> ptr;
+  GraphView(cow_ptr_t<IGraphView> ptr);
 
   friend struct GraphInternal;
-
-private:
-  std::shared_ptr<IGraphView const> ptr;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraphView);
 
-struct IGraph : IGraphView {
+struct IGraph : virtual IGraphView {
   IGraph() = default;
   IGraph(IGraph const &) = delete;
   IGraph &operator=(IGraph const &) = delete;
@@ -82,14 +77,12 @@ struct IGraph : IGraphView {
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraph);
 
-struct Graph {
+struct Graph : virtual GraphView {
 public:
-  Graph() = delete;
+  // Graph() = delete;
   Graph(Graph const &) = default;
 
-  Graph &operator=(Graph);
-
-  friend void swap(Graph &, Graph &);
+  Graph &operator=(Graph const &) = default;
 
   Node add_node();
   void add_node_unsafe(Node const &);
@@ -103,13 +96,12 @@ public:
     return Graph(make_cow_ptr<T>());
   }
 
+  using GraphView::GraphView;
+
 private:
-  Graph(cow_ptr_t<IGraph>);
+  cow_ptr_t<IGraph> get_ptr() const;
 
   friend struct GraphInternal;
-
-private:
-  cow_ptr_t<IGraph> ptr;
 };
 
 } // namespace FlexFlow

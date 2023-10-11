@@ -17,8 +17,8 @@ GraphSplit split_pattern(OpenMultiDiGraphView const &pattern) {
 
 std::pair<OpenMultiDiGraphView, OpenMultiDiGraphView>
     apply_split(OpenMultiDiGraphView const &pattern, GraphSplit const &split) {
-  return {get_subgraph(pattern, split.first),
-          get_subgraph(pattern, split.second)};
+  return {get_subgraph<OpenMultiDiSubgraphView>(pattern, split.first),
+          get_subgraph<OpenMultiDiSubgraphView>(pattern, split.second)};
 }
 
 /*
@@ -93,14 +93,14 @@ bool pattern_matches(OpenMultiDiGraphView const &pattern,
         InputMultiDiEdge input_edge = mpark::get<InputMultiDiEdge>(e);
         if (match.node_assignment.at_l(input_edge.dst) !=
                 get_dst_node(graph_matched_edge) ||
-            input_edge.dstIdx != get_dst_idx(graph_matched_edge)) {
+            input_edge.dst_idx != get_dst_idx(graph_matched_edge)) {
           return false;
         }
       } else {
         OutputMultiDiEdge output_edge = mpark::get<OutputMultiDiEdge>(e);
         if (match.node_assignment.at_l(output_edge.src) !=
                 get_src_node(graph_matched_edge) ||
-            output_edge.srcIdx != get_src_idx(graph_matched_edge)) {
+            output_edge.src_idx != get_src_idx(graph_matched_edge)) {
           return false;
         }
       }
@@ -144,19 +144,19 @@ optional<MultiDiGraphPatternMatch>
     assert(is_input_edge(pattern_edge) || is_output_edge(pattern_edge));
     if (is_input_edge(pattern_edge)) {
       InputMultiDiEdge input_edge = mpark::get<InputMultiDiEdge>(pattern_edge);
-      if (!contains_key(incoming, input_edge.dstIdx)) {
+      if (!contains_key(incoming, input_edge.dst_idx)) {
         return nullopt;
       }
       match.edge_assignment.equate(input_edge,
-                                   get_only(incoming.at(input_edge.dstIdx)));
+                                   get_only(incoming.at(input_edge.dst_idx)));
     } else {
       OutputMultiDiEdge output_edge =
           mpark::get<OutputMultiDiEdge>(pattern_edge);
-      if (!contains_key(outgoing, output_edge.srcIdx)) {
+      if (!contains_key(outgoing, output_edge.src_idx)) {
         return nullopt;
       }
       match.edge_assignment.equate(output_edge,
-                                   get_only(outgoing.at(output_edge.srcIdx)));
+                                   get_only(outgoing.at(output_edge.src_idx)));
     }
   }
 

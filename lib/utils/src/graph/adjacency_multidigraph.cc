@@ -31,11 +31,11 @@ void AdjacencyMultiDiGraph::remove_node_unsafe(Node const &n) {
 
 void AdjacencyMultiDiGraph::add_edge(MultiDiEdge const &e) {
   this->adjacency.at(e.dst);
-  this->adjacency.at(e.src)[e.dst][e.srcIdx].insert(e.dstIdx);
+  this->adjacency.at(e.src)[e.dst][e.src_idx].insert(e.dst_idx);
 }
 
 void AdjacencyMultiDiGraph::remove_edge(MultiDiEdge const &e) {
-  this->adjacency.at(e.src)[e.dst][e.srcIdx].erase(e.dstIdx);
+  this->adjacency.at(e.src)[e.dst][e.src_idx].erase(e.dst_idx);
 }
 
 std::unordered_set<MultiDiEdge>
@@ -45,13 +45,19 @@ std::unordered_set<MultiDiEdge>
     for (auto const &dst_kv : query_keys(q.dsts, src_kv.second)) {
       for (auto const &srcIdx_kv : query_keys(q.srcIdxs, dst_kv.second)) {
         for (auto const &dstIdx : apply_query(q.dstIdxs, srcIdx_kv.second)) {
-          result.insert({src_kv.first, dst_kv.first, srcIdx_kv.first, dstIdx});
+          result.insert(MultiDiEdge{dst_kv.first, dstIdx, src_kv.first, srcIdx_kv.first});
         }
       }
     }
   }
   return result;
 }
+
+// std::unordered_set<DirectedEdge> AdjacencyMultiDiGraph::query_edges(DirectedEdgeQuery const &q) const {
+//   return map_over_unordered_set<MultiDiEdge, DirectedEdge>([](MultiDiEdge const &e) { return DirectedEdge{e.dst, e.src}; },
+//     this->query_edges(MultiDiEdgeQuery{q.srcs, q.dsts, matchall<NodePort>(), matchall<NodePort>()})
+//   );
+// }
 
 std::unordered_set<Node>
     AdjacencyMultiDiGraph::query_nodes(NodeQuery const &query) const {

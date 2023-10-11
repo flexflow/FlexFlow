@@ -30,23 +30,26 @@ std::unordered_set<Node> GraphView::query_nodes(NodeQuery const &g) const {
   return this->ptr->query_nodes(g);
 }
 
-GraphView::GraphView(std::shared_ptr<IGraphView const> ptr) : ptr(ptr) {}
-
-// Set the shared_ptr's destructor to a nop so that effectively there is no
-// ownership
-GraphView
-    GraphView::unsafe_create_without_ownership(IGraphView const &graphView) {
-  std::shared_ptr<IGraphView const> ptr((&graphView),
-                                        [](IGraphView const *) {});
-  return GraphView(ptr);
-}
-
-Graph::Graph(cow_ptr_t<IGraph> _ptr) : ptr(std::move(_ptr)) {
-  assert(this->ptr.get() != nullptr);
-}
+GraphView::GraphView(cow_ptr_t<IGraphView> ptr) : ptr(ptr) {}
 
 Node Graph::add_node() {
-  return this->ptr.get_mutable()->add_node();
+  return get_ptr().get_mutable()->add_node();
+}
+
+void Graph::add_node_unsafe(Node const &node) {
+  get_ptr().get_mutable()->add_node_unsafe(node);
+}
+
+void Graph::remove_node_unsafe(Node const &node) {
+  get_ptr().get_mutable()->remove_node_unsafe(node);
+}
+
+std::unordered_set<Node> Graph::query_nodes(NodeQuery const &q) const {
+  return get_ptr()->query_nodes(q);
+}
+
+cow_ptr_t<IGraph> Graph::get_ptr() const {
+    return cow_ptr_t(std::dynamic_pointer_cast<IGraph>(GraphView::ptr.get_mutable()));
 }
 
 } // namespace FlexFlow

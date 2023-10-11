@@ -242,23 +242,15 @@ tl::optional<bool> is_acyclic(DiGraphView const &);
 tl::optional<bool> is_acyclic(MultiDiGraphView const &);
 
 std::unordered_map<Node, std::unordered_set<Node>>
-    get_dominators(MultiDiGraphView const &);
-std::unordered_map<Node, std::unordered_set<Node>>
     get_dominators(DiGraphView const &);
 std::unordered_set<Node> get_dominators(DiGraphView const &, Node const &);
 std::unordered_set<Node> get_dominators(DiGraphView const &,
                                         std::unordered_set<Node> const &);
 
 std::unordered_map<Node, std::unordered_set<Node>>
-    get_post_dominators(MultiDiGraphView const &);
-std::unordered_map<Node, std::unordered_set<Node>>
     get_post_dominators(DiGraphView const &);
 std::unordered_map<Node, optional<Node>>
-    get_imm_dominators(MultiDiGraphView const &);
-std::unordered_map<Node, optional<Node>>
     get_imm_dominators(DiGraphView const &);
-std::unordered_map<Node, optional<Node>>
-    get_imm_post_dominators(MultiDiGraphView const &);
 std::unordered_map<Node, optional<Node>>
     get_imm_post_dominators(DiGraphView const &);
 tl::optional<Node> get_imm_post_dominator(DiGraphView const &, Node const &);
@@ -277,8 +269,8 @@ std::vector<Node>
     get_bfs_ordering(DiGraphView const &,
                      std::unordered_set<Node> const &starting_points);
 std::vector<Node> get_topological_ordering(DiGraphView const &);
-std::vector<Node> get_topological_ordering(MultiDiGraphView const &);
-std::vector<Node> get_topological_ordering(OpenMultiDiGraphView const &);
+// std::vector<Node> get_topological_ordering(MultiDiGraphView const &);
+// std::vector<Node> get_topological_ordering(OpenMultiDiGraphView const &);
 std::vector<Node> get_unchecked_topological_ordering(DiGraphView const &);
 
 std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &);
@@ -314,8 +306,12 @@ UndirectedGraphView get_subgraph(UndirectedGraphView const &,
 DiGraphView get_subgraph(DiGraphView const &, std::unordered_set<Node> const &);
 MultiDiGraphView get_subgraph(MultiDiGraphView const &,
                               std::unordered_set<Node> const &);
-OpenMultiDiGraphView get_subgraph(OpenMultiDiGraphView const &,
-                                  std::unordered_set<Node> const &);
+
+template <typename SubgraphView>
+OpenMultiDiGraphView get_subgraph(OpenMultiDiGraphView const &g,
+                                  std::unordered_set<Node> const &nodes) {
+    return OpenMultiDiGraphView::create<SubgraphView>(g, nodes);
+}
 
 std::unordered_map<Node, int> calculate_topo_rank(DiGraphView const &);
 Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &,
@@ -332,11 +328,8 @@ DiGraphView with_added_edges(DiGraphView const &,
                              std::unordered_set<DirectedEdge> const &);
 
 UndirectedGraphView as_undirected(DiGraphView const &);
-UndirectedGraphView as_undirected(MultiDiGraphView const &);
 MultiDiGraphView as_multidigraph(DiGraphView const &);
-DiGraphView as_digraph(MultiDiGraphView const &);
 DiGraphView as_digraph(UndirectedGraphView const &);
-MultiDiGraphView as_multidigraph(OpenMultiDiGraphView const &);
 OpenMultiDiGraphView as_openmultidigraph(MultiDiGraphView const &);
 
 void export_as_dot(

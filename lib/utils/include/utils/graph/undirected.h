@@ -7,34 +7,10 @@
 #include "utils/optional.h"
 #include "utils/type_traits.h"
 #include "utils/unique.h"
+#include "undirected_edge.h"
 #include <unordered_set>
 
 namespace FlexFlow {
-
-struct UndirectedEdge {
-public:
-  UndirectedEdge() = delete;
-  UndirectedEdge(Node const &src, Node const &dst);
-
-public:
-  Node smaller;
-  Node bigger;
-};
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(UndirectedEdge, smaller, bigger);
-FF_VISIT_FMTABLE(UndirectedEdge);
-
-bool is_connected_to(UndirectedEdge const &, Node const &);
-
-struct UndirectedEdgeQuery {
-  query_set<Node> nodes;
-
-  static UndirectedEdgeQuery all();
-};
-FF_VISITABLE_STRUCT(UndirectedEdgeQuery, nodes);
-FF_VISIT_FMTABLE(UndirectedEdgeQuery);
-
-UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &,
-                                       UndirectedEdgeQuery const &);
 
 struct IUndirectedGraphView : public IGraphView {
   using Edge = UndirectedEdge;
@@ -47,21 +23,21 @@ struct IUndirectedGraphView : public IGraphView {
       query_edges(UndirectedEdgeQuery const &) const = 0;
   virtual ~IUndirectedGraphView() = default;
 
+  IUndirectedGraphView *clone() const override = 0;
+
 protected:
   IUndirectedGraphView() = default;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IUndirectedGraphView);
 
-struct UndirectedGraphView {
+struct UndirectedGraphView : virtual GraphView {
 public:
   using Edge = UndirectedEdge;
   using EdgeQuery = UndirectedEdgeQuery;
 
   UndirectedGraphView() = delete;
-
-  operator GraphView() const;
-
-  friend void swap(UndirectedGraphView &, UndirectedGraphView &);
+  UndirectedGraphView(UndirectedGraphView const &) = default;
+  UndirectedGraphView &operator=(UndirectedGraphView const &) = default;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &query) const;
@@ -72,47 +48,39 @@ public:
                               UndirectedGraphView>::type
       create(Args &&...args) {
     return UndirectedGraphView(
-        std::make_shared<T>(std::forward<Args>(args)...));
+        make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
-  static UndirectedGraphView
-      unsafe_create_without_ownership(IUndirectedGraphView const &);
-
-private:
-  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const> ptr);
+  using GraphView::GraphView;
 
   friend struct GraphInternal;
 
 private:
-  std::shared_ptr<IUndirectedGraphView const> ptr;
+  cow_ptr_t<IUndirectedGraphView> get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraphView);
 
-struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
+struct IUndirectedGraph : public IUndirectedGraphView {
+  virtual Node add_node() = 0;
+  virtual void add_node_unsafe(Node const &) = 0;
+  virtual void remove_node_unsafe(Node const &) = 0;
   virtual void add_edge(UndirectedEdge const &) = 0;
   virtual void remove_edge(UndirectedEdge const &) = 0;
 
   virtual std::unordered_set<Node>
-      query_nodes(NodeQuery const &query) const override {
-    return static_cast<IUndirectedGraphView const *>(this)->query_nodes(query);
-  }
+      query_nodes(NodeQuery const &query) const = 0;
 
   virtual IUndirectedGraph *clone() const override = 0;
 };
 
-struct UndirectedGraph {
+struct UndirectedGraph : virtual UndirectedGraphView {
 public:
   using Edge = UndirectedEdge;
   using EdgeQuery = UndirectedEdgeQuery;
 
   UndirectedGraph() = delete;
-  UndirectedGraph(UndirectedGraph const &);
-
-  UndirectedGraph &operator=(UndirectedGraph);
-
-  operator UndirectedGraphView() const;
-
-  friend void swap(UndirectedGraph &, UndirectedGraph &);
+  UndirectedGraph(UndirectedGraph const &) = default;
+  UndirectedGraph &operator=(UndirectedGraph const &) = default;
 
   Node add_node();
   void add_node_unsafe(Node const &);
@@ -131,13 +99,12 @@ public:
     return UndirectedGraph(make_cow_ptr<T>());
   }
 
-private:
-  UndirectedGraph(cow_ptr_t<IUndirectedGraph>);
+  using UndirectedGraphView::UndirectedGraphView;
 
   friend struct GraphInternal;
 
 private:
-  cow_ptr_t<IUndirectedGraph> ptr;
+  cow_ptr_t<IUndirectedGraph> get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraph);
 

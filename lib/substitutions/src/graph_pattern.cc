@@ -234,7 +234,7 @@ bool assignment_satisfies(SubParallelComputationGraph const &pcg,
     auto patternEdge = kv.first;
     auto pcgEdge = kv.second;
     optional<bool> constraintResult =
-        satisfies(at(pcg, pcgEdge), pattern.value().at(patternEdge));
+        satisfies(at(pcg, pcgEdge), at(pattern.value(), patternEdge));
     result &= constraintResult.value_or(false);
   }
 
