@@ -34,6 +34,11 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
+  Legion::FutureMap peft_bwd(FFModel const &ff,
+                             BatchConfigFuture const &bc,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) override;
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,
                       std::vector<ParallelTensor> const &,
