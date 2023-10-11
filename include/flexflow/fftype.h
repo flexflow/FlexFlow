@@ -26,6 +26,8 @@ public:
   PEFTModelID(size_t id);
   bool is_valid_id() const;
   friend bool operator==(PEFTModelID const &lhs, PEFTModelID const &rhs);
+  friend std::ostream &operator<<(std::ostream &os,
+                                  PEFTModelID const &peft_model_id);
 
 public:
   size_t id;

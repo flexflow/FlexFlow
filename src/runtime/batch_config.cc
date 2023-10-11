@@ -105,12 +105,10 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
   os << "Max sequence length: " << bc.max_sequence_length() << std::endl;
   // Current values
   os << "Number of active tokens: " << bc.num_active_tokens() << std::endl;
-  os << "Number of inference tokens: " << bc.num_active_infr_tokens() << std::endl;
+  os << "Number of inference tokens: " << bc.num_active_infr_tokens()
+     << std::endl;
   os << "Number of peft tokens: " << bc.num_active_peft_tokens() << std::endl;
   os << "Number of requests: " << bc.num_active_requests() << std::endl;
-  // PEFT values
-  os << "PEFT Model ID: " << bc.peft_model_id << std::endl;
-  os << "PEFT bwd: " << bc.peft_bwd << std::endl;
 
   // Per-request info
   os << "Per-request info:\n";
@@ -122,6 +120,9 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
       os << "    Number of tokens in batch: "
          << bc.requestsInfo[i].num_tokens_in_batch << std::endl;
       os << "    GUID: " << bc.requestsInfo[i].request_guid << std::endl;
+      // PEFT values
+      os << "PEFT Model ID: " << bc.requestsInfo[i].peft_model_id << std::endl;
+      os << "PEFT bwd: " << bc.requestsInfo[i].peft_bwd << std::endl;
       os << "    Max sequence length: "
          << bc.requestsInfo[i].max_sequence_length << std::endl;
       os << "    Request completed: " << bc.request_completed[i] << std::endl;

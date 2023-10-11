@@ -5397,6 +5397,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
+    TaskVariantRegistrar registrar(LAYERNORM_PEFT_BWD_TASK_ID,
+                                   "layernorm_peft_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<LayerNorm::peft_bwd_task>(
+          registrar, "peft_bwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LayerNorm::peft_bwd_task>(registrar);
+    }
+  }
+  {
     TaskVariantRegistrar registrar(LAYERNORM_BWD_TASK_ID, "layernorm_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();

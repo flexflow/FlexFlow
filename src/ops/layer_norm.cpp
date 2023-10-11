@@ -236,13 +236,13 @@ __global__ void ComputeGradientFusedParamsCUDAKernel(int64_t M,
 }
 
 template <typename T>
-__global__ void LayerNormBackwardCUDAKenrel(int64_t N,
+__global__ void LayerNormBackwardCUDAKernel(int64_t N,
                                             T const *dY,
                                             T const *X,
                                             T const *gamma,
-                                            T const *a,
-                                            T const *b,
-                                            T const *c,
+                                            T const *dY_scale,
+                                            T const *X_scale,
+                                            T const *bias,
                                             T *dX) {
   using T_ACC = T;
   const int64_t i = blockIdx.x;
@@ -250,9 +250,9 @@ __global__ void LayerNormBackwardCUDAKenrel(int64_t N,
     const int64_t index = i * N + j;
     const T_ACC gamma_v =
         gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
-    dX[index] =
-        static_cast<T_ACC>(a[i]) * static_cast<T_ACC>(dY[index]) * gamma_v +
-        b[i] * static_cast<T_ACC>(X[index]) + c[i];
+    dX[index] = static_cast<T_ACC>(dY_scale[i]) *
+                    static_cast<T_ACC>(dY[index]) * gamma_v +
+                X_scale[i] * static_cast<T_ACC>(X[index]) + bias[i];
   }
 }
 
@@ -532,6 +532,19 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                          beta_grad_ptr);
     }
   }
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeGradientFusedParamsCUDAKernel<T>),
+                     M,
+                     kCUDABlockReduceNumThreads,
+                     0,
+                     stream,
+                     N,
+                     output_grad_ptr,
+                     input_ptr,
+                     gamma_ptr,
+                     static_cast<T *>(m->rstd_ptr),
+                     static_cast<T *>(m->scale_ptr),
+                     static_cast<T *>(m->bias_ptr),
+                     input_grad_ptr);
 }
 
 /*static*/
@@ -545,14 +558,25 @@ void LayerNorm::backward_kernel_wrapper(LayerNormMeta const *m,
                                         T *beta_grad_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  LayerNorm::backward_kernel<float>(m,
-                                    output_grad_ptr,
-                                    input_ptr,
-                                    input_grad_ptr,
-                                    gamma_ptr,
-                                    gamma_grad_ptr,
-                                    beta_grad_ptr,
-                                    stream);
+  if (m->output_type[0] == DT_FLOAT) {
+    LayerNorm::backward_kernel<float>(m,
+                                      output_grad_ptr,
+                                      input_ptr,
+                                      input_grad_ptr,
+                                      gamma_ptr,
+                                      gamma_grad_ptr,
+                                      beta_grad_ptr,
+                                      stream);
+  } else if (m->output_type[0] == DT_HALF) {
+    LayerNorm::backward_kernel<half>(m,
+                                     output_grad_ptr,
+                                     input_ptr,
+                                     input_grad_ptr,
+                                     gamma_ptr,
+                                     gamma_grad_ptr,
+                                     beta_grad_ptr,
+                                     stream);
+  }
 }
 
 template void
@@ -563,5 +587,13 @@ template void
                                               float const *gamma_ptr,
                                               float *gamma_grad_ptr,
                                               float *beta_grad_ptr);
+template void
+    LayerNorm::backward_kernel_wrapper<half>(LayerNormMeta const *m,
+                                             half const *output_grad_ptr,
+                                             half const *input_ptr,
+                                             half *input_grad_ptr,
+                                             half const *gamma_ptr,
+                                             half *gamma_grad_ptr,
+                                             half *beta_grad_ptr);
 
 }; // namespace FlexFlow
