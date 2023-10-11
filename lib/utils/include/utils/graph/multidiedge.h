@@ -1,8 +1,8 @@
 #ifndef UTILS_GRAPH_INCLUDE_UTILS_GRAPH_MULTIDIEDGE
 #define UTILS_GRAPH_INCLUDE_UTILS_GRAPH_MULTIDIEDGE
 
-#include "node.h"
 #include "diedge.h"
+#include "node.h"
 #include "node_port.h"
 #include "utils/strong_typedef.h"
 #include "utils/visitable.h"
@@ -22,15 +22,14 @@ FF_VISITABLE_STRUCT(MultiDiOutput, src, src_idx);
 using edge_uid_t = std::pair<std::size_t, std::size_t>;
 
 struct InputMultiDiEdge : MultiDiInput {
-  req<edge_uid_t> uid; // necessary to differentiate multiple input edges from different
-           // sources resulting from a graph cut
+  req<edge_uid_t> uid; // necessary to differentiate multiple input edges from
+                       // different sources resulting from a graph cut
 };
 FF_VISITABLE_STRUCT(InputMultiDiEdge, dst, dst_idx, uid);
 
 struct OutputMultiDiEdge : MultiDiOutput {
-  req<edge_uid_t>
-      uid; // necessary to differentiate multiple output edges from different
-           // sources resulting from a graph cut
+  req<edge_uid_t> uid; // necessary to differentiate multiple output edges from
+                       // different sources resulting from a graph cut
 };
 FF_VISITABLE_STRUCT(OutputMultiDiEdge, src, src_idx, uid);
 

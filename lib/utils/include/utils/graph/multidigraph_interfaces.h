@@ -1,13 +1,13 @@
 #ifndef UTILS_GRAPH_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_INTERFACES
 #define UTILS_GRAPH_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_INTERFACES
 
+#include "digraph_interfaces.h"
 #include "multidiedge.h"
 #include "node.h"
 #include "query_set.h"
 #include "utils/optional.h"
 #include "utils/strong_typedef.h"
 #include "utils/visitable.h"
-#include "digraph_interfaces.h"
 
 namespace FlexFlow {
 
@@ -16,7 +16,8 @@ struct IMultiDiGraphView : virtual public IDiGraphView {
   using EdgeQuery = MultiDiEdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override final;
+  std::unordered_set<DirectedEdge>
+      query_edges(DirectedEdgeQuery const &) const override final;
   virtual ~IMultiDiGraphView() = default;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraphView);

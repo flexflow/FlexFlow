@@ -7,19 +7,18 @@
 namespace FlexFlow {
 
 struct DiInput {
-    Node dst;
+  Node dst;
 };
 FF_VISITABLE_STRUCT(DiInput, dst);
 FF_VISIT_FMTABLE(DiInput);
 
 struct DiOutput {
-    Node src;
+  Node src;
 };
 FF_VISITABLE_STRUCT(DiOutput, src);
 FF_VISIT_FMTABLE(DiOutput);
 
-struct DirectedEdge : DiInput, DiOutput {
-};
+struct DirectedEdge : DiInput, DiOutput {};
 FF_VISITABLE_STRUCT(DirectedEdge, src, dst);
 FF_VISIT_FMTABLE(DirectedEdge);
 
@@ -37,6 +36,6 @@ bool matches_edge(DirectedEdgeQuery const &, DirectedEdge const &);
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &,
                                      DirectedEdgeQuery const &);
 
-}
+} // namespace FlexFlow
 
 #endif

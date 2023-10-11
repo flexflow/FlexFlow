@@ -37,7 +37,8 @@ public:
     return get_ptr()->query_nodes(q);
   }
 
-  virtual std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
+  virtual std::unordered_set<MultiDiEdge>
+      query_edges(MultiDiEdgeQuery const &q) const {
     return get_ptr()->query_edges(q);
   }
 
@@ -54,13 +55,15 @@ protected:
 
 private:
   cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+    return cow_ptr_t(
+        std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(NodeLabelledMultiDiGraphView<int>);
 
 template <typename NodeLabel>
-struct NodeLabelledMultiDiGraph : virtual NodeLabelledMultiDiGraphView<NodeLabel> {
+struct NodeLabelledMultiDiGraph
+    : virtual NodeLabelledMultiDiGraphView<NodeLabel> {
 private:
   using Interface = IMultiDiGraph;
   using NodeLabelIf = ILabel<Node, NodeLabel>;
@@ -96,17 +99,19 @@ public:
   NodePort add_node_port() {
     return get_ptr()->add_node_port();
   }
-  
+
   void add_edge(MultiDiEdge const &e) {
     return get_ptr()->add_edge(e);
   }
 
   template <typename GraphImpl, typename NLImpl>
-  static typename std::enable_if<std::conjunction<std::is_base_of<Interface, GraphImpl>,
-                                                  std::is_base_of<NodeLabelIf, NLImpl>>::value,
-                                 NodeLabelledMultiDiGraph>::type
+  static typename std::enable_if<
+      std::conjunction<std::is_base_of<Interface, GraphImpl>,
+                       std::is_base_of<NodeLabelIf, NLImpl>>::value,
+      NodeLabelledMultiDiGraph>::type
       create() {
-    return NodeLabelledMultiDiGraph(make_cow_ptr<GraphImpl>(), make_cow_ptr<NLImpl>());
+    return NodeLabelledMultiDiGraph(make_cow_ptr<GraphImpl>(),
+                                    make_cow_ptr<NLImpl>());
   }
 
 protected:
@@ -114,7 +119,8 @@ protected:
       : NodeLabelledMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
 
   cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+    return cow_ptr_t(
+        std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
 
   cow_ptr_t<NodeLabelIf> nl;

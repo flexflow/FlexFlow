@@ -17,7 +17,6 @@ struct NodePort : public strong_typedef<NodePort, size_t> {
 FF_TYPEDEF_HASHABLE(NodePort);
 FF_TYPEDEF_PRINTABLE(NodePort, "NodePort");
 
-}
-
+} // namespace FlexFlow
 
 #endif

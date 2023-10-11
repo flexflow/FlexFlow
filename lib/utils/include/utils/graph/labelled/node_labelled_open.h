@@ -6,22 +6,28 @@
 namespace FlexFlow {
 
 template <typename NodeLabel>
-struct INodeLabelledOpenMultiDiGraphView : virtual INodeLabelledMultiDiGraphView<NodeLabel>,
-                                            virtual IOpenMultiDiGraphView {
-  INodeLabelledOpenMultiDiGraphView(INodeLabelledOpenMultiDiGraphView const &) = delete;
+struct INodeLabelledOpenMultiDiGraphView
+    : virtual INodeLabelledMultiDiGraphView<NodeLabel>,
+      virtual IOpenMultiDiGraphView {
+  INodeLabelledOpenMultiDiGraphView(INodeLabelledOpenMultiDiGraphView const &) =
+      delete;
   INodeLabelledOpenMultiDiGraphView &
       operator=(INodeLabelledOpenMultiDiGraphView const &) = delete;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(INodeLabelledOpenMultiDiGraphView<int>);
 
 template <typename NodeLabel>
-struct NodeLabelledOpenMultiDiGraphView : virtual NodeLabelledMultiDiGraphView<NodeLabel>,
-                                          virtual OpenMultiDiGraphView {
+struct NodeLabelledOpenMultiDiGraphView
+    : virtual NodeLabelledMultiDiGraphView<NodeLabel>,
+      virtual OpenMultiDiGraphView {
   using Interface = INodeLabelledOpenMultiDiGraphView<NodeLabel>;
+
 public:
   // NodeLabelledOpenMultiDiGraphView() = delete;
-  NodeLabelledOpenMultiDiGraphView(NodeLabelledOpenMultiDiGraphView const &) = default;
-  NodeLabelledOpenMultiDiGraphView &operator=(NodeLabelledOpenMultiDiGraphView const &) = default;
+  NodeLabelledOpenMultiDiGraphView(NodeLabelledOpenMultiDiGraphView const &) =
+      default;
+  NodeLabelledOpenMultiDiGraphView &
+      operator=(NodeLabelledOpenMultiDiGraphView const &) = default;
 
   NodeLabel const &at(Node const &n) const {
     return this->get_ptr()->at(n);
@@ -44,16 +50,19 @@ public:
   }
 
 protected:
-  NodeLabelledOpenMultiDiGraphView() : NodeLabelledMultiDiGraphView<NodeLabel>(), OpenMultiDiGraphView() {}
+  NodeLabelledOpenMultiDiGraphView()
+      : NodeLabelledMultiDiGraphView<NodeLabel>(), OpenMultiDiGraphView() {}
 
 private:
   cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+    return cow_ptr_t(
+        std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
 };
 
 template <typename NodeLabel>
-struct NodeLabelledOpenMultiDiGraph : virtual NodeLabelledOpenMultiDiGraphView<NodeLabel> {
+struct NodeLabelledOpenMultiDiGraph
+    : virtual NodeLabelledOpenMultiDiGraphView<NodeLabel> {
 private:
   using Interface = IOpenMultiDiGraph;
   using INodeLabel = ILabel<Node, NodeLabel>;
@@ -76,7 +85,8 @@ public:
     return get_ptr()->query_nodes();
   }
 
-  std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdge const &q) const {
+  std::unordered_set<OpenMultiDiEdge>
+      query_edges(OpenMultiDiEdge const &q) const {
     return get_ptr()->query_edges();
   }
 
@@ -89,26 +99,29 @@ public:
   NodePort add_node_port() {
     return get_ptr()->add_node_port();
   }
-  
+
   void add_edge(OpenMultiDiEdge const &e) {
     return get_ptr()->add_edge(e);
   }
 
   template <typename BaseImpl, typename N>
-  static typename std::enable_if<std::conjunction<std::is_base_of<Interface, BaseImpl>,
-                                                  std::is_base_of<INodeLabel, N>>::value,
-                                 NodeLabelledOpenMultiDiGraph>::type
+  static typename std::enable_if<
+      std::conjunction<std::is_base_of<Interface, BaseImpl>,
+                       std::is_base_of<INodeLabel, N>>::value,
+      NodeLabelledOpenMultiDiGraph>::type
       create() {
     return NodeLabelledOpenMultiDiGraph(make_cow_ptr<BaseImpl>(),
-                                make_cow_ptr<N>());
+                                        make_cow_ptr<N>());
   }
 
 private:
-  NodeLabelledOpenMultiDiGraph(cow_ptr_t<Interface> ptr, cow_ptr_t<INodeLabel> nl)
-    : NodeLabelledOpenMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
+  NodeLabelledOpenMultiDiGraph(cow_ptr_t<Interface> ptr,
+                               cow_ptr_t<INodeLabel> nl)
+      : NodeLabelledOpenMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
 
   cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+    return cow_ptr_t(
+        std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
 
   cow_ptr_t<INodeLabel> nl;

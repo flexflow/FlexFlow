@@ -20,4 +20,4 @@ UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &lhs,
   };
 }
 
-}
+} // namespace FlexFlow

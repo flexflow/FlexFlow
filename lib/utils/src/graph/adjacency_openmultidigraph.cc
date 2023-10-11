@@ -10,7 +10,8 @@ void AdjacencyInputs::remove_edge(InputMultiDiEdge const &e) {
   adj[e.dst][e.dst_idx].erase(e.uid);
 }
 
-std::unordered_set<InputMultiDiEdge> AdjacencyInputs::query_edges(InputMultiDiEdgeQuery const &q) const {
+std::unordered_set<InputMultiDiEdge>
+    AdjacencyInputs::query_edges(InputMultiDiEdgeQuery const &q) const {
   std::unordered_set<InputMultiDiEdge> result;
   for (auto const &[dst, dst_v] : query_keys(q.dsts, adj)) {
     for (auto const &[dst_idx, dst_idx_v] : query_keys(q.dstIdxs, dst_v)) {
@@ -30,7 +31,8 @@ void AdjacencyOutputs::remove_edge(OutputMultiDiEdge const &e) {
   adj[e.src][e.src_idx].erase(e.uid);
 }
 
-std::unordered_set<OutputMultiDiEdge> AdjacencyOutputs::query_edges(OutputMultiDiEdgeQuery const &q) const {
+std::unordered_set<OutputMultiDiEdge>
+    AdjacencyOutputs::query_edges(OutputMultiDiEdgeQuery const &q) const {
   std::unordered_set<OutputMultiDiEdge> result;
   for (auto const &[src, src_v] : query_keys(q.srcs, adj)) {
     for (auto const &[src_idx, src_idx_v] : query_keys(q.srcIdxs, src_v)) {
@@ -42,19 +44,23 @@ std::unordered_set<OutputMultiDiEdge> AdjacencyOutputs::query_edges(OutputMultiD
   return result;
 }
 
-std::unordered_set<Node> AdjacencyOpenMultiDiGraph::query_nodes(NodeQuery const &q) const {
+std::unordered_set<Node>
+    AdjacencyOpenMultiDiGraph::query_nodes(NodeQuery const &q) const {
   return closed_graph.query_nodes(q);
 }
 
-// std::unordered_set<DirectedEdge> AdjacencyOpenMultiDiGraph::query_edges(DirectedEdgeQuery const &q) const {
+// std::unordered_set<DirectedEdge>
+// AdjacencyOpenMultiDiGraph::query_edges(DirectedEdgeQuery const &q) const {
 //   return closed_graph.query_edges(q);
 // }
 
-// std::unordered_set<MultiDiEdge> AdjacencyOpenMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
+// std::unordered_set<MultiDiEdge>
+// AdjacencyOpenMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
 //   return closed_graph.query_edges(q);
 // }
 
-std::unordered_set<OpenMultiDiEdge> AdjacencyOpenMultiDiGraph::query_edges(OpenMultiDiEdgeQuery const &q) const {
+std::unordered_set<OpenMultiDiEdge> AdjacencyOpenMultiDiGraph::query_edges(
+    OpenMultiDiEdgeQuery const &q) const {
   std::unordered_set<OpenMultiDiEdge> result;
   for (auto const &e : inputs.query_edges(q.input_edge_query)) {
     result.insert(e);
@@ -134,12 +140,15 @@ void AdjacencyOpenMultiDiGraph::remove_edge(OpenMultiDiEdge const &e) {
   visit(RemoveEdgeFunctor{inputs, outputs, closed_graph}, e);
 }
 
-AdjacencyOpenMultiDiGraph::AdjacencyOpenMultiDiGraph(AdjacencyMultiDiGraph const &g, AdjacencyInputs const &inputs, AdjacencyOutputs const &outputs)
-  : closed_graph(g.next_node_idx, g.next_node_port, g.adjacency), inputs(inputs), outputs(outputs) {}
+AdjacencyOpenMultiDiGraph::AdjacencyOpenMultiDiGraph(
+    AdjacencyMultiDiGraph const &g,
+    AdjacencyInputs const &inputs,
+    AdjacencyOutputs const &outputs)
+    : closed_graph(g.next_node_idx, g.next_node_port, g.adjacency),
+      inputs(inputs), outputs(outputs) {}
 
 AdjacencyOpenMultiDiGraph *AdjacencyOpenMultiDiGraph::clone() const {
   return new AdjacencyOpenMultiDiGraph(closed_graph, inputs, outputs);
 }
 
-
-}
+} // namespace FlexFlow

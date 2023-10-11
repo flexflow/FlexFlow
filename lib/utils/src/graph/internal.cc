@@ -5,7 +5,8 @@
 
 namespace FlexFlow {
 
-// MultiDiGraph GraphInternal::create_multidigraph(cow_ptr_t<IMultiDiGraph> ptr) {
+// MultiDiGraph GraphInternal::create_multidigraph(cow_ptr_t<IMultiDiGraph> ptr)
+// {
 //   return {std::move(ptr)};
 // }
 
@@ -20,7 +21,8 @@ namespace FlexFlow {
 // }
 
 // OpenMultiDiGraph
-//     GraphInternal::create_open_multidigraph(cow_ptr_t<IOpenMultiDiGraph> ptr) {
+//     GraphInternal::create_open_multidigraph(cow_ptr_t<IOpenMultiDiGraph> ptr)
+//     {
 //   return {std::move(ptr)};
 // }
 
@@ -29,7 +31,8 @@ namespace FlexFlow {
 // }
 
 // DiGraphView
-//     GraphInternal::create_digraphview(std::shared_ptr<IDiGraphView const> ptr) {
+//     GraphInternal::create_digraphview(std::shared_ptr<IDiGraphView const>
+//     ptr) {
 //   return {std::move(ptr)};
 // }
 

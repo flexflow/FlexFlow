@@ -2,13 +2,13 @@
 #define UTILS_GRAPH_INCLUDE_UTILS_GRAPH_OPEN_GRAPH_INTERFACES
 
 #include "multidigraph.h"
+#include "open_edge.h"
 #include "utils/exception.h"
 #include "utils/graph/multidiedge.h"
 #include "utils/graph/multidigraph_interfaces.h"
 #include "utils/strong_typedef.h"
 #include "utils/type_traits.h"
 #include "utils/visitable.h"
-#include "open_edge.h"
 
 namespace FlexFlow {
 
@@ -66,7 +66,8 @@ struct IUpwardOpenMultiDiGraph : virtual public IUpwardOpenMultiDiGraphView {
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IUpwardOpenMultiDiGraph);
 
-struct IDownwardOpenMultiDiGraph : virtual public IDownwardOpenMultiDiGraphView {
+struct IDownwardOpenMultiDiGraph
+    : virtual public IDownwardOpenMultiDiGraphView {
   virtual Node add_node() = 0;
   virtual void add_node_unsafe(Node const &node) = 0;
   virtual void remove_node_unsafe(Node const &node) = 0;

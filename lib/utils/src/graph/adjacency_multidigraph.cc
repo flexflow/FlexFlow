@@ -45,7 +45,8 @@ std::unordered_set<MultiDiEdge>
     for (auto const &dst_kv : query_keys(q.dsts, src_kv.second)) {
       for (auto const &srcIdx_kv : query_keys(q.srcIdxs, dst_kv.second)) {
         for (auto const &dstIdx : apply_query(q.dstIdxs, srcIdx_kv.second)) {
-          result.insert(MultiDiEdge{dst_kv.first, dstIdx, src_kv.first, srcIdx_kv.first});
+          result.insert(
+              MultiDiEdge{dst_kv.first, dstIdx, src_kv.first, srcIdx_kv.first});
         }
       }
     }
@@ -53,9 +54,12 @@ std::unordered_set<MultiDiEdge>
   return result;
 }
 
-// std::unordered_set<DirectedEdge> AdjacencyMultiDiGraph::query_edges(DirectedEdgeQuery const &q) const {
-//   return map_over_unordered_set<MultiDiEdge, DirectedEdge>([](MultiDiEdge const &e) { return DirectedEdge{e.dst, e.src}; },
-//     this->query_edges(MultiDiEdgeQuery{q.srcs, q.dsts, matchall<NodePort>(), matchall<NodePort>()})
+// std::unordered_set<DirectedEdge>
+// AdjacencyMultiDiGraph::query_edges(DirectedEdgeQuery const &q) const {
+//   return map_over_unordered_set<MultiDiEdge, DirectedEdge>([](MultiDiEdge
+//   const &e) { return DirectedEdge{e.dst, e.src}; },
+//     this->query_edges(MultiDiEdgeQuery{q.srcs, q.dsts, matchall<NodePort>(),
+//     matchall<NodePort>()})
 //   );
 // }
 

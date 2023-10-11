@@ -31,9 +31,9 @@ struct OpenMultiDiEdgeQuery {
   OutputMultiDiEdgeQuery output_edge_query;
 };
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpenMultiDiEdgeQuery,
-                    input_edge_query,
-                    standard_edge_query,
-                    output_edge_query);
+                                             input_edge_query,
+                                             standard_edge_query,
+                                             output_edge_query);
 
 struct DownwardOpenMultiDiEdgeQuery {
   DownwardOpenMultiDiEdgeQuery() = delete;
@@ -66,6 +66,6 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(UpwardOpenMultiDiEdgeQuery,
                                              input_edge_query,
                                              standard_edge_query);
 
-}
+} // namespace FlexFlow
 
 #endif

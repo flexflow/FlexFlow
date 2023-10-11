@@ -30,7 +30,6 @@ FF_VISIT_FMTABLE(UndirectedEdgeQuery);
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &,
                                        UndirectedEdgeQuery const &);
 
-
-}
+} // namespace FlexFlow
 
 #endif

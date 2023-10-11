@@ -21,7 +21,8 @@ std::unordered_set<DirectedEdge>
 // DiGraphView::DiGraphView(cow_ptr_t<IDiGraphView> ptr) : GraphView(ptr) {}
 
 cow_ptr_t<IDiGraphView> DiGraphView::get_ptr() const {
-    return cow_ptr_t(std::dynamic_pointer_cast<IDiGraphView>(GraphView::ptr.get_mutable()));
+  return cow_ptr_t(
+      std::dynamic_pointer_cast<IDiGraphView>(GraphView::ptr.get_mutable()));
 }
 
 Node DiGraph::add_node() {

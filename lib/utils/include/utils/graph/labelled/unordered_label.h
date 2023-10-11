@@ -27,7 +27,8 @@ struct UnorderedLabel : virtual public ILabel<Elem, Label> {
   }
 
 private:
-  UnorderedLabel(std::unordered_map<Elem, Label> const &label_map) : label_map(label_map) {}
+  UnorderedLabel(std::unordered_map<Elem, Label> const &label_map)
+      : label_map(label_map) {}
   std::unordered_map<Elem, Label> label_map;
 };
 
@@ -89,7 +90,8 @@ private:
 //     output_map.insert({MultiDiOutput(e), l});
 //   }
 
-//   UnorderedLabel(std::unordered_map<InputMultiDiEdge, Label> const &input_map,
+//   UnorderedLabel(std::unordered_map<InputMultiDiEdge, Label> const
+//   &input_map,
 //                  std::unordered_map<MultiDiOutput, Label> const &output_map)
 //     : input_map(input_map), output_map(output_map) {}
 
@@ -97,6 +99,6 @@ private:
 //   std::unordered_map<MultiDiOutput, Label> output_map;
 // };
 
-}
+} // namespace FlexFlow
 
 #endif

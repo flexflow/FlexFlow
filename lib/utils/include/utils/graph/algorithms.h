@@ -310,7 +310,7 @@ MultiDiGraphView get_subgraph(MultiDiGraphView const &,
 template <typename SubgraphView>
 OpenMultiDiGraphView get_subgraph(OpenMultiDiGraphView const &g,
                                   std::unordered_set<Node> const &nodes) {
-    return OpenMultiDiGraphView::create<SubgraphView>(g, nodes);
+  return OpenMultiDiGraphView::create<SubgraphView>(g, nodes);
 }
 
 std::unordered_map<Node, int> calculate_topo_rank(DiGraphView const &);

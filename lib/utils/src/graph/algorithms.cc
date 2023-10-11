@@ -1,6 +1,7 @@
 #include "utils/graph/algorithms.h"
 #include "utils/containers.h"
 #include "utils/exception.h"
+#include "utils/graph/diedge.h"
 #include "utils/graph/digraph.h"
 #include "utils/graph/multidiedge.h"
 #include "utils/graph/multidigraph.h"
@@ -8,7 +9,6 @@
 #include "utils/graph/traversal.h"
 #include "utils/graph/undirected.h"
 #include "utils/graph/views.h"
-#include "utils/graph/diedge.h"
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -245,13 +245,15 @@ std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &g,
 }
 
 std::unordered_set<MultiDiOutput> get_outputs(MultiDiGraphView const &g) {
-  return transform(get_edges(g),
-                   [&](MultiDiEdge const &e) -> MultiDiOutput { return MultiDiOutput(e); });
+  return transform(get_edges(g), [&](MultiDiEdge const &e) -> MultiDiOutput {
+    return MultiDiOutput(e);
+  });
 }
 
 std::unordered_set<MultiDiInput> get_inputs(MultiDiGraphView const &g) {
-  return transform(get_edges(g),
-                   [&](MultiDiEdge const &e) -> MultiDiInput { return MultiDiInput(e); });
+  return transform(get_edges(g), [&](MultiDiEdge const &e) -> MultiDiInput {
+    return MultiDiInput(e);
+  });
 }
 
 std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &g,
@@ -618,10 +620,8 @@ optional<Node> get_imm_post_dominator(DiGraphView const &g,
 
 std::pair<OutputMultiDiEdge, InputMultiDiEdge>
     split_edge(MultiDiEdge const &e) {
-  return {
-    OutputMultiDiEdge{e.src, e.src_idx, e.get_uid()},
-    InputMultiDiEdge{e.dst, e.dst_idx, e.get_uid()}
-  };
+  return {OutputMultiDiEdge{e.src, e.src_idx, e.get_uid()},
+          InputMultiDiEdge{e.dst, e.dst_idx, e.get_uid()}};
 }
 
 MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge,

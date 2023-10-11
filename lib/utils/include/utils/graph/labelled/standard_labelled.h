@@ -20,7 +20,8 @@ struct ILabelledMultiDiGraphView
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledMultiDiGraphView<int, int>);
 
 template <typename NodeLabel, typename EdgeLabel>
-struct LabelledMultiDiGraphView : virtual public NodeLabelledMultiDiGraphView<NodeLabel> {
+struct LabelledMultiDiGraphView
+    : virtual public NodeLabelledMultiDiGraphView<NodeLabel> {
 private:
   using Interface = ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>;
 
@@ -55,7 +56,8 @@ public:
   }
 
 protected:
-  LabelledMultiDiGraphView(cow_ptr_t<Interface const> ptr) : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {}
+  LabelledMultiDiGraphView(cow_ptr_t<Interface const> ptr)
+      : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {}
   cow_ptr_t<Interface> get_ptr() const {
     return cow_ptr_t(static_cast<Interface const &>(*GraphView::ptr));
   }
@@ -63,7 +65,8 @@ protected:
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(LabelledMultiDiGraphView<int, int>);
 
 template <typename NodeLabel, typename EdgeLabel>
-struct LabelledMultiDiGraph : virtual LabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
+struct LabelledMultiDiGraph
+    : virtual LabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
 private:
   using Interface = IMultiDiGraph;
   using INodeLabel = ILabel<Node, NodeLabel>;
@@ -110,20 +113,21 @@ public:
   }
 
   template <typename BaseImpl, typename N, typename E>
-  static typename std::enable_if<std::conjunction<std::is_base_of<Interface, BaseImpl>,
-                                                  std::is_base_of<INodeLabel, N>,
-                                                  std::is_base_of<IEdgeLabel, E>>::value,
-                                 LabelledMultiDiGraph>::type
+  static typename std::enable_if<
+      std::conjunction<std::is_base_of<Interface, BaseImpl>,
+                       std::is_base_of<INodeLabel, N>,
+                       std::is_base_of<IEdgeLabel, E>>::value,
+      LabelledMultiDiGraph>::type
       create() {
-    return LabelledMultiDiGraph(make_cow_ptr<BaseImpl>(),
-                                make_cow_ptr<N>(),
-                                make_cow_ptr<E>());
+    return LabelledMultiDiGraph(
+        make_cow_ptr<BaseImpl>(), make_cow_ptr<N>(), make_cow_ptr<E>());
   }
 
 private:
   LabelledMultiDiGraph(cow_ptr_t<Interface> ptr,
                        cow_ptr_t<INodeLabel> nl,
-                       cow_ptr_t<IEdgeLabel> el) : LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr), nl(nl), el(el) {}
+                       cow_ptr_t<IEdgeLabel> el)
+      : LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr), nl(nl), el(el) {}
 
   cow_ptr_t<Interface> get_ptr() const {
     return cow_ptr_t(static_cast<Interface const &>(*GraphView::ptr));

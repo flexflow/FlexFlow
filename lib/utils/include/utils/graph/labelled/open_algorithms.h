@@ -6,8 +6,14 @@
 namespace FlexFlow {
 
 template <typename SubgraphView, typename NodeLabel, typename EdgeLabel>
-OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> get_subgraph(OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> const &g, std::unordered_set<Node> const &nodes) {
-  return OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel>::template create<OutputLabelledOpenMultiDiSubgraphView<SubgraphView, NodeLabel, EdgeLabel>>(g, nodes);
+OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> get_subgraph(
+    OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> const &g,
+    std::unordered_set<Node> const &nodes) {
+  return OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel>::
+      template create<OutputLabelledOpenMultiDiSubgraphView<SubgraphView,
+                                                            NodeLabel,
+                                                            EdgeLabel>>(g,
+                                                                        nodes);
 }
 
 } // namespace FlexFlow

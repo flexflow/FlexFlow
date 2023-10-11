@@ -402,10 +402,10 @@ SubParallelComputationGraph
                        MultiDiGraphPatternMatch const &match) {
   SubParallelComputationGraph new_pcg =
       OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>::create<
-        AdjacencyOpenMultiDiGraph,
-        UnorderedLabel<Node, Operator>,
-        UnorderedLabel<InputMultiDiEdge, ParallelTensor>,
-        UnorderedLabel<MultiDiOutput, ParallelTensor>>();
+          AdjacencyOpenMultiDiGraph,
+          UnorderedLabel<Node, Operator>,
+          UnorderedLabel<InputMultiDiEdge, ParallelTensor>,
+          UnorderedLabel<MultiDiOutput, ParallelTensor>>();
   bidict<Node, Node> node_mapping; // Refactor it with global nodes
   for (Node const &node : get_nodes(pcg)) {
     if (!contains_r(match.node_assignment, node)) {
@@ -417,7 +417,8 @@ SubParallelComputationGraph
       visit(AddMappedEdgeFunctor{node_mapping, new_pcg}, edge);
     }
   }
-  for (Node const &output_node : get_nodes(substitution.output_graph_expr.value())) {
+  for (Node const &output_node :
+       get_nodes(substitution.output_graph_expr.value())) {
     Node new_node = new_pcg.add_node(get_operator_attrs(
         pcg, match, substitution.output_graph_expr.value().at(output_node)));
     node_mapping.equate(output_node, new_node);

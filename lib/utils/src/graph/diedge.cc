@@ -36,4 +36,4 @@ DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
   return result;
 }
 
-}
+} // namespace FlexFlow

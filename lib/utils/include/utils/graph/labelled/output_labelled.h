@@ -9,22 +9,27 @@ template <typename NodeLabel, typename OutputLabel>
 struct IOutputLabelledMultiDiGraphView
     : public INodeLabelledMultiDiGraphView<NodeLabel> {
   IOutputLabelledMultiDiGraphView() = default;
-  IOutputLabelledMultiDiGraphView(IOutputLabelledMultiDiGraphView const &) = delete;
-  IOutputLabelledMultiDiGraphView &operator=(IOutputLabelledMultiDiGraphView const &) = delete;
+  IOutputLabelledMultiDiGraphView(IOutputLabelledMultiDiGraphView const &) =
+      delete;
+  IOutputLabelledMultiDiGraphView &
+      operator=(IOutputLabelledMultiDiGraphView const &) = delete;
 
   virtual OutputLabel const &at(MultiDiOutput const &) = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOutputLabelledMultiDiGraphView<int, int>);
 
 template <typename NodeLabel, typename OutputLabel>
-struct OutputLabelledMultiDiGraphView : virtual public NodeLabelledMultiDiGraphView<NodeLabel> {
+struct OutputLabelledMultiDiGraphView
+    : virtual public NodeLabelledMultiDiGraphView<NodeLabel> {
 private:
   using Interface = IOutputLabelledMultiDiGraphView<NodeLabel, OutputLabel>;
 
 public:
   // OutputLabelledMultiDiGraphView() = delete;
-  OutputLabelledMultiDiGraphView(OutputLabelledMultiDiGraphView const &) = default;
-  OutputLabelledMultiDiGraphView &operator=(OutputLabelledMultiDiGraphView const &) = default;
+  OutputLabelledMultiDiGraphView(OutputLabelledMultiDiGraphView const &) =
+      default;
+  OutputLabelledMultiDiGraphView &
+      operator=(OutputLabelledMultiDiGraphView const &) = default;
 
   NodeLabel const &at(Node const &n) const {
     return get_ptr()->at(n);
@@ -51,15 +56,19 @@ public:
   }
 
 protected:
-  OutputLabelledMultiDiGraphView(cow_ptr_t<Interface const> ptr) : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {}
+  OutputLabelledMultiDiGraphView(cow_ptr_t<Interface const> ptr)
+      : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {}
+
 private:
   cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+    return cow_ptr_t(
+        std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
 };
 
 template <typename NodeLabel, typename OutputLabel>
-struct OutputLabelledMultiDiGraph : virtual OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel> {
+struct OutputLabelledMultiDiGraph
+    : virtual OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel> {
 private:
   using Interface = IMultiDiGraph;
   using INodeLabel = ILabel<Node, NodeLabel>;
@@ -92,7 +101,7 @@ public:
   void add_output(MultiDiOutput const &o, OutputLabel const &l) {
     ol->add_label(o, l);
   };
-  
+
   void add_edge(MultiDiOutput const &o, MultiDiInput const &i) {
     return get_ptr()->add_edge(o, i);
   };
@@ -116,28 +125,27 @@ public:
   }
 
   template <typename BaseImpl, typename N, typename O>
-  static typename std::enable_if<std::conjunction<
-                                  std::is_base_of<Interface, BaseImpl>,
-                                  std::is_base_of<INodeLabel, N>,
-                                  std::is_base_of<IOutputLabel, O>
-                                >::value, OutputLabelledMultiDiGraph>::type
+  static typename std::enable_if<
+      std::conjunction<std::is_base_of<Interface, BaseImpl>,
+                       std::is_base_of<INodeLabel, N>,
+                       std::is_base_of<IOutputLabel, O>>::value,
+      OutputLabelledMultiDiGraph>::type
       create() {
     return OutputLabelledMultiDiGraph(
-        make_cow_ptr<BaseImpl>(),
-        make_cow_ptr<N>(),
-        make_cow_ptr<O>());
+        make_cow_ptr<BaseImpl>(), make_cow_ptr<N>(), make_cow_ptr<O>());
   }
 
 private:
-  OutputLabelledMultiDiGraph(
-      cow_ptr_t<Interface> ptr,
-      cow_ptr_t<INodeLabel> nl,
-      cow_ptr_t<IOutputLabel> ol)
-      : OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel>(ptr), nl(nl), ol(ol) {}
+  OutputLabelledMultiDiGraph(cow_ptr_t<Interface> ptr,
+                             cow_ptr_t<INodeLabel> nl,
+                             cow_ptr_t<IOutputLabel> ol)
+      : OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel>(ptr), nl(nl),
+        ol(ol) {}
 
 private:
   cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+    return cow_ptr_t(
+        std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
   cow_ptr_t<INodeLabel> nl;
   cow_ptr_t<IOutputLabel> ol;

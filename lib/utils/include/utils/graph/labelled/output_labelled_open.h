@@ -7,22 +7,25 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename EdgeLabel>
-struct IOutputLabelledOpenMultiDiGraphView : virtual INodeLabelledOpenMultiDiGraphView<NodeLabel> {
+struct IOutputLabelledOpenMultiDiGraphView
+    : virtual INodeLabelledOpenMultiDiGraphView<NodeLabel> {
   virtual EdgeLabel const &at(InputMultiDiEdge const &) const = 0;
   virtual EdgeLabel const &at(MultiDiOutput const &) const = 0;
 
   using INodeLabelledOpenMultiDiGraphView<NodeLabel>::at;
 };
 
-template <typename NodeLabel,
-          typename EdgeLabel>
-struct OutputLabelledOpenMultiDiGraphView : virtual NodeLabelledOpenMultiDiGraphView<NodeLabel> {
+template <typename NodeLabel, typename EdgeLabel>
+struct OutputLabelledOpenMultiDiGraphView
+    : virtual NodeLabelledOpenMultiDiGraphView<NodeLabel> {
 private:
   using Interface = IOutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel>;
 
 public:
-  OutputLabelledOpenMultiDiGraphView(OutputLabelledOpenMultiDiGraphView const &) = default;
-  OutputLabelledOpenMultiDiGraphView &operator=(OutputLabelledOpenMultiDiGraphView const &) = default;
+  OutputLabelledOpenMultiDiGraphView(
+      OutputLabelledOpenMultiDiGraphView const &) = default;
+  OutputLabelledOpenMultiDiGraphView &
+      operator=(OutputLabelledOpenMultiDiGraphView const &) = default;
 
   NodeLabel const &at(Node const &n) const {
     return get_ptr()->at(n);
@@ -40,7 +43,8 @@ public:
     return get_ptr()->query_nodes(q);
   }
 
-  std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &q) const {
+  std::unordered_set<OpenMultiDiEdge>
+      query_edges(OpenMultiDiEdgeQuery const &q) const {
     return get_ptr()->query_edges(q);
   }
 
@@ -53,27 +57,31 @@ public:
   }
 
 protected:
-  using NodeLabelledOpenMultiDiGraphView<NodeLabel>::NodeLabelledOpenMultiDiGraphView;
+  using NodeLabelledOpenMultiDiGraphView<
+      NodeLabel>::NodeLabelledOpenMultiDiGraphView;
 
 private:
   cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+    return cow_ptr_t(
+        std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
 };
 
-template<typename NodeLabel, typename EdgeLabel>
-EdgeLabel at(OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> const &g, OpenMultiDiEdge const &e) {
+template <typename NodeLabel, typename EdgeLabel>
+EdgeLabel at(OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> const &g,
+             OpenMultiDiEdge const &e) {
   return visit([&](auto const e) { return g.at(e); }, e);
 }
 
-template <typename NodeLabel,
-          typename EdgeLabel>
-struct OutputLabelledOpenMultiDiGraph : virtual OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> {
+template <typename NodeLabel, typename EdgeLabel>
+struct OutputLabelledOpenMultiDiGraph
+    : virtual OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> {
 private:
   using Interface = IOpenMultiDiGraph;
   using INodeLabel = ILabel<Node, NodeLabel>;
   using IInputLabel = ILabel<InputMultiDiEdge, EdgeLabel>;
   using IOutputLabel = ILabel<MultiDiOutput, EdgeLabel>;
+
 public:
   OutputLabelledOpenMultiDiGraph() = delete;
   OutputLabelledOpenMultiDiGraph(OutputLabelledOpenMultiDiGraph const &) =
@@ -120,7 +128,7 @@ public:
 
   EdgeLabel &at(InputMultiDiEdge const &e) {
     return il->get_label(e);
-  }  
+  }
 
   EdgeLabel const &at(InputMultiDiEdge const &e) const {
     return il->get_label(e);
@@ -129,30 +137,35 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return get_ptr()->query_nodes(q);
   }
-  std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &q) const {
+  std::unordered_set<OpenMultiDiEdge>
+      query_edges(OpenMultiDiEdgeQuery const &q) const {
     return get_ptr()->query_edges(q);
   }
 
   template <typename BaseImpl, typename N, typename I, typename O>
-  static typename std::enable_if<std::conjunction<std::is_base_of<Interface, BaseImpl>,
-                                std::is_base_of<INodeLabel, N>,
-                                std::is_base_of<IInputLabel, I>,
-                                std::is_base_of<IOutputLabel, O>>::value,
-                                OutputLabelledOpenMultiDiGraph>::type
+  static typename std::enable_if<
+      std::conjunction<std::is_base_of<Interface, BaseImpl>,
+                       std::is_base_of<INodeLabel, N>,
+                       std::is_base_of<IInputLabel, I>,
+                       std::is_base_of<IOutputLabel, O>>::value,
+      OutputLabelledOpenMultiDiGraph>::type
       create() {
-    return OutputLabelledOpenMultiDiGraph(
-        make_cow_ptr<BaseImpl>(),
-        make_cow_ptr<N>(),
-        make_cow_ptr<I>(),
-        make_cow_ptr<O>());
+    return OutputLabelledOpenMultiDiGraph(make_cow_ptr<BaseImpl>(),
+                                          make_cow_ptr<N>(),
+                                          make_cow_ptr<I>(),
+                                          make_cow_ptr<O>());
   }
 
 private:
-  OutputLabelledOpenMultiDiGraph(cow_ptr_t<Interface> ptr, cow_ptr_t<INodeLabel> nl, cow_ptr_t<IInputLabel> il, cow_ptr_t<IOutputLabel> ol)
-    : GraphView(ptr), nl(nl), il(il), ol(ol) {}
-  
+  OutputLabelledOpenMultiDiGraph(cow_ptr_t<Interface> ptr,
+                                 cow_ptr_t<INodeLabel> nl,
+                                 cow_ptr_t<IInputLabel> il,
+                                 cow_ptr_t<IOutputLabel> ol)
+      : GraphView(ptr), nl(nl), il(il), ol(ol) {}
+
   cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+    return cow_ptr_t(
+        std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
 
   cow_ptr_t<INodeLabel> nl;

@@ -15,7 +15,8 @@ std::unordered_set<MultiDiEdge>
 }
 
 cow_ptr_t<IMultiDiGraphView> MultiDiGraphView::get_ptr() const {
-    return cow_ptr_t(std::dynamic_pointer_cast<IMultiDiGraphView>(GraphView::ptr.get_mutable()));
+  return cow_ptr_t(std::dynamic_pointer_cast<IMultiDiGraphView>(
+      GraphView::ptr.get_mutable()));
 }
 
 Node MultiDiGraph::add_node() {
@@ -56,7 +57,8 @@ std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const &q) const {
 }
 
 cow_ptr_t<IMultiDiGraph> MultiDiGraph::get_ptr() const {
-    return cow_ptr_t(std::dynamic_pointer_cast<IMultiDiGraph>(GraphView::ptr.get_mutable()));
+  return cow_ptr_t(
+      std::dynamic_pointer_cast<IMultiDiGraph>(GraphView::ptr.get_mutable()));
 }
 
 } // namespace FlexFlow

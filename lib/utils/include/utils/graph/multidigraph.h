@@ -2,10 +2,10 @@
 #define _FLEXFLOW_UTILS_GRAPH_MULTIDIGRAPH_H
 
 #include "cow_ptr_t.h"
-#include "multidigraph_interfaces.h"
-#include "multidiedge.h"
-#include "node.h"
 #include "digraph.h"
+#include "multidiedge.h"
+#include "multidigraph_interfaces.h"
+#include "node.h"
 
 namespace FlexFlow {
 struct MultiDiGraphView : virtual DiGraphView {
@@ -23,15 +23,14 @@ public:
   static typename std::enable_if<std::is_base_of<IMultiDiGraphView, T>::value,
                                  MultiDiGraphView>::type
       create(Args &&...args) {
-    return MultiDiGraphView(
-        make_cow_ptr<T>(std::forward<Args>(args)...));
+    return MultiDiGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
 protected:
   using DiGraphView::DiGraphView;
 
 private:
-  cow_ptr_t <IMultiDiGraphView> get_ptr() const;
+  cow_ptr_t<IMultiDiGraphView> get_ptr() const;
 
   friend struct GraphInternal;
 };

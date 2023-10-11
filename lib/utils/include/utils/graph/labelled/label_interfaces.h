@@ -24,6 +24,6 @@ struct IOutputOpenLabel {
   IOutputOpenLabel *clone() const;
 };
 
-};
+}; // namespace FlexFlow
 
 #endif

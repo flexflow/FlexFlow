@@ -3,11 +3,11 @@
 
 #include "cow_ptr_t.h"
 #include "node.h"
+#include "undirected_edge.h"
 #include "utils/exception.h"
 #include "utils/optional.h"
 #include "utils/type_traits.h"
 #include "utils/unique.h"
-#include "undirected_edge.h"
 #include <unordered_set>
 
 namespace FlexFlow {
@@ -47,8 +47,7 @@ public:
       typename std::enable_if<std::is_base_of<IUndirectedGraphView, T>::value,
                               UndirectedGraphView>::type
       create(Args &&...args) {
-    return UndirectedGraphView(
-        make_cow_ptr<T>(std::forward<Args>(args)...));
+    return UndirectedGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
   using GraphView::GraphView;

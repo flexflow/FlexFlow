@@ -3,8 +3,8 @@
 
 #include "multidigraph.h"
 #include "node.h"
-#include "open_graph_interfaces.h"
 #include "open_edge.h"
+#include "open_graph_interfaces.h"
 #include "utils/optional.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"
@@ -28,8 +28,7 @@ public:
       typename std::enable_if<std::is_base_of<IOpenMultiDiGraphView, T>::value,
                               OpenMultiDiGraphView>::type
       create(Args &&...args) {
-    return OpenMultiDiGraphView(
-        make_cow_ptr<T>(std::forward<Args>(args)...));
+    return OpenMultiDiGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
 protected:
@@ -81,7 +80,8 @@ public:
 
   // UpwardOpenMultiDiGraphView() = delete;
   UpwardOpenMultiDiGraphView(UpwardOpenMultiDiGraphView const &) = default;
-  UpwardOpenMultiDiGraphView &operator=(UpwardOpenMultiDiGraphView const &) = default;
+  UpwardOpenMultiDiGraphView &
+      operator=(UpwardOpenMultiDiGraphView const &) = default;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
@@ -143,7 +143,8 @@ public:
 
   // DownwardOpenMultiDiGraphView() = delete;
   DownwardOpenMultiDiGraphView(DownwardOpenMultiDiGraphView const &) = default;
-  DownwardOpenMultiDiGraphView &operator=(DownwardOpenMultiDiGraphView const &) = default;
+  DownwardOpenMultiDiGraphView &
+      operator=(DownwardOpenMultiDiGraphView const &) = default;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
@@ -171,7 +172,8 @@ public:
 
   DownwardOpenMultiDiGraph() = delete;
   DownwardOpenMultiDiGraph(DownwardOpenMultiDiGraph const &) = default;
-  DownwardOpenMultiDiGraph &operator=(DownwardOpenMultiDiGraph const &) = default;
+  DownwardOpenMultiDiGraph &
+      operator=(DownwardOpenMultiDiGraph const &) = default;
 
   Node add_node();
   void add_node_unsafe(Node const &);

@@ -66,7 +66,10 @@ MultiDiEdgeQuery MultiDiEdgeQuery::all() {
 }
 
 MultiDiEdgeQuery MultiDiEdgeQuery::none() {
-  return {query_set<Node>({}), query_set<Node>({}), query_set<NodePort>({}), query_set<NodePort>({})};
+  return {query_set<Node>({}),
+          query_set<Node>({}),
+          query_set<NodePort>({}),
+          query_set<NodePort>({})};
 }
 
 MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,

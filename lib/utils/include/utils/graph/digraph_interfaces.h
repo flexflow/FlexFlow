@@ -1,9 +1,9 @@
 #ifndef UTILS_GRAPH_INCLUDE_UTILS_GRAPH_DIGRAPH_INTERFACES
 #define UTILS_GRAPH_INCLUDE_UTILS_GRAPH_DIGRAPH_INTERFACES
 
+#include "diedge.h"
 #include "node.h"
 #include "utils/type_traits.h"
-#include "diedge.h"
 
 namespace FlexFlow {
 
