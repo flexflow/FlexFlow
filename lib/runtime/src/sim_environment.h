@@ -25,9 +25,8 @@ public:
   IsTrainable trainable;
 };
 
-using SimArg = ConcreteArgSpec;
-using SimTensorSpec = variant<ParallelTensorShape,
-                              InputParallelTensorDesc,
+using SimArg = OpArgSpec;
+using SimTensorSpec = variant<InputParallelTensorDesc,
                               InputVariadicParallelTensorDesc>;
 
 struct SimTaskBinding {
@@ -42,10 +41,16 @@ struct SimTaskBinding {
   void bind(slot_id, InputVariadicParallelTensorDesc const &);
 
   template <typename T>
-  void bind_arg(slot_id id, T const &name);
+  void bind_arg(slot_id id, OpArgRef<T> const &ref);
 
   std::unordered_map<slot_id, SimArg> arg_bindings;
   std::unordered_map<slot_id, SimTensorSpec> tensor_shape_bindings;
+
+private:
+  void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec) {
+    assert(!contains_key(this->arg_bindings, name));
+    this->arg_bindings.insert({name, arg_spec});
+  }
 };
 
 SimTaskBinding infer_bwd_binding(SimTaskBinding const &);
@@ -57,7 +62,9 @@ struct SimEnvironment {
 };
 
 struct SimEnvFactory {
-  SimEnvironment new_environment() const;
+  SimEnvironment new_environment() const {
+    return SimEnvironment();
+  }
 };
 
 GenericTensorAccessorW allocate_input(SimEnvironment &sim, TensorShape const &);

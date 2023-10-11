@@ -4,20 +4,21 @@ namespace FlexFlow {
 
 template <typename T>
 T const &LocalTaskArgumentAccessor::get_argument(slot_id slot) const {
+  assert(contains_key(this->sim_task_binding.arg_bindings.at(slot)));
   return this->sim_task_binding.arg_bindings.at(slot).get<T>();
-  // TODO: error handling
 }
 
 template <typename T>
 optional<T> LocalTaskArgumentAccessor::get_optional_argument(slot_id slot) const {
-  return this->sim_task_binding.arg_bindings.at(slot).get<T>();
-  // TODO: optional support
+  if (contains_key(this->sim_task_binding.arg_bindings.at(slot))) {
+    return this->sim_task_binding.arg_bindings.at(slot).get<T>();
+  }
+  return std::nullopt;
 }
 
 template <typename T>
 std::vector<T> LocalTaskArgumentAccessor::get_variadic_argument(slot_id slot) const {
   return this->sim_task_binding.arg_bindings.at(slot).get<std::vector<T>>();
-  // TODO: fix sim environment arg for variadic
 }
 
 void *LocalTaskArgumentAccessor::allocate(size_t size) {
@@ -64,9 +65,9 @@ PrivilegeType LocalTaskArgumentAccessor::get_tensor(
   }
 }
 
-template <Permissions PRIV>
-std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(
-    slot_id slot) const override {
+
+PrivilegeVariadicType LocalTaskArgumentAccessor::get_variadic_tensor(
+  slot_id slot, Permissions priv) const override {
   std::vector<privilege_mode_to_accessor<PRIV>> result;
   InputVariadicParallelTensorDesc const &spec =
       get<InputVariadicParallelTensorDesc>(
@@ -81,6 +82,10 @@ std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(
     result.push_back({data_type, array_shape, ptr});
   }
   return result;
+}
+
+Allocator LocalTaskArgumentAccessor::get_allocator() const {
+  return this->local_allocator;
 }
 
 } // namespace FlexFlow

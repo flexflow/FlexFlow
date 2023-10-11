@@ -10,6 +10,7 @@
 #include "kernels/allocation.h"
 #include "pcg/parallel_tensor_guid_t.h"
 #include "runtime/config.h"
+#include "op_task_signature.h"
 #include "utils/exception.h"
 #include "utils/stack_map.h"
 #include "utils/strong_typedef.h"
@@ -39,8 +40,8 @@ public:
 
   size_t get_device_idx() const override;
 
-  LocalTaskArgumentAccessor(SimTaskBinding const &sim_task_binding)
-      : sim_task_binding(sim_task_binding), memory_usage(0) {
+  LocalTaskArgumentAccessor(OpTaskSignature const &sig, SimTaskBinding const &sim_task_binding)
+      : signature(sig), sim_task_binding(sim_task_binding), memory_usage(0) {
     local_allocator = Allocator::create<CudaAllocator>();
   }
 
@@ -52,6 +53,7 @@ public:
   void deallocate(void *ptr);
 
 private:
+  OpTaskSignature signature;
   SimTaskBinding sim_task_binding;
   Allocator local_allocator;
   size_t memory_usage;
