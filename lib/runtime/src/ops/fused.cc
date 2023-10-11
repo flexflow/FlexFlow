@@ -512,7 +512,9 @@ static void forward_task(Task const *task,
   forward_task_impl(acc);
 }
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {}
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+  NOT_IMPLEMENTED();
+}
 
 static void backward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
