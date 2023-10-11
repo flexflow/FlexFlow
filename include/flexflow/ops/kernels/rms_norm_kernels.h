@@ -30,6 +30,7 @@ public:
   float eps;
   void *rms_ptr;
   void *norm_ptr;
+  void *c2_ptr;
 
   float alpha;
   float beta;
@@ -46,6 +47,12 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorR const &weight,
                             GenericTensorAccessorW const &output);
+void backward_kernel_wrapper(RMSNormMeta const *m,
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorR const &input,
+                             GenericTensorAccessorW const &input_grad,
+                             GenericTensorAccessorR const &weight,
+                             GenericTensorAccessorW const &weight_grad);
 } // namespace RMSNorm
 } // namespace Kernels
 } // namespace FlexFlow

@@ -706,14 +706,14 @@ void LayerNorm::peft_bwd_task(Task const *task,
                               Runtime *runtime) {
   LayerNormMeta const *m = *((LayerNormMeta **)task->local_args);
   assert(task->regions.size() == regions.size());
-  
+
   GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
       m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorR gamma;
   GenericTensorAccessorW gamma_grad, beta_grad;
-  
+
   Domain out_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain in_grad_domain = runtime->get_index_space_domain(

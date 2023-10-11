@@ -431,6 +431,98 @@ void RMSNorm::inference_task(Task const *task,
   }
 }
 
+void RMSNorm::backward(FFModel const &ff) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(RMSNORM_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  // regions[0](I): output_grad
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  // regions[1](I): input
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  // regions[2](I/O): input_grad
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
+  launcher.add_field(2, FID_DATA);
+  // regions[3](I): gamma
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(3, FID_DATA);
+  // regions[4](I/O): gamma_grad
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region_grad));
+  launcher.add_field(4, FID_DATA);
+
+  runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): output_grad
+  regions[1](I): input
+  regions[2](I/O): input_grad
+  regions[3](I): weight
+  regions[4](I/O): weight_grad
+*/
+void RMSNorm::backward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  assert(task->regions.size() == 5);
+  assert(regions.size() == 5);
+  RMSNormMeta const *m = *((RMSNormMeta **)task->local_args);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW weight_grad = helperGetGenericTensorAccessorRW(
+      m->weight_type[0], regions[4], task->regions[4], FID_DATA, ctx, runtime);
+  backward_kernel_wrapper(
+      m, output_grad, input, input_grad, weight, weight_grad);
+}
+
+/*
+  regions[0](I): output_grad
+  regions[1](I): input
+  regions[2](I/O): input_grad
+  regions[3](I): weight
+  regions[4](I/O): weight_grad
+*/
+void RMSNorm::peft_bwd_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {}
+
 void RMSNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
@@ -469,8 +561,6 @@ Op *RMSNorm::materialize(FFModel &ff,
   RMSNormParams params = get_params();
   return new RMSNorm(ff, params, inputs[0], true, this->name);
 }
-
-void RMSNorm::backward(FFModel const &ff) {}
 
 bool RMSNorm::measure_operator_cost(Simulator *sim,
                                     MachineView const &mv,

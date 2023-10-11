@@ -5363,7 +5363,36 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<RMSNorm::inference_task>(registrar);
     }
   }
-  // rms norm task
+  {
+    TaskVariantRegistrar registrar(RMSNORM_BWD_TASK_ID, "RMS Norm Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RMSNorm::backward_task>(
+          registrar, "RMS Norm Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RMSNorm::backward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RMSNORM_PEFT_BWD_TASK_ID,
+                                   "RMS Norm PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RMSNorm::peft_bwd_task>(
+          registrar, "RMS Norm PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RMSNorm::peft_bwd_task>(registrar);
+    }
+  }
+  // residual rms norm task
   {
     TaskVariantRegistrar registrar(RESIDUAL_RMSNORM_INIT_TASK_ID,
                                    "Residual RMS Norm Init");
