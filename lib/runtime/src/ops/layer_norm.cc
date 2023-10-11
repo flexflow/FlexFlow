@@ -17,9 +17,15 @@
 #include "kernels/layer_norm_kernels.h"
 #include "legion/legion_utilities.h"
 #include "op-attrs/ops/layer_norm.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "utils/exceptions.h"
 #include "utils/hash-utils.h"
 #include <type_traits>
+
+using Legion::Context;
+using Legion::PhysicalRegion;
+using Legion::Runtime;
+using Legion::Task;
 
 namespace FlexFlow {
 
@@ -27,6 +33,8 @@ enum Slots { INPUT, OUTPUT, GAMMA, BETA, PER_DEVICE_STATE, ATTRS, HANDLE };
 
 OpTaskInvocation init(LayerNormAttrs const &attrs) {
   OpTaskBinding b;
+
+  b.bind(INPUT, input_tensor(0));
 
   b.bind_arg(HANDLE, ff_handle());
   b.bind_arg(ATTRS, attrs);
@@ -116,9 +124,21 @@ static DeviceSpecific<LayerNormPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   Allocator allocator = acc.get_allocator();
+  auto input = acc.get_tensor<Permission::RO>(INPUT);
   FFHandler handle = acc.get_argument<FFHandler>(HANDLE);
+
   // question: how to get batch_size and effective_num_elements
   int64_t effective_batch_size, effective_num_elements;
+  int M = 1;
+  for (int i = 0; i < attrs.axes.size(); i++) {
+    M *= input.shape.at(legion_dim_t(attrs.axes[i]));
+  }
+  int num_replicas = 1;
+  for (int i = 0; i < intput.shape.num_dims(); i++) {
+    num_replicas *= input.shape.at(legion_dim_t(i));
+  }
+  effective_num_elements = M;
+  effective_batch_size = input.shape.get_volume() / num_replicas / M;
 
   DeviceSpecific<LayerNormPerDeviceState> per_device_state =
       acc.create_device_specific<LayerNormPerDeviceState>(
@@ -141,15 +161,16 @@ static DeviceSpecific<LayerNormPerDeviceState>
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   LayerNormAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
+                                  InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
   auto env = sim.new_environment();
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shape);
+  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
 
   SimTaskBinding init_binding;
   init_binding.bind_arg(HANDLE, ff_handle());
   init_binding.bind_arg(ATTRS, attrs);
+  init.binding.bind(INPUT, input.shape);
 
   auto init_accessor =
       env.get_init_accessor(LAYERNORM_INIT_TASK_ID, init_binding);
@@ -157,8 +178,11 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   DeviceSpecific<LayerNormPerDeviceState> = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input_shape);
+  fwd_binding.bind(INPUT, input.shape);
   fwd_binding.bind(OUTPUT, output_shape);
+  fwd_binding.bind_arg(PROFILING, settings);
+  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
+
   // TODO how to handle gamma and beta, where are they from
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
@@ -176,6 +200,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 template <>
 void register_task<LAYERNORM_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
+  init.add_input_slot(INPUT);
   init.add_arg_slot<LayerNormAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
@@ -191,8 +216,8 @@ void register_task<LAYERNORM_FWD_TASK_ID>() {
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
   // todo how to hande gamma and beta, this may have some problem
-  fwd.add_input_slot(GAMMA);
-  fwd.add_input_slot(BETA);
+  fwd.add_weight_slot(GAMMA);
+  fwd.add_weight_slot(BETA);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<LayerNormPerDeviceState>(PER_DEVICE_STATE);
