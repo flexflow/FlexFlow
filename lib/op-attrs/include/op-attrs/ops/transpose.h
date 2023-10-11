@@ -10,9 +10,13 @@ namespace FlexFlow {
 
 struct TransposeAttrs {
   req<stack_vector<ff_dim_t, MAX_TENSOR_DIM>> perm;
+  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(TransposeAttrs, perm);
 CHECK_VALID_OP_ATTR(TransposeAttrs);
+
+ParallelTensorShape get_output_shape(TransposeAttrs const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

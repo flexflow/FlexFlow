@@ -20,6 +20,4 @@ TensorShape get_output_shape(AggregateAttrs const &attrs,
                        as_parallel(exp_preds)));
 }
 
-
-
 } // namespace FlexFlow

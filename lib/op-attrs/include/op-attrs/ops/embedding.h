@@ -19,7 +19,7 @@ struct EmbeddingAttrs {
   req<int> num_entries, out_channels;
   req<AggregateOp> aggr;
   req<DataType> data_type;
-  bool is_valid(ParallelTensorShape const & input) const;
+  bool is_valid(ParallelTensorShape const &input) const;
 };
 FF_VISITABLE_STRUCT(EmbeddingAttrs, num_entries, out_channels, aggr, data_type);
 CHECK_VALID_OP_ATTR(EmbeddingAttrs);

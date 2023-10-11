@@ -88,19 +88,24 @@ bool Conv2DAttrs::is_valid(TensorShape const &input) const {
   return true;
 }
 
-//according to pytorch, the input shape: [b, input_channel, input_h, input_w]
-//kernel shape: [output_channel, input_channel, kernel_h, kernel_w]
-//we may have stide_h and padding_h
-//output shape: [b, output_channel, output_h, output_w]
-//output_h = (input_h + 2 * padding_h - kernel_h) / stride_h + 1
-//output_w = (input_w + 2 * padding_w - kernel_w) / stride_w + 1
-ParallelTensorShape get_output_shape(Conv2DAttrs const & attrs,
-                                     ParallelTensorShape const & input) {
+// according to pytorch, the input shape: [b, input_channel, input_h, input_w]
+// kernel shape: [output_channel, input_channel, kernel_h, kernel_w]
+// we may have stide_h and padding_h
+// output shape: [b, output_channel, output_h, output_w]
+// output_h = (input_h + 2 * padding_h - kernel_h) / stride_h + 1
+// output_w = (input_w + 2 * padding_w - kernel_w) / stride_w + 1
+ParallelTensorShape get_output_shape(Conv2DAttrs const &attrs,
+                                     ParallelTensorShape const &input) {
   ParallelTensorShape output = input;
   output.at(ff_dim_t(1)).size = attrs.out_channels;
-  output.at(ff_dim_t(2)).size = (input.at(ff_dim_t(2)).size +
-                                 2 * attrs.padding_h - attrs.kernel_h) / attrs.stride_h + 1;
-  output.at(ff_dim_t(3)).size = (input.at(ff_dim_t(3)).size + 2 * attrs.padding_w - attrs.kernel_w) /attrs.stride_w +1;
+  output.at(ff_dim_t(2)).size =
+      (input.at(ff_dim_t(2)).size + 2 * attrs.padding_h - attrs.kernel_h) /
+          attrs.stride_h +
+      1;
+  output.at(ff_dim_t(3)).size =
+      (input.at(ff_dim_t(3)).size + 2 * attrs.padding_w - attrs.kernel_w) /
+          attrs.stride_w +
+      1;
   return output;
 }
 

@@ -4,30 +4,30 @@
 
 namespace FlexFlow {
 
-//maybe we should add more check here
-bool BatchMatmulAttrs::is_valid(ParallelTensorShape const & lhs, ParallelTensorShape const & rhs) {
-    if (!lhs.is_valid() || !rhs.is_valid()) {
-          return false;
-    }
-    if (lhs.num_dims() != rhs.num_dims()) {
-          return false;
-    }
-    
-    return true;
+// maybe we should add more check here
+bool BatchMatmulAttrs::is_valid(ParallelTensorShape const &lhs,
+                                ParallelTensorShape const &rhs) {
+  if (!lhs.is_valid() || !rhs.is_valid()) {
+    return false;
+  }
+  if (lhs.num_dims() != rhs.num_dims()) {
+    return false;
+  }
+
+  return true;
 }
 
-//how to get the batch size? and lhs: [b, s1, k], rhs: [b, k, s1]
-ParallelTensorShape get_output_shape(BatchMatmulAttrs const & attrs,
-                                     ParallelTensorShape const & lhs,
-                                     ParallelTensorShape const & rhs) {
-  ParallelTensorShape   output_shape = lhs;
+// how to get the batch size? and lhs: [b, s1, k], rhs: [b, k, s1]
+ParallelTensorShape get_output_shape(BatchMatmulAttrs const &attrs,
+                                     ParallelTensorShape const &lhs,
+                                     ParallelTensorShape const &rhs) {
+  ParallelTensorShape output_shape = lhs;
   output_shape.at(ff_dim_t(0)).size = lhs.at(ff_dim_t(0)).size;
   output_shape.at(ff_dim_t(1)).size = attrs.a_seq_length_dim;
   output_shape.at(ff_dim_t(2)).size = attrs.b_seq_length_dim;
-  //TODO: Do we need to set the ParallelDim for output_shape
-  return output_shape;  
-}     
-
+  // TODO: Do we need to set the ParallelDim for output_shape
+  return output_shape;
+}
 
 /* bool BatchMatmulAttrs::is_valid( */
 /*     ParallelTensorShape const &lhs, ParallelTensorShape const &rhs) const {

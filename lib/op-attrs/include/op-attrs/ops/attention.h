@@ -7,7 +7,6 @@
 
 namespace FlexFlow {
 
-
 template <typename TensorType>
 struct MultiHeadAttentionInputs
     : public use_visitable_cmp<MultiHeadAttentionInputs<TensorType>> {

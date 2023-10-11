@@ -2,17 +2,17 @@
 
 namespace FlexFlow {
 
-bool ElementBinaryAttrs::is_valid(ParallelTensorShape const & input1,
-                                  ParallelTensorShape const & input2) const {
-    if(!input1.is_valid() || !input2.is_valid()) {
-        return false;
-    }
-    return true;
+bool ElementBinaryAttrs::is_valid(ParallelTensorShape const &input1,
+                                  ParallelTensorShape const &input2) const {
+  if (!input1.is_valid() || !input2.is_valid()) {
+    return false;
+  }
+  return true;
 }
 
-ParallelTensorShape get_output_shape(ElementBinaryAttrs const & atts,
-                                     ParallelTensorShape const & lhs, 
-                                     ParallelTensorShape const & rhs) {
+ParallelTensorShape get_output_shape(ElementBinaryAttrs const &atts,
+                                     ParallelTensorShape const &lhs,
+                                     ParallelTensorShape const &rhs) {
   ParallelTensorShape output = lhs.num_dims() >= rhs.num_dims() ? lhs : rhs;
   for (int i = 0; i < output.num_dims(); i++) {
     if (i >= lhs.num_dims()) {

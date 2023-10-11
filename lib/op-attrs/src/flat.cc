@@ -14,8 +14,9 @@ namespace Output {
 constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
 }
 
-//flat is like the pytorch view 
-//tensor = torch.randn(2, 3, 4)  ,flattened_tensor = tensor.view(-1) #shape: (24) 
+// flat is like the pytorch view
+// tensor = torch.randn(2, 3, 4)  ,flattened_tensor = tensor.view(-1) #shape:
+// (24)
 ParallelTensorShape get_output_shape(FlatAttrs const &attrs,
                                      ParallelTensorShape const &input) {
   ParallelTensorShape output_shape(input.dims, input.data_type);

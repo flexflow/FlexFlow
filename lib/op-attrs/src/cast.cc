@@ -3,10 +3,10 @@
 namespace FlexFlow {
 
 bool CastAttrs::is_valid(ParallelTensorShape const &input) const {
-    if (!input.is_valid()) {
-        return false;
-    }
-    return true;
+  if (!input.is_valid()) {
+    return false;
+  }
+  return true;
 }
 
 ParallelTensorShape get_output_shape(CastAttrs const &attrs,

@@ -10,7 +10,7 @@ namespace FlexFlow {
 
 struct ConcatAttrs {
   ff_dim_t axis;
-  bool is_valid(std::vector<ParallelTensorShape> const & input) const;
+  bool is_valid(std::vector<ParallelTensorShape> const &input) const;
 };
 
 ParallelTensorShape get_output_shape(ConcatAttrs const &,

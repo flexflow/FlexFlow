@@ -17,13 +17,13 @@ bool RepartitionAttrs::is_valid(ParallelTensorShape const &input) const {
   return (dim.size % this->repartition_degree * dim.degree == 0);
 }
 
-//this may be wrong partition by n multiplies degree by n and keeps shape the same
+// this may be wrong partition by n multiplies degree by n and keeps shape the
+// same
 ParallelTensorShape get_output_shape(RepartitionAttrs const &attrs,
                                      ParallelTensorShape const &input_shape) {
   ParallelTensorShape output(input_shape.dims, input_shape.data_type);
   output.at(attrs.repartition_dim).degree *= attrs.repartition_degree;
   return output;
 }
-
 
 } // namespace FlexFlow

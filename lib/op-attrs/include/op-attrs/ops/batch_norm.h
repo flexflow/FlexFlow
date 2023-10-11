@@ -13,7 +13,8 @@ struct BatchNormAttrs {
 };
 FF_VISITABLE_STRUCT(BatchNormAttrs, relu);
 
-ParallelTensorShape get_output_shape(BatchNormAttrs const &, ParallelTensorShape const &);
+ParallelTensorShape get_output_shape(BatchNormAttrs const &,
+                                     ParallelTensorShape const &);
 
 CHECK_VALID_OP_ATTR(BatchNormAttrs);
 
