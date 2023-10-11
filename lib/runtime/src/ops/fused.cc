@@ -60,10 +60,38 @@ enum Slots {
 OpTaskInvocation init(FusedOpAttrs const &attrs) {
   OpTaskBinding binding;
 
-  binding.bind_arg(PER_DEVICE_STATE,
-                   per_device_op_state<FusedPerDeviceOpState>());
+  binding.bind_arg(ATTRS, attrs);
 
   return {FUSEDOP_INIT_TASK_ID, binding};
+}
+
+static DeviceSpecific<FusedPerDeviceOpState> init_task_impl(TaskArgumentAccessor const &acc) {
+   auto const &attrs = acc.get_argument<FusedOpAttrs>(ATTRS);
+  Operator op = get_op_type(attrs);
+  FusedOp *fused_op = malloc(sizeof(FusedOp));
+  //TODO(lambda): how to get the numOperators
+  AllDevice all_device = get_gevice(op);
+
+  return {fused_op, numOperators, all_device};
+}
+
+static DeviceSpecific<FusedPerDeviceOpState> init_task(Task const *task,
+              std::vector<PhysicalRegion> const &regions,
+              Context ctx,
+              Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return init_task_impl(acc);
+}
+
+template <>
+void register_task<FUSEDOP_INIT_TASK_ID>() {
+  OpTaskSignature init(OpTaskType::INIT);
+
+  init.add_arg_slot<FusedOpAttrs>(ATTRS);
+
+  init.add_return_value<FusedPerDeviceOpState>();
+
+  register_task(FUSEDOP_INIT_TASK_ID, "fused_init", init, init_task);
 }
 
 OpTaskInvocation forward(FusedOpAttrs const &attrs) {

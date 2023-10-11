@@ -55,11 +55,16 @@ using AllDevice = variant<BatchMatmulPerDeviceState,
                                                     // all device state
 
 struct FusedPerDeviceOpState {
-  FusedOp fused_op;
+  FusedOp *fused_op;
   int numOperators;
   // maybe we can all xxxPerdeviceOpState here，use Variant to store all device
   AllDevice all_device;
 };
+
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(FusedPerDeviceOpState,
+                                             fused_op,
+                                             numOperators,
+                                             all_device);
 
 template <>
 void register_task<FUSEDOP_INIT_TASK_ID>();
@@ -71,6 +76,9 @@ void register_task<FUSEDOP_BWD_TASK_ID>();
 OpTaskInvocation init(FusedOpAttrs const &);
 OpTaskInvocation forward(FusedOpAttrs const &);
 OpTaskInvocation backward(FusedOpAttrs const &);
+
+
+
 
 /* class FusedPerDeviceOpState : public PerDeviceOpState { */
 /* public: */
