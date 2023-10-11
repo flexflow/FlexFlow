@@ -69,17 +69,19 @@ OpTaskInvocation init(FusedOpAttrs const &attrs) {
   return {FUSEDOP_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<FusedPerDeviceOpState> init_task_impl(TaskArgumentAccessor const &acc) {
-   auto const &attrs = acc.get_argument<FusedOpAttrs>(ATTRS);
+static DeviceSpecific<FusedPerDeviceOpState>
+    init_task_impl(TaskArgumentAccessor const &acc) {
+  auto const &attrs = acc.get_argument<FusedOpAttrs>(ATTRS);
   Operator op = get_op_type(attrs);
   FusedOp *fused_op = malloc(sizeof(FusedOp));
-  //TODO(lambda): how to get the numOperators
+  // TODO(lambda): how to get the numOperators
   AllDevice all_device = get_gevice(op);
 
   return {fused_op, numOperators, all_device};
 }
 
-static DeviceSpecific<FusedPerDeviceOpState> init_task(Task const *task,
+static DeviceSpecific<FusedPerDeviceOpState>
+    init_task(Task const *task,
               std::vector<PhysicalRegion> const &regions,
               Context ctx,
               Runtime *runtime) {
@@ -98,7 +100,7 @@ void register_task<FUSEDOP_INIT_TASK_ID>() {
   register_task(FUSEDOP_INIT_TASK_ID, "fused_init", init, init_task);
 }
 
-OpTaskInvocation forward(FusedOpAttrs const & attrs) {
+OpTaskInvocation forward(FusedOpAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(ATTRS, attrs);
@@ -108,47 +110,49 @@ OpTaskInvocation forward(FusedOpAttrs const & attrs) {
 
   binding.bind_arg(PER_DEVICE_STATE,
                    per_device_op_state<FusedPerDeviceOpState>());
- 
-  //TODO(lambda) how to bind input, output, weights, all are std::vector
+
+  // TODO(lambda) how to bind input, output, weights, all are std::vector
 
   return {FUSEDOP_FWD_TASK_ID, binding};
 }
 
-OpTaskInvocation backward(FusedOpAttrs const & attrs) {
+OpTaskInvocation backward(FusedOpAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
   return {FUSEDOP_BWD_TASK_ID, b};
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  FusedPerDeviceOpState state = acc.get_argument<FusedPerDeviceOpState>(PER_DEVICE_STATE);
-  FusedOp const *fused  = state.fused_op;
+  FusedPerDeviceOpState state =
+      acc.get_argument<FusedPerDeviceOpState>(PER_DEVICE_STATE);
+  FusedOp const *fused = state.fused_op;
   auto const &attrs = acc.get_argument<FusedOpAttrs>(ATTRS);
   OperatorType op = get_op_type(attrs);
-  //todo(lambda): how to get input_accessor, weight_accessor, output_accessor, these maybe exist problems
-  auto inputs = acc.get_tensor_vector<Permission::RO>>(INPUT);
-  auto weights = acc.get_tensor_vector<Permission::RO>>(WEIGHT);
-  auto outputs = acc.get_tensor_vector<Permission::RW>>(OUTPUT);
+  // todo(lambda): how to get input_accessor, weight_accessor, output_accessor,
+  // these maybe exist problems
+  auto inputs = acc.get_tensor_vector < Permission::RO >> (INPUT);
+  auto weights = acc.get_tensor_vector < Permission::RO >> (WEIGHT);
+  auto outputs = acc.get_tensor_vector < Permission::RW >> (OUTPUT);
 
   GenericTensorAccessorR input_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorR weight_accessor[MAX_NUM_WEIGHTS];
   GenericTensorAccessorW output_accessor[MAX_NUM_OUTPUTS];
 
-  for(int i =0; i < fused->numInputs; i++) {
+  for (int i = 0; i < fused->numInputs; i++) {
     input_accessor[i] = inputs[i];
   }
 
-  for(int i =0; i < fused->numWeights; i++) {
+  for (int i = 0; i < fused->numWeights; i++) {
     weight_accessor[i] = weights[i];
   }
 
-  for(int i =0; i < fused->numOutputs; i++) {
+  for (int i = 0; i < fused->numOutputs; i++) {
     output_accessor[i] = outputs[i];
   }
 
   int ioff = 0, woff = 0, ooff = 0;
 
-  for(int op = 0; op < fused->numOperators; op++) {
+  for (int op = 0; op < fused->numOperators; op++) {
     GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
     GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
     GenericTensorAccessorW my_output_accessor[MAX_NUM_OUTPUTS];
@@ -178,33 +182,37 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
       my_output_accessor[i] = output_accessor[i + ooff];
     }
 
-    switch(op) {
-      //CONCAT
-      case Op::CONCAT:{
+    switch (op) {
+      // CONCAT
+      case Op::CONCAT: {
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        ConcatPerDeviceState m = mpack::get<ConcatPerDeviceState>(state.all_device);
+        ConcatPerDeviceState m =
+            mpack::get<ConcatPerDeviceState>(state.all_device);
         int num_inputs = fused->op_num_inputs[op];
-        Kernels::Concat::forward_kernel(m, my_output_accessor[0], my_input_accessor, num_inputs);
+        Kernels::Concat::forward_kernel(
+            m, my_output_accessor[0], my_input_accessor, num_inputs);
         break;
       }
-      //CONV2D
-      case Op::CONV2D :{
+      // CONV2D
+      case Op::CONV2D: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].shape.get_dim() == 5);
         assert(my_weight_accessor[0].shape.get_dim() == 5);
-        assert(my_output_accessor[0].shape.get_dim() == 5);//get_dim() or num_dims()?
-        Conv2dPerDeviceState m = mpack::get<Conv2dPerDeviceState>(state.all_device);
-        Kernels::Conv2D::forward_kernel(m, 
-                                        my_output_accessor[0].get_float_ptr(), 
-                                        my_input_accessor[0].get_float_ptr(), 
+        assert(my_output_accessor[0].shape.get_dim() ==
+               5); // get_dim() or num_dims()?
+        Conv2dPerDeviceState m =
+            mpack::get<Conv2dPerDeviceState>(state.all_device);
+        Kernels::Conv2D::forward_kernel(m,
+                                        my_output_accessor[0].get_float_ptr(),
+                                        my_input_accessor[0].get_float_ptr(),
                                         my_weight_accessor[0].get_float_ptr(),
                                         my_weight_accessor[1].get_float_ptr());
         break;
       }
 
-      //BATCHNORM
+      // BATCHNORM
       case Op::BATCHNORM: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
@@ -212,21 +220,24 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         assert(my_output_accessor[0].shape.get_dim() == 5);
         assert(my_weight_accessor[0].shape.get_dim() == 2);
         assert(my_weight_accessor[1].shape.get_dim() == 2);
-        BatchNormPerDeviceState m = mpack::get<BatchNormPerDeviceState>(state.all_device);
-        Kernels::BatchNorm::forward_kernel(m,
-                                          my_input_accessor[0].get_float_ptr(),
-                                          my_output_accessor[0].get_float_ptr(),
-                                          my_weight_accessor[0].get_float_ptr(),
-                                          my_weight_accessor[1].get_float_ptr());
+        BatchNormPerDeviceState m =
+            mpack::get<BatchNormPerDeviceState>(state.all_device);
+        Kernels::BatchNorm::forward_kernel(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            my_weight_accessor[1].get_float_ptr());
         break;
       }
 
-      //dropout
+      // dropout
       case Op::DROPOUT: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
 
-        DropoutPerDeviceState m = mpack::get<DropoutPerDeviceState>(state.all_device);
+        DropoutPerDeviceState m =
+            mpack::get<DropoutPerDeviceState>(state.all_device);
 
         Kernels::Dropout::forward_kernel(m,
                                          my_input_accessor[0].get_float_ptr(),
@@ -234,16 +245,18 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         break;
       }
 
-      //linear
+      // linear
       case Op::LINEAR: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
 
-        LinearPerDeviceState m = mpack::get<LinearPerDeviceState>(state.all_device);
-        int in_dim = my_weight_accessor[0].shape.at(legin_dim_t(0)) +1; 
+        LinearPerDeviceState m =
+            mpack::get<LinearPerDeviceState>(state.all_device);
+        int in_dim = my_weight_accessor[0].shape.at(legin_dim_t(0)) + 1;
         int out_dim = my_weight_accessor[0].shape.at(legin_dim_t(1)) + 1;
         int batch_size = my_input_accessor[0].domain.get_volume() / in_dim;
-        assert(my_output_accessor[0].shape.get_volume() == batch_size * out_dim);
+        assert(my_output_accessor[0].shape.get_volume() ==
+               batch_size * out_dim);
         assert(my_input_accessor[0].shape.get_volue() == batch_size * in_dim);
         float const *bias_ptr = nullptr;
 
@@ -254,7 +267,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
           assert(fused->op_num_weights[op] == 1);
         }
 
-        Kernels::Linear::forward_kernel(m, 
+        Kernels::Linear::forward_kernel(m,
                                         my_input_accessor[0].get_float_ptr(),
                                         my_output_accessor[0].get_float_ptr(),
                                         my_weight_accessor[0].get_float_ptr(),
@@ -266,8 +279,8 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         break;
       }
 
-      //batchmatmul
-      case Op::BATCHMATMUL :{
+      // batchmatmul
+      case Op::BATCHMATMUL: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -281,30 +294,35 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         int k = my_input_accessor[0].shape.at(legion_dim_t(0)) + 1;
         assert(k == my_input_accessor[1].shape.at(legion_dim_t(1)) + 1);
 
-        assert(my_input_accessor[0].shape.get_dim() == my_input_accessor[1].shape.get_dim());
-        assert(my_input_accessor[0].shape.get_dim() == my_output_accessor[0].shape.get_dim());
+        assert(my_input_accessor[0].shape.get_dim() ==
+               my_input_accessor[1].shape.get_dim());
+        assert(my_input_accessor[0].shape.get_dim() ==
+               my_output_accessor[0].shape.get_dim());
 
         int batch = 1;
-        for(int i =2; i < my_input_accessor[0].shape.get_dim(); i++) {
-          assert(my_input_accessor[0].shape.at(legion_dim_t(i)) == my_input_accessor[1].shape.at(legion_dim_t(i)));
-          assert(my_input_accessor[0].shape.at(legion_dim_t(i)) == my_output_accessor[0].shape.at(legion_dim_t(i)));
-          batch *= my_input_accessor[0].shape.at(legion_dim_t(i)) +1 
+        for (int i = 2; i < my_input_accessor[0].shape.get_dim(); i++) {
+          assert(my_input_accessor[0].shape.at(legion_dim_t(i)) ==
+                 my_input_accessor[1].shape.at(legion_dim_t(i)));
+          assert(my_input_accessor[0].shape.at(legion_dim_t(i)) ==
+                 my_output_accessor[0].shape.at(legion_dim_t(i)));
+          batch *= my_input_accessor[0].shape.at(legion_dim_t(i)) + 1
         }
 
-        BatchMatmulPerDeviceState state = mpack::get<BatchMatmulPerDeviceState>(state.all_device);
-         Kernels::BatchMatmul::forward_kernel(
-                  state,
-                  my_output_accessor[0].get_float_ptr(),
-                  my_input_accessor[0].get_float_ptr(),
-                  my_input_accessor[1].get_float_ptr(),
-                  (float const *)nullptr,
-                  m,
-                  n,
-                  k,
-                  batch,
-                  state.a_seq_length_dim,
-                  state.b_seq_length_dim,
-                  fused->iter_config.seq_length);
+        BatchMatmulPerDeviceState state =
+            mpack::get<BatchMatmulPerDeviceState>(state.all_device);
+        Kernels::BatchMatmul::forward_kernel(
+            state,
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].get_float_ptr(),
+            my_input_accessor[1].get_float_ptr(),
+            (float const *)nullptr,
+            m,
+            n,
+            k,
+            batch,
+            state.a_seq_length_dim,
+            state.b_seq_length_dim,
+            fused->iter_config.seq_length);
         break;
       }
 
@@ -314,44 +332,86 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
       case OP_EW_DIV:
       case OP_EW_MAX:
       case OP_EW_MIN: {
-          assert(fused->op_num_inputs[op] == 2);
-          assert(fused->op_num_weights[op] == 0);
-          assert(fused->op_num_outputs[op] == 1);
+        assert(fused->op_num_inputs[op] == 2);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
 
-          assert(my_input_accessor[0].shape == my_input_accessor[1].shape);
-          assert(my_input_accessor[0].shape == my_output_accessor[0].shape);
+        assert(my_input_accessor[0].shape == my_input_accessor[1].shape);
+        assert(my_input_accessor[0].shape == my_output_accessor[0].shape);
 
-          ElementBinaryPerDeviceState state = mpack::get<ElementBinaryPerDeviceState>(state.all_device);
+        ElementBinaryPerDeviceState state =
+            mpack::get<ElementBinaryPerDeviceState>(state.all_device);
 
-          Kernels::ElementBinary::forward_kernel(
+        Kernels::ElementBinary::forward_kernel(
             state,
             my_output_accessor[0].get_float_ptr(),
             my_input_accessor[0].get_float_ptr(),
-            my_input_accessor[1].get_float_ptr(),
-          );
-          break;
+            my_input_accessor[1].get_float_ptr(), );
+        break;
       }
 
-       case OP_EMBEDDING: {
-          assert(fused->op_num_inputs[op] == 1);
-          assert(fused->op_num_weights[op] == 1);
-          assert(fused->op_num_outputs[op] == 1);
+      case OP_EMBEDDING: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
 
+        EmbeddingPerDeviceState state =
+            mpack::get<EmbeddingPerDeviceState>(state.all_device);
 
-          break;  
-       }
+        if (state.aggr == AGGR_MODE_NONE) {
+          assert(my_input_accessor[0].shape.get_dim() + 1 ==
+                 my_output_accessor[0].shape.get_dim());
+          for (size_t i = 0; i < my_input_accessor[0].shape.get_dim(); i++) {
+            assert(my_input_accessor[0].shape.at(legion_dim_t(i)) ==
+                   my_output_accessor[0].shape.at(legion_dim_t(i + 1)));
+          }
+          assert(my_weight_accessor[0].shape.at(legion_dim_t(0)) ==
+                 my_output_accessor[0].shape.at(legion_dim_t(0)));
+        } else {
+          assert(my_input_accessor[0].shape.get_dim() ==
+                 my_output_accessor[0].shape.get_dim());
+          for (size_t i = 0; i < my_input_accessor[0].shape.get_dim(); i++) {
+            assert(my_input_accessor[0].shape.at(legion_dim_t(i)) ==
+                   my_output_accessor[0].shape.at(legion_dim_t(i)));
+          }
+          assert(my_weight_accessor[0].shape.at(legion_dim_t(0)) ==
+                 my_output_accessor[0].shape.at(legion_dim_t(0)));
+        }
 
+        int in_dim, out_dim, effective_batch_size;
 
+        if (state.aggr == AGGR_MODE_NONE) {
+          int_dim = 1;
+          out_dim = my_output_accessor[0].shape.at(legion_dim_t(0)) + 1;
+          effective_batch_size =
+              my_output_accessor[0].shape.get_volume() / out_dim;
+          assert(effective_batch_size *in_dim =
+                     my_input_accessor[0].shape.get_volume());
 
+        } else {
+          assert(state.aggr == AGGR_MODE_SUM || state.aggr == AGGR_MODE_AVG);
+          in_dim = my_input_accessor[0].shape.at(legion_dim_t(0)) + 1;
+          out_dim = my_output_accessor[0].shape.at(legion_dim_t(0)) + 1;
+          effective_batch_size =
+              my_input_accessor[0].shape.get_volume() / in_dim;
+          assert(effective_batch_size * in_dim ==
+                 my_input_accessor[0].shape.get_volume());
+        }
 
-
+        Kernels::Embedding::forward_kernel(state,
+                                           my_input_accessor[0],
+                                           my_output_accessor[0],
+                                           my_weight_accessor[0],
+                                           in_dim,
+                                           out_dim,
+                                           effective_batch_size);
+        break;
+      }
     }
-
 
     ioff += fused->op_num_inputs[op];
     woff += fused->op_num_weights[op];
     ooff += fused->op_num_outputs[op];
-
   }
 }
 

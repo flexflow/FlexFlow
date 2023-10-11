@@ -77,9 +77,6 @@ OpTaskInvocation init(FusedOpAttrs const &);
 OpTaskInvocation forward(FusedOpAttrs const &);
 OpTaskInvocation backward(FusedOpAttrs const &);
 
-
-
-
 /* class FusedPerDeviceOpState : public PerDeviceOpState { */
 /* public: */
 /*   FusedPerDeviceOpState(void) {} */
