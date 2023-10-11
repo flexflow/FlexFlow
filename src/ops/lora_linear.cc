@@ -33,11 +33,12 @@ using namespace FlexFlow::Kernels::LoraLinear;
 
 void FFModel::lora_linear(Tensor const input,
                           Tensor const output,
+                          OperatorType op_type,
                           char const *name) {
   assert(input->data_type == output->data_type);
   Layer *lora = nullptr;
   lora = new Layer(this,
-                   OP_LORA_LINEAR,
+                   op_type,
                    output->data_type,
                    name,
                    2 /*inputs*/,
@@ -61,29 +62,40 @@ Op *LoraLinear::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
-  return new LoraLinear(
-      model, layer->layer_guid, inputs[0], inputs[1], layer->name);
+  return new LoraLinear(model,
+                        layer->layer_guid,
+                        layer->op_type,
+                        inputs[0],
+                        inputs[1],
+                        layer->name);
 }
 
 LoraLinear::LoraLinear(FFModel &model,
                        LoraLinear const &other,
                        ParallelTensor const input,
                        ParallelTensor const output)
-    : LoraLinear(model, other.layer_guid, input, output, other.name) {}
+    : LoraLinear(
+          model, other.layer_guid, other.op_type, input, output, other.name) {}
 
 LoraLinear::LoraLinear(FFModel &model,
                        Params const &params,
                        Input const &inputs,
                        char const *name)
-    : LoraLinear(model, params.layer_guid, inputs.first, inputs.second, name) {}
+    : LoraLinear(model,
+                 params.layer_guid,
+                 params.type,
+                 inputs.first,
+                 inputs.second,
+                 name) {}
 
 LoraLinear::LoraLinear(FFModel &model,
                        LayerID const &_layer_guid,
+                       OperatorType _op_type,
                        ParallelTensor const _input,
                        ParallelTensor const _output,
                        char const *name)
     : Op(model,
-         OP_LORA_LINEAR,
+         _op_type,
          _output->data_type,
          name,
          2 /*inputs*/,
@@ -205,7 +217,7 @@ OpMeta *LoraLinear::init_task(Task const *task,
 struct LoraLinearRegisterInfo {
   LoraLinear const *lora;
   PEFTModelID model_id;
-  int rank;
+  LoraLinearConfig lora_config;
 };
 
 void LoraLinear::register_peft_model(
@@ -213,7 +225,7 @@ void LoraLinear::register_peft_model(
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     PEFTModelID const &model_id,
-    int rank) {
+    LoraLinearConfig const lora_config) {
   assert(check_output_input_weight_same_parallel_is());
   assert(batch_inputs.size() == 2);
   assert(batch_outputs.size() == 1);
@@ -234,7 +246,7 @@ void LoraLinear::register_peft_model(
   LoraLinearRegisterInfo info;
   info.lora = this;
   info.model_id = model_id;
-  info.rank = rank;
+  info.lora_config = lora_config;
   IndexLauncher launcher(LORA_LINEAR_REG_TASK_ID,
                          parallel_is,
                          TaskArgument(&info, sizeof(LoraLinearRegisterInfo)),
@@ -255,7 +267,7 @@ void LoraLinear::register_model_task(Task const *task,
       static_cast<LoraLinearRegisterInfo const *>(task->args);
   LoraLinearMeta *m = *((LoraLinearMeta **)task->local_args);
   LoraLinear const *lora = info->lora;
-  int rank = info->rank;
+  int rank = info->lora_config.rank;
   int num_dims = lora->inputs[0]->num_dims;
   int in_dim = lora->inputs[0]->dims[0].size / lora->inputs[0]->dims[0].degree;
   int out_dim = lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree;
@@ -463,13 +475,14 @@ bool LoraLinear::measure_operator_cost(Simulator *sim,
 }
 
 bool operator==(LoraLinearParams const &lhs, LoraLinearParams const &rhs) {
-  return lhs.layer_guid == rhs.layer_guid;
+  return lhs.layer_guid == rhs.layer_guid && lhs.type == rhs.type;
 }
 
 void LoraLinear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->layer_guid.model_id);
+  sez.serialize(this->op_type);
 }
 
 /* static */
@@ -480,13 +493,16 @@ Node LoraLinear::deserialize(FFModel &ff,
                              int num_inputs) {
   assert(num_inputs == 2);
   size_t id, transformer_layer_id, deserialized_model_id;
+  OperatorType op_type;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
   dez.deserialize(deserialized_model_id);
+  dez.deserialize(op_type);
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
   LoraLinearParams params;
   params.layer_guid = layer_guid;
+  params.type = op_type;
   return ff.get_or_create_node<LoraLinear>({inputs[0], inputs[1]}, params);
 }
 
@@ -500,6 +516,7 @@ Op *LoraLinear::materialize(FFModel &ff,
 LoraLinearParams LoraLinear::get_params() const {
   LoraLinearParams params;
   params.layer_guid = this->layer_guid;
+  params.type = this->op_type;
   return params;
 }
 

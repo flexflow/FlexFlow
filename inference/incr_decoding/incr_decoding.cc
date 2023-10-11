@@ -258,9 +258,9 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   // Register PEFT layer
-  std::map<std::string, int> peft_config;
-  peft_config["lora_mlp_linear_second"] = 4;
-  PEFTModelID peft_model_id = model.register_peft_model(peft_config);
+  LoraLinearConfig mlp_second(4 /*rank*/);
+  PEFTModelID peft_model_id = model.register_peft_model(
+      LoraLinearConfig::DefaultConfig /*mlp_first*/, mlp_second /*mlp_second*/);
 
   int total_num_requests = 0;
   {

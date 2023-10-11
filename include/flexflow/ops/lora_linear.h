@@ -19,6 +19,7 @@ public:
 
   LoraLinear(FFModel &model,
              LayerID const &layer_guid,
+             OperatorType type,
              ParallelTensor const input,
              ParallelTensor const output,
              char const *name = nullptr);
@@ -42,7 +43,7 @@ public:
                            std::vector<ParallelTensor> const &batch_inputs,
                            std::vector<ParallelTensor> const &batch_outputs,
                            PEFTModelID const &model_id,
-                           int rank);
+                           LoraLinearConfig const lora_config);
   Legion::FutureMap inference(FFModel const &,
                               BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,

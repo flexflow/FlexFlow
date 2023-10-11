@@ -9,9 +9,26 @@
 
 namespace FlexFlow {
 
+class LoraLinearConfig {
+public:
+  static const LoraLinearConfig DefaultConfig;
+  LoraLinearConfig();
+  LoraLinearConfig(int rank,
+                   OptimizerType type = OPTIMIZER_TYPE_SGD,
+                   float learning_rate = 1e-4);
+  friend bool operator==(LoraLinearConfig const &lhs,
+                         LoraLinearConfig const &rhs);
+
+public:
+  int rank;
+  OptimizerType optimizer_type;
+  float learning_rate;
+};
+
 class LoraLinearParams {
 public:
   LayerID layer_guid;
+  OperatorType type;
 
   bool is_valid(std::pair<ParallelTensorShape, ParallelTensorShape> const
                     &input_shape) const;

@@ -220,7 +220,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                  std::string("layers_" + std::to_string(i) + "_feed_forward_w2")
                      .c_str());
     // Low-Rank Adapter (LoRA) for the second linear layer
-    ff.lora_linear(multi, w2, "lora_mlp_linear_second");
+    ff.lora_linear(multi, w2, OP_LORA_MLP_SECOND);
   }
   // final normalization and linear
   Tensor final_rms_norm_output[2] = {nullptr, nullptr};

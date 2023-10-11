@@ -1829,17 +1829,28 @@ std::string find_layer_name_from_guid(FFModel *model, LayerID guid) {
   return "invalid_layer_name";
 }
 
-PEFTModelID FFModel::register_peft_model(std::map<std::string, int> configs) {
+bool is_peft_operator_type(OperatorType type) {
+  switch (type) {
+    case OP_LORA_MLP_FIRST:
+    case OP_LORA_MLP_SECOND:
+      return true;
+    default:
+      return false;
+  }
+}
+
+PEFTModelID FFModel::register_peft_model(LoraLinearConfig const mlp_first,
+                                         LoraLinearConfig const mlp_second) {
   PEFTModelID peft_model_id(peft_model_global_guid++);
   InferenceManager *im = InferenceManager::get_inference_manager();
   std::vector<Op *> peft_operators;
   for (size_t op = 0; op < operators.size(); op++) {
-    if (operators[op]->op_type == OP_LORA_LINEAR) {
+    if (is_peft_operator_type(operators[op]->op_type)) {
       peft_operators.push_back(operators[op]);
     } else if (operators[op]->op_type == OP_FUSED) {
       FusedOp *fused = static_cast<FusedOp *>(operators[op]);
       for (size_t op2 = 0; op2 < fused->numOperators; op2++) {
-        if (fused->operators[op2]->op_type == OP_LORA_LINEAR) {
+        if (is_peft_operator_type(fused->operators[op2]->op_type)) {
           peft_operators.push_back(fused->operators[op2]);
         }
       }
@@ -1849,12 +1860,11 @@ PEFTModelID FFModel::register_peft_model(std::map<std::string, int> configs) {
     std::string layer_name =
         find_layer_name_from_guid(this, peft_operators[op]->layer_guid);
     switch (peft_operators[op]->op_type) {
-      case OP_LORA_LINEAR: {
-        // Remove the guid and the ``_'' char from opname: guid has 7 digits
-        // and ``_'' occupies 1 char
-        layer_name = layer_name.erase(layer_name.length() - 8);
-        assert(configs.find(layer_name) != configs.end());
-        int rank = configs[layer_name];
+      case OP_LORA_MLP_FIRST: {
+        if (mlp_first == LoraLinearConfig::DefaultConfig) {
+          // Do nothing for the default configuration
+          continue;
+        }
         LoraLinear *lora = static_cast<LoraLinear *>(peft_operators[op]);
         // Currently assume only a single data pipeline
         assert(config.data_parallelism_degree == 1);
@@ -1872,7 +1882,34 @@ PEFTModelID FFModel::register_peft_model(std::map<std::string, int> configs) {
         }
         assert(lora->numOutputs == 1);
         outputs[0] = inputs[1];
-        lora->register_peft_model(*this, inputs, outputs, peft_model_id, rank);
+        lora->register_peft_model(
+            *this, inputs, outputs, peft_model_id, mlp_first);
+        break;
+      }
+      case OP_LORA_MLP_SECOND: {
+        if (mlp_second == LoraLinearConfig::DefaultConfig) {
+          // Do nothing for the default configuration
+          continue;
+        }
+        LoraLinear *lora = static_cast<LoraLinear *>(peft_operators[op]);
+        // Currently assume only a single data pipeline
+        assert(config.data_parallelism_degree == 1);
+        std::vector<ParallelTensor> inputs(lora->numInputs);
+        std::vector<ParallelTensor> outputs(lora->numOutputs);
+
+        for (int i = 0; i < lora->numInputs; i++) {
+          assert(im->tensor_buffer.find(lora->inputs[i]) !=
+                 im->tensor_buffer.end());
+          assert(lora->inputs[i] != nullptr);
+          assert(lora->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+          assert(im->tensor_buffer[lora->inputs[i]].size() == 1);
+          inputs[i] = im->tensor_buffer[lora->inputs[i]][0];
+          assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        }
+        assert(lora->numOutputs == 1);
+        outputs[0] = inputs[1];
+        lora->register_peft_model(
+            *this, inputs, outputs, peft_model_id, mlp_second);
         break;
       }
       default: {

@@ -2730,7 +2730,8 @@ void FFModel::deserialize_graph_optimal_view(
         node = Linear::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
-      case OP_LORA_LINEAR: {
+      case OP_LORA_MLP_FIRST:
+      case OP_LORA_MLP_SECOND: {
         node = LoraLinear::deserialize(*this, dez, inputs, num_inputs);
         break;
       }

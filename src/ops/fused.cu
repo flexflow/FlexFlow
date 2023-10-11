@@ -702,7 +702,8 @@ __host__ void
                                                 batch_size);
         break;
       }
-      case OP_LORA_LINEAR: {
+      case OP_LORA_MLP_FIRST:
+      case OP_LORA_MLP_SECOND: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_outputs[op] == 1);
         Domain input_domain = my_input_accessor[0].domain;

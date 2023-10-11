@@ -813,6 +813,7 @@ public:
   // ========================================
   void lora_linear(Tensor const input,
                    Tensor const output,
+                   OperatorType _type,
                    char const *name = nullptr);
   // ========================================
   // Inference APIs
@@ -821,7 +822,9 @@ public:
                             int max_seq_length,
                             PEFTModelID peft_model_id = PEFTModelID::NO_ID);
 
-  PEFTModelID register_peft_model(std::map<std::string, int> config);
+  PEFTModelID register_peft_model(
+      LoraLinearConfig const mlp_first = LoraLinearConfig::DefaultConfig,
+      LoraLinearConfig const mlp_second = LoraLinearConfig::DefaultConfig);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],

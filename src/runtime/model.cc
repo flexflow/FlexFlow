@@ -3228,7 +3228,8 @@ Op *FFModel::create_operator_from_layer(
       return op;
     }
     // PEFT layers
-    case OP_LORA_LINEAR: {
+    case OP_LORA_MLP_FIRST:
+    case OP_LORA_MLP_SECOND: {
       Op *op = LoraLinear::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
