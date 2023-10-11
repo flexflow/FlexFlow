@@ -30,82 +30,6 @@ AggregateSpecPerDeviceState::~AggregateSpecPerDeviceState(void) {
 namespace Kernels {
 namespace AggregateSpec {
 
-void forward_kernel(cudaStream_t stream,
-                    AggregateSpecPerDeviceState const *m,
-                    float **exp_preds,
-                    int const *acc_gate_assign_ptr,
-                    float *acc_output_ptr,
-                    int n,
-                    int const k,
-                    int rows,
-                    int const batch_size,
-                    int out_dim) {
-
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-
-  // call forward kernel
-  cudaMemcpy(m->dev_region_ptrs,
-             exp_preds,
-             n * sizeof(float *),
-             cudaMemcpyHostToDevice);
-
-  aggspec_forward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
-                           min(CUDA_NUM_THREADS,
-                               (int)(batch_size * k * out_dim)),
-                           0,
-                           stream>>>(m->dev_region_ptrs,
-                                     acc_gate_assign_ptr,
-                                     acc_output_ptr,
-                                     n,
-                                     k,
-                                     rows,
-                                     batch_size,
-                                     out_dim);
-}
-
-void backward_kernel(cudaStream_t stream,
-                     AggregateSpecPerDeviceState const *m,
-                     float **exp_grads,
-                     int const *acc_gate_assign_ptr,
-                     int const *acc_true_gate_assign_ptr,
-                     float const *acc_gate_pred_ptr,
-                     float *acc_full_gate_grad_ptr,
-                     float const *acc_output_grad_ptr,
-                     int n,
-                     int const k,
-                     int rows,
-                     float lambda_bal,
-                     int const batch_size,
-                     int out_dim) {
-
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-
-  // call backward kernel
-  cudaMemcpy(m->dev_region_ptrs,
-             exp_grads,
-             n * sizeof(float *),
-             cudaMemcpyHostToDevice);
-
-  aggspec_backward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
-                            min(CUDA_NUM_THREADS,
-                                (int)(batch_size * k * out_dim)),
-                            0,
-                            stream>>>(m->dev_region_ptrs,
-                                      acc_gate_assign_ptr,
-                                      acc_true_gate_assign_ptr,
-                                      acc_gate_pred_ptr,
-                                      acc_full_gate_grad_ptr,
-                                      acc_output_grad_ptr,
-                                      n,
-                                      k,
-                                      rows,
-                                      lambda_bal,
-                                      batch_size,
-                                      out_dim);
-}
-
 __global__ void
     aggspec_forward_kernel(float **exp_preds,
                            int const *exp_assign,
@@ -295,6 +219,82 @@ __global__ void
                                k,
                                n,
                                out_dim);
+}
+
+void forward_kernel(cudaStream_t stream,
+                    AggregateSpecPerDeviceState const *m,
+                    float **exp_preds,
+                    int const *acc_gate_assign_ptr,
+                    float *acc_output_ptr,
+                    int n,
+                    int const k,
+                    int rows,
+                    int const batch_size,
+                    int out_dim) {
+
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
+  // call forward kernel
+  cudaMemcpy(m->dev_region_ptrs,
+             exp_preds,
+             n * sizeof(float *),
+             cudaMemcpyHostToDevice);
+
+  aggspec_forward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
+                           min(CUDA_NUM_THREADS,
+                               (int)(batch_size * k * out_dim)),
+                           0,
+                           stream>>>(m->dev_region_ptrs,
+                                     acc_gate_assign_ptr,
+                                     acc_output_ptr,
+                                     n,
+                                     k,
+                                     rows,
+                                     batch_size,
+                                     out_dim);
+}
+
+void backward_kernel(cudaStream_t stream,
+                     AggregateSpecPerDeviceState const *m,
+                     float **exp_grads,
+                     int const *acc_gate_assign_ptr,
+                     int const *acc_true_gate_assign_ptr,
+                     float const *acc_gate_pred_ptr,
+                     float *acc_full_gate_grad_ptr,
+                     float const *acc_output_grad_ptr,
+                     int n,
+                     int const k,
+                     int rows,
+                     float lambda_bal,
+                     int const batch_size,
+                     int out_dim) {
+
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
+  // call backward kernel
+  cudaMemcpy(m->dev_region_ptrs,
+             exp_grads,
+             n * sizeof(float *),
+             cudaMemcpyHostToDevice);
+
+  aggspec_backward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
+                            min(CUDA_NUM_THREADS,
+                                (int)(batch_size * k * out_dim)),
+                            0,
+                            stream>>>(m->dev_region_ptrs,
+                                      acc_gate_assign_ptr,
+                                      acc_true_gate_assign_ptr,
+                                      acc_gate_pred_ptr,
+                                      acc_full_gate_grad_ptr,
+                                      acc_output_grad_ptr,
+                                      n,
+                                      k,
+                                      rows,
+                                      lambda_bal,
+                                      batch_size,
+                                      out_dim);
 }
 
 } // namespace AggregateSpec
