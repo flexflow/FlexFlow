@@ -29,6 +29,8 @@
 #include "kernels/pool_2d_kernels.h"
 #include "kernels/reshape_kernels.h"
 #include "kernels/transpose_kernels.h"
+#include "op-attrs/op.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "utils/exception.decl.h"
 
 namespace FlexFlow {
@@ -52,9 +54,11 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 enum Slots {
+  INPUT,
+  OUTPUT,
+  WEIGHT,
   PER_DEVICE_STATE,
   ATTRS,
-  PROFILING,
 };
 
 OpTaskInvocation init(FusedOpAttrs const &attrs) {
@@ -92,15 +96,6 @@ void register_task<FUSEDOP_INIT_TASK_ID>() {
   init.add_return_value<FusedPerDeviceOpState>();
 
   register_task(FUSEDOP_INIT_TASK_ID, "fused_init", init, init_task);
-}
-
-OpTaskInvocation forward(FusedOpAttrs const &attrs) {
-  OpTaskBinding binding;
-
-  binding.bind_arg(PER_DEVICE_STATE,
-                   per_device_op_state<FusedPerDeviceOpState>());
-  binding.bind_arg(PROFILING, profiling_setting());
-  return {FUSEDOP_FWD_TASK_ID, binding};
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -163,6 +158,155 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                          num_inputs); // Note: this may have some question
       }
     }
+  }
+}
+
+OpTaskInvocation forward(FusedOpAttrs const & attrs) {
+  OpTaskBinding binding;
+
+  binding.bind_arg(ATTRS, attrs);
+
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<FusedPerDeviceOpState>());
+
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<FusedPerDeviceOpState>());
+ 
+  //TODO(lambda) how to bind input, output, weights, all are std::vector
+
+  return {FUSEDOP_FWD_TASK_ID, binding};
+}
+
+OpTaskInvocation backward(FusedOpAttrs const & attrs) {
+  OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
+
+  return {FUSEDOP_BWD_TASK_ID, b};
+}
+
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+  FusedPerDeviceOpState state = acc.get_argument<FusedPerDeviceOpState>(PER_DEVICE_STATE);
+  FusedOp const *fused  = state.fused_op;
+  auto const &attrs = acc.get_argument<FusedOpAttrs>(ATTRS);
+  OperatorType op = get_op_type(attrs);
+  //todo(lambda): how to get input_accessor, weight_accessor, output_accessor, these maybe exist problems
+  auto inputs = acc.get_tensor_vector<Permission::RO>>(INPUT);
+  auto weights = acc.get_tensor_vector<Permission::RO>>(WEIGHT);
+  auto outputs = acc.get_tensor_vector<Permission::RW>>(OUTPUT);
+
+  GenericTensorAccessorR input_accessor[MAX_NUM_INPUTS];
+  GenericTensorAccessorR weight_accessor[MAX_NUM_WEIGHTS];
+  GenericTensorAccessorW output_accessor[MAX_NUM_OUTPUTS];
+
+  for(int i =0; i < fused->numInputs; i++) {
+    input_accessor[i] = inputs[i];
+  }
+
+  for(int i =0; i < fused->numWeights; i++) {
+    weight_accessor[i] = weights[i];
+  }
+
+  for(int i =0; i < fused->numOutputs; i++) {
+    output_accessor[i] = outputs[i];
+  }
+
+  int ioff = 0, woff = 0, ooff = 0;
+
+  for(int op = 0; op < fused->numOperators; op++) {
+    GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
+    GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
+    GenericTensorAccessorW my_output_accessor[MAX_NUM_OUTPUTS];
+
+    for (int i = 0; i < fused->op_num_inputs[op]; i++) {
+      int my_off = fused->op_input_idx[i + ioff];
+      if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
+        my_input_accessor[i] = input_accessor[my_off];
+      } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
+        // my_id[i] = output_domain[my_off];
+        my_input_accessor[i] = output_accessor[my_off];
+      } else {
+        assert(false);
+      }
+    }
+
+    for (int i = 0; i < fused->op_num_weights[op]; i++) {
+      assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
+      // my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
+      // my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
+      my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
+    }
+    for (int i = 0; i < fused->op_num_outputs[op]; i++) {
+      assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
+      // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
+      // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
+      my_output_accessor[i] = output_accessor[i + ooff];
+    }
+
+    switch(op) {
+      //CONCAT
+      case Op::CONCAT:{
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        ConcatPerDeviceState m = mpack::get<ConcatPerDeviceState>(state.all_device);
+        int num_inputs = fused->op_num_inputs[op];
+        Kernels::Concat::forward_kernel(m, my_output_accessor[0], my_input_accessor, num_inputs);
+        break;
+      }
+      //CONV2D
+      case Op::CONV2D :{
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_accessor[0].shape.get_dim() == 5);
+        assert(my_weight_accessor[0].shape.get_dim() == 5);
+        assert(my_output_accessor[0].shape.get_dim() == 5);//get_dim() or num_dims()?
+        Conv2dPerDeviceState m = mpack::get<Conv2dPerDeviceState>(state.all_device);
+        Kernels::Conv2D::forward_kernel(m, 
+                                        my_output_accessor[0].get_float_ptr(), 
+                                        my_input_accessor[0].get_float_ptr(), 
+                                        my_weight_accessor[0].get_float_ptr(),
+                                        my_weight_accessor[1].get_float_ptr());
+        break;
+      }
+
+      //BATCHNORM
+      case Op::BATCHNORM: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_accessor[0].shape.get_dim() == 5);
+        assert(my_output_accessor[0].shape.get_dim() == 5);
+        assert(my_weight_accessor[0].shape.get_dim() == 2);
+        assert(my_weight_accessor[1].shape.get_dim() == 2);
+        BatchNormPerDeviceState m = mpack::get<BatchNormPerDeviceState>(state.all_device);
+        Kernels::BatchNorm::forward_kernel(m,
+                                          my_input_accessor[0].get_float_ptr(),
+                                          my_output_accessor[0].get_float_ptr(),
+                                          my_weight_accessor[0].get_float_ptr(),
+                                          my_weight_accessor[1].get_float_ptr());
+        break;
+      }
+
+      //dropout
+      case Op::DROPOUT: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+
+        DropoutPerDeviceState m = mpack::get<DropoutPerDeviceState>(state.all_device);
+
+        Kernels::Dropout::forward_kernel(m,
+                                         my_input_accessor[0].get_float_ptr(),
+                                         my_output_accessor[0].get_float_ptr());
+        break;
+      }
+
+      //linear
+      case Op::LINEAR: {
+        
+        break;
+      }
+
+
+    }
+
+
   }
 }
 
