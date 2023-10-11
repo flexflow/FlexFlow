@@ -79,6 +79,9 @@ void register_task<TRANSPOSE_INIT_TASK_ID>();
 OpTaskSignature init(OpTaskType::INIT)
 
     init.add_arg_slot<TransposeAttrs>(ATTRS);
+
+init.add_return_value<TransposePerDeviceState>();
+
 register_task(TRANSPOSE_INIT_TASK_ID, "Transpose::init", init, init_task);
 } // namespace FlexFlow
 
@@ -89,7 +92,7 @@ OpTaskInvocation forward(TransposeAttrs const &) {
                    per_device_op_state<TransposePerDeviceState>());
   binding.bind_arg(PROFILEING, profiling_settings());
 
-  bind.bind(INPUT, input_tensor(0));// Note: this may have some problem
+  bind.bind(INPUT, input_tensor(0));
   bind.bind(OUTPUT, output_tensor(0));
 
   return {TRANSPOSE_FWD_TASK_ID, binding};
@@ -103,28 +106,14 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
-  // copy from the old code
-  Task *task = acc.task;
-  Context ctx = acc.ctx;
-  Runtime *runtime = acc.runtime;
-  Domain in_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Domain out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-
-  for (int i = 0; i < m->num_dim; i++) {
-    assert(out_domain.hi()[i] == in_domain.hi()[m->perm[i]]);
-    assert(out_domain.lo()[i] == in_domain.lo()[m->perm[i]]);
-  }
-
   return profiling(forward_kernel,
                    profiling,
                    "[Transpose] Forward_time = %.2lf [ms]",
                    per_device_state,
                    input.get_float_ptr(),
                    output.get_float_ptr(),
-                   in_domain,
-                   out_domain);
+                   input,
+                   output);
 }
 
 static void forward_task(Task const *task,
@@ -143,28 +132,14 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
 
-  // copy from the old code
-  Task *task = acc.task;
-  Context ctx = acc.ctx;
-  Runtime *runtime = acc.runtime;
-  Domain in_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Domain out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-
-  for (int i = 0; i < m->num_dim; i++) {
-    assert(out_domain.hi()[i] == in_domain.hi()[m->perm[i]]);
-    assert(out_domain.lo()[i] == in_domain.lo()[m->perm[i]]);
-  }
-
   return profiling(backward_kernel,
                    profiling,
                    "[Transpose] Backward_time = %.2lf [ms]",
                    per_device_state,
                    input_grad.get_float_ptr(),
                    output_grad.get_float_ptr(),
-                   in_domain,
-                   out_domain);
+                   input_grad,
+                   output_grad);
 }
 
 static void backward_task(Task const *task,
@@ -195,14 +170,15 @@ CostMetrics
 
   auto init_accessor =
       env.get_init_accessor(TRANSPOSE_INIT_TASK_ID, init_binding);
-  DeviceSpecific<TransposePerDeviceState> per_device_state = init_task_impl(init_accessor);
+  DeviceSpecific<TransposePerDeviceState> per_device_state =
+      init_task_impl(init_accessor);
 
   ParallelTensorShape output_shape = get_output_shape(attrs, input_descs.shape);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
   fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind(INPUT, input_descs);
+  fwd_binding.bind(INPUT, input_descs.shape);
   fwd_binding.bind(OUTPUT, output_shape);
 
   auto fwd_accessor = env.get_fwd_accessor(TRANSPOSE_FWD_TASK_ID, fwd_binding);
