@@ -299,13 +299,43 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
       //linear
       case Op::LINEAR: {
-        
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+
+        LinearPerDeviceState m = mpack::get<LinearPerDeviceState>(state.all_device);
+        int in_dim = my_weight_accessor[0].shape.at(legin_dim_t(0)) +1; 
+        int out_dim = my_weight_accessor[0].shape.at(legin_dim_t(1)) + 1;
+        int batch_size = my_input_accessor[0].domain.get_volume() / in_dim;
+        assert(my_output_accessor[0].shape.get_volume() == batch_size * out_dim);
+        assert(my_input_accessor[0].shape.get_volue() == batch_size * in_dim);
+        float const *bias_ptr = nullptr;
+
+        if (fused->op_num_weights[op] == 2) {
+          assert(my_weight_accessor[1].shape.get_volume() == out_dim);
+          bias_ptr = my_weight_accessor[1].get_float_ptr();
+        } else {
+          assert(fused->op_num_weights[op] == 1);
+        }
+
+        Kernels::Linear::forward_kernel(m, 
+                                        my_input_accessor[0].get_float_ptr(),
+                                        my_output_accessor[0].get_float_ptr(),
+                                        my_weight_accessor[0].get_float_ptr(),
+                                        bias_ptr,
+                                        in_dim,
+                                        out_dim,
+                                        batch_size);
+
         break;
       }
 
 
     }
 
+
+    ioff += fused->op_num_inputs[op];
+    woff += fused->op_num_weights[op];
+    ooff += fused->op_num_outputs[op];
 
   }
 }
