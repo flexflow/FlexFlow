@@ -14,7 +14,7 @@ struct Conv2DAttrs {
       padding_w, groups;
   req<optional<Activation>> activation;
   req<bool> use_bias;
-  bool is_valid(TensorShape const &input) const;
+  bool is_valid(ParallelTensorShape const &input) const;
 };
 
 FF_VISITABLE_STRUCT(Conv2DAttrs,

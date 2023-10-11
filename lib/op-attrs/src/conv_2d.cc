@@ -81,10 +81,14 @@ std::vector<ParallelDimMappingRecord>
   return mappings;
 }
 
-bool Conv2DAttrs::is_valid(TensorShape const &input) const {
+bool Conv2DAttrs::is_valid(ParallelTensorShape const &input) const {
   if (!input.is_valid()) {
     return false;
   }
+  if(input.num_dims() != 4) {
+    return false;
+  }
+  
   return true;
 }
 
