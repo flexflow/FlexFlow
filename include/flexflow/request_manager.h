@@ -126,6 +126,10 @@ public:
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
                                    int max_sequence_length,
                                    PEFTModelID peft_model_id);
+  RequestGuid register_new_peft_request(
+      std::vector<std::pair<std::string, std::string>> const &dataset,
+      int max_sequence_length,
+      PEFTModelID peft_model_id);
   bool is_request_completed(RequestGuid const &guid);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
