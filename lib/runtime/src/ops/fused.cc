@@ -329,6 +329,84 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         break;
       }
 
+      //batchmatmul
+      case Op::BATCHMATMUL :{
+        assert(fused->op_num_inputs[op] == 2);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+
+        int m = my_input_accessor[1].shape.at(legion_dim_t(0)) + 1;
+        assert(m == my_output_accessor[0].shape.at(legion_dim_t(0)) + 1);
+
+        int n = my_input_accessor[0].shape.at(legion_dim_t(1)) + 1;
+        assert(n == my_output_accessor[0].shape.at(legion_dim_t(1)) + 1);
+
+        int k = my_input_accessor[0].shape.at(legion_dim_t(0)) + 1;
+        assert(k == my_input_accessor[1].shape.at(legion_dim_t(1)) + 1);
+
+        assert(my_input_accessor[0].shape.get_dim() == my_input_accessor[1].shape.get_dim());
+        assert(my_input_accessor[0].shape.get_dim() == my_output_accessor[0].shape.get_dim());
+
+        int batch = 1;
+        for(int i =2; i < my_input_accessor[0].shape.get_dim(); i++) {
+          assert(my_input_accessor[0].shape.at(legion_dim_t(i)) == my_input_accessor[1].shape.at(legion_dim_t(i)));
+          assert(my_input_accessor[0].shape.at(legion_dim_t(i)) == my_output_accessor[0].shape.at(legion_dim_t(i)));
+          batch *= my_input_accessor[0].shape.at(legion_dim_t(i)) +1 
+        }
+
+        BatchMatmulPerDeviceState state = mpack::get<BatchMatmulPerDeviceState>(state.all_device);
+         Kernels::BatchMatmul::forward_kernel(
+                  state,
+                  my_output_accessor[0].get_float_ptr(),
+                  my_input_accessor[0].get_float_ptr(),
+                  my_input_accessor[1].get_float_ptr(),
+                  (float const *)nullptr,
+                  m,
+                  n,
+                  k,
+                  batch,
+                  state.a_seq_length_dim,
+                  state.b_seq_length_dim,
+                  fused->iter_config.seq_length);
+        break;
+      }
+
+      case OP_EW_ADD:
+      case OP_EW_SUB:
+      case OP_EW_MUL:
+      case OP_EW_DIV:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
+          assert(fused->op_num_inputs[op] == 2);
+          assert(fused->op_num_weights[op] == 0);
+          assert(fused->op_num_outputs[op] == 1);
+
+          assert(my_input_accessor[0].shape == my_input_accessor[1].shape);
+          assert(my_input_accessor[0].shape == my_output_accessor[0].shape);
+
+          ElementBinaryPerDeviceState state = mpack::get<ElementBinaryPerDeviceState>(state.all_device);
+
+          Kernels::ElementBinary::forward_kernel(
+            state,
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].get_float_ptr(),
+            my_input_accessor[1].get_float_ptr(),
+          );
+          break;
+      }
+
+       case OP_EMBEDDING: {
+          assert(fused->op_num_inputs[op] == 1);
+          assert(fused->op_num_weights[op] == 1);
+          assert(fused->op_num_outputs[op] == 1);
+
+          
+          break;  
+       }
+
+
+
+
 
     }
 
