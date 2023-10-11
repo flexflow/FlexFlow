@@ -7,7 +7,7 @@ bool ConcatAttrs::is_valid(
   bool valid = true;
   for (auto p : input) {
     valid &= p.is_valid();
-    if(axis >= p.num_dims(())){
+    if (axis >= p.num_dims(())) {
       return false;
     }
   }

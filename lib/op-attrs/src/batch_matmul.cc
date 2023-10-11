@@ -10,18 +10,18 @@ bool BatchMatmulAttrs::is_valid(ParallelTensorShape const &lhs,
   if (!lhs.is_valid() || !rhs.is_valid()) {
     return false;
   }
-  
-  if(lhs.at(ff_dim_t(0)).size != rhs.at(ff_dim_t(0)).size) {
+
+  if (lhs.at(ff_dim_t(0)).size != rhs.at(ff_dim_t(0)).size) {
     return false;
   }
-  if(lhs.at(ff_dim_t(2)).size != rhs.at(ff_dim_t(1)).size) {
+  if (lhs.at(ff_dim_t(2)).size != rhs.at(ff_dim_t(1)).size) {
     return false;
   }
-  if(lhs.at(ff_dim_t(1)).size != a_seq_length_dim) {
+  if (lhs.at(ff_dim_t(1)).size != a_seq_length_dim) {
     return false;
   }
 
-  if(rhs.at(ff_dim_t(2)).size != b_seq_length_dim) {
+  if (rhs.at(ff_dim_t(2)).size != b_seq_length_dim) {
     return false;
   }
 
@@ -29,7 +29,7 @@ bool BatchMatmulAttrs::is_valid(ParallelTensorShape const &lhs,
 }
 
 // how to get the batch size? and lhs: [b, n, m], rhs: [b, m, p]
-//output: [b, n, p] //n == s1, m == s2
+// output: [b, n, p] //n == s1, m == s2
 ParallelTensorShape get_output_shape(BatchMatmulAttrs const &attrs,
                                      ParallelTensorShape const &lhs,
                                      ParallelTensorShape const &rhs) {

@@ -12,7 +12,7 @@ bool BatchNormAttrs::is_valid(ParallelTensorShape const &input) {
 ParallelTensorShape get_output_shape(BatchNormAttrs const &attrs,
                                      ParallelTensorShape const &input) {
   ParallelTensorShape output_shape = input;
-  
+
   return output_shape;
 }
 

@@ -85,10 +85,10 @@ bool Conv2DAttrs::is_valid(ParallelTensorShape const &input) const {
   if (!input.is_valid()) {
     return false;
   }
-  if(input.num_dims() != 4) {
+  if (input.num_dims() != 4) {
     return false;
   }
-  
+
   return true;
 }
 
