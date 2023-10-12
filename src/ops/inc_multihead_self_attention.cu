@@ -80,7 +80,8 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
                                     int num_q_heads,
                                     int num_kv_heads,
                                     bool scaling_query,
-                                    float scaling_factor) {
+                                    float scaling_factor,
+                                    int hidden_size) {
   CUDA_KERNEL_LOOP(i,
                    num_tokens *
                        (qProjSize * num_q_heads + kProjSize * num_kv_heads +
@@ -89,32 +90,48 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
     // 0->q, 1->k, 2->v
     // int qkv_index = i / (num_tokens * qProjSize) % 3;
 
-    int qkv_index = i < num_tokens * qProjSize * num_q_heads
-                        ? 0
-                        : (i < num_tokens * (qProjSize * num_q_heads +
-                                             kProjSize * num_kv_heads)
-                               ? 1
-                               : 2);
+    int token_idx = i / (hidden_size / 3);
+    size_t in_token_idx = i - token_idx * hidden_size * 3;
 
-    int q_block_size = qProjSize * num_tokens * num_q_heads;
-    int k_block_size = kProjSize * num_tokens * num_kv_heads;
-    int bias_idx = 0;
-    if (qkv_index == 0) {
-      int head_idx = (i % (qProjSize * num_q_heads)) / qProjSize;
-      int global_head_idx = head_idx + shard_id * num_q_heads;
-      bias_idx = global_head_idx * qProjSize + i % qProjSize;
-    } else {
+    int qkv_index = in_token_idx / hidden_size;
 
-      int idx =
-          qkv_index == 1 ? i - q_block_size : i - q_block_size - k_block_size;
-      int pre_length = qkv_index == 1 ? qProjSize * global_num_q_heads
-                                      : qProjSize * global_num_q_heads +
-                                            kProjSize * global_num_kv_heads;
+    int proj_size = qkv_index == 0 ? qProjSize : kProjSize;
 
-      int head_idx = (idx % (kProjSize * num_kv_heads)) / kProjSize;
-      int global_head_idx = head_idx + shard_id * num_q_heads;
-      bias_idx = pre_length + global_head_idx * kProjSize + idx % kProjSize;
-    }
+    int head_idx = (in_token_idx - qkv_index * num_q_heads * proj_size) / proj_size;
+    int global_head_idx = head_idx + shard_id * num_q_heads;
+
+    size_t pre_length = qkv_index == 0 ? 0 : (qkv_index == 1 ? hidden_size : hidden_size * 2);
+    
+    size_t bias_idx = pre_length + global_head_idx * proj_size + i % proj_size;
+
+
+
+    // int qkv_index = i < num_tokens * qProjSize * num_q_heads
+    //                     ? 0
+    //                     : (i < num_tokens * (qProjSize * num_q_heads +
+    //                                          kProjSize * num_kv_heads)
+    //                            ? 1
+    //                            : 2);
+
+    // int q_block_size = qProjSize * num_tokens * num_q_heads;
+    // int k_block_size = kProjSize * num_tokens * num_kv_heads;
+    // int bias_idx = 0;
+    // if (qkv_index == 0) {
+    //   int head_idx = (i % (qProjSize * num_q_heads)) / qProjSize;
+    //   int global_head_idx = head_idx + shard_id * num_q_heads;
+    //   bias_idx = global_head_idx * qProjSize + i % qProjSize;
+    // } else {
+
+    //   int idx =
+    //       qkv_index == 1 ? i - q_block_size : i - q_block_size - k_block_size;
+    //   int pre_length = qkv_index == 1 ? qProjSize * global_num_q_heads
+    //                                   : qProjSize * global_num_q_heads +
+    //                                         kProjSize * global_num_kv_heads;
+
+    //   int head_idx = (idx % (kProjSize * num_kv_heads)) / kProjSize;
+    //   int global_head_idx = head_idx + shard_id * num_q_heads;
+    //   bias_idx = pre_length + global_head_idx * kProjSize + idx % kProjSize;
+    // }
 
     input_ptr[i] += bias_ptr[bias_idx];
 
@@ -129,9 +146,11 @@ __global__ void scaling_query_kernel(DT *input_ptr,
                                      int qProjSize,
                                      int num_tokens,
                                      int num_q_heads,
-                                     float scaling_factor) {
+                                     float scaling_factor,
+                                     int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_tokens * (qProjSize * num_q_heads)) {
-    input_ptr[i] *= scaling_factor;
+    int token_idx = i / hidden_size;
+    input_ptr[i + token_idx * hidden_size * 3] *= scaling_factor;
   }
 }
 
@@ -196,7 +215,8 @@ __global__ void
                               int num_kv_heads,
                               int q_block_size,
                               int k_block_size,
-                              int q_array_size) {
+                              int q_array_size,
+                              int hidden_size) {
   CUDA_KERNEL_LOOP(
       i,
       num_tokens * (qProjSize * num_q_heads + kProjSize * num_kv_heads) / 2) {
@@ -205,14 +225,13 @@ __global__ void
     int proj_size = q_tensor ? qProjSize : kProjSize;
     int real_i = q_tensor ? i : i - q_array_size / 2;
 
-    int head_idx = real_i / (num_tokens * proj_size / 2);
-    int idx = real_i % (num_tokens * proj_size / 2);
-    int token_idx =
-        (real_i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
+    int token_idx = real_i / (hidden_size / 2);
+    int idx = real_i % (proj_size / 2);
+    int head_idx = (real_i - (token_idx * (hidden_size / 2))) / (proj_size / 2);
 
-    int real_part_index = idx + token_idx * (proj_size / 2) +
-                          head_idx * (q_tensor ? q_block_size : k_block_size) +
-                          (q_tensor ? 0 : q_array_size);
+    int real_part_index = idx + head_idx * proj_size +
+                          token_idx * hidden_size * 3 +
+                          hidden_size * (q_tensor ? 0 : 1);
     int complex_part_index = real_part_index + (proj_size / 2);
 
     complex_input[i] = {input_ptr[real_part_index],
@@ -314,7 +333,8 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                     m->num_q_heads,
                                     m->num_kv_heads,
                                     *m->scaling_query,
-                                    m->scaling_factor);
+                                    m->scaling_factor,
+                                    m->qSize);
   } else if (m->scaling_query) {
     scaling_query_kernel<<<GET_BLOCKS(parallelism),
                            min(CUDA_NUM_THREADS, parallelism),
@@ -323,27 +343,29 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                      num_tokens,
                                      m->num_q_heads,
                                      m->qProjSize,
-                                     m->scaling_factor);
+                                     m->scaling_factor,
+                                     m->qSize);
   }
   if (*m->apply_rotary_embedding) {
     /*q&k*/
     parallelism =
         num_tokens *
         (m->qProjSize * m->num_q_heads + m->kProjSize * m->num_kv_heads) / 2;
-    // apply_rotary_embedding_hf<<<GET_BLOCKS(parallelism),
-    //                             min(CUDA_NUM_THREADS, parallelism),
-    //                             0,
-    //                             stream>>>(output_ptr,
-    //                                       m->complex_input,
-    //                                       m->token_infos,
-    //                                       m->qProjSize,
-    //                                       m->kProjSize,
-    //                                       m->num_q_heads,
-    //                                       num_tokens,
-    //                                       m->num_kv_heads,
-    //                                       q_block_size,
-    //                                       k_block_size,
-    //                                       q_array_size);
+    apply_rotary_embedding_hf<<<GET_BLOCKS(parallelism),
+                                min(CUDA_NUM_THREADS, parallelism),
+                                0,
+                                stream>>>(output_ptr,
+                                          m->complex_input,
+                                          m->token_infos,
+                                          m->qProjSize,
+                                          m->kProjSize,
+                                          m->num_q_heads,
+                                          num_tokens,
+                                          m->num_kv_heads,
+                                          q_block_size,
+                                          k_block_size,
+                                          q_array_size,
+                                          m->qSize);
   }
 }
 
