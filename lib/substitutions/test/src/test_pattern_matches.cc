@@ -1,6 +1,6 @@
 #include "doctest/doctest.h"
-#include "substitutions/graph_pattern_match.h"
 #include "rapidcheck.h"
+#include "substitutions/graph_pattern_match.h"
 
 using namespace FlexFlow;
 
