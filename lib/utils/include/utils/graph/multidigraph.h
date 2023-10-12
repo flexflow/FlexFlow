@@ -45,6 +45,11 @@ public:
   MultiDiGraph(MultiDiGraph const &) = default;
   MultiDiGraph &operator=(MultiDiGraph const &) = default;
 
+  operator GraphView() const;
+  operator MultiDiGraphView() const;
+
+  friend void swap(MultiDiGraph &, MultiDiGraph &);
+
   Node add_node();
   NodePort add_node_port();
   void add_node_unsafe(Node const &);

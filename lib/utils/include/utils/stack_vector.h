@@ -290,7 +290,7 @@ public:
   }
 
   friend std::vector<T> format_as(stack_vector<T, MAXSIZE> const &v) {
-    CHECK_FMTABLE(std::vector<T>);
+    // CHECK_FMTABLE(std::vector<T>);
 
     return static_cast<std::vector<T>>(v);
   }

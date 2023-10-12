@@ -381,11 +381,6 @@ struct AddNewEdgeFunctor {
                                  new_pcg.add_node_port(),
                                  node_mapping.at_l(new_edge.src),
                                  new_pcg.add_node_port()});
-  }
-
-  void add_new_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &) {
-    assert(false);
-  }
 
   void add_new_edge(InputMultiDiEdge const &, OutputMultiDiEdge const &) {
     assert(false);
