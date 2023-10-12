@@ -295,8 +295,6 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &);
 
 std::unordered_set<MultiDiEdge> get_cut_set(MultiDiGraphView const &,
                                             GraphSplit const &);
-std::unordered_set<MultiDiEdge> get_cut_set(OpenMultiDiGraphView const &,
-                                            GraphSplit const &);
 
 bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
     get_edge_splits(MultiDiGraphView const &, GraphSplit const &);

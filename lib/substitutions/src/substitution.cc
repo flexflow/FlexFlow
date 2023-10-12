@@ -132,7 +132,7 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
                       nullopt);
     case Op::CONCAT:
       return Operator(ConcatAttrs{get<ff_dim_t>(
-                          assignments.at(OperatorAttributeKey::AXIS))},
+                          assignments.at(OperatorAttributeKey::AXIS)), get<int>(assignments.at(OperatorAttributeKey::NUM_INPUTS))},
                       nullopt);
     case Op::CONV2D:
       return Operator(
@@ -381,15 +381,20 @@ struct AddNewEdgeFunctor {
                                  new_pcg.add_node_port(),
                                  node_mapping.at_l(new_edge.src),
                                  new_pcg.add_node_port()});
+  }
 
-    void add_new_edge(InputMultiDiEdge const &, OutputMultiDiEdge const &) {
-      assert(false);
-    }
+  void add_new_edge(InputMultiDiEdge const &, OutputMultiDiEdge const &) {
+    assert(false);
+  }
 
-    void add_new_edge(OpenMultiDiEdge const &, MultiDiEdge const &) {
-      assert(false);
-    }
-  };
+  void add_new_edge(OpenMultiDiEdge const &, MultiDiEdge const &) {
+    assert(false);
+  }
+
+  void add_new_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &) {
+    assert(false);
+  }
+};
 
   SubParallelComputationGraph
       apply_substitution(SubParallelComputationGraph const &pcg,

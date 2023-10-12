@@ -67,6 +67,7 @@ enum class OperatorAttributeKey {
   SORTED,
   COMBINE_DIM,
   COMBINE_DEGREE,
+  NUM_INPUTS
 };
 
 using OperatorAttributeValue = variant<int,
