@@ -604,7 +604,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     }
     // To get A, skip over Q entries from previous requests (same head)
     DT const *A = static_cast<DT *>(m->devQKVProjArray) +
-                  tokens_previous_requests * m->qProjSize * m->num_q_heads;
+                  tokens_previous_requests * m->qProjSize * m->num_q_heads * 3;
     // To get B, skip over K entries from previous requests (all heads +
     // padding)
     DT const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
