@@ -269,14 +269,8 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   assert(m_q == m_k && m_k == m_v); // keep things simple for now
   int n = bc->num_active_tokens();
   int k = m->qSize;
-  int m_ = m_q;
-  int lda = k, ldb = k, ldc = m_q;
-
-  // size_t strideA = m_q * k; // query weight head size
-  // size_t strideB = 0;       // input stays the same for all heads.
-  // size_t strideC = m_q * n; // size of the output block for each head.
-
-  // compute QKV
+  int m_ = m_q * 3;
+  int lda = k, ldb = k, ldc = m_;
   checkCUDA(cublasGemmEx(m->handle.blas,
                          CUBLAS_OP_T,
                          CUBLAS_OP_N,
@@ -294,11 +288,10 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                          output_ptr,
                          cublas_data_type,
                          ldc,
-                         3 * m->qSize,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  // apply rotary emmmbedding for q and k
-  // step1 change the k, v to complex tensor
+  // apply rotary emmmbedding for q
+  // and k step1 change the k, v to complex tensor
   int num_tokens = bc->num_active_tokens();
   int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
   int q_block_size = m->qProjSize * num_tokens;
@@ -337,20 +330,20 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
     parallelism =
         num_tokens *
         (m->qProjSize * m->num_q_heads + m->kProjSize * m->num_kv_heads) / 2;
-    apply_rotary_embedding_hf<<<GET_BLOCKS(parallelism),
-                                min(CUDA_NUM_THREADS, parallelism),
-                                0,
-                                stream>>>(output_ptr,
-                                          m->complex_input,
-                                          m->token_infos,
-                                          m->qProjSize,
-                                          m->kProjSize,
-                                          m->num_q_heads,
-                                          num_tokens,
-                                          m->num_kv_heads,
-                                          q_block_size,
-                                          k_block_size,
-                                          q_array_size);
+    // apply_rotary_embedding_hf<<<GET_BLOCKS(parallelism),
+    //                             min(CUDA_NUM_THREADS, parallelism),
+    //                             0,
+    //                             stream>>>(output_ptr,
+    //                                       m->complex_input,
+    //                                       m->token_infos,
+    //                                       m->qProjSize,
+    //                                       m->kProjSize,
+    //                                       m->num_q_heads,
+    //                                       num_tokens,
+    //                                       m->num_kv_heads,
+    //                                       q_block_size,
+    //                                       k_block_size,
+    //                                       q_array_size);
   }
 }
 
@@ -375,7 +368,8 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                num_tokens,
                                m->num_q_heads,
                                m->num_kv_heads,
-                               BatchConfig::max_sequence_length());
+                               BatchConfig::max_sequence_length(),
+                               m->num_kv_heads * m->kProjSize);
   }
 }
 
@@ -495,37 +489,24 @@ __global__ void store_kv_cache(DT const *devQKVProjArray,
                                int num_tokens,
                                int num_q_heads,
                                int num_kv_heads,
-                               int max_seq_len) {
+                               int max_seq_len,
+                               int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_tokens * (kProjSize + vProjSize) * num_kv_heads) {
-    int q_array_size = qProjSize * num_tokens * num_q_heads;
-    int k_array_size = kProjSize * num_tokens * num_kv_heads;
+    int token_idx = i / ((kProjSize + vProjSize) * num_kv_heads);
+    int offset = i % hidden_size;
 
-    bool k_cache = i < k_array_size;
-    int real_i = k_cache ? i : i - k_array_size;
+    size_t val_idx = token_idx * 3 * hidden_size + hidden_size + offset;
 
-    int proj_size = k_cache ? kProjSize : vProjSize;
-
-    int head_idx = (real_i % (proj_size * num_kv_heads)) / proj_size;
-    // int head_idx = real_i / (num_tokens * proj_size);
-    int token_idx = real_i / (proj_size * num_kv_heads);
-    // int token_idx = (real_i - head_idx * (num_tokens * proj_size)) /
-    // proj_size;
-    int data_idx = real_i % proj_size;
-
-    DT val = devQKVProjArray[q_array_size + (k_cache ? 0 : k_array_size) +
-                             token_idx * proj_size * num_kv_heads +
-                             head_idx * proj_size + data_idx];
-    //  head_idx * proj_size * num_tokens +
-    //  token_idx * proj_size + data_idx];
+    DT kVal = devQKVProjArray[val_idx];
+    DT vVal = devQKVProjArray[val_idx + hidden_size];
     int const req_id = tokenInfos[token_idx].request_index;
     int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
 
-    DT *cache_ptr = k_cache ? kCache_ptr : vCache_ptr;
-    cache_ptr[req_id * (num_kv_heads * max_seq_len * proj_size) +
-              tok_id * proj_size * num_kv_heads + head_idx * proj_size +
-              data_idx] = val;
-    // head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
-    // data_idx] = val;
+    // key cache
+    kCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
+               offset] = kVal;
+    vCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
+               offset] = vVal;
   }
 }
 
@@ -590,7 +571,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     int m_ = num_new_tokens;
     int n = total_tokens;
     int k = m->qProjSize;
-    int lda = k * m->num_q_heads, ldb = k * m->num_kv_heads, ldc = m_;
+    int lda = k * m->num_q_heads * 3, ldb = k * m->num_kv_heads, ldc = m_;
     int strideA = q_block_size;
     int strideB = kt_block_size;
     int strideC = num_new_tokens * total_tokens;
@@ -638,7 +619,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
       m_ = num_new_tokens;
       n = total_tokens;
       k = m->qProjSize;
-      lda = k, ldb = k, ldc = m_;
+      lda = k * m->num_q_heads, ldb = k * m->num_kv_heads, ldc = m_;
       for (int step = 0; step < m->num_kv_heads; step++) {
         checkCUDA(
             cublasGemmStridedBatchedEx(m->handle.blas,
@@ -737,7 +718,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     m_ = num_new_tokens;
     n = m->vProjSize;
     k = total_tokens;
-    lda = m_, ldb = n, ldc = m_;
+    lda = m_, ldb = n * m->num_kv_heads, ldc = m_;
     strideA = num_new_tokens * total_tokens;
     strideB = vt_block_size;
     strideC = num_new_tokens * m->vProjSize;

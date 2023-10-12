@@ -201,9 +201,6 @@ public:
   //  typedef hipFloatComplex attFloatComplex;
   hipFloatComplex *complex_input;
 #endif
- // metadata for pad
-  // void *padded_output, *padded_input; // temporary storage fot key, value, output
-  // int *max_req_length, *max_total_tokens;
 };
 
 }; // namespace FlexFlow
