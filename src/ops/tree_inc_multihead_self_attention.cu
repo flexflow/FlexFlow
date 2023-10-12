@@ -119,7 +119,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
         m->num_q_heads,
         m->num_kv_heads,
         BatchConfig::max_sequence_length(),
-        m->qSize);
+        m->num_kv_heads * m->kProjSize);
   }
 }
 
@@ -270,7 +270,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
             m->num_q_heads,
             m->num_kv_heads,
             BatchConfig::max_sequence_length(),
-            m->qSize);
+            m->num_kv_heads * m->kProjSize);
       }
 
       // bc->token_last_available_idx[i] + 1;

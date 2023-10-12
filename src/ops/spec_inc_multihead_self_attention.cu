@@ -212,7 +212,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                     BatchConfig::max_sequence_length(),
                                     BeamSearchBatchConfig::MAX_BEAM_WIDTH,
                                     /*root*/ curr_depth == 0,
-                                    m->qSize);
+                                    m->num_kv_heads * m->kProjSize);
   }
 }
 
