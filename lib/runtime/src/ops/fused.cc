@@ -285,14 +285,14 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
 
-        int m = my_input_accessor[1].shape.at(legion_dim_t(0)) + 1;
-        assert(m == my_output_accessor[0].shape.at(legion_dim_t(0)) + 1);
+        int m = my_input_accessor[1].shape.at(ff_dim_t(0)) + 1;
+        assert(m == my_output_accessor[0].shape.at(ff_dim_t(0)) + 1);
 
-        int n = my_input_accessor[0].shape.at(legion_dim_t(1)) + 1;
-        assert(n == my_output_accessor[0].shape.at(legion_dim_t(1)) + 1);
+        int n = my_input_accessor[0].shape.at(ff_dim_t(1)) + 1;
+        assert(n == my_output_accessor[0].shape.at(ff_dim_t(1)) + 1);
 
-        int k = my_input_accessor[0].shape.at(legion_dim_t(0)) + 1;
-        assert(k == my_input_accessor[1].shape.at(legion_dim_t(1)) + 1);
+        int k = my_input_accessor[0].shape.at(ff_dim_t(0)) + 1;
+        assert(k == my_input_accessor[1].shape.at(ff_dim_t(1)) + 1);
 
         assert(my_input_accessor[0].shape.get_dim() ==
                my_input_accessor[1].shape.get_dim());
@@ -301,11 +301,11 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
         int batch = 1;
         for (int i = 2; i < my_input_accessor[0].shape.get_dim(); i++) {
-          assert(my_input_accessor[0].shape.at(legion_dim_t(i)) ==
-                 my_input_accessor[1].shape.at(legion_dim_t(i)));
-          assert(my_input_accessor[0].shape.at(legion_dim_t(i)) ==
-                 my_output_accessor[0].shape.at(legion_dim_t(i)));
-          batch *= my_input_accessor[0].shape.at(legion_dim_t(i)) + 1
+          assert(my_input_accessor[0].shape.at(ff_dim_t(i)) ==
+                 my_input_accessor[1].shape.at(ff_dim_t(i)));
+          assert(my_input_accessor[0].shape.at(ff_dim_t(i)) ==
+                 my_output_accessor[0].shape.at(ff_dim_t(i)));
+          batch *= my_input_accessor[0].shape.at(ff_dim_t(i)) + 1
         }
 
         BatchMatmulPerDeviceState state =
@@ -362,27 +362,27 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
           assert(my_input_accessor[0].shape.get_dim() + 1 ==
                  my_output_accessor[0].shape.get_dim());
           for (size_t i = 0; i < my_input_accessor[0].shape.get_dim(); i++) {
-            assert(my_input_accessor[0].shape.at(legion_dim_t(i)) ==
-                   my_output_accessor[0].shape.at(legion_dim_t(i + 1)));
+            assert(my_input_accessor[0].shape.at(ff_dim_t(i)) ==
+                   my_output_accessor[0].shape.at(ff_dim_t(i + 1)));
           }
-          assert(my_weight_accessor[0].shape.at(legion_dim_t(0)) ==
-                 my_output_accessor[0].shape.at(legion_dim_t(0)));
+          assert(my_weight_accessor[0].shape.at(ff_dim_t(0)) ==
+                 my_output_accessor[0].shape.at(ff_dim_t(0)));
         } else {
           assert(my_input_accessor[0].shape.get_dim() ==
                  my_output_accessor[0].shape.get_dim());
           for (size_t i = 0; i < my_input_accessor[0].shape.get_dim(); i++) {
-            assert(my_input_accessor[0].shape.at(legion_dim_t(i)) ==
-                   my_output_accessor[0].shape.at(legion_dim_t(i)));
+            assert(my_input_accessor[0].shape.at(ff_dim_t(i)) ==
+                   my_output_accessor[0].shape.at(ff_dim_t(i)));
           }
-          assert(my_weight_accessor[0].shape.at(legion_dim_t(0)) ==
-                 my_output_accessor[0].shape.at(legion_dim_t(0)));
+          assert(my_weight_accessor[0].shape.at(ff_dim_t(0)) ==
+                 my_output_accessor[0].shape.at(ff_dim_t(0)));
         }
 
         int in_dim, out_dim, effective_batch_size;
 
         if (state.aggr == AGGR_MODE_NONE) {
           int_dim = 1;
-          out_dim = my_output_accessor[0].shape.at(legion_dim_t(0)) + 1;
+          out_dim = my_output_accessor[0].shape.at(ff_dim_t(0)) + 1;
           effective_batch_size =
               my_output_accessor[0].shape.get_volume() / out_dim;
           assert(effective_batch_size *in_dim =
@@ -390,8 +390,8 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
         } else {
           assert(state.aggr == AGGR_MODE_SUM || state.aggr == AGGR_MODE_AVG);
-          in_dim = my_input_accessor[0].shape.at(legion_dim_t(0)) + 1;
-          out_dim = my_output_accessor[0].shape.at(legion_dim_t(0)) + 1;
+          in_dim = my_input_accessor[0].shape.at(ff_dim_t(0)) + 1;
+          out_dim = my_output_accessor[0].shape.at(ff_dim_t(0)) + 1;
           effective_batch_size =
               my_input_accessor[0].shape.get_volume() / in_dim;
           assert(effective_batch_size * in_dim ==
@@ -513,7 +513,194 @@ static void forward_task(Task const *task,
 }
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  NOT_IMPLEMENTED();
+  FusedPerDeviceOpState state =
+      acc.get_argument<FusedPerDeviceOpState>(PER_DEVICE_STATE);
+  FusedOp const *fused = state.fused_op;
+  auto const &attrs = acc.get_argument<FusedOpAttrs>(ATTRS);
+  OperatorType op = get_op_type(attrs);
+  // todo(lambda): how to get input_accessor, weight_accessor, output_accessor,
+  // these maybe exist problems
+  assert(state.numOperators == fused->numOperators);
+
+
+  GenericTensorAccessorR input_accessor[MAX_NUM_INPUTS];
+  GenericTensorAccessorW input_grad_accessor[MAX_NUM_INPUTS];
+  GenericTensorAccessorR weight_accessor[MAX_NUM_WEIGHTS];
+  GenericTensorAccessorW weight_grad_accessor[MAX_NUM_WEIGHTS];
+  GenericTensorAccessorR output_accessor[MAX_NUM_OUTPUTS];
+  GenericTensorAccessorW output_grad_accessor[MAX_NUM_OUTPUTS];
+
+  auto inputs = acc.get_tensor_vector < Permission::RO >> (INPUT);
+  auto weights = acc.get_tensor_vector < Permission::RO >> (WEIGHT);
+  auto outputs = acc.get_tensor_vector < Permission::RO >> (OUTPUT);
+
+  auoto input_grads = acc.get_tensor_vector_grad< Permission::RW >> (INPUT);
+  auto weight_grads = acc.get_tensor_vector_grad< Permission::RW >> (WEIGHT);
+  auto output_grads = acc.get_tensor_vector_grad< Permission::RW >> (OUTPUT);
+
+  int roff = 0;
+
+  assert(fused->numInputs <= MAX_NUM_INPUTS);
+
+  for(int i = 0; i < fused->numInputs; i++) {
+    input_accessor[i] = inputs[i];
+  }
+
+  roff += fused->numInputs;
+  assert(fused->numWeights <= MAX_NUM_WEIGHTS);
+
+  for(int i = 0; i < fused->numWeights; i++) {
+    weight_accessor[i] = weights[i];
+  }
+
+  roff += fused->numWeights;
+  assert(fused->numOutputs <= MAX_NUM_OUTPUTS);
+
+  for(int i = 0; i < fused->numOutputs; i++) {
+    output_accessor[i] = outputs[i];
+  }
+  
+  roff += fused->numOutputs;
+
+  for(int i =0; i < fused->numInputs; i++) {
+    input_grad_accessor[i] = input_grads[i];
+    assert(input_grad_accessor[i].shape == input_accessor[i].shape);
+  }
+
+  roff += fused->numInputs;
+  for(int i =0; i < fused->numWeights; i++) {
+    weight_grad_accessor[i] = weight_grads[i];
+    assert(weight_grad_accessor[i].shape.get_volume() == weight_accessor[i].shape.get_volume());
+  }
+
+  roff += fused->numWeights;
+
+  for(int i =0; i < fused->numOutputs; i++) {
+    output_grad_accessor[i] = output_grads[i];
+    assert(output_grad_accessor[i].shape == output_accessor[i].shape);
+  }
+
+  roff += fused->numOutputs;
+  // Assert that all meta share the same dnn/blas handler
+  
+
+  int ioff = 0, woff = 0, ooff = 0;
+  GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
+  GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
+  GenericTensorAccessorR my_output_accessor[MAX_NUM_OUTPUTS];
+  GenericTensorAccessorW my_input_grad_accessor[MAX_NUM_INPUTS];
+  GenericTensorAccessorW my_weight_grad_accessor[MAX_NUM_WEIGHTS];
+  GenericTensorAccessorW my_output_grad_accessor[MAX_NUM_OUTPUTS];
+
+  // Do backpropagation in the reverse ordering
+  for (int op = 0; op < fused->numOperators; op++) {
+    ioff += fused->op_num_inputs[op];
+    woff += fused->op_num_weights[op];
+    ooff += fused->op_num_outputs[op];
+  }
+
+  for (int op = fused->numOperators - 1; op >= 0; op--) {
+    ioff -= fused->op_num_inputs[op];
+    woff -= fused->op_num_weights[op];
+    ooff -= fused->op_num_outputs[op];
+    for (int i = 0; i < fused->op_num_inputs[op]; i++) {
+        int my_off = fused->op_input_idx[i + ioff];
+        if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
+        // my_id[i] = input_domain[my_off];
+        // my_ip[i] = input_ptr[my_off];
+        my_input_accessor[i] = input_accessor[my_off];
+        // my_grad_id[i] = input_grad_domain[my_off];
+        // my_grad_ip[i] = input_grad_ptr[my_off];
+        my_input_grad_accessor[i] = input_grad_accessor[my_off];
+        assert(my_input_grad_accessor[i].shape == my_input_accessor[i].shape);
+      } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
+        // my_id[i] = output_domain[my_off];
+        // my_ip[i] = output_ptr[my_off];
+        my_input_accessor[i] = output_accessor[my_off];
+        // my_grad_id[i] = output_grad_domain[my_off];
+        // my_grad_ip[i] = output_grad_ptr[my_off];
+        my_input_grad_accessor[i] = output_grad_accessor[my_off];
+        assert(my_input_grad_accessor[i].shape == my_input_accessor[i].shape);
+      } else {
+        assert(false);
+      }
+    }
+
+    for (int i = 0; i < fused->op_num_weights[op]; i++) {
+      assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
+      // my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
+      // my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
+      my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
+      // my_grad_wd[i] = weight_grad_domain[fused->op_weight_idx[i + woff]];
+      // my_grad_wp[i] = weight_grad_ptr[fused->op_weight_idx[i + woff]];
+      my_weight_grad_accessor[i] =
+          weight_grad_accessor[fused->op_weight_idx[i + woff]];
+      assert(my_weight_grad_accessor[i].shape.get_volume() ==
+             my_weight_accessor[i].shape.get_volume());
+    }
+    for (int i = 0; i < fused->op_num_outputs[op]; i++) {
+      assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
+      // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
+      // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
+      my_output_accessor[i] = output_accessor[fused->op_output_idx[i + ooff]];
+      // my_grad_od[i] = output_grad_domain[fused->op_output_idx[i + ooff]];
+      // my_grad_op[i] = output_grad_ptr[fused->op_output_idx[i + ooff]];
+      my_output_grad_accessor[i] =
+          output_grad_accessor[fused->op_output_idx[i + ooff]];
+      assert(my_output_grad_accessor[i].shape == my_output_accessor[i].shape);
+    }
+
+    switch (fused->op_op_type[op]) {
+      
+      case Op::BATCHMATMUL: {
+        assert(fused->op_num_inputs[op] == 2);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+
+        auto out_shape = my_output_accessor[0].shape;
+        auto a_shape = my_input_accessor[0].shape;
+        auto b_shape = my_input_accessor[1].shape;
+
+        int m = b_shape.at(ff_dim_t(0)) + 1;
+        assert(m == out_shape.at(ff_dim_t(0)) + 1);
+
+        int n = a_shape.at(ff_dim_t(1)) + 1;
+        assert(n == out_shape.at(ff_dim_t(1)) + 1);
+        int k = a_shape.at(ff_dim_t(0)) + 1;
+        assert(k == b_shape.at(ff_dim_t(1)) + 1);
+        assert(a_shape.get_dim() == b_shape.get_dim());
+        assert(a_shape.get_dim() == out_shape.get_dim());
+        int batch = 1;
+        for (int i = 2; i < a_shape.get_dim(); i++) {
+          int dim_size = a_shape.at(ff_dim_t(i)) + 1;
+          assert(a_shape.at(ff_dim_t(i)) == b_shape.at(ff_dim_t(i)));
+          assert(a_shape.at(ff_dim_t(i)) == out_shape.at(ff_dim_t(i)));
+          batch *= dim_size;
+        }
+
+        BatchMatmulPerDeviceState state =
+            mpack::get<BatchMatmulPerDeviceState>(state.all_device);
+
+        Kernels::BatchMatmul::backward_kernel(
+                                state,
+                                my_output_accessor[0].get_float_ptr(),
+                                my_output_grad_accessor[0].get_float_ptr(),
+                                my_input_accessor[0].get_float_ptr(),
+                                my_input_grad_accessor[0].get_float_ptr(),
+                                my_input_accessor[1].get_float_ptr(),
+                                my_input_grad_accessor[1].get_float_ptr(),
+                                m,
+                                n,
+                                k,
+                                batch);
+        break;
+      }
+
+    }
+
+
+
+ 
 }
 
 static void backward_task(Task const *task,
