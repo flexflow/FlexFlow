@@ -97,14 +97,14 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
 
     int proj_size = qkv_index == 0 ? qProjSize : kProjSize;
 
-    int head_idx = (in_token_idx - qkv_index * num_q_heads * proj_size) / proj_size;
+    int head_idx =
+        (in_token_idx - qkv_index * num_q_heads * proj_size) / proj_size;
     int global_head_idx = head_idx + shard_id * num_q_heads;
 
-    size_t pre_length = qkv_index == 0 ? 0 : (qkv_index == 1 ? hidden_size : hidden_size * 2);
-    
+    size_t pre_length =
+        qkv_index == 0 ? 0 : (qkv_index == 1 ? hidden_size : hidden_size * 2);
+
     size_t bias_idx = pre_length + global_head_idx * proj_size + i % proj_size;
-
-
 
     // int qkv_index = i < num_tokens * qProjSize * num_q_heads
     //                     ? 0
@@ -123,7 +123,8 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
     // } else {
 
     //   int idx =
-    //       qkv_index == 1 ? i - q_block_size : i - q_block_size - k_block_size;
+    //       qkv_index == 1 ? i - q_block_size : i - q_block_size -
+    //       k_block_size;
     //   int pre_length = qkv_index == 1 ? qProjSize * global_num_q_heads
     //                                   : qProjSize * global_num_q_heads +
     //                                         kProjSize * global_num_kv_heads;
@@ -282,9 +283,9 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // Weights: qSize x qProjSize x 3 x num_q_heads
   // Input: qSize x num_tokens
   // Output >>> qProjSize x num_tokens x 3 x num_q_heads
-  int m_q = m->qSize;
-  int m_k = m->kSize;
-  int m_v = m->vSize;
+  int m_q = m->qProjSize * m->num_q_heads;
+  int m_k = m->kProjSize * m->num_q_heads;
+  int m_v = m->vProjSize * m->num_q_heads;
   assert(m_q == m_k && m_k == m_v); // keep things simple for now
   int n = bc->num_active_tokens();
   int k = m->qSize;
@@ -334,7 +335,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                     m->num_kv_heads,
                                     *m->scaling_query,
                                     m->scaling_factor,
-                                    m->qSize);
+                                    m->num_q_heads * m->qProjSize);
   } else if (m->scaling_query) {
     scaling_query_kernel<<<GET_BLOCKS(parallelism),
                            min(CUDA_NUM_THREADS, parallelism),
@@ -344,7 +345,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                      m->num_q_heads,
                                      m->qProjSize,
                                      m->scaling_factor,
-                                     m->qSize);
+                                     m->num_q_heads * m->qProjSize);
   }
   if (*m->apply_rotary_embedding) {
     /*q&k*/
@@ -365,7 +366,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                           q_block_size,
                                           k_block_size,
                                           q_array_size,
-                                          m->qSize);
+                                          m->num_q_heads * m->qProjSize);
   }
 }
 
