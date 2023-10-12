@@ -66,7 +66,7 @@ OpTaskInvocation init(FusedOpAttrs const &attrs) {
 
   binding.bind_arg(ATTRS, attrs);
 
-  return {FUSEDOP_INIT_TASK_ID, binding};
+  return {FUSEDOp::INIT_TASK_ID, binding};
 }
 
 static DeviceSpecific<FusedPerDeviceOpState>
@@ -90,14 +90,14 @@ static DeviceSpecific<FusedPerDeviceOpState>
 }
 
 template <>
-void register_task<FUSEDOP_INIT_TASK_ID>() {
+void register_task<FUSEDOp::INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<FusedOpAttrs>(ATTRS);
 
   init.add_return_value<FusedPerDeviceOpState>();
 
-  register_task(FUSEDOP_INIT_TASK_ID, "fused_init", init, init_task);
+  register_task(FUSEDOp::INIT_TASK_ID, "fused_init", init, init_task);
 }
 
 OpTaskInvocation forward(FusedOpAttrs const &attrs) {
@@ -113,13 +113,13 @@ OpTaskInvocation forward(FusedOpAttrs const &attrs) {
 
   // TODO(lambda) how to bind input, output, weights, all are std::vector
 
-  return {FUSEDOP_FWD_TASK_ID, binding};
+  return {FUSEDOp::FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(FusedOpAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {FUSEDOP_BWD_TASK_ID, b};
+  return {FUSEDOp::BWD_TASK_ID, b};
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -326,12 +326,12 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         break;
       }
 
-      case OP_EW_ADD:
-      case OP_EW_SUB:
-      case OP_EW_MUL:
-      case OP_EW_DIV:
-      case OP_EW_MAX:
-      case OP_EW_MIN: {
+      case Op::EW_ADD:
+      case Op::EW_SUB:
+      case Op::EW_MUL:
+      case Op::EW_DIV:
+      case Op::EW_MAX:
+      case Op::EW_MIN: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -350,7 +350,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         break;
       }
 
-      case OP_EMBEDDING: {
+      case Op::EMBEDDING: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
@@ -408,10 +408,10 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         break;
       }
 
-      case OP_RELU:
-      case OP_SIGMOID:
-      case OP_TANH:
-      case OP_ELU: {
+      case Op::RELU:
+      case Op::SIGMOID:
+      case Op::TANH:
+      case Op::ELU: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -426,7 +426,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         break;
       }
 
-      case OP_POOL2D: {
+      case Op::POOL2D: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -441,7 +441,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         break;
       }
 
-      case OP_FLAT: {
+      case Op::FLAT: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -455,7 +455,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         break;
       }
 
-      case OP_RESHAPE: {
+      case Op::RESHAPE: {
 
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
@@ -471,7 +471,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
         break;
       }
 
-      case OP_TRANSPOSE: {
+      case Op::TRANSPOSE: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -522,7 +522,6 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   // these maybe exist problems
   assert(state.numOperators == fused->numOperators);
 
-
   GenericTensorAccessorR input_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorW input_grad_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorR weight_accessor[MAX_NUM_WEIGHTS];
@@ -534,55 +533,55 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto weights = acc.get_tensor_vector < Permission::RO >> (WEIGHT);
   auto outputs = acc.get_tensor_vector < Permission::RO >> (OUTPUT);
 
-  auoto input_grads = acc.get_tensor_vector_grad< Permission::RW >> (INPUT);
-  auto weight_grads = acc.get_tensor_vector_grad< Permission::RW >> (WEIGHT);
-  auto output_grads = acc.get_tensor_vector_grad< Permission::RW >> (OUTPUT);
+  auoto input_grads = acc.get_tensor_vector_grad < Permission::RW >> (INPUT);
+  auto weight_grads = acc.get_tensor_vector_grad < Permission::RW >> (WEIGHT);
+  auto output_grads = acc.get_tensor_vector_grad < Permission::RW >> (OUTPUT);
 
   int roff = 0;
 
   assert(fused->numInputs <= MAX_NUM_INPUTS);
 
-  for(int i = 0; i < fused->numInputs; i++) {
+  for (int i = 0; i < fused->numInputs; i++) {
     input_accessor[i] = inputs[i];
   }
 
   roff += fused->numInputs;
   assert(fused->numWeights <= MAX_NUM_WEIGHTS);
 
-  for(int i = 0; i < fused->numWeights; i++) {
+  for (int i = 0; i < fused->numWeights; i++) {
     weight_accessor[i] = weights[i];
   }
 
   roff += fused->numWeights;
   assert(fused->numOutputs <= MAX_NUM_OUTPUTS);
 
-  for(int i = 0; i < fused->numOutputs; i++) {
+  for (int i = 0; i < fused->numOutputs; i++) {
     output_accessor[i] = outputs[i];
   }
-  
+
   roff += fused->numOutputs;
 
-  for(int i =0; i < fused->numInputs; i++) {
+  for (int i = 0; i < fused->numInputs; i++) {
     input_grad_accessor[i] = input_grads[i];
     assert(input_grad_accessor[i].shape == input_accessor[i].shape);
   }
 
   roff += fused->numInputs;
-  for(int i =0; i < fused->numWeights; i++) {
+  for (int i = 0; i < fused->numWeights; i++) {
     weight_grad_accessor[i] = weight_grads[i];
-    assert(weight_grad_accessor[i].shape.get_volume() == weight_accessor[i].shape.get_volume());
+    assert(weight_grad_accessor[i].shape.get_volume() ==
+           weight_accessor[i].shape.get_volume());
   }
 
   roff += fused->numWeights;
 
-  for(int i =0; i < fused->numOutputs; i++) {
+  for (int i = 0; i < fused->numOutputs; i++) {
     output_grad_accessor[i] = output_grads[i];
     assert(output_grad_accessor[i].shape == output_accessor[i].shape);
   }
 
   roff += fused->numOutputs;
   // Assert that all meta share the same dnn/blas handler
-  
 
   int ioff = 0, woff = 0, ooff = 0;
   GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
@@ -604,8 +603,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
     woff -= fused->op_num_weights[op];
     ooff -= fused->op_num_outputs[op];
     for (int i = 0; i < fused->op_num_inputs[op]; i++) {
-        int my_off = fused->op_input_idx[i + ioff];
-        if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
+      int my_off = fused->op_input_idx[i + ioff];
+      if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
         // my_id[i] = input_domain[my_off];
         // my_ip[i] = input_ptr[my_off];
         my_input_accessor[i] = input_accessor[my_off];
@@ -651,7 +650,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
     }
 
     switch (fused->op_op_type[op]) {
-      
+
       case Op::BATCHMATMUL: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
@@ -682,25 +681,321 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
             mpack::get<BatchMatmulPerDeviceState>(state.all_device);
 
         Kernels::BatchMatmul::backward_kernel(
-                                state,
-                                my_output_accessor[0].get_float_ptr(),
-                                my_output_grad_accessor[0].get_float_ptr(),
-                                my_input_accessor[0].get_float_ptr(),
-                                my_input_grad_accessor[0].get_float_ptr(),
-                                my_input_accessor[1].get_float_ptr(),
-                                my_input_grad_accessor[1].get_float_ptr(),
-                                m,
-                                n,
-                                k,
-                                batch);
+            state,
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_input_accessor[1].get_float_ptr(),
+            my_input_grad_accessor[1].get_float_ptr(),
+            m,
+            n,
+            k,
+            batch);
         break;
       }
 
+      case Op::BATCHNORM: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_accessor[0].shape.get_dim() == 5);
+        assert(my_weight_accessor[0].shape.get_dim() == 2);
+        assert(my_weight_accessor[1].shape.get_dim() == 2);
+        assert(my_output_accessor[0].shape.get_dim() == 5);
+
+        BatchNormPerDeviceState m =
+            mpack::get<BatchNormPerDeviceState>(state.all_device);
+
+        Kernels::BatchNorm::backward_kernel(
+            state,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[1].get_float_ptr(),
+            my_output_accessor[0].shape.get_volume());
+        break;
+      }
+
+      case Op::CONCAT: {
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+
+        ConcatPerDeviceState m =
+            mpack::get<ConcatPerDeviceState>(state.all_device);
+
+        int num_inputs = fused->op_num_inputs[op];
+        Kernels::Concat::backward_kernel(state,
+                                         my_output_grad_accessor[0],
+                                         my_input_grad_accessor,
+                                         num_inputs);
+        // todo: this may have some problems
+        /*
+        void backward_kernel(ffStream_t stream,
+               ConcatPerDeviceState const *m,
+               GenericTensorAccessorR const &output_grad,
+               GenericTensorAccessorW const *input_grads,
+               int num_inputs);
+        */
+        break;
+      }
+
+      case Op::CONV2D: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_accessor[0].shape.get_dim() == 5);
+        assert(my_weight_accessor[0].shape.get_dim() == 5);
+        assert(my_output_accessor[0].shape.get_dim() == 5);
+
+        Conv2dPerDeviceState state =
+            mpack::get<Conv2dPerDeviceState>(state.all_device);
+
+        Kernels::Conv2D::backward_kernel(
+            state,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[1].get_float_ptr());
+        // todo: how to handle the optional<Activation> activation
+        /*
+        void backward_kernel(ffStream_t stream,
+                   Conv2DPerDeviceState const &m,
+                   float const *input_ptr,
+                   float *input_grad_ptr,
+                   float const *output_ptr,
+                   float *output_grad_ptr,
+                   float const *filter_ptr,
+                   float *filter_grad_ptr,
+                   float *bias_grad_ptr,
+                   optional<Activation> activation);
+        */
+        break;
+      }
+
+      case Op::DROPOUT: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+
+        DropoutPerDeviceState state =
+            mpack::get<DropoutPerDeviceState>(state.all_device);
+
+        Kernels::Dropout::backward_kernel(
+            state,
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr());
+
+        break;
+      }
+
+      case Op::EW_ADD:
+      case Op::EW_SUB:
+      case Op::EW_MUL:
+      case Op::EW_DIV:
+      case Op::EW_MAX:
+      case Op::EW_MIN: {
+        assert(fused->op_num_inputs[op] == 2);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_accessor[0].shape == my_input_accessor[1].shape);
+        assert(my_input_accessor[0].shape == my_output_accessor[0].shape);
+
+        ElementBinaryPerDeviceState state =
+            mpack::get<ElementBinaryPerDeviceState>(state.all_device);
+
+        Kernels::ElementBinary::backward_kernel(
+            state,
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_accessor[0].get_float_ptr(),
+            my_input_accessor[1].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[1].get_float_ptr());
+        break;
+      }
+
+      case Op::EMBEDDING: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+
+        EmbeddingPerDeviceState state =
+            mpack::get<EmbeddingPerDeviceState>(state.all_device);
+
+        int in_dim, out_dim, effective_batch_size;
+        if (state.aggr == AGGR_MODE_NONE) {
+          in_dim = 1;
+          out_dim = my_output_grad_accessor[0].at(ff_dim_t(0)) + 1;
+          effective_batch_size =
+              my_output_grad_accessor[0].shape.get_volume() / out_dim;
+          assert(effective_batch_size * in_dim ==
+                 my_input_accessor[0].shape.get_volume());
+        } else {
+          in_dim = my_input_accessor[0].shape.at(ff_dim_t(0)) + 1;
+          out_dim = my_output_grad_accessor[0].at(ff_dim_t(0)) + 1;
+          effective_batch_size =
+              my_input_accessor[0].shape.get_volume() / in_dim;
+          assert(effective_batch_size * in_dim ==
+                 my_input_accessor[0].shape.get_volume());
+        }
+        // this may have some problems
+        // old code
+        /*
+        Kernels::Embedding::backward_kernel(m,
+                                    my_input_accessor[0],
+                                    my_output_grad_accessor[0],
+                                    my_weight_grad_accessor[0],
+                                    in_dim,
+                                    out_dim,
+                                    effective_batch_size);
+        but the definition of kernel
+        void backward_kernel(ffStream_t stream,
+                     EmbeddingPerDeviceState const *m,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorR const &output,
+                     GenericTensorAccessorW const &weight_grad,
+                     int in_dim,
+                     int out_dim,
+                     int batch_size);
+        */
+        Kernels::Embedding::backward_kernel(state,
+                                            my_input_accessor[0],
+                                            my_output_accessor[0],
+                                            my_weight_grad_accessor[0],
+                                            in_dim,
+                                            out_dim,
+                                            effective_batch_size);
+        break;
+      }
+
+      case Op::LINEAR: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        auto kernel_shape = my_weight_accessor[0].shape;
+        int in_dim = kernel_shape.at(ff_dim_t(0)) + 1;
+        int out_dim = kernel_shape.at(ff_dim_t(1)) + 1;
+        int batch_size = my_input_accessor[0].shape.get_volume() / in_dim;
+        assert(batch_size * in_dim == my_input_accessor[0].shape.get_volume());
+        assert(batch_size * out_dim ==
+               my_output_accessor[0].shape.get_volume());
+        float *bias_grad_ptr = nullptr;
+        if (fused->op_num_weights[op] == 2) {
+          assert(my_weight_accessor[1].shape.get_volume() == out_dim);
+          bias_grad_ptr = my_weight_grad_accessor[1].get_float_ptr();
+        } else {
+          assert(fused->op_num_weights[op] == 1);
+        }
+
+        LinearPerDeviceState state =
+            mpack::get<LinearPerDeviceState>(state.all_device);
+
+        Kernels::Linear::backward_kernel(
+            state,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[0].get_float_ptr(),
+            bias_grad_ptr,
+            in_dim,
+            out_dim,
+            batch_size);
+        break;
+      }
+
+      case Op::RELU:
+      case Op::SIGMOID:
+      case Op::TANH:
+      case Op::ELU: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_accessor[0].shape == my_output_accessor[0].shape);
+
+        ElementUnaryPerDeviceState state =
+            mpack::get<ElementUnaryPerDeviceState>(state.all_device);
+
+        Kernels::ElementUnary::backward_kernel(
+            state,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr());
+        break;
+      }
+
+      case Op::POOL2D: {
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+
+        Pool2DPerDeviceState state =
+            mpack::get<Pool2DPerDeviceState>(state.all_device);
+
+        Kernels::Pool2D::backward_kernel(
+            state,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr());
+        break;
+      }
+
+      case Op::FLAT: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_grad_accessor[0].shape.get_volume() ==
+               my_output_grad_accessor[0].shape.get_volume());
+        Kernels::Flat::backward_kernel(
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].shape.get_volume());
+        break;
+      }
+
+      case Op::RESHAPE: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_grad_accessor[0].shape.get_volume() ==
+               my_output_grad_accessor[0].shape.get_volume());
+        ReshapePerDeviceState state =
+            mpack::get<ReshapePerDeviceState>(state.all_device);
+        Kernels::Reshape::backward_kernel(
+            state,
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr());
+        break;
+      }
+
+      case Op::TRANSPOSE: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_input_grad_accessor[0].shape.get_volume() ==
+               my_output_grad_accessor[0].shape.get_volume());
+        TransposePerDeviceState state =
+            mpack::get<TransposePerDeviceState>(state.all_device);
+
+        Kernels::Transpose::backward_kernel(
+            state,
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].shape,
+            my_output_grad_accessor[0].shape);
+        break;
+      }
+      default:
+        assert(false && "Fusion currently does not support type");
     }
-
-
-
- 
+  }
+  assert(ioff == 0);
+  assert(woff == 0);
+  assert(ooff == 0);
 }
 
 static void backward_task(Task const *task,
@@ -712,7 +1007,7 @@ static void backward_task(Task const *task,
 }
 
 template <>
-void register_task<FUSEDOP_FWD_TASK_ID>() {
+void register_task<FUSEDOp::FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -721,15 +1016,15 @@ void register_task<FUSEDOP_FWD_TASK_ID>() {
 
   fwd.add_arg_slot<FusedPerDeviceOpState>(PER_DEVICE_STATE);
 
-  register_task(FUSEDOP_FWD_TASK_ID, "fused_fwd", fwd, forward_task);
+  register_task(FUSEDOp::FWD_TASK_ID, "fused_fwd", fwd, forward_task);
 }
 
 template <>
-void register_task<FUSEDOP_BWD_TASK_ID>() {
+void register_task<FUSEDOp::BWD_TASK_ID>() {
   OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(FUSEDOP_FWD_TASK_ID));
+      infer_bwd_signature(get_op_signature(FUSEDOp::FWD_TASK_ID));
 
-  register_task(FUSEDOP_BWD_TASK_ID, "fused_bwd", bwd, backward_task);
+  register_task(FUSEDOp::BWD_TASK_ID, "fused_bwd", bwd, backward_task);
 }
 
 }; // namespace FlexFlow
