@@ -440,8 +440,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         if (!output_filepath.empty()) {
           std::ofstream outputFile(output_filepath, std::ios::app);
           if (outputFile.is_open()) {
-            outputFile << "[" << request.guid
-                       << "] end-to-end latency: " << std::fixed
+            outputFile << "end-to-end latency: " << std::fixed
                        << std::setprecision(3) << total_request_run_time
                        << std::endl;
             outputFile << "num decoding steps: " << profile_info.decoding_steps
@@ -455,8 +454,6 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             }
             outputFile << std::endl;
             outputFile << output << std::endl;
-
-            outputFile << "\n\n\n";
             outputFile.close();
           } else {
             std::cout << "Unable to open the output file: " << output_filepath
@@ -656,8 +653,7 @@ BeamSearchBatchConfig
         if (!output_filepath.empty()) {
           std::ofstream outputFile(output_filepath, std::ios::app);
           if (outputFile.is_open()) {
-            outputFile << "[" << request.guid
-                       << "] end-to-end latency: " << std::fixed
+            outputFile << "end-to-end latency: " << std::fixed
                        << std::setprecision(3) << total_request_run_time
                        << std::endl;
             outputFile << "num decoding steps: " << profile_info.decoding_steps
@@ -671,8 +667,7 @@ BeamSearchBatchConfig
             }
             outputFile << std::endl;
             outputFile << output << std::endl;
-
-            outputFile << "\n\n\n";
+            
             outputFile.close();
           } else {
             std::cout << "Unable to open the output file: " << output_filepath
