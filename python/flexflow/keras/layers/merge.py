@@ -102,6 +102,16 @@ class Add(_Merge):
     assert len(input_tensors) == 2, "check input_tensors"   
     self.input_shape = input_tensors[0].batch_shape
     self.output_shape = input_tensors[0].batch_shape
+    self.output_shape = list(input_tensors[0].batch_shape)
+    for i, d in enumerate(input_tensors[1].batch_shape):
+      if self.output_shape[i] != d:
+        if self.output_shape[i] == 1 or d == 1:
+          self.output_shape[i] *= d
+        else:
+          raise AssertionError(
+            f"Tensor with shape {input_tensors[0].batch_shape} and "
+            f"{input_tensors[1].batch_shape} cannot be added")
+    self.output_shape = tuple(self.output_shape)
     fflogger.debug("add output %s" %( str(self.output_shape)))
     
 def subtract(input_tensors):
@@ -115,6 +125,16 @@ class Subtract(_Merge):
     assert len(input_tensors) == 2, "check input_tensors"   
     self.input_shape = input_tensors[0].batch_shape
     self.output_shape = input_tensors[0].batch_shape
+    self.output_shape = list(input_tensors[0].batch_shape)
+    for i, d in enumerate(input_tensors[1].batch_shape):
+      if self.output_shape[i] != d:
+        if self.output_shape[i] == 1 or d == 1:
+          self.output_shape[i] *= d
+        else:
+          raise AssertionError(
+            f"Tensor with shape {input_tensors[0].batch_shape} and "
+            f"{input_tensors[1].batch_shape} cannot be subtracted")
+    self.output_shape = tuple(self.output_shape)
     fflogger.debug("subtract output %s" %( str(self.output_shape)))
 
 def multiply(input_tensors):
@@ -127,7 +147,16 @@ class Multiply(_Merge):
   def _calculate_inout_shape(self, input_tensors): 
     assert len(input_tensors) == 2, "check input_tensors"   
     self.input_shape = input_tensors[0].batch_shape
-    self.output_shape = input_tensors[0].batch_shape
+    self.output_shape = list(input_tensors[0].batch_shape)
+    for i, d in enumerate(input_tensors[1].batch_shape):
+      if self.output_shape[i] != d:
+        if self.output_shape[i] == 1 or d == 1:
+          self.output_shape[i] *= d
+        else:
+          raise AssertionError(
+            f"Tensor with shape {input_tensors[0].batch_shape} and "
+            f"{input_tensors[1].batch_shape} cannot be multiplied")
+    self.output_shape = tuple(self.output_shape)
     fflogger.debug("multiply output %s" %( str(self.output_shape)))
 
 class Maximum(_Merge):
