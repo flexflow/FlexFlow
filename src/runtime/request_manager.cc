@@ -440,7 +440,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         if (!output_filepath.empty()) {
           std::ofstream outputFile(output_filepath, std::ios::app);
           if (outputFile.is_open()) {
-            outputFile << "[" << request.guid << "] end-to-end latency: " << std::fixed
+            outputFile << "[" << request.guid
+                       << "] end-to-end latency: " << std::fixed
                        << std::setprecision(3) << total_request_run_time
                        << std::endl;
             outputFile << "num decoding steps: " << profile_info.decoding_steps
@@ -655,7 +656,8 @@ BeamSearchBatchConfig
         if (!output_filepath.empty()) {
           std::ofstream outputFile(output_filepath, std::ios::app);
           if (outputFile.is_open()) {
-            outputFile << "[" << request.guid << "] end-to-end latency: " << std::fixed
+            outputFile << "[" << request.guid
+                       << "] end-to-end latency: " << std::fixed
                        << std::setprecision(3) << total_request_run_time
                        << std::endl;
             outputFile << "num decoding steps: " << profile_info.decoding_steps
@@ -1098,8 +1100,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
     std::vector<BeamSearchBatchConfig> const &old_batches) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
 
-  std::cout
-      << "\n############### prepare_next_batch_verify ###############\n";
+  std::cout << "\n############### prepare_next_batch_verify ###############\n";
 
   assert(old_batches.size() > 0);
 
@@ -1295,7 +1296,9 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           break;
         }
 
-        if (new_bc.requestsInfo[i].num_tokens_in_batch + request.llm_cache_size >= request.initial_len) {
+        if (new_bc.requestsInfo[i].num_tokens_in_batch +
+                request.llm_cache_size >=
+            request.initial_len) {
           // launch the request into running phase after loading all prompt
           request.status = Request::RUNNING;
           new_bc.request_running[i] = true;
