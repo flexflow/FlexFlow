@@ -29,9 +29,7 @@ void FALCON::create_falcon_model(FFModel &ff,
   falcon_config.print();
 
   if (ff.config.tensor_parallelism_degree > falcon_config.n_head ||
-      falcon_config.n_head % ff.config.tensor_parallelism_degree != 0 ||
-      ff.config.tensor_parallelism_degree > falcon_config.n_head_kv ||
-      falcon_config.n_head_kv % ff.config.tensor_parallelism_degree != 0) {
+      falcon_config.n_head % ff.config.tensor_parallelism_degree != 0) {
     assert(false && "The number of attention heads is smaller, or it is not "
                     "divisible by the tensor parallelism degree");
   }
