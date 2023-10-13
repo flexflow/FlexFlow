@@ -101,7 +101,6 @@ class Add(_Merge):
   def _calculate_inout_shape(self, input_tensors):    
     assert len(input_tensors) == 2, "check input_tensors"   
     self.input_shape = input_tensors[0].batch_shape
-    self.output_shape = input_tensors[0].batch_shape
     self.output_shape = list(input_tensors[0].batch_shape)
     for i, d in enumerate(input_tensors[1].batch_shape):
       if self.output_shape[i] != d:
@@ -124,7 +123,6 @@ class Subtract(_Merge):
   def _calculate_inout_shape(self, input_tensors): 
     assert len(input_tensors) == 2, "check input_tensors"   
     self.input_shape = input_tensors[0].batch_shape
-    self.output_shape = input_tensors[0].batch_shape
     self.output_shape = list(input_tensors[0].batch_shape)
     for i, d in enumerate(input_tensors[1].batch_shape):
       if self.output_shape[i] != d:
