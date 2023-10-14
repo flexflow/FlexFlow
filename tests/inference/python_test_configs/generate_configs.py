@@ -49,7 +49,7 @@ ff_init_configs.update(llm_configs)
 # Test parameters to fill in
 llama_models = ["decapoda-research/llama-7b-hf", "JackFram/llama-160m-base"]
 opt_models = ["facebook/opt-6.7b", "facebook/opt-125m"]
-# falcon_models = ["tiiuae/falcon-7b",]
+falcon_models = ["tiiuae/falcon-7b",]
 mpt_models = ["mosaicml/mpt-7b", ]
 # starcoder_models = ["bigcode/starcoderbase-7b",]
 parallelism_settings = [(1,4), (2,2), (4,1)]
@@ -65,7 +65,7 @@ os.chdir(dname)
 
 
 # Generate incremental decoding configs
-all_models = llama_models + opt_models + mpt_models
+all_models = llama_models + opt_models + falcon_models + mpt_models
 for model_name in all_models:
     for full_precision in (True, False):
         for parallelism_degrees in parallelism_settings:
@@ -73,10 +73,13 @@ for model_name in all_models:
             tp, pp = parallelism_degrees
 
             # Tensor parallelism not supported by small Falcon model atm
-            if tp > 1 and ("falcon" in model_name or "starcoder" in model_name):
+            if tp > 1 and ("falcon" in model_name):
                 continue
             # skip tp=4 for big models
             if tp > 2 and ("7b" in model_name or "6.7b" in model_name):
+                continue
+
+            if full_precision and ("falcon" in model_name or "starcoder" in model_name):
                 continue
             
             _, after_slash = model_name.rsplit("/", maxsplit=1)
