@@ -259,7 +259,8 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       int m_ = num_new_tokens;
       int n = total_tokens;
       int k = m->qProjSize;
-      int lda = k * m->num_q_heads * 3, ldb = k * m->num_q_heads, ldc = m_;
+      int lda = k * m->num_q_heads * QKV_WEIGHT_NUM, ldb = k * m->num_q_heads,
+          ldc = m_;
       int strideA = q_block_size;
       int strideB = kt_block_size;
       int strideC = num_new_tokens * total_tokens;

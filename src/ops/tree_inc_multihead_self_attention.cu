@@ -52,8 +52,8 @@ __global__ void commit_tokens_kernel(
     int offset = i % hidden_size;
     assert(token_idx_in_last_batch < num_active_tokens_in_last_batch);
 
-    size_t val_idx =
-        token_idx_in_last_batch * 3 * hidden_size + hidden_size + offset;
+    size_t val_idx = token_idx_in_last_batch * QKV_WEIGHT_NUM * hidden_size +
+                     hidden_size + offset;
 
     DT kVal = devQKVProjArray[val_idx];
     DT vVal = devQKVProjArray[val_idx + hidden_size];
@@ -113,7 +113,8 @@ __global__ void update_tree_branch_kv_cache(
     int offset = i % hidden_size;
 
     token_idx += processed_tokens_in_batch; // get index in the whole batch
-    size_t val_idx = token_idx * 3 * hidden_size + hidden_size + offset;
+    size_t val_idx =
+        token_idx * QKV_WEIGHT_NUM * hidden_size + hidden_size + offset;
 
     DT kVal = devQKVProjArray[val_idx];
     DT vVal = devQKVProjArray[val_idx + hidden_size];
@@ -220,7 +221,8 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       int m_ = num_new_tokens;
       int n = total_tokens_in_request;
       int k = m->qProjSize;
-      int lda = k * m->num_q_heads * 3, ldb = k * m->num_q_heads, ldc = m_;
+      int lda = k * m->num_q_heads * QKV_WEIGHT_NUM, ldb = k * m->num_q_heads,
+          ldc = m_;
       int strideA = q_block_size;
       int strideB = kt_block_size;
       int strideC = num_new_tokens * total_tokens_in_request;
@@ -231,9 +233,9 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
         alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
       }
       // To get A, skip over Q entries from previous requests (same head)
-      DT const *A =
-          static_cast<DT *>(m->devQKVProjArray) +
-          processed_tokens_in_batch * m->qProjSize * m->num_q_heads * 3;
+      DT const *A = static_cast<DT *>(m->devQKVProjArray) +
+                    processed_tokens_in_batch * m->qProjSize * m->num_q_heads *
+                        QKV_WEIGHT_NUM;
       // To get B, skip over K entries from previous requests (all heads +
       // padding)
       DT const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
