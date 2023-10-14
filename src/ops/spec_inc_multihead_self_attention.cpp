@@ -43,7 +43,7 @@ __global__ void spec_store_kv_cache(
     int qProjSize,
     int kProjSize,
     int vProjSize,
-    int num_kv_heads,
+    int num_tokens,
     int max_seq_len,
     int max_beam_width,
     bool is_root,

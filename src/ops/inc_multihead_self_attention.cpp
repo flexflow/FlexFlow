@@ -118,7 +118,8 @@ __global__ void scaling_query_kernel(DT *input_ptr,
                                      int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
     int token_idx = i / hidden_size;
-    input_ptr[i + token_idx * hidden_size * QKV_WEIGHT_NUM] *= scaling_factor;
+    input_ptr[i % hidden_size + token_idx * hidden_size * QKV_WEIGHT_NUM] *=
+        scaling_factor;
   }
 }
 
@@ -274,25 +275,25 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   int k = m->qSize;
   int m_ = m_q * QKV_WEIGHT_NUM;
   int lda = k, ldb = k, ldc = m_;
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_N,
-                         m_,
-                         n,
-                         k,
-                         &alpha,
-                         weight_ptr,
-                         cublas_data_type,
-                         lda,
-                         input_ptr,
-                         cublas_data_type,
-                         ldb,
-                         &beta,
-                         output_ptr,
-                         cublas_data_type,
-                         ldc,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  checkCUDA(hipblasGemmEx(m->handle.blas,
+                          HIPBLAS_OP_T,
+                          HIPBLAS_OP_N,
+                          m_,
+                          n,
+                          k,
+                          &alpha,
+                          weight_ptr,
+                          hipblas_data_type,
+                          lda,
+                          input_ptr,
+                          hipblas_data_type,
+                          ldb,
+                          &beta,
+                          output_ptr,
+                          hipblas_data_type,
+                          ldc,
+                          compute_type,
+                          HIPBLAS_GEMM_DEFAULT));
 
   // apply rotary emmmbedding for q and k
   // step1 change the k, v to complex tensor

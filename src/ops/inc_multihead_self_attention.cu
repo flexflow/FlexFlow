@@ -121,7 +121,8 @@ __global__ void scaling_query_kernel(DT *input_ptr,
                                      int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
     int token_idx = i / hidden_size;
-    input_ptr[i + token_idx * hidden_size * QKV_WEIGHT_NUM] *= scaling_factor;
+    input_ptr[i % hidden_size + token_idx * hidden_size * QKV_WEIGHT_NUM] *=
+        scaling_factor;
   }
 }
 
@@ -281,21 +282,21 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   size_t q_array_size = m->qProjSize * num_tokens * m->num_q_heads;
   // apply bias for q, k, v
   if (*m->qkv_bias) {
-    // apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
-    //                       min(CUDA_NUM_THREADS, parallelism),
-    //                       0,
-    //                       stream>>>(output_ptr,
-    //                                 bias_ptr,
-    //                                 shard_id,
-    //                                 num_tokens,
-    //                                 m->qProjSize,
-    //                                 m->kProjSize,
-    //                                 m->vProjSize,
-    //                                 m->global_num_q_heads,
-    //                                 m->num_q_heads,
-    //                                 *m->scaling_query,
-    //                                 m->scaling_factor,
-    //                                 m->hidden_size);
+    apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(output_ptr,
+                                    bias_ptr,
+                                    shard_id,
+                                    num_tokens,
+                                    m->qProjSize,
+                                    m->kProjSize,
+                                    m->vProjSize,
+                                    m->global_num_q_heads,
+                                    m->num_q_heads,
+                                    *m->scaling_query,
+                                    m->scaling_factor,
+                                    m->hidden_size);
   } else if (m->scaling_query) {
     scaling_query_kernel<<<GET_BLOCKS(parallelism),
                            min(CUDA_NUM_THREADS, parallelism),
