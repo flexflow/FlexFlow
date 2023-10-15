@@ -212,7 +212,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
             m->vProjSize,
             num_new_tokens,            // num_tokens_in_branch
             processed_tokens_in_batch, // num_processed_tokens_in_batch
-            m->num_active_infr_tokens,      // total_tokens_in_batch
+            m->num_active_infr_tokens, // total_tokens_in_batch
             BatchConfig::max_sequence_length(),
             m->hidden_size);
       }
