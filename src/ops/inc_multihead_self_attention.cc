@@ -154,8 +154,10 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
   int kParas = kProjSize * kSize;
   int vParas = vProjSize * vSize;
   int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-  int weight_size = qParas * num_q_heads + kParas * num_kv_heads +
-                    vParas * num_kv_heads + oParas * num_q_heads;
+
+  // allocate num_q_heads for key, value for replication
+  int weight_size = qParas * num_q_heads + kParas * num_q_heads +
+                    vParas * num_q_heads + oParas * num_q_heads;
   int one_head_size = qParas + kParas + vParas + oParas;
 
   {
@@ -177,7 +179,7 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
   if (qkv_bias || final_bias) {
     // q, k, v, o
     int qkv_bias_size =
-        qProjSize * num_q_heads + (kProjSize + vProjSize) * num_kv_heads;
+        qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
     int dims[1] = {(qkv_bias ? qkv_bias_size : 0) +
                    (final_bias ? oProjSize : 0)};
     li->weights[1] = create_weight_legion_ordering(1,
@@ -348,7 +350,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
     dims[1].size = this->num_q_heads * (qParas + oParas) +
-                   this->num_kv_heads * (kParas + vParas);
+                   this->num_q_heads * (kParas + vParas);
     dims[1].is_replica_dim = false;
 
     if (quantization_type != DT_NONE) {
@@ -369,7 +371,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     if (qkv_bias || final_bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
       int qkv_bias_size =
-          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_kv_heads;
+          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
       bias_shape.dims[0].size =
           (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
@@ -463,7 +465,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     dims[0].size = dims[0].degree;
     dims[1] = inputs[0]->dims[num_dims - 1];
     dims[1].size = this->num_q_heads * (qParas + oParas) +
-                   this->num_kv_heads * (kParas + vParas);
+                   this->num_q_heads * (kParas + vParas);
     dims[1].is_replica_dim = false;
     // dims[2].size = this->num_q_heads * (qParas + oParas) + this->num_kv_heads
     // * (kParas + vParas);
@@ -483,7 +485,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     if (qkv_bias || final_bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
       int qkv_bias_size =
-          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_kv_heads;
+          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
       bias_shape.dims[0].size =
           (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
