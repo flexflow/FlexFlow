@@ -26,6 +26,8 @@ public:
   StridedRectangle rect;
 };
 
+FF_VISITABLE_STRUCT(MachineView, start, rect);
+
 std::size_t num_dims(MachineView const &);
 std::size_t num_devices(MachineView const &);
 DeviceType get_device_type(MachineView const &);
@@ -42,8 +44,5 @@ MachineView make_1d_machine_view(device_id_t start,
 MachineView make_1d_machine_view(device_id_t start, size_t interval_size);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::MachineView, start, rect);
-MAKE_VISIT_HASHABLE(::FlexFlow::MachineView);
 
 #endif

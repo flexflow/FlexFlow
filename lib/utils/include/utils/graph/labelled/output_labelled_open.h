@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_LABELLED_OUTPUT_LABELLED_OPEN
 #define _FLEXFLOW_UTILS_GRAPH_LABELLED_OUTPUT_LABELLED_OPEN
 
-#include "node_labelled.h"
+#include "node_labelled_open.h"
 #include "utils/graph/adjacency_openmultidigraph.h"
 
 namespace FlexFlow {
@@ -59,6 +59,7 @@ public:
 protected:
   using NodeLabelledOpenMultiDiGraphView<
       NodeLabel>::NodeLabelledOpenMultiDiGraphView;
+  OutputLabelledOpenMultiDiGraphView(cow_ptr_t<Interface> ptr) : GraphView(ptr) {}
 
 private:
   cow_ptr_t<Interface> get_ptr() const {
@@ -70,7 +71,7 @@ private:
 template <typename NodeLabel, typename EdgeLabel>
 EdgeLabel at(OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> const &g,
              OpenMultiDiEdge const &e) {
-  return visit([&](auto const e) { return g.at(e); }, e);
+  return visit([&](auto const &e) { return g.at(e); }, e);
 }
 
 template <typename NodeLabel, typename EdgeLabel>
@@ -172,6 +173,11 @@ private:
   cow_ptr_t<IInputLabel> il;
   cow_ptr_t<IOutputLabel> ol;
 };
+
+template <typename NodeLabel, typename EdgeLabel>
+void add_label(OutputLabelledOpenMultiDiGraph<NodeLabel, EdgeLabel> &g, OpenMultiDiEdge const &e, EdgeLabel const &l) {
+  visit([&](const auto &e) { g.add_label(e, l); }, e);
+}
 
 } // namespace FlexFlow
 

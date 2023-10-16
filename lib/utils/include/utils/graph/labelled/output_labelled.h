@@ -15,6 +15,7 @@ struct IOutputLabelledMultiDiGraphView
       operator=(IOutputLabelledMultiDiGraphView const &) = delete;
 
   virtual OutputLabel const &at(MultiDiOutput const &) = 0;
+  using INodeLabelledMultiDiGraphView<NodeLabel>::at;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOutputLabelledMultiDiGraphView<int, int>);
 
@@ -119,10 +120,10 @@ public:
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return this->ptr->query_nodes(q);
+    return get_ptr()->query_nodes(q);
   }
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
-    return this->ptr->query_edges(q);
+    return get_ptr()->query_edges(q);
   }
 
   template <typename BaseImpl, typename N, typename O>

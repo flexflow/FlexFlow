@@ -8,6 +8,7 @@ namespace FlexFlow {
 
 template <typename NodeLabel>
 struct INodeLabelledMultiDiGraphView : virtual public IMultiDiGraphView {
+  INodeLabelledMultiDiGraphView() = default;
   INodeLabelledMultiDiGraphView(INodeLabelledMultiDiGraphView const &) = delete;
   INodeLabelledMultiDiGraphView &
       operator=(INodeLabelledMultiDiGraphView const &) = delete;

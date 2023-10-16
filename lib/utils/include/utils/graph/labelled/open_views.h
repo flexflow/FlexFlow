@@ -26,6 +26,10 @@ struct OutputLabelledOpenMultiDiSubgraphView
     return g.at(n);
   }
 
+  EdgeLabel const &at(InputMultiDiEdge const &i) const override {
+    return g.at(i);
+  }
+
   EdgeLabel const &at(MultiDiOutput const &o) const override {
     return g.at(o);
   }
@@ -39,10 +43,16 @@ struct OutputLabelledOpenMultiDiSubgraphView
     return SubgraphView(g, nodes).query_edges(q);
   }
 
+  OutputLabelledOpenMultiDiSubgraphView* clone() const override {
+    return new OutputLabelledOpenMultiDiSubgraphView(g, nodes);
+  }
+
 private:
   OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> const &g;
   std::unordered_set<Node> const &nodes;
 };
+
+// CHECK_NOT_ABSTRACT(OutputLabelledOpenMultiDiSubgraphView);
 
 } // namespace FlexFlow
 

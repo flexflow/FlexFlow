@@ -28,4 +28,12 @@ SubParallelComputationGraph
 
 } // namespace FlexFlow
 
+namespace std{
+template <>
+struct hash<FlexFlow::Substitution> {
+  size_t operator()(FlexFlow::Substitution const &) const;
+};
+
+};
+
 #endif

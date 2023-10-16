@@ -5,9 +5,11 @@
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph.h"
-#include "sub_parallel_computation_graph.h"
+#include "substitutions/sub_parallel_computation_graph.h"
 
 namespace FlexFlow {
+
+using SubParallelComputationGraphView = OutputLabelledOpenMultiDiGraphView<Operator, ParallelTensor>;
 
 struct MachineMapping {
   static MachineMapping combine(MachineMapping const &, MachineMapping const &);
@@ -20,14 +22,13 @@ FF_VISITABLE_STRUCT(MachineMapping, machine_views);
 
 struct OptimalCostState {
   SerialParallelDecomposition subgraph;
-  MachineSpecification resource;
-  req<optional<MachineView>> source_machine_view, sink_machine_view;
+  req<MachineSpecification> resource;
+  // req<std::unordered_map<Node, MachineView>> given_machine_views;
+  // req<std::unordered_map<OpenMultiDiEdge, MachineView>> frontier_machine_views;
 };
 FF_VISITABLE_STRUCT(OptimalCostState,
                     subgraph,
-                    resource,
-                    source_machine_view,
-                    sink_machine_view);
+                    resource);
 
 struct OptimalCostResult {
   static OptimalCostResult sequential_combine(OptimalCostResult const &s1,
@@ -37,7 +38,7 @@ struct OptimalCostResult {
   static OptimalCostResult infinity();
 
   float runtime;
-  MachineMapping machine_mapping;
+  req<MachineMapping> machine_mapping;
 };
 FF_VISITABLE_STRUCT(OptimalCostResult, runtime, machine_mapping);
 
@@ -66,5 +67,14 @@ OptimalCostResult
                  OptimalCostCache &cached_subgraph_costs);
 
 } // namespace FlexFlow
+
+namespace std {
+
+template <>
+struct hash<std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping>> {
+  size_t operator()(std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping> const &g) const;
+};
+
+};
 
 #endif

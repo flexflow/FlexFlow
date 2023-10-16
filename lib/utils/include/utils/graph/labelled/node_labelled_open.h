@@ -9,8 +9,8 @@ template <typename NodeLabel>
 struct INodeLabelledOpenMultiDiGraphView
     : virtual INodeLabelledMultiDiGraphView<NodeLabel>,
       virtual IOpenMultiDiGraphView {
-  INodeLabelledOpenMultiDiGraphView(INodeLabelledOpenMultiDiGraphView const &) =
-      delete;
+  INodeLabelledOpenMultiDiGraphView() = default;
+  INodeLabelledOpenMultiDiGraphView(INodeLabelledOpenMultiDiGraphView const &) = delete;
   INodeLabelledOpenMultiDiGraphView &
       operator=(INodeLabelledOpenMultiDiGraphView const &) = delete;
 };
@@ -82,12 +82,12 @@ public:
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return get_ptr()->query_nodes();
+    return get_ptr()->query_nodes(q);
   }
 
   std::unordered_set<OpenMultiDiEdge>
       query_edges(OpenMultiDiEdge const &q) const {
-    return get_ptr()->query_edges();
+    return get_ptr()->query_edges(q);
   }
 
   Node add_node(NodeLabel const &l) {

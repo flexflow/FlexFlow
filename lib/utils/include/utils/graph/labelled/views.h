@@ -3,6 +3,7 @@
 
 #include "node_labelled.h"
 #include "standard_labelled.h"
+#include "output_labelled_open.h"
 
 namespace FlexFlow {
 
@@ -70,7 +71,7 @@ CHECK_NOT_ABSTRACT(ViewMultiDiGraphAsOutputLabelled<test_types::hash_cmp,
 
 template <typename Impl, typename NodeLabel, typename OutputLabel>
 Impl materialize_output_labelled_multidigraph_view(
-    IOutputLabelledMultiDiGraphView<NodeLabel, OutputLabel> const &g) {
+    OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel> const &g) {
   Impl result;
   for (Node const &n : get_nodes(g)) {
     result.add_node_unsafe(n);

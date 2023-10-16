@@ -14,6 +14,7 @@ ff_add_library(
     optional
     pcg
     spdlog
+    substitutions
 )
 
 add_subdirectory(ffi)

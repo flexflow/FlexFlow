@@ -20,7 +20,7 @@ std::unordered_set<ParallelComputationGraph>
 
 Strategy
     graph_optimize(ComputationGraph &cg,
-                   ICostEstimator const &cost_estimator,
+                   CostEstimator const &cost_estimator,
                    MachineSpecification const &resources,
                    std::function<std::unordered_set<MachineView>(
                        Operator const &, MachineSpecification const &)> const
@@ -35,12 +35,8 @@ Strategy
   DeduplicatedPriorityQueue<Strategy, std::vector<Strategy>, StrategyRuntimeCmp>
       candidates;
 
-  Strategy initial_result(pcg,
-                          optimal_cost(pcg,
-                                       allowed_machine_views,
-                                       cost_estimator,
-                                       resources,
-                                       cached_subgraph_costs));
+  OptimalCostResult initial_pcg_result = optimal_cost(pcg, allowed_machine_views, cost_estimator, resources, cached_subgraph_costs);
+  Strategy initial_result{pcg, initial_pcg_result.machine_mapping, initial_pcg_result.runtime};
 
   Strategy best_result = initial_result;
   candidates.push(initial_result);
@@ -50,7 +46,7 @@ Strategy
     Strategy const &current_result = candidates.top();
     candidates.pop();
 
-    if (StrategyRuntimeCmp(current_result, best_result)) {
+    if (StrategyRuntimeCmp{}(current_result, best_result)) {
       best_result = current_result;
     } else if (current_result.runtime >
                best_result.runtime * opt_config.alpha) {
@@ -64,9 +60,9 @@ Strategy
                                            cost_estimator,
                                            resources,
                                            cached_subgraph_costs);
-        Strategy new_result(new_pcg, c.machine_mapping, c.runtime);
+        Strategy new_result{new_pcg, c.machine_mapping, c.runtime};
         if (new_result.runtime <= opt_config.threshold &&
-            new_result.pcg.query_nodes({}).size() <= opt_config.max_num_ops) {
+            get_nodes(new_pcg.value()).size() <= opt_config.max_num_ops) {
           candidates.push(new_result);
         }
       }

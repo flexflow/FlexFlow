@@ -4,7 +4,7 @@ namespace FlexFlow {
 
 SerialParallelDecomposition
     get_serial_parallel_decomposition(ParallelComputationGraph const &pcg) {
-  return get_serial_parallel_decomposition(as_digraph(pcg));
+  return get_serial_parallel_decomposition(pcg.value());
 }
 
 std::vector<MultiDiEdge>
