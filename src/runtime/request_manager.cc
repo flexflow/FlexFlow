@@ -453,7 +453,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
               }
             }
             outputFile << std::endl;
-            outputFile << output << std::endl;
+            outputFile << output;
             outputFile.close();
           } else {
             std::cout << "Unable to open the output file: " << output_filepath
@@ -666,7 +666,7 @@ BeamSearchBatchConfig
               }
             }
             outputFile << std::endl;
-            outputFile << output << std::endl;
+            outputFile << output;
 
             outputFile.close();
           } else {
