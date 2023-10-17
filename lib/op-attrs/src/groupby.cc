@@ -1,5 +1,5 @@
 #include "op-attrs/ops/groupby.h"
-#include "utils/exception.decl.h"
+#include "utils/exceptions.h"
 
 namespace FlexFlow {
 
