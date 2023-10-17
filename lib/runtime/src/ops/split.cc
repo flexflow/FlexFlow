@@ -59,7 +59,7 @@ OpTaskInvocation backward(SplitAttrs const &attrs) {
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
+  acc.get_argument<SplitPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
