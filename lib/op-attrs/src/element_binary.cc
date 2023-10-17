@@ -2,7 +2,6 @@
 
 namespace FlexFlow {
 
-
 ParallelTensorShape get_output_shape(ElementBinaryAttrs const &atts,
                                      ParallelTensorShape const &lhs,
                                      ParallelTensorShape const &rhs) {
