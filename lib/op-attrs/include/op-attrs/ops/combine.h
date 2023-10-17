@@ -11,7 +11,6 @@ namespace FlexFlow {
 struct CombineAttrs {
   ff_dim_t combine_dim;
   req<int> combine_degree;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(CombineAttrs, combine_dim, combine_degree);
 CHECK_VALID_OP_ATTR(CombineAttrs);

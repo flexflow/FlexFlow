@@ -1,32 +1,10 @@
 #include "op-attrs/ops/batch_matmul.h"
 #include "op-attrs/ff_dim.h"
 #include "op-attrs/parallel_tensor_shape.h"
+#include "utils/exception.decl.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
-
-// maybe we should add more check here
-//// how to get the batch size? and lhs: [b, n, m], rhs: [b, m, p]
-// output: [b, n, p] //n == s1, m == s2
-//[n/]
-bool is_valid(BatchMatmulAttrs const &attrs,
-              ParallelTensorShape const &lhs,
-              ParallelTensorShape const &rhs) {
-  if (lhs.at(ff_dim_t(0)).size != rhs.at(ff_dim_t(0)).size) {
-    return false;
-  }
-  if (lhs.at(ff_dim_t(2)).size != rhs.at(ff_dim_t(1)).size) {
-    return false;
-  }
-  if (lhs.at(ff_dim_t(1)).size != attrs.a_seq_length_dim) {
-    return false;
-  }
-
-  if (rhs.at(ff_dim_t(2)).size != attrs.b_seq_length_dim) {
-    return false;
-  }
-
-  return true;
-}
 
 // how to get the batch size? and lhs: [b, n, m], rhs: [b, m, p]
 // output: [b, n, p] //n == s1, m == s2
@@ -36,16 +14,42 @@ ParallelTensorShape get_output_shape(BatchMatmulAttrs const &attrs,
                                      ParallelTensorShape const &lhs,
                                      ParallelTensorShape const &rhs) {
   ParallelTensorShape output_shape = lhs;
+
+  // check if the input is valid
+  if (!lhs.is_valid() || !rhs.is_valid()) {
+    throw mk_runtime_error(
+        "BatchMatmulAttrs::get_output_shape: input is invalid")
+  }
+
+  if (lhs.at(ff_dim_t(0)).size != rhs.at(ff_dim_t(0)).size) {
+    throw mk_runtime_error(
+        "BatchMatmulAttrs::get_output_shape: batch size is not equal")
+  }
+
   output_shape.at(ff_dim_t(0)).size = lhs.at(ff_dim_t(0)).size;
   // degree is 1
   //[b, n, m], rhs: [b, m, p] -> [b, n, p]
   if (lhs.at(ff_dim_t(1)).degree == 1 && rhs.at(ff_dim_t(2)).degree == 1) {
+    // check if the input is valid
+    if (lhs.at(ff_dim_t(2)).size != rhs.at(ff_dim_t(1)).size ||
+        lhs.at(ff_dim_t(1)).size != attrs.a_seq_length_dim ||
+        rhs.at(ff_dim_t(2)).size != attrs.b_seq_length_dim) {
+      throw mk_runtime_error("BatchMatmulAttrs::get_output_shape: lhs and rhs "
+                             "are not match when degree is 1");
+    }
+
     output_shape.at(ff_dim_t(1)).size = lhs.at(ff_dim_t(1)).size;
     output_shape.at(ff_dim_t(2)).size = rhs.at(ff_dim_t(2)).size;
     output_shape.at(ff_dim_t(0)).is_replica_dim = false;
   } else if (lhs.at(ff_dim_t(1)).degree > 1 &&
              rhs.at(ff_dim_t(2)).degree ==
                  1) { //[b, n/x, m], [b, m, p/x] => [b, n/x, p/x]
+
+    if (lhs.at(ff_dim_t(1)).degree != rhs.at(ff_dim_t(2)).degree) {
+      throw mk_runtime_error("BatchMatmulAttrs::get_output_shape: lhs.degree "
+                             ">1 and rhs.degree == 1, but degree is not equal");
+    }
+
     output_shape.at(ff_dim_t(1)).size =
         lhs.at(ff_dim_t(1)).size / lhs.at(ff_dim_t(1)).degree;
     output_shape.at(ff_dim_t(2)).size =
@@ -54,6 +58,11 @@ ParallelTensorShape get_output_shape(BatchMatmulAttrs const &attrs,
   } else if (lhs.at(ff_dim_t(1)).degree == 1 &&
              rhs.at(ff_dim_t(2)).degree >
                  1) { //[b, n, m/x], [b, m/x, p] => [b, n, p/x]
+    if (lhs.at(ff_dim_t(2)).degree != rhs.at(ff_dim_t(1)).degree) {
+      throw mk_runtime_error(
+          "BatchMatmulAttrs::get_output_shape: lhs.degree == 1 and rhs.degree "
+          "> 1, but degree is not equal");
+    }
     output_shape.at(ff_dim_t(1)).size = lhs.at(ff_dim_t(1)).size;
     output_shape.at(ff_dim_t(2)).size =
         rhs.at(ff_dim_t(2)).size / rhs.at(ff_dim_t(2)).degree;
@@ -61,13 +70,20 @@ ParallelTensorShape get_output_shape(BatchMatmulAttrs const &attrs,
   } else if (lhs.at(ff_dim_t(1)).degree > 1 &&
              rhs.at(ff_dim_t(2)).degree >
                  1) { //[b, n/x, m/y], [b, m/y, p/z] => [b, n/x, p/z]
+
+    if (lhs.at(ff_dim_t(1)).degree != rhs.at(ff_dim_t(2)).degree) {
+      throw mk_runtime_error("BatchMatmulAttrs::get_output_shape: lhs.degree > "
+                             "1 and rhs.degree > 1, but degree is not equal");
+    }
+
     output_shape.at(ff_dim_t(1)).size =
         lhs.at(ff_dim_t(1)).size / lhs.at(ff_dim_t(1)).degree;
     output_shape.at(ff_dim_t(2)).size =
         rhs.at(ff_dim_t(2)).size / rhs.at(ff_dim_t(2)).degree;
     output_shape.at(ff_dim_t(0)).is_replica_dim = true;
   } else {
-    assert(false && "not supported in BatchMatmulAttrs get_output_shape");
+    throw mk_runtime_error("BatchMatmulAttrs::get_output_shape: not supported "
+                           "in BatchMatmulAttrs get_output_shape");
   }
   return output_shape;
 }

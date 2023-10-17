@@ -10,7 +10,6 @@ namespace FlexFlow {
 
 struct CastAttrs {
   req<DataType> dtype;
-  bool is_valid(ParallelTensorShape const &input) const;
 };
 FF_VISITABLE_STRUCT(CastAttrs, dtype);
 

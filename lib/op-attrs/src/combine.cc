@@ -3,13 +3,6 @@
 
 namespace FlexFlow {
 
-bool CombineAttrs::is_valid(ParallelTensorShape const &input) const {
-  if (!input.is_valid()) {
-    return false;
-  }
-  return true;
-}
-
 ParallelTensorShape get_output_shape(CombineAttrs const &attrs,
                                      ParallelTensorShape const &input) {
   ParallelTensorShape output = input;
