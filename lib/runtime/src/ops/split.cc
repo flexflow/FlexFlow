@@ -59,7 +59,6 @@ OpTaskInvocation backward(SplitAttrs const &attrs) {
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  acc.get_argument<CastPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -96,7 +95,7 @@ static void forward_task(Task const *task,
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
-  auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
   auto attrs = acc.get_argument<SplitAttrs>(ATTRS);
 
   coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
@@ -151,7 +150,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
 
   SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input);
+  fwd_binding.bind(INPUT, input.shape);
   fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(PROFILING, settings);
 
