@@ -1,6 +1,7 @@
 #include "op-attrs/ops/conv_2d.h"
 #include "parallel_dim_mapping_record.h"
 #include "parallel_dim_mapping_record_solver.h"
+#include "utils/exception.h"
 #include "utils/vector.h"
 
 namespace FlexFlow {
@@ -101,6 +102,10 @@ bool Conv2DAttrs::is_valid(ParallelTensorShape const &input) const {
 ParallelTensorShape get_output_shape(Conv2DAttrs const &attrs,
                                      ParallelTensorShape const &input) {
   ParallelTensorShape output = input;
+  if (input.num_dims() != 4) {
+    throw mk_runtime_error("Conv2DAttrs::get_output_shape: input is invalid");
+  }
+
   output.at(ff_dim_t(1)).size = attrs.out_channels;
   output.at(ff_dim_t(2)).size =
       (input.at(ff_dim_t(2)).size + 2 * attrs.padding_h - attrs.kernel_h) /
