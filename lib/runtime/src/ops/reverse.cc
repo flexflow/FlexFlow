@@ -45,7 +45,7 @@ OpTaskInvocation forward(ReverseAttrs const &attrs) {
   binding.bind_arg(PROFILING, profiling_settings());
   bind.bind_arg(ATTRS, attrs);
 
-  binding.bind(INPUT, input_parallel_tensor_shape(0));
+  binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
   return {REVERSE_FWD_TASK_ID, binding};
@@ -96,8 +96,8 @@ static void forward_task(Task const *task,
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
-  auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
+  auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
   auto attrs = acc.get_argument<ReverseAttrs>(ATTRS);
 
   int axis = input.shape.get_dim() - attrs.axis - 1;
@@ -150,9 +150,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   auto fwd_accessor = env.get_fwd_accessor(REVERSE_FWD_TASK_ID, fwd_binding);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-  // TODO Note: what should bwd_bindinig  bind?
-  // according to aggregate.cc, bwd_binding bind the full_gate_gradients and
-  // true_gate_assign
   auto bwd_accessor = env.get_bwd_accessor(REVERSE_BWD_TASK_ID, bwd_binding);
 
   float forward_time = forward_task_impl(fwd_accessor).value();
@@ -167,7 +164,7 @@ template <>
 void register_task<REVERSE_FWD_TASK_ID>()) {
   OpTaskSignature fwd(OpTaskType::FWD);
 
-  fwd.add_arg_slot<bool>(PROFILING);
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
 
