@@ -45,7 +45,7 @@ using namespace FlexFlow::Kernels::TopK;
 // (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
 
-enum Slots { INPUT, OUTPUT, OUTPUT, ATTRS, PROFILING, PER_DEVICE_STATE };
+enum Slots { INPUT, OUTPUT, INDICES, ATTRS, PROFILING, PER_DEVICE_STATE };
 
 OpTaskInvocation init(TopKAttrs const &attrs) {
   OpTaskBinding binding;
@@ -65,6 +65,7 @@ OpTaskInvocation forward(TopKAttrs const &attrs) {
 
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
+  bindng.bind(INDICES, output_tensor(1));
 
   return {TOPK_FWD_TASK_ID, binding};
 }
@@ -105,8 +106,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   int length = input.shape.at(legion_dim_t(0)) + 1;
   size_t batch_size = input.shape.get_volume() / length;
-  Allocator allocator = acc.get_allocator();
-  int *index_ptr = allocator.allocate(sizeof(int) * attrs.k);
+  auto indices = acc.get_tensor<Permissions::WO>(INDICES);
 
   return profiling(forward_kernel,
                    profiling,
@@ -114,7 +114,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                    per_device_state,
                    input.get_float_ptr(),
                    output.get_float_ptr(),
-                   index_ptr,
+                   indices.get_int32_ptr(),
                    batch_size,
                    length,
                    attrs.k,
@@ -138,9 +138,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
-  Allocator allocator = acc.get_allocator();
-  int *indice_ptr = allocator.allocate(sizeof(int) * attrs.k);
-
+  auto indices = acc.get_tensor<Permissions::WO>(INDICES);
+  
   int length = input.shape.at(legion_dim_t(0)) + 1;
   size_t batch_size = input.shape.get_volume() / length;
 
@@ -149,7 +148,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                    "[TopK] backward_time = %.2lfms\n",
                    per_device_state,
                    output_grad.get_float_ptr(),
-                   indices_ptr,
+                   indices.get_int32_ptr(),
                    input_grad.get_float_ptr(),
                    batch_size,
                    length,
@@ -203,9 +202,9 @@ template <>
 void register_task<TOPK_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
-  init.add_arg_slot<SplitAttrs>(ATTRS); // Note: this may have some question
-  init.add_return_value<SplitPerDeviceState>();
-  register_task(SPLIT_INIT_TASK_ID, "Split Init", init, init_task);
+  init.add_arg_slot<TopKAttrs>(ATTRS); // Note: this may have some question
+  init.add_return_value<TopKPerDeviceState>();
+  register_task(TOPK_INIT_TASK_ID, "Topk Init", init, init_task);
 }
 
 template <>
@@ -213,13 +212,13 @@ void register_task<TOPK_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   init.add_arg_slot<ProfilingSettings>(PROFILING);
-  init.add_arg_slot<SplitAttrs>(ATTRS); // Note: this may have some question
-  init.add_unchecked_arg_slot<SplitPerDeviceState>(PER_DEVICE_STATE);
+  init.add_arg_slot<TopKAttrs>(ATTRS); // Note: this may have some question
+  init.add_unchecked_arg_slot<TopKPerDeviceState>(PER_DEVICE_STATE);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(SPLIT_FWD_TASK_ID, "Split Forward", fwd, forward_task);
+  register_task(TOPK_FWD_TASK_ID, "TopK Forward", fwd, forward_task);
 }
 
 template <>
@@ -227,7 +226,7 @@ void register_task<TOPK_BWD_TASK_ID>() {
   OpTaskSignature bwd =
       infer_bwd_signature(get_op_signature(SPLIT_FWD_TASK_ID));
 
-  register_task(SPLIT_BWD_TASK_ID, "Split Backward", bwd, backward_task);
+  register_task(TOPK_BWD_TASK_ID, "TopK Backward", bwd, backward_task);
 }
 
 }; // namespace FlexFlow
