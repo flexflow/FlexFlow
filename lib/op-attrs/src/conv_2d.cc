@@ -83,17 +83,6 @@ std::vector<ParallelDimMappingRecord>
   return mappings;
 }
 
-bool Conv2DAttrs::is_valid(ParallelTensorShape const &input) const {
-  if (!input.is_valid()) {
-    return false;
-  }
-  if (input.num_dims() != 4) {
-    return false;
-  }
-
-  return true;
-}
-
 // according to pytorch, the input shape: [b, input_channel, input_h, input_w]
 // kernel shape: [output_channel, input_channel, kernel_h, kernel_w]
 // we may have stide_h and padding_h
