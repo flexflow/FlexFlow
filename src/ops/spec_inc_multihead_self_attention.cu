@@ -248,7 +248,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       // int total_tokens = bc->token_last_available_idx[i] + 1;
 
       int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-      int total_tokens = bc->requestsInfo[i].token_start_offset +
+      int total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
                          bc->requestsInfo[i].num_tokens_in_batch;
 
       if (num_new_tokens <= 0) {
