@@ -139,7 +139,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
   auto indices = acc.get_tensor<Permissions::WO>(INDICES);
-  
+
   int length = input.shape.at(legion_dim_t(0)) + 1;
   size_t batch_size = input.shape.get_volume() / length;
 
