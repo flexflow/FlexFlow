@@ -37,22 +37,27 @@ ParallelTensorShape get_output_shape(BatchMatmulAttrs const &attrs,
 
   if (lhs.at(ff_dim_t(1)).degree == 1 && lhs.at(ff_dim_t(2)).degree == 1) {
     // case 0: degree is 1, [b, n, m], rhs: [b, m, p] -> [b, n, p]
-    output_shape.at(ff_dim_t(0)).is_replica_dim = false;
+    for(int i =1; i < lhs.num_dims(); i++) {
+      output_shape.at(ff_dim_t(i)).degree = 1;
+      output_shape.at(ff_dim_t(i)).is_replica_dim = false;
+    }
   } else if (lhs.at(ff_dim_t(1)).degree == 1 &&
              lhs.at(ff_dim_t(2)).degree >
                  1) { // case 1: [b, n, m/x], [b, m/x, p] => [b, n, y]
-    output_shape.at(ff_dim_t(0)).is_replica_dim = true;
+    output_shape.at(ff_dim_t(1)).is_replica_dim = true;
     output_shape.at(ff_dim_t(1)).degree = lhs.at(ff_dim_t(1)).degree;
   } else if (lhs.at(ff_dim_t(1)).degree > 1 &&
              lhs.at(ff_dim_t(2)).degree ==
                  1) { // case 2: [b, n/x, m] [b m p/x] => [b n/x p/x]
-    output_shape.at(ff_dim_t(0)).is_replica_dim = true;
-    output_shape.at(ff_dim_t(1)).degree = rhs.at(ff_dim_t(1)).degree;
+    output_shape.at(ff_dim_t(1)).is_replica_dim = true;
+    output_shape.at(ff_dim_t(2)).is_replica_dim = true;
+    output_shape.at(ff_dim_t(1)).degree = lhs.at(ff_dim_t(1)).degree;
     output_shape.at(ff_dim_t(2)).degree = rhs.at(ff_dim_t(2)).degree;
   } else if (lhs.at(ff_dim_t(1)).degree > 1 &&
              lhs.at(ff_dim_t(2)).degree >
                  1) { // case 3: [b n/x m/y] [b m/y p/x]=> [b n/x p/x]
-    output_shape.at(ff_dim_t(0)).is_replica_dim = true;
+    output_shape.at(ff_dim_t(1)).is_replica_dim = true;
+    output_shape.at(ff_dim_t(2)).is_replica_dim = true;
     output_shape.at(ff_dim_t(1)).degree = lhs.at(ff_dim_t(1)).degree;
     output_shape.at(ff_dim_t(2)).degree = rhs.at(ff_dim_t(2)).degree;
   } else {

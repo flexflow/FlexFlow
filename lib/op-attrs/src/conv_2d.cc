@@ -1,5 +1,6 @@
 #include "op-attrs/ops/conv_2d.h"
 #include "op-attrs/ff_dim.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "parallel_dim_mapping_record.h"
 #include "parallel_dim_mapping_record_solver.h"
 #include "utils/exception.h"
@@ -111,6 +112,7 @@ ParallelTensorShape get_output_shape(Conv2DAttrs const &attrs,
       (input.at(ff_dim_t(3)).size + 2 * attrs.padding_w - attrs.kernel_w) /
           attrs.stride_w +
       1;
+  
   if (input.at(ff_dim_t(2)).size == 1 && input.at(ff_dim_t(3)).size == 1) {
     // case 1  input degree is 1, like 1GPU
     output.at(ff_dim_t(0)).is_replica_dim = false;
@@ -119,16 +121,21 @@ ParallelTensorShape get_output_shape(Conv2DAttrs const &attrs,
     // case 2: [b, input_channel, input_h/x, input_w], [output_channel,
     // input_channel, kernel_h, kernel_w] => [b, output_channel, output_h/x,
     // output_w]
-    output.at(ff_dim_t(0)).is_replica_dim = true;
+    output.at(ff_dim_t(2)).is_replica_dim = true;
     output.at(ff_dim_t(2)).degree = input.at(ff_dim_t(2)).degree;
-    output.at(ff_dim_t(3)).degree = input.at(ff_dim_t(3)).degree;
   } else if (input.at(ff_dim_t(2)).size == 1 &&
              input.at(ff_dim_t(3)).size > 1) {
     // case 3: [b, input_channel, input_h, input_w / x] [output_channel,
     // input_channel, kernel_h, kernel_w / x] => [b, output_channel, output_h,
     // output_w / x]
-    output.at(ff_dim_t(0)).is_replica_dim = true;
+    output.at(ff_dim_t(3)).is_replica_dim = true;
     output.at(ff_dim_t(3)).degree = input.at(ff_dim_t(3)).degree;
+  } else if(input.at(ff_dim_t(2)).size >1  &&
+             input.at(ff_dim_t(3)).size > 1) {
+      for(int i =2; i < input.num_dims();i++) {
+        output.at(ff_dim_t(i)).is_replica_dim = true;
+        output.at(ff_dim_t(i)).degree = input.at(ff_dim_t(i)).degree;
+      }
   } else {
     throw mk_runtime_error("Conv2DAttrs::get_output_shape: not supported in "
                            "Conv2DAttrs get_output_shape");

@@ -12,6 +12,7 @@ ParallelTensorShape get_output_shape(BatchNormAttrs const &attrs,
         "BatchNormAttrs::get_output_shape: input is invalid");
   }
   ParallelTensorShape output_shape = input;
+  //the degree of the output is the same as the input
   return output_shape;
 }
 
