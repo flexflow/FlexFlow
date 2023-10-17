@@ -140,6 +140,7 @@ void register_task<REDUCTION_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+  fwd.add_arg_slot<ReductionAttrs>(ATTRS);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
