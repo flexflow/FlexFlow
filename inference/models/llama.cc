@@ -257,7 +257,8 @@ void LLAMA::create_llama_model(FFModel &ff,
       output = ff.sampling(softmax, generation_config.topp);
     } else {
       // output = ff.arg_top_k(dense, /*k=*/1, false);
-      output = ff.argmax(dense, /*beam_Search*/ false);
+      Tensor softmax = ff.softmax(dense, -1);
+      output = ff.argmax(softmax, /*beam_Search*/ false);
     }
   }
 

@@ -531,6 +531,67 @@ FutureMap FusedOp::inference(FFModel const &ff,
   return runtime->execute_index_space(ctx, launcher);
 }
 
+FutureMap FusedOp::inference(FFModel const &ff,
+                             BatchConfigFuture const &bc,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
+  // Set iter_config
+  iter_config = ff.iter_config;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  // bc is one of BatchConfig, TreeVerifyBatchConfig, and BeamSearchBatchConfig
+  // so we transfer the maximum of them
+  // size_t batch_config_size =
+  //    std::max(sizeof(TreeVerifyBatchConfig), sizeof(BeamSearchBatchConfig));
+  IndexLauncher launcher(FUSEDOP_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  int offset = 0;
+  for (int i = 0; i < numInputs; i++) {
+    assert(inputs[i]->part != LogicalPartition::NO_PART);
+    assert(inputs[i]->region != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      batch_inputs[i]->region));
+    launcher.add_field(offset + i, FID_DATA);
+  }
+  offset += numInputs;
+  for (int i = 0; i < numWeights; i++) {
+    assert(weights[i]->region != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(RegionRequirement(weights[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[i]->region));
+    launcher.add_field(offset + i, FID_DATA);
+  }
+  offset += numWeights;
+  for (int i = 0; i < numOutputs; i++) {
+    assert(outputs[i]->region != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[i]->part,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          batch_outputs[i]->region));
+    launcher.add_field(offset + i, FID_DATA);
+  }
+  return runtime->execute_index_space(ctx, launcher);
+}
+
 void FusedOp::backward(FFModel const &ff) {
   // Set iter_config
   iter_config = ff.iter_config;

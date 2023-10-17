@@ -315,13 +315,7 @@ void Softmax::forward_task(Task const *task,
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  if (m->output_type == DT_HALF) {
-    forward_kernel_wrapper(m, input.get_half_ptr(), output.get_half_ptr());
-  } else if (m->output_type == DT_FLOAT) {
-    forward_kernel_wrapper(m, input.get_float_ptr(), output.get_float_ptr());
-  } else {
-    assert(false && "Unsupported data type");
-  }
+  forward_kernel_wrapper(m, input, output);
 }
 
 void Softmax::backward(FFModel const &ff) {
@@ -359,52 +353,11 @@ void Softmax::backward_task(Task const *task,
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  switch (in_domain.get_dim()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM:                                                                    \
-    if (m->output_type == DT_HALF) {                                           \
-      return backward_task_with_dim<half, DIM>(task, regions, ctx, runtime);   \
-    } else if (m->output_type == DT_FLOAT) {                                   \
-      return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
-    } else {                                                                   \
-      assert(false && "Unsupported data type");                                \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-}
-
-/*
-  regions[0](I/O): input_grad
-  regions[1](I): output_grad
-*/
-// Note that the backward task of softmax is actually a no op (i.e., input_grad
-// = output_grad) since the upstream cross_entropy_loss function computes
-// performs softmax_cross_entropy_loss to avoid intermediate zeros
-template <typename DT, int NDIM>
-void Softmax::backward_task_with_dim(Task const *task,
-                                     std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  // const Softmax* softmax = (Softmax*) task->args;
-  SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  TensorAccessorW<DT, NDIM> acc_input_grad(regions[0],
-                                           task->regions[0],
-                                           FID_DATA,
-                                           ctx,
-                                           runtime,
-                                           true /*readOutput*/);
-  TensorAccessorR<DT, NDIM> acc_output_grad(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  // make sure the image indices match!
-  assert(acc_input_grad.rect == acc_output_grad.rect);
-
-  backward_kernel_wrapper(
-      m, acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorWR(
+      m->output_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  backward_kernel_wrapper(m, input_grad, output_grad);
 }
 
 void Softmax::inference_task(Task const *task,
@@ -425,13 +378,7 @@ void Softmax::inference_task(Task const *task,
       m->output_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  if (m->output_type == DT_HALF) {
-    forward_kernel_wrapper(m, input.get_half_ptr(), output.get_half_ptr());
-  } else if (m->output_type == DT_FLOAT) {
-    forward_kernel_wrapper(m, input.get_float_ptr(), output.get_float_ptr());
-  } else {
-    assert(false && "Unsupported data type");
-  }
+  inference_kernel_wrapper(m, input, output);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];

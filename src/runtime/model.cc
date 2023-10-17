@@ -6385,20 +6385,6 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(FUSEDOP_FWD_TASK_ID, "FusedOp Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    if (pre_register) {
-      Runtime::preregister_task_variant<FusedOp::forward_task>(
-          registrar, "FusedOp Forward Task");
-    } else {
-      if (enable_control_replication) {
-        registrar.global_registration = false;
-      }
-      runtime->register_task_variant<FusedOp::forward_task>(registrar);
-    }
-  }
-  {
     TaskVariantRegistrar registrar(FUSEDOP_INF_TASK_ID, "FusedOp Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -6410,6 +6396,36 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<FusedOp::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(FUSEDOP_PEFT_BWD_TASK_ID,
+                                   "FusedOp PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<FusedOp::peft_bwd_task>(
+          registrar, "FusedOp PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FusedOp::peft_bwd_task>(registrar);
+    }
+  }
+
+  {
+    TaskVariantRegistrar registrar(FUSEDOP_FWD_TASK_ID, "FusedOp Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<FusedOp::forward_task>(
+          registrar, "FusedOp Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FusedOp::forward_task>(registrar);
     }
   }
   {

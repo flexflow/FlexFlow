@@ -694,15 +694,26 @@ void LayerNorm::peft_bwd_kernel(LayerNormMeta const *m,
 }
 
 /*static*/
-template <typename T>
-void LayerNorm::peft_bwd_kernel_wrapper(LayerNormMeta const *m,
-                                        T const *output_grad_ptr,
-                                        T *input_grad_ptr,
-                                        T const *gamma_ptr) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  LayerNorm::peft_bwd_kernel<T>(
-      m, output_grad_ptr, input_grad_ptr, gamma_ptr, stream);
+void LayerNorm::peft_bwd_kernel_wrapper(
+    LayerNormMeta const *m,
+    GenericTensorAccessorW const &output_grad,
+    GenericTensorAccessorR const &input_grad,
+    GenericTensorAccessorW const &gamma) cudaStream_t stream;
+checkCUDA(get_legion_stream(&stream));
+if (m->output_type[0] == DT_FLOAT) {
+  LayerNorm::peft_bwd_kernel(m,
+                             output_grad.get_float_ptr(),
+                             input_grad.get_float_ptr(),
+                             gamma.get_float_ptr(),
+                             stream);
+} else {
+  assert(m->output_type[0] == DT_HALF);
+  LayerNorm::peft_bwd_kernel(m,
+                             output_grad.get_half_ptr(),
+                             input_grad.get_half_ptr(),
+                             gamma.get_half_ptr(),
+                             stream);
+}
 }
 
 /*static*/
@@ -753,5 +764,5 @@ template void
                                              half const *output_grad_ptr,
                                              half *input_grad_ptr,
                                              half const *gamma_ptr);
-
-}; // namespace FlexFlow
+}
+; // namespace FlexFlow

@@ -1961,6 +1961,7 @@ GenerationResult
     BatchConfigFuture bcf =
         prepare_next_batch(next_batch.first, next_batch.second);
     FutureMap fm = im->inference(llm, 0, bcf);
+    im->peft_bwd(llm, 0, bcf);
     assert(fm.get_future_map_domain().get_volume() == 1);
     InferenceResultFuture irf = fm.get_future(0);
     batch_pipeline.push(std::make_pair(bcf, irf));

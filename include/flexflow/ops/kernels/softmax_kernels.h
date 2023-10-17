@@ -28,15 +28,23 @@ public:
 
 namespace Kernels {
 namespace Softmax {
-template <typename DT>
+
 void forward_kernel_wrapper(SoftmaxMeta const *m,
-                            DT const *input_ptr,
-                            DT *output_ptr);
-template <typename DT>
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &output);
+
 void backward_kernel_wrapper(SoftmaxMeta const *m,
-                             DT *input_grad_ptr,
-                             DT const *output_grad_ptr,
+                             GenericTensorAccessorW const &input_grad,
+                             GenericTensorAccessorR const &output_grad,
                              size_t num_elements);
+
+void inference_kernel_wrapper(SoftmaxMeta const *m,
+                              GenericTensorAccessorR const &input,
+                              GenericTensorAccessorW const &output);
+
+void peft_bwd_kernel_wrapper(SoftmaxMeta const *m,
+                             GenericTensorAccessorW const &input_grad,
+                             GenericTensorAccessorR const &output_grad);
 
 namespace Internal {
 template <typename DT>
@@ -50,6 +58,13 @@ void backward_kernel(DT *input_grad_ptr,
                      DT const *output_grad_ptr,
                      size_t num_elements,
                      ffStream_t stream);
+
+template <typename DT>
+void inference_kernel(SoftmaxMeta const *m,
+                      DT const *input_ptr,
+                      DT *output_ptr,
+                      ffStream_t stream);
+
 } // namespace Internal
 } // namespace Softmax
 } // namespace Kernels

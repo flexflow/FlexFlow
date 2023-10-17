@@ -118,17 +118,17 @@ public:
                                       T const *gamma_ptr,
                                       T *gamma_grad_ptr,
                                       T *beta_grad_ptr);
+
+  static void peft_bwd_kernel_wrapper(LayerNormMeta const *m,
+                                      GenericTensorAccessorW const &output_grad,
+                                      GenericTensorAccessorW const &input_grad,
+                                      GenericTensorAccessorR const &gamma);
   template <typename T>
   static void peft_bwd_kernel(LayerNormMeta const *m,
                               T const *output_grad_ptr,
                               T *input_grad_ptr,
                               T const *gamma_ptr,
                               ffStream_t stream);
-  template <typename T>
-  static void peft_bwd_kernel_wrapper(LayerNormMeta const *m,
-                                      T const *output_grad_ptr,
-                                      T *input_grad_ptr,
-                                      T const *gamma_ptr);
 
 public:
   bool elementwise_affine, use_bias;

@@ -369,6 +369,56 @@ FutureMap InferenceManager::inference(FFModel *model,
   return fm;
 };
 
+void InferenceManager::peft_bwd(FFModel *model,
+                                int index,
+                                BatchConfigFuture const &bc) {
+  int batch_index = index % model->config.data_parallelism_degree;
+  FutureMap fm;
+  bool found_input_operator = false;
+  int last_op = model->operators.size() - 1;
+  // Assert that the last operator must be argmax or sampling
+  assert(model->operators[last_op]->op_type == OP_ARGMAX ||
+         model->operators[last_op]->op_type == OP_SAMPLING);
+  last_op -= 1;
+  while (model->operators[last_op]->op_type == OP_WEIGHT && last_op > 0) {
+    last_op -= 1;
+  }
+  // Assert that the previous operator must be softmax
+  assert(model->operators[last_op]->op_type == OP_SOFTMAX ||
+         model->operators[last_op]->op_type == OP_FUSED);
+  if (model->operators[last_op]->op_type == OP_FUSED) {
+    FusedOp *fused_op = static_cast<FusedOp *>(model->operators[last_op]);
+    assert(fused_op->op_op_type[fused_op->numOperators - 1] == OP_SOFTMAX);
+  }
+  for (int o = last_op; o >= 0; o--) {
+    Op *op = model->operators[o];
+    if (op->op_type == OP_WEIGHT) {
+      continue;
+    }
+    std::vector<ParallelTensor> inputs(op->numInputs);
+    std::vector<ParallelTensor> outputs(op->numOutputs);
+    for (int i = 0; i < op->numInputs; i++) {
+      assert(op->inputs[i] != nullptr);
+      assert(op->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      assert(tensor_buffer[op->inputs[i]].size() > batch_index);
+      inputs[i] = tensor_buffer[op->inputs[i]][batch_index];
+      assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+    }
+    for (int i = 0; i < op->numOutputs; i++) {
+      assert(op->outputs[i] != nullptr);
+      assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      if (op->op_type == OP_INPUT &&
+          tensor_buffer[op->outputs[i]].size() == 0) {
+        continue;
+      }
+      assert(tensor_buffer[op->outputs[i]].size() > batch_index);
+      outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
+      assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+    }
+    op->peft_bwd(*model, bc, inputs, outputs);
+  }
+};
+
 void InferenceManager::load_input_tokens_from_batch_config(
     BatchConfigFuture const &bc, ParallelTensor const input) {
   Context ctx = ff_config.lg_ctx;

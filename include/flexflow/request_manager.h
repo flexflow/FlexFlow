@@ -37,6 +37,7 @@ public:
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   Legion::FutureMap
       inference(FFModel *model, int index, BatchConfigFuture const &bc);
+  void peft_bwd(FFModel *model, int index, BatchConfigFuture const &bc);
   void load_input_tokens_from_batch_config(BatchConfigFuture const &bc,
                                            ParallelTensor const input);
   void load_positions(BatchConfigFuture const &bc,

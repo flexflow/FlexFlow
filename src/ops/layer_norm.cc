@@ -734,17 +734,7 @@ void LayerNorm::peft_bwd_task(Task const *task,
   } else {
     assert(regions.size() == 2);
   }
-  if (m->output_type[0] == DT_FLOAT) {
-    LayerNorm::peft_bwd_kernel_wrapper<float>(m,
-                                              output_grad.get_float_ptr(),
-                                              input_grad.get_float_ptr(),
-                                              gamma.get_float_ptr());
-  } else {
-    LayerNorm::peft_bwd_kernel_wrapper<half>(m,
-                                             output_grad.get_half_ptr(),
-                                             input_grad.get_half_ptr(),
-                                             gamma.get_half_ptr());
-  }
+  LayerNorm::peft_bwd_kernel_wrapper(m, output_grad, input_grad, gamma);
 }
 
 void LayerNorm::backward(FFModel const &ff) {
