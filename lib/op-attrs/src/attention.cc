@@ -1,5 +1,7 @@
 #include "op-attrs/ops/attention.h"
 #include "op-attrs/parallel_tensor_shape.h"
+#include "utils/exceptions.h"
+#include "kernels/legion_dim.h"
 
 namespace FlexFlow {
 
@@ -10,15 +12,6 @@ namespace FlexFlow {
 /*   bool is_valid = true; */
 /*   return is_valid; */
 /* } */
-
-bool MultiHeadAttentionAttrs::is_valid(
-    MultiHeadAttentionInputs<ParallelTensorShape> const &input) const {
-  bool valid = true;
-  valid &= input.key.is_valid();
-  valid &= input.query.is_valid();
-  valid &= input.value.is_valid();
-  return valid;
-}
 
 int get_qProjSize(MultiHeadAttentionAttrs const &attrs) {
   return attrs.kdim;
@@ -92,12 +85,37 @@ TensorShape
 //   return get_tensor_shape_unsafe(parallel_shape);
 // }
 
+//according to the pytorch  https://pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html,
+//query: [target_size_seq_len, batch_size, embed_dim], we consider the batch size 
+//key: (seq_len, batch_size, embed_dim)
+//value: (seq_len, batch_size, embed_dim)
+// multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
+//output: (target_size_seq_len, batch_size, embed_dim)
+
 ParallelTensorShape get_output_shape(
     MultiHeadAttentionAttrs const &attrs,
     MultiHeadAttentionInputs<ParallelTensorShape> const &inputs) {
   ParallelTensorShape output_shape = inputs.query;
-  output_shape.at(ff_dim_t(output_shape.num_dims() - 1)).size = attrs.embed_dim;
+
   return output_shape;
+}
+
+bool is_valid(MultiHeadAttentionAttrs const & attrs, MultiHeadAttentionInputs<ParallelTensorShape> const &input) {
+  bool valid = true;
+  if(input.query.num_dims() != 3 || input.key.num_dims() != 3 || input.value.num_dims() != 3) {
+    return false;
+  }
+  //ff_dim_t = num_dims - legion_dim_t - 1 
+  if(input.query.at(legion_dim_t(0)).size != attrs.embed_dim) {
+    return false;
+  }
+  if(input.key.at(legion_dim_t(0)).size != attrs.embed_dim) {
+    return false;
+  }
+  if(input.value.at(legion_dim_t(0)).size != attrs.embed_dim) {
+    return false;
+  }
+  return true; 
 }
 
 } // namespace FlexFlow
