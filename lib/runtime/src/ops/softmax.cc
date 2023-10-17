@@ -90,7 +90,7 @@ static DeviceSpecific<SoftmaxPerDeviceState>
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  auto input = acc.get_tensor<Permissions::RO>(A_INPUT);
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state =
@@ -119,8 +119,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   assert(input_grad.shape == input.shape);
 
-  auto output_grad = acc.get_tensor<Permissions::RO>(OUTPUT);
-  auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
+  auto output = acc.get_tensor<Permissions::RW>(OUTPUT);
   assert(output_grad.shape == output.shape);
 
   return profile(
@@ -151,9 +151,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
 
   SimTaskBinding init_binding;
-  // Note: what should init_binding?
+
   init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(PROFILING, settings);
   init_binding.bind_arg(HANDLE, ff_handle());
 
   auto init_accessor =
@@ -195,7 +194,7 @@ template <>
 void register_task<SOFTMAX_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
-  fwd.add_arg_slot<bool>(PROFILING);
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<SoftmaxPerDeviceState>(PER_DEVICE_STATE);
 
   fwd.add_input_slot(INPUT);
