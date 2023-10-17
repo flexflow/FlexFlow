@@ -85,7 +85,7 @@ init.add_return_value<TransposePerDeviceState>();
 register_task(TRANSPOSE_INIT_TASK_ID, "Transpose::init", init, init_task);
 } // namespace FlexFlow
 
-OpTaskInvocation forward(TransposeAttrs const & attrs) {
+OpTaskInvocation forward(TransposeAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(PER_DEVICE_STATE,
