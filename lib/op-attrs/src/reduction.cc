@@ -10,13 +10,6 @@ namespace FlexFlow {
 /*   return output; */
 /* } */
 
-bool ReductionAttrs::is_valid(ParallelTensorShape const &input) const {
-  if (!input.is_valid()) {
-    return false;
-  }
-  return true;
-}
-
 ParallelTensorShape get_output_shape(ReductionAttrs const &attrs,
                                      ParallelTensorShape const &input_shape) {
   ParallelTensorShape output(input_shape.dims, input_shape.data_type);

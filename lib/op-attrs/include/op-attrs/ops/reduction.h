@@ -11,7 +11,6 @@ namespace FlexFlow {
 struct ReductionAttrs {
   ff_dim_t reduction_dim;
   req<int> reduction_degree;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(ReductionAttrs, reduction_dim, reduction_degree);
 CHECK_VALID_OP_ATTR(ReductionAttrs);
