@@ -531,11 +531,11 @@ FutureMap FusedOp::inference(FFModel const &ff,
   return runtime->execute_index_space(ctx, launcher);
 }
 
-FutureMap FusedOp::inference(FFModel const &ff,
-                             BatchConfigFuture const &bc,
-                             std::vector<ParallelTensor> const &batch_inputs,
-                             std::vector<ParallelTensor> const &batch_outputs,
-                             MachineView const *mv) {
+FutureMap FusedOp::peft_bwd(FFModel const &ff,
+                            BatchConfigFuture const &bc,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
   // Set iter_config
   iter_config = ff.iter_config;
   ArgumentMap argmap;

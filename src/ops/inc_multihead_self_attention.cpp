@@ -532,7 +532,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
       continue;
     }
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-    int total_tokens = bc->requestsInfo[i].token_start_offset +
+    int total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
                        bc->requestsInfo[i].num_tokens_in_batch;
     // bc->token_last_available_idx[i] + 1;
     // Compute (QK^T/sqrt(d_k))

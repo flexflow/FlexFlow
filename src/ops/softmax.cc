@@ -227,8 +227,6 @@ OpMeta *Softmax::init_task(Task const *task,
     domain = input_domain;
   }
   SoftmaxMeta *m = new SoftmaxMeta(handle, softmax, domain);
-  m->input_type = softmax->inputs[0]->data_type;
-  m->output_type = softmax->outputs[0]->data_type;
   // checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
   std::strcpy(m->op_name, softmax->name);
   m->layer_guid = softmax->layer_guid;
@@ -311,9 +309,9 @@ void Softmax::forward_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
-      m->output_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      m->output_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   forward_kernel_wrapper(m, input, output);
 }
@@ -353,10 +351,10 @@ void Softmax::backward_task(Task const *task,
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorWR(
-      m->output_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
-      m->output_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   backward_kernel_wrapper(m, input_grad, output_grad);
 }
 
@@ -375,10 +373,10 @@ void Softmax::inference_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
-      m->output_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      m->output_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  inference_kernel_wrapper(m, input, output);
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  inference_kernel_wrapper(m, bc, input, output);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -412,29 +410,35 @@ bool Softmax::measure_operator_cost(Simulator *sim,
 
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  GenericTensorAccessorR input_acc(DT_FLOAT, sub_input.get_domain(), input_ptr);
   assert(input_ptr != NULL);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  GenericTensorAccessorW output_acc(
+      DT_FLOAT, sub_output.get_domain(), output_ptr);
   assert(output_ptr != NULL);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   std::function<void()> forward, backward;
-  forward = [&] { forward_kernel_wrapper(m, input_ptr, output_ptr); };
+  forward = [&] { forward_kernel_wrapper(m, input_acc, output_acc); };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    GenericTensorAccessorW input_grad_acc(
+        DT_FLOAT, sub_input.get_domain(), input_grad_ptr);
     assert(input_grad_ptr != NULL);
     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    GenericTensorAccessorW output_grad_acc(
+        DT_FLOAT, sub_output.get_domain(), output_grad_ptr);
     assert(output_grad_ptr != NULL);
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
     backward = [&] {
-      backward_kernel_wrapper(
-          m, input_grad_ptr, output_grad_ptr, sub_output.get_volume());
+      backward_kernel_wrapper(m, input_grad_acc, output_grad_acc);
     };
   }
 

@@ -696,24 +696,25 @@ void LayerNorm::peft_bwd_kernel(LayerNormMeta const *m,
 /*static*/
 void LayerNorm::peft_bwd_kernel_wrapper(
     LayerNormMeta const *m,
-    GenericTensorAccessorW const &output_grad,
-    GenericTensorAccessorR const &input_grad,
-    GenericTensorAccessorW const &gamma) cudaStream_t stream;
-checkCUDA(get_legion_stream(&stream));
-if (m->output_type[0] == DT_FLOAT) {
-  LayerNorm::peft_bwd_kernel(m,
-                             output_grad.get_float_ptr(),
-                             input_grad.get_float_ptr(),
-                             gamma.get_float_ptr(),
-                             stream);
-} else {
-  assert(m->output_type[0] == DT_HALF);
-  LayerNorm::peft_bwd_kernel(m,
-                             output_grad.get_half_ptr(),
-                             input_grad.get_half_ptr(),
-                             gamma.get_half_ptr(),
-                             stream);
-}
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorW const &input_grad,
+    GenericTensorAccessorR const &gamma) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  if (m->output_type[0] == DT_FLOAT) {
+    LayerNorm::peft_bwd_kernel(m,
+                               output_grad.get_float_ptr(),
+                               input_grad.get_float_ptr(),
+                               gamma.get_float_ptr(),
+                               stream);
+  } else {
+    assert(m->output_type[0] == DT_HALF);
+    LayerNorm::peft_bwd_kernel(m,
+                               output_grad.get_half_ptr(),
+                               input_grad.get_half_ptr(),
+                               gamma.get_half_ptr(),
+                               stream);
+  }
 }
 
 /*static*/
@@ -737,32 +738,4 @@ void LayerNorm::backward_kernel_wrapper(LayerNormMeta const *m,
                                 stream);
 }
 
-template void
-    LayerNorm::backward_kernel_wrapper<float>(LayerNormMeta const *m,
-                                              float const *output_grad_ptr,
-                                              float const *input_ptr,
-                                              float *input_grad_ptr,
-                                              float const *gamma_ptr,
-                                              float *gamma_grad_ptr,
-                                              float *beta_grad_ptr);
-template void
-    LayerNorm::backward_kernel_wrapper<half>(LayerNormMeta const *m,
-                                             half const *output_grad_ptr,
-                                             half const *input_ptr,
-                                             half *input_grad_ptr,
-                                             half const *gamma_ptr,
-                                             half *gamma_grad_ptr,
-                                             half *beta_grad_ptr);
-
-template void
-    LayerNorm::peft_bwd_kernel_wrapper<float>(LayerNormMeta const *m,
-                                              float const *output_grad_ptr,
-                                              float *input_grad_ptr,
-                                              float const *gamma_ptr);
-template void
-    LayerNorm::peft_bwd_kernel_wrapper<half>(LayerNormMeta const *m,
-                                             half const *output_grad_ptr,
-                                             half *input_grad_ptr,
-                                             half const *gamma_ptr);
-}
-; // namespace FlexFlow
+} // namespace FlexFlow

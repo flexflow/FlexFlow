@@ -75,11 +75,9 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
   }
 }
 
-template <typename DT>
 void backward_kernel_wrapper(SoftmaxMeta const *m,
-                             DT *input_grad_ptr,
-                             DT const *output_grad_ptr,
-                             size_t num_elements) {
+                             GenericTensorAccessorW const &input_grad,
+                             GenericTensorAccessorR const &output_grad) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -89,8 +87,22 @@ void backward_kernel_wrapper(SoftmaxMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  Internal::backward_kernel(
-      input_grad_ptr, output_grad_ptr, num_elements, stream);
+  assert(input_grad.domain == output_grad.domain);
+  if (m->output_type[0] == DT_FLOAT) {
+    Internal::backward_kernel(m,
+                              input_grad.get_float_ptr(),
+                              output_grad.get_float_ptr(),
+                              output_grad.domain.get_volume(),
+                              stream);
+  } else if (m->output_type[0] == DT_HALF) {
+    Internal::backward_kernel(m,
+                              input_grad.get_half_ptr(),
+                              output_grad.get_half_ptr(),
+                              output_grad.domain.get_volume(),
+                              stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -118,12 +130,21 @@ void inference_kernel_wrapper(SoftmaxMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
+  int num_classes = output.domain.hi()[0] - output.domain.lo()[0] + 1;
   if (m->output_type[0] == DT_FLOAT) {
-    Internal::inference_kernel(
-        m, bc, input.get_float_ptr(), output.get_float_ptr(), stream);
+    Internal::inference_kernel(m,
+                               bc,
+                               input.get_float_ptr(),
+                               output.get_float_ptr(),
+                               num_classes,
+                               stream);
   } else if (m->output_type[0] == DT_HALF) {
-    Internal::inference_kernel(
-        m, bc, input.get_half_ptr(), output.get_half_ptr(), stream);
+    Internal::inference_kernel(m,
+                               bc,
+                               input.get_half_ptr(),
+                               output.get_half_ptr(),
+                               num_classes,
+                               stream);
   } else {
     assert(false && "Unsupported data type");
   }
@@ -154,12 +175,22 @@ void peft_bwd_kernel_wrapper(SoftmaxMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
+
+  int num_classes = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
   if (m->output_type[0] == DT_FLOAT) {
-    Internal::peft_bwd_kernel(
-        m, bc, input_grad.get_float_ptr(), output_grad.get_float_ptr(), stream);
+    Internal::peft_bwd_kernel(m,
+                              bc,
+                              input_grad.get_float_ptr(),
+                              output_grad.get_float_ptr(),
+                              num_classes,
+                              stream);
   } else if (m->output_type[0] == DT_HALF) {
-    Internal::inference_kernel(
-        m, bc, input_grad.get_half_ptr(), output_grad.get_half_ptr(), stream);
+    Internal::peft_bwd_kernel(m,
+                              bc,
+                              input_grad.get_half_ptr(),
+                              output_grad.get_half_ptr(),
+                              num_classes,
+                              stream);
   } else {
     assert(false && "Unsupported data type");
   }
@@ -212,9 +243,9 @@ void backward_kernel(DT *input_grad_ptr,
 
 template <typename DT>
 void inference_kernel(SoftmaxMeta const *m,
+                      BatchConfig const *bc,
                       DT const *input_ptr,
                       DT *output_ptr,
-                      int num_tokens,
                       int num_classes,
                       cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -224,7 +255,7 @@ void inference_kernel(SoftmaxMeta const *m,
   checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         cudnn_data_type,
-                                        num_tokens,
+                                        bc->num_active_tokens(),
                                         num_classes,
                                         1,
                                         1));
@@ -278,7 +309,7 @@ void peft_bwd_kernel(SoftmaxMeta const *m,
     }
     checkCUDA(cudaMemcpyAsync(m->handle.workSpace,
                               token_ids,
-                              sizeof(BatchConfig::TokenID) * num_bwd_tokens,
+                              sizeof(BatchConfig::TokenId) * num_bwd_tokens,
                               cudaMemcpyHostToDevice,
                               stream));
     sparse_categorical_crossentropy_loss_peft_backward<<<

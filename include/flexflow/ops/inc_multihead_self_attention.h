@@ -120,6 +120,13 @@ public:
                                        GenericTensorAccessorR const &weight,
                                        GenericTensorAccessorW const &output,
                                        GenericTensorAccessorR const &bias);
+  static void peft_bwd_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
+                                      BatchConfig const *bc,
+                                      int shard_id,
+                                      GenericTensorAccessorW const &input_grad,
+                                      GenericTensorAccessorR const &weight,
+                                      GenericTensorAccessorR const &output_grad,
+                                      GenericTensorAccessorR const &bias);
   Params get_params() const;
 
 public:

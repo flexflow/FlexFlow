@@ -65,14 +65,16 @@ public:
 
   struct PerRequestInfo {
     PerRequestInfo() {
-      token_start_offset = 0;
+      first_token_depth_in_request = 0;
+      first_token_offset_in_batch = 0;
       num_tokens_in_batch = 0;
       max_sequence_length = 0;
       request_guid = 0;
       peft_model_id = PEFTModelID::NO_ID;
       peft_bwd = false;
     }
-    int token_start_offset;
+    int first_token_depth_in_request;
+    int first_token_offset_in_batch;
     int num_tokens_in_batch;
     int max_sequence_length;
     RequestGuid request_guid;

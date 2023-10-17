@@ -631,17 +631,8 @@ __host__ void
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
         SoftmaxMeta *m = (SoftmaxMeta *)metas->meta[op];
-        if (m->input_type == DT_HALF) {
-          Kernels::Softmax::forward_kernel_wrapper(
-              m,
-              my_input_accessor[0].get_half_ptr(),
-              my_output_accessor[0].get_half_ptr());
-        } else if (m->input_type == DT_FLOAT) {
-          Kernels::Softmax::forward_kernel_wrapper(
-              m,
-              my_input_accessor[0].get_float_ptr(),
-              my_output_accessor[0].get_float_ptr());
-        }
+        Kernels::Softmax::inference_kernel_wrapper(
+            m, bc, my_input_accessor[0], my_output_accessor[0]);
         break;
       }
       case OP_ALLREDUCE: {
@@ -828,10 +819,10 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
       case OP_CONCAT: {
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        ConcatMeta *m = (ConcatMeta *)metas->meta[op];
-        int num_inputs = fused->op_num_inputs[op];
         // TODO: implement this
         assert(false);
+        // ConcatMeta *m = (ConcatMeta *)metas->meta[op];
+        // int num_inputs = fused->op_num_inputs[op];
         // Kernels::Concat::peft_bwd_kernel_wrapper(m,
         //                                          my_output_accessor[0],
         //                                          my_input_accessor,
@@ -868,16 +859,7 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
                out_dim * batch_size);
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                in_dim * batch_size);
-        void const *bias_ptr = nullptr;
         LinearMeta *m = (LinearMeta *)metas->meta[op];
-        if (fused->op_num_weights[op] == 2) {
-          assert(my_weight_accessor[1].domain.get_volume() == out_dim);
-          if (!m->add_bias_only_once || task->index_point.point_data[0] == 0) {
-            bias_ptr = my_weight_accessor[1].ptr;
-          }
-        } else {
-          assert(fused->op_num_weights[op] == 1);
-        }
         assert(m->input_type[0] == my_input_grad_accessor[0].data_type);
         assert(m->input_type[0] == my_output_grad_accessor[0].data_type);
         int num_infr_tokens = bc->num_active_infr_tokens();
@@ -1187,7 +1169,7 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
                my_output_grad_accessor[0].domain.get_volume());
         SoftmaxMeta *m = (SoftmaxMeta *)metas->meta[op];
         Kernels::Softmax::peft_bwd_kernel_wrapper(
-            m, my_input_grad_accessor[0], my_output_grad_accessor[0]);
+            m, bc, my_input_grad_accessor[0], my_output_grad_accessor[0]);
         break;
       }
       case OP_ALLREDUCE: {
@@ -1573,17 +1555,8 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
         SoftmaxMeta *m = (SoftmaxMeta *)metas->meta[op];
-        if (m->input_type == DT_HALF) {
-          Kernels::Softmax::forward_kernel_wrapper(
-              m,
-              my_input_accessor[0].get_half_ptr(),
-              my_output_accessor[0].get_half_ptr());
-        } else if (m->input_type == DT_FLOAT) {
-          Kernels::Softmax::forward_kernel_wrapper(
-              m,
-              my_input_accessor[0].get_float_ptr(),
-              my_output_accessor[0].get_float_ptr());
-        }
+        Kernels::Softmax::forward_kernel_wrapper(
+            m, my_input_accessor[0], my_output_accessor[0]);
         break;
       }
       case OP_RESHAPE: {

@@ -27,7 +27,8 @@ using Legion::Memory;
 
 BatchConfig::BatchConfig() : num_tokens(0) {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    requestsInfo[i].token_start_offset = 0;
+    requestsInfo[i].first_token_depth_in_request = 0;
+    requestsInfo[i].first_token_offset_in_batch = 0;
     requestsInfo[i].num_tokens_in_batch = 0;
     request_completed[i] = true;
   }
@@ -115,8 +116,10 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
   for (int i = 0; i < bc.max_requests_per_batch(); i++) {
     if (!bc.request_completed[i]) {
       os << "  Request " << i << ":\n";
-      os << "    Token start offset: " << bc.requestsInfo[i].token_start_offset
-         << std::endl;
+      os << "    First token depth in request: "
+         << bc.requestsInfo[i].first_token_depth_in_request << std::endl;
+      os << "    First token offset in batch: "
+         << bc.requestsInfo[i].first_token_offset_in_batch << std::endl;
       os << "    Number of tokens in batch: "
          << bc.requestsInfo[i].num_tokens_in_batch << std::endl;
       os << "    GUID: " << bc.requestsInfo[i].request_guid << std::endl;
