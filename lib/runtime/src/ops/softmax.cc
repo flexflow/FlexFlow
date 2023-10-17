@@ -120,7 +120,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   assert(input_grad.shape == input.shape);
 
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
-  auto output = acc.get_tensor<Permissions::RW>(OUTPUT);
+  auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
+
   assert(output_grad.shape == output.shape);
 
   return profile(

@@ -313,31 +313,31 @@ std::vector<Tensor>
 TensorShape get_shape(Tensor const &);
 std::vector<TensorShape> get_shape(std::vector<Tensor> const &);
 
-Tensor ComputationGraphBuilder::aggregate(
-    Tensor const &gate_preds,
-    Tensor const &gate_assign,
-    Tensor const &true_gate_assign,
-    Tensor const &full_gate_gradients,
-    std::vector<Tensor> const &exp_preds,
-    int n,
-    float lambda_bal,
-    optional<std::string> const &maybe_name) {
-  AggregateAttrs attrs = {n, lambda_bal};
-  std::string name = maybe_name.value_or(get_default_name(attrs));
+// Tensor ComputationGraphBuilder::aggregate(
+//     Tensor const &gate_preds,
+//     Tensor const &gate_assign,
+//     Tensor const &true_gate_assign,
+//     Tensor const &full_gate_gradients,
+//     std::vector<Tensor> const &exp_preds,
+//     int n,
+//     float lambda_bal,
+//     optional<std::string> const &maybe_name) {
+//   AggregateAttrs attrs = {n, lambda_bal};
+//   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  Layer layer = {attrs, name};
-  TensorShape output_shape = get_output_shape(attrs,
-                                              get_shape(gate_preds),
-                                              get_shape(gate_assign),
-                                              get_shape(true_gate_assign),
-                                              get_shape(full_gate_gradients),
-                                              get_shape(exp_preds));
+//   Layer layer = {attrs, name};
+//   TensorShape output_shape = get_output_shape(attrs,
+//                                               get_shape(gate_preds),
+//                                               get_shape(gate_assign),
+//                                               get_shape(true_gate_assign),
+//                                               get_shape(full_gate_gradients),
+//                                               get_shape(exp_preds));
 
-  std::vector<Tensor> inputs = {
-      gate_preds, gate_assign, true_gate_assign, full_gate_gradients};
-  extend(inputs, exp_preds);
-  return this->add_layer(layer, inputs, {}, output_shape);
-}
+//   std::vector<Tensor> inputs = {
+//       gate_preds, gate_assign, true_gate_assign, full_gate_gradients};
+//   extend(inputs, exp_preds);
+//   return this->add_layer(layer, inputs, {}, output_shape);
+// }
 
 Tensor ComputationGraphBuilder::batch_norm(
     Tensor const &input, bool relu, optional<std::string> const &maybe_name) {
