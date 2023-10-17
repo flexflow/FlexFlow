@@ -66,7 +66,7 @@ OpTaskInvocation forward(RepartitionAttrs const &attrs) {
   return {REPARTITION_FWD_TASK_ID, binding};
 }
 
-OpTaskInvocation backward(CastAttrs const &attrs) {
+OpTaskInvocation backward(RepartitionAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
   return {REPARTITION_BWD_TASK_ID, binding};
@@ -158,7 +158,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
       init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
-  fwd_binding.bind(INTPUT, input.shape);
+  fwd_binding.bind(INPUT, input.shape);
   fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
