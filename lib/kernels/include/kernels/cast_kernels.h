@@ -3,28 +3,24 @@
 
 #include "kernels/accessor.h"
 #include "kernels/device.h"
-#include "op-attrs/ffconst.h"
+#include "kernels/ff_handle.h"
+#include "op-attrs/activation.h"
 
 namespace FlexFlow {
-
-class CastPerDeviceState : public PerDeviceOpState {
-public:
-  CastPerDeviceState(FFHandler handle);
-  DataType input_data_type, output_data_type;
-};
-
 namespace Kernels {
 namespace Cast {
 
 void forward_kernel(ffStream_t stream,
-                    CastPerDeviceState const *,
                     GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output);
+                    GenericTensorAccessorW const &output,
+                    DataType input_type,
+                    DataType output_type);
 
 void backward_kernel(ffStream_t stream,
-                     CastPerDeviceState const *,
                      GenericTensorAccessorR const &input,
-                     GenericTensorAccessorW const &output);
+                     GenericTensorAccessorW const &output,
+                     DataType input_type,
+                     DataType output_type);
 
 } // namespace Cast
 } // namespace Kernels
