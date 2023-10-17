@@ -18,26 +18,29 @@ bool GatherAttrs::is_valid(ParallelTensorShape const &lhs,
   return true;
 }
 
-//https://pytorch.org/docs/stable/generated/torch.gather.html
-// todo: why return a vector?
+// https://pytorch.org/docs/stable/generated/torch.gather.html
+//  todo: why return a vector?
 std::vector<ParallelTensorShape>
     get_output_shapes(GatherAttrs const &attrs,
-                      ParallelTensorShape const & input,
+                      ParallelTensorShape const &input,
                       ParallelTensorShape const &index) {
-  if(input.num_dims() != index.num_dims()) {
-    throw mk_runtime_error("Gather: input and index must have the same number of dimensions");
+  if (input.num_dims() != index.num_dims()) {
+    throw mk_runtime_error(
+        "Gather: input and index must have the same number of dimensions");
   }
 
-  for(int i = 0; i < input.num_dims(); i++) {
-    if(i != attrs.dim && input.at(ff_dim_t(i)).size <= index.at(ff_dim_t(i)).size) {
-      throw mk_runtime_error("Gather: index.size(d) <= input.size(d) for all dimensions d != dim");
+  for (int i = 0; i < input.num_dims(); i++) {
+    if (i != attrs.dim &&
+        input.at(ff_dim_t(i)).size <= index.at(ff_dim_t(i)).size) {
+      throw mk_runtime_error(
+          "Gather: index.size(d) <= input.size(d) for all dimensions d != dim");
     }
   }
 
   ParallelTensorShape output = input;
 
   std::vector<ParallelTensorShape> results;
-  //NOTE(lambda):why return a vector?
+  // NOTE(lambda):why return a vector?
   results.push_back(output);
   return results;
 }
