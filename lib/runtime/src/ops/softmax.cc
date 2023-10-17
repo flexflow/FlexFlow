@@ -195,7 +195,7 @@ template <>
 void register_task<SOFTMAX_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
-  fwd.add_arg_slot<bool>(PROFILING);
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<SoftmaxPerDeviceState>(PER_DEVICE_STATE);
 
   fwd.add_input_slot(INPUT);
