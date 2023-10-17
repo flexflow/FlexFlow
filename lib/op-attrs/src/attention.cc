@@ -1,8 +1,8 @@
 #include "op-attrs/ops/attention.h"
+#include "kernels/legion_dim.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/exception.decl.h"
 #include "utils/exceptions.h"
-#include "kernels/legion_dim.h"
 
 namespace FlexFlow {
 
@@ -86,12 +86,13 @@ TensorShape
 //   return get_tensor_shape_unsafe(parallel_shape);
 // }
 
-//according to the pytorch  https://pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html,
-//query: [target_size_seq_len, batch_size, embed_dim], we consider the batch size 
-//key: (seq_len, batch_size, embed_dim)
-//value: (seq_len, batch_size, embed_dim)
-// multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
-//output: (target_size_seq_len, batch_size, embed_dim)
+// according to the pytorch
+// https://pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html,
+// query: [target_size_seq_len, batch_size, embed_dim], we consider the batch
+// size key: (seq_len, batch_size, embed_dim) value: (seq_len, batch_size,
+// embed_dim)
+//  multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
+// output: (target_size_seq_len, batch_size, embed_dim)
 
 ParallelTensorShape get_output_shape(
     MultiHeadAttentionAttrs const &attrs,
@@ -100,22 +101,24 @@ ParallelTensorShape get_output_shape(
   NOT_IMPLEMENTED();
 }
 
-bool is_valid(MultiHeadAttentionAttrs const & attrs, MultiHeadAttentionInputs<ParallelTensorShape> const &input) {
+bool is_valid(MultiHeadAttentionAttrs const &attrs,
+              MultiHeadAttentionInputs<ParallelTensorShape> const &input) {
   bool valid = true;
-  if(input.query.num_dims() != 3 || input.key.num_dims() != 3 || input.value.num_dims() != 3) {
+  if (input.query.num_dims() != 3 || input.key.num_dims() != 3 ||
+      input.value.num_dims() != 3) {
     return false;
   }
-  //ff_dim_t = num_dims - legion_dim_t - 1 
-  if(input.query.at(legion_dim_t(0)).size != attrs.embed_dim) {
+  // ff_dim_t = num_dims - legion_dim_t - 1
+  if (input.query.at(legion_dim_t(0)).size != attrs.embed_dim) {
     return false;
   }
-  if(input.key.at(legion_dim_t(0)).size != attrs.embed_dim) {
+  if (input.key.at(legion_dim_t(0)).size != attrs.embed_dim) {
     return false;
   }
-  if(input.value.at(legion_dim_t(0)).size != attrs.embed_dim) {
+  if (input.value.at(legion_dim_t(0)).size != attrs.embed_dim) {
     return false;
   }
-  return true; 
+  return true;
 }
 
 } // namespace FlexFlow

@@ -23,7 +23,6 @@ FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs,
                     add_bias_kv,
                     add_zero_attn);
 
-
 template <typename TensorType>
 struct MultiHeadAttentionInputs
     : public use_visitable_cmp<MultiHeadAttentionInputs<TensorType>> {
@@ -45,7 +44,8 @@ public:
   TensorType value;
 };
 
-bool is_valid(MultiHeadAttentionAttrs const &, MultiHeadAttentionInputs<ParallelTensorShape> const &input);
+bool is_valid(MultiHeadAttentionAttrs const &,
+              MultiHeadAttentionInputs<ParallelTensorShape> const &input);
 
 int get_qProjSize(MultiHeadAttentionAttrs const &);
 int get_vProjSize(MultiHeadAttentionAttrs const &);
