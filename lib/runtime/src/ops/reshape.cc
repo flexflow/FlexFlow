@@ -16,8 +16,6 @@
 #include "reshape.h"
 #include "kernels/reshape_kernels.h"
 #include "legion/legion_utilities.h"
-#include "utils/exception.h"
-#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -114,8 +112,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
       acc.get_argument<ReshapePerDeviceState>(PER_DEVICE_STATE);
   Profiling profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
-  auto input_grad = acc.get_tensor<Permissions::RO>(INPUT);
-  auto output_grad = acc.get_tensor<Permissions::WO>(OUTPUT);
+  auto input_grad = acc.get_tensor<Permissions::WO>(INPUT);
+  auto output_grad = acc.get_tensor<Permissions::RO>(OUTPUT);
 
   return profile(backward_kernel,
                  profiling,
