@@ -90,7 +90,7 @@ static DeviceSpecific<SoftmaxPerDeviceState>
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  auto input = acc.get_tensor<Permissions::RO>(A_INPUT);
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state =
