@@ -718,24 +718,37 @@ void LayerNorm::peft_bwd_kernel_wrapper(
 }
 
 /*static*/
-template <typename T>
-void LayerNorm::backward_kernel_wrapper(LayerNormMeta const *m,
-                                        T const *output_grad_ptr,
-                                        T const *input_ptr,
-                                        T *input_grad_ptr,
-                                        T const *gamma_ptr,
-                                        T *gamma_grad_ptr,
-                                        T *beta_grad_ptr) {
+void LayerNorm::backward_kernel_wrapper(
+    LayerNormMeta const *m,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad,
+    GenericTensorAccessorR const &gamma,
+    GenericTensorAccessorW const &gamma_grad,
+    GenericTensorAccessorW const &beta_grad) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  LayerNorm::backward_kernel<T>(m,
-                                output_grad_ptr,
-                                input_ptr,
-                                input_grad_ptr,
-                                gamma_ptr,
-                                gamma_grad_ptr,
-                                beta_grad_ptr,
-                                stream);
+  if (m->output_type[0] == DT_FLOAT) {
+    LayerNorm::backward_kernel(m,
+                               output_grad.get_float_ptr(),
+                               input.get_float_ptr(),
+                               input_grad.get_float_ptr(),
+                               gamma.get_float_ptr(),
+                               gamma_grad.get_float_ptr(),
+                               beta_grad.get_float_ptr(),
+                               stream);
+  } else if (m->output_type[0] == DT_HALF) {
+    LayerNorm::backward_kernel(m,
+                               output_grad.get_half_ptr(),
+                               input.get_half_ptr(),
+                               input_grad.get_half_ptr(),
+                               gamma.get_half_ptr(),
+                               gamma_grad.get_half_ptr(),
+                               beta_grad.get_half_ptr(),
+                               stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
 }
 
 } // namespace FlexFlow

@@ -866,23 +866,8 @@ void LayerNorm::backward_task(Task const *task,
   } else {
     assert(regions.size() == 3);
   }
-  if (m->output_type[0] == DT_FLOAT) {
-    LayerNorm::backward_kernel_wrapper<float>(m,
-                                              output_grad.get_float_ptr(),
-                                              input.get_float_ptr(),
-                                              input_grad.get_float_ptr(),
-                                              gamma.get_float_ptr(),
-                                              gamma_grad.get_float_ptr(),
-                                              beta_grad.get_float_ptr());
-  } else {
-    LayerNorm::backward_kernel_wrapper<half>(m,
-                                             output_grad.get_half_ptr(),
-                                             input.get_half_ptr(),
-                                             input_grad.get_half_ptr(),
-                                             gamma.get_half_ptr(),
-                                             gamma_grad.get_half_ptr(),
-                                             beta_grad.get_half_ptr());
-  }
+  LayerNorm::backward_kernel_wrapper(
+      m, output_grad, input, input_grad, gamma, gamma_grad, beta_grad);
 }
 
 bool LayerNorm::measure_operator_cost(Simulator *sim,
@@ -933,16 +918,24 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *in_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    GenericTensorAccessorW in_grad_acc(
+        inputs[0]->data_type, input_domain, in_grad_ptr);
     assert(in_grad_ptr != NULL);
     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
     float *out_grad_ptr = NULL;
     out_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    GenericTensorAccessorR out_grad_acc(
+        outputs[0]->data_type, output_domain, out_grad_ptr);
     assert(out_grad_ptr != NULL);
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
 
     float *gamma_grad_ptr = NULL, *beta_grad_ptr = NULL;
+    GenericTensorAccessorW gamma_grad_acc(
+        outputs[0]->data_type, output_domain, gamma_grad_ptr);
+    GenericTensorAccessorW beta_grad_acc(
+        outputs[0]->data_type, output_domain, beta_grad_ptr);
 
     out_of_memory = (in_grad_ptr == NULL) || (out_grad_ptr == NULL) ||
                     (((gamma_grad_ptr == NULL) || (beta_grad_ptr == NULL)) &&
@@ -954,13 +947,13 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
     }
 
     backward = [=] {
-      backward_kernel_wrapper<float>(m,
-                                     out_grad_ptr,
-                                     in_ptr,
-                                     in_grad_ptr,
-                                     gamma_ptr,
-                                     gamma_grad_ptr,
-                                     beta_grad_ptr);
+      backward_kernel_wrapper(m,
+                              out_grad_acc,
+                              input1_acc,
+                              in_grad_acc,
+                              gamma_acc,
+                              gamma_grad_acc,
+                              beta_grad_acc);
     };
   }
 

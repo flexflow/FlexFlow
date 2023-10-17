@@ -230,7 +230,8 @@ void forward_kernel(SoftmaxMeta const *m,
 }
 
 template <typename DT>
-void backward_kernel(DT *input_grad_ptr,
+void backward_kernel(SoftmaxMeta const *m,
+                     DT *input_grad_ptr,
                      DT const *output_grad_ptr,
                      size_t num_elements,
                      cudaStream_t stream) {
