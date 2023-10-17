@@ -1,5 +1,6 @@
 #include "op-attrs/ops/attention.h"
 #include "op-attrs/parallel_tensor_shape.h"
+#include "utils/exception.decl.h"
 #include "utils/exceptions.h"
 #include "kernels/legion_dim.h"
 
@@ -96,8 +97,7 @@ ParallelTensorShape get_output_shape(
     MultiHeadAttentionAttrs const &attrs,
     MultiHeadAttentionInputs<ParallelTensorShape> const &inputs) {
   ParallelTensorShape output_shape = inputs.query;
-
-  return output_shape;
+  NOT_IMPLEMENTED();
 }
 
 bool is_valid(MultiHeadAttentionAttrs const & attrs, MultiHeadAttentionInputs<ParallelTensorShape> const &input) {
