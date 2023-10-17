@@ -110,18 +110,16 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
-  // Note(lambda): Does replicate has cost? currently I assume the replicate has
-  // no cost
   auto env = sim.new_environment();
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PROFILING, settings);
-  ParallelTensorShape output = get_output_shape(input, attrs);
+  ParallelTensorShape output = get_output_shape(attrs, input.shape);
   fwd_binding.bind(INPUT, input.shape);
   fwd_binding.bind(OUTPUT, output);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-  auto fwd_accessor = env.get_fwd_accessor(TOPK_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(TOPK_BWD_TASK_ID, bwd_binding);
+  auto fwd_accessor = env.get_fwd_accessor(REPLICATE_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(REPLICATE_BWD_TASK_ID, bwd_binding);
 
   float forward_time = forward_task_impl(fwd_accessor).value();
   float backward_time = backward_task_impl(bwd_accessor).value();
