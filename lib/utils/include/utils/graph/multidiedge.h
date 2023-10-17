@@ -13,11 +13,13 @@ struct MultiDiInput : DiInput {
   NodePort dst_idx;
 };
 FF_VISITABLE_STRUCT(MultiDiInput, dst, dst_idx);
+FF_VISIT_FMTABLE(MultiDiInput);
 
 struct MultiDiOutput : DiOutput {
   NodePort src_idx;
 };
 FF_VISITABLE_STRUCT(MultiDiOutput, src, src_idx);
+FF_VISIT_FMTABLE(MultiDiOutput);
 
 using edge_uid_t = std::pair<std::size_t, std::size_t>;
 
@@ -26,12 +28,14 @@ struct InputMultiDiEdge : MultiDiInput {
                        // different sources resulting from a graph cut
 };
 FF_VISITABLE_STRUCT(InputMultiDiEdge, dst, dst_idx, uid);
+FF_VISIT_FMTABLE(InputMultiDiEdge);
 
 struct OutputMultiDiEdge : MultiDiOutput {
   req<edge_uid_t> uid; // necessary to differentiate multiple output edges from
                        // different sources resulting from a graph cut
 };
 FF_VISITABLE_STRUCT(OutputMultiDiEdge, src, src_idx, uid);
+FF_VISIT_FMTABLE(OutputMultiDiEdge);
 
 struct OutputMultiDiEdgeQuery {
   query_set<Node> srcs;
@@ -85,29 +89,5 @@ MultiDiEdgeQuery query_union(MultiDiEdgeQuery const &,
                              MultiDiEdgeQuery const &);
 
 } // namespace FlexFlow
-
-namespace fmt {
-
-template <>
-struct formatter<::FlexFlow::MultiDiOutput> : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::MultiDiOutput const &x, FormatContext &ctx) const
-      -> decltype(ctx.out()) {
-    return formatter<std::string>::format(
-        fmt::format("MultiDiOutput({}, {})", x.src, x.src_idx), ctx);
-  }
-};
-
-template <>
-struct formatter<::FlexFlow::MultiDiInput> : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::MultiDiInput const &x, FormatContext &ctx) const
-      -> decltype(ctx.out()) {
-    return formatter<std::string>::format(
-        fmt::format("MultiDiInput({}, {})", x.dst, x.dst_idx), ctx);
-  }
-};
-
-} // namespace fmt
 
 #endif

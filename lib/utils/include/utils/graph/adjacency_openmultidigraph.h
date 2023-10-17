@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-class AdjacencyInputs {
+class AdjacencyInputEdges {
 public:
   void add_edge(InputMultiDiEdge const &);
   void remove_edge(InputMultiDiEdge const &);
@@ -20,7 +20,7 @@ private:
   ContentsType adj;
 };
 
-class AdjacencyOutputs {
+class AdjacencyOutputEdges {
 public:
   void add_edge(OutputMultiDiEdge const &);
   void remove_edge(OutputMultiDiEdge const &);
@@ -55,12 +55,12 @@ public:
 
 private:
   AdjacencyOpenMultiDiGraph(AdjacencyMultiDiGraph const &g,
-                            AdjacencyInputs const &inputs,
-                            AdjacencyOutputs const &outputs);
+                            AdjacencyInputEdges const &inputs,
+                            AdjacencyOutputEdges const &outputs);
 
   AdjacencyMultiDiGraph closed_graph;
-  AdjacencyInputs inputs;
-  AdjacencyOutputs outputs;
+  AdjacencyInputEdges inputs;
+  AdjacencyOutputEdges outputs;
 };
 
 CHECK_NOT_ABSTRACT(AdjacencyOpenMultiDiGraph);

@@ -131,9 +131,11 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
                           assignments.at(OperatorAttributeKey::DATA_TYPE))},
                       nullopt);
     case Op::CONCAT:
-      return Operator(ConcatAttrs{get<ff_dim_t>(
-                          assignments.at(OperatorAttributeKey::AXIS)), get<int>(assignments.at(OperatorAttributeKey::NUM_INPUTS))},
-                      nullopt);
+      return Operator(
+          ConcatAttrs{
+              get<ff_dim_t>(assignments.at(OperatorAttributeKey::AXIS)),
+              get<int>(assignments.at(OperatorAttributeKey::NUM_INPUTS))},
+          nullopt);
     case Op::CONV2D:
       return Operator(
           Conv2DAttrs{
@@ -396,60 +398,60 @@ struct AddNewEdgeFunctor {
   }
 };
 
-  SubParallelComputationGraph
-      apply_substitution(SubParallelComputationGraph const &pcg,
-                         Substitution const &substitution,
-                         MultiDiGraphPatternMatch const &match) {
-    SubParallelComputationGraph new_pcg =
-        OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>::create<
-            AdjacencyOpenMultiDiGraph,
-            UnorderedLabel<Node, Operator>,
-            UnorderedLabel<InputMultiDiEdge, ParallelTensor>,
-            UnorderedLabel<MultiDiOutput, ParallelTensor>>();
-    bidict<Node, Node> node_mapping; // Refactor it with global nodes
-    for (Node const &node : get_nodes(pcg)) {
-      if (!contains_r(match.node_assignment, node)) {
-        node_mapping.equate(node, new_pcg.add_node(pcg.at(node)));
-      }
+SubParallelComputationGraph
+    apply_substitution(SubParallelComputationGraph const &pcg,
+                       Substitution const &substitution,
+                       MultiDiGraphPatternMatch const &match) {
+  SubParallelComputationGraph new_pcg =
+      OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>::create<
+          AdjacencyOpenMultiDiGraph,
+          UnorderedLabelling<Node, Operator>,
+          UnorderedLabelling<InputMultiDiEdge, ParallelTensor>,
+          UnorderedLabelling<MultiDiOutput, ParallelTensor>>();
+  bidict<Node, Node> node_mapping; // Refactor it with global nodes
+  for (Node const &node : get_nodes(pcg)) {
+    if (!contains_r(match.node_assignment, node)) {
+      node_mapping.equate(node, new_pcg.add_node(pcg.at(node)));
     }
-    for (OpenMultiDiEdge const &edge : get_edges(pcg)) {
-      if (!contains_r(match.edge_assignment, edge)) {
-        visit(AddMappedEdgeFunctor{node_mapping, new_pcg}, edge);
-      }
-    }
-    for (Node const &output_node :
-         get_nodes(substitution.output_graph_expr.value())) {
-      Node new_node = new_pcg.add_node(get_operator_attrs(
-          pcg, match, substitution.output_graph_expr.value().at(output_node)));
-      node_mapping.equate(output_node, new_node);
-    }
-    for (OpenMultiDiEdge const &output_edge :
-         get_edges(substitution.output_graph_expr.value())) {
-      if (holds_alternative<InputMultiDiEdge>(output_edge)) {
-        InputMultiDiEdge e = get<InputMultiDiEdge>(output_edge);
-        OpenMultiDiEdge original_edge =
-            match.edge_assignment.at_l(substitution.input_mapping.at_r(e));
-        visit(AddNewEdgeFunctor{pcg, new_pcg, match, node_mapping},
-              original_edge,
-              output_edge);
-      } else if (holds_alternative<OutputMultiDiEdge>(output_edge)) {
-        OutputMultiDiEdge e = get<OutputMultiDiEdge>(output_edge);
-        OpenMultiDiEdge original_edge =
-            match.edge_assignment.at_l(substitution.output_mapping.at_r(e));
-        visit(AddNewEdgeFunctor{pcg, new_pcg, match, node_mapping},
-              original_edge,
-              output_edge);
-      } else {
-        assert(holds_alternative<MultiDiEdge>(output_edge));
-        MultiDiEdge e = get<MultiDiEdge>(output_edge);
-        new_pcg.add_edge(MultiDiEdge{node_mapping.at_l(e.dst),
-                                     new_pcg.add_node_port(),
-                                     node_mapping.at_l(e.src),
-                                     new_pcg.add_node_port()});
-      }
-    }
-
-    return new_pcg;
   }
+  for (OpenMultiDiEdge const &edge : get_edges(pcg)) {
+    if (!contains_r(match.edge_assignment, edge)) {
+      visit(AddMappedEdgeFunctor{node_mapping, new_pcg}, edge);
+    }
+  }
+  for (Node const &output_node :
+       get_nodes(substitution.output_graph_expr.value())) {
+    Node new_node = new_pcg.add_node(get_operator_attrs(
+        pcg, match, substitution.output_graph_expr.value().at(output_node)));
+    node_mapping.equate(output_node, new_node);
+  }
+  for (OpenMultiDiEdge const &output_edge :
+       get_edges(substitution.output_graph_expr.value())) {
+    if (holds_alternative<InputMultiDiEdge>(output_edge)) {
+      InputMultiDiEdge e = get<InputMultiDiEdge>(output_edge);
+      OpenMultiDiEdge original_edge =
+          match.edge_assignment.at_l(substitution.input_mapping.at_r(e));
+      visit(AddNewEdgeFunctor{pcg, new_pcg, match, node_mapping},
+            original_edge,
+            output_edge);
+    } else if (holds_alternative<OutputMultiDiEdge>(output_edge)) {
+      OutputMultiDiEdge e = get<OutputMultiDiEdge>(output_edge);
+      OpenMultiDiEdge original_edge =
+          match.edge_assignment.at_l(substitution.output_mapping.at_r(e));
+      visit(AddNewEdgeFunctor{pcg, new_pcg, match, node_mapping},
+            original_edge,
+            output_edge);
+    } else {
+      assert(holds_alternative<MultiDiEdge>(output_edge));
+      MultiDiEdge e = get<MultiDiEdge>(output_edge);
+      new_pcg.add_edge(MultiDiEdge{node_mapping.at_l(e.dst),
+                                   new_pcg.add_node_port(),
+                                   node_mapping.at_l(e.src),
+                                   new_pcg.add_node_port()});
+    }
+  }
+
+  return new_pcg;
+}
 
 } // namespace FlexFlow

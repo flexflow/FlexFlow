@@ -48,6 +48,7 @@ struct IGraphView {
 
 struct GraphView {
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
+  friend bool is_ptr_equal(GraphView const &, GraphView const &);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IGraphView, T>::value,
@@ -79,7 +80,6 @@ CHECK_RC_COPY_VIRTUAL_COMPLIANT(IGraph);
 
 struct Graph : virtual GraphView {
 public:
-  // Graph() = delete;
   Graph(Graph const &) = default;
 
   Graph &operator=(Graph const &) = default;

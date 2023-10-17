@@ -16,7 +16,6 @@ public:
   using Edge = OpenMultiDiEdge;
   using EdgeQuery = OpenMultiDiEdgeQuery;
 
-  // OpenMultiDiGraphView() = delete;
   OpenMultiDiGraphView(OpenMultiDiGraphView const &) = default;
   OpenMultiDiGraphView &operator=(OpenMultiDiGraphView const &) = default;
 
@@ -78,7 +77,6 @@ public:
   using Edge = UpwardOpenMultiDiEdge;
   using EdgeQuery = UpwardOpenMultiDiEdgeQuery;
 
-  // UpwardOpenMultiDiGraphView() = delete;
   UpwardOpenMultiDiGraphView(UpwardOpenMultiDiGraphView const &) = default;
   UpwardOpenMultiDiGraphView &
       operator=(UpwardOpenMultiDiGraphView const &) = default;
@@ -141,7 +139,6 @@ public:
   using EdgeQuery = DownwardOpenMultiDiEdgeQuery;
   using Interface = IDownwardOpenMultiDiGraphView;
 
-  // DownwardOpenMultiDiGraphView() = delete;
   DownwardOpenMultiDiGraphView(DownwardOpenMultiDiGraphView const &) = default;
   DownwardOpenMultiDiGraphView &
       operator=(DownwardOpenMultiDiGraphView const &) = default;
