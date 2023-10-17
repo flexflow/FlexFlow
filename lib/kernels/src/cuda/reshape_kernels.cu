@@ -55,7 +55,7 @@ struct BackwardKernel {
 }
 
 void forward_kernel(cudaStream_t stream,
-                    ReshapePerDeviceState const  &m,
+                    ReshapePerDeviceState const &m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
   DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output);
