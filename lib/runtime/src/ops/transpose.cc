@@ -85,12 +85,12 @@ init.add_return_value<TransposePerDeviceState>();
 register_task(TRANSPOSE_INIT_TASK_ID, "Transpose::init", init, init_task);
 } // namespace FlexFlow
 
-OpTaskInvocation forward(TransposeAttrs const &) {
+OpTaskInvocation forward(TransposeAttrs const & attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(PER_DEVICE_STATE,
                    per_device_op_state<TransposePerDeviceState>());
-  binding.bind_arg(PROFILEING, profiling_settings());
+  binding.bind_arg(PROFILING, profiling_settings());
 
   bind.bind(INPUT, input_tensor(0));
   bind.bind(OUTPUT, output_tensor(0));
@@ -110,8 +110,6 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                    profiling,
                    "[Transpose] Forward_time = %.2lf [ms]",
                    per_device_state,
-                   input.get_float_ptr(),
-                   output.get_float_ptr(),
                    input,
                    output);
 }
@@ -136,8 +134,6 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                    profiling,
                    "[Transpose] Backward_time = %.2lf [ms]",
                    per_device_state,
-                   input_grad.get_float_ptr(),
-                   output_grad.get_float_ptr(),
                    input_grad,
                    output_grad);
 }
