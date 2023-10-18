@@ -65,7 +65,7 @@ struct NodeLabelledOpenMultiDiGraph
     : virtual NodeLabelledOpenMultiDiGraphView<NodeLabel> {
 private:
   using Interface = IOpenMultiDiGraph;
-  using INodeLabel = ILabel<Node, NodeLabel>;
+  using INodeLabel = ILabelling<Node, NodeLabel>;
 
 public:
   // NodeLabelledOpenMultiDiGraph() = delete;

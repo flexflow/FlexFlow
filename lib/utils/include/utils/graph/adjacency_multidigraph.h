@@ -22,8 +22,6 @@ public:
   void remove_edge(Edge const &) override;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
-  // std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &q)
-  // const override;
 
   AdjacencyMultiDiGraph *clone() const override {
     return new AdjacencyMultiDiGraph(

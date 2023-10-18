@@ -1,6 +1,5 @@
 #include "utils/graph/undirected.h"
 #include "utils/containers.h"
-#include "utils/graph/internal.h"
 #include "utils/graph/node.h"
 #include <cassert>
 

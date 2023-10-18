@@ -25,7 +25,6 @@ private:
   using Interface = INodeLabelledMultiDiGraphView<NodeLabel>;
 
 public:
-  // NodeLabelledMultiDiGraphView() = delete;
   NodeLabelledMultiDiGraphView(NodeLabelledMultiDiGraphView const &) = default;
   NodeLabelledMultiDiGraphView &
       operator=(NodeLabelledMultiDiGraphView const &) = default;
@@ -67,10 +66,9 @@ struct NodeLabelledMultiDiGraph
     : virtual NodeLabelledMultiDiGraphView<NodeLabel> {
 private:
   using Interface = IMultiDiGraph;
-  using NodeLabelIf = ILabel<Node, NodeLabel>;
+  using NodeLabelIf = ILabelling<Node, NodeLabel>;
 
 public:
-  // NodeLabelledMultiDiGraph() = delete;
   NodeLabelledMultiDiGraph(NodeLabelledMultiDiGraph const &) = default;
   NodeLabelledMultiDiGraph &
       operator=(NodeLabelledMultiDiGraph const &) = default;

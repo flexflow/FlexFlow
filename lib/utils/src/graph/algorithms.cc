@@ -319,17 +319,6 @@ std::unordered_set<Node> get_predecessors(DiGraphView const &g, Node const &n) {
   return get_predecessors(g, std::unordered_set<Node>{n}).at(n);
 }
 
-std::unordered_map<Node, std::unordered_set<Node>>
-    get_predecessors(MultiDiGraphView const &g,
-                     std::unordered_set<Node> const &nodes) {
-  return get_predecessors(DiGraphView(g), nodes);
-}
-
-std::unordered_set<Node> get_predecessors(MultiDiGraphView const &g,
-                                          Node const &n) {
-  return get_predecessors(g, std::unordered_set<Node>{n}).at(n);
-}
-
 std::vector<Node> get_unchecked_dfs_ordering(
     DiGraphView const &g, std::unordered_set<Node> const &starting_points) {
   UncheckedDFSView dfs_view = unchecked_dfs(g, starting_points);
@@ -356,11 +345,6 @@ std::unordered_set<Node> get_sinks(DiGraphView const &g) {
   });
 }
 
-std::unordered_set<Node> get_sinks(MultiDiGraphView const &g) {
-  DiGraphView digraph_view = DiGraphView(g);
-  return get_sinks(digraph_view);
-}
-
 DiGraphView flipped(DiGraphView const &g) {
   return DiGraphView::create<FlippedView>(g);
 }
@@ -369,10 +353,6 @@ std::unordered_set<Node> get_sources(DiGraphView const &g) {
   return filter(get_nodes(g), [&](Node const &n) {
     return get_incoming_edges(g, n).size() == 0;
   });
-}
-
-std::unordered_set<Node> get_sources(MultiDiGraphView const &g) {
-  return get_sources(DiGraphView(g));
 }
 
 optional<bool> is_acyclic(DiGraphView const &g) {

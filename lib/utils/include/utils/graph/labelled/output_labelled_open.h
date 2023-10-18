@@ -79,9 +79,9 @@ struct OutputLabelledOpenMultiDiGraph
     : virtual OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> {
 private:
   using Interface = IOpenMultiDiGraph;
-  using INodeLabel = ILabel<Node, NodeLabel>;
-  using IInputLabel = ILabel<InputMultiDiEdge, EdgeLabel>;
-  using IOutputLabel = ILabel<MultiDiOutput, EdgeLabel>;
+  using INodeLabel = ILabelling<Node, NodeLabel>;
+  using IInputLabel = ILabelling<InputMultiDiEdge, EdgeLabel>;
+  using IOutputLabel = ILabelling<MultiDiOutput, EdgeLabel>;
 
 public:
   OutputLabelledOpenMultiDiGraph() = delete;

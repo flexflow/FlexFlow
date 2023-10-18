@@ -155,12 +155,7 @@ std::unordered_set<UndirectedEdge>
     get_node_edges(UndirectedGraphView const &,
                    std::unordered_set<Node> const &);
 
-std::unordered_set<Node> get_predecessors(MultiDiGraphView const &,
-                                          Node const &);
 std::unordered_set<Node> get_predecessors(DiGraphView const &, Node const &);
-std::unordered_map<Node, std::unordered_set<Node>>
-    get_predecessors(MultiDiGraphView const &,
-                     std::unordered_set<Node> const &);
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
@@ -229,11 +224,9 @@ std::unordered_set<Node> get_neighbors(MultiDiGraphView const &, Node const &);
 
 // return the set of nodes without incoming edges
 std::unordered_set<Node> get_sources(DiGraphView const &);
-std::unordered_set<Node> get_sources(MultiDiGraphView const &);
 
 // return the set of nodes without outgoing edges
 std::unordered_set<Node> get_sinks(DiGraphView const &);
-std::unordered_set<Node> get_sinks(MultiDiGraphView const &);
 
 std::unordered_set<Node> get_closed_sources(OpenMultiDiGraphView const &g);
 std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g);

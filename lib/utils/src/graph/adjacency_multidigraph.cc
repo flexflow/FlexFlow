@@ -54,15 +54,6 @@ std::unordered_set<MultiDiEdge>
   return result;
 }
 
-// std::unordered_set<DirectedEdge>
-// AdjacencyMultiDiGraph::query_edges(DirectedEdgeQuery const &q) const {
-//   return map_over_unordered_set<MultiDiEdge, DirectedEdge>([](MultiDiEdge
-//   const &e) { return DirectedEdge{e.dst, e.src}; },
-//     this->query_edges(MultiDiEdgeQuery{q.srcs, q.dsts, matchall<NodePort>(),
-//     matchall<NodePort>()})
-//   );
-// }
-
 std::unordered_set<Node>
     AdjacencyMultiDiGraph::query_nodes(NodeQuery const &query) const {
   return apply_query(query.nodes, keys(this->adjacency));

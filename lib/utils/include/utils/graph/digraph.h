@@ -16,13 +16,11 @@ public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
 
-  // DiGraphView() = delete;
   DiGraphView(DiGraphView const &) = default;
   DiGraphView &operator=(DiGraphView const &) = default;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-  friend bool is_ptr_equal(DiGraphView const &, DiGraphView const &);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IDiGraphView, T>::value,
@@ -32,7 +30,6 @@ public:
   }
 
 protected:
-  // DiGraphView(cow_ptr_t<IDiGraphView> ptr);
   using GraphView::GraphView;
 
 private:
@@ -47,7 +44,6 @@ public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
 
-  // DiGraph() = delete;
   DiGraph(DiGraph const &) = default;
   DiGraph &operator=(DiGraph const &) = default;
 
@@ -69,7 +65,6 @@ public:
   }
 
 protected:
-  // DiGraph(cow_ptr_t<IDiGraph>);
   using DiGraphView::DiGraphView;
 
 private:

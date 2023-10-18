@@ -26,7 +26,6 @@ private:
   using Interface = IOutputLabelledMultiDiGraphView<NodeLabel, OutputLabel>;
 
 public:
-  // OutputLabelledMultiDiGraphView() = delete;
   OutputLabelledMultiDiGraphView(OutputLabelledMultiDiGraphView const &) =
       default;
   OutputLabelledMultiDiGraphView &
@@ -72,11 +71,10 @@ struct OutputLabelledMultiDiGraph
     : virtual OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel> {
 private:
   using Interface = IMultiDiGraph;
-  using INodeLabel = ILabel<Node, NodeLabel>;
-  using IOutputLabel = ILabel<MultiDiOutput, OutputLabel>;
+  using INodeLabel = ILabelling<Node, NodeLabel>;
+  using IOutputLabel = ILabelling<MultiDiOutput, OutputLabel>;
 
 public:
-  // OutputLabelledMultiDiGraph() = delete;
   OutputLabelledMultiDiGraph(OutputLabelledMultiDiGraph const &other) = default;
   OutputLabelledMultiDiGraph &
       operator=(OutputLabelledMultiDiGraph const &other) = default;
@@ -114,7 +112,7 @@ public:
   OutputLabel &at(MultiDiOutput const &o) {
     return ol->get_label(o);
   }
-  
+
   OutputLabel const &at(MultiDiOutput const &o) const {
     return ol->get_label(o);
   }

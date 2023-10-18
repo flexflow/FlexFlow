@@ -69,8 +69,8 @@ struct LabelledMultiDiGraph
     : virtual LabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
 private:
   using Interface = IMultiDiGraph;
-  using INodeLabel = ILabel<Node, NodeLabel>;
-  using IEdgeLabel = ILabel<MultiDiEdge, EdgeLabel>;
+  using INodeLabel = ILabelling<Node, NodeLabel>;
+  using IEdgeLabel = ILabelling<MultiDiEdge, EdgeLabel>;
 
 public:
   // LabelledMultiDiGraph() = delete;
