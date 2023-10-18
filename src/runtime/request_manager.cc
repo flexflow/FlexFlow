@@ -1214,7 +1214,6 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
           request.tokens.size() - 1;
 
-      new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.num_tokens++;
       new_bc.requestsInfo[i].num_tokens_in_batch++;
 
