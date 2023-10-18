@@ -5,8 +5,9 @@ namespace FlexFlow {
 
 ParallelTensorShape get_output_shape(CastAttrs const &attrs,
                                      ParallelTensorShape const &input_shape) {
-  if (!input.is_valid()) {
-    throw mk_runtime_error("CastAttrs::get_output_shape: input is invalid");
+  if (!input_shape.is_valid()) {
+    throw mk_runtime_error(
+        "CastAttrs::get_output_shape: input_shape is invalid");
   }
   ParallelTensorShape output_shape = input_shape;
   output_shape.data_type = attrs.dtype;

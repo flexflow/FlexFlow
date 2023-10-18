@@ -2,16 +2,16 @@
 #include "utils/exception.h"
 
 namespace FlexFlow {
-// input: [b, c, h, w]
+// input_shape: [b, c, h, w]
 // output: [b, c, h, w]
 ParallelTensorShape get_output_shape(BatchNormAttrs const &attrs,
                                      ParallelTensorShape const &input_shape) {
-  if (!input.is_valid() || input.num_dims() != 4) {
+  if (!input_shape.is_valid() || input_shape.num_dims() != 4) {
     throw mk_runtime_error(
-        "BatchNormAttrs::get_output_shape: input is invalid");
+        "BatchNormAttrs::get_output_shape: input_shape is invalid");
   }
 
-  // the degree of the output is the same as the input
+  // the degree of the output is the same as the input_shape
   return input_shape;
 }
 

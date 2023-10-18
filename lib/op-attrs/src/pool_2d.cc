@@ -122,8 +122,6 @@ ParallelTensorShape get_output_shape(Pool2DAttrs const &attrs,
   return output_shape;
 }
 
-}
-
 /* ParallelTensorShape Pool2DAttrs::calculate_output_shape(ParallelTensorShape
  * const &input) const { */
 /*   return solve_mappings(input).output_shapes.at(0); */

@@ -25,7 +25,6 @@ ParallelTensorShape get_output_shape(Group_byAttrs const &attrs,
     throw mk_runtime_error(
         "Group_by: input and index must have the same number of dimensions");
   }
-
   // degree of output is same as input's
   return input_shape;
 }

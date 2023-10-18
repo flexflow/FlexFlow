@@ -11,7 +11,7 @@ ParallelTensorShape get_output_shape(RepartitionAttrs const &attrs,
   ParallelDim dim = input.at(attrs.repartition_dim);
   if (dim.size % attrs.repartition_degree * dim.degree != 0) {
     throw mk_runtime_error("RepartitionAttrs: input.at(attrs.repartition_dim) "
-                           "% attrs.repartition_degree * dim.degree != 0");
+                           "attrs.repartition_degree * dim.degree != 0");
   }
   ParallelTensorShape output(input.dims, input.data_type);
   output.at(attrs.repartition_dim).degree *= attrs.repartition_degree;

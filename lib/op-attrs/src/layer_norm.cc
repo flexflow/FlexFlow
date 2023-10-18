@@ -9,7 +9,6 @@ ParallelTensorShape get_output_shape(LayerNormAttrs const &attrs,
   if (input.num_dims() < 2) {
     throw mk_runtime_error("LayerNorm: input must have at least 2 dimensions");
   }
-
   // output degree is same as input degree
   return input_shape;
 }

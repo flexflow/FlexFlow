@@ -9,7 +9,6 @@ ParallelTensorShape get_output_shape(ReverseAttrs const &attrs,
   if (attrs.axis < 0 || attrs.axis >= input_shape.num_dims()) {
     throw mk_runtime_error("ReverseAttrs: axis is invalid");
   }
-
   // output degree is same as input degree, because it's just reverse operation
   return input_shape;
 }

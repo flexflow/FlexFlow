@@ -20,6 +20,8 @@ ParallelTensorShape get_output_shape(ReplicateAttrs const &attrs,
   }
   ParallelTensorShape output = input;
   output.at(attrs.replicate_dim).size *= attrs.replicate_degree;
+  output.at(attrs.replicate_dim).is_replica_dim =
+      (input.at(attrs.replicate_dim).degree > 1);
   return output;
 }
 
