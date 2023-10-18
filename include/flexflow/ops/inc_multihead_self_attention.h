@@ -96,6 +96,11 @@ public:
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
+  Legion::FutureMap peft_bwd(FFModel const &,
+                             BatchConfigFuture const &,
+                             std::vector<ParallelTensor> const &,
+                             std::vector<ParallelTensor> const &,
+                             MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }
@@ -109,6 +114,10 @@ public:
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
+  static void peft_bwd_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;

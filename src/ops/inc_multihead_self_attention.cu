@@ -446,6 +446,18 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
       m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
 }
 
+template <typename DT>
+void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                     BatchConfig const *bc,
+                     int shard_id,
+                     DT *input_grad_ptr,
+                     DT const *weight_ptr,
+                     DT const *output_grad_ptr,
+                     DT const *bias_ptr,
+                     cudaStream_t stream) {
+  assert(false);
+}
+
 } // namespace IncMultiHeadAttention
 } // namespace Kernels
 
@@ -839,6 +851,70 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
+  }
+}
+
+/*static*/
+void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    int shard_id,
+    GenericTensorAccessorW const &input_grad,
+    GenericTensorAccessorR const &weight,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &bias) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  bool use_bias = *m->qkv_bias || *m->final_bias;
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+
+  // assert(input.data_type == weight.data_type);
+  assert(input_grad.data_type == output_grad.data_type);
+  if (use_bias) {
+    assert(input_grad.data_type == bias.data_type);
+  }
+
+  if (input_grad.data_type == DT_HALF) {
+    assert(!m->offload);
+    half const *bias_ptr =
+        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
+    Kernels::IncMultiHeadAttention::peft_bwd_kernel(m,
+                                                    bc,
+                                                    shard_id,
+                                                    input_grad.get_half_ptr(),
+                                                    weight.get_half_ptr(),
+                                                    output_grad.get_half_ptr(),
+                                                    bias_ptr,
+                                                    stream);
+  } else if (input_grad.data_type == DT_FLOAT) {
+    assert(m->offload);
+    float const *bias_ptr =
+        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
+    Kernels::IncMultiHeadAttention::peft_bwd_kernel(m,
+                                                    bc,
+                                                    shard_id,
+                                                    input_grad.get_float_ptr(),
+                                                    weight.get_float_ptr(),
+                                                    output_grad.get_float_ptr(),
+                                                    bias_ptr,
+                                                    stream);
+  } else {
+    assert(false && "Unspported data type");
+  }
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("IncMultiHeadSelfAttention PEFT backward time = %.9fms\n", elapsed);
   }
 }
 

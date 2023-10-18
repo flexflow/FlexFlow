@@ -24,7 +24,7 @@ using Legion::Domain;
 SoftmaxMeta::SoftmaxMeta(FFHandler handler,
                          Softmax const *softmax,
                          Domain const &input_domain)
-    : OpMeta(handler) {
+    : OpMeta(handler, softmax) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain4SoftMax(
       inputTensor, input_domain, softmax->data_type));

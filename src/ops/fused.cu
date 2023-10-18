@@ -1187,13 +1187,7 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
         assert(false && "Fusion currently does not support type");
       }
     }
-    ioff += fused->op_num_inputs[op];
-    woff += fused->op_num_weights[op];
-    ooff += fused->op_num_outputs[op];
   }
-  // for (int i = 0; i < fused->numOutputs; i++)
-  //   print_tensor<float>(output_ptr[i], output_domain[i].get_volume(),
-  //   "[Fused:forward:output]");
 }
 
 /*

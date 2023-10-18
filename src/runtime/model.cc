@@ -6229,6 +6229,24 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(
+        INC_MULTIHEAD_SELF_ATTENTION_PEFT_BWD_TASK_ID,
+        "IncMultiHeadSelfAttention PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          IncMultiHeadSelfAttention::peft_bwd_task>(
+          registrar, "IncMultiHeadSelfAttention PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<IncMultiHeadSelfAttention::peft_bwd_task>(
+          registrar);
+    }
+  }
   // speculative MultiHeadAttention task
   {
     TaskVariantRegistrar registrar(
@@ -6651,21 +6669,6 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(ALLREDUCE_INF_TASK_ID,
-                                   "AllReduce Inference");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    if (pre_register) {
-      Runtime::preregister_task_variant<AllReduce::inference_task>(
-          registrar, "AllReduce Inference Task");
-    } else {
-      if (enable_control_replication) {
-        registrar.global_registration = false;
-      }
-      runtime->register_task_variant<AllReduce::inference_task>(registrar);
-    }
-  }
-  {
     TaskVariantRegistrar registrar(ALLREDUCE_FWD_TASK_ID, "AllReduce Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -6693,6 +6696,37 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<AllReduce::backward_task>(registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_INF_TASK_ID,
+                                   "AllReduce Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::inference_task>(
+          registrar, "AllReduce Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_PEFT_BWD_TASK_ID,
+                                   "AllReduce PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::peft_bwd_task>(
+          registrar, "AllReduce PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::peft_bwd_task>(registrar);
+    }
+  }
+
   // FusedParallelOp
   {
     TaskVariantRegistrar registrar(FUSED_PARALLELOP_FWD_TASK_ID,

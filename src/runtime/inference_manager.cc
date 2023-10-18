@@ -395,6 +395,9 @@ void InferenceManager::peft_bwd(FFModel *model,
     if (op->op_type == OP_WEIGHT) {
       continue;
     }
+    if (op->op_type == OP_INPUT) {
+      continue;
+    }
     std::vector<ParallelTensor> inputs(op->numInputs);
     std::vector<ParallelTensor> outputs(op->numOutputs);
     for (int i = 0; i < op->numInputs; i++) {
