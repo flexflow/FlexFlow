@@ -3,12 +3,11 @@
 
 namespace FlexFlow {
 
-bool ReduceAttrs::is_valid(ParallelTensorShape const &input) const {
-    NOT_IMPLEMENTED()}
-
 ParallelTensorShape get_output_shape(ReduceAttrs const &attrs,
                                      ParallelTensorShape const &input) {
   NOT_IMPLEMENTED()
+  // reduce is sum/max/min/mean
+  // NOTE: how to implement this
 }
 
 } // namespace FlexFlow
