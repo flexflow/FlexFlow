@@ -112,8 +112,8 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
       acc.get_argument<ReshapePerDeviceState>(PER_DEVICE_STATE);
   Profiling profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
-  auto input_grad = acc.get_tensor<Permissions::WO>(INPUT);
-  auto output_grad = acc.get_tensor<Permissions::RO>(OUTPUT);
+  auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
   return profile(backward_kernel,
                  profiling,
