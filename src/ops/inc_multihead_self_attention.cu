@@ -530,7 +530,8 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     if (bc->request_completed[i]) {
       continue;
     }
-    assert(tokens_previous_requests == bc->requestsInfo[i].first_token_offset_in_batch);
+    assert(tokens_previous_requests ==
+           bc->requestsInfo[i].first_token_offset_in_batch);
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
     int total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
                        bc->requestsInfo[i].num_tokens_in_batch;
