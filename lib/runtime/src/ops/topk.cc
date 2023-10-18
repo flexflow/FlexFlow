@@ -50,8 +50,7 @@ enum Slots { INPUT, OUTPUT, INDICES, ATTRS, PROFILING, PER_DEVICE_STATE };
 OpTaskInvocation init(TopKAttrs const &attrs) {
   OpTaskBinding binding;
 
-  bind.bind_arg(
-      ATTRS, attrs); // Note: we just bind SplitAttrs here, for init_task_impl
+  bind.bind_arg(ATTRS, attrs);
 
   return {TOPK_INIT_TASK_ID, binding};
 }
@@ -65,7 +64,7 @@ OpTaskInvocation forward(TopKAttrs const &attrs) {
 
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
-  bindng.bind(INDICES, output_tensor(1));
+  binding.bind(INDICES, output_tensor(1));
 
   return {TOPK_FWD_TASK_ID, binding};
 }
@@ -138,7 +137,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
-  auto indices = acc.get_tensor<Permissions::WO>(INDICES);
+  auto indices = acc.get_tensor<Permissions::RO>(INDICES);
 
   int length = input.shape.at(legion_dim_t(0)) + 1;
   size_t batch_size = input.shape.get_volume() / length;
@@ -184,6 +183,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   fwd_binding.bind_arg(PROFILING, profiling_settings());
   fwd_binding.bind(INPUT, input.shape);
   fwd_binding.bind(OUTPUT, output_shape);
+  fwd_binding.bind(INDICES, output_shape);
   fwd_binding.bind_arg(ATTRS, attrs);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
@@ -211,20 +211,20 @@ template <>
 void register_task<TOPK_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
-  init.add_arg_slot<ProfilingSettings>(PROFILING);
-  init.add_arg_slot<TopKAttrs>(ATTRS); // Note: this may have some question
-  init.add_unchecked_arg_slot<TopKPerDeviceState>(PER_DEVICE_STATE);
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+  fwd.add_arg_slot<TopKAttrs>(ATTRS);
+  fwd.add_unchecked_arg_slot<TopKPerDeviceState>(PER_DEVICE_STATE);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
+  fwd.add_output_slot(INDICES);
 
   register_task(TOPK_FWD_TASK_ID, "TopK Forward", fwd, forward_task);
 }
 
 template <>
 void register_task<TOPK_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(SPLIT_FWD_TASK_ID));
+  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(TOPK_FWD_TASK_ID));
 
   register_task(TOPK_BWD_TASK_ID, "TopK Backward", bwd, backward_task);
 }
