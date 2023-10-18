@@ -511,48 +511,34 @@ void ResidualRMSNorm::backward(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  // regions[2](I): residual input 0
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
-  launcher.add_field(2, FID_DATA);
-  // regions[3](I/O): residual input grad 0
+  // regions[2](I/O): residual input grad 0
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
                                                     EXCLUSIVE,
                                                     inputs[0]->region_grad));
-  launcher.add_field(3, FID_DATA);
-  // regions[4](I): residual input 1
-  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[1]->region));
-  launcher.add_field(4, FID_DATA);
-  // regions[5](I/O): residual input grad 1
+  launcher.add_field(2, FID_DATA);
+  // regions[3](I/O): residual input grad 1
   launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
                                                     EXCLUSIVE,
                                                     inputs[1]->region_grad));
-  launcher.add_field(5, FID_DATA);
-  // regions[3](I): gamma
+  launcher.add_field(3, FID_DATA);
+  // regions[4](I): gamma
   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
-  launcher.add_field(6, FID_DATA);
-  // regions[4](I/O): gamma_grad
+  launcher.add_field(4, FID_DATA);
+  // regions[5](I/O): gamma_grad
   launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
                                                     EXCLUSIVE,
                                                     weights[0]->region_grad));
-  launcher.add_field(7, FID_DATA);
+  launcher.add_field(5, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
 }
@@ -560,19 +546,17 @@ void ResidualRMSNorm::backward(FFModel const &ff) {
 /*
   regions[0](I): RMS output_grad
   regions[1](I): Residual output / RMS input
-  regions[2](I): Residual input 0
-  regions[3](I/O): Residual input 0 grad
-  regions[4](I): Residual input 1
-  regions[5](I/O): Residual input 1 grad
-  regions[6](I): weight
-  regions[7](I/O): weight_grad
+  regions[2](I/O): Residual input 0 grad
+  regions[3](I/O): Residual input 1 grad
+  regions[4](I): weight
+  regions[5](I/O): weight_grad
 */
 void ResidualRMSNorm::backward_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
-  assert(task->regions.size() == 8);
-  assert(regions.size() == 8);
+  assert(task->regions.size() == 6);
+  assert(regions.size() == 6);
   ResidualRMSNormMeta const *m = *((ResidualRMSNormMeta **)task->local_args);
   GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
       m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -583,34 +567,28 @@ void ResidualRMSNorm::backward_task(Task const *task,
                                        FID_DATA,
                                        ctx,
                                        runtime);
-  GenericTensorAccessorR residual_input0 = helperGetGenericTensorAccessorRO(
-      m->input_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   GenericTensorAccessorW residual_input0_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[0],
+                                       regions[2],
+                                       task->regions[2],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW residual_input1_grad =
       helperGetGenericTensorAccessorRW(m->input_type[0],
                                        regions[3],
                                        task->regions[3],
                                        FID_DATA,
                                        ctx,
                                        runtime);
-  GenericTensorAccessorR residual_input1 = helperGetGenericTensorAccessorRO(
-      m->input_type[0], regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW residual_input1_grad =
-      helperGetGenericTensorAccessorRW(m->input_type[0],
-                                       regions[5],
-                                       task->regions[5],
-                                       FID_DATA,
-                                       ctx,
-                                       runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
-      m->weight_type[0], regions[6], task->regions[6], FID_DATA, ctx, runtime);
+      m->weight_type[0], regions[4], task->regions[4], FID_DATA, ctx, runtime);
   GenericTensorAccessorW weight_grad = helperGetGenericTensorAccessorRW(
-      m->weight_type[0], regions[7], task->regions[7], FID_DATA, ctx, runtime);
+      m->weight_type[0], regions[5], task->regions[5], FID_DATA, ctx, runtime);
   backward_kernel_wrapper(m,
                           output_grad,
                           residual_output_rms_input,
-                          residual_input0,
                           residual_input0_grad,
-                          residual_input1,
                           residual_input1_grad,
                           weight,
                           weight_grad);

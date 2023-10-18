@@ -290,9 +290,7 @@ template <typename T>
 void backward_kernel(ResidualRMSNormMeta const *m,
                      T const *output_grad_ptr,
                      T const *residual_output_rms_input_ptr,
-                     T const *residual_input0_ptr,
                      T *residual_input0_grad_ptr,
-                     T const *residual_input1_ptr,
                      T *residual_input1_grad_ptr,
                      T const *weight_ptr,
                      T *weight_grad_ptr,
@@ -341,9 +339,7 @@ void backward_kernel_wrapper(
     ResidualRMSNormMeta const *m,
     GenericTensorAccessorR const &output_grad,
     GenericTensorAccessorR const &residual_output_rms_input,
-    GenericTensorAccessorR const &residual_input0,
     GenericTensorAccessorW const &residual_input0_grad,
-    GenericTensorAccessorR const &residual_input1,
     GenericTensorAccessorW const &residual_input1_grad,
     GenericTensorAccessorR const &weight,
     GenericTensorAccessorW const &weight_grad) {
@@ -356,10 +352,8 @@ void backward_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
   assert(output_grad.data_type == residual_output_rms_input.data_type);
-  assert(residual_output_rms_input.data_type == residual_input0.data_type);
-  assert(residual_input0.data_type == residual_input0_grad.data_type);
-  assert(residual_input0_grad.data_type == residual_input1.data_type);
-  assert(residual_input1.data_type == residual_input1_grad.data_type);
+  assert(residual_output_rms_input.data_type == residual_input0_grad.data_type);
+  assert(residual_input0_grad.data_type == residual_input1_grad.data_type);
   assert(residual_input1_grad.data_type == weight.data_type);
   assert(weight.data_type == weight_grad.data_type);
 
@@ -367,9 +361,7 @@ void backward_kernel_wrapper(
     backward_kernel(m,
                     output_grad.get_half_ptr(),
                     residual_output_rms_input.get_half_ptr(),
-                    residual_input0.get_half_ptr(),
                     residual_input0_grad.get_half_ptr(),
-                    residual_input1.get_half_ptr(),
                     residual_input1_grad.get_half_ptr(),
                     weight.get_half_ptr(),
                     weight_grad.get_half_ptr(),
@@ -378,9 +370,7 @@ void backward_kernel_wrapper(
     backward_kernel(m,
                     output_grad.get_float_ptr(),
                     residual_output_rms_input.get_float_ptr(),
-                    residual_input0.get_float_ptr(),
                     residual_input0_grad.get_float_ptr(),
-                    residual_input1.get_float_ptr(),
                     residual_input1_grad.get_float_ptr(),
                     weight.get_float_ptr(),
                     weight_grad.get_float_ptr(),

@@ -52,9 +52,7 @@ void backward_kernel_wrapper(
     ResidualRMSNormMeta const *m,
     GenericTensorAccessorR const &output_grad,
     GenericTensorAccessorR const &residual_output_rms_input,
-    GenericTensorAccessorR const &residual_input0,
     GenericTensorAccessorW const &residual_input0_grad,
-    GenericTensorAccessorR const &residual_input1,
     GenericTensorAccessorW const &residual_input1_grad,
     GenericTensorAccessorR const &weight,
     GenericTensorAccessorW const &weight_grad);
