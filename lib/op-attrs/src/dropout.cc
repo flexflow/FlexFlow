@@ -4,9 +4,9 @@
 namespace FlexFlow {
 
 ParallelTensorShape get_output_shape(DropoutAttrs const &attrs,
-                                     ParallelTensorShape const &input) {
-  ParallelTensorShape output = input;
-  return output;
+                                     ParallelTensorShape const &input_shape) {
+
+  return input_shape;
 }
 
 } // namespace FlexFlow

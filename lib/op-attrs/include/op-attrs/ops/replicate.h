@@ -11,7 +11,6 @@ namespace FlexFlow {
 struct ReplicateAttrs {
   ff_dim_t replicate_dim;
   req<int> replicate_degree;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(ReplicateAttrs, replicate_dim, replicate_degree);
 CHECK_VALID_OP_ATTR(ReplicateAttrs);

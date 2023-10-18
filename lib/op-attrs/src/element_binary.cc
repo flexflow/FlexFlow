@@ -1,4 +1,5 @@
 #include "op-attrs/ops/element_binary.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 
@@ -18,8 +19,10 @@ ParallelTensorShape get_output_shape(ElementBinaryAttrs const &atts,
     } else if (rhs.at(ff_dim_t(i)).size == 1) {
       output.at(ff_dim_t(i)) = lhs.at(ff_dim_t(i));
     } else {
-      assert(false && "Operands could not be broadcast together");
-      exit(0);
+      throw mk_runtime_error(
+          "Operands of shapes {} and {} could not be broadcast together",
+          lhs,
+          rhs);
     }
   }
 

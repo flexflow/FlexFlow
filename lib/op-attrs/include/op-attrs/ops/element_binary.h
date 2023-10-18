@@ -4,7 +4,6 @@
 #include "core.h"
 #include "op-attrs/op.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/©"
 #include "utils/visitable.h"
 
 namespace FlexFlow {

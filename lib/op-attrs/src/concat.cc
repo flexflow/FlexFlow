@@ -2,7 +2,6 @@
 #include "utils/exception.h"
 
 namespace FlexFlow {
-
 ParallelTensorShape
     get_output_shape(ConcatAttrs const &attrs,
                      std::vector<ParallelTensorShape> const &inputs) {

@@ -5,13 +5,13 @@
 namespace FlexFlow {
 
 ParallelTensorShape get_output_shape(ReverseAttrs const &attrs,
-                                     ParallelTensorShape const &input) {
-  if (attrs.axis < 0 || attrs.axis >= input.num_dims()) {
+                                     ParallelTensorShape const &input_shape) {
+  if (attrs.axis < 0 || attrs.axis >= input_shape.num_dims()) {
     throw mk_runtime_error("ReverseAttrs: axis is invalid");
   }
-  ParallelTensorShape output = input;
+
   // output degree is same as input degree, because it's just reverse operation
-  return output;
+  return input_shape;
 }
 
 }; // namespace FlexFlow

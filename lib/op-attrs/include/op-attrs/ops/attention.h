@@ -44,9 +44,6 @@ public:
   TensorType value;
 };
 
-bool is_valid(MultiHeadAttentionAttrs const &,
-              MultiHeadAttentionInputs<ParallelTensorShape> const &input);
-
 int get_qProjSize(MultiHeadAttentionAttrs const &);
 int get_vProjSize(MultiHeadAttentionAttrs const &);
 int get_kProjSize(MultiHeadAttentionAttrs const &);

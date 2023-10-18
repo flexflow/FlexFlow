@@ -19,16 +19,15 @@ in enumerate(grouped_data): print(f"Group {i}: {group}")
 */
 
 ParallelTensorShape get_output_shape(Group_byAttrs const &attrs,
-                                     ParallelTensorShape const &input,
+                                     ParallelTensorShape const &input_shape,
                                      ParallelTensorShape const &index) {
-  if (input.num_dims() != index.num_dims()) {
+  if (input_shape.num_dims() != index.num_dims()) {
     throw mk_runtime_error(
         "Group_by: input and index must have the same number of dimensions");
   }
 
-  ParallelTensorShape output = input;
   // degree of output is same as input's
-  return output;
+  return input_shape;
 }
 
 } // namespace FlexFlow

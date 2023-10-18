@@ -1,19 +1,8 @@
 #include "op-attrs/ops/replicate.h"
 #include "op-attrs/parallel_dim.h"
-#include "utils/exception.decl.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
-
-bool ReplicateAttrs::is_valid(ParallelTensorShape const &input) const {
-  if (!input.is_valid()) {
-    return false;
-  }
-  if (this->replicate_dim >= input.num_dims() || this->replicate_degree <= 0) {
-    return false;
-  }
-
-  return true;
-}
 
 // replicate by n multiplies degree by n and shape by n
 // seems it is like pytorch's repeat
@@ -25,7 +14,10 @@ bool ReplicateAttrs::is_valid(ParallelTensorShape const &input) const {
 
 ParallelTensorShape get_output_shape(ReplicateAttrs const &attrs,
                                      ParallelTensorShape const &input) {
-  assert(attrs.is_valid(input));
+  if (attrs.replicate_dim >= input.num_dims() || attrs.replicate_degree <= 0) {
+    throw mk_runtime_error("ReplicateAttrs::get_output_shape: axis is out of "
+                           "range or input is invalid");
+  }
   ParallelTensorShape output = input;
   output.at(attrs.replicate_dim).size *= attrs.replicate_degree;
   return output;
