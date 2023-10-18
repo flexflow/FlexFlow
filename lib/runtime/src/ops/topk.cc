@@ -134,7 +134,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
       acc.get_device_specific<TopKPerDeviceState>(PER_DEVICE_STATE);
   auto profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
-  auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
+  auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
   auto indices = acc.get_tensor<Permissions::RO>(INDICES);
