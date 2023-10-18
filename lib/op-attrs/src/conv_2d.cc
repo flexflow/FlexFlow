@@ -112,7 +112,7 @@ ParallelTensorShape get_output_shape(Conv2DAttrs const &attrs,
       (input.at(ff_dim_t(3)).size + 2 * attrs.padding_w - attrs.kernel_w) /
           attrs.stride_w +
       1;
-  
+
   if (input.at(ff_dim_t(2)).size == 1 && input.at(ff_dim_t(3)).size == 1) {
     // case 1  input degree is 1, like 1GPU
     output.at(ff_dim_t(0)).is_replica_dim = false;
@@ -130,12 +130,11 @@ ParallelTensorShape get_output_shape(Conv2DAttrs const &attrs,
     // output_w / x]
     output.at(ff_dim_t(3)).is_replica_dim = true;
     output.at(ff_dim_t(3)).degree = input.at(ff_dim_t(3)).degree;
-  } else if(input.at(ff_dim_t(2)).size >1  &&
-             input.at(ff_dim_t(3)).size > 1) {
-      for(int i =2; i < input.num_dims();i++) {
-        output.at(ff_dim_t(i)).is_replica_dim = true;
-        output.at(ff_dim_t(i)).degree = input.at(ff_dim_t(i)).degree;
-      }
+  } else if (input.at(ff_dim_t(2)).size > 1 && input.at(ff_dim_t(3)).size > 1) {
+    for (int i = 2; i < input.num_dims(); i++) {
+      output.at(ff_dim_t(i)).is_replica_dim = true;
+      output.at(ff_dim_t(i)).degree = input.at(ff_dim_t(i)).degree;
+    }
   } else {
     throw mk_runtime_error("Conv2DAttrs::get_output_shape: not supported in "
                            "Conv2DAttrs get_output_shape");

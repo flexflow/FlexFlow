@@ -1,20 +1,13 @@
 #include "op-attrs/ops/softmax.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 
-bool SoftmaxAttrs::is_valid(ParallelTensorShape const &input) const {
-  if (!input.is_valid()) {
-    return false;
-  }
-  if (input.num_dims() < 2) {
-    return false;
-  }
-  return true;
-}
-
 ParallelTensorShape get_output_shape(SoftmaxAttrs const &attrs,
                                      ParallelTensorShape const &input) {
-  assert(attrs.is_valid(input));
+  if (input.num_dims() < 2) {
+    throw mk_runtime_error("SoftmaxAttrs: input.num_dims() < 2");
+  }
   ParallelTensorShape output = input;
   return output;
 }

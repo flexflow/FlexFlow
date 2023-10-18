@@ -10,7 +10,6 @@ namespace FlexFlow {
 
 struct SoftmaxAttrs {
   ff_dim_t dim;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(SoftmaxAttrs, dim);
 CHECK_VALID_OP_ATTR(SoftmaxAttrs);

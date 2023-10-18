@@ -10,7 +10,6 @@ namespace FlexFlow {
 struct SplitAttrs {
   req<stack_vector<int, MAX_NUM_OUTPUTS>> splits;
   ff_dim_t axis;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(SplitAttrs, splits, axis);
 CHECK_VALID_OP_ATTR(SplitAttrs);

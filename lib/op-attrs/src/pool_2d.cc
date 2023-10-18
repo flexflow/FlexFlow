@@ -81,7 +81,8 @@ ParallelTensorShape get_output_shape(Pool2DAttrs const &attrs,
   }
 
   // case 1: input:[N, C, H, W], output:[N, C, 1, 1], degree is 1 for avgpool2d
-  // input: [N, C, H, W], output: [N, C, output_height, output_width], degree is  1 for maxpool2d
+  // input: [N, C, H, W], output: [N, C, output_height, output_width], degree is
+  // 1 for maxpool2d
   if (input.at(ff_dim_t(2)).degree == 1 && input.at(ff_dim_t(3)).degree == 1) {
     for (int i = 2; i < input.num_dims(); i++) {
       output_shape.at(ff_dim_t(i)).is_replica_dim = false;
@@ -90,7 +91,8 @@ ParallelTensorShape get_output_shape(Pool2DAttrs const &attrs,
   } else if (input.at(ff_dim_t(2)).degree > 1 &&
              input.at(ff_dim_t(3)).degree == 1) {
     // case 2: input [N, C, H/X, W] output [N, C, 1, 1], degree is X
-    // input [N, C, H/X, W] output [N, C, output_height/x, output_width], degree  is X
+    // input [N, C, H/X, W] output [N, C, output_height/x, output_width], degree
+    // is X
     output_shape.at(ff_dim_t(2)).degree = input.at(ff_dim_t(2)).degree;
     output_shape.at(ff_dim_t(2)).is_replica_dim = true;
     output_shape.at(ff_dim_t(3)).degree = 1;
@@ -98,7 +100,8 @@ ParallelTensorShape get_output_shape(Pool2DAttrs const &attrs,
   } else if (input.at(ff_dim_t(2)).degree == 1 &&
              input.at(ff_dim_t(3)).degree > 1) {
     // case 3: input [N, C, H, W/X] output [N, C, 1, 1], degree is X
-    // input [N, C, H, W/X] output [N, C, output_height, output_width/x], degree is X
+    // input [N, C, H, W/X] output [N, C, output_height, output_width/x], degree
+    // is X
     output_shape.at(ff_dim_t(2)).degree = 1;
     output_shape.at(ff_dim_t(2)).is_replica_dim = false;
     output_shape.at(ff_dim_t(3)).degree = input.at(ff_dim_t(3)).degree;
@@ -106,7 +109,8 @@ ParallelTensorShape get_output_shape(Pool2DAttrs const &attrs,
   } else if (input.at(ff_dim_t(2)).degree > 1 &&
              input.at(ff_dim_t(3)).degree > 1) {
     // case 4: input [N, C, H/X, W/Y] output [N, C, 1, 1], degree is X and Y for
-    // avgpool2d input [N, C, H/X, W/Y] output [N, C, output_height/x, output_width/y], degree is X and Y for maxpool2d
+    // avgpool2d input [N, C, H/X, W/Y] output [N, C, output_height/x,
+    // output_width/y], degree is X and Y for maxpool2d
     for (int i = 2; i < input.num_dims(); i++) {
       output_shape.at(ff_dim_t(i)).is_replica_dim = true;
       output_shape.at(ff_dim_t(i)).degree = input.at(ff_dim_t(i)).degree;

@@ -37,7 +37,7 @@ ParallelTensorShape get_output_shape(BatchMatmulAttrs const &attrs,
 
   if (lhs.at(ff_dim_t(1)).degree == 1 && lhs.at(ff_dim_t(2)).degree == 1) {
     // case 0: degree is 1, [b, n, m], rhs: [b, m, p] -> [b, n, p]
-    for(int i =1; i < lhs.num_dims(); i++) {
+    for (int i = 1; i < lhs.num_dims(); i++) {
       output_shape.at(ff_dim_t(i)).degree = 1;
       output_shape.at(ff_dim_t(i)).is_replica_dim = false;
     }

@@ -27,6 +27,8 @@ ParallelTensorShape get_output_shape(FlatAttrs const &attrs,
       input.at(ff_dim_t(Input::WIDTH)).size;
   output_shape.at(ff_dim_t(Output::CHANNEL)).degree =
       input.at(ff_dim_t(Input::CHANNEL)).degree;
+  output_shape.at(ff_dim_t(Output::CHANNEL)).is_replica_dim =
+      (input.at(ff_dim_t(Input::CHANNEL)).degree > 1);
 
   return output_shape;
 }

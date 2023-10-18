@@ -13,6 +13,6 @@ ParallelTensorShape get_output_shape(EmbeddingAttrs const &atts,
   output.at(ff_dim_t(2)).size = atts.out_channels;
   // output degree is same as input degree
   return output;
-} // namespace FlexFlow
+}
 
 } // namespace FlexFlow

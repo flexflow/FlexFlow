@@ -23,7 +23,6 @@ ParallelTensorShape get_output_shape(LinearAttrs const &atts,
   // linear shoud consider the degree
   // case 1: input:[N, K], weight:[K, M], degree is 1
   if (input.at(ff_dim_t(0)).degree == 1 && input.at(ff_dim_t(1)).degree == 1) {
-    out_shape.at(ff_dim_t(0)).degree = 1;
     for (int i = 0; i < input.num_dims(); i++) {
       out_shape.at(ff_dim_t(i)).is_replica_dim = false;
       out_shape.at(ff_dim_t(i)).degree = 1;
