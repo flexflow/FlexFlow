@@ -273,7 +273,7 @@ BatchNormMeta::BatchNormMeta(FFHandler handler,
                              int output_c,
                              int output_h,
                              int output_w)
-    : OpMeta(handler) {
+    : OpMeta(handler, bn) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));

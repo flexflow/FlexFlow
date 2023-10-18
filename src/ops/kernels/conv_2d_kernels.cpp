@@ -14,12 +14,14 @@
  */
 
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
+#include "flexflow/ops/conv_2d.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
-Conv2DMeta::Conv2DMeta(FFHandler handler) : OpMeta(handler) {
+Conv2DMeta::Conv2DMeta(FFHandler handler, Conv2D const *conv)
+    : OpMeta(handler, conv) {
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&biasTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));

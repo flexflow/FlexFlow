@@ -882,7 +882,8 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
   }
   Domain input_domain = sub_input.get_domain();
   Domain output_domain = sub_output.get_domain();
-  LayerNormMeta *m = sim->layernorm_meta;
+  MemoryAllocator gpu_mem_allocator(sim->memory);
+  LayerNormMeta *m = new LayerNormMeta(sim->handler, this, gpu_mem_allocator);
 
   sim->free_all();
   float *in_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);

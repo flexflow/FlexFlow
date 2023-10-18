@@ -27,7 +27,7 @@ constexpr int kColwiseReduceTileSize = 32;
 LayerNormMeta::LayerNormMeta(FFHandler handle,
                              LayerNorm const *ln,
                              MemoryAllocator &gpu_mem_allocator)
-    : OpMeta(handle) {
+    : OpMeta(handle, ln) {
   elementwise_affine = ln->elementwise_affine;
   effective_batch_size = ln->effective_batch_size;
   effective_num_elements = ln->effective_num_elements;

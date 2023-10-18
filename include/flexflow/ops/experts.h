@@ -6,20 +6,11 @@
 
 namespace FlexFlow {
 
+class Experts;
+
 class ExpertsMeta : public OpMeta {
 public:
-  ExpertsMeta(FFHandler handler,
-              int _num_experts,
-              int _experts_start_idx,
-              int _data_dim,
-              int _out_dim,
-              int _experts_num_layers,
-              int _experts_internal_dim_size,
-              int _effective_batch_size,
-              int _num_chosen_experts,
-              float _alpha,
-              bool _use_bias,
-              ActiMode _activation);
+  ExpertsMeta(FFHandler handler, Experts const *e);
   ~ExpertsMeta(void);
 
   // Thrust helper arrays

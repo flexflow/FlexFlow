@@ -81,17 +81,17 @@ Simulator::Simulator(FFModel const *model,
 
   cudaEventCreate(&start_event);
   cudaEventCreate(&end_event);
-  conv2d_meta = new Conv2DMeta(handler);
+  // conv2d_meta = new Conv2DMeta(handler);
   // linear_meta = new LinearMeta(handler, 4096);
-  pool2d_meta = new Pool2DMeta(handler);
-  ele_unary_meta = new ElementUnaryMeta(handler);
+  // pool2d_meta = new Pool2DMeta(handler);
+  // ele_unary_meta = new ElementUnaryMeta(handler);
   // ele_binary_meta = new ElementBinaryMeta(handler);
   // embedding_meta = new EmbeddingMeta(handler);
   // softmax_meta = new SoftmaxMeta(handler);
-  batch_matmul_meta = new BatchMatmulMeta(handler);
-  concat_meta = new ConcatMeta(handler);
+  // batch_matmul_meta = new BatchMatmulMeta(handler);
+  // concat_meta = new ConcatMeta(handler);
   // dropout_meta = new DropoutMeta(handler);
-  transpose_meta = new TransposeMeta(handler);
+  // transpose_meta = new TransposeMeta(handler);
   this->machine = machine;
   segment_size = model->config.simulator_segment_size;
   max_num_segments = model->config.simulator_max_num_segments;
@@ -103,13 +103,13 @@ Simulator::~Simulator(void) {
   simulatorInst.destroy();
   cudaEventDestroy(start_event);
   cudaEventDestroy(end_event);
-  delete conv2d_meta;
-  delete pool2d_meta;
-  delete ele_unary_meta;
-  delete batch_matmul_meta;
-  delete concat_meta;
-  delete transpose_meta;
-  delete task_manager;
+  // delete conv2d_meta;
+  // delete pool2d_meta;
+  // delete ele_unary_meta;
+  // delete batch_matmul_meta;
+  // delete concat_meta;
+  // delete transpose_meta;
+  // delete task_manager;
 }
 
 __host__ void

@@ -1219,7 +1219,10 @@ bool Linear::measure_operator_cost(Simulator *sim,
   int input_n = sub_input.get_volume() / input_c;
   int output_c = sub_output.dims[0].size;
   int output_n = sub_output.get_volume() / output_c;
-  LinearMeta *m = sim->linear_meta;
+
+  MemoryAllocator gpu_mem_allocator(sim->memory);
+  LinearMeta *m = new LinearMeta(
+      sim->handler, output_n, this, gpu_mem_allocator, input_c * output_c);
   m->activation = activation;
   m->kernel_reg_type = kernel_reg_type;
   m->kernel_reg_lambda = kernel_reg_lambda;

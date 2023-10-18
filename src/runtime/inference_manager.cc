@@ -600,6 +600,23 @@ void FFModel::compile_inference() {
       assert(op->outputs[i]->parallel_tensor_guid != 0);
     }
   }
+
+  // Check whether we need to reset input grads
+  // We use a parallel tensor's region as the key
+  std::set<LogicalRegion> reset_inputs;
+  for (int l = operators.size() - 1; l >= 0; l--) {
+    Op *op = operators[l];
+    for (int i = 0; i < op->numInputs; i++) {
+      assert(op->inputs[i]->region != LogicalRegion::NO_REGION);
+      if (reset_inputs.find(op->inputs[i]->region) != reset_inputs.end()) {
+        // We should not reset input grads since other operators have already
+        // saved gradients into the region
+        op->reset_input_grads[i] = false;
+      } else {
+        reset_inputs.insert(op->inputs[i]->region);
+      }
+    }
+  }
   // Perform fusion optimizations
   if (config.perform_fusion) {
     fprintf(stderr, "Applying fusion optimizations during compilation...\n");

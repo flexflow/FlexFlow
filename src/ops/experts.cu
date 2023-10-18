@@ -1233,25 +1233,14 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   }
 }
 
-ExpertsMeta::ExpertsMeta(FFHandler handler,
-                         int _num_experts,
-                         int _experts_start_idx,
-                         int _data_dim,
-                         int _out_dim,
-                         int _experts_num_layers,
-                         int _experts_internal_dim_size,
-                         int _effective_batch_size,
-                         int _num_chosen_experts,
-                         float _alpha,
-                         bool _use_bias,
-                         ActiMode _activation)
-    : OpMeta(handler), num_experts(_num_experts),
-      experts_start_idx(_experts_start_idx), data_dim(_data_dim),
-      out_dim(_out_dim), experts_num_layers(_experts_num_layers),
-      experts_internal_dim_size(_experts_internal_dim_size),
-      effective_batch_size(_effective_batch_size),
-      num_chosen_experts(_num_chosen_experts), alpha(_alpha),
-      use_bias(_use_bias), activation(_activation) {
+ExpertsMeta::ExpertsMeta(FFHandler handler, Experts const *e)
+    : OpMeta(handler, e), num_experts(e->num_experts),
+      experts_start_idx(e->experts_start_idx), data_dim(e->data_dim),
+      out_dim(e->out_dim), experts_num_layers(e->experts_num_layers),
+      experts_internal_dim_size(e->experts_internal_dim_size),
+      effective_batch_size(e->effective_batch_size),
+      num_chosen_experts(e->num_chosen_experts), alpha(e->alpha),
+      use_bias(e->use_bias), activation(e->activation) {
   expert_capacity =
       ceil(alpha * num_chosen_experts / num_experts * effective_batch_size);
 

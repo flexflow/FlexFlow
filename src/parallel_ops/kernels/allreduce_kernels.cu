@@ -19,7 +19,7 @@
 namespace FlexFlow {
 
 AllReduceMeta::AllReduceMeta(FFHandler handle, AllReduce const *reduct)
-    : OpMeta(handle) {}
+    : OpMeta(handle, reduct) {}
 
 namespace Kernels {
 namespace AllReduce {

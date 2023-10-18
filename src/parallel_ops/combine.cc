@@ -99,7 +99,7 @@ OpMeta *Combine::init_task(Task const *task,
                            Runtime *runtime) {
   Combine *cmb = (Combine *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  CombineMeta *m = new CombineMeta(handle);
+  CombineMeta *m = new CombineMeta(handle, cmb);
   m->input_type[0] = cmb->inputs[0]->data_type;
   m->output_type[0] = cmb->outputs[0]->data_type;
   assert(m->input_type[0] == m->output_type[0]);

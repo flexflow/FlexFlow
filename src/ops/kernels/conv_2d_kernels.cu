@@ -1,9 +1,11 @@
+#include "flexflow/ops/conv_2d.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
-Conv2DMeta::Conv2DMeta(FFHandler handler) : OpMeta(handler) {
+Conv2DMeta::Conv2DMeta(FFHandler handler, Conv2D const *conv)
+    : OpMeta(handler, conv) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));

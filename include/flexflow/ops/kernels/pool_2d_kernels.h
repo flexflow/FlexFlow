@@ -7,9 +7,11 @@
 
 namespace FlexFlow {
 
+class Pool2D;
+
 class Pool2DMeta : public OpMeta {
 public:
-  Pool2DMeta(FFHandler handle);
+  Pool2DMeta(FFHandler handle, Pool2D const *pool);
   ffTensorDescriptor_t inputTensor, outputTensor;
   ffActivationDescriptor_t actiDesc;
   ffPoolingDescriptor_t poolDesc;

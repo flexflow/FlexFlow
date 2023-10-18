@@ -582,18 +582,7 @@ OpMeta *Experts::init_task(Task const *task,
                            Runtime *runtime) {
   Experts const *exp = (Experts *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  ExpertsMeta *m = new ExpertsMeta(handle,
-                                   exp->num_experts,
-                                   exp->experts_start_idx,
-                                   exp->data_dim,
-                                   exp->out_dim,
-                                   exp->experts_num_layers,
-                                   exp->experts_internal_dim_size,
-                                   exp->effective_batch_size,
-                                   exp->num_chosen_experts,
-                                   exp->alpha,
-                                   exp->use_bias,
-                                   exp->activation);
+  ExpertsMeta *m = new ExpertsMeta(handle, exp);
   m->profiling = exp->profiling;
   m->inference_debugging = exp->inference_debugging;
   std::strcpy(m->op_name, exp->name);

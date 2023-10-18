@@ -588,7 +588,7 @@ OpMeta *Conv2D::init_task(Task const *task,
   //     regions[4], task->regions[4], FID_DATA, ctx, runtime,
   //     false/*readOutput*/);
 
-  Conv2DMeta *m = new Conv2DMeta(handle);
+  Conv2DMeta *m = new Conv2DMeta(handle, conv);
   m->relu = conv->activation == AC_MODE_RELU;
   m->use_bias = conv->use_bias;
   m->profiling = conv->profiling;
@@ -1113,7 +1113,7 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
   int pad_h = ((output_h - 1) * stride_h + kernel_h - input_h + 1) / 2;
   int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
 
-  Conv2DMeta *m = sim->conv2d_meta;
+  Conv2DMeta *m = new Conv2DMeta(sim->handler, this);
   m->relu = activation == AC_MODE_RELU;
   // require input_c is divisible by groups
 

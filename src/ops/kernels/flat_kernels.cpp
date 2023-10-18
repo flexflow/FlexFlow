@@ -14,10 +14,14 @@
  */
 
 #include "flexflow/ops/kernels/flat_kernels.h"
+#include "flexflow/ops/flat.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
+
+FlatMeta::FlatMeta(FFHandler handler, Flat const *flat)
+    : OpMeta(handler, flat) {}
 
 namespace Kernels {
 namespace Flat {

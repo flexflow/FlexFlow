@@ -5,9 +5,11 @@
 
 namespace FlexFlow {
 
+class Cache;
+
 class CacheMeta : public OpMeta {
 public:
-  CacheMeta(FFHandler handle);
+  CacheMeta(FFHandler handle, Cache const *c);
   float cache_score;
 };
 

@@ -7,9 +7,11 @@
 
 namespace FlexFlow {
 
+class BatchMatmul;
+
 class BatchMatmulMeta : public OpMeta {
 public:
-  BatchMatmulMeta(FFHandler handler);
+  BatchMatmulMeta(FFHandler handler, BatchMatmul const *bmm);
   int a_seq_length_dim, b_seq_length_dim;
 };
 

@@ -7,9 +7,11 @@
 
 namespace FlexFlow {
 
+class Conv2D;
+
 class Conv2DMeta : public OpMeta {
 public:
-  Conv2DMeta(FFHandler handler);
+  Conv2DMeta(FFHandler handler, Conv2D const *conv);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, biasTensor, outputTensor;
   cudnnFilterDescriptor_t filterDesc;

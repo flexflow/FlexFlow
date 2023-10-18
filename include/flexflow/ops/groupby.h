@@ -8,9 +8,11 @@
 
 namespace FlexFlow {
 
+class Group_by;
+
 class GroupByMeta : public OpMeta {
 public:
-  GroupByMeta(FFHandler handle, int n, float _alpha);
+  GroupByMeta(FFHandler handle, Group_by const *gb);
   ~GroupByMeta(void);
   float alpha;
   float **dev_region_ptrs;

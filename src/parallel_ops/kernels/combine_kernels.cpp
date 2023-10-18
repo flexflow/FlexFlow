@@ -14,12 +14,14 @@
  */
 
 #include "flexflow/parallel_ops/kernels/combine_kernels.h"
+#include "flexflow/parallel_ops/combine.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
-CombineMeta::CombineMeta(FFHandler handler) : OpMeta(handler) {}
+CombineMeta::CombineMeta(FFHandler handler, Combine const *comb)
+    : OpMeta(handler, comb) {}
 
 namespace Kernels {
 namespace Combine {

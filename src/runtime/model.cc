@@ -1465,6 +1465,7 @@ bool Op::get_weight_parameter(TNParameter tnp,
   return true;
 }
 
+#ifdef DEADCODE
 OpMeta::OpMeta(FFHandler _handle)
     : handle(_handle), profiling(false), inference_debugging(false) {
   for (int i = 0; i < MAX_NUM_INPUTS; i++) {
@@ -1482,8 +1483,14 @@ OpMeta::OpMeta(FFHandler _handle)
   }
   decoding_step = 0;
 }
+#endif
 
-OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
+OpMeta::OpMeta(FFHandler _handle, Op const *op)
+    : profiling(op->profiling), inference_debugging(op->inference_debugging) {
+  for (int i = 0; i < op->numInputs; i++) {
+    trainable_inputs[i] = op->trainable_inputs[i];
+    reset_input_grads[i] = op->reset_input_grads[i];
+  }
   for (int i = 0; i < op->numInputs; i++) {
     input_type[i] = op->inputs[i]->data_type;
   }

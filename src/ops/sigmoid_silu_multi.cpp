@@ -23,7 +23,7 @@ namespace FlexFlow {
 SigmoidSiluMultiMeta::SigmoidSiluMultiMeta(FFHandler handle,
                                            SigmoidSiluMulti const *ssm,
                                            MemoryAllocator &gpu_mem_allocator)
-    : OpMeta(handle) {
+    : OpMeta(handle, ssm) {
   profiling = ssm->profiling;
   inference_debugging = ssm->inference_debugging;
 }
