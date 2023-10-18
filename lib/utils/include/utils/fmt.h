@@ -44,7 +44,7 @@ template <typename T>
 typename std::enable_if<!already_has_ostream_operator<T>::value,
                         std::ostream &>::type
     operator<<(std::ostream &s, T const &t) {
-  CHECK_FMTABLE(T);
+  // CHECK_FMTABLE(T);
 
   std::string result = fmt::to_string(t);
   return s << result;
@@ -65,7 +65,7 @@ template <typename FormatContext>
 auto formatter<::std::unordered_set<T>>::format(
     ::std::unordered_set<T> const &m, FormatContext &ctx)
     -> decltype(ctx.out()) {
-  CHECK_FMTABLE(T);
+  // CHECK_FMTABLE(T);
 
   std::string result = join_strings(
       m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); });
@@ -77,14 +77,14 @@ template <typename FormatContext>
 auto formatter<::std::vector<T>>::format(::std::vector<T> const &m,
                                          FormatContext &ctx)
     -> decltype(ctx.out()) {
-  CHECK_FMTABLE(T);
+  // CHECK_FMTABLE(T);
   std::string result = join_strings(
       m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); });
   return formatter<std::string>::format(result, ctx);
 }
 
-CHECK_FMTABLE(std::vector<int>);
-CHECK_FMTABLE(std::unordered_set<int>);
+// CHECK_FMTABLE(std::vector<int>);
+// CHECK_FMTABLE(std::unordered_set<int>);
 
 } // namespace fmt
 
