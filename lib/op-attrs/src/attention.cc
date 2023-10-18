@@ -1,8 +1,6 @@
 #include "op-attrs/ops/attention.h"
-#include "kernels/legion_dim.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "utils/exception.decl.h"
-#include "utils/exceptions.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 
@@ -88,37 +86,69 @@ TensorShape
 
 // according to the pytorch
 // https://pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html,
-// query: [target_size_seq_len, batch_size, embed_dim], we consider the batch
-// size key: (seq_len, batch_size, embed_dim) value: (seq_len, batch_size,
-// embed_dim)
+// we consider the batch size
+// query: [seq_len, batch_size, embed_dim],
+// key: (seq_len, batch_size, embed_dim)
+// value: (seq_len, batch_size,embed_dim)
 //  multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
-// output: (target_size_seq_len, batch_size, embed_dim)
+// output: (seq_len, batch_size, embed_dim)
 
 ParallelTensorShape get_output_shape(
     MultiHeadAttentionAttrs const &attrs,
-    MultiHeadAttentionInputs<ParallelTensorShape> const &inputs) {
-  ParallelTensorShape output_shape = inputs.query;
-  NOT_IMPLEMENTED();
-}
-
-bool is_valid(MultiHeadAttentionAttrs const &attrs,
-              MultiHeadAttentionInputs<ParallelTensorShape> const &input) {
-  bool valid = true;
+    MultiHeadAttentionInputs<ParallelTensorShape> const &input) {
   if (input.query.num_dims() != 3 || input.key.num_dims() != 3 ||
       input.value.num_dims() != 3) {
-    return false;
+    throw mk_runtime_error("MultiHeadAttentionAttrs: num_dims != 3");
   }
-  // ff_dim_t = num_dims - legion_dim_t - 1
-  if (input.query.at(legion_dim_t(0)).size != attrs.embed_dim) {
-    return false;
+
+  if (input.query.at(ff_dim_t(0)).size != input.key.at(ff_dim_t(0)).size ||
+      input.query.at(ff_dim_t(0)).size != input.value.at(ff_dim_t(0)).size ||
+      input.key.at(ff_dim_t(0)).size != input.value.at(ff_dim_t(0)).size) {
+    throw mk_runtime_error("MultiHeadAttentionAttrs: seq_len not match");
   }
-  if (input.key.at(legion_dim_t(0)).size != attrs.embed_dim) {
-    return false;
+
+  if (input.query.at(ff_dim_t(1)).size != input.key.at(ff_dim_t(1)).size ||
+      input.query.at(ff_dim_t(1)).size != input.value.at(ff_dim_t(1)).size ||
+      input.key.at(ff_dim_t(1)).size != input.value.at(ff_dim_t(1)).size) {
+    throw mk_runtime_error("MultiHeadAttentionAttrs: batch_size not match");
   }
-  if (input.value.at(legion_dim_t(0)).size != attrs.embed_dim) {
-    return false;
+
+  if (input.query.at(ff_dim_t(2)).size != input.key.at(ff_dim_t(2)).size ||
+      input.query.at(ff_dim_t(2)).size != input.value.at(ff_dim_t(2)).size ||
+      input.key.at(ff_dim_t(2)).size != input.value.at(ff_dim_t(2)).size) {
+    throw mk_runtime_error("MultiHeadAttentionAttrs:  embed_dim not match");
   }
-  return true;
+
+  if (input.query.at(ff_dim_t(2)).size != attrs.embed_dim ||
+      input.key.at(ff_dim_t(2)).size != attrs.embed_dim ||
+      input.value.at(ff_dim_t(2)).size != attrs.embed_dim) {
+    throw mk_runtime_error(
+        "MultiHeadAttentionAttrs:  input's embed_dim not match to attrs");
+  }
+
+  if (attrs.embed_dim != (attrs.num_heads * attrs.kdim)) {
+    throw mk_runtime_error(
+        "MultiHeadAttentionAttrs:  embed_dim not match to num_heads * kdim");
+  }
+
+  // TODO: how to deal with the degree
+  // q = wq*x , k = wk*x, v = wv*x  (seq_len, batch_size, embed_dim)
+  // k->(seq_len, num_head, batch_size, kdim)
+  // v->(seq_len, num_head, batch_size, vdim)
+  // q->(seq_len, num_head, batch_size, kdim)
+  // attn = q @k  (seq_len, num_head, batch_size, batch_size)
+  // attn = attn @v (seq_len, num_head, batch_size, vdim)
+  // attn = attn.transpose(1,2) (seq_len, batch_size, num_head, vdim)
+  // attn = attn.reshape(seq_len, batch_size, num_head*vdim)
+
+  // Note: we support tensor parallelism for seq_len/batch_size/embed_dim
+  ParallelTensorShape output = input.query;
+  for (int i = 0; i < output.num_dims(); i++) {
+    output.at(ff_dim_t(i)).degree = input.query.at(ff_dim_t(i)).degree;
+    output.at(ff_dim_t(i)).is_replica_dim =
+        input.query.at(ff_dim_t(i)).degree > 1;
+  }
+  return output;
 }
 
 } // namespace FlexFlow
