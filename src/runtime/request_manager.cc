@@ -368,6 +368,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         pending_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
         new_bc.requestsInfo[i].first_token_depth_in_request = 0;
+        new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid = new_request.guid;
         new_bc.requestsInfo[i].num_tokens_in_batch =
             std::min(get_max_tokens_per_batch() - new_bc.num_tokens -
@@ -466,6 +467,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       } else {
         new_bc.request_completed[i] = false;
         new_bc.requestsInfo[i].first_token_depth_in_request = processed_tokens;
+        new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid =
             old_bc.requestsInfo[i].request_guid;
         new_bc.requestsInfo[i].max_sequence_length =
@@ -688,6 +690,7 @@ BeamSearchBatchConfig
         // Normal Request Info
         new_bc.requestsInfo[i].first_token_depth_in_request =
             verified_tokens.front().second;
+        new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid =
             old_bc.requestsInfo[i].request_guid;
         new_bc.requestsInfo[i].max_sequence_length =
@@ -746,6 +749,7 @@ BeamSearchBatchConfig
       // Normal Request Info
       new_bc.requestsInfo[i].first_token_depth_in_request =
           request.ssm_cache_size;
+      new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
       new_bc.requestsInfo[i].max_sequence_length =
           old_bc.requestsInfo[i].max_sequence_length;
@@ -780,6 +784,7 @@ BeamSearchBatchConfig
         pending_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
         new_bc.requestsInfo[i].first_token_depth_in_request = 0;
+        new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid = new_request.guid;
         new_bc.requestsInfo[i].num_tokens_in_batch =
             std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
@@ -958,6 +963,7 @@ BeamSearchBatchConfig
                           << new_bc.num_tokens;
       new_bc.request_completed[i] = false;
       new_bc.requestsInfo[i].first_token_depth_in_request = processed_tokens;
+      new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
       new_bc.requestsInfo[i].max_sequence_length =
           old_bc.requestsInfo[i].max_sequence_length;
@@ -1158,6 +1164,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       // Normal Request Info
       new_bc.requestsInfo[i].first_token_depth_in_request =
           dfs_tree_inputs.front().second;
+      new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid =
           old_batches.at(0).requestsInfo[i].request_guid;
       new_bc.requestsInfo[i].max_sequence_length =
@@ -1265,6 +1272,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       // Normal Request Info
       new_bc.requestsInfo[i].first_token_depth_in_request =
           request.llm_cache_size;
+      new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid =
           old_batches.at(0).requestsInfo[i].request_guid;
       new_bc.requestsInfo[i].max_sequence_length =

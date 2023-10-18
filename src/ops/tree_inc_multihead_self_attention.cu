@@ -181,6 +181,8 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
     if (bc->request_completed[i]) {
       continue;
     }
+    assert(processed_tokens_in_batch ==
+           bc->requestsInfo[i].first_token_offset_in_batch);
     int last_token_idx_of_the_request =
         processed_tokens_in_batch + bc->requestsInfo[i].num_tokens_in_batch - 1;
     while (processed_tokens_in_batch <= last_token_idx_of_the_request) {
