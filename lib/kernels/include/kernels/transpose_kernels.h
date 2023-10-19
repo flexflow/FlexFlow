@@ -21,7 +21,7 @@ TransposePerDeviceState init_kernel(int num_dim, std::vector<int> const &perm);
 void forward_kernel(cudaStream_t stream,
                     TransposePerDeviceState const &m,
                     GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output)
+                    GenericTensorAccessorW const &output);
 
     void backward_kernel(TransposePerDeviceState const &m,
                          GenericTensorAccessorW const &in_grad,
