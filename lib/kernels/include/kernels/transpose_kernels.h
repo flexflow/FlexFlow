@@ -23,9 +23,9 @@ void forward_kernel(cudaStream_t stream,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
-    void backward_kernel(TransposePerDeviceState const &m,
-                         GenericTensorAccessorW const &in_grad,
-                         GenericTensorAccessorR const &out_grad);
+void backward_kernel(TransposePerDeviceState const &m,
+                     GenericTensorAccessorW const &in_grad,
+                     GenericTensorAccessorR const &out_grad);
 
 namespace Internal {
 
