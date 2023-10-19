@@ -18,42 +18,33 @@
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
+namespace Kernels {
+namespace Dropout {
 
-// declare Legion names
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::Memory;
-
-DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
-                                             bool profiling,
-                                             float rate,
-                                             unsigned long long seed,
-                                             Memory gpu_mem,
-                                             Domain const &output_domain)
-    : PerDeviceOpState(handler) {
+DropoutPerDeviceState init_kernel(PerDeviceFFHandle handler,
+                                  float rate,
+                                  unsigned long long seed,
+                                  ArrayShape output_shape,
+                                  Allocator allocator) {
+  ffTensorDescriptor_t inputTensor;
+  ffTensorDescriptor_t outputTensor;
+  ffDropoutDescriptor_t dropoutDesc;
+  void *reserveSpace;
+  void *dropoutStates;
+  size_t reserveSpaceSize;
+  size_t dropoutStateSize;
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   checkCUDNN(miopenCreateDropoutDescriptor(&dropoutDesc));
   checkCUDNN(miopenDropoutGetStatesSize(handle.dnn, &(dropoutStateSize)));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, output_domain));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, output_shape));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_shape));
   checkCUDNN(
       miopenDropoutGetReserveSpaceSize(outputTensor, &(reserveSpaceSize)));
   {
     // allocate memory for dropoutStates and reserveSpace
     size_t totalSize = dropoutStateSize + reserveSpaceSize;
-    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-                                   Realm::Point<1, coord_t>(totalSize - 1));
-    std::vector<size_t> field_sizes;
-    field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(reserveInst,
-                                           gpu_mem,
-                                           bounds,
-                                           field_sizes,
-                                           0,
-                                           Realm::ProfilingRequestSet())
-        .wait();
-    dropoutStates = reserveInst.pointer_untyped(0, sizeof(char));
+    dropoutStates = allocator.allocate(totalSize);
     reserveSpace = ((char *)dropoutStates) + dropoutStateSize;
   }
   // checkCUDA(hipMalloc(&dropoutStates, dropoutStateSize));
@@ -67,50 +58,61 @@ DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
                                         false,
                                         false,
                                         MIOPEN_RNG_PSEUDO_XORWOW));
+  DropoutPerDeviceState per_device_state = {handle,
+                                            allocator,
+                                            inputTensor,
+                                            outputTensor,
+                                            dropoutDesc,
+                                            reserveSpace,
+                                            dropoutStates,
+                                            reserveSpaceSize,
+                                            dropoutStateSize};
+  return per_device_state;
 }
-
-DropoutPerDeviceState::~DropoutPerDeviceState(void) {
-  reserveInst.destroy();
-  checkCUDNN(miopenDestroyTensorDescriptor(inputTensor));
-  checkCUDNN(miopenDestroyTensorDescriptor(outputTensor));
-  checkCUDNN(miopenDestroyDropoutDescriptor(dropoutDesc));
-}
-
-namespace Kernels {
-namespace Dropout {
 
 void forward_kernel(hipStream_t stream,
-                    DropoutPerDeviceState *m,
+                    DropoutPerDeviceState &m,
                     float const *input_ptr,
                     float *output_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-  checkCUDNN(miopenDropoutForward(m->handle.dnn,
-                                  m->dropoutDesc,
-                                  m->inputTensor /* not used */,
-                                  m->inputTensor,
+  checkCUDNN(miopenDropoutForward(m.handle.dnn,
+                                  m.dropoutDesc,
+                                  m.inputTensor /* not used */,
+                                  m.inputTensor,
                                   input_ptr,
-                                  m->outputTensor,
+                                  m.outputTensor,
                                   output_ptr,
-                                  m->reserveSpace,
-                                  m->reserveSpaceSize));
+                                  m.reserveSpace,
+                                  m.reserveSpaceSize));
 }
 
 void backward_kernel(hipStream_t stream,
-                     DropoutPerDeviceState *m,
+                     DropoutPerDeviceState &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-  checkCUDNN(miopenDropoutBackward(m->handle.dnn,
-                                   m->dropoutDesc,
-                                   m->inputTensor /* not used */,
-                                   m->outputTensor,
+  checkCUDNN(miopenDropoutBackward(m.handle.dnn,
+                                   m.dropoutDesc,
+                                   m.inputTensor /* not used */,
+                                   m.outputTensor,
                                    output_grad_ptr,
-                                   m->inputTensor,
+                                   m.inputTensor,
                                    input_grad_ptr,
-                                   m->reserveSpace,
-                                   m->reserveSpaceSize));
+                                   m.reserveSpace,
+                                   m.reserveSpaceSize));
+}
+
+void cleanup_kernel(Allocator allocator,
+                    ffTensorDescriptor_t inputTensor,
+                    ffTensorDescriptor_t outputTensor,
+                    ffDropoutDescriptor_t dropoutDesc,
+                    void *dropoutStates) {
+  allocator.deallocate(dropoutStates);
+  checkCUDNN(miopenDestroyTensorDescriptor(inputTensor));
+  checkCUDNN(miopenDestroyTensorDescriptor(outputTensor));
+  checkCUDNN(miopenDestroyDropoutDescriptor(dropoutDesc));
 }
 
 } // namespace Dropout
