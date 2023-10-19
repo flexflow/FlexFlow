@@ -4,7 +4,7 @@
 #include "utils/exception.h"
 
 namespace FlexFlow {
-// how to get the batch size? and lhs: [b, n, m], rhs: [b, m, p]
+// how to get the batch size? and lhs: [replicate_num, b, n, m], rhs: [b, m, p]
 // output: [b, n, p] //n == s1, m == s2
 //[b, n/2, m], [b, m, p/2] -> [b, n/2, p/2]
 //[b, n, m/2], [b, m/2, p] -> [b, n, p/2]

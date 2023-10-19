@@ -58,9 +58,9 @@ TensorShape
 // according to the pytorch
 // https://pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html,
 // we consider the batch size
-// query: [seq_len, batch_size, embed_dim],
-// key: (seq_len, batch_size, embed_dim)
-// value: (seq_len, batch_size,embed_dim)
+// query: [replicate_num, seq_len, batch_size, embed_dim],4D, 
+// key: (replicate_num, seq_len, batch_size, embed_dim)
+// value: (replicate_num ,seq_len, batch_size,embed_dim)
 //  multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
 // output: (seq_len, batch_size, embed_dim)
 
