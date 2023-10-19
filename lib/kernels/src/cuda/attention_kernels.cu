@@ -102,8 +102,8 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
   axes[2] = CUDNN_SEQDATA_BEAM_DIM;
   axes[1] = CUDNN_SEQDATA_TIME_DIM;
   axes[0] = CUDNN_SEQDATA_BATCH_DIM;
-  int *qoSeqArray = (int *)malloc(sizeof(int) * num_samples);
-  int *kvSeqArray = (int *)malloc(sizeof(int) * num_samples);
+  std::unique_ptr<int[]> qoSeqArray (new int[num_samples]);
+  std::unique_ptr<int[]> kvSeqArray (new int[num_samples]);
   for (int i = 0; i < num_samples; i++) {
     qoSeqArray[i] = qoSeqLength;
     kvSeqArray[i] = kvSeqLength;
@@ -120,7 +120,7 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                          dimA,
                                          axes,
                                          num_samples,
-                                         qoSeqArray,
+                                         qoSeqArray.get(),
                                          NULL));
   }
   // Set kDesc
@@ -135,7 +135,7 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                          dimA,
                                          axes,
                                          num_samples,
-                                         kvSeqArray,
+                                         kvSeqArray.get(),
                                          NULL));
   }
   // Set vDesc
@@ -150,7 +150,7 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                          dimA,
                                          axes,
                                          num_samples,
-                                         kvSeqArray,
+                                         kvSeqArray.get(),
                                          NULL));
   }
   // Set oDesc
@@ -165,7 +165,7 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                          dimA,
                                          axes,
                                          num_samples,
-                                         qoSeqArray,
+                                         qoSeqArray.get(),
                                          NULL));
   }
   // allocate memory for the seqArray and reserve space
@@ -174,12 +174,12 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
 
     devQoSeqArray = (int *)allocator.allocate(totalSize);
     checkCUDA(cudaMemcpy(devQoSeqArray,
-                         qoSeqArray,
+                         qoSeqArray.get(),
                          sizeof(int) * num_samples,
                          cudaMemcpyHostToDevice));
     devKvSeqArray = devQoSeqArray + num_samples;
     checkCUDA(cudaMemcpy(devKvSeqArray,
-                         kvSeqArray,
+                         kvSeqArray.get(),
                          sizeof(int) * num_samples,
                          cudaMemcpyHostToDevice));
     reserveSpace = devKvSeqArray + num_samples;
@@ -206,8 +206,6 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                         hiWinIdx,
                                         reserveSpace,
                                         allocator};
-  allocator.deallocate(qoSeqArray);
-  allocator.deallocate(kvSeqArray);
 
   return per_device_state;
 }
