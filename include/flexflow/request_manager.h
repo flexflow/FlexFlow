@@ -155,7 +155,7 @@ public:
   std::vector<std::pair<BatchConfig::TokenId, int>>
       traverse_beam_tree(BeamSearchBatchConfig const &old_bc,
                          int request_index,
-                         int token_start_offset);
+                         int first_token_depth_in_request);
 
   // remove guid after put the cached tree in request
   std::vector<std::pair<BatchConfig::TokenId, int>> merge_dfs_trees(
