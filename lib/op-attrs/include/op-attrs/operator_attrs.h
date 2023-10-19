@@ -2,8 +2,6 @@
 #define _OPERATOR_PARAMS_H
 
 #include "op-attrs/ops/core.h"
-#include "ops/aggregate.h"
-#include "ops/aggregate_spec.h"
 #include "ops/attention.h"
 #include "ops/batch_matmul.h"
 #include "ops/batch_norm.h"
@@ -18,7 +16,6 @@
 #include "ops/embedding.h"
 #include "ops/flat.h"
 #include "ops/gather.h"
-#include "ops/groupby.h"
 #include "ops/input.h"
 #include "ops/layer_norm.h"
 #include "ops/linear.h"
@@ -38,9 +35,7 @@
 
 namespace FlexFlow {
 
-using SharedOperatorAttrs = variant<AggregateAttrs,
-                                    AggregateSpecAttrs,
-                                    BatchMatmulAttrs,
+using SharedOperatorAttrs = variant<BatchMatmulAttrs,
                                     BatchNormAttrs,
                                     CastAttrs,
                                     ConcatAttrs,
@@ -52,7 +47,6 @@ using SharedOperatorAttrs = variant<AggregateAttrs,
                                     EmbeddingAttrs,
                                     FlatAttrs,
                                     GatherAttrs,
-                                    Group_byAttrs,
                                     InputAttrs,
                                     LayerNormAttrs,
                                     LinearAttrs,
@@ -67,10 +61,6 @@ using SharedOperatorAttrs = variant<AggregateAttrs,
                                     TopKAttrs,
                                     TransposeAttrs>;
 
-CHECK_VALID_OP_ATTR(AggregateAttrs);
-
-static_assert(is_valid_opattr<AggregateAttrs>::value, "");
-static_assert(is_valid_opattr<AggregateSpecAttrs>::value, "");
 static_assert(is_valid_opattr<BatchMatmulAttrs>::value, "");
 static_assert(is_valid_opattr<CastAttrs>::value, "");
 static_assert(is_valid_opattr<ConcatAttrs>::value, "");
@@ -82,7 +72,6 @@ static_assert(is_valid_opattr<ElementUnaryAttrs>::value, "");
 static_assert(is_valid_opattr<EmbeddingAttrs>::value, "");
 static_assert(is_valid_opattr<FlatAttrs>::value, "");
 static_assert(is_valid_opattr<GatherAttrs>::value, "");
-static_assert(is_valid_opattr<Group_byAttrs>::value, "");
 static_assert(is_valid_opattr<InputAttrs>::value, "");
 static_assert(is_valid_opattr<LayerNormAttrs>::value, "");
 static_assert(is_valid_opattr<LinearAttrs>::value, "");
