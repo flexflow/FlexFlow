@@ -617,8 +617,9 @@ __host__ void
       case OP_SIGMOID_SILU_MULTI: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_outputs[op] == 1);
-        SigmoidSiluMultiMeta const *m = (SigmoidSiluMultiMeta *)metas->meta[op];
+        SigmoidSiluMultiMeta *m = (SigmoidSiluMultiMeta *)metas->meta[op];
         SigmoidSiluMulti::inference_kernel_wrapper(m,
+                                                   bc,
                                                    my_input_accessor[0],
                                                    my_input_accessor[1],
                                                    my_output_accessor[0]);

@@ -5328,6 +5328,38 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(SIGMOID_SILU_MULTI_BWD_TASK_ID,
+                                   "SigmoidSiluMulti Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<SigmoidSiluMulti::backward_task>(
+          registrar, "SigmoidSiluMulti Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<SigmoidSiluMulti::backward_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(SIGMOID_SILU_MULTI_PEFT_BWD_TASK_ID,
+                                   "SigmoidSiluMulti PEFT Bwd");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<SigmoidSiluMulti::peft_bwd_task>(
+          registrar, "SigmoidSiluMulti PEFT Bwd Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<SigmoidSiluMulti::peft_bwd_task>(
+          registrar);
+    }
+  }
   // rms norm task
   {
     TaskVariantRegistrar registrar(RMSNORM_INIT_TASK_ID, "rmsnorm_init_task");
