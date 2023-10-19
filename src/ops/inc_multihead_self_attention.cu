@@ -19,6 +19,7 @@
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/kernels/decompress_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
+#include "flexflow/ops/kernels/inc_multihead_self_attention_utils.cuh"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -443,14 +444,25 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
   if (bc->num_generation_tokens > 0) {
     // phase 4: Compute attention score for generation tokens
-    compute_attention_kernel_generation(m,
-                                        bc,
-                                        shard_id,
-                                        output_ptr,
-                                        bias_ptr,
-                                        weight_ptr,
-                                        m->devQKVProjArray,
-                                        m->task_local_stream);
+    // todo, lunch different size of kernel
+    compute_attention_kernel_generation<DT,
+                                        128,
+                                        m->qProjSize,
+                                        m->qProjSize,
+                                        4,
+                                        32>
+        <<<GET_BLOCKS(parallelism),
+           min((size_t)CUDA_NUM_THREADS, parallelism),
+           0,
+           stream>>>(m,
+                     bc,
+                     shard_id,
+                     static_cast<DT *>(m->devQKVProjArray),
+                     static_cast<DT *>(m->keyCache),
+                     static_cast<DT *>(m->valueCache),
+                     output_ptr,
+                     bias_ptr,
+                     weight_ptr);
   }
 
   if (bc->num_tokens > bc->num_generation_tokens) {
@@ -463,14 +475,15 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
         output_ptr + sizeof(DT) * bc->num_generation_tokens * m->hidden_size,
         bias_ptr,
         weight_ptr,
-        m->devQKVProjArray + sizeof(DT) * bc->num_generation_tokens *
-                                 m->hidden_size * QKV_WEIGHT_NUM,
+        static_cast<DT *>(m->devQKVProjArray) +
+            sizeof(DT) * bc->num_generation_tokens * m->hidden_size *
+                QKV_WEIGHT_NUM,
         stream);
   }
   checkCUDA(cudaStreamSynchronize(m->task_local_stream));
 
   // compute o_proj together
-  compute_o_proj(output_ptr, weight_ptr);
+  // compute_o_proj_bias(output_ptr, weight_ptr);
 }
 
 } // namespace IncMultiHeadAttention
@@ -482,7 +495,12 @@ using namespace Kernels::IncMultiHeadAttention;
 // blockDim = num_tokens/num_request * head_size
 // QKV tensor layout: |QKV| * num_new_tokens. |Q=K=V=head_size * num_heads|
 // one thread process one head_size
-template <typename DT, int THREADS_PER_BLOCK, int Dh, int THREADS_PER_KEY, int THREADS_PER_VALUE, >
+template <typename DT,
+          int THREADS_PER_BLOCK,
+          int Dh,
+          int Dh_MAX,
+          int THREADS_PER_KEY,
+          int THREADS_PER_VALUE>
 __global__ void
     compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
                                         BatchConfig const *bc,
@@ -492,54 +510,49 @@ __global__ void
                                         DT const *value_cache,
                                         DT *output_ptr,
                                         DT const *bias_ptr,
-                                        DT const *weight_ptr,
-                                        cudaStream_t stream) {
+                                        DT const *weight_ptr) {
 
   using Qk_vec_k =
       typename Qk_vec_k_<T, Dh>::Type; // with kernel-used precision
-  using Qk_vec_m =
-      typename Qk_vec_m_<T, Dh>::Type; // with memory-used precision
 
   // The type of queries and keys for the math in the Q*K^T product.
   using K_vec_k = typename K_vec_k_<T, THREADS_PER_KEY>::Type;
-  using K_vec_m = typename K_vec_m_<T, THREADS_PER_KEY>::Type;
+  // using K_vec_k = typename K_vec_k_<T, THREADS_PER_KEY>::Type;
+
+  // QK_vec_k: 32->1, 64->2, 128->4... head_size
+  // K_vec_k: 4->1, 2->2, 1->4 threads_per_key
+  constexpr int K_VEC_SIZE = sizeof(K_vec_k) / sizeof(T);
+  constexpr int QK_VEC_SIZE = sizeof(Qk_vec_k) / sizeof(T);
 
   constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE;
 
-  // Qk_vec_m: 32->1, 64->2, 128->4... head_size
-  // K_vec_m: 4->1, 2->2, 1->4 threads_per_key
-  constexpr int K_VEC_SIZE = sizeof(K_vec_m) / sizeof(T);
-  constexpr int QK_VEC_SIZE = sizeof(Qk_vec_m) / sizeof(T);
-
-  // if head_size = 128, thread_per_key = 4
-  // K_VEC_SIZE = 1,  QK_VEC_SIZE = 4
-
-  // K_ELTS_PER_THREAD = 128 / 4 = 32
-  // K_VECS_PER_THREAD = 32 / 1 = 32
+  // eg.  if head_size = 128, thread_per_key = 4, with float32 precision
+  // then K_VEC_SIZE = 1,  QK_VEC_SIZE = 4
+  //  K_ELTS_PER_THREAD = 128 / 4 = 32
+  //  K_VECS_PER_THREAD = 32 / 1 = 32
   constexpr int K_ELTS_PER_THREAD = Dh / THREADS_PER_KEY;
   constexpr int K_VECS_PER_THREAD = K_ELTS_PER_THREAD / K_VEC_SIZE;
-
-  // The number of elements in a chunk of 16B (that's the x in the above
-  // formula).
   constexpr int QK_ELTS_IN_16B = 16 / sizeof(T);
 
+  // thread id
   int const tidx = threadIdx.x;
-
   // head id
   int const head_idx = blockIdx.x;
   // request idx
   int const request_idx = blockIdx.y;
 
+  int const first_step = 0;
+  int const tlength = bc->requestsInfo[request_idx].token_start_offset +
+                      bc->requestsInfo[request_idx].num_tokens_in_batch;
+
   // shared memory objects
   extern __shared__ char smem_[];
 
-  float qk_max = -FLT_MAX;
-  // q tensor
-  __shared__ Q_vec q_vecs[Dh];
-  // __shared__ __align__(sizeof(Qk_vec_k)) Tk q_smem[Dh_MAX];
-  T *q_smem = reinterpret_cast<T *>(smem_);
+  float *qk_smem = reinterpret_cast<float *>(smem_);
+  T *out_smem = reinterpret_cast<T *>(smem_);
 
-  // memory for reduction
+  float qk_max = -FLT_MAX;
+
   // first WARPS_PER_BLOCK for qk_max, second WARPS_PER_BLOCK for sum
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
 
@@ -550,14 +563,20 @@ __global__ void
   // q tensor in this thread
   // if THREADS_PER_KEY is 4, first thread load 0, 4, 8, 12..., total
   // K_VECS_PER_THREAD elements
-  constexpr int K_VEC_SIZE = sizeof(K_vec_m) / sizeof(T);
-
+  constexpr int K_VEC_SIZE = sizeof(K_vec_k) / sizeof(T);
   // the start offset of the element eg. (0, 1, 2, 3) * K_VEC_SIZE
   int ki = tidx % THREADS_PER_KEY * K_VEC_SIZE;
-
   // the first key's offset for this thread
   // ko = 0, 0, 0, 0, 1, 1, 1, 1, ....
   int ko = tidx / THREADS_PER_KEY;
+  // load q tensor
+  K_vec_k q_vec[K_VECS_PER_THREAD];
+#pragma unroll
+  for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
+    q_vec[ii] = *reinterpret_cast<K_vec_k const *>(
+        q_ptr[ki + ii * THREADS_PER_KEY * K_VEC_SIZE]);
+  }
+  __syncthreads();
 
   // first iter = 128 / 4 = 32
   // K_VECS_PER_THREAD = 32
@@ -567,14 +586,8 @@ __global__ void
   // The number of keys per warp.
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
-  K_vec_k q_vec[K_VECS_PER_THREAD];
-
-// load q tensor
-#pragma unroll
-  for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
-    q_vec[ii] = *reinterpret_cast<K_vec_k const *>(
-        q_ptr[ki + ii * THREADS_PER_KEY * K_VEC_SIZE]);
-  }
+  T *k_cache_batch =
+      key_cache[request_idx * BatchConfig::max_sequence_length() * Dh + ki];
 
   int ti_end =
       div_up(tlength - first_step, K_PER_WARP) * K_PER_WARP + first_step;
@@ -584,11 +597,10 @@ __global__ void
     int const ti_circ = ti % BatchConfig::max_sequence_length();
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
-      int jj = ii * params.memory_max_len + ti_circ;
+      int jj = ii * BatchConfig::max_sequence_length() + ti_circ;
       if (ti < length) {
-        k[ii] = vec_conversion<K_vec_k, K_vec_m>(
-            (*reinterpret_cast<K_vec_m const *>(
-                &k_cache_batch[jj * QK_ELTS_IN_16B])));
+        k[ii] = *reinterpret_cast<K_vec_k const *>(
+            &k_cache_batch[jj * QK_ELTS_IN_16B]);
       }
 
       // Compute dot product.
@@ -613,14 +625,8 @@ __global__ void
 
     __syncthreads();
 
-    // calsal mask and  masksoftmax
-    / Perform the final reduction to compute the max inside each warp.
-//
-// NOTE: In a group of THREADS_PER_KEY threads, the leader already has the max
-// value for the group so it's not needed to run the reduction inside the group
-// (again).
 #pragma unroll
-        for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
+    for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
       qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
     }
 
@@ -647,55 +653,101 @@ __global__ void
     qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
   }
 
-  float sum = 0.f;
+  float exp_sum = 0.f;
   // for( int ti = tidx; ti <= params.timestep; ti += THREADS_PER_BLOCK ) {
   for (int ti = first_step + tidx; ti <= tlength; ti += THREADS_PER_BLOCK) {
     float logit = __expf(qk_smem[ti - first_step] - qk_max);
-    sum += logit;
+    exp_sum += logit;
     qk_smem[ti - first_step] = logit;
   }
 
   // Compute the sum.
-  sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], sum);
+  exp_sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], exp_sum);
 
   // softmax
-  float inv_sum = __fdividef(1.f, sum + 1.e-6f);
-
+  float inv_sum = __fdividef(1.f, exp_sum + 1.e-6f);
   for (int ti = first_step + tidx; ti <= tlength; ti += THREADS_PER_BLOCK) {
-    float logit = qk_smem[ti - first_step] * inv_sum;
-    logits_smem[ti - first_step] = logit;
+    qk_smem[ti - first_step] *= inv_sum;
   }
+  __syncthreads();
 
   // value projection
   constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
   // A vector of V elements for the current timestep.
   using V_vec_k = typename V_vec_k_<T, V_VEC_SIZE>::Type;
   using V_vec_m = typename V_vec_m_<T, V_VEC_SIZE>::Type;
+  using V_vec_acum = typename V_vec_acum_fp32_<V_vec_k>::Type;
 
   // The value computed by this thread.
   int vo = tidx / THREADS_PER_VALUE;
   // The hidden dimensions computed by this particular thread.
   int vi = tidx % THREADS_PER_VALUE * V_VEC_SIZE;
 
+  V_vec_acum out;
+  zero(out);
+
   // The base pointer for the value in the cache buffer.
-  T *v_cache = &params.v_cache[bhi * params.memory_max_len * Dh + vi];
+  T *v_cache_batch =
+      value_cache[request_idx * BatchConfig::max_sequence_length() * Dh + ki];
 
   if (Dh == Dh_MAX || vi < Dh) {
-    int const min_length = min(tlength, params.memory_max_len);
-    for (int ti = first_step + vo; ti < min_length; ti += V_PER_ITER) {
+    for (int ti = first_step + vo; ti < tlength; ti += V_PER_ITER) {
       // Load the values from the cache.
-      V_vec_k v =
-          vec_conversion<V_vec_k, V_vec_m>(*reinterpret_cast<V_vec_m const *>(
-              &v_cache_batch[beam_offset + ti * Dh]));
-      Tk logit = logits_smem[ti - first_step];
+      V_vec_k v = *reinterpret_cast<V_vec_k const *>(v_cache_batch[ti * Dh]);
+      T logit = logits_smem[ti - first_step];
       out = fma(logit, v, out);
     }
   }
+  // One group of threads computes the product(s) for the current timestep.
+  // if( vo == params.timestep % V_PER_ITER ) {
+  if (vo == tlength % V_PER_ITER && (Dh == Dh_MAX || vi < Dh)) {
+    V_vec_k v;
+    auto const v_offset = qkv_base_offset + vi;
+    v = *reinterpret_cast<V_vec_k const *>(value_cache[v_offset]);
+    out = fma(logits_smem[tlength - first_step], v, out);
+  }
 
+  // Make sure we can start writing to shared memory.
+  __syncthreads();
+
+  // Run the final reduction amongst the different groups computing different
+  // partial outputs.
+  if (Dh == Dh_MAX || vi < Dh) {
+#pragma unroll
+    for (int active_groups = V_PER_ITER; active_groups >= 2;
+         active_groups /= 2) {
+
+      // The midpoint in the number of active groups.
+      int midpoint = active_groups / 2;
+
+      // The upper part of active threads store to shared memory.
+      if (vo >= midpoint && vo < active_groups && (Dh == Dh_MAX || vi < Dh)) {
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+        convert_from_float(
+            *reinterpret_cast<V_vec_k *>(&out_smem[(vo - midpoint) * Dh + vi]),
+            out);
+#else
+        *reinterpret_cast<V_vec_k *>(&out_smem[(vo - midpoint) * Dh + vi]) =
+            out;
+#endif
+      }
+      __syncthreads();
+
+      // The bottom warps update their values.
+      if (vo < midpoint && (Dh == Dh_MAX || vi < Dh)) {
+        out = add(*reinterpret_cast<V_vec_k const *>(&out_smem[vo * Dh + vi]),
+                  out);
+      }
+      __syncthreads();
+    }
+  }
 
   // qkv
-
-  // o
+  // Output the final values.
+  if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
+    convert_from_float(*reinterpret_cast<V_vec_m *>(output_ptr[bhi * Dh + vi]),
+                       out);
+  }
 }
 
 template <typename DT>
@@ -750,6 +802,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
                                      DT *output_ptr,
                                      DT const *bias_ptr,
                                      DT const *weight_ptr,
+                                     DT const *query,
                                      cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -1230,8 +1283,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         key_cache_size = num_q_heads * kProjSize *
                          BatchConfig::max_requests_per_batch() *
                          BatchConfig::max_sequence_length();
-        value_cache_size =
-            num_q_heads * vProjSize * BatchConfig::max_requests_per_batch() * b;
+        value_cache_size = num_q_heads * vProjSize *
+                           BatchConfig::max_requests_per_batch() *
+                           BatchConfig::max_sequence_length();
         break;
       }
       case BEAM_SEARCH_MODE: {
@@ -1366,4 +1420,5 @@ template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<half>(
     GenericTensorAccessorR const weight,
     DataType data_type,
     cudaStream_t stream);
+
 }; // namespace FlexFlow
