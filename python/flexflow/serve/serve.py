@@ -30,7 +30,8 @@ from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from huggingface_hub import HfApi
 import sys, torch, shutil, hashlib
-from typing import Union, List
+from typing import Union, List, Any, Mapping, Optional
+
 
 
 class GenerationConfig:
@@ -424,7 +425,6 @@ class LLM:
             ]
         else:
             assert False, "Please pass a non-empty string or list of strings"
-
 
 class SSM(LLM):
     """This class creates a SSM (Small-Speculative Model) object based on a model from HuggingFace"""

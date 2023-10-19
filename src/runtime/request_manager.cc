@@ -1846,7 +1846,7 @@ GenerationResult RequestManager::generate_incr_decoding(
     }
     Runtime *runtime = Runtime::get_runtime();
     Context ctx = Runtime::get_context();
-    runtime->begin_trace(ctx, 12346 /*trace_id*/);
+    // runtime->begin_trace(ctx, 12346 /*trace_id*/);
     auto const &next_batch = batch_pipeline.back();
     BatchConfigFuture bcf =
         prepare_next_batch(next_batch.first, next_batch.second);
@@ -1856,7 +1856,7 @@ GenerationResult RequestManager::generate_incr_decoding(
     batch_pipeline.push(std::make_pair(bcf, irf));
     last_bcf = bcf;
     last_irf = irf;
-    runtime->end_trace(ctx, 12346 /*trace_id*/);
+    // runtime->end_trace(ctx, 12346 /*trace_id*/);
   }
   GenerationResult gr = get_generation_result(guid);
   // assert(gr.output_tokens.size() >= max_seq_length);
@@ -1908,7 +1908,7 @@ GenerationResult RequestManager::generate_spec_infer(
     // }
     Runtime *runtime = Runtime::get_runtime();
     Context ctx = Runtime::get_context();
-    runtime->begin_trace(ctx, 12345 /*trace_id*/);
+    // runtime->begin_trace(ctx, 12345 /*trace_id*/);
 
     for (size_t i = 0; i < get_num_ssms(); i++) {
       for (int depth = 0; depth < BeamSearchBatchConfig::MAX_BEAM_DEPTH;
@@ -1932,7 +1932,7 @@ GenerationResult RequestManager::generate_spec_infer(
       last_tree_bcf = tree_bcf;
       last_tree_irf = tree_irf;
     }
-    runtime->end_trace(ctx, 12345 /*trace_id*/);
+    // runtime->end_trace(ctx, 12345 /*trace_id*/);
   }
 
   GenerationResult gr = get_generation_result(guid);

@@ -12,9 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import gradio as gr
+import os
+from langchain import PromptTemplate, LLMChain
 import flexflow.serve as ff
-import argparse, json, os
+import argparse, json
 from types import SimpleNamespace
+from typing import Any, List, Mapping, Optional
+from langchain.callbacks.manager import CallbackManagerForLLMRun
+from langchain.llms.base import LLM
+
+
+
+os.environ["OPENAI_API_KEY"] = "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"  # Replace with your key
 
 
 def get_configs():
@@ -89,9 +99,9 @@ def get_configs():
         # Merge dictionaries
         ff_init_configs.update(llm_configs)
         return ff_init_configs
+    
 
-
-def main():
+def predict(message, history=[]):
     configs_dict = get_configs()
     configs = SimpleNamespace(**configs_dict)
 
@@ -148,26 +158,9 @@ def main():
         max_tokens_per_batch=64,
         ssms=ssms,
     )
-
-    # Generation begins!
-    # if len(configs.prompt) > 0:
-    #     prompts = [s for s in json.load(open(configs.prompt))]
-    #     results = llm.generate(prompts)
-    # else:
-    #     result = llm.generate("Here are some travel tips for Tokyo:\n")
     
-    if len(configs.prompt) > 0:
-        prompts = [s for s in json.load(open(configs.prompt))]
-        results = llm.generate(prompts)
-    else:
-        results = [llm.generate("Here are some travel tips for Tokyo:\n")]
 
-    # Save the generated outputs to a .txt file
-    with open('output.txt', 'w') as file:
-        for item in results:
-            file.write("%s\n" % item.output_text)
+    results = llm.generate(message)
+    return results.output_text.decode('utf-8')
 
-
-if __name__ == "__main__":
-    print("flexflow inference example (speculative inference)")
-    main()
+gr.ChatInterface(predict).launch()

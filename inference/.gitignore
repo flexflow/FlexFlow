@@ -3,3 +3,7 @@ weights
 tokenizers
 prompt
 output
+.chainlit
+output.txt
+ff_test.ipynb
+fastAPI
