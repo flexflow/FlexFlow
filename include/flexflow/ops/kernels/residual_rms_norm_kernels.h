@@ -2,6 +2,7 @@
 #define _FLEXFLOW_OPS_KERNELS_RESIDUAL_RMSNORM_KERNELS_H
 
 #include "flexflow/accessor.h"
+#include "flexflow/batch_config.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
@@ -38,6 +39,8 @@ public:
   int batch_size;
   int num_elements;
   Realm::RegionInstance reserveInst;
+  // PEFT related fields
+  void *input_activation;
 };
 
 namespace Kernels {
@@ -48,6 +51,13 @@ void forward_kernel_wrapper(ResidualRMSNormMeta const *m,
                             GenericTensorAccessorR const &weight,
                             GenericTensorAccessorW const &residual_output,
                             GenericTensorAccessorW const &output);
+void inference_kernel_wrapper(ResidualRMSNormMeta *m,
+                              BatchConfig const *bc,
+                              GenericTensorAccessorR const &input1,
+                              GenericTensorAccessorR const &input2,
+                              GenericTensorAccessorR const &weight,
+                              GenericTensorAccessorW const &residual_output,
+                              GenericTensorAccessorW const &output);
 void backward_kernel_wrapper(
     ResidualRMSNormMeta const *m,
     GenericTensorAccessorR const &output_grad,
@@ -56,6 +66,11 @@ void backward_kernel_wrapper(
     GenericTensorAccessorW const &residual_input1_grad,
     GenericTensorAccessorR const &weight,
     GenericTensorAccessorW const &weight_grad);
+void peft_bwd_kernel_wrapper(ResidualRMSNormMeta const *m,
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorW const &residual_input0_grad,
+                             GenericTensorAccessorW const &residual_input1_grad,
+                             GenericTensorAccessorR const &weight);
 } // namespace ResidualRMSNorm
 } // namespace Kernels
 } // namespace FlexFlow

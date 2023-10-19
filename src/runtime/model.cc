@@ -5434,6 +5434,36 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
+    TaskVariantRegistrar registrar(RESIDUAL_RMSNORM_BWD_TASK_ID,
+                                   "Residual RMS Norm Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ResidualRMSNorm::backward_task>(
+          registrar, "RMS Norm Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ResidualRMSNorm::backward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_RMSNORM_PEFT_BWD_TASK_ID,
+                                   "Residual RMS Norm PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ResidualRMSNorm::peft_bwd_task>(
+          registrar, "RMS Norm PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ResidualRMSNorm::peft_bwd_task>(registrar);
+    }
+  }
+  {
     TaskVariantRegistrar registrar(LAYERNORM_PEFT_BWD_TASK_ID,
                                    "layernorm_peft_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));

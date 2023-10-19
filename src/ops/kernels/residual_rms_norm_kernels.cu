@@ -236,6 +236,116 @@ void forward_kernel_wrapper(ResidualRMSNormMeta const *m,
   }
 }
 
+void inference_kernel_wrapper(ResidualRMSNormMeta *m,
+                              BatchConfig const *bc,
+                              GenericTensorAccessorR const &input1,
+                              GenericTensorAccessorR const &input2,
+                              GenericTensorAccessorR const &weight,
+                              GenericTensorAccessorW const &residual_output,
+                              GenericTensorAccessorW const &output) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+
+  assert(input1.data_type == input2.data_type);
+  assert(output.data_type == input1.data_type);
+  assert(weight.data_type == output.data_type);
+  assert(residual_output.data_type == output.data_type);
+
+  // save input activation if needed for PEFT
+  if (bc->num_active_peft_tokens() > 0) {
+    // Check that we have at most one request that requires peft_bwd
+    int num_peft_requests = 0;
+    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+      if (bc->request_completed[i]) {
+        continue;
+      }
+      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+        continue;
+      }
+      if (bc->requestsInfo[i].peft_bwd) {
+        num_peft_requests++;
+      }
+    }
+    assert(num_peft_requests <= 1);
+
+    int tokens_previous_requests = 0;
+    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+      if (bc->request_completed[i]) {
+        continue;
+      }
+      // Skip non-PEFT requests
+      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+        // FIXME: use the new approach to computing token offset
+        tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
+        continue;
+      }
+      int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+      int in_dim = input1.domain.hi()[0] - input1.domain.lo()[0] + 1;
+      if (bc->requestsInfo[i].peft_bwd) {
+        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+        m->input_activation = allocator->allocate_instance_untyped(
+            data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
+        // copy input activation
+        if (m->input_type[0] == DT_FLOAT) {
+          checkCUDA(cudaMemcpyAsync(m->input_activation,
+                                    residual_output.get_float_ptr() +
+                                        tokens_previous_requests * in_dim,
+                                    data_type_size(m->input_type[0]) *
+                                        num_peft_tokens * in_dim,
+                                    cudaMemcpyDeviceToDevice,
+                                    stream));
+        } else if (m->input_type[0] == DT_HALF) {
+          checkCUDA(cudaMemcpyAsync(m->input_activation,
+                                    residual_output.get_half_ptr() +
+                                        tokens_previous_requests * in_dim,
+                                    data_type_size(m->input_type[0]) *
+                                        num_peft_tokens * in_dim,
+                                    cudaMemcpyDeviceToDevice,
+                                    stream));
+        } else {
+          assert(false && "unsupport datatype in layernorm");
+        }
+      }
+    }
+  }
+
+  if (output.data_type == DT_HALF) {
+    forward_kernel(m,
+                   input1.get_half_ptr(),
+                   input2.get_half_ptr(),
+                   weight.get_half_ptr(),
+                   residual_output.get_half_ptr(),
+                   output.get_half_ptr(),
+                   stream);
+  } else if (output.data_type == DT_FLOAT) {
+    forward_kernel(m,
+                   input1.get_float_ptr(),
+                   input2.get_float_ptr(),
+                   weight.get_float_ptr(),
+                   residual_output.get_float_ptr(),
+                   output.get_float_ptr(),
+                   stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
+
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[ResidualRMSNorm] forward time (CF) = %.2fms\n", elapsed);
+  }
+}
+
 template <typename T>
 __global__ void ComputeInternalGradientsCUDAKernel(
     int64_t N, T const *dY, T const *X, T const *gamma, T const *rrms, T *c2) {
@@ -325,15 +435,44 @@ void backward_kernel(ResidualRMSNormMeta const *m,
                                           weight_grad_ptr);
 }
 
+template <typename T>
+void peft_bwd_kernel(ResidualRMSNormMeta const *m,
+                     T const *output_grad_ptr,
+                     T *residual_input0_grad_ptr,
+                     T *residual_input1_grad_ptr,
+                     T const *weight_ptr,
+                     cudaStream_t stream) {
+  const int64_t M = m->batch_size;
+  const int64_t N = m->num_elements;
+  T const *residual_output_rms_input_ptr =
+      static_cast<T *>(m->input_activation);
+  ComputeInternalGradientsCUDAKernel<T>
+      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+          N,
+          output_grad_ptr,
+          residual_output_rms_input_ptr,
+          weight_ptr,
+          static_cast<T *>(m->rms_ptr),
+          static_cast<T *>(m->norm_ptr));
+
+  RMSNormBackwardCUDAKernel<T>
+      <<<M, kCUDANumThreads, 0, stream>>>(N,
+                                          output_grad_ptr,
+                                          residual_output_rms_input_ptr,
+                                          weight_ptr,
+                                          static_cast<T *>(m->rms_ptr),
+                                          static_cast<T *>(m->norm_ptr),
+                                          residual_input0_grad_ptr,
+                                          residual_input1_grad_ptr);
+}
+
 /*
   regions[0](I): RMS output_grad
   regions[1](I): Residual output / RMS input
-  regions[2](I): Residual input 0
-  regions[3](I/O): Residual input 0 grad
-  regions[4](I): Residual input 1
-  regions[5](I/O): Residual input 1 grad
-  regions[6](I): weight
-  regions[7](I/O): weight_grad
+  regions[2](I/O): Residual input 0 grad
+  regions[3](I/O): Residual input 1 grad
+  regions[4](I): weight
+  regions[5](I/O): weight_grad
 */
 void backward_kernel_wrapper(
     ResidualRMSNormMeta const *m,
@@ -374,6 +513,58 @@ void backward_kernel_wrapper(
                     residual_input1_grad.get_float_ptr(),
                     weight.get_float_ptr(),
                     weight_grad.get_float_ptr(),
+                    stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
+
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[ResidualRMSNorm] backward time (CF) = %.2fms\n", elapsed);
+  }
+}
+
+/*
+  regions[0](I): RMS output_grad
+  regions[1](I/O): Residual input 0 grad
+  regions[2](I/O): Residual input 1 grad
+  regions[3](I): weight
+*/
+void peft_bwd_kernel_wrapper(ResidualRMSNormMeta const *m,
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorW const &residual_input0_grad,
+                             GenericTensorAccessorW const &residual_input1_grad,
+                             GenericTensorAccessorR const &weight) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+  assert(output_grad.data_type == residual_input0_grad.data_type);
+  assert(residual_input0_grad.data_type == residual_input1_grad.data_type);
+  assert(residual_input1_grad.data_type == weight.data_type);
+
+  if (output_grad.data_type == DT_HALF) {
+    peft_bwd_kernel(m,
+                    output_grad.get_half_ptr(),
+                    residual_input0_grad.get_half_ptr(),
+                    residual_input1_grad.get_half_ptr(),
+                    weight.get_half_ptr(),
+                    stream);
+  } else if (output_grad.data_type == DT_FLOAT) {
+    peft_bwd_kernel(m,
+                    output_grad.get_float_ptr(),
+                    residual_input0_grad.get_float_ptr(),
+                    residual_input1_grad.get_float_ptr(),
+                    weight.get_float_ptr(),
                     stream);
   } else {
     assert(false && "Unsupported data type");
