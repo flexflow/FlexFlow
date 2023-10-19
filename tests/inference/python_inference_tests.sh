@@ -192,4 +192,4 @@ diff <(tail -n +2 "../../inference/output/huggingface_opt_125M.txt") <(tail -n +
 diff <(tail -n +2 "../../inference/output/huggingface_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_dec-python-opt-125m-half_prec-1_tp_4_pp.txt" | tr -s '[:space:]' '\n' | head -n 20)
 diff <(tail -n +2 "../../inference/output/huggingface_opt_6B.txt") <(tail -n +5 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-1_tp_4_pp.txt")
 #diff <(tail -n +2 "../../inference/output/huggingface_opt_6B_half.txt") <(tail -n +5 "../../inference/output/incr_dec-python-opt-6.7b-half_prec-1_tp_4_pp.txt")
-diff <(tail -n +2 "../../inference/output/huggingface_falcon_7B.txt") <(tail -n +5 "../../inference/output/incr_dec-python-falcon-7b-full_prec-1_tp_4_pp.txt")
+diff <(tail -n +2 "../../inference/output/huggingface_falcon_7B.txt") <(tail -n +5 "../../inference/output/incr_dec-python-falcon-7b-half_prec-1_tp_4_pp.txt")

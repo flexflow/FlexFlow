@@ -30,7 +30,7 @@ using tokenizers::Tokenizer;
 
 class InferenceManager {
 public:
-  InferenceManager(FFConfig const &config, int max_num_tokens_per_batch);
+  InferenceManager(FFConfig const &config);
   static InferenceManager *get_inference_manager();
   void compile_model_and_allocate_buffer(FFModel *model);
   void init_operators_inference(FFModel *model);
@@ -46,7 +46,6 @@ public:
 public:
   FFConfig ff_config;
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
-  int max_num_tokens_per_batch;
   int num_devices;
 };
 
@@ -96,6 +95,12 @@ public:
   size_t get_num_processed_requests();
   size_t get_num_ssms();
 
+  void set_max_requests_per_batch(int max_num_requests);
+  int get_max_requests_per_batch();
+  void set_max_tokens_per_batch(int max_num_tokens);
+  int get_max_tokens_per_batch();
+  void set_max_sequence_length(int max_seq_length);
+  int get_max_sequence_length();
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -149,7 +154,7 @@ public:
   std::vector<std::pair<BatchConfig::TokenId, int>>
       traverse_beam_tree(BeamSearchBatchConfig const &old_bc,
                          int request_index,
-                         int token_start_offset);
+                         int first_token_depth_in_request);
 
   // remove guid after put the cached tree in request
   std::vector<std::pair<BatchConfig::TokenId, int>> merge_dfs_trees(
@@ -201,6 +206,11 @@ public:
       Legion::Runtime *runtime);
 
 private:
+  // configuration parameters
+  int max_requests_per_batch;
+  int max_tokens_per_batch;
+  int max_sequence_length;
+  // private fields
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
   ModelType model_type;

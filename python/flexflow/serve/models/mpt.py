@@ -19,16 +19,17 @@ import random, torch, shutil
 
 class MPTConfig:
     def __init__(self, hf_config):
-        self.max_seq_len = 256
-        self.max_num_tokens = 64
+        #self.max_seq_len = 256
+        #self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
         self.hidden_size = hf_config.d_model
         self.n_heads = hf_config.n_heads
         self.n_layers = hf_config.n_layers
         self.vocab_size = hf_config.vocab_size
-        hf_config.num_attention_heads = hf_config.n_heads
-        hf_config.hidden_size = hf_config.d_model
+        # Standardized FlexFlow num heads fields below
+        self.num_attention_heads = hf_config.n_heads
+        self.num_key_value_heads = hf_config.n_heads
 
 
 class FlexFlowMPT(FlexFlowModel):
@@ -39,20 +40,20 @@ class FlexFlowMPT(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
-        max_batch_size=1,
-        max_seq_length=256,
-        max_tokens_per_batch=64,
+        #max_batch_size=1,
+        #max_seq_length=256,
+        max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
     ):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
-        self.max_batch_size = max_batch_size
+        #self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.mpt_config = MPTConfig(hf_config)
-        self.mpt_config.max_seq_length = max_seq_length
-        self.mpt_config.max_num_tokens = max_tokens_per_batch
+        #self.mpt_config.max_seq_length = max_seq_length
+        #self.mpt_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
@@ -71,12 +72,12 @@ class FlexFlowMPT(FlexFlowModel):
             raise ValueError(
                 f"Number of attention heads ({self.mpt_config.n_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
-        self.build_model()
+        self.build_model(max_tokens_per_batch)
 
-    def build_model(self):
+    def build_model(self, max_tokens_per_batch):
         ffmodel = FFModel(self.ffconfig)
 
-        tokens_dims = [self.mpt_config.max_num_tokens, 1]
+        tokens_dims = [max_tokens_per_batch, 1]
         input = ffmodel.create_tensor(tokens_dims, DataType.DT_INT32)
 
         embed_init = UniformInitializer(random.randint(0, self.maxint), 0, 0)
@@ -274,26 +275,3 @@ class FlexFlowMPT(FlexFlowModel):
             os.path.join(dst_folder, "transformer_wte_weight"),
             os.path.join(dst_folder, "lm_head_weight"),
         )
-
-    def get_layers_with_weights(self):
-        layer_names = [
-            "transformer_wte_weight",
-            "transformer_norm_f_weight",
-            "lm_head_weight",
-        ] + [
-            expr
-            for i in range(self.mpt_config.n_layers)
-            for expr in (
-                f"layers_{i}_norm_1_weight",
-                f"layers_{i}_attention_weight",
-                f"layers_{i}_norm_2_weight",
-                f"layers_{i}_ffn_up_proj_weight",
-                f"layers_{i}_ffn_down_proj_weight",
-            )
-        ]
-        layers_with_weights = {
-            layer_name: self.ffmodel.get_layer_by_name(layer_name)
-            for layer_name in layer_names
-        }
-
-        return layers_with_weights

@@ -504,11 +504,13 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   m->use_bias = linear->use_bias;
   m->add_bias_only_once = linear->add_bias_only_once;
   m->profiling = linear->profiling;
+  m->inference_debugging = linear->inference_debugging;
   m->trainableInputs[0] = linear->trainableInputs[0];
   m->weight_ptr_type = m->input_type[0];
   m->quantization_type = linear->quantization_type;
   m->offload = linear->offload;
   std::strcpy(m->op_name, linear->name);
+  m->layer_guid = linear->layer_guid;
 
   init_kernel(m, batch_size, out_dim);
 
@@ -617,7 +619,7 @@ void Linear::inference_task(Task const *task,
                             Runtime *runtime) {
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  LinearMeta const *m = *((LinearMeta **)task->local_args);
+  LinearMeta *m = *((LinearMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
@@ -658,6 +660,18 @@ void Linear::inference_task(Task const *task,
                          in_dim,
                          out_dim,
                          batch_size);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    weights_accessors.push_back(weight);
+    if (m->use_bias &&
+        !(m->add_bias_only_once && task->index_point.point_data[0] != 0)) {
+      weights_accessors.push_back(bias);
+    }
+    Linear::save_inference_tensors_to_file(
+        m, shard_id, bc, {input}, weights_accessors, {output});
+  }
 }
 
 void Linear::forward_task(Task const *task,
@@ -1235,6 +1249,7 @@ bool operator==(LinearParams const &lhs, LinearParams const &rhs) {
 void Linear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->out_channels);
   sez.serialize(this->activation);
   sez.serialize(this->kernel_reg_type);
@@ -1260,10 +1275,11 @@ Node Linear::deserialize(FFModel &ff,
   DataType data_type;
   DataType quantization_type;
   bool offload;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(out_channels);
   dez.deserialize(activation);
   dez.deserialize(kernel_reg_type);

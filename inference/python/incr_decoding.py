@@ -55,6 +55,7 @@ def get_configs():
             "use_4bit_quantization": False,
             "use_8bit_quantization": False,
             "profiling": False,
+            "inference_debugging": False,
             "fusion": True,
         }
         llm_configs = {
@@ -97,7 +98,7 @@ def main():
     )
     llm.compile(
         generation_config,
-        max_batch_size=1,
+        max_requests_per_batch=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
     )

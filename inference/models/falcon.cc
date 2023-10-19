@@ -29,9 +29,7 @@ void FALCON::create_falcon_model(FFModel &ff,
   falcon_config.print();
 
   if (ff.config.tensor_parallelism_degree > falcon_config.n_head ||
-      falcon_config.n_head % ff.config.tensor_parallelism_degree != 0 ||
-      ff.config.tensor_parallelism_degree > falcon_config.n_head_kv ||
-      falcon_config.n_head_kv % ff.config.tensor_parallelism_degree != 0) {
+      falcon_config.n_head % ff.config.tensor_parallelism_degree != 0) {
     assert(false && "The number of attention heads is smaller, or it is not "
                     "divisible by the tensor parallelism degree");
   }
@@ -40,8 +38,8 @@ void FALCON::create_falcon_model(FFModel &ff,
 
   Tensor input;
   {
-    assert(falcon_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
-    int const token_dims[] = {BatchConfig::MAX_NUM_TOKENS, 1};
+    // assert(falcon_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
+    int const token_dims[] = {BatchConfig::max_tokens_per_batch(), 1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 

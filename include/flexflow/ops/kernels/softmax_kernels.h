@@ -21,8 +21,8 @@ public:
   miopenTensorDescriptor_t outputTensor;
 #endif
   bool profiling;
+  bool inference_debugging;
   int dim;
-  char op_name[MAX_OPNAME];
   DataType input_type, output_type;
 };
 

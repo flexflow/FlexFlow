@@ -176,7 +176,8 @@ public:
   size_t weights_params, weightSize, biasSize, reserveSpaceSize,
       quantized_weightSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
-  int global_num_q_heads, global_num_kv_heads, num_q_heads, num_kv_heads;
+  int global_num_q_heads, global_num_kv_heads, num_q_heads, num_kv_heads,
+      hidden_size;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
   bool *qkv_bias;
@@ -185,13 +186,10 @@ public:
   bool *qk_prod_scaling;
   bool *position_bias;
   float scaling_factor;
-#ifdef INFERENCE_TESTS
-  float *kcache, *vcache;
-#endif
   void *weight_ptr, *bias_ptr; // for weight offload
   void *devQKVProjArray, *keyCache, *valueCache;
   void *qk_prods, *qk_prods_softmax;
-  void *attn_heads, *W_out_contiguous;
+  void *attn_heads;
   char *quantized_weight_ptr;
   BatchConfig::PerTokenInfo *token_infos;
   DataType quantization_type;

@@ -245,7 +245,10 @@ OpMeta *ArgMax::init_task(Task const *task,
                                  length * batch_size,
                                  gpu_mem_allocator);
   m->profiling = s->profiling;
+  m->inference_debugging = s->inference_debugging;
   m->beam_search = s->beam_search;
+  std::strcpy(m->op_name, s->name);
+  m->layer_guid = s->layer_guid;
   return m;
 }
 
@@ -339,7 +342,7 @@ BeamInferenceResult
     BeamInferenceResult ir;
     return ir;
   }
-  ArgMaxMeta const *m = *((ArgMaxMeta **)task->local_args);
+  ArgMaxMeta *m = *((ArgMaxMeta **)task->local_args);
 
   GenericTensorAccessorW input = helperGetGenericTensorAccessorRW(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -355,6 +358,14 @@ BeamInferenceResult
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   download_tensor(m->probs, ir.probs, batch_size);
   download_tensor<int>(parent.get_int32_ptr(), ir.parent_id, batch_size);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    ArgMax::save_inference_tensors_to_file(
+        m, shard_id, bc, {}, {}, {input, indices, parent});
+  }
+
   return ir;
 }
 
@@ -365,7 +376,7 @@ InferenceResult
                                 Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  ArgMaxMeta const *m = *((ArgMaxMeta **)task->local_args);
+  ArgMaxMeta *m = *((ArgMaxMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     // Directly return for empty batch config
@@ -381,6 +392,12 @@ InferenceResult
   int batch_size = bc->num_active_tokens();
   ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
   InferenceResult ir;
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    ArgMax::save_inference_tensors_to_file(
+        m, shard_id, bc, {}, {}, {input, indices});
+  }
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   return ir;

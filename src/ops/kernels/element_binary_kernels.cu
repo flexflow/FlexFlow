@@ -30,6 +30,7 @@ ElementBinaryMeta::ElementBinaryMeta(FFHandler handler, Op const *op)
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceAddDesc));
   op_type = OP_NOOP;
   profiling = false;
+  inference_debugging = false;
   inplace_a = false;
   has_same_operands = false;
   broadcast_input1 = false;

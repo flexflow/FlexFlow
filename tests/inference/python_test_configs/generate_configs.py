@@ -18,6 +18,7 @@ ff_init_configs = {
     "use_4bit_quantization": False,
     "use_8bit_quantization": False,
     "profiling": False,
+    "inference_debugging": False,
     "fusion": True,
 }
 llm_configs = {
@@ -72,10 +73,13 @@ for model_name in all_models:
             tp, pp = parallelism_degrees
 
             # Tensor parallelism not supported by small Falcon model atm
-            if tp > 1 and ("falcon" in model_name or "starcoder" in model_name):
+            if tp > 1 and ("falcon" in model_name):
                 continue
             # skip tp=4 for big models
             if tp > 2 and ("7b" in model_name or "6.7b" in model_name):
+                continue
+
+            if full_precision and ("falcon" in model_name or "starcoder" in model_name):
                 continue
             
             _, after_slash = model_name.rsplit("/", maxsplit=1)

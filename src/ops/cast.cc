@@ -193,6 +193,8 @@ OpMeta *Cast::init_task(Task const *task,
   CastMeta *m = new CastMeta(handler);
   m->input_data_type = cast->inputs[0]->data_type;
   m->output_data_type = cast->outputs[0]->data_type;
+  std::strcpy(m->op_name, cast->name);
+  m->layer_guid = cast->layer_guid;
   return m;
 }
 

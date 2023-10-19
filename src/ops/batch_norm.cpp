@@ -293,6 +293,7 @@ BatchNormMeta::BatchNormMeta(FFHandler handler,
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   relu = bn->relu;
   profiling = bn->profiling;
+  inference_debugging = bn->inference_debugging;
   mode = miopenBNSpatial;
   // #if HIPDNN_VERSION >= 7000
   //   mode = HIPDNN_BATCHNORM_SPATIAL_PERSISTENT;

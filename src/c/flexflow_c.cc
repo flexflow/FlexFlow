@@ -1592,7 +1592,8 @@ flexflow_generation_result_t
   std::string const text_str(input_text);
   prompts.push_back(input_text);
   GenerationResult result = handle->generate(prompts, max_seq_length);
-  DEBUG_PRINT("[Model] generate %p %s %i", handle, text_str, max_seq_length);
+  DEBUG_PRINT(
+      "[Model] generate %p %s %i", handle, text_str.c_str(), max_seq_length);
   assert(result.output_tokens.size() <= max_seq_length);
   output_length_and_tokens[0] = result.output_tokens.size();
   std::copy(result.output_tokens.begin(),
@@ -2549,6 +2550,28 @@ flexflow_request_manager_t flexflow_request_manager_get_request_manager(void) {
   RequestManager *rm = RequestManager::get_request_manager();
   DEBUG_PRINT("[RequestManager] get %p", rm);
   return FFCObjectWrapper::wrap(rm);
+}
+
+void flexflow_request_manager_set_max_requests_per_batch(
+    flexflow_request_manager_t handle_, int max_num_requests) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_requests_per_batch(max_num_requests);
+  DEBUG_PRINT("[RequestManager] set max_requests_per_batch %d",
+              max_num_requests);
+}
+
+void flexflow_request_manager_set_max_tokens_per_batch(
+    flexflow_request_manager_t handle_, int max_num_tokens) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_tokens_per_batch(max_num_tokens);
+  DEBUG_PRINT("[RequestManager] set max_tokens_per_batch %d", max_num_tokens);
+}
+
+void flexflow_request_manager_set_max_sequence_length(
+    flexflow_request_manager_t handle_, int max_seq_length) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_sequence_length(max_seq_length);
+  DEBUG_PRINT("[RequestManager] set max_sequence_length %d", max_seq_length);
 }
 
 void flexflow_request_manager_register_tokenizer(

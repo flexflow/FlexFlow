@@ -2291,6 +2291,7 @@ GraphOptimalViewSerialized
         Embedding *embed = (Embedding *)op;
         sez.serialize(embed->layer_guid.id);
         sez.serialize(embed->layer_guid.transformer_layer_id);
+        sez.serialize(embed->layer_guid.model_id);
         sez.serialize(embed->num_entries);
         sez.serialize(embed->out_channels);
         sez.serialize(embed->aggr);
@@ -2301,6 +2302,7 @@ GraphOptimalViewSerialized
         MultiHeadAttention *attn = (MultiHeadAttention *)op;
         sez.serialize(attn->layer_guid.id);
         sez.serialize(attn->layer_guid.transformer_layer_id);
+        sez.serialize(attn->layer_guid.model_id);
         sez.serialize(attn->oProjSize);
         sez.serialize(attn->num_heads);
         sez.serialize(attn->qProjSize);
@@ -2315,6 +2317,7 @@ GraphOptimalViewSerialized
         IncMultiHeadSelfAttention *attn = (IncMultiHeadSelfAttention *)op;
         sez.serialize(attn->layer_guid.id);
         sez.serialize(attn->layer_guid.transformer_layer_id);
+        sez.serialize(attn->layer_guid.model_id);
         sez.serialize(attn->oProjSize);
         sez.serialize(attn->num_q_heads);
         sez.serialize(attn->qProjSize);
@@ -2339,6 +2342,7 @@ GraphOptimalViewSerialized
             (SpecIncMultiHeadSelfAttention *)op;
         sez.serialize(attn->layer_guid.id);
         sez.serialize(attn->layer_guid.transformer_layer_id);
+        sez.serialize(attn->layer_guid.model_id);
         sez.serialize(attn->oProjSize);
         sez.serialize(attn->num_q_heads);
         sez.serialize(attn->qProjSize);
@@ -2360,6 +2364,7 @@ GraphOptimalViewSerialized
             (TreeIncMultiHeadSelfAttention *)op;
         sez.serialize(attn->layer_guid.id);
         sez.serialize(attn->layer_guid.transformer_layer_id);
+        sez.serialize(attn->layer_guid.model_id);
         sez.serialize(attn->oProjSize);
         sez.serialize(attn->num_q_heads);
         sez.serialize(attn->qProjSize);
@@ -2639,11 +2644,12 @@ void FFModel::deserialize_graph_optimal_view(
         assert(num_inputs == 1);
         AggrMode aggr;
         int num_entries, out_channels;
-        size_t id, transformer_layer_id;
+        size_t id, transformer_layer_id, deserialized_model_id;
         DataType data_type;
         dez.deserialize(id);
         dez.deserialize(transformer_layer_id);
-        LayerID layer_guid(id, transformer_layer_id);
+        dez.deserialize(deserialized_model_id);
+        LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
         dez.deserialize(num_entries);
         dez.deserialize(out_channels);
         dez.deserialize(aggr);
@@ -2727,10 +2733,11 @@ void FFModel::deserialize_graph_optimal_view(
         int embed_dim, num_heads, k_dim, v_dim;
         float dropout;
         bool bias, add_bias_kv, add_zero_attn;
-        size_t id, transformer_layer_id;
+        size_t id, transformer_layer_id, deserialized_model_id;
         dez.deserialize(id);
         dez.deserialize(transformer_layer_id);
-        LayerID layer_guid(id, transformer_layer_id);
+        dez.deserialize(deserialized_model_id);
+        LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
         dez.deserialize(embed_dim);
         dez.deserialize(num_heads);
         dez.deserialize(k_dim);
@@ -2762,10 +2769,11 @@ void FFModel::deserialize_graph_optimal_view(
         bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling, offload, position_bias;
         DataType quantization_type;
-        size_t id, transformer_layer_id;
+        size_t id, transformer_layer_id, deserialized_model_id;
         dez.deserialize(id);
         dez.deserialize(transformer_layer_id);
-        LayerID layer_guid(id, transformer_layer_id);
+        dez.deserialize(deserialized_model_id);
+        LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
         dez.deserialize(embed_dim);
         dez.deserialize(num_q_heads);
         dez.deserialize(k_dim);
@@ -2812,10 +2820,11 @@ void FFModel::deserialize_graph_optimal_view(
         float dropout, scaling_factor;
         bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling, position_bias;
-        size_t id, transformer_layer_id;
+        size_t id, transformer_layer_id, deserialized_model_id;
         dez.deserialize(id);
         dez.deserialize(transformer_layer_id);
-        LayerID layer_guid(id, transformer_layer_id);
+        dez.deserialize(deserialized_model_id);
+        LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
         dez.deserialize(embed_dim);
         dez.deserialize(num_q_heads);
         dez.deserialize(k_dim);
@@ -2859,10 +2868,11 @@ void FFModel::deserialize_graph_optimal_view(
         bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
             scaling_query, qk_prod_scaling, offload, position_bias;
         DataType quantization_type;
-        size_t id, transformer_layer_id;
+        size_t id, transformer_layer_id, deserialized_model_id;
         dez.deserialize(id);
         dez.deserialize(transformer_layer_id);
-        LayerID layer_guid(id, transformer_layer_id);
+        dez.deserialize(deserialized_model_id);
+        LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
         dez.deserialize(embed_dim);
         dez.deserialize(num_q_heads);
         dez.deserialize(k_dim);

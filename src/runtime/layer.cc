@@ -17,7 +17,8 @@ Layer::Layer(FFModel *model,
              const Tensor _input4)
     : op_type(_otype), data_type(_dtype),
       layer_guid(model->layer_global_guid++,
-                 model->current_transformer_layer_id),
+                 model->current_transformer_layer_id,
+                 model->model_id),
       numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs) {
   std::string pcname;
   if (_name == nullptr) {
@@ -52,7 +53,8 @@ Layer::Layer(FFModel *model,
              Tensor const *_tensors)
     : op_type(_otype), data_type(_dtype),
       layer_guid(model->layer_global_guid++,
-                 model->current_transformer_layer_id),
+                 model->current_transformer_layer_id,
+                 model->model_id),
       numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs) {
   std::string pcname;
   if (_name == nullptr) {
