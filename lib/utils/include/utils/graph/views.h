@@ -369,7 +369,7 @@ public:
   explicit ViewMultiDiGraphAsOpenMultiDiGraph(MultiDiGraphView const &);
 
   std::unordered_set<OpenMultiDiEdge>
-    query_edges(OpenMultiDiEdgeQuery const &) const override;
+      query_edges(OpenMultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
   ViewMultiDiGraphAsOpenMultiDiGraph *clone() const override;

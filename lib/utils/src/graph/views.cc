@@ -406,17 +406,24 @@ std::unordered_set<Node>
   return this->g.query_nodes(node_query);
 }
 
-ViewMultiDiGraphAsOpenMultiDiGraph::ViewMultiDiGraphAsOpenMultiDiGraph(MultiDiGraphView const &g) : g(g) {}
+ViewMultiDiGraphAsOpenMultiDiGraph::ViewMultiDiGraphAsOpenMultiDiGraph(
+    MultiDiGraphView const &g)
+    : g(g) {}
 
-std::unordered_set<OpenMultiDiEdge> ViewMultiDiGraphAsOpenMultiDiGraph::query_edges(OpenMultiDiEdgeQuery const &q) const {
-  return transform(g.query_edges(q.standard_edge_query), [] (MultiDiEdge const &e) { return OpenMultiDiEdge(e); });
+std::unordered_set<OpenMultiDiEdge>
+    ViewMultiDiGraphAsOpenMultiDiGraph::query_edges(
+        OpenMultiDiEdgeQuery const &q) const {
+  return transform(g.query_edges(q.standard_edge_query),
+                   [](MultiDiEdge const &e) { return OpenMultiDiEdge(e); });
 }
 
-std::unordered_set<Node> ViewMultiDiGraphAsOpenMultiDiGraph::query_nodes(NodeQuery const &q) const {
+std::unordered_set<Node>
+    ViewMultiDiGraphAsOpenMultiDiGraph::query_nodes(NodeQuery const &q) const {
   return g.query_nodes(q);
 }
 
-ViewMultiDiGraphAsOpenMultiDiGraph* ViewMultiDiGraphAsOpenMultiDiGraph::clone() const {
+ViewMultiDiGraphAsOpenMultiDiGraph *
+    ViewMultiDiGraphAsOpenMultiDiGraph::clone() const {
   return new ViewMultiDiGraphAsOpenMultiDiGraph(g);
 }
 
@@ -500,7 +507,8 @@ JoinedUndirectedGraphView *JoinedUndirectedGraphView::clone() const {
   return new JoinedUndirectedGraphView(lhs, rhs);
 }
 
-DownwardOpenMultiDiSubgraphView *DownwardOpenMultiDiSubgraphView::clone() const {
+DownwardOpenMultiDiSubgraphView *
+    DownwardOpenMultiDiSubgraphView::clone() const {
   return new DownwardOpenMultiDiSubgraphView(g, nodes);
 }
 

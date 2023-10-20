@@ -81,7 +81,8 @@ bool pattern_matches(OpenMultiDiGraphView const &pattern,
   if (is_singleton_pattern(pattern)) {
     Node pattern_node = get_only(get_nodes(pattern));
     Node graph_matched_node = match.node_assignment.at_l(pattern_node);
-    if (!additional_criterion.node_criterion(pattern_node, graph_matched_node)) {
+    if (!additional_criterion.node_criterion(pattern_node,
+                                             graph_matched_node)) {
       return false;
     }
     for (OpenMultiDiEdge const &e : get_edges(pattern)) {
@@ -92,10 +93,12 @@ bool pattern_matches(OpenMultiDiGraphView const &pattern,
         if (is_output_edge(graph_matched_edge)) {
           return false;
         }
-        UpwardOpenMultiDiEdge matched_edge = narrow<UpwardOpenMultiDiEdge>(graph_matched_edge).value();
+        UpwardOpenMultiDiEdge matched_edge =
+            narrow<UpwardOpenMultiDiEdge>(graph_matched_edge).value();
         InputMultiDiEdge input_edge = mpark::get<InputMultiDiEdge>(e);
         if (is_output_edge(graph_matched_edge) ||
-              match.node_assignment.at_l(input_edge.dst) != get_dst_node(matched_edge) ||
+            match.node_assignment.at_l(input_edge.dst) !=
+                get_dst_node(matched_edge) ||
             input_edge.dst_idx != get_dst_idx(matched_edge)) {
           return false;
         }
@@ -103,7 +106,8 @@ bool pattern_matches(OpenMultiDiGraphView const &pattern,
         if (is_input_edge(graph_matched_edge)) {
           return false;
         }
-        DownwardOpenMultiDiEdge matched_edge = narrow<DownwardOpenMultiDiEdge>(graph_matched_edge).value();
+        DownwardOpenMultiDiEdge matched_edge =
+            narrow<DownwardOpenMultiDiEdge>(graph_matched_edge).value();
         OutputMultiDiEdge output_edge = mpark::get<OutputMultiDiEdge>(e);
         if (match.node_assignment.at_l(output_edge.src) !=
                 get_src_node(matched_edge) ||
@@ -207,7 +211,6 @@ optional<MultiDiGraphPatternMatch> unsplit_matches(
   return result;
 }
 
-
 std::vector<MultiDiGraphPatternMatch>
     find_pattern_matches(OpenMultiDiGraphView const &pattern,
                          OpenMultiDiGraphView const &graph,
@@ -218,7 +221,8 @@ std::vector<MultiDiGraphPatternMatch>
       optional<MultiDiGraphPatternMatch> candidate =
           get_candidate_singleton_match(pattern, graph, graph_node);
       if (candidate.has_value() ||
-          pattern_matches(pattern, graph, candidate.value(), additional_criterion)) {
+          pattern_matches(
+              pattern, graph, candidate.value(), additional_criterion)) {
         matches.push_back(candidate.value());
       }
     }

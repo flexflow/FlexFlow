@@ -13,30 +13,31 @@ struct Arbitrary<MultiDiGraph> {
   static int const MAX_EDGE_SIZE = 1000;
 
   static Gen<MultiDiGraph> arbitrary() {
-    return gen::exec(
-      [&] {
-        int num_nodes = *gen::inRange(1, MAX_GRAPH_SIZE+1);
-        MultiDiGraph g = MultiDiGraph::template create<AdjacencyMultiDiGraph>();
+    return gen::exec([&] {
+      int num_nodes = *gen::inRange(1, MAX_GRAPH_SIZE + 1);
+      MultiDiGraph g = MultiDiGraph::template create<AdjacencyMultiDiGraph>();
 
-        std::vector<Node> nodes;
-        for (int i = 0; i < num_nodes; ++i) {
-          nodes.push_back(g.add_node());
-        }
-
-        int num_edges = *gen::inRange(1, MAX_GRAPH_SIZE+1);
-        for (int i = 0; i < num_edges; ++i) {
-          int src_id = *gen::inRange(0, num_nodes);
-          int dst_id = *gen::inRange(0, num_nodes);
-          if (src_id > dst_id) {
-            std::swap(src_id, dst_id);
-          }
-
-          g.add_edge(MultiDiEdge{nodes[dst_id], g.add_node_port(), nodes[src_id], g.add_node_port()});
-        }
-
-        return g;
+      std::vector<Node> nodes;
+      for (int i = 0; i < num_nodes; ++i) {
+        nodes.push_back(g.add_node());
       }
-    );
+
+      int num_edges = *gen::inRange(1, MAX_GRAPH_SIZE + 1);
+      for (int i = 0; i < num_edges; ++i) {
+        int src_id = *gen::inRange(0, num_nodes);
+        int dst_id = *gen::inRange(0, num_nodes);
+        if (src_id > dst_id) {
+          std::swap(src_id, dst_id);
+        }
+
+        g.add_edge(MultiDiEdge{nodes[dst_id],
+                               g.add_node_port(),
+                               nodes[src_id],
+                               g.add_node_port()});
+      }
+
+      return g;
+    });
   }
 };
 
@@ -46,7 +47,8 @@ struct Arbitrary<MultiDiGraph> {
 //   rc::check([](MultiDiGraph const &g) {
 //     std::unordered_set<Node> subgraph_nodes = *rc::subset_of(get_nodes(g));
 //     OpenMultiDiGraphView subgraph =
-//         get_subgraph<OpenMultiDiSubgraphView>(as_openmultidigraph(g), subgraph_nodes);
+//         get_subgraph<OpenMultiDiSubgraphView>(as_openmultidigraph(g),
+//         subgraph_nodes);
 
 //     std::vector<MultiDiGraphPatternMatch> matches =
 //         find_pattern_matches(subgraph, as_openmultidigraph(g), AlwaysTrue{});
@@ -54,7 +56,8 @@ struct Arbitrary<MultiDiGraph> {
 //     RC_ASSERT(!matches.empty());
 
 //     for (MultiDiGraphPatternMatch const &match : matches) {
-//       RC_ASSERT(pattern_matches(subgraph, as_openmultidigraph(g), match, AlwaysTrue{}));
+//       RC_ASSERT(pattern_matches(subgraph, as_openmultidigraph(g), match,
+//       AlwaysTrue{}));
 //     }
 //   });
 // }
@@ -91,15 +94,16 @@ TEST_CASE("find_pattern_matches_small") {
   }
 
   MatchAdditionalCriterion always_true{
-    [] (Node const &, Node const &) { return true; },
-    [] (OpenMultiDiEdge const &, OpenMultiDiEdge const &) { return true; }
-  };
+      [](Node const &, Node const &) { return true; },
+      [](OpenMultiDiEdge const &, OpenMultiDiEdge const &) { return true; }};
 
-  std::vector<MultiDiGraphPatternMatch> matches = find_pattern_matches(as_openmultidigraph(sg0), as_openmultidigraph(g), always_true);
+  std::vector<MultiDiGraphPatternMatch> matches = find_pattern_matches(
+      as_openmultidigraph(sg0), as_openmultidigraph(g), always_true);
 
   RC_ASSERT(matches.size() == 4);
 
   for (MultiDiGraphPatternMatch const &match : matches) {
-    RC_ASSERT(pattern_matches(as_openmultidigraph(sg0), as_openmultidigraph(g), match, always_true));
+    RC_ASSERT(pattern_matches(
+        as_openmultidigraph(sg0), as_openmultidigraph(g), match, always_true));
   }
 }

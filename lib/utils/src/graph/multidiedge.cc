@@ -118,7 +118,8 @@ MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,
   return e;
 }
 
-OutputMultiDiEdgeQuery OutputMultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
+OutputMultiDiEdgeQuery
+    OutputMultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
   OutputMultiDiEdgeQuery e = *this;
   if (!is_matchall(e.srcs)) {
     throw mk_runtime_error("Expected matchall previous value");
@@ -127,7 +128,8 @@ OutputMultiDiEdgeQuery OutputMultiDiEdgeQuery::with_src_nodes(query_set<Node> co
   return e;
 }
 
-InputMultiDiEdgeQuery InputMultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
+InputMultiDiEdgeQuery
+    InputMultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
   InputMultiDiEdgeQuery e = *this;
   if (!is_matchall(e.dsts)) {
     throw mk_runtime_error("Expected matchall previous value");

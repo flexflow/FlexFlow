@@ -23,7 +23,8 @@ struct MatchSplit {
 
 struct MatchAdditionalCriterion {
   std::function<bool(Node const &, Node const &)> node_criterion;
-  std::function<bool(OpenMultiDiEdge const &, OpenMultiDiEdge const &)> edge_criterion;
+  std::function<bool(OpenMultiDiEdge const &, OpenMultiDiEdge const &)>
+      edge_criterion;
 };
 
 bool pattern_matches(OpenMultiDiGraphView const &pattern,

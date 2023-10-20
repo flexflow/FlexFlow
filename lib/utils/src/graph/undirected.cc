@@ -26,8 +26,8 @@ void UndirectedGraph::remove_edge(UndirectedEdge const &e) {
 }
 
 cow_ptr_t<IUndirectedGraph> UndirectedGraph::get_ptr() const {
-  return cow_ptr_t(
-      std::reinterpret_pointer_cast<IUndirectedGraph>(GraphView::ptr.get_mutable()));
+  return cow_ptr_t(std::reinterpret_pointer_cast<IUndirectedGraph>(
+      GraphView::ptr.get_mutable()));
 }
 
 std::unordered_set<UndirectedEdge>

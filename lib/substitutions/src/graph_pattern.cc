@@ -231,10 +231,13 @@ bool assignment_satisfies(SubParallelComputationGraph const &pcg,
     result &= constraintResult.value_or(false);
   }
 
-  result &= pattern_matches(pattern, pcg, patternMatch, MatchAdditionalCriterion{
-    [] (Node const &, Node const &) { return true; },
-    [] (OpenMultiDiEdge const &, OpenMultiDiEdge const &) { return true; }
-  });
+  result &= pattern_matches(
+      pattern,
+      pcg,
+      patternMatch,
+      MatchAdditionalCriterion{[](Node const &, Node const &) { return true; },
+                               [](OpenMultiDiEdge const &,
+                                  OpenMultiDiEdge const &) { return true; }});
 
   return result;
 }
