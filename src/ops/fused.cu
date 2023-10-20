@@ -1007,18 +1007,16 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
       }
       case OP_RESIDUAL_RMS_NORM: {
         // TODO: implement me
-        assert(false);
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 2);
-        // ResidualRMSNormMeta const *m = (ResidualRMSNormMeta
-        // *)metas->meta[op];
-        // Kernels::ResidualRMSNorm::forward_kernel_wrapper(m,
-        //                                                  my_input_accessor[0],
-        //                                                  my_input_accessor[1],
-        //                                                  my_weight_accessor[0],
-        //                                                  my_output_accessor[0],
-        //                                                  my_output_accessor[1]);
+        ResidualRMSNormMeta const *m = (ResidualRMSNormMeta*)metas->meta[op];
+        Kernels::ResidualRMSNorm::peft_bwd_kernel_wrapper(
+            m,
+            my_output_grad_accessor[0],
+            my_input_grad_accessor[0],
+            my_input_grad_accessor[1],
+            my_weight_accessor[0]);
         break;
       }
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -1152,14 +1150,13 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
       case OP_SIGMOID_SILU_MULTI: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_outputs[op] == 1);
-        // SigmoidSiluMultiMeta const *m = (SigmoidSiluMultiMeta
-        // *)metas->meta[op];
-        //  TODO: implement me
-        assert(false);
-        // SigmoidSiluMulti::inference_kernel_wrapper(m,
-        //                                            my_input_accessor[0],
-        //                                            my_input_accessor[1],
-        //                                            my_output_accessor[0]);
+        SigmoidSiluMultiMeta const *m = (SigmoidSiluMultiMeta*)metas->meta[op];
+        SigmoidSiluMulti::peft_bwd_kernel_wrapper(
+            m,
+            bc,
+            my_output_grad_accessor[0],
+            my_input_grad_accessor[0],
+            my_input_grad_accessor[1]);
         break;
       }
       case OP_SOFTMAX: {

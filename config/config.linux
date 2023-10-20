@@ -13,7 +13,7 @@
 #INSTALL_DIR=
 
 # set build type
-BUILD_TYPE=${BUILD_TYPE:-Debug}
+BUILD_TYPE=${BUILD_TYPE:-Release}
 
 INFERENCE_TESTS=${INFERENCE_TESTS:-OFF}
 LIBTORCH_PATH=${LIBTORCH_PATH:-"$(realpath ../..)/libtorch"}
