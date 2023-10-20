@@ -27,7 +27,6 @@ std::vector<Node> add_nodes(MultiDiGraph &, int);
 std::vector<NodePort> add_node_ports(MultiDiGraph &, int);
 
 std::unordered_set<Node> get_nodes(GraphView const &);
-std::unordered_set<Node> get_nodes(OpenMultiDiGraphView const &);
 std::unordered_set<NodePort> get_present_node_ports(MultiDiGraphView const &);
 
 std::unordered_set<Node> get_nodes(OpenMultiDiEdge const &);
@@ -74,7 +73,6 @@ UndirectedGraphView apply_contraction(UndirectedGraphView const &,
                                       std::unordered_map<Node, Node> const &);
 
 std::size_t num_nodes(GraphView const &);
-std::size_t num_nodes(OpenMultiDiGraphView const &);
 bool empty(GraphView const &);
 
 void add_edges(MultiDiGraph &, std::vector<MultiDiEdge> const &);
@@ -156,6 +154,11 @@ std::unordered_set<Node> get_predecessors(DiGraphView const &, Node const &);
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
+Node get_src_node(MultiDiEdge const &);
+Node get_dst_node(MultiDiEdge const &);
+Node get_dst_node(InputMultiDiEdge const &);
+Node get_src_node(OutputMultiDiEdge const &);
+
 struct GetSrcNodeFunctor {
   template <typename T>
   Node operator()(T const &t) const {
@@ -179,11 +182,6 @@ template <typename... Args>
 Node get_dst_node(variant<Args...> const &t) {
   return visit(GetDstNodeFunctor{}, t);
 }
-
-Node get_src_node(MultiDiEdge const &);
-Node get_dst_node(MultiDiEdge const &);
-Node get_dst_node(InputMultiDiEdge const &);
-Node get_src_node(OutputMultiDiEdge const &);
 
 struct GetSrcIdxFunctor {
   template <typename T>

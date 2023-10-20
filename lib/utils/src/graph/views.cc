@@ -25,6 +25,10 @@ std::unordered_set<Node>
   return this->g.query_nodes(query);
 }
 
+FlippedView *FlippedView::clone() const {
+  return new FlippedView(g);
+}
+
 std::unordered_set<DirectedEdge>
     ContractNodeView::query_edges(DirectedEdgeQuery const &q) const {
   return g.query_edges(q);
@@ -35,6 +39,10 @@ std::unordered_set<Node>
   return g.query_nodes(q);
 }
 
+ContractNodeView *ContractNodeView::clone() const {
+  return new ContractNodeView(g, from, to);
+}
+
 DirectedEdge flipped(DirectedEdge const &e) {
   return {e.src, e.dst};
 }
@@ -43,6 +51,10 @@ UndirectedSubgraphView::UndirectedSubgraphView(
     UndirectedGraphView const &g,
     std::unordered_set<Node> const &subgraph_nodes)
     : g(g), subgraph_nodes(subgraph_nodes) {}
+
+UndirectedSubgraphView *UndirectedSubgraphView::clone() const {
+  return new UndirectedSubgraphView(g, subgraph_nodes);
+}
 
 std::unordered_set<UndirectedEdge> UndirectedSubgraphView::query_edges(
     UndirectedEdgeQuery const &query) const {
@@ -69,6 +81,10 @@ std::unordered_set<DirectedEdge>
 std::unordered_set<Node>
     DiSubgraphView::query_nodes(NodeQuery const &query) const {
   return this->g.query_nodes(query_intersection(query, {this->subgraph_nodes}));
+}
+
+DiSubgraphView *DiSubgraphView::clone() const {
+  return new DiSubgraphView(g, subgraph_nodes);
 }
 
 MultiDiSubgraphView::MultiDiSubgraphView(
@@ -203,6 +219,10 @@ JoinedDigraphView::JoinedDigraphView(DiGraphView const &lhs,
                                      DiGraphView const &rhs)
     : lhs(lhs), rhs(rhs), joined_nodes(lhs, rhs) {}
 
+JoinedDigraphView *JoinedDigraphView::clone() const {
+  return new JoinedDigraphView(lhs, rhs);
+}
+
 std::unordered_set<Node>
     JoinedDigraphView::query_nodes(NodeQuery const &query) const {
   return this->joined_nodes.query_nodes(query);
@@ -265,6 +285,10 @@ std::unordered_set<MultiDiEdge>
                 [&](MultiDiEdge const &e) { return this->fix_lhs_edge(e); }),
       transform(this->rhs.query_edges(right_query),
                 [&](MultiDiEdge const &e) { return this->fix_rhs_edge(e); }));
+}
+
+JoinedMultiDigraphView *JoinedMultiDigraphView::clone() const {
+  return new JoinedMultiDigraphView(lhs, rhs);
 }
 
 MultiDiEdge JoinedMultiDigraphView::fix_lhs_edge(MultiDiEdge const &e) const {
@@ -334,9 +358,17 @@ std::unordered_set<Node> ViewDiGraphAsUndirectedGraph::query_nodes(
   return this->g.query_nodes(node_query);
 }
 
+ViewDiGraphAsUndirectedGraph *ViewDiGraphAsUndirectedGraph::clone() const {
+  return new ViewDiGraphAsUndirectedGraph(g);
+}
+
 ViewUndirectedGraphAsDiGraph::ViewUndirectedGraphAsDiGraph(
     UndirectedGraphView const &g)
     : g(g) {}
+
+ViewUndirectedGraphAsDiGraph *ViewUndirectedGraphAsDiGraph::clone() const {
+  return new ViewUndirectedGraphAsDiGraph(g);
+}
 
 std::unordered_set<DirectedEdge> ViewUndirectedGraphAsDiGraph::query_edges(
     DirectedEdgeQuery const &q) const {
@@ -374,6 +406,20 @@ std::unordered_set<Node>
   return this->g.query_nodes(node_query);
 }
 
+ViewMultiDiGraphAsOpenMultiDiGraph::ViewMultiDiGraphAsOpenMultiDiGraph(MultiDiGraphView const &g) : g(g) {}
+
+std::unordered_set<OpenMultiDiEdge> ViewMultiDiGraphAsOpenMultiDiGraph::query_edges(OpenMultiDiEdgeQuery const &q) const {
+  return transform(g.query_edges(q.standard_edge_query), [] (MultiDiEdge const &e) { return OpenMultiDiEdge(e); });
+}
+
+std::unordered_set<Node> ViewMultiDiGraphAsOpenMultiDiGraph::query_nodes(NodeQuery const &q) const {
+  return g.query_nodes(q);
+}
+
+ViewMultiDiGraphAsOpenMultiDiGraph* ViewMultiDiGraphAsOpenMultiDiGraph::clone() const {
+  return new ViewMultiDiGraphAsOpenMultiDiGraph(g);
+}
+
 OpenMultiDiSubgraphView::OpenMultiDiSubgraphView(
     OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
     : g(g), nodes(nodes) {}
@@ -395,6 +441,10 @@ std::unordered_set<Node>
 UpwardOpenMultiDiSubgraphView::UpwardOpenMultiDiSubgraphView(
     OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
     : g(g), nodes(nodes) {}
+
+UpwardOpenMultiDiSubgraphView *UpwardOpenMultiDiSubgraphView::clone() const {
+  return new UpwardOpenMultiDiSubgraphView(g, nodes);
+}
 
 std::unordered_set<OpenMultiDiEdge> UpwardOpenMultiDiSubgraphView::query_edges(
     OpenMultiDiEdgeQuery const &q) const {
@@ -440,6 +490,30 @@ std::unordered_set<OpenMultiDiEdge> ClosedMultiDiSubgraphView::query_edges(
 std::unordered_set<Node>
     ClosedMultiDiSubgraphView::query_nodes(NodeQuery const &q) const {
   return g.query_nodes(query_intersection(q, NodeQuery(nodes)));
+}
+
+ClosedMultiDiSubgraphView *ClosedMultiDiSubgraphView::clone() const {
+  return new ClosedMultiDiSubgraphView(g, nodes);
+}
+
+JoinedUndirectedGraphView *JoinedUndirectedGraphView::clone() const {
+  return new JoinedUndirectedGraphView(lhs, rhs);
+}
+
+DownwardOpenMultiDiSubgraphView *DownwardOpenMultiDiSubgraphView::clone() const {
+  return new DownwardOpenMultiDiSubgraphView(g, nodes);
+}
+
+ViewDiGraphAsMultiDiGraph *ViewDiGraphAsMultiDiGraph::clone() const {
+  return new ViewDiGraphAsMultiDiGraph(g);
+}
+
+OpenMultiDiSubgraphView *OpenMultiDiSubgraphView::clone() const {
+  return new OpenMultiDiSubgraphView(g, nodes);
+}
+
+MultiDiSubgraphView *MultiDiSubgraphView::clone() const {
+  return new MultiDiSubgraphView(g, subgraph_nodes);
 }
 
 } // namespace FlexFlow

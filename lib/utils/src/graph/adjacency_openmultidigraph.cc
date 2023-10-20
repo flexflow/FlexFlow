@@ -68,6 +68,10 @@ Node AdjacencyOpenMultiDiGraph::add_node() {
   return closed_graph.add_node();
 }
 
+NodePort AdjacencyOpenMultiDiGraph::add_node_port() {
+  return closed_graph.add_node_port();
+}
+
 void AdjacencyOpenMultiDiGraph::add_node_unsafe(Node const &node) {
   closed_graph.add_node_unsafe(node);
 }

@@ -56,7 +56,7 @@ protected:
 private:
   cow_ptr_t<Interface> get_ptr() const {
     return cow_ptr_t(
-        std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+        std::reinterpret_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
 };
 
@@ -121,7 +121,7 @@ private:
 
   cow_ptr_t<Interface> get_ptr() const {
     return cow_ptr_t(
-        std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+        std::reinterpret_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
 
   cow_ptr_t<INodeLabel> nl;

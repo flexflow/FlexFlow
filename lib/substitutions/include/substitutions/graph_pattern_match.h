@@ -21,17 +21,20 @@ struct MatchSplit {
   MultiDiGraphPatternMatch postfix_submatch;
 };
 
-template <typename F>
+struct MatchAdditionalCriterion {
+  std::function<bool(Node const &, Node const &)> node_criterion;
+  std::function<bool(OpenMultiDiEdge const &, OpenMultiDiEdge const &)> edge_criterion;
+};
+
 bool pattern_matches(OpenMultiDiGraphView const &pattern,
                      OpenMultiDiGraphView const &graph,
                      MultiDiGraphPatternMatch const &match,
-                     F const &additional_criterion);
+                     MatchAdditionalCriterion const &additional_criterion);
 
-template <typename F>
-std::unordered_set<MultiDiGraphPatternMatch>
+std::vector<MultiDiGraphPatternMatch>
     find_pattern_matches(OpenMultiDiGraphView const &pattern,
                          OpenMultiDiGraphView const &graph,
-                         F const &additional_criterion);
+                         MatchAdditionalCriterion const &additional_criterion);
 
 } // namespace FlexFlow
 

@@ -26,6 +26,8 @@ struct OpenMultiDiEdgeQuery {
   OpenMultiDiEdgeQuery(InputMultiDiEdgeQuery const &q);
   OpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery const &q);
 
+  static OpenMultiDiEdgeQuery all();
+
   InputMultiDiEdgeQuery input_edge_query;
   MultiDiEdgeQuery standard_edge_query;
   OutputMultiDiEdgeQuery output_edge_query;

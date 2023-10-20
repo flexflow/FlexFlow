@@ -364,6 +364,20 @@ private:
   DiGraphView g;
 };
 
+struct ViewMultiDiGraphAsOpenMultiDiGraph : public IOpenMultiDiGraphView {
+public:
+  explicit ViewMultiDiGraphAsOpenMultiDiGraph(MultiDiGraphView const &);
+
+  std::unordered_set<OpenMultiDiEdge>
+    query_edges(OpenMultiDiEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  ViewMultiDiGraphAsOpenMultiDiGraph *clone() const override;
+
+private:
+  MultiDiGraphView g;
+};
+
 DirectedEdge flipped(DirectedEdge const &);
 
 std::unordered_map<Node, Node>

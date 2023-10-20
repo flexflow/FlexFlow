@@ -32,6 +32,10 @@ OpenMultiDiEdgeQuery::OpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery const &q)
     : OpenMultiDiEdgeQuery(
           InputMultiDiEdgeQuery::none(), MultiDiEdgeQuery::none(), q) {}
 
+OpenMultiDiEdgeQuery OpenMultiDiEdgeQuery::all() {
+  return {InputMultiDiEdgeQuery::all(), MultiDiEdgeQuery::all(), OutputMultiDiEdgeQuery::all()};
+}
+
 DownwardOpenMultiDiEdgeQuery::DownwardOpenMultiDiEdgeQuery(
     OutputMultiDiEdgeQuery const &output_edge_query,
     MultiDiEdgeQuery const &standard_edge_query)

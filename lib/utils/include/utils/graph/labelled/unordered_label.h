@@ -15,7 +15,7 @@ struct UnorderedLabelling : virtual public ILabelling<Elem, Label> {
   }
 
   Label &get_label(Elem const &e) {
-    return label_map[e];
+    return label_map.at(e);
   }
 
   void add_label(Elem const &e, Label const &l) {

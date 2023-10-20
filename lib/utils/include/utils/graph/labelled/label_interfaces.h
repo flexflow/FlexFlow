@@ -7,10 +7,10 @@ namespace FlexFlow {
 
 template <typename Elem, typename Label>
 struct ILabelling {
-  Label const &get_label(Elem const &) const;
-  Label &get_label(Elem const &);
-  void add_label(Elem const &, Label const &);
-  ILabelling *clone() const;
+  virtual Label const &get_label(Elem const &) const = 0;
+  virtual Label &get_label(Elem const &) = 0;
+  virtual void add_label(Elem const &, Label const &) = 0;
+  virtual ILabelling *clone() const = 0;
 };
 
 }; // namespace FlexFlow

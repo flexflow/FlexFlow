@@ -54,7 +54,7 @@ std::unordered_set<Node> Graph::query_nodes(NodeQuery const &q) const {
 
 cow_ptr_t<IGraph> Graph::get_ptr() const {
   return cow_ptr_t(
-      std::dynamic_pointer_cast<IGraph>(GraphView::ptr.get_mutable()));
+      std::reinterpret_pointer_cast<IGraph>(GraphView::ptr.get_mutable()));
 }
 
 } // namespace FlexFlow

@@ -118,4 +118,22 @@ MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,
   return e;
 }
 
+OutputMultiDiEdgeQuery OutputMultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
+  OutputMultiDiEdgeQuery e = *this;
+  if (!is_matchall(e.srcs)) {
+    throw mk_runtime_error("Expected matchall previous value");
+  }
+  e.srcs = nodes;
+  return e;
+}
+
+InputMultiDiEdgeQuery InputMultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
+  InputMultiDiEdgeQuery e = *this;
+  if (!is_matchall(e.dsts)) {
+    throw mk_runtime_error("Expected matchall previous value");
+  }
+  e.dsts = nodes;
+  return e;
+}
+
 } // namespace FlexFlow

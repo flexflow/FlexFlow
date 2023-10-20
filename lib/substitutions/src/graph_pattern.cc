@@ -211,13 +211,6 @@ optional<bool> satisfies(ParallelTensor const &params,
       [&](TensorAttributeConstraint const &c) { return satisfies(params, c); });
 }
 
-struct AlwaysTrueCriterion {
-  template <typename T>
-  bool operator()(T const &t) const {
-    return true;
-  }
-};
-
 bool assignment_satisfies(SubParallelComputationGraph const &pcg,
                           GraphPattern const &pattern,
                           MultiDiGraphPatternMatch const &patternMatch) {
@@ -238,7 +231,10 @@ bool assignment_satisfies(SubParallelComputationGraph const &pcg,
     result &= constraintResult.value_or(false);
   }
 
-  result &= pattern_matches(pattern, pcg, patternMatch, AlwaysTrueCriterion{});
+  result &= pattern_matches(pattern, pcg, patternMatch, MatchAdditionalCriterion{
+    [] (Node const &, Node const &) { return true; },
+    [] (OpenMultiDiEdge const &, OpenMultiDiEdge const &) { return true; }
+  });
 
   return result;
 }
