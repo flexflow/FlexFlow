@@ -464,7 +464,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   }
 
   //set num_generation_tokens
-  num_prompt_tokens = new_bc.num_generation_tokens;
+  new_bc.num_generation_tokens = new_bc.num_tokens;
   // Step 3: add new requests to the next batch
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (new_bc.request_completed[i]) {
