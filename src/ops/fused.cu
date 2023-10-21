@@ -538,8 +538,7 @@ __host__ void
       }
       case OP_RESIDUAL_LAYERNORM: {
         assert(fused->op_num_outputs[op] == 2);
-        ResidualLayerNormMeta const *m =
-            (ResidualLayerNormMeta *)metas->meta[op];
+        ResidualLayerNormMeta *m = (ResidualLayerNormMeta *)metas->meta[op];
         if (m->use_two_residuals) {
           assert(fused->op_num_inputs[op] == 3);
         } else {
@@ -566,6 +565,7 @@ __host__ void
           }
         }
         ResidualLayerNorm::inference_kernel_wrapper(m,
+                                                    bc,
                                                     my_input_accessor[0],
                                                     my_input_accessor[1],
                                                     residual2,
