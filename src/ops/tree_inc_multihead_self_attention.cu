@@ -338,24 +338,23 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                      C_softmax));
       // Matmul softmax(QK^T/sqrt(d_k)) by V
       alpha = 1.0f, beta = 0.0f;
-      m_ = num_new_tokens;
-      n = m->vProjSize;
+      m_ = m->vProjSize;
+      n = num_new_tokens;
       k = total_tokens_in_request;
-      lda = m_, ldb = n * m->num_q_heads, ldc = m_;
-      strideA = num_new_tokens * total_tokens_in_request;
-      strideB = vt_block_size;
-      strideC = num_new_tokens * m->vProjSize;
-      // To get A, skip over softmax(QK^T/sqrt(d_k)) entries from previous
-      // requests (all heads)
-      A = C_softmax;
-      // To get B, skip over V^T entries from previous requests (all heads +
+      lda = m_ * m->num_q_heads, ldb = n, ldc = m_ * m->num_q_heads;
+      strideA = vt_block_size;
+      strideB = num_new_tokens * total_tokens_in_request;
+      strideC = m->vProjSize;
+      // To get A, skip over V^T entries from previous requests (all heads +
       // padding)
-      B = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
+      A = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
+      // To get B, skip over softmax(QK^T/sqrt(d_k)) entries from previous
+      // requests (all heads)
+      B = C_softmax;
       // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
       // requests
       C = static_cast<DT *>(m->attn_heads) +
           processed_tokens_in_batch * m->num_q_heads * m->vProjSize;
-
       checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                            CUBLAS_OP_N,
                                            CUBLAS_OP_T,
@@ -379,45 +378,43 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                            m->num_q_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
-      // Project to output, save result directly on output tensor
-      alpha = 1.0f, beta = 0.0f;
-      m_ = m->oProjSize;
-      k = m->vProjSize * m->num_q_heads;
-      n = num_new_tokens;
-      lda = k, ldb = n, ldc = m_;
-      A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
-                                   m->kProjSize * m->num_q_heads +
-                                   m->vProjSize * m->num_q_heads);
-      B = C;
-      C = static_cast<DT *>(output_ptr) +
-          processed_tokens_in_batch * m->oProjSize;
-
-      checkCUDA(cublasGemmEx(m->handle.blas,
-                             CUBLAS_OP_T,
-                             CUBLAS_OP_T,
-                             m_,
-                             n,
-                             k,
-                             &alpha,
-                             A,
-                             cublas_data_type,
-                             lda,
-                             B,
-                             cublas_data_type,
-                             ldb,
-                             &beta,
-                             C,
-                             cublas_data_type,
-                             ldc,
-                             compute_type,
-                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       processed_tokens_in_batch += num_new_tokens;
     }
     // Before moving to the next request
     // check that we have finished all tokens of the request
     assert(last_token_idx_of_the_request + 1 == processed_tokens_in_batch);
   }
+  // Project to output, save result directly on output tensor
+  DT alpha = 1.0f, beta = 0.0f;
+  int m_ = m->oProjSize;
+  int k = m->vProjSize * m->num_q_heads;
+  int n = processed_tokens_in_batch;
+  int lda = k, ldb = k, ldc = m_;
+  DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
+                                         m->kProjSize * m->num_q_heads +
+                                         m->vProjSize * m->num_q_heads);
+  DT const *B = static_cast<DT *>(m->attn_heads);
+  DT *C = static_cast<DT *>(output_ptr);
+
+  checkCUDA(cublasGemmEx(m->handle.blas,
+                         CUBLAS_OP_T,
+                         CUBLAS_OP_N,
+                         m_,
+                         n,
+                         k,
+                         &alpha,
+                         A,
+                         cublas_data_type,
+                         lda,
+                         B,
+                         cublas_data_type,
+                         ldb,
+                         &beta,
+                         C,
+                         cublas_data_type,
+                         ldc,
+                         compute_type,
+                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   if (*m->final_bias && shard_id == 0) {
     int parallelism = m->oProjSize * processed_tokens_in_batch;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
