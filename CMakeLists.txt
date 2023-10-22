@@ -238,14 +238,6 @@ if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   include(cudnn)
 endif()
 
-# Inference tests
-if(INFERENCE_TESTS)
-  list(APPEND FF_CC_FLAGS
-    -DINFERENCE_TESTS)
-  list(APPEND FF_NVCC_FLAGS
-    -DINFERENCE_TESTS)
-endif()
-
 # Legion
 include(legion)
 
@@ -253,11 +245,21 @@ include(legion)
 if(NOT BUILD_LEGION_ONLY)
   # NCCL
   if(FF_USE_NCCL)
-    include(nccl)
+    if(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "cuda")
+      include(nccl)
+    endif() 
     list(APPEND FF_CC_FLAGS
       -DFF_USE_NCCL)
     list(APPEND FF_NVCC_FLAGS
       -DFF_USE_NCCL)
+  endif()
+
+  # Inference tests
+  if(INFERENCE_TESTS)
+  list(APPEND FF_CC_FLAGS
+    -DINFERENCE_TESTS)
+  list(APPEND FF_NVCC_FLAGS
+    -DINFERENCE_TESTS)
   endif()
   
   # json
@@ -403,6 +405,9 @@ if(NOT BUILD_LEGION_ONLY)
     elseif(FF_GPU_BACKEND STREQUAL "hip_rocm")
       find_package(hipblas REQUIRED)
       find_package(miopen REQUIRED)
+      if(FF_USE_NCCL)
+        find_package(rccl REQUIRED)
+      endif()
       # find_package(rocrand REQUIRED)
       find_library(HIP_RAND_LIBRARY hiprand REQUIRED)
 
