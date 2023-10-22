@@ -23,35 +23,13 @@ jobs:
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
-        gpu_backend_version: ["11.1", "11.2", "11.3", "11.4", "11.5", "11.6", "11.7", "11.8", "12.0", "5.3", "5.4", "5.5", "5.6"]
-        python_version: ["3.8", "3.9", "3.10", "3.11"]
+        gpu_backend_version: ["11.8", "5.6"]
+        python_version: "3.11"
         exclude:
-          - gpu_backend: "cuda"
-            gpu_backend_version: "5.3"
-          - gpu_backend: "cuda"
-            gpu_backend_version: "5.4"
-          - gpu_backend: "cuda"
-            gpu_backend_version: "5.5"
           - gpu_backend: "cuda"
             gpu_backend_version: "5.6"
           - gpu_backend: "hip_rocm"
-            gpu_backend_version: "11.1"
-          - gpu_backend: "hip_rocm"
-            gpu_backend_version: "11.2"
-          - gpu_backend: "hip_rocm"
-            gpu_backend_version: "11.3"
-          - gpu_backend: "hip_rocm"
-            gpu_backend_version: "11.4"
-          - gpu_backend: "hip_rocm"
-            gpu_backend_version: "11.5"
-          - gpu_backend: "hip_rocm"
-            gpu_backend_version: "11.6"
-          - gpu_backend: "hip_rocm"
-            gpu_backend_version: "11.7"
-          - gpu_backend: "hip_rocm"
             gpu_backend_version: "11.8"
-          - gpu_backend: "hip_rocm"
-            gpu_backend_version: "12.0"
       fail-fast: false
     steps:
       - name: Checkout Git Repository
