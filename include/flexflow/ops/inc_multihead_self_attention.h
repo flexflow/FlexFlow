@@ -218,6 +218,9 @@ public:
   //  typedef hipFloatComplex attFloatComplex;
   hipFloatComplex *complex_input;
 #endif
+  // PEFT specific fields
+  void *softmax_activation_buffer;
+  void *query_activation_buffer;
 };
 
 }; // namespace FlexFlow
