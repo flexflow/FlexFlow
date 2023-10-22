@@ -479,7 +479,7 @@ void peft_bwd_kernel(LinearMeta const *m,
     assert(m->activation == AC_MODE_NONE);
   }
 
-  // Compute data gradiant
+  // Compute data gradient
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
     checkCUDA(cublasGemmEx(m->handle.blas,
@@ -542,7 +542,7 @@ void backward_kernel(LinearMeta const *m,
     // TODO: only support relu and sigmoid for now
     assert(m->activation == AC_MODE_NONE);
   }
-  // Compute weight gradiant
+  // Compute weight gradient
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
   checkCUDA(cublasGemmEx(m->handle.blas,
                          CUBLAS_OP_N,
@@ -583,7 +583,7 @@ void backward_kernel(LinearMeta const *m,
     assert(false && "Only L2 regularization is supported");
   }
 
-  // Compute bias gradiant
+  // Compute bias gradient
   // NOTE: we use alpha=1 for bias_grad to accumulate gradients
   // use_bias = True
   if (bias_grad_ptr != NULL) {
@@ -607,7 +607,7 @@ void backward_kernel(LinearMeta const *m,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
-  // Compute data gradiant
+  // Compute data gradient
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
     checkCUDA(cublasGemmEx(m->handle.blas,
