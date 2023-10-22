@@ -1486,7 +1486,8 @@ OpMeta::OpMeta(FFHandler _handle)
 #endif
 
 OpMeta::OpMeta(FFHandler _handle, Op const *op)
-    : profiling(op->profiling), inference_debugging(op->inference_debugging) {
+    : handle(_handle), profiling(op->profiling),
+      inference_debugging(op->inference_debugging) {
   for (int i = 0; i < op->numInputs; i++) {
     trainable_inputs[i] = op->trainable_inputs[i];
     reset_input_grads[i] = op->reset_input_grads[i];

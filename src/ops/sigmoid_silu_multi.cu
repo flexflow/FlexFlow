@@ -283,8 +283,14 @@ void SigmoidSiluMulti::peft_bwd_kernel_wrapper(
       num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
     }
   }
-  assert(num_peft_requests == 1);
-  assert(num_peft_tokens >= 1);
+  if (num_peft_requests == 0) {
+    // No PEFT requests
+    return;
+  } else {
+    // Otherwise assume at most 1 peft request
+    assert(num_peft_requests == 1);
+    assert(num_peft_tokens >= 1);
+  }
   int in_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
 
   if (m->input_type[0] == DT_FLOAT) {
