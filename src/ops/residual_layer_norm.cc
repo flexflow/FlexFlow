@@ -639,7 +639,7 @@ void ResidualLayerNorm::backward_task(
                                        runtime);
   GenericTensorAccessorW residual2_grad;
   if (m->use_two_residuals) {
-    GenericTensorAccessorW residual2_grad =
+    residual2_grad =
         helperGetGenericTensorAccessorRW(m->input_type[2],
                                          regions[region_idx++],
                                          task->regions[task_region_idx++],
@@ -708,33 +708,33 @@ Legion::FutureMap ResidualLayerNorm::peft_bwd(
                          machine_view_hash);
   int field_id = 0;
   // output_grad
-  launcher.add_region_requirement(RegionRequirement(outputs[1]->part_grad,
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
-                                                    outputs[1]->region_grad));
+                                                    batch_outputs[1]->region));
   launcher.add_field(field_id++, FID_DATA);
   // input grad
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
                                                     EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+                                                    batch_inputs[0]->region));
   launcher.add_field(field_id++, FID_DATA);
   // residual grad 1
-  launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
                                                     EXCLUSIVE,
-                                                    inputs[1]->region_grad));
+                                                    batch_inputs[1]->region));
   launcher.add_field(field_id++, FID_DATA);
   if (use_two_residuals) {
     // residual grad 2
-    launcher.add_region_requirement(RegionRequirement(inputs[2]->part_grad,
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part,
                                                       0 /*projection id*/,
                                                       READ_WRITE,
                                                       EXCLUSIVE,
-                                                      inputs[2]->region_grad));
+                                                      batch_inputs[2]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
   if (elementwise_affine) {

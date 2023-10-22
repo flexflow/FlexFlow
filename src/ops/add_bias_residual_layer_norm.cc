@@ -517,10 +517,6 @@ void AddBiasResidualLayerNorm::forward(FFModel const &ff) {
   assert(false);
 }
 
-void AddBiasResidualLayerNorm::backward(FFModel const &ff) {
-  assert(false);
-}
-
 FutureMap AddBiasResidualLayerNorm::inference(
     FFModel const &ff,
     BatchConfigFuture const &bc,
@@ -546,50 +542,51 @@ FutureMap AddBiasResidualLayerNorm::inference(
                          0 /*mapper_id*/,
                          machine_view_hash);
   launcher.add_future(bc);
-  // attn output
+  // input
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
+  // attn bias
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(1, FID_DATA);
   // residual
   launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
                                                     batch_inputs[1]->region));
-  launcher.add_field(1, FID_DATA);
-  // added: attn_output + attn final bias + residual
+  launcher.add_field(2, FID_DATA);
+  // added_output: input + attn bias + residual
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
-  launcher.add_field(2, FID_DATA);
-  // layer norm output
+  launcher.add_field(3, FID_DATA);
+  // output
   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     batch_outputs[1]->region));
-  launcher.add_field(3, FID_DATA);
-  // attn final bias
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
   launcher.add_field(4, FID_DATA);
   if (elementwise_affine) {
+    // gamma
     launcher.add_region_requirement(RegionRequirement(weights[1]->part,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
                                                       EXCLUSIVE,
                                                       weights[1]->region));
     launcher.add_field(5, FID_DATA);
-
     if (use_bias) {
+      // beta
       launcher.add_region_requirement(RegionRequirement(weights[2]->part,
                                                         0 /*projection id*/,
                                                         READ_ONLY,
@@ -602,11 +599,11 @@ FutureMap AddBiasResidualLayerNorm::inference(
 }
 
 /*
-  regions[0](I): attn output
-  regions[1](I): residual
-  regions[2](O): added output (attn output + final attn bias + residual)
-  regions[3](O): layer norm output
-  regions[4](I): final attn bias
+  regions[0](I): input
+  regions[1](I): attn bias
+  regions[2](I): residual
+  regions[3](O): added output
+  regions[4](O): output
   regions[5](I): gamma
   regions[6](I): beta
 */
@@ -630,26 +627,28 @@ void AddBiasResidualLayerNorm::inference_task(
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  GenericTensorAccessorR residual = helperGetGenericTensorAccessorRO(
-      m->input_type[1], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW added_output = helperGetGenericTensorAccessorWO(
-      m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      m->output_type[1], regions[3], task->regions[3], FID_DATA, ctx, runtime);
   GenericTensorAccessorR attn_bias = helperGetGenericTensorAccessorRO(
-      m->weight_type[0], regions[4], task->regions[4], FID_DATA, ctx, runtime);
+      m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR residual = helperGetGenericTensorAccessorRO(
+      m->input_type[1], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW added_output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[1], regions[4], task->regions[4], FID_DATA, ctx, runtime);
+
   GenericTensorAccessorR gamma, beta;
 
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Domain residual_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  Domain added_out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-  Domain out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[3].region.get_index_space());
   Domain attn_bias_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  Domain residual_domain = runtime->get_index_space_domain(
+      ctx, task->regions[2].region.get_index_space());
+  Domain added_out_domain = runtime->get_index_space_domain(
+      ctx, task->regions[3].region.get_index_space());
+  Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[4].region.get_index_space());
+
   Domain gamma_domain, beta_domain;
 
   assert(in_domain.get_volume() == out_domain.get_volume());
@@ -707,16 +706,7 @@ void AddBiasResidualLayerNorm::inference_task(
   }
 
   AddBiasResidualLayerNorm::inference_kernel_wrapper(
-      m,
-      (int)attn_bias_dim,
-      (int)residual_domain.get_volume(),
-      input,
-      added_output,
-      output,
-      residual,
-      attn_bias,
-      gamma,
-      beta);
+      m, bc, input, attn_bias, residual, added_output, output, gamma, beta);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
@@ -737,6 +727,288 @@ void AddBiasResidualLayerNorm::inference_task(
         weights_accessors,
         {added_output, output});
   }
+}
+
+void AddBiasResidualLayerNorm::backward(FFModel const &ff) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(ADD_BIAS_RESIDUAL_LAYERNORM_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  int field_id = 0;
+  // output_grad
+  launcher.add_region_requirement(RegionRequirement(outputs[1]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[1]->region_grad));
+  launcher.add_field(field_id++, FID_DATA);
+  // added output
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
+  launcher.add_field(field_id++, FID_DATA);
+  // input grad
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
+  launcher.add_field(field_id++, FID_DATA);
+  // residual grad
+  launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[1]->region_grad));
+  launcher.add_field(field_id++, FID_DATA);
+  // attn bias
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region_grad));
+  launcher.add_field(field_id++, FID_DATA);
+  if (elementwise_affine) {
+    // gamma
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[1]->region));
+    launcher.add_field(field_id++, FID_DATA);
+    // gamma_grad
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      weights[1]->region_grad));
+    launcher.add_field(field_id++, FID_DATA);
+    if (use_bias) {
+      // beta_grad
+      launcher.add_region_requirement(
+          RegionRequirement(weights[2]->part_grad,
+                            0 /*projection id*/,
+                            READ_WRITE,
+                            EXCLUSIVE,
+                            weights[2]->region_grad));
+      launcher.add_field(field_id++, FID_DATA);
+    }
+  }
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void AddBiasResidualLayerNorm::backward_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  assert(task->regions.size() == regions.size());
+  AddBiasResidualLayerNormMeta *m =
+      *((AddBiasResidualLayerNormMeta **)task->local_args);
+  assert(regions.size() ==
+         5 + (m->elementwise_affine ? (m->use_bias ? 3 : 2) : 0));
+
+  int region_idx = 0, task_region_idx = 0;
+
+  GenericTensorAccessorR output_grad =
+      helperGetGenericTensorAccessorRO(m->output_type[1],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorR added_output =
+      helperGetGenericTensorAccessorRO(m->output_type[0],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW input_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[0],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW residual_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[1],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW attn_bias_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[2],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorR gamma;
+  GenericTensorAccessorW gamma_grad, beta_grad;
+  if (m->elementwise_affine) {
+    assert(m->use_bias == (regions.size() == 6));
+    gamma = helperGetGenericTensorAccessorRO(m->output_type[0],
+                                             regions[region_idx++],
+                                             task->regions[task_region_idx++],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+    gamma_grad =
+        helperGetGenericTensorAccessorRW(m->output_type[0],
+                                         regions[region_idx++],
+                                         task->regions[task_region_idx++],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
+    if (m->use_bias) {
+      beta_grad =
+          helperGetGenericTensorAccessorRW(m->output_type[0],
+                                           regions[region_idx++],
+                                           task->regions[task_region_idx++],
+                                           FID_DATA,
+                                           ctx,
+                                           runtime);
+    }
+  }
+  AddBiasResidualLayerNorm::backward_kernel_wrapper(m,
+                                                    output_grad,
+                                                    added_output,
+                                                    input_grad,
+                                                    residual_grad,
+                                                    attn_bias_grad,
+                                                    gamma,
+                                                    gamma_grad,
+                                                    beta_grad);
+}
+
+Legion::FutureMap AddBiasResidualLayerNorm::peft_bwd(
+    FFModel const &ff,
+    BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  IndexLauncher launcher(ADD_BIAS_RESIDUAL_LAYERNORM_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  int field_id = 0;
+  // output_grad
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[1]->region));
+  launcher.add_field(field_id++, FID_DATA);
+  // input grad
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(field_id++, FID_DATA);
+  // residual grad
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[1]->region));
+  launcher.add_field(field_id++, FID_DATA);
+  // attn bias grad
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[2]->region));
+  launcher.add_field(field_id++, FID_DATA);
+  if (elementwise_affine) {
+    // gamma
+    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[0]->region));
+    launcher.add_field(field_id++, FID_DATA);
+  }
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+void AddBiasResidualLayerNorm::peft_bwd_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  assert(task->regions.size() == regions.size());
+  AddBiasResidualLayerNormMeta const *m =
+      *((AddBiasResidualLayerNormMeta **)task->local_args);
+  assert(regions.size() == 4 + m->elementwise_affine);
+
+  int region_idx = 0, task_region_idx = 0;
+
+  GenericTensorAccessorR output_grad =
+      helperGetGenericTensorAccessorRO(m->output_type[1],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW input_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[0],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW residual_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[1],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+
+  GenericTensorAccessorW attn_bias_grad =
+      helperGetGenericTensorAccessorRW(m->weight_type[0],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+
+  GenericTensorAccessorR gamma;
+  if (m->elementwise_affine) {
+    assert(m->use_bias == (regions.size() == 6));
+    gamma = helperGetGenericTensorAccessorRO(m->output_type[0],
+                                             regions[region_idx++],
+                                             task->regions[task_region_idx++],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+  }
+  AddBiasResidualLayerNorm::peft_bwd_kernel_wrapper(
+      m, output_grad, input_grad, residual_grad, attn_bias_grad, gamma);
 }
 
 bool AddBiasResidualLayerNorm::measure_operator_cost(
