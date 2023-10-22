@@ -690,39 +690,40 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                          m->num_q_heads,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // Project to output, save result directly on output tensor
-    alpha = 1.0f, beta = 0.0f;
-    m_ = m->oProjSize;
-    k = m->vProjSize * m->num_q_heads;
-    n = num_new_tokens;
-    lda = k, ldb = k, ldc = m_;
-    A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
-                                 m->kProjSize * m->num_q_heads +
-                                 m->vProjSize * m->num_q_heads);
-    B = C;
-    C = static_cast<DT *>(output_ptr) + tokens_previous_requests * m->oProjSize;
-
-    checkCUDA(cublasGemmEx(m->handle.blas,
-                           CUBLAS_OP_T,
-                           CUBLAS_OP_N,
-                           m_,
-                           n,
-                           k,
-                           &alpha,
-                           A,
-                           cublas_data_type,
-                           lda,
-                           B,
-                           cublas_data_type,
-                           ldb,
-                           &beta,
-                           C,
-                           cublas_data_type,
-                           ldc,
-                           compute_type,
-                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     tokens_previous_requests += num_new_tokens;
   }
+
+  // Project to output, save result directly on output tensor
+  DT alpha = 1.0f, beta = 0.0f;
+  int m_ = m->oProjSize;
+  int k = m->vProjSize * m->num_q_heads;
+  int n = bc->num_active_tokens();
+  int lda = k, ldb = k, ldc = m_;
+  DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
+                                         m->kProjSize * m->num_q_heads +
+                                         m->vProjSize * m->num_q_heads);
+  DT const *B = static_cast<DT *>(m->attn_heads);
+  DT *C = static_cast<DT *>(output_ptr);
+
+  checkCUDA(cublasGemmEx(m->handle.blas,
+                         CUBLAS_OP_T,
+                         CUBLAS_OP_N,
+                         m_,
+                         n,
+                         k,
+                         &alpha,
+                         A,
+                         cublas_data_type,
+                         lda,
+                         B,
+                         cublas_data_type,
+                         ldb,
+                         &beta,
+                         C,
+                         cublas_data_type,
+                         ldc,
+                         compute_type,
+                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
   if (*m->final_bias && shard_id == 0) {
     int parallelism = m->oProjSize * num_tokens;
