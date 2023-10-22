@@ -44,7 +44,7 @@ export python_version="${python_version}"
 
 # Build Docker Flexflow Container
 echo "building docker"
-./build.sh flexflow
+../../../docker/build.sh flexflow
 
 # Cleanup any existing container with the same name
 docker rm prelegion || true
@@ -54,13 +54,13 @@ docker create --name prelegion flexflow-"${gpu_backend}"-"${gpu_backend_version}
 
 # Copy legion libraries to host
 echo "extract legion library assets"
-mkdir -p ../../prebuilt_legion_assets
-rm -rf ../prebuilt_legion_assets/tmp || true
-docker cp prelegion:$INSTALL_DIR ../prebuilt_legion_assets/tmp
+mkdir -p ../../../prebuilt_legion_assets
+rm -rf ../../../prebuilt_legion_assets/tmp || true
+docker cp prelegion:$INSTALL_DIR ../../../prebuilt_legion_assets/tmp
 
 
 # Create the tarball file
-cd ../prebuilt_legion_assets/tmp
+cd ../../../prebuilt_legion_assets/tmp
 export LEGION_TARBALL="legion_ubuntu-20.04_${gpu_backend}-${gpu_backend_version}_py${python_version}.tar.gz"
 
 echo "Creating archive $LEGION_TARBALL"

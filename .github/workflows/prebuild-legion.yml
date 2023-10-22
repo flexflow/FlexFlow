@@ -43,7 +43,7 @@ jobs:
       - name: Build Legion
         env:
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
-        run: ./.github/workflows/helpers/launch_prebuilding.sh
+        run: .github/workflows/helpers/prebuild_legion.sh
 
       - name: Archive compiled Legion library (CUDA)
         env:
