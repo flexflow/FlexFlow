@@ -44,14 +44,15 @@ template <typename DT,
           int THREADS_PER_KEY,
           int THREADS_PER_VALUE>
 __global__ void compute_attention_kernel_generation_kernel(
-    IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig const *bc,
     DT const *query,
     DT const *key_cache,
     DT const *value_cache,
     DT *output_ptr,
     float const scale,
-    int max_seq_length) {
+    int max_seq_length,
+    int per_head_size,
+    int hidden_size,
+    BatchConfig::PerRequestInfo *request_infos) {
 
   using Qk_vec_k =
       typename Qk_vec_k_<DT, Dh>::Type; // with kernel-used precision
@@ -84,8 +85,8 @@ __global__ void compute_attention_kernel_generation_kernel(
   int const request_idx = blockIdx.y;
 
   int const first_step = 0;
-  int const tlength = bc->requestsInfo[request_idx].token_start_offset +
-                      bc->requestsInfo[request_idx].num_tokens_in_batch;
+  int const tlength = request_infos[request_idx].token_start_offset +
+                      request_infos[request_idx].num_tokens_in_batch;
 
   // shared memory objects
   extern __shared__ char smem_[];
@@ -99,8 +100,11 @@ __global__ void compute_attention_kernel_generation_kernel(
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
 
   // load q tensor
+  // if (blockIdx.x == 0 && blockIdx.y == 0 && tidx == 0) {
+  //   printf("qk proj2 %d\n", per_head_size);
+  // }
   DT const *q_ptr =
-      query + request_idx * Dh * QKV_WEIGHT_NUM + head_idx * m->qProjSize;
+      query + request_idx * Dh * QKV_WEIGHT_NUM + head_idx * per_head_size;
 
   // q tensor in this thread
   // if THREADS_PER_KEY is 4, first thread load 0, 4, 8, 12..., total
@@ -114,20 +118,19 @@ __global__ void compute_attention_kernel_generation_kernel(
   // ko = 0, 0, 0, 0, 1, 1, 1, 1, ....
   int ko = tidx / THREADS_PER_KEY;
   // load q tensor
-  K_vec_k q_vec[K_VECS_PER_THREAD];
+  float4 q_vec[K_VECS_PER_THREAD];
 #pragma unroll
   for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
-    q_vec[ii] = *reinterpret_cast<K_vec_k const *>(
+    q_vec[ii] = *reinterpret_cast<float4 const *>(
         q_ptr + ki + ii * THREADS_PER_KEY * K_VEC_SIZE);
   }
   __syncthreads();
-
   // first iter = 128 / 4 = 32
   // K_VECS_PER_THREAD = 32
   //  K_PER_ITER how many keys in this loop
   //  The number of timesteps loaded per iteration.
   constexpr int K_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_KEY;
-  // The number of keys per warp.
+  //   // The number of keys per warp.
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
   DT const *k_cache_batch = key_cache + request_idx * max_seq_length * Dh + ki;
@@ -135,84 +138,141 @@ __global__ void compute_attention_kernel_generation_kernel(
   int ti_end =
       div_up(tlength - first_step, K_PER_WARP) * K_PER_WARP + first_step;
   // get k, perform qk proj
+
   for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
-    K_vec_k k[K_VECS_PER_THREAD];
+    float4 k[K_VECS_PER_THREAD];
     int const ti_circ = ti % max_seq_length;
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
-      int jj = ti_circ * m->hidden_size + ii * THREADS_PER_KEY * K_VEC_SIZE;
+      int jj = ii * THREADS_PER_KEY * K_VEC_SIZE;
       if (ti < tlength) {
-        k[ii] = *reinterpret_cast<K_vec_k const *>(
-            &k_cache_batch[jj * QK_ELTS_IN_16B]);
+        k[ii] = *reinterpret_cast<float4 const *>(
+            k_cache_batch + ti_circ * hidden_size + head_idx * per_head_size +
+            jj);
       }
-
       // Compute dot product.
       // This includes a reduction across the threads in the same thread group.
-      float qk = scale * Qk_dot<DT, THREADS_PER_KEY>::dot(q_vec, k);
-      // todo add positional embedding to the qk production
-
-      // Store the product to shared memory. There's one qk value per timestep.
-      // Update the max.
-      if (ti < tlength && tidx % THREADS_PER_KEY == 0) {
-        // todo add alobi here
-        bool const mask = ti_circ >= tlength;
-        qk_max = mask ? qk_max : fmaxf(qk_max, qk);
-        qk_smem[ti - first_step] = qk;
+    }
+    // if (blockIdx.x == 0 && blockIdx.y == 0 && tidx == 0) {
+    //   printf("query and key %.10f, %.10f, %.10f, %.10f\n",
+    //          q_vec[0].x,
+    //          q_vec[1].x,
+    //          k[0].x,
+    //          k[1].x);
+    // }
+    // if (blockIdx.x == 0 && blockIdx.y == 10 && tidx == 0) {
+    //   printf("query and key second thread %.10f, %.10f, %.10f, %.10f\n",
+    //          q_vec[0].x,
+    //          q_vec[1].x,
+    //          k[0].x,
+    //          k[1].x);
+    // }
+    float qk = scale * Qk_dot<DT, THREADS_PER_KEY>::dot(q_vec, k);
+    // // todo add positional embedding to the qk production
+    // // Store the product to shared memory. There's one qk value per
+    // timestep.
+    // // Update the max.
+    if (ti < tlength && tidx % THREADS_PER_KEY == 0) {
+      // todo add alobi here
+      bool const mask = ti_circ >= tlength;
+      if (mask) {
+        assert(false);
       }
+      qk_max = mask ? qk_max : fmaxf(qk_max, qk);
+      qk_smem[ti - first_step] = mask ? 0.f : qk;
+      ;
+      // if (blockIdx.y == 0 && blockIdx.x == 0) {
+      //   printf("qk projkkkhead1 %.10f, %d %d\n", qk, tlength, ti);
+      // }
+      // if (blockIdx.y == 0 && blockIdx.x == 2) {
+      //   printf("qk projkkkhead2 %.10f, %d %d\n", qk, tlength, ti);
+      // }
+      // if (blockIdx.y == 0 && blockIdx.x == 10) {
+      //   printf("qk projkkkheadten %.10f, %d %d\n", qk, tlength, ti);
+      // }
     }
-
-    __syncthreads();
-
-#pragma unroll
-    for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
-      qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
-    }
-
-    // Decompose the thread index into warp and lane.
-    int const warp = tidx / WARP_SIZE;
-    int const lane = tidx % WARP_SIZE;
-
-    // The warp leader writes the max to shared memory.
-    if (lane == 0) {
-      red_smem[warp] = qk_max;
-    }
-
-    // Make sure the products are in shared memory.
-    __syncthreads();
-
-    // The warps finalize the reduction.
-    qk_max = lane < WARPS_PER_BLOCK ? red_smem[lane] : -FLT_MAX;
-#pragma unroll
-    for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-      qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
-    }
-
-    // Broadcast to all the threads in the warp.
-    qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
   }
 
+  __syncthreads();
+
+#pragma unroll
+  for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
+    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+  }
+
+  // Decompose the thread index into warp and lane.
+  int const warp = tidx / WARP_SIZE;
+  int const lane = tidx % WARP_SIZE;
+
+  // The warp leader writes the max to shared memory.
+  if (lane == 0) {
+    red_smem[warp] = qk_max;
+  }
+
+  // Make sure the products are in shared memory.
+  __syncthreads();
+
+  // The warps finalize the reduction.
+  qk_max = lane < WARPS_PER_BLOCK ? red_smem[lane] : -FLT_MAX;
+#pragma unroll
+  for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
+    qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
+  }
+
+  // Broadcast to all the threads in the warp.
+  qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
+
+  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+  //   printf("qkmax2 %f\n", qk_max);
+  // }
+
   float exp_sum = 0.f;
-  for (int ti = first_step + tidx; ti <= tlength; ti += THREADS_PER_BLOCK) {
+  for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
     float logit = __expf(qk_smem[ti - first_step] - qk_max);
     exp_sum += logit;
     qk_smem[ti - first_step] = logit;
   }
 
+  // if (blockIdx.y == 0 && blockIdx.x == 0) {
+  //       printf("exp_sum before %.10f, %d\n", exp_sum, tidx);
+  //   }
+
   // Compute the sum.
   exp_sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], exp_sum);
+  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+  //       printf("exp_sum1 %.10f\n", exp_sum);
+  //   }
+  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 4) {
+  //       printf("exp_sum2 %.10f\n", exp_sum);
+  //   }
 
   // softmax
-  float inv_sum = __fdividef(1.f, exp_sum + 1.e-6f);
-  for (int ti = first_step + tidx; ti <= tlength; ti += THREADS_PER_BLOCK) {
+  float inv_sum = __fdividef(1.f, exp_sum + 1.e-6);
+  for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
     qk_smem[ti - first_step] *= inv_sum;
   }
+
   __syncthreads();
+  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+  //   printf("softmax %.10f\n", qk_smem[0]);
+  //   printf("softmax %.10f\n", qk_smem[1]);
+  //   printf("softmax %.10f\n", qk_smem[2]);
+  //   printf("softmax %.10f\n", qk_smem[3]);
+  //   printf("softmax %.10f\n", qk_smem[4]);
+  //   printf("softmax %.10f\n", qk_smem[5]);
+  //   printf("softmax %.10f\n", qk_smem[6]);
+  //   printf("softmax %.10f\n", qk_smem[7]);
+  //   printf("softmax %.10f\n", qk_smem[8]);
+  //   printf("softmax %.10f\n", qk_smem[9]);
+  //   printf("softmax %.10f\n", qk_smem[10]);
+  //   printf("softmax %.10f\n", qk_smem[11]);
+  // }
 
   // value projection
-  constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
+  constexpr int V_VEC_SIZE = 16 / sizeof(DT);
   // A vector of V elements for the current timestep.
-  using V_vec_k = typename V_vec_k_<DT, V_VEC_SIZE>::Type;
-  using V_vec_acum = typename V_vec_acum_fp32_<V_vec_k>::Type;
+  // using V_vec_k = typename V_vec_k_<DT, V_VEC_SIZE>::Type;
+  // using V_vec_acum = typename V_vec_acum_fp32_<V_vec_k>::Type;
 
   // The value computed by this thread.
   int vo = tidx / THREADS_PER_VALUE;
@@ -220,31 +280,26 @@ __global__ void compute_attention_kernel_generation_kernel(
   int vi = tidx % THREADS_PER_VALUE * V_VEC_SIZE;
   constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
 
-  V_vec_acum out;
+  float4 out;
   zero(out);
 
   // The base pointer for the value in the cache buffer.
   DT const *v_cache_batch =
-      value_cache + request_idx * max_seq_length * Dh + ki;
+      value_cache + request_idx * max_seq_length * Dh + vi;
 
   if (Dh == Dh_MAX || vi < Dh) {
     for (int ti = first_step + vo; ti < tlength; ti += V_PER_ITER) {
       // Load the values from the cache.
-      V_vec_k v = *reinterpret_cast<V_vec_k const *>(v_cache_batch + ti * Dh);
+      int const ti_circ = ti % max_seq_length;
+
+      float4 v = *reinterpret_cast<float4 const *>(
+          v_cache_batch + ti_circ * hidden_size + head_idx * per_head_size);
       DT logit = qk_smem[ti - first_step];
       out = FlexFlow::fma(logit, v, out);
     }
   }
-  // // One group of threads computes the product(s) for the current timestep.
-  // // if( vo == params.timestep % V_PER_ITER ) {
-  // if (vo == tlength % V_PER_ITER && (Dh == Dh_MAX || vi < Dh)) {
-  //   V_vec_k v;
-  //   auto const v_offset = qkv_base_offset + vi;
-  //   v = *reinterpret_cast<V_vec_k const *>(value_cache[v_offset]);
-  //   out = fma(qk_smem[tlength - first_step], v, out);
-  // }
 
-  // Make sure we can start writing to shared memory.
+  //   // Make sure we can start writing to shared memory.
   __syncthreads();
 
   // Run the final reduction amongst the different groups computing different
@@ -260,32 +315,58 @@ __global__ void compute_attention_kernel_generation_kernel(
       // The upper part of active threads store to shared memory.
       if (vo >= midpoint && vo < active_groups && (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-        *reinterpret_cast<V_vec_k *>(&out_smem[(vo - midpoint) * Dh + vi]) =
-            out;
+        *reinterpret_cast<float4 *>(out_smem + (vo - midpoint) * Dh + vi) = out;
 #else
-        *reinterpret_cast<V_vec_k *>(&out_smem[(vo - midpoint) * Dh + vi]) =
-            out;
+        *reinterpret_cast<float4 *>(out_smem + (vo - midpoint) * Dh + vi) = out;
 #endif
       }
       __syncthreads();
 
       // The bottom warps update their values.
       if (vo < midpoint && (Dh == Dh_MAX || vi < Dh)) {
-        out = add(*reinterpret_cast<V_vec_k const *>(&out_smem[vo * Dh + vi]),
+        out = add(*reinterpret_cast<float4 const *>(out_smem + vo * Dh + vi),
                   out);
       }
       __syncthreads();
     }
   }
 
-  // qkv
+  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+  //   printf("V value10 %.10f\n", out.x);
+  //   printf("V value10 %.10f\n", out.y);
+  //   printf("V value10 %.10f\n", out.z);
+  //   printf("V value10 %.10f\n", out.w);
+  // }
+  // if (blockIdx.y == 0 && blockIdx.x == 1 && tidx == 32) {
+  //   printf("V value11 %.10f\n", out.x);
+  //   printf("V value11 %.10f\n", out.y);
+  //   printf("V value11 %.10f\n", out.z);
+  //   printf("V value11 %.10f, %d\n", out.w, vo);
+  // }
+  // if (blockIdx.y == 0 && blockIdx.x == 1 && tidx == 0) {
+  //   printf("V value12 %.10f, %d\n",
+  //          out.x,
+  //          request_idx * Dh + head_idx * per_head_size + vi);
+  //   printf("V value12 %.10f, %d\n",
+  //          out.y,
+  //          request_idx * Dh + head_idx * per_head_size + vi);
+  //   printf("V value12 %.10f, %d\n",
+  //          out.z,
+  //          request_idx * Dh + head_idx * per_head_size + vi);
+  //   printf("V value12 %.10f, %d, %d\n",
+  //          out.w,
+  //          vo,
+  //          request_idx * Dh + head_idx * per_head_size + vi);
+  // }
+
   // Output the final values.
   if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
     // batch_idx * head_idx * hidden_size
-    *reinterpret_cast<V_vec_k *>(output_ptr + blockIdx.y * blockIdx.x * Dh +
-                                 vi) = out;
-    // *reinterpret_cast<V_vec_k*>(&params.out[bhi * Dh + vi]) =
-    // vec_conversion<V_vec_m, V_vec_acum>(out);
+    // if (request_idx * Dh + head_idx * per_head_size + vi == 64) {
+    //   printf("???%d, %d, %f", head_idx, vi, out.x);
+    // }
+    *reinterpret_cast<float4 *>(output_ptr + request_idx * Dh +
+                                head_idx * per_head_size + vi) = out;
   }
 }
 
@@ -676,15 +757,28 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
   dim3 grid(m->num_q_heads, bc->num_active_requests());
   int const head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
-  compute_attention_kernel_generation_kernel<DT, 128, 128, 128, 4, 32>
-      <<<grid, 128, 0, stream>>>(m,
-                                 bc,
-                                 static_cast<DT *>(m->devQKVProjArray),
-                                 static_cast<DT *>(m->keyCache),
-                                 static_cast<DT *>(m->valueCache),
-                                 output_ptr,
-                                 scale,
-                                 BatchConfig::max_sequence_length());
+
+  // copy metadata
+  int idx = 0;
+  compute_attention_kernel_generation_kernel<DT, 64, 64, 64, 4, 16>
+      <<<grid, 64, 5000, stream>>>(static_cast<DT *>(m->devQKVProjArray),
+                                   static_cast<DT *>(m->keyCache),
+                                   static_cast<DT *>(m->valueCache),
+                                   output_ptr,
+                                   scale,
+                                   BatchConfig::max_sequence_length(),
+                                   m->qProjSize,
+                                   m->hidden_size,
+                                   m->request_infos);
+  cudaDeviceSynchronize();
+
+  // check for errors
+  cudaError_t error = cudaGetLastError();
+  if (error != cudaSuccess) {
+
+    fprintf(stderr, "ERROR: %s \n", cudaGetErrorString(error));
+    assert(false);
+  }
 }
 
 template <typename DT>
@@ -763,11 +857,20 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
         m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
+
+  // todo Xinhao copy how many requests if requests are not continous?
   cudaMemcpyAsync(m->token_infos,
                   &(bc->tokensInfo),
                   bc->num_active_tokens() * sizeof(BatchConfig::PerTokenInfo),
                   cudaMemcpyHostToDevice,
                   stream);
+  cudaMemcpyAsync(m->request_infos,
+                  &(bc->requestsInfo),
+                  bc->num_active_requests() *
+                      sizeof(BatchConfig::PerRequestInfo),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
@@ -781,11 +884,17 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
 
+  cudaMemsetAsync((float *)m->attn_heads, 0.0f, 12 * 64 * 4, stream);
+  checkCUDA(cudaStreamSynchronize(stream));
+  // save_tensor<float>((float *)m->attn_heads,
+  //                    1 * 12 * 64 * 1,
+  //                    "/home/ubuntu/FlexFlow/inference/vprojbefore.txt");
+
   if (bc->num_generation_tokens > 0) {
     // phase 4: Compute attention score for generation tokens
     // todo, lunch different size of kernel
     compute_attention_kernel_generation<DT>(
-        m, bc, static_cast<DT *>(m->attn_heads), m->task_local_stream);
+        m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
 
   if (bc->num_tokens > bc->num_generation_tokens) {
@@ -803,7 +912,11 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                 QKV_WEIGHT_NUM,
         stream);
   }
-  checkCUDA(cudaStreamSynchronize(m->task_local_stream));
+  // checkCUDA(cudaStreamSynchronize(m->task_local_stream));
+
+  // save_tensor<float>((float *)m->attn_heads,
+  //                    1 * 12 * 64 * 1,
+  //                    "/home/ubuntu/FlexFlow/inference/vproj.txt");
 
   // compute o_proj together
   compute_o_proj_bias(
@@ -1209,6 +1322,8 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
+  // print_tensor<float>(input.get_float_ptr(), 32, "ip");
+  // print_tensor<float>(output.get_float_ptr(), 32, "op");
 }
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
@@ -1371,6 +1486,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       default:
         assert(false && "Unkown inference mode");
     }
+    size_t requestinfo_size = BatchConfig::max_requests_per_batch();
     size_t tokeninfo_size = max_tokens_per_batch;
     size_t qk_prod_size =
         max_tokens_per_batch * BatchConfig::max_sequence_length() * num_q_heads;
@@ -1383,8 +1499,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
          2 * qk_prod_size + attn_heads_size) *
             size_of_dt +
         tokeninfo_size * sizeof(BatchConfig::PerTokenInfo) +
-        complex_size * sizeof(cuFloatComplex); // more components will
-                                               // be added here later
+        complex_size * sizeof(cuFloatComplex) +
+        requestinfo_size *
+            sizeof(BatchConfig::PerRequestInfo); // more components will
+                                                 // be added here later
     if (offload) {
       // assert that we have enough reserved work space left
       size_t totalSharedSize =
@@ -1444,6 +1562,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       complex_input =
           gpu_mem_allocator.allocate_reserved<cuFloatComplex>(complex_size);
       // offset += complex_size * sizeof(cuFloatComplex);
+      request_infos =
+          gpu_mem_allocator.allocate_reserved<BatchConfig::PerRequestInfo>(
+              requestinfo_size);
     } else {
       token_infos =
           gpu_mem_allocator.allocate_instance<BatchConfig::PerTokenInfo>(
@@ -1456,6 +1577,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                                size_of_dt);
       complex_input =
           gpu_mem_allocator.allocate_instance<cuFloatComplex>(complex_size);
+      request_infos =
+          gpu_mem_allocator.allocate_instance<BatchConfig::PerRequestInfo>(
+              requestinfo_size);
     }
 
     // allocate more size for quantization data

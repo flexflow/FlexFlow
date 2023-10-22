@@ -45,7 +45,7 @@ struct K_vec_k_ {};
 
 template <>
 struct K_vec_k_<float, 4> {
-  using Type = float;
+  using Type = float4;
 };
 template <>
 struct K_vec_k_<float, 2> {
@@ -184,10 +184,13 @@ inline __device__ float4 mul(float4 a, float4 b) {
   return c;
 }
 
-// Vector fused multiply-add.
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 inline __device__ float fma(float a, float b, float c) {
   return a * b + c;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 inline __device__ float2 fma(float2 a, float2 b, float2 c) {
   float2 d;
@@ -195,6 +198,17 @@ inline __device__ float2 fma(float2 a, float2 b, float2 c) {
   d.y = fma(a.y, b.y, c.y);
   return d;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline __device__ float2 fma(float a, float2 b, float2 c) {
+  float2 d;
+  d.x = fma(a, b.x, c.x);
+  d.y = fma(a, b.y, c.y);
+  return d;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 inline __device__ float4 fma(float4 a, float4 b, float4 c) {
   float4 d;
@@ -204,60 +218,54 @@ inline __device__ float4 fma(float4 a, float4 b, float4 c) {
   d.w = fma(a.w, b.w, c.w);
   return d;
 }
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-inline __device__ float4 fma(float a, float4 b, float4 c)
-{
-    float4 d;
-    d.x = fma(a, b.x, c.x);
-    d.y = fma(a, b.y, c.y);
-    d.z = fma(a, b.z, c.z);
-    d.w = fma(a, b.w, c.w);
-    return d;
-}
-
-inline __device__ float4 fma(half a, float4 b, float4 c)
-{
-    assert(false);
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline __device__ float add(float a, float b)
-{
-    return a + b;
+inline __device__ float4 fma(float a, float4 b, float4 c) {
+  float4 d;
+  d.x = fma(a, b.x, c.x);
+  d.y = fma(a, b.y, c.y);
+  d.z = fma(a, b.z, c.z);
+  d.w = fma(a, b.w, c.w);
+  return d;
+}
+
+inline __device__ float4 fma(half a, float4 b, float4 c) {
+  assert(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline __device__ float2 add(float2 a, float2 b)
-{
-    float2 c;
-    c.x = add(a.x, b.x);
-    c.y = add(a.y, b.y);
-    return c;
+inline __device__ float add(float a, float b) {
+  return a + b;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline __device__ float4 add(float4 a, float4 b)
-{
-    float4 c;
-    c.x = add(a.x, b.x);
-    c.y = add(a.y, b.y);
-    c.z = add(a.z, b.z);
-    c.w = add(a.w, b.w);
-    return c;
+inline __device__ float2 add(float2 a, float2 b) {
+  float2 c;
+  c.x = add(a.x, b.x);
+  c.y = add(a.y, b.y);
+  return c;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
+inline __device__ float4 add(float4 a, float4 b) {
+  float4 c;
+  c.x = add(a.x, b.x);
+  c.y = add(a.y, b.y);
+  c.z = add(a.z, b.z);
+  c.w = add(a.w, b.w);
+  return c;
+}
 
 inline __device__ float sum(float v) {
   return v;
 }
 
 template <typename T>
-inline __device__ __host__ T div_up(T m, T n) {
+inline __device__ T div_up(T m, T n) {
   return (m + n - 1) / n;
 }
 
@@ -305,7 +313,11 @@ inline __device__ void zero(T &dst) {
 
 template <int THREADS_PER_KEY, typename K_vec, int N>
 inline __device__ float qk_dot_(K_vec const (&q)[N], K_vec const (&k)[N]) {
+#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
   using K_vec_acum = typename K_vec_acum_fp32_<K_vec>::Type;
+#else
+  using K_vec_acum = K_vec;
+#endif
   // Compute the parallel products for Q*K^T (treat vector lanes separately).
   K_vec_acum qk_vec = mul<K_vec_acum, K_vec, K_vec>(q[0], k[0]);
 #pragma unroll
@@ -321,7 +333,6 @@ inline __device__ float qk_dot_(K_vec const (&q)[N], K_vec const (&k)[N]) {
   }
   return qk;
 }
-
 template <typename T, int THREADS_PER_KEY>
 struct Qk_dot {
   template <typename K_vec, int N>
@@ -365,5 +376,6 @@ inline __device__ float block_sum(float *red_smem, float sum) {
   // Broadcast to other threads.
   return __shfl_sync(uint32_t(-1), sum, 0);
 }
+
 } // namespace FlexFlow
 #endif // _FLEXFLOW_OPS_KERNELS_INC_MULTIHEAD_SELF_UTILS_H
