@@ -267,3 +267,4 @@ jobs:
           ./tests/cpp_gpu_tests.sh 4
           # Python tests
           ./tests/multi_gpu_tests.sh 4
+
