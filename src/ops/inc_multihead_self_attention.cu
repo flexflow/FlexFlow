@@ -455,7 +455,341 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      DT const *output_grad_ptr,
                      DT const *bias_ptr,
                      cudaStream_t stream) {
-  assert(false);
+  assert(!m->offload);
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
+  cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
+  assert(data_type_size(m->output_type[0]) == sizeof(DT));
+#if CUDA_VERSION >= 11000
+  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+#else
+  cudaDataType_t compute_type = cublas_data_type;
+#endif
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    if (!bc->requestsInfo[i].peft_bwd) {
+      continue;
+    }
+    int num_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    int num_total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
+                           bc->requestsInfo[i].num_tokens_in_batch;
+    // Currently assume we are calculating gradients for all tokens
+    // of a request
+    assert(num_tokens == num_total_tokens);
+    int kt_block_size = m->kProjSize;
+    int kt_req_block_size =
+        kt_block_size * m->num_q_heads * BatchConfig::max_sequence_length();
+    int vt_block_size = m->vProjSize;
+    int vt_req_block_size =
+        vt_block_size * m->num_q_heads * BatchConfig::max_sequence_length();
+    // Step 1: compute gradients before final projection
+    {
+      int m_ = m->vProjSize * m->num_q_heads;
+      int n_ = num_tokens;
+      int k_ = m->oProjSize;
+      int lda = k_;
+      int ldb = n_;
+      int ldc = m_;
+      float alpha = 1.0f, beta = 0.0f;
+      // matrix A: output projection weight
+      // matrix A's layout: [num_heads, vProjSize, oProjSize]
+      DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
+                                             m->kProjSize * m->num_q_heads +
+                                             m->vProjSize * m->num_q_heads);
+      // matrix B: output gradients
+      // matrix B's layout: [num_new_tokens, oProjSize]
+      DT const *B =
+          output_grad_ptr +
+          bc->requestsInfo[i].first_token_offset_in_batch * m->oProjSize;
+      // matrix C: attn_heads gradients
+      // matrix C's layout: [num_new_tokens, num_heads, vProjSize]
+      DT *C = static_cast<DT *>(m->handle.workSpace);
+      checkCUDA(cublasGemmEx(m->handle.blas,
+                             CUBLAS_OP_T,
+                             CUBLAS_OP_N,
+                             m_,
+                             n_,
+                             k_,
+                             &alpha,
+                             A,
+                             cublas_data_type,
+                             lda,
+                             B,
+                             cublas_data_type,
+                             ldb,
+                             &beta,
+                             C,
+                             cublas_data_type,
+                             ldc,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    }
+    // Step 2: compute gradients w.r.t. value
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      // matrix A: attn_heads gradients
+      // matrix A's layout: [num_tokens, num_heads, vProjSize]
+      DT const *A = static_cast<DT *>(m->handle.workSpace);
+      // matrix B: qk_prods_softmax
+      // matrix B's layout: [num_heads, num_tokens, num_tokens]
+      DT const *B = static_cast<DT *>(m->qk_prods_softmax);
+      // matrix C: gradients for value (saved as part of m->devQKVProjArray)
+      // matrix C's layout: [num_tokens, num_heads, qProjsize + kProjSize +
+      // vProjSize]
+      DT *C =
+          static_cast<DT *>(m->devQKVProjArray) + m->qProjSize + m->kProjSize;
+      int m_ = m->vProjSize;
+      int n_ = num_tokens;
+      int k_ = num_tokens;
+      int lda = m->vProjSize * m->num_q_heads;
+      int ldb = num_tokens;
+      int ldc = m->num_q_heads * (m->qProjSize + m->kProjSize + m->vProjSize);
+      int strideA = m->vProjSize;
+      int strideB = num_tokens * num_tokens;
+      int strideC = m->qProjSize + m->kProjSize + m->vProjSize;
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_T,
+                                           CUBLAS_OP_N,
+                                           m_,
+                                           n_,
+                                           k_,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_q_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    }
+    // Step 3: compute gradients w.r.t. the qk_prods_softmax tensor
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      int m_ = num_tokens;
+      int n_ = num_tokens;
+      int k_ = m->vProjSize;
+      int lda = m->vProjSize * m->num_q_heads;
+      int ldb = m->vProjSize * m->num_q_heads;
+      int ldc = num_tokens;
+      int strideA = m->vProjSize;
+      int strideB = m->vProjSize;
+      int strideC = num_tokens * num_tokens;
+      // matrix A: value cache
+      // matrix A's layout: [num_req, max_num_tokens, num_heads, vProjSize]
+      DT const *A = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
+      // matrix B: attn_heads gradients
+      // matrix B's layout: [num_new_tokens, num_heads, vProjSize]
+      DT const *B = static_cast<DT *>(m->handle.workSpace);
+      // matrix C: qk_prods_softmax gradients
+      // matrix C's layout: [num_heads, num_total_tokens, num_new_tokens]
+      DT *C = static_cast<DT *>(m->qk_prods_softmax);
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_T,
+                                           CUBLAS_OP_N,
+                                           m_,
+                                           n_,
+                                           k_,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_q_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    }
+    // Step 4: softmax backpropagation
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      int n_param = m->num_q_heads;
+      int c_param = num_tokens;
+      int h_param = 1;
+      int w_param = num_tokens;
+      checkCUDNN(cudnnSetTensor4dDescriptor(m->qk_tensor,
+                                            CUDNN_TENSOR_NCHW,
+                                            cudnn_data_type,
+                                            n_param,
+                                            c_param,
+                                            h_param,
+                                            w_param));
+      checkCUDNN(cudnnSoftmaxBackward(m->handle.dnn,
+                                      CUDNN_SOFTMAX_ACCURATE,
+                                      CUDNN_SOFTMAX_MODE_CHANNEL,
+                                      &alpha,
+                                      m->qk_tensor,
+                                      m->softmax_activation_buffer,
+                                      m->qk_tensor,
+                                      m->qk_prods_softmax,
+                                      &beta,
+                                      m->qk_tensor,
+                                      m->qk_prods));
+      // TODO: fill all elements above diagonal to force causal attention
+    }
+    // Step 5: compute gradients w.r.t. key
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      if (*m->qk_prod_scaling) {
+        alpha = 1.0f / sqrt(m->kProjSize);
+      }
+      // matrix A: query activation (in query_activation_buffer)
+      // matrix A's layout: [num_tokens, num_heads, m->qProjSize]
+      DT const *A = static_cast<DT *>(m->query_activation_buffer);
+      // matrix B: gradients w.r.t. qk_prods
+      // matrix B's layout: [num_heads, num_tokens, num_tokens]
+      DT const *B = static_cast<DT *>(m->qk_prods);
+      // matrix C: gradients w.r.t. key (saved as part of m->devQKVProjArray)
+      // matrix C's layout: [num_tokens, num_heads, qProjsize + kProjSize +
+      // vProjSize]
+      DT *C = static_cast<DT *>(m->devQKVProjArray) + m->qProjSize;
+      int m_ = m->kProjSize;
+      int n_ = num_tokens;
+      int k_ = num_tokens;
+      int lda = m->num_q_heads * m->qProjSize;
+      int ldb = num_tokens;
+      int ldc = m->num_q_heads * (m->qProjSize + m->kProjSize + m->vProjSize);
+      int strideA = m->qProjSize;
+      int strideB = num_tokens * num_tokens;
+      int strideC = m->qProjSize + m->kProjSize + m->vProjSize;
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_N,
+                                           CUBLAS_OP_T,
+                                           m_,
+                                           n_,
+                                           k_,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_q_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    }
+    // Step 6: compute gradients w.r.t query
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      if (*m->qk_prod_scaling) {
+        alpha = 1.0f / sqrt(m->kProjSize);
+      }
+      // matrix A: key cache
+      // matrix A's layout: [num_tokens, num_heads, m->kProjSize]
+      DT const *A = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
+      // matrix B: gradients w.r.t. qk_prods
+      // matrix B's layout: [num_heads, num_tokens, num_tokens]
+      DT const *B = static_cast<DT *>(m->qk_prods);
+      // matrix C: gradients w.r.t. query (saved as part of m->devQKVProjArray)
+      // matrix C's layout:
+      // [num_tokens, num_heads, qProjsize + kProjSize + vProjSize]
+      DT *C = static_cast<DT *>(m->devQKVProjArray);
+      int m_ = m->qProjSize;
+      int n_ = num_tokens;
+      int k_ = num_tokens;
+      int lda = m->kProjSize * m->num_q_heads;
+      int ldb = num_tokens;
+      int ldc = m->num_q_heads * (m->qProjSize + m->kProjSize + m->vProjSize);
+      int strideA = m->kProjSize;
+      int strideB = num_tokens * num_tokens;
+      int strideC = m->qProjSize + m->kProjSize + m->vProjSize;
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_N,
+                                           CUBLAS_OP_T,
+                                           m_,
+                                           n_,
+                                           k_,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_q_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    }
+    // Step 7: compute gradients w.r.t. input
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      if (!m->reset_input_grads[0]) {
+        beta = 1.0f;
+      }
+      // matrix A: QKV projection weights
+      // matrix A's layout:
+      // [(qProjSize + kProjSize + vProjSize) * num_q_heads, qSize]
+      DT const *A = weight_ptr;
+      // matrix B: gradients w.r.t. QKV (concatenated in devQKVArray)
+      // matrix B's layout:
+      // [num_tokens, num_heads, qProjsize + kProjSize + vProjSize]
+      DT const *B = static_cast<DT *>(m->devQKVProjArray);
+      // matrix C: gradients w.r.t. input
+      // matrix C's layout: [num_tokens, m->qSize]
+      DT *C = input_grad_ptr +
+              bc->requestsInfo[i].first_token_offset_in_batch * m->qSize;
+      int m_ = m->qSize;
+      int n_ = num_tokens;
+      int k_ = m->num_q_heads * (m->qProjSize + m->kProjSize + m->vProjSize);
+      int lda = m_;
+      int ldb = k_;
+      int ldc = m_;
+      checkCUDA(cublasGemmEx(m->handle.blas,
+                             CUBLAS_OP_N,
+                             CUBLAS_OP_N,
+                             m_,
+                             n_,
+                             k_,
+                             &alpha,
+                             A,
+                             cublas_data_type,
+                             lda,
+                             B,
+                             cublas_data_type,
+                             ldb,
+                             &beta,
+                             C,
+                             cublas_data_type,
+                             ldc,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    }
+  }
 }
 
 } // namespace IncMultiHeadAttention
