@@ -1088,6 +1088,37 @@ __host__ void
         assert(false && "Fusion currently does not support type");
       }
     }
+    if (metas->meta[op]->inference_debugging) {
+      std::vector<GenericTensorAccessorR> input_accessors_to_save;
+      std::vector<GenericTensorAccessorR> weight_accessors_to_save;
+      std::vector<GenericTensorAccessorW> output_accessors_to_save;
+      for (int i = 0; i < fused->op_num_inputs[op]; i++) {
+        int my_off = fused->op_input_idx[i + ioff];
+        if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
+          input_accessors_to_save.push_back(input_accessor[my_off]);
+        } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
+          input_accessors_to_save.push_back(output_accessor[my_off]);
+        } else {
+          assert(false);
+        }
+      }
+      for (int i = 0; i < fused->op_num_weights[op]; i++) {
+        assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
+        weight_accessors_to_save.push_back(
+            weight_accessor[fused->op_weight_idx[i + woff]]);
+      }
+      for (int i = 0; i < fused->op_num_outputs[op]; i++) {
+        output_accessors_to_save.push_back(output_accessor[i + ooff]);
+      }
+      assert(task->index_point.get_dim() == 1);
+      int shard_id = task->index_point.point_data[0];
+      FusedOp::save_inference_tensors_to_file(metas->meta[op],
+                                              shard_id,
+                                              bc,
+                                              input_accessors_to_save,
+                                              weight_accessors_to_save,
+                                              output_accessors_to_save);
+    }
     ioff += fused->op_num_inputs[op];
     woff += fused->op_num_weights[op];
     ooff += fused->op_num_outputs[op];

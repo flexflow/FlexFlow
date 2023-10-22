@@ -493,6 +493,8 @@ OpMeta *ResidualLayerNorm::init_task(Task const *task,
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   ResidualLayerNormMeta *meta =
       new ResidualLayerNormMeta(handle, ln, gpu_mem_allocator);
+  std::strcpy(meta->op_name, ln->name);
+  meta->layer_guid = ln->layer_guid;
   meta->input_type[0] = ln->inputs[0]->data_type;
   meta->input_type[1] = ln->inputs[1]->data_type;
   if (ln->use_two_residuals) {
@@ -622,8 +624,7 @@ void ResidualLayerNorm::inference_task(
     return;
   }
 
-  ResidualLayerNormMeta const *m =
-      *((ResidualLayerNormMeta **)task->local_args);
+  ResidualLayerNormMeta *m = *((ResidualLayerNormMeta **)task->local_args);
 
   assert(regions.size() ==
          4 + m->use_two_residuals +
@@ -734,6 +735,30 @@ void ResidualLayerNorm::inference_task(
 
   ResidualLayerNorm::inference_kernel_wrapper(
       m, input, residual1, residual2, added_output, output, gamma, beta);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> input_accessors;
+    input_accessors.push_back(input);
+    input_accessors.push_back(residual1);
+    if (m->use_two_residuals) {
+      input_accessors.push_back(residual2);
+    }
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    if (m->elementwise_affine) {
+      weights_accessors.push_back(gamma);
+      if (m->use_bias) {
+        weights_accessors.push_back(beta);
+      }
+    }
+    ResidualLayerNorm::save_inference_tensors_to_file(m,
+                                                      shard_id,
+                                                      bc,
+                                                      input_accessors,
+                                                      weights_accessors,
+                                                      {added_output, output});
+  }
 }
 
 bool ResidualLayerNorm::measure_operator_cost(Simulator *sim,
@@ -745,6 +770,7 @@ bool ResidualLayerNorm::measure_operator_cost(Simulator *sim,
 void ResidualLayerNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->axes.size());
   for (size_t i = 0; i < this->axes.size(); i++) {
     sez.serialize(this->axes[i]);
@@ -767,10 +793,11 @@ Node ResidualLayerNorm::deserialize(FFModel &ff,
   bool use_bias;
   bool use_two_residuals;
   float eps;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(num_axes);
   for (size_t i = 0; i < num_axes; i++) {
     int axis_idx;
@@ -811,6 +838,7 @@ size_t hash<FlexFlow::ResidualLayerNormParams>::operator()(
   size_t key = 0;
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.layer_guid.transformer_layer_id);
+  hash_combine(key, params.layer_guid.model_id);
   hash_combine(key, params.axes.size());
   for (int n : params.axes) {
     hash_combine(key, n);

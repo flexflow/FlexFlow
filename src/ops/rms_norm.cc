@@ -297,6 +297,8 @@ OpMeta *RMSNorm::init_task(Task const *task,
                        .first();
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   RMSNormMeta *meta = new RMSNormMeta(handle, rn, gpu_mem_allocator);
+  std::strcpy(meta->op_name, rn->name);
+  meta->layer_guid = rn->layer_guid;
   return meta;
 }
 
@@ -413,7 +415,7 @@ void RMSNorm::inference_task(Task const *task,
   if (bc->num_tokens == 0) {
     return;
   }
-  RMSNormMeta const *m = *((RMSNormMeta **)task->local_args);
+  RMSNormMeta *m = *((RMSNormMeta **)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
@@ -421,11 +423,18 @@ void RMSNorm::inference_task(Task const *task,
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
       m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   forward_kernel_wrapper(m, input, weight, output);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    RMSNorm::save_inference_tensors_to_file(
+        m, shard_id, bc, {input}, {weight}, {output});
+  }
 }
 
 void RMSNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->eps);
   sez.serialize(this->dim);
 }
@@ -438,12 +447,13 @@ Node RMSNorm::deserialize(FFModel &ff,
                           int num_inputs) {
   assert(num_inputs == 1);
   float eps;
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   int dim;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
 
-  LayerID layer_guid(id, transformer_layer_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(eps);
   dez.deserialize(dim);
   RMSNormParams params;

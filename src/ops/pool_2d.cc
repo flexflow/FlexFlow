@@ -317,7 +317,9 @@ OpMeta *Pool2D::init_task(Task const *task,
   FFHandler handle = *((FFHandler const *)task->local_args);
   Pool2DMeta *m = new Pool2DMeta(handle);
   m->profiling = pool->profiling;
+  m->inference_debugging = pool->inference_debugging;
   std::strcpy(m->op_name, pool->name);
+  m->layer_guid = pool->layer_guid;
   TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, Pool2DOutput::NUMDIM> acc_output(regions[1],

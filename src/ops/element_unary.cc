@@ -360,9 +360,11 @@ OpMeta *ElementUnary::init_task(Task const *task,
   // Input and output should have the same data type
   assert(eu->outputs[0]->data_type == eu->inputs[0]->data_type);
   m->profiling = eu->profiling;
+  m->inference_debugging = eu->inference_debugging;
   m->inplace = eu->inplace;
   m->scalar = eu->scalar;
   std::strcpy(m->op_name, eu->name);
+  m->layer_guid = eu->layer_guid;
   if (m->inplace) {
     assert(regions.size() == 1);
     assert(task->regions.size() == 1);
@@ -525,7 +527,7 @@ void ElementUnary::forward_task_with_type(
     Context ctx,
     Runtime *runtime) {
   // const ElementUnary* ele = (const ElementUnary*) task->args;
-  ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
+  ElementUnaryMeta *m = *((ElementUnaryMeta **)task->local_args);
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   const DT *input_ptr = NULL;
@@ -550,6 +552,27 @@ void ElementUnary::forward_task_with_type(
 
   ElementUnary::forward_kernel_wrapper<DT>(
       m, input_ptr, output_ptr, input_domain.get_volume());
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> input_accessors;
+    std::vector<GenericTensorAccessorW> output_accessors;
+    if (m->inplace) {
+      GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+          m->data_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      output_accessors.push_back(output);
+    } else {
+      GenericTensorAccessorR input = helperGetGenericTensorAccessorWO(
+          m->data_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+          m->data_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+      input_accessors.push_back(input);
+      output_accessors.push_back(output);
+    }
+    ElementUnary::save_inference_tensors_to_file(
+        m, shard_id, nullptr, input_accessors, {}, output_accessors);
+  }
 }
 
 void ElementUnary::backward(FFModel const &ff) {
@@ -699,6 +722,7 @@ void ElementUnary::serialize(Legion::Serializer &sez) const {
   sez.serialize(scalar);
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
 }
 
 bool ElementUnary::measure_operator_cost(Simulator *sim,
@@ -809,10 +833,11 @@ Node ElementUnary::deserialize(FFModel &ff,
   dez.deserialize(op_type);
   dez.deserialize(inplace);
   dez.deserialize(scalar);
-  size_t id, transformer_layer_id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
-  LayerID layer_guid(id, transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
   ElementUnaryParams params;
   params.op_type = op_type;
