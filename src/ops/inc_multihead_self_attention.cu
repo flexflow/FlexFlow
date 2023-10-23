@@ -85,7 +85,8 @@ __global__ void compute_attention_kernel_generation_kernel(
   int const request_idx = blockIdx.y;
 
   int const first_step = 0;
-  int const tlength = request_infos[request_idx].token_start_offset +
+
+  int const tlength = request_infos[request_idx].first_token_depth_in_request +
                       request_infos[request_idx].num_tokens_in_batch;
 
   // shared memory objects
@@ -93,6 +94,8 @@ __global__ void compute_attention_kernel_generation_kernel(
 
   float *qk_smem = reinterpret_cast<float *>(smem_);
   DT *out_smem = reinterpret_cast<DT *>(smem_);
+  // DT* q_smem = reinterpret_cast<DT *>(smem_);
+  // __shared__ DT q_smem[Dh_MAX];
 
   float qk_max = -FLT_MAX;
 
@@ -103,8 +106,12 @@ __global__ void compute_attention_kernel_generation_kernel(
   // if (blockIdx.x == 0 && blockIdx.y == 0 && tidx == 0) {
   //   printf("qk proj2 %d\n", per_head_size);
   // }
-  DT const *q_ptr =
+  // *reinterpret_cast<float4 const *>(out_smem + vo * Dh + vi)
+  const DT *q_ptr =
       query + request_idx * Dh * QKV_WEIGHT_NUM + head_idx * per_head_size;
+  __shared__ float4 q_vecs[THREADS_PER_KEY][K_VECS_PER_THREAD];
+  // DT const *q_ptr =
+  //     query + request_idx * Dh * QKV_WEIGHT_NUM + head_idx * per_head_size;
 
   // q tensor in this thread
   // if THREADS_PER_KEY is 4, first thread load 0, 4, 8, 12..., total
@@ -114,6 +121,7 @@ __global__ void compute_attention_kernel_generation_kernel(
 
   // the start offset of the element eg. (0, 1, 2, 3) * K_VEC_SIZE
   int ki = tidx % THREADS_PER_KEY * K_VEC_SIZE;
+  int ki_o = tidx % THREADS_PER_KEY;
   // the first key's offset for this thread
   // ko = 0, 0, 0, 0, 1, 1, 1, 1, ....
   int ko = tidx / THREADS_PER_KEY;
@@ -121,8 +129,10 @@ __global__ void compute_attention_kernel_generation_kernel(
   float4 q_vec[K_VECS_PER_THREAD];
 #pragma unroll
   for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
-    q_vec[ii] = *reinterpret_cast<float4 const *>(
+    q_vecs[ki_o][ii] = *reinterpret_cast<float4 const *>(
         q_ptr + ki + ii * THREADS_PER_KEY * K_VEC_SIZE);
+    // q_vec[ii] = *reinterpret_cast<float4 const *>(
+    //     q_smem + ki + ii * THREADS_PER_KEY * K_VEC_SIZE);
   }
   __syncthreads();
   // first iter = 128 / 4 = 32
@@ -167,7 +177,7 @@ __global__ void compute_attention_kernel_generation_kernel(
     //          k[0].x,
     //          k[1].x);
     // }
-    float qk = scale * Qk_dot<DT, THREADS_PER_KEY>::dot(q_vec, k);
+    float qk = scale * Qk_dot<DT, THREADS_PER_KEY>::dot(q_vecs[ki_o], k);
     // // todo add positional embedding to the qk production
     // // Store the product to shared memory. There's one qk value per
     // timestep.
@@ -705,12 +715,12 @@ void compute_o_proj_bias(IncMultiHeadSelfAttentionMeta const *m,
   cudaDataType_t compute_type = cublas_data_type;
 #endif
   // Project to output, save result directly on output tensor
+  DT alpha = 1.0f, beta = 0.0f;
   int num_tokens = bc->num_active_tokens();
-  float alpha = 1.0f, beta = 0.0f;
   int m_ = m->oProjSize;
   int k = m->vProjSize * m->num_q_heads;
   int n = num_tokens;
-  int lda = k, ldb = n, ldc = m_;
+  int lda = k, ldb = k, ldc = m_;
   DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
                                          m->kProjSize * m->num_q_heads +
                                          m->vProjSize * m->num_q_heads);
@@ -719,7 +729,7 @@ void compute_o_proj_bias(IncMultiHeadSelfAttentionMeta const *m,
 
   checkCUDA(cublasGemmEx(m->handle.blas,
                          CUBLAS_OP_T,
-                         CUBLAS_OP_T,
+                         CUBLAS_OP_N,
                          m_,
                          n,
                          k,
@@ -736,12 +746,12 @@ void compute_o_proj_bias(IncMultiHeadSelfAttentionMeta const *m,
                          ldc,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
   if (*m->final_bias && shard_id == 0) {
     int parallelism = m->oProjSize * num_tokens;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
                           m->kProjSize * m->global_num_q_heads +
                           m->vProjSize * m->global_num_q_heads;
-
     apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                         min(CUDA_NUM_THREADS, parallelism),
                         0,
@@ -759,7 +769,6 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
 
   // copy metadata
-  int idx = 0;
   compute_attention_kernel_generation_kernel<DT, 64, 64, 64, 4, 16>
       <<<grid, 64, 5000, stream>>>(static_cast<DT *>(m->devQKVProjArray),
                                    static_cast<DT *>(m->keyCache),
@@ -890,9 +899,11 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   //                    1 * 12 * 64 * 1,
   //                    "/home/ubuntu/FlexFlow/inference/vprojbefore.txt");
 
+  std::cout << "num_generation_tokens: " << bc->num_generation_tokens << "\n";
   if (bc->num_generation_tokens > 0) {
     // phase 4: Compute attention score for generation tokens
     // todo, lunch different size of kernel
+    // std::cout<<"use new kernel"<<"\n";
     compute_attention_kernel_generation<DT>(
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
@@ -900,6 +911,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   if (bc->num_tokens > bc->num_generation_tokens) {
     // phase 3: Compute attention score for prompt tokens
     // 3 kernels for pahse 3: matmul1 - softmax - matmal2
+    // std::cout<<"use old kernel"<<"\n";
     compute_attention_kernel_prompt(
         m,
         bc,
@@ -912,12 +924,6 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                 QKV_WEIGHT_NUM,
         stream);
   }
-  // checkCUDA(cudaStreamSynchronize(m->task_local_stream));
-
-  // save_tensor<float>((float *)m->attn_heads,
-  //                    1 * 12 * 64 * 1,
-  //                    "/home/ubuntu/FlexFlow/inference/vproj.txt");
-
   // compute o_proj together
   compute_o_proj_bias(
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, stream);
@@ -1173,50 +1179,6 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     tokens_previous_requests += num_new_tokens;
-  }
-
-  // Project to output, save result directly on output tensor
-  DT alpha = 1.0f, beta = 0.0f;
-  int m_ = m->oProjSize;
-  int k = m->vProjSize * m->num_q_heads;
-  int n = bc->num_active_tokens();
-  int lda = k, ldb = k, ldc = m_;
-  DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
-                                         m->kProjSize * m->num_q_heads +
-                                         m->vProjSize * m->num_q_heads);
-  DT const *B = static_cast<DT *>(m->attn_heads);
-  DT *C = static_cast<DT *>(output_ptr);
-
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_N,
-                         m_,
-                         n,
-                         k,
-                         &alpha,
-                         A,
-                         cublas_data_type,
-                         lda,
-                         B,
-                         cublas_data_type,
-                         ldb,
-                         &beta,
-                         C,
-                         cublas_data_type,
-                         ldc,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-
-  if (*m->final_bias && shard_id == 0) {
-    int parallelism = m->oProjSize * num_tokens;
-    int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
-                          m->kProjSize * m->global_num_q_heads +
-                          m->vProjSize * m->global_num_q_heads;
-    apply_proj_bias_w<<<GET_BLOCKS(parallelism),
-                        min(CUDA_NUM_THREADS, parallelism),
-                        0,
-                        stream>>>(
-        output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
   }
   assert(tokens_previous_requests == num_tokens);
 }

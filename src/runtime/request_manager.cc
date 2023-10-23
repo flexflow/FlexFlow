@@ -357,6 +357,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       // log_req_mgr.print("Output: %s", output.c_str());
     }
   }
+  int num_generation_tokens = 0;
 
   // Step 2: prepare the next batch for existing requests
   BatchConfig new_bc;
@@ -497,7 +498,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       }
     }
   }
-
+  new_bc.num_generation_tokens = num_generation_tokens;
   return new_bc;
 }
 
