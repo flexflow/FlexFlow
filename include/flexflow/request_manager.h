@@ -70,6 +70,11 @@ struct Request {
   std::vector<struct BeamTree> beam_trees;
 };
 
+struct PEFTRequest : public Request {
+  std::vector < std::pair < std::vector<BatchConfig::TokenId>,
+      std::vector<BatchConfig::TokenId> dataset;
+};
+
 // store the result of beam search
 struct BeamTree {
   struct treeLayer {
@@ -227,7 +232,8 @@ private:
   int bos_token_id;
   int eos_token_id;
   std::string output_filepath;
-  std::queue<Request> pending_request_queue;
+  std::queue<Request> pending_infr_request_queue;
+  std::queue<Request> pending_peft_request_queue;
   std::unordered_map<RequestGuid, Request> all_requests;
   std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;

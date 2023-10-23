@@ -212,7 +212,7 @@ RequestManager::RequestGuid
     }
   }
 
-  pending_request_queue.push(request);
+  pending_infr_request_queue.push(request);
   all_requests[request.guid] = request;
 
   if (verbose) {
@@ -274,7 +274,71 @@ RequestManager::RequestGuid
     }
   }
 
-  pending_request_queue.push(request);
+  pending_infr_request_queue.push(request);
+  all_requests[request.guid] = request;
+  {
+    std::string output = "New request tokens:";
+    output = "[" + std::to_string(request.guid) + "]" + output;
+    for (int i = 0; i < request.tokens.size(); i++) {
+      output = output + " " + std::to_string(request.tokens[i]);
+    }
+    log_req_mgr.print("%s", output.c_str());
+  }
+
+  GenerationResult gr;
+  gr.guid = request.guid;
+  gr.input_text = prompt;
+  gr.input_tokens = request.tokens;
+  gr.output_text = prompt;
+  gr.output_tokens = request.tokens;
+  request_generation_results[request.guid] = gr;
+  return request.guid;
+}
+
+RequestManager::RequestGuid RequestManager::register_new_peft_request(
+    std::vector<std::pair<std::string, std::string>> const &dataset,
+    int max_sequence_length,
+    PEFTModelID peft_model_id) {
+  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  // Add a new request
+  PEFTRequest request;
+  request.status = Request::PENDING;
+  request.guid = next_available_guid++;
+  request.max_sequence_length = max_sequence_length;
+  request.peft_model_id = peft_model_id;
+  for (auto const &sample : dataset) {
+    std::vector<int32_t> input_tokens;
+    if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
+      input_tokens.push_back(bos_token_id);
+    }
+    input_tokens.push_back(this->tokenizer_->Encode(sample.first));
+    std::vector<int32_t> output_tokens =
+        this->tokenizer_->Encode(sample.second);
+    if (input_tokens.size() + output_tokens.size() >
+        get_max_sequence_length()) {
+      std::cout << "Warning: too many tokens in sample, only load up to "
+                << get_max_sequence_length() << " tokens, but got "
+                << tokens.size() << ".\n";
+    } else {
+      request.dataset.push_back(std::make_pair(input_tokens, output_tokens);
+    }
+  }
+
+  // Currently don't support speculative inference for PEFT
+  assert(get_num_ssms() == 0);
+  if (get_num_ssms() == 0) {
+    std::cout << "No small speculative model registered, using incremental "
+                 "decoding."
+              << std::endl;
+  } else {
+    std::cout << "Num of models: " << get_num_ssms() << std::endl;
+    for (int i = 0; i < get_num_ssms(); i++) {
+      BeamTree beam_tree = BeamTree{};
+      request.beam_trees.push_back(beam_tree);
+    }
+  }
+
+  pending_infr_request_queue.push(request);
   all_requests[request.guid] = request;
   {
     std::string output = "New request tokens:";
@@ -368,10 +432,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   BatchConfig new_bc;
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (old_bc.request_completed[i]) { // add new requests to the next batch
-      if (!pending_request_queue.empty() &&
+      if (!pending_infr_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
-        Request new_request = pending_request_queue.front();
-        pending_request_queue.pop();
+        Request new_request = pending_infr_request_queue.front();
+        pending_infr_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
         new_bc.requestsInfo[i].first_token_depth_in_request = 0;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
@@ -785,10 +849,10 @@ BeamSearchBatchConfig
   // Step 2: Initialize new request
   for (int i = 0; i < BeamSearchBatchConfig::max_requests_per_batch(); i++) {
     if (new_bc.request_completed[i]) {
-      if (!pending_request_queue.empty() &&
+      if (!pending_infr_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
-        Request new_request = pending_request_queue.front();
-        pending_request_queue.pop();
+        Request new_request = pending_infr_request_queue.front();
+        pending_infr_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
         new_bc.requestsInfo[i].first_token_depth_in_request = 0;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
