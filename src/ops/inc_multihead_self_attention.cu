@@ -107,8 +107,8 @@ __global__ void compute_attention_kernel_generation_kernel(
   //   printf("qk proj2 %d\n", per_head_size);
   // }
   // *reinterpret_cast<float4 const *>(out_smem + vo * Dh + vi)
-  const DT *q_ptr =
-      query + request_idx * Dh * QKV_WEIGHT_NUM + head_idx * per_head_size;
+  const DT *q_ptr = query + request_idx * hidden_size * QKV_WEIGHT_NUM +
+                    head_idx * per_head_size;
   __shared__ float4 q_vecs[THREADS_PER_KEY][K_VECS_PER_THREAD];
   // DT const *q_ptr =
   //     query + request_idx * Dh * QKV_WEIGHT_NUM + head_idx * per_head_size;
@@ -143,7 +143,8 @@ __global__ void compute_attention_kernel_generation_kernel(
   //   // The number of keys per warp.
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
-  DT const *k_cache_batch = key_cache + request_idx * max_seq_length * Dh + ki;
+  DT const *k_cache_batch =
+      key_cache + request_idx * max_seq_length * hidden_size + ki;
 
   int ti_end =
       div_up(tlength - first_step, K_PER_WARP) * K_PER_WARP + first_step;
@@ -295,7 +296,7 @@ __global__ void compute_attention_kernel_generation_kernel(
 
   // The base pointer for the value in the cache buffer.
   DT const *v_cache_batch =
-      value_cache + request_idx * max_seq_length * Dh + vi;
+      value_cache + request_idx * max_seq_length * hidden_size + vi;
 
   if (Dh == Dh_MAX || vi < Dh) {
     for (int ti = first_step + vo; ti < tlength; ti += V_PER_ITER) {
@@ -375,7 +376,7 @@ __global__ void compute_attention_kernel_generation_kernel(
     // if (request_idx * Dh + head_idx * per_head_size + vi == 64) {
     //   printf("???%d, %d, %f", head_idx, vi, out.x);
     // }
-    *reinterpret_cast<float4 *>(output_ptr + request_idx * Dh +
+    *reinterpret_cast<float4 *>(output_ptr + request_idx * hidden_size +
                                 head_idx * per_head_size + vi) = out;
   }
 }

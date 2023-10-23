@@ -477,6 +477,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             request.tokens.size()) {
           // Incremental phase
           new_bc.requestsInfo[i].num_tokens_in_batch = 1;
+          num_generation_tokens++;
         } else {
           // Prompt phase
           new_bc.requestsInfo[i].num_tokens_in_batch =
