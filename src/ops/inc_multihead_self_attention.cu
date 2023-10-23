@@ -893,13 +893,12 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
 
-  cudaMemsetAsync((float *)m->attn_heads, 0.0f, 12 * 64 * 4, stream);
-  checkCUDA(cudaStreamSynchronize(stream));
+  // cudaMemsetAsync((float *)m->attn_heads, 0.0f, 12 * 64 * 4, stream);
+  // checkCUDA(cudaStreamSynchronize(stream));
   // save_tensor<float>((float *)m->attn_heads,
   //                    1 * 12 * 64 * 1,
   //                    "/home/ubuntu/FlexFlow/inference/vprojbefore.txt");
 
-  std::cout << "num_generation_tokens: " << bc->num_generation_tokens << "\n";
   if (bc->num_generation_tokens > 0) {
     // phase 4: Compute attention score for generation tokens
     // todo, lunch different size of kernel
