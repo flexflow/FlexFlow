@@ -994,19 +994,20 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         RMSNormMeta const *m = (RMSNormMeta *)metas->meta[op];
         Kernels::RMSNorm::peft_bwd_kernel_wrapper(m,
+                                                  bc,
                                                   my_output_grad_accessor[0],
                                                   my_input_grad_accessor[0],
                                                   my_weight_accessor[0]);
         break;
       }
       case OP_RESIDUAL_RMS_NORM: {
-        // TODO: implement me
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 2);
         ResidualRMSNormMeta const *m = (ResidualRMSNormMeta *)metas->meta[op];
         Kernels::ResidualRMSNorm::peft_bwd_kernel_wrapper(
             m,
+            bc,
             my_output_grad_accessor[0],
             my_input_grad_accessor[0],
             my_input_grad_accessor[1],

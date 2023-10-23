@@ -529,6 +529,7 @@ Legion::FutureMap
                          false /*must*/,
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
+  launcher.add_future(bc);
   // regions[0](I): output_grad
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
@@ -566,13 +567,14 @@ void RMSNorm::peft_bwd_task(Task const *task,
   assert(task->regions.size() == 3);
   assert(regions.size() == 3);
   RMSNormMeta const *m = *((RMSNormMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
       m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
       m->input_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
       m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  peft_bwd_kernel_wrapper(m, output_grad, input_grad, weight);
+  peft_bwd_kernel_wrapper(m, bc, output_grad, input_grad, weight);
 }
 
 void RMSNorm::serialize(Legion::Serializer &sez) const {

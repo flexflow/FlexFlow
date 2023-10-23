@@ -62,6 +62,7 @@ void backward_kernel_wrapper(RMSNormMeta const *m,
                              GenericTensorAccessorR const &weight,
                              GenericTensorAccessorW const &weight_grad);
 void peft_bwd_kernel_wrapper(RMSNormMeta const *m,
+                             BatchConfig const *bc,
                              GenericTensorAccessorR const &output_grad,
                              GenericTensorAccessorW const &input_grad,
                              GenericTensorAccessorR const &weight);

@@ -453,31 +453,47 @@ void backward_kernel_wrapper(RMSNormMeta const *m,
 
 template <typename T>
 void peft_bwd_kernel(RMSNormMeta const *m,
+                     BatchConfig const *bc,
                      T const *output_grad_ptr,
                      T *input_grad_ptr,
                      T const *weight_ptr,
                      cudaStream_t stream) {
-  const int64_t M = m->batch_size;
-  const int64_t N = m->num_elements;
-  ComputeInternalGradientsCUDAKernel<T>
-      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
-          N,
-          output_grad_ptr,
-          static_cast<T *>(m->input_activation),
-          weight_ptr,
-          static_cast<T *>(m->rms_ptr),
-          static_cast<T *>(m->c2_ptr));
-  RMSNormBackwardCUDAKernel<T>
-      <<<M, kCUDANumThreads, 0, stream>>>(N,
-                                          output_grad_ptr,
-                                          static_cast<T *>(m->input_activation),
-                                          weight_ptr,
-                                          static_cast<T *>(m->rms_ptr),
-                                          static_cast<T *>(m->c2_ptr),
-                                          input_grad_ptr);
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    // Skip non-PEFT requests
+    if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+      continue;
+    }
+    // Skip PEFT forward-only requests
+    if (!bc->requestsInfo[i].peft_bwd) {
+      continue;
+    }
+
+    const int64_t M = bc->requestsInfo[i].num_tokens_in_batch;
+    const int64_t N = m->num_elements;
+    ComputeInternalGradientsCUDAKernel<T>
+        <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+            N,
+            output_grad_ptr,
+            static_cast<T *>(m->input_activation),
+            weight_ptr,
+            static_cast<T *>(m->rms_ptr),
+            static_cast<T *>(m->c2_ptr));
+    RMSNormBackwardCUDAKernel<T><<<M, kCUDANumThreads, 0, stream>>>(
+        N,
+        output_grad_ptr,
+        static_cast<T *>(m->input_activation),
+        weight_ptr,
+        static_cast<T *>(m->rms_ptr),
+        static_cast<T *>(m->c2_ptr),
+        input_grad_ptr);
+  }
 }
 
 void peft_bwd_kernel_wrapper(RMSNormMeta const *m,
+                             BatchConfig const *bc,
                              GenericTensorAccessorR const &output_grad,
                              GenericTensorAccessorW const &input_grad,
                              GenericTensorAccessorR const &weight) {
@@ -494,12 +510,14 @@ void peft_bwd_kernel_wrapper(RMSNormMeta const *m,
 
   if (output_grad.data_type == DT_HALF) {
     peft_bwd_kernel(m,
+                    bc,
                     output_grad.get_half_ptr(),
                     input_grad.get_half_ptr(),
                     weight.get_half_ptr(),
                     stream);
   } else if (output_grad.data_type == DT_FLOAT) {
     peft_bwd_kernel(m,
+                    bc,
                     output_grad.get_float_ptr(),
                     input_grad.get_float_ptr(),
                     weight.get_float_ptr(),

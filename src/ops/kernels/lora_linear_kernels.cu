@@ -166,18 +166,16 @@ void inference_kernel(LoraLinearMeta *m,
   }
   // Assert that we have at most one request that requires peft_bwd
   assert(num_peft_requests <= 1);
-  int tokens_previous_requests = 0;
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
     }
     // Skip non-PEFT requests
     if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
-      // FIXME: use the new approach to computing token offset
-      tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
       continue;
     }
     int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
     assert(m->model_weights.find(bc->requestsInfo[i].peft_model_id) !=
            m->model_weights.end());
     LoraLinearWeight weight =
@@ -192,7 +190,7 @@ void inference_kernel(LoraLinearMeta *m,
           data_type_size(m->input_type[1]) * num_peft_tokens * rank);
       // copy input activation
       checkCUDA(cudaMemcpyAsync(m->input_activation,
-                                input_ptr + tokens_previous_requests * in_dim,
+                                input_ptr + first_token_offset * in_dim,
                                 data_type_size(m->input_type[0]) *
                                     num_peft_tokens * in_dim,
                                 cudaMemcpyDeviceToDevice,
@@ -215,7 +213,7 @@ void inference_kernel(LoraLinearMeta *m,
                            weight.w0_ptr,
                            weight_type,
                            in_dim,
-                           input_ptr + tokens_previous_requests * in_dim,
+                           input_ptr + first_token_offset * in_dim,
                            input_type,
                            in_dim,
                            &beta,
@@ -241,14 +239,12 @@ void inference_kernel(LoraLinearMeta *m,
                            lr_actv_type,
                            rank,
                            &alpha,
-                           output_ptr + tokens_previous_requests * out_dim,
+                           output_ptr + first_token_offset * out_dim,
                            output_type,
                            out_dim,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    tokens_previous_requests += num_peft_tokens;
   }
-  assert(tokens_previous_requests == bc->num_active_tokens());
 }
 
 template <typename DT>
@@ -274,22 +270,20 @@ void peft_bwd_kernel(LoraLinearMeta *m,
   cudaDataType_t compute_type = CUDA_R_32F;
 #endif
 
-  int tokens_previous_requests = 0;
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
     }
     // Skip non-PEFT requests
     if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
-      tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
       continue;
     }
     // Skip PEFT forward-only requests
     if (!bc->requestsInfo[i].peft_bwd) {
-      tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
       continue;
     }
     int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
     assert(m->model_weights.find(bc->requestsInfo[i].peft_model_id) !=
            m->model_weights.end());
     LoraLinearWeight weight =
@@ -307,7 +301,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                            m->low_rank_activation,
                            lr_actv_type,
                            rank,
-                           output_grad_ptr + tokens_previous_requests * out_dim,
+                           output_grad_ptr + first_token_offset * out_dim,
                            output_type,
                            out_dim,
                            &alpha,
@@ -329,7 +323,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                            weight.w1_ptr,
                            weight_type,
                            rank,
-                           output_grad_ptr + tokens_previous_requests * out_dim,
+                           output_grad_ptr + first_token_offset * out_dim,
                            output_type,
                            out_dim,
                            &alpha,
@@ -376,15 +370,13 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                              lr_actv_type,
                              rank,
                              &alpha,
-                             input_grad_ptr + tokens_previous_requests * in_dim,
+                             input_grad_ptr + first_token_offset * in_dim,
                              input_type,
                              in_dim,
                              compute_type,
                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     }
-    tokens_previous_requests += num_peft_tokens;
   }
-  assert(tokens_previous_requests == bc->num_active_tokens());
 }
 
 } // namespace Internal
