@@ -102,8 +102,8 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
   axes[2] = CUDNN_SEQDATA_BEAM_DIM;
   axes[1] = CUDNN_SEQDATA_TIME_DIM;
   axes[0] = CUDNN_SEQDATA_BATCH_DIM;
-  std::unique_ptr<int[]> qoSeqArray (new int[num_samples]);
-  std::unique_ptr<int[]> kvSeqArray (new int[num_samples]);
+  std::unique_ptr<int[]> qoSeqArray(new int[num_samples]);
+  std::unique_ptr<int[]> kvSeqArray(new int[num_samples]);
   for (int i = 0; i < num_samples; i++) {
     qoSeqArray[i] = qoSeqLength;
     kvSeqArray[i] = kvSeqLength;
