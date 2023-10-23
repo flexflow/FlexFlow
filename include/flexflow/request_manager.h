@@ -49,7 +49,7 @@ public:
   int num_devices;
 };
 
-struct Request {
+struct RequestBase {
   enum Status {
     PENDING = 101,   // loading prompt
     RUNNING = 102,   // running inference
@@ -67,6 +67,8 @@ struct Request {
 
   std::vector<struct BeamTree> beam_trees;
 };
+
+typedef RequestBase *Request;
 
 // store the result of beam search
 struct BeamTree {
