@@ -12,6 +12,7 @@ image=${1:-flexflow}
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
 cuda_version=${cuda_version:-"empty"}
 hip_version=${hip_version:-"empty"}
+python_version=${python_version:-latest}
 
 # Check docker image name
 if [[ "$image" != @(flexflow-environment|flexflow) ]]; then
@@ -96,7 +97,13 @@ fi
 cores_available=$(nproc --all)
 n_build_cores=$(( cores_available -1 ))
 
-docker build --build-arg "ff_environment_base_image=${ff_environment_base_image}" --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "hip_version=${hip_version}" -t "flexflow-environment-${FF_GPU_BACKEND}${gpu_backend_version}" -f docker/flexflow-environment/Dockerfile .
+# check python_version
+if [[ "$python_version" != @(3.8|3.9|3.10|3.11|latest) ]]; then
+  echo "python_version not supported!"
+  exit 0
+fi
+
+docker build --build-arg "ff_environment_base_image=${ff_environment_base_image}" --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "hip_version=${hip_version}" --build-arg "python_version=${python_version}" -t "flexflow-environment-${FF_GPU_BACKEND}${gpu_backend_version}" -f docker/flexflow-environment/Dockerfile .
 
 # If the user only wants to build the environment image, we are done
 if [[ "$image" == "flexflow-environment" ]]; then
