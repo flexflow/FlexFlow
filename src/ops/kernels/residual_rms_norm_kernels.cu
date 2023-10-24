@@ -274,18 +274,16 @@ void inference_kernel_wrapper(ResidualRMSNormMeta *m,
     }
     assert(num_peft_requests <= 1);
 
-    int tokens_previous_requests = 0;
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {
       if (bc->request_completed[i]) {
         continue;
       }
       // Skip non-PEFT requests
       if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
-        // FIXME: use the new approach to computing token offset
-        tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
         continue;
       }
       int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+      int first_token_offset = bc->requestsInfo[i].num_tokens_in_batch;
       int in_dim = input1.domain.hi()[0] - input1.domain.lo()[0] + 1;
       if (bc->requestsInfo[i].peft_bwd) {
         MemoryAllocator *allocator = m->handle.peft_activation_allocator;
@@ -293,21 +291,19 @@ void inference_kernel_wrapper(ResidualRMSNormMeta *m,
             data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
         // copy input activation
         if (m->input_type[0] == DT_FLOAT) {
-          checkCUDA(cudaMemcpyAsync(m->input_activation,
-                                    residual_output.get_float_ptr() +
-                                        tokens_previous_requests * in_dim,
-                                    data_type_size(m->input_type[0]) *
-                                        num_peft_tokens * in_dim,
-                                    cudaMemcpyDeviceToDevice,
-                                    stream));
+          checkCUDA(cudaMemcpyAsync(
+              m->input_activation,
+              residual_output.get_float_ptr() + first_token_offset * in_dim,
+              data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
+              cudaMemcpyDeviceToDevice,
+              stream));
         } else if (m->input_type[0] == DT_HALF) {
-          checkCUDA(cudaMemcpyAsync(m->input_activation,
-                                    residual_output.get_half_ptr() +
-                                        tokens_previous_requests * in_dim,
-                                    data_type_size(m->input_type[0]) *
-                                        num_peft_tokens * in_dim,
-                                    cudaMemcpyDeviceToDevice,
-                                    stream));
+          checkCUDA(cudaMemcpyAsync(
+              m->input_activation,
+              residual_output.get_half_ptr() + first_token_offset * in_dim,
+              data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
+              cudaMemcpyDeviceToDevice,
+              stream));
         } else {
           assert(false && "unsupport datatype in layernorm");
         }
@@ -437,33 +433,48 @@ void backward_kernel(ResidualRMSNormMeta const *m,
 
 template <typename T>
 void peft_bwd_kernel(ResidualRMSNormMeta const *m,
+                     BatchConfig const *bc,
                      T const *output_grad_ptr,
                      T *residual_input0_grad_ptr,
                      T *residual_input1_grad_ptr,
                      T const *weight_ptr,
                      cudaStream_t stream) {
-  const int64_t M = m->batch_size;
-  const int64_t N = m->num_elements;
-  T const *residual_output_rms_input_ptr =
-      static_cast<T *>(m->input_activation);
-  ComputeInternalGradientsCUDAKernel<T>
-      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
-          N,
-          output_grad_ptr,
-          residual_output_rms_input_ptr,
-          weight_ptr,
-          static_cast<T *>(m->rms_ptr),
-          static_cast<T *>(m->norm_ptr));
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    // Skip non-PEFT requests
+    if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+      continue;
+    }
+    // Skip PEFT forward-only requests
+    if (!bc->requestsInfo[i].peft_bwd) {
+      continue;
+    }
 
-  RMSNormBackwardCUDAKernel<T>
-      <<<M, kCUDANumThreads, 0, stream>>>(N,
-                                          output_grad_ptr,
-                                          residual_output_rms_input_ptr,
-                                          weight_ptr,
-                                          static_cast<T *>(m->rms_ptr),
-                                          static_cast<T *>(m->norm_ptr),
-                                          residual_input0_grad_ptr,
-                                          residual_input1_grad_ptr);
+    const int64_t M = bc->requestsInfo[i].num_tokens_in_batch;
+    const int64_t N = m->num_elements;
+    T const *residual_output_rms_input_ptr =
+        static_cast<T *>(m->input_activation);
+    ComputeInternalGradientsCUDAKernel<T>
+        <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+            N,
+            output_grad_ptr,
+            residual_output_rms_input_ptr,
+            weight_ptr,
+            static_cast<T *>(m->rms_ptr),
+            static_cast<T *>(m->norm_ptr));
+
+    RMSNormBackwardCUDAKernel<T>
+        <<<M, kCUDANumThreads, 0, stream>>>(N,
+                                            output_grad_ptr,
+                                            residual_output_rms_input_ptr,
+                                            weight_ptr,
+                                            static_cast<T *>(m->rms_ptr),
+                                            static_cast<T *>(m->norm_ptr),
+                                            residual_input0_grad_ptr,
+                                            residual_input1_grad_ptr);
+  }
 }
 
 /*
@@ -536,6 +547,7 @@ void backward_kernel_wrapper(
   regions[3](I): weight
 */
 void peft_bwd_kernel_wrapper(ResidualRMSNormMeta const *m,
+                             BatchConfig const *bc,
                              GenericTensorAccessorR const &output_grad,
                              GenericTensorAccessorW const &residual_input0_grad,
                              GenericTensorAccessorW const &residual_input1_grad,
@@ -554,6 +566,7 @@ void peft_bwd_kernel_wrapper(ResidualRMSNormMeta const *m,
 
   if (output_grad.data_type == DT_HALF) {
     peft_bwd_kernel(m,
+                    bc,
                     output_grad.get_half_ptr(),
                     residual_input0_grad.get_half_ptr(),
                     residual_input1_grad.get_half_ptr(),
@@ -561,6 +574,7 @@ void peft_bwd_kernel_wrapper(ResidualRMSNormMeta const *m,
                     stream);
   } else if (output_grad.data_type == DT_FLOAT) {
     peft_bwd_kernel(m,
+                    bc,
                     output_grad.get_float_ptr(),
                     residual_input0_grad.get_float_ptr(),
                     residual_input1_grad.get_float_ptr(),

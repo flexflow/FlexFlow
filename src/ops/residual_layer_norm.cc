@@ -706,6 +706,7 @@ Legion::FutureMap ResidualLayerNorm::peft_bwd(
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   int field_id = 0;
   // output_grad
   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,

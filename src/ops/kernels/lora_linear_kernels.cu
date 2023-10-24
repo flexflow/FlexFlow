@@ -281,6 +281,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
       continue;
     }
     int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
     assert(m->model_weights.find(bc->requestsInfo[i].peft_model_id) !=
            m->model_weights.end());
     LoraLinearWeight weight =
