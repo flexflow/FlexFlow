@@ -65,6 +65,17 @@ struct Vec_fp32_<half4> {
   using Type = float4;
 };
 
+template <typename DT>
+struct VEC_V {};
+template <>
+struct VEC_V<float> {
+  using Type = float4;
+};
+template <>
+struct VEC_V<half> {
+  using Type = half4;
+};
+
 ////////////////data structures half///////////////
 
 ////////////////////////////////////floating point
