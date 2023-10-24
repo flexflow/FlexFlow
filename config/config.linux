@@ -10,7 +10,7 @@
 #LD_FLAGS=${LD_FLAGS+=""}
 
 #set install dir
-#INSTALL_DIR=
+INSTALL_DIR=${INSTALL_DIR:-}
 
 # set build type
 BUILD_TYPE=${BUILD_TYPE:-Release}
