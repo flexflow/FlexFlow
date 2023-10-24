@@ -11,7 +11,7 @@ function generate_torch_tensor(){
     python tests/align/align_create_tensor_torch.py -o "$1"
 }
 
-ops=(add concat conv2d cos embedding exp flat getitem identity multiply pool2d reducesum relu reshape scalar_add scalar_multiply scalar_sub scalar_truediv sigmoid sin subtract tanh transpose view_embedding max min linear gather)
+ops=(add concat conv2d cos embedding exp flat getitem identity multiply pool2d reducesum relu reshape scalar_add scalar_multiply scalar_sub scalar_truediv sigmoid sin subtract tanh transpose view_embedding max min linear layernorm gather)
 
 #create flexflow tensors
 conda activate flexflow
