@@ -406,7 +406,7 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
-void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
+void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                       BatchConfig const *bc,
                       int shard_id,
                       DT const *input_ptr,
@@ -461,11 +461,11 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if CUDA_VERSION >= 11000
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  cudaDataType_t compute_type = cublas_data_type;
+#else
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-#else
-  cudaDataType_t compute_type = cublas_data_type;
 #endif
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
@@ -492,7 +492,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       int n_ = num_tokens;
       int k_ = m->oProjSize;
       int lda = k_;
-      int ldb = n_;
+      int ldb = k_;
       int ldc = m_;
       float alpha = 1.0f, beta = 0.0f;
       // matrix A: output projection weight
@@ -634,18 +634,18 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                             c_param,
                                             h_param,
                                             w_param));
-      checkCUDNN(cudnnSoftmaxBackward(m->handle.dnn,
-                                      CUDNN_SOFTMAX_ACCURATE,
-                                      CUDNN_SOFTMAX_MODE_CHANNEL,
-                                      &alpha,
-                                      m->qk_tensor,
-                                      m->softmax_activation_buffer,
-                                      m->qk_tensor,
-                                      m->qk_prods_softmax,
-                                      &beta,
-                                      m->qk_tensor,
-                                      m->qk_prods));
-      // TODO: fill all elements above diagonal to force causal attention
+      // checkCUDNN(cudnnSoftmaxBackward(m->handle.dnn,
+      //                                 CUDNN_SOFTMAX_ACCURATE,
+      //                                 CUDNN_SOFTMAX_MODE_CHANNEL,
+      //                                 &alpha,
+      //                                 m->qk_tensor,
+      //                                 m->softmax_activation_buffer,
+      //                                 m->qk_tensor,
+      //                                 m->qk_prods_softmax,
+      //                                 &beta,
+      //                                 m->qk_tensor,
+      //                                 m->qk_prods));
+      //  TODO: fill all elements above diagonal to force causal attention
     }
     // Step 5: compute gradients w.r.t. key
     {
@@ -826,6 +826,24 @@ __global__ void store_kv_cache(DT const *devQKVProjArray,
 }
 
 template <typename DT>
+__global__ void store_query_cache(DT const *devQKVProjArray,
+                                  DT *qCache_ptr,
+                                  int num_tokens,
+                                  int hidden_size) {
+  CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
+    int token_idx = i / hidden_size;
+    int offset = i % hidden_size;
+
+    size_t val_idx = token_idx * QKV_WEIGHT_NUM * hidden_size + offset;
+
+    DT qVal = devQKVProjArray[val_idx];
+
+    // query cache
+    qCache_ptr[i] = qVal;
+  }
+}
+
+template <typename DT>
 __global__ void fill_entries_above_diagonal(DT *matrix,
                                             size_t num_rows,
                                             size_t num_cols,
@@ -843,7 +861,7 @@ __global__ void fill_entries_above_diagonal(DT *matrix,
 }
 
 template <typename DT>
-void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
+void compute_attention_kernel(IncMultiHeadSelfAttentionMeta *m,
                               BatchConfig const *bc,
                               int shard_id,
                               DT *output_ptr,
@@ -882,6 +900,23 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
     int total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
                        bc->requestsInfo[i].num_tokens_in_batch;
+    // Copy query to m->query_activation_buffer if we need to compute
+    // PEFT backward
+    if (bc->requestsInfo[i].peft_bwd) {
+      MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+      m->query_activation_buffer = allocator->allocate_instance_untyped(
+          sizeof(DT) * total_tokens * m->num_q_heads * m->qProjSize);
+      int parallelism = m->hidden_size * num_tokens;
+      store_query_cache<<<GET_BLOCKS(parallelism),
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(
+          static_cast<DT *>(m->devQKVProjArray),
+          static_cast<DT *>(m->query_activation_buffer),
+          num_tokens,
+          m->hidden_size);
+    }
+
     // bc->token_last_available_idx[i] + 1;
     // Compute (QK^T/sqrt(d_k))
     // a flag of using this scaling alpha
@@ -995,6 +1030,20 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                    &softmax_beta,
                                    m->qk_tensor,
                                    C_softmax));
+    // Copy C_softmax to m->softmax_activation_buffer if we need to compute
+    // PEFT backward
+    if (bc->requestsInfo[i].peft_bwd) {
+      MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+      m->softmax_activation_buffer = allocator->allocate_instance_untyped(
+          sizeof(DT) * total_tokens * num_new_tokens * m->num_q_heads);
+      checkCUDA(cudaMemcpyAsync(m->softmax_activation_buffer,
+                                C_softmax,
+                                sizeof(DT) * total_tokens * num_new_tokens *
+                                    m->num_q_heads,
+                                cudaMemcpyDeviceToDevice,
+                                stream));
+    }
+
     // Matmul softmax(QK^T/sqrt(d_k)) by V
     alpha = 1.0f, beta = 0.0f;
     m_ = m->vProjSize;
@@ -1090,7 +1139,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
 /*static*/
 void IncMultiHeadSelfAttention::inference_kernel_wrapper(
-    IncMultiHeadSelfAttentionMeta const *m,
+    IncMultiHeadSelfAttentionMeta *m,
     BatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
@@ -1193,7 +1242,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
 /*static*/
 void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
-    IncMultiHeadSelfAttentionMeta const *m,
+    IncMultiHeadSelfAttentionMeta *m,
     BatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorW const &input_grad,

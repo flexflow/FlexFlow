@@ -357,10 +357,10 @@ RequestManager::RequestGuid RequestManager::register_new_peft_request(
 
   GenerationResult gr;
   gr.guid = request.guid;
-  //gr.input_text = prompt;
-  //gr.input_tokens = request.tokens;
-  //gr.output_text = prompt;
-  //gr.output_tokens = request.tokens;
+  // gr.input_text = prompt;
+  // gr.input_tokens = request.tokens;
+  // gr.output_text = prompt;
+  // gr.output_tokens = request.tokens;
   request_generation_results[request.guid] = gr;
   return request.guid;
 }
@@ -579,32 +579,37 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   if (pending_peft_request_queue.size() > 0) {
     Request &request = pending_peft_request_queue.front();
     assert(request.dataset.size() > 0);
-    int num_peft_tokens = request.dataset[0].first.size()
-                        + request.dataset[0].second.size();
-    if (num_peft_tokens + new_bc.num_active_tokens() <= get_max_tokens_per_batch()) {
+    int num_peft_tokens =
+        request.dataset[0].first.size() + request.dataset[0].second.size();
+    if (num_peft_tokens + new_bc.num_active_tokens() <=
+        get_max_tokens_per_batch()) {
       // The last request slot is reserved for PEFT request
       int peft_req_idx = get_max_requests_per_batch() - 1;
       assert(new_bc.request_completed[peft_req_idx]);
       new_bc.request_completed[peft_req_idx] = false;
       new_bc.requestsInfo[peft_req_idx].first_token_depth_in_request = 0;
-      new_bc.requestsInfo[peft_req_idx].first_token_offset_in_batch = new_bc.num_tokens;
+      new_bc.requestsInfo[peft_req_idx].first_token_offset_in_batch =
+          new_bc.num_tokens;
       new_bc.requestsInfo[peft_req_idx].num_tokens_in_batch = num_peft_tokens;
-      new_bc.requestsInfo[peft_req_idx].max_sequence_length = request.max_sequence_length;
+      new_bc.requestsInfo[peft_req_idx].max_sequence_length =
+          request.max_sequence_length;
       new_bc.requestsInfo[peft_req_idx].request_guid = request.guid;
       new_bc.requestsInfo[peft_req_idx].peft_model_id = request.peft_model_id;
       new_bc.requestsInfo[peft_req_idx].peft_bwd = true;
       for (size_t i = 0; i < request.dataset[0].first.size(); i++) {
-        new_bc.tokensInfo[new_bc.num_tokens].token_id = request.dataset[0].first[i];
+        new_bc.tokensInfo[new_bc.num_tokens].token_id =
+            request.dataset[0].first[i];
         new_bc.tokensInfo[new_bc.num_tokens].request_index = num_peft_tokens;
         new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = i;
-        new_bc.num_tokens ++;
+        new_bc.num_tokens++;
       }
       for (size_t i = 0; i < request.dataset[0].second.size(); i++) {
-        new_bc.tokensInfo[new_bc.num_tokens].token_id = request.dataset[0].second[i];
+        new_bc.tokensInfo[new_bc.num_tokens].token_id =
+            request.dataset[0].second[i];
         new_bc.tokensInfo[new_bc.num_tokens].request_index = num_peft_tokens;
         int depth = request.dataset[0].first.size() + i;
         new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
-        new_bc.num_tokens ++;
+        new_bc.num_tokens++;
       }
     }
   }
@@ -2041,11 +2046,11 @@ PEFTModelID FFModel::register_peft_model(LoraLinearConfig const mlp_first,
 }
 
 /*static*/
-GenerationResult
-    RequestManager::generate_incr_decoding(FFModel *llm,
-                                           std::vector<std::string> const &prompts,
-                                           int max_seq_length,
-                                           PEFTModelID peft_model_id) {
+GenerationResult RequestManager::generate_incr_decoding(
+    FFModel *llm,
+    std::vector<std::string> const &prompts,
+    int max_seq_length,
+    PEFTModelID peft_model_id) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid;
   for (int i = 0; i < prompts.size(); i++) {

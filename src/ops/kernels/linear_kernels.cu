@@ -455,11 +455,11 @@ void peft_bwd_kernel(LinearMeta const *m,
   input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_tokens * in_dim;
   output_grad_ptr =
       static_cast<DT *>(output_grad_ptr) + num_infr_tokens * out_dim;
-#if CUDA_VERSION >= 11000
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  cudaDataType_t compute_type = output_type;
+#else
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-#else
-  cudaDataType_t compute_type = CUDA_R_32F;
 #endif
   int output_size = out_dim * num_peft_tokens;
   if (m->activation == AC_MODE_RELU) {

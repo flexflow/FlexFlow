@@ -370,11 +370,12 @@ void peft_bwd_kernel(LinearMeta const *m,
   hipDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   // update input_grad_ptr offset
   input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_tokens;
-#if CUDA_VERSION >= 11000
-  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  hipblasDatatype_t compute_type = hipblas_data_type;
 #else
-  hipblasDatatype_t compute_type = HIPBLAS_R_32F;
+  // TODO: currently use the hipblas_data_type
+  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  hipblasDatatype_t compute_type = output_type;
 #endif
   int output_size = out_dim * num_peft_tokens;
   if (m->activation == AC_MODE_RELU) {

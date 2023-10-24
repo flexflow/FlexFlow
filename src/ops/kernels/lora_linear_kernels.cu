@@ -145,12 +145,11 @@ void inference_kernel(LoraLinearMeta *m,
   cudaDataType_t lr_actv_type = output_type;
   assert(input_type == output_type);
   cudaDataType_t weight_type = output_type;
-
-#if CUDA_VERSION >= 11000
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  cudaDataType_t compute_type = output_type;
+#else
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-#else
-  cudaDataType_t compute_type = output_type;
 #endif
   int num_peft_requests = 0;
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -263,13 +262,12 @@ void peft_bwd_kernel(LoraLinearMeta *m,
   assert(input_type == output_type);
   cudaDataType_t weight_type = output_type;
   cudaDataType_t lr_actv_type = output_type;
-#if CUDA_VERSION >= 11000
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  cudaDataType_t compute_type = cublas_data_type;
+#else
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-#else
-  cudaDataType_t compute_type = output_type;
 #endif
-
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;

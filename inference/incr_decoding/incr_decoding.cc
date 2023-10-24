@@ -280,12 +280,14 @@ void FlexFlow::top_level_task(Task const *task,
       prompts.push_back(text);
       dataset.push_back(std::make_pair(text, text));
     }
-    rm->register_new_peft_request(dataset, 256 /*max_sequence_length*/, peft_model_id);
+    rm->register_new_peft_request(
+        dataset, 256 /*max_sequence_length*/, peft_model_id);
     for (auto &prompt : prompts) {
-      GenerationResult result = model.generate(prompt, 128 /*max_sequence_length*/);
+      GenerationResult result =
+          model.generate(prompt, 128 /*max_sequence_length*/);
     }
-    //GenerationResult result =
-    //    model.generate(prompts, 128 /*max_sequence_length*/);
+    // GenerationResult result =
+    //     model.generate(prompts, 128 /*max_sequence_length*/);
   }
 
   // Execution fence

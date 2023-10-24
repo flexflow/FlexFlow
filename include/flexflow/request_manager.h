@@ -115,10 +115,11 @@ public:
 
   FFModel *get_model(int model_id);
 
-  GenerationResult generate_incr_decoding(FFModel *model,
-                                          std::vector<std::string> const &prompts,
-                                          int max_seq_length,
-                                          PEFTModelID peft_model_id);
+  GenerationResult
+      generate_incr_decoding(FFModel *model,
+                             std::vector<std::string> const &prompts,
+                             int max_seq_length,
+                             PEFTModelID peft_model_id);
   GenerationResult generate_spec_infer(FFModel *model,
                                        std::vector<std::string> const &prompts,
                                        int max_seq_length,
