@@ -42,12 +42,12 @@ jobs:
 
       - name: Build Legion
         env:
-          FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
+          gpu_backend: ${{ matrix.gpu_backend }}
+          gpu_backend_version: ${{ matrix.gpu_backend_version }}
+          python_version: ${{ matrix.python_version }}
         run: .github/workflows/helpers/prebuild_legion.sh
 
       - name: Archive compiled Legion library (CUDA)
-        env:
-          FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
         uses: actions/upload-artifact@v3
         with:
           name: legion_ubuntu-20.04_${{ matrix.gpu_backend }}-${{ matrix.gpu_backend_version }}_py${{ matrix.python_version }}
