@@ -62,6 +62,10 @@ def main():
         tokenizer = LlamaTokenizer.from_pretrained(model_name, use_fast=True, torch_dtype = torch.float32 if use_full_precision else torch.float16,)
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_name, torch_dtype = torch.float32 if use_full_precision else torch.float16,)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = "[PAD]"
+        tokenizer.padding_side = "left"
+
     for param in model.parameters():
         param.requires_grad = False  # freeze the model - train adapters later
         if param.ndim == 1:
