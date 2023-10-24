@@ -66,13 +66,11 @@ struct Request {
 
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
-
   std::vector<struct BeamTree> beam_trees;
-};
-
-struct PEFTRequest : public Request {
-  std::vector < std::pair < std::vector<BatchConfig::TokenId>,
-      std::vector<BatchConfig::TokenId> dataset;
+  // PEFT field
+  std::vector<std::pair<std::vector<BatchConfig::TokenId>,
+                        std::vector<BatchConfig::TokenId>>>
+      dataset;
 };
 
 // store the result of beam search
@@ -118,11 +116,11 @@ public:
   FFModel *get_model(int model_id);
 
   GenerationResult generate_incr_decoding(FFModel *model,
-                                          std::vector<std::string> &prompts,
+                                          std::vector<std::string> const &prompts,
                                           int max_seq_length,
                                           PEFTModelID peft_model_id);
   GenerationResult generate_spec_infer(FFModel *model,
-                                       std::vector<std::string> &prompts,
+                                       std::vector<std::string> const &prompts,
                                        int max_seq_length,
                                        PEFTModelID peft_model_id);
   GenerationResult get_generation_result(RequestGuid const &guid);

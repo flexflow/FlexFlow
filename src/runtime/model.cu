@@ -160,23 +160,10 @@ FFHandler
                          .only_kind(Memory::GPU_FB_MEM)
                          .best_affinity_to(task->target_proc)
                          .first();
-    Realm::Rect<1, coord_t> bounds(
-        Realm::Point<1, coord_t>(0),
-        Realm::Point<1, coord_t>(info->peft_activation_reserve_space_size - 1));
-    std::vector<size_t> field_sizes;
-    field_sizes.push_back(sizeof(char));
     Realm::RegionInstance workspaceInst;
-    Realm::RegionInstance::create_instance(workspaceInst,
-                                           gpu_mem,
-                                           bounds,
-                                           field_sizes,
-                                           0,
-                                           Realm::ProfilingRequestSet())
-        .wait();
-    void *ptr = workspaceInst.pointer_untyped(0, sizeof(char));
     handle.peft_activation_allocator = new MemoryAllocator(gpu_mem);
-    handle.peft_activation_allocator->register_reserved_work_space(
-        ptr, info->peft_activation_reserve_space_size);
+    handle.peft_activation_allocator->create_legion_instance(
+        workspaceInst, info->peft_activation_reserve_space_size);
   }
 
   if (info->peft_weight_reserve_space_size > 0) {

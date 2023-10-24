@@ -830,7 +830,11 @@ public:
   // ========================================
   // Inference APIs
   // ========================================
-  GenerationResult generate(std::vector<std::string> &prompts,
+  GenerationResult generate(std::string const &prompts,
+                            int max_seq_length,
+                            PEFTModelID peft_model_id = PEFTModelID::NO_ID);
+
+  GenerationResult generate(std::vector<std::string> const &prompts,
                             int max_seq_length,
                             PEFTModelID peft_model_id = PEFTModelID::NO_ID);
 
