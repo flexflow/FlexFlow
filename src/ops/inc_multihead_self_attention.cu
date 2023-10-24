@@ -744,7 +744,7 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
       LAUNCH_ATTENTION_SCORE_KERNEL(DT, 64, 64, 4, 16, 128, stream);
       break;
     case 128:
-      LAUNCH_ATTENTION_SCORE_KERNEL(DT, 128, 128, 4, 32, 128, stream);
+      LAUNCH_ATTENTION_SCORE_KERNEL(DT, 128, 128, 4, 32, 64, stream);
       break;
     default:
       assert(false);
