@@ -54,12 +54,11 @@ __global__ void compute_attention_kernel_generation_kernel(
     int hidden_size,
     BatchConfig::PerRequestInfo *request_infos) {
 
-  using Qk_vec_k =
-      typename Qk_vec_k_<DT, Dh>::Type; // with kernel-used precision
-
-  // The type of queries and keys for the math in the Q*K^T product.
-  using K_vec_k = typename K_vec_k_<DT, THREADS_PER_KEY>::Type;
-  // using K_vec_k = typename K_vec_k_<T, THREADS_PER_KEY>::Type;
+  // q, k
+  using Q_vec = typename VEC_K<DT, THREADS_PER_KEY>::Type;
+  using K_vec = typename VEC_K<DT, THREADS_PER_KEY>::Type;
+  using V_vec = typename VEC_K<DT, THREADS_PER_KEY>::Type;
+  using Out_sum = typename Vec_fp32_<V_vec>::Type;
 
   constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE;
 
@@ -67,8 +66,6 @@ __global__ void compute_attention_kernel_generation_kernel(
   // then K_VEC_SIZE = 1,  QK_VEC_SIZE = 4
   //  K_ELTS_PER_THREAD = 128 / 4 = 32
   //  K_VECS_PER_THREAD = 32 / 1 = 32
-  // constexpr int K_VEC_SIZE = sizeof(K_vec_k) / sizeof(DT);
-
   // todo fix
   constexpr int K_VEC_SIZE = 16 / sizeof(DT);
   constexpr int QK_VEC_SIZE = 16 / sizeof(DT);
@@ -93,23 +90,16 @@ __global__ void compute_attention_kernel_generation_kernel(
   extern __shared__ char smem_[];
 
   float *qk_smem = reinterpret_cast<float *>(smem_);
-  DT *out_smem = reinterpret_cast<DT *>(smem_);
-  // DT* q_smem = reinterpret_cast<DT *>(smem_);
-  // __shared__ DT q_smem[Dh_MAX];
+  float *out_smem = reinterpret_cast<float *>(smem_);
 
   float qk_max = -FLT_MAX;
 
-  // first WARPS_PER_BLOCK for qk_max, second WARPS_PER_BLOCK for sum
+  // first WARPS_PER_BLOCK for store qk_max, second WARPS_PER_BLOCK for sum
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
 
-  // load q tensor
-  // if (blockIdx.x == 0 && blockIdx.y == 0 && tidx == 0) {
-  //   printf("qk proj2 %d\n", per_head_size);
-  // }
-  // *reinterpret_cast<float4 const *>(out_smem + vo * Dh + vi)
   const DT *q_ptr = query + request_idx * hidden_size * QKV_WEIGHT_NUM +
                     head_idx * per_head_size;
-  __shared__ float4 q_vecs[THREADS_PER_KEY][K_VECS_PER_THREAD];
+  __shared__ Q_vec q_vecs[THREADS_PER_KEY][K_VECS_PER_THREAD];
   // DT const *q_ptr =
   //     query + request_idx * Dh * QKV_WEIGHT_NUM + head_idx * per_head_size;
 
@@ -126,13 +116,11 @@ __global__ void compute_attention_kernel_generation_kernel(
   // ko = 0, 0, 0, 0, 1, 1, 1, 1, ....
   int ko = tidx / THREADS_PER_KEY;
   // load q tensor
-  float4 q_vec[K_VECS_PER_THREAD];
+  Q_vec q_vec[K_VECS_PER_THREAD];
 #pragma unroll
   for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
-    q_vecs[ki_o][ii] = *reinterpret_cast<float4 const *>(
+    q_vecs[ki_o][ii] = *reinterpret_cast<Q_vec const *>(
         q_ptr + ki + ii * THREADS_PER_KEY * K_VEC_SIZE);
-    // q_vec[ii] = *reinterpret_cast<float4 const *>(
-    //     q_smem + ki + ii * THREADS_PER_KEY * K_VEC_SIZE);
   }
   __syncthreads();
   // first iter = 128 / 4 = 32
@@ -151,15 +139,15 @@ __global__ void compute_attention_kernel_generation_kernel(
   // get k, perform qk proj
 
   for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
-    float4 k[K_VECS_PER_THREAD];
+    K_vec k[K_VECS_PER_THREAD];
     int const ti_circ = ti % max_seq_length;
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       int jj = ii * THREADS_PER_KEY * K_VEC_SIZE;
       if (ti < tlength) {
-        k[ii] = *reinterpret_cast<float4 const *>(
-            k_cache_batch + ti_circ * hidden_size + head_idx * per_head_size +
-            jj);
+        k[ii] = *reinterpret_cast<K_vec const *>(k_cache_batch +
+                                                 ti_circ * hidden_size +
+                                                 head_idx * per_head_size + jj);
       }
       // Compute dot product.
       // This includes a reduction across the threads in the same thread group.
@@ -291,7 +279,7 @@ __global__ void compute_attention_kernel_generation_kernel(
   int vi = tidx % THREADS_PER_VALUE * V_VEC_SIZE;
   constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
 
-  float4 out;
+  Out_sum out;
   zero(out);
 
   // The base pointer for the value in the cache buffer.
@@ -303,10 +291,10 @@ __global__ void compute_attention_kernel_generation_kernel(
       // Load the values from the cache.
       int const ti_circ = ti % max_seq_length;
 
-      float4 v = *reinterpret_cast<float4 const *>(
+      V_vec v = *reinterpret_cast<V_vec const *>(
           v_cache_batch + ti_circ * hidden_size + head_idx * per_head_size);
-      DT logit = qk_smem[ti - first_step];
-      out = FlexFlow::fma(logit, v, out);
+      float logit = qk_smem[ti - first_step];
+      out = FlexFlow::fma(logit, cast_to_float(v), out);
     }
   }
 
@@ -325,17 +313,14 @@ __global__ void compute_attention_kernel_generation_kernel(
 
       // The upper part of active threads store to shared memory.
       if (vo >= midpoint && vo < active_groups && (Dh == Dh_MAX || vi < Dh)) {
-#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-        *reinterpret_cast<float4 *>(out_smem + (vo - midpoint) * Dh + vi) = out;
-#else
-        *reinterpret_cast<float4 *>(out_smem + (vo - midpoint) * Dh + vi) = out;
-#endif
+        *reinterpret_cast<Out_sum *>(out_smem + (vo - midpoint) * Dh + vi) =
+            out;
       }
       __syncthreads();
 
       // The bottom warps update their values.
       if (vo < midpoint && (Dh == Dh_MAX || vi < Dh)) {
-        out = add(*reinterpret_cast<float4 const *>(out_smem + vo * Dh + vi),
+        out = add(*reinterpret_cast<Out_sum const *>(out_smem + vo * Dh + vi),
                   out);
       }
       __syncthreads();
@@ -348,36 +333,13 @@ __global__ void compute_attention_kernel_generation_kernel(
   //   printf("V value10 %.10f\n", out.z);
   //   printf("V value10 %.10f\n", out.w);
   // }
-  // if (blockIdx.y == 0 && blockIdx.x == 1 && tidx == 32) {
-  //   printf("V value11 %.10f\n", out.x);
-  //   printf("V value11 %.10f\n", out.y);
-  //   printf("V value11 %.10f\n", out.z);
-  //   printf("V value11 %.10f, %d\n", out.w, vo);
-  // }
-  // if (blockIdx.y == 0 && blockIdx.x == 1 && tidx == 0) {
-  //   printf("V value12 %.10f, %d\n",
-  //          out.x,
-  //          request_idx * Dh + head_idx * per_head_size + vi);
-  //   printf("V value12 %.10f, %d\n",
-  //          out.y,
-  //          request_idx * Dh + head_idx * per_head_size + vi);
-  //   printf("V value12 %.10f, %d\n",
-  //          out.z,
-  //          request_idx * Dh + head_idx * per_head_size + vi);
-  //   printf("V value12 %.10f, %d, %d\n",
-  //          out.w,
-  //          vo,
-  //          request_idx * Dh + head_idx * per_head_size + vi);
-  // }
 
   // Output the final values.
   if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
-    // batch_idx * head_idx * hidden_size
-    // if (request_idx * Dh + head_idx * per_head_size + vi == 64) {
-    //   printf("???%d, %d, %f", head_idx, vi, out.x);
-    // }
-    *reinterpret_cast<float4 *>(output_ptr + request_idx * hidden_size +
-                                head_idx * per_head_size + vi) = out;
+    convert_from_float(
+        *reinterpret_cast<V_vec *>(output_ptr + request_idx * hidden_size +
+                                   head_idx * per_head_size + vi),
+        out);
   }
 }
 
@@ -697,7 +659,7 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
-void compute_o_proj_bias(IncMultiHeadSelfAttentionMeta const *m,
+void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
                          BatchConfig const *bc,
                          int shard_id,
                          DT *output_ptr,
@@ -762,21 +724,27 @@ void compute_o_proj_bias(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 #define LAUNCH_ATTENTION_SCORE_KERNEL(                                         \
-    T, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)       \
-  smem_sz = smem_size_in_bytes<T>(m->qProjSize,                                \
-                                  BatchConfig::max_sequence_length(),          \
-                                  THDS_PER_VALUE,                              \
-                                  THDS_PER_BLOCK);                             \
-  compute_attention_kernel_generation_kernel<DT, 64, 64, 64, 4, 16>            \
-      <<<grid, 64, smem_sz, stream>>>(static_cast<DT *>(m->devQKVProjArray),   \
-                                      static_cast<DT *>(m->keyCache),          \
-                                      static_cast<DT *>(m->valueCache),        \
-                                      output_ptr,                              \
-                                      scale,                                   \
-                                      BatchConfig::max_sequence_length(),      \
-                                      m->qProjSize,                            \
-                                      m->hidden_size,                          \
-                                      m->request_infos)
+    DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)      \
+  smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                               \
+                                   BatchConfig::max_sequence_length(),         \
+                                   THDS_PER_VALUE,                             \
+                                   THDS_PER_BLOCK);                            \
+  compute_attention_kernel_generation_kernel<DT,                               \
+                                             THDS_PER_BLOCK,                   \
+                                             Dh,                               \
+                                             Dh_MAX,                           \
+                                             THDS_PER_KEY,                     \
+                                             THDS_PER_VALUE>                   \
+      <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                             \
+          static_cast<DT *>(m->devQKVProjArray),                               \
+          static_cast<DT *>(m->keyCache),                                      \
+          static_cast<DT *>(m->valueCache),                                    \
+          output_ptr,                                                          \
+          scale,                                                               \
+          BatchConfig::max_sequence_length(),                                  \
+          m->qProjSize,                                                        \
+          m->hidden_size,                                                      \
+          m->request_infos)
 template <typename DT>
 void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
                                          BatchConfig const *bc,
@@ -785,33 +753,17 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
   dim3 grid(m->num_q_heads, bc->num_active_requests());
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
-  int const THREADS_PER_VALUE = m->qSize * sizeof(DT) / 16;
   size_t smem_sz;
   switch (per_head_size) {
     case 64:
-      LAUNCH_ATTENTION_SCORE_KERNEL(
-          DT, 64, 64, 4, THREADS_PER_VALUE, 128, stream);
+      LAUNCH_ATTENTION_SCORE_KERNEL(DT, 64, 64, 4, 16, 128, stream);
       break;
     case 128:
-      LAUNCH_ATTENTION_SCORE_KERNEL(
-          DT, 128, 128, 4, THREADS_PER_VALUE, 128, stream);
+      LAUNCH_ATTENTION_SCORE_KERNEL(DT, 128, 128, 4, 16, 128, stream);
       break;
     default:
       assert(false);
   }
-
-  // copy metadata
-  compute_attention_kernel_generation_kernel<DT, 64, 64, 64, 4, 16>
-      <<<grid, 64, 5000, stream>>>(static_cast<DT *>(m->devQKVProjArray),
-                                   static_cast<DT *>(m->keyCache),
-                                   static_cast<DT *>(m->valueCache),
-                                   output_ptr,
-                                   scale,
-                                   BatchConfig::max_sequence_length(),
-                                   m->qProjSize,
-                                   m->hidden_size,
-                                   m->request_infos);
-  cudaDeviceSynchronize();
 
   // check for errors
   cudaError_t error = cudaGetLastError();
@@ -940,19 +892,11 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   if (bc->num_tokens > bc->num_generation_tokens) {
     // phase 4: Compute attention score for prompt tokens;
     compute_attention_kernel_prompt(
-        m,
-        bc,
-        shard_id,
-        output_ptr + sizeof(DT) * bc->num_generation_tokens * m->hidden_size,
-        bias_ptr,
-        weight_ptr,
-        static_cast<DT *>(m->devQKVProjArray) +
-            sizeof(DT) * bc->num_generation_tokens * m->hidden_size *
-                QKV_WEIGHT_NUM,
-        stream);
+        m, bc, shard_id, bias_ptr, weight_ptr, stream);
   }
-  // compute o_proj together
-  compute_o_proj_bias(
+
+  // compute output production and bias together for all tokens
+  compute_o_prod_bias(
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, stream);
 }
 
@@ -1010,10 +954,8 @@ template <typename DT>
 void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
                                      BatchConfig const *bc,
                                      int shard_id,
-                                     DT *output_ptr,
                                      DT const *bias_ptr,
                                      DT const *weight_ptr,
-                                     DT const *query,
                                      cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
