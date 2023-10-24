@@ -265,7 +265,7 @@ inline __device__ float sum(float v) {
 }
 
 template <typename T>
-inline __device__ T div_up(T m, T n) {
+inline __device__ __host__ T div_up(T m, T n) {
   return (m + n - 1) / n;
 }
 
@@ -375,6 +375,36 @@ inline __device__ float block_sum(float *red_smem, float sum) {
 
   // Broadcast to other threads.
   return __shfl_sync(uint32_t(-1), sum, 0);
+}
+
+// utils
+template <typename DT>
+inline size_t smem_size_in_bytes(int hidden_size_per_head,
+                                 int max_sequence_length,
+                                 int threads_per_value,
+                                 int threads_per_block) {
+  // The amount of shared memory needed to store the Q*K^T values in float.
+  size_t qk_sz = div_up(max_sequence_length + 1, 4) * 16;
+
+  // The extra memory needed if we are not using floats for the final logits.
+  size_t logits_sz = 0;
+#ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS
+  if (sizeof(DT) != 4) {
+    // TDOD
+    logits_sz = div_up(max_sequence_length + 1, 4) * 4 * sizeof(DT);
+  }
+#endif
+
+  // The total size needed during softmax.
+  size_t softmax_sz = qk_sz + logits_sz;
+
+  // The number of partial rows to reduce in the final reduction.
+  int rows_per_red = threads_per_block / threads_per_value;
+  // The amount of storage needed to finalize the outputs.
+  size_t red_sz = rows_per_red * hidden_size_per_head * sizeof(DT) / 2;
+
+  // The max.
+  return max(softmax_sz, red_sz);
 }
 
 } // namespace FlexFlow

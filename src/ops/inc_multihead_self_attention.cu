@@ -760,14 +760,45 @@ void compute_o_proj_bias(IncMultiHeadSelfAttentionMeta const *m,
         output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
   }
 }
+
+#define LAUNCH_ATTENTION_SCORE_KERNEL(                                         \
+    T, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)       \
+  smem_sz = smem_size_in_bytes<T>(m->qProjSize,                                \
+                                  BatchConfig::max_sequence_length(),          \
+                                  THDS_PER_VALUE,                              \
+                                  THDS_PER_BLOCK);                             \
+  compute_attention_kernel_generation_kernel<DT, 64, 64, 64, 4, 16>            \
+      <<<grid, 64, smem_sz, stream>>>(static_cast<DT *>(m->devQKVProjArray),   \
+                                      static_cast<DT *>(m->keyCache),          \
+                                      static_cast<DT *>(m->valueCache),        \
+                                      output_ptr,                              \
+                                      scale,                                   \
+                                      BatchConfig::max_sequence_length(),      \
+                                      m->qProjSize,                            \
+                                      m->hidden_size,                          \
+                                      m->request_infos)
 template <typename DT>
 void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
                                          BatchConfig const *bc,
                                          DT *output_ptr,
                                          cudaStream_t stream) {
   dim3 grid(m->num_q_heads, bc->num_active_requests());
-  int const head_size = m->qProjSize;
+  int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
+  int const THREADS_PER_VALUE = m->qSize * sizeof(DT) / 16;
+  size_t smem_sz;
+  switch (per_head_size) {
+    case 64:
+      LAUNCH_ATTENTION_SCORE_KERNEL(
+          DT, 64, 64, 4, THREADS_PER_VALUE, 128, stream);
+      break;
+    case 128:
+      LAUNCH_ATTENTION_SCORE_KERNEL(
+          DT, 128, 128, 4, THREADS_PER_VALUE, 128, stream);
+      break;
+    default:
+      assert(false);
+  }
 
   // copy metadata
   compute_attention_kernel_generation_kernel<DT, 64, 64, 64, 4, 16>
@@ -901,17 +932,13 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   //                    "/home/ubuntu/FlexFlow/inference/vprojbefore.txt");
 
   if (bc->num_generation_tokens > 0) {
-    // phase 4: Compute attention score for generation tokens
-    // todo, lunch different size of kernel
-    // std::cout<<"use new kernel"<<"\n";
+    // phase 3: Compute attention score for generation tokens
     compute_attention_kernel_generation<DT>(
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
 
   if (bc->num_tokens > bc->num_generation_tokens) {
-    // phase 3: Compute attention score for prompt tokens
-    // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-    // std::cout<<"use old kernel"<<"\n";
+    // phase 4: Compute attention score for prompt tokens;
     compute_attention_kernel_prompt(
         m,
         bc,
