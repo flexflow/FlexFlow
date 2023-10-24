@@ -634,17 +634,17 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                             c_param,
                                             h_param,
                                             w_param));
-      // checkCUDNN(cudnnSoftmaxBackward(m->handle.dnn,
-      //                                 CUDNN_SOFTMAX_ACCURATE,
-      //                                 CUDNN_SOFTMAX_MODE_CHANNEL,
-      //                                 &alpha,
-      //                                 m->qk_tensor,
-      //                                 m->softmax_activation_buffer,
-      //                                 m->qk_tensor,
-      //                                 m->qk_prods_softmax,
-      //                                 &beta,
-      //                                 m->qk_tensor,
-      //                                 m->qk_prods));
+      checkCUDNN(cudnnSoftmaxBackward(m->handle.dnn,
+                                      CUDNN_SOFTMAX_ACCURATE,
+                                      CUDNN_SOFTMAX_MODE_CHANNEL,
+                                      &alpha,
+                                      m->qk_tensor,
+                                      m->softmax_activation_buffer,
+                                      m->qk_tensor,
+                                      m->qk_prods_softmax,
+                                      &beta,
+                                      m->qk_tensor,
+                                      m->qk_prods));
       //  TODO: fill all elements above diagonal to force causal attention
     }
     // Step 5: compute gradients w.r.t. key
