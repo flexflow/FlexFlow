@@ -25,7 +25,6 @@ OpTaskInvocation init(Pool2DAttrs const &attrs) {
 
 static DeviceSpecific<Pool2dPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
-  NOT_IMPLEMENTED();
   auto const &attrs = acc.get_argument<Pool2DAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
@@ -168,14 +167,14 @@ static void backward_task(Task const *task,
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   Pool2DAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
+                                  ParallelTensorShape const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
   auto env = sim.new_environment();
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shape);
+  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
 
   SimTaskBinding init_binding;
-  init_binding.bind(INPUT, input_shape);
+  init_binding.bind(INPUT, input.shape);
   init_binding.bind(OUTPUT, output_shape);
   init_binding.bind_arg(ATTRS, attrs);
   init_binding.bind_arg(HANDLE, ff_handle());
