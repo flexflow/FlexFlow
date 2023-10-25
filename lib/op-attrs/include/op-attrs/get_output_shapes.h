@@ -147,7 +147,7 @@ ParallelTensorShape get_output_shape(SoftmaxAttrs const &,
 ParallelTensorShape get_output_shape(TopKAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(TransposeAttrs const &,
-                                     ParallelTensorShape const &);
+                                     std::vector<ParallelTensorShape> const &);
 
 struct GetOutputShapesFunctor {
   GetOutputShapesFunctor(std::vector<ParallelTensorShape> const &s) : s(s) {}
