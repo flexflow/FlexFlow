@@ -25,3 +25,9 @@ dependencies:
     - sentencepiece
     - einops
     - requests
+    - scipy
+    - bitsandbytes
+    - datasets
+    - accelerate
+    - loralib
+    - peft
