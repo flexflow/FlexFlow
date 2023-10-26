@@ -634,7 +634,7 @@ class PEFT:
                 self.hf_config.base_model_name_or_path,
                 return_dict=True,
                 trust_remote_code=True,
-                torch_dtype=torch.float32 if use_full_precision else torch.float16,
+                torch_dtype=torch.float32 if self.data_type == DataType.DT_FLOAT else torch.float16,
                 device_map="auto",
             )
             hf_peft_model = PeftModel.from_pretrained(hf_model, self.peft_model_id)
