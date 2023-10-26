@@ -69,7 +69,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto attrs = acc.get_argument<ReductionAttrs>(ATTRS);
 
-  size_t num_replicas = attrs.reduction_dim;
+  size_t num_replicas = attrs.reduction_degree;
 
   return profiling(forward_kernel,
                    profiling_settings,
