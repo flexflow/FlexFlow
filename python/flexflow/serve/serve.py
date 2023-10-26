@@ -30,7 +30,7 @@ from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from peft import PeftModel, PeftConfig
 from huggingface_hub import HfApi
-import sys, torch, shutil, hashlib, json
+import torch, shutil, hashlib, json, gc
 from typing import Union, List
 
 
@@ -175,13 +175,6 @@ class LLM:
         """Check in the folder specified by the cache_path whether the LLM's model weights are available and up to date.
         If not, or if the refresh_cache parameter is set to True, download new weights.
         """
-        if self.data_type == DataType.DT_HALF:
-            torch.set_default_tensor_type(torch.HalfTensor)
-        elif self.data_type == DataType.DT_FLOAT:
-            torch.set_default_tensor_type(torch.FloatTensor)
-        else:
-            assert False, "Data type not yet supported -- cannot download weights!"
-
         # Use local cache, or download new version
         self.weights_path = os.path.join(
             os.path.expanduser(self.cache_path),
@@ -218,7 +211,11 @@ class LLM:
                 )
             # Download model from HuggingFace, or load it from the local folder
             hf_model = AutoModelForCausalLM.from_pretrained(
-                self.model_name, trust_remote_code=True
+                self.model_name,
+                trust_remote_code=True,
+                torch_dtype=torch.float32
+                if self.data_type == DataType.DT_FLOAT
+                else torch.float16,
             )
             # Print log message to notify user download of model has finished
             if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
@@ -229,6 +226,10 @@ class LLM:
             with open(ff_revision_file, "w+") as f:
                 f.write(latest_revision)
             print("Done converting the weights...")
+            # Deallocate hf model
+            del hf_model
+            gc.collect()
+            torch.cuda.empty_cache()
         else:
             print(f"Loading '{self.model_name}' model weights from the cache...")
 
@@ -521,7 +522,7 @@ class PEFT:
     ):
         self.hf_config = PeftConfig.from_pretrained(peft_model_id)
         self.peft_model_id = peft_model_id
-        self.peft_type: self.hf_config.peft_type
+        self.peft_type = self.hf_config.peft_type
         if self.peft_type != "LORA":
             raise RuntimeError(
                 f"PEFT type {self.peft_type} not yet supported in FlexFlow"
@@ -531,19 +532,13 @@ class PEFT:
         self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
         self.refresh_cache = refresh_cache
         # Base model related
-        self.supported_base_models = _SupportedModels()
         if "base_model_name_or_path" not in self.hf_config.to_dict():
             raise ValueError(
                 f"PEFT model {peft_model_id} does not have an associated based model"
             )
-        self.base_model_hf_config = AutoConfig.from_pretrained(
-            self.hf_config.base_model_name_or_path, trust_remote_code=True
+        self.base_model = LLM(
+            self.hf_config.base_model_name_or_path, data_type, cache_path, refresh_cache
         )
-        (
-            self.base_model_type,
-            self.base_model_class,
-            self.base_config_class,
-        ) = self.supported_base_models.get_ff_model_type(self.base_model_hf_config)
 
     def download_hf_config(self):
         """Save the HuggingFace model configs to a json file. Useful mainly to run the C++ inference code."""
@@ -555,7 +550,7 @@ class PEFT:
         print(f"Creating directory {self.config_dir} (if it doesn't exist)...")
         print(f"Saving {self.peft_model_id} configs to file {self.config_path}...")
         with open(self.config_path, "w") as json_file:
-            json.dump(self.hf_config.to_dict(), json_file, indentation=2)
+            json.dump(self.hf_config.to_dict(), json_file, indent=2)
 
     def __get_revision_hashes(self, peft_model_id: str):
         ff_revision = None
@@ -578,21 +573,17 @@ class PEFT:
 
     def convert_peft_model(self, hf_peft_model, weights_path):
         for name, params in hf_peft_model.named_parameters():
-            name = name.replace("base_model.model.model.", "").replace(".default", "")
-            name = self.base_model_class.convert_hf_weight_name(name)
-            params.detach().cpu().numpy().tofile(f"{weights_path}/{name}")
+            if self.peft_type.lower() in name:
+                name = name.replace("base_model.model.model.", "").replace(
+                    ".default", ""
+                )
+                name = self.base_model.model_class.convert_hf_weight_name(name)
+                params.detach().cpu().numpy().tofile(f"{weights_path}/{name}")
 
     def download_hf_weights_if_needed(self):
         """Check in the folder specified by the cache_path whether the PEFT's model weights are available and up to date.
         If not, or if the refresh_cache parameter is set to True, download new weights.
         """
-        if self.data_type == DataType.DT_HALF:
-            torch.set_default_tensor_type(torch.HalfTensor)
-        elif self.data_type == DataType.DT_FLOAT:
-            torch.set_default_tensor_type(torch.FloatTensor)
-        else:
-            assert False, "Data type not yet supported -- cannot download weights!"
-
         # Use local cache, or download new version
         self.weights_path = os.path.join(
             os.path.expanduser(self.cache_path),
@@ -629,25 +620,35 @@ class PEFT:
                 print(
                     f"'{self.peft_model_id}' local model weights were updated! Converting new weights now..."
                 )
-            # Download model from HuggingFace, or load it from the local folder
-            hf_model = AutoModelForCausalLM.from_pretrained(
+            # Download base model from HuggingFace, or load it from the local folder
+            self.base_model.download_hf_weights_if_needed()
+            self.base_model.download_hf_tokenizer_if_needed()
+            self.base_model.download_hf_config()
+            hf_base_model = AutoModelForCausalLM.from_pretrained(
                 self.hf_config.base_model_name_or_path,
                 return_dict=True,
                 trust_remote_code=True,
-                torch_dtype=torch.float32 if self.data_type == DataType.DT_FLOAT else torch.float16,
-                device_map="auto",
+                torch_dtype=torch.float32
+                if self.data_type == DataType.DT_FLOAT
+                else torch.float16,
+                # device_map="auto",
             )
-            hf_peft_model = PeftModel.from_pretrained(hf_model, self.peft_model_id)
+            hf_peft_model = PeftModel.from_pretrained(hf_base_model, self.peft_model_id)
             # Print log message to notify user download of model has finished
             if not os.path.exists(self.peft_model_id) or os.path.isdir(
                 self.peft_model_id
             ):
                 print("Done downloading HF weights. Converting them now...")
             # Convert the model to FlexFlow format
-            self.__convert_peft_model(hf_peft_model, self.weights_path)
+            self.convert_peft_model(hf_peft_model, self.weights_path)
             # Save new revision hash to file
             with open(ff_revision_file, "w+") as f:
                 f.write(latest_revision)
             print("Done converting the weights...")
+            # Deallocate hf model
+            del hf_peft_model
+            del hf_base_model
+            gc.collect()
+            torch.cuda.empty_cache()
         else:
             print(f"Loading '{self.peft_model_id}' model weights from the cache...")
