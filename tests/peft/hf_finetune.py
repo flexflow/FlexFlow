@@ -32,16 +32,22 @@ def main():
     parser.add_argument("--model-name", type=str, default="decapoda-research/llama-7b-hf")
     parser.add_argument("--lora-rank", type=int, default=16)
     parser.add_argument("--lora-alpha", type=int, default=32)
+    parser.add_argument("--lora-target-modules", type=str, default="down_proj", help="Comma-separated list of layers from the base model to target")
     parser.add_argument("--lora-dropout", type=float, default=0.05)
     parser.add_argument("--use-full-precision", action="store_true", help="Use full precision")
-    parser.add_argument("--output-dir", type=str, default="./finetuned-llama")
+    parser.add_argument("--output-dir", type=str, default="")
+    parser.add_argument("--publish-peft-with-id", type=str, default="")
     args = parser.parse_args()
     model_name = args.model_name
     use_full_precision=args.use_full_precision
     lora_rank = args.lora_rank
     lora_alpha = args.lora_alpha
+    lora_target_modules = args.lora_target_modules.split(",")
     lora_dropout = args.lora_dropout
     output_dir = args.output_dir
+    publish_peft_with_id = args.publish_peft_with_id
+    if len(output_dir) == 0 and len(publish_peft_with_id) == 0:
+        raise ValueError("Please pass either a --output-dir or a --publish-peft-with-id to specify where to store the fine-tuned model")
 
     # Change working dir to folder storing this script
     abspath = os.path.abspath(__file__)
@@ -81,7 +87,8 @@ def main():
         r=lora_rank,
         lora_alpha=lora_alpha,
         #target_modules=["q_proj", "v_proj"],
-        target_modules=["down_proj"],
+        #target_modules=["down_proj"],
+        target_modules=lora_target_modules,
         lora_dropout=lora_dropout,
         bias="none",
         task_type="CAUSAL_LM"
@@ -105,20 +112,20 @@ def main():
             learning_rate=2e-4,
             fp16=True if not use_full_precision else False,
             logging_steps=1,
-            output_dir=os.path.join(output_dir, "logs"),
+            output_dir=os.path.join(output_dir if len(output_dir) > 0 else "./", "lora_training_logs"),
         ),
         data_collator=transformers.DataCollatorForLanguageModeling(tokenizer, mlm=False)
     )
     model.config.use_cache = False  # silence the warnings. Please re-enable for inference!
     trainer.train()
 
-    print(f"Done fine-tuning! Saving the model to {output_dir}...")
-    model.save_pretrained(output_dir)
-
-    # Upload to HF hub
-    #from huggingface_hub import notebook_login
-    #notebook_login()
-    #model.push_to_hub("goliaro/llama-7b-lora-half", use_auth_token=True)
+    if len(output_dir) > 0:
+        print(f"Done fine-tuning! Saving the model to {output_dir}...")
+        model.save_pretrained(output_dir)
+    
+    if len(publish_peft_with_id) > 0:
+        print(f"Done fine-tuning! Uploading the model to HF hub with id: {publish_peft_with_id}...")
+        model.push_to_hub(publish_peft_with_id, use_auth_token=True)
 
 if __name__ == "__main__":
     main()
