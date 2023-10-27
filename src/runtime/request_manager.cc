@@ -466,35 +466,41 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     }
   }
 
-  if (!pending_request_queue.empty() &&
-      new_bc.num_tokens < get_max_tokens_per_batch()) {
-    Request new_request = pending_request_queue.front();
-    pending_request_queue.pop();
-    // all_requests[new_request.guid] = new_request;
-    new_bc.requestsInfo[i].first_token_depth_in_request = 0;
-    new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
-    new_bc.requestsInfo[i].request_guid = new_request.guid;
-    new_bc.requestsInfo[i].num_tokens_in_batch =
-        std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
-                 (int)new_request.tokens.size());
-    new_bc.requestsInfo[i].max_sequence_length =
-        new_request.max_sequence_length;
-    new_bc.request_completed[i] = false;
-    // add profile_info for the new request
-    ProfileInfo profile_info;
-    profile_info.decoding_steps = 1;
-    profile_info.start_time = Realm::Clock::current_time_in_microseconds();
-    profiling_requests[new_request.guid] = profile_info;
-    for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
-      int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
-      new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
-      new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
-      assert(depth < new_request.tokens.size());
-      new_bc.tokensInfo[new_bc.num_tokens].token_id = new_request.tokens[depth];
-      new_bc.num_tokens++;
-    }
-    if (new_bc.num_tokens == get_max_tokens_per_batch()) {
-      break;
+  // Step 3: add new requests to the next batch
+  for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
+    if (new_bc.request_completed[i]) {
+      if (!pending_request_queue.empty() &&
+          new_bc.num_tokens < get_max_tokens_per_batch()) {
+        Request new_request = pending_request_queue.front();
+        pending_request_queue.pop();
+        // all_requests[new_request.guid] = new_request;
+        new_bc.requestsInfo[i].first_token_depth_in_request = 0;
+        new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
+        new_bc.requestsInfo[i].request_guid = new_request.guid;
+        new_bc.requestsInfo[i].num_tokens_in_batch =
+            std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
+                     (int)new_request.tokens.size());
+        new_bc.requestsInfo[i].max_sequence_length =
+            new_request.max_sequence_length;
+        new_bc.request_completed[i] = false;
+        // add profile_info for the new request
+        ProfileInfo profile_info;
+        profile_info.decoding_steps = 1;
+        profile_info.start_time = Realm::Clock::current_time_in_microseconds();
+        profiling_requests[new_request.guid] = profile_info;
+        for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
+          int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
+          new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
+          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
+          assert(depth < new_request.tokens.size());
+          new_bc.tokensInfo[new_bc.num_tokens].token_id =
+              new_request.tokens[depth];
+          new_bc.num_tokens++;
+        }
+        if (new_bc.num_tokens == get_max_tokens_per_batch()) {
+          break;
+        }
+      }
     }
   }
 
@@ -988,7 +994,7 @@ BeamSearchBatchConfig
         // do the slot exchange to minimize the cache exchange in kernel.
         update_beam_metadata(new_bc, request.beam_trees.at(old_bc.model_id), i);
       } else {
-        assert(false && "Request should not be pending in beam search phase")
+        assert(false && "Request should not be pending in beam search phase");
       }
 
       // do the slot exchange to minimize the cache exchange in kernel.
@@ -1000,7 +1006,7 @@ BeamSearchBatchConfig
         if (request.status == Request::RUNNING) {
           new_bc.requestsInfo[i].num_tokens_in_batch = 1;
         } else {
-          assert(false && "Request should be done")
+          assert(false && "Request should be done");
           // new_bc.requestsInfo[i].num_tokens_in_batch = 0;
         }
 
