@@ -475,8 +475,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
     new_bc.requestsInfo[i].request_guid = new_request.guid;
     new_bc.requestsInfo[i].num_tokens_in_batch =
-            std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
-                     (int)new_request.tokens.size());
+        std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
+                 (int)new_request.tokens.size());
     new_bc.requestsInfo[i].max_sequence_length =
         new_request.max_sequence_length;
     new_bc.request_completed[i] = false;
@@ -490,8 +490,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
       new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
       assert(depth < new_request.tokens.size());
-      new_bc.tokensInfo[new_bc.num_tokens].token_id =
-          new_request.tokens[depth];
+      new_bc.tokensInfo[new_bc.num_tokens].token_id = new_request.tokens[depth];
       new_bc.num_tokens++;
     }
     if (new_bc.num_tokens == get_max_tokens_per_batch()) {
@@ -1011,7 +1010,7 @@ BeamSearchBatchConfig
                     << ", num_tokens_in_batch: "
                     << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
         }
-      } 
+      }
 
       if (verbose) {
         std::cout << "SSM KV Cache Size beam: " << request.ssm_cache_size
@@ -1074,7 +1073,7 @@ BeamSearchBatchConfig
           old_bc.beamRequestsInfo[i].beam_size;
       new_bc.beamRequestsInfo[i].max_depth =
           old_bc.beamRequestsInfo[i].max_depth;
-          
+
       if (request.status == Request::PENDING) {
         // if the request is pending, we need to update the beam search
         // metadata based on the initial length
@@ -1093,9 +1092,9 @@ BeamSearchBatchConfig
         // Prompt phase
         new_bc.requestsInfo[i].num_tokens_in_batch =
             std::min(get_max_tokens_per_batch() - new_bc.num_tokens -
-                          BatchConfig::max_requests_per_batch() + i,
-                      (int)request.tokens.size() -
-                          new_bc.requestsInfo[i].first_token_depth_in_request);
+                         BatchConfig::max_requests_per_batch() + i,
+                     (int)request.tokens.size() -
+                         new_bc.requestsInfo[i].first_token_depth_in_request);
         request.ssm_cache_size += new_bc.requestsInfo[i].num_tokens_in_batch;
       }
 
@@ -1111,7 +1110,7 @@ BeamSearchBatchConfig
                   << std::endl;
         std::cout << "LLM KV Cache Size beam: " << request.llm_cache_size
                   << std::endl;
-      } 
+      }
 
       // register more tokens due to the beam width
       for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
