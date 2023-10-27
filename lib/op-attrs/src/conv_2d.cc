@@ -84,61 +84,41 @@ std::vector<ParallelDimMappingRecord>
   return mappings;
 }
 
-// according to pytorch, the input shape: [b, input_channel, input_h, input_w]
-// kernel shape: [output_channel, input_channel, kernel_h, kernel_w]
-// we may have stide_h and padding_h
-// output shape: [b, output_channel, output_h, output_w]
-// output_h = (input_h + 2 * padding_h - kernel_h) / stride_h + 1
-// output_w = (input_w + 2 * padding_w - kernel_w) / stride_w + 1
+// input: (<ri, di1, t>, <b, 1, f>, <input_channel, di3, f>, < input_h, di4, f>,
+// <input_w, di5, f> ) kernel(Conv2DAttrs):  out_channels, kernel_h, kernel_w,
+// stride_h, stride_w, padding_h, padding_w, output shape:(<ro, do1, t>, <b,
+// 1,f>, <output_channel, do3, f>, <output_h, do4, f>, <output_w, do5,f>)
+//  output_h = (input_h + 2 * padding_h - kernel_h) / stride_h + 1
+//  output_w = (input_w + 2 * padding_w - kernel_w) / stride_w + 1
+// assert: for the kernel, dk1 == dk2=dk4=dk4=dk5=1
+// question:how to decide the ro/do3/do4/do5?
+// I think: do3= di3, di4= do4, di5 = do5, do1=di1, ro=ri
 ParallelTensorShape get_output_shape(Conv2DAttrs const &attrs,
                                      ParallelTensorShape const &input) {
-  ParallelTensorShape output = input;
-  if (input.num_dims() != 4) {
+  if (input.num_dims() != 5) {
     throw mk_runtime_error("Conv2DAttrs::get_output_shape: input is invalid");
   }
-
-  if (attrs.kernel_h > input.at(ff_dim_t(2)).size ||
-      attrs.kernel_w > input.at(ff_dim_t(3)).size) {
+  if (attrs.kernel_h > input.at(ff_dim_t(3)).size ||
+      attrs.kernel_w > input.at(ff_dim_t(4)).size) {
     throw mk_runtime_error(
         "Conv2DAttrs::get_output_shape: kernel size is larger than input size");
   }
 
-  output.at(ff_dim_t(1)).size = attrs.out_channels;
-  output.at(ff_dim_t(2)).size =
-      (input.at(ff_dim_t(2)).size + 2 * attrs.padding_h - attrs.kernel_h) /
+  ParallelTensorShape output = input;
+  output.at(ff_dim_t(0)).is_replica_dim = true;
+  output.at(ff_dim_t(2)).size = attrs.out_channels;
+  output.at(ff_dim_t(3)).size =
+      (input.at(ff_dim_t(3)).size + 2 * attrs.padding_h - attrs.kernel_h) /
           attrs.stride_h +
       1;
-  output.at(ff_dim_t(3)).size =
-      (input.at(ff_dim_t(3)).size + 2 * attrs.padding_w - attrs.kernel_w) /
+  output.at(ff_dim_t(4)).size =
+      (input.at(ff_dim_t(4)).size + 2 * attrs.padding_w - attrs.kernel_w) /
           attrs.stride_w +
       1;
-
-  if (input.at(ff_dim_t(2)).size == 1 && input.at(ff_dim_t(3)).size == 1) {
-    // case 1  input degree is 1, like 1GPU
-    output.at(ff_dim_t(0)).is_replica_dim = false;
-  } else if (input.at(ff_dim_t(2)).size > 1 &&
-             input.at(ff_dim_t(3)).size == 1) {
-    // case 2: [b, input_channel, input_h/x, input_w], [output_channel,
-    // input_channel, kernel_h, kernel_w] => [b, output_channel, output_h/x,
-    // output_w]
-    output.at(ff_dim_t(2)).is_replica_dim = true;
-    output.at(ff_dim_t(2)).degree = input.at(ff_dim_t(2)).degree;
-  } else if (input.at(ff_dim_t(2)).size == 1 &&
-             input.at(ff_dim_t(3)).size > 1) {
-    // case 3: [b, input_channel, input_h, input_w / x] [output_channel,
-    // input_channel, kernel_h, kernel_w / x] => [b, output_channel, output_h,
-    // output_w / x]
-    output.at(ff_dim_t(3)).is_replica_dim = true;
-    output.at(ff_dim_t(3)).degree = input.at(ff_dim_t(3)).degree;
-  } else if (input.at(ff_dim_t(2)).size > 1 && input.at(ff_dim_t(3)).size > 1) {
-    for (int i = 2; i < input.num_dims(); i++) {
-      output.at(ff_dim_t(i)).is_replica_dim = true;
-      output.at(ff_dim_t(i)).degree = input.at(ff_dim_t(i)).degree;
-    }
-  } else {
-    throw mk_runtime_error("Conv2DAttrs::get_output_shape: not supported in "
-                           "Conv2DAttrs get_output_shape");
+  for (int i = 1; i < output.num_dims(); i++) {
+    output.at(ff_dim_t(i)).is_replica_dim = false;
   }
+
   return output;
 }
 
