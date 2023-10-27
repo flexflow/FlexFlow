@@ -15,8 +15,8 @@ static std::vector<ParallelDim> lift_dims(TensorDims const &dims) {
 }
 
 int ParallelTensorShape::get_volume() const {
-  int volume  = this->at(ff_dim_t(0)).size;
-  for(int i = 1; i < num_dims(); i++) {
+  int volume = this->at(ff_dim_t(0)).size;
+  for (int i = 1; i < num_dims(); i++) {
     volume *= this->at(ff_dim_t(0)).degree;
   }
 

@@ -1,4 +1,5 @@
 #include "op-attrs/ops/concat.h"
+#include "utils/exception.decl.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {
@@ -12,11 +13,22 @@ ParallelTensorShape
                              "range or input is invalid");
     }
   }
-  for (auto &i : inputs) {
-    output.at(attrs.axis).size += i.at(attrs.axis).size;
+
+  int dims = inputs[0].num_dims();
+  for (int i = 1; i < inputs.size(); i++) {
+    if (inputs[i].num_dims() != dims) {
+      throw mk_runtime_error(" the input dims not matched at i:", i);
+    }
   }
-  output.at(attrs.axis).degree = inputs[0].at(attrs.axis).degree;
-  output.at(attrs.axis).is_replica_dim = inputs[0].at(attrs.axis).degree >= 1;
+
+  for (auto &i : inputs) {
+    output.at(ff_dim_t(attrs.axis)).size += i.at(ff_dim_t(attrs.axis)).size;
+  }
+  output.at(ff_dim_t(0)).is_replica_dim = true;
+  // note: how to decide the degee?
+  for (int i = 1; i < output.num_dims(); i++) {
+    output.at(ff_dim_t(i)).is_replica_dim = false;
+  }
   return output;
 }
 
