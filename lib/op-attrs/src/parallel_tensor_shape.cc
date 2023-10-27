@@ -1,4 +1,5 @@
 #include "op-attrs/parallel_tensor_shape.h"
+#include "op-attrs/ff_dim.h"
 #include "utils/containers.h"
 #include "utils/hash-utils.h"
 
@@ -11,6 +12,15 @@ static std::vector<ParallelDim> lift_dims(TensorDims const &dims) {
   }
   lifted_dims.push_back({1, 1, true});
   return lifted_dims;
+}
+
+int ParallelTensorShape::get_volume() const {
+  int volume  = this->at(ff_dim_t(0)).size;
+  for(int i = 1; i < num_dims(); i++) {
+    volume *= this->at(ff_dim_t(0)).degree;
+  }
+
+  return volume;
 }
 
 ParallelTensorDims::ParallelTensorDims(TensorDims const &dims)
