@@ -1,4 +1,5 @@
 #include "op-attrs/ops/replicate.h"
+#include "op-attrs/ff_dim.h"
 #include "op-attrs/parallel_dim.h"
 #include "utils/exception.h"
 
@@ -19,9 +20,8 @@ ParallelTensorShape get_output_shape(ReplicateAttrs const &attrs,
                            "range or input is invalid");
   }
   ParallelTensorShape output = input;
-  output.at(attrs.replicate_dim).size *= attrs.replicate_degree;
-  output.at(attrs.replicate_dim).is_replica_dim =
-      (input.at(attrs.replicate_dim).degree > 1);
+  output.at(ff_dim_t(0)).is_replica_dim = true;
+  output.at(ff_dim_t(0)).size *= attrs.replicate_degree;
   return output;
 }
 
