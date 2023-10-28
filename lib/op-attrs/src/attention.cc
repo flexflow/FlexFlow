@@ -1,5 +1,6 @@
 #include "op-attrs/ops/attention.h"
 #include "op-attrs/parallel_tensor_shape.h"
+#include "utils/exception.decl.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {
@@ -121,6 +122,93 @@ ParallelTensorShape get_output_shape(
   }
   return output;
 }
+
+// https://pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html,
+// we consider the batch size
+// query/key/value: 4D dimensions
+//query:[<rq, dq0, t>, <seq_len, dq1, f>, <b, dq2, f>, <embed_dim, dq3, f>]
+
+// key:[<rk, dk0, t>, <seq_len, dk1, f>, <b, dk2,f>, <embed_dim, dk3, f>]
+
+// value:[<rv, dv0, t>, <seq_len, dv1, f>, <b, dv3,f>, <embed_dim, dv3, f>]
+//  multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
+
+
+// output: (seq_len, batch_size, embed_dim)
+
+//output: [<ro, do0, t>, <seq_len, do1, f>, <b, do2, f>, <embed_dim, do3, f>]
+
+
+//how to decide the ro/do0?  ro = rq * dq1 * dq12 * dq3 / do1/do2/do3
+
+//how to decide the do1 or do2 or do3?
+//ro / do0  = dq / dq0 
+
+ // k->(<<rk, dk0, t>, <seq_len, dk1, f>,<num_head, dk3, f>, <b, dk2,f>,, <kdim, dk3,f> ) //num_head * kdim = embed_dim 
+
+// v->(<<rv, dv0, t>, <seq_len, dv1, f>,<num_head, dv3, f>, <b, dv2,f>,, <vdim, dv3,f> ) //num_head * vdim = embed_dim 
+
+// q->(<<rq, dq0, t>, <seq_len, dq1, f>, <num_head, dq3, f>. <b, dq2,f>,, <kdim, dq3,f> ) //num_head * kdim = embed_dim 
+
+//  // attn = q @k (<ra11, da11, t>, <seq_len, da12, f>, <b, da13,f>,  <b, da14,f>)
+
+//how to decide the ra11/da11/da12/da13/da14?
+
+//rk * dk2 * dk3 = rv * dv2 * dv3 , dk3 = dv3, 
+
+//so da13 = dk2, da14 = dv2, ra11 = rk * dk2 * dk3 / (da13 * da14) = rk * dk3 / dv2 = rv 
+
+//da11 = rk / dk0 / ra11
+
+//attn: (<rv, rk / dk0 / rv, t>, <seq_len, da12, f>, <b, dk2,f>,  <b, dv2,f>)
+
+
+
+ParallelTensorShape get_output_shape(
+    MultiHeadAttentionAttrs const &attrs,
+    MultiHeadAttentionInputs<ParallelTensorShape> const &input) {
+
+  if (input.query.num_dims() != 4 || input.key.num_dims() != 4 ||
+      input.value.num_dims() != 4) {
+    throw mk_runtime_error("MultiHeadAttentionAttrs: num_dims != 4");
+  }
+
+  
+  if (input.query.at(ff_dim_t(1)).size != input.key.at(ff_dim_t(1)).size ||
+      input.query.at(ff_dim_t(1)).size != input.value.at(ff_dim_t(1)).size ||
+      input.key.at(ff_dim_t(1)).size != input.value.at(ff_dim_t(1)).size) {
+    throw mk_runtime_error("MultiHeadAttentionAttrs: seq_len not match");
+  }
+
+  if (input.query.at(ff_dim_t(2)).size != input.key.at(ff_dim_t(2)).size ||
+      input.query.at(ff_dim_t(2)).size != input.value.at(ff_dim_t(2)).size ||
+      input.key.at(ff_dim_t(2)).size != input.value.at(ff_dim_t(2)).size) {
+    throw mk_runtime_error("MultiHeadAttentionAttrs: batch_size not match");
+  }
+
+  if (input.query.at(ff_dim_t(3)).size != input.key.at(ff_dim_t(3)).size ||
+      input.query.at(ff_dim_t(3)).size != input.value.at(ff_dim_t(3)).size ||
+      input.key.at(ff_dim_t(3)).size != input.value.at(ff_dim_t(3)).size) {
+    throw mk_runtime_error("MultiHeadAttentionAttrs:  embed_dim not match");
+  }
+
+  if (input.query.at(ff_dim_t(3)).size != attrs.embed_dim ||
+      input.key.at(ff_dim_t(3)).size != attrs.embed_dim ||
+      input.value.at(ff_dim_t(3)).size != attrs.embed_dim) {
+    throw mk_runtime_error(
+        "MultiHeadAttentionAttrs:  input's embed_dim not match to attrs");
+  }
+
+  if (attrs.embed_dim != (attrs.num_heads * attrs.kdim)) {
+    throw mk_runtime_error(
+        "MultiHeadAttentionAttrs:  embed_dim not match to num_heads * kdim");
+  }
+
+
+  NOT_IMPLEMENTED();
+
+}
+
 
 } // namespace FlexFlow
 
