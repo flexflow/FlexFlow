@@ -1,4 +1,5 @@
 #include "op-attrs/ops/attention.h"
+#include "op-attrs/ff_dim.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/exception.decl.h"
 #include "utils/exception.h"
@@ -111,7 +112,7 @@ ParallelTensorShape get_output_shape(
   // attn = q @k  (seq_len, num_head, batch_size, batch_size)
   // attn = attn @v (seq_len, num_head, batch_size, vdim)
   // attn = attn.transpose(1,2) (seq_len, batch_size, num_head, vdim)
-  // attn = attn.reshape(seq_len, batch_size, num_head*vdim)
+  //
 
   // Note: we support tensor parallelism for seq_len/batch_size/embed_dim
   ParallelTensorShape output = input.query;
@@ -126,43 +127,78 @@ ParallelTensorShape get_output_shape(
 // https://pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html,
 // we consider the batch size
 // query/key/value: 4D dimensions
-//query:[<rq, dq0, t>, <seq_len, dq1, f>, <b, dq2, f>, <embed_dim, dq3, f>]
+// query:[<rq, dq0, t>, <seq_len, dq1, f>, <b, dq2, f>, <embed_dim, dq3, f>]
 
 // key:[<rk, dk0, t>, <seq_len, dk1, f>, <b, dk2,f>, <embed_dim, dk3, f>]
 
 // value:[<rv, dv0, t>, <seq_len, dv1, f>, <b, dv3,f>, <embed_dim, dv3, f>]
 //  multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
 
+// ### k:(<<rk, dk0, t>, <seq_len, dk1, f>,, <b, dk3,f>,, <embed_dim, dk4,f> )
 
-// output: (seq_len, batch_size, embed_dim)
+// k->(<<rk, dk0, t>, <seq_len, dk1, f>,<num_head, dk2, f>, <b, dk3,f>,, <kdim,
+// dk4,f> ) //num_head * kdim = embed_dim , dk2 = dk4
 
-//output: [<ro, do0, t>, <seq_len, do1, f>, <b, do2, f>, <embed_dim, do3, f>]
+// v->(<<rv, dv0, t>, <seq_len, dv1, f>,<num_head, dv2, f>, <b, dv4,f>,, <vdim,
+// dv4,f> ) //num_head * vdim = embed_dim , dv2 = dv4
 
+// q->(<<rq, dq0, t>, <seq_len, dq1, f>, <num_head, dq2, f>. <b, dq3,f>,, <kdim,
+// dq4,f> ) //num_head * kdim = embed_dim , dq2 = dq4
 
-//how to decide the ro/do0?  ro = rq * dq1 * dq12 * dq3 / do1/do2/do3
+// we have dk1 = dv1 = dq1 dk2 = dk4=dv2=dv4=dq2=dq4
 
-//how to decide the do1 or do2 or do3?
-//ro / do0  = dq / dq0 
+// 1)/ attn = q @k (<ra11, da10, t>, <seq_len, da11, f>, <num_head, da12, f>,
+// <b, da13,f>,  <b, da14,f>)
 
- // k->(<<rk, dk0, t>, <seq_len, dk1, f>,<num_head, dk3, f>, <b, dk2,f>,, <kdim, dk3,f> ) //num_head * kdim = embed_dim 
+// how to decide the ra11//da10/da11/da12/da13/da14? ⇒ I think da11 =dk1, da12 =
+// dk2, da13. = dk3, da14 = dq3
 
-// v->(<<rv, dv0, t>, <seq_len, dv1, f>,<num_head, dv3, f>, <b, dv2,f>,, <vdim, dv3,f> ) //num_head * vdim = embed_dim 
+// rk * dk3 * dk4=rq * dq3 * dq4 = ra11 * da13 * da14 = ra11 * dk3 * dq3
 
-// q->(<<rq, dq0, t>, <seq_len, dq1, f>, <num_head, dq3, f>. <b, dq2,f>,, <kdim, dq3,f> ) //num_head * kdim = embed_dim 
+// => ra11 = (rk * dk4) / dq3 = (rq * dq4) / dk3 , ra11/da10 = rq / dq0,
 
-//  // attn = q @k (<ra11, da11, t>, <seq_len, da12, f>, <b, da13,f>,  <b, da14,f>)
+// =>da10 =  ra11 * dq0 / rq = dq0 * dq4 / dk3
 
-//how to decide the ra11/da11/da12/da13/da14?
+// output attn: (< (rq * dq4) / dk3, dq0 * dq4 / dk3, t>, <seq_len, dk1, f>,
+// <num_head, dk2, f>, <b, dk3, f>,  <b, dq3,f>)
 
-//rk * dk2 * dk3 = rv * dv2 * dv3 , dk3 = dv3, 
+// 2)attn = attn @v (seq_len, num_head, batch_size, vdim)
 
-//so da13 = dk2, da14 = dv2, ra11 = rk * dk2 * dk3 / (da13 * da14) = rk * dk3 / dv2 = rv 
+// input attn:(< (rq * dq4) / dk3, dq0 * dq4 / dk3, t>, <seq_len, dk1, f>,
+// <num_head, dk2, f>, <b, dk3, f>,  <b, dq3,f>)
 
-//da11 = rk / dk0 / ra11
+// input v: ((<<rv, dv0, t>, <seq_len, dv1, f>,  <num_head, dv2, f>, <b,
+// dv3,f>,, <vdim, dv4,f> ) //num_head * vdim = embed_dim
 
-//attn: (<rv, rk / dk0 / rv, t>, <seq_len, da12, f>, <b, dk2,f>,  <b, dv2,f>)
+// output attn:(<ra21, da20, t>, <seq_len, da21,f>,  <num_head, da22, f>, <b,
+// da23, f>, <vdim, da24,f>
 
+// how to decide ra21//da20/da21/da22/da23/da24? ⇒ da21 = dk1, da22 =  dk2, da23
+// = dk3, da24 = dv4
 
+// ra21 * da23 * da24 = rv * dv3 * dv4 ⇒ ra21 = (rv * dv3) / dk3
+
+// ra21 / da20 = (rq * dq4) / dk3 / (dq0 * dq4 / dk3) ⇒ da20 = (rv * dv3 * dq0)
+// / (rq * dk3)
+
+// output attn:(<(rv * dv3) / dk3 , (rv * dv3 * dq0) / (rq * dk3), t>, <seq_len,
+// dk1,f>,  <num_head, dk2, f>, <b, dk3 f>, <vdim, dv4,f>)
+
+// 3) attn = attn.transpose(1,2 ) (seq_len, batch_size, num_head, vdim)
+
+// input attn:(<(rv * dv3) / dk3 , (rv * dv3 * dq0) / (rq * dk3), t>, <seq_len,
+// dk1,f>,  <num_head, dk2, f>, <b, dk3 f>, <vdim, dv4,f>
+
+// output attn:(<(rv * dv3) / dk3 , (rv * dv3 * dq0) / (rq * dk3), t>, <seq_len,
+// dk1,f>,  <b, dk3 f> <num_head, dk2, f>, , <vdim, dv4,f>
+
+// 4)attn = attn.reshape(seq_len, batch_size, num_head*vdim)
+
+// input attn:(<(rv * dv3) / dk3 , (rv * dv3 * dq0) / (rq * dk3), t>, <seq_len,
+// dk1,f>,  <b, dk3 f> <num_head, dk2, f>, , <vdim, dv4,f>
+
+// output attn:(<(rv * dv3) / dk3 , (rv * dv3 * dq0) / (rq * dk3), t>, <seq_len,
+// dk1,f>,  <b, dk3 f> <num_head, dk2, f>, , <vdim, dv4,f>
 
 ParallelTensorShape get_output_shape(
     MultiHeadAttentionAttrs const &attrs,
@@ -173,7 +209,6 @@ ParallelTensorShape get_output_shape(
     throw mk_runtime_error("MultiHeadAttentionAttrs: num_dims != 4");
   }
 
-  
   if (input.query.at(ff_dim_t(1)).size != input.key.at(ff_dim_t(1)).size ||
       input.query.at(ff_dim_t(1)).size != input.value.at(ff_dim_t(1)).size ||
       input.key.at(ff_dim_t(1)).size != input.value.at(ff_dim_t(1)).size) {
@@ -204,11 +239,20 @@ ParallelTensorShape get_output_shape(
         "MultiHeadAttentionAttrs:  embed_dim not match to num_heads * kdim");
   }
 
+  ParallelTensorShape output = input.key;
 
-  NOT_IMPLEMENTED();
+  output.at(ff_dim_t(0)).size =
+      (input.value.at(ff_dim_t(0)).size * input.value.at(ff_dim_t(2)).degree) /
+      input.key.at(ff_dim_t(2)).degree; // rv3 * dv3 / dk3
+  output.at(ff_dim_t(0)).degree =
+      (input.value.at(ff_dim_t(0)).size * input.value.at(ff_dim_t(2)).degree *
+       input.query.at(ff_dim_t(0)).degree) /
+      (input.query.at(ff_dim_t(0)).size * input.key.at(ff_dim_t(2)).degree);
+  // (rv * dv3 * dq0) / (rq * dk3)
+  output.at(ff_dim_t(0)).is_replica_dim = true;
 
+  return output;
 }
-
 
 } // namespace FlexFlow
 
