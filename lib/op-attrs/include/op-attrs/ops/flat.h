@@ -11,6 +11,9 @@ struct FlatAttrs {};
 FF_VISITABLE_STRUCT(FlatAttrs);
 CHECK_VALID_OP_ATTR(FlatAttrs);
 
+ParallelTensorShape get_output_shape(FlatAttrs const &attrs,
+                                     ParallelTensorShape const &input);
+
 } // namespace FlexFlow
 
 #endif
