@@ -1,6 +1,8 @@
 #include "op-attrs/ops/flat.h"
+#include "op-attrs/ff_dim.h"
 #include "parallel_dim_mapping_record.h"
 #include "parallel_dim_mapping_record_solver.h"
+#include "utils/exception.h"
 #include <cassert>
 
 namespace FlexFlow {
@@ -17,20 +19,39 @@ constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
 // flat is like the pytorch view
 // tensor = torch.randn(2, 3, 4)  ,flattened_tensor = tensor.view(-1) #shape:
 // (24)
+// input: (<ri, di, t>, <x0, d1, f>, <x1,d2, f>, ......)
+// assume d1=d2=d3
+// output: 2d dimention (<ri, di, t>, <x0+x1+x2+x3, d0, f> )
 ParallelTensorShape get_output_shape(FlatAttrs const &attrs,
                                      ParallelTensorShape const &input) {
-  ParallelTensorShape output_shape(input.dims, input.data_type);
+  if (input.num_dims() < 2) {
+    throw mk_runtime_error("for flat,its dims must greater than 2");
+  }
 
-  output_shape.at(ff_dim_t(Output::CHANNEL)).size =
-      input.at(ff_dim_t(Input::CHANNEL)).size *
-      input.at(ff_dim_t(Input::HEIGHT)).size *
-      input.at(ff_dim_t(Input::WIDTH)).size;
-  output_shape.at(ff_dim_t(Output::CHANNEL)).degree =
-      input.at(ff_dim_t(Input::CHANNEL)).degree;
-  output_shape.at(ff_dim_t(Output::CHANNEL)).is_replica_dim =
-      (input.at(ff_dim_t(Input::CHANNEL)).degree > 1);
+  int degree = input.at(ff_dim_t(1)).degree;
+  for (int i = 1; i < input.num_dims(); i++) {
+    if (degree != input.at(ff_dim_t(i)).degree) {
+      throw mk_runtime_error(
+          "for flat, all degree should be equal, but elemement ", i, " not");
+    }
+  }
+  std::vector<ParallelDim> data;
+  data.resize(2);
+  data[0] = input.at(ff_dim_t(0));
+  data[0].is_replica_dim = true;
+  data[1].degree = input.at(ff_dim_t(1)).degree;
+  data[1].size = input.at(ff_dim_t(1)).size;
+  data[1].is_replica_dim = false;
 
-  return output_shape;
+  for (int i = 2; i < input.num_dims(); i++) {
+    data[1].size *= input.at(ff_dim_t(i)).size;
+  }
+
+  ParallelTensorShape output = ParallelTensorShape(
+      ParallelTensorDims(TensorDims(data.begin(), data.end())),
+      input.data_type);
+
+  return output;
 }
 
 /* bool FlatAttrs::is_valid(ParallelTensorShape const &input) const { */
