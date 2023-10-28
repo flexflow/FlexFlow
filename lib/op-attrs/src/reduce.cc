@@ -1,14 +1,22 @@
 #include "op-attrs/ops/reduce.h"
-#include "utils/exceptions.h"
+#include "utils/exception.decl.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 
 //
 ParallelTensorShape get_output_shape(ReduceAttrs const &attrs,
                                      ParallelTensorShape const &input) {
-  NOT_IMPLEMENTED()
-  // reduce is sum/max/min/mean, I think we just return 1D tensor [1, 2, 4] =>
-  // [7, ] NOTE: how to implement this
+  if (input.num_dims() - attrs.axes.size() == 1) {
+    throw mk_runtime_error(" for reduce, the input and attrs.axes must match");
+  }
+  ParallelTensorShape output = input;
+  for (int i = 0; i < attrs.axes.size(); i++) {
+    output.at(attrs.axes.at(i)).size = 1;
+    output.at(attrs.axes.at(i)).is_replica_dim = false;
+  }
+
+  return output;
 }
 
 } // namespace FlexFlow
