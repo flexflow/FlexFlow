@@ -17,7 +17,6 @@ struct Pool2DAttrs {
   req<int> kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   req<PoolOp> pool_type;
   req<Activation> activation;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 FF_VISITABLE_STRUCT(Pool2DAttrs,
                     kernel_h,

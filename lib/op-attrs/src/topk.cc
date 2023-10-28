@@ -15,8 +15,7 @@ ParallelTensorShape get_output_shape(TopKAttrs const &attrs,
   output.at(ff_dim_t(attrs.axis)).size = attrs.k;
   output.at(ff_dim_t(attrs.axis)).degree =
       input.at(ff_dim_t(attrs.axis)).degree;
-  output.at(ff_dim_t(attrs.axis)).is_replica_dim =
-      input.at(ff_dim_t(attrs.axis)).degree > 1;
+  output.at(ff_dim_t(attrs.axis)).is_replica_dim = false;
   return output;
 }
 

@@ -1,22 +1,7 @@
 #include "op-attrs/ops/gather.h"
-#include "utils/exception.decl.h"
-#include "utils/exceptions.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
-
-bool GatherAttrs::is_valid(ParallelTensorShape const &lhs,
-                           ParallelTensorShape const &rhs) const {
-  if (lhs.dims.num_dims() != rhs.dims.num_dims()) {
-    return false;
-  }
-  for (auto i : lhs.dims) {
-    if (ff_dim_t(i.size) != this->dim &&
-        lhs.at(ff_dim_t(i.size)).size < rhs.at(ff_dim_t(i.size)).size) {
-      return false;
-    }
-  }
-  return true;
-}
 
 // https://pytorch.org/docs/stable/generated/torch.gather.html
 //  todo: why return a vector?
@@ -26,25 +11,24 @@ std::vector<ParallelTensorShape>
                       ParallelTensorShape const &index) {
   if (input.num_dims() != index.num_dims()) {
     throw mk_runtime_error(
-        "Gather: input and index must have the same number of dimensions");
+        "for gather, the dimensions of input and index are not match");
   }
 
-  for (int i = 0; i < input.num_dims(); i++) {
+  for (int i = 1; i < input.num_dims(); i++) {
     if (i != attrs.dim &&
         input.at(ff_dim_t(i)).size <= index.at(ff_dim_t(i)).size) {
       throw mk_runtime_error(
           "Gather: index.size(d) <= input.size(d) for all dimensions d != dim");
     }
+
+    ParallelTensorShape output = index;
+    output.at(ff_dim_t(0)) = input.at(ff_dim_t(0));
+    std::vector<ParallelTensorShape> results;
+    // NOTE(lambda):why return a vector?
+    results.push_back(output);
+    return results;
   }
-
-  ParallelTensorShape output = input;
-
-  std::vector<ParallelTensorShape> results;
-  // NOTE(lambda):why return a vector?
-  results.push_back(output);
-  return results;
 }
-
 /* bool GatherAttrs::is_valid(ParallelTensorShape const &lhs,
  * ParallelTensorShape const &rhs) const { */
 /*   if (lhs.num_dims() != rhs.num_dims()) { */

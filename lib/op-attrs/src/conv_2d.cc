@@ -85,9 +85,14 @@ std::vector<ParallelDimMappingRecord>
 }
 
 // input: (<ri, di1, t>, <b, 1, f>, <input_channel, di3, f>, < input_h, di4, f>,
-// <input_w, di5, f> ) kernel(Conv2DAttrs):  out_channels, kernel_h, kernel_w,
-// stride_h, stride_w, padding_h, padding_w, output shape:(<ro, do1, t>, <b,
-// 1,f>, <output_channel, do3, f>, <output_h, do4, f>, <output_w, do5,f>)
+// <input_w, di5, f> )
+
+// kernel(Conv2DAttrs):  out_channels, kernel_h, kernel_w, stride_h, stride_w,
+// padding_h, padding_w,
+
+// output shape:(<ro, do1, t>, <b, 1,f>, <output_channel, do3, f>, <output_h,
+// do4, f>, <output_w, do5,f>)
+
 //  output_h = (input_h + 2 * padding_h - kernel_h) / stride_h + 1
 //  output_w = (input_w + 2 * padding_w - kernel_w) / stride_w + 1
 // assert: for the kernel, dk1 == dk2=dk4=dk4=dk5=1
