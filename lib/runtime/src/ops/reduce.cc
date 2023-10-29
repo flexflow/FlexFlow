@@ -56,7 +56,7 @@ static DeviceSpecific<ReducePerDeviceState>
 
   OperatorType = attrs.op_type;
   // Note: How to set the reduction size?
-  size_t reduction_size;
+  size_t reduction_size = input.shape.get_volume() / output.shape.get_volume();
   DeviceSpecific<ReducePerDeviceState> per_device_state =
       acc.create_device_specific<ReducePerDeviceState>(init_kernel(
           handle, op_type, reduction_size, input.shape, output.shape));
