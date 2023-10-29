@@ -17,6 +17,7 @@
 #endif
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
+#include "flexflow/ops/kernels/inc_multihead_self_attention_utils.cuh"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -202,14 +203,71 @@ __global__ void spec_fill_entries_above_diagonal(DT *matrix,
   }
 }
 
+#define LAUNCH_SPEC_ATTENTION_SCORE_KERNEL(                                    \
+    DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)      \
+  smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                               \
+                                   BatchConfig::max_sequence_length(),         \
+                                   THDS_PER_VALUE,                             \
+                                   THDS_PER_BLOCK);                            \
+  compute_attention_kernel_generation_kernel<DT,                               \
+                                             THDS_PER_BLOCK,                   \
+                                             Dh,                               \
+                                             Dh_MAX,                           \
+                                             THDS_PER_KEY,                     \
+                                             THDS_PER_VALUE>                   \
+      <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                             \
+          static_cast<DT *>(m->devQKVProjArray),                               \
+          static_cast<DT *>(m->keyCache),                                      \
+          static_cast<DT *>(m->valueCache),                                    \
+          output_ptr,                                                          \
+          scale,                                                               \
+          BatchConfig::max_sequence_length(),                                  \
+          m->qProjSize,                                                        \
+          m->hidden_size,                                                      \
+          m->request_infos,                                                    \
+          true,                                                                \
+          BeamSearchBatchConfig::MAX_BEAM_WIDTH)
+
 template <typename DT>
-void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
-                              BeamSearchBatchConfig const *bc,
-                              int shard_id,
-                              DT *output_ptr,
-                              DT const *bias_ptr,
-                              DT const *weight_ptr,
-                              cudaStream_t stream) {
+void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
+                                         BatchConfig const *bc,
+                                         DT *output_ptr,
+                                         cudaStream_t stream) {
+  dim3 grid(m->num_q_heads,
+            bc->num_active_requests() * BeamSearchBatchConfig::MAX_BEAM_WIDTH);
+  int const per_head_size = m->qProjSize;
+  float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
+  size_t smem_sz;
+  // std::cout << "bc->num_active_requests(): " << bc->num_active_requests() <<
+  // "\n";
+  switch (per_head_size) {
+    case 64:
+      LAUNCH_SPEC_ATTENTION_SCORE_KERNEL(DT, 64, 64, 4, 16, 128, stream);
+      break;
+    case 128:
+      LAUNCH_SPEC_ATTENTION_SCORE_KERNEL(DT, 128, 128, 4, 32, 128, stream);
+      break;
+    default:
+      assert(false);
+  }
+
+  // // check for errors
+  // cudaError_t error = cudaGetLastError();
+  // if (error != cudaSuccess) {
+
+  //   fprintf(stderr, "ERROR: %s \n", cudaGetErrorString(error));
+  //   assert(false);
+  // }
+}
+
+template <typename DT>
+void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
+                                     BeamSearchBatchConfig const *bc,
+                                     int shard_id,
+                                     DT *output_ptr,
+                                     DT const *bias_ptr,
+                                     DT const *weight_ptr,
+                                     cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
@@ -516,10 +574,18 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
 
+  if (bc->num_generation_tokens > 0) {
+    // phase 3: Compute attention score for generation tokens
+    compute_attention_kernel_generation<DT>(
+        m, bc, static_cast<DT *>(m->attn_heads), stream);
+  }
+
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-  compute_attention_kernel(
-      m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
+  if (bc->num_tokens > bc->num_generation_tokens) {
+    compute_attention_kernel_prompt(
+        m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
+  }
 }
 
 } // namespace SpecIncMultiHeadAttention

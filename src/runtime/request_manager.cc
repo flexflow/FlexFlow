@@ -923,7 +923,7 @@ BeamSearchBatchConfig
   BeamSearchBatchConfig new_bc;
   new_bc.model_id = old_bc.model_id;
   // std::cout << "old_bc.model_id: " << old_bc.model_id << "\n";
-
+  int num_generation_tokens = 0;
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (old_bc.request_completed[i]) {
       continue;
@@ -1062,10 +1062,13 @@ BeamSearchBatchConfig
 
           new_bc.beamTokenInfo[new_bc.num_tokens].sub_request_index = k;
           new_bc.num_tokens++;
+          num_generation_tokens++;
         }
       }
     }
   }
+
+  new_bc.num_generation_tokens = num_generation_tokens;
   if (verbose) {
     std::cout << "prepare_next_batch_beam OLD vs NEW batchconfigs:"
               << std::endl;
