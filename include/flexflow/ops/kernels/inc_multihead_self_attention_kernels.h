@@ -14,6 +14,25 @@ namespace FlexFlow {
 namespace Kernels {
 namespace IncMultiHeadAttention {
 
+template <typename DT,
+          int THREADS_PER_BLOCK,
+          int Dh,
+          int Dh_MAX,
+          int THREADS_PER_KEY,
+          int THREADS_PER_VALUE>
+__global__ void compute_attention_kernel_generation_kernel(
+    DT const *query,
+    DT const *key_cache,
+    DT const *value_cache,
+    DT *output_ptr,
+    float const scale,
+    int max_seq_length,
+    int per_head_size,
+    int hidden_size,
+    BatchConfig::PerRequestInfo *request_infos,
+    bool is_beam,
+    int max_beam_width);
+
 template <typename DT>
 __global__ void apply_position_bias_qkprd(DT *input_ptr,
                                           int num_tokens,
