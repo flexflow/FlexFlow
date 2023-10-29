@@ -1,26 +1,28 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 
+#include "ff_handle.h"
 #include "kernels/device.h"
+#include "kernels/ff_handler.h"
 
 namespace FlexFlow {
 
-class SoftmaxPerDeviceState : public PerDeviceOpState {
-public:
-  SoftmaxPerDeviceState(FFHandler handle,
-                        Softmax const *softmax,
-                        Legion::Domain const &input_domain);
+// Note(lambda): SoftmaxPerDeviceState may need add more elements
+struct SoftmaxPerDeviceState {
+  PerDeviceFFHandle handle;
   ffTensorDescriptor_t inputTensor;
-  bool profiling;
   int dim;
-  char op_name[MAX_OPNAME];
 };
+
+FF_VISITABLE_STRUCT(SoftmaxPerDeviceState, handle, inputTensor, dim);
 
 namespace Kernels {
 namespace Softmax {
 
+SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &, int);
+
 void forward_kernel(ffStream_t stream,
-                    SoftmaxPerDeviceState const *m,
+                    SoftmaxPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr);
 void backward_kernel(ffStream_t stream,

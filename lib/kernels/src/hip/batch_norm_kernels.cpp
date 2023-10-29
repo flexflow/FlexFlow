@@ -36,7 +36,7 @@ namespace Kernels {
 namespace BatchNorm {
 
 void forward_kernel(hipStream_t stream,
-                    BatchNormPerDeviceState *m,
+                    BatchNormPerDeviceState const *m,
                     float const *input_ptr,
                     float *output_ptr,
                     float const *scale_ptr,
@@ -111,22 +111,22 @@ void backward_kernel(hipStream_t stream,
                                               m->saveVar));
 }
 
-} // namespace BatchNorm
-} // namespace Kernels
-
-BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
-                                                 BatchNorm const *bn,
-                                                 Memory gpu_mem,
-                                                 int output_n,
-                                                 int output_c,
-                                                 int output_h,
-                                                 int output_w)
-    : PerDeviceOpState(handler) {
+BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handler,
+                                    Allocator allocator,
+                                    float *runningMean,
+                                    int output_n,
+                                    int output_c,
+                                    int output_h,
+                                    int output_w,
+                                    bool relu) {
+  ffTensorDescriptor_t inputTensor;
+  ffTensorDescriptor_t outputTensor;
+  ffTensorDescriptor_t biasTensor;
+  ffActivationDescriptor_t actiDesc;
+  ffBatchNormMode_t mode;
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&biasTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
-  relu = bn->relu;
-  profiling = bn->profiling;
   mode = miopenBNSpatial;
   // #if HIPDNN_VERSION >= 7000
   //   mode = HIPDNN_BATCHNORM_SPATIAL_PERSISTENT;
@@ -142,21 +142,10 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
   // allocate memory for runningMean, runningVar, saveMean, saveVar
   {
     size_t totalSize = sizeof(float) * output_c * 4;
-    // Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-    //                                Realm::Point<1, coord_t>(totalSize - 1));
-    // std::vector<size_t> field_sizes;
-    // field_sizes.push_back(sizeof(char));
-    // Realm::RegionInstance::create_instance(reserveInst,
-    //                                        gpu_mem,
-    //                                        bounds,
-    //                                        field_sizes,
-    //                                        0,
-    //                                        Realm::ProfilingRequestSet())
-    //     .wait();
-    runningMean = (float *)this->allocator->allocate(totalSize);
-    runningVar = (float *)runningMean + output_c;
-    saveMean = (float *)runningVar + output_c;
-    saveVar = (float *)saveMean + output_c;
+    runningMean = (float *)allocator.allocate(totalSize);
+    float *runningVar = (float *)runningMean + output_c;
+    float *saveMean = (float *)runningVar + output_c;
+    float *saveVar = (float *)saveMean + output_c;
     hipStream_t stream;
 
     hipLaunchKernelGGL(assign_kernel,
@@ -183,8 +172,14 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
   }
 }
 
-BatchNormPerDeviceState::~BatchNormPerDeviceState(void) {
-  reserveInst.destroy();
+void cleanup_kernel(Allocator allocator,
+                    ffTensorDescriptor_t inputTensor,
+                    ffTensorDescriptor_t biasTensor,
+                    ffTensorDescriptor_t outputTensor,
+                    ffActivationDescriptor_t actiDesc,
+                    bool relu,
+                    float *runningMean) {
+  allocator.deallocate(runningMean);
   checkCUDNN(miopenDestroyTensorDescriptor(inputTensor));
   checkCUDNN(miopenDestroyTensorDescriptor(biasTensor));
   checkCUDNN(miopenDestroyTensorDescriptor(outputTensor));
@@ -193,4 +188,6 @@ BatchNormPerDeviceState::~BatchNormPerDeviceState(void) {
   }
 }
 
+} // namespace BatchNorm
+} // namespace Kernels
 } // namespace FlexFlow
