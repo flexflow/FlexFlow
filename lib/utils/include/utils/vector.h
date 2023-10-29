@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_VECTOR_H
 #define _FLEXFLOW_UTILS_VECTOR_H
 
+#include "utils/containers.h"
 #include <vector>
 
 template <typename T>

@@ -331,19 +331,19 @@ struct hash<::FlexFlow::stack_vector<T, MAXSIZE>> {
 namespace fmt {
 
 template <typename T, std::size_t MAXSIZE>
-struct formatter<::FlexFlow::stack_vector<T, MAXSIZE>> : formatter<string_view> {
+struct formatter<::FlexFlow::stack_vector<T, MAXSIZE>>
+    : formatter<string_view> {
   template <typename FormatContext>
-  auto format(const ::FlexFlow::stack_vector<T, MAXSIZE>& v, FormatContext &ctx) const
-      -> decltype(ctx.out()) {
+  auto format(::FlexFlow::stack_vector<T, MAXSIZE> const &v,
+              FormatContext &ctx) const -> decltype(ctx.out()) {
     using namespace FlexFlow;
     size_t result = 0;
     iter_hash(result, v.cbegin(), v.cend());
-    string_view name(std::to_string(result)); 
+    string_view name(std::to_string(result));
     return formatter<string_view>::format(name, ctx);
   }
 };
 
 } // namespace fmt
-
 
 #endif

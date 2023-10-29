@@ -105,10 +105,11 @@ CHECK_HASHABLE(stack_string<1>);
 namespace fmt {
 
 template <typename Char, std::size_t MAXSIZE>
-struct formatter<::FlexFlow::stack_basic_string<Char, MAXSIZE>> : formatter<fmt::basic_string_view<Char>> {
+struct formatter<::FlexFlow::stack_basic_string<Char, MAXSIZE>>
+    : formatter<fmt::basic_string_view<Char>> {
   template <typename FormatContext>
-  auto format(const ::FlexFlow::stack_basic_string<Char, MAXSIZE>& v, FormatContext &ctx) const
-      -> decltype(ctx.out()) {
+  auto format(::FlexFlow::stack_basic_string<Char, MAXSIZE> const &v,
+              FormatContext &ctx) const -> decltype(ctx.out()) {
     using namespace FlexFlow;
     auto str_view = format_as(v);
     return format_to(ctx.out(), "{}", str_view);
