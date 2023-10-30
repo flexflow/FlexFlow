@@ -24,18 +24,52 @@ struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
   ParallelDim const &at(ff_dim_t const &) const;
   ParallelDim &at(ff_dim_t const &);
 
-  iterator begin();
-  const_iterator begin() const;
-  const_iterator cbegin() const;
-  iterator end();
-  const_iterator end() const;
-  const_iterator cend() const;
-  reverse_iterator rbegin();
-  const_reverse_iterator rbegin() const;
-  const_reverse_iterator crbegin() const;
-  reverse_iterator rend();
-  const_reverse_iterator rend() const;
-  const_reverse_iterator crend() const;
+  iterator begin() {
+    return this->data.begin();
+  }
+  
+  const_iterator begin() const {
+    return this->cbegin();
+  };
+
+  const_iterator cbegin() const {
+    return this->data.cbegin();
+  }
+
+  iterator end() {
+    return this->data.end();
+  }
+
+  const_iterator end() const {
+    return this->cend();
+  }
+
+  const_iterator cend() const {
+    return this->data.cend();
+  }
+
+  reverse_iterator rbegin() {
+    return this->data.rbeigin();
+  }
+
+  const_reverse_iterator rbegin() const {
+    return this->cbegin();
+  }
+  const_reverse_iterator crbegin() const {
+    return this->data.crbegin();
+  }
+
+  reverse_iterator rend() {
+    return this->data.rend();
+  }
+
+  const_reverse_iterator rend() const {
+    return this->crend();
+  }
+
+  const_reverse_iterator crend() const {
+    return this->data.crend();
+  }
 
 public:
   FFOrdered<ParallelDim> data;

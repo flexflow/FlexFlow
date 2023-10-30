@@ -9,7 +9,7 @@
 
 namespace FlexFlow {
 
-using TensorDims = FFOrdered<size_t>;
+usingre= FFOrdered<size_t>;
 
 struct TensorShape : public use_visitable_cmp<TensorShape> {
   TensorShape() = delete;
