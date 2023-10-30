@@ -504,156 +504,156 @@ if(NOT BUILD_LEGION_ONLY)
       install(PROGRAMS ${CMAKE_BINARY_DIR}/flexflow_python DESTINATION "bin")
     endif()
   endif()
-endif()
-
-if (INFERENCE_TESTS)
-  target_link_libraries(flexflow "${TORCH_LIBRARIES}")
-  set_property(TARGET flexflow PROPERTY CXX_STANDARD 14)
-endif()
-
-# build binary
-option(FF_BUILD_TOKENIZER "build tokenizer=cpp for LLM serving" ON)
-option(FF_BUILD_RESNET "build resnet example" OFF)
-option(FF_BUILD_RESNEXT "build resnext example" OFF)
-option(FF_BUILD_ALEXNET "build alexnet example" OFF)
-option(FF_BUILD_DLRM "build DLRM example" OFF)
-option(FF_BUILD_XDL "build XDL example" OFF)
-option(FF_BUILD_INCEPTION "build inception example" OFF)
-option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
-option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
-option(FF_BUILD_MOE "build mixture of experts example" OFF)
-option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
-option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
-option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
-option(FF_BUILD_MLP_UNIFY_INFERENCE "build mlp unify inference example" OFF)
-option(FF_BUILD_ALL_INFERENCE_EXAMPLES "build all inference examples. Overrides others" OFF)
-option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
-option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
-option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
-option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
-
-if(FF_BUILD_UNIT_TESTS)
-  set(BUILD_GMOCK OFF)
-  add_subdirectory(deps/googletest)
-  enable_testing()
-  add_subdirectory(tests/unit)
-endif()
-
-  if(FF_BUILD_SUBSTITUTION_TOOL)
-    add_subdirectory(tools/protobuf_to_json)
+  
+  if (INFERENCE_TESTS)
+    target_link_libraries(flexflow "${TORCH_LIBRARIES}")
+    set_property(TARGET flexflow PROPERTY CXX_STANDARD 14)
   endif()
 
-  if(FF_BUILD_VISUALIZATION_TOOL)
-    add_subdirectory(tools/substitutions_to_dot)
+  # build binary
+  option(FF_BUILD_TOKENIZER "build tokenizer=cpp for LLM serving" ON)
+  option(FF_BUILD_RESNET "build resnet example" OFF)
+  option(FF_BUILD_RESNEXT "build resnext example" OFF)
+  option(FF_BUILD_ALEXNET "build alexnet example" OFF)
+  option(FF_BUILD_DLRM "build DLRM example" OFF)
+  option(FF_BUILD_XDL "build XDL example" OFF)
+  option(FF_BUILD_INCEPTION "build inception example" OFF)
+  option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
+  option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
+  option(FF_BUILD_MOE "build mixture of experts example" OFF)
+  option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
+  option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
+  option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
+  option(FF_BUILD_MLP_UNIFY_INFERENCE "build mlp unify inference example" OFF)
+  option(FF_BUILD_ALL_INFERENCE_EXAMPLES "build all inference examples. Overrides others" OFF)
+  option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
+  option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
+  option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
+  option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
+
+  if(FF_BUILD_UNIT_TESTS)
+    set(BUILD_GMOCK OFF)
+    add_subdirectory(deps/googletest)
+    enable_testing()
+    add_subdirectory(tests/unit)
   endif()
 
-if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_TOKENIZER)
-  if (FF_GPU_BACKEND STREQUAL "hip_rocm")
-    SET(SPM_USE_BUILTIN_PROTOBUF OFF CACHE BOOL "Use builtin version of protobuf to compile SentencePiece")
+    if(FF_BUILD_SUBSTITUTION_TOOL)
+      add_subdirectory(tools/protobuf_to_json)
+    endif()
+
+    if(FF_BUILD_VISUALIZATION_TOOL)
+      add_subdirectory(tools/substitutions_to_dot)
+    endif()
+
+  if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_TOKENIZER)
+    if (FF_GPU_BACKEND STREQUAL "hip_rocm")
+      SET(SPM_USE_BUILTIN_PROTOBUF OFF CACHE BOOL "Use builtin version of protobuf to compile SentencePiece")
+    endif()
+    # Ensure Rust is installed
+    execute_process(COMMAND rustc --version
+                  RESULT_VARIABLE RUST_COMMAND_RESULT
+                  OUTPUT_VARIABLE RUSTC_OUTPUT
+                  ERROR_QUIET)
+    if(NOT RUST_COMMAND_RESULT EQUAL 0)
+      message(FATAL_ERROR "Rust is not installed on the system. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
+    endif()
+    # Ensure Cargo is installed
+    execute_process(COMMAND cargo --version
+                    RESULT_VARIABLE CARGO_RESULT
+                    OUTPUT_QUIET ERROR_QUIET)
+    if(NOT CARGO_RESULT EQUAL 0)
+      message(FATAL_ERROR "Rust is installed, but cargo is not. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
+    endif()
+    add_subdirectory(deps/tokenizers-cpp tokenizers EXCLUDE_FROM_ALL)
+    target_include_directories(flexflow PUBLIC deps/tokenizers-cpp/include)
+    target_link_libraries(flexflow tokenizers_cpp)
   endif()
-  # Ensure Rust is installed
-  execute_process(COMMAND rustc --version
-                RESULT_VARIABLE RUST_COMMAND_RESULT
-                OUTPUT_VARIABLE RUSTC_OUTPUT
-                ERROR_QUIET)
-  if(NOT RUST_COMMAND_RESULT EQUAL 0)
-    message(FATAL_ERROR "Rust is not installed on the system. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
+  if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/ResNet)
   endif()
-  # Ensure Cargo is installed
-  execute_process(COMMAND cargo --version
-                  RESULT_VARIABLE CARGO_RESULT
-                  OUTPUT_QUIET ERROR_QUIET)
-  if(NOT CARGO_RESULT EQUAL 0)
-    message(FATAL_ERROR "Rust is installed, but cargo is not. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
+
+  if(FF_BUILD_RESNEXT OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/resnext50)
   endif()
-  add_subdirectory(deps/tokenizers-cpp tokenizers EXCLUDE_FROM_ALL)
-  target_include_directories(flexflow PUBLIC deps/tokenizers-cpp/include)
-  target_link_libraries(flexflow tokenizers_cpp)
-endif()
-if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/ResNet)
-endif()
 
-if(FF_BUILD_RESNEXT OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/resnext50)
-endif()
-
-if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/AlexNet)
-endif()
-
-if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/MLP_Unify)
-endif()
-
-if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/split_test)
-endif()
-
-if(FF_BUILD_SPLIT_TEST_2 OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/split_test_2)
-endif()
-
-if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/InceptionV3)
-endif()
-
-#TODO: Once functional add to BUILD_ALL_EXAMPLES
-if(FF_BUILD_CANDLE_UNO OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/candle_uno)
-endif()
-
-if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/DLRM)
-
-  #add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
-  #target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-
-  #add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
-  #target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-endif()
-
-if(FF_BUILD_XDL OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/XDL)
-endif()
-
-if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/Transformer)
-endif()
-
-if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/mixture_of_experts)
-endif()
-
-if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(inference/spec_infer)
-  add_subdirectory(inference/incr_decoding)
-endif()
-
-
-# installation
-set(INCLUDE_DEST "include")
-set(LIB_DEST "lib")
-install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
-install(TARGETS flexflow DESTINATION ${LIB_DEST})
-# install python
-if (FF_USE_PYTHON)
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import site, os; print([pkg for func in (site.getsitepackages(), site.getusersitepackages()) for pkg in ([func] if isinstance(func, str) else func) if os.access(pkg, os.W_OK)][0])" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
-  if (NOT FF_BUILD_FROM_PYPI)
-    install(
-      DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
-      DESTINATION ${PY_DEST}/flexflow
-      FILES_MATCHING 
-      PATTERN "*.py")
-  else()
-    # pip automatically installs all *.py files in the python/flexflow folder, but because flexflow_cffi_header.py is generated at build time, we have to install it manually.
-    install(
-      PROGRAMS ${FLEXFLOW_ROOT}/python/flexflow/core/flexflow_cffi_header.py
-      DESTINATION ${PY_DEST}/flexflow/core
-    )
-    # Use setup.py script to re-install the Python bindings library with the right library paths. 
-    # Need to put the instructions in a subfolder because of issue below:
-    # https://stackoverflow.com/questions/43875499/do-post-processing-after-make-install-in-cmake
-    add_subdirectory(cmake/pip_install)
+  if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/AlexNet)
   endif()
-endif()
+
+  if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/MLP_Unify)
+  endif()
+
+  if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/split_test)
+  endif()
+
+  if(FF_BUILD_SPLIT_TEST_2 OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/split_test_2)
+  endif()
+
+  if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/InceptionV3)
+  endif()
+
+  #TODO: Once functional add to BUILD_ALL_EXAMPLES
+  if(FF_BUILD_CANDLE_UNO OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/candle_uno)
+  endif()
+
+  if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/DLRM)
+
+    #add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
+    #target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+
+    #add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
+    #target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+  endif()
+
+  if(FF_BUILD_XDL OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/XDL)
+  endif()
+
+  if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/Transformer)
+  endif()
+
+  if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(examples/cpp/mixture_of_experts)
+  endif()
+
+  if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+    add_subdirectory(inference/spec_infer)
+    add_subdirectory(inference/incr_decoding)
+  endif()
+
+
+  # installation
+  set(INCLUDE_DEST "include")
+  set(LIB_DEST "lib")
+  install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
+  install(TARGETS flexflow DESTINATION ${LIB_DEST})
+  # install python
+  if (FF_USE_PYTHON)
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import site, os; print([pkg for func in (site.getsitepackages(), site.getusersitepackages()) for pkg in ([func] if isinstance(func, str) else func) if os.access(pkg, os.W_OK)][0])" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if (NOT FF_BUILD_FROM_PYPI)
+      install(
+        DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
+        DESTINATION ${PY_DEST}/flexflow
+        FILES_MATCHING 
+        PATTERN "*.py")
+    else()
+      # pip automatically installs all *.py files in the python/flexflow folder, but because flexflow_cffi_header.py is generated at build time, we have to install it manually.
+      install(
+        PROGRAMS ${FLEXFLOW_ROOT}/python/flexflow/core/flexflow_cffi_header.py
+        DESTINATION ${PY_DEST}/flexflow/core
+      )
+      # Use setup.py script to re-install the Python bindings library with the right library paths. 
+      # Need to put the instructions in a subfolder because of issue below:
+      # https://stackoverflow.com/questions/43875499/do-post-processing-after-make-install-in-cmake
+      add_subdirectory(cmake/pip_install)
+    endif()
+  endif()
+endif() # if(NOT BUILD_LEGION_ONLY)

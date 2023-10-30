@@ -13,7 +13,7 @@ else
   echo "Pre-building Legion with GPU backend: ${gpu_backend}"
 fi
 
-if [[ "${gpu_backend}" == "cuda" || "${FF_GPU_BACKEND}" == "hip_cuda" ]]; then
+if [[ "${gpu_backend}" == "cuda" || "${gpu_backend}" == "hip_cuda" ]]; then
     # Check that CUDA version is supported. Versions above 12.0 not supported because we don't publish docker images for it yet.
     if [[ "$gpu_backend_version" != @(11.1|11.2|11.3|11.4|11.5|11.6|11.7|11.8|12.0) ]]; then
         echo "cuda_version is not supported, please choose among {11.1|11.2|11.3|11.4|11.5|11.6|11.7|11.8|12.0}"
