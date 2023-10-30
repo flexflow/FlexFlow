@@ -335,7 +335,7 @@ __global__ void compute_attention_kernel_generation_kernel(
   // Output the final values.
   if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
     convert_from_float(
-        *reinterpret_cast<V_vec *>(output_ptr + request_idx * hidden_size +
+        *reinterpret_cast<V_vec *>(output_ptr + beam_request_idx * hidden_size +
                                    head_idx * per_head_size + vi),
         out);
   }
@@ -753,8 +753,6 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
   size_t smem_sz;
-  // std::cout << "bc->num_active_requests(): " << bc->num_active_requests() <<
-  // "\n";
   switch (per_head_size) {
     case 64:
       LAUNCH_ATTENTION_SCORE_KERNEL(DT, 64, 64, 4, 16, 128, stream);
@@ -870,7 +868,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                   stream);
   cudaMemcpyAsync(m->request_infos,
                   &(bc->requestsInfo),
-                  bc->num_active_requests() *
+                  bc->max_requests_per_batch() *
                       sizeof(BatchConfig::PerRequestInfo),
                   cudaMemcpyHostToDevice,
                   stream);

@@ -553,6 +553,8 @@ BeamSearchBatchConfig
   new_bc.model_id = model_id;
   int result_index = 0;
 
+  int num_generation_tokens = 0;
+
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (old_bc.request_completed[i]) {
       continue;
@@ -861,6 +863,7 @@ BeamSearchBatchConfig
       }
     }
   }
+  new_bc.num_generation_tokens = num_generation_tokens;
 
   if (verbose) {
     std::cout << "prepare_next_batch_init OLD vs NEW batchconfigs below:"

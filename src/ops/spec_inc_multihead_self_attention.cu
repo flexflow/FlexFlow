@@ -203,62 +203,129 @@ __global__ void spec_fill_entries_above_diagonal(DT *matrix,
   }
 }
 
-#define LAUNCH_SPEC_ATTENTION_SCORE_KERNEL(                                    \
-    DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)      \
-  smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                               \
-                                   BatchConfig::max_sequence_length(),         \
-                                   THDS_PER_VALUE,                             \
-                                   THDS_PER_BLOCK);                            \
-  compute_attention_kernel_generation_kernel<DT,                               \
-                                             THDS_PER_BLOCK,                   \
-                                             Dh,                               \
-                                             Dh_MAX,                           \
-                                             THDS_PER_KEY,                     \
-                                             THDS_PER_VALUE>                   \
-      <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                             \
-          static_cast<DT *>(m->devQKVProjArray),                               \
-          static_cast<DT *>(m->keyCache),                                      \
-          static_cast<DT *>(m->valueCache),                                    \
-          output_ptr,                                                          \
-          scale,                                                               \
-          BatchConfig::max_sequence_length(),                                  \
-          m->qProjSize,                                                        \
-          m->hidden_size,                                                      \
-          m->request_infos,                                                    \
-          true,                                                                \
-          BeamSearchBatchConfig::MAX_BEAM_WIDTH)
-
 template <typename DT>
-void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
-                                         BatchConfig const *bc,
-                                         DT *output_ptr,
-                                         cudaStream_t stream) {
-  dim3 grid(m->num_q_heads,
-            bc->num_active_requests() * BeamSearchBatchConfig::MAX_BEAM_WIDTH);
-  int const per_head_size = m->qProjSize;
-  float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
-  size_t smem_sz;
-  // std::cout << "bc->num_active_requests(): " << bc->num_active_requests() <<
-  // "\n";
-  switch (per_head_size) {
-    case 64:
-      LAUNCH_SPEC_ATTENTION_SCORE_KERNEL(DT, 64, 64, 4, 16, 128, stream);
-      break;
-    case 128:
-      LAUNCH_SPEC_ATTENTION_SCORE_KERNEL(DT, 128, 128, 4, 32, 128, stream);
-      break;
-    default:
-      assert(false);
+void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
+                         BatchConfig const *bc,
+                         int shard_id,
+                         DT *output_ptr,
+                         DT const *weight_ptr,
+                         DT const *bias_ptr,
+                         cudaStream_t stream) {
+  cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
+  cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
+  assert(data_type_size(m->output_type[0]) == sizeof(DT));
+#if CUDA_VERSION >= 11000
+  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+#else
+  cudaDataType_t compute_type = cublas_data_type;
+#endif
+  // Project to output, save result directly on output tensor
+  DT alpha = 1.0f, beta = 0.0f;
+  int num_tokens =
+      bc->num_active_tokens() * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+  int m_ = m->oProjSize;
+  int k = m->vProjSize * m->num_q_heads;
+  int n = num_tokens;
+  int lda = k, ldb = k, ldc = m_;
+  DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
+                                         m->kProjSize * m->num_q_heads +
+                                         m->vProjSize * m->num_q_heads);
+  DT const *B = static_cast<DT *>(m->attn_heads);
+  DT *C = static_cast<DT *>(output_ptr);
+
+  checkCUDA(cublasGemmEx(m->handle.blas,
+                         CUBLAS_OP_T,
+                         CUBLAS_OP_N,
+                         m_,
+                         n,
+                         k,
+                         &alpha,
+                         A,
+                         cublas_data_type,
+                         lda,
+                         B,
+                         cublas_data_type,
+                         ldb,
+                         &beta,
+                         C,
+                         cublas_data_type,
+                         ldc,
+                         compute_type,
+                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
+  if (*m->final_bias && shard_id == 0) {
+    int parallelism = m->oProjSize * num_tokens;
+    int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
+                          m->kProjSize * m->global_num_q_heads +
+                          m->vProjSize * m->global_num_q_heads;
+    apply_proj_bias_w<<<GET_BLOCKS(parallelism),
+                        min(CUDA_NUM_THREADS, parallelism),
+                        0,
+                        stream>>>(
+        output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
   }
-
-  // // check for errors
-  // cudaError_t error = cudaGetLastError();
-  // if (error != cudaSuccess) {
-
-  //   fprintf(stderr, "ERROR: %s \n", cudaGetErrorString(error));
-  //   assert(false);
-  // }
 }
+
+// #define LAUNCH_SPEC_ATTENTION_SCORE_KERNEL(                                    \
+//     DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)      \
+//   smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                               \
+//                                    BatchConfig::max_sequence_length(),         \
+//                                    THDS_PER_VALUE,                             \
+//                                    THDS_PER_BLOCK);                            \
+//   compute_attention_kernel_generation_kernel<DT,                               \
+//                                              THDS_PER_BLOCK,                   \
+//                                              Dh,                               \
+//                                              Dh_MAX,                           \
+//                                              THDS_PER_KEY,                     \
+//                                              THDS_PER_VALUE>                   \
+//       <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                             \
+//           static_cast<DT *>(m->devQKVProjArray),                               \
+//           static_cast<DT *>(m->keyCache),                                      \
+//           static_cast<DT *>(m->valueCache),                                    \
+//           output_ptr,                                                          \
+//           scale,                                                               \
+//           BatchConfig::max_sequence_length(),                                  \
+//           m->qProjSize,                                                        \
+//           m->hidden_size,                                                      \
+//           m->request_infos,                                                    \
+//           false,                                                               \
+//           0)
+
+// template <typename DT>
+// void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const
+// *m,
+//                                          BatchConfig const *bc,
+//                                          DT *output_ptr,
+//                                          cudaStream_t stream) {
+//   dim3 grid(m->num_q_heads,
+//             bc->num_active_requests() *
+//             BeamSearchBatchConfig::MAX_BEAM_WIDTH);
+//   int const per_head_size = m->qProjSize;
+//   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
+//   size_t smem_sz;
+//   // std::cout << "bc->num_active_requests(): " << bc->num_active_requests()
+//   <<
+//   // "\n";
+//   switch (per_head_size) {
+//     case 64:
+//       LAUNCH_SPEC_ATTENTION_SCORE_KERNEL(DT, 64, 64, 4, 16, 128, stream);
+//       break;
+//     case 128:
+//       LAUNCH_SPEC_ATTENTION_SCORE_KERNEL(DT, 128, 128, 4, 32, 128, stream);
+//       break;
+//     default:
+//       assert(false);
+//   }
+
+//   // // check for errors
+//   // cudaError_t error = cudaGetLastError();
+//   // if (error != cudaSuccess) {
+
+//   //   fprintf(stderr, "ERROR: %s \n", cudaGetErrorString(error));
+//   //   assert(false);
+//   // }
+// }
 
 template <typename DT>
 void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
@@ -281,7 +348,7 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
 #endif
   // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_tokens();
-  // int tokens_previous_requests = 0;
+  int tokens_previous_requests = 0;
   int tokens_prev_requests_squares = 0;
   // int qkv_block_size =
   //     (m->qProjSize + m->kProjSize + m->vProjSize) * num_tokens;
@@ -452,8 +519,8 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
       // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
       // requests
       C = static_cast<DT *>(m->attn_heads) +
-          bc->requestsInfo[i].first_token_offset_in_batch * m->num_q_heads *
-              m->vProjSize;
+          (tokens_previous_requests + bc->num_generation_tokens) *
+              m->num_q_heads * m->vProjSize;
       checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                            CUBLAS_OP_N,
                                            CUBLAS_OP_T,
@@ -478,52 +545,9 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
-      // tokens_previous_requests += num_new_tokens;
+      tokens_previous_requests += num_new_tokens;
       tokens_prev_requests_squares += num_new_tokens * total_tokens;
     }
-  }
-
-  // Project to output, save result directly on output tensor
-  DT alpha = 1.0f, beta = 0.0f;
-  int m_ = m->oProjSize;
-  int k = m->vProjSize * m->num_q_heads;
-  int n = bc->num_active_tokens();
-  int lda = k, ldb = k, ldc = m_;
-  DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
-                                         m->kProjSize * m->num_q_heads +
-                                         m->vProjSize * m->num_q_heads);
-  DT const *B = static_cast<DT *>(m->attn_heads);
-  DT *C = static_cast<DT *>(output_ptr);
-
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_N,
-                         m_,
-                         n,
-                         k,
-                         &alpha,
-                         A,
-                         cublas_data_type,
-                         lda,
-                         B,
-                         cublas_data_type,
-                         ldb,
-                         &beta,
-                         C,
-                         cublas_data_type,
-                         ldc,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  if (*m->final_bias && shard_id == 0) {
-    int parallelism = m->oProjSize * num_tokens;
-    int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
-                          m->kProjSize * m->global_num_q_heads +
-                          m->vProjSize * m->global_num_q_heads;
-    apply_proj_bias_w<<<GET_BLOCKS(parallelism),
-                        min(CUDA_NUM_THREADS, parallelism),
-                        0,
-                        stream>>>(
-        output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
   }
 
   // assert(tokens_previous_requests == num_tokens);
@@ -573,19 +597,20 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                      stream);
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
-
   if (bc->num_generation_tokens > 0) {
-    // phase 3: Compute attention score for generation tokens
     compute_attention_kernel_generation<DT>(
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
-
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
   if (bc->num_tokens > bc->num_generation_tokens) {
     compute_attention_kernel_prompt(
         m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
   }
+
+  // compute output production and bias together for all tokens
+  compute_o_prod_bias(
+      m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, stream);
 }
 
 } // namespace SpecIncMultiHeadAttention
@@ -704,7 +729,6 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     size_t beam_requestinfo_size =
         BeamSearchBatchConfig::max_requests_per_batch();
     size_t total_size =
-        requestinfo_size * sizeof(BatchConfig::PerRequestInfo) +
         beam_tokeninfo_size *
             sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo) +
         beam_requestinfo_size *
@@ -721,10 +745,6 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                 beam_tokeninfo_size);
     // offset += beam_tokeninfo_size *
     //           sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo);
-    request_infos =
-        gpu_mem_allocator.allocate_instance<BatchConfig::PerRequestInfo>(
-            requestinfo_size);
-    // offset += requestinfo_size * sizeof(BatchConfig::PerRequestInfo);
     beam_request_infos =
         gpu_mem_allocator
             .allocate_instance<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(

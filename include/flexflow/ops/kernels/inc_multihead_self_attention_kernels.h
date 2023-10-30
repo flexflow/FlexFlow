@@ -14,6 +14,12 @@ namespace FlexFlow {
 namespace Kernels {
 namespace IncMultiHeadAttention {
 
+template <typename DT>
+void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
+                                         BatchConfig const *bc,
+                                         DT *output_ptr,
+                                         cudaStream_t stream);
+
 template <typename DT,
           int THREADS_PER_BLOCK,
           int Dh,
