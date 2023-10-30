@@ -161,8 +161,13 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
 #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = cublas_data_type;
 #else
-  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  // For best performance, set the default cublas compute type to
+  // CUBLAS_COMPUTE_16F for half precision and to
+  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  if (m->output_type[0] == DT_FLOAT) {
+    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  }
 #endif
   // int num_requests = bc->num_active_requests();
   int processed_tokens_in_batch = 0;
