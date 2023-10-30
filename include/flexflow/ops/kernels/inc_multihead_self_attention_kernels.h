@@ -20,24 +20,15 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
                                          DT *output_ptr,
                                          cudaStream_t stream);
 
-template <typename DT,
-          int THREADS_PER_BLOCK,
-          int Dh,
-          int Dh_MAX,
-          int THREADS_PER_KEY,
-          int THREADS_PER_VALUE>
-__global__ void compute_attention_kernel_generation_kernel(
-    DT const *query,
-    DT const *key_cache,
-    DT const *value_cache,
-    DT *output_ptr,
-    float const scale,
-    int max_seq_length,
-    int per_head_size,
-    int hidden_size,
-    BatchConfig::PerRequestInfo *request_infos,
-    bool is_beam,
-    int max_beam_width);
+template <typename DT>
+void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
+                         BatchConfig const *bc,
+                         int shard_id,
+                         DT *output_ptr,
+                         DT const *weight_ptr,
+                         DT const *bias_ptr,
+                         int num_tokens,
+                         cudaStream_t stream);
 
 template <typename DT>
 __global__ void apply_position_bias_qkprd(DT *input_ptr,

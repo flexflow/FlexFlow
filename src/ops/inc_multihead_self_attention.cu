@@ -663,6 +663,7 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
                          DT *output_ptr,
                          DT const *weight_ptr,
                          DT const *bias_ptr,
+                         int num_tokens,
                          cudaStream_t stream) {
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
@@ -675,7 +676,7 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
 #endif
   // Project to output, save result directly on output tensor
   DT alpha = 1.0f, beta = 0.0f;
-  int num_tokens = bc->num_active_tokens();
+  // int num_tokens = bc->num_active_tokens();
   int m_ = m->oProjSize;
   int k = m->vProjSize * m->num_q_heads;
   int n = num_tokens;
@@ -926,8 +927,9 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
          elapsed5);
 
   // compute output production and bias together for all tokens
+  int num_tokens = bc->num_active_tokens();
   compute_o_prod_bias(
-      m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, stream);
+      m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
   float elapsed6 = 0;
   cudaEventRecord(t_end6, stream);
   checkCUDA(cudaEventSynchronize(t_end6));

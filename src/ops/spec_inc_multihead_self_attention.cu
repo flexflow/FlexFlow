@@ -203,69 +203,69 @@ __global__ void spec_fill_entries_above_diagonal(DT *matrix,
   }
 }
 
-template <typename DT>
-void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
-                         BatchConfig const *bc,
-                         int shard_id,
-                         DT *output_ptr,
-                         DT const *weight_ptr,
-                         DT const *bias_ptr,
-                         cudaStream_t stream) {
-  cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
-  cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
-  assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if CUDA_VERSION >= 11000
-  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-#else
-  cudaDataType_t compute_type = cublas_data_type;
-#endif
-  // Project to output, save result directly on output tensor
-  DT alpha = 1.0f, beta = 0.0f;
-  int num_tokens =
-      bc->num_active_tokens() * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-  int m_ = m->oProjSize;
-  int k = m->vProjSize * m->num_q_heads;
-  int n = num_tokens;
-  int lda = k, ldb = k, ldc = m_;
-  DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
-                                         m->kProjSize * m->num_q_heads +
-                                         m->vProjSize * m->num_q_heads);
-  DT const *B = static_cast<DT *>(m->attn_heads);
-  DT *C = static_cast<DT *>(output_ptr);
+// template <typename DT>
+// void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
+//                          BatchConfig const *bc,
+//                          int shard_id,
+//                          DT *output_ptr,
+//                          DT const *weight_ptr,
+//                          DT const *bias_ptr,
+//                          cudaStream_t stream) {
+//   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
+//   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
+//   assert(data_type_size(m->output_type[0]) == sizeof(DT));
+// #if CUDA_VERSION >= 11000
+//   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best
+//   performance cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+// #else
+//   cudaDataType_t compute_type = cublas_data_type;
+// #endif
+//   // Project to output, save result directly on output tensor
+//   DT alpha = 1.0f, beta = 0.0f;
+//   int num_tokens =
+//       bc->num_active_tokens() * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+//   int m_ = m->oProjSize;
+//   int k = m->vProjSize * m->num_q_heads;
+//   int n = num_tokens;
+//   int lda = k, ldb = k, ldc = m_;
+//   DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
+//                                          m->kProjSize * m->num_q_heads +
+//                                          m->vProjSize * m->num_q_heads);
+//   DT const *B = static_cast<DT *>(m->attn_heads);
+//   DT *C = static_cast<DT *>(output_ptr);
 
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_N,
-                         m_,
-                         n,
-                         k,
-                         &alpha,
-                         A,
-                         cublas_data_type,
-                         lda,
-                         B,
-                         cublas_data_type,
-                         ldb,
-                         &beta,
-                         C,
-                         cublas_data_type,
-                         ldc,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+//   checkCUDA(cublasGemmEx(m->handle.blas,
+//                          CUBLAS_OP_T,
+//                          CUBLAS_OP_N,
+//                          m_,
+//                          n,
+//                          k,
+//                          &alpha,
+//                          A,
+//                          cublas_data_type,
+//                          lda,
+//                          B,
+//                          cublas_data_type,
+//                          ldb,
+//                          &beta,
+//                          C,
+//                          cublas_data_type,
+//                          ldc,
+//                          compute_type,
+//                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
-  if (*m->final_bias && shard_id == 0) {
-    int parallelism = m->oProjSize * num_tokens;
-    int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
-                          m->kProjSize * m->global_num_q_heads +
-                          m->vProjSize * m->global_num_q_heads;
-    apply_proj_bias_w<<<GET_BLOCKS(parallelism),
-                        min(CUDA_NUM_THREADS, parallelism),
-                        0,
-                        stream>>>(
-        output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
-  }
-}
+//   if (*m->final_bias && shard_id == 0) {
+//     int parallelism = m->oProjSize * num_tokens;
+//     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
+//                           m->kProjSize * m->global_num_q_heads +
+//                           m->vProjSize * m->global_num_q_heads;
+//     apply_proj_bias_w<<<GET_BLOCKS(parallelism),
+//                         min(CUDA_NUM_THREADS, parallelism),
+//                         0,
+//                         stream>>>(
+//         output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
+//   }
+// }
 
 // #define LAUNCH_SPEC_ATTENTION_SCORE_KERNEL(                                    \
 //     DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)      \
@@ -609,8 +609,11 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   }
 
   // compute output production and bias together for all tokens
+  int num_tokens =
+      bc->num_active_tokens() * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+        
   compute_o_prod_bias(
-      m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, stream);
+      m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
 }
 
 } // namespace SpecIncMultiHeadAttention
