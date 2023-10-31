@@ -48,27 +48,27 @@ int get_vProjSize(MultiHeadAttentionAttrs const &);
 int get_kProjSize(MultiHeadAttentionAttrs const &);
 int get_oProjSize(MultiHeadAttentionAttrs const &);
 
-int get_qSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
-int get_kSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
-int get_vSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
-int get_oSize(ParallelTensorShape const &);
+// int get_qSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+// int get_kSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+// int get_vSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+// int get_oSize(ParallelTensorShape const &);
 
 int get_qoSeqLength(MultiHeadAttentionInputs<ParallelTensorShape> const &);
 int get_kvSeqLength(MultiHeadAttentionInputs<ParallelTensorShape> const &);
 
 int get_num_samples(MultiHeadAttentionInputs<ParallelTensorShape> const &);
 
-TensorShape get_weights_shape(MultiHeadAttentionAttrs const &,
-                              MultiHeadAttentionInputs<TensorShape> const &);
-ParallelTensorShape
-    get_weights_shape(MultiHeadAttentionAttrs const &,
-                      MultiHeadAttentionInputs<ParallelTensorShape> const &);
+// TensorShape get_weights_shape(MultiHeadAttentionAttrs const &,
+//                               MultiHeadAttentionInputs<TensorShape> const &);
+// ParallelTensorShape
+//     get_weights_shape(MultiHeadAttentionAttrs const &,
+//                       MultiHeadAttentionInputs<ParallelTensorShape> const &);
 
-ParallelTensorShape
-    get_output_shape(MultiHeadAttentionAttrs const &,
-                     MultiHeadAttentionInputs<ParallelTensorShape> const &);
-TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
-                             MultiHeadAttentionInputs<TensorShape> const &);
+// ParallelTensorShape
+//     get_output_shape(MultiHeadAttentionAttrs const &,
+//                      MultiHeadAttentionInputs<ParallelTensorShape> const &);
+// TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
+//                              MultiHeadAttentionInputs<TensorShape> const &);
 
 CHECK_VALID_OP_ATTR(MultiHeadAttentionAttrs);
 } // namespace FlexFlow

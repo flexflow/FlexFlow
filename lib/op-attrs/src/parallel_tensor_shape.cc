@@ -35,6 +35,16 @@ TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &shape) {
   return TensorShape(tensorDims, shape.data_type);
 }
 
+ParallelDim  ParallelTensorShape::at(ff_dim_t const & index) const {
+  return dims.at(index);
+}
+
+int ParallelTensorShape::num_dims() const {
+  return dims.num_dims();
+}
+
+
+
 std::vector<TensorShape> get_tensor_shapes_unsafe(
     std::vector<ParallelTensorShape> const &parallelshape_vec) {
   std::vector<TensorShape> tensor_shape_vec;
