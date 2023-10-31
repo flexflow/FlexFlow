@@ -5,7 +5,11 @@ namespace FlexFlow {
 
 ////////////////basic datatype//////////////////////
 struct half4 {
-  half2 a, b;
+  half x;
+  half y;
+  half z;
+  half w;
+
 };
 
 ////////////////data type///////////////
@@ -250,10 +254,10 @@ inline __device__ float2 cast_to_float(half2 u) {
 
 inline __device__ float4 cast_to_float(half4 u) {
   float4 tmp;
-  tmp.x = __half2float(u.a.x);
-  tmp.y = __half2float(u.a.y);
-  tmp.z = __half2float(u.b.x);
-  tmp.w = __half2float(u.b.y);
+  tmp.x = __half2float(u.x);
+  tmp.y = __half2float(u.y);
+  tmp.z = __half2float(u.z);
+  tmp.w = __half2float(u.w);
   return tmp;
 }
 
@@ -268,10 +272,10 @@ inline __device__ void convert_from_float(float2 &dst, float2 src) {
 }
 
 inline __device__ void convert_from_float(half4 &dst, float4 src) {
-  dst.a.x = __float2half(src.x);
-  dst.a.y = __float2half(src.y);
-  dst.b.x = __float2half(src.z);
-  dst.b.y = __float2half(src.w);
+  dst.x = __float2half(src.x);
+  dst.y = __float2half(src.y);
+  dst.z = __float2half(src.z);
+  dst.w = __float2half(src.w);
 }
 inline __device__ void convert_from_float(half2 &dst, float2 src) {
   dst.x = __float2half(src.x);
