@@ -1,0 +1,14 @@
+ff_add_library(
+  NAME
+    op-attrs-test-common
+  SRC_PATTERNS
+    src/*.cc
+  PUBLIC_INCLUDE
+    include/
+  PRIVATE_INCLUDE
+    src/
+  DEPS
+    op-attrs
+    rapidcheck
+    doctest
+)
