@@ -2,7 +2,7 @@
 
 namespace FlexFlow {
 
-size_t TensorShape::size_t at(ff_dim_t dim) const {
+size_t TensorShape::at(ff_dim_t dim) const {
   return dims.at(dim);
 }
 

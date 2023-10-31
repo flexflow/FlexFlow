@@ -33,12 +33,10 @@ size_t ParallelTensorDims::get_volume() const {
   return volume;
 }
 
-TensorDims get_piece_dims(ParallelTensorDims const &dims) {
-  NOT_IMPLEMENTAED();
-}
+TensorDims get_piece_dims(ParallelTensorDims const &dims){NOT_IMPLEMENTED()}
 
 TensorDims get_tensor_dims_unsafe(ParallelTensorDims const &dim) {
-  NOT_IMPLEMENTAED();
+  NOT_IMPLEMENTED();
 }
 
 } // namespace FlexFlow

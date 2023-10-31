@@ -2,6 +2,7 @@
 #define _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_PARALLEL_TENSOR_DIMS_H
 
 #include "parallel_dim.h"
+#include "tensor_shape.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
@@ -49,11 +50,11 @@ struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
   }
 
   reverse_iterator rbegin() {
-    return this->data.rbeigin();
+    return this->data.rbegin();
   }
 
   const_reverse_iterator rbegin() const {
-    return this->cbegin();
+    return this->crbegin();
   }
   const_reverse_iterator crbegin() const {
     return this->data.crbegin();
