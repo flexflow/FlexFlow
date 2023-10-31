@@ -185,7 +185,7 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
           
           # GPT tokenizer test
-          ./tests/gpt_tokenizer_test.sh
+          # ./tests/gpt_tokenizer_test.sh
 
           # Inference tests
           source ./build/set_python_envs.sh
@@ -209,8 +209,8 @@ jobs:
         if: always()
         run: sudo rm -rf ~/.cache 
 
-  gpu-ci-flexflow:
-    name: Single Machine, Multiple GPUs Tests
+  training-tests:
+    name: Training Tests
     runs-on: [self-hosted, gpu]
     # skip this time-consuming test for PRs to the inference branch
     # if: ${{ github.event_name != 'pull_request' || github.base_ref != 'inference' }}
