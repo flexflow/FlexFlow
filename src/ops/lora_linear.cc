@@ -6,6 +6,11 @@
 #include "flexflow/utils/hash_utils.h"
 #include "flexflow/utils/peft_weight_allocator.h"
 #include "legion/legion_utilities.h"
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+#include "flexflow/utils/cuda_helper.h"
+#else
+#include "flexflow/utils/hip_helper.h"
+#endif
 
 namespace FlexFlow {
 
@@ -86,7 +91,7 @@ LoraLinear::LoraLinear(FFModel &model,
                  params.type,
                  inputs.first,
                  inputs.second,
-                 name) {}
+                 params.name) {}
 
 LoraLinear::LoraLinear(FFModel &model,
                        LayerID const &_layer_guid,
@@ -259,6 +264,34 @@ void LoraLinear::register_peft_model(
   fm.wait_all_results();
 }
 
+template <typename DT>
+void load_peft_from_file(DT *ptr,
+                         size_t size,
+                         int shard_id,
+                         std::string filepath) {
+  std::ifstream in(filepath, std::ios::in | std::ios::binary);
+  if (!in.good()) {
+    printf("Could not open file: %s\n", filepath.c_str());
+  }
+  assert(in.good() && "incorrect weight file path");
+  std::vector<DT> host_array(size);
+  size_t target_data_size = sizeof(DT) * size;
+  in.seekg(shard_id * target_data_size, in.beg);
+  in.read((char *)host_array.data(), target_data_size);
+
+  size_t in_get_size = in.gcount();
+  if (in_get_size != target_data_size) {
+    printf("load weight data error: %lu, %lu, %lu\n",
+           in_get_size,
+           target_data_size,
+           sizeof(DT));
+    assert(false);
+  }
+  assert(size == host_array.size());
+  copy_kernel(ptr, host_array.data(), target_data_size);
+  in.close();
+}
+
 void LoraLinear::register_model_task(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
@@ -267,10 +300,16 @@ void LoraLinear::register_model_task(Task const *task,
       static_cast<LoraLinearRegisterInfo const *>(task->args);
   LoraLinearMeta *m = *((LoraLinearMeta **)task->local_args);
   LoraLinear const *lora = info->lora;
+
+  int shard_id = task->index_point.point_data[0];
+
   int rank = info->lora_config.rank;
   int num_dims = lora->inputs[0]->num_dims;
   int in_dim = lora->inputs[0]->dims[0].size / lora->inputs[0]->dims[0].degree;
   int out_dim = lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree;
+  int w0_num_elements = rank * in_dim;
+  int w1_num_elements = rank * out_dim;
+
   DataType dt = m->input_type[0];
   assert(dt == m->input_type[1]);
   assert(dt == m->output_type[0]);
@@ -278,29 +317,71 @@ void LoraLinear::register_model_task(Task const *task,
   assert(dt == lora->inputs[1]->data_type);
   assert(dt == lora->outputs[0]->data_type);
   assert(m->model_weights.find(info->model_id) == m->model_weights.end());
+
   LoraLinearWeight weight;
   PEFTWeightAllocator *allocator = m->handle.peft_weight_allocator;
   weight.w0_ptr = allocator->allocate_local_weights_untyped(
-      info->model_id, rank * in_dim * data_type_size(dt));
+      info->model_id, w0_num_elements * data_type_size(dt));
   weight.w1_ptr = allocator->allocate_local_weights_untyped(
-      info->model_id, rank * out_dim * data_type_size(dt));
+      info->model_id, w1_num_elements * data_type_size(dt));
+
+  // get layer name
+  assert(lora->name != nullptr &&
+         "Layer name is not set, cannot determine weights location");
+  std::string lora_layername = std::string(lora->name);
+  std::string searchString = "lora";
+  size_t found = lora_layername.find(searchString);
+  if (found == std::string::npos) {
+    std::cout << "LoraLinear layer name not in the right format (does not "
+                 "contain word 'lora')"
+              << std::endl;
+    assert(false);
+  }
+  std::string lora_layername_substr =
+      lora_layername.substr(0, found + searchString.length());
+
+  // load weights from file
+  std::string weights_folder_filepath = join_path({
+      info->lora_config.cache_folder,
+      "weights",
+      info->lora_config.peft_model_id,
+      dt == DT_FLOAT ? "full-precision" : "half-precision",
+  });
+  std::string w0_filepath =
+      join_path({weights_folder_filepath, lora_layername_substr + "_A_weight"});
+  std::string w1_filepath =
+      join_path({weights_folder_filepath, lora_layername_substr + "_B_weight"});
+  if (dt == DT_FLOAT) {
+    load_peft_from_file(
+        (float *)weight.w0_ptr, w0_num_elements, shard_id, w0_filepath);
+    load_peft_from_file(
+        (float *)weight.w1_ptr, w1_num_elements, shard_id, w1_filepath);
+  } else if (dt == DT_HALF) {
+    load_peft_from_file(
+        (half *)weight.w0_ptr, w0_num_elements, shard_id, w0_filepath);
+    load_peft_from_file(
+        (half *)weight.w1_ptr, w1_num_elements, shard_id, w1_filepath);
+  } else {
+    assert(false && "Data type not supported");
+  }
+
   weight.rank = rank;
   if (lora->inputs[0]->dims[num_dims - 1].degree == 1) {
     // Input is partitioned (no replication)
     // w0_grad is local weight gradients
     weight.w0_grad_ptr = allocator->allocate_local_weights_untyped(
-        info->model_id, rank * in_dim * data_type_size(dt));
+        info->model_id, w0_num_elements * data_type_size(dt));
     // w1_grad is sync weight gradients
     weight.w1_grad_ptr = allocator->allocate_sync_weights_untyped(
-        info->model_id, rank * out_dim * data_type_size(dt));
+        info->model_id, w1_num_elements * data_type_size(dt));
   } else {
     // Input is replicated
     // w0_grad is sync weight gradients
     weight.w0_grad_ptr = allocator->allocate_sync_weights_untyped(
-        info->model_id, rank * in_dim * data_type_size(dt));
+        info->model_id, w0_num_elements * data_type_size(dt));
     // w1_grad is local weight gradients
     weight.w1_grad_ptr = allocator->allocate_local_weights_untyped(
-        info->model_id, rank * out_dim * data_type_size(dt));
+        info->model_id, w1_num_elements * data_type_size(dt));
   }
   m->model_weights[info->model_id] = weight;
 }
@@ -483,6 +564,8 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->op_type);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 /* static */
@@ -494,15 +577,20 @@ Node LoraLinear::deserialize(FFModel &ff,
   assert(num_inputs == 2);
   size_t id, transformer_layer_id, deserialized_model_id;
   OperatorType op_type;
+  size_t name_len;
+  char name[MAX_OPNAME];
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
   dez.deserialize(deserialized_model_id);
   dez.deserialize(op_type);
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
   LoraLinearParams params;
   params.layer_guid = layer_guid;
   params.type = op_type;
+  strcpy(params.name, name);
   return ff.get_or_create_node<LoraLinear>({inputs[0], inputs[1]}, params);
 }
 
@@ -517,6 +605,9 @@ LoraLinearParams LoraLinear::get_params() const {
   LoraLinearParams params;
   params.layer_guid = this->layer_guid;
   params.type = this->op_type;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 

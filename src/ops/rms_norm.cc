@@ -543,14 +543,14 @@ Legion::FutureMap
                                                     READ_WRITE,
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
-  launcher.add_field(2, FID_DATA);
+  launcher.add_field(1, FID_DATA);
   // regions[2](I): weight
   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
-  launcher.add_field(3, FID_DATA);
+  launcher.add_field(2, FID_DATA);
 
   return runtime->execute_index_space(ctx, launcher);
 }
