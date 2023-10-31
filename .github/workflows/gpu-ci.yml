@@ -141,7 +141,8 @@ jobs:
       run:
         shell: bash -l {0} # required to use an activated conda environment
     env: 
-      CONDA: "3"    
+      CONDA: "3"
+      HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
     needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
