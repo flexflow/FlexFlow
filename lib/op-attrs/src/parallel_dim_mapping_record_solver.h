@@ -42,7 +42,7 @@ std::vector<ParallelDimMappingRecord> construct_output_parallel_dims(
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
     int input_idx = 0,
     int output_idx = 0);
-    
+
 ParallelDimMappingRecord construct_output_parallel_dims(
     int input_dim,
     int output_dim,

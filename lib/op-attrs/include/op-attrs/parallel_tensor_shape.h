@@ -29,8 +29,9 @@ struct ParallelTensorShape : public use_visitable_cmp<ParallelTensorShape> {
 
   ParallelDim at(ff_dim_t const &) const;
   // ParallelDim &at(ff_dim_t const &);
-  ParallelDim const &operator[](ff_dim_t const &) const;
-  ParallelDim &operator[](ff_dim_t const &);
+  ParallelDim operator[](ff_dim_t const &) const;
+  // ParallelDim const &operator[](ff_dim_t const &) const;
+  // ParallelDim &operator[](ff_dim_t const &);
 
 public:
   ParallelTensorDims dims;

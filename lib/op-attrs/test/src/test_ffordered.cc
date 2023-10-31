@@ -41,8 +41,8 @@ TEST_CASE("FFOrdered Tests") {
     ++crit;
     CHECK(*crit == 3);
   }
- 
-  //TODO: crend() has some problem 
+
+  // TODO: crend() has some problem
   /*
   SUBCASE("Const Reverse Iterator Tests") {
     FFOrdered<size_t>::const_reverse_iterator crit = dims2.crend();

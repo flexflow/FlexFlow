@@ -5,8 +5,11 @@ namespace FlexFlow {
 static std::vector<ParallelDim> lift_dims(TensorDims const &dims) {
   std::vector<ParallelDim> lifted_dims;
   for (size_t dim_size : dims) {
+    std::cout << "dim_size:" << dim_size << std::endl;
     lifted_dims.push_back({dim_size, 1, false});
   }
+  std::cout << "dim_size:" << 1 << std::endl;
+  std::cout << "*****" << std::endl;
   lifted_dims.push_back({1, 1, true});
   return lifted_dims;
 }
