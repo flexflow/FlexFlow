@@ -60,7 +60,7 @@ def get_configs():
         }
         llm_configs = {
             # required llm arguments
-            "llm_model": "decapoda-research/llama-7b-hf",
+            "llm_model": "meta-llama/Llama-2-7b-hf",
             # optional llm parameters
             "cache_path": "",
             "refresh_cache": False,
