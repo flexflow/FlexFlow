@@ -11,37 +11,34 @@ static std::vector<ParallelDim> lift_dims(TensorDims const &dims) {
   return lifted_dims;
 }
 
-ParallelTensorDims::ParallelTensorDims(TensorDims const &dims): data(lift_dims(dims)) {}
+ParallelTensorDims::ParallelTensorDims(TensorDims const &dims)
+    : data(lift_dims(dims)) {}
 
-ParallelDim const ParallelTensorDims::at(ff_dim_t const & dim) const {
-    return data.at(dim);
+ParallelDim const ParallelTensorDims::at(ff_dim_t const &dim) const {
+  return data.at(dim);
 }
 
-ParallelDim ParallelTensorDims::at(ff_dim_t const & dim) {
-    return data.at(dim);
+ParallelDim ParallelTensorDims::at(ff_dim_t const &dim) {
+  return data.at(dim);
 }
 
-size_t ParallelTensorDims::num_dims() const {
-    return data.num_dims():
-}
+size_t ParallelTensorDims::num_dims() const {return data.num_dims() : }
 
 size_t ParallelTensorDims::get_volume() const {
-    size_t volume = 1;
-    for(int  i =0; i < num_dims(); i++) {
-        volume *= at(ff_dim_t(i)).size;
-    }
+  size_t volume = 1;
+  for (int i = 0; i < num_dims(); i++) {
+    volume *= at(ff_dim_t(i)).size;
+  }
 
-    return volume;
+  return volume;
 }
 
-TensorDims get_piece_dims(ParallelTensorDims const & dims) {
-    NOT_IMPLEMENTAED();
+TensorDims get_piece_dims(ParallelTensorDims const &dims) {
+  NOT_IMPLEMENTAED();
 }
 
-TensorDims get_tensor_dims_unsafe(ParallelTensorDims const & dim) {
-    NOT_IMPLEMENTAED();
+TensorDims get_tensor_dims_unsafe(ParallelTensorDims const &dim) {
+  NOT_IMPLEMENTAED();
 }
 
-
-
-} //namespace FlexFlow
+} // namespace FlexFlow

@@ -27,7 +27,7 @@ struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
   iterator begin() {
     return this->data.begin();
   }
-  
+
   const_iterator begin() const {
     return this->cbegin();
   };

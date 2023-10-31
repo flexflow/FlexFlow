@@ -39,20 +39,21 @@ bool is_valid(ParallelTensorShape const &shape) {
 
 TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &shape) {
   std::vector<size_t> parallel_tensor_dims_size;
-  for(int i =0 ; i < shape.num_dims(); i++) {
+  for (int i = 0; i < shape.num_dims(); i++) {
     parallel_tensor_dims_size.push_back(shape.at(ff_dim_t(i)).size);
   }
-  TensorDims tensorDims(parallel_tensor_dims_size.begin(),  parallel_tensor_dims_size.end());
+  TensorDims tensorDims(parallel_tensor_dims_size.begin(),
+                        parallel_tensor_dims_size.end());
   return TensorShape(tensorDims, shape.data_type);
 }
 
-std::vector<TensorShape>
-    get_tensor_shapes_unsafe(std::vector<ParallelTensorShape> const &parallelshape_vec) {
-      std::vector<TensorShape> tensor_shape_vec;
-      for(auto const & shape : parallelshape_vec ) {
-        tensor_shape_vec.push_back(get_tensor_shape_unsafe(shape));
-      }
-    return tensor_shape_vec;
+std::vector<TensorShape> get_tensor_shapes_unsafe(
+    std::vector<ParallelTensorShape> const &parallelshape_vec) {
+  std::vector<TensorShape> tensor_shape_vec;
+  for (auto const &shape : parallelshape_vec) {
+    tensor_shape_vec.push_back(get_tensor_shape_unsafe(shape));
+  }
+  return tensor_shape_vec;
 }
 
 } // namespace FlexFlow
