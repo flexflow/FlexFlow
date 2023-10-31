@@ -9,7 +9,6 @@ struct half4 {
   half y;
   half z;
   half w;
-
 };
 
 ////////////////data type///////////////
@@ -364,6 +363,12 @@ inline __device__ float block_sum(float *red_smem, float sum) {
   return __shfl_sync(uint32_t(-1), sum, 0);
 }
 
+template <typename DT>
+inline size_t smem_size_qk_in_bytes(int max_sequence_length) {
+  size_t qk_sz = div_up(max_sequence_length + 1, 4) * 16;
+  return qk_sz;
+}
+
 // utils
 template <typename DT>
 inline size_t smem_size_in_bytes(int hidden_size_per_head,
@@ -374,7 +379,7 @@ inline size_t smem_size_in_bytes(int hidden_size_per_head,
   size_t qk_sz = div_up(max_sequence_length + 1, 4) * 16;
 
   // The extra memory needed if we are not using floats for the final logits.
-  size_t logits_sz = 0;
+  size_t logits_sz = qk_sz;
 #ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS
   if (sizeof(DT) != 4) {
     // TDOD
