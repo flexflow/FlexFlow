@@ -19,7 +19,7 @@ TENSOR_PARALLELISM_TESTS=${TENSOR_PARALLELISM_TESTS:-OFF}
 # Token to access private huggingface models (e.g. LLAMA-2)
 HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN:-none}
 if [[ "$HUGGINGFACE_TOKEN" != "none" ]]; then
-    huggingface-cli login --token $HUGGINGFACE_TOKEN
+    huggingface-cli login --token "$HUGGINGFACE_TOKEN"
 fi
 
 # Clean up before test (just in case)
