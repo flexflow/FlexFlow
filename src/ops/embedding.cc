@@ -609,6 +609,16 @@ void Embedding::backward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+Legion::FutureMap
+    Embedding::peft_bwd(FFModel const &ff,
+                        BatchConfigFuture const &bc,
+                        std::vector<ParallelTensor> const &batch_inputs,
+                        std::vector<ParallelTensor> const &batch_outputs,
+                        MachineView const *mv) {
+  // nothing to do (backward function only updates weights)
+  return FutureMap();
+}
+
 void Embedding::backward_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
