@@ -317,11 +317,12 @@ void peft_bwd_kernel(SoftmaxMeta const *m,
         GET_BLOCKS(num_bwd_tokens * num_classes),
         CUDA_NUM_THREADS,
         0,
-        stream>>>(input_grad_ptr + tokens_previous_requests * num_classes,
-                  output_grad_ptr + tokens_previous_requests * num_classes,
-                  token_ids,
-                  num_bwd_tokens,
-                  num_classes);
+        stream>>>(
+        input_grad_ptr + tokens_previous_requests * num_classes,
+        output_grad_ptr + tokens_previous_requests * num_classes,
+        static_cast<BatchConfig::TokenId const *>(m->handle.workSpace),
+        num_bwd_tokens,
+        num_classes);
 
     tokens_previous_requests += num_bwd_tokens;
   }
