@@ -22,8 +22,8 @@ struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
   using pointer = typename FFOrdered<ParallelDim>::pointer;
   using const_pointer = typename FFOrdered<ParallelDim>::const_pointer;
 
-  ParallelDim const &at(ff_dim_t const &) const;
-  ParallelDim &at(ff_dim_t const &);
+  ParallelDim at(ff_dim_t const &) const;
+  //  ParallelDim &at(ff_dim_t const &);
 
   iterator begin() {
     return this->data.begin();
@@ -61,15 +61,15 @@ struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
   }
 
   reverse_iterator rend() {
-    return this->data.rend();
+    NOT_IMPLEMENTED();
   }
 
   const_reverse_iterator rend() const {
-    return this->crend();
+    NOT_IMPLEMENTED();
   }
 
   const_reverse_iterator crend() const {
-    return this->data.crend();
+    NOT_IMPLEMENTED();
   }
 
 public:

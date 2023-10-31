@@ -174,4 +174,26 @@ struct hash<::FlexFlow::DimOrdered<Idx, T>> {
 
 } // namespace std
 
+namespace fmt {
+
+template <typename Idx, typename T>
+struct formatter<::FlexFlow::DimOrdered<Idx, T>> : formatter<string_view> {
+  template <typename FormatContext>
+  auto format(::FlexFlow::DimOrdered<Idx, T> const &dims,
+              FormatContext &ctx) const -> decltype(ctx.out()) {
+    using namespace FlexFlow;
+
+    std::string formatted_str;
+
+    for (auto const &dim : dims) {
+      formatted_str += std::to_string(dim) + " ";
+    }
+
+    string_view name(formatted_str);
+    return formatter<string_view>::format(name, ctx);
+  }
+};
+
+} // namespace fmt
+
 #endif

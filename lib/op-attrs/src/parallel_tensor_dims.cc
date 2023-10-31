@@ -14,15 +14,13 @@ static std::vector<ParallelDim> lift_dims(TensorDims const &dims) {
 ParallelTensorDims::ParallelTensorDims(TensorDims const &dims)
     : data(lift_dims(dims)) {}
 
-ParallelDim const ParallelTensorDims::at(ff_dim_t const &dim) const {
+ParallelDim ParallelTensorDims::at(ff_dim_t const &dim) const {
   return data.at(dim);
 }
 
-ParallelDim ParallelTensorDims::at(ff_dim_t const &dim) {
-  return data.at(dim);
+size_t ParallelTensorDims::num_dims() const {
+  return data.num_dims();
 }
-
-size_t ParallelTensorDims::num_dims() const {return data.num_dims() : }
 
 size_t ParallelTensorDims::get_volume() const {
   size_t volume = 1;
