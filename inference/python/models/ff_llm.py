@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import gradio as gr
 import os
 import flexflow.serve as ff
@@ -96,7 +95,6 @@ def get_configs():
         ff_init_configs.update(llm_configs)
         return ff_init_configs
     
-    
 
 class FF_LLM(LLM):
     def __init__(self):
@@ -176,14 +174,3 @@ class FF_LLM(LLM):
         results = self.llm.generate(prompt)
         return results.output_text.decode('utf-8')
 
-
-model = FF_LLM()
-
-# gradio interface takes in a predict function
-def predict(message, history=[]):
-    return model._call(message)
-
-
-# model._call("hello")
-
-gr.ChatInterface(predict).launch()
