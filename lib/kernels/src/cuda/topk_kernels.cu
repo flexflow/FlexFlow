@@ -20,9 +20,6 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 
-TopKPerDeviceState::TopKPerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {}
-
 namespace Kernels {
 namespace TopK {
 
@@ -34,6 +31,11 @@ struct Entry {
   int index;
   T value;
 };
+
+TopKPerDeviceState init_kernel(bool sorted) {
+  TopKPerDeviceState per_device_state = {sorted};
+  return per_device_state;
+}
 
 template <typename T>
 struct LinearData {
@@ -370,7 +372,7 @@ __global__ void topk_forward_kernel(T const *__restrict__ input,
 }
 
 void forward_kernel(cudaStream_t stream,
-                    TopKPerDeviceState const *m,
+                    TopKPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
                     int *indices_ptr,
@@ -422,7 +424,7 @@ __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
 }
 
 void backward_kernel(cudaStream_t stream,
-                     TopKPerDeviceState const *m,
+                     TopKPerDeviceState const &m,
                      float const *value_grad_ptr,
                      int const *indices_ptr,
                      float *in_grad_ptr,
