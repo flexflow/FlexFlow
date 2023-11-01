@@ -2,8 +2,8 @@
 #define _FLEXFLOW_RESHAPE_H
 
 #include "op-attrs/ops/reshape.h"
-#include "op_task_invocation.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 
@@ -20,7 +20,7 @@ OpTaskInvocation backward(ReshapeAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ReshapeAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
+                                  InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);
 
