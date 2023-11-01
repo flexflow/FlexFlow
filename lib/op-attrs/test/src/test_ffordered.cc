@@ -43,19 +43,20 @@ TEST_CASE("FFOrdered Tests") {
   }
 
   // TODO: crend() has some problem
-  /*
+
   SUBCASE("Const Reverse Iterator Tests") {
     FFOrdered<size_t>::const_reverse_iterator crit = dims2.crend();
     // CHECK(crit != dims2.crbegin()); TODO Note(we should support formatter for
     // iterator)
-
-    CHECK(*crit == 1);
-    --crit;
-    CHECK(*crit == 2);
-    --crit;
-    CHECK(*crit == 3);
+    // TODO(problem): dims2 = {4, 3, 2, 1} => so crit should be {1, 2, 3, 4} but
+    // the test is not
     --crit;
     CHECK(*crit == 4);
     --crit;
-  }*/
+    CHECK(*crit == 3);
+    --crit;
+    CHECK(*crit == 2);
+    --crit;
+    CHECK(*crit == 1);
+  }
 }

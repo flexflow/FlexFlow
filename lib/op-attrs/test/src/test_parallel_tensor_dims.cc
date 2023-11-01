@@ -5,6 +5,7 @@ using namespace FlexFlow;
 
 TEST_CASE("ParallelTensorDims Tests") {
   FFOrdered<size_t> dims1 = {1, 2, 3, 4};
+  std::cout << "ParallelTensorDims Tests" << std::endl;
   ParallelTensorDims parallel_tensor_dims{dims1};
   SUBCASE("Size and Accessors ") {
     CHECK(parallel_tensor_dims.num_dims() == dims1.size() + 1);
@@ -28,12 +29,14 @@ TEST_CASE("ParallelTensorDims Tests") {
     ++rit;
     CHECK((*rit).size == 4);
 
-    /*
     FFOrdered<ParallelDim>::const_reverse_iterator crit =
         parallel_tensor_dims.crbegin();
-
+    --rit;
     CHECK((*crit).size == 1);
-    ++rit;
-    CHECK((*crit).size == 4);*/ //TODO(lambda):crbegin() has some bug
+    --it;
+    CHECK((*crit).size ==
+          4); // TODO(lambda): this check fails, crbegin() has some bug， the
+              // parallel_tensor_dims is {1,2,3,4,1}, so  the crbegin should
+              // return {1,4, 3,2,1}
   }
 }
