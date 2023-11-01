@@ -42,9 +42,9 @@ fi
 ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model JackFram/llama-160m-base -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_half.txt -pipeline-parallelism-degree 4
 
 # LLAMA (big model)
-../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model meta-llama/Llama-2-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B.txt -pipeline-parallelism-degree 4
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model meta-llama/Llama-2-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_2_7B.txt -pipeline-parallelism-degree 4
 # LLAMA (big model, half precision)
-../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model meta-llama/Llama-2-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B_half.txt -pipeline-parallelism-degree 4
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model meta-llama/Llama-2-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_2_7B_half.txt -pipeline-parallelism-degree 4
 
 # OPT (small model)
 ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M.txt -pipeline-parallelism-degree 4
@@ -76,9 +76,9 @@ if [ "$TENSOR_PARALLELISM_TESTS" = "ON" ]; then
     ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model JackFram/llama-160m-base -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_half_tp4.txt -pipeline-parallelism-degree 1 -tensor-parallelism-degree 4
 
     # LLAMA (big model)
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model meta-llama/Llama-2-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model meta-llama/Llama-2-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_2_7B_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
     # LLAMA (big model, half precision)
-    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model meta-llama/Llama-2-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_7B_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
+    ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model meta-llama/Llama-2-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_2_7B_half_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
 
     # OPT (small model)
     ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model facebook/opt-125m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_opt_125M_tp.txt -pipeline-parallelism-degree 2 -tensor-parallelism-degree 2
@@ -179,22 +179,22 @@ function compare_decoding_steps_spec_infer_incr_decoding {
 
 ############ Alignment between speculative inference and incremental decoding #################
 # Full precision
-diff <(tail -n +3 "../../inference/output/incr_decoding_llama_7B.txt") <(tail -n +3 "../../inference/output/spec_inference_llama.txt")
+diff <(tail -n +3 "../../inference/output/incr_decoding_llama_2_7B.txt") <(tail -n +3 "../../inference/output/spec_inference_llama.txt")
 diff <(tail -n +3 "../../inference/output/incr_decoding_opt_6B.txt")   <(tail -n +3 "../../inference/output/spec_inference_opt.txt")
 # Half precision
-check_partial_token_match "../../inference/output/incr_decoding_llama_7B_half.txt" "../../inference/output/spec_inference_llama_half.txt"
+check_partial_token_match "../../inference/output/incr_decoding_llama_2_7B_half.txt" "../../inference/output/spec_inference_llama_half.txt"
 check_partial_token_match "../../inference/output/incr_decoding_opt_6B_half.txt" "../../inference/output/spec_inference_opt_half.txt"
 
 # Speed test: speculative inference should be at very least 1.5x faster than incremental decoding
 # Full precision
-#compare_speed_spec_infer_incr_decoding "../../inference/output/incr_decoding_llama_7B.txt" "../../inference/output/spec_inference_llama.txt"
+#compare_speed_spec_infer_incr_decoding "../../inference/output/incr_decoding_llama_2_7B.txt" "../../inference/output/spec_inference_llama.txt"
 #compare_speed_spec_infer_incr_decoding "../../inference/output/incr_decoding_opt_6B.txt" "../../inference/output/spec_inference_opt.txt"
-compare_decoding_steps_spec_infer_incr_decoding "../../inference/output/incr_decoding_llama_7B.txt" "../../inference/output/spec_inference_llama.txt"
+compare_decoding_steps_spec_infer_incr_decoding "../../inference/output/incr_decoding_llama_2_7B.txt" "../../inference/output/spec_inference_llama.txt"
 compare_decoding_steps_spec_infer_incr_decoding "../../inference/output/incr_decoding_opt_6B.txt" "../../inference/output/spec_inference_opt.txt"
 # Half precision
-#compare_speed_spec_infer_incr_decoding "../../inference/output/incr_decoding_llama_7B_half.txt" "../../inference/output/spec_inference_llama_half.txt"
+#compare_speed_spec_infer_incr_decoding "../../inference/output/incr_decoding_llama_2_7B_half.txt" "../../inference/output/spec_inference_llama_half.txt"
 #compare_speed_spec_infer_incr_decoding "../../inference/output/incr_decoding_opt_6B_half.txt" "../../inference/output/spec_inference_opt_half.txt"
-compare_decoding_steps_spec_infer_incr_decoding "../../inference/output/incr_decoding_llama_7B_half.txt" "../../inference/output/spec_inference_llama_half.txt"
+compare_decoding_steps_spec_infer_incr_decoding "../../inference/output/incr_decoding_llama_2_7B_half.txt" "../../inference/output/spec_inference_llama_half.txt"
 compare_decoding_steps_spec_infer_incr_decoding "../../inference/output/incr_decoding_opt_6B_half.txt" "../../inference/output/spec_inference_opt_half.txt"
 
 ############ Alignment between tensor model parallelism and pipeline parallelism only #################
@@ -205,8 +205,8 @@ if [ "$TENSOR_PARALLELISM_TESTS" = "ON" ]; then
     check_partial_token_match "../../inference/output/spec_inference_opt_half_tp.txt" "../../inference/output/spec_inference_opt_half.txt"
     diff <(tail -n +3 "../../inference/output/incr_decoding_llama_160M_tp.txt") <(tail -n +3 "../../inference/output/incr_decoding_llama_160M.txt")
     check_partial_token_match "../../inference/output/incr_decoding_llama_160M_half_tp.txt" "../../inference/output/incr_decoding_llama_160M_half.txt"
-    diff <(tail -n +3 "../../inference/output/incr_decoding_llama_7B_tp.txt") <(tail -n +3 "../../inference/output/incr_decoding_llama_7B.txt")
-    check_partial_token_match "../../inference/output/incr_decoding_llama_7B_half_tp.txt" "../../inference/output/incr_decoding_llama_7B_half.txt"
+    diff <(tail -n +3 "../../inference/output/incr_decoding_llama_2_7B_tp.txt") <(tail -n +3 "../../inference/output/incr_decoding_llama_2_7B.txt")
+    check_partial_token_match "../../inference/output/incr_decoding_llama_2_7B_half_tp.txt" "../../inference/output/incr_decoding_llama_2_7B_half.txt"
     diff <(tail -n +3 "../../inference/output/incr_decoding_opt_125M_tp.txt") <(tail -n +3 "../../inference/output/incr_decoding_opt_125M.txt")
     check_partial_token_match "../../inference/output/incr_decoding_opt_125M_half_tp.txt" "../../inference/output/incr_decoding_opt_125M_half.txt"
     diff <(tail -n +3 "../../inference/output/incr_decoding_opt_6B_tp.txt") <(tail -n +3 "../../inference/output/incr_decoding_opt_6B.txt")
@@ -222,10 +222,10 @@ python3 ./huggingface_inference.py --model-name "JackFram/llama-160m-base" --use
 python3 ./huggingface_inference.py --model-name "JackFram/llama-160m-base" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_160M_half.txt" --gpu
 
 # LLAMA (big model, full precision)
-python3 ./huggingface_inference.py --model-name "meta-llama/Llama-2-7b-hf" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_7B.txt"
+python3 ./huggingface_inference.py --model-name "meta-llama/Llama-2-7b-hf" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_2_7B.txt"
 
 # LLAMA (big model, half precision)
-python3 ./huggingface_inference.py --model-name "meta-llama/Llama-2-7b-hf" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_7B_half.txt" --gpu
+python3 ./huggingface_inference.py --model-name "meta-llama/Llama-2-7b-hf" --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_llama_2_7B_half.txt" --gpu
 
 # OPT (small model, full precision)
 python3 ./huggingface_inference.py --model-name "facebook/opt-125m" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_opt_125M.txt" --gpu --max-length 128
@@ -245,8 +245,8 @@ python3 ./huggingface_inference.py --model-name "tiiuae/falcon-7b" --use-full-pr
 
 diff <(tail -n +2 "../../inference/output/huggingface_llama_160M.txt") <(tail -n +5 "../../inference/output/incr_decoding_llama_160M.txt")
 diff <(tail -n +2 "../../inference/output/huggingface_llama_160M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_llama_160M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
-diff <(tail -n +2 "../../inference/output/huggingface_llama_7B.txt") <(tail -n +5 "../../inference/output/incr_decoding_llama_7B.txt")
-diff <(tail -n +2 "../../inference/output/huggingface_llama_7B_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_llama_7B_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
+diff <(tail -n +2 "../../inference/output/huggingface_llama_2_7B.txt") <(tail -n +5 "../../inference/output/incr_decoding_llama_2_7B.txt")
+diff <(tail -n +2 "../../inference/output/huggingface_llama_2_7B_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_llama_2_7B_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
 
 diff <(tail -n +2 "../../inference/output/huggingface_opt_125M.txt") <(tail -n +5 "../../inference/output/incr_decoding_opt_125M.txt")
 diff <(tail -n +2 "../../inference/output/huggingface_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)

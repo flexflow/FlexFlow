@@ -83,7 +83,7 @@ for model_name in all_models:
                 continue
             
             _, after_slash = model_name.rsplit("/", maxsplit=1)
-            filename = "incr_dec-" + "python-" + after_slash + ("-full_prec-" if full_precision else "-half_prec-") + f"{tp}_tp_{pp}_pp"
+            filename = "incr_dec-" + "python-" + after_slash.lower() + ("-full_prec-" if full_precision else "-half_prec-") + f"{tp}_tp_{pp}_pp"
             test_configs_file = "./" + filename + ".json"
             output_file = os.path.join(output_folder, filename+".txt")
             
