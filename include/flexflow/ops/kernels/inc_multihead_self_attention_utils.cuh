@@ -365,7 +365,7 @@ inline __device__ float block_sum(float *red_smem, float sum) {
 
 template <typename DT>
 inline size_t smem_size_qk_in_bytes(int max_sequence_length) {
-  size_t qk_sz = div_up(max_sequence_length + 1, 4) * 16;
+  size_t qk_sz = div_up(1200 + 1, 4) * 16;
   return qk_sz;
 }
 
@@ -376,8 +376,8 @@ inline size_t smem_size_in_bytes(int hidden_size_per_head,
                                  int threads_per_value,
                                  int threads_per_block) {
   // The amount of shared memory needed to store the Q*K^T values in float.
-  size_t qk_sz = div_up(max_sequence_length + 1, 4) * 16;
-
+  
+  size_t qk_sz = div_up(1200 + 1, 4) * 16;
   // The extra memory needed if we are not using floats for the final logits.
   size_t logits_sz = qk_sz;
 #ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS

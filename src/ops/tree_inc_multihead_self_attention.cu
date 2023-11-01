@@ -46,12 +46,14 @@ __global__ void compute_attention_kernel_fused_kernel(
     DT const *value_cache,
     DT *output_ptr,
     float const scale,
-    int max_seq_length,
+    int const max_seq_length,
+    int const max_token_per_batch,
     int per_head_size,
     int hidden_size,
     BatchConfig::PerRequestInfo *request_infos,
     int num_heads,
-    int num_requests) {
+    int num_requests,
+    int qk_smem_sz) {
 
   // q, k
   using Q_vec = typename VEC_K<DT, THREADS_PER_KEY>::Type;
@@ -79,9 +81,9 @@ __global__ void compute_attention_kernel_fused_kernel(
                       request_infos[request_idx].num_tokens_in_batch;
   int const qlength = request_infos[request_idx].num_tokens_in_batch;
 
-  if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
-    printf("tree metadata %d, %d", qlength, tlength);
-  }
+  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+  //   printf("tree metadata %d, %d\n", qlength, tlength);
+  // }
 
   int first_token_idx = 0;
   for (int r = 0; r < request_idx; r++) {
@@ -92,16 +94,17 @@ __global__ void compute_attention_kernel_fused_kernel(
   extern __shared__ char smem_[];
 
   float *qk_smem = reinterpret_cast<float *>(smem_);
-  float *out_smem = reinterpret_cast<float *>(smem_);
+  float *out_smem = reinterpret_cast<float *>(smem_ + qk_smem_sz);
 
-  float qk_max[1000] = {-FLT_MAX};
+  float qk_max[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 2] = {-FLT_MAX};
 
   // first WARPS_PER_BLOCK for store qk_max, second WARPS_PER_BLOCK for sum
-  __shared__ float red_smem[WARPS_PER_BLOCK * 2];
+  __shared__ float red_smem[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 2]
+                           [WARPS_PER_BLOCK * 2];
 
   const DT *q_ptr = query + first_token_idx * hidden_size * QKV_WEIGHT_NUM +
                     head_idx * per_head_size;
-  __shared__ Q_vec q_vecs[THREADS_PER_KEY][K_VECS_PER_THREAD];
+  __shared__ Q_vec q_vecs[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 2][THREADS_PER_KEY][K_VECS_PER_THREAD];
 
   // the start offset of the element eg. (0, 1, 2, 3) * K_VEC_SIZE
   int ki = tidx % THREADS_PER_KEY * K_VEC_SIZE;
@@ -122,22 +125,20 @@ __global__ void compute_attention_kernel_fused_kernel(
   int ti_end =
       div_up(tlength - first_step, K_PER_WARP) * K_PER_WARP + first_step;
   // get k, perform qk proj
-
   for (int qi = 0; qi < qlength; qi += 1) {
 #pragma unroll
-    for (int w = 0; w < qlength; w++) {
-      for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
-        q_vecs[ki_o][ii] = *reinterpret_cast<Q_vec const *>(
-            q_ptr + (hidden_size * QKV_WEIGHT_NUM * qi) + ki +
-            ii * THREADS_PER_KEY * K_VEC_SIZE);
-      }
-    }
-
+  for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
+    q_vecs[qi][ki_o][ii] = *reinterpret_cast<Q_vec const *>(
+        q_ptr + (hidden_size * QKV_WEIGHT_NUM * qi) + ki + ii * THREADS_PER_KEY * K_VEC_SIZE);
+  }
     __syncthreads();
+  }
+
+
+  for (int qi = 0; qi < qlength; qi += 1) {
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
       K_vec k[K_VECS_PER_THREAD];
       int const ti_circ = ti % max_seq_length;
-#pragma unroll
       for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
         int jj = ii * THREADS_PER_KEY * K_VEC_SIZE;
         if (ti < tlength) {
@@ -145,36 +146,51 @@ __global__ void compute_attention_kernel_fused_kernel(
               k_cache_batch + ti_circ * hidden_size + head_idx * per_head_size +
               jj);
         }
-        // Compute dot product.
-        // This includes a reduction across the threads in the same thread
-        // group.
       }
-      float qk = scale * Qk_dot<DT, THREADS_PER_KEY>::dot(q_vecs[ki_o], k);
-      // // todo add positional embedding to the qk production
-      // // Store the product to shared memory. There's one qk value per
-      // timestep.
-      // // Update the max.
+      float qk = scale * Qk_dot<DT, THREADS_PER_KEY>::dot(q_vecs[qi][ki_o], k);
 
       if (ti < tlength && tidx % THREADS_PER_KEY == 0) {
-        // todo add alobi here
         bool const mask = ti_circ >= tlength;
         if (mask) {
           assert(false);
         }
-        int pos = qi * tlength + ti - first_step;
-        if((pos / qlength) % tlength > (pos % qlength + tlength - qlength)){
+
+        int pos = ti * qlength + qi;
+        // if (qlength == 5 && blockIdx.x == 0 && blockIdx.y == 0 && qi == 1 && tidx == 0) {
+        //   printf("qkqkqk2222 %f, %d, position: %d, %f, %f\n", qk, qi, pos, q_vecs[qi][0][0].x, k[0].x);
+        // }
+
+        // if (blockIdx.x == 0 && blockIdx.y == 0 && tidx == 0 && qi == 0) {
+        //   printf("qkqkqk %f, %f,  %f\n", q_vecs[0][0][0].x, k[0].x, qk);
+        // }
+        // if (blockIdx.x == 0 && blockIdx.y == 0 && tidx == 4 && qi == 0) {
+        //   printf("qkqkqk4 %f, %f,  %f\n", q_vecs[0][0][0].x, k[0].x, qk);
+        // }
+        if (((pos / qlength) % tlength) > (pos % qlength + tlength - qlength)) {
           qk = -FLT_MAX;
         }
         qk_max[qi] = mask ? qk_max[qi] : fmaxf(qk_max[qi], qk);
+
+        // if (blockIdx.x == 0 && blockIdx.y == 0 && qi == 0) {
+        //     printf("qkmmmmm %f, %f\n", qk_max[qi], qk);
+        // }
         qk_smem[pos] = mask ? 0.f : qk;
       }
     }
+    __syncthreads();
   }
+  //  if (qlength == 5 && blockIdx.x == 0 && blockIdx.y == 0 && tidx == 0) {
+  //   for(int i = 0; i < 20; i++){
+  //     printf("qkqkqk %f, position: %d\n", qk_smem[i], i);
+      
+  //   }
+  //  }
 
-  __syncthreads();
+  //   if(blockIdx.x == 0 && blockIdx.y == 0){
+  //   printf("see qkmax: %f\n", qk_max[0]);
+  // }
 
   for (int qi = 0; qi < qlength; qi++) {
-#pragma unroll
     for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
       qk_max[qi] =
           fmaxf(qk_max[qi], __shfl_xor_sync(uint32_t(-1), qk_max[qi], mask));
@@ -186,15 +202,15 @@ __global__ void compute_attention_kernel_fused_kernel(
 
     // The warp leader writes the max to shared memory.
     if (lane == 0) {
-      red_smem[warp] = qk_max[qi];
+      red_smem[qi][warp] = qk_max[qi];
     }
 
     // Make sure the products are in shared memory.
     __syncthreads();
 
     // The warps finalize the reduction.
-    qk_max[qi] = lane < WARPS_PER_BLOCK ? red_smem[lane] : -FLT_MAX;
-#pragma unroll
+    qk_max[qi] = lane < WARPS_PER_BLOCK ? red_smem[qi][lane] : -FLT_MAX;
+
     for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
       qk_max[qi] =
           fmaxf(qk_max[qi], __shfl_xor_sync(uint32_t(-1), qk_max[qi], mask));
@@ -203,26 +219,38 @@ __global__ void compute_attention_kernel_fused_kernel(
     // Broadcast to all the threads in the warp.
     qk_max[qi] = __shfl_sync(uint32_t(-1), qk_max[qi], 0);
 
+    // if (blockIdx.x == 0 && blockIdx.y == 0 && tidx == 0 && qi == 0) {
+    //   printf("qkmax %f\n", qk_max[0]);
+    // }
+    // if (blockIdx.x == 0 && blockIdx.y == 0 && tidx == 0 && qi == 1) {
+    //   printf("qkmax1 %f\n", qk_max[1]);
+    // }
+
     float exp_sum = 0.f;
 
     for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
-      float logit =
-          __expf(qk_smem[qi * tlength + ti - first_step] - qk_max[qi]);
+      float logit = __expf(qk_smem[ti * qlength + qi] - qk_max[qi]);
       exp_sum += logit;
-      qk_smem[qi * tlength + ti - first_step] = logit;
+      qk_smem[ti * qlength + qi] = logit;
     }
 
     // Compute the sum.
-    exp_sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], exp_sum);
+    exp_sum =
+        block_sum<WARPS_PER_BLOCK>(&red_smem[qi][WARPS_PER_BLOCK], exp_sum);
 
     // softmax
     float inv_sum = __fdividef(1.f, exp_sum + 1.e-6);
     for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
-      qk_smem[qi * tlength + ti - first_step] *= inv_sum;
+      qk_smem[ti * qlength + qi] *= inv_sum;
     }
+    __syncthreads();
   }
 
-  __syncthreads();
+  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qlength == 5) {
+  //   for(int i = 0; i < 75; i++){
+  //     printf("softmax %.10f, position: %d\n", qk_smem[i], i);
+  //   }
+  // }
 
   // value projection
   constexpr int V_VEC_SIZE = 16 / sizeof(DT);
@@ -233,13 +261,13 @@ __global__ void compute_attention_kernel_fused_kernel(
   constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
 
   Out_sum out;
-
   // The base pointer for the value in the cache buffer.
   DT const *v_cache_batch =
       value_cache + request_idx * max_seq_length * hidden_size + vi;
 
   for (int qi = 0; qi < qlength; qi++) {
     zero(out);
+    __syncthreads();
     if (Dh == Dh_MAX || vi < Dh) {
       for (int ti = first_step + vo; ti < tlength; ti += V_PER_ITER) {
         // Load the values from the cache.
@@ -247,7 +275,16 @@ __global__ void compute_attention_kernel_fused_kernel(
 
         V_vec v = *reinterpret_cast<V_vec const *>(
             v_cache_batch + ti_circ * hidden_size + head_idx * per_head_size);
-        float logit = qk_smem[qi * qlength + ti - first_step];
+        float logit = qk_smem[ti * qlength + qi];
+
+        // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+        //   printf("seeseeseevvvvv %d, %f, %f, %d\n",
+        //          qi,
+        //          logit, qk_smem[ti * qlength + qi], ti * tlength + qi);
+        // }
+        // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+        //   printf("seeseeseevvvvv %f, %d, %f, %d\n", logit, qi, v.x, (ti * qlength + qi));
+        // }
         out = FlexFlow::fma(logit, cast_to_float(v), out);
       }
     }
@@ -280,9 +317,18 @@ __global__ void compute_attention_kernel_fused_kernel(
         __syncthreads();
       }
     }
+    // __syncthreads();
 
     // Output the final values.
     if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
+      // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+      //   printf("seeseeseefinal %d, %.5f, %d, %d\n",
+      //          qi,
+      //          out.x,
+      //          (first_token_idx + qi) * hidden_size + head_idx *
+      //          per_head_size +
+      //              vi, qk_smem_sz);
+      // }
       convert_from_float(*reinterpret_cast<V_vec *>(
                              output_ptr + (first_token_idx + qi) * hidden_size +
                              head_idx * per_head_size + vi),
@@ -702,6 +748,8 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                    BatchConfig::max_sequence_length(),         \
                                    THDS_PER_VALUE,                             \
                                    THDS_PER_BLOCK);                            \
+  qk_smem_sz = smem_size_qk_in_bytes<DT>(BatchConfig::max_sequence_length());  \
+  \                             
   compute_attention_kernel_fused_kernel<DT,                                    \
                                         THDS_PER_BLOCK,                        \
                                         Dh,                                    \
@@ -715,11 +763,13 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
           output_ptr,                                                          \
           scale,                                                               \
           BatchConfig::max_sequence_length(),                                  \
+          BatchConfig::max_tokens_per_batch(),                                 \
           m->qProjSize,                                                        \
           m->hidden_size,                                                      \
           m->request_infos,                                                    \
           m->num_q_heads,                                                      \
-          bc->num_active_requests())
+          bc->num_active_requests(),                                           \
+          qk_smem_sz)
 
 template <typename DT>
 void compute_attention_kernel_fused(IncMultiHeadSelfAttentionMeta const *m,
@@ -731,7 +781,6 @@ void compute_attention_kernel_fused(IncMultiHeadSelfAttentionMeta const *m,
   //  update K-V cache
   int num_new_tokens = bc->requestsInfo[0].num_tokens_in_batch;
   int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_new_tokens;
-  std::cout << "fkfkf3" << "\n";
   update_tree_branch_kv_cache<<<GET_BLOCKS(parallelism),
                                 min(CUDA_NUM_THREADS, parallelism),
                                 0,
@@ -743,17 +792,36 @@ void compute_attention_kernel_fused(IncMultiHeadSelfAttentionMeta const *m,
       m->qProjSize,
       m->kProjSize,
       m->vProjSize,
-      num_new_tokens,            // num_tokens_in_branch
-      0, // num_processed_tokens_in_batch
-      bc->num_active_tokens(),      // total_tokens_in_batch
+      num_new_tokens,          // num_tokens_in_branch
+      0,                       // num_processed_tokens_in_batch
+      bc->num_active_tokens(), // total_tokens_in_batch
       BatchConfig::max_sequence_length(),
       m->hidden_size);
-  std::cout << "fkfkf4" << "\n";
+  // if(bc->num_active_tokens() == 5){
+  //   print_tensor<float>((float *)m->keyCache, 32, "key");
+  // print_tensor<float>((float *)m->valueCache, 32, "value");
+  // print_tensor<float>((float *)m->devQKVProjArray, 32, "qkv");
+  // }
+  
+  // save_tensor<float>((float *)m->keyCache,
+  //                    768 * 10 * 12,
+  //                    "/home/ubuntu/FlexFlow/inference/opt_key.txt");
+  // save_tensor<float>((float *)m->valueCache,
+  //                    768 * 10 * 12,
+  //                    "/home/ubuntu/FlexFlow/inference/opt_value.txt");
   // assume we only have one requests
+  int tlength = bc->requestsInfo[0].first_token_depth_in_request +
+                      bc->requestsInfo[0].num_tokens_in_batch;
+  std::cout << "max_sequence_length: " << bc->num_active_tokens() << ", " << tlength << "\n";
+
   dim3 grid(m->num_q_heads, bc->num_active_requests());
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
   size_t smem_sz;
+  size_t qk_smem_sz;
+  smem_sz = smem_size_in_bytes<DT>(
+      m->qProjSize, BatchConfig::max_sequence_length(), 16, 128);
+  // printf("share mem: %d\n", smem_sz);
   switch (per_head_size) {
     case 64:
       LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(DT, 64, 64, 4, 16, 128, stream);
@@ -764,6 +832,15 @@ void compute_attention_kernel_fused(IncMultiHeadSelfAttentionMeta const *m,
       break;
     default:
       assert(false);
+  }
+  // print_tensor<float>((float *)m->attn_heads, 32, "qkv");
+
+  // check for errors
+  cudaError_t error = cudaGetLastError();
+  if (error != cudaSuccess) {
+
+    fprintf(stderr, "ERROR: %s \n", cudaGetErrorString(error));
+    assert(false);
   }
 }
 
@@ -835,16 +912,21 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
                      stream);
-
+  // save_tensor<float>((float *)m->devQKVProjArray,
+  //                    768 * 10 * 12 * 3,
+  //                    "/home/ubuntu/FlexFlow/inference/opt_qkv.txt");
   // phase 2: No need to update key/val cache
   // IncMultiHeadSelfAttention::update_kv_cache_kernel(
   //    m, bc, stream);
- std::cout << "fkfkfk1" << "\n";
   // use the new kernel
   compute_attention_kernel_fused<DT>(
       m, bc, static_cast<DT *>(m->attn_heads), stream);
-  std::cout << "fkfkfk" << "\n";
+
   int processed_tokens_in_batch = bc->num_active_tokens();
+  
+  // if(bc->num_active_tokens() == 5){
+  // save_tensor<float>((float *)m->attn_heads, 768 * 5, "/home/ubuntu/FlexFlow/inference/Vfinal.txt");
+  // }
   compute_o_prod_bias(m,
                       bc,
                       shard_id,
@@ -853,7 +935,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       bias_ptr,
                       processed_tokens_in_batch,
                       stream);
-
+  // if(bc->num_active_tokens() == 5){                    
+  // print_tensor<float>((float *)output_ptr, 32, "output");
+  // }
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
   // compute_attention_kernel(
@@ -877,6 +961,9 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
   bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start, stream);
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
@@ -937,6 +1024,21 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
+
+  // if(bc->num_active_tokens() == 5){
+  //   save_tensor<float>(output.get_float_ptr(), 768 * 5, "/home/ubuntu/FlexFlow/inference/fkvvvvv.txt");
+  // }
+  cudaEventRecord(t_end, stream);
+  checkCUDA(cudaEventSynchronize(t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+
+  
+  // if(bc->num_active_tokens() == 5){
+    
+  //    assert(false);
+  // }
+  
 }
 
 TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
