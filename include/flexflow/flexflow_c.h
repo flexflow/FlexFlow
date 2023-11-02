@@ -1013,13 +1013,13 @@ flexflow_file_data_loader_t
                                      int num_kv_heads,
                                      int hidden_dim,
                                      int qkv_inner_dim,
-                                     int tensor_parallelism_degree);
+                                     int tensor_parallelism_degree,
+                                     bool use_full_precision);
 
 void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_);
 
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
-                                            flexflow_model_t model_handle_,
-                                            bool use_full_precision);
+                                            flexflow_model_t model_handle_);
 
 #ifdef __cplusplus
 }

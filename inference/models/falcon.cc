@@ -236,6 +236,20 @@ void FALCON::create_falcon_model(FFModel &ff,
     output = ff.argmax(lm_head, /*beam_Search*/ false);
   }
 
+  FileDataLoader *fileloader =
+      new FileDataLoader("",
+                         weight_file_path,
+                         falcon_config.n_head,
+                         falcon_config.n_head_kv,
+                         falcon_config.hidden_size,
+                         falcon_config.hidden_size / falcon_config.n_head,
+                         ff.config.tensor_parallelism_degree,
+                         use_full_precision);
+
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  im->register_model_weights_loader(&ff, fileloader);
+
+#ifdef DEADCODE
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
   InferenceManager *im = InferenceManager::get_inference_manager();
@@ -253,6 +267,7 @@ void FALCON::create_falcon_model(FFModel &ff,
 
   // init operators
   im->init_operators_inference(&ff);
+#endif
 }
 
 }; // namespace FlexFlow

@@ -393,6 +393,11 @@ void InferenceManager::load_positions(BatchConfigFuture const &bc,
   runtime->execute_index_space(ctx, launcher);
 }
 
+void InferenceManager::register_model_weights_loader(FFModel *model,
+                                                     FileDataLoader *loader) {
+  model_weights_loaders[model] = loader;
+}
+
 void FFModel::set_transformer_layer_id(int id) {
   // We assume that users call this function with
   // monotonically increasing ids

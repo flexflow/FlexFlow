@@ -298,6 +298,7 @@ class LLM:
             model_configs.hidden_size,
             model_configs.hidden_size // model_configs.num_attention_heads,
             self.ffconfig.tensor_parallelism_degree,
+            self.data_type == DataType.DT_FLOAT
         )
 
         self.fileloader.load_weights(self.model.ffmodel, self.data_type)

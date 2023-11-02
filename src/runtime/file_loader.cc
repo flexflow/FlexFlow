@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "file_loader.h"
+#include "flexflow/utils/file_loader.h"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/inference.h"
 
@@ -28,11 +28,13 @@ FileDataLoader::FileDataLoader(std::string _prompts_filepath,
                                int _num_kv_heads,
                                size_t _hidden_dim,
                                size_t _qkv_inner_dim,
-                               int _tensor_parallelism_degree)
+                               int _tensor_parallelism_degree,
+                               bool _use_full_precision)
     : prompts_filepath(_prompts_filepath), weights_folder(_weights_folder),
       num_heads(_num_heads), num_kv_heads(_num_kv_heads),
       hidden_dim(_hidden_dim), qkv_inner_dim(_qkv_inner_dim),
-      tensor_parallelism_degree(_tensor_parallelism_degree){};
+      tensor_parallelism_degree(_tensor_parallelism_degree),
+      use_full_precision(_use_full_precision){};
 
 BatchConfig::TokenId *FileDataLoader::generate_requests(int num, int length) {
 
@@ -650,8 +652,7 @@ void load_from_quantized_file(char *ptr,
 
 void FileDataLoader::load_quantization_weight(FFModel *ff,
                                               Layer *l,
-                                              int weight_idx,
-                                              bool use_full_precision) {
+                                              int weight_idx) {
   Tensor weight = l->weights[weight_idx];
   size_t volume = 1;
   std::vector<int> dims_vec;
@@ -789,7 +790,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   delete data;
 }
 
-void FileDataLoader::load_weights(FFModel *ff, bool use_full_precision) {
+void FileDataLoader::load_weights(FFModel *ff) {
   for (Layer *l : ff->layers) {
     if (l->numWeights < 1 || l->name == NULL || strlen(l->name) < 1) {
       continue;
@@ -809,7 +810,7 @@ void FileDataLoader::load_weights(FFModel *ff, bool use_full_precision) {
         case DT_INT4:
         case DT_INT8:
           // load weights in quantization
-          load_quantization_weight(ff, l, i, use_full_precision);
+          load_quantization_weight(ff, l, i);
           break;
         default:
           assert(false && "Unsupported data type");

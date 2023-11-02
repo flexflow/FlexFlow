@@ -22,6 +22,7 @@
 #include <nlohmann/json.hpp>
 #include <wordexp.h>
 
+using namespace FlexFlow;
 using namespace Legion;
 using json = nlohmann::json;
 

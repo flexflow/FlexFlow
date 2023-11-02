@@ -18,6 +18,8 @@
 #include "flexflow/batch_config.h"
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/file_loader.h"
+#include <future>
 #include <mutex>
 #include <tokenizers_cpp.h>
 
@@ -42,10 +44,12 @@ public:
   void load_positions(BatchConfigFuture const &bc,
                       ParallelTensor position_input,
                       int offset);
+  void register_model_weights_loader(FFModel *, FileDataLoader *);
 
 public:
   FFConfig ff_config;
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
+  std::unordered_map<FFModel *, FileDataLoader *> model_weights_loaders;
   int num_devices;
 };
 
@@ -87,6 +91,11 @@ struct BeamTree {
 
 class RequestManager {
 public:
+  enum Status {
+    INITIALIZED = 1001,
+    SERVING = 1002,
+    TERMINATED = 1003,
+  };
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
 
@@ -110,18 +119,21 @@ public:
 
   FFModel *get_model(int model_id);
 
-  GenerationResult generate_incr_decoding(FFModel *model,
-                                          std::vector<std::string> &prompts,
-                                          int max_seq_length);
-  GenerationResult generate_spec_infer(FFModel *model,
-                                       std::vector<std::string> &prompts,
-                                       int max_seq_length);
+  void serve_incr_decoding(FFModel *model);
+  void serve_spec_infer(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
   RequestGuid register_new_request(std::string const &prompt,
                                    int max_sequence_length);
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
                                    int max_sequence_length);
+  // Methods to start and terminate request manager's background task
+  void start_background_server(FFModel *model);
+  bool is_background_server_terminated();
+  void terminate_background_server();
+  // Methods to check and mark request completion
   bool is_request_completed(RequestGuid const &guid);
+  void trigger_request_completion_future(RequestGuid const &guid);
+  // Methods for preparing next batches
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
   BatchConfigFuture prepare_next_batch(BatchConfigFuture const &bc,
@@ -169,7 +181,11 @@ public:
           &inputSerializedTree,
       std::vector<std::pair<BatchConfig::TokenId, int>> const
           &outputSerializedTree);
-
+  static void background_serving_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
   static void
       load_tokens_task(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions,
@@ -210,6 +226,7 @@ private:
   int max_requests_per_batch;
   int max_tokens_per_batch;
   int max_sequence_length;
+  Status request_manager_status;
   // private fields
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -221,6 +238,8 @@ private:
   std::unordered_map<RequestGuid, Request> all_requests;
   std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;
+  std::unordered_map<RequestGuid, std::promise<void>> request_to_promise;
+  std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
   // Legion futures for inc_decoding and spec_infer
   BatchConfigFuture last_bcf;

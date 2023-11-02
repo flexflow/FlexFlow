@@ -4238,6 +4238,7 @@ class FileDataLoader(object):
         hidden_dim,
         qkv_inner_dim,
         tensor_parallelism_degree,
+        use_full_precision
     ):
         c_weight_file_path = get_c_name(weight_file_path)
         self.handle = ffc().flexflow_file_data_loader_create(
@@ -4247,13 +4248,14 @@ class FileDataLoader(object):
             hidden_dim,
             qkv_inner_dim,
             tensor_parallelism_degree,
+            use_full_precision
         )
         self._handle = ffi.gc(self.handle, ffc().flexflow_file_data_loader_destroy)
 
-    def load_weights(self, model, data_type):
+    def load_weights(self, model):
         # Check data type and create use_full_precision boolean
-        assert data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF
-        use_full_precision = data_type == DataType.DT_FLOAT
+        #assert data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF
+        #use_full_precision = data_type == DataType.DT_FLOAT
         ffc().flexflow_file_data_loader_load_weights(
-            self.handle, model.handle, use_full_precision
+            self.handle, model.handle
         )
