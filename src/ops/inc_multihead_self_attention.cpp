@@ -257,11 +257,10 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   DT alpha = 1.0f, beta = 0.0f;
   assert(m->qSize == m->vSize && m->qSize == m->kSize);
   hipblasDatatype_t hipblas_data_type = ff_to_cuda_datatype(m->output_type[0]);
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-  hipblasDatatype_t compute_type = hipblas_data_type;
+#if CUDA_VERSION >= 11000
+  // TODO: currently set the default to HIPBLAS_COMPUTE_16F for best performance
+  cublasComputeType_t compute_type = HIPBLAS_COMPUTE_16F;
 #else
-  // TODO: currently use the hipblas_data_type
-  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   hipblasDatatype_t compute_type = hipblas_data_type;
 #endif
   // Compute (W^T)x matmul: einsum(ijkl,im->jmkl)
@@ -510,11 +509,10 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   hipblasDatatype_t hipblas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   miopenDataType_t miopen_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-  hipblasDatatype_t compute_type = hipblas_data_type;
+#if CUDA_VERSION >= 11000
+  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
-  // TODO: currently use the hipblas_data_type
-  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   hipblasDatatype_t compute_type = hipblas_data_type;
 #endif
   // int num_requests = bc->num_active_requests();
