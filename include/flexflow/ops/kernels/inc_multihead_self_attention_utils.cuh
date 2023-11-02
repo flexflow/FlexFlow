@@ -1,6 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_INC_MULTIHEAD_SELF_UTILS_H
 #define _FLEXFLOW_OPS_KERNELS_INC_MULTIHEAD_SELF_UTILS_H
 
+#include "flexflow/inference.h"
+
 namespace FlexFlow {
 
 ////////////////basic datatype//////////////////////
@@ -363,12 +365,6 @@ inline __device__ float block_sum(float *red_smem, float sum) {
   return __shfl_sync(uint32_t(-1), sum, 0);
 }
 
-template <typename DT>
-inline size_t smem_size_qk_in_bytes(int max_sequence_length) {
-  size_t qk_sz = div_up(1200 + 1, 4) * 16;
-  return qk_sz;
-}
-
 // utils
 template <typename DT>
 inline size_t smem_size_in_bytes(int hidden_size_per_head,
@@ -376,16 +372,15 @@ inline size_t smem_size_in_bytes(int hidden_size_per_head,
                                  int threads_per_value,
                                  int threads_per_block) {
   // The amount of shared memory needed to store the Q*K^T values in float.
-  
-  size_t qk_sz = div_up(1200 + 1, 4) * 16;
+
+  size_t qk_sz = div_up(max_sequence_length + 1, 4) * 16;
   // The extra memory needed if we are not using floats for the final logits.
+
+  // store the extra memory if half percision
   size_t logits_sz = qk_sz;
-#ifndef MMHA_USE_FP32_ACUM_FOR_LOGITS
   if (sizeof(DT) != 4) {
-    // TDOD
     logits_sz = div_up(max_sequence_length + 1, 4) * 4 * sizeof(DT);
   }
-#endif
 
   // The total size needed during softmax.
   size_t softmax_sz = qk_sz + logits_sz;
@@ -397,6 +392,50 @@ inline size_t smem_size_in_bytes(int hidden_size_per_head,
 
   // The max.
   return max(softmax_sz, red_sz);
+}
+
+template <typename DT>
+inline void smem_size_in_bytes_tree(int hidden_size_per_head,
+                                    int threads_per_value,
+                                    int threads_per_block,
+                                    TreeVerifyBatchConfig const *bc,
+                                    int shared_mem[]) {
+
+  int max_query_length = 0;
+  int max_total_length = 0;
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    max_query_length =
+        max(max_query_length, bc->requestsInfo[i].num_tokens_in_batch);
+    max_total_length = max(max_total_length,
+                           bc->requestsInfo[i].first_token_depth_in_request +
+                               bc->requestsInfo[i].num_tokens_in_batch);
+  }
+
+  int max_qk_length = max_query_length * max_total_length;
+  // The amount of shared memory needed to store the Q*K^T values in float.
+  size_t qk_sz = div_up(max_qk_length + 1, 4) * 16;
+  // The extra memory needed if we are not using floats for the final logits.
+
+  // store the extra memory if half percision
+  size_t logits_sz = qk_sz;
+  if (sizeof(DT) != 4) {
+    logits_sz = div_up(max_qk_length + 1, 4) * 4 * sizeof(DT);
+  }
+
+  // The total size needed during softmax.
+  size_t softmax_sz = qk_sz + logits_sz;
+
+  // The number of partial rows to reduce in the final reduction.
+  int rows_per_red = threads_per_block / threads_per_value;
+  // The amount of storage needed to finalize the outputs.
+  size_t red_sz = rows_per_red * hidden_size_per_head * sizeof(DT) / 2;
+
+  // The max.
+  shared_mem[0] = qk_sz;
+  shared_mem[1] = max(softmax_sz, red_sz);
 }
 
 } // namespace FlexFlow
