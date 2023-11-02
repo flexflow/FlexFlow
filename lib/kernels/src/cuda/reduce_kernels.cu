@@ -67,50 +67,73 @@ ReducePerDeviceState::~ReducePerDeviceState(void) {
 namespace Kernels {
 namespace Reduce {
 
+ReducePerDeviceState init_kernel(PerDeviceFFhandle const &handle,
+                                 OperatorType const &op_type,
+                                 size_t const &reduction_size,
+                                 ArrayShape const &input_shape,
+                                 ArrayShape const &output_shape) {
+
+  ffTensorDescriptor_t inputTensor;
+  ffTensorDescriptor_t outputTensor;
+  ffReduceTensorDescriptor_t reduceDesc;
+
+  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  ;
+  checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
+
+  checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(inputTensor, input_shape));
+  checkCUDNN(
+      cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
+
+  ReducePerDeviceState per_device = {
+      handle, inputTensor, outputTensor, reduceDesc, op_type, reduction_size};
+}
+
 void forward_kernel(cudaStream_t stream,
-                    ReducePerDeviceState const *m,
+                    ReducePerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(cudnnReduceTensor(m->handle.dnn,
-                               m->reduceDesc,
+  checkCUDNN(cudnnReduceTensor(m.handle.dnn,
+                               m.reduceDesc,
                                nullptr /*indices*/,
                                0 /*indicesSizeInBytes*/,
-                               m->handle.workSpace,
-                               m->handle.workSpaceSize,
+                               m.handle.workSpace,
+                               m.handle.workSpaceSize,
                                &alpha,
-                               m->inputTensor,
+                               m.inputTensor,
                                input_ptr,
                                &beta,
-                               m->outputTensor,
+                               m.outputTensor,
                                output_ptr));
 };
 
 void backward_kernel(cudaStream_t stream,
-                     ReducePerDeviceState const *m,
+                     ReducePerDeviceState const &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
   float alpha = 1.0, beta = 1.0f;
-  switch (m->op_type) {
+  switch (m.op_type) {
     case OP_REDUCE_SUM:
       alpha = 1.0f;
       break;
     case OP_REDUCE_MEAN:
       // When the output is the average of multiple input elements
       // we need to scale the gradients by 1.0 / reduction_size
-      alpha = 1.0f / m->reduction_size;
+      alpha = 1.0f / m.reduction_size;
       break;
     default:
       assert(false);
   }
-  checkCUDNN(cudnnAddTensor(m->handle.dnn,
+  checkCUDNN(cudnnAddTensor(m.handle.dnn,
                             &alpha,
-                            m->outputTensor,
+                            m.outputTensor,
                             output_grad_ptr,
                             &beta,
-                            m->inputTensor,
+                            m.inputTensor,
                             input_grad_ptr));
 }
 
