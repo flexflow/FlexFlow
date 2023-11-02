@@ -17,15 +17,33 @@ Source: Custom (use the security group ID)
 
 You can also use your own GPU cluster, as long as all machines are interconnected with a low-latency network.
 
-## 2. Configure and build FlexFlow
+## 2. Configure and build UCX
 
-Follow steps 1 to 5 in [INSTALL.md](INSTALL.md) to download the source code, install system dependencies, install the Python dependencies, configure the FlexFlow build, and build FlexFlow **on each instance at the same path**. 
+Find the latest source code release for UCX at https://github.com/openucx/ucx/releases. As of writing this documentation, the latest UCX was 1.15.0 at https://github.com/openucx/ucx/releases/download/v1.15.0/ucx-1.15.0.tar.gz. Extract it and switch to the directory with UCX source code, and run:
+
+```
+CUDA_PATH=/usr/local/cuda
+PREFIX=$PWD/install
+./contrib/configure-release-mt --prefix="$PREFIX" --without-go --enable-mt --with-cuda="$CUDA_PATH"
+make -j install
+echo "$PREFIX"
+```
+
+Replace `{{ CUDA_PATH }}` with the path of your CUDA installation. If you don't know the path, try `which nvcc`. Take note of the path of UCX installation, echoed as part of the last command.
+
+## 3. Configure and build FlexFlow
+
+Follow steps 1 to 5 in [INSTALL.md](INSTALL.md#1-download-the-source-code) to download the source code, install system dependencies, install the Python dependencies, configure the FlexFlow build, and build FlexFlow **on each instance at the same path**. Or you can use NFS to mount home directory of each instance so that only a single build is necessary.
 
 You can skip step 2 (Install system dependencies) if you have spun up instances with Deep Learning AMI, which comes preconfigured with CUDA. Otherwise, you need to install system dependencies on each instance.
 
-For step 4 (Configuring the FlexFlow build), make sure to specify a network using the `FF_LEGION_NETWORKS` parameter. We recommend using `FF_LEGION_NETWORKS=gasnet` and `FF_GASNET_CONDUIT=ucx`. Other configurations are optional.
+For step 4 (Configuring the FlexFlow build), here are the parameters that need to be configured:
+* Set `FF_LEGION_NETWORKS=ucx`
+* Set `UCX_DIR` to the UCX installation path mentioned in [Configure and build UCX](#2-configure-and-build-ucx)
 
-## 3. Configure MPI
+Other configuration options are optional.
+
+## 4. Configure MPI
 
 MPI is an easy way to launch FlexFlow across all instances simultaneously and set up communication between them.
 
@@ -64,8 +82,31 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOy5NKYdE8Cwgid59rx6xMqyj9vLaWuXIwy/BSRiK4su
 
 5. Test MPI by running `mpirun -N 1 --hostfile ~/hostfile hostname`. It should display the hostname of all your nodes. If you encounter any errors like `WARNING: Open MPI accepted a TCP connection from what appears to be another Open MPI process but cannot find a corresponding process entry for that peer.`, add the parameter `--mca btl_tcp_if_include` in the `mpirun` command (refer to [this Stack Overflow question](https://stackoverflow.com/questions/15072563/running-mpi-on-two-hosts)).
 
-## 4. Test FlexFlow
+## 5. Test FlexFlow
 
-Follow step 6 in [INSTALL.md](INSTALL.md) to set environment variables.
+Follow step 6 in [INSTALL.md](INSTALL.md#6-test-flexflow) to set environment variables.
 
-A script to run a Python example on multiple nodes is available at `scripts/mnist_mlp_run.sh`. You can run the script using [`mpirun`](https://www.open-mpi.org/doc/current/man1/mpirun.1.php) (if you configured it in step 3) or [`srun`](https://slurm.schedmd.com/srun.html).
+Save the following script as `mnist_mlp_run.sh` and make sure to change `FLEXFLOW_DIR` and `UCX_DIR` to appropriate paths:
+
+```bash
+#!/bin/bash
+eval "$(conda shell.bash hook)"
+conda activate flexflow
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
+
+# Path to your FlexFlow build
+FLEXFLOW_DIR=/home/ubuntu/FlexFlow/build
+
+# Path to your UCX installation
+UCX_DIR=/home/ubuntu/ucx-1.15.0/install
+
+export REALM_UCP_BOOTSTRAP_PLUGIN=$FLEXFLOW_DIR/deps/legion/lib/realm_ucp_bootstrap_mpi.so
+export LD_LIBRARY_PATH=$FLEXFLOW_DIR/deps/legion/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$FLEXFLOW_DIR:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$UCX_DIR/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/opt/conda/envs/flexflow/lib:$LD_LIBRARY_PATH
+
+mpiexec -x REALM_UCP_BOOTSTRAP_PLUGIN -x PATH -x LD_LIBRARY_PATH --hostfile ~/hostfile --mca btl_tcp_if_include ens5 -np 2 "$FLEXFLOW_DIR"/flexflow_python "$FLEXFLOW_DIR"/../examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize 8000 -ll:zsize 8000
+```
+
+Run the script to test FlexFlow on mnist mlp training. You can adjust the script to run any other program.
