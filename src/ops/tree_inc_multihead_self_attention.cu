@@ -87,7 +87,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
         m->kProjSize,
         m->vProjSize,
         num_tokens_to_commit,
-        m->num_active_tokens, // number of active tokens in previous batch
+        m->num_active_infr_tokens, // number of active tokens in previous batch
         BatchConfig::max_sequence_length(),
         m->hidden_size);
   }
@@ -218,7 +218,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
             m->vProjSize,
             num_new_tokens,            // num_tokens_in_branch
             processed_tokens_in_batch, // num_processed_tokens_in_batch
-            m->num_active_tokens,      // total_tokens_in_batch
+            m->num_active_infr_tokens, // total_tokens_in_batch
             BatchConfig::max_sequence_length(),
             m->hidden_size);
       }
@@ -435,7 +435,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                   m->oProjSize);
   }
 
-  assert(processed_tokens_in_batch == bc->num_active_tokens());
+  assert(processed_tokens_in_batch == bc->num_active_infr_tokens());
 }
 
 template <typename DT>
@@ -464,7 +464,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
     }
   }
   // copy committed tokens info to GPU for the commit_tokens kernel
-  // Note that m->num_active_tokens stores the number of active
+  // Note that m->num_active_infr_tokens stores the number of active
   // tokens in the previous batch, which is needed for committing
   // keys/values to the key-value cache
   cudaMemcpyAsync(m->committed_token_infos,
@@ -475,9 +475,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                   stream);
   commit_tokens<DT>(m, bc, stream);
 
-  // After commit we update m->num_active_tokens to be the number of active
+  // After commit we update m->num_active_infr_tokens to be the number of active
   // tokens for the current batch
-  m->num_active_tokens = bc->num_active_tokens();
+  m->num_active_infr_tokens = bc->num_active_infr_tokens();
 
   // here because we need postion info in infernece 1
   if (m->offload && m->biasSize > 0) {
@@ -624,7 +624,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     _num_kv_heads,
                                     attn->quantization_type,
                                     attn->offload),
-      num_active_tokens(0) {
+      num_active_infr_tokens(0) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));

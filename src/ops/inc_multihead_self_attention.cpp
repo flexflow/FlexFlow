@@ -257,11 +257,10 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   DT alpha = 1.0f, beta = 0.0f;
   assert(m->qSize == m->vSize && m->qSize == m->kSize);
   hipblasDatatype_t hipblas_data_type = ff_to_cuda_datatype(m->output_type[0]);
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-  hipblasDatatype_t compute_type = hipblas_data_type;
+#if CUDA_VERSION >= 11000
+  // TODO: currently set the default to HIPBLAS_COMPUTE_16F for best performance
+  cublasComputeType_t compute_type = HIPBLAS_COMPUTE_16F;
 #else
-  // TODO: currently use the hipblas_data_type
-  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   hipblasDatatype_t compute_type = hipblas_data_type;
 #endif
   // Compute (W^T)x matmul: einsum(ijkl,im->jmkl)
@@ -272,7 +271,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   int m_k = m->kProjSize * m->num_q_heads;
   int m_v = m->vProjSize * m->num_q_heads;
   assert(m_q == m_k && m_k == m_v); // keep things simple for now
-  int n = bc->num_active_tokens();
+  int n = bc->num_active_infr_tokens();
   int k = m->qSize;
   int m_ = m_q * QKV_WEIGHT_NUM;
   int lda = k, ldb = k, ldc = m_;
@@ -298,7 +297,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
   // apply rotary emmmbedding for q and k
   // step1 change the k, v to complex tensor
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
   size_t q_array_size = m->qProjSize * num_tokens * m->num_q_heads;
   // apply bias for q, k, v
@@ -356,7 +355,7 @@ template <typename DT>
 void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                             BatchConfig const *bc,
                             hipStream_t stream) {
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   if (num_tokens > 0) {
     int parallelism = m->hidden_size * num_tokens;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(store_kv_cache<DT>),
@@ -452,7 +451,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
   checkCUDA(hipMemcpyAsync(m->token_infos,
                            &(bc->tokensInfo),
-                           bc->num_active_tokens() *
+                           bc->num_active_infr_tokens() *
                                sizeof(BatchConfig::PerTokenInfo),
                            hipMemcpyHostToDevice,
                            stream));
@@ -510,15 +509,14 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   hipblasDatatype_t hipblas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   miopenDataType_t miopen_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-  hipblasDatatype_t compute_type = hipblas_data_type;
+#if CUDA_VERSION >= 11000
+  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
-  // TODO: currently use the hipblas_data_type
-  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   hipblasDatatype_t compute_type = hipblas_data_type;
 #endif
   // int num_requests = bc->num_active_requests();
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   int tokens_previous_requests = 0;
   int q_block_size = m->qProjSize;
   int kt_block_size = m->kProjSize;

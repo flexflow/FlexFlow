@@ -60,6 +60,11 @@ public:
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
+  Legion::FutureMap peft_bwd(FFModel const &,
+                             BatchConfigFuture const &,
+                             std::vector<ParallelTensor> const &,
+                             std::vector<ParallelTensor> const &,
+                             MachineView const *mv = nullptr) override;
   // void update(const FFModel&);
   void print_layer(FFModel const &model) override {
     assert(0);

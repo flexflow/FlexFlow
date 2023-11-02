@@ -8,9 +8,11 @@
 
 namespace FlexFlow {
 
+class Combine;
+
 class CombineMeta : public OpMeta {
 public:
-  CombineMeta(FFHandler handle);
+  CombineMeta(FFHandler handle, Combine const *comb);
   DataType data_type;
 };
 

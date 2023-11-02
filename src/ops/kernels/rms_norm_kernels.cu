@@ -115,47 +115,6 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
   return val;
 }
 
-#ifdef DEADCODE
-template <typename T>
-__global__ void
-    RowwiseRootMeanSquareKernel(long long N, float eps, T const *X, T *rms) {
-  __shared__ float v_shared[C10_WARP_SIZE];
-  long long const i = blockIdx.x;
-  float sum = 0.0f;
-  for (long long j = threadIdx.x; j < N; j += blockDim.x) {
-    long long const index = i * N + j;
-    sum += (static_cast<float>(X[index]) * static_cast<float>(X[index]));
-  }
-  sum = BlockReduceSum<float>(sum,
-                              v_shared); // use BlockReduceSum() to sum X_ij^2
-
-  if (threadIdx.x == 0) {
-    rms[i] = static_cast<T>(rsqrt((sum / static_cast<float>(N)) + eps));
-  }
-}
-
-template <typename T>
-__global__ void NormKernel(int64_t N, T const *X, T const *rstd, T *Y) {
-  using T_ACC = T;
-  const int64_t i = blockIdx.x;
-  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
-    Y[index] = static_cast<T_ACC>(X[index]) * static_cast<T_ACC>(rstd[i]);
-  }
-}
-
-template <typename T>
-__global__ void elewise_apply_weights(int64_t batch_size,
-                                      int64_t in_dim,
-                                      T const *norm,
-                                      T const *weights,
-                                      T *output) {
-  CUDA_KERNEL_LOOP(i, batch_size * in_dim) {
-    output[i] = norm[i] * weights[i % in_dim];
-  }
-}
-#endif
-
 template <typename T>
 __global__ void RMSNormFusedForwardKernel(int64_t N,
                                           float eps,
@@ -258,6 +217,323 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("[RMSNorm] forward time (CF) = %.2fms\n", elapsed);
+  }
+}
+
+void inference_kernel_wrapper(RMSNormMeta *m,
+                              BatchConfig const *bc,
+                              GenericTensorAccessorR const &input,
+                              GenericTensorAccessorR const &weight,
+                              GenericTensorAccessorW const &output) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+
+  assert(output.data_type == input.data_type);
+  assert(weight.data_type == output.data_type);
+
+  // save input activation if needed for PEFT
+  if (bc->num_active_peft_tokens() > 0) {
+    // check that at most one dimension after the first is > 1. TODO(goliaro):
+    // support case where this condition does not hold
+    int non_unit_dims_encountered = 0;
+    for (int i = 1; i < input.domain.get_dim(); i++) {
+      int dim_i = input.domain.hi()[i] - input.domain.lo()[i] + 1;
+      if (dim_i > 1) {
+        non_unit_dims_encountered++;
+      }
+    }
+    assert(non_unit_dims_encountered <= 1);
+
+    // allocate space for all peft tokens
+    MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+    int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+    m->input_activation = allocator->allocate_instance_untyped(
+        data_type_size(input.data_type) * bc->num_active_peft_tokens() *
+        in_dim);
+
+    int tokens_previous_requests = 0;
+    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+      if (bc->request_completed[i]) {
+        continue;
+      }
+      // Skip non-PEFT requests and PEFT forward-only requests
+      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID ||
+          !bc->requestsInfo[i].peft_bwd) {
+        tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
+        continue;
+      }
+      int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+
+      if (input.data_type == DT_FLOAT) {
+        checkCUDA(cudaMemcpyAsync(
+            m->input_activation,
+            input.get_float_ptr() + tokens_previous_requests * in_dim,
+            data_type_size(input.data_type) * num_peft_tokens * in_dim,
+            cudaMemcpyDeviceToDevice,
+            stream));
+      } else if (input.data_type == DT_HALF) {
+        checkCUDA(cudaMemcpyAsync(
+            m->input_activation,
+            input.get_half_ptr() + tokens_previous_requests * in_dim,
+            data_type_size(input.data_type) * num_peft_tokens * in_dim,
+            cudaMemcpyDeviceToDevice,
+            stream));
+      } else {
+        assert(false && "unsupport datatype in layernorm");
+      }
+    }
+  }
+
+  if (output.data_type == DT_HALF) {
+    forward_kernel(m,
+                   input.get_half_ptr(),
+                   weight.get_half_ptr(),
+                   output.get_half_ptr(),
+                   stream);
+  } else if (output.data_type == DT_FLOAT) {
+    forward_kernel(m,
+                   input.get_float_ptr(),
+                   weight.get_float_ptr(),
+                   output.get_float_ptr(),
+                   stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
+
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[RMSNorm] forward time (CF) = %.2fms\n", elapsed);
+  }
+}
+
+template <typename T>
+__global__ void ComputeInternalGradientsCUDAKernel(
+    int64_t N, T const *dY, T const *X, T const *gamma, T const *rrms, T *c2) {
+  __shared__ T ds_storage[C10_WARP_SIZE];
+  const int64_t i = blockIdx.x;
+  T ds = 0;
+  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
+    int const index = i * N + j;
+    ds += dY[index] * X[index] * gamma[j];
+  }
+  ds = BlockReduceSum<T>(ds, ds_storage);
+  if (threadIdx.x == 0) {
+    c2[i] = -ds * (rrms[i] * rrms[i] * rrms[i]) / static_cast<T>((int)N);
+  }
+}
+
+template <typename T>
+__global__ void RMSNormBackwardCUDAKernel(int64_t N,
+                                          T const *dY,
+                                          T const *X,
+                                          T const *gamma,
+                                          T const *c1,
+                                          T const *c2,
+                                          T *dX) {
+  const int64_t i = blockIdx.x;
+  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
+    const int64_t index = i * N + j;
+    dX[index] = c1[i] * dY[index] * gamma[j] + c2[i] * X[index];
+  }
+}
+
+// Assume the batch size will not be very large, direct implementation is the
+// most efficient one.
+template <typename T>
+__global__ void GammaBackwardCUDAKernel(
+    int64_t M, int64_t N, T const *dY, T const *X, T const *rrms, T *dg) {
+  const int64_t j = blockIdx.x * blockDim.x + threadIdx.x;
+  if (j < N) {
+    T sum1 = 0;
+    for (int64_t i = 0; i < M; ++i) {
+      const int64_t index = i * N + j;
+      sum1 += dY[index] * X[index] * rrms[i];
+    }
+    dg[j] = sum1;
+  }
+}
+
+template <typename T>
+void backward_kernel(RMSNormMeta const *m,
+                     T const *output_grad_ptr,
+                     T const *input_ptr,
+                     T *input_grad_ptr,
+                     T const *weight_ptr,
+                     T *weight_grad_ptr,
+                     cudaStream_t stream) {
+  const int64_t M = m->batch_size;
+  const int64_t N = m->num_elements;
+  ComputeInternalGradientsCUDAKernel<T>
+      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+          N,
+          output_grad_ptr,
+          input_ptr,
+          weight_ptr,
+          static_cast<T *>(m->rms_ptr),
+          static_cast<T *>(m->c2_ptr));
+
+  RMSNormBackwardCUDAKernel<T>
+      <<<M, kCUDANumThreads, 0, stream>>>(N,
+                                          output_grad_ptr,
+                                          input_ptr,
+                                          weight_ptr,
+                                          static_cast<T *>(m->rms_ptr),
+                                          static_cast<T *>(m->c2_ptr),
+                                          input_grad_ptr);
+  const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
+  GammaBackwardCUDAKernel<T>
+      <<<B, kCUDANumThreads, 0, stream>>>(M,
+                                          N,
+                                          output_grad_ptr,
+                                          input_ptr,
+                                          static_cast<T *>(m->rms_ptr),
+                                          weight_grad_ptr);
+}
+
+void backward_kernel_wrapper(RMSNormMeta const *m,
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorR const &input,
+                             GenericTensorAccessorW const &input_grad,
+                             GenericTensorAccessorR const &weight,
+                             GenericTensorAccessorW const &weight_grad) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+  assert(input_grad.data_type == input.data_type);
+  assert(weight_grad.data_type == weight.data_type);
+  assert(output_grad.data_type == input.data_type);
+  assert(weight.data_type == output_grad.data_type);
+
+  if (output_grad.data_type == DT_HALF) {
+    backward_kernel(m,
+                    output_grad.get_half_ptr(),
+                    input.get_half_ptr(),
+                    input_grad.get_half_ptr(),
+                    weight.get_half_ptr(),
+                    weight_grad.get_half_ptr(),
+                    stream);
+  } else if (output_grad.data_type == DT_FLOAT) {
+    backward_kernel(m,
+                    output_grad.get_float_ptr(),
+                    input.get_float_ptr(),
+                    input_grad.get_float_ptr(),
+                    weight.get_float_ptr(),
+                    weight_grad.get_float_ptr(),
+                    stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
+
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[RMSNorm] backward time (CF) = %.2fms\n", elapsed);
+  }
+}
+
+template <typename T>
+void peft_bwd_kernel(RMSNormMeta const *m,
+                     BatchConfig const *bc,
+                     T const *output_grad_ptr,
+                     T *input_grad_ptr,
+                     T const *weight_ptr,
+                     cudaStream_t stream) {
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    // Skip non-PEFT requests
+    if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+      continue;
+    }
+    // Skip PEFT forward-only requests
+    if (!bc->requestsInfo[i].peft_bwd) {
+      continue;
+    }
+
+    const int64_t M = bc->requestsInfo[i].num_tokens_in_batch;
+    const int64_t N = m->num_elements;
+    ComputeInternalGradientsCUDAKernel<T>
+        <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+            N,
+            output_grad_ptr,
+            static_cast<T *>(m->input_activation),
+            weight_ptr,
+            static_cast<T *>(m->rms_ptr),
+            static_cast<T *>(m->c2_ptr));
+    RMSNormBackwardCUDAKernel<T><<<M, kCUDANumThreads, 0, stream>>>(
+        N,
+        output_grad_ptr,
+        static_cast<T *>(m->input_activation),
+        weight_ptr,
+        static_cast<T *>(m->rms_ptr),
+        static_cast<T *>(m->c2_ptr),
+        input_grad_ptr);
+  }
+}
+
+void peft_bwd_kernel_wrapper(RMSNormMeta const *m,
+                             BatchConfig const *bc,
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorW const &input_grad,
+                             GenericTensorAccessorR const &weight) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+  assert(input_grad.data_type == output_grad.data_type);
+  assert(output_grad.data_type == weight.data_type);
+
+  if (output_grad.data_type == DT_HALF) {
+    peft_bwd_kernel(m,
+                    bc,
+                    output_grad.get_half_ptr(),
+                    input_grad.get_half_ptr(),
+                    weight.get_half_ptr(),
+                    stream);
+  } else if (output_grad.data_type == DT_FLOAT) {
+    peft_bwd_kernel(m,
+                    bc,
+                    output_grad.get_float_ptr(),
+                    input_grad.get_float_ptr(),
+                    weight.get_float_ptr(),
+                    stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
+
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[RMSNorm] peft_bwd time (CF) = %.2fms\n", elapsed);
   }
 }
 

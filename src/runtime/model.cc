@@ -47,6 +47,7 @@
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
+#include "flexflow/ops/lora_linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
@@ -146,8 +147,8 @@ Op::Op(FFModel &model,
     inputs[i] = tensors[i];
   }
   for (int i = 0; i < numInputs; i++) {
-    trainableInputs[i] = true;
-    // resetInputGrads[i] = true;
+    trainable_inputs[i] = true;
+    reset_input_grads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i] = nullptr;
@@ -191,8 +192,8 @@ Op::Op(FFModel &model,
     }
   }
   for (int i = 0; i < numInputs; i++) {
-    trainableInputs[i] = true;
-    // resetInputGrads[i] = true;
+    trainable_inputs[i] = true;
+    reset_input_grads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i] = NULL;
@@ -1464,10 +1465,12 @@ bool Op::get_weight_parameter(TNParameter tnp,
   return true;
 }
 
+#ifdef DEADCODE
 OpMeta::OpMeta(FFHandler _handle)
     : handle(_handle), profiling(false), inference_debugging(false) {
   for (int i = 0; i < MAX_NUM_INPUTS; i++) {
-    trainableInputs[i] = true;
+    trainable_inputs[i] = true;
+    reset_input_grads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_INPUTS; i++) {
     input_type[i] = DT_NONE;
@@ -1480,8 +1483,15 @@ OpMeta::OpMeta(FFHandler _handle)
   }
   decoding_step = 0;
 }
+#endif
 
-OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
+OpMeta::OpMeta(FFHandler _handle, Op const *op)
+    : handle(_handle), profiling(op->profiling),
+      inference_debugging(op->inference_debugging) {
+  for (int i = 0; i < op->numInputs; i++) {
+    trainable_inputs[i] = op->trainable_inputs[i];
+    reset_input_grads[i] = op->reset_input_grads[i];
+  }
   for (int i = 0; i < op->numInputs; i++) {
     input_type[i] = op->inputs[i]->data_type;
   }
@@ -1511,6 +1521,9 @@ FFRuntime::FFRuntime(FFConfig &config) {
     info.workSpaceSize = config.workSpaceSize;
     info.offload_reserve_space_size =
         config.cpu_offload ? config.offload_reserve_space_size : 0;
+    info.peft_activation_reserve_space_size =
+        config.peft_activation_reserve_space_size;
+    info.peft_weight_reserve_space_size = config.peft_weight_reserve_space_size;
     info.quantization_type = config.quantization_type;
     info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
@@ -1540,6 +1553,7 @@ int FFModel::model_counter = 0;
 FFModel::FFModel(FFConfig &_config, bool cpu_offload)
     : op_global_guid(OP_GUID_FIRST_VALID),
       layer_global_guid(LAYER_GUID_FIRST_VALID),
+      peft_model_global_guid(PEFT_MODEL_ID_FIRST_VALID),
       tensor_global_guid(TENSOR_GUID_FIRST_VALID),
       parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
       node_global_guid(NODE_GUID_FIRST_VALID), current_transformer_layer_id(0),
@@ -3221,6 +3235,13 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    // PEFT layers
+    case OP_LORA_MLP_FIRST:
+    case OP_LORA_MLP_SECOND: {
+      Op *op = LoraLinear::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     default:
       assert(false);
   }
@@ -3462,7 +3483,7 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numInputs; i++) {
       assert(op->inputs[i]->owner_op != nullptr);
       if (op->inputs[i]->owner_op->op_type == OP_INPUT) {
-        op->trainableInputs[i] = false;
+        op->trainable_inputs[i] = false;
       }
     }
   }
@@ -3991,6 +4012,11 @@ struct DefaultConfig {
   const static bool searchOverlapBackwardUpdate = false;
   const static size_t offloadReserveSpaceSize =
       (size_t)8 * 1024 * 1024 * 1024; // 8 GB
+  // PEFT related fields
+  const static size_t peftActivationReserveSpaceSize =
+      (size_t)1 * 1024 * 1024 * 1024; // 1GB
+  const static size_t peftWeightReserveSpaceSize =
+      (size_t)1 * 1024 * 1024 * 1024; // 1GB
   const static bool cpuOffload = false;
   const static bool onlyDataParallel = true;
   const static bool enableSampleParallel = true;
@@ -4026,6 +4052,10 @@ FFConfig::FFConfig() {
   computationMode = COMP_MODE_TRAINING;
   cpu_offload = DefaultConfig::cpuOffload;
   offload_reserve_space_size = DefaultConfig::offloadReserveSpaceSize;
+  // PEFT related fields
+  peft_activation_reserve_space_size =
+      DefaultConfig::peftActivationReserveSpaceSize;
+  peft_weight_reserve_space_size = DefaultConfig::peftWeightReserveSpaceSize;
   quantization_type = DT_NONE;
   only_data_parallel = DefaultConfig::onlyDataParallel;
   data_parallelism_degree = 1;
@@ -5230,6 +5260,38 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_LAYERNORM_BWD_TASK_ID,
+                                   "residual_layernorm_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ResidualLayerNorm::backward_task>(
+          registrar, "residual_layernorm_backward_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ResidualLayerNorm::backward_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_LAYERNORM_PEFT_BWD_TASK_ID,
+                                   "residual_layernorm_peft_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ResidualLayerNorm::peft_bwd_task>(
+          registrar, "residual_layernorm_peft_bwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ResidualLayerNorm::peft_bwd_task>(
+          registrar);
+    }
+  }
   // AddBiasResidualLayerNorm task
   {
     TaskVariantRegistrar registrar(ADD_BIAS_RESIDUAL_LAYERNORM_INIT_TASK_ID,
@@ -5266,6 +5328,40 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(ADD_BIAS_RESIDUAL_LAYERNORM_BWD_TASK_ID,
+                                   "AddBiasResidualLayerNorm Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          AddBiasResidualLayerNorm::backward_task>(
+          registrar, "AddBiasResidualLayerNorm Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AddBiasResidualLayerNorm::backward_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ADD_BIAS_RESIDUAL_LAYERNORM_PEFT_BWD_TASK_ID,
+                                   "AddBiasResidualLayerNorm PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          AddBiasResidualLayerNorm::peft_bwd_task>(
+          registrar, "AddBiasResidualLayerNorm PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AddBiasResidualLayerNorm::peft_bwd_task>(
+          registrar);
+    }
+  }
   // SigmoidSiluMulti task
   {
     TaskVariantRegistrar registrar(SIGMOID_SILU_MULTI_INIT_TASK_ID,
@@ -5296,6 +5392,38 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<SigmoidSiluMulti::inference_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(SIGMOID_SILU_MULTI_BWD_TASK_ID,
+                                   "SigmoidSiluMulti Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<SigmoidSiluMulti::backward_task>(
+          registrar, "SigmoidSiluMulti Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<SigmoidSiluMulti::backward_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(SIGMOID_SILU_MULTI_PEFT_BWD_TASK_ID,
+                                   "SigmoidSiluMulti PEFT Bwd");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<SigmoidSiluMulti::peft_bwd_task>(
+          registrar, "SigmoidSiluMulti PEFT Bwd Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<SigmoidSiluMulti::peft_bwd_task>(
           registrar);
     }
   }
@@ -5342,7 +5470,36 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<RMSNorm::inference_task>(registrar);
     }
   }
-  // rms norm task
+  {
+    TaskVariantRegistrar registrar(RMSNORM_BWD_TASK_ID, "RMS Norm Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RMSNorm::backward_task>(
+          registrar, "RMS Norm Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RMSNorm::backward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RMSNORM_PEFT_BWD_TASK_ID,
+                                   "RMS Norm PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RMSNorm::peft_bwd_task>(
+          registrar, "RMS Norm PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RMSNorm::peft_bwd_task>(registrar);
+    }
+  }
+  // residual rms norm task
   {
     TaskVariantRegistrar registrar(RESIDUAL_RMSNORM_INIT_TASK_ID,
                                    "Residual RMS Norm Init");
@@ -5373,6 +5530,51 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       }
       runtime->register_task_variant<ResidualRMSNorm::inference_task>(
           registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_RMSNORM_BWD_TASK_ID,
+                                   "Residual RMS Norm Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ResidualRMSNorm::backward_task>(
+          registrar, "RMS Norm Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ResidualRMSNorm::backward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(RESIDUAL_RMSNORM_PEFT_BWD_TASK_ID,
+                                   "Residual RMS Norm PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ResidualRMSNorm::peft_bwd_task>(
+          registrar, "RMS Norm PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ResidualRMSNorm::peft_bwd_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(LAYERNORM_PEFT_BWD_TASK_ID,
+                                   "layernorm_peft_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<LayerNorm::peft_bwd_task>(
+          registrar, "peft_bwd_task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LayerNorm::peft_bwd_task>(registrar);
     }
   }
   {
@@ -5416,6 +5618,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<Linear::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(LINEAR_PEFT_BWD_TASK_ID,
+                                   "Linear PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Linear::peft_bwd_task>(
+          registrar, "Linear PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Linear::peft_bwd_task>(registrar);
     }
   }
   {
@@ -5546,6 +5763,22 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<Softmax::inference_task>(registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(SOFTMAX_PEFT_BWD_TASK_ID,
+                                   "Softmax PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Softmax::peft_bwd_task>(
+          registrar, "Softmax PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Softmax::peft_bwd_task>(registrar);
+    }
+  }
+
   // compute Loss
   {
     TaskVariantRegistrar registrar(LOSS_BWD_TASK_ID, "Loss Backward");
@@ -6132,6 +6365,24 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(
+        INC_MULTIHEAD_SELF_ATTENTION_PEFT_BWD_TASK_ID,
+        "IncMultiHeadSelfAttention PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          IncMultiHeadSelfAttention::peft_bwd_task>(
+          registrar, "IncMultiHeadSelfAttention PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<IncMultiHeadSelfAttention::peft_bwd_task>(
+          registrar);
+    }
+  }
   // speculative MultiHeadAttention task
   {
     TaskVariantRegistrar registrar(
@@ -6209,6 +6460,70 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           TreeIncMultiHeadSelfAttention::inference_task>(registrar);
     }
   }
+  // PEFT tasks
+  // LoraLinear tasks
+  {
+    TaskVariantRegistrar registrar(LORA_LINEAR_INIT_TASK_ID, "LoraLinear Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, LoraLinear::init_task>(
+          registrar, "LoraLinear Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, LoraLinear::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(LORA_LINEAR_REG_TASK_ID,
+                                   "LoraLinear Model Registration");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<LoraLinear::register_model_task>(
+          registrar, "LoraLinear Model Registration Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LoraLinear::register_model_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(LORA_LINEAR_INF_TASK_ID,
+                                   "LoraLinear Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<LoraLinear::inference_task>(
+          registrar, "LoraLinear Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LoraLinear::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(LORA_LINEAR_PEFT_BWD_TASK_ID,
+                                   "LoraLinear PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<LoraLinear::peft_bwd_task>(
+          registrar, "LoraLinear PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LoraLinear::peft_bwd_task>(registrar);
+    }
+  }
+
   // NoOp
   {
     TaskVariantRegistrar registrar(NOOP_INIT_TASK_ID, "Weight NCCL Init");
@@ -6240,20 +6555,6 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(FUSEDOP_FWD_TASK_ID, "FusedOp Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    if (pre_register) {
-      Runtime::preregister_task_variant<FusedOp::forward_task>(
-          registrar, "FusedOp Forward Task");
-    } else {
-      if (enable_control_replication) {
-        registrar.global_registration = false;
-      }
-      runtime->register_task_variant<FusedOp::forward_task>(registrar);
-    }
-  }
-  {
     TaskVariantRegistrar registrar(FUSEDOP_INF_TASK_ID, "FusedOp Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -6265,6 +6566,36 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<FusedOp::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(FUSEDOP_PEFT_BWD_TASK_ID,
+                                   "FusedOp PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<FusedOp::peft_bwd_task>(
+          registrar, "FusedOp PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FusedOp::peft_bwd_task>(registrar);
+    }
+  }
+
+  {
+    TaskVariantRegistrar registrar(FUSEDOP_FWD_TASK_ID, "FusedOp Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<FusedOp::forward_task>(
+          registrar, "FusedOp Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<FusedOp::forward_task>(registrar);
     }
   }
   {
@@ -6474,21 +6805,6 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(ALLREDUCE_INF_TASK_ID,
-                                   "AllReduce Inference");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    if (pre_register) {
-      Runtime::preregister_task_variant<AllReduce::inference_task>(
-          registrar, "AllReduce Inference Task");
-    } else {
-      if (enable_control_replication) {
-        registrar.global_registration = false;
-      }
-      runtime->register_task_variant<AllReduce::inference_task>(registrar);
-    }
-  }
-  {
     TaskVariantRegistrar registrar(ALLREDUCE_FWD_TASK_ID, "AllReduce Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -6516,6 +6832,37 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<AllReduce::backward_task>(registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_INF_TASK_ID,
+                                   "AllReduce Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::inference_task>(
+          registrar, "AllReduce Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::inference_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_PEFT_BWD_TASK_ID,
+                                   "AllReduce PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::peft_bwd_task>(
+          registrar, "AllReduce PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::peft_bwd_task>(registrar);
+    }
+  }
+
   // FusedParallelOp
   {
     TaskVariantRegistrar registrar(FUSED_PARALLELOP_FWD_TASK_ID,

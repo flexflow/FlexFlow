@@ -39,6 +39,7 @@ void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
                       std::string &llm_model_name,
+                      std::string &peft_model_name,
                       bool &use_full_precision,
                       bool &verbose,
                       bool &do_sample,
@@ -52,6 +53,13 @@ void parse_input_args(char **argv,
     if (!strcmp(argv[i], "-llm-model")) {
       llm_model_name = std::string(argv[++i]);
       for (char &c : llm_model_name) {
+        c = std::tolower(c);
+      }
+      continue;
+    }
+    if (!strcmp(argv[i], "-peft-model")) {
+      peft_model_name = std::string(argv[++i]);
+      for (char &c : peft_model_name) {
         c = std::tolower(c);
       }
       continue;
@@ -124,7 +132,7 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false && "Doesn't support quantization in non-offload mode");
   }
   FilePaths file_paths;
-  std::string llm_model_name;
+  std::string llm_model_name, peft_model_name;
   bool use_full_precision = false;
   bool verbose = false;
   bool do_sample = false;
@@ -141,6 +149,7 @@ void FlexFlow::top_level_task(Task const *task,
                    argc,
                    file_paths,
                    llm_model_name,
+                   peft_model_name,
                    use_full_precision,
                    verbose,
                    do_sample,
@@ -257,6 +266,14 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false && "unknow model type");
   }
 
+  // Register PEFT layer
+  LoraLinearConfig mlp_second =
+      peft_model_name.empty()
+          ? LoraLinearConfig::DefaultConfig
+          : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
+  PEFTModelID peft_model_id = model.register_peft_model(
+      LoraLinearConfig::DefaultConfig /*mlp_first*/, mlp_second /*mlp_second*/);
+
   int total_num_requests = 0;
   {
     using json = nlohmann::json;
@@ -267,14 +284,22 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
     std::vector<std::string> prompts;
+    std::vector<std::pair<std::string, std::string>> dataset;
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
       prompts.push_back(text);
+      dataset.push_back(std::make_pair(text, text));
     }
-    GenerationResult result =
-        model.generate(prompts, 128 /*max_sequence_length*/);
+    rm->register_new_peft_request(
+        dataset, 256 /*max_sequence_length*/, peft_model_id);
+    for (auto &prompt : prompts) {
+      GenerationResult result =
+          model.generate(prompt, 128 /*max_sequence_length*/);
+    }
+    // GenerationResult result =
+    //     model.generate(prompts, 128 /*max_sequence_length*/);
   }
 
   // Execution fence

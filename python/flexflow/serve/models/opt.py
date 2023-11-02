@@ -19,8 +19,8 @@ import random, shutil
 
 class OPTConfig:
     def __init__(self, hf_config):
-        #self.max_seq_len = 256
-        #self.max_num_tokens = 64
+        # self.max_seq_len = 256
+        # self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
         self.do_layer_norm_before = hf_config.do_layer_norm_before
@@ -46,8 +46,8 @@ class FlexFlowOPT(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
-        #max_batch_size=1,
-        #max_seq_length=256,
+        # max_batch_size=1,
+        # max_seq_length=256,
         max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
@@ -55,11 +55,11 @@ class FlexFlowOPT(FlexFlowModel):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
-        #self.max_batch_size = max_batch_size
+        # self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.opt_config = OPTConfig(hf_config)
-        #self.opt_config.max_seq_length = max_seq_length
-        #self.opt_config.max_num_tokens = max_tokens_per_batch
+        # self.opt_config.max_seq_length = max_seq_length
+        # self.opt_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
@@ -276,23 +276,26 @@ class FlexFlowOPT(FlexFlowModel):
 
         self.ffmodel = ffmodel
 
+    def convert_hf_weight_name(name):
+        return (
+            name.replace(".", "_")
+            .replace("decoder_", "")
+            .replace("model_", "")
+            .replace("self_attn", "attention")
+            .replace("q_proj", "wq")
+            .replace("k_proj", "wk")
+            .replace("v_proj", "wv")
+            .replace("out_proj", "wo")
+            .replace("attention_wo_bias", "add_bias_residual_layer_norm_attn_bias")
+            .replace(
+                "_final_layer_norm", "_add_bias_residual_layer_norm"
+            )  # important to use the leading "_" to avoid matching the last LayerNorm
+        )
+
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
-            name = (
-                name.replace(".", "_")
-                .replace("decoder_", "")
-                .replace("model_", "")
-                .replace("self_attn", "attention")
-                .replace("q_proj", "wq")
-                .replace("k_proj", "wk")
-                .replace("v_proj", "wv")
-                .replace("out_proj", "wo")
-                .replace("attention_wo_bias", "add_bias_residual_layer_norm_attn_bias")
-                .replace(
-                    "_final_layer_norm", "_add_bias_residual_layer_norm"
-                )  # important to use the leading "_" to avoid matching the last LayerNorm
-            )
+            name = FlexFlowOPT.convert_hf_weight_name(name)
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
         # copy embedding weights
         shutil.copy(

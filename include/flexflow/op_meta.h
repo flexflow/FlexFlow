@@ -9,7 +9,7 @@ class Op;
 
 class OpMeta {
 public:
-  OpMeta(FFHandler _handle);
+  // OpMeta(FFHandler _handle);
   OpMeta(FFHandler _handle, Op const *op);
 
 public:
@@ -19,7 +19,8 @@ public:
   int decoding_step;
   char op_name[MAX_OPNAME];
   LayerID layer_guid;
-  bool trainableInputs[MAX_NUM_INPUTS];
+  bool trainable_inputs[MAX_NUM_INPUTS];
+  bool reset_input_grads[MAX_NUM_INPUTS];
   DataType input_type[MAX_NUM_INPUTS];
   DataType weight_type[MAX_NUM_WEIGHTS];
   DataType output_type[MAX_NUM_OUTPUTS];

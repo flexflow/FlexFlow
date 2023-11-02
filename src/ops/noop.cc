@@ -91,8 +91,8 @@ OpMeta *NoOp::init_task(Task const *task,
                         Context ctx,
                         Runtime *runtime) {
   FFHandler handle = *((FFHandler const *)task->local_args);
-  OpMeta *m = new OpMeta(handle);
-  return m;
+  // OpMeta *m = new OpMeta(handle);
+  return nullptr;
 }
 
 void NoOp::init_inference(FFModel const &ff,

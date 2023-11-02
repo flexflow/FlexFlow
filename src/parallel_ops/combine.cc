@@ -84,6 +84,9 @@ Combine::Combine(FFModel &model,
     dims[i] = _input->dims[i];
   }
   assert(combine_degree > 0 && "Must use combine_degree > 0");
+  std::cout << "combine_dim : " << combine_dim
+            << ", dims[combine_dim].degree: " << dims[combine_dim].degree
+            << ", combine_degree: " << combine_degree << std::endl;
   assert(dims[combine_dim].degree % combine_degree == 0);
   dims[combine_dim].degree /= combine_degree;
   ParallelTensorBase::update_parallel_ids(numdim, dims);
@@ -99,7 +102,7 @@ OpMeta *Combine::init_task(Task const *task,
                            Runtime *runtime) {
   Combine *cmb = (Combine *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  CombineMeta *m = new CombineMeta(handle);
+  CombineMeta *m = new CombineMeta(handle, cmb);
   m->input_type[0] = cmb->inputs[0]->data_type;
   m->output_type[0] = cmb->outputs[0]->data_type;
   assert(m->input_type[0] == m->output_type[0]);

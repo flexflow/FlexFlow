@@ -27,7 +27,7 @@ constexpr int kColwiseReduceTileSize = 32;
 LayerNormMeta::LayerNormMeta(FFHandler handle,
                              LayerNorm const *ln,
                              MemoryAllocator &gpu_mem_allocator)
-    : OpMeta(handle) {
+    : OpMeta(handle, ln) {
   elementwise_affine = ln->elementwise_affine;
   use_bias = ln->use_bias;
   effective_batch_size = ln->effective_batch_size;
@@ -114,54 +114,6 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
   }
   return val;
 }
-
-#ifdef DEADCODE
-template <typename T>
-__global__ void RowwiseMomentsCUDAKernel(
-    int64_t N, float eps, T const *X, T *mean, T *rstd) {
-  __shared__ float m_shared[C10_WARP_SIZE];
-  __shared__ float v_shared[C10_WARP_SIZE];
-  const int64_t i = blockIdx.x;
-  float sum1 = 0.0f;
-  float sum2 = 0.0f;
-  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
-    sum1 += static_cast<float>(X[index]);
-    sum2 += static_cast<float>(X[index]) * static_cast<float>(X[index]);
-  }
-  sum1 = BlockReduceSum<float>(sum1, m_shared);
-  sum2 = BlockReduceSum<float>(sum2, v_shared);
-  if (threadIdx.x == 0) {
-    float const scale = float(1) / static_cast<float>(N);
-    sum1 *= scale;
-    sum2 = max(sum2 * scale - sum1 * sum1, float(0));
-    mean[i] = static_cast<T>(sum1);
-    rstd[i] = static_cast<T>(rsqrt(sum2 + eps));
-  }
-}
-
-template <typename T>
-__global__ void LayerNormForwardCUDAKernel(int64_t N,
-                                           T const *X,
-                                           T const *mean,
-                                           T const *rstd,
-                                           T const *gamma,
-                                           T const *beta,
-                                           T *Y) {
-  using T_ACC = T;
-  const int64_t i = blockIdx.x;
-  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
-    const T_ACC gamma_v =
-        gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
-    const T_ACC beta_v =
-        beta == nullptr ? T_ACC(0) : static_cast<T_ACC>(beta[j]);
-    Y[index] = (static_cast<T_ACC>(X[index]) - static_cast<T_ACC>(mean[i])) *
-                   static_cast<T_ACC>(rstd[i]) * gamma_v +
-               beta_v;
-  }
-}
-#endif
 
 template <typename T>
 __global__ void LayerNormFusedForwardKernel(int64_t N,
@@ -290,6 +242,112 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
   }
 }
 
+/*static*/
+void LayerNorm::inference_kernel_wrapper(LayerNormMeta *m,
+                                         BatchConfig const *bc,
+                                         GenericTensorAccessorR const &input,
+                                         GenericTensorAccessorW &output,
+                                         GenericTensorAccessorR const &gamma,
+                                         GenericTensorAccessorR const &beta) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+
+  // save input activation if needed for PEFT
+  if (bc->num_active_peft_tokens() > 0) {
+    // Check that we have at most one request that requires peft_bwd
+    int num_peft_requests = 0;
+    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+      if (bc->request_completed[i]) {
+        continue;
+      }
+      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+        continue;
+      }
+      if (bc->requestsInfo[i].peft_bwd) {
+        num_peft_requests++;
+      }
+    }
+    assert(num_peft_requests <= 1);
+
+    int tokens_previous_requests = 0;
+    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+      if (bc->request_completed[i]) {
+        continue;
+      }
+      // Skip non-PEFT requests
+      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+        // FIXME: use the new approach to computing token offset
+        tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
+        continue;
+      }
+      int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+      int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+      if (bc->requestsInfo[i].peft_bwd) {
+        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+        m->input_activation = allocator->allocate_instance_untyped(
+            data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
+        // copy input activation
+        if (m->input_type[0] == DT_FLOAT) {
+          checkCUDA(cudaMemcpyAsync(
+              m->input_activation,
+              input.get_float_ptr() + tokens_previous_requests * in_dim,
+              data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
+              cudaMemcpyDeviceToDevice,
+              stream));
+        } else if (m->input_type[0] == DT_HALF) {
+          checkCUDA(cudaMemcpyAsync(
+              m->input_activation,
+              input.get_half_ptr() + tokens_previous_requests * in_dim,
+              data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
+              cudaMemcpyDeviceToDevice,
+              stream));
+        } else {
+          assert(false && "unsupport datatype in layernorm");
+        }
+      }
+    }
+  }
+
+  if (m->input_type[0] == DT_FLOAT) {
+    LayerNorm::forward_kernel<float>(
+        m,
+        input.get_float_ptr(),
+        output.get_float_ptr(),
+        m->elementwise_affine ? gamma.get_float_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_float_ptr() : nullptr,
+        stream);
+  } else if (m->input_type[0] == DT_HALF) {
+    LayerNorm::forward_kernel<half>(
+        m,
+        input.get_half_ptr(),
+        output.get_half_ptr(),
+        m->elementwise_affine ? gamma.get_half_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_half_ptr() : nullptr,
+        stream);
+  } else {
+    assert(false && "unsupport datatype in layernorm");
+  }
+
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[LayerNorm] forward time (CF) = %.9fms\n", elapsed);
+    // print_tensor<T>(in_ptr, 32, "[LayerNorm:forward:input]");
+    // print_tensor<T>(out_ptr, 32, "[LayerNorm:forward:output]");
+  }
+}
+
 template <typename T>
 __global__ void ComputeInternalGradientsCUDAKernel(
     int64_t N, T const *dY, T const *X, T const *gamma, T *ds, T *db) {
@@ -327,7 +385,7 @@ __global__ void ComputeGradientFusedParamsCUDAKernel(int64_t M,
   using T_ACC = T;
   const int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < M) {
-    const T_ACC s = T_ACC(1) / static_cast<T_ACC>(N);
+    const T_ACC s = T_ACC(1) / static_cast<T_ACC>((int)N);
     const T_ACC a = (db[index] * static_cast<T_ACC>(mean[index]) - ds[index]) *
                     static_cast<T_ACC>(rstd[index]) *
                     static_cast<T_ACC>(rstd[index]) *
@@ -335,27 +393,6 @@ __global__ void ComputeGradientFusedParamsCUDAKernel(int64_t M,
     c1[index] = a;
     c2[index] = -(a * static_cast<T_ACC>(mean[index]) +
                   db[index] * static_cast<T_ACC>(rstd[index]) * s);
-  }
-}
-
-template <typename T>
-__global__ void LayerNormBackwardCUDAKenrel(int64_t N,
-                                            T const *dY,
-                                            T const *X,
-                                            T const *gamma,
-                                            T const *a,
-                                            T const *b,
-                                            T const *c,
-                                            T *dX) {
-  using T_ACC = T;
-  const int64_t i = blockIdx.x;
-  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
-    const T_ACC gamma_v =
-        gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
-    dX[index] =
-        static_cast<T_ACC>(a[i]) * static_cast<T_ACC>(dY[index]) * gamma_v +
-        b[i] * static_cast<T_ACC>(X[index]) + c[i];
   }
 }
 
@@ -620,44 +657,101 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
 
 /*static*/
 template <typename T>
-void LayerNorm::backward_kernel_wrapper(LayerNormMeta const *m,
-                                        T const *output_grad_ptr,
-                                        T const *input_ptr,
-                                        T *input_grad_ptr,
-                                        T const *gamma_ptr,
-                                        T *gamma_grad_ptr,
-                                        T *beta_grad_ptr) {
+void LayerNorm::peft_bwd_kernel(LayerNormMeta const *m,
+                                T const *output_grad_ptr,
+                                T *input_grad_ptr,
+                                T const *gamma_ptr,
+                                cudaStream_t stream) {
+  const int64_t M = m->effective_batch_size;
+  const int64_t N = m->effective_num_elements;
+  ComputeInternalGradientsCUDAKernel<T>
+      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+          N,
+          output_grad_ptr,
+          static_cast<T *>(m->input_activation),
+          gamma_ptr,
+          static_cast<T *>(m->ds_ptr),
+          static_cast<T *>(m->db_ptr));
+  const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
+  ComputeGradientFusedParamsCUDAKernel<T>
+      <<<B, kCUDANumThreads, 0, stream>>>(M,
+                                          N,
+                                          static_cast<T *>(m->mean_ptr),
+                                          static_cast<T *>(m->rstd_ptr),
+                                          static_cast<T *>(m->ds_ptr),
+                                          static_cast<T *>(m->db_ptr),
+                                          static_cast<T *>(m->scale_ptr),
+                                          static_cast<T *>(m->bias_ptr));
+  int const warp_size = C10_WARP_SIZE;
+  int const num_threads = 128;
+  const dim3 blocks(M);
+  int nshared = (num_threads / warp_size) * sizeof(T);
+  layer_norm_grad_input_kernel<<<blocks, num_threads, nshared, stream>>>(
+      output_grad_ptr,
+      static_cast<T *>(m->input_activation),
+      static_cast<T *>(m->mean_ptr),
+      static_cast<T *>(m->rstd_ptr),
+      gamma_ptr,
+      input_grad_ptr,
+      N);
+}
+
+/*static*/
+void LayerNorm::peft_bwd_kernel_wrapper(
+    LayerNormMeta const *m,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorW const &input_grad,
+    GenericTensorAccessorR const &gamma) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   if (m->output_type[0] == DT_FLOAT) {
-    LayerNorm::backward_kernel<float>(m,
-                                      output_grad_ptr,
-                                      input_ptr,
-                                      input_grad_ptr,
-                                      gamma_ptr,
-                                      gamma_grad_ptr,
-                                      beta_grad_ptr,
-                                      stream);
+    LayerNorm::peft_bwd_kernel(m,
+                               output_grad.get_float_ptr(),
+                               input_grad.get_float_ptr(),
+                               gamma.get_float_ptr(),
+                               stream);
+  } else {
+    assert(m->output_type[0] == DT_HALF);
+    LayerNorm::peft_bwd_kernel(m,
+                               output_grad.get_half_ptr(),
+                               input_grad.get_half_ptr(),
+                               gamma.get_half_ptr(),
+                               stream);
   }
-  // }else if(m->output_type[0] == DT_HALF){
-  //   LayerNorm::backward_kernel<half>(m,
-  //                                   output_grad_ptr,
-  //                                   input_ptr,
-  //                                   input_grad_ptr,
-  //                                   gamma_ptr,
-  //                                   gamma_grad_ptr,
-  //                                   beta_grad_ptr,
-  //                                   stream);
-  // }
 }
 
-template void
-    LayerNorm::backward_kernel_wrapper<float>(LayerNormMeta const *m,
-                                              float const *output_grad_ptr,
-                                              float const *input_ptr,
-                                              float *input_grad_ptr,
-                                              float const *gamma_ptr,
-                                              float *gamma_grad_ptr,
-                                              float *beta_grad_ptr);
+/*static*/
+void LayerNorm::backward_kernel_wrapper(
+    LayerNormMeta const *m,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad,
+    GenericTensorAccessorR const &gamma,
+    GenericTensorAccessorW const &gamma_grad,
+    GenericTensorAccessorW const &beta_grad) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  if (m->output_type[0] == DT_FLOAT) {
+    LayerNorm::backward_kernel(m,
+                               output_grad.get_float_ptr(),
+                               input.get_float_ptr(),
+                               input_grad.get_float_ptr(),
+                               gamma.get_float_ptr(),
+                               gamma_grad.get_float_ptr(),
+                               beta_grad.get_float_ptr(),
+                               stream);
+  } else if (m->output_type[0] == DT_HALF) {
+    LayerNorm::backward_kernel(m,
+                               output_grad.get_half_ptr(),
+                               input.get_half_ptr(),
+                               input_grad.get_half_ptr(),
+                               gamma.get_half_ptr(),
+                               gamma_grad.get_half_ptr(),
+                               beta_grad.get_half_ptr(),
+                               stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
+}
 
-}; // namespace FlexFlow
+} // namespace FlexFlow

@@ -27,7 +27,7 @@ constexpr int kCUDANumThreads = 256;
 ResidualLayerNormMeta::ResidualLayerNormMeta(FFHandler handle,
                                              ResidualLayerNorm const *ln,
                                              MemoryAllocator &gpu_mem_allocator)
-    : OpMeta(handle) {
+    : OpMeta(handle, ln) {
   elementwise_affine = ln->elementwise_affine;
   use_bias = ln->use_bias;
   use_two_residuals = ln->use_two_residuals;

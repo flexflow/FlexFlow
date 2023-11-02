@@ -660,7 +660,7 @@ __host__ void
         }
         assert(m->input_type[0] == my_input_accessor[0].data_type);
         assert(m->input_type[0] == my_output_accessor[0].data_type);
-        batch_size = bc->num_active_tokens();
+        batch_size = bc->num_active_infr_tokens();
         Kernels::Linear::forward_kernel_wrapper(m,
                                                 my_input_accessor[0].ptr,
                                                 my_output_accessor[0].ptr,
@@ -976,7 +976,7 @@ __host__ void
       case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_outputs[op] == 2);
-        AddBiasResidualLayerNormMeta const *m =
+        AddBiasResidualLayerNormMeta *m =
             (AddBiasResidualLayerNormMeta *)metas->meta[op];
         if (!m->elementwise_affine) {
           assert(fused->op_num_weights[op] == 1); // attn bias
@@ -994,20 +994,14 @@ __host__ void
             beta = my_weight_accessor[2];
           }
         }
-        Domain attn_bias_domain = my_weight_accessor[0].domain;
-        Domain residual_domain = my_input_accessor[1].domain;
-        int attn_bias_dim =
-            attn_bias_domain.hi()[0] - attn_bias_domain.lo()[0] + 1;
-        int residual_volume = residual_domain.get_volume();
         AddBiasResidualLayerNorm::inference_kernel_wrapper(
             m,
-            attn_bias_dim,
-            residual_volume,
+            bc,
             my_input_accessor[0],
+            my_weight_accessor[0],
+            my_input_accessor[1],
             my_output_accessor[0],
             my_output_accessor[1],
-            my_input_accessor[1],
-            my_weight_accessor[0],
             gamma,
             beta);
         break;

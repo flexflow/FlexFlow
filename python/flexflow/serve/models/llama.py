@@ -19,8 +19,8 @@ import random
 
 class LLAMAConfig:
     def __init__(self, hf_config):
-        #self.max_seq_len = 256
-        #self.max_num_tokens = 64
+        # self.max_seq_len = 256
+        # self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
         self.num_hidden_layers = hf_config.num_hidden_layers
@@ -45,8 +45,8 @@ class FlexFlowLLAMA(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
-        #max_batch_size=1,
-        #max_seq_length=256,
+        # max_batch_size=1,
+        # max_seq_length=256,
         max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
@@ -54,11 +54,11 @@ class FlexFlowLLAMA(FlexFlowModel):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
-        #self.max_batch_size = max_batch_size
+        # self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.llama_config = LLAMAConfig(hf_config)
-        #self.llama_config.max_seq_length = max_seq_length
-        #self.llama_config.max_num_tokens = max_tokens_per_batch
+        # self.llama_config.max_seq_length = max_seq_length
+        # self.llama_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
@@ -242,24 +242,27 @@ class FlexFlowLLAMA(FlexFlowModel):
 
         self.ffmodel = ffmodel
 
+    def convert_hf_weight_name(name):
+        return (
+            name.replace(".", "_")
+            .replace("self_attn", "attention")
+            .replace("q_proj", "wq")
+            .replace("k_proj", "wk")
+            .replace("v_proj", "wv")
+            .replace("o_proj", "wo")
+            .replace("mlp", "feed_forward")
+            .replace("gate_proj", "w1")
+            .replace("down_proj", "w2")
+            .replace("up_proj", "w3")
+            .replace("input_layernorm", "attention_norm")
+            .replace("post_attention_layernorm", "ffn_norm")
+            .replace("embed_tokens", "tok_embeddings")
+            .replace("lm_head", "output")
+            .replace("model_", "")
+        )
+
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
-            name = (
-                name.replace(".", "_")
-                .replace("self_attn", "attention")
-                .replace("q_proj", "wq")
-                .replace("k_proj", "wk")
-                .replace("v_proj", "wv")
-                .replace("o_proj", "wo")
-                .replace("mlp", "feed_forward")
-                .replace("gate_proj", "w1")
-                .replace("down_proj", "w2")
-                .replace("up_proj", "w3")
-                .replace("input_layernorm", "attention_norm")
-                .replace("post_attention_layernorm", "ffn_norm")
-                .replace("embed_tokens", "tok_embeddings")
-                .replace("lm_head", "output")
-                .replace("model_", "")
-            )
+            name = FlexFlowLLAMA.convert_hf_weight_name(name)
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")

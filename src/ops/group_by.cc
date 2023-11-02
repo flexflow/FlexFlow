@@ -264,7 +264,7 @@ OpMeta *Group_by::init_task(Task const *task,
                             Runtime *runtime) {
   Group_by *gb = (Group_by *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  GroupByMeta *m = new GroupByMeta(handle, gb->n, gb->alpha);
+  GroupByMeta *m = new GroupByMeta(handle, gb);
   m->profiling = gb->profiling;
   m->inference_debugging = gb->inference_debugging;
   std::strcpy(m->op_name, gb->name);
@@ -565,7 +565,7 @@ bool Group_by::measure_operator_cost(Simulator *sim,
     }
   }
 
-  GroupByMeta *m = new GroupByMeta(sim->handler, n, alpha);
+  GroupByMeta *m = new GroupByMeta(sim->handler, this);
 
   // allocate
   sim->free_all();

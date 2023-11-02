@@ -190,7 +190,7 @@ OpMeta *Transpose::init_task(Task const *task,
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
-  TransposeMeta *m = new TransposeMeta(handle);
+  TransposeMeta *m = new TransposeMeta(handle, transpose);
   transpose->init_meta(m, in_domain, out_domain);
   m->profiling = transpose->profiling;
   m->inference_debugging = transpose->inference_debugging;
@@ -317,7 +317,7 @@ bool Transpose::measure_operator_cost(Simulator *sim,
     return false;
   }
 
-  TransposeMeta *m = sim->transpose_meta;
+  TransposeMeta *m = new TransposeMeta(sim->handler, this);
   this->init_meta(m, sub_input.get_domain(), sub_output.get_domain());
 
   sim->free_all();

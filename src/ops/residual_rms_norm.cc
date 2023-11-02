@@ -444,7 +444,8 @@ void ResidualRMSNorm::inference_task(Task const *task,
       m->output_type[1], regions[3], task->regions[3], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
       m->weight_type[0], regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  forward_kernel_wrapper(m, input1, input2, weight, residual_output, output);
+  inference_kernel_wrapper(
+      m, bc, input1, input2, weight, residual_output, output);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -485,8 +486,204 @@ Node ResidualRMSNorm::deserialize(FFModel &ff,
 }
 
 void ResidualRMSNorm::backward(FFModel const &ff) {
-  assert(false);
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(RESIDUAL_RMSNORM_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  // regions[0](I): RMS output_grad
+  launcher.add_region_requirement(RegionRequirement(outputs[1]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[1]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  // regions[1](I): residual output / RMS input
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  // regions[2](I/O): residual input grad 0
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
+  launcher.add_field(2, FID_DATA);
+  // regions[3](I/O): residual input grad 1
+  launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[1]->region_grad));
+  launcher.add_field(3, FID_DATA);
+  // regions[4](I): gamma
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(4, FID_DATA);
+  // regions[5](I/O): gamma_grad
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region_grad));
+  launcher.add_field(5, FID_DATA);
+
+  runtime->execute_index_space(ctx, launcher);
 }
+
+/*
+  regions[0](I): RMS output_grad
+  regions[1](I): Residual output / RMS input
+  regions[2](I/O): Residual input 0 grad
+  regions[3](I/O): Residual input 1 grad
+  regions[4](I): weight
+  regions[5](I/O): weight_grad
+*/
+void ResidualRMSNorm::backward_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
+  assert(task->regions.size() == 6);
+  assert(regions.size() == 6);
+  ResidualRMSNormMeta const *m = *((ResidualRMSNormMeta **)task->local_args);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW residual_output_rms_input =
+      helperGetGenericTensorAccessorRW(m->input_type[0],
+                                       regions[1],
+                                       task->regions[1],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW residual_input0_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[0],
+                                       regions[2],
+                                       task->regions[2],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW residual_input1_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[0],
+                                       regions[3],
+                                       task->regions[3],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[4], task->regions[4], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW weight_grad = helperGetGenericTensorAccessorRW(
+      m->weight_type[0], regions[5], task->regions[5], FID_DATA, ctx, runtime);
+  backward_kernel_wrapper(m,
+                          output_grad,
+                          residual_output_rms_input,
+                          residual_input0_grad,
+                          residual_input1_grad,
+                          weight,
+                          weight_grad);
+}
+
+Legion::FutureMap
+    ResidualRMSNorm::peft_bwd(FFModel const &ff,
+                              BatchConfigFuture const &bc,
+                              std::vector<ParallelTensor> const &batch_inputs,
+                              std::vector<ParallelTensor> const &batch_outputs,
+                              MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  IndexLauncher launcher(RESIDUAL_RMSNORM_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  // regions[0](I): RMS output_grad
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[1]->region));
+  launcher.add_field(0, FID_DATA);
+  // regions[2](I/O): residual input grad 0
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  // regions[3](I/O): residual input grad 1
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[1]->region));
+  launcher.add_field(2, FID_DATA);
+  // regions[4](I): gamma
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(3, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): RMS output_grad
+  regions[1](I/O): Residual input 0 grad
+  regions[2](I/O): Residual input 1 grad
+  regions[3](I): weight
+*/
+void ResidualRMSNorm::peft_bwd_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
+  assert(task->regions.size() == 4);
+  assert(regions.size() == 4);
+  ResidualRMSNormMeta const *m = *((ResidualRMSNormMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW residual_input0_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[0],
+                                       regions[1],
+                                       task->regions[1],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW residual_input1_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[0],
+                                       regions[2],
+                                       task->regions[2],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  peft_bwd_kernel_wrapper(
+      m, bc, output_grad, residual_input0_grad, residual_input1_grad, weight);
+}
+
 Op *ResidualRMSNorm::materialize(FFModel &ff,
                                  ParallelTensor inputs[],
                                  int num_inputs) const {

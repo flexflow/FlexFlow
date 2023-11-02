@@ -19,8 +19,8 @@ import random, torch, shutil
 
 class MPTConfig:
     def __init__(self, hf_config):
-        #self.max_seq_len = 256
-        #self.max_num_tokens = 64
+        # self.max_seq_len = 256
+        # self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
         self.hidden_size = hf_config.d_model
@@ -40,8 +40,8 @@ class FlexFlowMPT(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
-        #max_batch_size=1,
-        #max_seq_length=256,
+        # max_batch_size=1,
+        # max_seq_length=256,
         max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
@@ -49,11 +49,11 @@ class FlexFlowMPT(FlexFlowModel):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
-        #self.max_batch_size = max_batch_size
+        # self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.mpt_config = MPTConfig(hf_config)
-        #self.mpt_config.max_seq_length = max_seq_length
-        #self.mpt_config.max_num_tokens = max_tokens_per_batch
+        # self.mpt_config.max_seq_length = max_seq_length
+        # self.mpt_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
@@ -245,10 +245,18 @@ class FlexFlowMPT(FlexFlowModel):
 
         self.ffmodel = ffmodel
 
+    # TODO: finish this
+    def convert_hf_weight_name(name):
+        return (
+            name.replace("transformer.blocks.", "layers.")
+            .replace(".", "_")
+            .replace("attn_out_proj", "attention_wo")
+        )
+
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
-            name = name.replace("transformer.blocks.", "layers.").replace(".", "_")
+            name = FlexFlowMPT.convert_hf_weight_name(name)
             if "Wqkv" in name:
                 name_q = name.replace("attn_Wqkv", "attention_wq")
                 name_k = name.replace("attn_Wqkv", "attention_wk")
@@ -265,9 +273,6 @@ class FlexFlowMPT(FlexFlowModel):
                 q.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_q))
                 k.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_k))
                 v.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_v))
-            elif "out_proj" in name:
-                name = name.replace("attn_out_proj", "attention_wo")
-                params.detach().cpu().numpy().tofile(os.path.join(dst_folder, name))
             else:
                 params.detach().cpu().numpy().tofile(os.path.join(dst_folder, name))
 

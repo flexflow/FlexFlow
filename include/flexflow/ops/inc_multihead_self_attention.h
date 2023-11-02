@@ -96,6 +96,11 @@ public:
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
+  Legion::FutureMap peft_bwd(FFModel const &,
+                             BatchConfigFuture const &,
+                             std::vector<ParallelTensor> const &,
+                             std::vector<ParallelTensor> const &,
+                             MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }
@@ -109,17 +114,27 @@ public:
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
+  static void peft_bwd_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
-
-  static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
+  static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta *m,
                                        BatchConfig const *bc,
                                        int shard_id,
                                        GenericTensorAccessorR const &input,
                                        GenericTensorAccessorR const &weight,
                                        GenericTensorAccessorW const &output,
                                        GenericTensorAccessorR const &bias);
+  static void peft_bwd_kernel_wrapper(IncMultiHeadSelfAttentionMeta *m,
+                                      BatchConfig const *bc,
+                                      int shard_id,
+                                      GenericTensorAccessorW const &input_grad,
+                                      GenericTensorAccessorR const &weight,
+                                      GenericTensorAccessorR const &output_grad,
+                                      GenericTensorAccessorR const &bias);
   Params get_params() const;
 
 public:
@@ -202,6 +217,9 @@ public:
   //  typedef hipFloatComplex attFloatComplex;
   hipFloatComplex *complex_input;
 #endif
+  // PEFT specific fields
+  void *softmax_activation_buffer;
+  void *query_activation_buffer;
 };
 
 }; // namespace FlexFlow

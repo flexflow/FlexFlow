@@ -15,3 +15,10 @@ onnx
 transformers>=4.31.0
 sentencepiece
 einops
+# peft-related
+scipy
+bitsandbytes 
+datasets 
+accelerate 
+loralib
+peft

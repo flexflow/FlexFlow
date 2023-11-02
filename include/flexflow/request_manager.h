@@ -37,6 +37,7 @@ public:
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   Legion::FutureMap
       inference(FFModel *model, int index, BatchConfigFuture const &bc);
+  void peft_bwd(FFModel *model, int index, BatchConfigFuture const &bc);
   void load_input_tokens_from_batch_config(BatchConfigFuture const &bc,
                                            ParallelTensor const input);
   void load_positions(BatchConfigFuture const &bc,
@@ -57,6 +58,7 @@ struct Request {
     FINISHING = 104, // finishing request, but not yet verified
   };
   BatchConfig::RequestGuid guid;
+  PEFTModelID peft_model_id;
   int max_sequence_length;
   int initial_len;
   int ssm_cache_size = 0;
@@ -64,8 +66,11 @@ struct Request {
 
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
-
   std::vector<struct BeamTree> beam_trees;
+  // PEFT field
+  std::vector<std::pair<std::vector<BatchConfig::TokenId>,
+                        std::vector<BatchConfig::TokenId>>>
+      dataset;
 };
 
 // store the result of beam search
@@ -110,17 +115,26 @@ public:
 
   FFModel *get_model(int model_id);
 
-  GenerationResult generate_incr_decoding(FFModel *model,
-                                          std::vector<std::string> &prompts,
-                                          int max_seq_length);
+  GenerationResult
+      generate_incr_decoding(FFModel *model,
+                             std::vector<std::string> const &prompts,
+                             int max_seq_length,
+                             PEFTModelID peft_model_id);
   GenerationResult generate_spec_infer(FFModel *model,
-                                       std::vector<std::string> &prompts,
-                                       int max_seq_length);
+                                       std::vector<std::string> const &prompts,
+                                       int max_seq_length,
+                                       PEFTModelID peft_model_id);
   GenerationResult get_generation_result(RequestGuid const &guid);
   RequestGuid register_new_request(std::string const &prompt,
-                                   int max_sequence_length);
+                                   int max_sequence_length,
+                                   PEFTModelID peft_model_id);
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
-                                   int max_sequence_length);
+                                   int max_sequence_length,
+                                   PEFTModelID peft_model_id);
+  RequestGuid register_new_peft_request(
+      std::vector<std::pair<std::string, std::string>> const &dataset,
+      int max_sequence_length,
+      PEFTModelID peft_model_id);
   bool is_request_completed(RequestGuid const &guid);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
@@ -217,7 +231,8 @@ private:
   int bos_token_id;
   int eos_token_id;
   std::string output_filepath;
-  std::queue<Request> pending_request_queue;
+  std::queue<Request> pending_infr_request_queue;
+  std::queue<Request> pending_peft_request_queue;
   std::unordered_map<RequestGuid, Request> all_requests;
   std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;

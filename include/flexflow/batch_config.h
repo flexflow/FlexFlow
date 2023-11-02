@@ -16,6 +16,7 @@
 #pragma once
 
 #include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "legion.h"
 #include <cstddef>
 #include <cstdlib>
@@ -43,6 +44,8 @@ public:
   BatchConfig();
   int num_active_requests() const;
   int num_active_tokens() const;
+  int num_active_infr_tokens() const;
+  int num_active_peft_tokens() const;
   static int max_requests_per_batch();
   static int max_tokens_per_batch();
   static int max_sequence_length();
@@ -61,11 +64,23 @@ public:
   int num_tokens;
 
   struct PerRequestInfo {
+    PerRequestInfo() {
+      first_token_depth_in_request = 0;
+      first_token_offset_in_batch = 0;
+      num_tokens_in_batch = 0;
+      max_sequence_length = 0;
+      request_guid = 0;
+      peft_model_id = PEFTModelID::NO_ID;
+      peft_bwd = false;
+    }
     int first_token_depth_in_request;
     int first_token_offset_in_batch;
     int num_tokens_in_batch;
     int max_sequence_length;
     RequestGuid request_guid;
+    // PEFT fields
+    PEFTModelID peft_model_id;
+    bool peft_bwd;
   };
   struct PerTokenInfo {
     int abs_depth_in_request;

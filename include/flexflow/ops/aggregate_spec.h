@@ -11,9 +11,11 @@ namespace FlexFlow {
 #define AGGREGATE_SPEC_MAX_BATCH_SIZE 32
 #define AGGREGATE_SPEC_MAX_N 12
 
+class AggregateSpec;
+
 class AggregateSpecMeta : public OpMeta {
 public:
-  AggregateSpecMeta(FFHandler handle, int n);
+  AggregateSpecMeta(FFHandler handle, AggregateSpec const *agg);
   ~AggregateSpecMeta(void);
   float **dev_region_ptrs;
 };

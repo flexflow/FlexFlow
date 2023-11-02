@@ -190,7 +190,7 @@ OpMeta *Cast::init_task(Task const *task,
                         Runtime *runtime) {
   Cast *cast = (Cast *)task->args;
   FFHandler handler = *((FFHandler const *)task->local_args);
-  CastMeta *m = new CastMeta(handler);
+  CastMeta *m = new CastMeta(handler, cast);
   m->input_data_type = cast->inputs[0]->data_type;
   m->output_data_type = cast->outputs[0]->data_type;
   std::strcpy(m->op_name, cast->name);

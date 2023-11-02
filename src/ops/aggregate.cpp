@@ -281,9 +281,10 @@ void Aggregate::backward_kernel_wrapper(AggregateMeta const *m,
                      out_dim);
 }
 
-AggregateMeta::AggregateMeta(FFHandler handler, int n) : OpMeta(handler) {
-  checkCUDA(hipMalloc(&dev_exp_preds, n * sizeof(float *)));
-  checkCUDA(hipMalloc(&dev_exp_grads, n * sizeof(float *)));
+AggregateMeta::AggregateMeta(FFHandler handler, Aggregate const *aggr)
+    : OpMeta(handler, aggr) {
+  checkCUDA(hipMalloc(&dev_exp_preds, aggr->n * sizeof(float *)));
+  checkCUDA(hipMalloc(&dev_exp_grads, aggr->n * sizeof(float *)));
 }
 AggregateMeta::~AggregateMeta(void) {
   checkCUDA(hipFree(&dev_exp_preds));

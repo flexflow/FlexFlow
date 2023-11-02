@@ -14,11 +14,13 @@
  */
 
 #include "flexflow/ops/kernels/reshape_kernels.h"
+#include "flexflow/ops/reshape.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
-ReshapeMeta::ReshapeMeta(FFHandler handler) : OpMeta(handler) {}
+ReshapeMeta::ReshapeMeta(FFHandler handler, Reshape const *reshape)
+    : OpMeta(handler, reshape) {}
 
 namespace Kernels {
 namespace Reshape {

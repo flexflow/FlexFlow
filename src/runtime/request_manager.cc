@@ -14,6 +14,8 @@
  */
 
 #include "flexflow/request_manager.h"
+#include "flexflow/ops/fused.h"
+#include "flexflow/ops/lora_linear.h"
 #include "flexflow/parallel_ops/parallel_op.h"
 // #include "flexflow/tokenizers.h"
 #include <filesystem>
@@ -175,7 +177,8 @@ size_t RequestManager::get_num_ssms() {
 
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::vector<TokenId> const &prompt,
-                                         int max_sequence_length) {
+                                         int max_sequence_length,
+                                         PEFTModelID peft_model_id) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
 
   // Add a new request
@@ -183,6 +186,7 @@ RequestManager::RequestGuid
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
+  request.peft_model_id = peft_model_id;
 
   if (prompt.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
@@ -208,7 +212,7 @@ RequestManager::RequestGuid
     }
   }
 
-  pending_request_queue.push(request);
+  pending_infr_request_queue.push(request);
   all_requests[request.guid] = request;
 
   if (verbose) {
@@ -231,13 +235,15 @@ RequestManager::RequestGuid
 
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::string const &prompt,
-                                         int max_sequence_length) {
+                                         int max_sequence_length,
+                                         PEFTModelID peft_model_id) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Add a new request
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
+  request.peft_model_id = peft_model_id;
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
@@ -268,7 +274,7 @@ RequestManager::RequestGuid
     }
   }
 
-  pending_request_queue.push(request);
+  pending_infr_request_queue.push(request);
   all_requests[request.guid] = request;
   {
     std::string output = "New request tokens:";
@@ -285,6 +291,76 @@ RequestManager::RequestGuid
   gr.input_tokens = request.tokens;
   gr.output_text = prompt;
   gr.output_tokens = request.tokens;
+  request_generation_results[request.guid] = gr;
+  return request.guid;
+}
+
+RequestManager::RequestGuid RequestManager::register_new_peft_request(
+    std::vector<std::pair<std::string, std::string>> const &dataset,
+    int max_sequence_length,
+    PEFTModelID peft_model_id) {
+  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  // Add a new request
+  Request request;
+  request.status = Request::PENDING;
+  request.guid = next_available_guid++;
+  request.max_sequence_length = max_sequence_length;
+  request.peft_model_id = peft_model_id;
+  for (auto const &sample : dataset) {
+    std::vector<int32_t> input_tokens;
+    input_tokens = this->tokenizer_->Encode(sample.first);
+    if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
+      input_tokens.insert(input_tokens.begin(), bos_token_id);
+    }
+    std::vector<int32_t> output_tokens =
+        this->tokenizer_->Encode(sample.second);
+    if (input_tokens.size() + output_tokens.size() >
+        get_max_sequence_length()) {
+      std::cout << "Warning: too many tokens in sample, only load up to "
+                << get_max_sequence_length() << " tokens, but got "
+                << input_tokens.size() + output_tokens.size() << ".\n";
+    } else {
+      request.dataset.push_back(std::make_pair(input_tokens, output_tokens));
+    }
+  }
+
+  // Currently don't support speculative inference for PEFT
+  assert(get_num_ssms() == 0);
+  if (get_num_ssms() == 0) {
+    std::cout << "No small speculative model registered, using incremental "
+                 "decoding."
+              << std::endl;
+  } else {
+    std::cout << "Num of models: " << get_num_ssms() << std::endl;
+    for (int i = 0; i < get_num_ssms(); i++) {
+      BeamTree beam_tree = BeamTree{};
+      request.beam_trees.push_back(beam_tree);
+    }
+  }
+
+  pending_peft_request_queue.push(request);
+  all_requests[request.guid] = request;
+  {
+    for (size_t r = 0; r < request.dataset.size(); r++) {
+      std::string input = "[" + std::to_string(r) + "] input:";
+      std::string output = "[" + std::to_string(r) + "] output:";
+      for (size_t i = 0; i < request.dataset[r].first.size(); i++) {
+        input = input + " " + std::to_string(request.dataset[r].first[i]);
+      }
+      for (size_t i = 0; i < request.dataset[r].second.size(); i++) {
+        output = output + " " + std::to_string(request.dataset[r].second[i]);
+      }
+      log_req_mgr.print("%s", input.c_str());
+      log_req_mgr.print("%s", output.c_str());
+    }
+  }
+
+  GenerationResult gr;
+  gr.guid = request.guid;
+  // gr.input_text = prompt;
+  // gr.input_tokens = request.tokens;
+  // gr.output_text = prompt;
+  // gr.output_tokens = request.tokens;
   request_generation_results[request.guid] = gr;
   return request.guid;
 }
@@ -362,10 +438,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   BatchConfig new_bc;
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (old_bc.request_completed[i]) { // add new requests to the next batch
-      if (!pending_request_queue.empty() &&
+      if (!pending_infr_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
-        Request new_request = pending_request_queue.front();
-        pending_request_queue.pop();
+        Request new_request = pending_infr_request_queue.front();
+        pending_infr_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
         new_bc.requestsInfo[i].first_token_depth_in_request = 0;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
@@ -376,6 +452,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                      (int)new_request.tokens.size());
         new_bc.requestsInfo[i].max_sequence_length =
             new_request.max_sequence_length;
+        new_bc.requestsInfo[i].peft_model_id = new_request.peft_model_id;
         new_bc.request_completed[i] = false;
         // add profile_info for the new request
         ProfileInfo profile_info;
@@ -494,6 +571,45 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         // Update profiling
         profiling_requests[new_bc.requestsInfo[i].request_guid]
             .decoding_steps++;
+      }
+    }
+  }
+
+  // Step 3: add PEFT bwd requests
+  if (pending_peft_request_queue.size() > 0) {
+    Request &request = pending_peft_request_queue.front();
+    assert(request.dataset.size() > 0);
+    int num_peft_tokens =
+        request.dataset[0].first.size() + request.dataset[0].second.size();
+    if (num_peft_tokens + new_bc.num_active_tokens() <=
+        get_max_tokens_per_batch()) {
+      // The last request slot is reserved for PEFT request
+      int peft_req_idx = get_max_requests_per_batch() - 1;
+      assert(new_bc.request_completed[peft_req_idx]);
+      new_bc.request_completed[peft_req_idx] = false;
+      new_bc.requestsInfo[peft_req_idx].first_token_depth_in_request = 0;
+      new_bc.requestsInfo[peft_req_idx].first_token_offset_in_batch =
+          new_bc.num_tokens;
+      new_bc.requestsInfo[peft_req_idx].num_tokens_in_batch = num_peft_tokens;
+      new_bc.requestsInfo[peft_req_idx].max_sequence_length =
+          request.max_sequence_length;
+      new_bc.requestsInfo[peft_req_idx].request_guid = request.guid;
+      new_bc.requestsInfo[peft_req_idx].peft_model_id = request.peft_model_id;
+      new_bc.requestsInfo[peft_req_idx].peft_bwd = true;
+      for (size_t i = 0; i < request.dataset[0].first.size(); i++) {
+        new_bc.tokensInfo[new_bc.num_tokens].token_id =
+            request.dataset[0].first[i];
+        new_bc.tokensInfo[new_bc.num_tokens].request_index = num_peft_tokens;
+        new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = i;
+        new_bc.num_tokens++;
+      }
+      for (size_t i = 0; i < request.dataset[0].second.size(); i++) {
+        new_bc.tokensInfo[new_bc.num_tokens].token_id =
+            request.dataset[0].second[i];
+        new_bc.tokensInfo[new_bc.num_tokens].request_index = num_peft_tokens;
+        int depth = request.dataset[0].first.size() + i;
+        new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
+        new_bc.num_tokens++;
       }
     }
   }
@@ -778,10 +894,10 @@ BeamSearchBatchConfig
   // Step 2: Initialize new request
   for (int i = 0; i < BeamSearchBatchConfig::max_requests_per_batch(); i++) {
     if (new_bc.request_completed[i]) {
-      if (!pending_request_queue.empty() &&
+      if (!pending_infr_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
-        Request new_request = pending_request_queue.front();
-        pending_request_queue.pop();
+        Request new_request = pending_infr_request_queue.front();
+        pending_infr_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
         new_bc.requestsInfo[i].first_token_depth_in_request = 0;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
@@ -1279,7 +1395,6 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           old_batches.at(0).requestsInfo[i].max_sequence_length;
 
       new_bc.request_completed[i] = false;
-
       new_bc.requestsInfo[i].num_tokens_in_batch =
           std::min(max_prompt_load_size,
                    (int)request.initial_len -
@@ -1805,25 +1920,141 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   return merged_tree;
 }
 
-GenerationResult FFModel::generate(std::vector<std::string> &prompts,
-                                   int max_seq_length) {
+GenerationResult FFModel::generate(std::string const &prompt,
+                                   int max_seq_length,
+                                   PEFTModelID peft_model_id) {
+  std::vector<std::string> prompts;
+  prompts.push_back(prompt);
+  return generate(prompts, max_seq_length, peft_model_id);
+}
+
+GenerationResult FFModel::generate(std::vector<std::string> const &prompts,
+                                   int max_seq_length,
+                                   PEFTModelID peft_model_id) {
   RequestManager *rm = RequestManager::get_request_manager();
   if (rm->get_num_ssms() == 0) {
     // No SSMs: perform incremental decoding
-    return rm->generate_incr_decoding(this, prompts, max_seq_length);
+    return rm->generate_incr_decoding(
+        this, prompts, max_seq_length, peft_model_id);
   } else {
     // Registered SSMs: perform speculative inference
-    return rm->generate_spec_infer(this, prompts, max_seq_length);
+    return rm->generate_spec_infer(
+        this, prompts, max_seq_length, peft_model_id);
   }
+}
+
+std::string find_layer_name_from_guid(FFModel *model, LayerID guid) {
+  for (size_t i = 0; i < model->layers.size(); i++) {
+    if (model->layers[i]->layer_guid == guid) {
+      std::string layer_name(model->layers[i]->name);
+      return layer_name;
+    }
+  }
+  assert(false);
+  return "invalid_layer_name";
+}
+
+bool is_peft_operator_type(OperatorType type) {
+  switch (type) {
+    case OP_LORA_MLP_FIRST:
+    case OP_LORA_MLP_SECOND:
+      return true;
+    default:
+      return false;
+  }
+}
+
+PEFTModelID FFModel::register_peft_model(LoraLinearConfig const mlp_first,
+                                         LoraLinearConfig const mlp_second) {
+  PEFTModelID peft_model_id(peft_model_global_guid++);
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  std::vector<Op *> peft_operators;
+  for (size_t op = 0; op < operators.size(); op++) {
+    if (is_peft_operator_type(operators[op]->op_type)) {
+      peft_operators.push_back(operators[op]);
+    } else if (operators[op]->op_type == OP_FUSED) {
+      FusedOp *fused = static_cast<FusedOp *>(operators[op]);
+      for (size_t op2 = 0; op2 < fused->numOperators; op2++) {
+        if (is_peft_operator_type(fused->operators[op2]->op_type)) {
+          peft_operators.push_back(fused->operators[op2]);
+        }
+      }
+    }
+  }
+  for (size_t op = 0; op < peft_operators.size(); op++) {
+    std::string layer_name =
+        find_layer_name_from_guid(this, peft_operators[op]->layer_guid);
+    switch (peft_operators[op]->op_type) {
+      case OP_LORA_MLP_FIRST: {
+        if (mlp_first == LoraLinearConfig::DefaultConfig) {
+          // Do nothing for the default configuration
+          continue;
+        }
+        LoraLinear *lora = static_cast<LoraLinear *>(peft_operators[op]);
+        // Currently assume only a single data pipeline
+        assert(config.data_parallelism_degree == 1);
+        std::vector<ParallelTensor> inputs(lora->numInputs);
+        std::vector<ParallelTensor> outputs(lora->numOutputs);
+
+        for (int i = 0; i < lora->numInputs; i++) {
+          assert(im->tensor_buffer.find(lora->inputs[i]) !=
+                 im->tensor_buffer.end());
+          assert(lora->inputs[i] != nullptr);
+          assert(lora->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+          assert(im->tensor_buffer[lora->inputs[i]].size() == 1);
+          inputs[i] = im->tensor_buffer[lora->inputs[i]][0];
+          assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        }
+        assert(lora->numOutputs == 1);
+        outputs[0] = inputs[1];
+        lora->register_peft_model(
+            *this, inputs, outputs, peft_model_id, mlp_first);
+        break;
+      }
+      case OP_LORA_MLP_SECOND: {
+        if (mlp_second == LoraLinearConfig::DefaultConfig) {
+          // Do nothing for the default configuration
+          continue;
+        }
+        LoraLinear *lora = static_cast<LoraLinear *>(peft_operators[op]);
+        // Currently assume only a single data pipeline
+        assert(config.data_parallelism_degree == 1);
+        std::vector<ParallelTensor> inputs(lora->numInputs);
+        std::vector<ParallelTensor> outputs(lora->numOutputs);
+
+        for (int i = 0; i < lora->numInputs; i++) {
+          assert(im->tensor_buffer.find(lora->inputs[i]) !=
+                 im->tensor_buffer.end());
+          assert(lora->inputs[i] != nullptr);
+          assert(lora->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+          assert(im->tensor_buffer[lora->inputs[i]].size() == 1);
+          inputs[i] = im->tensor_buffer[lora->inputs[i]][0];
+          assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        }
+        assert(lora->numOutputs == 1);
+        outputs[0] = inputs[1];
+        lora->register_peft_model(
+            *this, inputs, outputs, peft_model_id, mlp_second);
+        break;
+      }
+      default: {
+        assert(false && "Unsupported PEFT Operator type");
+      }
+    }
+  }
+  return peft_model_id;
 }
 
 /*static*/
 GenerationResult RequestManager::generate_incr_decoding(
-    FFModel *llm, std::vector<std::string> &prompts, int max_seq_length) {
+    FFModel *llm,
+    std::vector<std::string> const &prompts,
+    int max_seq_length,
+    PEFTModelID peft_model_id) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid;
   for (int i = 0; i < prompts.size(); i++) {
-    guid = register_new_request(prompts.at(i), max_seq_length);
+    guid = register_new_request(prompts.at(i), max_seq_length, peft_model_id);
   }
 
   if (guid == 0) {
@@ -1862,6 +2093,7 @@ GenerationResult RequestManager::generate_incr_decoding(
     BatchConfigFuture bcf =
         prepare_next_batch(next_batch.first, next_batch.second);
     FutureMap fm = im->inference(llm, 0, bcf);
+    im->peft_bwd(llm, 0, bcf);
     assert(fm.get_future_map_domain().get_volume() == 1);
     InferenceResultFuture irf = fm.get_future(0);
     batch_pipeline.push(std::make_pair(bcf, irf));
@@ -1875,12 +2107,15 @@ GenerationResult RequestManager::generate_incr_decoding(
 }
 
 /*static*/
-GenerationResult RequestManager::generate_spec_infer(
-    FFModel *llm, std::vector<std::string> &prompts, int max_seq_length) {
+GenerationResult
+    RequestManager::generate_spec_infer(FFModel *llm,
+                                        std::vector<std::string> const &prompts,
+                                        int max_seq_length,
+                                        PEFTModelID peft_model_id) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid;
   for (int i = 0; i < prompts.size(); i++) {
-    guid = register_new_request(prompts.at(i), max_seq_length);
+    guid = register_new_request(prompts.at(i), max_seq_length, peft_model_id);
   }
   if (guid == 0) {
     std::cout

@@ -207,7 +207,7 @@ OpMeta *AggregateSpec::init_task(Task const *task,
                                  Runtime *runtime) {
   AggregateSpec *agg = (AggregateSpec *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  AggregateSpecMeta *m = new AggregateSpecMeta(handle, agg->n);
+  AggregateSpecMeta *m = new AggregateSpecMeta(handle, agg);
   m->profiling = agg->profiling;
   m->inference_debugging = agg->inference_debugging;
   std::strcpy(m->op_name, agg->name);
@@ -540,7 +540,7 @@ bool AggregateSpec::measure_operator_cost(Simulator *sim,
     return false;
   }
 
-  AggregateSpecMeta *m = new AggregateSpecMeta(sim->handler, n);
+  AggregateSpecMeta *m = new AggregateSpecMeta(sim->handler, this);
 
   // allocate
   sim->free_all();

@@ -226,6 +226,13 @@ public:
                                       MachineView const *mv = nullptr) {
     assert(false);
   };
+  virtual Legion::FutureMap peft_bwd(FFModel const &,
+                                     BatchConfigFuture const &,
+                                     std::vector<ParallelTensor> const &,
+                                     std::vector<ParallelTensor> const &,
+                                     MachineView const *mv = nullptr) {
+    assert(false);
+  }
   virtual void print_layer(FFModel const &model) = 0;
   static void save_inference_tensors_to_file(
       OpMeta *m,
@@ -320,7 +327,8 @@ public:
   ParallelTensor outputs[MAX_NUM_OUTPUTS];
   ParallelTensor inputs[MAX_NUM_INPUTS];
   ParallelParameter weights[MAX_NUM_WEIGHTS];
-  bool trainableInputs[MAX_NUM_INPUTS];
+  bool trainable_inputs[MAX_NUM_INPUTS];
+  bool reset_input_grads[MAX_NUM_INPUTS];
   OpMeta *meta[MAX_NUM_WORKERS];
   std::map<ParallelTensor, OpMeta *[MAX_NUM_WORKERS]> inference_meta;
   int numInputs, numWeights, numOutputs;

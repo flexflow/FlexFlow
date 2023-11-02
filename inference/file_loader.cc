@@ -799,6 +799,10 @@ void FileDataLoader::load_weights(FFModel *ff, bool use_full_precision) {
       if (weight == NULL) {
         continue;
       }
+      // TODO: currently skip Lora layers
+      if (l->op_type == OP_LORA_MLP_FIRST || l->op_type == OP_LORA_MLP_SECOND) {
+        continue;
+      }
       switch (weight->data_type) {
         case DT_HALF:
           load_single_weight_tensor<half>(ff, l, i);

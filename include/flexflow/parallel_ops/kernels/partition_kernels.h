@@ -7,9 +7,11 @@
 
 namespace FlexFlow {
 
+class Repartition;
+
 class RepartitionMeta : public OpMeta {
 public:
-  RepartitionMeta(FFHandler handle);
+  RepartitionMeta(FFHandler handle, Repartition const *repart);
   DataType data_type;
 };
 

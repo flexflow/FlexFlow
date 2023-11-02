@@ -158,7 +158,7 @@ template <typename DT>
 void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                             BeamSearchBatchConfig const *bc,
                             cudaStream_t stream) {
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   int curr_depth = bc->beamRequestsInfo[0].current_depth;
   // printf("curr depth: %d\n", curr_depth);
   // assert(curr_depth < 3);
@@ -227,7 +227,6 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   }
 #endif
   // int num_requests = bc->num_active_requests();
-  int num_tokens = bc->num_active_tokens();
   // int tokens_previous_requests = 0;
   int tokens_prev_requests_squares = 0;
   // int qkv_block_size =
@@ -462,6 +461,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   if (*m->final_bias && shard_id == 0) {
+    int num_tokens = bc->num_active_tokens();
     int parallelism = m->oProjSize * num_tokens;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
                           m->kProjSize * m->global_num_q_heads +
@@ -472,8 +472,6 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                         stream>>>(
         output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
   }
-
-  // assert(tokens_previous_requests == num_tokens);
 }
 
 template <typename DT>

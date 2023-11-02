@@ -233,7 +233,7 @@ OpMeta *Aggregate::init_task(Task const *task,
                              Runtime *runtime) {
   Aggregate *agg = (Aggregate *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  AggregateMeta *m = new AggregateMeta(handle, agg->n);
+  AggregateMeta *m = new AggregateMeta(handle, agg);
   m->profiling = agg->profiling;
   m->inference_debugging = agg->inference_debugging;
   std::strcpy(m->op_name, agg->name);
@@ -592,7 +592,7 @@ bool Aggregate::measure_operator_cost(Simulator *sim,
     return false;
   }
 
-  AggregateMeta *m = new AggregateMeta(sim->handler, n);
+  AggregateMeta *m = new AggregateMeta(sim->handler, this);
 
   // allocate
   sim->free_all();

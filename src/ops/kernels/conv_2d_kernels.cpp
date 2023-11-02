@@ -14,12 +14,14 @@
  */
 
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
+#include "flexflow/ops/conv_2d.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
-Conv2DMeta::Conv2DMeta(FFHandler handler) : OpMeta(handler) {
+Conv2DMeta::Conv2DMeta(FFHandler handler, Conv2D const *conv)
+    : OpMeta(handler, conv) {
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&biasTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
@@ -326,7 +328,7 @@ void backward_kernel(Conv2DMeta const *m,
                        output_ptr,
                        n * c * h * w);
   }
-  // Compute filter gradiant
+  // Compute filter gradient
   // NOTE: we use alpha for kernel_grad to accumulate gradients
   checkCUDNN(miopenConvolutionBackwardWeights(m->handle.dnn,
                                               &alpha,
@@ -341,7 +343,7 @@ void backward_kernel(Conv2DMeta const *m,
                                               kernel_grad_ptr,
                                               m->handle.workSpace,
                                               m->handle.workSpaceSize));
-  // Compute bias gradiant
+  // Compute bias gradient
   // NOTE: we use alpha for bias_grad to accumulate gradients
   if (bias_grad_ptr != NULL) {
     checkCUDNN(miopenConvolutionBackwardBias(m->handle.dnn,
@@ -352,7 +354,7 @@ void backward_kernel(Conv2DMeta const *m,
                                              m->biasTensor,
                                              bias_grad_ptr));
   }
-  // Compute data gradiant
+  // Compute data gradient
   // NOTE: we use alpha for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
     checkCUDNN(miopenConvolutionBackwardData(m->handle.dnn,
