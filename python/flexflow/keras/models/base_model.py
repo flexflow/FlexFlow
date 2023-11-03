@@ -459,7 +459,10 @@ class BaseModel(object):
       layer.set_batch_size(self._ffconfig.batch_size)
 
     for layer in self._layers:
-      layer.set_batch_size(self._ffconfig.batch_size)
+      if layer.output_shape[0]:
+        layer.set_batch_size(layer.output_shape[0])
+      else:
+        layer.set_batch_size(self._ffconfig.batch_size)
 
       if isinstance(layer, Activation) == True:
         if layer.activation == 'softmax':
