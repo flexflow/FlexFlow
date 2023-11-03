@@ -83,14 +83,6 @@ class FlexFlowFalcon(FlexFlowModel):
             raise ValueError(
                 f"Number of q attention heads ({self.falcon_config.n_head}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
-        if (
-            self.falcon_config.n_head_kv < self.ffconfig.tensor_parallelism_degree
-            or self.falcon_config.n_head_kv % self.ffconfig.tensor_parallelism_degree
-            != 0
-        ):
-            raise ValueError(
-                f"Number of k/v attention heads ({self.falcon_config.n_head_kv}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
-            )
 
         self.build_model(max_tokens_per_batch)
 

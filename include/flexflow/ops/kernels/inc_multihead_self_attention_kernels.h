@@ -1,6 +1,9 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_INC_MULTIHEAD_SELF_ATTENTION_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_INC_MULTIHEAD_SELF_ATTENTION_KERNELS_H
 
+#define QKV_WEIGHT_NUM 3
+#define KV_WEIGHT_NUM 2
+
 #include "flexflow/batch_config.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"

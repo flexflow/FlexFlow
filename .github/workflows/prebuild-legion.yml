@@ -1,0 +1,84 @@
+name: "prebuild-legion"
+on:
+  push:
+    branches:
+      - "inference"
+    paths:
+      - "cmake/**"
+      - "config/**"
+      - "deps/legion/**"
+      - ".github/workflows/helpers/install_dependencies.sh"
+  workflow_dispatch:
+concurrency:
+  group: prebuild-legion-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  prebuild-legion:
+    name: Prebuild Legion with CMake
+    runs-on: ubuntu-20.04
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
+    strategy:
+      matrix:
+        gpu_backend: ["cuda", "hip_rocm"]
+        gpu_backend_version: ["11.8", "5.6"]
+        python_version: ["3.11"]
+        exclude:
+          - gpu_backend: "cuda"
+            gpu_backend_version: "5.6"
+          - gpu_backend: "hip_rocm"
+            gpu_backend_version: "11.8"
+      fail-fast: false
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Free additional space on runner
+        run: .github/workflows/helpers/free_space_on_runner.sh
+
+      - name: Build Legion
+        env:
+          gpu_backend: ${{ matrix.gpu_backend }}
+          gpu_backend_version: ${{ matrix.gpu_backend_version }}
+          python_version: ${{ matrix.python_version }}
+        run: .github/workflows/helpers/prebuild_legion.sh
+
+      - name: Archive compiled Legion library (CUDA)
+        uses: actions/upload-artifact@v3
+        with:
+          name: legion_ubuntu-20.04_${{ matrix.gpu_backend }}-${{ matrix.gpu_backend_version }}_py${{ matrix.python_version }}
+          path: prebuilt_legion_assets/legion_ubuntu-20.04_${{ matrix.gpu_backend }}-${{ matrix.gpu_backend_version }}_py${{ matrix.python_version }}.tar.gz
+
+  create-release:
+    name: Create new release
+    runs-on: ubuntu-20.04
+    needs: prebuild-legion
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+      - name: Free additional space on runner
+        run: .github/workflows/helpers/free_space_on_runner.sh
+      - name: Create folder for artifacts
+        run: mkdir artifacts unwrapped_artifacts
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ./artifacts
+      - name: Display structure of downloaded files
+        working-directory: ./artifacts
+        run: ls -R
+      - name: Unwrap all artifacts
+        working-directory: ./artifacts
+        run: find . -maxdepth 2 -mindepth 2 -type f -name "*.tar.gz" -exec mv {} ../unwrapped_artifacts/  \;
+      - name: Get datetime
+        run: echo "RELEASE_DATETIME=$(date '+%Y-%m-%dT%H-%M-%S')" >> $GITHUB_ENV
+      - name: Release
+        env:
+          NAME: ${{ env.RELEASE_DATETIME }}
+          TAG_NAME: ${{ env.RELEASE_DATETIME }}
+          GITHUB_TOKEN: ${{ secrets.FLEXFLOW_TOKEN }}
+        run: gh release create $TAG_NAME ./unwrapped_artifacts/*.tar.gz --repo flexflow/flexflow-third-party
