@@ -72,15 +72,12 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
                             float *out_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
   hipEvent_t t_start, t_end;
   if (m->profiling) {
     hipEventCreate(&t_start);
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  // print_tensor<float>(in1_ptr, in1_domain.get_volume(), "input1:");
-  // print_tensor<float>(in2_ptr, in2_domain.get_volume(), "input2:");
   Internal::forward_kernel(m, in1_ptr, in2_ptr, out_ptr, stream);
   // print_tensor<float>(out_ptr, in1_domain.get_volume(), "output:");
   if (m->profiling) {
@@ -199,6 +196,21 @@ __global__ void elewise_binary_forward_kernel(coord_t volume,
   }
 }
 
+// for simplicity, assume the replicate dimension is the batchsize
+__global__ void
+    elewise_binary_forward_kernel_broadcast2(float const *in1_ptr,
+                                             float const *in2_ptr,
+                                             float *output_ptr,
+                                             size_t volume,
+                                             size_t batch_size,
+                                             size_t replicate_size) {
+  CUDA_KERNEL_LOOP(i, volume) {
+    size_t batch = i / replicate_size;
+    output_ptr[i] =
+        in1_ptr[i] + in2_ptr[batch * replicate_size + i % replicate_size];
+  }
+}
+
 __global__ void elewise_binary_backward_kernel(coord_t volume,
                                                float const alpha,
                                                float const beta,
@@ -245,7 +257,6 @@ void forward_kernel(ElementBinaryMeta const *m,
                     hipStream_t stream) {
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
-
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
   switch (m->op_type) {
     case OP_EW_SUB:
@@ -284,6 +295,19 @@ void forward_kernel(ElementBinaryMeta const *m,
                               &alpha1,
                               m->outputTensor,
                               out_ptr));
+  } else if (m->op_type == OP_EW_ADD && m->broadcast_input2) {
+    int parallelism = m->batch_size * m->replicate_size;
+    hipLaunchKernelGGL(elewise_binary_forward_kernel_broadcast2,
+                       GET_BLOCKS(parallelism),
+                       CUDA_NUM_THREADS,
+                       0,
+                       stream,
+                       in1_ptr,
+                       in2_ptr,
+                       out_ptr,
+                       m->batch_size * m->replicate_size,
+                       m->batch_size,
+                       m->replicate_size);
   } else {
     checkCUDNN(miopenOpTensor(m->handle.dnn,
                               m->opDesc,
