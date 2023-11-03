@@ -1,9 +1,7 @@
 # Compiled files
 /.tools/
-/python/flexflow_python
 /python/flexflow/core/legion_cffi.py
 python/flexflow/core/flexflow_cffi_header.py
-python/flexflow/core/legion_cffi_header.py
 *.pb.cc
 *.pb.h
 *.o
@@ -181,3 +179,6 @@ train-labels-idx1-ubyte
 
 # Logs
 logs/
+
+# pip version
+python/flexflow/version.txt

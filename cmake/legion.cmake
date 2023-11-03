@@ -19,7 +19,7 @@ else()
 	# Check availability of precompiled Legion library
 	set(LEGION_URL "")
 	if((FF_USE_PREBUILT_LEGION OR FF_USE_ALL_PREBUILT_LIBRARIES) AND CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64" AND 
-		FF_USE_PYTHON AND NOT FF_USE_GASNET AND FF_MAX_DIM EQUAL 5)
+		FF_USE_PYTHON AND NOT "${FF_LEGION_NETWORKS}" STREQUAL "gasnet" AND FF_MAX_DIM EQUAL 5)
 		# For now, reusing pre-compiled Legion library only works when the Python library on the target machine 
 		# is stored at the path `/opt/conda/lib/libpython3.10.so`. Here, we check if this is the case.
 		find_package(PythonInterp)
@@ -125,8 +125,9 @@ else()
 		message(STATUS "Building Legion from source")
 		if(FF_USE_PYTHON)
 		  set(Legion_USE_Python ON CACHE BOOL "enable Legion_USE_Python")
+		  set(Legion_BUILD_BINDINGS ON CACHE BOOL "build legion_python")
 		endif()
-		if(FF_USE_GASNET)
+		if("${FF_LEGION_NETWORKS}" STREQUAL "gasnet")
 		  set(Legion_EMBED_GASNet ON CACHE BOOL "Use embed GASNet")
 		  set(Legion_EMBED_GASNet_VERSION "GASNet-2022.3.0" CACHE STRING "GASNet version")
 		  set(Legion_NETWORKS "gasnetex" CACHE STRING "GASNet conduit")
@@ -145,6 +146,7 @@ else()
 				set(Legion_HIP_TARGET "ROCM" CACHE STRING "Legion HIP_TARGET ROCM" FORCE)
 			endif()
 		endif()
+		set(Legion_REDOP_COMPLEX OFF CACHE BOOL "disable complex")
 		add_subdirectory(deps/legion)
 		set(LEGION_LIBRARY Legion)
     

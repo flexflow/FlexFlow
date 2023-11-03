@@ -6,7 +6,7 @@ set -x
 cd "${BASH_SOURCE[0]%/*}"
 
 # Install CUDNN
-cuda_version=${1:-11.1.1}
+cuda_version=${1:-11.8.0}
 cuda_version=$(echo "${cuda_version}" | cut -f1,2 -d'.')
 echo "Installing CUDNN for CUDA version: ${cuda_version} ..."
 CUDNN_LINK=http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-11.1-linux-x64-v8.0.5.39.tgz
@@ -41,13 +41,16 @@ elif [[ "$cuda_version" == "11.6" ]]; then
 elif [[ "$cuda_version" == "11.7" ]]; then
     CUDNN_LINK=https://developer.download.nvidia.com/compute/redist/cudnn/v8.5.0/local_installers/11.7/cudnn-linux-x86_64-8.5.0.96_cuda11-archive.tar.xz
     CUDNN_TARBALL_NAME=cudnn-linux-x86_64-8.5.0.96_cuda11-archive.tar.xz
+elif [[ "$cuda_version" == "11.8" ]]; then
+    CUDNN_LINK=https://developer.download.nvidia.com/compute/redist/cudnn/v8.7.0/local_installers/11.8/cudnn-linux-x86_64-8.7.0.84_cuda11-archive.tar.xz
+    CUDNN_TARBALL_NAME=cudnn-linux-x86_64-8.7.0.84_cuda11-archive.tar.xz
 fi
 wget -c -q $CUDNN_LINK
-if [[ "$cuda_version" == "11.6" || "$cuda_version" == "11.7" ]]; then
+if [[ "$cuda_version" == "11.6" || "$cuda_version" == "11.7" || "$cuda_version" == "11.8" ]]; then
     tar -xf $CUDNN_TARBALL_NAME -C ./
     CUDNN_EXTRACTED_TARBALL_NAME="${CUDNN_TARBALL_NAME::-7}"
-    sudo cp -r "$CUDNN_EXTRACTED_TARBALL_NAME/include/*" "/usr/local/include"
-    sudo cp -r "$CUDNN_EXTRACTED_TARBALL_NAME/lib/*" "/usr/local/lib"
+    sudo cp -r "$CUDNN_EXTRACTED_TARBALL_NAME"/include/* /usr/local/include
+    sudo cp -r "$CUDNN_EXTRACTED_TARBALL_NAME"/lib/* /usr/local/lib
     rm -rf "$CUDNN_EXTRACTED_TARBALL_NAME"
 else
     sudo tar -xzf $CUDNN_TARBALL_NAME -C /usr/local

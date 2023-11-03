@@ -1,4 +1,5 @@
-FROM nvidia/cuda:11.7.0-cudnn8-devel-ubuntu20.04
+ARG cuda_version
+FROM nvidia/cuda:${cuda_version}-cudnn8-devel-ubuntu20.04
 
 LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
 LABEL org.opencontainers.image.description="FlexFlow environment container"
@@ -48,9 +49,10 @@ ENV CUDNN_DIR /usr/local/cuda
 ENV CUDA_DIR /usr/local/cuda
 
 # Install python packages and other dependencies
-RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing 
+RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing
 # Install CPU-only Pytorch and related dependencies
 RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
-RUN conda install -c conda-forge onnx tensorflow transformers sentencepiece
+RUN conda install -c conda-forge onnx transformers sentencepiece
+RUN pip3 install tensorflow
 
 ENTRYPOINT ["/bin/bash"]

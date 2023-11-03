@@ -37,6 +37,8 @@ Tensor FFModel::dense(const Tensor input,
                       Layer const *shared_op,
                       Initializer *kernel_initializer,
                       Initializer *bias_initializer,
+                      RegularizerMode kernel_reg_type,
+                      float kernel_reg_lambda,
                       char const *name) {
   Layer *li = new Layer(this,
                         OP_LINEAR,
@@ -80,6 +82,8 @@ Tensor FFModel::dense(const Tensor input,
   li->add_int_property("use_bias", use_bias);
   li->add_int_property("out_dim", outDim);
   li->add_int_property("activation", activation);
+  li->add_int_property("kernel_reg_type", kernel_reg_type);
+  li->add_float_property("kernel_reg_lambda", kernel_reg_lambda);
   layers.push_back(li);
   return li->outputs[0];
 }
@@ -95,11 +99,17 @@ Op *Linear::create_operator_from_layer(
   int outdim = value;
   layer->get_int_property("activation", value);
   ActiMode activation = (ActiMode)value;
+  layer->get_int_property("kernel_reg_type", value);
+  RegularizerMode kernel_reg_type = (RegularizerMode)value;
+  float kernel_reg_lambda;
+  layer->get_float_property("kernel_reg_lambda", kernel_reg_lambda);
   return new Linear(model,
                     layer->layer_guid,
                     inputs[0],
                     outdim,
                     activation,
+                    kernel_reg_type,
+                    kernel_reg_lambda,
                     use_bias,
                     layer->data_type,
                     false /*allocate_weights*/,
@@ -119,6 +129,8 @@ Linear::Linear(FFModel &model,
              input,
              other.out_channels,
              other.activation,
+             other.kernel_reg_type,
+             other.kernel_reg_lambda,
              other.use_bias,
              other.data_type,
              allocate_weights,
@@ -134,6 +146,8 @@ Linear::Linear(FFModel &model,
              input,
              params.out_channels,
              params.activation,
+             params.kernel_reg_type,
+             params.kernel_reg_lambda,
              params.use_bias,
              params.data_type,
              allocate_weights,
@@ -144,6 +158,8 @@ Linear::Linear(FFModel &model,
                const ParallelTensor _input,
                int out_dim,
                ActiMode _activation,
+               RegularizerMode _kernel_reg_type,
+               float _kernel_reg_lambda,
                bool _use_bias,
                DataType _data_type,
                bool allocate_weights,
@@ -158,6 +174,7 @@ Linear::Linear(FFModel &model,
          1 /*outputs*/,
          _input),
       out_channels(out_dim), activation(_activation), use_bias(_use_bias),
+      kernel_reg_type(_kernel_reg_type), kernel_reg_lambda(_kernel_reg_lambda),
       replica(ParallelTensorBase::NO_TENSOR) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
@@ -312,6 +329,8 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
          batch_size);
   LinearMeta *m = new LinearMeta(handle, batch_size);
   m->activation = linear->activation;
+  m->kernel_reg_type = linear->kernel_reg_type;
+  m->kernel_reg_lambda = linear->kernel_reg_lambda;
   m->use_bias = linear->use_bias;
   m->profiling = linear->profiling;
   m->trainableInputs[0] = linear->trainableInputs[0];
@@ -786,6 +805,8 @@ bool Linear::measure_operator_cost(Simulator *sim,
   int output_n = sub_output.get_volume() / output_c;
   LinearMeta *m = sim->linear_meta;
   m->activation = activation;
+  m->kernel_reg_type = kernel_reg_type;
+  m->kernel_reg_lambda = kernel_reg_lambda;
   m->input_type = inputs[0]->data_type;
   m->weight_type = this->data_type;
   m->output_type = outputs[0]->data_type;
@@ -854,7 +875,7 @@ bool Linear::measure_operator_cost(Simulator *sim,
       cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
       return true;
     }
-    backward = [&] {
+    backward = [=] {
       backward_kernel_wrapper(m,
                               input_ptr,
                               input_grad_ptr,
@@ -897,13 +918,17 @@ bool Linear::measure_operator_cost(Simulator *sim,
 bool operator==(LinearParams const &lhs, LinearParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid &&
          lhs.out_channels == rhs.out_channels && lhs.use_bias == rhs.use_bias &&
-         lhs.data_type == rhs.data_type && lhs.activation == rhs.activation;
+         lhs.data_type == rhs.data_type && lhs.activation == rhs.activation &&
+         lhs.kernel_reg_type == rhs.kernel_reg_type &&
+         lhs.kernel_reg_lambda == rhs.kernel_reg_lambda;
 }
 
 void Linear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->out_channels);
   sez.serialize(this->activation);
+  sez.serialize(this->kernel_reg_type);
+  sez.serialize(this->kernel_reg_lambda);
   sez.serialize(this->use_bias);
   sez.serialize(this->data_type);
 }
@@ -917,6 +942,8 @@ Node Linear::deserialize(FFModel &ff,
   assert(num_inputs == 1);
   int out_channels;
   ActiMode activation;
+  RegularizerMode kernel_reg_type;
+  float kernel_reg_lambda;
   bool use_bias;
   DataType data_type;
   size_t id;
@@ -924,11 +951,15 @@ Node Linear::deserialize(FFModel &ff,
   LayerID layer_guid(id);
   dez.deserialize(out_channels);
   dez.deserialize(activation);
+  dez.deserialize(kernel_reg_type);
+  dez.deserialize(kernel_reg_lambda);
   dez.deserialize(use_bias);
   dez.deserialize(data_type);
 
   LinearParams params;
   params.activation = activation;
+  params.kernel_reg_type = kernel_reg_type;
+  params.kernel_reg_lambda = kernel_reg_lambda;
   params.out_channels = out_channels;
   params.use_bias = use_bias;
   params.data_type = data_type;
@@ -943,6 +974,8 @@ LinearParams Linear::get_params() const {
   params.use_bias = this->use_bias;
   params.data_type = this->data_type;
   params.activation = this->activation;
+  params.kernel_reg_type = this->kernel_reg_type;
+  params.kernel_reg_lambda = this->kernel_reg_lambda;
 
   return params;
 }
@@ -1144,6 +1177,8 @@ size_t hash<FlexFlow::LinearParams>::operator()(
   hash_combine(key, params.use_bias);
   hash_combine(key, params.data_type);
   hash_combine(key, params.activation);
+  hash_combine(key, params.kernel_reg_type);
+  hash_combine(key, params.kernel_reg_lambda);
   return key;
 }
 }; // namespace std

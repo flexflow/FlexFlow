@@ -492,6 +492,8 @@ public:
                Layer const *shared_op = NULL,
                Initializer *kernel_initializer = NULL,
                Initializer *bias_initializer = NULL,
+               RegularizerMode regularizer_type = REG_MODE_NONE,
+               float regularizer_lambda = 0.0,
                char const *name = NULL);
   // Add a cast layer
   Tensor cast(const Tensor input, DataType dtype, char const *name = nullptr);
@@ -998,7 +1000,9 @@ void data_load_task(Legion::Task const *task,
                     Legion::Context ctx,
                     Legion::Runtime *runtime);
 
-void register_flexflow_internal_tasks();
+void register_flexflow_internal_tasks(Legion::Runtime *runtime = NULL,
+                                      bool pre_register = true,
+                                      bool enable_control_replication = true);
 
 void register_custom_tasks();
 

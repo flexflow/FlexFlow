@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
 #
@@ -21,37 +21,4 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import cffi, os, sys
-
-from flexflow.config import flexflow_python_interpreter
-
-header = {header}
-libname = {libname}
-
-ffi = cffi.FFI()
-ffi.cdef(header)
-
-flexflow_lib = None
-if flexflow_python_interpreter() == "native":
-    flexflow_lib = libname
-    if "PYTHONPATH" in os.environ:
-        python_paths = os.environ["PYTHONPATH"].split(":")
-        for p in python_paths:
-            flexflow_lib_p = os.path.join(p, flexflow_lib)
-            if os.path.exists(flexflow_lib_p):
-                flexflow_lib = flexflow_lib_p
-                break
-    else:
-        # When installing FlexFlow with pip, the library files are installed within
-        # the pip package folder, instead of at /usr/local/lib
-        ff_lib_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"
-        )
-        ld_lib_path = os.environ.get("LD_LIBRARY_PATH") or ""
-        # If the library exists at the ff_lib_path, rerun with the ff_lib_path in the LD_LIBRARY_PATH
-        if os.path.exists(
-            os.path.join(ff_lib_path, libname)
-        ) and ff_lib_path not in ld_lib_path.split(":"):
-            os.environ["LD_LIBRARY_PATH"] = ff_lib_path + ":" + ld_lib_path
-            os.execv(sys.executable, ["python"] + sys.argv)
-ffc = ffi.dlopen(flexflow_lib)
+flexflow_header = {header}

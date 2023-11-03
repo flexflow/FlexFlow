@@ -4,6 +4,7 @@ on:
     paths:
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "setup.py"
       - "include/**"
@@ -18,6 +19,7 @@ on:
     paths:
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "setup.py"
       - "include/**"
@@ -59,7 +61,7 @@ jobs:
       CONDA: "3"    
     needs: gpu-ci-concierge
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version
@@ -77,6 +79,7 @@ jobs:
           activate-environment: flexflow
           environment-file: conda/flexflow-cpu.yml
           auto-activate-base: false
+          auto-update-conda: false
 
       - name: Install conda and Pytorch dependencies for pytorch alignment test
         run: |
@@ -84,8 +87,9 @@ jobs:
 
       - name: Build FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
+          export FF_USE_PREBUILT_LEGION=OFF
           mkdir build
           cd build
           ../config/config.linux
@@ -93,13 +97,14 @@ jobs:
 
       - name: Check FlexFlow Python interface (before installation)
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
           ./tests/python_interface_test.sh before-installation
 
       - name: Install FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
           cd build
           ../config/config.linux
@@ -108,22 +113,23 @@ jobs:
 
       - name: Check FlexFlow Python interface (after installation)
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
           ./tests/python_interface_test.sh after-installation
 
-      # TODO: need fix in https://github.com/flexflow/FlexFlow/pull/669
-      # - name: Run flexflow alignment with pytorch
-      #   run: |
-      #     # run alingment tests
-      #     ./tests/align/test_all_operators.sh
+      - name: Run flexflow alignment with pytorch
+        run: |
+          # run alingment tests
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
+          ./tests/align/test_all_operators.sh
 
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
-    needs: gpu-ci-concierge
+    needs: python-interface-check
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version
@@ -138,12 +144,14 @@ jobs:
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
           export FF_BUILD_ALL_EXAMPLES=ON
+          export FF_USE_PREBUILT_LEGION=OFF
           pip install . --verbose
 
       - name: Check FlexFlow Python interface (pip)
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           ./tests/python_interface_test.sh after-installation
 
       - name: Run multi-gpu tests
@@ -152,6 +160,7 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
           # C++ tests
           ./tests/cpp_gpu_tests.sh 4
           # Python tests

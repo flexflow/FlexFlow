@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,16 +13,24 @@
 # limitations under the License.
 #
 
-# IMPORTANT:
-#   * legion_cffi.py.in is used as an input to string.format()
-#   * legion_cffi.py is a generated file and should not be modified by hand
+from flexflow.type import RegularizerMode
 
-from __future__ import absolute_import, division, print_function, unicode_literals
 
-import cffi
+class Regularizer(object):
+  def __init__(self):
+    self.type: RegularizerMode = None
+    self._lambda: float = 0.0
+    
 
-header = {header}
+class L1(Regularizer):
+  def __init__(self, l1):
+    super(Regularizer, self).__init__() 
+    self.type = RegularizerMode.REG_MODE_L1
+    self._lambda = l1
 
-ffi = cffi.FFI()
-ffi.cdef(header)
-lib = ffi.dlopen(None)
+    
+class L2(Regularizer):
+  def __init__(self, l2):
+    super(Regularizer, self).__init__() 
+    self.type = RegularizerMode.REG_MODE_L2
+    self._lambda = l2
