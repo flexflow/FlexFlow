@@ -187,7 +187,6 @@ RequestManager::RequestGuid
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
   request.peft_model_id = peft_model_id;
-
   if (prompt.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
               << get_max_sequence_length() << " tokens, but got "
@@ -547,6 +546,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid =
             old_bc.requestsInfo[i].request_guid;
+        new_bc.requestsInfo[i].peft_model_id =
+            old_bc.requestsInfo[i].peft_model_id;
+        new_bc.requestsInfo[i].peft_bwd = old_bc.requestsInfo[i].peft_bwd;
         new_bc.requestsInfo[i].max_sequence_length =
             old_bc.requestsInfo[i].max_sequence_length;
         if (new_bc.requestsInfo[i].first_token_depth_in_request + 1 ==
@@ -2093,7 +2095,7 @@ GenerationResult RequestManager::generate_incr_decoding(
     BatchConfigFuture bcf =
         prepare_next_batch(next_batch.first, next_batch.second);
     FutureMap fm = im->inference(llm, 0, bcf);
-    im->peft_bwd(llm, 0, bcf);
+    // im->peft_bwd(llm, 0, bcf);
     assert(fm.get_future_map_domain().get_volume() == 1);
     InferenceResultFuture irf = fm.get_future(0);
     batch_pipeline.push(std::make_pair(bcf, irf));

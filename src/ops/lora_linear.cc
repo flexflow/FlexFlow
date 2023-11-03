@@ -269,6 +269,8 @@ void load_peft_from_file(DT *ptr,
                          size_t size,
                          int shard_id,
                          std::string filepath) {
+  std::cout << "Loading LORA weight " << filepath << ", size: " << size
+            << ", shard: " << shard_id << std::endl;
   std::ifstream in(filepath, std::ios::in | std::ios::binary);
   if (!in.good()) {
     printf("Could not open file: %s\n", filepath.c_str());
@@ -443,10 +445,10 @@ void LoraLinear::inference_task(Task const *task,
                                 Runtime *runtime) {
   LoraLinearMeta *m = *((LoraLinearMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
-  if (bc->num_active_peft_tokens() == 0) {
+  if (bc->num_active_tokens() == 0) {
     return;
   }
-  assert(regions.size() == 4);
+  assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
   assert(m->input_type[0] == m->output_type[0]);
 
