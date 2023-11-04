@@ -82,7 +82,8 @@ for model_name in all_models:
             if tp > 2 and ("7b" in model_name or "6.7b" in model_name):
                 continue
 
-            if full_precision and ("falcon" in model_name or "starcoder" in model_name):
+            # Run Falcon only in full precision, Starcoder only in half precision
+            if (not full_precision and "falcon" in model_name) or (full_precision and "starcoder" in model_name):
                 continue
 
             _, after_slash = model_name.rsplit("/", maxsplit=1)
