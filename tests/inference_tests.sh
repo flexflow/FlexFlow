@@ -30,7 +30,7 @@ pip3 install protobuf==3.20.3
 
 # Create test prompt file
 mkdir -p ../inference/prompt
-echo '["Give three tips for staying healthy."]' > ../inference/prompt/test.json
+echo '["Three tips for staying healthy are: "]' > ../inference/prompt/test.json
 
 # Create output folder
 mkdir -p ../inference/output
