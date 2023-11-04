@@ -238,7 +238,7 @@ private:
   std::unordered_map<RequestGuid, Request> all_requests;
   std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;
-  std::unordered_map<RequestGuid, std::promise<void>> request_to_promise;
+  std::unordered_map<RequestGuid, std::promise<void>* > request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
   // Legion futures for inc_decoding and spec_infer

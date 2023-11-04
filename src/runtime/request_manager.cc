@@ -212,6 +212,7 @@ RequestManager::RequestGuid
 
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
+  request_to_promise[request.guid] = new std::promise<void>();
 
   if (verbose) {
     std::cout << "new req: " << request.tokens.size() << std::endl;
@@ -272,6 +273,8 @@ RequestManager::RequestGuid
 
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
+  request_to_promise[request.guid] = new std::promise<void>();
+
   {
     std::string output = "New request tokens:";
     output = "[" + std::to_string(request.guid) + "]" + output;
@@ -306,7 +309,7 @@ GenerationResult
   {
     const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
     assert(request_to_promise.find(guid) != request_to_promise.end());
-    future = request_to_promise[guid].get_future();
+    future = request_to_promise[guid]->get_future();
   }
   // Wait until the result is completed
   future.get();
@@ -1970,7 +1973,7 @@ void RequestManager::trigger_request_completion_future(
   const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
   assert(request_to_promise.find(guid) != request_to_promise.end());
   // Set the completion promise in case other threads are waiting
-  request_to_promise[guid].set_value();
+  request_to_promise[guid]->set_value();
 }
 
 void RequestManager::terminate_background_server() {
