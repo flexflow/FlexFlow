@@ -16,14 +16,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binut
         apt-get upgrade -y libstdc++6
 
 # Install Python3 with Miniconda
-RUN wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    mv Miniconda3-latest-Linux-x86_64.sh ~/Miniconda3-latest-Linux-x86_64.sh && \
-    chmod +x ~/Miniconda3-latest-Linux-x86_64.sh && \
-    bash ~/Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-    rm ~/Miniconda3-latest-Linux-x86_64.sh && \
-    /opt/conda/bin/conda upgrade --all && \
-    /opt/conda/bin/conda install conda-build conda-verify && \
-    /opt/conda/bin/conda clean -ya
+ARG python_version "latest"
+RUN MINICONDA_SCRIPT_NAME=Miniconda3-latest-Linux-x86_64.sh; \
+    if [ "$python_version" != "3.8" ] && [ "$python_version" != "3.9" ] && [ "$python_version" != "3.10" ] && [ "$python_version" != "3.11" ] && [ "$python_version" != "latest" ]; then \
+        echo "python_version '${python_version}' is not supported, please choose among {3.8, 3.9, 3.10, 3.11 or latest (default)}"; \
+        exit 1; \
+    fi; \
+    if [ "${python_version}" = "3.8" ]; then \
+        MINICONDA_SCRIPT_NAME=Miniconda3-py38_23.5.2-0-Linux-x86_64.sh; \
+    elif [ "${python_version}" = "3.9" ]; then \
+        MINICONDA_SCRIPT_NAME=Miniconda3-py39_23.5.2-0-Linux-x86_64.sh; \
+    elif [ "${python_version}" = "3.10" ]; then \
+        MINICONDA_SCRIPT_NAME=Miniconda3-py310_23.5.2-0-Linux-x86_64.sh; \
+    elif [ "${python_version}" = "3.11" ]; then \
+        MINICONDA_SCRIPT_NAME=Miniconda3-py311_23.5.2-0-Linux-x86_64.sh; \
+    fi; \
+    wget -c -q https://repo.continuum.io/miniconda/${MINICONDA_SCRIPT_NAME} && \
+        mv ./${MINICONDA_SCRIPT_NAME} ~/${MINICONDA_SCRIPT_NAME} && \
+        chmod +x ~/${MINICONDA_SCRIPT_NAME} && \
+        bash ~/${MINICONDA_SCRIPT_NAME} -b -p /opt/conda && \
+        rm ~/${MINICONDA_SCRIPT_NAME} && \
+        /opt/conda/bin/conda upgrade --all && \
+        /opt/conda/bin/conda install conda-build conda-verify && \
+        /opt/conda/bin/conda clean -ya
 
 # Optionally install HIP dependencies
 # Note that amd's docs say to also install the `hip-runtime-nvidia` package. This

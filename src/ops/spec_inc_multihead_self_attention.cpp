@@ -44,22 +44,19 @@ __global__ void spec_store_kv_cache(
     int kProjSize,
     int vProjSize,
     int num_tokens,
-    int num_q_heads,
-    int num_kv_heads,
     int max_seq_len,
     int max_beam_width,
-    bool is_root) {
-  CUDA_KERNEL_LOOP(i, num_tokens * (kProjSize + vProjSize) * num_kv_heads) {
-    int q_array_size = qProjSize * num_tokens * num_q_heads;
-    int k_array_size = kProjSize * num_tokens * num_kv_heads;
+    bool is_root,
+    int hidden_size) {
+  CUDA_KERNEL_LOOP(i, num_tokens * hidden_size * 2) {
+    int token_idx = i / (hidden_size * KV_WEIGHT_NUM);
+    int offset = i % hidden_size;
 
-    bool k_cache = i < k_array_size;
-    int real_i = k_cache ? i : i - k_array_size;
+    size_t val_idx =
+        token_idx * QKV_WEIGHT_NUM * hidden_size + hidden_size + offset;
 
-    int proj_size = k_cache ? kProjSize : vProjSize;
-    int head_idx = real_i / (num_tokens * proj_size);
-    int token_idx = (real_i - head_idx * (num_tokens * proj_size)) / proj_size;
-    int data_idx = real_i % proj_size;
+    DT kVal = devQKVProjArray[val_idx];
+    DT vVal = devQKVProjArray[val_idx + hidden_size];
 
     // above no need to be changed
     // int const req_id = id_map[token_idx].request_index;
@@ -69,10 +66,6 @@ __global__ void spec_store_kv_cache(
     // int const beam_depth = id_map[token_idx].beam_depth;
     // int const beam_width = id_map[token_idx].beam_width;
 
-    DT val = devQKVProjArray[q_array_size + (k_cache ? 0 : k_array_size) +
-                             head_idx * proj_size * num_tokens +
-                             token_idx * proj_size + data_idx];
-
     int const req_id = tokenInfos[token_idx].request_index;
     int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
     int const sub_req_id = beamTokenInfos[token_idx].sub_request_index;
@@ -81,27 +74,26 @@ __global__ void spec_store_kv_cache(
     int const beam_width = beamRequestInfos[req_id].beam_size;
 
     // new token
-    int new_token_cache_idx = (req_id * max_beam_width + sub_req_id) *
-                                  (num_kv_heads * max_seq_len * proj_size) +
-                              head_idx * (max_seq_len * proj_size) +
-                              tok_id * proj_size + data_idx;
-
-    DT *cache_ptr = k_cache ? kCache_ptr : vCache_ptr;
-    cache_ptr[new_token_cache_idx] = val;
+    kCache_ptr[(req_id * max_beam_width + sub_req_id) *
+                   (hidden_size * max_seq_len) +
+               tok_id * hidden_size + offset] = kVal;
+    vCache_ptr[(req_id * max_beam_width + sub_req_id) *
+                   (hidden_size * max_seq_len) +
+               tok_id * hidden_size + offset] = vVal;
 
     // replica in the root iteration
     if (beam_depth == 1) {
       for (int i = 1; i < beam_width; i++) {
-        cache_ptr[(req_id * max_beam_width + i) *
-                      (num_kv_heads * max_seq_len * proj_size) +
-                  head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
-                  data_idx] = val;
+        kCache_ptr[(req_id * max_beam_width + i) * (hidden_size * max_seq_len) +
+                   tok_id * hidden_size + offset] = kVal;
+        vCache_ptr[(req_id * max_beam_width + i) * (hidden_size * max_seq_len) +
+                   tok_id * hidden_size + offset] = vVal;
       }
     }
 
     // naive cache stealing
     if (sub_req_id != parent_id) {
-      if (data_idx == 0 && head_idx == 0 && k_cache) {
+      if (offset == 0 && tok_id == 0) {
         printf("cache stealing!, depth %d req_id %d sub_req_id %d, parentid "
                "%d, tok_id %d\n",
                beam_depth,
@@ -114,14 +106,13 @@ __global__ void spec_store_kv_cache(
       for (int depth = 0; depth < beam_depth; depth++) {
         int steal_token_idx = tok_id - beam_depth + depth;
         int steal_from_idx = (req_id * max_beam_width + parent_id) *
-                                 (num_kv_heads * max_seq_len * proj_size) +
-                             head_idx * (max_seq_len * proj_size) +
-                             steal_token_idx * proj_size + data_idx;
+                                 (hidden_size * max_seq_len) +
+                             steal_token_idx * hidden_size + offset;
         int steal_to_idx = (req_id * max_beam_width + sub_req_id) *
-                               (num_kv_heads * max_seq_len * proj_size) +
-                           head_idx * (max_seq_len * proj_size) +
-                           steal_token_idx * proj_size + data_idx;
-        cache_ptr[steal_to_idx] = cache_ptr[steal_from_idx];
+                               (hidden_size * max_seq_len) +
+                           steal_token_idx * hidden_size + offset;
+        kCache_ptr[steal_to_idx] = kCache_ptr[steal_from_idx];
+        vCache_ptr[steal_to_idx] = vCache_ptr[steal_from_idx];
 
         //   if(data_idx == 0 && head_idx == 0 && k_cache && req_id == 1){
         //     printf("cache stealing kernel!, steal_token_idx %d\n",
@@ -155,8 +146,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // printf("curr depth: %d\n", curr_depth);
   // assert(curr_depth < 3);
   if (num_tokens > 0) {
-    int parallelism =
-        (m->kProjSize + m->vProjSize) * num_tokens * m->num_kv_heads;
+    int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_tokens;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(spec_store_kv_cache<DT>),
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
@@ -173,11 +163,10 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                        m->kProjSize,
                        m->vProjSize,
                        num_tokens,
-                       m->num_q_heads,
-                       m->num_kv_heads,
                        BatchConfig::max_sequence_length(),
                        BeamSearchBatchConfig::MAX_BEAM_WIDTH,
-                       /*root*/ curr_depth == 0);
+                       /*root*/ curr_depth == 0,
+                       m->hidden_size);
   }
 }
 
@@ -223,12 +212,13 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   int tokens_prev_requests_squares = 0;
   // int qkv_block_size =
   //     (m->qProjSize + m->kProjSize + m->vProjSize) * num_tokens;
-  int q_block_size = m->qProjSize * num_tokens;
-
-  int kt_block_size = m->kProjSize * BatchConfig::max_sequence_length();
-  int kt_req_block_size = kt_block_size * m->num_kv_heads;
-  int vt_block_size = m->vProjSize * BatchConfig::max_sequence_length();
-  int vt_req_block_size = vt_block_size * m->num_kv_heads;
+  int q_block_size = m->qProjSize;
+  int kt_block_size = m->kProjSize;
+  int kt_req_block_size =
+      kt_block_size * m->num_q_heads * BatchConfig::max_sequence_length();
+  int vt_block_size = m->vProjSize;
+  int vt_req_block_size =
+      vt_block_size * m->num_q_heads * BatchConfig::max_sequence_length();
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -241,13 +231,14 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       // int total_tokens = bc->token_last_available_idx[i] + 1;
 
       int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-      int total_tokens = bc->requestsInfo[i].token_start_offset +
+      int total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
                          bc->requestsInfo[i].num_tokens_in_batch;
       // Compute (QK^T/sqrt(d_k))
       int m_ = num_new_tokens;
       int n = total_tokens;
       int k = m->qProjSize;
-      int lda = k, ldb = k, ldc = m_;
+      int lda = k * m->num_q_heads * QKV_WEIGHT_NUM, ldb = k * m->num_q_heads,
+          ldc = m_;
       int strideA = q_block_size;
       int strideB = kt_block_size;
       int strideC = num_new_tokens * total_tokens;
@@ -259,7 +250,8 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       }
       // To get A, skip over Q entries from previous requests (same head)
       DT const *A = static_cast<DT *>(m->devQKVProjArray) +
-                    tokens_previous_requests * m->qProjSize;
+                    tokens_previous_requests * m->qProjSize * m->num_q_heads *
+                        QKV_WEIGHT_NUM;
       // To get B, skip over K entries from previous requests (all heads +
       // padding)
       DT const *B = static_cast<DT *>(m->keyCache) +
@@ -274,64 +266,30 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       DT *C = static_cast<DT *>(m->qk_prods) +
               m->num_q_heads * tokens_prev_requests_squares;
 
-      if (m->num_q_heads == m->num_kv_heads) {
-        checkCUDA(hipblasGemmStridedBatchedEx(m->handle.blas,
-                                              HIPBLAS_OP_T,
-                                              HIPBLAS_OP_N,
-                                              m_,
-                                              n,
-                                              k,
-                                              &alpha,
-                                              A,
-                                              hipblas_data_type,
-                                              lda,
-                                              strideA,
-                                              B,
-                                              hipblas_data_type,
-                                              ldb,
-                                              strideB,
-                                              &beta,
-                                              C,
-                                              hipblas_data_type,
-                                              ldc,
-                                              strideC,
-                                              m->num_q_heads,
-                                              compute_type,
-                                              HIPBLAS_GEMM_DEFAULT));
-      } else {
-        strideB = 0;
-        int one_step_heads = m->num_q_heads / m->num_kv_heads;
-        m_ = num_new_tokens;
-        n = total_tokens;
-        k = m->qProjSize;
-        lda = k, ldb = k, ldc = m_;
-        for (int step = 0; step < m->num_kv_heads; step++) {
-          checkCUDA(
-              hipblasGemmStridedBatchedEx(m->handle.blas,
-                                          HIPBLAS_OP_T,
-                                          HIPBLAS_OP_N,
-                                          m_,
-                                          n,
-                                          k,
-                                          &alpha,
-                                          A + step * strideA * one_step_heads,
-                                          hipblas_data_type,
-                                          lda,
-                                          strideA,
-                                          B + step * kt_block_size,
-                                          hipblas_data_type,
-                                          ldb,
-                                          strideB,
-                                          &beta,
-                                          C + step * strideC * one_step_heads,
-                                          hipblas_data_type,
-                                          ldc,
-                                          strideC,
-                                          one_step_heads,
-                                          compute_type,
-                                          HIPBLAS_GEMM_DEFAULT));
-        }
-      }
+      checkCUDA(hipblasGemmStridedBatchedEx(m->handle.blas,
+                                            HIPBLAS_OP_T,
+                                            HIPBLAS_OP_N,
+                                            m_,
+                                            n,
+                                            k,
+                                            &alpha,
+                                            A,
+                                            hipblas_data_type,
+                                            lda,
+                                            strideA,
+                                            B,
+                                            hipblas_data_type,
+                                            ldb,
+                                            strideB,
+                                            &beta,
+                                            C,
+                                            hipblas_data_type,
+                                            ldc,
+                                            strideC,
+                                            m->num_q_heads,
+                                            compute_type,
+                                            HIPBLAS_GEMM_DEFAULT));
+
       if (*m->position_bias) {
         size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
         hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_position_bias_qkprd<DT>),
@@ -401,7 +359,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       m_ = num_new_tokens;
       n = m->vProjSize;
       k = total_tokens;
-      lda = m_, ldb = n, ldc = m_;
+      lda = m_, ldb = n * m->num_q_heads, ldc = m_;
       strideA = num_new_tokens * total_tokens;
       strideB = vt_block_size;
       strideC = num_new_tokens * m->vProjSize;
@@ -417,64 +375,29 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       C = static_cast<DT *>(m->attn_heads) +
           tokens_previous_requests * m->num_q_heads * m->vProjSize;
 
-      if (m->num_q_heads == m->num_kv_heads) {
-        checkCUDA(hipblasGemmStridedBatchedEx(m->handle.blas,
-                                              HIPBLAS_OP_N,
-                                              HIPBLAS_OP_T,
-                                              m_,
-                                              n,
-                                              k,
-                                              &alpha,
-                                              A,
-                                              hipblas_data_type,
-                                              lda,
-                                              strideA,
-                                              B,
-                                              hipblas_data_type,
-                                              ldb,
-                                              strideB,
-                                              &beta,
-                                              C,
-                                              hipblas_data_type,
-                                              ldc,
-                                              strideC,
-                                              m->num_q_heads,
-                                              compute_type,
-                                              HIPBLAS_GEMM_DEFAULT));
-      } else {
-        int one_step_heads = m->num_q_heads / m->num_kv_heads;
-        n = m->vProjSize;
-        lda = m_, ldb = n, ldc = m_;
-        strideA = num_new_tokens * total_tokens;
-        strideB = 0;
-        strideC = num_new_tokens * m->vProjSize;
-        for (int step = 0; step < m->num_kv_heads; step++) {
-          checkCUDA(
-              hipblasGemmStridedBatchedEx(m->handle.blas,
-                                          HIPBLAS_OP_N,
-                                          HIPBLAS_OP_T,
-                                          m_,
-                                          n,
-                                          k,
-                                          &alpha,
-                                          A + step * one_step_heads * strideA,
-                                          hipblas_data_type,
-                                          lda,
-                                          strideA,
-                                          B + step * vt_block_size,
-                                          hipblas_data_type,
-                                          ldb,
-                                          strideB,
-                                          &beta,
-                                          C + step * one_step_heads,
-                                          hipblas_data_type,
-                                          ldc,
-                                          strideC,
-                                          one_step_heads,
-                                          compute_type,
-                                          HIPBLAS_GEMM_DEFAULT));
-        }
-      }
+      checkCUDA(hipblasGemmStridedBatchedEx(m->handle.blas,
+                                            HIPBLAS_OP_N,
+                                            HIPBLAS_OP_T,
+                                            m_,
+                                            n,
+                                            k,
+                                            &alpha,
+                                            A,
+                                            hipblas_data_type,
+                                            lda,
+                                            strideA,
+                                            B,
+                                            hipblas_data_type,
+                                            ldb,
+                                            strideB,
+                                            &beta,
+                                            C,
+                                            hipblas_data_type,
+                                            ldc,
+                                            strideC,
+                                            m->num_q_heads,
+                                            compute_type,
+                                            HIPBLAS_GEMM_DEFAULT));
 
       // Project to output, save result directly on output tensor
       alpha = 1.0f, beta = 0.0f;
@@ -483,8 +406,8 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       n = num_new_tokens;
       lda = k, ldb = n, ldc = m_;
       A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
-                                   m->kProjSize * m->num_kv_heads +
-                                   m->vProjSize * m->num_kv_heads);
+                                   m->kProjSize * m->num_q_heads +
+                                   m->vProjSize * m->num_q_heads);
       B = C;
       C = static_cast<DT *>(output_ptr) +
           tokens_previous_requests * m->oProjSize;
@@ -515,8 +438,8 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   if (*m->final_bias && shard_id == 0) {
     int parallelism = m->oProjSize * num_tokens;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
-                          m->kProjSize * m->global_num_kv_heads +
-                          m->vProjSize * m->global_num_kv_heads;
+                          m->kProjSize * m->global_num_q_heads +
+                          m->vProjSize * m->global_num_q_heads;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_proj_bias_w<DT>),
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
