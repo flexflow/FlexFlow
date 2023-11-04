@@ -2,6 +2,7 @@ name: flexflow
 channels:
   - defaults
   - conda-forge
+  - torch
 dependencies:
   - python>=3.6
   - cffi>=1.11.0
@@ -11,14 +12,14 @@ dependencies:
   - cmake-build-extension
   - jq
   - pytest
+  - torch>=0.13.1
+  - torchaudio>=0.13.1
+  - torchvision>=0.14.1
   - pip
   - pip:
     - qualname>=0.1.0
     - keras_preprocessing>=1.1.2
     - numpy>=1.16.0
-    - torch>=1.13.1 --index-url https://download.pytorch.org/whl/cpu
-    - torchaudio>=0.13.1 --index-url https://download.pytorch.org/whl/cpu
-    - torchvision>=0.14.1 --index-url https://download.pytorch.org/whl/cpu
     - regex
     - onnx
     - transformers>=4.31.0
