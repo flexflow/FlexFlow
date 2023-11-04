@@ -32,22 +32,23 @@ using tokenizers::Tokenizer;
 
 class InferenceManager {
 public:
-  InferenceManager(FFConfig const &config);
+  InferenceManager();
   static InferenceManager *get_inference_manager();
   void compile_model_and_allocate_buffer(FFModel *model);
   void init_operators_inference(FFModel *model);
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   Legion::FutureMap
       inference(FFModel *model, int index, BatchConfigFuture const &bc);
-  void load_input_tokens_from_batch_config(BatchConfigFuture const &bc,
+  void load_input_tokens_from_batch_config(FFModel* model,
+                                           BatchConfigFuture const &bc,
                                            ParallelTensor const input);
-  void load_positions(BatchConfigFuture const &bc,
+  void load_positions(FFModel* model,
+                      BatchConfigFuture const &bc,
                       ParallelTensor position_input,
                       int offset);
   void register_model_weights_loader(FFModel *, FileDataLoader *);
 
 public:
-  FFConfig ff_config;
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
   std::unordered_map<FFModel *, FileDataLoader *> model_weights_loaders;
   int num_devices;
@@ -99,6 +100,7 @@ public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
 
+  static const RequestGuid INVALID_GUID = 0;
   RequestManager();
   static RequestManager *get_request_manager();
   size_t get_num_processed_requests();
@@ -137,7 +139,9 @@ public:
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
   BatchConfigFuture prepare_next_batch(BatchConfigFuture const &bc,
-                                       InferenceResultFuture const &result);
+                                       InferenceResultFuture const &result,
+                                       Legion::Context ctx,
+                                       Legion::Runtime* runtime);
   BeamSearchBatchConfig
       prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
                               BeamInferenceResult const &result);
@@ -241,11 +245,6 @@ private:
   std::unordered_map<RequestGuid, std::promise<void>* > request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
-  // Legion futures for inc_decoding and spec_infer
-  BatchConfigFuture last_bcf;
-  InferenceResultFuture last_irf;
-  TreeVerifyBatchConfigFuture last_tree_bcf;
-  InferenceResultFuture last_tree_irf;
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,

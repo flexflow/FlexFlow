@@ -53,26 +53,6 @@ RequestManager::RequestManager()
   max_requests_per_batch = -1;
   max_tokens_per_batch = -1;
   max_sequence_length = -1;
-  {
-    // Initialize futures for spec infer
-    TreeVerifyBatchConfig tree_bc;
-    InferenceResult tree_ir;
-    TreeVerifyBatchConfigFuture tree_bcf =
-        Future::from_value<TreeVerifyBatchConfig>(tree_bc);
-    InferenceResultFuture tree_irf =
-        Future::from_value<InferenceResult>(tree_ir);
-    last_tree_bcf = tree_bcf;
-    last_tree_irf = tree_irf;
-  }
-  {
-    // Initialize futures for incr decoding
-    BatchConfig bc;
-    InferenceResult ir;
-    BatchConfigFuture bcf = Future::from_value<BatchConfig>(bc);
-    InferenceResultFuture irf = Future::from_value<InferenceResult>(ir);
-    last_bcf = bcf;
-    last_irf = irf;
-  }
 }
 
 void RequestManager::set_max_requests_per_batch(int max_num_requests) {
@@ -192,7 +172,7 @@ RequestManager::RequestGuid
               << prompt.size() << ".\n";
 
     printf("tokens size: %zu\n", request.tokens.size());
-    return 0;
+    return INVALID_GUID;
   } else {
     request.initial_len = prompt.size();
     request.tokens = prompt;
@@ -212,7 +192,10 @@ RequestManager::RequestGuid
 
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
-  request_to_promise[request.guid] = new std::promise<void>();
+  {
+    const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
+    request_to_promise[request.guid] = new std::promise<void>();
+  }
 
   if (verbose) {
     std::cout << "new req: " << request.tokens.size() << std::endl;
@@ -251,7 +234,7 @@ RequestManager::RequestGuid
               << tokens.size() << ".\n";
 
     printf("tokens size: %zu\n", tokens.size());
-    return 0;
+    return INVALID_GUID;
   }
   for (int i = 0; i < tokens.size(); i++) {
     std::cout << "[" << i << "]" << tokens.at(i) << "\n";
@@ -273,7 +256,10 @@ RequestManager::RequestGuid
 
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
-  request_to_promise[request.guid] = new std::promise<void>();
+  {
+    const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
+    request_to_promise[request.guid] = new std::promise<void>();
+  }
 
   {
     std::string output = "New request tokens:";
@@ -328,10 +314,9 @@ size_t RequestManager::get_num_processed_requests() {
 
 BatchConfigFuture
     RequestManager::prepare_next_batch(BatchConfigFuture const &old_bc,
-                                       InferenceResultFuture const &result) {
-  Runtime *runtime = Runtime::get_runtime();
-  Context ctx = Runtime::get_context();
-
+                                       InferenceResultFuture const &result,
+                                       Context ctx,
+                                       Runtime* runtime) {
   RequestManager *rm = this;
   TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_TASK_ID,
                         TaskArgument(&rm, sizeof(RequestManager *)));
@@ -1828,7 +1813,10 @@ std::vector<GenerationResult>
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
   for (int i = 0; i < prompts.size(); i++) {
-    guids.push_back(rm->register_new_request(prompts.at(i), max_seq_length));
+    RequestManager::RequestGuid guid = rm->register_new_request(prompts.at(i), max_seq_length);
+    if (guid != RequestManager::INVALID_GUID) {
+      guids.push_back(guid);
+    }
   }
   std::vector<GenerationResult> results;
   for (int i = 0; i < guids.size(); i++) {
@@ -1855,6 +1843,11 @@ void RequestManager::background_serving_task(
     Runtime *runtime) {
   RequestManager *rm = RequestManager::get_request_manager();
   FFModel *llm = *(FFModel **)task->args;
+  // Update FFModel's lg_hlr and lg_ctx to the current
+  // task's runtime and ctx, since all future legion tasks are
+  // launched in this task
+  llm->config.lg_hlr = runtime;
+  llm->config.lg_ctx = ctx;
   if (rm->get_num_ssms() == 0) {
     // No SSMs: perform incremental decoding
     rm->serve_incr_decoding(llm);
@@ -1866,6 +1859,8 @@ void RequestManager::background_serving_task(
 
 /*static*/
 void RequestManager::serve_incr_decoding(FFModel *llm) {
+  Context ctx = llm->config.lg_ctx;
+  Runtime* runtime = llm->config.lg_hlr;
   // Compile the llm
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->compile_model_and_allocate_buffer(llm);
@@ -1875,6 +1870,16 @@ void RequestManager::serve_incr_decoding(FFModel *llm) {
   im->model_weights_loaders[llm]->load_weights(llm);
   // init operators
   im->init_operators_inference(llm);
+  // Legion futures for inc_decoding and spec_infer
+  BatchConfigFuture last_bcf;
+  InferenceResultFuture last_irf;
+  {
+    // Initialize futures for incr decoding
+    BatchConfig bc;
+    InferenceResult ir;
+    last_bcf = Future::from_value<BatchConfig>(bc);
+    last_irf = Future::from_value<InferenceResult>(ir);
+  }
 
   std::queue<std::pair<BatchConfigFuture, InferenceResultFuture>>
       batch_pipeline;
@@ -1894,12 +1899,10 @@ void RequestManager::serve_incr_decoding(FFModel *llm) {
         break;
       }
     }
-    Runtime *runtime = Runtime::get_runtime();
-    Context ctx = Runtime::get_context();
     runtime->begin_trace(ctx, 12346 /*trace_id*/);
     auto const &next_batch = batch_pipeline.back();
     BatchConfigFuture bcf =
-        prepare_next_batch(next_batch.first, next_batch.second);
+        prepare_next_batch(next_batch.first, next_batch.second, ctx, runtime);
     FutureMap fm = im->inference(llm, 0, bcf);
     assert(fm.get_future_map_domain().get_volume() == 1);
     InferenceResultFuture irf = fm.get_future(0);
@@ -1915,6 +1918,18 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   std::queue<std::pair<TreeVerifyBatchConfigFuture, InferenceResultFuture>>
       batch_pipeline;
+  // Legion futures for inc_decoding and spec_infer
+  TreeVerifyBatchConfigFuture last_tree_bcf;
+  InferenceResultFuture last_tree_irf;
+  {
+    // Initialize futures for spec infer
+    TreeVerifyBatchConfig tree_bc;
+    InferenceResult tree_ir;
+    last_tree_bcf =
+        Future::from_value<TreeVerifyBatchConfig>(tree_bc);
+    last_tree_irf =
+        Future::from_value<InferenceResult>(tree_ir);
+  }
   batch_pipeline.push(std::make_pair(last_tree_bcf, last_tree_irf));
   while (!is_background_server_terminated()) {
     if (batch_pipeline.size() >= 4) {

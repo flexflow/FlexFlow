@@ -280,6 +280,9 @@ void FlexFlow::top_level_task(Task const *task,
         model.generate(prompts, 128 /*max_sequence_length*/);
   }
 
+  // terminate the request manager by stopping the background thread
+  rm->terminate_background_server();
+
   // Execution fence
   {
     Future future = runtime->issue_execution_fence(ctx);
@@ -289,8 +292,6 @@ void FlexFlow::top_level_task(Task const *task,
   // float* data
   std::cout << "----------inference finished--------------" << std::endl;
 
-  // terminate the request manager by stopping the background thread
-  rm->terminate_background_server();
 
   // free tokenizer space in memory
 }
