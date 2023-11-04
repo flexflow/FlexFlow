@@ -110,7 +110,7 @@ for model_pair in model_pairs:
                 continue
 
             _, after_slash = big_model.rsplit("/", maxsplit=1)
-            filename = "spec_infer-" + "python-" + after_slash + ("-full_prec-" if full_precision else "-half_prec-") + f"{tp}_tp_{pp}_pp"
+            filename = "spec_infer-" + "python-" + after_slash.lower() + ("-full_prec-" if full_precision else "-half_prec-") + f"{tp}_tp_{pp}_pp"
             test_configs_file = "./" + filename + ".json"
             output_file = os.path.join(output_folder, filename+".txt")
             
