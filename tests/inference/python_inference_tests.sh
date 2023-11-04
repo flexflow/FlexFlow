@@ -108,7 +108,7 @@ function compare_decoding_steps_spec_infer_incr_decoding {
 
 ############ Alignment between speculative inference and incremental decoding #################
 # Full precision
-diff <(tail -n +3 "../../inference/output/incr_dec-python--hf-full_prec-1_tp_4_pp.txt") <(tail -n +3 "../../inference/output/spec_infer-python-llama-2-7b-hf-full_prec-1_tp_4_pp.txt")
+diff <(tail -n +3 "../../inference/output/incr_dec-python-llama-2-7b-hf-full_prec-1_tp_4_pp.txt") <(tail -n +3 "../../inference/output/spec_infer-python-llama-2-7b-hf-full_prec-1_tp_4_pp.txt")
 diff <(tail -n +3 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-1_tp_4_pp.txt")   <(tail -n +3 "../../inference/output/spec_infer-python-opt-6.7b-full_prec-1_tp_4_pp.txt")
 # Half precision
 check_partial_token_match "../../inference/output/incr_dec-python-llama-2-7b-hf-half_prec-1_tp_4_pp.txt" "../../inference/output/spec_infer-python-llama-2-7b-hf-half_prec-1_tp_4_pp.txt"
