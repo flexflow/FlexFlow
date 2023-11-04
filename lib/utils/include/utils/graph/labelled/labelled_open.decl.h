@@ -61,6 +61,7 @@ public:
                                         OutputLabel>() const;
 
   operator OpenMultiDiGraphView() const;
+  operator LabelledOpenMultiDiGraphView() const;
 
   friend void swap(LabelledOpenMultiDiGraph &lhs,
                    LabelledOpenMultiDiGraph &rhs) {
@@ -111,7 +112,7 @@ public:
       create();
 
 private:
-  LabelledOpenMultiDiGraph(cow_ptr_t<Interface> ptr);
+  LabelledOpenMultiDiGraph(cow_ptr_t<Interface> ptr): ptr(ptr) {}
 
 private:
   cow_ptr_t<Interface> ptr;

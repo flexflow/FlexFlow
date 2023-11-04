@@ -6,6 +6,7 @@
 #include "output_labelled_interfaces.h"
 #include "standard_labelled_interfaces.h"
 #include "utils/graph/open_graphs.h"
+#include "views.h"
 
 namespace FlexFlow {
 
@@ -106,6 +107,16 @@ public:
   void add_edge(OutputMultiDiEdge const &e, OutputLabel const &label) {
     this->add_edge(e);
     this->output_map.insert({e, label});
+  }
+  
+  void add_edge(InputMultiDiEdge const &e) {
+    OpenMultiDiEdge edge{e};
+    this->base_graph.add_edge(edge);
+  }
+
+  void add_edge(OutputMultiDiEdge const &e) {
+    OpenMultiDiEdge edge{e};
+    this->base_graph.add_edge(edge);
   }
 
   InputLabel const &at(InputMultiDiEdge const &e) const {
