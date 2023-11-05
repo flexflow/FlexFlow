@@ -140,19 +140,19 @@ void RequestManager::register_output_filepath(
 }
 
 int RequestManager::register_ssm_model(FFModel *model) {
-  int model_id = models.size();
-  models.push_back(model);
-  std::cout << "Register new model with id: " << model_id << std::endl;
+  int model_id = ssm_models.size();
+  ssm_models.push_back(model);
+  std::cout << "Register new ssm model with id: " << model_id << std::endl;
   return model_id;
 }
 
-FFModel *RequestManager::get_model(int model_id) {
-  assert(model_id < models.size());
-  return models[model_id];
+FFModel *RequestManager::get_ssm_model(int model_id) {
+  assert(model_id < ssm_models.size());
+  return ssm_models[model_id];
 }
 
 size_t RequestManager::get_num_ssms() {
-  return models.size();
+  return ssm_models.size();
 }
 
 RequestManager::RequestGuid
@@ -183,7 +183,7 @@ RequestManager::RequestGuid
                  "decoding."
               << std::endl;
   } else {
-    std::cout << "Num of models: " << get_num_ssms() << std::endl;
+    std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
     for (int i = 0; i < get_num_ssms(); i++) {
       BeamTree beam_tree = BeamTree{};
       request.beam_trees.push_back(beam_tree);
@@ -247,7 +247,7 @@ RequestManager::RequestGuid
                  "decoding."
               << std::endl;
   } else {
-    std::cout << "Num of models: " << get_num_ssms() << std::endl;
+    std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
     for (int i = 0; i < get_num_ssms(); i++) {
       BeamTree beam_tree = BeamTree{};
       request.beam_trees.push_back(beam_tree);
@@ -509,9 +509,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
 BeamSearchBatchConfigFuture RequestManager::prepare_next_batch_init(
     TreeVerifyBatchConfigFuture const &old_bc,
     InferenceResultFuture const &result,
-    int model_id) {
-  Runtime *runtime = Runtime::get_runtime();
-  Context ctx = Runtime::get_context();
+    int model_id,
+    Context ctx,
+    Runtime* runtime) {
 
   RequestManager *rm = this;
   TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
@@ -875,9 +875,9 @@ BeamSearchBatchConfig
 /***** Beam Search Phase *****/
 BeamSearchBatchConfigFuture RequestManager::prepare_next_batch_beam(
     BeamSearchBatchConfigFuture const &old_bc,
-    BeamInferenceResultFuture const &result) {
-  Runtime *runtime = Runtime::get_runtime();
-  Context ctx = Runtime::get_context();
+    BeamInferenceResultFuture const &result,
+    Context ctx,
+    Runtime* runtime) {
 
   RequestManager *rm = this;
   TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
@@ -1079,9 +1079,9 @@ BeamSearchBatchConfig
 /***** Verify Phase *****/
 
 TreeVerifyBatchConfigFuture RequestManager::prepare_next_batch_verify(
-    std::vector<BeamSearchBatchConfigFuture> const &old_batches) {
-  Runtime *runtime = Runtime::get_runtime();
-  Context ctx = Runtime::get_context();
+    std::vector<BeamSearchBatchConfigFuture> const &old_batches,
+    Context ctx,
+    Runtime *runtime) {
 
   RequestManager *rm = this;
   TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
@@ -1843,11 +1843,20 @@ void RequestManager::background_serving_task(
     Runtime *runtime) {
   RequestManager *rm = RequestManager::get_request_manager();
   FFModel *llm = *(FFModel **)task->args;
-  // Update FFModel's lg_hlr and lg_ctx to the current
-  // task's runtime and ctx, since all future legion tasks are
-  // launched in this task
-  llm->config.lg_hlr = runtime;
-  llm->config.lg_ctx = ctx;
+  {
+    // Update FFModel's lg_hlr and lg_ctx to the current
+    // task's runtime and ctx, since all future legion tasks are
+    // launched in this task
+    llm->config.lg_hlr = runtime;
+    llm->config.lg_ctx = ctx;
+    // Update the lg_hlr and lg_ctx of all SSMs' FFConfig
+    // since all future legion tasks are launched in this task
+    for (size_t i = 0; i < rm->get_num_ssms(); i++) {
+      FFModel *ssm = rm->get_ssm_model(i);
+      ssm->config.lg_hlr = runtime;
+      ssm->config.lg_ctx = ctx;
+    }
+  }
   if (rm->get_num_ssms() == 0) {
     // No SSMs: perform incremental decoding
     rm->serve_incr_decoding(llm);
@@ -1915,7 +1924,31 @@ void RequestManager::serve_incr_decoding(FFModel *llm) {
 
 /*static*/
 void RequestManager::serve_spec_infer(FFModel *llm) {
+  Context ctx = llm->config.lg_ctx;
+  Runtime* runtime = llm->config.lg_hlr;
   InferenceManager *im = InferenceManager::get_inference_manager();
+  {
+    // Compile the llm
+    im->compile_model_and_allocate_buffer(llm);
+    assert(im->model_weights_loaders.find(llm) !=
+           im->model_weights_loaders.end());
+    // Load model weights
+    im->model_weights_loaders[llm]->load_weights(llm);
+    // init operators
+    im->init_operators_inference(llm);
+  }
+  for (size_t i = 0; i < get_num_ssms(); i++) {
+    // Compile the i-th ssm
+    FFModel *ssm = get_ssm_model(i);
+    im->compile_model_and_allocate_buffer(ssm);
+    assert(im->model_weights_loaders.find(llm) !=
+           im->model_weights_loaders.end());
+    // Load model weights
+    im->model_weights_loaders[ssm]->load_weights(ssm);
+    // init operators
+    im->init_operators_inference(ssm);
+  }
+
   std::queue<std::pair<TreeVerifyBatchConfigFuture, InferenceResultFuture>>
       batch_pipeline;
   // Legion futures for inc_decoding and spec_infer
@@ -1948,13 +1981,11 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
     }
     auto const &next_batch = batch_pipeline.back();
     BeamSearchBatchConfigFuture beam_bcf =
-        prepare_next_batch_init(next_batch.first, next_batch.second, 0);
+        prepare_next_batch_init(next_batch.first, next_batch.second, 0, ctx, runtime);
     std::vector<BeamSearchBatchConfigFuture> beam_bcf_vec(get_num_ssms());
     for (size_t ssm_id = 0; ssm_id < get_num_ssms(); ssm_id++) {
       beam_bcf_vec[ssm_id] = beam_bcf;
     }
-    Runtime *runtime = Runtime::get_runtime();
-    Context ctx = Runtime::get_context();
     runtime->begin_trace(ctx, 12345 /*trace_id*/);
 
     for (size_t i = 0; i < get_num_ssms(); i++) {
@@ -1962,16 +1993,16 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
            depth++) {
         beam_bcf = beam_bcf_vec[i];
 
-        FutureMap fm = im->inference(get_model(i), 0, beam_bcf_vec[i]);
+        FutureMap fm = im->inference(get_ssm_model(i), 0, beam_bcf_vec[i]);
         assert(fm.get_future_map_domain().get_volume() == 1);
         BeamInferenceResultFuture beam_irf = fm.get_future(0);
-        beam_bcf_vec[i] = prepare_next_batch_beam(beam_bcf_vec[i], beam_irf);
+        beam_bcf_vec[i] = prepare_next_batch_beam(beam_bcf_vec[i], beam_irf, ctx, runtime);
       }
     }
     // Token Tree Verification
     {
       TreeVerifyBatchConfigFuture tree_bcf =
-          prepare_next_batch_verify(beam_bcf_vec);
+          prepare_next_batch_verify(beam_bcf_vec, ctx, runtime);
       FutureMap fm = im->inference(llm, 0, tree_bcf);
       assert(fm.get_future_map_domain().get_volume() == 1);
       InferenceResultFuture tree_irf = fm.get_future(0);

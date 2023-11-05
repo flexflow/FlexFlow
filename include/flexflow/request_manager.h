@@ -119,7 +119,7 @@ public:
                           std::string const &path);
   void register_output_filepath(std::string const &);
 
-  FFModel *get_model(int model_id);
+  FFModel *get_ssm_model(int model_id);
 
   void serve_incr_decoding(FFModel *model);
   void serve_spec_infer(FFModel *model);
@@ -147,7 +147,9 @@ public:
                               BeamInferenceResult const &result);
   BeamSearchBatchConfigFuture
       prepare_next_batch_beam(BeamSearchBatchConfigFuture const &old_bc,
-                              BeamInferenceResultFuture const &result);
+                              BeamInferenceResultFuture const &result,
+                              Legion::Context ctx,
+                              Legion::Runtime* runtime);
   BeamSearchBatchConfig
       prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
                               InferenceResult const &result,
@@ -155,11 +157,15 @@ public:
   BeamSearchBatchConfigFuture
       prepare_next_batch_init(TreeVerifyBatchConfigFuture const &old_bc,
                               InferenceResultFuture const &result,
-                              int model_id);
+                              int model_id,
+                              Legion::Context ctx,
+                              Legion::Runtime* runtime);
   TreeVerifyBatchConfig prepare_next_batch_verify(
       std::vector<BeamSearchBatchConfig> const &old_batches);
   TreeVerifyBatchConfigFuture prepare_next_batch_verify(
-      std::vector<BeamSearchBatchConfigFuture> const &old_batches);
+      std::vector<BeamSearchBatchConfigFuture> const &old_batches,
+      Legion::Context ctx,
+      Legion::Runtime* runtime);
 
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
@@ -254,7 +260,7 @@ private:
       committed_tokens;
 
   // Multi-model support
-  std::vector<FFModel *> models;
+  std::vector<FFModel *> ssm_models;
 
   // Performance profiling
   size_t num_processed_requests;
