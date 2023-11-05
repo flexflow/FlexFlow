@@ -91,7 +91,7 @@ def decompress(packed_data, config):
 if __name__ == "__main__":
     # torch.set_default_tensor_type(torch.HalfTensor)
     # torch.set_default_tensor_type(torch.cuda.HalfTensor)
-    model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-7b-hf")
+    model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-2-7b-hf")
     config = CompressionConfig(
         num_bits=8, group_size=32, group_dim=0, symmetric=False)
     for name, params in model.named_parameters():

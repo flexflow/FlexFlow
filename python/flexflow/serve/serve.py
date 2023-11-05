@@ -81,7 +81,7 @@ class LLM:
     ):
         """Create the LLM object
 
-        :param model_name: The name of the HuggingFace model to use. E.g. 'decapoda-research/llama-7b-hf'
+        :param model_name: The name of the HuggingFace model to use. E.g. 'meta-llama/Llama-2-7b-hf'
         :type model_name: str
         :param data_type: The data type to use for the tensors (e.g. DataType.DT_FLOAT for full precision, or DataType.DT_HALF for half precision), defaults to DataType.DT_HALF
         :type data_type: DataType, optional
@@ -439,7 +439,7 @@ class SSM(LLM):
     ):
         """Create the SSM object
 
-        :param model_name: The name of the HuggingFace model to use. E.g. 'decapoda-research/llama-7b-hf'
+        :param model_name: The name of the HuggingFace model to use. E.g. 'meta-llama/Llama-2-7b-hf'
         :type model_name: str
         :param data_type: The data type to use for the tensors (e.g. DataType.DT_FLOAT for full precision, or DataType.DT_HALF for half precision), defaults to DataType.DT_HALF
         :type data_type: DataType, optional
