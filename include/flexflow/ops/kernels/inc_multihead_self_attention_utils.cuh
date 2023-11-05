@@ -125,6 +125,16 @@ inline __device__ float4 mul(float4 a, float4 b) {
   return c;
 }
 
+// template <>
+// inline __device__ float4 mul(half4 a, half4 b) {
+//   float4 c;
+//   c.x = a.x * b.x;
+//   c.y = a.y * b.y;
+//   c.z = a.z * b.z;
+//   c.w = a.w * b.w;
+//   return c;
+// }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 inline __device__ float fma(float a, float b, float c) {
@@ -307,7 +317,7 @@ inline __device__ float qk_dot_(K_vec const (&q)[N], K_vec const (&k)[N]) {
   // use float32 to get better accuracy
   using Vec_sum = typename Vec_fp32_<K_vec>::Type;
   // Compute the parallel products for Q*K^T (treat vector lanes separately).
-  Vec_sum qk_vec = mul<Vec_sum, K_vec, K_vec>(q[0], k[0]);
+  Vec_sum qk_vec = mul<Vec_sum, Vec_sum, Vec_sum>(cast_to_float(q[0]), cast_to_float(k[0]));
 #pragma unroll
   for (int ii = 1; ii < N; ++ii) {
     qk_vec = FlexFlow::fma(cast_to_float(q[ii]), cast_to_float(k[ii]), qk_vec);
@@ -378,9 +388,9 @@ inline size_t smem_size_in_bytes(int hidden_size_per_head,
 
   // store the extra memory if half percision
   size_t logits_sz = qk_sz;
-  if (sizeof(DT) != 4) {
-    logits_sz = div_up(max_sequence_length + 1, 4) * 4 * sizeof(DT);
-  }
+  // if (sizeof(DT) != 4) {
+  //   logits_sz = div_up(max_sequence_length + 1, 4) * 4 * sizeof(DT);
+  // }
 
   // The total size needed during softmax.
   size_t softmax_sz = qk_sz + logits_sz;
@@ -421,9 +431,9 @@ inline void smem_size_in_bytes_tree(int hidden_size_per_head,
 
   // store the extra memory if half percision
   size_t logits_sz = qk_sz;
-  if (sizeof(DT) != 4) {
-    logits_sz = div_up(max_qk_length + 1, 4) * 4 * sizeof(DT);
-  }
+  // if (sizeof(DT) != 4) {
+  //   logits_sz = div_up(max_qk_length + 1, 4) * 4 * sizeof(DT);
+  // }
 
   // The total size needed during softmax.
   size_t softmax_sz = qk_sz + logits_sz;
