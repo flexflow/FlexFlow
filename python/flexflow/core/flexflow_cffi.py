@@ -4199,12 +4199,12 @@ class RequestManager(object):
         return ffc().flexflow_request_manager_set_max_sequence_length(
             self.handle, max_length)
 
-    def start_llm_server(self, model):
+    def start_server(self, model):
         return ffc().flexflow_request_manager_start_background_server(
             self.handle, model.handle
         )
 
-    def stop_llm_server(self):
+    def stop_server(self):
         return ffc().flexflow_request_manager_terminate_background_server(
             self.handle)
 # -----------------------------------------------------------------------

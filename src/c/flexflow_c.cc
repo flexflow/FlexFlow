@@ -2618,14 +2618,14 @@ void flexflow_request_manager_start_background_server(
   FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
   DEBUG_PRINT(
       "[RequestManager] start background server %p %p", handle, model_handle);
-  return handle->start_background_server(model_handle);
+  handle->start_background_server(model_handle);
 }
 
-void flexflow_request_manager_start_background_server(
+void flexflow_request_manager_terminate_background_server(
     flexflow_request_manager_t handle_) {
   RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
   DEBUG_PRINT("[RequestManager] terminate background server %p", handle);
-  return handle->terminate_background_server();
+  handle->terminate_background_server();
 }
 
 // -----------------------------------------------------------------------

@@ -419,11 +419,11 @@ class LLM:
         else:
             assert False, "Please pass a non-empty string or list of strings"
 
-    def start_llm_server(self):
-        self.rm.start_llm_server(self.model.ffmodel)
+    def start_server(self):
+        self.rm.start_server(self.model.ffmodel)
 
-    def stop_llm_server(self):
-        self.rm.stop_llm_server()
+    def stop_server(self):
+        self.rm.stop_server()
 
 class SSM(LLM):
     """This class creates a SSM (Small-Speculative Model) object based on a model from HuggingFace"""
