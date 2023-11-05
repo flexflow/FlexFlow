@@ -38,6 +38,9 @@ fi
 
 # LLAMA (small model)
 ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model JackFram/llama-160m-base -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M.txt -pipeline-parallelism-degree 4
+
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 1 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model JackFram/llama-160m-base -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M.txt -pipeline-parallelism-degree 1
+
 # LLAMA (small model, half precision)
 ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model JackFram/llama-160m-base -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_half.txt -pipeline-parallelism-degree 4
 
@@ -243,14 +246,14 @@ python3 ./huggingface_inference.py --model-name "facebook/opt-6.7b" --use-full-p
 python3 ./huggingface_inference.py --model-name "tiiuae/falcon-7b" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_falcon_7B.txt" --max-length 128
 
 
-diff <(tail -n +2 "../../inference/output/huggingface_llama_160M.txt") <(tail -n +5 "../../inference/output/incr_decoding_llama_160M.txt")
-diff <(tail -n +2 "../../inference/output/huggingface_llama_160M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_llama_160M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
-diff <(tail -n +2 "../../inference/output/huggingface_llama_2_7B.txt") <(tail -n +5 "../../inference/output/incr_decoding_llama_2_7B.txt")
-diff <(tail -n +2 "../../inference/output/huggingface_llama_2_7B_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_llama_2_7B_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
+diff "../../inference/output/huggingface_llama_160M.txt" <(tail -n +5 "../../inference/output/incr_decoding_llama_160M.txt")
+diff <(cat "../../inference/output/huggingface_llama_160M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_llama_160M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
+diff "../../inference/output/huggingface_llama_2_7B.txt" <(tail -n +5 "../../inference/output/incr_decoding_llama_2_7B.txt")
+diff <(cat "../../inference/output/huggingface_llama_2_7B_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_llama_2_7B_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
 
-diff <(tail -n +2 "../../inference/output/huggingface_opt_125M.txt") <(tail -n +5 "../../inference/output/incr_decoding_opt_125M.txt")
-diff <(tail -n +2 "../../inference/output/huggingface_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
-diff <(tail -n +2 "../../inference/output/huggingface_opt_6B.txt") <(tail -n +5 "../../inference/output/incr_decoding_opt_6B.txt")
-# diff <(tail -n +2 "../../inference/output/huggingface_opt_6B_half.txt") <(tail -n +5 "../../inference/output/incr_decoding_opt_6B_half.txt")
-diff <(tail -n +2 "../../inference/output/huggingface_falcon_7B.txt") <(tail -n +5 "../../inference/output/incr_decoding_falcon_7B.txt")
+diff "../../inference/output/huggingface_opt_125M.txt" <(tail -n +5 "../../inference/output/incr_decoding_opt_125M.txt")
+diff <(cat "../../inference/output/huggingface_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20) <(tail -n +5 "../../inference/output/incr_decoding_opt_125M_half.txt" | tr -s '[:space:]' '\n' | head -n 20)
+diff "../../inference/output/huggingface_opt_6B.txt" <(tail -n +5 "../../inference/output/incr_decoding_opt_6B.txt")
+# diff "../../inference/output/huggingface_opt_6B_half.txt" <(tail -n +5 "../../inference/output/incr_decoding_opt_6B_half.txt")
+diff "../../inference/output/huggingface_falcon_7B.txt" <(tail -n +5 "../../inference/output/incr_decoding_falcon_7B.txt")
 
