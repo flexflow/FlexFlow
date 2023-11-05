@@ -174,7 +174,6 @@ __global__ void compute_attention_kernel_generation_kernel(
       }
       qk_max = mask ? qk_max : fmaxf(qk_max, qk);
       qk_smem[ti - first_step] = mask ? 0.f : qk;
-      ;
       // if (blockIdx.y == 0 && blockIdx.x == 0) {
       //   printf("qk projkkkhead1 %.10f, %d %d\n", qk, tlength, ti);
       // }
@@ -259,7 +258,6 @@ __global__ void compute_attention_kernel_generation_kernel(
   //   printf("softmax %.10f\n", qk_smem[8]);
   //   printf("softmax %.10f\n", qk_smem[9]);
   //   printf("softmax %.10f\n", qk_smem[10]);
-  //   printf("softmax %.10f\n", qk_smem[11]);
   // }
 
   // value projection
@@ -324,13 +322,6 @@ __global__ void compute_attention_kernel_generation_kernel(
       __syncthreads();
     }
   }
-
-  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
-  //   printf("V value10 %.10f\n", out.x);
-  //   printf("V value10 %.10f\n", out.y);
-  //   printf("V value10 %.10f\n", out.z);
-  //   printf("V value10 %.10f\n", out.w);
-  // }
 
   // Output the final values.
   if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
@@ -721,17 +712,17 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 #define LAUNCH_ATTENTION_SCORE_KERNEL(                                         \
-    DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)      \
+    DT, Dh, Dh_MAX, THDS_PER_KEY, THREADS_PER_VALUE, THDS_PER_BLOCK, stream)   \
   smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                               \
                                    BatchConfig::max_sequence_length(),         \
-                                   THDS_PER_VALUE,                             \
+                                   THREADS_PER_VALUE,                          \
                                    THDS_PER_BLOCK);                            \
   compute_attention_kernel_generation_kernel<DT,                               \
                                              THDS_PER_BLOCK,                   \
                                              Dh,                               \
                                              Dh_MAX,                           \
                                              THDS_PER_KEY,                     \
-                                             THDS_PER_VALUE>                   \
+                                             THREADS_PER_VALUE>                \
       <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                             \
           static_cast<DT *>(m->devQKVProjArray),                               \
           static_cast<DT *>(m->keyCache),                                      \
@@ -754,24 +745,17 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
   size_t smem_sz;
-  switch (per_head_size) {
-    case 64:
-      LAUNCH_ATTENTION_SCORE_KERNEL(DT, 64, 64, 4, 16, 128, stream);
-      break;
-    case 128:
-      LAUNCH_ATTENTION_SCORE_KERNEL(DT, 128, 128, 4, 32, 128, stream);
-      break;
-    default:
-      assert(false);
+  if (per_head_size == 64) {
+    constexpr int THREADS_PER_VALUE_64 = threads_per_value_t<DT, 64>::value;
+    LAUNCH_ATTENTION_SCORE_KERNEL(
+        DT, 64, 64, 4, THREADS_PER_VALUE_64, 128, stream);
+  } else if (per_head_size == 128) {
+    constexpr int THREADS_PER_VALUE_128 = threads_per_value_t<DT, 128>::value;
+    LAUNCH_ATTENTION_SCORE_KERNEL(
+        DT, 128, 128, 4, THREADS_PER_VALUE_128, 128, stream);
+  } else {
+    assert(false && "a unsupported head size");
   }
-
-  // // check for errors
-  // cudaError_t error = cudaGetLastError();
-  // if (error != cudaSuccess) {
-
-  //   fprintf(stderr, "ERROR: %s \n", cudaGetErrorString(error));
-  //   assert(false);
-  // }
 }
 
 template <typename DT>
@@ -845,15 +829,15 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       cudaStream_t stream) {
   // here because we need position info in inference 1
 
-  cudaEvent_t t_start, t_end1, t_end2, t_end3, t_end4, t_end5, t_end6;
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end1);
-  cudaEventCreate(&t_end2);
-  cudaEventCreate(&t_end3);
-  cudaEventCreate(&t_end4);
-  cudaEventCreate(&t_end5);
-  cudaEventCreate(&t_end6);
-  cudaEventRecord(t_start, stream);
+  // cudaEvent_t t_start, t_end1, t_end2, t_end3, t_end4, t_end5, t_end6;
+  // cudaEventCreate(&t_start);
+  // cudaEventCreate(&t_end1);
+  // cudaEventCreate(&t_end2);
+  // cudaEventCreate(&t_end3);
+  // cudaEventCreate(&t_end4);
+  // cudaEventCreate(&t_end5);
+  // cudaEventCreate(&t_end6);
+  // cudaEventRecord(t_start, stream);
 
   if (m->offload && m->biasSize > 0) {
     cudaMemcpyAsync(
@@ -873,12 +857,12 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       sizeof(BatchConfig::PerRequestInfo),
                   cudaMemcpyHostToDevice,
                   stream);
-  float elapsed4 = 0;
-  cudaEventRecord(t_end4, stream);
-  checkCUDA(cudaEventSynchronize(t_end4));
-  checkCUDA(cudaEventElapsedTime(&elapsed4, t_start, t_end4));
-  printf("IncMultiHeadSelfAttention copy element kernel time = %.9fms\n",
-         elapsed4);
+  // float elapsed4 = 0;
+  // cudaEventRecord(t_end4, stream);
+  // checkCUDA(cudaEventSynchronize(t_end4));
+  // checkCUDA(cudaEventElapsedTime(&elapsed4, t_start, t_end4));
+  // printf("IncMultiHeadSelfAttention copy element kernel time = %.9fms\n",
+  //        elapsed4);
 
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
@@ -889,61 +873,69 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
                      stream);
-  float elapsed1 = 0;
-  cudaEventRecord(t_end1, stream);
-  checkCUDA(cudaEventSynchronize(t_end1));
-  checkCUDA(cudaEventElapsedTime(&elapsed1, t_start, t_end1));
-  printf("IncMultiHeadSelfAttention qkv kernel time = %.9fms\n", elapsed1);
+  // float elapsed1 = 0;
+  // cudaEventRecord(t_end1, stream);
+  // checkCUDA(cudaEventSynchronize(t_end1));
+  // checkCUDA(cudaEventElapsedTime(&elapsed1, t_start, t_end1));
+  // printf("IncMultiHeadSelfAttention qkv kernel time = %.9fms\n", elapsed1);
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
 
-  float elapsed2 = 0;
-  cudaEventRecord(t_end2, stream);
-  checkCUDA(cudaEventSynchronize(t_end2));
-  checkCUDA(cudaEventElapsedTime(&elapsed2, t_start, t_end2));
-  printf("IncMultiHeadSelfAttention update kv cache time = %.9fms\n", elapsed2);
+  // float elapsed2 = 0;
+  // cudaEventRecord(t_end2, stream);
+  // checkCUDA(cudaEventSynchronize(t_end2));
+  // checkCUDA(cudaEventElapsedTime(&elapsed2, t_start, t_end2));
+  // printf("IncMultiHeadSelfAttention update kv cache time = %.9fms\n",
+  // elapsed2); printf("num of generation tokens: %d\n",
+  // bc->num_generation_tokens);
 
   if (bc->num_generation_tokens > 0) {
     // phase 3: Compute attention score for generation tokens
     compute_attention_kernel_generation<DT>(
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
-  float elapsed3 = 0;
-  cudaEventRecord(t_end3, stream);
-  checkCUDA(cudaEventSynchronize(t_end3));
-  checkCUDA(cudaEventElapsedTime(&elapsed3, t_start, t_end3));
-  printf("IncMultiHeadSelfAttention attention score time = %.9fms\n", elapsed3);
+
+  // float elapsed3 = 0;
+  // cudaEventRecord(t_end3, stream);
+  // checkCUDA(cudaEventSynchronize(t_end3));
+  // checkCUDA(cudaEventElapsedTime(&elapsed3, t_start, t_end3));
+  // printf("IncMultiHeadSelfAttention attention score time = %.9fms\n",
+  // elapsed3);
 
   if (bc->num_tokens > bc->num_generation_tokens) {
     // phase 4: Compute attention score for prompt tokens;
     compute_attention_kernel_prompt(
         m, bc, shard_id, bias_ptr, weight_ptr, stream);
   }
-  float elapsed5 = 0;
-  cudaEventRecord(t_end5, stream);
-  checkCUDA(cudaEventSynchronize(t_end5));
-  checkCUDA(cudaEventElapsedTime(&elapsed5, t_start, t_end5));
-  printf("IncMultiHeadSelfAttention is there a thing? time = %.9fms\n",
-         elapsed5);
+  // float elapsed5 = 0;
+  // cudaEventRecord(t_end5, stream);
+  // checkCUDA(cudaEventSynchronize(t_end5));
+  // checkCUDA(cudaEventElapsedTime(&elapsed5, t_start, t_end5));
+  // printf("IncMultiHeadSelfAttention is there a thing? time = %.9fms\n",
+  //        elapsed5);
 
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
   compute_o_prod_bias(
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
-  float elapsed6 = 0;
-  cudaEventRecord(t_end6, stream);
-  checkCUDA(cudaEventSynchronize(t_end6));
-  checkCUDA(cudaEventElapsedTime(&elapsed6, t_start, t_end6));
-  printf("IncMultiHeadSelfAttention final projection time = %.9fms\n",
-         elapsed6);
+  // float elapsed6 = 0;
+  // cudaEventRecord(t_end6, stream);
+  // checkCUDA(cudaEventSynchronize(t_end6));
+  // checkCUDA(cudaEventElapsedTime(&elapsed6, t_start, t_end6));
+  // printf("IncMultiHeadSelfAttention final projection time = %.9fms\n",
+  //        elapsed6);
 
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end1);
-  cudaEventDestroy(t_end2);
-  cudaEventDestroy(t_end3);
-  cudaEventDestroy(t_end4);
-  cudaEventDestroy(t_end5);
-  cudaEventDestroy(t_end6);
+  // cudaEventDestroy(t_start);
+  // cudaEventDestroy(t_end1);
+  // cudaEventDestroy(t_end2);
+  // cudaEventDestroy(t_end3);
+  // cudaEventDestroy(t_end4);
+  // cudaEventDestroy(t_end5);
+  // cudaEventDestroy(t_end6);
+
+  // if(bc->num_active_tokens() == 1){
+  //    assert(false);
+  // }
 }
 
 } // namespace IncMultiHeadAttention

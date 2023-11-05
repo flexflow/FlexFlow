@@ -81,10 +81,6 @@ __global__ void compute_attention_kernel_fused_kernel(
                       request_infos[request_idx].num_tokens_in_batch;
   int const qlength = request_infos[request_idx].num_tokens_in_batch;
 
-  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
-  //   printf("tree metadata %d, %d\n", qlength, tlength);
-  // }
-
   int first_token_idx = 0;
   for (int r = 0; r < request_idx; r++) {
     first_token_idx += request_infos[request_idx].num_tokens_in_batch;
@@ -201,9 +197,11 @@ __global__ void compute_attention_kernel_fused_kernel(
 
     // softmax
     float inv_sum = __fdividef(1.f, exp_sum + 1.e-6);
+
     for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
       qk_smem[ti * qlength + qi] *= inv_sum;
     }
+
     __syncthreads();
   }
 
@@ -713,8 +711,12 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
 
 #define LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(                             \
     DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)      \
-  smem_size_in_bytes_tree<DT>(                                                 \
-      m->qProjSize, THDS_PER_VALUE, THDS_PER_BLOCK, bc, smem_sz);              \
+  smem_size_in_bytes_tree<DT>(m->qProjSize,                                    \
+                              BatchConfig::max_sequence_length(),              \
+                              THDS_PER_VALUE,                                  \
+                              THDS_PER_BLOCK,                                  \
+                              bc,                                              \
+                              smem_sz);                                        \
   compute_attention_kernel_fused_kernel<DT,                                    \
                                         THDS_PER_BLOCK,                        \
                                         Dh,                                    \
@@ -767,25 +769,16 @@ void compute_attention_kernel_fused(IncMultiHeadSelfAttentionMeta const *m,
 
   // 0->qk production size, 1->total shared size
   int smem_sz[2];
-  switch (per_head_size) {
-    case 64:
-      LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(DT, 64, 64, 4, 16, 128, stream);
-      break;
-    case 128:
-      LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(
-          DT, 128, 128, 4, 32, 128, stream);
-      break;
-    default:
-      assert(false);
-  }
-  // print_tensor<float>((float *)m->attn_heads, 32, "qkv");
-
-  // check for errors
-  cudaError_t error = cudaGetLastError();
-  if (error != cudaSuccess) {
-
-    fprintf(stderr, "ERROR: %s \n", cudaGetErrorString(error));
-    assert(false);
+  if (per_head_size == 64) {
+    constexpr int THREADS_PER_VALUE_64 = threads_per_value_t<DT, 64>::value;
+    LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(
+        DT, 64, 64, 4, THREADS_PER_VALUE_64, 128, stream);
+  } else if (per_head_size == 128) {
+    constexpr int THREADS_PER_VALUE_128 = threads_per_value_t<DT, 128>::value;
+    LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(
+        DT, 128, 128, 4, THREADS_PER_VALUE_128, 128, stream);
+  } else {
+    assert(false && "a unsupported head size");
   }
 }
 
@@ -814,6 +807,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
       bias_ptr = static_cast<DT *>(m->bias_ptr);
     }
   }
+
   // copy committed tokens info to GPU for the commit_tokens kernel
   // Note that m->num_active_tokens stores the number of active
   // tokens in the previous batch, which is needed for committing
@@ -875,13 +869,6 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       bias_ptr,
                       processed_tokens_in_batch,
                       stream);
-  // if(bc->num_active_tokens() == 5){
-  // print_tensor<float>((float *)output_ptr, 32, "output");
-  // }
-  // phase 3: Compute attention score
-  // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-  // compute_attention_kernel(
-  //     m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
 }
 
 } // namespace TreeIncMultiHeadAttention
@@ -901,10 +888,14 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
   bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end);
-  cudaEventRecord(t_start, stream);
+  // cudaEventCreate(&t_start);
+  // cudaEventCreate(&t_end);
+  // cudaEventRecord(t_start, stream);
   if (m->profiling) {
+    // cudaEvent_t t_start, t_end;
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
@@ -964,10 +955,10 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
-  cudaEventRecord(t_end, stream);
-  checkCUDA(cudaEventSynchronize(t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
+  // cudaEventRecord(t_end, stream);
+  // checkCUDA(cudaEventSynchronize(t_end));
+  // cudaEventDestroy(t_start);
+  // cudaEventDestroy(t_end);
 
   // if(bc->num_active_tokens() == 5){
 
