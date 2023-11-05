@@ -75,11 +75,10 @@ class InferenceMode(Enum):
 class ModelType(Enum):
     UNKNOWN = 3001
     LLAMA = 3002
-    LLAMA2 = 3003
-    OPT = 3004
-    FALCON = 3005
-    STARCODER = 3006
-    MPT = 3007
+    OPT = 3003
+    FALCON = 3004
+    STARCODER = 3005
+    MPT = 3006
 
 
 class OpType(Enum):

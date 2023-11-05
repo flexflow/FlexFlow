@@ -44,7 +44,7 @@ if [[ "$PYTHON_INFERENCE_TESTS" == "ON" ]]; then
 fi
 if [[ "$CPP_INFERENCE_TESTS" == "ON" ]]; then
     # Manually download the weights in both half and full precision
-    python3 ../inference/utils/download_hf_model.py "meta-llama/Llama-2-7b-hf" "JackFram/llama-160m-base" "facebook/opt-6.7b" "facebook/opt-125m" "tiiuae/falcon-7b"
+    python3 ../inference/utils/download_hf_model.py "meta-llama/Llama-2-7b-hf" "JackFram/llama-160m" "facebook/opt-6.7b" "facebook/opt-125m" "tiiuae/falcon-7b"
     echo "Running C++ inference tests..."
     ./inference/cpp_inference_tests.sh
 fi

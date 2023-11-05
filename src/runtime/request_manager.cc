@@ -115,7 +115,7 @@ void RequestManager::register_tokenizer(ModelType type,
   this->eos_token_id = eos_token_id;
   std::string tokenizer_folder =
       (!path.empty() && path.back() != '/') ? path + '/' : path;
-  if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
+  if (model_type == ModelType::LLAMA) {
     bool path_to_file = !path.empty() &&
                         (path.size() >= strlen("tokenizer.model")) &&
                         path.find("tokenizer.model") ==
@@ -418,7 +418,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         std::string output = this->tokenizer_->Decode(request.tokens);
         // Unlike Huggingface, the sentencepiece C++ library automatically
         // removes the BOS token
-        if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
+        if (model_type == ModelType::LLAMA &&
+            request.tokens.at(0) == bos_token_id) {
           output = "<s> " + output;
         }
 
@@ -632,7 +633,8 @@ BeamSearchBatchConfig
         std::string output = this->tokenizer_->Decode(request.tokens);
         // Unlike Huggingface, the sentencepiece C++ library automatically
         // removes the BOS token
-        if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
+        if (model_type == ModelType::LLAMA &&
+            request.tokens.at(0) == bos_token_id) {
           output = "<s> " + output;
         }
         {
@@ -748,7 +750,8 @@ BeamSearchBatchConfig
         std::string output = this->tokenizer_->Decode(request.tokens);
         // Unlike Huggingface, the sentencepiece C++ library automatically
         // removes the BOS token
-        if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
+        if (model_type == ModelType::LLAMA &&
+            request.tokens.at(0) == bos_token_id) {
           output = "<s> " + output;
         }
         log_req_mgr.print("Output: %s", output.c_str());
@@ -786,7 +789,8 @@ BeamSearchBatchConfig
       std::string output = this->tokenizer_->Decode(request.tokens);
       // Unlike Huggingface, the sentencepiece C++ library automatically removes
       // the BOS token
-      if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
+      if (model_type == ModelType::LLAMA &&
+          request.tokens.at(0) == bos_token_id) {
         output = "<s> " + output;
       }
       log_req_mgr.print("Output: %s", output.c_str());
