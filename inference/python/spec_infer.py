@@ -43,7 +43,7 @@ def get_configs():
             # required parameters
             "num_gpus": 4,
             "memory_per_gpu": 14000,
-            "zero_copy_memory_per_node": 30000,
+            "zero_copy_memory_per_node": 40000,
             # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
@@ -60,7 +60,7 @@ def get_configs():
         }
         llm_configs = {
             # required llm arguments
-            "llm_model": "decapoda-research/llama-7b-hf",
+            "llm_model": "meta-llama/Llama-2-7b-hf",
             # optional llm parameters
             "cache_path": "",
             "refresh_cache": False,
@@ -154,7 +154,7 @@ def main():
         prompts = [s for s in json.load(open(configs.prompt))]
         results = llm.generate(prompts)
     else:
-        result = llm.generate("Here are some travel tips for Tokyo:\n")
+        result = llm.generate("Three tips for staying healthy are: ")
     llm.stop_llm_server()
 
 
