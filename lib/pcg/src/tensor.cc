@@ -10,4 +10,4 @@ TensorShape Tensor::get_shape() const {
   return TensorShape(*this);
 }
 
-}
+} // namespace FlexFlow

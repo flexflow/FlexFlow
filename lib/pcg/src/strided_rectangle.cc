@@ -15,8 +15,8 @@ size_t StridedRectangle::at(FFOrdered<num_points_t> const &coord) const {
   return idx;
 }
 
-
-StridedRectangleSide::StridedRectangleSide(side_size_t const &num, int stride) : num_points(num.value()), stride(stride) {}
+StridedRectangleSide::StridedRectangleSide(side_size_t const &num, int stride)
+    : num_points(num.value()), stride(stride) {}
 
 side_size_t StridedRectangleSide::at(num_points_t) const {
   NOT_IMPLEMENTED();
@@ -30,6 +30,8 @@ side_size_t StridedRectangleSide::get_size() const {
   NOT_IMPLEMENTED();
 }
 
-StridedRectangle::StridedRectangle(std::vector<StridedRectangleSide> const &sides) : sides(sides) {} 
+StridedRectangle::StridedRectangle(
+    std::vector<StridedRectangleSide> const &sides)
+    : sides(sides) {}
 
 } // namespace FlexFlow

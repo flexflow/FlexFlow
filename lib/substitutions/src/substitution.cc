@@ -108,7 +108,8 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
                             OperatorAttrAssignment const &assignment) {
   std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> assignments;
   for (auto const &[key, expr] : assignment.assignments) {
-    OperatorAttributeValue value = evaluate_graph_attribute_expr(graph, match, expr);
+    OperatorAttributeValue value =
+        evaluate_graph_attribute_expr(graph, match, expr);
     assignments.emplace(key, value);
   }
   assert(contains_key(assignments, OperatorAttributeKey::OP_TYPE));

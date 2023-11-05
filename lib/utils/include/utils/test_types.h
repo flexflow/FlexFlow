@@ -129,13 +129,11 @@ using cmp = test_type_t<CMP>;
 using hash_cmp = test_type_t<HASHABLE, CMP>;
 using plusable = test_type_t<PLUS, PLUSEQ>;
 using fmtable = test_type_t<FMT>;
-using well_behaved_value_type = test_type_t<
-  EQ, 
-  COPY_CONSTRUCTIBLE,
-  MOVE_CONSTRUCTIBLE,
-  COPY_ASSIGNABLE,
-  MOVE_ASSIGNABLE
->;
+using well_behaved_value_type = test_type_t<EQ,
+                                            COPY_CONSTRUCTIBLE,
+                                            MOVE_CONSTRUCTIBLE,
+                                            COPY_ASSIGNABLE,
+                                            MOVE_ASSIGNABLE>;
 
 } // namespace test_types
 } // namespace FlexFlow

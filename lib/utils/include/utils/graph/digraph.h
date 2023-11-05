@@ -33,7 +33,7 @@ protected:
   using GraphView::GraphView;
 
 private:
-  IDiGraphView& get_ptr() const;
+  IDiGraphView &get_ptr() const;
 
   friend struct GraphInternal;
 };
@@ -68,7 +68,7 @@ protected:
   using DiGraphView::DiGraphView;
 
 private:
-  IDiGraph& get_ptr() const;
+  IDiGraph &get_ptr() const;
 
   friend struct GraphInternal;
 };

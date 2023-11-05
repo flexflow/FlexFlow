@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_CORE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_CORE_H
 
+#include "fmt.decl.h"
 #include "hash-utils-core.h"
+#include "test_types.h"
 #include "type_traits_core.h"
 #include <vector>
-#include "test_types.h"
-#include "fmt.decl.h"
 
 namespace FlexFlow {
 
@@ -16,7 +16,8 @@ template <typename T, typename... Args>
 struct enable_if_valid<T, void_t<Args...>, Args...> : type_identity<T> {};
 
 /* required_wrapper_impl<decltype(std::declval<T>() + std::declval<T>())>> */
-/* operator+(required_wrapper_impl<T> const &lhs, required_wrapper_impl<T> const &rhs) { */
+/* operator+(required_wrapper_impl<T> const &lhs, required_wrapper_impl<T> const
+ * &rhs) { */
 /*   /1* return 1; *1/ */
 /* } */
 
@@ -61,13 +62,13 @@ public:
 
   template <typename TT = T>
   enable_if_t<is_neq_comparable<TT>::value, bool>
-  operator==(required_wrapper_impl const &rhs) const {
+      operator==(required_wrapper_impl const &rhs) const {
     return this->m_value == rhs.m_value;
   }
 
   template <typename TT = T>
   enable_if_t<is_neq_comparable<TT>::value, bool>
-  operator==(TT const &rhs) const {
+      operator==(TT const &rhs) const {
     return this->m_value == rhs;
   }
 
@@ -83,12 +84,14 @@ public:
 
   template <typename TT = T>
   enable_if_t<is_neq_comparable<TT>::value, bool>
-  operator!=(required_wrapper_impl const &rhs) const {
+      operator!=(required_wrapper_impl const &rhs) const {
     return this->m_value != rhs.m_value;
   }
 
-  /* friend enable_if_t<is_plusable<T>::value, required_wrapper_impl<decltype(std::declval<T>() + std::declval<T>())>> */
-  /* operator+(required_wrapper_impl<T> const &lhs, required_wrapper_impl<T> const &rhs) { */
+  /* friend enable_if_t<is_plusable<T>::value,
+   * required_wrapper_impl<decltype(std::declval<T>() + std::declval<T>())>> */
+  /* operator+(required_wrapper_impl<T> const &lhs, required_wrapper_impl<T>
+   * const &rhs) { */
   /*   /1* return 1; *1/ */
   /* } */
   /* required_wrapper_impl<Out> */
@@ -133,16 +136,20 @@ struct required_inheritance_impl : public T {
   required_inheritance_impl(required_inheritance_impl<T> const &) = default;
   required_inheritance_impl(required_inheritance_impl<T> &&) = default;
 
-  required_inheritance_impl<T> &operator=(required_inheritance_impl<T> const &) = default;
-  required_inheritance_impl<T> &operator=(required_inheritance_impl<T> &&) = default;
+  required_inheritance_impl<T> &
+      operator=(required_inheritance_impl<T> const &) = default;
+  required_inheritance_impl<T> &
+      operator=(required_inheritance_impl<T> &&) = default;
 
   friend enable_if_t<is_equal_comparable<T>::value, bool>
-    operator==(required_inheritance_impl<T> const &lhs, required_inheritance_impl<T> const &rhs) {
+      operator==(required_inheritance_impl<T> const &lhs,
+                 required_inheritance_impl<T> const &rhs) {
     return static_cast<T>(lhs) == static_cast<T>(rhs);
   }
 
   friend enable_if_t<is_neq_comparable<T>::value, bool>
-    operator!=(required_inheritance_impl<T> const &lhs, required_inheritance_impl<T> const &rhs) {
+      operator!=(required_inheritance_impl<T> const &lhs,
+                 required_inheritance_impl<T> const &rhs) {
     return static_cast<T>(lhs) != static_cast<T>(rhs);
   }
 
@@ -196,11 +203,17 @@ struct remove_req<req<T>> {
 template <typename T>
 using remove_req_t = typename remove_req<T>::type;
 
-static_assert(is_equal_comparable<required_inheritance_impl<std::vector<int>>>::value, "");
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(required_inheritance_impl<test_types::well_behaved_value_type>);
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(required_wrapper_impl<test_types::well_behaved_value_type>);
+static_assert(
+    is_equal_comparable<required_inheritance_impl<std::vector<int>>>::value,
+    "");
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(
+    required_inheritance_impl<test_types::well_behaved_value_type>);
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(
+    required_wrapper_impl<test_types::well_behaved_value_type>);
 
-/* static_assert(std::is_same<decltype(std::declval<required_wrapper_impl<int>>() + std::declval<required_wrapper_impl<int>>()), required_wrapper_impl<int>>::value, ""); */
+/* static_assert(std::is_same<decltype(std::declval<required_wrapper_impl<int>>()
+ * + std::declval<required_wrapper_impl<int>>()),
+ * required_wrapper_impl<int>>::value, ""); */
 
 static_assert(std::is_copy_constructible<req<int>>::value, "");
 

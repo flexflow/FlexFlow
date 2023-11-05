@@ -1,5 +1,5 @@
-#include "substitutions/get_attribute.h"
 #include "op-attrs/get_op_type.h"
+#include "substitutions/get_attribute.h"
 
 namespace FlexFlow {
 
@@ -141,7 +141,9 @@ optional<OperatorAttributeValue> get_attribute(LinearAttrs const &p,
     case OperatorAttributeKey::OUT_CHANNELS:
       return p.out_channels;
     case OperatorAttributeKey::USE_BIAS:
-      return bool(p.use_bias); // NOTE(@wmd): Without casting to bool, it will return an OperatorAttributeValue with underlying type int. Might be a req issue.
+      return bool(p.use_bias); // NOTE(@wmd): Without casting to bool, it will
+                               // return an OperatorAttributeValue with
+                               // underlying type int. Might be a req issue.
     case OperatorAttributeKey::DATA_TYPE:
       return p.data_type;
     case OperatorAttributeKey::ACTIVATION:

@@ -52,7 +52,7 @@ std::unordered_set<Node> Graph::query_nodes(NodeQuery const &q) const {
   return get_ptr().query_nodes(q);
 }
 
-IGraph& Graph::get_ptr() const {
+IGraph &Graph::get_ptr() const {
   return *std::reinterpret_pointer_cast<IGraph>(GraphView::ptr.get_mutable());
 }
 

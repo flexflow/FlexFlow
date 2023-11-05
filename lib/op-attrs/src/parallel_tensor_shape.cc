@@ -88,7 +88,7 @@ ParallelDim const &ParallelTensorShape::operator[](ff_dim_t const &d) const {
   return dims.at(d);
 }
 ParallelDim &ParallelTensorShape::operator[](ff_dim_t const &d) {
-  return dims.at(d);  
+  return dims.at(d);
 }
 
 TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &) {

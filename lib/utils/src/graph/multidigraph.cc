@@ -66,7 +66,8 @@ std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const &q) const {
 }
 
 IMultiDiGraph &MultiDiGraph::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IMultiDiGraph>(GraphView::ptr.get_mutable());
+  return *std::reinterpret_pointer_cast<IMultiDiGraph>(
+      GraphView::ptr.get_mutable());
 }
 
 } // namespace FlexFlow

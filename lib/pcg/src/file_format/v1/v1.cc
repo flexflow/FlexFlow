@@ -10,4 +10,4 @@ V1Layer to_v1(Layer const &) {
   NOT_IMPLEMENTED();
 }
 
-}
+} // namespace FlexFlow

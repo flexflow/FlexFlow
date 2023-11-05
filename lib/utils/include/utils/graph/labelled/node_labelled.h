@@ -53,8 +53,9 @@ protected:
   using MultiDiGraphView::MultiDiGraphView;
 
 private:
-  Interface& get_ptr() const {
-    return *std::reinterpret_pointer_cast<Interface>(GraphView::ptr.get_mutable());
+  Interface &get_ptr() const {
+    return *std::reinterpret_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
   }
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(NodeLabelledMultiDiGraphView<int>);
@@ -115,8 +116,9 @@ protected:
   NodeLabelledMultiDiGraph(cow_ptr_t<Interface> ptr, cow_ptr_t<NodeLabelIf> nl)
       : NodeLabelledMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
 
-  Interface& get_ptr() const {
-    return *std::reinterpret_pointer_cast<Interface>(GraphView::ptr.get_mutable());
+  Interface &get_ptr() const {
+    return *std::reinterpret_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
   }
 
   cow_ptr_t<NodeLabelIf> nl;

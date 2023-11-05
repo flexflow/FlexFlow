@@ -99,7 +99,7 @@ public:
   using GraphView::GraphView;
 
 private:
-  IGraph& get_ptr() const;
+  IGraph &get_ptr() const;
 
   friend struct GraphInternal;
 };

@@ -213,12 +213,12 @@ optional<bool> satisfies(ParallelTensor const &params,
 }
 
 bool operator_satisfies(Operator const &params,
-                         OperatorPattern const &pattern) {
+                        OperatorPattern const &pattern) {
   return satisfies(params, pattern).value_or(false);
 }
 
 bool parallel_tensor_satisfies(ParallelTensor const &params,
-                         ParallelTensorPattern const &pattern) {
+                               ParallelTensorPattern const &pattern) {
   return satisfies(params, pattern).value_or(false);
 }
 

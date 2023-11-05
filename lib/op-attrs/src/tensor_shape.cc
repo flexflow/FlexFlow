@@ -10,4 +10,4 @@ size_t TensorShape::operator[](ff_dim_t d) const {
   return dims[d];
 }
 
-}
+} // namespace FlexFlow

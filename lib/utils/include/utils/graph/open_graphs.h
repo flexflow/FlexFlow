@@ -66,7 +66,7 @@ public:
 private:
   using OpenMultiDiGraphView::OpenMultiDiGraphView;
 
-  IOpenMultiDiGraph& get_ptr() const;
+  IOpenMultiDiGraph &get_ptr() const;
 
   friend struct GraphInternal;
 };
@@ -96,7 +96,7 @@ public:
 private:
   using MultiDiGraphView::MultiDiGraphView;
 
-  IUpwardOpenMultiDiGraphView& get_ptr() const;
+  IUpwardOpenMultiDiGraphView &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UpwardOpenMultiDiGraphView);
 
@@ -129,7 +129,7 @@ public:
 private:
   using UpwardOpenMultiDiGraphView::UpwardOpenMultiDiGraphView;
 
-  IUpwardOpenMultiDiGraph& get_ptr() const;
+  IUpwardOpenMultiDiGraph &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UpwardOpenMultiDiGraph);
 
@@ -158,7 +158,7 @@ public:
 private:
   using MultiDiGraphView::MultiDiGraphView;
 
-  Interface& get_ptr() const;
+  Interface &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DownwardOpenMultiDiGraphView);
 
@@ -193,7 +193,7 @@ public:
 private:
   using DownwardOpenMultiDiGraphView::DownwardOpenMultiDiGraphView;
 
-  IDownwardOpenMultiDiGraph& get_ptr() const;
+  IDownwardOpenMultiDiGraph &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DownwardOpenMultiDiGraph);
 

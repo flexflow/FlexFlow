@@ -29,33 +29,33 @@ std::vector<ParallelDimMappingRecord> construct_output_parallel_dims(
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
     int input_idx,
     int output_idx) {
-      NOT_IMPLEMENTED();
-    }
+  NOT_IMPLEMENTED();
+}
 
 std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
     int input_idx,
     int weight_idx) {
-      NOT_IMPLEMENTED();
-    }
+  NOT_IMPLEMENTED();
+}
 
-ParallelDimMappingRecord construct_output_parallel_dims(
-    int input_dim,
-    int output_dim,
-    int input_idx,
-    int output_idx,
-    tl::optional<MappingOperation> operation) {
-      NOT_IMPLEMENTED();
-    }
+ParallelDimMappingRecord
+    construct_output_parallel_dims(int input_dim,
+                                   int output_dim,
+                                   int input_idx,
+                                   int output_idx,
+                                   tl::optional<MappingOperation> operation) {
+  NOT_IMPLEMENTED();
+}
 
-ParallelDimMappingRecord construct_weight_parallel_dims(
-    int input_dim,
-    int weight_dim,
-    int input_idx,
-    int weight_idx,
-    tl::optional<MappingOperation> operation) {
-      NOT_IMPLEMENTED();
-    }
+ParallelDimMappingRecord
+    construct_weight_parallel_dims(int input_dim,
+                                   int weight_dim,
+                                   int input_idx,
+                                   int weight_idx,
+                                   tl::optional<MappingOperation> operation) {
+  NOT_IMPLEMENTED();
+}
 /* int get_output_to_input_dim_mapping(ParallelTensorShape const &output, */
 /*                                     int output_dim, */
 /*                                     ParallelTensorShape const &input) { */
