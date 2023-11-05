@@ -37,7 +37,7 @@ if(INSTALL_DIR)
   set(CMAKE_INSTALL_PREFIX ${INSTALL_DIR} CACHE PATH "Installation directory" FORCE)
 else()
   # Install DIR not set. Use default, unless a conda environment is active
-  if (DEFINED ENV{CONDA_PREFIX})
+  if (DEFINED ENV{CONDA_PREFIX} AND NOT FF_BUILD_FROM_PYPI)
     set(CONDA_PREFIX $ENV{CONDA_PREFIX})
     # Set CMAKE_INSTALL_PREFIX to the Conda environment's installation path
     set(CMAKE_INSTALL_PREFIX ${CONDA_PREFIX} CACHE PATH "Installation directory" FORCE)
