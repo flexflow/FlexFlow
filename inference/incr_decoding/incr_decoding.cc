@@ -292,7 +292,6 @@ void FlexFlow::top_level_task(Task const *task,
   // float* data
   std::cout << "----------inference finished--------------" << std::endl;
 
-
   // free tokenizer space in memory
 }
 

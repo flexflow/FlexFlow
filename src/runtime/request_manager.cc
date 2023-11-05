@@ -316,7 +316,7 @@ BatchConfigFuture
     RequestManager::prepare_next_batch(BatchConfigFuture const &old_bc,
                                        InferenceResultFuture const &result,
                                        Context ctx,
-                                       Runtime* runtime) {
+                                       Runtime *runtime) {
   RequestManager *rm = this;
   TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_TASK_ID,
                         TaskArgument(&rm, sizeof(RequestManager *)));
@@ -511,7 +511,7 @@ BeamSearchBatchConfigFuture RequestManager::prepare_next_batch_init(
     InferenceResultFuture const &result,
     int model_id,
     Context ctx,
-    Runtime* runtime) {
+    Runtime *runtime) {
 
   RequestManager *rm = this;
   TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
@@ -877,7 +877,7 @@ BeamSearchBatchConfigFuture RequestManager::prepare_next_batch_beam(
     BeamSearchBatchConfigFuture const &old_bc,
     BeamInferenceResultFuture const &result,
     Context ctx,
-    Runtime* runtime) {
+    Runtime *runtime) {
 
   RequestManager *rm = this;
   TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
@@ -1813,7 +1813,8 @@ std::vector<GenerationResult>
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
   for (int i = 0; i < prompts.size(); i++) {
-    RequestManager::RequestGuid guid = rm->register_new_request(prompts.at(i), max_seq_length);
+    RequestManager::RequestGuid guid =
+        rm->register_new_request(prompts.at(i), max_seq_length);
     if (guid != RequestManager::INVALID_GUID) {
       guids.push_back(guid);
     }
@@ -1869,7 +1870,7 @@ void RequestManager::background_serving_task(
 /*static*/
 void RequestManager::serve_incr_decoding(FFModel *llm) {
   Context ctx = llm->config.lg_ctx;
-  Runtime* runtime = llm->config.lg_hlr;
+  Runtime *runtime = llm->config.lg_hlr;
   // Compile the llm
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->compile_model_and_allocate_buffer(llm);
@@ -1925,7 +1926,7 @@ void RequestManager::serve_incr_decoding(FFModel *llm) {
 /*static*/
 void RequestManager::serve_spec_infer(FFModel *llm) {
   Context ctx = llm->config.lg_ctx;
-  Runtime* runtime = llm->config.lg_hlr;
+  Runtime *runtime = llm->config.lg_hlr;
   InferenceManager *im = InferenceManager::get_inference_manager();
   {
     // Compile the llm
@@ -1958,10 +1959,8 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
     // Initialize futures for spec infer
     TreeVerifyBatchConfig tree_bc;
     InferenceResult tree_ir;
-    last_tree_bcf =
-        Future::from_value<TreeVerifyBatchConfig>(tree_bc);
-    last_tree_irf =
-        Future::from_value<InferenceResult>(tree_ir);
+    last_tree_bcf = Future::from_value<TreeVerifyBatchConfig>(tree_bc);
+    last_tree_irf = Future::from_value<InferenceResult>(tree_ir);
   }
   batch_pipeline.push(std::make_pair(last_tree_bcf, last_tree_irf));
   while (!is_background_server_terminated()) {
@@ -1980,8 +1979,8 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
       }
     }
     auto const &next_batch = batch_pipeline.back();
-    BeamSearchBatchConfigFuture beam_bcf =
-        prepare_next_batch_init(next_batch.first, next_batch.second, 0, ctx, runtime);
+    BeamSearchBatchConfigFuture beam_bcf = prepare_next_batch_init(
+        next_batch.first, next_batch.second, 0, ctx, runtime);
     std::vector<BeamSearchBatchConfigFuture> beam_bcf_vec(get_num_ssms());
     for (size_t ssm_id = 0; ssm_id < get_num_ssms(); ssm_id++) {
       beam_bcf_vec[ssm_id] = beam_bcf;
@@ -1996,7 +1995,8 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
         FutureMap fm = im->inference(get_ssm_model(i), 0, beam_bcf_vec[i]);
         assert(fm.get_future_map_domain().get_volume() == 1);
         BeamInferenceResultFuture beam_irf = fm.get_future(0);
-        beam_bcf_vec[i] = prepare_next_batch_beam(beam_bcf_vec[i], beam_irf, ctx, runtime);
+        beam_bcf_vec[i] =
+            prepare_next_batch_beam(beam_bcf_vec[i], beam_irf, ctx, runtime);
       }
     }
     // Token Tree Verification

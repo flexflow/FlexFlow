@@ -39,10 +39,10 @@ public:
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   Legion::FutureMap
       inference(FFModel *model, int index, BatchConfigFuture const &bc);
-  void load_input_tokens_from_batch_config(FFModel* model,
+  void load_input_tokens_from_batch_config(FFModel *model,
                                            BatchConfigFuture const &bc,
                                            ParallelTensor const input);
-  void load_positions(FFModel* model,
+  void load_positions(FFModel *model,
                       BatchConfigFuture const &bc,
                       ParallelTensor position_input,
                       int offset);
@@ -141,7 +141,7 @@ public:
   BatchConfigFuture prepare_next_batch(BatchConfigFuture const &bc,
                                        InferenceResultFuture const &result,
                                        Legion::Context ctx,
-                                       Legion::Runtime* runtime);
+                                       Legion::Runtime *runtime);
   BeamSearchBatchConfig
       prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
                               BeamInferenceResult const &result);
@@ -149,7 +149,7 @@ public:
       prepare_next_batch_beam(BeamSearchBatchConfigFuture const &old_bc,
                               BeamInferenceResultFuture const &result,
                               Legion::Context ctx,
-                              Legion::Runtime* runtime);
+                              Legion::Runtime *runtime);
   BeamSearchBatchConfig
       prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
                               InferenceResult const &result,
@@ -159,13 +159,13 @@ public:
                               InferenceResultFuture const &result,
                               int model_id,
                               Legion::Context ctx,
-                              Legion::Runtime* runtime);
+                              Legion::Runtime *runtime);
   TreeVerifyBatchConfig prepare_next_batch_verify(
       std::vector<BeamSearchBatchConfig> const &old_batches);
   TreeVerifyBatchConfigFuture prepare_next_batch_verify(
       std::vector<BeamSearchBatchConfigFuture> const &old_batches,
       Legion::Context ctx,
-      Legion::Runtime* runtime);
+      Legion::Runtime *runtime);
 
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
@@ -248,7 +248,7 @@ private:
   std::unordered_map<RequestGuid, Request> all_requests;
   std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;
-  std::unordered_map<RequestGuid, std::promise<void>* > request_to_promise;
+  std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
 
