@@ -30,7 +30,7 @@ protected:
   using DiGraphView::DiGraphView;
 
 private:
-  cow_ptr_t<IMultiDiGraphView> get_ptr() const;
+  IMultiDiGraphView& get_ptr() const;
 
   friend struct GraphInternal;
 };
@@ -67,7 +67,7 @@ public:
 private:
   using MultiDiGraphView::MultiDiGraphView;
 
-  cow_ptr_t<IMultiDiGraph> get_ptr() const;
+  IMultiDiGraph &get_ptr() const;
 
   friend struct GraphInternal;
 };

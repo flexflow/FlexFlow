@@ -21,40 +21,44 @@ InputMultiDiEdgeQuery InputMultiDiEdgeQuery::none() {
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
   MultiDiEdgeQuery e = *this;
-  if (!is_matchall(e.srcs)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
-  e.srcs = nodes;
+  // if (!is_matchall(e.srcs)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
+  // e.srcs = nodes;
+  e.srcs = query_intersection(nodes, e.srcs);
   return e;
 }
 
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
   MultiDiEdgeQuery e = *this;
-  if (!is_matchall(e.dsts)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
-  e.dsts = nodes;
+  // if (!is_matchall(e.dsts)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
+  // e.dsts = nodes;
+  e.dsts = query_intersection(nodes, e.dsts);
   return e;
 }
 
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_src_idxs(query_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e{*this};
-  if (!is_matchall(e.srcIdxs)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
-  e.srcIdxs = idxs;
+  // if (!is_matchall(e.srcIdxs)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
+  // e.srcIdxs = idxs;
+  e.srcIdxs = query_intersection(idxs, e.srcIdxs);
   return e;
 }
 
 MultiDiEdgeQuery
     MultiDiEdgeQuery::with_dst_idxs(query_set<NodePort> const &idxs) const {
   MultiDiEdgeQuery e = *this;
-  if (!is_matchall(e.dstIdxs)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
-  e.dstIdxs = idxs;
+  // if (!is_matchall(e.dstIdxs)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
+  // e.dstIdxs = idxs;
+  e.dstIdxs = query_intersection(idxs, e.dstIdxs);
   return e;
 }
 
@@ -121,21 +125,31 @@ MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &lhs,
 OutputMultiDiEdgeQuery
     OutputMultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
   OutputMultiDiEdgeQuery e = *this;
-  if (!is_matchall(e.srcs)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
-  e.srcs = nodes;
+  // if (!is_matchall(e.srcs)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
+  // e.srcs = nodes;
+  e.srcs = query_intersection(nodes, e.srcs);
   return e;
 }
 
 InputMultiDiEdgeQuery
     InputMultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
   InputMultiDiEdgeQuery e = *this;
-  if (!is_matchall(e.dsts)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
-  e.dsts = nodes;
+  // if (!is_matchall(e.dsts)) {
+  //   throw mk_runtime_error("Expected matchall previous value");
+  // }
+  // e.dsts = nodes;
+  e.dsts = query_intersection(nodes, e.dsts);
   return e;
+}
+
+InputMultiDiEdge to_inputmultidiedge(MultiDiEdge const &e) {
+  return InputMultiDiEdge{e.dst, e.dst_idx, e.get_uid()};
+}
+
+OutputMultiDiEdge to_outputmultidiedge(MultiDiEdge const &e) {
+  return OutputMultiDiEdge{e.src, e.src_idx, e.get_uid()};
 }
 
 } // namespace FlexFlow

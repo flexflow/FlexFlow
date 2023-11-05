@@ -6,6 +6,37 @@
 
 namespace FlexFlow {
 
+void ComputationGraphBuilder::add_layer(Layer const &layer,
+                std::vector<Tensor> const &inputs,
+                std::vector<Tensor> const &weights,
+                std::vector<Tensor> const &outputs) {
+                  NOT_IMPLEMENTED();
+                }
+Tensor
+    ComputationGraphBuilder::add_layer(Layer const &layer,
+              std::vector<Tensor> const &inputs,
+              std::vector<std::pair<TensorShape, optional<Initializer>>> const
+                  &weight_shapes,
+              TensorShape const &output_shape) {
+                  NOT_IMPLEMENTED();}
+std::vector<Tensor>
+    ComputationGraphBuilder::add_layer(Layer const &layer,
+              std::vector<Tensor> const &inputs,
+              std::vector<std::pair<TensorShape, optional<Initializer>>> const
+                  &weight_shapes,
+              std::vector<TensorShape> const &output_shapes) {
+                  NOT_IMPLEMENTED();}
+
+
+Tensor ComputationGraphBuilder::broadcast(Tensor const &, TensorShape const &) {
+  NOT_IMPLEMENTED();
+}
+Tensor ComputationGraphBuilder::cast(Tensor const &input,
+            DataType dtype,
+            optional<std::string> const &name) {
+              NOT_IMPLEMENTED()
+            }
+            
 Tensor ComputationGraphBuilder::as_type(Tensor const &x,
                                         DataType data_type,
                                         std::string const &name) {
@@ -310,8 +341,12 @@ std::vector<Tensor>
   return this->add_layer(layer, {input}, {}, output_shapes);
 }
 
-TensorShape get_shape(Tensor const &);
-std::vector<TensorShape> get_shape(std::vector<Tensor> const &);
+TensorShape get_shape(Tensor const &t) {
+  return t.get_shape();
+}
+std::vector<TensorShape> get_shape(std::vector<Tensor> const &) {
+  NOT_IMPLEMENTED();
+}
 
 // Tensor ComputationGraphBuilder::aggregate(
 //     Tensor const &gate_preds,
@@ -349,6 +384,10 @@ Tensor ComputationGraphBuilder::batch_norm(
   TensorShape output_shape = get_output_shape(attrs, get_shape(input));
 
   return this->add_layer(layer, {input}, {}, output_shape);
+}
+
+TensorShape ComputationGraphBuilder::get_broadcast_target_shape(std::vector<TensorShape> const &) {
+  NOT_IMPLEMENTED();
 }
 
 } // namespace FlexFlow

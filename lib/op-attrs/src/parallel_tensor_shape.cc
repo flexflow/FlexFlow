@@ -4,6 +4,10 @@
 
 namespace FlexFlow {
 
+int ParallelTensorShape::num_dims() const {
+  return dims.num_dims();
+}
+
 static std::vector<ParallelDim> lift_dims(TensorDims const &dims) {
   std::vector<ParallelDim> lifted_dims;
   for (size_t dim_size : dims) {
@@ -37,4 +41,57 @@ bool is_valid(ParallelTensorShape const &shape) {
   return is_valid(shape.dims);
 }
 
+ParallelTensorDims::iterator ParallelTensorDims::begin() {
+  return data.begin();
+}
+
+ParallelTensorDims::const_iterator ParallelTensorDims::begin() const {
+  return data.begin();
+}
+
+ParallelTensorDims::const_iterator ParallelTensorDims::cbegin() const {
+  return data.cbegin();
+}
+
+ParallelTensorDims::iterator ParallelTensorDims::end() {
+  return data.end();
+}
+
+ParallelTensorDims::const_iterator ParallelTensorDims::end() const {
+  return data.end();
+}
+
+ParallelTensorDims::const_iterator ParallelTensorDims::cend() const {
+  return data.cend();
+}
+
+ParallelDim const &ParallelTensorDims::at(ff_dim_t const &d) const {
+  return data.at(d);
+}
+
+ParallelDim &ParallelTensorDims::at(ff_dim_t const &d) {
+  return data.at(d);
+}
+
+size_t ParallelTensorDims::num_dims() const {
+  return data.size();
+}
+
+ParallelDim const &ParallelTensorShape::at(ff_dim_t const &d) const {
+  return dims.at(d);
+}
+
+ParallelDim &ParallelTensorShape::at(ff_dim_t const &d) {
+  return dims.at(d);
+}
+ParallelDim const &ParallelTensorShape::operator[](ff_dim_t const &d) const {
+  return dims.at(d);
+}
+ParallelDim &ParallelTensorShape::operator[](ff_dim_t const &d) {
+  return dims.at(d);  
+}
+
+TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &) {
+  NOT_IMPLEMENTED();
+}
 } // namespace FlexFlow

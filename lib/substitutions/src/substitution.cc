@@ -108,7 +108,8 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
                             OperatorAttrAssignment const &assignment) {
   std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> assignments;
   for (auto const &[key, expr] : assignment.assignments) {
-    assignments.emplace(key, evaluate_graph_attribute_expr(graph, match, expr));
+    OperatorAttributeValue value = evaluate_graph_attribute_expr(graph, match, expr);
+    assignments.emplace(key, value);
   }
   assert(contains_key(assignments, OperatorAttributeKey::OP_TYPE));
   assert(holds_alternative<OperatorType>(
@@ -215,8 +216,8 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
               get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)),
               get<bool>(assignments.at(OperatorAttributeKey::USE_BIAS)),
               get<DataType>(assignments.at(OperatorAttributeKey::DATA_TYPE)),
-              get<Activation>(assignments.at(OperatorAttributeKey::DATA_TYPE)),
-              get<RegularizerAttrs>(
+              get<Activation>(assignments.at(OperatorAttributeKey::ACTIVATION)),
+              get<optional<RegularizerAttrs>>(
                   assignments.at(OperatorAttributeKey::REGULARIZER))},
           nullopt);
     case Op::MULTIHEAD_ATTENTION:
@@ -421,8 +422,9 @@ SubParallelComputationGraph
   }
   for (Node const &output_node :
        get_nodes(substitution.output_graph_expr.value())) {
-    Node new_node = new_pcg.add_node(get_operator_attrs(
-        pcg, match, substitution.output_graph_expr.value().at(output_node)));
+    Operator new_op = get_operator_attrs(
+        pcg, match, substitution.output_graph_expr.value().at(output_node));
+    Node new_node = new_pcg.add_node(new_op);
     node_mapping.equate(output_node, new_node);
   }
   for (OpenMultiDiEdge const &output_edge :
