@@ -119,6 +119,14 @@ public:
     this->base_graph.add_edge(edge);
   }
 
+  void add_edge(InputMultiDiEdge const &e) {
+    NOT_IMPLEMENTED();
+  }
+
+  void add_edge(OutputMultiDiEdge const &e) {
+     NOT_IMPLEMENTED();
+  }
+
   InputLabel const &at(InputMultiDiEdge const &e) const {
     return this->input_map.at(e);
   }
