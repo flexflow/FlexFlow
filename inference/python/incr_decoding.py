@@ -102,14 +102,14 @@ def main():
         max_seq_length=256,
         max_tokens_per_batch=64,
     )
-
+    llm.start_llm_server()
     # Generation begins!
     if len(configs.prompt) > 0:
         prompts = [s for s in json.load(open(configs.prompt))]
         results = llm.generate(prompts)
     else:
         result = llm.generate("Here are some travel tips for Tokyo:\n")
-
+    llm.stop_llm_server()
 
 if __name__ == "__main__":
     print("flexflow inference example (incremental decoding)")

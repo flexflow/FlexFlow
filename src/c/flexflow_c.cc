@@ -2612,6 +2612,22 @@ int flexflow_request_manager_register_ssm_model(
   return handle->register_ssm_model(model_handle);
 }
 
+void flexflow_request_manager_start_background_server(
+    flexflow_request_manager_t handle_, flexflow_model_t model_handle_) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  DEBUG_PRINT(
+      "[RequestManager] start background server %p %p", handle, model_handle);
+  return handle->start_background_server(model_handle);
+}
+
+void flexflow_request_manager_start_background_server(
+    flexflow_request_manager_t handle_) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[RequestManager] terminate background server %p", handle);
+  return handle->terminate_background_server();
+}
+
 // -----------------------------------------------------------------------
 // InferenceManager
 // -----------------------------------------------------------------------
@@ -2638,6 +2654,20 @@ void flexflow_inference_manager_init_operators_inference(
   FFModel *model = FFCObjectWrapper::unwrap(model_handle);
   DEBUG_PRINT("[InferenceManager] init_operators_inference %p", handle);
   handle->init_operators_inference(model);
+}
+
+void flexflow_inference_manager_register_model_weights_loader(
+    flexflow_inference_manager_t handle_,
+    flexflow_model_t model_handle,
+    flexflow_file_data_loader_t loader_handle) {
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_handle);
+  FileDataLoader *loader = FFCObjectWrapper::unwrap(loader_handle);
+  DEBUG_PRINT("[InferenceManager] register_model_weights_loader %p %p %p",
+              handle,
+              model,
+              loader);
+  handle->register_model_weights_loader(model, loader);
 }
 
 // -----------------------------------------------------------------------

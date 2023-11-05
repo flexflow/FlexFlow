@@ -283,26 +283,6 @@ class LLM:
         else:
             print(f"Loading '{self.model_name}' tokenizer from the cache...")
 
-    def __load_hf_weights(self):
-        print("Loading hf weights...")
-
-        self.download_hf_weights_if_needed()
-
-        # Create file data loader, load weights into tensors
-        model_configs = self.config_class(self.hf_config)
-
-        self.fileloader = FileDataLoader(
-            self.weights_path,
-            model_configs.num_attention_heads,
-            model_configs.num_key_value_heads,
-            model_configs.hidden_size,
-            model_configs.hidden_size // model_configs.num_attention_heads,
-            self.ffconfig.tensor_parallelism_degree,
-            self.data_type == DataType.DT_FLOAT
-        )
-
-        self.fileloader.load_weights(self.model.ffmodel, self.data_type)
-
     def compile(
         self,
         generation_config: GenerationConfig = GenerationConfig(),
@@ -384,8 +364,25 @@ class LLM:
         self.im = InferenceManager()
         self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
 
-        # Download the weights and tokenizer from huggingface (if needed) and load them
-        self.__load_hf_weights()
+        # Download the weights from huggingface (if needed)
+        self.download_hf_weights_if_needed()
+
+        # Create file data loader, load weights into tensors
+        model_configs = self.config_class(self.hf_config)
+
+        self.fileloader = FileDataLoader(
+            self.weights_path,
+            model_configs.num_attention_heads,
+            model_configs.num_key_value_heads,
+            model_configs.hidden_size,
+            model_configs.hidden_size // model_configs.num_attention_heads,
+            self.ffconfig.tensor_parallelism_degree,
+            self.data_type == DataType.DT_FLOAT
+        )
+
+        self.im.register_model_weights_loader(self.model.ffmodel, self.fileloader)
+
+        # Download the tokenizer from huggingface (if needed) and load them
         self.download_hf_tokenizer_if_needed()
 
         # Create tokenizer (this must be done after we have downloaded the tokenizer
@@ -426,6 +423,11 @@ class LLM:
         else:
             assert False, "Please pass a non-empty string or list of strings"
 
+    def start_llm_server(self):
+        self.rm.start_llm_server(self.model.ffmodel)
+
+    def stop_llm_server(self):
+        self.rm.stop_llm_server()
 
 class SSM(LLM):
     """This class creates a SSM (Small-Speculative Model) object based on a model from HuggingFace"""

@@ -4199,6 +4199,14 @@ class RequestManager(object):
         return ffc().flexflow_request_manager_set_max_sequence_length(
             self.handle, max_length)
 
+    def start_llm_server(self, model):
+        return ffc().flexflow_request_manager_start_background_server(
+            self.handle, model.handle
+        )
+
+    def stop_llm_server(self):
+        return ffc().flexflow_request_manager_stop_background_server(
+            self.handle)
 # -----------------------------------------------------------------------
 # InferenceManager
 # -----------------------------------------------------------------------
@@ -4221,6 +4229,10 @@ class InferenceManager(object):
             self.handle, model.handle
         )
 
+    def register_model_weights_loader(self, model, fileloader):
+        ffc().flexflow_inference_manager_register_model_weights_loader(
+            self.handle, model.handle, fileloader.handle
+        )
 
 # -----------------------------------------------------------------------
 # FileDataLoader
