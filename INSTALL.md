@@ -97,7 +97,7 @@ source ./build/set_python_envs.sh
 cd "$FF_HOME"
 ./python/flexflow_python examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize <size of gpu buffer> -ll:zsize <size of zero buffer>
 ```
-A script to run all the Python examples is available at `tests/multi_gpu_tests.sh`
+A script to run all the Python examples is available at `tests/training_tests.sh`
 
 ### Run FlexFlow C++ examples
 
