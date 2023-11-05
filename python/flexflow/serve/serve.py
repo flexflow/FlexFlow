@@ -360,10 +360,6 @@ class LLM:
             max_tokens_per_batch
         )
 
-        # Create inference manager
-        self.im = InferenceManager()
-        self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
-
         # Download the weights from huggingface (if needed)
         self.download_hf_weights_if_needed()
 
@@ -380,6 +376,8 @@ class LLM:
             self.data_type == DataType.DT_FLOAT
         )
 
+        # Register weights file loader
+        self.im = InferenceManager()
         self.im.register_model_weights_loader(self.model.ffmodel, self.fileloader)
 
         # Download the tokenizer from huggingface (if needed) and load them
@@ -396,8 +394,6 @@ class LLM:
             self.model_type, bos_token_id, eos_token_id, self.tokenizer_path
         )
         self.rm.register_output_filepath(self.output_file)
-
-        self.im.init_operators_inference(self.model.ffmodel)
 
         for ssm in self.ssms:
             self.rm.register_ssm_model(ssm.model.ffmodel)

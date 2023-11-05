@@ -4205,7 +4205,7 @@ class RequestManager(object):
         )
 
     def stop_llm_server(self):
-        return ffc().flexflow_request_manager_stop_background_server(
+        return ffc().flexflow_request_manager_terminate_background_server(
             self.handle)
 # -----------------------------------------------------------------------
 # InferenceManager
