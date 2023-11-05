@@ -3,7 +3,7 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python>=3.6
+  - python>=3.6,<3.12
   - cffi>=1.11.0
   - Pillow
   - pybind11
