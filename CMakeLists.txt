@@ -32,6 +32,19 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
       STRING "Choose the type of build." FORCE)
 endif()
 
+if(INSTALL_DIR)
+  message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
+  set(CMAKE_INSTALL_PREFIX ${INSTALL_DIR} CACHE PATH "Installation directory" FORCE)
+else()
+  # Install DIR not set. Use default, unless a conda environment is active
+  if (DEFINED ENV{CONDA_PREFIX} AND NOT FF_BUILD_FROM_PYPI)
+    set(CONDA_PREFIX $ENV{CONDA_PREFIX})
+    # Set CMAKE_INSTALL_PREFIX to the Conda environment's installation path
+    set(CMAKE_INSTALL_PREFIX ${CONDA_PREFIX} CACHE PATH "Installation directory" FORCE)
+    message(STATUS "Active conda environment detected. Setting CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+  endif()
+endif()
+
 # do not disable assertions even if in release mode
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UNDEBUG")
 

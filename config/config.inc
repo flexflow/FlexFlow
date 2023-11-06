@@ -24,7 +24,7 @@ fi
 
 #set installation dir
 if [ -n "$INSTALL_DIR" ]; then
-  SET_INSTALL_DIR="-DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}"
+  SET_INSTALL_DIR="-DINSTALL_DIR=${INSTALL_DIR}"
 fi
 
 if [ "$INFERENCE_TESTS" = "ON" ]; then
