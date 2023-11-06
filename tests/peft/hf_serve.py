@@ -1,6 +1,6 @@
 import argparse
 import torch
-import os, sys
+import os, sys, shutil
 from peft import PeftModel, PeftConfig
 from transformers import (
     AutoModelForCausalLM,
@@ -9,6 +9,18 @@ from transformers import (
     LlamaTokenizer,
     GenerationConfig,
 )
+
+def peft_pre_forward_hook(module, input):
+    print("Pre-forward hook activated on module: ", module.name)
+    #print("Pre-Input: ", input)
+    torch.save(input, f"./hf_peft_tensors/{module.name}.input")
+    print("===")
+
+def peft_post_forward_hook(module, input, output):
+    print("Post-forward Hook activated for module: ", module.name)
+    #print("Post-Output: ", output)
+    torch.save(input, f"./hf_peft_tensors/{module.name}.output")
+    print("===")
 
 
 def main():
@@ -19,10 +31,12 @@ def main():
     )
     parser.add_argument("--max-new-tokens", type=int, default=50)
     parser.add_argument("--do-sample", action="store_true", help="Use sampling")
+    parser.add_argument("--save-peft-tensors", action="store_true", help="Save PEFT hidden states and weights to file")
     args = parser.parse_args()
     peft_model_id = args.peft_model_id
     use_full_precision = args.use_full_precision
     max_new_tokens = args.max_new_tokens
+    save_peft_tensors = args.save_peft_tensors
 
     # Change working dir to folder storing this script
     abspath = os.path.abspath(__file__)
@@ -57,6 +71,27 @@ def main():
     generation_config.do_sample = args.do_sample
     # Load the Lora model
     model = PeftModel.from_pretrained(model, peft_model_id)
+    
+    # Register hooks to save tensors, if needed
+    if save_peft_tensors:
+        shutil.rmtree("./hf_peft_tensors")
+        # Check that the output folder exists
+        os.makedirs("./hf_peft_tensors", exist_ok=True)
+        # Save weights
+        for name, params in model.named_parameters():
+            if "lora" in name:
+                print(params, type(params))
+                torch.save(params, f"./hf_peft_tensors/{name}")
+                #params.detach().cpu().numpy().tofile(f"{weights_path}/{name}")
+        # Save hidden states
+        for name, layer in dict(model.named_modules()).items():
+            if "lora_A.default" in name or "lora_B.default" in name:
+                layer.name = name
+                print(f"Adding hooks to layer {layer.name}")
+                layer.register_forward_pre_hook(peft_pre_forward_hook)
+                layer.register_forward_hook(peft_post_forward_hook)
+
+    
     batch = tokenizer("Two things are infinite: ", return_tensors="pt")
     with torch.cuda.amp.autocast():
         output_tokens = model.generate(
