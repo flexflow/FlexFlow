@@ -112,7 +112,7 @@ public:
       create();
 
 private:
-  LabelledOpenMultiDiGraph(cow_ptr_t<Interface> ptr): ptr(ptr) {}
+  LabelledOpenMultiDiGraph(cow_ptr_t<Interface> ptr) : ptr(ptr) {}
 
 private:
   cow_ptr_t<Interface> ptr;

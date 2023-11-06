@@ -108,7 +108,7 @@ public:
     this->add_edge(e);
     this->output_map.insert({e, label});
   }
-  
+
   void add_edge(InputMultiDiEdge const &e) {
     OpenMultiDiEdge edge{e};
     this->base_graph.add_edge(edge);
@@ -124,7 +124,7 @@ public:
   }
 
   void add_edge(OutputMultiDiEdge const &e) {
-     NOT_IMPLEMENTED();
+    NOT_IMPLEMENTED();
   }
 
   InputLabel const &at(InputMultiDiEdge const &e) const {

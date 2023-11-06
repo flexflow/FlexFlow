@@ -57,7 +57,9 @@ public:
 
 protected:
   LabelledMultiDiGraphView(cow_ptr_t<Interface const> ptr)
-      : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {} //todo: this may have some problem, because it seems we don't have constructor method NodeLabelledMultiDiGraphView<NodeLabel>(ptr
+      : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {
+  } // todo: this may have some problem, because it seems we don't have
+    // constructor method NodeLabelledMultiDiGraphView<NodeLabel>(ptr
   cow_ptr_t<Interface> get_ptr() const {
     return cow_ptr_t(static_cast<Interface const &>(*GraphView::ptr));
   }
@@ -127,9 +129,9 @@ private:
   LabelledMultiDiGraph(cow_ptr_t<Interface> ptr,
                        cow_ptr_t<INodeLabel> nl,
                        cow_ptr_t<IEdgeLabel> el)
-      : LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr), nl(nl), el(el) {} 
-      //todo: this may have some problem, because it seems we don't have constructor method  LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr)
-
+      : LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr), nl(nl), el(el) {}
+  // todo: this may have some problem, because it seems we don't have
+  // constructor method  LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr)
 
   cow_ptr_t<Interface> get_ptr() const {
     return cow_ptr_t(static_cast<Interface const &>(*GraphView::ptr));
