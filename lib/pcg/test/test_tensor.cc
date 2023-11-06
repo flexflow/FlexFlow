@@ -17,9 +17,4 @@ TEST_CASE("Tensor") {
            nullopt,
            std::string("tensor")};
   json j = to_v1(t);
-
-  // FIXME: There is currently a bug in the serialization of tl::optional to
-  // json which puts it in an infinite loop. When that is fixed, this will
-  // actually work.
-  NOT_REACHABLE();
 }
