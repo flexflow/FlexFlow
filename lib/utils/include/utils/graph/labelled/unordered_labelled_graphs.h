@@ -114,7 +114,17 @@ public:
     this->base_graph.add_edge(edge);
   }
 
+  void add_edge(MultiDiEdge const &e, EdgeLabel const &l) {
+    this->add_edge(e);
+    this->edge_map.insert({e, l});
+  }
+
   void add_edge(OutputMultiDiEdge const &e) {
+    OpenMultiDiEdge edge{e};
+    this->base_graph.add_edge(edge);
+  }
+
+  void add_edge(MultiDiEdge const &e) {
     OpenMultiDiEdge edge{e};
     this->base_graph.add_edge(edge);
   }
@@ -143,6 +153,7 @@ private:
   OpenMultiDiGraph base_graph;
   std::unordered_map<InputMultiDiEdge, InputLabel> input_map;
   std::unordered_map<OutputMultiDiEdge, OutputLabel> output_map;
+  std::unordered_map<MultiDiEdge, EdgeLabel> edge_map;
 };
 
 } // namespace FlexFlow

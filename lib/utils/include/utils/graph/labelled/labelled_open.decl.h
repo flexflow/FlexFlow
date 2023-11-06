@@ -90,11 +90,10 @@ public:
   void add_edge(InputMultiDiEdge const &e);
   void add_edge(OutputMultiDiEdge const &e);
 
-  void add_label(MultiDiEdge const &e, EdgeLabel const &l);
-  void add_label(InputMultiDiEdge const &e, EdgeLabel const &l);
-  void add_label(OutputMultiDiEdge const &e, EdgeLabel const &l);
-
   void add_edge(MultiDiEdge const &e, EdgeLabel const &l);
+  void add_edge(InputMultiDiEdge const &e, EdgeLabel const &l);
+  void add_edge(OutputMultiDiEdge const &e, EdgeLabel const &l);
+
   EdgeLabel &at(MultiDiEdge const &e);
   EdgeLabel const &at(MultiDiEdge const &e) const;
 
