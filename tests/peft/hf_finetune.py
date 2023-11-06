@@ -29,7 +29,7 @@ def print_trainable_parameters(model):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model-name", type=str, default="decapoda-research/llama-7b-hf")
+    parser.add_argument("--model-name", type=str, default="meta-llama/Llama-2-7b-hf")
     parser.add_argument("--lora-rank", type=int, default=16)
     parser.add_argument("--lora-alpha", type=int, default=32)
     parser.add_argument("--lora-target-modules", type=str, default="down_proj", help="Comma-separated list of layers from the base model to target")
