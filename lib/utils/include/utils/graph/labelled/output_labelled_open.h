@@ -89,6 +89,8 @@ public:
   OutputLabelledOpenMultiDiGraph &
       operator=(OutputLabelledOpenMultiDiGraph const &) = default;
 
+  //OutputLabelledOpenMultiDiGraphView operator() const &;//todo:may have problem 
+
   Node add_node(NodeLabel const &l) {
     Node n = get_ptr().get_mutable()->add_node();
     nl.get_mutable()->add_label(n, l);

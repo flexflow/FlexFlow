@@ -5,6 +5,7 @@
 
 namespace FlexFlow {
 
+//todo: why INodeLabelledOpenMultiDiGraphView inherits from itself?
 template <typename NodeLabel>
 struct INodeLabelledOpenMultiDiGraphView
     : virtual INodeLabelledMultiDiGraphView<NodeLabel>,
