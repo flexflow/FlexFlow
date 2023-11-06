@@ -186,14 +186,7 @@ void FlexFlow::top_level_task(Task const *task,
   auto architectures = model_config["architectures"];
   for (auto const &str : architectures) {
     if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM") {
-      std::string nameOrPath = model_config["_name_or_path"];
-      // TODO: support LLAMA-2 models not from Meta
-      bool llama2 = nameOrPath.find("meta-llama/Llama-2") == 0;
-      if (llama2) {
-        model_type = ModelType::LLAMA2;
-      } else {
-        model_type = ModelType::LLAMA;
-      }
+      model_type = ModelType::LLAMA;
       break;
     } else if (str == "OPTForCausalLM") {
       model_type = ModelType::OPT;
@@ -229,7 +222,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->register_output_filepath(file_paths.output_file_path);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
-  if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
+  if (model_type == ModelType::LLAMA) {
     LLAMA::create_llama_model(model,
                               config_filepath,
                               weights_filepath,

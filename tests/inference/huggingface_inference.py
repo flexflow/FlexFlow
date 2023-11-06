@@ -2,7 +2,14 @@ import argparse
 import json
 import os
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig, LlamaTokenizer
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    AutoConfig,
+    LlamaTokenizer,
+    GenerationConfig,
+)
+
 
 def main():
     # Change working dir to folder storing this script
@@ -19,6 +26,7 @@ def main():
     parser.add_argument(
         "--use-full-precision", action="store_true", help="Use full precision"
     )
+    parser.add_argument("--do-sample", action="store_true", help="Use sampling")
     parser.add_argument("--gpu", action="store_true", help="Run on GPU")
     args = parser.parse_args()
     # Check if max-length is greater than 0
@@ -54,13 +62,19 @@ def main():
         tokenizer = LlamaTokenizer.from_pretrained(args.model_name, use_fast=True)
     else:
         tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+    generation_config = GenerationConfig.from_pretrained(args.model_name)
+    generation_config.do_sample = args.do_sample
     # Generate output
     with open(args.output_file, "w") as f:
         for i, prompt in enumerate(prompt_list):
-            batch = tokenizer(
-                prompt, return_tensors="pt", add_special_tokens=True
-            ).to(device)
-            generated = model.generate(batch["input_ids"], max_length=args.max_length)
+            batch = tokenizer(prompt, return_tensors="pt", add_special_tokens=True).to(
+                device
+            )
+            generated = model.generate(
+                batch["input_ids"],
+                max_length=args.max_length,
+                generation_config=generation_config,
+            )
             out = tokenizer.decode(generated[0])
             # Write output to file
             out_str = out if i == (len(prompt_list) - 1) else out + "\n"
