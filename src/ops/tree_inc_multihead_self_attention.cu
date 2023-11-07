@@ -261,7 +261,6 @@ __global__ void compute_attention_kernel_fused_kernel(
         __syncthreads();
       }
     }
-    // __syncthreads();
 
     // Output the final values.
     if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
@@ -888,14 +887,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
   bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
-  // cudaEventCreate(&t_start);
-  // cudaEventCreate(&t_end);
-  // cudaEventRecord(t_start, stream);
   if (m->profiling) {
-    // cudaEvent_t t_start, t_end;
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
@@ -950,20 +942,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("TreeIncMultiHeadSelfAttention forward time = %.2fms\n", elapsed);
-    // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
-    // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
-    // acc_output.rect, "[Attention:forward:output]");
   }
-  // cudaEventRecord(t_end, stream);
-  // checkCUDA(cudaEventSynchronize(t_end));
-  // cudaEventDestroy(t_start);
-  // cudaEventDestroy(t_end);
-
-  // if(bc->num_active_tokens() == 5){
-
-  //    assert(false);
-  // }
 }
 
 TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
