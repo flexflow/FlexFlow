@@ -5,7 +5,7 @@
 
 namespace FlexFlow {
 
-//todo: why INodeLabelledOpenMultiDiGraphView inherits from itself?
+// todo: why INodeLabelledOpenMultiDiGraphView inherits from itself?
 template <typename NodeLabel>
 struct INodeLabelledOpenMultiDiGraphView
     : virtual INodeLabelledMultiDiGraphView<NodeLabel>,
@@ -87,7 +87,7 @@ public:
   }
 
   std::unordered_set<OpenMultiDiEdge>
-      query_edges(OpenMultiDiEdge const &q) const {
+      query_edges(OpenMultiDiEdgeQuery const &q) const {
     return get_ptr()->query_edges();
   }
 

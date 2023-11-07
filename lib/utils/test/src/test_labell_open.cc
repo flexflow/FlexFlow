@@ -1,5 +1,5 @@
 #include "test/utils/all.h"
-#include "test/utils/rapidcheck/visitable.h"
+#include "test/utils/doctest.h"
 #include "utils/containers.h"
 #include "utils/graph/labelled_open.h"
 
@@ -11,11 +11,10 @@ using namespace FlexFlow;
 
 TEST_CASE_TEMPLATE("LabelledOpenMultiDiGraph implementations",
                    T,
-                   UnorderedLabelledOpenMultiDiGraph) {
+                   UnorderedLabelledOpenMultiDiGraph<int, std::string>) {
   // I define NodeLabel/ as int, EdgeLabelInputLabel/OutputLabel as string
   LabelledOpenMultiDiGraph<int, std::string> g =
-      LabelledOpenMultiDiGraph<int, std::string>::create<
-          UnorderedLabelledOpenMultiDiGraph<int, std::string>>();
+      LabelledOpenMultiDiGraph<int, std::string>::create<T>();
   int num_nodes = 3;
   std::vector<Node> n =
       repeat<Node>(num_nodes, [&g](int i) { return g.add_node(i); });
