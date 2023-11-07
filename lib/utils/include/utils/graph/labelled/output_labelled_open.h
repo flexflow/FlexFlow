@@ -65,6 +65,15 @@ private:
     return cow_ptr_t(
         std::reinterpret_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
+
+  // todo: OutputLabelledOpenMultiDiGraphView may exist some problem, the
+  // OutputLabelledOpenMultiDiGraphView needs
+  // OutputLabelledOpenMultiDiSubgraphView(it inherits form
+  // IOutputLabelledOpenMultiDiGraphVie) to create, but
+  // OutputLabelledOpenMultiDiSubgraphView also needs
+  // OutputLabelledOpenMultiDiGraphView to create
+  // OutputLabelledOpenMultiDiGraphView(cow_ptr_t<Interface>
+  // ptr):GraphView(ptr){}
 };
 
 template <typename NodeLabel, typename EdgeLabel>
@@ -88,9 +97,6 @@ public:
       default;
   OutputLabelledOpenMultiDiGraph &
       operator=(OutputLabelledOpenMultiDiGraph const &) = default;
-
-  // OutputLabelledOpenMultiDiGraphView operator() const &;//todo:may have
-  // problem
 
   Node add_node(NodeLabel const &l) {
     Node n = get_ptr().get_mutable()->add_node();
@@ -125,6 +131,7 @@ public:
   EdgeLabel &at(MultiDiOutput const &o) {
     return ol->get_label(o);
   }
+
   EdgeLabel const &at(MultiDiOutput const &o) const {
     return ol->get_label(o);
   }
