@@ -375,7 +375,7 @@ __host__ void save_tensor(int64_t const *ptr,
 }
 
 template <typename T>
-__host__ T *download_tensor(T const *ptr, size_t num_elements) {
+__host__ T *copy_tensor_dev_to_host(T const *ptr, size_t num_elements) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
@@ -388,14 +388,23 @@ __host__ T *download_tensor(T const *ptr, size_t num_elements) {
 }
 
 template <typename T>
-__host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
+__host__ void copy_tensor_dev_to_host(T const *ptr, T *dst, size_t num_elements) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   assert(dst != nullptr);
   checkCUDA(cudaMemcpyAsync(
       dst, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost, stream));
-  return true;
 }
+
+template <typename T>
+__host__ void copy_tensor_host_to_dev(T *dst, T const *src, size_t num_elements) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  assert(src != nullptr);
+  checkCUDA(cudaMemcpyAsync(
+      dst, src, sizeof(T) * num_elements, cudaMemcpyHostToDevice, stream));
+}
+
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain4SoftMax(
     cudnnTensorDescriptor_t tensor, Domain domain, DataType data_type) {
   int dims[MAX_TENSOR_DIM];
@@ -700,26 +709,31 @@ template __host__ void save_tensor<int64_t>(int64_t const *ptr,
 template __host__ void
     save_tensor<half>(half const *ptr, size_t rect, char const *file_name);
 
-template __host__ float *download_tensor<float>(float const *ptr,
+template __host__ float *copy_tensor_dev_to_host<float>(float const *ptr,
                                                 size_t num_elements);
-template __host__ half *download_tensor<half>(half const *ptr,
+template __host__ half *copy_tensor_dev_to_host<half>(half const *ptr,
                                               size_t num_elements);
-template __host__ double *download_tensor<double>(double const *ptr,
+template __host__ double *copy_tensor_dev_to_host<double>(double const *ptr,
                                                   size_t num_elements);
-template __host__ int32_t *download_tensor<int32_t>(int32_t const *ptr,
+template __host__ int32_t *copy_tensor_dev_to_host<int32_t>(int32_t const *ptr,
                                                     size_t num_elements);
-template __host__ int64_t *download_tensor<int64_t>(int64_t const *ptr,
+template __host__ int64_t *copy_tensor_dev_to_host<int64_t>(int64_t const *ptr,
                                                     size_t num_elements);
-template __host__ bool
-    download_tensor<float>(float const *ptr, float *dst, size_t num_elements);
-template __host__ bool
-    download_tensor<half>(half const *ptr, half *dst, size_t num_elements);
-template __host__ bool download_tensor<double>(double const *ptr,
+template __host__ void
+    copy_tensor_dev_to_host<float>(float const *ptr, float *dst, size_t num_elements);
+template __host__ void
+    copy_tensor_dev_to_host<half>(half const *ptr, half *dst, size_t num_elements);
+template __host__ void copy_tensor_dev_to_host<double>(double const *ptr,
                                                double *dst,
                                                size_t num_elements);
-template __host__ bool download_tensor<int32_t>(int32_t const *ptr,
+template __host__ void copy_tensor_dev_to_host<int32_t>(int32_t const *ptr,
                                                 int32_t *dst,
                                                 size_t num_elements);
-template __host__ bool download_tensor<int64_t>(int64_t const *ptr,
+template __host__ void copy_tensor_dev_to_host<int64_t>(int64_t const *ptr,
                                                 int64_t *dst,
                                                 size_t num_elements);
+template __host__ void copy_tensor_host_to_dev<float>(float *dst, float const *src, size_t num_elements);
+template __host__ void copy_tensor_host_to_dev<half>(half *dst, half const *src, size_t num_elements);
+template __host__ void copy_tensor_host_to_dev<double>(double *dst, double const *src, size_t num_elements);
+template __host__ void copy_tensor_host_to_dev<int32_t>(int32_t *dst, int32_t const *src, size_t num_elements);
+template __host__ void copy_tensor_host_to_dev<int64_t>(int64_t *dst, int64_t const *src, size_t num_elements);

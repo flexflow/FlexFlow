@@ -158,7 +158,6 @@ void FlexFlow::top_level_task(Task const *task,
                    max_requests_per_batch,
                    max_tokens_per_batch,
                    max_sequence_length);
-
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);

@@ -354,10 +354,10 @@ BeamInferenceResult
   ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
 
   BeamInferenceResult ir;
-  download_tensor<BatchConfig::TokenId>(
+  copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
-  download_tensor(m->probs, ir.probs, batch_size);
-  download_tensor<int>(parent.get_int32_ptr(), ir.parent_id, batch_size);
+  copy_tensor_dev_to_host(m->probs, ir.probs, batch_size);
+  copy_tensor_dev_to_host<int>(parent.get_int32_ptr(), ir.parent_id, batch_size);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
@@ -398,7 +398,7 @@ InferenceResult
     ArgMax::save_inference_tensors_to_file(
         m, shard_id, bc, {}, {}, {input, indices});
   }
-  download_tensor<BatchConfig::TokenId>(
+  copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   return ir;
 }

@@ -6,6 +6,8 @@
 #include "flexflow/utils/hash_utils.h"
 #include "flexflow/utils/peft_weight_allocator.h"
 #include "legion/legion_utilities.h"
+#include <sys/stat.h>
+#include <sys/types.h>
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "flexflow/utils/cuda_helper.h"
 #else
@@ -215,6 +217,7 @@ OpMeta *LoraLinear::init_task(Task const *task,
   LoraLinearMeta *m = new LoraLinearMeta(handle, lora);
   m->trainable_inputs[0] = lora->trainable_inputs[0];
   std::strcpy(m->op_name, lora->name);
+  m->layer_guid = lora->layer_guid;
 
   return m;
 }
@@ -290,7 +293,7 @@ void load_peft_from_file(DT *ptr,
     assert(false);
   }
   assert(size == host_array.size());
-  copy_kernel(ptr, host_array.data(), target_data_size);
+  copy_tensor_host_to_dev(ptr, host_array.data(), size);
   in.close();
 }
 
@@ -321,6 +324,9 @@ void LoraLinear::register_model_task(Task const *task,
   assert(m->model_weights.find(info->model_id) == m->model_weights.end());
 
   LoraLinearWeight weight;
+  weight.in_dim = in_dim;
+  weight.out_dim = out_dim;
+  weight.rank = rank;
   PEFTWeightAllocator *allocator = m->handle.peft_weight_allocator;
   weight.w0_ptr = allocator->allocate_local_weights_untyped(
       info->model_id, w0_num_elements * data_type_size(dt));
@@ -367,7 +373,6 @@ void LoraLinear::register_model_task(Task const *task,
     assert(false && "Data type not supported");
   }
 
-  weight.rank = rank;
   if (lora->inputs[0]->dims[num_dims - 1].degree == 1) {
     // Input is partitioned (no replication)
     // w0_grad is local weight gradients
@@ -462,6 +467,44 @@ void LoraLinear::inference_task(Task const *task,
   // int num_infr_tokens = bc->num_active_infr_tokens();
   // int num_peft_tokens = bc->num_active_peft_tokens();
   inference_kernel_wrapper(m, bc, input, output);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+
+    // Check if output directory exists, and create it if it does not
+    char const *folder_path = "./inference_tensors";
+    struct stat st = {0};
+    if (stat(folder_path, &st) == -1) {
+      // Directory does not exist, create it
+      mkdir(folder_path, 0700);
+    }
+    // output base filepath, shared by all tensors from the same operator
+    std::string base_filepath =
+        "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
+        "_decoding-step_" + std::to_string(m->decoding_step) + "_layer-num_" +
+        std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
+        m->op_name + "_shard-id_" + std::to_string(shard_id);
+    std::cout << "base_filepath: " << base_filepath << std::endl;
+    std::cout << "m->decoding_step: " << m->decoding_step << std::endl;
+    if (m->decoding_step == 0) {
+      for (auto it = m->model_weights.begin(); it != m->model_weights.end(); ++it) {
+        PEFTModelID peft_model_id = it->first;
+        LoraLinearWeight weight = m->model_weights[peft_model_id];
+        std::string filenameA = base_filepath + "_weight_A";
+        std::string filenameB = base_filepath + "_weight_B";
+        if (m->input_type[0] == DT_FLOAT) {
+          save_tensor((float*)weight.w0_ptr, weight.rank * weight.in_dim, filenameA.c_str());
+          save_tensor((float*)weight.w1_ptr, weight.rank * weight.out_dim, filenameB.c_str());
+        } else if (m->input_type[0] == DT_HALF) {
+          save_tensor((half*)weight.w0_ptr, weight.rank * weight.in_dim, filenameA.c_str());
+          save_tensor((half*)weight.w1_ptr, weight.rank * weight.out_dim, filenameB.c_str());
+        } else {
+          assert(false && "Data type not supported");
+        }
+      }
+    }
+    LoraLinear::save_inference_tensors_to_file(m, shard_id, bc, {input}, {}, {output});
+  }
 }
 
 FutureMap LoraLinear::peft_bwd(FFModel const &ff,

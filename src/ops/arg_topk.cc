@@ -329,7 +329,7 @@ InferenceResult
   }
 
   InferenceResult ir;
-  download_tensor<BatchConfig::TokenId>(
+  copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   return ir;
 }

@@ -11,16 +11,21 @@ from transformers import (
 )
 
 def peft_pre_forward_hook(module, input):
-    print("Pre-forward hook activated on module: ", module.name)
+    assert(module.name is not None and module.decoding_step is not None)
+    name = module.name.replace("base_model.model.model", "")
+    print(f"Pre-forward hook activated on module: {name}, decoding step: {module.decoding_step}")
     #print("Pre-Input: ", input)
-    torch.save(input, f"./hf_peft_tensors/{module.name}.input")
+    torch.save(input, f"./hf_peft_tensors/decoding_step_{module.decoding_step}_{name}.input")
     print("===")
 
 def peft_post_forward_hook(module, input, output):
-    print("Post-forward Hook activated for module: ", module.name)
+    assert(module.name is not None and module.decoding_step is not None)
+    name = module.name.replace("base_model.model.model", "")
+    print(f"Post-forward Hook activated for module: {name}, decoding step: {module.decoding_step}")
     #print("Post-Output: ", output)
-    torch.save(input, f"./hf_peft_tensors/{module.name}.output")
+    torch.save(input, f"./hf_peft_tensors/decoding_step_{module.decoding_step}_{name}.output")
     print("===")
+    module.decoding_step += 1
 
 
 def main():
@@ -80,13 +85,13 @@ def main():
         # Save weights
         for name, params in model.named_parameters():
             if "lora" in name:
-                print(params, type(params))
                 torch.save(params, f"./hf_peft_tensors/{name}")
                 #params.detach().cpu().numpy().tofile(f"{weights_path}/{name}")
         # Save hidden states
         for name, layer in dict(model.named_modules()).items():
             if "lora_A.default" in name or "lora_B.default" in name:
                 layer.name = name
+                layer.decoding_step = 0
                 print(f"Adding hooks to layer {layer.name}")
                 layer.register_forward_pre_hook(peft_pre_forward_hook)
                 layer.register_forward_hook(peft_post_forward_hook)

@@ -156,10 +156,13 @@ template <typename T>
 void save_tensor(T const *ptr, size_t num_elements, char const *file_name);
 
 template <typename T>
-T *download_tensor(T const *ptr, size_t num_elements);
+T *copy_tensor_dev_to_host(T const *ptr, size_t num_elements);
 
 template <typename T>
-bool download_tensor(T const *ptr, T *dst, size_t num_elements);
+void copy_tensor_dev_to_host(T const *ptr, T *dst, size_t num_elements);
+
+template <typename T>
+void copy_tensor_host_to_dev(T *dst, T const *src, size_t num_elements);
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain,

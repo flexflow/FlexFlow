@@ -579,14 +579,14 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 #ifdef INFERENCE_TESTS
   // Checking
   // 1. check that m->sorted_indices contains indices sorted
-  int *indices_cpu = download_tensor<int>(indices, num_indices);
+  int *indices_cpu = copy_tensor_dev_to_host<int>(indices, num_indices);
   // assert(indices_cpu != nullptr);
   std::vector<int> indices_vec(indices_cpu, indices_cpu + num_indices);
   std::vector<int> indices_vec_sorted(indices_vec.size());
   std::copy(indices_vec.begin(), indices_vec.end(), indices_vec_sorted.begin());
   std::stable_sort(indices_vec_sorted.begin(), indices_vec_sorted.end());
 
-  int *thrust_sorted_indices_cpu = download_tensor<int>(
+  int *thrust_sorted_indices_cpu = copy_tensor_dev_to_host<int>(
       m->sorted_indices, m->num_chosen_experts * m->effective_batch_size);
   // assert(thrust_sorted_indices_cpu != nullptr);
   std::vector<int> thrust_sorted_indices_vec(
@@ -613,7 +613,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     assert(indices_vec_sorted[i] == thrust_sorted_indices_vec[i]);
   }
   // 2. check that indices[m->original_indices[i]] = i
-  int *thrust_original_indices_cpu = download_tensor<int>(
+  int *thrust_original_indices_cpu = copy_tensor_dev_to_host<int>(
       m->original_indices, m->num_chosen_experts * m->effective_batch_size);
   // assert(thrust_original_indices_cpu != nullptr);
   std::vector<int> thrust_original_indices_vec(
@@ -669,7 +669,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   assert(non_zero_experts_count == non_zero_experts_check.size());
   // 7. check exp_local_label_to_index
   int *non_zero_expert_labels_cpu =
-      download_tensor<int>(m->non_zero_expert_labels, non_zero_experts_count);
+      copy_tensor_dev_to_host<int>(m->non_zero_expert_labels, non_zero_experts_count);
   // assert(non_zero_expert_labels_cpu != nullptr);
   std::vector<int> non_zero_expert_labels_vec(non_zero_expert_labels_cpu,
                                               non_zero_expert_labels_cpu +
@@ -685,7 +685,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   assert(non_zero_expert_labels_vec == non_zero_experts_check_vec);
 
   int *exp_local_label_to_index =
-      download_tensor<int>(m->exp_local_label_to_index, non_zero_experts_count);
+      copy_tensor_dev_to_host<int>(m->exp_local_label_to_index, non_zero_experts_count);
   // assert(exp_local_label_to_index != nullptr);
   std::vector<int> exp_local_label_to_index_vec(exp_local_label_to_index,
                                                 exp_local_label_to_index +
@@ -700,7 +700,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   // 8. Check expert_start_indexes
   int *expert_start_indices_thrust =
-      download_tensor<int>(m->expert_start_indexes, non_zero_experts_count + 1);
+      copy_tensor_dev_to_host<int>(m->expert_start_indexes, non_zero_experts_count + 1);
   // assert(expert_start_indices_thrust != nullptr);
   std::vector<int> expert_start_indices_thrust_vec(
       expert_start_indices_thrust,
@@ -746,7 +746,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   int *num_assignments_per_expert_thrust =
       (int *)calloc(non_zero_experts_count, sizeof(int));
   assert(num_assignments_per_expert_thrust != nullptr);
-  assert(download_tensor<int>(m->num_assignments_per_expert,
+  assert(copy_tensor_dev_to_host<int>(m->num_assignments_per_expert,
                               num_assignments_per_expert_thrust,
                               non_zero_experts_count));
   assert(num_assignments_per_expert_thrust != nullptr);
@@ -759,7 +759,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   int *destination_start_indices_thrust =
       (int *)calloc(non_zero_experts_count, sizeof(int));
   assert(destination_start_indices_thrust != nullptr);
-  assert(download_tensor<int>(m->destination_start_indices,
+  assert(copy_tensor_dev_to_host<int>(m->destination_start_indices,
                               destination_start_indices_thrust,
                               non_zero_experts_count));
   assert(destination_start_indices_thrust != nullptr);

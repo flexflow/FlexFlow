@@ -12,7 +12,7 @@ namespace FlexFlow {
 struct LoraLinearWeight {
   void *w0_ptr, *w1_ptr, *w0_grad_ptr, *w1_grad_ptr;
   void *w0_state_ptr, *w1_state_ptr;
-  int rank;
+  int in_dim, out_dim, rank;
 };
 
 class LoraLinearMeta : public OpMeta {
