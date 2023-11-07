@@ -357,7 +357,8 @@ BeamInferenceResult
   copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   copy_tensor_dev_to_host(m->probs, ir.probs, batch_size);
-  copy_tensor_dev_to_host<int>(parent.get_int32_ptr(), ir.parent_id, batch_size);
+  copy_tensor_dev_to_host<int>(
+      parent.get_int32_ptr(), ir.parent_id, batch_size);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);

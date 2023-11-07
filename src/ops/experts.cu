@@ -668,8 +668,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   }
   assert(non_zero_experts_count == non_zero_experts_check.size());
   // 7. check exp_local_label_to_index
-  int *non_zero_expert_labels_cpu =
-      copy_tensor_dev_to_host<int>(m->non_zero_expert_labels, non_zero_experts_count);
+  int *non_zero_expert_labels_cpu = copy_tensor_dev_to_host<int>(
+      m->non_zero_expert_labels, non_zero_experts_count);
   // assert(non_zero_expert_labels_cpu != nullptr);
   std::vector<int> non_zero_expert_labels_vec(non_zero_expert_labels_cpu,
                                               non_zero_expert_labels_cpu +
@@ -684,8 +684,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                         non_zero_experts_check_vec.end()));
   assert(non_zero_expert_labels_vec == non_zero_experts_check_vec);
 
-  int *exp_local_label_to_index =
-      copy_tensor_dev_to_host<int>(m->exp_local_label_to_index, non_zero_experts_count);
+  int *exp_local_label_to_index = copy_tensor_dev_to_host<int>(
+      m->exp_local_label_to_index, non_zero_experts_count);
   // assert(exp_local_label_to_index != nullptr);
   std::vector<int> exp_local_label_to_index_vec(exp_local_label_to_index,
                                                 exp_local_label_to_index +
@@ -699,8 +699,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   }
 
   // 8. Check expert_start_indexes
-  int *expert_start_indices_thrust =
-      copy_tensor_dev_to_host<int>(m->expert_start_indexes, non_zero_experts_count + 1);
+  int *expert_start_indices_thrust = copy_tensor_dev_to_host<int>(
+      m->expert_start_indexes, non_zero_experts_count + 1);
   // assert(expert_start_indices_thrust != nullptr);
   std::vector<int> expert_start_indices_thrust_vec(
       expert_start_indices_thrust,
@@ -747,8 +747,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
       (int *)calloc(non_zero_experts_count, sizeof(int));
   assert(num_assignments_per_expert_thrust != nullptr);
   assert(copy_tensor_dev_to_host<int>(m->num_assignments_per_expert,
-                              num_assignments_per_expert_thrust,
-                              non_zero_experts_count));
+                                      num_assignments_per_expert_thrust,
+                                      non_zero_experts_count));
   assert(num_assignments_per_expert_thrust != nullptr);
   std::vector<int> num_assignments_per_expert_thrust_vec(
       num_assignments_per_expert_thrust,
@@ -760,8 +760,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
       (int *)calloc(non_zero_experts_count, sizeof(int));
   assert(destination_start_indices_thrust != nullptr);
   assert(copy_tensor_dev_to_host<int>(m->destination_start_indices,
-                              destination_start_indices_thrust,
-                              non_zero_experts_count));
+                                      destination_start_indices_thrust,
+                                      non_zero_experts_count));
   assert(destination_start_indices_thrust != nullptr);
   std::vector<int> destination_start_indices_thrust_vec(
       destination_start_indices_thrust,

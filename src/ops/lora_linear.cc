@@ -487,23 +487,33 @@ void LoraLinear::inference_task(Task const *task,
     std::cout << "base_filepath: " << base_filepath << std::endl;
     std::cout << "m->decoding_step: " << m->decoding_step << std::endl;
     if (m->decoding_step == 0) {
-      for (auto it = m->model_weights.begin(); it != m->model_weights.end(); ++it) {
+      for (auto it = m->model_weights.begin(); it != m->model_weights.end();
+           ++it) {
         PEFTModelID peft_model_id = it->first;
         LoraLinearWeight weight = m->model_weights[peft_model_id];
         std::string filenameA = base_filepath + "_weight_A";
         std::string filenameB = base_filepath + "_weight_B";
         if (m->input_type[0] == DT_FLOAT) {
-          save_tensor((float*)weight.w0_ptr, weight.rank * weight.in_dim, filenameA.c_str());
-          save_tensor((float*)weight.w1_ptr, weight.rank * weight.out_dim, filenameB.c_str());
+          save_tensor((float *)weight.w0_ptr,
+                      weight.rank * weight.in_dim,
+                      filenameA.c_str());
+          save_tensor((float *)weight.w1_ptr,
+                      weight.rank * weight.out_dim,
+                      filenameB.c_str());
         } else if (m->input_type[0] == DT_HALF) {
-          save_tensor((half*)weight.w0_ptr, weight.rank * weight.in_dim, filenameA.c_str());
-          save_tensor((half*)weight.w1_ptr, weight.rank * weight.out_dim, filenameB.c_str());
+          save_tensor((half *)weight.w0_ptr,
+                      weight.rank * weight.in_dim,
+                      filenameA.c_str());
+          save_tensor((half *)weight.w1_ptr,
+                      weight.rank * weight.out_dim,
+                      filenameB.c_str());
         } else {
           assert(false && "Data type not supported");
         }
       }
     }
-    LoraLinear::save_inference_tensors_to_file(m, shard_id, bc, {input}, {}, {output});
+    LoraLinear::save_inference_tensors_to_file(
+        m, shard_id, bc, {input}, {}, {output});
   }
 }
 

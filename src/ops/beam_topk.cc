@@ -393,8 +393,10 @@ BeamInferenceResult
 
   BeamInferenceResult ir;
 
-  copy_tensor_dev_to_host<int>(index_ptr, ir.token_ids, batch_size * m->max_beam_width);
-  copy_tensor_dev_to_host<float>(value_ptr, ir.probs, batch_size * m->max_beam_width);
+  copy_tensor_dev_to_host<int>(
+      index_ptr, ir.token_ids, batch_size * m->max_beam_width);
+  copy_tensor_dev_to_host<float>(
+      value_ptr, ir.probs, batch_size * m->max_beam_width);
   copy_tensor_dev_to_host<int>(
       parent_ptr, ir.parent_id, batch_size * m->max_beam_width);
 
