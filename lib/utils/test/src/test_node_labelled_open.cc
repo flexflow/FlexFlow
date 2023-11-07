@@ -33,6 +33,7 @@ TEST_CASE("NodeLabelledOpenMultiDiGraph implementations") {
       {n[2], p[2], n[0], p[0]},
       {n[0], p[0], n[2], p[2]},
       {n[1], p[1], n[2], p[2]}}; // this may have problem, we can fix
+
   for (int i = 0; i < num_nodes; i++) {
     CHECK(g.at(node[i])) == labels[i];
   }
@@ -48,4 +49,6 @@ TEST_CASE("NodeLabelledOpenMultiDiGraph implementations") {
   OpenMultiDiEdgeQuery query{q};
 
   CHECK(g.query_edges(q) == e);
+
+  // TODO: we should add more test use MultiDiEdgeQuery::with_src_nodes
 }

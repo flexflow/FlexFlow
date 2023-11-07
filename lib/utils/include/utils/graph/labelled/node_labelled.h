@@ -81,11 +81,11 @@ public:
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return get_ptr()->query_nodes();
+    return get_ptr()->query_nodes(q);
   }
 
-  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdge const &q) const {
-    return get_ptr()->query_edges();
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
+    return get_ptr()->query_edges(q);
   }
 
   Node add_node(NodeLabel const &l) {
