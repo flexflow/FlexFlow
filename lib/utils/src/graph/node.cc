@@ -37,24 +37,23 @@ bool is_ptr_equal(GraphView const &lhs, GraphView const &rhs) {
 GraphView::GraphView(cow_ptr_t<IGraphView> ptr) : ptr(ptr) {}
 
 Node Graph::add_node() {
-  return get_ptr().get_mutable()->add_node();
+  return get_ptr().add_node();
 }
 
 void Graph::add_node_unsafe(Node const &node) {
-  get_ptr().get_mutable()->add_node_unsafe(node);
+  get_ptr().add_node_unsafe(node);
 }
 
 void Graph::remove_node_unsafe(Node const &node) {
-  get_ptr().get_mutable()->remove_node_unsafe(node);
+  get_ptr().remove_node_unsafe(node);
 }
 
 std::unordered_set<Node> Graph::query_nodes(NodeQuery const &q) const {
-  return get_ptr()->query_nodes(q);
+  return get_ptr().query_nodes(q);
 }
 
-cow_ptr_t<IGraph> Graph::get_ptr() const {
-  return cow_ptr_t(
-      std::dynamic_pointer_cast<IGraph>(GraphView::ptr.get_mutable()));
+IGraph &Graph::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IGraph>(GraphView::ptr.get_mutable());
 }
 
 } // namespace FlexFlow

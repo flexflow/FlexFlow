@@ -27,7 +27,6 @@ std::vector<Node> add_nodes(MultiDiGraph &, int);
 std::vector<NodePort> add_node_ports(MultiDiGraph &, int);
 
 std::unordered_set<Node> get_nodes(GraphView const &);
-std::unordered_set<Node> get_nodes(OpenMultiDiGraphView const &);
 std::unordered_set<NodePort> get_present_node_ports(MultiDiGraphView const &);
 
 std::unordered_set<Node> get_nodes(OpenMultiDiEdge const &);
@@ -74,7 +73,6 @@ UndirectedGraphView apply_contraction(UndirectedGraphView const &,
                                       std::unordered_map<Node, Node> const &);
 
 std::size_t num_nodes(GraphView const &);
-std::size_t num_nodes(OpenMultiDiGraphView const &);
 bool empty(GraphView const &);
 
 void add_edges(MultiDiGraph &, std::vector<MultiDiEdge> const &);
@@ -159,6 +157,11 @@ std::unordered_set<Node> get_predecessors(DiGraphView const &, Node const &);
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
+Node get_src_node(MultiDiEdge const &);
+Node get_dst_node(MultiDiEdge const &);
+Node get_dst_node(InputMultiDiEdge const &);
+Node get_src_node(OutputMultiDiEdge const &);
+
 struct GetSrcNodeFunctor {
   template <typename T>
   Node operator()(T const &t) const {
@@ -183,10 +186,10 @@ Node get_dst_node(variant<Args...> const &t) {
   return visit(GetDstNodeFunctor{}, t);
 }
 
-Node get_src_node(MultiDiEdge const &);
-Node get_dst_node(MultiDiEdge const &);
-Node get_dst_node(InputMultiDiEdge const &);
-Node get_src_node(OutputMultiDiEdge const &);
+NodePort get_src_idx(MultiDiEdge const &);
+NodePort get_dst_idx(MultiDiEdge const &);
+NodePort get_dst_idx(InputMultiDiEdge const &);
+NodePort get_src_idx(OutputMultiDiEdge const &);
 
 struct GetSrcIdxFunctor {
   template <typename T>
@@ -211,11 +214,6 @@ template <typename... Args>
 NodePort get_dst_idx(variant<Args...> const &t) {
   return visit(GetDstIdxFunctor{}, t);
 }
-
-NodePort get_src_idx(MultiDiEdge const &);
-NodePort get_dst_idx(MultiDiEdge const &);
-NodePort get_dst_idx(InputMultiDiEdge const &);
-NodePort get_src_idx(OutputMultiDiEdge const &);
 
 std::unordered_set<Node> get_neighbors(UndirectedGraphView const &,
                                        Node const &);
@@ -291,6 +289,9 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &);
 
 std::unordered_set<MultiDiEdge> get_cut_set(MultiDiGraphView const &,
                                             GraphSplit const &);
+
+std::unordered_set<MultiDiEdge> get_cut_set(MultiDiGraphView const &,
+                                            std::unordered_set<Node> const &);
 
 bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
     get_edge_splits(MultiDiGraphView const &, GraphSplit const &);

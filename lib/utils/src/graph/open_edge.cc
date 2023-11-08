@@ -7,11 +7,11 @@ bool is_input_edge(OpenMultiDiEdge const &e) {
 }
 
 bool is_output_edge(OpenMultiDiEdge const &e) {
-  return holds_alternative<MultiDiEdge>(e);
+  return holds_alternative<OutputMultiDiEdge>(e);
 }
 
 bool is_standard_edge(OpenMultiDiEdge const &e) {
-  return holds_alternative<OutputMultiDiEdge>(e);
+  return holds_alternative<MultiDiEdge>(e);
 }
 
 OpenMultiDiEdgeQuery::OpenMultiDiEdgeQuery(
@@ -31,6 +31,12 @@ OpenMultiDiEdgeQuery::OpenMultiDiEdgeQuery(InputMultiDiEdgeQuery const &q)
 OpenMultiDiEdgeQuery::OpenMultiDiEdgeQuery(OutputMultiDiEdgeQuery const &q)
     : OpenMultiDiEdgeQuery(
           InputMultiDiEdgeQuery::none(), MultiDiEdgeQuery::none(), q) {}
+
+OpenMultiDiEdgeQuery OpenMultiDiEdgeQuery::all() {
+  return {InputMultiDiEdgeQuery::all(),
+          MultiDiEdgeQuery::all(),
+          OutputMultiDiEdgeQuery::all()};
+}
 
 DownwardOpenMultiDiEdgeQuery::DownwardOpenMultiDiEdgeQuery(
     OutputMultiDiEdgeQuery const &output_edge_query,

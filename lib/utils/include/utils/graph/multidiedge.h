@@ -88,6 +88,9 @@ MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &,
 MultiDiEdgeQuery query_union(MultiDiEdgeQuery const &,
                              MultiDiEdgeQuery const &);
 
+InputMultiDiEdge to_inputmultidiedge(MultiDiEdge const &e);
+OutputMultiDiEdge to_outputmultidiedge(MultiDiEdge const &e);
+
 } // namespace FlexFlow
 
 #endif

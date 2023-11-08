@@ -45,9 +45,9 @@ MatchSplit apply_split(OpenMultiDiGraphView const &pattern,
 
   auto edge_splits = get_edge_splits(pattern, split);
 
-  std::function<void(OpenMultiDiEdge const &)> handle_edge =
-      [&](OpenMultiDiEdge const &pattern_edge) -> void {
-    OpenMultiDiEdge graph_edge = match.edge_assignment.at_l(pattern_edge);
+  std::function<void(OpenMultiDiEdge const &, OpenMultiDiEdge const &)>
+      handle_edge = [&](OpenMultiDiEdge const &pattern_edge,
+                        OpenMultiDiEdge const &graph_edge) -> void {
     auto edge_nodes = get_nodes(pattern_edge);
     if (is_subseteq_of(edge_nodes, prefix)) {
       result.prefix_submatch.edge_assignment.equate(pattern_edge, graph_edge);
@@ -55,16 +55,19 @@ MatchSplit apply_split(OpenMultiDiGraphView const &pattern,
       result.postfix_submatch.edge_assignment.equate(pattern_edge, graph_edge);
     } else {
       assert(is_standard_edge(pattern_edge));
+      assert(is_standard_edge(graph_edge));
       auto standard_edge = mpark::get<MultiDiEdge>(pattern_edge);
       auto divided = edge_splits.at_l(standard_edge);
-      handle_edge(divided.first);
-      handle_edge(divided.second);
+      auto divided_graph_edge = split_edge(get<MultiDiEdge>(graph_edge));
+      handle_edge(divided.first, divided_graph_edge.first);
+      handle_edge(divided.second, divided_graph_edge.second);
     }
   };
 
   for (auto const &kv : match.edge_assignment) {
     OpenMultiDiEdge pattern_edge = kv.first;
-    handle_edge(pattern_edge);
+    OpenMultiDiEdge graph_edge = match.edge_assignment.at_l(pattern_edge);
+    handle_edge(pattern_edge, graph_edge);
   }
 
   return result;
@@ -74,15 +77,15 @@ bool is_singleton_pattern(OpenMultiDiGraphView const &pattern) {
   return num_nodes(pattern) == 1;
 }
 
-template <typename F>
 bool pattern_matches(OpenMultiDiGraphView const &pattern,
                      OpenMultiDiGraphView const &graph,
                      MultiDiGraphPatternMatch const &match,
-                     F const &additional_criterion) {
+                     MatchAdditionalCriterion const &additional_criterion) {
   if (is_singleton_pattern(pattern)) {
     Node pattern_node = get_only(get_nodes(pattern));
     Node graph_matched_node = match.node_assignment.at_l(pattern_node);
-    if (!additional_criterion(pattern_node, graph_matched_node)) {
+    if (!additional_criterion.node_criterion(pattern_node,
+                                             graph_matched_node)) {
       return false;
     }
     for (OpenMultiDiEdge const &e : get_edges(pattern)) {
@@ -90,22 +93,30 @@ bool pattern_matches(OpenMultiDiGraphView const &pattern,
 
       assert(is_input_edge(e) || is_output_edge(e));
       if (is_input_edge(e)) {
+        if (is_output_edge(graph_matched_edge)) {
+          return false;
+        }
+        UpwardOpenMultiDiEdge matched_edge =
+            narrow<UpwardOpenMultiDiEdge>(graph_matched_edge).value();
         InputMultiDiEdge input_edge = mpark::get<InputMultiDiEdge>(e);
         if (match.node_assignment.at_l(input_edge.dst) !=
-                get_dst_node(graph_matched_edge) ||
-            input_edge.dst_idx != get_dst_idx(graph_matched_edge)) {
+            get_dst_node(matched_edge)) {
           return false;
         }
       } else {
+        if (is_input_edge(graph_matched_edge)) {
+          return false;
+        }
+        DownwardOpenMultiDiEdge matched_edge =
+            narrow<DownwardOpenMultiDiEdge>(graph_matched_edge).value();
         OutputMultiDiEdge output_edge = mpark::get<OutputMultiDiEdge>(e);
         if (match.node_assignment.at_l(output_edge.src) !=
-                get_src_node(graph_matched_edge) ||
-            output_edge.src_idx != get_src_idx(graph_matched_edge)) {
+            get_src_node(matched_edge)) {
           return false;
         }
       }
 
-      if (!additional_criterion(e, graph_matched_edge)) {
+      if (!additional_criterion.edge_criterion(e, graph_matched_edge)) {
         return false;
       }
     }
@@ -127,9 +138,19 @@ bool pattern_matches(OpenMultiDiGraphView const &pattern,
                          additional_criterion);
 }
 
+template <typename T>
+bool dst_compare(T const &lhs, T const &rhs) {
+  return get_dst_idx(lhs) < get_dst_idx(rhs);
+}
+
+template <typename T>
+bool src_compare(T const &lhs, T const &rhs) {
+  return get_src_idx(lhs) < get_src_idx(rhs);
+}
+
 optional<MultiDiGraphPatternMatch>
     get_candidate_singleton_match(OpenMultiDiGraphView const &pattern,
-                                  MultiDiGraphView const &graph,
+                                  OpenMultiDiGraphView const &graph,
                                   Node const &graph_node) {
   assert(is_singleton_pattern(pattern));
 
@@ -138,25 +159,69 @@ optional<MultiDiGraphPatternMatch>
   MultiDiGraphPatternMatch match;
   match.node_assignment.equate(pattern_node, graph_node);
 
-  auto incoming = get_incoming_edges_by_idx(graph, graph_node);
-  auto outgoing = get_outgoing_edges_by_idx(graph, graph_node);
-  for (OpenMultiDiEdge const &pattern_edge : get_edges(pattern)) {
-    assert(is_input_edge(pattern_edge) || is_output_edge(pattern_edge));
-    if (is_input_edge(pattern_edge)) {
-      InputMultiDiEdge input_edge = mpark::get<InputMultiDiEdge>(pattern_edge);
-      if (!contains_key(incoming, input_edge.dst_idx)) {
-        return nullopt;
+  std::unordered_set<UpwardOpenMultiDiEdge> incoming =
+      get_incoming_edges(graph, graph_node);
+  std::unordered_set<DownwardOpenMultiDiEdge> outgoing =
+      get_outgoing_edges(graph, graph_node);
+
+  std::unordered_set<UpwardOpenMultiDiEdge> pattern_incoming =
+      get_incoming_edges(pattern, pattern_node);
+  std::unordered_set<DownwardOpenMultiDiEdge> pattern_outgoing =
+      get_outgoing_edges(pattern, pattern_node);
+
+  if (!pattern_incoming.empty() && pattern_incoming.size() != incoming.size()) {
+    return nullopt;
+  }
+
+  if (!pattern_outgoing.empty() && pattern_outgoing.size() != outgoing.size()) {
+    return nullopt;
+  }
+
+  std::vector<UpwardOpenMultiDiEdge> incoming_ordered =
+      sorted_by(incoming, dst_compare<UpwardOpenMultiDiEdge>);
+  std::vector<DownwardOpenMultiDiEdge> outgoing_ordered =
+      sorted_by(outgoing, src_compare<DownwardOpenMultiDiEdge>);
+
+  std::vector<UpwardOpenMultiDiEdge> pattern_incoming_ordered =
+      sorted_by(pattern_incoming, dst_compare<UpwardOpenMultiDiEdge>);
+  std::vector<DownwardOpenMultiDiEdge> pattern_outgoing_ordered =
+      sorted_by(pattern_outgoing, src_compare<DownwardOpenMultiDiEdge>);
+
+  if (pattern_incoming.size()) {
+    std::unordered_map<NodePort, NodePort> node_port_mapping;
+    for (int i = 0; i < incoming_ordered.size(); ++i) {
+      UpwardOpenMultiDiEdge graph_edge = incoming_ordered[i],
+                            pattern_edge = pattern_incoming_ordered[i];
+      NodePort graph_port = get_dst_idx(graph_edge),
+               pattern_port = get_dst_idx(pattern_edge);
+      if (!contains_key(node_port_mapping, graph_port)) {
+        node_port_mapping.emplace(graph_port, pattern_port);
+      } else {
+        if (pattern_port != node_port_mapping.at(graph_port)) {
+          return nullopt;
+        }
       }
-      match.edge_assignment.equate(input_edge,
-                                   get_only(incoming.at(input_edge.dst_idx)));
-    } else {
-      OutputMultiDiEdge output_edge =
-          mpark::get<OutputMultiDiEdge>(pattern_edge);
-      if (!contains_key(outgoing, output_edge.src_idx)) {
-        return nullopt;
+      match.edge_assignment.equate(widen<OpenMultiDiEdge>(pattern_edge),
+                                   widen<OpenMultiDiEdge>(graph_edge));
+    }
+  }
+
+  if (pattern_outgoing.size()) {
+    std::unordered_map<NodePort, NodePort> node_port_mapping;
+    for (int i = 0; i < outgoing_ordered.size(); ++i) {
+      DownwardOpenMultiDiEdge graph_edge = outgoing_ordered[i],
+                              pattern_edge = pattern_outgoing_ordered[i];
+      NodePort graph_port = get_src_idx(graph_edge),
+               pattern_port = get_src_idx(pattern_edge);
+      if (!contains_key(node_port_mapping, graph_port)) {
+        node_port_mapping.insert({graph_port, pattern_port});
+      } else {
+        if (pattern_port != node_port_mapping.at(graph_port)) {
+          return nullopt;
+        }
       }
-      match.edge_assignment.equate(output_edge,
-                                   get_only(outgoing.at(output_edge.src_idx)));
+      match.edge_assignment.equate(widen<OpenMultiDiEdge>(pattern_edge),
+                                   widen<OpenMultiDiEdge>(graph_edge));
     }
   }
 
@@ -200,19 +265,19 @@ optional<MultiDiGraphPatternMatch> unsplit_matches(
   return result;
 }
 
-template <typename F>
-std::unordered_set<MultiDiGraphPatternMatch>
+std::vector<MultiDiGraphPatternMatch>
     find_pattern_matches(OpenMultiDiGraphView const &pattern,
-                         MultiDiGraphView const &graph,
-                         F const &additional_criterion) {
-  std::unordered_set<MultiDiGraphPatternMatch> matches;
+                         OpenMultiDiGraphView const &graph,
+                         MatchAdditionalCriterion const &additional_criterion) {
+  std::vector<MultiDiGraphPatternMatch> matches;
   if (is_singleton_pattern(pattern)) {
     for (Node const &graph_node : get_nodes(graph)) {
       optional<MultiDiGraphPatternMatch> candidate =
           get_candidate_singleton_match(pattern, graph, graph_node);
-      if (candidate.has_value() ||
-          pattern_matches<F>(pattern, graph, candidate.value())) {
-        matches.insert(candidate.value());
+      if (candidate.has_value() &&
+          pattern_matches(
+              pattern, graph, candidate.value(), additional_criterion)) {
+        matches.push_back(candidate.value());
       }
     }
   } else {
@@ -221,14 +286,14 @@ std::unordered_set<MultiDiGraphPatternMatch>
     auto prefix_matches =
         find_pattern_matches(subpatterns.first, graph, additional_criterion);
     auto postfix_matches =
-        find_pattern_matches(subpatterns.first, graph, additional_criterion);
+        find_pattern_matches(subpatterns.second, graph, additional_criterion);
     auto edge_splits = get_edge_splits(pattern, split);
     for (MultiDiGraphPatternMatch const &prefix_match : prefix_matches) {
       for (MultiDiGraphPatternMatch const &postfix_match : postfix_matches) {
         optional<MultiDiGraphPatternMatch> unsplit =
             unsplit_matches(prefix_match, postfix_match, edge_splits);
         if (unsplit.has_value()) {
-          matches.insert(unsplit.value());
+          matches.push_back(unsplit.value());
         }
       }
     }

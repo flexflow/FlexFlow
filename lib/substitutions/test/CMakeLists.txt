@@ -8,7 +8,6 @@ ff_add_test_executable(
   DEPS
     utils
     doctest
-    rapidcheck
     substitutions
+    utils-test-common
 )
-

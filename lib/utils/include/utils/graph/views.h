@@ -258,6 +258,8 @@ public:
 private:
   OpenMultiDiGraphView const &g;
   std::unordered_set<Node> const &nodes;
+  std::unordered_set<InputMultiDiEdge> inputs;
+  std::unordered_set<OutputMultiDiEdge> outputs;
 };
 
 struct UpwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
@@ -274,6 +276,7 @@ struct UpwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
 private:
   OpenMultiDiGraphView const &g;
   std::unordered_set<Node> const &nodes;
+  std::unordered_set<InputMultiDiEdge> inputs;
 };
 
 struct DownwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
@@ -290,6 +293,7 @@ struct DownwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
 private:
   OpenMultiDiGraphView const &g;
   std::unordered_set<Node> const &nodes;
+  std::unordered_set<OutputMultiDiEdge> outputs;
 };
 
 struct ClosedMultiDiSubgraphView : public IOpenMultiDiGraphView {
@@ -362,6 +366,20 @@ public:
 
 private:
   DiGraphView g;
+};
+
+struct ViewMultiDiGraphAsOpenMultiDiGraph : public IOpenMultiDiGraphView {
+public:
+  explicit ViewMultiDiGraphAsOpenMultiDiGraph(MultiDiGraphView const &);
+
+  std::unordered_set<OpenMultiDiEdge>
+      query_edges(OpenMultiDiEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  ViewMultiDiGraphAsOpenMultiDiGraph *clone() const override;
+
+private:
+  MultiDiGraphView g;
 };
 
 DirectedEdge flipped(DirectedEdge const &);

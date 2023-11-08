@@ -30,7 +30,7 @@ DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &lhs,
     result_dsts = allowed_values(query_intersection(lhs.dsts, rhs.dsts));
   }
 
-  return {result_srcs, result_srcs};
+  return {result_srcs, result_dsts};
 }
 
 } // namespace FlexFlow
