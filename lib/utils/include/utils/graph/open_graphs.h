@@ -54,6 +54,7 @@ public:
   void add_edge(Edge const &);
   void remove_edge(Edge const &);
 
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T>
@@ -129,7 +130,9 @@ public:
 private:
   using UpwardOpenMultiDiGraphView::UpwardOpenMultiDiGraphView;
 
-  cow_ptr_t<IUpwardOpenMultiDiGraph> get_ptr() const;
+  cow_ptr_t<IUpwardOpenMultiDiGraph>
+      get_ptr() const; // note: we does have any class inherit from
+                       // IUpwardOpenMultiDiGraph
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UpwardOpenMultiDiGraph);
 
