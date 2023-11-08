@@ -12,18 +12,18 @@ from transformers import (
 
 def peft_pre_forward_hook(module, input):
     assert(module.name is not None and module.decoding_step is not None)
-    name = module.name.replace("base_model.model.model", "")
+    name = module.name.replace("base_model.model.model.", "")
     print(f"Pre-forward hook activated on module: {name}, decoding step: {module.decoding_step}")
-    #print("Pre-Input: ", input)
+    print("Pre-Input: ", input[0].shape)
     torch.save(input, f"./hf_peft_tensors/decoding_step_{module.decoding_step}_{name}.input")
-    print("===")
+    #print("===")
 
 def peft_post_forward_hook(module, input, output):
     assert(module.name is not None and module.decoding_step is not None)
-    name = module.name.replace("base_model.model.model", "")
+    name = module.name.replace("base_model.model.model.", "")
     print(f"Post-forward Hook activated for module: {name}, decoding step: {module.decoding_step}")
-    #print("Post-Output: ", output)
-    torch.save(input, f"./hf_peft_tensors/decoding_step_{module.decoding_step}_{name}.output")
+    print("Post-Input/Output: ", input[0].shape, output[0].shape)
+    torch.save(output, f"./hf_peft_tensors/decoding_step_{module.decoding_step}_{name}.output")
     print("===")
     module.decoding_step += 1
 
