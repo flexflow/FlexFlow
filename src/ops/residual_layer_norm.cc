@@ -63,6 +63,9 @@ ResidualLayerNormParams ResidualLayerNorm::get_params() const {
   params.eps = this->eps;
   params.use_bias = this->use_bias;
   params.use_two_residuals = this->use_two_residuals;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -228,7 +231,7 @@ ResidualLayerNorm::ResidualLayerNorm(
                         params.use_bias,
                         params.eps,
                         allocate_weights,
-                        name) {}
+                        params.name) {}
 
 ResidualLayerNorm::ResidualLayerNorm(FFModel &model,
                                      LayerID const &_layer_guid,
@@ -1069,6 +1072,8 @@ void ResidualLayerNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->eps);
   sez.serialize(this->use_bias);
   sez.serialize(this->use_two_residuals);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -1098,6 +1103,10 @@ Node ResidualLayerNorm::deserialize(FFModel &ff,
   dez.deserialize(eps);
   dez.deserialize(use_bias);
   dez.deserialize(use_two_residuals);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   if (use_two_residuals) {
     assert(num_inputs == 3);
   } else {
@@ -1111,6 +1120,7 @@ Node ResidualLayerNorm::deserialize(FFModel &ff,
   params.eps = eps;
   params.use_bias = use_bias;
   params.use_two_residuals = use_two_residuals;
+  strcpy(params.name, name);
   if (use_two_residuals) {
     return ff.get_or_create_node<ResidualLayerNorm>(
         {inputs[0], inputs[1], inputs[2]}, params);

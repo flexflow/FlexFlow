@@ -52,6 +52,9 @@ bool SigmoidSiluMultiParams::is_valid(
 SigmoidSiluMultiParams SigmoidSiluMulti::get_params() const {
   SigmoidSiluMultiParams params;
   params.layer_guid = this->layer_guid;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -110,7 +113,7 @@ SigmoidSiluMulti::SigmoidSiluMulti(
     std::pair<ParallelTensor, ParallelTensor> const &inputs,
     char const *name)
     : SigmoidSiluMulti(
-          model, params.layer_guid, inputs.first, inputs.second, name) {}
+          model, params.layer_guid, inputs.first, inputs.second, params.name) {}
 
 SigmoidSiluMulti::SigmoidSiluMulti(FFModel &model,
                                    LayerID const &_layer_guid,
@@ -532,6 +535,8 @@ void SigmoidSiluMulti::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->layer_guid.model_id);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -546,9 +551,14 @@ Node SigmoidSiluMulti::deserialize(FFModel &ff,
   dez.deserialize(transformer_layer_id);
   dez.deserialize(deserialized_model_id);
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
 
   SigmoidSiluMultiParams params;
   params.layer_guid = layer_guid;
+  strcpy(params.name, name);
   return ff.get_or_create_node<SigmoidSiluMulti>({inputs[0], inputs[1]},
                                                  params);
 }

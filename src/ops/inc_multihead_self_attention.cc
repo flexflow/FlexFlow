@@ -567,7 +567,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 params.quantization_type,
                                 params.offload,
                                 params.tensor_parallelism_degree,
-                                name) {}
+                                params.name) {}
 
 void IncMultiHeadSelfAttention::init_inference(
     FFModel const &ff,
@@ -1055,6 +1055,9 @@ IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   params.quantization_type = this->quantization_type;
   params.offload = this->offload;
   params.num_kv_heads = this->num_kv_heads;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
 
   return params;
 }

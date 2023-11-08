@@ -263,8 +263,12 @@ void FlexFlow::top_level_task(Task const *task,
       peft_model_name.empty()
           ? LoraLinearConfig::DefaultConfig
           : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
-  PEFTModelID peft_model_id = model.register_peft_model(
-      LoraLinearConfig::DefaultConfig /*mlp_first*/, mlp_second /*mlp_second*/);
+  PEFTModelID peft_model_id =
+      peft_model_name.empty()
+          ? PEFTModelID::NO_ID
+          : model.register_peft_model(
+                LoraLinearConfig::DefaultConfig /*mlp_first*/,
+                mlp_second /*mlp_second*/);
 
   int total_num_requests = 0;
   {

@@ -674,7 +674,7 @@ Node LoraLinear::deserialize(FFModel &ff,
   size_t id, transformer_layer_id, deserialized_model_id;
   OperatorType op_type;
   size_t name_len;
-  char name[MAX_OPNAME];
+  char name[MAX_OPNAME] = {0};
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
   dez.deserialize(deserialized_model_id);

@@ -53,6 +53,9 @@ RMSNormParams RMSNorm::get_params() const {
   params.layer_guid = this->layer_guid;
   params.eps = this->eps;
   params.dim = this->dim;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -583,6 +586,8 @@ void RMSNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->eps);
   sez.serialize(this->dim);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -602,10 +607,16 @@ Node RMSNorm::deserialize(FFModel &ff,
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(eps);
   dez.deserialize(dim);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   RMSNormParams params;
   params.layer_guid = layer_guid;
   params.eps = eps;
   params.dim = dim;
+  strcpy(params.name, name);
+
   return ff.get_or_create_node<RMSNorm>(inputs[0], params);
 }
 
@@ -613,7 +624,7 @@ Op *RMSNorm::materialize(FFModel &ff,
                          ParallelTensor inputs[],
                          int num_inputs) const {
   RMSNormParams params = get_params();
-  return new RMSNorm(ff, params, inputs[0], true, this->name);
+  return new RMSNorm(ff, params, inputs[0], true, params.name);
 }
 
 bool RMSNorm::measure_operator_cost(Simulator *sim,

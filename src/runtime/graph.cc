@@ -2298,6 +2298,8 @@ GraphOptimalViewSerialized
         sez.serialize(embed->out_channels);
         sez.serialize(embed->aggr);
         sez.serialize(embed->data_type);
+        sez.serialize(strlen(embed->name));
+        sez.serialize(embed->name, strlen(embed->name));
         break;
       }
       case OP_MULTIHEAD_ATTENTION: {
@@ -2337,6 +2339,8 @@ GraphOptimalViewSerialized
         sez.serialize(attn->offload);
         sez.serialize(attn->num_kv_heads);
         sez.serialize(attn->tensor_parallelism_degree);
+        sez.serialize(strlen(attn->name));
+        sez.serialize(attn->name, strlen(attn->name));
         break;
       }
       case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -2359,6 +2363,8 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qk_prod_scaling);
         sez.serialize(attn->position_bias);
         sez.serialize(attn->num_kv_heads);
+        sez.serialize(strlen(attn->name));
+        sez.serialize(attn->name, strlen(attn->name));
         break;
       }
       case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -2384,6 +2390,8 @@ GraphOptimalViewSerialized
         sez.serialize(attn->offload);
         sez.serialize(attn->num_kv_heads);
         sez.serialize(attn->tensor_parallelism_degree);
+        sez.serialize(strlen(attn->name));
+        sez.serialize(attn->name, strlen(attn->name));
         break;
       }
       case OP_SOFTMAX: {
@@ -2656,6 +2664,10 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(out_channels);
         dez.deserialize(aggr);
         dez.deserialize(data_type);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
 
         EmbeddingParams params;
         params.aggr = aggr;
@@ -2663,6 +2675,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.out_channels = out_channels;
         params.layer_guid = layer_guid;
         params.data_type = data_type;
+        strcpy(params.name, name);
         node = get_or_create_node<Embedding>(inputs[0], params);
         break;
       }
@@ -2798,6 +2811,10 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(offload);
         dez.deserialize(num_kv_heads);
         dez.deserialize(tensor_parallelism_degree);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
 
         IncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2818,6 +2835,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.offload = offload;
         params.num_kv_heads = num_kv_heads;
         params.tensor_parallelism_degree = tensor_parallelism_degree;
+        strcpy(params.name, name);
         node = get_or_create_node<IncMultiHeadSelfAttention>(inputs[0], params);
         break;
       }
@@ -2846,6 +2864,10 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(qk_prod_scaling);
         dez.deserialize(position_bias);
         dez.deserialize(num_kv_heads);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
 
         SpecIncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2863,6 +2885,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.qk_prod_scaling = qk_prod_scaling;
         params.position_bias = position_bias;
         params.num_kv_heads = num_kv_heads;
+        strcpy(params.name, name);
         node = get_or_create_node<SpecIncMultiHeadSelfAttention>(inputs[0],
                                                                  params);
         break;
@@ -2897,6 +2920,10 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(offload);
         dez.deserialize(num_kv_heads);
         dez.deserialize(tensor_parallelism_degree);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
 
         TreeIncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2917,6 +2944,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.offload = offload;
         params.num_kv_heads = num_kv_heads;
         params.tensor_parallelism_degree = tensor_parallelism_degree;
+        strcpy(params.name, name);
         node = get_or_create_node<TreeIncMultiHeadSelfAttention>(inputs[0],
                                                                  params);
         break;

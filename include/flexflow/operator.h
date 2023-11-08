@@ -258,11 +258,21 @@ public:
       mkdir(folder_path, 0700);
     }
     // output base filepath, shared by all tensors from the same operator
+    std::string op_name_without_uid = std::string(m->op_name);
+    size_t last_underscore = op_name_without_uid.length() - 1;
+    for (int i = op_name_without_uid.length() - 1; i > 0; i--) {
+      if (!(std::isdigit(m->op_name[i]) || m->op_name[i] == '_')) {
+        break;
+      } else if (m->op_name[i] == '_') {
+        last_underscore = i;
+      }
+    }
+    op_name_without_uid.erase(last_underscore);
     std::string base_filepath =
         "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
         "_decoding-step_" + std::to_string(m->decoding_step) + "_layer-num_" +
         std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
-        m->op_name + "_shard-id_" + std::to_string(shard_id);
+        op_name_without_uid + "_shard-id_" + std::to_string(shard_id);
     // save batch config, if passed
     if (bc != nullptr) {
       bc->save_to_file(base_filepath + "_batch-config");

@@ -55,6 +55,9 @@ ResidualRMSNormParams ResidualRMSNorm::get_params() const {
   params.layer_guid = this->layer_guid;
   params.eps = this->eps;
   params.dim = this->dim;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -141,7 +144,7 @@ ResidualRMSNorm::ResidualRMSNorm(
                       params.eps,
                       params.dim,
                       allocate_weights,
-                      name) {}
+                      params.name) {}
 
 ResidualRMSNorm::ResidualRMSNorm(
     FFModel &model,
@@ -460,6 +463,8 @@ void ResidualRMSNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->eps);
   sez.serialize(this->dim);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -478,10 +483,15 @@ Node ResidualRMSNorm::deserialize(FFModel &ff,
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(eps);
   dez.deserialize(dim);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   ResidualRMSNormParams params;
   params.layer_guid = layer_guid;
   params.eps = eps;
   params.dim = dim;
+  strcpy(params.name, name);
   return ff.get_or_create_node<ResidualRMSNorm>({inputs[0], inputs[1]}, params);
 }
 
