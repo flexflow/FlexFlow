@@ -18,7 +18,7 @@ template <typename DT>
 void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
                                          BatchConfig const *bc,
                                          DT *output_ptr,
-                                         cudaStream_t stream);
+                                         ffStream_t stream);
 
 template <typename DT>
 void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
@@ -28,7 +28,7 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
                          DT const *weight_ptr,
                          DT const *bias_ptr,
                          int num_tokens,
-                         cudaStream_t stream);
+                         ffStream_t stream);
 
 template <typename DT>
 __global__ void apply_position_bias_qkprd(DT *input_ptr,

@@ -174,15 +174,6 @@ __global__ void compute_attention_kernel_generation_kernel(
       }
       qk_max = mask ? qk_max : fmaxf(qk_max, qk);
       qk_smem[ti - first_step] = mask ? 0.f : qk;
-      // if (blockIdx.y == 0 && blockIdx.x == 0) {
-      //   printf("qk projkkkhead1 %.10f, %d %d\n", qk, tlength, ti);
-      // }
-      // if (blockIdx.y == 0 && blockIdx.x == 2) {
-      //   printf("qk projkkkhead2 %.10f, %d %d\n", qk, tlength, ti);
-      // }
-      // if (blockIdx.y == 0 && blockIdx.x == 10) {
-      //   printf("qk projkkkheadten %.10f, %d %d\n", qk, tlength, ti);
-      // }
     }
   }
 
@@ -215,10 +206,6 @@ __global__ void compute_attention_kernel_generation_kernel(
   // Broadcast to all the threads in the warp.
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
 
-  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
-  //   printf("qkmax2 %f\n", qk_max);
-  // }
-
   float exp_sum = 0.f;
   for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
     float logit = __expf(qk_smem[ti - first_step] - qk_max);
@@ -226,18 +213,8 @@ __global__ void compute_attention_kernel_generation_kernel(
     qk_smem[ti - first_step] = logit;
   }
 
-  // if (blockIdx.y == 0 && blockIdx.x == 0) {
-  //       printf("exp_sum before %.10f, %d\n", exp_sum, tidx);
-  //   }
-
   // Compute the sum.
   exp_sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], exp_sum);
-  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
-  //       printf("exp_sum1 %.10f\n", exp_sum);
-  //   }
-  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 4) {
-  //       printf("exp_sum2 %.10f\n", exp_sum);
-  //   }
 
   // softmax
   float inv_sum = __fdividef(1.f, exp_sum + 1.e-6);
@@ -248,16 +225,6 @@ __global__ void compute_attention_kernel_generation_kernel(
   __syncthreads();
   // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
   //   printf("softmax %.10f\n", qk_smem[0]);
-  //   printf("softmax %.10f\n", qk_smem[1]);
-  //   printf("softmax %.10f\n", qk_smem[2]);
-  //   printf("softmax %.10f\n", qk_smem[3]);
-  //   printf("softmax %.10f\n", qk_smem[4]);
-  //   printf("softmax %.10f\n", qk_smem[5]);
-  //   printf("softmax %.10f\n", qk_smem[6]);
-  //   printf("softmax %.10f\n", qk_smem[7]);
-  //   printf("softmax %.10f\n", qk_smem[8]);
-  //   printf("softmax %.10f\n", qk_smem[9]);
-  //   printf("softmax %.10f\n", qk_smem[10]);
   // }
 
   // value projection
@@ -1243,40 +1210,6 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   } else {
     assert(false && "Unspported data type");
   }
-
-  // if (input.data_type == DT_HALF) {
-  //   print_tensor<half>(input.get_half_ptr(),
-  //                      32,
-  //                      "[IncMultiHeadSelfAttention:forward:input]");
-  //   print_tensor<half>(weight.get_half_ptr(),
-  //                      32,
-  //                      "[IncMultiHeadSelfAttention:forward:weight]");
-  //   print_tensor<half>(output.get_half_ptr(),
-  //                      32,
-  //                      "[IncMultiHeadSelfAttention:forward:output]");
-  //   print_tensor<half>(
-  //       bias.get_half_ptr(), 32,
-  //       "[IncMultiHeadSelfAttention:forward:bias]");
-  // } else {
-  //   print_tensor<float>(input.get_float_ptr(),
-  //                       32,
-  //                       "[IncMultiHeadSelfAttention:forward:input]");
-  //   print_tensor<float>(weight.get_float_ptr(),
-  //                       32,
-  //                       "[IncMultiHeadSelfAttention:forward:weight]");
-  //   print_tensor<float>(output.get_float_ptr(),
-  //                       32,
-  //                       "[IncMultiHeadSelfAttention:forward:output]");
-  //   print_tensor<float>(
-  //       bias.get_float_ptr(), 32,
-  //       "[IncMultiHeadSelfAttention:forward:bias]");
-  // }
-
-  // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
-  // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
-  // acc_output.rect, "[Attention:forward:output]");
-  // print_tensor<float>(input.get_float_ptr(), 32, "ip");
-  // print_tensor<float>(output.get_float_ptr(), 32, "op");
 }
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
@@ -1343,7 +1276,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     bool _offload)
     : OpMeta(handler, attn), weight_ptr(nullptr), bias_ptr(nullptr) {
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&task_local_stream));
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
   checkCUDNN(cudnnCreateTensorDescriptor(&qk_tensor));
