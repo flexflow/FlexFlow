@@ -97,12 +97,18 @@ public:
     return nl->get_label(n);
   }
 
-  void add_edge(MultiDiEdge const &e, EdgeLabel const &l) {
-    return this->get_ptr()->add_edge(e, l);
+  void add_edge(MultiDiEdge const &e) {
+    return this->get_ptr()->add_edge(e);
   }
+
+  void add_label(MultiDiEdge const &e, EdgeLabel const &l) {
+    el->add_label(e, l);
+  }
+
   EdgeLabel &at(MultiDiEdge const &e) {
     return el->get_label(e);
   }
+
   EdgeLabel const &at(MultiDiEdge const &e) const {
     return el->get_label(e);
   }
@@ -110,6 +116,7 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return this->get_ptr()->query_nodes(q);
   }
+
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
     return this->get_ptr()->query_edges(q);
   }

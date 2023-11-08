@@ -37,7 +37,7 @@ TEST_CASE("OutputLabelledOpenMultiDiGraph implementation") {
 
   // we should add_label for input and output
   //(no,po,n1, p1), (n1,p1, n2, p2) , (n1,p1, n3, p3) this may have some
-  //problem, we can fix
+  // problem, we can fix
   std::vector<MultiDiEdge> multi_diedges = {
       {nodes[0], node_ports[0], nodes[1], node_ports[1]},
       {nodes[1], node_ports[1], nodes[2], node_ports[2]},
