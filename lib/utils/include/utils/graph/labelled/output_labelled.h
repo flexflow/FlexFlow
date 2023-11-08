@@ -100,9 +100,10 @@ public:
     ol->add_label(o, l);
   };
 
-  void add_edge(MultiDiOutput const &o, MultiDiInput const &i) {
-    return get_ptr()->add_edge(o, i);
-  };
+  // it seems get_ptr() has no method called add_edge
+  //  void add_edge(MultiDiOutput const &o, MultiDiInput const &i) {
+  //    return get_ptr()->add_edge(o, i);
+  //  };
 
   void add_edge(MultiDiEdge const &e) {
     return get_ptr()->add_edge(e);
