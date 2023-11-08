@@ -26,8 +26,9 @@ size_t Op::get_params_hash() const {
 }
 
 /*static*/
+template <typename OpMetaType>
 void Op::save_inference_tensors_to_file(
-    OpMeta *m,
+    OpMetaType *m,
     int shard_id,
     BatchConfig const *bc,
     std::vector<GenericTensorAccessorR> input_tensors,

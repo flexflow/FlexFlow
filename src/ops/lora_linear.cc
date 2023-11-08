@@ -467,6 +467,7 @@ void LoraLinear::inference_task(Task const *task,
   // int num_infr_tokens = bc->num_active_infr_tokens();
   // int num_peft_tokens = bc->num_active_peft_tokens();
   inference_kernel_wrapper(m, bc, input, output);
+
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -478,17 +479,47 @@ void LoraLinear::inference_task(Task const *task,
       // Directory does not exist, create it
       mkdir(folder_path, 0700);
     }
+
+    std::string lora_layername = std::string(m->op_name);
+    std::string searchString = "lora";
+    size_t found = lora_layername.find(searchString);
+    if (found == std::string::npos) {
+      std::cout << "LoraLinear layer name not in the right format (does not "
+                  "contain word 'lora')"
+                << std::endl;
+      assert(false);
+    }
+    std::string lora_layername_substr =
+        lora_layername.substr(0, found + searchString.length());
+
     // output base filepath, shared by all tensors from the same operator
     std::string base_filepath =
         "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
         "_decoding-step_" + std::to_string(m->decoding_step) + "_layer-num_" +
         std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
-        m->op_name + "_shard-id_" + std::to_string(shard_id);
-    std::cout << "base_filepath: " << base_filepath << std::endl;
-    std::cout << "m->decoding_step: " << m->decoding_step << std::endl;
+        lora_layername_substr + "_shard-id_" + std::to_string(shard_id);
+
+    // save batch config, if passed
+    if (bc != nullptr) {
+      bc->save_to_file(base_filepath + "_batch-config");
+    }
+
+    std::string filename = base_filepath + "_input_" + std::to_string(0);
+    if (input.data_type == DT_FLOAT) {
+      save_tensor(
+          input.get_float_ptr(), input.domain.get_volume(), filename.c_str());
+    } else if (input.data_type == DT_HALF) {
+      save_tensor(
+          input.get_half_ptr(), input.domain.get_volume(), filename.c_str());
+    } else {
+      assert(false);
+    }
+
+    // std::cout << "base_filepath: " << base_filepath << std::endl;
+    // std::cout << "m->decoding_step: " << m->decoding_step << std::endl;
     if (m->decoding_step == 0) {
       for (auto it = m->model_weights.begin(); it != m->model_weights.end();
-           ++it) {
+          ++it) {
         PEFTModelID peft_model_id = it->first;
         LoraLinearWeight weight = m->model_weights[peft_model_id];
         std::string filenameA = base_filepath + "_weight_A";
@@ -512,8 +543,18 @@ void LoraLinear::inference_task(Task const *task,
         }
       }
     }
-    LoraLinear::save_inference_tensors_to_file(
-        m, shard_id, bc, {input}, {}, {output});
+
+    filename = base_filepath + "_output_" + std::to_string(0);
+    if (output.data_type == DT_FLOAT) {
+      save_tensor(
+          output.get_float_ptr(), output.domain.get_volume(), filename.c_str());
+    } else if (output.data_type == DT_HALF) {
+      save_tensor(
+          output.get_half_ptr(), output.domain.get_volume(), filename.c_str());
+    } else {
+      assert(false);
+    }
+    m->decoding_step++;
   }
 }
 
