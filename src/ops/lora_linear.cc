@@ -485,7 +485,7 @@ void LoraLinear::inference_task(Task const *task,
     size_t found = lora_layername.find(searchString);
     if (found == std::string::npos) {
       std::cout << "LoraLinear layer name not in the right format (does not "
-                  "contain word 'lora')"
+                   "contain word 'lora')"
                 << std::endl;
       assert(false);
     }
@@ -519,7 +519,7 @@ void LoraLinear::inference_task(Task const *task,
     // std::cout << "m->decoding_step: " << m->decoding_step << std::endl;
     if (m->decoding_step == 0) {
       for (auto it = m->model_weights.begin(); it != m->model_weights.end();
-          ++it) {
+           ++it) {
         PEFTModelID peft_model_id = it->first;
         LoraLinearWeight weight = m->model_weights[peft_model_id];
         std::string filenameA = base_filepath + "_weight_A";
