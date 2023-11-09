@@ -4,6 +4,7 @@
 #include "adjacency_digraph.h"
 #include "digraph.h"
 #include "labelled_graphs.h"
+#include "multidiedge.h"
 #include "multidigraph.h"
 #include "open_graphs.h"
 #include "tl/optional.hpp"
@@ -370,9 +371,10 @@ public:
 
   std::unordered_set<OpenMultiDiEdge>
       query_edges(OpenMultiDiEdgeQuery const &) const override;
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
-  ViewMultiDiGraphAsOpenMultiDiGraph *clone() const override;
+   ViewMultiDiGraphAsOpenMultiDiGraph *clone() const ;
 
 private:
   MultiDiGraphView g;

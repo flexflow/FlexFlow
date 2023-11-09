@@ -1,7 +1,6 @@
 #include "test/utils/all.h"
-#include "test/utils/doctest.h"
 #include "utils/containers.h"
-#include "utils/graph/labelled_open.h"
+#include "utils/graph/labelled/labelled_open.h"
 
 #include <string>
 

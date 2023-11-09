@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_STANDARD_LABELLED_INTERFACES_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_STANDARD_LABELLED_INTERFACES_H
 
-#include "node_labelled_interfaces.h" //todo:it doesn't exist this file
+#include "node_labelled.h" //todo:it doesn't exist this file
 #include "utils/graph/multidigraph.h"
 
 namespace FlexFlow {

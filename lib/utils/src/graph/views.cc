@@ -417,6 +417,10 @@ std::unordered_set<OpenMultiDiEdge>
                    [](MultiDiEdge const &e) { return OpenMultiDiEdge(e); });
 }
 
+  std::unordered_set<MultiDiEdge> ViewMultiDiGraphAsOpenMultiDiGraph::query_edges(MultiDiEdgeQuery const & q) const  {
+    return g.query_edges(q);
+  }
+
 std::unordered_set<Node>
     ViewMultiDiGraphAsOpenMultiDiGraph::query_nodes(NodeQuery const &q) const {
   return g.query_nodes(q);
@@ -450,7 +454,8 @@ UpwardOpenMultiDiSubgraphView::UpwardOpenMultiDiSubgraphView(
     : g(g), nodes(nodes) {}
 
 UpwardOpenMultiDiSubgraphView *UpwardOpenMultiDiSubgraphView::clone() const {
-  return new UpwardOpenMultiDiSubgraphView(g, nodes);
+  //return new UpwardOpenMultiDiSubgraphView(g, nodes);
+   NOT_IMPLEMENTED();//TODO
 }
 
 std::unordered_set<OpenMultiDiEdge> UpwardOpenMultiDiSubgraphView::query_edges(
@@ -500,28 +505,34 @@ std::unordered_set<Node>
 }
 
 ClosedMultiDiSubgraphView *ClosedMultiDiSubgraphView::clone() const {
-  return new ClosedMultiDiSubgraphView(g, nodes);
+  //return new ClosedMultiDiSubgraphView(g, nodes);
+  NOT_IMPLEMENTED();//TODO
 }
 
 JoinedUndirectedGraphView *JoinedUndirectedGraphView::clone() const {
-  return new JoinedUndirectedGraphView(lhs, rhs);
+  //return new JoinedUndirectedGraphView(lhs, rhs);
+   NOT_IMPLEMENTED();//TODO
 }
 
 DownwardOpenMultiDiSubgraphView *
     DownwardOpenMultiDiSubgraphView::clone() const {
-  return new DownwardOpenMultiDiSubgraphView(g, nodes);
+ // return new DownwardOpenMultiDiSubgraphView(g, nodes);
+  NOT_IMPLEMENTED();//TODO
 }
 
 ViewDiGraphAsMultiDiGraph *ViewDiGraphAsMultiDiGraph::clone() const {
-  return new ViewDiGraphAsMultiDiGraph(g);
+ // return new ViewDiGraphAsMultiDiGraph(g);
+  NOT_IMPLEMENTED();//TODO
 }
 
 OpenMultiDiSubgraphView *OpenMultiDiSubgraphView::clone() const {
-  return new OpenMultiDiSubgraphView(g, nodes);
+  //return new OpenMultiDiSubgraphView(g, nodes);
+   NOT_IMPLEMENTED();//TODO
 }
 
 MultiDiSubgraphView *MultiDiSubgraphView::clone() const {
-  return new MultiDiSubgraphView(g, subgraph_nodes);
+ // return new MultiDiSubgraphView(g, subgraph_nodes);
+  NOT_IMPLEMENTED();//TODO
 }
 
 } // namespace FlexFlow

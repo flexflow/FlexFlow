@@ -16,7 +16,7 @@ struct IOpenMultiDiGraphView : virtual public IMultiDiGraphView {
   virtual std::unordered_set<OpenMultiDiEdge>
       query_edges(OpenMultiDiEdgeQuery const &) const = 0;
   virtual std::unordered_set<MultiDiEdge>
-      query_edges(MultiDiEdgeQuery const &) const override final;
+      query_edges(MultiDiEdgeQuery const &) const = 0;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOpenMultiDiGraphView);
 
