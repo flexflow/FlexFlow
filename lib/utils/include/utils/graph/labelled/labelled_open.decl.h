@@ -61,7 +61,6 @@ public:
                                         OutputLabel>() const;
 
   operator OpenMultiDiGraphView() const;
-  operator LabelledOpenMultiDiGraphView() const;
 
   friend void swap(LabelledOpenMultiDiGraph &lhs,
                    LabelledOpenMultiDiGraph &rhs) {
