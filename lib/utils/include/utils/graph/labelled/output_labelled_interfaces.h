@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_OUTPUT_LABELLED_GRAPH_INTERFACES_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_OUTPUT_LABELLED_GRAPH_INTERFACES_H
 
-#include "node_labelled_interfaces.h"
+#include "node_labelled.h"
 
 namespace FlexFlow {
 

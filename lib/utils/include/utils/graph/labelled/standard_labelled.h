@@ -2,22 +2,23 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_STANDARD_LABELLED_H
 
 #include "node_labelled.h"
+#include "utils/graph/labelled/standard_labelled_interfaces.h"
 
 namespace FlexFlow {
 
-template <typename NodeLabel, typename EdgeLabel>
-struct ILabelledMultiDiGraphView
-    : public INodeLabelledMultiDiGraphView<NodeLabel> {
-  ILabelledMultiDiGraphView() = default;
-  ILabelledMultiDiGraphView(ILabelledMultiDiGraphView const &) = delete;
-  ILabelledMultiDiGraphView &
-      operator=(ILabelledMultiDiGraphView const &) = delete;
+// template <typename NodeLabel, typename EdgeLabel>
+// struct ILabelledMultiDiGraphView
+//     : public INodeLabelledMultiDiGraphView<NodeLabel> {
+//   ILabelledMultiDiGraphView() = default;
+//   ILabelledMultiDiGraphView(ILabelledMultiDiGraphView const &) = delete;
+//   ILabelledMultiDiGraphView &
+//       operator=(ILabelledMultiDiGraphView const &) = delete;
 
-  virtual ~ILabelledMultiDiGraphView() = default;
+//   virtual ~ILabelledMultiDiGraphView() = default;
 
-  virtual EdgeLabel const &at(MultiDiEdge const &) const = 0;
-};
-CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledMultiDiGraphView<int, int>);
+//   virtual EdgeLabel const &at(MultiDiEdge const &) const = 0;
+// };
+// CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledMultiDiGraphView<int, int>);
 
 template <typename NodeLabel, typename EdgeLabel>
 struct LabelledMultiDiGraphView
