@@ -64,8 +64,8 @@ LabelledOpenMultiDiGraph<N, E, I, O>::
 }
 
 template <typename N, typename E, typename I, typename O>
-LabelledOpenMultiDiGraph<N, E, I, O>::operator LabelledOpenMultiDiGraphView const {
-  GraphInternal::create_labelled_open_multidigraph_view(this->ptr.get());
+LabelledOpenMultiDiGraph<N, E, I, O>::operator OpenMultiDiGraphView() const {
+  return GraphInternal::create_open_multidigraph_view(this->ptr.get());
 }
 
 template <typename NodeLabel, typename E, typename I, typename O>
