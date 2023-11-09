@@ -607,17 +607,19 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       for (size_t i = 0; i < request.dataset[0].first.size(); i++) {
         new_bc.tokensInfo[new_bc.num_tokens].token_id =
             request.dataset[0].first[i];
-        new_bc.tokensInfo[new_bc.num_tokens].request_index = num_peft_tokens;
+        new_bc.tokensInfo[new_bc.num_tokens].request_index = peft_req_idx;
         new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = i;
         new_bc.num_tokens++;
+        new_bc.num_peft_tokens++;
       }
       for (size_t i = 0; i < request.dataset[0].second.size(); i++) {
         new_bc.tokensInfo[new_bc.num_tokens].token_id =
             request.dataset[0].second[i];
-        new_bc.tokensInfo[new_bc.num_tokens].request_index = num_peft_tokens;
+        new_bc.tokensInfo[new_bc.num_tokens].request_index = peft_req_idx;
         int depth = request.dataset[0].first.size() + i;
         new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
         new_bc.num_tokens++;
+        new_bc.num_peft_tokens++;
       }
     }
   }
@@ -2119,7 +2121,7 @@ GenerationResult RequestManager::generate_incr_decoding(
     BatchConfigFuture bcf =
         prepare_next_batch(next_batch.first, next_batch.second);
     FutureMap fm = im->inference(llm, 0, bcf);
-    // im->peft_bwd(llm, 0, bcf);
+    im->peft_bwd(llm, 0, bcf);
     assert(fm.get_future_map_domain().get_volume() == 1);
     InferenceResultFuture irf = fm.get_future(0);
     batch_pipeline.push(std::make_pair(bcf, irf));

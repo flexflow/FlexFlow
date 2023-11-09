@@ -699,8 +699,8 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
   FusedOp const *fused = metas->fused_op;
   // BatchConfig const *bc = (BatchConfig *)task->args;
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
-  // Return if no active tokens
-  if (bc->num_active_tokens() == 0) {
+  // Return if no active PEFT bwd tokens
+  if (bc->num_active_peft_tokens() == 0) {
     return;
   }
 

@@ -948,7 +948,7 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
   log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
                     bc->num_tokens,
                     bc->num_active_requests());
-  if (bc->num_tokens == 0) {
+  if (bc->num_active_peft_tokens() == 0) {
     return;
   }
 

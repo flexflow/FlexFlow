@@ -61,7 +61,7 @@ public:
   static int const MAX_NUM_TOKENS = 1024;
 
   //  Set by update
-  int num_tokens;
+  int num_tokens, num_peft_tokens;
 
   struct PerRequestInfo {
     PerRequestInfo() {

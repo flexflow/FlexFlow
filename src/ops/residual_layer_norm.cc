@@ -758,6 +758,10 @@ void ResidualLayerNorm::peft_bwd_task(
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
   assert(task->regions.size() == regions.size());
   ResidualLayerNormMeta const *m =
       *((ResidualLayerNormMeta **)task->local_args);

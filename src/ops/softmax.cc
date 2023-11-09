@@ -431,7 +431,7 @@ void Softmax::peft_bwd_task(Task const *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
-  if (bc->num_tokens == 0) {
+  if (bc->num_active_peft_tokens() == 0) {
     return;
   }
   Domain in_domain = runtime->get_index_space_domain(

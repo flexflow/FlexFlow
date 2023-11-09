@@ -917,6 +917,7 @@ Legion::FutureMap AddBiasResidualLayerNorm::peft_bwd(
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   int field_id = 0;
   // output_grad
   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
@@ -963,6 +964,10 @@ void AddBiasResidualLayerNorm::peft_bwd_task(
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
   assert(task->regions.size() == regions.size());
   AddBiasResidualLayerNormMeta const *m =
       *((AddBiasResidualLayerNormMeta **)task->local_args);

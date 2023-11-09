@@ -79,7 +79,7 @@ int BatchConfig::num_active_infr_tokens() const {
 }
 
 int BatchConfig::num_active_peft_tokens() const {
-  return 0;
+  return num_peft_tokens;
 }
 
 /*static*/

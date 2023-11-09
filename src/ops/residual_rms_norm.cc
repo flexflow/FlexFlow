@@ -672,6 +672,9 @@ void ResidualRMSNorm::peft_bwd_task(Task const *task,
   assert(regions.size() == 4);
   ResidualRMSNormMeta const *m = *((ResidualRMSNormMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
   GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
       m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW residual_input0_grad =

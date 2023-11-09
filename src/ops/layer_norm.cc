@@ -669,6 +669,7 @@ Legion::FutureMap
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   // regions[0](I): output_grad
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
@@ -704,6 +705,10 @@ void LayerNorm::peft_bwd_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
   LayerNormMeta const *m = *((LayerNormMeta **)task->local_args);
   assert(task->regions.size() == regions.size());
 
