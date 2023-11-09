@@ -63,7 +63,7 @@ private:
   AdjacencyOutputEdges outputs;
 };
 
-//CHECK_NOT_ABSTRACT(AdjacencyOpenMultiDiGraph);
+// CHECK_NOT_ABSTRACT(AdjacencyOpenMultiDiGraph);
 
 } // namespace FlexFlow
 

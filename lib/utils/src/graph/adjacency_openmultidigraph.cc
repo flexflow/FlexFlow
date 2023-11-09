@@ -142,8 +142,8 @@ AdjacencyOpenMultiDiGraph::AdjacencyOpenMultiDiGraph(
       inputs(inputs), outputs(outputs) {}
 
 AdjacencyOpenMultiDiGraph *AdjacencyOpenMultiDiGraph::clone() const {
-  NOT_IMPLEMENTED();//TODO
-  //return new AdjacencyOpenMultiDiGraph(closed_graph, inputs, outputs);
+  NOT_IMPLEMENTED(); // TODO
+  // return new AdjacencyOpenMultiDiGraph(closed_graph, inputs, outputs);
 }
 
 } // namespace FlexFlow

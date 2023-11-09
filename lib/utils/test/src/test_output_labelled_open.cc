@@ -20,7 +20,8 @@
 //   std::vector<std::string> input_edge_labels = repeat(num_nodes, [&](int i) {
 //     return "input_edge_labels_" + std::to_string(i);
 //   });
-//   std::vector<std::string> output_edge_labels = repeat(num_nodes, [&](int i) {
+//   std::vector<std::string> output_edge_labels = repeat(num_nodes, [&](int i)
+//   {
 //     return "output_edge_labels_" + std::to_string(i);
 //   });
 

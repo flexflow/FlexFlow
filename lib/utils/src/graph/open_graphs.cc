@@ -6,15 +6,15 @@
 namespace FlexFlow {
 
 std::unordered_set<MultiDiEdge>
-    IOpenMultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const{
+    IOpenMultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
   return transform(
       query_edges(OpenMultiDiEdgeQuery(q)),
       [](OpenMultiDiEdge const &e) { return get<MultiDiEdge>(e); });
 }
 
-std::unordered_set<OpenMultiDiEdge> IOpenMultiDiGraphView::query_edges(
-    OpenMultiDiEdgeQuery const &q) const {
-    return query_edges(OpenMultiDiEdgeQuery(q));
+std::unordered_set<OpenMultiDiEdge>
+    IOpenMultiDiGraphView::query_edges(OpenMultiDiEdgeQuery const &q) const {
+  return query_edges(OpenMultiDiEdgeQuery(q));
   // return transform(
   //     query_edges(OpenMultiDiEdgeQuery(q)),
   //     [](OpenMultiDiEdge const &e) { return get<OpenMultiDiEdge>(e); });

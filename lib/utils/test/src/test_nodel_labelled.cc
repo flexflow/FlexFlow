@@ -8,11 +8,13 @@
 // TEST_CASE("NodeLabelledMultiDiGraph implementations") {
 //   NodeLabelledMultiDiGraph g =
 //       NodeLabelledMultiDiGraph::create<AdjacencyMultiDiGraph,
-//                                        UnorderedLabelling<std::string, Node>>();
+//                                        UnorderedLabelling<std::string,
+//                                        Node>>();
 
 //   int num_nodes = 3;
 //   std::vector<std::string> labels =
-//       repeat(num_nodes, [&](int i) { return "labels_" + std::to_string(i); });
+//       repeat(num_nodes, [&](int i) { return "labels_" + std::to_string(i);
+//       });
 
 //   std::vector<Node> nodes;
 //   for (int i = 0; i < num_nodes; i++) {

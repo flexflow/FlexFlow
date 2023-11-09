@@ -543,6 +543,17 @@ std::vector<Out> repeat(int n, F const &f) {
   return result;
 }
 
+template <typename F, typename Out>
+std::vector<Out> repeat2(int n, F const &f, Out type_holder) {
+  assert(n >= 0);
+
+  std::vector<Out> result;
+  for (int i = 0; i < n; i++) {
+    result.push_back(f(i));
+  }
+  return result;
+}
+
 template <typename T>
 bidict<size_t, T> enumerate(std::unordered_set<T> const &c) {
   bidict<size_t, T> m;

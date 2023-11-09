@@ -44,7 +44,8 @@
 //     g.add_edge(e);
 //   }
 
-//   repeat(num_nodes, [&](int i) { return g.add_label(e[i], edge_labels[i]); });
+//   repeat(num_nodes, [&](int i) { return g.add_label(e[i], edge_labels[i]);
+//   });
 
 //   std::vector<std::string> expected_edge_labels =
 //       repeat(num_nodes, [&](int i) { return g.at(e[i]); });
@@ -58,6 +59,7 @@
 //       without_order(
 //           multi_diedges)); // this may have some problem
 //                            //  add test for
-//                            //  MultiDiEdgeQuery::with_src_nodes/with_dst_nodes/
+//                            //
+//                            MultiDiEdgeQuery::with_src_nodes/with_dst_nodes/
 //   // with_src_idxs/with_dst_idxs
 // }

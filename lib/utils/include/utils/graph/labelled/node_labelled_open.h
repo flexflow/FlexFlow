@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_LABELLED_NODE_LABELLED_OPEN
 #define _FLEXFLOW_UTILS_GRAPH_LABELLED_NODE_LABELLED_OPEN
 
-#include "utils/graph/open_graphs.h"
 #include "utils/graph/labelled/node_labelled.h"
+#include "utils/graph/open_graphs.h"
 
 namespace FlexFlow {
 

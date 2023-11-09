@@ -19,7 +19,8 @@
 //   std::vector<std::string> nodel_labels = repeat(
 //       num_nodes, [&](int i) { return "nodel_labels_" + std::to_string(i); });
 
-//   std::vector<std::string> output_edge_labels = repeat(num_nodes, [&](int i) {
+//   std::vector<std::string> output_edge_labels = repeat(num_nodes, [&](int i)
+//   {
 //     return "output_edge_labels_" + std::to_string(i);
 //   });
 
@@ -35,7 +36,8 @@
 //   CHECK(get_nodeports == node_ports);
 
 //   std::vector<std::string> output_labels = repeat(
-//       num_nodes, [&](int i) { return "output_labels_" + std::to_string(i); });
+//       num_nodes, [&](int i) { return "output_labels_" + std::to_string(i);
+//       });
 
 //   //(no,po,n1, p1), (n1,p1, n2, p2) , (n1,p1, n3, p3) this may have some
 //   // problem, we can fix
