@@ -608,6 +608,28 @@ cudnnDataType_t cuda_to_cudnn_datatype(cudaDataType_t type) {
   return CUDNN_DATA_FLOAT;
 }
 
+void check_device_vs_host_ptr(void const *maybe_devicePtr) {
+  cudaPointerAttributes attributes;
+  cudaError_t cudaStatus = cudaPointerGetAttributes(&attributes, maybe_devicePtr);
+
+  if (cudaStatus == cudaSuccess) {
+    // Check attributes and perform actions accordingly
+    if (attributes.type == cudaMemoryTypeDevice) {
+      printf("Pointer is allocated in device memory.\n");
+    } else if (attributes.type == cudaMemoryTypeHost) {
+      printf("Pointer is allocated in host memory.\n");
+    } else if (attributes.type == cudaMemoryTypeUnregistered) {
+      printf("Pointer is unregistered.\n");
+    } else if (attributes.type == cudaMemoryTypeManaged) {
+      printf("Pointer is managed.\n");
+    } else {
+      printf("Pointer is not allocated in recognized memory type.\n");
+    }
+  } else {
+    fprintf(stderr, "cudaPointerGetAttributes failed: %s\n", cudaGetErrorString(cudaStatus));
+  }
+} 
+
 template __global__ void
     assign_kernel<half>(half *ptr, coord_t size, half value);
 template __global__ void

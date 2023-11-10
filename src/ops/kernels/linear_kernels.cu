@@ -457,14 +457,20 @@ void peft_bwd_kernel(LinearMeta const *m,
   cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   // update input_grad_ptr and output_grad_ptr offset
-  input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_tokens * in_dim;
+  int num_infr_only_tokens = num_infr_tokens - num_peft_tokens;
+  input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_only_tokens * in_dim;
   output_grad_ptr =
-      static_cast<DT *>(output_grad_ptr) + num_infr_tokens * out_dim;
+      static_cast<DT *>(output_grad_ptr) + num_infr_only_tokens * out_dim;
 #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = output_type;
 #else
-  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  // For best performance, set the default cublas compute type to
+  // CUBLAS_COMPUTE_16F for half precision and to
+  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  if (m->output_type[0] == DT_FLOAT) {
+    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  }
 #endif
   int output_size = out_dim * num_peft_tokens;
   if (m->activation == AC_MODE_RELU) {
