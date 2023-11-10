@@ -458,7 +458,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         if (request.completed_training_steps == request.max_training_steps) {
           // check if the fine tuning request has completed
           request.status = Request::COMPLETED;
-          log_req_mgr.print("[Done] guid(%zu) completed_training_steps(%zu)",
+          log_req_mgr.print("[Done] guid(%zu) completed_training_steps(%d)",
                             old_bc.requestsInfo[i].request_guid,
                             request.completed_training_steps);
           GenerationResult &gr = request_generation_results[request.guid];
@@ -474,7 +474,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
               "[Profile] guid(%zu) completed_training_steps(%d) start(%.1lf) "
               "finish(%.1lf) latency(%.1lf)",
               request.guid,
-              profile_info.completed_training_steps,
+              request.completed_training_steps,
               profile_info.start_time,
               profile_info.finish_time,
               profile_info.finish_time - profile_info.start_time);
@@ -599,10 +599,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   // Step 3: add new requests to the next batch if there is space
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (new_bc.request_completed[i]) {
-      if (!pending_request_queue.empty() &&
+      if (!pending_infr_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
-        Request new_request = pending_request_queue.front();
-        pending_request_queue.pop();
+        Request new_request = pending_infr_request_queue.front();
+        pending_infr_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
         new_bc.requestsInfo[i].first_token_depth_in_request = 0;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
@@ -649,7 +649,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     assert(request.req_type = Request::REQ_FINETUNING);
     assert(request.dataset.size() > 0);
     assert(request.max_training_steps > 0 &&
-           request.completed_training_steps < max_training_steps);
+           request.completed_training_steps < request.max_training_steps);
     int num_peft_tokens =
         request.dataset[0].first.size() + request.dataset[0].second.size();
     if (num_peft_tokens + new_bc.num_active_tokens() <=
