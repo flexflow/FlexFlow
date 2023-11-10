@@ -1294,7 +1294,7 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
                                                     bias_ptr,
                                                     stream);
   } else if (input_grad.data_type == DT_FLOAT) {
-    assert(m->offload);
+    assert(!m->offload);
     float const *bias_ptr =
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::IncMultiHeadAttention::peft_bwd_kernel(m,

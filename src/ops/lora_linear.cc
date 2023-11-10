@@ -612,7 +612,7 @@ void LoraLinear::peft_bwd_task(Task const *task,
   if (bc->num_active_peft_tokens() == 0) {
     return;
   }
-  assert(regions.size() == 6);
+  assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
   assert(m->input_type[0] == m->output_type[0]);
 
