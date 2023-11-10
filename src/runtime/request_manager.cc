@@ -115,7 +115,7 @@ void RequestManager::register_tokenizer(ModelType type,
   this->eos_token_id = eos_token_id;
   std::string tokenizer_folder =
       (!path.empty() && path.back() != '/') ? path + '/' : path;
-  if (model_type == ModelType::LLAMA || model_type == ModelType::LLAMA2) {
+  if (model_type == ModelType::LLAMA) {
     bool path_to_file = !path.empty() &&
                         (path.size() >= strlen("tokenizer.model")) &&
                         path.find("tokenizer.model") ==
@@ -416,6 +416,12 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                           old_bc.requestsInfo[i].request_guid,
                           request.tokens.size());
         std::string output = this->tokenizer_->Decode(request.tokens);
+        // Unlike Huggingface, the sentencepiece C++ library automatically
+        // removes the BOS token
+        if (model_type == ModelType::LLAMA &&
+            request.tokens.at(0) == bos_token_id) {
+          output = "<s> " + output;
+        }
 
         {
           // update generation result and trigger future
@@ -625,6 +631,12 @@ BeamSearchBatchConfig
                           request.guid,
                           request.tokens.size());
         std::string output = this->tokenizer_->Decode(request.tokens);
+        // Unlike Huggingface, the sentencepiece C++ library automatically
+        // removes the BOS token
+        if (model_type == ModelType::LLAMA &&
+            request.tokens.at(0) == bos_token_id) {
+          output = "<s> " + output;
+        }
         {
           // update generation result and trigger future
           GenerationResult &gr = request_generation_results[request.guid];
@@ -736,6 +748,12 @@ BeamSearchBatchConfig
           }
         }
         std::string output = this->tokenizer_->Decode(request.tokens);
+        // Unlike Huggingface, the sentencepiece C++ library automatically
+        // removes the BOS token
+        if (model_type == ModelType::LLAMA &&
+            request.tokens.at(0) == bos_token_id) {
+          output = "<s> " + output;
+        }
         log_req_mgr.print("Output: %s", output.c_str());
       }
     } else if (request.status == Request::PENDING) {
@@ -769,6 +787,12 @@ BeamSearchBatchConfig
 
       // Token Info
       std::string output = this->tokenizer_->Decode(request.tokens);
+      // Unlike Huggingface, the sentencepiece C++ library automatically removes
+      // the BOS token
+      if (model_type == ModelType::LLAMA &&
+          request.tokens.at(0) == bos_token_id) {
+        output = "<s> " + output;
+      }
       log_req_mgr.print("Output: %s", output.c_str());
     } else {
       assert(false);
