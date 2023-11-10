@@ -425,7 +425,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     if (request.req_type == Request::REQ_FINETUNING) {
       // No new tokens generated when in fine-tuning mode
       continue;
-    } else if (old_bc.tokensInfo[i].abs_depth_in_request + 1 < request.tokens.size()) {
+    } else if (old_bc.tokensInfo[i].abs_depth_in_request + 1 <
+               request.tokens.size()) {
       // This is a prompt token
       continue;
     } else {
@@ -449,31 +450,34 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
       Request &request = all_requests[old_bc.requestsInfo[i].request_guid];
       if (request.req_type == Request::REQ_FINETUNING) {
-        // fine-tuning requests don't automatically carry over to the next batch, 
-        // we only do so if there is space left after adding new inference requests
+        // fine-tuning requests don't automatically carry over to the next
+        // batch, we only do so if there is space left after adding new
+        // inference requests
         request.completed_training_steps += 1;
         assert(request.completed_training_steps <= request.max_training_steps);
         if (request.completed_training_steps == request.max_training_steps) {
           // check if the fine tuning request has completed
           request.status = Request::COMPLETED;
           log_req_mgr.print("[Done] guid(%zu) completed_training_steps(%zu)",
-                          old_bc.requestsInfo[i].request_guid,
-                          request.completed_training_steps);
+                            old_bc.requestsInfo[i].request_guid,
+                            request.completed_training_steps);
           GenerationResult &gr = request_generation_results[request.guid];
           assert(gr.guid == request.guid);
           num_processed_requests++;
           ProfileInfo profile_info = profiling_requests[request.guid];
-          profile_info.finish_time = Realm::Clock::current_time_in_microseconds();
+          profile_info.finish_time =
+              Realm::Clock::current_time_in_microseconds();
           total_request_run_time +=
               profile_info.finish_time - profile_info.start_time;
           profiling_requests[request.guid] = profile_info;
-          log_req_mgr.print("[Profile] guid(%zu) completed_training_steps(%d) start(%.1lf) "
-                            "finish(%.1lf) latency(%.1lf)",
-                            request.guid,
-                            profile_info.completed_training_steps,
-                            profile_info.start_time,
-                            profile_info.finish_time,
-                            profile_info.finish_time - profile_info.start_time);
+          log_req_mgr.print(
+              "[Profile] guid(%zu) completed_training_steps(%d) start(%.1lf) "
+              "finish(%.1lf) latency(%.1lf)",
+              request.guid,
+              profile_info.completed_training_steps,
+              profile_info.start_time,
+              profile_info.finish_time,
+              profile_info.finish_time - profile_info.start_time);
         }
       } else {
         int processed_tokens =
@@ -482,7 +486,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         assert(processed_tokens < request.tokens.size());
         bool request_completed = false;
         // printf("model_type = %d\n", this->model_type);
-        if (request.tokens.size() >= old_bc.requestsInfo[i].max_sequence_length) {
+        if (request.tokens.size() >=
+            old_bc.requestsInfo[i].max_sequence_length) {
           request_completed = true;
         } else if (request.tokens.back() == eos_token_id) {
           // Encounter EOS token id
@@ -511,47 +516,51 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           log_req_mgr.print("Final output: %s", output.c_str());
           num_processed_requests++;
           ProfileInfo profile_info = profiling_requests[request.guid];
-          profile_info.finish_time = Realm::Clock::current_time_in_microseconds();
+          profile_info.finish_time =
+              Realm::Clock::current_time_in_microseconds();
           total_request_run_time +=
               profile_info.finish_time - profile_info.start_time;
           profiling_requests[request.guid] = profile_info;
-          log_req_mgr.print("[Profile] guid(%zu) decoding_steps(%d) start(%.1lf) "
-                            "finish(%.1lf) latency(%.1lf)",
-                            request.guid,
-                            profile_info.decoding_steps,
-                            profile_info.start_time,
-                            profile_info.finish_time,
-                            profile_info.finish_time - profile_info.start_time);
+          log_req_mgr.print(
+              "[Profile] guid(%zu) decoding_steps(%d) start(%.1lf) "
+              "finish(%.1lf) latency(%.1lf)",
+              request.guid,
+              profile_info.decoding_steps,
+              profile_info.start_time,
+              profile_info.finish_time,
+              profile_info.finish_time - profile_info.start_time);
           // Write output to file if needed:
           if (!output_filepath.empty()) {
-          std::ofstream outputFile(output_filepath, std::ios::app);
-          if (outputFile.is_open()) {
-            outputFile << "end-to-end latency: " << std::fixed
-                       << std::setprecision(3) << total_request_run_time
-                       << std::endl;
-            outputFile << "num decoding steps: " << profile_info.decoding_steps
-                       << std::endl;
-            outputFile << "token IDs: ";
-            for (int i = 0; i < request.tokens.size(); i++) {
-              outputFile << request.tokens[i];
-              if (i < request.tokens.size() - 1) {
-                outputFile << ",";
+            std::ofstream outputFile(output_filepath, std::ios::app);
+            if (outputFile.is_open()) {
+              outputFile << "end-to-end latency: " << std::fixed
+                         << std::setprecision(3) << total_request_run_time
+                         << std::endl;
+              outputFile << "num decoding steps: "
+                         << profile_info.decoding_steps << std::endl;
+              outputFile << "token IDs: ";
+              for (int i = 0; i < request.tokens.size(); i++) {
+                outputFile << request.tokens[i];
+                if (i < request.tokens.size() - 1) {
+                  outputFile << ",";
+                }
               }
+              outputFile << std::endl;
+              outputFile << output;
+              outputFile.close();
+            } else {
+              std::cout << "Unable to open the output file: " << output_filepath
+                        << std::endl;
+              assert(false);
             }
-            outputFile << std::endl;
-            outputFile << output;
-            outputFile.close();
-          } else {
-            std::cout << "Unable to open the output file: " << output_filepath
-                      << std::endl;
-            assert(false);
           }
-        }
 
         } else {
           new_bc.request_completed[i] = false;
-          new_bc.requestsInfo[i].first_token_depth_in_request = processed_tokens;
-          new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
+          new_bc.requestsInfo[i].first_token_depth_in_request =
+              processed_tokens;
+          new_bc.requestsInfo[i].first_token_offset_in_batch =
+              new_bc.num_tokens;
           new_bc.requestsInfo[i].request_guid =
               old_bc.requestsInfo[i].request_guid;
           new_bc.requestsInfo[i].peft_model_id =
@@ -565,17 +574,18 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             new_bc.requestsInfo[i].num_tokens_in_batch = 1;
           } else {
             // Prompt phase
-            new_bc.requestsInfo[i].num_tokens_in_batch =
-                std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
-                        (int)request.tokens.size() -
-                            new_bc.requestsInfo[i].first_token_depth_in_request);
+            new_bc.requestsInfo[i].num_tokens_in_batch = std::min(
+                get_max_tokens_per_batch() - new_bc.num_tokens,
+                (int)request.tokens.size() -
+                    new_bc.requestsInfo[i].first_token_depth_in_request);
           }
           for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
             int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
             new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
             new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
             assert(depth < request.tokens.size());
-            new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens[depth];
+            new_bc.tokensInfo[new_bc.num_tokens].token_id =
+                request.tokens[depth];
             new_bc.num_tokens++;
           }
           // Update profiling
@@ -625,7 +635,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   }
 
   // Step 4: add PEFT bwd requests, if there is additional space
-  while(pending_peft_request_queue.size() > 0) {
+  while (pending_peft_request_queue.size() > 0) {
     Request &request = pending_peft_request_queue.front();
     assert(request.req_type = Request::REQ_FINETUNING);
     if (request.status == Request::COMPLETED) {
@@ -638,7 +648,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     Request &request = pending_peft_request_queue.front();
     assert(request.req_type = Request::REQ_FINETUNING);
     assert(request.dataset.size() > 0);
-    assert(request.max_training_steps > 0 && request.completed_training_steps < max_training_steps);
+    assert(request.max_training_steps > 0 &&
+           request.completed_training_steps < max_training_steps);
     int num_peft_tokens =
         request.dataset[0].first.size() + request.dataset[0].second.size();
     if (num_peft_tokens + new_bc.num_active_tokens() <=
