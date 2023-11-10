@@ -305,6 +305,9 @@ RequestManager::RequestGuid RequestManager::register_new_peft_request(
   request.guid = next_available_guid++;
   request.max_sequence_length = max_sequence_length;
   request.peft_model_id = peft_model_id;
+  request.req_type = Request::REQ_FINETUNING;
+  request.completed_training_steps = 0;
+  request.max_training_steps = 1; // TODO: let user set this
   for (auto const &sample : dataset) {
     std::vector<int32_t> input_tokens;
     input_tokens = this->tokenizer_->Encode(sample.first);
@@ -419,7 +422,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     size_t guid =
         old_bc.requestsInfo[old_bc.tokensInfo[i].request_index].request_guid;
     Request &request = all_requests[guid];
-    if (old_bc.tokensInfo[i].abs_depth_in_request + 1 < request.tokens.size()) {
+    if (request.req_type == Request::REQ_FINETUNING) {
+      // No new tokens generated when in fine-tuning mode
+      continue;
+    } else if (old_bc.tokensInfo[i].abs_depth_in_request + 1 < request.tokens.size()) {
       // This is a prompt token
       continue;
     } else {
@@ -436,92 +442,88 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   // Step 2: prepare the next batch for existing requests
   BatchConfig new_bc;
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
-    if (old_bc.request_completed[i]) { // add new requests to the next batch
-      if (!pending_infr_request_queue.empty() &&
-          new_bc.num_tokens < get_max_tokens_per_batch()) {
-        Request new_request = pending_infr_request_queue.front();
-        pending_infr_request_queue.pop();
-        // all_requests[new_request.guid] = new_request;
-        new_bc.requestsInfo[i].first_token_depth_in_request = 0;
-        new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
-        new_bc.requestsInfo[i].request_guid = new_request.guid;
-        new_bc.requestsInfo[i].num_tokens_in_batch =
-            std::min(get_max_tokens_per_batch() - new_bc.num_tokens -
-                         BatchConfig::max_requests_per_batch() + (i + 1),
-                     (int)new_request.tokens.size());
-        new_bc.requestsInfo[i].max_sequence_length =
-            new_request.max_sequence_length;
-        new_bc.requestsInfo[i].peft_model_id = new_request.peft_model_id;
-        new_bc.request_completed[i] = false;
-        // add profile_info for the new request
-        ProfileInfo profile_info;
-        profile_info.decoding_steps = 1;
-        profile_info.start_time = Realm::Clock::current_time_in_microseconds();
-        profiling_requests[new_request.guid] = profile_info;
-        for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
-          int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
-          new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
-          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
-          assert(depth < new_request.tokens.size());
-          new_bc.tokensInfo[new_bc.num_tokens].token_id =
-              new_request.tokens[depth];
-          new_bc.num_tokens++;
-        }
-        if (new_bc.num_tokens == get_max_tokens_per_batch()) {
-          break;
-        }
-      }
+    if (old_bc.request_completed[i]) {
+      // no need to carry over tokens to new batch for this request
+      continue;
     } else {
       assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
       Request &request = all_requests[old_bc.requestsInfo[i].request_guid];
-      int processed_tokens =
-          old_bc.requestsInfo[i].first_token_depth_in_request +
-          old_bc.requestsInfo[i].num_tokens_in_batch;
-      assert(processed_tokens < request.tokens.size());
-      bool request_completed = false;
-      // printf("model_type = %d\n", this->model_type);
-      if (request.tokens.size() >= old_bc.requestsInfo[i].max_sequence_length) {
-        request_completed = true;
-      } else if (request.tokens.back() == eos_token_id) {
-        // Encounter EOS token id
-        request_completed = true;
-      }
-      if (request_completed) {
-        request.status = Request::COMPLETED;
-        log_req_mgr.print("[Done] guid(%zu) final_length(%zu)",
+      if (request.req_type == Request::REQ_FINETUNING) {
+        // fine-tuning requests don't automatically carry over to the next batch, 
+        // we only do so if there is space left after adding new inference requests
+        request.completed_training_steps += 1;
+        assert(request.completed_training_steps <= request.max_training_steps);
+        if (request.completed_training_steps == request.max_training_steps) {
+          // check if the fine tuning request has completed
+          request.status = Request::COMPLETED;
+          log_req_mgr.print("[Done] guid(%zu) completed_training_steps(%zu)",
                           old_bc.requestsInfo[i].request_guid,
-                          request.tokens.size());
-        std::string output = this->tokenizer_->Decode(request.tokens);
-        // Unlike Huggingface, the sentencepiece C++ library automatically
-        // removes the BOS token
-        if (model_type == ModelType::LLAMA &&
-            request.tokens.at(0) == bos_token_id) {
-          output = "<s> " + output;
-        }
-
-        {
-          // update generation result and trigger future
+                          request.completed_training_steps);
           GenerationResult &gr = request_generation_results[request.guid];
           assert(gr.guid == request.guid);
-          gr.output_tokens = request.tokens;
-          gr.output_text = output;
+          num_processed_requests++;
+          ProfileInfo profile_info = profiling_requests[request.guid];
+          profile_info.finish_time = Realm::Clock::current_time_in_microseconds();
+          total_request_run_time +=
+              profile_info.finish_time - profile_info.start_time;
+          profiling_requests[request.guid] = profile_info;
+          log_req_mgr.print("[Profile] guid(%zu) completed_training_steps(%d) start(%.1lf) "
+                            "finish(%.1lf) latency(%.1lf)",
+                            request.guid,
+                            profile_info.completed_training_steps,
+                            profile_info.start_time,
+                            profile_info.finish_time,
+                            profile_info.finish_time - profile_info.start_time);
         }
-        log_req_mgr.print("Final output: %s", output.c_str());
-        num_processed_requests++;
-        ProfileInfo profile_info = profiling_requests[request.guid];
-        profile_info.finish_time = Realm::Clock::current_time_in_microseconds();
-        total_request_run_time +=
-            profile_info.finish_time - profile_info.start_time;
-        profiling_requests[request.guid] = profile_info;
-        log_req_mgr.print("[Profile] guid(%zu) decoding_steps(%d) start(%.1lf) "
-                          "finish(%.1lf) latency(%.1lf)",
-                          request.guid,
-                          profile_info.decoding_steps,
-                          profile_info.start_time,
-                          profile_info.finish_time,
-                          profile_info.finish_time - profile_info.start_time);
-        // Write output to file if needed:
-        if (!output_filepath.empty()) {
+      } else {
+        int processed_tokens =
+            old_bc.requestsInfo[i].first_token_depth_in_request +
+            old_bc.requestsInfo[i].num_tokens_in_batch;
+        assert(processed_tokens < request.tokens.size());
+        bool request_completed = false;
+        // printf("model_type = %d\n", this->model_type);
+        if (request.tokens.size() >= old_bc.requestsInfo[i].max_sequence_length) {
+          request_completed = true;
+        } else if (request.tokens.back() == eos_token_id) {
+          // Encounter EOS token id
+          request_completed = true;
+        }
+        if (request_completed) {
+          request.status = Request::COMPLETED;
+          log_req_mgr.print("[Done] guid(%zu) final_length(%zu)",
+                            old_bc.requestsInfo[i].request_guid,
+                            request.tokens.size());
+          std::string output = this->tokenizer_->Decode(request.tokens);
+          // Unlike Huggingface, the sentencepiece C++ library automatically
+          // removes the BOS token
+          if (model_type == ModelType::LLAMA &&
+              request.tokens.at(0) == bos_token_id) {
+            output = "<s> " + output;
+          }
+
+          {
+            // update generation result and trigger future
+            GenerationResult &gr = request_generation_results[request.guid];
+            assert(gr.guid == request.guid);
+            gr.output_tokens = request.tokens;
+            gr.output_text = output;
+          }
+          log_req_mgr.print("Final output: %s", output.c_str());
+          num_processed_requests++;
+          ProfileInfo profile_info = profiling_requests[request.guid];
+          profile_info.finish_time = Realm::Clock::current_time_in_microseconds();
+          total_request_run_time +=
+              profile_info.finish_time - profile_info.start_time;
+          profiling_requests[request.guid] = profile_info;
+          log_req_mgr.print("[Profile] guid(%zu) decoding_steps(%d) start(%.1lf) "
+                            "finish(%.1lf) latency(%.1lf)",
+                            request.guid,
+                            profile_info.decoding_steps,
+                            profile_info.start_time,
+                            profile_info.finish_time,
+                            profile_info.finish_time - profile_info.start_time);
+          // Write output to file if needed:
+          if (!output_filepath.empty()) {
           std::ofstream outputFile(output_filepath, std::ios::app);
           if (outputFile.is_open()) {
             outputFile << "end-to-end latency: " << std::fixed
@@ -546,47 +548,97 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           }
         }
 
-      } else {
-        new_bc.request_completed[i] = false;
-        new_bc.requestsInfo[i].first_token_depth_in_request = processed_tokens;
-        new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
-        new_bc.requestsInfo[i].request_guid =
-            old_bc.requestsInfo[i].request_guid;
-        new_bc.requestsInfo[i].peft_model_id =
-            old_bc.requestsInfo[i].peft_model_id;
-        new_bc.requestsInfo[i].peft_bwd = old_bc.requestsInfo[i].peft_bwd;
-        new_bc.requestsInfo[i].max_sequence_length =
-            old_bc.requestsInfo[i].max_sequence_length;
-        if (new_bc.requestsInfo[i].first_token_depth_in_request + 1 ==
-            request.tokens.size()) {
-          // Incremental phase
-          new_bc.requestsInfo[i].num_tokens_in_batch = 1;
         } else {
-          // Prompt phase
-          new_bc.requestsInfo[i].num_tokens_in_batch =
-              std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
-                       (int)request.tokens.size() -
-                           new_bc.requestsInfo[i].first_token_depth_in_request);
+          new_bc.request_completed[i] = false;
+          new_bc.requestsInfo[i].first_token_depth_in_request = processed_tokens;
+          new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
+          new_bc.requestsInfo[i].request_guid =
+              old_bc.requestsInfo[i].request_guid;
+          new_bc.requestsInfo[i].peft_model_id =
+              old_bc.requestsInfo[i].peft_model_id;
+          new_bc.requestsInfo[i].peft_bwd = old_bc.requestsInfo[i].peft_bwd;
+          new_bc.requestsInfo[i].max_sequence_length =
+              old_bc.requestsInfo[i].max_sequence_length;
+          if (new_bc.requestsInfo[i].first_token_depth_in_request + 1 ==
+              request.tokens.size()) {
+            // Incremental phase
+            new_bc.requestsInfo[i].num_tokens_in_batch = 1;
+          } else {
+            // Prompt phase
+            new_bc.requestsInfo[i].num_tokens_in_batch =
+                std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
+                        (int)request.tokens.size() -
+                            new_bc.requestsInfo[i].first_token_depth_in_request);
+          }
+          for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
+            int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
+            new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
+            new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
+            assert(depth < request.tokens.size());
+            new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens[depth];
+            new_bc.num_tokens++;
+          }
+          // Update profiling
+          profiling_requests[new_bc.requestsInfo[i].request_guid]
+              .decoding_steps++;
         }
-        for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
-          int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
-          new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
-          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
-          assert(depth < request.tokens.size());
-          new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens[depth];
-          new_bc.num_tokens++;
-        }
-        // Update profiling
-        profiling_requests[new_bc.requestsInfo[i].request_guid]
-            .decoding_steps++;
       }
     }
   }
 
-  // Step 3: add PEFT bwd requests
+  // Step 3: add new requests to the next batch if there is space
+  for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
+    if (new_bc.request_completed[i]) {
+      if (!pending_request_queue.empty() &&
+          new_bc.num_tokens < get_max_tokens_per_batch()) {
+        Request new_request = pending_request_queue.front();
+        pending_request_queue.pop();
+        // all_requests[new_request.guid] = new_request;
+        new_bc.requestsInfo[i].first_token_depth_in_request = 0;
+        new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
+        new_bc.requestsInfo[i].request_guid = new_request.guid;
+        new_bc.requestsInfo[i].num_tokens_in_batch =
+            std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
+                     (int)new_request.tokens.size());
+        new_bc.requestsInfo[i].max_sequence_length =
+            new_request.max_sequence_length;
+        new_bc.request_completed[i] = false;
+        // add profile_info for the new request
+        ProfileInfo profile_info;
+        profile_info.decoding_steps = 1;
+        profile_info.start_time = Realm::Clock::current_time_in_microseconds();
+        profiling_requests[new_request.guid] = profile_info;
+        for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
+          int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
+          new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
+          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
+          assert(depth < new_request.tokens.size());
+          new_bc.tokensInfo[new_bc.num_tokens].token_id =
+              new_request.tokens[depth];
+          new_bc.num_tokens++;
+        }
+        if (new_bc.num_tokens == get_max_tokens_per_batch()) {
+          break;
+        }
+      }
+    }
+  }
+
+  // Step 4: add PEFT bwd requests, if there is additional space
+  while(pending_peft_request_queue.size() > 0) {
+    Request &request = pending_peft_request_queue.front();
+    assert(request.req_type = Request::REQ_FINETUNING);
+    if (request.status == Request::COMPLETED) {
+      pending_peft_request_queue.pop();
+    } else {
+      break;
+    }
+  }
   if (pending_peft_request_queue.size() > 0) {
     Request &request = pending_peft_request_queue.front();
+    assert(request.req_type = Request::REQ_FINETUNING);
     assert(request.dataset.size() > 0);
+    assert(request.max_training_steps > 0 && request.completed_training_steps < max_training_steps);
     int num_peft_tokens =
         request.dataset[0].first.size() + request.dataset[0].second.size();
     if (num_peft_tokens + new_bc.num_active_tokens() <=
@@ -1066,8 +1118,9 @@ BeamSearchBatchConfig
   new_bc.model_id = old_bc.model_id;
   // std::cout << "old_bc.model_id: " << old_bc.model_id << "\n";
 
+  // Add incremental tokens to the batch
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
-    if (old_bc.request_completed[i]) {
+    if (old_bc.request_completed[i] || !old_bc.request_running[i]) {
       continue;
     }
     // Comment out this assertion since num_tokens_in_batch can be
@@ -1123,6 +1176,7 @@ BeamSearchBatchConfig
           old_bc.beamRequestsInfo[i].beam_size;
       new_bc.beamRequestsInfo[i].max_depth =
           old_bc.beamRequestsInfo[i].max_depth;
+
       if (request.status == Request::RUNNING) {
         new_bc.beamRequestsInfo[i].current_depth =
             old_bc.beamRequestsInfo[i].current_depth + 1;
@@ -1130,11 +1184,7 @@ BeamSearchBatchConfig
         // do the slot exchange to minimize the cache exchange in kernel.
         update_beam_metadata(new_bc, request.beam_trees.at(old_bc.model_id), i);
       } else {
-        // if the request is pending, we need to update the beam search
-        // metadata based on the initial length
-        new_bc.beamRequestsInfo[i].current_depth =
-            old_bc.beamRequestsInfo[i].current_depth;
-        new_bc.request_running[i] = false;
+        assert(false && "Request should not be pending in beam search phase");
       }
 
       // do the slot exchange to minimize the cache exchange in kernel.
@@ -1146,7 +1196,8 @@ BeamSearchBatchConfig
         if (request.status == Request::RUNNING) {
           new_bc.requestsInfo[i].num_tokens_in_batch = 1;
         } else {
-          new_bc.requestsInfo[i].num_tokens_in_batch = 0;
+          assert(false && "Request should be done");
+          // new_bc.requestsInfo[i].num_tokens_in_batch = 0;
         }
 
         if (verbose) {
@@ -1154,22 +1205,6 @@ BeamSearchBatchConfig
           std::cout << "Incremental phase: " << request.tokens.size()
                     << ", num_tokens_in_batch: "
                     << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
-        }
-      } else {
-        // Prompt phase
-        new_bc.requestsInfo[i].num_tokens_in_batch =
-            std::min(get_max_tokens_per_batch() - new_bc.num_tokens -
-                         BatchConfig::max_requests_per_batch() + i,
-                     (int)request.tokens.size() -
-                         new_bc.requestsInfo[i].first_token_depth_in_request);
-        request.ssm_cache_size += new_bc.requestsInfo[i].num_tokens_in_batch;
-        if (verbose) {
-          std::cout << "[ Beam Spec] " << request.guid << std::endl;
-          std::cout << "Prompt phase: " << request.tokens.size()
-                    << ", num_tokens_in_batch:"
-                    << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
-          std::cout << "Update ssm cache size: " << request.ssm_cache_size
-                    << std::endl;
         }
       }
 
@@ -1188,19 +1223,8 @@ BeamSearchBatchConfig
           new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
 
           // get value from requestinfo
-          if (request.status == Request::RUNNING) {
-            // std::cout << "[running ]Num of token in batch: "
-            //           << new_bc.requestsInfo[i].num_tokens_in_batch
-            //           << std::endl;
-            new_bc.tokensInfo[new_bc.num_tokens].token_id =
-                new_bc.beamRequestsInfo[i].tokens[k];
-          } else {
-            // std::cout << "[pending ]Num of token in batch: "
-            //           << new_bc.requestsInfo[i].num_tokens_in_batch
-            //           << std::endl;
-            new_bc.tokensInfo[new_bc.num_tokens].token_id =
-                request.tokens[request.tokens.size() - 1];
-          }
+          new_bc.tokensInfo[new_bc.num_tokens].token_id =
+              new_bc.beamRequestsInfo[i].tokens[k];
 
           new_bc.beamTokenInfo[new_bc.num_tokens].sub_request_index = k;
           new_bc.num_tokens++;
@@ -1208,6 +1232,100 @@ BeamSearchBatchConfig
       }
     }
   }
+
+  // Add prompt tokens to the batch
+  for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
+    if (old_bc.request_completed[i] || old_bc.request_running[i]) {
+      continue;
+    }
+    // Comment out this assertion since num_tokens_in_batch can be
+    // zero when beam search has reached required sequence length
+    // assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
+    Request &request = all_requests[old_bc.requestsInfo[i].request_guid];
+    int processed_tokens = old_bc.requestsInfo[i].first_token_depth_in_request +
+                           old_bc.requestsInfo[i].num_tokens_in_batch;
+
+    // assert(processed_tokens < request.tokens.size());
+    log_req_mgr.debug() << "processed_tokens: " << processed_tokens << "\n";
+
+    {
+      log_req_mgr.debug() << "num tokens: " << old_bc.num_tokens << ", "
+                          << new_bc.num_tokens;
+      new_bc.request_completed[i] = false;
+      new_bc.requestsInfo[i].first_token_depth_in_request = processed_tokens;
+      new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
+      new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
+      new_bc.requestsInfo[i].max_sequence_length =
+          old_bc.requestsInfo[i].max_sequence_length;
+
+      // update the beam search metadata
+      // how many sub request in current request
+      // why is sub_requests has max_requests_per_batch() * MAX_BEAM_WIDTH
+      // entries?
+      new_bc.sub_requests[i] = old_bc.beamRequestsInfo[i].beam_size;
+
+      // update the parentid, accumalated_probs, depth, and token_ids
+      new_bc.beamRequestsInfo[i].beam_size =
+          old_bc.beamRequestsInfo[i].beam_size;
+      new_bc.beamRequestsInfo[i].max_depth =
+          old_bc.beamRequestsInfo[i].max_depth;
+
+      if (request.status == Request::PENDING) {
+        // if the request is pending, we need to update the beam search
+        // metadata based on the initial length
+        new_bc.beamRequestsInfo[i].current_depth =
+            old_bc.beamRequestsInfo[i].current_depth;
+        new_bc.request_running[i] = false;
+      } else {
+        assert(false && "Request should be pending");
+      }
+
+      if (new_bc.requestsInfo[i].first_token_depth_in_request >=
+          request.tokens.size()) {
+        // request is done
+        new_bc.requestsInfo[i].num_tokens_in_batch = 0;
+      } else {
+        // Prompt phase
+        new_bc.requestsInfo[i].num_tokens_in_batch =
+            std::min(get_max_tokens_per_batch() - new_bc.num_tokens -
+                         BatchConfig::max_requests_per_batch() + i,
+                     (int)request.tokens.size() -
+                         new_bc.requestsInfo[i].first_token_depth_in_request);
+        request.ssm_cache_size += new_bc.requestsInfo[i].num_tokens_in_batch;
+      }
+
+      if (verbose) {
+        std::cout << "[ Beam Spec] " << request.guid << std::endl;
+        std::cout << "Prompt phase: " << request.tokens.size()
+                  << ", num_tokens_in_batch:"
+                  << new_bc.requestsInfo[i].num_tokens_in_batch << std::endl;
+        std::cout << "Update ssm cache size: " << request.ssm_cache_size
+                  << std::endl;
+
+        std::cout << "SSM KV Cache Size beam: " << request.ssm_cache_size
+                  << std::endl;
+        std::cout << "LLM KV Cache Size beam: " << request.llm_cache_size
+                  << std::endl;
+      }
+
+      // register more tokens due to the beam width
+      for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
+        int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
+        for (int k = 0; k < new_bc.sub_requests[i]; k++) {
+          new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
+          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
+
+          // get value from requestinfo
+          new_bc.tokensInfo[new_bc.num_tokens].token_id =
+              request.tokens[request.tokens.size() - 1];
+
+          new_bc.beamTokenInfo[new_bc.num_tokens].sub_request_index = k;
+          new_bc.num_tokens++;
+        }
+      }
+    }
+  }
+
   if (verbose) {
     std::cout << "prepare_next_batch_beam OLD vs NEW batchconfigs:"
               << std::endl;
