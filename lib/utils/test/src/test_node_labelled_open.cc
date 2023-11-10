@@ -48,6 +48,9 @@ TEST_CASE("NodeLabelledOpenMultiDiGraph implementations") {
   OpenMultiDiEdgeQuery query{q};
 
   //CHECK(g.query_edges(q) == e);
+  CHECK(transform(g.query_edges(q), [](OpenMultiDiEdge const & edge){
+    return get<MultiDiEdge>(edge);
+  }) == without_order(e));
 
   // TODO: we should add more test use MultiDiEdgeQuery::with_src_nodes
 }
