@@ -1858,7 +1858,7 @@ void RequestManager::start_background_server(FFModel *model) {
   Context ctx = Runtime::get_context();
   TaskLauncher launcher(RM_BACKGROUND_SERVING_TASK_ID,
                         TaskArgument(&model, sizeof(FFModel *)));
-  runtime->execute_task(ctx, launcher);
+  background_server_handler = runtime->execute_task(ctx, launcher);
 }
 
 void RequestManager::background_serving_task(
@@ -2048,6 +2048,10 @@ void RequestManager::trigger_request_completion_future(
 
 void RequestManager::terminate_background_server() {
   request_manager_status = TERMINATED;
+  // Wait for the background server to terminate
+  Runtime *runtime = Runtime::get_runtime();
+  Context ctx = Runtime::get_context();
+  background_server_handler.get_void_result();
 }
 
 bool RequestManager::is_background_server_terminated() {

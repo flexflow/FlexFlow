@@ -265,6 +265,9 @@ private:
   // Performance profiling
   size_t num_processed_requests;
 
+  // Background server handler
+  Legion::Future background_server_handler;
+
 private:
   struct ProfileInfo {
     int decoding_steps;
