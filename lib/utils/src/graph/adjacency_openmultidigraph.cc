@@ -64,6 +64,15 @@ std::unordered_set<OpenMultiDiEdge> AdjacencyOpenMultiDiGraph::query_edges(
   return result;
 }
 
+std::unordered_set<MultiDiEdge>
+    AdjacencyOpenMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
+  std::unordered_set<MultiDiEdge> result;
+  for (MultiDiEdge const &e : closed_graph.query_edges(q)) {
+    result.insert(e);
+  }
+  return result;
+}
+
 Node AdjacencyOpenMultiDiGraph::add_node() {
   return closed_graph.add_node();
 }

@@ -35,6 +35,9 @@ public:
     return this->get_ptr()->at(n);
   }
 
+  NodeLabelledOpenMultiDiGraphView(cow_ptr_t<IOpenMultiDiGraph> ptr)
+      : OpenMultiDiGraphView() {} // this may have some problem
+
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return this->get_ptr()->query_nodes(q);
   }
@@ -122,12 +125,7 @@ private:
                                cow_ptr_t<INodeLabel> nl)
       : NodeLabelledOpenMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
 
-  // I think get_ptr() should return non-const point, because we call
-  // get_ptr()->add_edge(e)/get_ptr()->add_node_port(), this methods are
-  // non-const
-  cow_ptr_t<Interface> get_ptr() {
-    // return
-    // cow_ptr_t<Interface>(std::const_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+  cow_ptr_t<Interface> get_ptr() const {
     return cow_ptr_t<Interface>(
         std::reinterpret_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
