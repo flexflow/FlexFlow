@@ -76,34 +76,35 @@ public:
       operator=(NodeLabelledOpenMultiDiGraph const &) = default;
 
   NodeLabel const &at(Node const &n) const override {
-    return nl->get_label(n);
+    return nl.get()->get_label(n);
   }
 
   NodeLabel &at(Node const &n) {
-    return nl->get_label(n);
+    return nl.get_mutable()->get_label(n);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return get_ptr()->query_nodes();
+    return get_ptr().get()->query_nodes(q);
   }
 
   std::unordered_set<OpenMultiDiEdge>
       query_edges(OpenMultiDiEdgeQuery const &q) const {
-    return get_ptr()->query_edges();
+    return get_ptr().get()->query_edges(q);
   }
 
   Node add_node(NodeLabel const &l) {
-    Node n = MultiDiGraph::add_node();
-    nl->add_label(n, l);
+    // Node n = MultiDiGraph::add_node();
+    Node n = get_ptr().get_mutable()->add_node();
+    nl.get_mutable()->add_label(n, l);
     return n;
   }
 
   NodePort add_node_port() {
-    return get_ptr()->add_node_port();
+    return get_ptr().get_mutable()->add_node_port();
   }
 
   void add_edge(OpenMultiDiEdge const &e) {
-    return get_ptr()->add_edge(e);
+    return get_ptr().get_mutable()->add_edge(e);
   }
 
   template <typename BaseImpl, typename N>
@@ -121,8 +122,13 @@ private:
                                cow_ptr_t<INodeLabel> nl)
       : NodeLabelledOpenMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
 
-  cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(
+  // I think get_ptr() should return non-const point, because we call
+  // get_ptr()->add_edge(e)/get_ptr()->add_node_port(), this methods are
+  // non-const
+  cow_ptr_t<Interface> get_ptr() {
+    // return
+    // cow_ptr_t<Interface>(std::const_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+    return cow_ptr_t<Interface>(
         std::reinterpret_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
   }
 

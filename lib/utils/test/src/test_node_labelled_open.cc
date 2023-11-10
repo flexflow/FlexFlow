@@ -1,5 +1,5 @@
 #include "test/utils/all.h"
-#include "utils/containers.h" 
+#include "utils/containers.h"
 #include "utils/graph/adjacency_openmultidigraph.h"
 #include "utils/graph/labelled/node_labelled_open.h"
 #include "utils/graph/labelled/unordered_label.h"
@@ -17,8 +17,10 @@ TEST_CASE("NodeLabelledOpenMultiDiGraph implementations") {
                            UnorderedLabelling<Node, std::string>>();
 
   int num_nodes = 3;
-  std::vector<std::string> labels =
-      repeat2(num_nodes, [&](int i ) { return "labels_" + std::to_string(i); }, std::string());
+  std::vector<std::string> labels = repeat2(
+      num_nodes,
+      [&](int i) { return "labels_" + std::to_string(i); },
+      std::string());
 
   std::vector<Node> n;
   for (int i = 0; i < num_nodes; i++) {
@@ -47,10 +49,10 @@ TEST_CASE("NodeLabelledOpenMultiDiGraph implementations") {
 
   OpenMultiDiEdgeQuery query{q};
 
-  //CHECK(g.query_edges(q) == e);
-  CHECK(transform(g.query_edges(q), [](OpenMultiDiEdge const & edge){
-    return get<MultiDiEdge>(edge);
-  }) == without_order(e));
+  // CHECK(g.query_edges(q) == e);
+  CHECK(transform(g.query_edges(q), [](OpenMultiDiEdge const &edge) {
+          return get<MultiDiEdge>(edge);
+        }) == without_order(e));
 
   // TODO: we should add more test use MultiDiEdgeQuery::with_src_nodes
 }
