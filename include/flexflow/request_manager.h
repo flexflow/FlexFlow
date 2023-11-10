@@ -57,6 +57,10 @@ struct Request {
     COMPLETED = 103, // finished and verified
     FINISHING = 104, // finishing request, but not yet verified
   };
+  enum RequestType {
+    REQ_INFERENCE = 201,
+    REQ_FINETUNING = 202
+  };
   BatchConfig::RequestGuid guid;
   PEFTModelID peft_model_id;
   int max_sequence_length;
@@ -68,6 +72,9 @@ struct Request {
   std::vector<BatchConfig::TokenId> tokens;
   std::vector<struct BeamTree> beam_trees;
   // PEFT field
+  RequestType req_type = REQ_INFERENCE;
+  int completed_training_steps = 0;
+  int max_training_steps = 1;
   std::vector<std::pair<std::vector<BatchConfig::TokenId>,
                         std::vector<BatchConfig::TokenId>>>
       dataset;
