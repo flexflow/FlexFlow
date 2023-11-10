@@ -41,11 +41,15 @@ RMSNormMeta::RMSNormMeta(FFHandler handler,
 
   DataType data_type = rms->weights[0]->data_type;
   size_t rms_ptr_size = batch_size;
+  size_t c2_ptr_size = rms_ptr_size;
   size_t norm_ptr_size = num_elements;
-  size_t totalSize = (rms_ptr_size + norm_ptr_size) * data_type_size(data_type);
+  size_t totalSize =
+      (rms_ptr_size + c2_ptr_size + norm_ptr_size) * data_type_size(data_type);
   gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
   rms_ptr = gpu_mem_allocator.allocate_instance_untyped(
       rms_ptr_size * data_type_size(data_type));
+  c2_ptr = gpu_mem_allocator.allocate_instance_untyped(
+      c2_ptr_size * data_type_size(data_type));
   norm_ptr = gpu_mem_allocator.allocate_instance_untyped(
       norm_ptr_size * data_type_size(data_type));
 }
@@ -473,6 +477,11 @@ void peft_bwd_kernel(RMSNormMeta const *m,
 
     const int64_t M = bc->requestsInfo[i].num_tokens_in_batch;
     const int64_t N = m->num_elements;
+    check_device_vs_host_ptr(output_grad_ptr);
+    check_device_vs_host_ptr(m->input_activation);
+    check_device_vs_host_ptr(weight_ptr);
+    check_device_vs_host_ptr(m->rms_ptr);
+    check_device_vs_host_ptr(m->c2_ptr);
     ComputeInternalGradientsCUDAKernel<T>
         <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
             N,
