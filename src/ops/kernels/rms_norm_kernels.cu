@@ -477,11 +477,6 @@ void peft_bwd_kernel(RMSNormMeta const *m,
 
     const int64_t M = bc->requestsInfo[i].num_tokens_in_batch;
     const int64_t N = m->num_elements;
-    check_device_vs_host_ptr(output_grad_ptr);
-    check_device_vs_host_ptr(m->input_activation);
-    check_device_vs_host_ptr(weight_ptr);
-    check_device_vs_host_ptr(m->rms_ptr);
-    check_device_vs_host_ptr(m->c2_ptr);
     ComputeInternalGradientsCUDAKernel<T>
         <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
             N,
