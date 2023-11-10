@@ -416,7 +416,6 @@ BatchConfig RequestManager::prepare_next_batch_task(
 BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                                                InferenceResult const &result) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
-
   // Step 1: append result from previous iteration to request's tokens
   for (int i = 0; i < old_bc.num_tokens; i++) {
     size_t guid =
@@ -638,7 +637,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   while (pending_peft_request_queue.size() > 0) {
     Request &request = pending_peft_request_queue.front();
     assert(request.req_type = Request::REQ_FINETUNING);
-    if (request.status == Request::COMPLETED) {
+    Request &all_req_handle = all_requests[request.guid];
+    assert(all_req_handle.req_type = Request::REQ_FINETUNING);
+    if (all_req_handle.status == Request::COMPLETED) {
       pending_peft_request_queue.pop();
     } else {
       break;
@@ -648,6 +649,12 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     Request &request = pending_peft_request_queue.front();
     assert(request.req_type = Request::REQ_FINETUNING);
     assert(request.dataset.size() > 0);
+    // update status and training steps
+    Request &all_req_handle = all_requests[request.guid];
+    assert(all_req_handle.req_type = Request::REQ_FINETUNING);
+    request.completed_training_steps = all_req_handle.completed_training_steps;
+    request.status = all_req_handle.status;
+    assert(request.status != Request::COMPLETED);
     assert(request.max_training_steps > 0 &&
            request.completed_training_steps < request.max_training_steps);
     int num_peft_tokens =
