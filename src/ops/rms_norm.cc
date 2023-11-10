@@ -577,9 +577,9 @@ void RMSNorm::peft_bwd_task(Task const *task,
   GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
       m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
-      m->input_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+      m->input_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
-      m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
+      m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   peft_bwd_kernel_wrapper(m, bc, output_grad, input_grad, weight);
 }
 
