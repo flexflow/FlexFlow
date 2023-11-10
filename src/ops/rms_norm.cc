@@ -523,7 +523,10 @@ Legion::FutureMap
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_backward(ff, argmap);
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
   IndexLauncher launcher(RMSNORM_PEFT_BWD_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
@@ -531,7 +534,7 @@ Legion::FutureMap
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
+                         machine_view_hash);
   launcher.add_future(bc);
   // regions[0](I): output_grad
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
