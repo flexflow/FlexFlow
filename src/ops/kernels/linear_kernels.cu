@@ -458,7 +458,8 @@ void peft_bwd_kernel(LinearMeta const *m,
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   // update input_grad_ptr and output_grad_ptr offset
   int num_infr_only_tokens = num_infr_tokens - num_peft_tokens;
-  input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_only_tokens * in_dim;
+  input_grad_ptr =
+      static_cast<DT *>(input_grad_ptr) + num_infr_only_tokens * in_dim;
   output_grad_ptr =
       static_cast<DT *>(output_grad_ptr) + num_infr_only_tokens * out_dim;
 #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
