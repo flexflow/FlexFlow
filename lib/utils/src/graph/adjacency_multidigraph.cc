@@ -30,8 +30,23 @@ void AdjacencyMultiDiGraph::remove_node_unsafe(Node const &n) {
 }
 
 void AdjacencyMultiDiGraph::add_edge(MultiDiEdge const &e) {
-  this->adjacency.at(e.dst);
+  /*
+  this->adjacency.at(e.dst);  //has some bug 
   this->adjacency.at(e.src)[e.dst][e.src_idx].insert(e.dst_idx);
+  this cause terminate called after throwing an instance of 'std::out_of_range'
+  what():  _Map_base::at when we first meet e.dst
+  */
+
+  auto dst_it = this->adjacency.find(e.dst);
+  if (dst_it == this->adjacency.end()) {
+      dst_it = this->adjacency.insert({e.dst, {}}).first;
+  }
+  auto& src_map = this->adjacency[e.src];
+  auto src_map_it = src_map.find(e.dst);
+  if (src_map_it == src_map.end()) {
+      src_map_it = src_map.insert({e.dst, {}}).first;
+  }
+  src_map_it->second[e.src_idx].insert(e.dst_idx);
 }
 
 void AdjacencyMultiDiGraph::remove_edge(MultiDiEdge const &e) {

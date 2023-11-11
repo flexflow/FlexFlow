@@ -49,6 +49,7 @@ void MultiDiGraph::remove_node_unsafe(Node const &n) {
 }
 
 void MultiDiGraph::add_edge(MultiDiEdge const &e) {
+  std::cout<<"e"<<std::endl;
   return this->get_ptr().get_mutable()->add_edge(e);
 }
 
