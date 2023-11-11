@@ -20,6 +20,7 @@ std::unordered_set<Node>
 
 std::unordered_set<MultiDiEdge>
     MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
+  std::cout<<"this->get_ptr()->query_edges(q).size():"<<this->get_ptr()->query_edges(q).size()<<std::endl;
   return this->get_ptr()->query_edges(q);
 }
 
@@ -29,7 +30,8 @@ cow_ptr_t<IMultiDiGraphView> MultiDiGraphView::get_ptr() const {
 }
 
 Node MultiDiGraph::add_node() {
-  return this->get_ptr().get_mutable()->add_node();
+ //return this->get_ptr().get_mutable()->add_node();
+return this->get_ptr().get1()->add_node();
 }
 
 NodePort MultiDiGraph::add_node_port() {
@@ -49,7 +51,6 @@ void MultiDiGraph::remove_node_unsafe(Node const &n) {
 }
 
 void MultiDiGraph::add_edge(MultiDiEdge const &e) {
-  std::cout<<"e"<<std::endl;
   return this->get_ptr().get_mutable()->add_edge(e);
 }
 
@@ -59,6 +60,7 @@ void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
 
 std::unordered_set<MultiDiEdge>
     MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
+  std::cout<<" MultiDiGraph::query_edges:"<<std::endl;
   return this->get_ptr()->query_edges(q);
 }
 
