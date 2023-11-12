@@ -249,7 +249,8 @@ public:
       BatchConfig const *bc,
       std::vector<GenericTensorAccessorR> input_tensors,
       std::vector<GenericTensorAccessorR> weight_tensors,
-      std::vector<GenericTensorAccessorW> output_tensors) {
+      std::vector<GenericTensorAccessorW> output_tensors,
+      bool fwd_pass=true) {
     // Check if output directory exists, and create it if it does not
     char const *folder_path = "./inference_tensors";
     struct stat st = {0};
@@ -270,7 +271,7 @@ public:
     op_name_without_uid.erase(last_underscore);
     std::string base_filepath =
         "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
-        "_decoding-step_" + std::to_string(m->decoding_step) + "_layer-num_" +
+        "_decoding-step_" + (fwd_pass ? std::to_string(m->decoding_step) : std::to_string(m->bwd_step)) + "_layer-num_" +
         std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
         op_name_without_uid + "_shard-id_" + std::to_string(shard_id);
     // save batch config, if passed
@@ -300,8 +301,8 @@ public:
         assert(false && "Tensor data type not supported");
       }
     }
-    // only dump the weights once
-    if (m->decoding_step == 0) {
+    // only dump the weights once (in fwd passes)
+    if (fwd_pass && m->decoding_step == 0) {
       for (int i = 0; i < weight_tensors.size(); i++) {
         std::string filename = base_filepath + "_weight_" + std::to_string(i);
         if (weight_tensors[i].data_type == DT_FLOAT) {
@@ -349,7 +350,11 @@ public:
       }
     }
     // increase count of decoding steps
-    m->decoding_step++;
+    if (fwd_pass) {
+      m->decoding_step++;
+    } else {
+      m->bwd_step++;
+    }
   }
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,

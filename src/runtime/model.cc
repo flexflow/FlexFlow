@@ -1482,6 +1482,7 @@ OpMeta::OpMeta(FFHandler _handle)
     output_type[i] = DT_NONE;
   }
   decoding_step = 0;
+  bwd_step = 0;
 }
 #endif
 
@@ -1502,6 +1503,7 @@ OpMeta::OpMeta(FFHandler _handle, Op const *op)
     output_type[i] = op->outputs[i]->data_type;
   }
   decoding_step = 0;
+  bwd_step = 0;
 }
 
 FFRuntime::FFRuntime(FFConfig &config) {

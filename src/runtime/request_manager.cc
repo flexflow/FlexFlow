@@ -601,6 +601,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       if (!pending_infr_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
         Request new_request = pending_infr_request_queue.front();
+        assert(new_request.req_type == Request::REQ_INFERENCE);
         pending_infr_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
         new_bc.requestsInfo[i].first_token_depth_in_request = 0;
@@ -611,6 +612,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                      (int)new_request.tokens.size());
         new_bc.requestsInfo[i].max_sequence_length =
             new_request.max_sequence_length;
+        new_bc.requestsInfo[i].peft_model_id = new_request.peft_model_id;
+        new_bc.requestsInfo[i].peft_bwd = false;
         new_bc.request_completed[i] = false;
         // add profile_info for the new request
         ProfileInfo profile_info;
