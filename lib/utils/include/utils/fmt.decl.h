@@ -2,7 +2,9 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_FMT_DECL_H
 
 #include "fmt/format.h"
+#include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace FlexFlow {
@@ -35,6 +37,21 @@ struct formatter<::std::vector<T>> : formatter<::std::string> {
   auto format(::std::vector<T> const &m, FormatContext &ctx)
       -> decltype(ctx.out());
 };
+
+/*template <typename Key, typename T, typename Hash, typename KeyEqual, typename
+Allocator> struct formatter<::std::unordered_map<Key, T, Hash,  KeyEqual,
+Allocator>> : formatter<::std::string> { template <typename FormatContext> auto
+format(::std::unordered_map<Key, T, Hash,  KeyEqual,  Allocator>const &  m,
+FormatContext& ctx)
+        -> decltype(ctx.out());
+};
+
+template <typename T, typename U>
+struct formatter<::std::pair<T, U>> : formatter<std::string> {
+    template <typename FormatContext>
+    auto format(const std::pair<T, U>& p, FormatContext& ctx) ->
+decltype(ctx.out());
+};*/
 
 } // namespace fmt
 

@@ -83,6 +83,29 @@ auto formatter<::std::vector<T>>::format(::std::vector<T> const &m,
   return formatter<std::string>::format(result, ctx);
 }
 
+/*template <typename Key, typename T,typename Hash, typename KeyEqual, typename
+Allocator> template <typename FormatContext> auto
+formatter<::std::unordered_map<Key, T,Hash, KeyEqual, Allocator>>::format(
+    ::std::unordered_map<Key, T, Hash,  KeyEqual, Allocator> const & m,
+FormatContext& ctx) -> decltype(ctx.out()) { std::string result = "1";
+    join_strings(
+        m.begin(), m.end(), ", ",
+        [](const typename std::unordered_map<Key, T, Hash, KeyEqual,
+Allocator>::value_type& entry) {
+            // Format each entry as "key: value"
+            return fmt::to_string(entry.first);
+        });
+
+    return formatter<std::string>::format(result, ctx);
+}
+
+/*template <typename T, typename U>
+template <typename FormatContext>
+auto formatter<::std::pair<T, U>>::format(const std::pair<T, U>& p,
+FormatContext& ctx) -> decltype(ctx.out()) { return
+formatter<std::string>::format(fmt::to_string(p.first), ctx);
+}*/
+
 // CHECK_FMTABLE(std::vector<int>);
 // CHECK_FMTABLE(std::unordered_set<int>);
 
