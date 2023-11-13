@@ -283,9 +283,6 @@ std::unordered_set<MultiDiEdge>
 
 std::unordered_set<MultiDiEdge>
     get_incoming_edges(MultiDiGraph const &g, std::unordered_set<Node> dsts) {
-  std::cout
-      << "std::unordered_set<MultiDiEdge>get_incoming_edges, and dsts.size():"
-      << dsts.size() << std::endl;
   return g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes(dsts));
 }
 
