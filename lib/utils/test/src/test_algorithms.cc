@@ -26,7 +26,7 @@ TEST_CASE("MultiDiGraph") {
   std::cout<<e0.dst.value()<<"," << e3.src.value()<<std::endl;
   std::vector<MultiDiEdge> e = {e0, e1, e2, e3};
   for(MultiDiEdge const & x: e) {
-    std::cout<<"edge.dst:"<<x.dst.value()<<" and edge.src:"<<x.src.value()<<std::endl;
+    std::cout<<"edge.dst:"<<x.dst.value()<<" and edge.dst_idx:"<<x.dst_idx.value()<<" and edge.src:"<<x.src.value()<<", and edge.src_idx:"<<x.src_idx.value()<<std::endl;
   }
   add_edges(g, e);
 

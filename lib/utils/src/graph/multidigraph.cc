@@ -20,7 +20,7 @@ std::unordered_set<Node>
 
 std::unordered_set<MultiDiEdge>
     MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
-  std::cout<<"this->get_ptr()->query_edges(q).size():"<<this->get_ptr()->query_edges(q).size()<<std::endl;
+  //std::cout<<"this->get_ptr()->query_edges(q).size():"<<this->get_ptr()->query_edges(q).size()<<std::endl;
   return this->get_ptr()->query_edges(q);
 }
 
@@ -35,7 +35,8 @@ return this->get_ptr().get1()->add_node();
 }
 
 NodePort MultiDiGraph::add_node_port() {
-  return this->get_ptr().get_mutable()->add_node_port();
+  return this->get_ptr().get1()->add_node_port();
+ // return this->get_ptr().get_mutable()->add_node_port();
 }
 
 void MultiDiGraph::add_node_port_unsafe(NodePort const &np) {

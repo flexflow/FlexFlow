@@ -265,6 +265,11 @@ std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &g,
   return get_incoming_edges(g, std::unordered_set<Node>{n});
 }
 
+std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraph const &g,
+                                                   Node const &n) {
+  return get_incoming_edges(g, std::unordered_set<Node>{n});
+}
+
 std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &g,
                                                     Node const &n) {
   return get_incoming_edges(g, std::unordered_set<Node>{n});
@@ -273,6 +278,13 @@ std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &g,
 std::unordered_set<MultiDiEdge>
     get_incoming_edges(MultiDiGraphView const &g,
                        std::unordered_set<Node> dsts) {
+  return g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes(dsts));
+}
+
+std::unordered_set<MultiDiEdge>
+    get_incoming_edges(MultiDiGraph const &g,
+                       std::unordered_set<Node> dsts) {
+  std::cout<<"std::unordered_set<MultiDiEdge>get_incoming_edges, and dsts.size():"<<dsts.size()<<std::endl;
   return g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes(dsts));
 }
 
