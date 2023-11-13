@@ -43,11 +43,6 @@ struct cow_ptr_t {
     return this->ptr;
   }
 
-  std::shared_ptr<T> get1()  {
-    return this->ptr;
-  }
-
-
   std::shared_ptr<T> get_mutable() const {
     if (!this->has_unique_access()) {
       this->ptr = std::shared_ptr<T>(this->ptr->clone());
