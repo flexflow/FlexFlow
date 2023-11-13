@@ -109,7 +109,7 @@ std::unordered_set<MultiDiInput> get_inputs(MultiDiGraphView const &);
 
 std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
                                                    Node const &);
-                                                
+
 std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraph const &,
                                                    Node const &);
 std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &,

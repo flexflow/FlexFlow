@@ -45,7 +45,7 @@ struct query_set {
   static query_set<T> matchall() {
     return {nullopt};
   }
-  
+
 private:
   optional<std::unordered_set<T>> query;
 };

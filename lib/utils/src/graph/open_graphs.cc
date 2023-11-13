@@ -13,11 +13,9 @@ std::unordered_set<MultiDiEdge>
 }
 
 std::unordered_set<OpenMultiDiEdge>
-      IOpenMultiDiGraphView::query_edges(OpenMultiDiEdgeQuery const & query_edges) {
-          return transform(
-      query_edges(OpenMultiDiEdgeQuery(q)),
-      [](OpenMultiDiEdge const &e) { return get<OpenMultiDiEdge>(e); });
-      }
+    IOpenMultiDiGraphView::query_edges(OpenMultiDiEdgeQuery const &q) const {
+  return query_edges(q);
+}
 
 std::unordered_set<Node>
     OpenMultiDiGraphView::query_nodes(NodeQuery const &q) const {

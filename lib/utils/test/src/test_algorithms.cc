@@ -16,17 +16,20 @@ TEST_CASE("MultiDiGraph") {
   MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
   std::vector<Node> n = add_nodes(g, 4);
   std::vector<NodePort> p = add_node_ports(g, 4);
-  for(Node & n1:n){
-    std::cout<<"n1.value:"<<n1.value()<<std::endl;
+  for (Node &n1 : n) {
+    std::cout << "n1.value:" << n1.value() << std::endl;
   }
   MultiDiEdge e0{n[3], p[3], n[0], p[0]};
   MultiDiEdge e1{n[2], p[2], n[1], p[0]};
   MultiDiEdge e2{n[3], p[3], n[1], p[1]};
   MultiDiEdge e3{n[3], p[3], n[2], p[2]};
-  std::cout<<e0.dst.value()<<"," << e3.src.value()<<std::endl;
+  std::cout << e0.dst.value() << "," << e3.src.value() << std::endl;
   std::vector<MultiDiEdge> e = {e0, e1, e2, e3};
-  for(MultiDiEdge const & x: e) {
-    std::cout<<"edge.dst:"<<x.dst.value()<<" and edge.dst_idx:"<<x.dst_idx.value()<<" and edge.src:"<<x.src.value()<<", and edge.src_idx:"<<x.src_idx.value()<<std::endl;
+  for (MultiDiEdge const &x : e) {
+    std::cout << "edge.dst:" << x.dst.value()
+              << " and edge.dst_idx:" << x.dst_idx.value()
+              << " and edge.src:" << x.src.value()
+              << ", and edge.src_idx:" << x.src_idx.value() << std::endl;
   }
   add_edges(g, e);
 
@@ -112,8 +115,8 @@ TEST_CASE("MultiDiGraph") {
 // TEST_CASE("traversal") {
 //   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
 //   std::vector<Node> const n = add_nodes(g, 5);
-//   std::vector<DirectedEdge> edges = {{n[0], n[1]}, {n[1], n[2]}, {n[2], n[3]}};
-//   add_edges(g, edges);
+//   std::vector<DirectedEdge> edges = {{n[0], n[1]}, {n[1], n[2]}, {n[2],
+//   n[3]}}; add_edges(g, edges);
 
 //   CHECK(get_sources(g) == std::unordered_set<Node>{n[0], n[4]});
 //   CHECK(get_unchecked_dfs_ordering(g, {n[0]}) ==
@@ -141,12 +144,14 @@ TEST_CASE("MultiDiGraph") {
 //   }
 //   SUBCASE("nonlinear") {
 //     g.add_edge({n[1], n[3]});
-//     CHECK(is_acyclic(g) == true); // TODO, maybe a bug about the  unchecked_dfs
+//     CHECK(is_acyclic(g) == true); // TODO, maybe a bug about the
+//     unchecked_dfs
 //   }
 
 //   SUBCASE("not connected") {
 //     g.remove_edge({n[2], n[3]});
-//     CHECK(get_dfs_ordering(g, {n[0]}) == std::vector<Node>{n[0], n[1], n[2]});
+//     CHECK(get_dfs_ordering(g, {n[0]}) == std::vector<Node>{n[0], n[1],
+//     n[2]});
 //   }
 // }
 
@@ -171,7 +176,8 @@ TEST_CASE("MultiDiGraph") {
 //   auto CHECK_BEFORE = [&](int l, int r) {
 //     CHECK(index_of(ordering, n[l]).has_value());
 //     CHECK(index_of(ordering, n[r]).has_value());
-//     CHECK(index_of(ordering, n[l]).value() < index_of(ordering, n[r]).value());
+//     CHECK(index_of(ordering, n[l]).value() < index_of(ordering,
+//     n[r]).value());
 //   };
 
 //   CHECK(ordering.size() == n.size());
