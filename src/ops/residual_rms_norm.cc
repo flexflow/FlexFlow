@@ -670,7 +670,7 @@ void ResidualRMSNorm::peft_bwd_task(Task const *task,
                                     Runtime *runtime) {
   assert(task->regions.size() == 4);
   assert(regions.size() == 4);
-  ResidualRMSNormMeta const *m = *((ResidualRMSNormMeta **)task->local_args);
+  ResidualRMSNormMeta *m = *((ResidualRMSNormMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_active_peft_tokens() == 0) {
     return;
@@ -695,6 +695,18 @@ void ResidualRMSNorm::peft_bwd_task(Task const *task,
       m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
   peft_bwd_kernel_wrapper(
       m, bc, output_grad, residual_input0_grad, residual_input1_grad, weight);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    ResidualRMSNorm::save_inference_tensors_to_file(
+        m,
+        shard_id,
+        bc,
+        {residual_input0_grad, residual_input1_grad},
+        {weight},
+        {output_grad},
+        false);
+  }
 }
 
 Op *ResidualRMSNorm::materialize(FFModel &ff,

@@ -572,7 +572,7 @@ void RMSNorm::peft_bwd_task(Task const *task,
                             Runtime *runtime) {
   assert(task->regions.size() == 3);
   assert(regions.size() == 3);
-  RMSNormMeta const *m = *((RMSNormMeta **)task->local_args);
+  RMSNormMeta *m = *((RMSNormMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_active_peft_tokens() == 0) {
     return;
@@ -584,6 +584,12 @@ void RMSNorm::peft_bwd_task(Task const *task,
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
       m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   peft_bwd_kernel_wrapper(m, bc, output_grad, input_grad, weight);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    RMSNorm::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {weight}, {output_grad}, false);
+  }
 }
 
 void RMSNorm::serialize(Legion::Serializer &sez) const {

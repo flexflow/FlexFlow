@@ -626,6 +626,99 @@ void LoraLinear::peft_bwd_task(Task const *task,
   // int num_infr_tokens = bc->num_active_infr_tokens();
   // int num_peft_tokens = bc->num_active_peft_tokens();
   peft_bwd_kernel_wrapper(m, bc, input_grad, output_grad);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+
+    // Check if output directory exists, and create it if it does not
+    char const *folder_path = "./inference_tensors";
+    struct stat st = {0};
+    if (stat(folder_path, &st) == -1) {
+      // Directory does not exist, create it
+      mkdir(folder_path, 0700);
+    }
+
+    std::string lora_layername = std::string(m->op_name);
+    std::string searchString = "lora";
+    size_t found = lora_layername.find(searchString);
+    if (found == std::string::npos) {
+      std::cout << "LoraLinear layer name not in the right format (does not "
+                   "contain word 'lora')"
+                << std::endl;
+      assert(false);
+    }
+    std::string lora_layername_substr =
+        lora_layername.substr(0, found + searchString.length());
+
+    // output base filepath, shared by all tensors from the same operator
+    std::string base_filepath =
+        "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
+        "_bwd-step_" + std::to_string(m->bwd_step) + "_layer-num_" +
+        std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
+        lora_layername_substr + "_shard-id_" + std::to_string(shard_id);
+
+    // save batch config, if passed
+    if (bc != nullptr) {
+      bc->save_to_file(base_filepath + "_batch-config");
+    }
+
+    std::string filename = base_filepath + "_input_" + std::to_string(0);
+    if (input_grad.data_type == DT_FLOAT) {
+      save_tensor(input_grad.get_float_ptr(),
+                  input_grad.domain.get_volume(),
+                  filename.c_str());
+    } else if (input_grad.data_type == DT_HALF) {
+      save_tensor(input_grad.get_half_ptr(),
+                  input_grad.domain.get_volume(),
+                  filename.c_str());
+    } else {
+      assert(false);
+    }
+
+    // std::cout << "base_filepath: " << base_filepath << std::endl;
+    // std::cout << "m->decoding_step: " << m->decoding_step << std::endl;
+    if (m->bwd_step == 0) {
+      for (auto it = m->model_weights.begin(); it != m->model_weights.end();
+           ++it) {
+        PEFTModelID peft_model_id = it->first;
+        LoraLinearWeight weight = m->model_weights[peft_model_id];
+        std::string filenameA = base_filepath + "_weight_A";
+        std::string filenameB = base_filepath + "_weight_B";
+        if (m->input_type[0] == DT_FLOAT) {
+          save_tensor((float *)weight.w0_grad_ptr,
+                      weight.rank * weight.in_dim,
+                      filenameA.c_str());
+          save_tensor((float *)weight.w1_grad_ptr,
+                      weight.rank * weight.out_dim,
+                      filenameB.c_str());
+        } else if (m->input_type[0] == DT_HALF) {
+          save_tensor((half *)weight.w0_grad_ptr,
+                      weight.rank * weight.in_dim,
+                      filenameA.c_str());
+          save_tensor((half *)weight.w1_grad_ptr,
+                      weight.rank * weight.out_dim,
+                      filenameB.c_str());
+        } else {
+          assert(false && "Data type not supported");
+        }
+      }
+    }
+
+    filename = base_filepath + "_output_" + std::to_string(0);
+    if (output_grad.data_type == DT_FLOAT) {
+      save_tensor(output_grad.get_float_ptr(),
+                  output_grad.domain.get_volume(),
+                  filename.c_str());
+    } else if (output_grad.data_type == DT_HALF) {
+      save_tensor(output_grad.get_half_ptr(),
+                  output_grad.domain.get_volume(),
+                  filename.c_str());
+    } else {
+      assert(false);
+    }
+    m->bwd_step++;
+  }
 }
 
 void LoraLinear::backward(FFModel const &ff) {

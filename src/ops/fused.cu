@@ -648,7 +648,7 @@ __host__ void
     if (metas->meta[op]->inference_debugging) {
       std::vector<GenericTensorAccessorR> input_accessors_to_save;
       std::vector<GenericTensorAccessorR> weight_accessors_to_save;
-      std::vector<GenericTensorAccessorW> output_accessors_to_save;
+      std::vector<GenericTensorAccessorR> output_accessors_to_save;
       for (int i = 0; i < fused->op_num_inputs[op]; i++) {
         int my_off = fused->op_input_idx[i + ioff];
         if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {

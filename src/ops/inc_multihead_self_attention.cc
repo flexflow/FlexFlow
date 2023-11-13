@@ -998,6 +998,13 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
       weight,
       output_grad,
       biases);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    IncMultiHeadSelfAttention::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {weight}, {output_grad}, false);
+  }
 }
 
 void IncMultiHeadSelfAttention::backward(FFModel const &ff) {

@@ -249,8 +249,8 @@ public:
       BatchConfig const *bc,
       std::vector<GenericTensorAccessorR> input_tensors,
       std::vector<GenericTensorAccessorR> weight_tensors,
-      std::vector<GenericTensorAccessorW> output_tensors,
-      bool fwd_pass=true) {
+      std::vector<GenericTensorAccessorR> output_tensors,
+      bool fwd_pass = true) {
     // Check if output directory exists, and create it if it does not
     char const *folder_path = "./inference_tensors";
     struct stat st = {0};
@@ -271,9 +271,12 @@ public:
     op_name_without_uid.erase(last_underscore);
     std::string base_filepath =
         "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
-        "_decoding-step_" + (fwd_pass ? std::to_string(m->decoding_step) : std::to_string(m->bwd_step)) + "_layer-num_" +
-        std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
-        op_name_without_uid + "_shard-id_" + std::to_string(shard_id);
+        (fwd_pass ? "_decoding-step_" : "_bwd-step_") +
+        (fwd_pass ? std::to_string(m->decoding_step)
+                  : std::to_string(m->bwd_step)) +
+        "_layer-num_" + std::to_string(m->layer_guid.transformer_layer_id) +
+        "_layer-name_" + op_name_without_uid + "_shard-id_" +
+        std::to_string(shard_id);
     // save batch config, if passed
     if (bc != nullptr) {
       bc->save_to_file(base_filepath + "_batch-config");

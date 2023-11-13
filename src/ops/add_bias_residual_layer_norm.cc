@@ -969,7 +969,7 @@ void AddBiasResidualLayerNorm::peft_bwd_task(
     return;
   }
   assert(task->regions.size() == regions.size());
-  AddBiasResidualLayerNormMeta const *m =
+  AddBiasResidualLayerNormMeta *m =
       *((AddBiasResidualLayerNormMeta **)task->local_args);
   assert(regions.size() == 4 + m->elementwise_affine);
 
@@ -1017,6 +1017,24 @@ void AddBiasResidualLayerNorm::peft_bwd_task(
   }
   AddBiasResidualLayerNorm::peft_bwd_kernel_wrapper(
       m, output_grad, input_grad, residual_grad, attn_bias_grad, gamma);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    weights_accessors.push_back(attn_bias_grad);
+    if (m->elementwise_affine) {
+      weights_accessors.push_back(gamma);
+    }
+    AddBiasResidualLayerNorm::save_inference_tensors_to_file(
+        m,
+        shard_id,
+        bc,
+        {input_grad, residual_grad},
+        weights_accessors,
+        {output_grad},
+        false /*fwd_pass*/);
+  }
 }
 
 bool AddBiasResidualLayerNorm::measure_operator_cost(

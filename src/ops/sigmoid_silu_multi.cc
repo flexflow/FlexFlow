@@ -424,6 +424,18 @@ void SigmoidSiluMulti::peft_bwd_task(Task const *task,
 
   SigmoidSiluMulti::peft_bwd_kernel_wrapper(
       m, bc, output_grad, input1_grad, input2_grad);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    SigmoidSiluMulti::save_inference_tensors_to_file(m,
+                                                     shard_id,
+                                                     nullptr,
+                                                     {input1_grad, input2_grad},
+                                                     {},
+                                                     {output_grad},
+                                                     false);
+  }
 }
 
 FutureMap SigmoidSiluMulti::inference(

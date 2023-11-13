@@ -442,6 +442,12 @@ void Softmax::peft_bwd_task(Task const *task,
   GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   peft_bwd_kernel_wrapper(m, bc, input_grad, output_grad);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Softmax::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {}, {output_grad}, false);
+  }
 }
 
 bool Softmax::get_int_parameter(PMParameter para, int *value) const {

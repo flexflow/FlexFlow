@@ -396,7 +396,7 @@ void Group_by::forward_task(Task const *task,
   // Create a vector of n outputs, where n is the number of experts.
   // Each entry in the "outputs" vector points to the Legion tensor that will
   // contain the tockens dispatched to the corresponding expert
-  std::vector<GenericTensorAccessorW> output_accessors;
+  std::vector<GenericTensorAccessorR> output_accessors;
   float *outputs[n];
   for (int i = 0; i < n; i++) {
     GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(

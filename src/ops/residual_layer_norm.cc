@@ -763,8 +763,7 @@ void ResidualLayerNorm::peft_bwd_task(
     return;
   }
   assert(task->regions.size() == regions.size());
-  ResidualLayerNormMeta const *m =
-      *((ResidualLayerNormMeta **)task->local_args);
+  ResidualLayerNormMeta *m = *((ResidualLayerNormMeta **)task->local_args);
   assert(regions.size() ==
          4 + m->use_two_residuals +
              (m->elementwise_affine ? (m->use_bias ? 3 : 2) : 0));
@@ -814,6 +813,28 @@ void ResidualLayerNorm::peft_bwd_task(
   }
   ResidualLayerNorm::peft_bwd_kernel_wrapper(
       m, output_grad, input_grad, residual1_grad, residual2_grad, gamma);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> input_accessors;
+    input_accessors.push_back(input_grad);
+    input_accessors.push_back(residual1_grad);
+    if (m->use_two_residuals) {
+      input_accessors.push_back(residual2_grad);
+    }
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    if (m->elementwise_affine) {
+      weights_accessors.push_back(gamma);
+    }
+    ResidualLayerNorm::save_inference_tensors_to_file(m,
+                                                      shard_id,
+                                                      bc,
+                                                      input_accessors,
+                                                      weights_accessors,
+                                                      {output_grad},
+                                                      false);
+  }
 }
 
 Op *ResidualLayerNorm::materialize(FFModel &ff,

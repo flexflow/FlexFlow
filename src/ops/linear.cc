@@ -734,7 +734,7 @@ void Linear::peft_bwd_task(Task const *task,
                            Runtime *runtime) {
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  LinearMeta const *m = *((LinearMeta **)task->local_args);
+  LinearMeta *m = *((LinearMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_active_peft_tokens() == 0) {
     return;
@@ -765,6 +765,12 @@ void Linear::peft_bwd_task(Task const *task,
                           out_dim,
                           num_infr_tokens,
                           num_peft_tokens);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Linear::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {weight}, {output_grad}, false);
+  }
 }
 
 void Linear::forward_task(Task const *task,
