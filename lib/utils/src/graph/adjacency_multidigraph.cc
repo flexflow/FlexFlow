@@ -3,6 +3,17 @@
 
 namespace FlexFlow {
 
+AdjacencyMultiDiGraph *AdjacencyMultiDiGraph::clone() const {
+  return new AdjacencyMultiDiGraph(
+      this->next_node_idx, this->next_node_port, this->adjacency);
+}
+
+AdjacencyMultiDiGraph::AdjacencyMultiDiGraph(std::size_t next_node_idx,
+                                             std::size_t next_node_port,
+                                             ContentsType const &adjacency)
+    : next_node_idx(next_node_idx), next_node_port(next_node_port),
+      adjacency(adjacency) {}
+
 Node AdjacencyMultiDiGraph::add_node() {
   Node node{this->next_node_idx};
   adjacency[node];

@@ -1,12 +1,10 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_LABELLED_NODE_LABELLED_OPEN
 #define _FLEXFLOW_UTILS_GRAPH_LABELLED_NODE_LABELLED_OPEN
 
-#include "utils/graph/labelled/node_labelled.h"
 #include "utils/graph/open_graphs.h"
 
 namespace FlexFlow {
 
-// todo: why INodeLabelledOpenMultiDiGraphView inherits from itself?
 template <typename NodeLabel>
 struct INodeLabelledOpenMultiDiGraphView
     : virtual INodeLabelledMultiDiGraphView<NodeLabel>,
@@ -32,18 +30,15 @@ public:
       operator=(NodeLabelledOpenMultiDiGraphView const &) = default;
 
   NodeLabel const &at(Node const &n) const {
-    return this->get_ptr()->at(n);
+    return this->get_ptr().at(n);
   }
 
-  NodeLabelledOpenMultiDiGraphView(cow_ptr_t<IOpenMultiDiGraph> ptr)
-      : OpenMultiDiGraphView() {} // this may have some problem
-
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return this->get_ptr()->query_nodes(q);
+    return this->get_ptr().query_nodes(q);
   }
 
   std::unordered_set<Edge> query_edges(OpenMultiDiEdgeQuery const &q) const {
-    return this->get_ptr()->query_edges(q);
+    return this->get_ptr().query_edges(q);
   }
 
   template <typename BaseImpl, typename... Args>
@@ -55,13 +50,12 @@ public:
   }
 
 protected:
-  NodeLabelledOpenMultiDiGraphView()
-      : NodeLabelledMultiDiGraphView<NodeLabel>(), OpenMultiDiGraphView() {}
+  using NodeLabelledMultiDiGraphView<NodeLabel>::NodeLabelledMultiDiGraphView;
 
 private:
-  cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(
-        std::reinterpret_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+  Interface &get_ptr() const {
+    return *std::reinterpret_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
   }
 };
 
@@ -79,35 +73,34 @@ public:
       operator=(NodeLabelledOpenMultiDiGraph const &) = default;
 
   NodeLabel const &at(Node const &n) const override {
-    return nl.get()->get_label(n);
+    return nl->get_label(n);
   }
 
   NodeLabel &at(Node const &n) {
-    return nl.get_mutable()->get_label(n);
+    return nl->get_label(n);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return get_ptr().get()->query_nodes(q);
+    return get_ptr().query_nodes(q);
   }
 
   std::unordered_set<OpenMultiDiEdge>
-      query_edges(OpenMultiDiEdgeQuery const &q) const {
-    return get_ptr().get()->query_edges(q);
+      query_edges(OpenMultiDiEdge const &q) const {
+    return get_ptr().query_edges(q);
   }
 
   Node add_node(NodeLabel const &l) {
-    // Node n = MultiDiGraph::add_node();
-    Node n = get_ptr().get_mutable()->add_node();
+    Node n = get_ptr().add_node();
     nl.get_mutable()->add_label(n, l);
     return n;
   }
 
   NodePort add_node_port() {
-    return get_ptr().get_mutable()->add_node_port();
+    return get_ptr().add_node_port();
   }
 
   void add_edge(OpenMultiDiEdge const &e) {
-    return get_ptr().get_mutable()->add_edge(e);
+    return get_ptr().add_edge(e);
   }
 
   template <typename BaseImpl, typename N>
@@ -123,11 +116,11 @@ public:
 private:
   NodeLabelledOpenMultiDiGraph(cow_ptr_t<Interface> ptr,
                                cow_ptr_t<INodeLabel> nl)
-      : NodeLabelledOpenMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
+      : GraphView(ptr), nl(nl) {}
 
-  cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t<Interface>(
-        std::reinterpret_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+  Interface &get_ptr() const {
+    return *std::reinterpret_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
   }
 
   cow_ptr_t<INodeLabel> nl;

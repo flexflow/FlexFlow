@@ -63,20 +63,20 @@ struct EvaluateOperatorAttributeExpr {
   EvaluateOperatorAttributeExpr(Operator const &attrs) : attrs(attrs) {}
 
   optional<OperatorAttributeValue> operator()(OperatorAttributeKey const &key) {
-    return get_attribute(this->attrs, key);
+    return get_attribute(this->attrs.attrs, key);
   }
 
   optional<OperatorAttributeValue>
       operator()(ListIndexAccess<OperatorAttributeKey> const &index_access) {
     optional<OperatorAttributeValue> v =
-        get_attribute(this->attrs, index_access.attribute_key);
+        get_attribute(this->attrs.attrs, index_access.attribute_key);
     return evaluate_list_index_access(index_access.index, v);
   }
 
   optional<OperatorAttributeValue>
       operator()(ListSize<OperatorAttributeKey> const &list_size) {
     optional<OperatorAttributeValue> v =
-        get_attribute(this->attrs, list_size.attribute_key);
+        get_attribute(this->attrs.attrs, list_size.attribute_key);
     return evaluate_list_size(v);
   }
 
@@ -176,6 +176,7 @@ optional<bool> satisfies(ParallelTensor const &tensor_shape,
 optional<bool> satisfies(Operator const &params,
                          OperatorAttributeConstraint const &constraint) {
   auto value = evaluate_attribute_expr(params, constraint.attribute_expr);
+  OperatorAttributeValue v = value.value();
   return satisfies(
       constraint.constraint_type, constraint.attribute_value, value);
 }
@@ -209,6 +210,16 @@ optional<bool> satisfies(ParallelTensor const &params,
   return optional_all_of(
       pattern.attribute_constraints,
       [&](TensorAttributeConstraint const &c) { return satisfies(params, c); });
+}
+
+bool operator_satisfies(Operator const &params,
+                        OperatorPattern const &pattern) {
+  return satisfies(params, pattern).value_or(false);
+}
+
+bool parallel_tensor_satisfies(ParallelTensor const &params,
+                               ParallelTensorPattern const &pattern) {
+  return satisfies(params, pattern).value_or(false);
 }
 
 bool assignment_satisfies(SubParallelComputationGraph const &pcg,

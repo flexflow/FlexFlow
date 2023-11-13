@@ -72,25 +72,23 @@ TEST_CASE("find_pattern_matches_small") {
     Node n3 = g.add_node();
 
     MultiDiEdge e0{n1, g.add_node_port(), n0, g.add_node_port()};
-    MultiDiEdge e1{n2, g.add_node_port(), n0, g.add_node_port()};
-    MultiDiEdge e2{n3, g.add_node_port(), n1, g.add_node_port()};
-    MultiDiEdge e3{n3, g.add_node_port(), n2, g.add_node_port()};
+    MultiDiEdge e1{n2, g.add_node_port(), n1, g.add_node_port()};
+    MultiDiEdge e2{n3, g.add_node_port(), n2, g.add_node_port()};
 
     g.add_edge(e0);
     g.add_edge(e1);
     g.add_edge(e2);
-    g.add_edge(e3);
   }
 
   MultiDiGraph sg0 = MultiDiGraph::template create<AdjacencyMultiDiGraph>();
 
   {
-    Node n0 = g.add_node();
-    Node n1 = g.add_node();
+    Node n0 = sg0.add_node();
+    Node n1 = sg0.add_node();
 
-    MultiDiEdge e0{n1, g.add_node_port(), n0, g.add_node_port()};
+    MultiDiEdge e0{n1, sg0.add_node_port(), n0, sg0.add_node_port()};
 
-    g.add_edge(e0);
+    sg0.add_edge(e0);
   }
 
   MatchAdditionalCriterion always_true{
@@ -100,7 +98,7 @@ TEST_CASE("find_pattern_matches_small") {
   std::vector<MultiDiGraphPatternMatch> matches = find_pattern_matches(
       as_openmultidigraph(sg0), as_openmultidigraph(g), always_true);
 
-  RC_ASSERT(matches.size() == 4);
+  RC_ASSERT(matches.size() == 3);
 
   for (MultiDiGraphPatternMatch const &match : matches) {
     RC_ASSERT(pattern_matches(

@@ -259,6 +259,8 @@ public:
 private:
   OpenMultiDiGraphView const &g;
   std::unordered_set<Node> const &nodes;
+  std::unordered_set<InputMultiDiEdge> inputs;
+  std::unordered_set<OutputMultiDiEdge> outputs;
 };
 
 struct UpwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
@@ -275,6 +277,7 @@ struct UpwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
 private:
   OpenMultiDiGraphView const &g;
   std::unordered_set<Node> const &nodes;
+  std::unordered_set<InputMultiDiEdge> inputs;
 };
 
 struct DownwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
@@ -291,6 +294,7 @@ struct DownwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
 private:
   OpenMultiDiGraphView const &g;
   std::unordered_set<Node> const &nodes;
+  std::unordered_set<OutputMultiDiEdge> outputs;
 };
 
 struct ClosedMultiDiSubgraphView : public IOpenMultiDiGraphView {
