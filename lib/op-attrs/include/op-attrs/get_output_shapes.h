@@ -80,21 +80,31 @@ std::vector<TensorShape>
     get_tensor_shapes_unsafe(std::vector<ParallelTensorShape> const &);
 
 template <typename Attrs>
-TensorShape get_output_shape(Attrs const &attrs, TensorShape const &);
+TensorShape get_output_shape(Attrs const &attrs, TensorShape const &) {
+  NOT_IMPLEMENTED();
+}
+
 template <typename Attrs>
 TensorShape get_output_shape(Attrs const &attrs,
                              TensorShape const &,
-                             TensorShape const &);
+                             TensorShape const &) {
+  NOT_IMPLEMENTED();
+}
+
 template <typename Attrs>
 TensorShape get_output_shape(Attrs const &attrs,
-                             std::vector<TensorShape> const &);
+                             std::vector<TensorShape> const &) {
+  NOT_IMPLEMENTED();
+}
 template <typename Attrs>
 std::vector<TensorShape> get_output_shapes(Attrs const &attrs,
                                            TensorShape const &);
 template <typename Attrs>
 std::vector<TensorShape> get_output_shapes(Attrs const &attrs,
                                            TensorShape const &,
-                                           TensorShape const &);
+                                           TensorShape const &) {
+  NOT_IMPLEMENTED();
+}
 template <typename Attrs>
 std::vector<TensorShape> get_output_shapes(Attrs const &attrs,
                                            std::vector<TensorShape> const &);

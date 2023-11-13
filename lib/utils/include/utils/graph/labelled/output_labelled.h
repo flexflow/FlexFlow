@@ -31,19 +31,19 @@ public:
       operator=(OutputLabelledMultiDiGraphView const &) = default;
 
   NodeLabel const &at(Node const &n) const {
-    return get_ptr()->at(n);
+    return get_ptr().at(n);
   }
 
   OutputLabel const &at(MultiDiOutput const &o) const {
-    return get_ptr()->at(o);
+    return get_ptr().at(o);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return get_ptr()->query_nodes(q);
+    return get_ptr().query_nodes(q);
   }
 
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
-    return get_ptr()->query_edges(q);
+    return get_ptr().query_edges(q);
   }
 
   template <typename BaseImpl, typename... Args>
@@ -59,9 +59,9 @@ protected:
       : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {}
 
 private:
-  cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(
-        std::reinterpret_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+  Interface &get_ptr() const {
+    return *std::reinterpret_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
   }
 };
 
@@ -79,17 +79,17 @@ public:
       operator=(OutputLabelledMultiDiGraph const &other) = default;
 
   Node add_node(NodeLabel const &l) {
-    Node n = get_ptr()->add_node();
+    Node n = get_ptr().add_node();
     nl->add_label(n, l);
     return n;
   }
 
   NodePort add_node_port() {
-    return get_ptr()->add_node_port();
+    return get_ptr().add_node_port();
   }
 
   NodeLabel &at(Node const &n) {
-    return nl->get_label(n);
+    return nl.get_mutable()->get_label(n);
   }
 
   NodeLabel const &at(Node const &n) const {
@@ -101,11 +101,11 @@ public:
   };
 
   void add_edge(MultiDiOutput const &o, MultiDiInput const &i) {
-    return get_ptr()->add_edge(o, i);
+    return get_ptr().add_edge(o, i);
   };
 
   void add_edge(MultiDiEdge const &e) {
-    return get_ptr()->add_edge(e);
+    return get_ptr().add_edge(e);
   }
 
   OutputLabel &at(MultiDiOutput const &o) {
@@ -117,10 +117,10 @@ public:
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return this->ptr->query_nodes(q);
+    return get_ptr().query_nodes(q);
   }
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
-    return this->ptr->query_edges(q);
+    return get_ptr().query_edges(q);
   }
 
   template <typename BaseImpl, typename N, typename O>
@@ -142,9 +142,9 @@ private:
         ol(ol) {}
 
 private:
-  cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(
-        std::reinterpret_pointer_cast<Interface>(GraphView::ptr.get_mutable()));
+  Interface &get_ptr() const {
+    return *std::reinterpret_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
   }
   cow_ptr_t<INodeLabel> nl;
   cow_ptr_t<IOutputLabel> ol;

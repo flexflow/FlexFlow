@@ -55,7 +55,7 @@ public:
   friend struct GraphInternal;
 
 private:
-  cow_ptr_t<IUndirectedGraphView> get_ptr() const;
+  IUndirectedGraphView &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraphView);
 
@@ -103,7 +103,7 @@ public:
   friend struct GraphInternal;
 
 private:
-  cow_ptr_t<IUndirectedGraph> get_ptr() const;
+  IUndirectedGraph &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraph);
 
