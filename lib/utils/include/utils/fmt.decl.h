@@ -38,20 +38,24 @@ struct formatter<::std::vector<T>> : formatter<::std::string> {
       -> decltype(ctx.out());
 };
 
-/*template <typename Key, typename T, typename Hash, typename KeyEqual, typename
-Allocator> struct formatter<::std::unordered_map<Key, T, Hash,  KeyEqual,
-Allocator>> : formatter<::std::string> { template <typename FormatContext> auto
-format(::std::unordered_map<Key, T, Hash,  KeyEqual,  Allocator>const &  m,
-FormatContext& ctx)
-        -> decltype(ctx.out());
+template <typename Key,
+          typename T,
+          typename Hash,
+          typename KeyEqual,
+          typename Allocator>
+struct formatter<::std::unordered_map<Key, T, Hash, KeyEqual, Allocator>>
+    : formatter<::std::string> {
+  template <typename FormatContext>
+  auto format(::std::unordered_map<Key, T, Hash, KeyEqual, Allocator> const &m,
+              FormatContext &ctx) -> decltype(ctx.out());
 };
 
 template <typename T, typename U>
 struct formatter<::std::pair<T, U>> : formatter<std::string> {
-    template <typename FormatContext>
-    auto format(const std::pair<T, U>& p, FormatContext& ctx) ->
-decltype(ctx.out());
-};*/
+  template <typename FormatContext>
+  auto format(std::pair<T, U> const &p, FormatContext &ctx)
+      -> decltype(ctx.out());
+};
 
 } // namespace fmt
 
