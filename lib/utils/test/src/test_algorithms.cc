@@ -42,24 +42,22 @@ TEST_CASE("DiGraph") {
 
   std::vector<Node> n = add_nodes(g, 4);
   std::vector<DirectedEdge> e = {
-      {n[0], n[3]}, // dst, src
-      {n[0], n[1]},
-      {n[0], n[2]},
-      {n[1], n[2]},
+      //dst src
+      {n[3], n[0]},
+      {n[1], n[0]},
+      {n[2], n[0]},
+      {n[2], n[1]},
   };
   add_edges(g, e);
-  CHECK(get_incoming_edges(g, {n[0], n[1]}) ==
-        std::unordered_set<DirectedEdge>{e[0], e[2], e[1], e[3]});
-  CHECK(get_outgoing_edges(g, {n[2], n[3]}) ==
+  CHECK(get_incoming_edges(g, {n[3], n[2]}) ==
         std::unordered_set<DirectedEdge>{e[0], e[2], e[3]});
+  CHECK(get_outgoing_edges(g, {n[0], n[1]}) ==
+        std::unordered_set<DirectedEdge>{e[0], e[1], e[2], e[3]});
   auto expected_result = std::unordered_map<Node, std::unordered_set<Node>>{
       {n[1], {n[0]}},
       {n[2], {n[0], n[1]}},
       {n[3], {n[0]}},
   };
-  std::unordered_map<Node, std::unordered_set<Node>> result =
-      get_predecessors(g, {n[1], n[2], n[3]});
-
   CHECK(get_predecessors(g, {n[1], n[2], n[3]}) == expected_result);
 
   SUBCASE("get_imm_dominators") {
@@ -108,7 +106,7 @@ TEST_CASE("DiGraph") {
 TEST_CASE("traversal") {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
   std::vector<Node> const n = add_nodes(g, 5);
-  std::vector<DirectedEdge> edges = {{n[0], n[1]}, {n[1], n[2]}, {n[2], n[3]}};
+  std::vector<DirectedEdge> edges = {{n[1], n[0]}, {n[2], n[1]}, {n[3], n[2]}};
   add_edges(g, edges);
 
   CHECK(get_sources(g) == std::unordered_set<Node>{n[0], n[4]});
