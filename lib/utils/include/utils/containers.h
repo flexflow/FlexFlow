@@ -544,7 +544,7 @@ std::vector<Out> repeat(int n, F const &f) {
 }
 
 template <typename F, typename Out>
-std::vector<Out> repeat2(int n, F const &f, Out type_holder) {
+std::vector<Out> repeat2(int n, F const &f, Out type_holder = nullptr) {
   assert(n >= 0);
 
   std::vector<Out> result;
