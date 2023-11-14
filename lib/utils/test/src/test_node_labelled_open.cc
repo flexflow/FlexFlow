@@ -22,13 +22,12 @@ TEST_CASE("NodeLabelledOpenMultiDiGraph implementations") {
       [&](int i) { return "labels_" + std::to_string(i); },
       std::string());
 
-  /*std::vector<Node> n;
+  std::vector<Node> n;
   for (int i = 0; i < num_nodes; i++) {
     n.push_back(g.add_node(labels[i]));
-  }*/
-  // here,the OpenMultiDiEdge should be MultiDiEdge, has node src/dst and
-  // nodeport src_idx/dst_idx
-  /*std::vector<NodePort> p = repeat(3, [&] { return g.add_node_port(); });
+  }
+
+  std::vector<NodePort> p = repeat(3, [&] { return g.add_node_port(); });
   std::vector<MultiDiEdge> e = {
       {n[1], p[1], n[0], p[0]},
       {n[2], p[2], n[0], p[0]},
@@ -50,9 +49,9 @@ TEST_CASE("NodeLabelledOpenMultiDiGraph implementations") {
   OpenMultiDiEdgeQuery query{q};
 
   // CHECK(g.query_edges(q) == e);
-  CHECK(transform(g.query_edges(q), [](OpenMultiDiEdge const &edge) {
+  CHECK(transform(g.query_edges(query), [](OpenMultiDiEdge const &edge) {
           return get<MultiDiEdge>(edge);
         }) == without_order(e));
-  */
+
   // TODO: we should add more test use MultiDiEdgeQuery::with_src_nodes
 }

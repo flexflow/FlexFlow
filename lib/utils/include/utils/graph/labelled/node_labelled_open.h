@@ -78,7 +78,7 @@ public:
   }
 
   NodeLabel &at(Node const &n) {
-    return nl->get_label(n);
+    return get_nodelabel_ptr().get_label(n);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
@@ -86,13 +86,13 @@ public:
   }
 
   std::unordered_set<OpenMultiDiEdge>
-      query_edges(OpenMultiDiEdge const &q) const {
+      query_edges(OpenMultiDiEdgeQuery const &q) const {
     return get_ptr().query_edges(q);
   }
 
   Node add_node(NodeLabel const &l) {
     Node n = get_ptr().add_node();
-    nl.get_mutable()->add_label(n, l);
+    get_nodelabel_ptr().add_label(n, l);
     return n;
   }
 
@@ -122,6 +122,10 @@ private:
   Interface &get_ptr() const {
     return *std::reinterpret_pointer_cast<Interface>(
         GraphView::ptr.get_mutable());
+  }
+
+  INodeLabel &get_nodelabel_ptr() const {
+    return *std::reinterpret_pointer_cast<INodeLabel>(nl.get_mutable());
   }
 
   cow_ptr_t<INodeLabel> nl;
