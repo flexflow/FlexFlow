@@ -78,7 +78,7 @@ jobs:
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           export OMPI_MCA_btl_vader_single_copy_mechanism=none
-          ./tests/multi_gpu_tests.sh 2 2
+          ./tests/training_tests.sh 2 2
   
   multinode-gpu-test-ucx:
     name: Multinode GPU Test with UCX
@@ -129,7 +129,7 @@ jobs:
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           export OMPI_MCA_btl_vader_single_copy_mechanism=none
-          ./tests/multi_gpu_tests.sh 2 2
+          ./tests/training_tests.sh 2 2
   
   multinode-gpu-test-native-ucx:
     name: Multinode GPU Test with native UCX
@@ -177,7 +177,7 @@ jobs:
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
           export OMPI_MCA_btl_vader_single_copy_mechanism=none
-          ./tests/multi_gpu_tests.sh 2 2
+          ./tests/training_tests.sh 2 2
 
   notify-slack:
     name: Notify Slack in case of failure

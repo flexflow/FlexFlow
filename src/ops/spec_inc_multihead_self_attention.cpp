@@ -200,10 +200,11 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   hipblasDatatype_t hipblas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   miopenDataType_t miopen_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if CUDA_VERSION >= 11000
-  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  hipblasDatatype_t compute_type = hipblas_data_type;
 #else
+  // TODO: currently use the hipblas_data_type
+  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   hipblasDatatype_t compute_type = hipblas_data_type;
 #endif
   // int num_requests = bc->num_active_requests();
@@ -231,7 +232,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       // int total_tokens = bc->token_last_available_idx[i] + 1;
 
       int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-      int total_tokens = bc->requestsInfo[i].token_start_offset +
+      int total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
                          bc->requestsInfo[i].num_tokens_in_batch;
       // Compute (QK^T/sqrt(d_k))
       int m_ = num_new_tokens;

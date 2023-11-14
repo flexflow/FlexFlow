@@ -259,23 +259,28 @@ void LLAMA::create_llama_model(FFModel &ff,
     }
   }
 
+  FileDataLoader *fileloader = new FileDataLoader(
+      "",
+      weight_file_path,
+      llama_config.num_attention_heads,
+      llama_config.num_attention_heads,
+      llama_config.hidden_size,
+      llama_config.hidden_size / llama_config.num_attention_heads,
+      ff.config.tensor_parallelism_degree,
+      use_full_precision);
+
   InferenceManager *im = InferenceManager::get_inference_manager();
+  im->register_model_weights_loader(&ff, fileloader);
+#ifdef DEADCODE
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
   im->compile_model_and_allocate_buffer(&ff);
-  FileDataLoader fileloader("",
-                            weight_file_path,
-                            llama_config.num_attention_heads,
-                            llama_config.num_attention_heads,
-                            llama_config.hidden_size,
-                            llama_config.hidden_size /
-                                llama_config.num_attention_heads,
-                            ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, use_full_precision);
+  fileloader.load_weights(&ff);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators
   im->init_operators_inference(&ff);
+#endif
 }
 
 }; // namespace FlexFlow

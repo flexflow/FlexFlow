@@ -28,8 +28,8 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_inf_mgr("InferenceManager");
 LegionRuntime::Logger::Category log_offload("Offloading");
 
-InferenceManager::InferenceManager(FFConfig const &_config)
-    : ff_config(_config) {
+InferenceManager::InferenceManager() {
+#ifdef DEADCODE
   num_devices = ff_config.workersPerNode * ff_config.numNodes;
   // Check parallelization degrees
   assert(ff_config.data_parallelism_degree <= num_devices &&
@@ -53,6 +53,7 @@ InferenceManager::InferenceManager(FFConfig const &_config)
              num_devices &&
          "Product of data, tensor, and pipeline parallelism degrees does not "
          "match the number of available devices");
+#endif
 }
 
 InferenceManager *inference_manager_singleton = nullptr;
@@ -60,8 +61,8 @@ InferenceManager *inference_manager_singleton = nullptr;
 /*static*/
 InferenceManager *InferenceManager::get_inference_manager() {
   if (inference_manager_singleton == nullptr) {
-    FFConfig ffconfig;
-    inference_manager_singleton = new InferenceManager(ffconfig);
+    // FFConfig ffconfig;
+    inference_manager_singleton = new InferenceManager();
   }
   return inference_manager_singleton;
 }
@@ -313,12 +314,12 @@ FutureMap InferenceManager::inference(FFModel *model,
         // input.
         assert(op->numOutputs == 1);
         ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
-        load_positions(bc, pt, model->position_offset);
+        load_positions(model, bc, pt, model->position_offset);
       } else {
         found_input_operator = true;
         assert(op->numOutputs == 1);
         ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
-        load_input_tokens_from_batch_config(bc, pt);
+        load_input_tokens_from_batch_config(model, bc, pt);
       }
     }
 
@@ -348,9 +349,9 @@ FutureMap InferenceManager::inference(FFModel *model,
 };
 
 void InferenceManager::load_input_tokens_from_batch_config(
-    BatchConfigFuture const &bc, ParallelTensor const input) {
-  Context ctx = ff_config.lg_ctx;
-  Runtime *runtime = ff_config.lg_hlr;
+    FFModel *model, BatchConfigFuture const &bc, ParallelTensor const input) {
+  Context ctx = model->config.lg_ctx;
+  Runtime *runtime = model->config.lg_hlr;
   size_t machine_view_hash = input->machine_view.hash();
   ArgumentMap argmap;
   IndexLauncher launcher(RM_LOAD_TOKENS_TASK_ID,
@@ -368,11 +369,12 @@ void InferenceManager::load_input_tokens_from_batch_config(
   runtime->execute_index_space(ctx, launcher);
 }
 
-void InferenceManager::load_positions(BatchConfigFuture const &bc,
+void InferenceManager::load_positions(FFModel *model,
+                                      BatchConfigFuture const &bc,
                                       ParallelTensor position_input,
                                       int offset) {
-  Context ctx = ff_config.lg_ctx;
-  Runtime *runtime = ff_config.lg_hlr;
+  Context ctx = model->config.lg_ctx;
+  Runtime *runtime = model->config.lg_hlr;
   size_t machine_view_hash = position_input->machine_view.hash();
   ArgumentMap argmap;
   IndexLauncher launcher(RM_LOAD_POSITION_TASK_ID,
@@ -391,6 +393,11 @@ void InferenceManager::load_positions(BatchConfigFuture const &bc,
                                                     position_input->region));
   launcher.add_field(0, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+void InferenceManager::register_model_weights_loader(FFModel *model,
+                                                     FileDataLoader *loader) {
+  model_weights_loaders[model] = loader;
 }
 
 void FFModel::set_transformer_layer_id(int id) {

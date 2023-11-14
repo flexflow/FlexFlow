@@ -30,18 +30,16 @@ public:
                  int _num_kv_heads,
                  size_t _hidden_dim,
                  size_t _qkv_inner_dim,
-                 int _tensor_parallelism_degree);
+                 int _tensor_parallelism_degree,
+                 bool _use_full_precision);
 
   BatchConfig::TokenId *generate_requests(int num, int length);
 
   template <typename DT>
   void load_single_weight_tensor(FFModel *ff, Layer *l, int weight_idx);
 
-  void load_quantization_weight(FFModel *ff,
-                                Layer *l,
-                                int weight_idx,
-                                bool use_full_precision);
-  void load_weights(FFModel *ff, bool use_full_precision);
+  void load_quantization_weight(FFModel *ff, Layer *l, int weight_idx);
+  void load_weights(FFModel *ff);
 
   void load_positions(FFModel *ff,
                       Tensor pt,
@@ -54,4 +52,5 @@ private:
   size_t hidden_dim, qkv_inner_dim;
   std::string prompts_filepath;
   std::string weights_folder;
+  bool use_full_precision;
 };

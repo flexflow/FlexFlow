@@ -22,6 +22,7 @@
 #include <nlohmann/json.hpp>
 #include <wordexp.h>
 
+using namespace FlexFlow;
 using namespace Legion;
 using json = nlohmann::json;
 
@@ -166,14 +167,7 @@ void get_model_meta(FilePaths &file_paths,
   auto architectures = llm_model_config["architectures"];
   for (auto const &str : architectures) {
     if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM") {
-      std::string nameOrPath = llm_model_config["_name_or_path"];
-      // TODO: support LLAMA-2 models not from Meta
-      bool llama2 = nameOrPath.find("meta-llama/Llama-2") == 0;
-      if (llama2) {
-        model_metadata.llm_model_type = ModelType::LLAMA2;
-      } else {
-        model_metadata.llm_model_type = ModelType::LLAMA;
-      }
+      model_metadata.llm_model_type = ModelType::LLAMA;
       break;
     } else if (str == "OPTForCausalLM") {
       model_metadata.llm_model_type = ModelType::OPT;
@@ -223,14 +217,7 @@ void get_model_meta(FilePaths &file_paths,
     auto architectures = ssm_model_config["architectures"];
     for (auto const &str : architectures) {
       if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM") {
-        std::string nameOrPath = ssm_model_config["_name_or_path"];
-        // TODO: support LLAMA-2 models not from Meta
-        bool llama2 = nameOrPath.find("meta-llama/Llama-2") == 0;
-        if (llama2) {
-          ssm_model_type = ModelType::LLAMA2;
-        } else {
-          ssm_model_type = ModelType::LLAMA;
-        }
+        ssm_model_type = ModelType::LLAMA;
         break;
       } else if (str == "OPTForCausalLM") {
         ssm_model_type = ModelType::OPT;
@@ -318,8 +305,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
-  if (model_metadata.llm_model_type == ModelType::LLAMA ||
-      model_metadata.llm_model_type == ModelType::LLAMA2) {
+  if (model_metadata.llm_model_type == ModelType::LLAMA) {
     LLAMA::create_llama_model(tree_model,
                               model_metadata.llm_model_config_path,
                               model_metadata.llm_weights_path,
@@ -363,8 +349,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
     FFModel &beam_model = ssm_models[ssm_id];
-    if (model_metadata.ssm_model_types[ssm_id] == ModelType::LLAMA ||
-        model_metadata.ssm_model_types[ssm_id] == ModelType::LLAMA2) {
+    if (model_metadata.ssm_model_types[ssm_id] == ModelType::LLAMA) {
       LLAMA::create_llama_model(beam_model,
                                 model_metadata.ssm_model_config_paths[ssm_id],
                                 model_metadata.ssm_model_weights_paths[ssm_id],
@@ -398,6 +383,8 @@ void FlexFlow::top_level_task(Task const *task,
     rm->register_ssm_model(&beam_model);
   }
 
+  rm->start_background_server(&tree_model);
+
   // Register requests from prompt file
   int total_num_requests = 0;
   {
@@ -419,6 +406,9 @@ void FlexFlow::top_level_task(Task const *task,
     }
     tree_model.generate(prompts, 128 /*max_sequence_length*/);
   }
+
+  // terminate the request manager by stopping the background thread
+  rm->terminate_background_server();
 
   // Execution fence
   {

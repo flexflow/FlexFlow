@@ -987,6 +987,12 @@ void flexflow_request_manager_register_output_filepath(
 int flexflow_request_manager_register_ssm_model(
     flexflow_request_manager_t handle_, flexflow_model_t model_handle_);
 
+void flexflow_request_manager_start_background_server(
+    flexflow_request_manager_t handle_, flexflow_model_t model_handle_);
+
+void flexflow_request_manager_terminate_background_server(
+    flexflow_request_manager_t handle_);
+
 // -----------------------------------------------------------------------
 // InferenceManager
 // -----------------------------------------------------------------------
@@ -1003,6 +1009,11 @@ void flexflow_inference_manager_compile_model_and_allocate_buffer(
 void flexflow_inference_manager_init_operators_inference(
     flexflow_inference_manager_t handle_, flexflow_model_t model_handle);
 
+void flexflow_inference_manager_register_model_weights_loader(
+    flexflow_inference_manager_t handle_,
+    flexflow_model_t model_handle,
+    flexflow_file_data_loader_t loader_handle);
+
 // -----------------------------------------------------------------------
 // FileDataLoader
 // -----------------------------------------------------------------------
@@ -1013,13 +1024,13 @@ flexflow_file_data_loader_t
                                      int num_kv_heads,
                                      int hidden_dim,
                                      int qkv_inner_dim,
-                                     int tensor_parallelism_degree);
+                                     int tensor_parallelism_degree,
+                                     bool use_full_precision);
 
 void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_);
 
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
-                                            flexflow_model_t model_handle_,
-                                            bool use_full_precision);
+                                            flexflow_model_t model_handle_);
 
 #ifdef __cplusplus
 }

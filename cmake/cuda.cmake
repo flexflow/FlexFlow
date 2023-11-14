@@ -53,8 +53,12 @@ if(CUDA_FOUND)
     message( STATUS "CUDA Detected CUDA_ARCH : ${DETECTED_CUDA_ARCH}" )
     set(FF_CUDA_ARCH ${DETECTED_CUDA_ARCH})
   # Set FF_CUDA_ARCH to the list of all GPU architectures compatible with FlexFlow
-  elseif("${FF_CUDA_ARCH}" STREQUAL "all") 
-    set(FF_CUDA_ARCH 60,61,62,70,72,75,80,86)
+  elseif("${FF_CUDA_ARCH}" STREQUAL "all")
+    if(CUDA_VERSION VERSION_GREATER_EQUAL "11.8")
+      set(FF_CUDA_ARCH 60,61,62,70,72,75,80,86,90)
+    else()
+      set(FF_CUDA_ARCH 60,61,62,70,72,75,80,86)
+    endif()
   endif()
   
   # create CUDA_GENCODE list based on FF_CUDA_ARCH
