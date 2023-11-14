@@ -17,6 +17,7 @@ import gradio as gr
 import os
 import flexflow.serve as ff
 import argparse, json
+import threading
 from types import SimpleNamespace
 from typing import Any, List, Mapping, Optional
 from langchain.callbacks.manager import CallbackManagerForLLMRun
@@ -47,15 +48,15 @@ def get_configs():
         # Define sample configs
         ff_init_configs = {
             # required parameters
-            "num_gpus": 4,
+            "num_gpus": 2,
             "memory_per_gpu": 14000,
-            "zero_copy_memory_per_node": 30000,
+            "zero_copy_memory_per_node": 40000,
             # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
             "data_parallelism_degree": 1,
             "tensor_parallelism_degree": 1,
-            "pipeline_parallelism_degree": 4,
+            "pipeline_parallelism_degree": 2,
             "offload": False,
             "offload_reserve_space_size": 1024**2,
             "use_4bit_quantization": False,
