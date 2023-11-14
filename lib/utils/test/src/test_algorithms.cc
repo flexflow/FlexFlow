@@ -34,13 +34,7 @@ TEST_CASE("MultiDiGraph") {
           {n[2], {n[1]}},
           {n[3], {n[0], n[1], n[2]}},
       };
-  // TODO(lambda): implement the fmt for std::unordered_map, but I fail
-  std::unordered_map<Node, std::unordered_set<Node>> result =
-      get_predecessors(g, {n[1], n[2], n[3]});
-  for (auto &pair : result) {
-    CHECK(pair.second == expected_result[pair.first]);
-  }
-  // CHECK(get_predecessors(g, {n[1], n[2], n[3]}) == expected_result);
+  CHECK(get_predecessors(g, {n[1], n[2], n[3]}) == expected_result);
 }
 
 TEST_CASE("DiGraph") {
@@ -65,25 +59,19 @@ TEST_CASE("DiGraph") {
   };
   std::unordered_map<Node, std::unordered_set<Node>> result =
       get_predecessors(g, {n[1], n[2], n[3]});
-  // for (auto &pair : result) {
-  //   CHECK(pair.second == expected_result[pair.first]);
-  // }
+
   CHECK(get_predecessors(g, {n[1], n[2], n[3]}) == expected_result);
 
   SUBCASE("get_imm_dominators") {
-    std::unordered_map<Node, optional<Node>> result = get_imm_dominators(g);
-
     std::unordered_map<Node, optional<Node>> expected_result = {
         {n[2], n[0]},
         {n[1], n[0]},
         {n[3], n[0]},
         {n[0], nullopt},
     };
-    // CHECK(result == expected_result);
-    // TODO(lambda): implement the fmt for std::unordered_map, but I fail
-    for (auto &pair : result) {
-      CHECK(pair.second == expected_result[pair.first]);
-    }
+    
+    CHECK(get_imm_dominators(g) == expected_result);
+   
   }
 
   SUBCASE("get_dominators") {
@@ -93,13 +81,8 @@ TEST_CASE("DiGraph") {
         {n[2], {n[0], n[2]}},
         {n[3], {n[0], n[3]}},
     };
-    std::unordered_map<Node, std::unordered_set<Node>> result =
-        get_dominators(g);
-    // TODO(lambda): implement the fmt for std::unordered_map, but I fail
-    for (auto &pair : result) {
-      CHECK(pair.second == expected_result[pair.first]);
-    }
-    // CHECK(get_dominators(g) == expected);
+
+    CHECK(get_dominators(g) == expected);
   }
 
   SUBCASE("get_sinks") {
@@ -118,12 +101,7 @@ TEST_CASE("DiGraph") {
         {n[1], {n[0]}},
         {n[2], {n[0], n[1]}},
     };
-    auto result = get_predecessors(g, {n[1], n[2]});
-    // TODO(lambda): implement the fmt for std::unordered_map, but I fail
-    for (auto &pair : result) {
-      CHECK(pair.second == expected_result[pair.first]);
-    }
-    // CHECK(get_predecessors(g, {n[1], n[2]}) == expected_result);
+    CHECK(get_predecessors(g, {n[1], n[2]}) == expected_result);
   }
 }
 
