@@ -190,7 +190,7 @@ def main():
             layer.bwd_step = 0
             print(f"Adding hooks to layer {layer.name}")
             layer.register_forward_hook(peft_forward_hook)
-            layer.register_backward_hook(peft_backward_hook)
+            layer.register_full_backward_hook(peft_backward_hook)
         # Save weights
         for name, params in model.named_parameters():
             if "lora" in name:
