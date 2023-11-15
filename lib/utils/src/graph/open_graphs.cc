@@ -21,9 +21,8 @@ std::unordered_set<OpenMultiDiEdge>
   return this->get_ptr().query_edges(q);
 }
 
-IOpenMultiDiGraphView &OpenMultiDiGraphView::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IOpenMultiDiGraphView>(
-      GraphView::ptr.get_mutable());
+IOpenMultiDiGraphView const &OpenMultiDiGraphView::get_ptr() const {
+  return *std::dynamic_pointer_cast<IOpenMultiDiGraphView const>(GraphView::ptr.get());
 }
 
 Node OpenMultiDiGraph::add_node() {
@@ -51,8 +50,12 @@ std::unordered_set<OpenMultiDiEdge>
   return this->get_ptr().query_edges(q);
 }
 
+NodePort OpenMultiDiGraph::add_node_port() {
+  return get_ptr().add_node_port();
+}
+
 IOpenMultiDiGraph &OpenMultiDiGraph::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IOpenMultiDiGraph>(
+  return *std::dynamic_pointer_cast<IOpenMultiDiGraph>(
       GraphView::ptr.get_mutable());
 }
 
@@ -67,9 +70,9 @@ std::unordered_set<UpwardOpenMultiDiEdge>
   return get_ptr().query_edges(q);
 }
 
-IUpwardOpenMultiDiGraphView &UpwardOpenMultiDiGraphView::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IUpwardOpenMultiDiGraphView>(
-      GraphView::ptr.get_mutable());
+IUpwardOpenMultiDiGraphView const &UpwardOpenMultiDiGraphView::get_ptr() const {
+  return *std::dynamic_pointer_cast<IUpwardOpenMultiDiGraphView const>(
+      GraphView::ptr.get());
 }
 
 Node UpwardOpenMultiDiGraph::add_node() {
@@ -98,7 +101,7 @@ std::unordered_set<UpwardOpenMultiDiEdge> UpwardOpenMultiDiGraph::query_edges(
 }
 
 IUpwardOpenMultiDiGraph &UpwardOpenMultiDiGraph::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IUpwardOpenMultiDiGraph>(
+  return *std::dynamic_pointer_cast<IUpwardOpenMultiDiGraph>(
       GraphView::ptr.get_mutable());
 }
 
@@ -113,9 +116,9 @@ std::unordered_set<DownwardOpenMultiDiEdge>
   return this->get_ptr().query_edges(q);
 }
 
-IDownwardOpenMultiDiGraphView &DownwardOpenMultiDiGraphView::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IDownwardOpenMultiDiGraphView>(
-      GraphView::ptr.get_mutable());
+IDownwardOpenMultiDiGraphView const &DownwardOpenMultiDiGraphView::get_ptr() const {
+  return *std::dynamic_pointer_cast<IDownwardOpenMultiDiGraphView const>(
+      GraphView::ptr.get());
 }
 
 Node DownwardOpenMultiDiGraph::add_node() {
@@ -150,7 +153,7 @@ std::unordered_set<DownwardOpenMultiDiEdge>
 }
 
 IDownwardOpenMultiDiGraph &DownwardOpenMultiDiGraph::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IDownwardOpenMultiDiGraph>(
+  return *std::dynamic_pointer_cast<IDownwardOpenMultiDiGraph>(
       GraphView::ptr.get_mutable());
 }
 

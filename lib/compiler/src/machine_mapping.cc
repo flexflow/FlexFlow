@@ -95,7 +95,7 @@ float estimate_cost(SubParallelComputationGraphView const &g,
                     CostEstimator const &estimator,
                     MachineMapping const &device_mapping,
                     std::unordered_map<OpenMultiDiEdge, MachineView> const &frontier_machine_views) {
-  NOT_IMPLEMENTED();
+  return 0.1;
 }
 
 void minimize_runtime(OptimalCostResult &m1, OptimalCostResult const &m2) {
@@ -122,8 +122,8 @@ struct OptimalCost {
   SubParallelComputationGraphView const &g;
   CostEstimator const &cost_estimator;
   MachineSpecification const &resource;
-  std::unordered_map<Node, MachineView> const &given_machine_views;
-  std::unordered_map<OpenMultiDiEdge, MachineView> const &frontier_machine_views;
+  std::unordered_map<Node, MachineView> given_machine_views;
+  std::unordered_map<OpenMultiDiEdge, MachineView> frontier_machine_views;
   std::function<std::unordered_set<MachineView>(
       Operator const &, MachineSpecification const &)> const
       &allowed_machine_views;
@@ -138,7 +138,6 @@ struct OptimalCost {
     if (cached_result) {
       return cached_result.value();
     }
-
     OptimalCostResult result = this->optimal_cost(t);
 
     cached_subgraph_costs.save(state, result);
@@ -161,14 +160,15 @@ struct OptimalCost {
 
     Node split_point = get_only(post_graph_sources);
     OutputMultiDiEdge split_edge = get_only(get_open_outputs(pre_graph));
-    
+
     OptimalCostResult optimal_result = OptimalCostResult::infinity();
 
     for (MachineView const &mv :
          allowed_machine_views(g.at(split_point), resource)) {
-      auto new_given_machine_views = merge_maps(given_machine_views, std::unordered_map<Node, MachineView>{{split_point, mv}});
-      auto new_frontier_machine_views = merge_maps(frontier_machine_views,
-        std::unordered_map<OpenMultiDiEdge, MachineView>{{split_edge, mv}});
+      std::unordered_map<Node, MachineView> new_given_machine_views = given_machine_views;
+      new_given_machine_views.emplace(split_point, mv);
+      std::unordered_map<OpenMultiDiEdge, MachineView> new_frontier_machine_views = frontier_machine_views;
+      new_frontier_machine_views.emplace(split_edge, mv);
       minimize_runtime(optimal_result,
                        OptimalCostResult::sequential_combine(
                            visit(OptimalCost(pre_graph,
@@ -269,14 +269,16 @@ OptimalCostResult
                  CostEstimator const &cost_estimator,
                  MachineSpecification const &resources,
                  OptimalCostCache &cached_subgraph_costs) {
-  return visit(OptimalCost(pcg_to_subpcg(g),
+  SerialParallelDecomposition sp_decomposition = get_serial_parallel_decomposition(g);
+  SubParallelComputationGraph subpcg = pcg_to_subpcg(g);
+  return visit(OptimalCost(subpcg,
                            cost_estimator,
                            resources,
-                           {},
-                           {},
+                           std::unordered_map<Node, MachineView>{},
+                           std::unordered_map<OpenMultiDiEdge, MachineView>{},
                            allowed_machine_views,
                            cached_subgraph_costs),
-               get_serial_parallel_decomposition(g));
+               sp_decomposition);
 }
 
 } // namespace FlexFlow

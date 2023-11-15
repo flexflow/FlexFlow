@@ -4,7 +4,7 @@ namespace FlexFlow {
 
 Operator::Operator(PCGOperatorAttrs const &attrs,
                    optional<std::string> const &name)
-    : attrs(attrs) {}
+    : attrs(attrs), name(name) {}
 
 Operator::operator PCGOperatorAttrs() const {
   return attrs;

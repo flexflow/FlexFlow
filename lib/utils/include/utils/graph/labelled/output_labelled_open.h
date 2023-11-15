@@ -17,7 +17,8 @@ struct IOutputLabelledOpenMultiDiGraphView
 
 template <typename NodeLabel, typename EdgeLabel>
 struct OutputLabelledOpenMultiDiGraphView
-    : virtual NodeLabelledOpenMultiDiGraphView<NodeLabel> {
+    : virtual NodeLabelledOpenMultiDiGraphView<NodeLabel>,
+      virtual OutputLabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
 private:
   using Interface = IOutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel>;
 
@@ -59,12 +60,10 @@ public:
 protected:
   using NodeLabelledOpenMultiDiGraphView<
       NodeLabel>::NodeLabelledOpenMultiDiGraphView;
-  OutputLabelledOpenMultiDiGraphView(cow_ptr_t<Interface> ptr) : GraphView(ptr) {}
 
 private:
-  Interface &get_ptr() const {
-    return *std::reinterpret_pointer_cast<Interface>(
-        GraphView::ptr.get_mutable());
+  Interface const &get_ptr() const {
+    return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());
   }
 };
 
@@ -96,6 +95,11 @@ public:
     return n;
   }
 
+  void add_node_unsafe(Node const &n, NodeLabel const &l) {
+    get_ptr().add_node_unsafe(n);
+    nl.get_mutable()->add_label(n, l);
+  }
+
   NodePort add_node_port() {
     return get_ptr().add_node_port();
   }
@@ -121,14 +125,14 @@ public:
   }
 
   EdgeLabel &at(MultiDiOutput const &o) {
-    return ol->get_label(o);
+    return ol.get_mutable()->get_label(o);
   }
   EdgeLabel const &at(MultiDiOutput const &o) const override {
     return ol->get_label(o);
   }
 
   EdgeLabel &at(InputMultiDiEdge const &e) {
-    return il->get_label(e);
+    return il.get_mutable()->get_label(e);
   }
 
   EdgeLabel const &at(InputMultiDiEdge const &e) const override {
@@ -165,7 +169,7 @@ private:
       : GraphView(ptr), nl(nl), il(il), ol(ol) {}
 
   Interface &get_ptr() const {
-    return *std::reinterpret_pointer_cast<Interface>(
+    return *std::dynamic_pointer_cast<Interface>(
         GraphView::ptr.get_mutable());
   }
 

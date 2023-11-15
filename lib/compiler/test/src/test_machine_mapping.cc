@@ -1,4 +1,4 @@
-#include "doctest.h"
+#include "doctest/doctest.h"
 #include "test_generator.h"
 
 TEST_CASE("MachineMapping::combine") {

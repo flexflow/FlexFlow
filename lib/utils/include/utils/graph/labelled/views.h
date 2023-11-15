@@ -52,7 +52,7 @@ public:
     return node_label(n);
   }
 
-  virtual OutputLabel &at(MultiDiOutput const &o) override {
+  virtual OutputLabel const &at(MultiDiOutput const &o) const override {
     return output_label(o);
   }
 
@@ -82,6 +82,26 @@ Impl materialize_output_labelled_multidigraph_view(
   }
   for (MultiDiOutput const &o : get_outputs(g)) {
     result.add_output(o, g.at(o));
+  }
+  return result;
+}
+
+template <typename Impl, typename NodeLabelImpl, typename InputLabelImpl, typename OutputLabelImpl, typename NodeLabel, typename OutputLabel>
+OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel> materialize_output_labelled_open_multidigraph_view(OutputLabelledOpenMultiDiGraphView<NodeLabel, OutputLabel> const &g) {
+  OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel> result = OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel>::template create<Impl, NodeLabelImpl, InputLabelImpl, OutputLabelImpl>();
+  for (Node const &n : get_nodes(g)) {
+    result.add_node_unsafe(n, g.at(n));
+  }
+  for (OpenMultiDiEdge const &e : get_edges(g)) {
+    result.add_edge(e);
+    if (is_input_edge(e)) {
+      InputMultiDiEdge input_edge = get<InputMultiDiEdge>(e);
+      result.add_label(input_edge, g.at(input_edge));
+    } else {
+      MultiDiOutput output = is_standard_edge(e) ? static_cast<MultiDiOutput>(get<MultiDiEdge>(e)) : static_cast<MultiDiOutput>(get<OutputMultiDiEdge>(e));
+      auto tensor = g.at(output);
+      result.add_label(output, tensor);
+    }
   }
   return result;
 }

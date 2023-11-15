@@ -10,7 +10,9 @@ bool StrategyRuntimeCmp::operator()(Strategy const &lhs, Strategy const &rhs) {
 }
 
 std::unordered_set<Substitution>
-    get_all_substitutions(ParallelComputationGraph const &pcg);
+    get_all_substitutions(ParallelComputationGraph const &pcg) {
+  NOT_IMPLEMENTED();
+}
 
 std::unordered_set<ParallelComputationGraph>
     apply_substitution(ParallelComputationGraph const &pcg,
@@ -73,3 +75,17 @@ Strategy
 }
 
 } // namespace FlexFlow
+
+namespace std {
+
+size_t hash<FlexFlow::Strategy>::operator()(FlexFlow::Strategy const &s) const {
+  size_t h = 0;
+
+  hash_combine(h, s.pcg);
+  // hash_combine(h, s.machine_mapping);
+  hash_combine(h, s.runtime);
+
+  return h;
+}
+
+}

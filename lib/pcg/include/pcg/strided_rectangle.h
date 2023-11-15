@@ -17,7 +17,7 @@ struct side_size_t : public strong_typedef<side_size_t, int> {
   using strong_typedef::strong_typedef;
 };
 
-struct StridedRectangleSide : public use_visitable_cmp<StridedRectangleSide> {
+struct StridedRectangleSide {
 public:
   StridedRectangleSide() = delete;
   StridedRectangleSide(num_points_t const &, int stride);
@@ -32,13 +32,15 @@ public:
 
 public:
   num_points_t num_points;
-  int stride;
+  req<int> stride;
 };
 
-struct StridedRectangle : public use_visitable_cmp<StridedRectangle> {
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(StridedRectangleSide, num_points, stride);
+
+struct StridedRectangle {
 public:
-  StridedRectangle() = delete;
-  StridedRectangle(std::vector<StridedRectangleSide> const &);
+  // StridedRectangle() = delete;
+  // StridedRectangle(std::vector<StridedRectangleSide> const &);
 
   size_t at(FFOrdered<num_points_t> const &) const;
   StridedRectangleSide at(ff_dim_t const &) const;
@@ -47,6 +49,9 @@ public:
 public:
   FFOrdered<StridedRectangleSide> sides;
 };
+
+FF_VISITABLE_STRUCT(StridedRectangle, sides);
+
 } // namespace FlexFlow
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::num_points_t);
@@ -55,10 +60,10 @@ MAKE_TYPEDEF_PRINTABLE(::FlexFlow::num_points_t, "num_points");
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::side_size_t);
 MAKE_TYPEDEF_PRINTABLE(::FlexFlow::side_size_t, "side_size");
 
-VISITABLE_STRUCT(::FlexFlow::StridedRectangleSide, num_points, stride);
-MAKE_VISIT_HASHABLE(::FlexFlow::StridedRectangleSide);
+// VISITABLE_STRUCT(::FlexFlow::StridedRectangleSide, num_points, stride);
+// MAKE_VISIT_HASHABLE(::FlexFlow::StridedRectangleSide);
 
-VISITABLE_STRUCT(::FlexFlow::StridedRectangle, sides);
-MAKE_VISIT_HASHABLE(::FlexFlow::StridedRectangle);
+// VISITABLE_STRUCT(::FlexFlow::StridedRectangle, sides);
+// MAKE_VISIT_HASHABLE(::FlexFlow::StridedRectangle);
 
 #endif

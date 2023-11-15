@@ -15,7 +15,7 @@ struct MachineMapping {
   static MachineMapping combine(MachineMapping const &, MachineMapping const &);
   static bool nodes_are_disjoint(MachineMapping const &m1,
                                  MachineMapping const &m2);
-
+  
   req<std::unordered_map<Node, MachineView>> machine_views;
 };
 FF_VISITABLE_STRUCT(MachineMapping, machine_views);

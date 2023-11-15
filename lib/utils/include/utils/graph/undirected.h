@@ -55,7 +55,7 @@ public:
   friend struct GraphInternal;
 
 private:
-  IUndirectedGraphView &get_ptr() const;
+  IUndirectedGraphView const &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraphView);
 

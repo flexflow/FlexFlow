@@ -164,7 +164,9 @@ DiGraphView apply_contraction(DiGraphView const &g,
   for (auto const &kv : nodes) {
     Node from = kv.first;
     Node into = kv.second;
-    contractedView = contract_node(contractedView, from, into);
+    if (from != into) {
+      contractedView = contract_node(contractedView, from, into);
+    }
   }
   return contractedView;
 }
@@ -345,6 +347,13 @@ std::unordered_set<UpwardOpenMultiDiEdge>
                    [](OpenMultiDiEdge const &e) {
                      return narrow<UpwardOpenMultiDiEdge>(e).value();
                    });
+}
+
+std::unordered_set<OutputMultiDiEdge> get_open_outputs(OpenMultiDiGraphView const &g) {
+  return transform(g.query_edges(OutputMultiDiEdgeQuery::all()), [](OpenMultiDiEdge const &e) { return get<OutputMultiDiEdge>(e); });
+}
+std::unordered_set<InputMultiDiEdge> get_open_inputs(OpenMultiDiGraphView const &g) {
+  return transform(g.query_edges(InputMultiDiEdgeQuery::all()), [](OpenMultiDiEdge const &e) { return get<InputMultiDiEdge>(e); });
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
@@ -755,6 +764,30 @@ std::unordered_set<std::unordered_set<Node>>
     visited = set_union(visited, component);
   }
   return components;
+}
+
+std::unordered_set<Node> get_closed_sources(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return get_incoming_edges(g, n).size() == 0;
+  });
+}
+
+std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return get_outgoing_edges(g, n).size() == 0;
+  });
+}
+
+std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return !g.query_edges(InputMultiDiEdgeQuery::all().with_dst_nodes({n})).empty();
+  });
+}
+
+std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return !g.query_edges(OutputMultiDiEdgeQuery::all().with_src_nodes({n})).empty();
+  });
 }
 
 } // namespace FlexFlow

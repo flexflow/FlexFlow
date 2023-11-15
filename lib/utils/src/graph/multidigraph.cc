@@ -23,9 +23,8 @@ std::unordered_set<MultiDiEdge>
   return this->get_ptr().query_edges(q);
 }
 
-IMultiDiGraphView &MultiDiGraphView::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IMultiDiGraphView>(
-      GraphView::ptr.get_mutable());
+IMultiDiGraphView const &MultiDiGraphView::get_ptr() const {
+  return *std::dynamic_pointer_cast<IMultiDiGraphView const>(GraphView::ptr.get());
 }
 
 Node MultiDiGraph::add_node() {
@@ -66,7 +65,7 @@ std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const &q) const {
 }
 
 IMultiDiGraph &MultiDiGraph::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IMultiDiGraph>(
+  return *std::dynamic_pointer_cast<IMultiDiGraph>(
       GraphView::ptr.get_mutable());
 }
 

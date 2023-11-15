@@ -19,7 +19,8 @@ struct UnorderedLabelling : virtual public ILabelling<Elem, Label> {
   }
 
   void add_label(Elem const &e, Label const &l) {
-    label_map.insert({e, l});
+    auto p = std::make_pair(e, l);
+    label_map.insert(p);
   }
 
   UnorderedLabelling *clone() const {

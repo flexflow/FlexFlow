@@ -26,7 +26,7 @@ void UndirectedGraph::remove_edge(UndirectedEdge const &e) {
 }
 
 IUndirectedGraph &UndirectedGraph::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IUndirectedGraph>(
+  return *std::dynamic_pointer_cast<IUndirectedGraph>(
       GraphView::ptr.get_mutable());
 }
 
@@ -50,8 +50,8 @@ std::unordered_set<Node>
   return this->get_ptr().query_nodes(q);
 }
 
-IUndirectedGraphView &UndirectedGraphView::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IUndirectedGraphView>(
+IUndirectedGraphView const &UndirectedGraphView::get_ptr() const {
+  return *std::dynamic_pointer_cast<IUndirectedGraphView const>(
       GraphView::ptr.get_mutable());
 }
 

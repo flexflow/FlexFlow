@@ -7,6 +7,22 @@ SerialParallelDecomposition
   return get_serial_parallel_decomposition(pcg.value());
 }
 
+ParallelComputationGraph cg_to_pcg(ComputationGraph const &g) {
+  NOT_IMPLEMENTED();
+}
+
+SubParallelComputationGraph pcg_to_subpcg(ParallelComputationGraph const &pcg) {
+  auto g = pcg.value();
+  auto g_ = view_output_labelled_as_output_labelled_open(g);
+  auto subpcg = materialize_output_labelled_open_multidigraph_view<
+    AdjacencyOpenMultiDiGraph,
+    UnorderedLabelling<Node, Operator>,
+    UnorderedLabelling<InputMultiDiEdge, ParallelTensor>,
+    UnorderedLabelling<MultiDiOutput, ParallelTensor>
+  >(g_);
+  return subpcg;
+}
+
 std::vector<MultiDiEdge>
     get_sorted_node_input_edges(ParallelComputationGraph const &pcg,
                                 Node const &n) {

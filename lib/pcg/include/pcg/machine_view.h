@@ -12,9 +12,9 @@
 
 namespace FlexFlow {
 
-struct MachineView : public use_visitable_cmp<MachineView> {
-  MachineView() = delete;
-  MachineView(device_id_t const &, StridedRectangle const &);
+struct MachineView {
+  // MachineView() = delete;
+  // MachineView(device_id_t const &, StridedRectangle const &);
 
   std::vector<int> device_ids() const;
 

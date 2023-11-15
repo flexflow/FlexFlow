@@ -14,7 +14,7 @@ struct IOutputLabelledMultiDiGraphView
   IOutputLabelledMultiDiGraphView &
       operator=(IOutputLabelledMultiDiGraphView const &) = delete;
 
-  virtual OutputLabel const &at(MultiDiOutput const &) = 0;
+  virtual OutputLabel const &at(MultiDiOutput const &) const = 0;
   using INodeLabelledMultiDiGraphView<NodeLabel>::at;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IOutputLabelledMultiDiGraphView<int, int>);
@@ -31,11 +31,11 @@ public:
   OutputLabelledMultiDiGraphView &
       operator=(OutputLabelledMultiDiGraphView const &) = default;
 
-  NodeLabel const &at(Node const &n) const {
+  virtual NodeLabel const &at(Node const &n) const {
     return get_ptr().at(n);
   }
 
-  OutputLabel const &at(MultiDiOutput const &o) const {
+  virtual OutputLabel const &at(MultiDiOutput const &o) const {
     return get_ptr().at(o);
   }
 
@@ -56,13 +56,11 @@ public:
   }
 
 protected:
-  OutputLabelledMultiDiGraphView(cow_ptr_t<Interface const> ptr)
-      : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {}
+  using NodeLabelledMultiDiGraphView<NodeLabel>::NodeLabelledMultiDiGraphView;
 
 private:
-  Interface &get_ptr() const {
-    return *std::reinterpret_pointer_cast<Interface>(
-        GraphView::ptr.get_mutable());
+  Interface const &get_ptr() const {
+    return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());
   }
 };
 
@@ -81,7 +79,7 @@ public:
 
   Node add_node(NodeLabel const &l) {
     Node n = get_ptr().add_node();
-    nl->add_label(n, l);
+    nl.get_mutable()->add_label(n, l);
     return n;
   }
 
@@ -93,12 +91,12 @@ public:
     return nl.get_mutable()->get_label(n);
   }
 
-  NodeLabel const &at(Node const &n) const {
+  NodeLabel const &at(Node const &n) const override {
     return nl->get_label(n);
   }
 
   void add_output(MultiDiOutput const &o, OutputLabel const &l) {
-    ol->add_label(o, l);
+    ol.get_mutable()->add_label(o, l);
   };
 
   void add_edge(MultiDiOutput const &o, MultiDiInput const &i) {
@@ -110,16 +108,17 @@ public:
   }
 
   OutputLabel &at(MultiDiOutput const &o) {
-    return ol->get_label(o);
+    return ol.get_mutable()->get_label(o);
   }
 
-  OutputLabel const &at(MultiDiOutput const &o) const {
+  OutputLabel const &at(MultiDiOutput const &o) const override {
     return ol->get_label(o);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return get_ptr().query_nodes(q);
   }
+  
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
     return get_ptr().query_edges(q);
   }
@@ -139,12 +138,11 @@ private:
   OutputLabelledMultiDiGraph(cow_ptr_t<Interface> ptr,
                              cow_ptr_t<INodeLabel> nl,
                              cow_ptr_t<IOutputLabel> ol)
-      : OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel>(ptr), nl(nl),
-        ol(ol) {}
+      : GraphView(ptr), nl(nl), ol(ol) {}
 
 private:
   Interface &get_ptr() const {
-    return *std::reinterpret_pointer_cast<Interface>(
+    return *std::dynamic_pointer_cast<Interface>(
         GraphView::ptr.get_mutable());
   }
   cow_ptr_t<INodeLabel> nl;

@@ -30,7 +30,7 @@ protected:
   using DiGraphView::DiGraphView;
 
 private:
-  IMultiDiGraphView &get_ptr() const;
+  IMultiDiGraphView const &get_ptr() const;
 
   friend struct GraphInternal;
 };

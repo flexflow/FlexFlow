@@ -2,10 +2,13 @@ ff_add_test_executable(
   NAME
     compiler-test
   SRC_PATTERNS
-    src/*.cc
+    src/test_labelled_open_graph.cc
+    src/test_open_graph.cc
+    src/test_optimal_cost.cc
   PRIVATE_INCLUDE
     src/
   DEPS
+    utils
     compiler
     doctest
     utils-test-common

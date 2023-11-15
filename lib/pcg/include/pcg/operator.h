@@ -17,11 +17,12 @@ public:
 
 public:
   PCGOperatorAttrs attrs;
+  optional<std::string> name;
 };
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::Operator, attrs);
+VISITABLE_STRUCT(::FlexFlow::Operator, attrs, name);
 MAKE_VISIT_HASHABLE(::FlexFlow::Operator);
 
 namespace FlexFlow {

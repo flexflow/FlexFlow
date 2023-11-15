@@ -34,7 +34,7 @@ protected:
   using MultiDiGraphView::MultiDiGraphView;
 
 private:
-  IOpenMultiDiGraphView &get_ptr() const;
+  IOpenMultiDiGraphView const &get_ptr() const;
 
   friend struct GraphInternal;
 };
@@ -50,6 +50,7 @@ public:
   Node add_node();
   void add_node_unsafe(Node const &);
   void remove_node_unsafe(Node const &);
+  NodePort add_node_port();
 
   void add_edge(Edge const &);
   void remove_edge(Edge const &);
@@ -60,7 +61,7 @@ public:
   static typename std::enable_if<std::is_base_of<IOpenMultiDiGraph, T>::value,
                                  OpenMultiDiGraph>::type
       create() {
-    return make_cow_ptr<T>();
+    return OpenMultiDiGraph(make_cow_ptr<T>());
   }
 
 private:
@@ -96,7 +97,7 @@ public:
 private:
   using MultiDiGraphView::MultiDiGraphView;
 
-  IUpwardOpenMultiDiGraphView &get_ptr() const;
+  IUpwardOpenMultiDiGraphView const &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UpwardOpenMultiDiGraphView);
 
@@ -158,7 +159,7 @@ public:
 private:
   using MultiDiGraphView::MultiDiGraphView;
 
-  Interface &get_ptr() const;
+  Interface const &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DownwardOpenMultiDiGraphView);
 

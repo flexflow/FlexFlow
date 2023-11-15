@@ -37,6 +37,7 @@ Strategy
 } // namespace FlexFlow
 
 VISITABLE_STRUCT(FlexFlow::Strategy, pcg, machine_mapping, runtime);
+
 namespace std {
 
 template <>
@@ -44,6 +45,6 @@ struct hash<FlexFlow::Strategy> {
   size_t operator()(FlexFlow::Strategy const &) const;
 };
 
-};
+}
 
 #endif
