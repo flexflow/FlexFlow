@@ -32,7 +32,6 @@ LegionRuntime::Logger::Category log_app("llama");
 struct FilePaths {
   std::string cache_folder_path;
   std::string prompt_file_path;
-  std::string peft_dataset_path;
   std::string output_file_path;
 };
 
@@ -73,11 +72,6 @@ void parse_input_args(char **argv,
     // prompts
     if (!strcmp(argv[i], "-prompt")) {
       paths.prompt_file_path = std::string(argv[++i]);
-      continue;
-    }
-    // PEFT dataset
-    if (!strcmp(argv[i], "-peft-dataset")) {
-      paths.peft_dataset_path = std::string(argv[++i]);
       continue;
     }
     // output file
@@ -277,47 +271,29 @@ void FlexFlow::top_level_task(Task const *task,
                 mlp_second /*mlp_second*/);
 
   int total_num_requests = 0;
-  int total_dataset_entries = 0;
   {
     using json = nlohmann::json;
-
+    std::ifstream file_handle(file_paths.prompt_file_path);
+    assert(file_handle.good() && "Prompt file does not exist.");
+    json prompt_json = json::parse(file_handle,
+                                   /*parser_callback_t */ nullptr,
+                                   /*allow_exceptions */ true,
+                                   /*ignore_comments */ true);
     std::vector<std::string> prompts;
     std::vector<std::pair<std::string, std::string>> dataset;
-
-    // Load prompts for inference
-    if (!file_paths.prompt_file_path.empty()) {
-      std::ifstream prompt_file_handle(file_paths.prompt_file_path);
-      assert(prompt_file_handle.good() && "Prompt file does not exist.");
-      json prompt_json = json::parse(prompt_file_handle,
-                                     /*parser_callback_t */ nullptr,
-                                     /*allow_exceptions */ true,
-                                     /*ignore_comments */ true);
-      for (auto &prompt : prompt_json) {
-        std::string text = prompt.get<std::string>();
-        printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-        total_num_requests++;
-        prompts.push_back(text);
-      }
+    for (auto &prompt : prompt_json) {
+      std::string text = prompt.get<std::string>();
+      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      total_num_requests++;
+      //prompts.push_back(text);
+      dataset.push_back(std::make_pair(text, text));
     }
-    // Load HF dataset for PEFT training
-    if (!file_paths.peft_dataset_path.empty()) {
-      std::ifstream prompt_file_handle(file_paths.peft_dataset_path);
-      assert(prompt_file_handle.good() && "Prompt file does not exist.");
-      json prompt_json = json::parse(prompt_file_handle,
-                                     /*parser_callback_t */ nullptr,
-                                     /*allow_exceptions */ true,
-                                     /*ignore_comments */ true);
-      for (auto &prompt : prompt_json) {
-        std::string text = prompt.get<std::string>();
-        printf("Training dataset entry [%d]: %s\n",
-               total_dataset_entries,
-               text.c_str());
-        total_dataset_entries++;
-        dataset.push_back(std::make_pair(text, text));
-        rm->register_new_peft_request(
-            dataset, 256 /*max_sequence_length*/, peft_model_id);
-      }
-    }
+    rm->register_new_peft_request(
+        dataset, 256 /*max_sequence_length*/, peft_model_id);
+    //  for (auto &prompt : prompts) {
+    //    GenerationResult result = model.generate(prompt, 128
+    //    /*max_sequence_length*/);
+    //  }
     GenerationResult result =
         model.generate(prompts, 128 /*max_sequence_length*/, peft_model_id);
   }
