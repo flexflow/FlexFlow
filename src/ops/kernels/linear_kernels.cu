@@ -452,7 +452,6 @@ void peft_bwd_kernel(LinearMeta const *m,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  DT alpha = 1.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
   cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
@@ -493,6 +492,7 @@ void peft_bwd_kernel(LinearMeta const *m,
 
   // Compute data gradient
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
+  DT alpha = 1.0f, beta = 0.0f;
   if (input_grad_ptr != NULL) {
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_N,
@@ -507,7 +507,7 @@ void peft_bwd_kernel(LinearMeta const *m,
                            output_grad_ptr,
                            output_type,
                            out_dim,
-                           &alpha,
+                           &beta,
                            input_grad_ptr,
                            input_type,
                            in_dim,
