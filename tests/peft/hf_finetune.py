@@ -64,14 +64,14 @@ def peft_backward_hook(module, grad_input, grad_output):
     for i,gi in enumerate(grad_input):
         if type(gi) == torch.Tensor:
             print(gi.shape)
-            torch.save(grad_output, f"./hf_peft_tensors/bwd_step_{module.bwd_step}_{name}.gi_{i}")
+            torch.save(gi, f"./hf_peft_tensors/bwd_step_{module.bwd_step}_{name}.gi_{i}")
         else:
             print(gi)
     print("Backward GRAD Output:")
     for i, go in enumerate(grad_output):
         if type(go) == torch.Tensor:
             print(go.shape)
-            torch.save(grad_output, f"./hf_peft_tensors/bwd_step_{module.bwd_step}_{name}.go_{i}")
+            torch.save(go, f"./hf_peft_tensors/bwd_step_{module.bwd_step}_{name}.go_{i}")
         else:
             print(go)
     
@@ -201,6 +201,8 @@ def main():
                 ff_w_name = convert_hf_weight_name(name)
                 print(f"{dst_folder}/{ff_w_name}")
                 params.detach().cpu().numpy().tofile(f"{dst_folder}/{ff_w_name}")
+            if "lm_head" in name:
+                torch.save(params, f"./hf_peft_tensors/{name}")
 
     data = load_dataset("/home/ubuntu/english_quotes")
     data = data.map(lambda samples: tokenizer(samples['quote']), batched=True)
