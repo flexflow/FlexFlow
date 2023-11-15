@@ -15,7 +15,8 @@ struct ParallelComputationGraph
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(ParallelComputationGraph);
 
-bool operator==(ParallelComputationGraph const &, ParallelComputationGraph const &);
+bool operator==(ParallelComputationGraph const &,
+                ParallelComputationGraph const &);
 
 } // namespace FlexFlow
 
@@ -25,6 +26,6 @@ template <>
 struct hash<FlexFlow::ParallelComputationGraph> {
   size_t operator()(FlexFlow::ParallelComputationGraph const &g) const;
 };
-}
+} // namespace std
 
 #endif

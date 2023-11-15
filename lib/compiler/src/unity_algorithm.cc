@@ -37,8 +37,13 @@ Strategy
   DeduplicatedPriorityQueue<Strategy, std::vector<Strategy>, StrategyRuntimeCmp>
       candidates;
 
-  OptimalCostResult initial_pcg_result = optimal_cost(pcg, allowed_machine_views, cost_estimator, resources, cached_subgraph_costs);
-  Strategy initial_result{pcg, initial_pcg_result.machine_mapping, initial_pcg_result.runtime};
+  OptimalCostResult initial_pcg_result = optimal_cost(pcg,
+                                                      allowed_machine_views,
+                                                      cost_estimator,
+                                                      resources,
+                                                      cached_subgraph_costs);
+  Strategy initial_result{
+      pcg, initial_pcg_result.machine_mapping, initial_pcg_result.runtime};
 
   Strategy best_result = initial_result;
   candidates.push(initial_result);
@@ -88,4 +93,4 @@ size_t hash<FlexFlow::Strategy>::operator()(FlexFlow::Strategy const &s) const {
   return h;
 }
 
-}
+} // namespace std

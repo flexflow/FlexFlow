@@ -169,8 +169,7 @@ private:
       : GraphView(ptr), nl(nl), il(il), ol(ol) {}
 
   Interface &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface>(
-        GraphView::ptr.get_mutable());
+    return *std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable());
   }
 
   cow_ptr_t<INodeLabel> nl;
@@ -179,8 +178,10 @@ private:
 };
 
 template <typename NodeLabel, typename EdgeLabel>
-void add_label(OutputLabelledOpenMultiDiGraph<NodeLabel, EdgeLabel> &g, OpenMultiDiEdge const &e, EdgeLabel const &l) {
-  visit([&](const auto &e) { g.add_label(e, l); }, e);
+void add_label(OutputLabelledOpenMultiDiGraph<NodeLabel, EdgeLabel> &g,
+               OpenMultiDiEdge const &e,
+               EdgeLabel const &l) {
+  visit([&](auto const &e) { g.add_label(e, l); }, e);
 }
 
 } // namespace FlexFlow

@@ -15,11 +15,10 @@ SubParallelComputationGraph pcg_to_subpcg(ParallelComputationGraph const &pcg) {
   auto g = pcg.value();
   auto g_ = view_output_labelled_as_output_labelled_open(g);
   auto subpcg = materialize_output_labelled_open_multidigraph_view<
-    AdjacencyOpenMultiDiGraph,
-    UnorderedLabelling<Node, Operator>,
-    UnorderedLabelling<InputMultiDiEdge, ParallelTensor>,
-    UnorderedLabelling<MultiDiOutput, ParallelTensor>
-  >(g_);
+      AdjacencyOpenMultiDiGraph,
+      UnorderedLabelling<Node, Operator>,
+      UnorderedLabelling<InputMultiDiEdge, ParallelTensor>,
+      UnorderedLabelling<MultiDiOutput, ParallelTensor>>(g_);
   return subpcg;
 }
 

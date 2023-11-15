@@ -118,7 +118,7 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return get_ptr().query_nodes(q);
   }
-  
+
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
     return get_ptr().query_edges(q);
   }
@@ -142,8 +142,7 @@ private:
 
 private:
   Interface &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface>(
-        GraphView::ptr.get_mutable());
+    return *std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable());
   }
   cow_ptr_t<INodeLabel> nl;
   cow_ptr_t<IOutputLabel> ol;

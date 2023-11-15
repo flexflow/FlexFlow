@@ -11,7 +11,8 @@ TEST_CASE("get_source_sink_open_graph") {
 
   Node n0 = g.add_node();
   NodePort p0 = g.add_node_port();
-  InputMultiDiEdge e0{n0, g.add_node_port(), std::make_pair(n0.value(), n0.value())};
+  InputMultiDiEdge e0{
+      n0, g.add_node_port(), std::make_pair(n0.value(), n0.value())};
   g.add_edge(e0);
 
   CHECK(bool(get_closed_sources(g) == std::unordered_set<Node>{}));
@@ -63,7 +64,8 @@ TEST_CASE("get_cut") {
   MultiDiEdge e2{ns[3], g.add_node_port(), ns[1], g.add_node_port()};
   MultiDiEdge e3{ns[4], g.add_node_port(), ns[2], g.add_node_port()};
   MultiDiEdge e4{ns[4], g.add_node_port(), ns[3], g.add_node_port()};
-  OutputMultiDiEdge e5{ns[4], g.add_node_port(), std::make_pair(ns[4].value(), ns[4].value())};
+  OutputMultiDiEdge e5{
+      ns[4], g.add_node_port(), std::make_pair(ns[4].value(), ns[4].value())};
 
   g.add_edge(e0);
   g.add_edge(e1);

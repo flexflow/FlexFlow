@@ -3,7 +3,8 @@
 
 namespace FlexFlow {
 
-// MachineView::MachineView(device_id_t const &start, StridedRectangle const &rect)
+// MachineView::MachineView(device_id_t const &start, StridedRectangle const
+// &rect)
 //     : start(start), rect(rect) {}
 
 static StridedRectangle make_1d_rect(int start, int stop, int stride) {

@@ -94,7 +94,8 @@ GraphSplit
 float estimate_cost(SubParallelComputationGraphView const &g,
                     CostEstimator const &estimator,
                     MachineMapping const &device_mapping,
-                    std::unordered_map<OpenMultiDiEdge, MachineView> const &frontier_machine_views) {
+                    std::unordered_map<OpenMultiDiEdge, MachineView> const
+                        &frontier_machine_views) {
   return 0.1;
 }
 
@@ -103,19 +104,20 @@ void minimize_runtime(OptimalCostResult &m1, OptimalCostResult const &m2) {
 }
 
 struct OptimalCost {
-  OptimalCost(
-      SubParallelComputationGraphView const &g,
-      CostEstimator const &cost_estimator,
-      MachineSpecification const &resource,
-      std::unordered_map<Node, MachineView> const &given_machine_views,
-      std::unordered_map<OpenMultiDiEdge, MachineView> const &frontier_machine_views,
-      std::function<std::unordered_set<MachineView>(
-          Operator const &, MachineSpecification const &)> const
-          &allowed_machine_views,
-      OptimalCostCache &cached_subgraph_costs)
+  OptimalCost(SubParallelComputationGraphView const &g,
+              CostEstimator const &cost_estimator,
+              MachineSpecification const &resource,
+              std::unordered_map<Node, MachineView> const &given_machine_views,
+              std::unordered_map<OpenMultiDiEdge, MachineView> const
+                  &frontier_machine_views,
+              std::function<std::unordered_set<MachineView>(
+                  Operator const &, MachineSpecification const &)> const
+                  &allowed_machine_views,
+              OptimalCostCache &cached_subgraph_costs)
       : g(g), cost_estimator(cost_estimator), resource(resource),
         given_machine_views(restrict_keys(given_machine_views, get_nodes(g))),
-        frontier_machine_views(restrict_keys(frontier_machine_views, get_edges(g))),
+        frontier_machine_views(
+            restrict_keys(frontier_machine_views, get_edges(g))),
         allowed_machine_views(allowed_machine_views),
         cached_subgraph_costs(cached_subgraph_costs) {}
 
@@ -131,7 +133,8 @@ struct OptimalCost {
 
   template <typename T>
   OptimalCostResult operator()(T const &t) const {
-    OptimalCostState state{t, resource/*, given_machine_views, frontier_machine_views*/};
+    OptimalCostState state{
+        t, resource /*, given_machine_views, frontier_machine_views*/};
     optional<OptimalCostResult> cached_result =
         cached_subgraph_costs.load(state);
 
@@ -150,8 +153,10 @@ struct OptimalCost {
     SerialParallelDecomposition post_decompn = decomposed.second;
 
     GraphSplit graph_split = get_graph_split(pre_decompn, post_decompn);
-    SubParallelComputationGraphView pre_graph = get_subgraph<OpenMultiDiSubgraphView>(g, graph_split.first);
-    SubParallelComputationGraphView post_graph = get_subgraph<DownwardOpenMultiDiSubgraphView>(g, graph_split.second);
+    SubParallelComputationGraphView pre_graph =
+        get_subgraph<OpenMultiDiSubgraphView>(g, graph_split.first);
+    SubParallelComputationGraphView post_graph =
+        get_subgraph<DownwardOpenMultiDiSubgraphView>(g, graph_split.second);
 
     std::unordered_set<Node> post_graph_sources =
         get_closed_sources(post_graph);
@@ -165,9 +170,11 @@ struct OptimalCost {
 
     for (MachineView const &mv :
          allowed_machine_views(g.at(split_point), resource)) {
-      std::unordered_map<Node, MachineView> new_given_machine_views = given_machine_views;
+      std::unordered_map<Node, MachineView> new_given_machine_views =
+          given_machine_views;
       new_given_machine_views.emplace(split_point, mv);
-      std::unordered_map<OpenMultiDiEdge, MachineView> new_frontier_machine_views = frontier_machine_views;
+      std::unordered_map<OpenMultiDiEdge, MachineView>
+          new_frontier_machine_views = frontier_machine_views;
       new_frontier_machine_views.emplace(split_edge, mv);
       minimize_runtime(optimal_result,
                        OptimalCostResult::sequential_combine(
@@ -198,8 +205,10 @@ struct OptimalCost {
     SerialParallelDecomposition decompn2 = decomposed.second;
 
     GraphSplit graph_split = get_graph_split(decompn1, decompn2);
-    SubParallelComputationGraphView g1 = get_subgraph<OpenMultiDiSubgraphView>(g, graph_split.first),
-                                    g2 = get_subgraph<OpenMultiDiSubgraphView>(g, graph_split.second);
+    SubParallelComputationGraphView g1 = get_subgraph<OpenMultiDiSubgraphView>(
+                                        g, graph_split.first),
+                                    g2 = get_subgraph<OpenMultiDiSubgraphView>(
+                                        g, graph_split.second);
 
     OptimalCostResult optimal_result = OptimalCostResult::sequential_combine(
         visit(OptimalCost(g1,
@@ -225,16 +234,16 @@ struct OptimalCost {
                            visit(OptimalCost(g1,
                                              cost_estimator,
                                              resource_split.first,
-                                              given_machine_views,
-                                              frontier_machine_views,
+                                             given_machine_views,
+                                             frontier_machine_views,
                                              allowed_machine_views,
                                              cached_subgraph_costs),
                                  decompn1),
                            visit(OptimalCost(g2,
                                              cost_estimator,
                                              resource_split.second,
-                                              given_machine_views,
-                                              frontier_machine_views,
+                                             given_machine_views,
+                                             frontier_machine_views,
                                              allowed_machine_views,
                                              cached_subgraph_costs),
                                  decompn2)));
@@ -248,13 +257,16 @@ struct OptimalCost {
       assert(contains(allowed_machine_views(g.at(node), resource),
                       source_machine_view.value()));
       MachineMapping mv_map{given_machine_views};
-      return {estimate_cost(g, cost_estimator, mv_map, frontier_machine_views), mv_map};
+      return {estimate_cost(g, cost_estimator, mv_map, frontier_machine_views),
+              mv_map};
     } else {
       OptimalCostResult optimal_result = OptimalCostResult::infinity();
       for (auto mv : allowed_machine_views(g.at(node), resource)) {
         MachineMapping mv_map{{{node, mv}}};
-        minimize_runtime(optimal_result,
-                         {estimate_cost(g, cost_estimator, mv_map, frontier_machine_views), mv_map});
+        minimize_runtime(
+            optimal_result,
+            {estimate_cost(g, cost_estimator, mv_map, frontier_machine_views),
+             mv_map});
       }
       return optimal_result;
     }
@@ -269,7 +281,8 @@ OptimalCostResult
                  CostEstimator const &cost_estimator,
                  MachineSpecification const &resources,
                  OptimalCostCache &cached_subgraph_costs) {
-  SerialParallelDecomposition sp_decomposition = get_serial_parallel_decomposition(g);
+  SerialParallelDecomposition sp_decomposition =
+      get_serial_parallel_decomposition(g);
   SubParallelComputationGraph subpcg = pcg_to_subpcg(g);
   return visit(OptimalCost(subpcg,
                            cost_estimator,

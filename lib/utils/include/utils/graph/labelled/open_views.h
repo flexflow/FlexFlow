@@ -43,7 +43,7 @@ struct OutputLabelledOpenMultiDiSubgraphView
     return SubgraphView(g, nodes).query_edges(q);
   }
 
-  OutputLabelledOpenMultiDiSubgraphView* clone() const override {
+  OutputLabelledOpenMultiDiSubgraphView *clone() const override {
     return new OutputLabelledOpenMultiDiSubgraphView(g, nodes);
   }
 
@@ -55,8 +55,11 @@ private:
 // CHECK_NOT_ABSTRACT(OutputLabelledOpenMultiDiSubgraphView);
 
 template <typename NodeLabel, typename EdgeLabel>
-struct ViewOutputLabelledAsOutputLabelledOpen : virtual IOutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> {
-  ViewOutputLabelledAsOutputLabelledOpen(OutputLabelledMultiDiGraphView<NodeLabel, EdgeLabel> const &g) : g(g) {}
+struct ViewOutputLabelledAsOutputLabelledOpen
+    : virtual IOutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> {
+  ViewOutputLabelledAsOutputLabelledOpen(
+      OutputLabelledMultiDiGraphView<NodeLabel, EdgeLabel> const &g)
+      : g(g) {}
 
   NodeLabel const &at(Node const &n) const override {
     return g.at(n);
@@ -77,10 +80,10 @@ struct ViewOutputLabelledAsOutputLabelledOpen : virtual IOutputLabelledOpenMulti
   std::unordered_set<OpenMultiDiEdge>
       query_edges(OpenMultiDiEdgeQuery const &q) const override {
     return transform(g.query_edges(q.standard_edge_query),
-                    [](MultiDiEdge const &e) { return OpenMultiDiEdge(e); });
+                     [](MultiDiEdge const &e) { return OpenMultiDiEdge(e); });
   }
 
-  ViewOutputLabelledAsOutputLabelledOpen* clone() const override {
+  ViewOutputLabelledAsOutputLabelledOpen *clone() const override {
     return new ViewOutputLabelledAsOutputLabelledOpen(g);
   }
 
@@ -89,8 +92,12 @@ private:
 };
 
 template <typename NodeLabel, typename EdgeLabel>
-OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> view_output_labelled_as_output_labelled_open(OutputLabelledMultiDiGraphView<NodeLabel, EdgeLabel> const &g) {
-  return OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel>::template create<ViewOutputLabelledAsOutputLabelledOpen<NodeLabel, EdgeLabel>>(g);
+OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel>
+    view_output_labelled_as_output_labelled_open(
+        OutputLabelledMultiDiGraphView<NodeLabel, EdgeLabel> const &g) {
+  return OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel>::
+      template create<
+          ViewOutputLabelledAsOutputLabelledOpen<NodeLabel, EdgeLabel>>(g);
 }
 
 } // namespace FlexFlow

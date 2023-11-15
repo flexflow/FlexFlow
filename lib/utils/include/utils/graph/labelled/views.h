@@ -2,8 +2,8 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_VIEWS_H
 
 #include "node_labelled.h"
-#include "standard_labelled.h"
 #include "output_labelled_open.h"
+#include "standard_labelled.h"
 
 namespace FlexFlow {
 
@@ -86,9 +86,21 @@ Impl materialize_output_labelled_multidigraph_view(
   return result;
 }
 
-template <typename Impl, typename NodeLabelImpl, typename InputLabelImpl, typename OutputLabelImpl, typename NodeLabel, typename OutputLabel>
-OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel> materialize_output_labelled_open_multidigraph_view(OutputLabelledOpenMultiDiGraphView<NodeLabel, OutputLabel> const &g) {
-  OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel> result = OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel>::template create<Impl, NodeLabelImpl, InputLabelImpl, OutputLabelImpl>();
+template <typename Impl,
+          typename NodeLabelImpl,
+          typename InputLabelImpl,
+          typename OutputLabelImpl,
+          typename NodeLabel,
+          typename OutputLabel>
+OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel>
+    materialize_output_labelled_open_multidigraph_view(
+        OutputLabelledOpenMultiDiGraphView<NodeLabel, OutputLabel> const &g) {
+  OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel> result =
+      OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel>::template create<
+          Impl,
+          NodeLabelImpl,
+          InputLabelImpl,
+          OutputLabelImpl>();
   for (Node const &n : get_nodes(g)) {
     result.add_node_unsafe(n, g.at(n));
   }
@@ -98,7 +110,10 @@ OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel> materialize_output_labell
       InputMultiDiEdge input_edge = get<InputMultiDiEdge>(e);
       result.add_label(input_edge, g.at(input_edge));
     } else {
-      MultiDiOutput output = is_standard_edge(e) ? static_cast<MultiDiOutput>(get<MultiDiEdge>(e)) : static_cast<MultiDiOutput>(get<OutputMultiDiEdge>(e));
+      MultiDiOutput output =
+          is_standard_edge(e)
+              ? static_cast<MultiDiOutput>(get<MultiDiEdge>(e))
+              : static_cast<MultiDiOutput>(get<OutputMultiDiEdge>(e));
       auto tensor = g.at(output);
       result.add_label(output, tensor);
     }

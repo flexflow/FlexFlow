@@ -9,13 +9,14 @@
 
 namespace FlexFlow {
 
-using SubParallelComputationGraphView = OutputLabelledOpenMultiDiGraphView<Operator, ParallelTensor>;
+using SubParallelComputationGraphView =
+    OutputLabelledOpenMultiDiGraphView<Operator, ParallelTensor>;
 
 struct MachineMapping {
   static MachineMapping combine(MachineMapping const &, MachineMapping const &);
   static bool nodes_are_disjoint(MachineMapping const &m1,
                                  MachineMapping const &m2);
-  
+
   req<std::unordered_map<Node, MachineView>> machine_views;
 };
 FF_VISITABLE_STRUCT(MachineMapping, machine_views);
@@ -24,11 +25,10 @@ struct OptimalCostState {
   SerialParallelDecomposition subgraph;
   req<MachineSpecification> resource;
   // req<std::unordered_map<Node, MachineView>> given_machine_views;
-  // req<std::unordered_map<OpenMultiDiEdge, MachineView>> frontier_machine_views;
+  // req<std::unordered_map<OpenMultiDiEdge, MachineView>>
+  // frontier_machine_views;
 };
-FF_VISITABLE_STRUCT(OptimalCostState,
-                    subgraph,
-                    resource);
+FF_VISITABLE_STRUCT(OptimalCostState, subgraph, resource);
 
 struct OptimalCostResult {
   static OptimalCostResult sequential_combine(OptimalCostResult const &s1,
@@ -72,9 +72,11 @@ namespace std {
 
 template <>
 struct hash<std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping>> {
-  size_t operator()(std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping> const &g) const;
+  size_t operator()(
+      std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping> const &g)
+      const;
 };
 
-};
+}; // namespace std
 
 #endif

@@ -10,7 +10,8 @@ struct INodeLabelledOpenMultiDiGraphView
     : virtual INodeLabelledMultiDiGraphView<NodeLabel>,
       virtual IOpenMultiDiGraphView {
   INodeLabelledOpenMultiDiGraphView() = default;
-  INodeLabelledOpenMultiDiGraphView(INodeLabelledOpenMultiDiGraphView const &) = delete;
+  INodeLabelledOpenMultiDiGraphView(INodeLabelledOpenMultiDiGraphView const &) =
+      delete;
   INodeLabelledOpenMultiDiGraphView &
       operator=(INodeLabelledOpenMultiDiGraphView const &) = delete;
 };
@@ -118,8 +119,7 @@ private:
       : GraphView(ptr), nl(nl) {}
 
   Interface &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface>(
-        GraphView::ptr.get_mutable());
+    return *std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable());
   }
 
   cow_ptr_t<INodeLabel> nl;

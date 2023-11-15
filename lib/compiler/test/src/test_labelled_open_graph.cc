@@ -67,11 +67,12 @@ TEST_CASE("get_subgraph_open_graph") {
   CHECK(bool(get_open_outputs(subgraph3).empty()));
 
   CHECK(bool(get_edges(subgraph0) ==
-        std::unordered_set<OpenMultiDiEdge>{
-            split_edge(e2).second, split_edge(e3).second, e4, e5}));
+             std::unordered_set<OpenMultiDiEdge>{
+                 split_edge(e2).second, split_edge(e3).second, e4, e5}));
   CHECK(bool(get_edges(subgraph1) ==
-        std::unordered_set<OpenMultiDiEdge>{
-            split_edge(e2).second, split_edge(e3).second, e4}));
-  CHECK(bool(get_edges(subgraph2) == std::unordered_set<OpenMultiDiEdge>{e4, e5}));
+             std::unordered_set<OpenMultiDiEdge>{
+                 split_edge(e2).second, split_edge(e3).second, e4}));
+  CHECK(bool(get_edges(subgraph2) ==
+             std::unordered_set<OpenMultiDiEdge>{e4, e5}));
   CHECK(bool(get_edges(subgraph3) == std::unordered_set<OpenMultiDiEdge>{e4}));
 }

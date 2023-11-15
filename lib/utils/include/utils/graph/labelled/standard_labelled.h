@@ -129,7 +129,7 @@ private:
                        cow_ptr_t<IEdgeLabel> el)
       : LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr), nl(nl), el(el) {}
 
-  Interface& get_ptr() const {
+  Interface &get_ptr() const {
     return *std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable());
   }
 

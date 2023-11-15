@@ -24,7 +24,8 @@ std::unordered_set<MultiDiEdge>
 }
 
 IMultiDiGraphView const &MultiDiGraphView::get_ptr() const {
-  return *std::dynamic_pointer_cast<IMultiDiGraphView const>(GraphView::ptr.get());
+  return *std::dynamic_pointer_cast<IMultiDiGraphView const>(
+      GraphView::ptr.get());
 }
 
 Node MultiDiGraph::add_node() {

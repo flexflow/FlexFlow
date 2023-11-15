@@ -45,7 +45,8 @@ struct CostEstimator {
   }
 
 private:
-  CostEstimator(std::shared_ptr<ICostEstimator> implementation_ptr) : implementation_ptr(implementation_ptr) {}
+  CostEstimator(std::shared_ptr<ICostEstimator> implementation_ptr)
+      : implementation_ptr(implementation_ptr) {}
   std::shared_ptr<ICostEstimator> implementation_ptr;
 };
 

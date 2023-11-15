@@ -27,25 +27,28 @@ allowed machine views, trivial cost estimator and random machine specification.
 // }
 
 TEST_CASE("optimal_cost_0") {
-  auto pcg = OutputLabelledMultiDiGraph<Operator, ParallelTensor>::template create<
-    AdjacencyMultiDiGraph,
-    UnorderedLabelling<Node, Operator>,
-    UnorderedLabelling<MultiDiOutput, ParallelTensor>
-  >();
+  auto pcg =
+      OutputLabelledMultiDiGraph<Operator, ParallelTensor>::template create<
+          AdjacencyMultiDiGraph,
+          UnorderedLabelling<Node, Operator>,
+          UnorderedLabelling<MultiDiOutput, ParallelTensor>>();
 
   Node n0 = pcg.add_node(Operator(InputAttrs{}, "input"));
-  Node n1 = pcg.add_node(Operator(LinearAttrs{1, false, DataType::FLOAT, Activation::RELU, nullopt}, "linear"));
+  Node n1 = pcg.add_node(Operator(
+      LinearAttrs{1, false, DataType::FLOAT, Activation::RELU, nullopt},
+      "linear"));
 
   MultiDiEdge e{n1, pcg.add_node_port(), n0, pcg.add_node_port()};
   pcg.add_edge(e);
   pcg.add_output(e,
-                ParallelTensor(ParallelTensorDims({2, 1}),
-                               DataType::FLOAT,
-                               CreateGrad::YES));
+                 ParallelTensor(ParallelTensorDims({2, 1}),
+                                DataType::FLOAT,
+                                CreateGrad::YES));
 
   auto test_allowed_machine_views = [](Operator const &,
                                        MachineSpecification const &) {
-    return std::unordered_set<MachineView>{make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))};
+    return std::unordered_set<MachineView>{
+        make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))};
   };
 
   CostEstimator estimator = CostEstimator::create<TestCostEstimator>();
@@ -54,7 +57,11 @@ TEST_CASE("optimal_cost_0") {
 
   OptimalCostCache cached_results;
 
-  OptimalCostResult result = optimal_cost(ParallelComputationGraph(pcg), test_allowed_machine_views, estimator, machine_spec, cached_results);
+  OptimalCostResult result = optimal_cost(ParallelComputationGraph(pcg),
+                                          test_allowed_machine_views,
+                                          estimator,
+                                          machine_spec,
+                                          cached_results);
 
   CHECK(bool(result.runtime > 0));
 }

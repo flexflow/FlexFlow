@@ -45,6 +45,6 @@ struct hash<FlexFlow::Strategy> {
   size_t operator()(FlexFlow::Strategy const &) const;
 };
 
-}
+} // namespace std
 
 #endif

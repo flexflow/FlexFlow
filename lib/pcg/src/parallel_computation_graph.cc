@@ -3,15 +3,18 @@
 
 namespace FlexFlow {
 
-bool operator==(ParallelComputationGraph const &lhs, ParallelComputationGraph const &rhs) {
-  return std::hash<ParallelComputationGraph>{}(lhs) == std::hash<ParallelComputationGraph>{}(rhs);
+bool operator==(ParallelComputationGraph const &lhs,
+                ParallelComputationGraph const &rhs) {
+  return std::hash<ParallelComputationGraph>{}(lhs) ==
+         std::hash<ParallelComputationGraph>{}(rhs);
 }
 
-}
+} // namespace FlexFlow
 
 namespace std {
 
-size_t hash<FlexFlow::ParallelComputationGraph>::operator()(FlexFlow::ParallelComputationGraph const &g) const {
+size_t hash<FlexFlow::ParallelComputationGraph>::operator()(
+    FlexFlow::ParallelComputationGraph const &g) const {
   using namespace FlexFlow;
 
   size_t h = 0;
@@ -34,4 +37,4 @@ size_t hash<FlexFlow::ParallelComputationGraph>::operator()(FlexFlow::ParallelCo
   return h;
 }
 
-}
+} // namespace std

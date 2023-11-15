@@ -35,7 +35,9 @@ public:
   req<int> stride;
 };
 
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(StridedRectangleSide, num_points, stride);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(StridedRectangleSide,
+                                             num_points,
+                                             stride);
 
 struct StridedRectangle {
 public:

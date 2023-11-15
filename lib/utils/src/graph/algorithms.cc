@@ -349,11 +349,17 @@ std::unordered_set<UpwardOpenMultiDiEdge>
                    });
 }
 
-std::unordered_set<OutputMultiDiEdge> get_open_outputs(OpenMultiDiGraphView const &g) {
-  return transform(g.query_edges(OutputMultiDiEdgeQuery::all()), [](OpenMultiDiEdge const &e) { return get<OutputMultiDiEdge>(e); });
+std::unordered_set<OutputMultiDiEdge>
+    get_open_outputs(OpenMultiDiGraphView const &g) {
+  return transform(
+      g.query_edges(OutputMultiDiEdgeQuery::all()),
+      [](OpenMultiDiEdge const &e) { return get<OutputMultiDiEdge>(e); });
 }
-std::unordered_set<InputMultiDiEdge> get_open_inputs(OpenMultiDiGraphView const &g) {
-  return transform(g.query_edges(InputMultiDiEdgeQuery::all()), [](OpenMultiDiEdge const &e) { return get<InputMultiDiEdge>(e); });
+std::unordered_set<InputMultiDiEdge>
+    get_open_inputs(OpenMultiDiGraphView const &g) {
+  return transform(
+      g.query_edges(InputMultiDiEdgeQuery::all()),
+      [](OpenMultiDiEdge const &e) { return get<InputMultiDiEdge>(e); });
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
@@ -780,13 +786,15 @@ std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g) {
 
 std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g) {
   return filter(get_nodes(g), [&](Node const &n) {
-    return !g.query_edges(InputMultiDiEdgeQuery::all().with_dst_nodes({n})).empty();
+    return !g.query_edges(InputMultiDiEdgeQuery::all().with_dst_nodes({n}))
+                .empty();
   });
 }
 
 std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g) {
   return filter(get_nodes(g), [&](Node const &n) {
-    return !g.query_edges(OutputMultiDiEdgeQuery::all().with_src_nodes({n})).empty();
+    return !g.query_edges(OutputMultiDiEdgeQuery::all().with_src_nodes({n}))
+                .empty();
   });
 }
 
