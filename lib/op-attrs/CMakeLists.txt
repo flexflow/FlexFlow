@@ -6,7 +6,7 @@ ff_add_library(
   PUBLIC_INCLUDE
     include/
   PRIVATE_INCLUDE
-    src/ 
+    src/
   DEPS
     utils
 )

@@ -47,6 +47,7 @@ public:
   MultiDiGraph() = delete;
   MultiDiGraph(MultiDiGraph const &) = default;
   MultiDiGraph &operator=(MultiDiGraph const &) = default;
+  virtual ~MultiDiGraph() = default;
 
   operator GraphView() const;
   operator MultiDiGraphView() const;

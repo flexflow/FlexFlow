@@ -1,36 +1,32 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_PARALLEL_TENSOR_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_V1_PARALLEL_TENSOR_H
 
-#include "data_type.h"
+#include "create_grad.h"
+#include "datatype.h"
 #include "initializer.h"
+#include "parallel_tensor_dims.h"
+#include "parallel_tensor_shape.h"
 #include "param_sync.h"
+#include "pcg/parallel_tensor.h"
 #include "utils/json.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
-struct V1ParallelDim {
-  req<size_t> size;
-  req<int> degree;
-  req<bool> is_replica_dim;
-};
-FF_VISITABLE_STRUCT(V1ParallelDim, size, degree, is_replica_dim);
-
-struct V1ParallelTensorShape {
-  req<std::vector<V1ParallelDim>> dims;
-  req<V1DataType> data_type;
-};
-FF_VISITABLE_STRUCT(V1ParallelTensorShape, dims, data_type);
-
 struct V1ParallelTensor {
   V1ParallelTensorShape shape;
-  req<optional<V1ParamSync>> sync_type;
+  req<V1CreateGrad> create_gradients;
   req<optional<V1Initializer>> initializer;
-  req<bool> create_grad;
+  req<optional<V1ParamSync>> sync_type;
+  req<optional<std::string>> name;
 };
 FF_VISITABLE_STRUCT(
-    V1ParallelTensor, shape, sync_type, initializer, create_grad);
+    V1ParallelTensor, shape, create_gradients, initializer, sync_type, name);
+CHECK_IS_JSONABLE(V1ParallelTensor);
+
+V1ParallelTensor to_v1(ParallelTensor const &t);
+ParallelTensor from_v1(V1ParallelTensor const &vt);
 
 } // namespace FlexFlow
 

@@ -7,20 +7,15 @@
 
 namespace FlexFlow {
 
-struct Layer : public use_visitable_cmp<Layer> {
+struct Layer {
 public:
-  Layer() = delete;
-  Layer(CompGraphOperatorAttrs const &attrs, optional<std::string> const &name);
-
-public:
-  optional<stack_string<MAX_OPNAME>> name;
-  CompGraphOperatorAttrs attrs;
+  req<CompGraphOperatorAttrs> attrs;
+  req<optional<stack_string<MAX_OPNAME>>> name;
 };
 
-} // namespace FlexFlow
+FF_VISITABLE_STRUCT(Layer, attrs, name);
 
-VISITABLE_STRUCT(::FlexFlow::Layer, attrs, name);
-MAKE_VISIT_HASHABLE(::FlexFlow::Layer);
+} // namespace FlexFlow
 
 namespace FlexFlow {
 

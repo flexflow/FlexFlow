@@ -52,6 +52,7 @@ struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
   }
 
   virtual IMultiDiGraph *clone() const override = 0;
+  virtual ~IMultiDiGraph() = default;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraph);
 

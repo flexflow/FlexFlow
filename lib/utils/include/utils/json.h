@@ -10,6 +10,100 @@
 
 namespace FlexFlow {
 
+template <typename T, typename = void>
+struct json_type_name {
+  static constexpr char const *name = "anonymous";
+};
+
+template <>
+struct json_type_name<bool> {
+  static constexpr char const *name = "bool";
+};
+
+template <>
+struct json_type_name<char> {
+  static constexpr char const *name = "char";
+};
+
+template <>
+struct json_type_name<signed char> {
+  static constexpr char const *name = "signed char";
+};
+
+template <>
+struct json_type_name<short> {
+  static constexpr char const *name = "short";
+};
+
+template <>
+struct json_type_name<int> {
+  static constexpr char const *name = "int";
+};
+
+template <>
+struct json_type_name<long> {
+  static constexpr char const *name = "long";
+};
+
+template <>
+struct json_type_name<long long> {
+  static constexpr char const *name = "long long";
+};
+
+template <>
+struct json_type_name<unsigned char> {
+  static constexpr char const *name = "unsigned char";
+};
+
+template <>
+struct json_type_name<unsigned short> {
+  static constexpr char const *name = "unsigned short";
+};
+
+template <>
+struct json_type_name<unsigned int> {
+  static constexpr char const *name = "unsigned int";
+};
+
+template <>
+struct json_type_name<unsigned long> {
+  static constexpr char const *name = "unsigned long";
+};
+
+template <>
+struct json_type_name<unsigned long long> {
+  static constexpr char const *name = "unsigned long long";
+};
+
+template <>
+struct json_type_name<float> {
+  static constexpr char const *name = "float";
+};
+
+template <>
+struct json_type_name<double> {
+  static constexpr char const *name = "double";
+};
+
+template <>
+struct json_type_name<long double> {
+  static constexpr char const *name = "long double";
+};
+
+template <typename T>
+struct json_type_name<
+    T,
+    std::enable_if_t<std::is_class_v<T> && is_visitable<T>::value>> {
+  static constexpr char const *name = visit_struct::get_name<T>();
+};
+
+template <typename T>
+struct json_type_name<
+    T,
+    std::enable_if_t<std::is_class_v<T> && !is_visitable<T>::value>> {
+  static constexpr char const *name = "unnamed struct";
+};
+
 template <typename T, typename Enable = void>
 struct is_json_serializable : std::false_type {};
 
@@ -143,39 +237,58 @@ struct VariantToJsonFunctor {
   void operator()(T const &t) {
     static_assert(is_jsonable<T>::value, "");
 
-    j["type"] = get_name(t);
+    // The type field is not used for deserialization. It is there primarily
+    // as a debugging aid if needed.
+    j["type"] = json_type_name<T>::name;
     j["value"] = t;
   }
 };
 
 template <typename... Args>
 void variant_to_json(json &j, variant<Args...> const &v) {
-  visit(::FlexFlow::VariantToJsonFunctor{j}, v.value);
+  // The index indicates the type of the variant that is serialized. The
+  // actual serialization of the type will be handled by the functor. The
+  // variant itself is lost in the visitor, so this needs to be done first. The
+  // type field is not used in deserialization - only the index is.
+  j["index"] = v.index();
+  visit(::FlexFlow::VariantToJsonFunctor{j}, v);
 }
 
-template <typename Variant>
-struct VariantFromJsonFunctor {
-  VariantFromJsonFunctor(json const &j) : j(j) {}
+template <typename Variant, size_t Idx>
+optional<Variant> variant_from_json_impl(json const &j) {
+  using Type = typename variant_alternative<Idx, Variant>::type;
 
-  json const &j;
+  if (j.at("index").get<size_t>() == Idx) {
+    return j.at("value").get<Type>();
+  }
+  return nullopt;
+}
 
-  template <int Idx>
-  optional<Variant> operator()(std::integral_constant<int, Idx> const &) const {
-    using Type = typename variant_alternative<Idx, Variant>::type;
-
-    if (visit_struct::get_name<Type>()) {
-      return j.at("value").get<Type>();
+template <typename Variant, size_t... Is>
+optional<Variant> variant_from_json_impl(json const &j,
+                                         std::index_sequence<Is...>) {
+  // If there were no errors when parsing, all but one element of the array
+  // will be nullopt. This is because each call to variant_from_json_impl will
+  // have a unique index and exactly one of them will match the index in the
+  // json object.
+  std::array<optional<Variant>, sizeof...(Is)> results{
+      variant_from_json_impl<Variant, Is>(j)...};
+  for (optional<Variant> &maybe : results) {
+    if (maybe) {
+      return maybe.value();
     }
   }
-};
+  return nullopt;
+}
 
 template <typename... Args>
 variant<Args...> variant_from_json(json const &j) {
-  ::FlexFlow::VariantFromJsonFunctor<::FlexFlow::variant<Args...>> func(j);
-  auto result = seq_map(func, seq_enumerate_args_t<Args...>{});
+  using Variant = ::FlexFlow::variant<Args...>;
+  optional<Variant> result = variant_from_json_impl<Variant>(
+      j, std::make_index_sequence<sizeof...(Args)>());
   if (!result.has_value()) {
     throw ::FlexFlow::mk_runtime_error("Invalid type {} found in json",
-                                       j.at("type").get<std::string>());
+                                       j.at("index").get<size_t>());
   }
   return result.value();
 }
@@ -223,7 +336,7 @@ struct adl_serializer<
     typename std::enable_if<::FlexFlow::is_jsonable<T>::value>::type> {
   static void to_json(json &j, ::FlexFlow::optional<T> const &t) {
     if (t.has_value()) {
-      to_json(j, t.value());
+      j = t.value();
     } else {
       j = nullptr;
     }

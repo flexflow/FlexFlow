@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_TEST_TYPES_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_TEST_TYPES_H
 
-#include "type_traits.h"
+#include "type_traits_core.h"
 
 namespace FlexFlow {
 
@@ -12,7 +12,10 @@ enum capability {
   EQ,
   CMP,
   DEFAULT_CONSTRUCTIBLE,
-  COPYABLE,
+  MOVE_CONSTRUCTIBLE,
+  MOVE_ASSIGNABLE,
+  COPY_CONSTRUCTIBLE,
+  COPY_ASSIGNABLE,
   PLUS,
   PLUSEQ,
   FMT
@@ -51,13 +54,37 @@ struct test_type_t {
             typename std::enable_if<!supports<C>::value, bool>::type = true>
   test_type_t() = delete;
 
-  template <capability C = COPYABLE,
+  template <capability C = COPY_CONSTRUCTIBLE,
             typename std::enable_if<supports<C>::value, bool>::type = true>
   test_type_t(test_type_t const &);
 
-  template <capability C = COPYABLE,
+  template <capability C = COPY_CONSTRUCTIBLE,
             typename std::enable_if<!supports<C>::value, bool>::type = true>
   test_type_t(test_type_t const &) = delete;
+
+  template <capability C = COPY_ASSIGNABLE,
+            typename std::enable_if<supports<C>::value, bool>::type = true>
+  test_type_t &operator=(test_type_t const &);
+
+  template <capability C = COPY_ASSIGNABLE,
+            typename std::enable_if<!supports<C>::value, bool>::type = true>
+  test_type_t &operator=(test_type_t const &) = delete;
+
+  template <capability C = MOVE_CONSTRUCTIBLE,
+            typename std::enable_if<supports<C>::value, bool>::type = true>
+  test_type_t(test_type_t &&);
+
+  template <capability C = MOVE_CONSTRUCTIBLE,
+            typename std::enable_if<!supports<C>::value, bool>::type = true>
+  test_type_t(test_type_t &&) = delete;
+
+  template <capability C = MOVE_ASSIGNABLE,
+            typename std::enable_if<supports<C>::value, bool>::type = true>
+  test_type_t &operator=(test_type_t &&);
+
+  template <capability C = MOVE_ASSIGNABLE,
+            typename std::enable_if<!supports<C>::value, bool>::type = true>
+  test_type_t &operator=(test_type_t &&) = delete;
 
   template <capability C = EQ>
   typename std::enable_if<supports<C>::value, bool>::type
@@ -102,6 +129,11 @@ using cmp = test_type_t<CMP>;
 using hash_cmp = test_type_t<HASHABLE, CMP>;
 using plusable = test_type_t<PLUS, PLUSEQ>;
 using fmtable = test_type_t<FMT>;
+using well_behaved_value_type = test_type_t<EQ,
+                                            COPY_CONSTRUCTIBLE,
+                                            MOVE_CONSTRUCTIBLE,
+                                            COPY_ASSIGNABLE,
+                                            MOVE_ASSIGNABLE>;
 
 } // namespace test_types
 } // namespace FlexFlow
