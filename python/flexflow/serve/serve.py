@@ -550,7 +550,12 @@ class PEFT:
         print(f"Creating directory {self.config_dir} (if it doesn't exist)...")
         print(f"Saving {self.peft_model_id} configs to file {self.config_path}...")
         with open(self.config_path, "w") as json_file:
-            json.dump(self.hf_config.to_dict(), json_file, indent=2)
+            class SetEncoder(json.JSONEncoder):
+                def default(self, obj):
+                    if isinstance(obj, set):
+                        return list(obj)
+                    return super().default(obj)
+            json.dump(self.hf_config.to_dict(), json_file, indent=2, cls=SetEncoder)
 
     def __get_revision_hashes(self, peft_model_id: str):
         ff_revision = None
