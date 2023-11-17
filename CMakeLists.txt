@@ -15,6 +15,10 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 set(CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS} -fPIC -UNDEBUG")
 
+# set std 17
+#set(CMAKE_CXX_STANDARD 17)
+#set(CMAKE_CUDA_STANDARD 17)
+
 option(INFERENCE_TESTS "Run inference tests" OFF)
 set(LIBTORCH_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libtorch" CACHE STRING "LibTorch Path")
 if (INFERENCE_TESTS)
@@ -31,9 +35,6 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
       STRING "Choose the type of build." FORCE)
 endif()
-
-# set std 11
-set(CMAKE_CXX_STANDARD 17)
 
 if(INSTALL_DIR)
   message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
@@ -118,6 +119,13 @@ set(FLEXFLOW_INCLUDE_DIRS "")
 set(CC_FLAGS $ENV{CC_FLAGS})
 set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
+
+# Set global FLAGS
+list(APPEND CC_FLAGS
+  -std=c++17)
+list(APPEND NVCC_FLAGS
+  -std=c++17)
+
 
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
@@ -430,7 +438,7 @@ if(NOT BUILD_LEGION_ONLY)
   endif()
 
   # build binary
-  option(FF_BUILD_TOKENIZER "build tokenizer=cpp for LLM serving" ON)
+  option(FF_BUILD_TOKENIZER "build tokenizer=cpp for LLM serving" OFF)
   option(FF_BUILD_RESNET "build resnet example" OFF)
   option(FF_BUILD_RESNEXT "build resnext example" OFF)
   option(FF_BUILD_ALEXNET "build alexnet example" OFF)
