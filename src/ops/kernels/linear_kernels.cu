@@ -461,17 +461,18 @@ void peft_bwd_kernel(LinearMeta const *m,
       static_cast<DT *>(input_grad_ptr) + num_infr_only_tokens * in_dim;
   output_grad_ptr =
       static_cast<DT *>(output_grad_ptr) + num_infr_only_tokens * out_dim;
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = output_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  //   cudaDataType_t compute_type = output_type;
+  // #else
+  //   // For best performance, set the default cublas compute type to
+  //   // CUBLAS_COMPUTE_16F for half precision and to
+  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  //   if (m->output_type[0] == DT_FLOAT) {
+  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  //   }
+  // #endif
   int output_size = out_dim * num_peft_tokens;
   if (m->activation == AC_MODE_RELU) {
     relu_backward_kernel(m->output_type[0],
