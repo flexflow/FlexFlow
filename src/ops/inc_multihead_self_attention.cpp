@@ -257,13 +257,14 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   DT alpha = 1.0f, beta = 0.0f;
   assert(m->qSize == m->vSize && m->qSize == m->kSize);
   hipblasDatatype_t hipblas_data_type = ff_to_cuda_datatype(m->output_type[0]);
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   hipblasDatatype_t compute_type = hipblas_data_type;
-#else
-  // TODO: currently use the hipblas_data_type
-  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  hipblasDatatype_t compute_type = hipblas_data_type;
-#endif
+// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+//   hipblasDatatype_t compute_type = hipblas_data_type;
+// #else
+//   // TODO: currently use the hipblas_data_type
+//   // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+//   hipblasDatatype_t compute_type = hipblas_data_type;
+// #endif
   // Compute (W^T)x matmul: einsum(ijkl,im->jmkl)
   // Weights: qSize x qProjSize x 3 x num_q_heads
   // Input: qSize x num_tokens
@@ -510,13 +511,14 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   hipblasDatatype_t hipblas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   miopenDataType_t miopen_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   hipblasDatatype_t compute_type = hipblas_data_type;
-#else
-  // TODO: currently use the hipblas_data_type
-  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  hipblasDatatype_t compute_type = hipblas_data_type;
-#endif
+// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+//   hipblasDatatype_t compute_type = hipblas_data_type;
+// #else
+//   // TODO: currently use the hipblas_data_type
+//   // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+//   hipblasDatatype_t compute_type = hipblas_data_type;
+// #endif
   // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_infr_tokens();
   int tokens_previous_requests = 0;

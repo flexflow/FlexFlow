@@ -157,13 +157,14 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   hipblasDatatype_t hipblas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   miopenDataType_t miopen_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   hipblasDatatype_t compute_type = hipblas_data_type;
-#else
-  // TODO: currently use the hipblas_data_type
-  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  hipblasDatatype_t compute_type = hipblas_data_type;
-#endif
+// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+//   hipblasDatatype_t compute_type = hipblas_data_type;
+// #else
+//   // TODO: currently use the hipblas_data_type
+//   // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+//   hipblasDatatype_t compute_type = hipblas_data_type;
+// #endif
   // int num_requests = bc->num_active_requests();
   int processed_tokens_in_batch = 0;
   // int qkv_block_size =

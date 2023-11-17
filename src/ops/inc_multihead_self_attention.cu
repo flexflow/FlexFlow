@@ -238,17 +238,18 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   DT alpha = 1.0f, beta = 0.0f;
   assert(m->qSize == m->vSize && m->qSize == m->kSize);
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = cublas_data_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+//   cudaDataType_t compute_type = cublas_data_type;
+// #else
+//   // For best performance, set the default cublas compute type to
+//   // CUBLAS_COMPUTE_16F for half precision and to
+//   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+//   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+//   if (m->output_type[0] == DT_FLOAT) {
+//     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+//   }
+// #endif
   // Compute (W^T)x matmul: einsum(ijkl,im->jmkl)
   // Weights: qSize x qProjSize x 3 x num_q_heads
   // Input: qSize x num_tokens
@@ -466,17 +467,18 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = cublas_data_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+//   cudaDataType_t compute_type = cublas_data_type;
+// #else
+//   // For best performance, set the default cublas compute type to
+//   // CUBLAS_COMPUTE_16F for half precision and to
+//   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+//   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+//   if (m->output_type[0] == DT_FLOAT) {
+//     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+//   }
+// #endif
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
@@ -883,17 +885,18 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta *m,
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = cublas_data_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+//   cudaDataType_t compute_type = cublas_data_type;
+// #else
+//   // For best performance, set the default cublas compute type to
+//   // CUBLAS_COMPUTE_16F for half precision and to
+//   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+//   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+//   if (m->output_type[0] == DT_FLOAT) {
+//     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+//   }
+// #endif
   // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;

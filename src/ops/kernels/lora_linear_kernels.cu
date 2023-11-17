@@ -145,17 +145,18 @@ void inference_kernel(LoraLinearMeta *m,
   cudaDataType_t lr_actv_type = output_type;
   assert(input_type == output_type);
   cudaDataType_t weight_type = output_type;
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = output_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->input_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+//   cudaDataType_t compute_type = output_type;
+// #else
+//   // For best performance, set the default cublas compute type to
+//   // CUBLAS_COMPUTE_16F for half precision and to
+//   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+//   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+//   if (m->input_type[0] == DT_FLOAT) {
+//     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+//   }
+// #endif
   int num_peft_requests = 0;
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
@@ -267,17 +268,18 @@ void peft_bwd_kernel(LoraLinearMeta *m,
   assert(input_type == output_type);
   cudaDataType_t weight_type = output_type;
   cudaDataType_t lr_actv_type = output_type;
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = output_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+//   cudaDataType_t compute_type = output_type;
+// #else
+//   // For best performance, set the default cublas compute type to
+//   // CUBLAS_COMPUTE_16F for half precision and to
+//   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+//   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+//   if (m->output_type[0] == DT_FLOAT) {
+//     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+//   }
+// #endif
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;

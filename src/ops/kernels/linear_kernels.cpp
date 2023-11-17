@@ -274,13 +274,14 @@ void forward_kernel(LinearMeta const *m,
   hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type[0]);
   hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
   hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type[0]);
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   hipblasDatatype_t compute_type = output_type;
-#else
-  // TODO: currently use the output_type
-  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  hipblasDatatype_t compute_type = output_type;
-#endif
+// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+//   hipblasDatatype_t compute_type = output_type;
+// #else
+//   // TODO: currently use the output_type
+//   // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+//   hipblasDatatype_t compute_type = output_type;
+// #endif
   checkCUDA(hipblasGemmEx(m->handle.blas,
                           HIPBLAS_OP_T,
                           HIPBLAS_OP_N,
@@ -370,13 +371,14 @@ void peft_bwd_kernel(LinearMeta const *m,
   hipDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   // update input_grad_ptr offset
   input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_tokens;
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   hipblasDatatype_t compute_type = hipblas_data_type;
-#else
-  // TODO: currently use the hipblas_data_type
-  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  hipblasDatatype_t compute_type = output_type;
-#endif
+// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+//   hipblasDatatype_t compute_type = hipblas_data_type;
+// #else
+//   // TODO: currently use the hipblas_data_type
+//   // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+//   hipblasDatatype_t compute_type = output_type;
+// #endif
   int output_size = out_dim * num_peft_tokens;
   if (m->activation == AC_MODE_RELU) {
     relu_backward_kernel(m->output_type[0],
@@ -440,13 +442,14 @@ void backward_kernel(LinearMeta const *m,
   hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type[0]);
   hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
   hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type[0]);
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   hipblasDatatype_t compute_type = output_type;
-#else
-  // TODO: currently use output_type
-  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  hipblasDatatype_t compute_type = output_type;
-#endif
+// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+//   hipblasDatatype_t compute_type = output_type;
+// #else
+//   // TODO: currently use output_type
+//   // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+//   hipblasDatatype_t compute_type = output_type;
+// #endif
   int output_size = out_dim * batch_size;
   if (m->activation == AC_MODE_RELU) {
     relu_backward_kernel(

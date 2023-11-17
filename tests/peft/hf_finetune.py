@@ -54,26 +54,41 @@ def convert_hf_weight_name(name):
         .replace("default_", "")
     )
 
+def pre_peft_backward_hook(module, grad_output):
+    assert (len(grad_output) == 1)
+    assert ("lm_head" in module.name)
+    name = module.name.replace("base_model.model.model.", "")
+    print(f"PRE-Backward Hook activated for module: {name}, bwd step: {module.bwd_step}")
+    print(grad_output[0].shape)
+    dev = grad_output[0].device
+    new_grad_output = torch.full(grad_output[0].shape, 0.5).to(dev)
+    assert(new_grad_output.shape == grad_output[0].shape)
+    return (new_grad_output,)
+
 def peft_backward_hook(module, grad_input, grad_output):
     if len(grad_input) == 0 or len(grad_output) == 0:
         return
     assert(module.name is not None and module.bwd_step is not None)
     name = module.name.replace("base_model.model.model.", "")
     print(f"Backward Hook activated for module: {name}, bwd step: {module.bwd_step}")
-    print("Backward GRAD Input:")
-    for i,gi in enumerate(grad_input):
-        if type(gi) == torch.Tensor:
-            print(gi.shape)
-            torch.save(gi, f"./hf_peft_tensors/bwd_step_{module.bwd_step}_{name}.gi_{i}")
-        else:
-            print(gi)
     print("Backward GRAD Output:")
     for i, go in enumerate(grad_output):
         if type(go) == torch.Tensor:
-            print(go.shape)
-            torch.save(go, f"./hf_peft_tensors/bwd_step_{module.bwd_step}_{name}.go_{i}")
+            dst_filepath = f"./hf_peft_tensors/bwd_step_{module.bwd_step}_{name}.go_{i}"
+            print("\t", go.shape)
+            print(f"\t\tSaving to {dst_filepath}")
+            torch.save(go, dst_filepath)
         else:
             print(go)
+    print("Backward GRAD Input:")
+    for i,gi in enumerate(grad_input):
+        if type(gi) == torch.Tensor:
+            dst_filepath = f"./hf_peft_tensors/bwd_step_{module.bwd_step}_{name}.gi_{i}"
+            print("\t", gi.shape)
+            print(f"\t\tSaving to {dst_filepath}")
+            torch.save(gi, dst_filepath)
+        else:
+            print(gi)
     
     print("===")
     module.bwd_step += 1
@@ -106,7 +121,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", type=str, default="meta-llama/Llama-2-7b-hf")
     parser.add_argument("--lora-rank", type=int, default=16)
-    parser.add_argument("--lora-alpha", type=int, default=32)
+    parser.add_argument("--lora-alpha", type=int, default=16)
     parser.add_argument("--lora-target-modules", type=str, default="down_proj", help="Comma-separated list of layers from the base model to target")
     parser.add_argument("--lora-dropout", type=float, default=0.05)
     parser.add_argument("--use-full-precision", action="store_true", help="Use full precision")
@@ -149,7 +164,8 @@ def main():
         tokenizer.pad_token = "[PAD]"
         tokenizer.padding_side = "left"
     
-    peft_model_name = "goliaro/llama-2-7b-lora-full"
+    #peft_model_name = "goliaro/llama-2-7b-lora-full"
+    peft_model_name = "goliaro/llama-160m-lora-full"
     model = PeftModel.from_pretrained(model, peft_model_name)
     
     for param in model.parameters():
@@ -191,6 +207,9 @@ def main():
             print(f"Adding hooks to layer {layer.name}")
             layer.register_forward_hook(peft_forward_hook)
             layer.register_full_backward_hook(peft_backward_hook)
+            # base_model.model.base_model.model.lm_head
+            if "lm_head" in name:
+                layer.register_full_backward_pre_hook(pre_peft_backward_hook)
         # Save weights
         for name, params in model.named_parameters():
             if "lora" in name:
@@ -201,7 +220,7 @@ def main():
                 ff_w_name = convert_hf_weight_name(name)
                 print(f"{dst_folder}/{ff_w_name}")
                 params.detach().cpu().numpy().tofile(f"{dst_folder}/{ff_w_name}")
-            if "lm_head" in name:
+            if "lm_head" in name or "norm" in name:
                 torch.save(params, f"./hf_peft_tensors/{name}")
 
     data = load_dataset("/home/ubuntu/english_quotes")
