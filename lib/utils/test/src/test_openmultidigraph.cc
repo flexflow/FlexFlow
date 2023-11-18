@@ -2,6 +2,9 @@
 // #include "test/utils/rapidcheck/visitable.h"
 // #include "utils/containers.h"
 // #include "utils/graph/open_graphs.h"
+// #include "utils/graph/adjacency_openmultidigraph.h"
+
+// #include <vector>
 
 // using namespace FlexFlow;
 
@@ -25,7 +28,7 @@
 //     }
 //     std::vector<OpenMultiDiEdge> open_edges;
 //     for (MultiDiEdge const &edge : e) {
-//       OpenMultiDiEdge open_edge = penMultiDiEdge(edge);
+//       OpenMultiDiEdge open_edge = OpenMultiDiEdge(edge);
 //       open_edges.push_back(open_edge);
 //       g.add_edge(open_edge);
 //     }

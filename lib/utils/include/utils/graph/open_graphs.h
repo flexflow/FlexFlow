@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_OPEN_GRAPHS_H
 #define _FLEXFLOW_UTILS_GRAPH_OPEN_GRAPHS_H
 
+#include "cow_ptr_t.h"
 #include "multidigraph.h"
 #include "node.h"
 #include "open_edge.h"
@@ -60,7 +61,7 @@ public:
   static typename std::enable_if<std::is_base_of<IOpenMultiDiGraph, T>::value,
                                  OpenMultiDiGraph>::type
       create() {
-    return make_cow_ptr<T>();
+    return OpenMultiDiGraphView(make_cow_ptr<T>());//TODO, has some problem
   }
 
 private:
