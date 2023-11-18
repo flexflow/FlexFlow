@@ -46,5 +46,22 @@ TEST_CASE("NodeLabelledMultiDiGraph implementations") {
 
   CHECK(g.query_edges(MultiDiEdgeQuery::all()) == without_order(e));
 
-  // TODO: we should add more test use MultiDiEdgeQuery::with_src_nodes
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_nodes(query_set<Node>(
+            {n[1], n[2]}))) == std::unordered_set<MultiDiEdge>{e[2], e[3]});
+
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes(query_set<Node>(
+            {n[0], n[2]}))) == std::unordered_set<MultiDiEdge>{e[1], e[2]});
+
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs(
+            query_set<NodePort>({p[0], p[2]}))) == without_order(e));
+
+  CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_idxs(query_set<NodePort>(
+            {p[0]}))) == std::unordered_set<MultiDiEdge>{e[2]});
+
+  CHECK(g.query_edges(MultiDiEdgeQuery::all()
+                          .with_dst_nodes(query_set<Node>({n[1]}))
+                          .with_src_nodes(query_set<Node>({n[0]}))
+                          .with_src_idxs(query_set<NodePort>({p[0]}))
+                          .with_dst_idxs(query_set<NodePort>({p[1]}))) ==
+        std::unordered_set<MultiDiEdge>{e[0]});
 }

@@ -47,11 +47,6 @@ TEST_CASE("NodeLabelledOpenMultiDiGraph implementations") {
                     return get<MultiDiEdge>(edge);
                   }) == without_order(e));
 
-  std::unordered_set<MultiDiEdge> res = transform(
-      g.query_edges(OpenMultiDiEdgeQuery{MultiDiEdgeQuery::all().with_src_nodes(
-          query_set<Node>({n[1], n[2]}))}),
-      [](OpenMultiDiEdge const &edge) { return get<MultiDiEdge>(edge); });
-
   CHECK(transform(g.query_edges(OpenMultiDiEdgeQuery{
                       MultiDiEdgeQuery::all().with_src_nodes(
                           query_set<Node>({n[1], n[2]}))}),

@@ -114,9 +114,7 @@ public:
 
 protected:
   NodeLabelledMultiDiGraph(cow_ptr_t<Interface> ptr, cow_ptr_t<NodeLabelIf> nl)
-      : GraphView(ptr), nl(nl) {
-  } // todo: this may have some problem, because it seems we don't have
-    // constructor method NodeLabelledMultiDiGraphView<NodeLabel>(ptr
+      : GraphView(ptr), nl(nl) {}
 
   Interface &get_ptr() const {
     return *std::reinterpret_pointer_cast<Interface>(
