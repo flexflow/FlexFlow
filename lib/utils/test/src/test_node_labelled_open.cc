@@ -32,7 +32,7 @@ TEST_CASE("NodeLabelledOpenMultiDiGraph implementations") {
       {n[1], p[1], n[0], p[0]}, // dst_node, dst_nodeport,src_node,src_nodeport,
       {n[2], p[2], n[0], p[0]},
       {n[0], p[0], n[2], p[2]},
-      {n[1], p[1], n[2], p[2]}}; // this may have problem, we can fix
+      {n[1], p[1], n[2], p[2]}};
 
   std::vector<std::string> expected_labels = repeat2(
       num_nodes, [&](int i) { return g.at(n[i]); }, std::string());
