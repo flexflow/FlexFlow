@@ -10,6 +10,12 @@
 
 using namespace FlexFlow;
 
+// OutputLabelledOpenMultiDiGraph<std::string, std::string>
+//  g = OutputLabelledOpenMultiDiGraph<std::string,
+//  std::string>::create<SomeBaseImpl, UnorderedLabelling<Node, std::string>,
+//  UnorderedLabelling<InputMultiDiEdge, std::string>,
+//  UnorderedLabelling<MultiDiOutput, std::string>>();
+
 TEST_CASE("NodeLabelledMultiDiGraph implementations") {
   NodeLabelledMultiDiGraph g = NodeLabelledMultiDiGraph<std::string>::
       create<AdjacencyMultiDiGraph, UnorderedLabelling<Node, std::string>>();

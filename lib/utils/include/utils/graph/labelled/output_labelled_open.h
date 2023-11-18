@@ -3,6 +3,7 @@
 
 #include "node_labelled.h"
 #include "utils/graph/adjacency_openmultidigraph.h"
+#include "utils/graph/labelled/node_labelled_open.h"
 
 namespace FlexFlow {
 
