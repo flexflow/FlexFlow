@@ -114,7 +114,7 @@ public:
 
 protected:
   NodeLabelledMultiDiGraph(cow_ptr_t<Interface> ptr, cow_ptr_t<NodeLabelIf> nl)
-      : NodeLabelledMultiDiGraphView<NodeLabel>(ptr), nl(nl) {
+      : GraphView(ptr), nl(nl) {
   } // todo: this may have some problem, because it seems we don't have
     // constructor method NodeLabelledMultiDiGraphView<NodeLabel>(ptr
 

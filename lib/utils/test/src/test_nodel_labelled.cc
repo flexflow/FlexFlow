@@ -24,6 +24,7 @@ TEST_CASE("NodeLabelledMultiDiGraph implementations") {
   for (int i = 0; i < num_nodes; i++) {
     n.push_back(g.add_node(labels[i]));
   }
+  std::cout << "n.size():" << n.size() << std::endl;
 
   std::vector<NodePort> p = repeat(3, [&] { return g.add_node_port(); });
 
@@ -44,5 +45,6 @@ TEST_CASE("NodeLabelledMultiDiGraph implementations") {
   }
 
   CHECK(g.query_edges(MultiDiEdgeQuery::all()) == without_order(e));
+
   // TODO: we should add more test use MultiDiEdgeQuery::with_src_nodes
 }
