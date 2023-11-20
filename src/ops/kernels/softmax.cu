@@ -306,8 +306,18 @@ void peft_bwd_kernel(SoftmaxMeta const *m,
     }
     int num_bwd_tokens = bc->requestsInfo[i].num_tokens_in_batch;
     for (int j = 0; j < num_bwd_tokens; j++) {
-      token_ids[j] = bc->tokensInfo[j + tokens_previous_requests].token_id;
+      token_ids[j] = bc->labelsInfo[j + tokens_previous_requests].token_id;
     }
+
+    DT scale_factor = 1.0 / (bc->requestsInfo[i].num_tokens_in_batch - 1);
+    // ignore last token
+    checkCUDA(cudaMemsetAsync(
+        input_grad_ptr + (tokens_previous_requests +
+                          bc->requestsInfo[i].num_tokens_in_batch - 1) *
+                             num_classes,
+        0,
+        num_classes * sizeof(DT),
+        stream));
     checkCUDA(cudaMemcpyAsync(m->handle.workSpace,
                               token_ids,
                               sizeof(BatchConfig::TokenId) * num_bwd_tokens,
@@ -323,6 +333,15 @@ void peft_bwd_kernel(SoftmaxMeta const *m,
         static_cast<BatchConfig::TokenId const *>(m->handle.workSpace),
         num_bwd_tokens,
         num_classes);
+    // scale
+    scale_kernel<<<GET_BLOCKS(num_bwd_tokens * num_classes),
+                   CUDA_NUM_THREADS,
+                   0,
+                   stream>>>(input_grad_ptr +
+                                 tokens_previous_requests * num_classes,
+                             num_bwd_tokens * num_classes,
+                             DT(0.0),
+                             scale_factor);
 
     tokens_previous_requests += num_bwd_tokens;
   }

@@ -36,7 +36,8 @@ cudaError_t get_legion_stream(cudaStream_t *stream) {
 
 using FlexFlow::get_legion_stream;
 
-__global__ void scale_kernel(float *ptr, coord_t size, float a, float b) {
+template <typename DT>
+__global__ void scale_kernel(DT *ptr, coord_t size, DT a, DT b) {
   CUDA_KERNEL_LOOP(i, size) {
     ptr[i] = (b - a) * ptr[i] + a;
   }
@@ -643,6 +644,13 @@ template __global__ void
     assign_kernel<int32_t>(int32_t *ptr, coord_t size, int32_t value);
 template __global__ void
     assign_kernel<int64_t>(int64_t *ptr, coord_t size, int64_t value);
+
+template __global__ void
+    scale_kernel<half>(half *ptr, coord_t size, half a, half b);
+template __global__ void
+    scale_kernel<float>(float *ptr, coord_t size, float a, float b);
+template __global__ void
+    scale_kernel<double>(double *ptr, coord_t size, double a, double b);
 
 template __global__ void
     add_kernel<half>(half *dst, half const *src, size_t size);

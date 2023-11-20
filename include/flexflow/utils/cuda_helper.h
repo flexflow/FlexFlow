@@ -75,8 +75,9 @@ inline int GET_BLOCKS(int const N) {
   return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
 }
 
+template <typename DT>
 __global__ void
-    scale_kernel(float *ptr, Legion::coord_t size, float a, float b);
+    scale_kernel(DT *ptr, Legion::coord_t size, DT a, DT b);
 
 __global__ void ones_kernel(float *ptr, Legion::coord_t size);
 

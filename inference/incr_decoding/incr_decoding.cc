@@ -286,7 +286,7 @@ void FlexFlow::top_level_task(Task const *task,
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
       //prompts.push_back(text);
-      dataset.push_back(std::make_pair(text, ""));
+      dataset.push_back(std::make_pair(text, text));
     }
     rm->register_new_peft_request(
         dataset, 256 /*max_sequence_length*/, peft_model_id);

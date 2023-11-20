@@ -61,7 +61,7 @@ public:
   static int const MAX_NUM_TOKENS = 1024;
 
   //  Set by update
-  int num_tokens = 0, num_peft_tokens = 0;
+  int num_tokens = 0, num_peft_tokens = 0, num_peft_label_tokens = 0;
 
   struct PerRequestInfo {
     PerRequestInfo() {
@@ -89,6 +89,7 @@ public:
   };
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
+  PerTokenInfo labelsInfo[MAX_NUM_TOKENS];
 
   bool request_completed[MAX_NUM_REQUESTS];
   bool request_running[MAX_NUM_REQUESTS];
