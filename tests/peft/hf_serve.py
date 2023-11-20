@@ -10,20 +10,30 @@ from transformers import (
     GenerationConfig,
 )
 
+
 def peft_pre_forward_hook(module, input):
-    assert(module.name is not None and module.decoding_step is not None)
+    assert module.name is not None and module.decoding_step is not None
     name = module.name.replace("base_model.model.model.", "")
-    print(f"Pre-forward hook activated on module: {name}, decoding step: {module.decoding_step}")
+    print(
+        f"Pre-forward hook activated on module: {name}, decoding step: {module.decoding_step}"
+    )
     print("Pre-Input: ", input[0].shape)
-    torch.save(input, f"./hf_peft_tensors/decoding_step_{module.decoding_step}_{name}.input")
-    #print("===")
+    torch.save(
+        input, f"./hf_peft_tensors/decoding_step_{module.decoding_step}_{name}.input"
+    )
+    # print("===")
+
 
 def peft_post_forward_hook(module, input, output):
-    assert(module.name is not None and module.decoding_step is not None)
+    assert module.name is not None and module.decoding_step is not None
     name = module.name.replace("base_model.model.model.", "")
-    print(f"Post-forward Hook activated for module: {name}, decoding step: {module.decoding_step}")
+    print(
+        f"Post-forward Hook activated for module: {name}, decoding step: {module.decoding_step}"
+    )
     print("Post-Input/Output: ", input[0].shape, output[0].shape)
-    torch.save(output, f"./hf_peft_tensors/decoding_step_{module.decoding_step}_{name}.output")
+    torch.save(
+        output, f"./hf_peft_tensors/decoding_step_{module.decoding_step}_{name}.output"
+    )
     print("===")
     module.decoding_step += 1
 
@@ -36,7 +46,11 @@ def main():
     )
     parser.add_argument("--max-new-tokens", type=int, default=50)
     parser.add_argument("--do-sample", action="store_true", help="Use sampling")
-    parser.add_argument("--save-peft-tensors", action="store_true", help="Save PEFT hidden states and weights to file")
+    parser.add_argument(
+        "--save-peft-tensors",
+        action="store_true",
+        help="Save PEFT hidden states and weights to file",
+    )
     args = parser.parse_args()
     peft_model_id = args.peft_model_id
     use_full_precision = args.use_full_precision
@@ -76,7 +90,17 @@ def main():
     generation_config.do_sample = args.do_sample
     # Load the Lora model
     model = PeftModel.from_pretrained(model, peft_model_id)
-    
+
+    print(model)
+    for name, params in model.named_parameters():
+        print(name)
+        if (
+            name
+            == "base_model.model.model.layers.11.mlp.down_proj.lora_B.default.weight"
+        ):
+            print(params)
+    assert False
+
     # Register hooks to save tensors, if needed
     if save_peft_tensors:
         shutil.rmtree("./hf_peft_tensors")
@@ -86,7 +110,7 @@ def main():
         for name, params in model.named_parameters():
             if "lora" in name:
                 torch.save(params, f"./hf_peft_tensors/{name}")
-                #params.detach().cpu().numpy().tofile(f"{weights_path}/{name}")
+                # params.detach().cpu().numpy().tofile(f"{weights_path}/{name}")
         # Save hidden states
         for name, layer in dict(model.named_modules()).items():
             if "lora_A.default" in name or "lora_B.default" in name:
@@ -96,7 +120,6 @@ def main():
                 layer.register_forward_pre_hook(peft_pre_forward_hook)
                 layer.register_forward_hook(peft_post_forward_hook)
 
-    
     batch = tokenizer("Two things are infinite: ", return_tensors="pt")
     with torch.cuda.amp.autocast():
         output_tokens = model.generate(
