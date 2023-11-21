@@ -201,13 +201,13 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   miopenDataType_t miopen_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
   hipblasDatatype_t compute_type = hipblas_data_type;
-// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-//   hipblasDatatype_t compute_type = hipblas_data_type;
-// #else
-//   // TODO: currently use the hipblas_data_type
-//   // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-//   hipblasDatatype_t compute_type = hipblas_data_type;
-// #endif
+  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  //   hipblasDatatype_t compute_type = hipblas_data_type;
+  // #else
+  //   // TODO: currently use the hipblas_data_type
+  //   // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  //   hipblasDatatype_t compute_type = hipblas_data_type;
+  // #endif
   // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_infr_tokens();
   int tokens_previous_requests = 0;

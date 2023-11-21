@@ -366,17 +366,17 @@ void forward_kernel(LinearMeta const *m,
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   assert(input_type == weight_type && weight_type == output_type);
   cudaDataType_t compute_type = output_type;
-// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-//   cudaDataType_t compute_type = cublas_data_type;
-// #else
-//   // For best performance, set the default cublas compute type to
-//   // CUBLAS_COMPUTE_16F for half precision and to
-//   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-//   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-//   if (m->output_type[0] == DT_FLOAT) {
-//     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-//   }
-// #endif
+  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  //   cudaDataType_t compute_type = cublas_data_type;
+  // #else
+  //   // For best performance, set the default cublas compute type to
+  //   // CUBLAS_COMPUTE_16F for half precision and to
+  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  //   if (m->output_type[0] == DT_FLOAT) {
+  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  //   }
+  // #endif
   checkCUDA(cublasGemmEx(m->handle.blas,
                          CUBLAS_OP_T,
                          CUBLAS_OP_N,
@@ -540,17 +540,17 @@ void backward_kernel(LinearMeta const *m,
   cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   cudaDataType_t compute_type = output_type;
-// #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-//   cudaDataType_t compute_type = cublas_data_type;
-// #else
-//   // For best performance, set the default cublas compute type to
-//   // CUBLAS_COMPUTE_16F for half precision and to
-//   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-//   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-//   if (m->output_type[0] == DT_FLOAT) {
-//     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-//   }
-// #endif
+  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  //   cudaDataType_t compute_type = cublas_data_type;
+  // #else
+  //   // For best performance, set the default cublas compute type to
+  //   // CUBLAS_COMPUTE_16F for half precision and to
+  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  //   if (m->output_type[0] == DT_FLOAT) {
+  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  //   }
+  // #endif
 
   int output_size = out_dim * batch_size;
   if (m->activation == AC_MODE_RELU) {
