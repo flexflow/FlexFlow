@@ -292,7 +292,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
       continue;
     }
     int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-    int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
+    // int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
     assert(m->model_weights.find(bc->requestsInfo[i].peft_model_id) !=
            m->model_weights.end());
     LoraLinearWeight weight =
@@ -354,7 +354,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                            m->low_rank_activation,
                            lr_actv_type,
                            rank,
-                           &alpha,
+                           &beta,
                            weight.w0_grad_ptr,
                            weight_type,
                            in_dim,
@@ -377,7 +377,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                              m->low_rank_activation,
                              lr_actv_type,
                              rank,
-                             &alpha,
+                             &beta,
                              input_grad_ptr,
                              input_type,
                              in_dim,
