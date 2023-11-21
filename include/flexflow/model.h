@@ -367,6 +367,8 @@ class AllReduce;
 class FusedParallelOp;
 class ParallelOpInfo;
 
+struct Request;
+
 // TODO: Move to an appropriate place
 /*
   This is used to create a type that recursively replaces value type
@@ -830,13 +832,9 @@ public:
   // ========================================
   // Inference APIs
   // ========================================
-  GenerationResult generate(std::string const &prompts,
-                            int max_seq_length,
-                            PEFTModelID peft_model_id = PEFTModelID::NO_ID);
+  GenerationResult generate(Request const &request);
 
-  GenerationResult generate(std::vector<std::string> const &prompts,
-                            int max_seq_length,
-                            PEFTModelID peft_model_id = PEFTModelID::NO_ID);
+  GenerationResult generate(std::vector<Request> const &request);
 
   PEFTModelID register_peft_model(
       LoraLinearConfig const mlp_first = LoraLinearConfig::DefaultConfig,

@@ -1588,10 +1588,16 @@ flexflow_generation_result_t
                             int max_seq_length,
                             int *output_length_and_tokens) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  std::vector<std::string> prompts;
+
   std::string const text_str(input_text);
-  prompts.push_back(input_text);
-  GenerationResult result = handle->generate(prompts, max_seq_length);
+
+  std::vector<Request> requests;
+  Request inference_req;
+  inference_req.prompt = text_str;
+  inference_req.max_sequence_length = max_seq_length;
+  requests.push_back(inference_req);
+
+  GenerationResult result = handle->generate(requests);
   DEBUG_PRINT(
       "[Model] generate %p %s %i", handle, text_str.c_str(), max_seq_length);
   assert(result.output_tokens.size() <= max_seq_length);

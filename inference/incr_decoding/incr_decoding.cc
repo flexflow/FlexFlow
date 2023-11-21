@@ -279,23 +279,28 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
-    std::vector<std::string> prompts;
-    std::vector<std::pair<std::string, std::string>> dataset;
+
+    std::vector<Request> requests;
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      // // Add inference request
+      // Request inference_req;
+      // inference_req.prompt = text;
+      // inference_req.max_sequence_length = 128;
+      // inference_req.peft_model_id = peft_model_id;
+      // requests.push_back(inference_req);
+      // total_num_requests++;
+      // Add fine-tuning request
+      Request fine_tuning_req;
+      fine_tuning_req.req_type = Request::RequestType::REQ_FINETUNING;
+      fine_tuning_req.max_sequence_length = 128;
+      fine_tuning_req.peft_model_id = peft_model_id;
+      fine_tuning_req.dataset_text.push_back(std::make_pair(text, text));
+      requests.push_back(fine_tuning_req);
       total_num_requests++;
-      // prompts.push_back(text);
-      dataset.push_back(std::make_pair(text, text));
     }
-    rm->register_new_peft_request(
-        dataset, 256 /*max_sequence_length*/, peft_model_id);
-    //  for (auto &prompt : prompts) {
-    //    GenerationResult result = model.generate(prompt, 128
-    //    /*max_sequence_length*/);
-    //  }
-    GenerationResult result =
-        model.generate(prompts, 128 /*max_sequence_length*/, peft_model_id);
+    GenerationResult result = model.generate(requests);
   }
 
   // Execution fence

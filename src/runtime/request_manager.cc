@@ -176,81 +176,22 @@ size_t RequestManager::get_num_ssms() {
 }
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::vector<TokenId> const &prompt,
-                                         int max_sequence_length,
-                                         PEFTModelID peft_model_id) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
-
-  // Add a new request
-  Request request;
-  request.status = Request::PENDING;
-  request.guid = next_available_guid++;
-  request.max_sequence_length = max_sequence_length;
-  request.peft_model_id = peft_model_id;
-  if (prompt.size() >= get_max_sequence_length()) {
-    std::cout << "Warning: too many tokens in prompt, only load up to "
-              << get_max_sequence_length() << " tokens, but got "
-              << prompt.size() << ".\n";
-
-    printf("tokens size: %zu\n", request.tokens.size());
-    return 0;
-  } else {
-    request.initial_len = prompt.size();
-    request.tokens = prompt;
-  }
-
-  if (get_num_ssms() == 0) {
-    std::cout << "No small speculative model registered, using incremental "
-                 "decoding."
-              << std::endl;
-  } else {
-    std::cout << "Num of models: " << get_num_ssms() << std::endl;
-    for (int i = 0; i < get_num_ssms(); i++) {
-      BeamTree beam_tree = BeamTree{};
-      request.beam_trees.push_back(beam_tree);
-    }
-  }
-
-  pending_infr_request_queue.push(request);
-  all_requests[request.guid] = request;
-
-  if (verbose) {
-    std::cout << "new req: " << request.tokens.size() << std::endl;
-    for (int i = 0; i < request.tokens.size(); i++) {
-      std::cout << i << " : " << request.tokens[i] << std::endl;
-    }
-  }
-
-  GenerationResult gr;
-  gr.guid = request.guid;
-  gr.input_text = "";
-  gr.input_tokens = prompt;
-  gr.output_text = "";
-  gr.output_tokens = prompt;
-  request_generation_results[request.guid] = gr;
-
-  return request.guid;
-}
-
-RequestManager::RequestGuid
-    RequestManager::register_new_request(std::string const &prompt,
-                                         int max_sequence_length,
-                                         PEFTModelID peft_model_id) {
+    RequestManager::register_new_request(Request const &request_) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Add a new request
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
-  request.max_sequence_length = max_sequence_length;
-  request.peft_model_id = peft_model_id;
+  request.max_sequence_length = request_.max_sequence_length;
+  request.peft_model_id = request_.peft_model_id;
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
-  std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
+  std::vector<int32_t> tokens = this->tokenizer_->Encode(request_.prompt);
   if (tokens.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
               << get_max_sequence_length() << " tokens, but got "
-              << tokens.size() << ".\n";
+              << request_.tokens.size() << ".\n";
 
     printf("tokens size: %zu\n", tokens.size());
     return 0;
@@ -286,29 +227,27 @@ RequestManager::RequestGuid
 
   GenerationResult gr;
   gr.guid = request.guid;
-  gr.input_text = prompt;
+  gr.input_text = request_.prompt;
   gr.input_tokens = request.tokens;
-  gr.output_text = prompt;
+  gr.output_text = request_.prompt;
   gr.output_tokens = request.tokens;
   request_generation_results[request.guid] = gr;
   return request.guid;
 }
 
-RequestManager::RequestGuid RequestManager::register_new_peft_request(
-    std::vector<std::pair<std::string, std::string>> const &dataset,
-    int max_sequence_length,
-    PEFTModelID peft_model_id) {
+RequestManager::RequestGuid
+    RequestManager::register_new_peft_request(Request const &request_) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Add a new request
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
-  request.max_sequence_length = max_sequence_length;
-  request.peft_model_id = peft_model_id;
+  request.max_sequence_length = request_.max_sequence_length;
+  request.peft_model_id = request_.peft_model_id;
   request.req_type = Request::REQ_FINETUNING;
   request.completed_training_steps = 0;
   request.max_training_steps = 1; // TODO: let user set this
-  for (auto const &sample : dataset) {
+  for (auto const &sample : request_.dataset_text) {
     std::vector<int32_t> input_tokens;
     input_tokens = this->tokenizer_->Encode(sample.first);
     if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
@@ -321,6 +260,7 @@ RequestManager::RequestGuid RequestManager::register_new_peft_request(
       std::cout << "Warning: too many tokens in sample, only load up to "
                 << get_max_sequence_length() << " tokens, but got "
                 << input_tokens.size() + output_tokens.size() << ".\n";
+      return 0;
     } else {
       request.dataset.push_back(std::make_pair(input_tokens, output_tokens));
     }
@@ -688,9 +628,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       for (size_t i = 0; i < request.dataset[0].second.size(); i++) {
         new_bc.labelsInfo[new_bc.num_peft_label_tokens].token_id =
             request.dataset[0].second[i];
-        new_bc.labelsInfo[new_bc.num_peft_label_tokens].request_index = peft_req_idx;
+        new_bc.labelsInfo[new_bc.num_peft_label_tokens].request_index =
+            peft_req_idx;
         int depth = request.dataset[0].first.size() + i;
-        new_bc.labelsInfo[new_bc.num_peft_label_tokens].abs_depth_in_request = depth;
+        new_bc.labelsInfo[new_bc.num_peft_label_tokens].abs_depth_in_request =
+            depth;
         new_bc.num_peft_label_tokens++;
       }
     }
@@ -2086,26 +2028,20 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   return merged_tree;
 }
 
-GenerationResult FFModel::generate(std::string const &prompt,
-                                   int max_seq_length,
-                                   PEFTModelID peft_model_id) {
-  std::vector<std::string> prompts;
-  prompts.push_back(prompt);
-  return generate(prompts, max_seq_length, peft_model_id);
+GenerationResult FFModel::generate(Request const &request) {
+  std::vector<Request> requests;
+  requests.push_back(request);
+  return generate(requests);
 }
 
-GenerationResult FFModel::generate(std::vector<std::string> const &prompts,
-                                   int max_seq_length,
-                                   PEFTModelID peft_model_id) {
+GenerationResult FFModel::generate(std::vector<Request> const &requests) {
   RequestManager *rm = RequestManager::get_request_manager();
   if (rm->get_num_ssms() == 0) {
     // No SSMs: perform incremental decoding
-    return rm->generate_incr_decoding(
-        this, prompts, max_seq_length, peft_model_id);
+    return rm->generate_incr_decoding(this, requests);
   } else {
     // Registered SSMs: perform speculative inference
-    return rm->generate_spec_infer(
-        this, prompts, max_seq_length, peft_model_id);
+    return rm->generate_spec_infer(this, requests);
   }
 }
 
@@ -2213,14 +2149,15 @@ PEFTModelID FFModel::register_peft_model(LoraLinearConfig const mlp_first,
 
 /*static*/
 GenerationResult RequestManager::generate_incr_decoding(
-    FFModel *llm,
-    std::vector<std::string> const &prompts,
-    int max_seq_length,
-    PEFTModelID peft_model_id) {
+    FFModel *llm, std::vector<Request> const &requests) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid;
-  for (int i = 0; i < prompts.size(); i++) {
-    guid = register_new_request(prompts.at(i), max_seq_length, peft_model_id);
+  for (int i = 0; i < requests.size(); i++) {
+    if (requests.at(i).req_type == Request::REQ_INFERENCE) {
+      guid = register_new_request(requests.at(i));
+    } else {
+      guid = register_new_peft_request(requests.at(i));
+    }
   }
 
   if (guid == 0) {
@@ -2230,7 +2167,8 @@ GenerationResult RequestManager::generate_incr_decoding(
     return GenerationResult();
   }
 
-  int tokens_to_generate = max_seq_length - all_requests[guid].tokens.size();
+  int tokens_to_generate =
+      all_requests[guid].max_sequence_length - all_requests[guid].tokens.size();
   std::queue<std::pair<BatchConfigFuture, InferenceResultFuture>>
       batch_pipeline;
   { batch_pipeline.push(std::make_pair(last_bcf, last_irf)); }
@@ -2275,13 +2213,15 @@ GenerationResult RequestManager::generate_incr_decoding(
 /*static*/
 GenerationResult
     RequestManager::generate_spec_infer(FFModel *llm,
-                                        std::vector<std::string> const &prompts,
-                                        int max_seq_length,
-                                        PEFTModelID peft_model_id) {
+                                        std::vector<Request> const &requests) {
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestGuid guid;
-  for (int i = 0; i < prompts.size(); i++) {
-    guid = register_new_request(prompts.at(i), max_seq_length, peft_model_id);
+  for (int i = 0; i < requests.size(); i++) {
+    if (requests.at(i).req_type == Request::REQ_INFERENCE) {
+      guid = register_new_request(requests.at(i));
+    } else {
+      guid = register_new_peft_request(requests.at(i));
+    }
   }
   if (guid == 0) {
     std::cout

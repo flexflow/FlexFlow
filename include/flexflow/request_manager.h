@@ -59,19 +59,21 @@ struct Request {
   };
   enum RequestType { REQ_INFERENCE = 201, REQ_FINETUNING = 202 };
   BatchConfig::RequestGuid guid;
-  PEFTModelID peft_model_id;
-  int max_sequence_length;
+  PEFTModelID peft_model_id = PEFTModelID::NO_ID;
+  int max_sequence_length = 128;
   int initial_len;
   int ssm_cache_size = 0;
   int llm_cache_size = 0;
 
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
+  std::string prompt;
   std::vector<struct BeamTree> beam_trees;
   // PEFT field
   RequestType req_type = REQ_INFERENCE;
   int completed_training_steps = 0;
   int max_training_steps = 1;
+  std::vector<std::pair<std::string, std::string>> dataset_text;
   std::vector<std::pair<std::vector<BatchConfig::TokenId>,
                         std::vector<BatchConfig::TokenId>>>
       dataset;
@@ -119,26 +121,13 @@ public:
 
   FFModel *get_model(int model_id);
 
-  GenerationResult
-      generate_incr_decoding(FFModel *model,
-                             std::vector<std::string> const &prompts,
-                             int max_seq_length,
-                             PEFTModelID peft_model_id);
-  GenerationResult generate_spec_infer(FFModel *model,
-                                       std::vector<std::string> const &prompts,
-                                       int max_seq_length,
-                                       PEFTModelID peft_model_id);
+  GenerationResult generate_incr_decoding(FFModel *llm,
+                                          std::vector<Request> const &requests);
+  GenerationResult generate_spec_infer(FFModel *llm,
+                                       std::vector<Request> const &requests);
   GenerationResult get_generation_result(RequestGuid const &guid);
-  RequestGuid register_new_request(std::string const &prompt,
-                                   int max_sequence_length,
-                                   PEFTModelID peft_model_id);
-  RequestGuid register_new_request(std::vector<TokenId> const &prompt,
-                                   int max_sequence_length,
-                                   PEFTModelID peft_model_id);
-  RequestGuid register_new_peft_request(
-      std::vector<std::pair<std::string, std::string>> const &dataset,
-      int max_sequence_length,
-      PEFTModelID peft_model_id);
+  RequestGuid register_new_request(Request const &request_);
+  RequestGuid register_new_peft_request(Request const &request_);
   bool is_request_completed(RequestGuid const &guid);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);

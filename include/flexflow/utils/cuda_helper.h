@@ -76,8 +76,7 @@ inline int GET_BLOCKS(int const N) {
 }
 
 template <typename DT>
-__global__ void
-    scale_kernel(DT *ptr, Legion::coord_t size, DT a, DT b);
+__global__ void scale_kernel(DT *ptr, Legion::coord_t size, DT a, DT b);
 
 __global__ void ones_kernel(float *ptr, Legion::coord_t size);
 
