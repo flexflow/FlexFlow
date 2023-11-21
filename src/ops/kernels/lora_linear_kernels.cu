@@ -262,7 +262,6 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                      ffStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  DT alpha = 1.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   assert(input_type == output_type);
@@ -300,7 +299,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
         m->model_weights[bc->requestsInfo[i].peft_model_id];
     int rank = weight.rank;
     // Compute w1's gradient
-    // NOTE: we use alpha=1 for w1_grad to accumulate gradients
+    DT alpha = 1.0f, beta = 0.0f;
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_N,
                            CUBLAS_OP_T,
@@ -314,7 +313,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                            output_grad_ptr,
                            output_type,
                            out_dim,
-                           &alpha,
+                           &beta,
                            weight.w1_grad_ptr,
                            weight_type,
                            rank,
@@ -322,7 +321,6 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     // Compute gradients w.r.t. low_rank activation
     // and save the results to low_rank_activation
-    // NOTE: we use alpha=1 for input_grad to accumulate gradients
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_N,
                            CUBLAS_OP_N,
@@ -336,14 +334,13 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                            output_grad_ptr,
                            output_type,
                            out_dim,
-                           &alpha,
+                           &beta,
                            m->low_rank_activation,
                            lr_actv_type,
                            rank,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     // Compute w0's gradient
-    // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_N,
                            CUBLAS_OP_T,
@@ -364,8 +361,9 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     // Compute input gradient
-    // NOTE: we use alpha=1 for input_grad to accumulate gradients
+    // NOTE: we use beta=1 for input_grad to accumulate gradients when needed
     if (input_grad_ptr != nullptr) {
+      beta = m->reset_input_grads[0] ? 0.0f : 1.0f;
       checkCUDA(cublasGemmEx(m->handle.blas,
                              CUBLAS_OP_N,
                              CUBLAS_OP_N,

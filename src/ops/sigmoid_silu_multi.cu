@@ -57,9 +57,12 @@ __global__ void SigmoidSiluMultiBackwardKernel(int num_elements,
     sigmoid_val = 1.0f / (1.0f + exp(-sigmoid_val));
 
     T ss_grad_val = output_grad_ptr[i] * input2_ptr[i];
-    input2_grad_ptr[i] += output_grad_ptr[i] * input1_ptr[i] * T(sigmoid_val);
+    // input2_grad_ptr[i] += output_grad_ptr[i] * input1_ptr[i] *
+    // T(sigmoid_val);
+    input2_grad_ptr[i] = output_grad_ptr[i] * input1_ptr[i] * T(sigmoid_val);
 
-    input1_grad_ptr[i] += ss_grad_val * T(sigmoid_val);
+    // input1_grad_ptr[i] += ss_grad_val * T(sigmoid_val);
+    input1_grad_ptr[i] = ss_grad_val * T(sigmoid_val);
     T sig_grad = ss_grad_val * input1_ptr[i];
 
     float x1_grad_val = static_cast<float>(sig_grad);

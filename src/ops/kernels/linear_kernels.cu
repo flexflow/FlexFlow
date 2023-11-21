@@ -493,8 +493,9 @@ void peft_bwd_kernel(LinearMeta const *m,
   }
 
   // Compute data gradient
-  // NOTE: we use alpha=1 for input_grad to accumulate gradients
-  DT alpha = 1.0f, beta = 0.0f;
+  // NOTE: we use beta=1 for input_grad to accumulate gradients when needed
+  DT alpha = 1.0f;
+  DT beta = m->reset_input_grads[0] ? 0.0f : 1.0f;
   if (input_grad_ptr != NULL) {
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_N,

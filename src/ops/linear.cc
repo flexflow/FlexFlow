@@ -757,6 +757,12 @@ void Linear::peft_bwd_task(Task const *task,
 
   int num_infr_tokens = bc->num_active_infr_tokens();
   int num_peft_tokens = bc->num_active_peft_tokens();
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Linear::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {weight}, {output_grad}, false, true);
+  }
   peft_bwd_kernel_wrapper(m,
                           input_grad.ptr,
                           output_grad.ptr,

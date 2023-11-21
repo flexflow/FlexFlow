@@ -243,22 +243,7 @@ public:
   }
   virtual void print_layer(FFModel const &model) = 0;
   template <typename OpMetaType>
-  static void save_inference_tensors_to_file(
-      OpMetaType *m,
-      int shard_id,
-      BatchConfig const *bc,
-      std::vector<GenericTensorAccessorR> input_tensors,
-      std::vector<GenericTensorAccessorR> weight_tensors,
-      std::vector<GenericTensorAccessorR> output_tensors,
-      bool fwd_pass = true) {
-    // Check if output directory exists, and create it if it does not
-    char const *folder_path = "./inference_tensors";
-    struct stat st = {0};
-    if (stat(folder_path, &st) == -1) {
-      // Directory does not exist, create it
-      mkdir(folder_path, 0700);
-    }
-    // output base filepath, shared by all tensors from the same operator
+  static std::string get_op_name_without_uid(OpMetaType *m) {
     std::string op_name_without_uid = std::string(m->op_name);
     size_t last_underscore = op_name_without_uid.length() - 1;
     for (int i = op_name_without_uid.length() - 1; i > 0; i--) {
@@ -269,6 +254,27 @@ public:
       }
     }
     op_name_without_uid.erase(last_underscore);
+    return op_name_without_uid;
+  }
+  template <typename OpMetaType>
+  static void save_inference_tensors_to_file(
+      OpMetaType *m,
+      int shard_id,
+      BatchConfig const *bc,
+      std::vector<GenericTensorAccessorR> input_tensors,
+      std::vector<GenericTensorAccessorR> weight_tensors,
+      std::vector<GenericTensorAccessorR> output_tensors,
+      bool fwd_pass = true,
+      bool before_kernel = false) {
+    // Check if output directory exists, and create it if it does not
+    char const *folder_path = "./inference_tensors";
+    struct stat st = {0};
+    if (stat(folder_path, &st) == -1) {
+      // Directory does not exist, create it
+      mkdir(folder_path, 0700);
+    }
+    // output base filepath, shared by all tensors from the same operator
+    std::string op_name_without_uid = get_op_name_without_uid(m);
     std::string base_filepath =
         "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
         (fwd_pass ? "_decoding-step_" : "_bwd-step_") +
@@ -277,6 +283,9 @@ public:
         "_layer-num_" + std::to_string(m->layer_guid.transformer_layer_id) +
         "_layer-name_" + op_name_without_uid + "_shard-id_" +
         std::to_string(shard_id);
+    if (before_kernel) {
+      base_filepath += "_pre";
+    }
     // save batch config, if passed
     if (bc != nullptr) {
       bc->save_to_file(base_filepath + "_batch-config");
@@ -353,10 +362,12 @@ public:
       }
     }
     // increase count of decoding steps
-    if (fwd_pass) {
-      m->decoding_step++;
-    } else {
-      m->bwd_step++;
+    if (!before_kernel) {
+      if (fwd_pass) {
+        m->decoding_step++;
+      } else {
+        m->bwd_step++;
+      }
     }
   }
   virtual bool measure_operator_cost(Simulator *sim,
