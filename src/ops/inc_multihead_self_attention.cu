@@ -224,6 +224,23 @@ __global__ void
 }
 
 template <typename DT>
+__global__ void fill_entries_above_diagonal(DT *matrix,
+                                            size_t num_rows,
+                                            size_t num_cols,
+                                            size_t num_q_heads,
+                                            size_t entries_above_diagonal,
+                                            DT value) {
+  CUDA_KERNEL_LOOP(i, entries_above_diagonal * num_q_heads) {
+    size_t head_idx = i / entries_above_diagonal;
+    size_t entry_idx = i % entries_above_diagonal;
+    size_t y = (-1 + sqrt(8 * (float)entry_idx + 1)) / 2;
+    size_t x = entry_idx - y * (y + 1) / 2;
+    y += (num_cols - num_rows) + 1;
+    matrix[head_idx * num_rows * num_cols + num_cols * y + x] = value;
+  }
+}
+
+template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         int shard_id,
@@ -658,6 +675,20 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                       m->qk_tensor,
                                       m->qk_prods));
       //  TODO: fill all elements above diagonal to force causal attention
+      size_t entries_above_diagonal = num_tokens * (num_tokens - 1) / 2;
+      if (entries_above_diagonal > 0) {
+        size_t parallelism = m->num_q_heads * entries_above_diagonal;
+        fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
+                                      min((size_t)CUDA_NUM_THREADS,
+                                          parallelism),
+                                      0,
+                                      stream>>>(static_cast<DT *>(m->qk_prods),
+                                                num_tokens,
+                                                num_tokens,
+                                                m->num_q_heads,
+                                                entries_above_diagonal,
+                                                DT(0.0f));
+      }
     }
     // Step 5: compute gradients w.r.t. key
     {
@@ -852,23 +883,6 @@ __global__ void store_query_cache(DT const *devQKVProjArray,
 
     // query cache
     qCache_ptr[i] = qVal;
-  }
-}
-
-template <typename DT>
-__global__ void fill_entries_above_diagonal(DT *matrix,
-                                            size_t num_rows,
-                                            size_t num_cols,
-                                            size_t num_q_heads,
-                                            size_t entries_above_diagonal,
-                                            DT value) {
-  CUDA_KERNEL_LOOP(i, entries_above_diagonal * num_q_heads) {
-    size_t head_idx = i / entries_above_diagonal;
-    size_t entry_idx = i % entries_above_diagonal;
-    size_t y = (-1 + sqrt(8 * (float)entry_idx + 1)) / 2;
-    size_t x = entry_idx - y * (y + 1) / 2;
-    y += (num_cols - num_rows) + 1;
-    matrix[head_idx * num_rows * num_cols + num_cols * y + x] = value;
   }
 }
 
