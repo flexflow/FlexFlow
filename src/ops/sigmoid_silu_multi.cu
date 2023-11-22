@@ -51,23 +51,30 @@ __global__ void SigmoidSiluMultiBackwardKernel(int num_elements,
                                                T const *input1_ptr,
                                                T const *input2_ptr,
                                                T *input1_grad_ptr,
-                                               T *input2_grad_ptr) {
+                                               T *input2_grad_ptr,
+                                               bool reset_input_grad1,
+                                               bool reset_input_grad2) {
   CUDA_KERNEL_LOOP(i, num_elements) {
     float sigmoid_val = static_cast<float>(input1_ptr[i]);
     sigmoid_val = 1.0f / (1.0f + exp(-sigmoid_val));
 
+    if (reset_input_grad2) {
+      input2_grad_ptr[i] =
+          output_grad_ptr[i] * (input1_ptr[i] * T(sigmoid_val));
+    } else {
+      input2_grad_ptr[i] +=
+          output_grad_ptr[i] * (input1_ptr[i] * T(sigmoid_val));
+    }
     T ss_grad_val = output_grad_ptr[i] * input2_ptr[i];
-    // input2_grad_ptr[i] += output_grad_ptr[i] * input1_ptr[i] *
-    // T(sigmoid_val);
-    input2_grad_ptr[i] = output_grad_ptr[i] * input1_ptr[i] * T(sigmoid_val);
-
-    // input1_grad_ptr[i] += ss_grad_val * T(sigmoid_val);
-    input1_grad_ptr[i] = ss_grad_val * T(sigmoid_val);
+    if (reset_input_grad1) {
+      input1_grad_ptr[i] = ss_grad_val * T(sigmoid_val);
+    } else {
+      input1_grad_ptr[i] += ss_grad_val * T(sigmoid_val);
+    }
     T sig_grad = ss_grad_val * input1_ptr[i];
 
     float x1_grad_val = static_cast<float>(sig_grad);
-    x1_grad_val = exp(-x1_grad_val) /
-                  ((1.0f + exp(-sigmoid_val)) * (1.0f + exp(-sigmoid_val)));
+    x1_grad_val = x1_grad_val * sigmoid_val * (1.0f - sigmoid_val);
     input1_grad_ptr[i] += T(x1_grad_val);
   }
 }
@@ -226,7 +233,9 @@ void SigmoidSiluMulti::backward_kernel_wrapper(
                                                input1.get_float_ptr(),
                                                input2.get_float_ptr(),
                                                input1_grad.get_float_ptr(),
-                                               input1_grad.get_float_ptr());
+                                               input1_grad.get_float_ptr(),
+                                               m->reset_input_grads[0],
+                                               m->reset_input_grads[1]);
   } else if (m->input_type[0] == DT_HALF) {
     SigmoidSiluMultiBackwardKernel<<<GET_BLOCKS(num_elements),
                                      min(CUDA_NUM_THREADS, num_elements),
@@ -236,7 +245,9 @@ void SigmoidSiluMulti::backward_kernel_wrapper(
                                                input1.get_half_ptr(),
                                                input2.get_half_ptr(),
                                                input1_grad.get_half_ptr(),
-                                               input2_grad.get_half_ptr());
+                                               input2_grad.get_half_ptr(),
+                                               m->reset_input_grads[0],
+                                               m->reset_input_grads[1]);
   } else {
     assert(false && "unsupport datatype in SigmoidSiluMulti");
   }
@@ -307,7 +318,9 @@ void SigmoidSiluMulti::peft_bwd_kernel_wrapper(
         static_cast<float const *>(m->input_activation) +
             num_peft_tokens * in_dim,
         input1_grad.get_float_ptr(),
-        input1_grad.get_float_ptr());
+        input1_grad.get_float_ptr(),
+        m->reset_input_grads[0],
+        m->reset_input_grads[1]);
   } else if (m->input_type[0] == DT_HALF) {
     SigmoidSiluMultiBackwardKernel<<<GET_BLOCKS(num_elements),
                                      min(CUDA_NUM_THREADS, num_elements),
@@ -319,7 +332,9 @@ void SigmoidSiluMulti::peft_bwd_kernel_wrapper(
         static_cast<half const *>(m->input_activation) +
             num_peft_tokens * in_dim,
         input1_grad.get_half_ptr(),
-        input2_grad.get_half_ptr());
+        input2_grad.get_half_ptr(),
+        m->reset_input_grads[0],
+        m->reset_input_grads[1]);
   } else {
     assert(false && "unsupport datatype in SigmoidSiluMulti");
   }
