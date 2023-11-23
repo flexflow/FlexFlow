@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 #include "flexflow/utils/hash_utils.h"
@@ -23,6 +24,7 @@ using Legion::Domain;
 
 SoftmaxMeta::SoftmaxMeta(FFHandler handler,
                          Softmax const *softmax,
+                         MemoryAllocator &gpu_mem_allocator,
                          Domain const &input_domain)
     : OpMeta(handler, softmax) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
@@ -35,6 +37,11 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
   profiling = softmax->profiling;
   inference_debugging = softmax->inference_debugging;
   std::strcpy(op_name, softmax->name);
+
+  int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
+  size_t size_of_dt = data_type_size(softmax->data_type);
+  lm_head_cache = gpu_mem_allocator.allocate_reserved_untyped(
+      max_tokens_per_batch * size_of_dt);
 }
 
 namespace Kernels {
@@ -131,6 +138,7 @@ void inference_kernel_wrapper(SoftmaxMeta const *m,
     cudaEventRecord(t_start, stream);
   }
   int num_classes = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+
   if (m->output_type[0] == DT_FLOAT) {
     Internal::inference_kernel(m,
                                bc,
@@ -251,6 +259,28 @@ void inference_kernel(SoftmaxMeta const *m,
                       cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
+  // store partial lm_head output
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    if (!bc->requestsInfo[i].peft_bwd) {
+      continue;
+    }
+
+    int num_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    int processed_tokens = bc->requestsInfo[i].peft_fwd_tokens;
+    int first_token_offset_in_batch =
+        bc->requestsInfo[i].first_token_offset_in_batch;
+    checkCUDA(cudaMemcpyAsync(
+        static_cast<DT *>(m->lm_head_cache) +
+            (i * bc->max_tokens_per_batch() + processed_tokens) * num_classes,
+        input_ptr + first_token_offset_in_batch * num_classes,
+        sizeof(DT) * num_tokens * num_classes,
+        cudaMemcpyDeviceToDevice,
+        stream));
+  }
+
   float alpha = 1.0f, beta = 0.0f;
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
@@ -309,15 +339,22 @@ void peft_bwd_kernel(SoftmaxMeta const *m,
       token_ids[j] = bc->labelsInfo[j + tokens_previous_requests].token_id;
     }
 
-    DT scale_factor = 1.0 / (bc->requestsInfo[i].num_tokens_in_batch - 1);
+    DT scale_factor = 1.0 / (bc->requestsInfo[i].peft_fwd_tokens - 1);
     // ignore last token
-    checkCUDA(cudaMemsetAsync(
-        input_grad_ptr + (tokens_previous_requests +
-                          bc->requestsInfo[i].num_tokens_in_batch - 1) *
-                             num_classes,
-        0,
-        num_classes * sizeof(DT),
-        stream));
+
+    if (num_bwd_tokens + bc->requestsInfo[i].peft_bwd_tokens >=
+        bc->requestsInfo[i].peft_fwd_tokens) {
+      assert(num_bwd_tokens + bc->requestsInfo[i].peft_bwd_tokens ==
+             bc->requestsInfo[i].peft_fwd_tokens);
+      checkCUDA(cudaMemsetAsync(
+          input_grad_ptr + (tokens_previous_requests +
+                            bc->requestsInfo[i].num_tokens_in_batch - 1) *
+                               num_classes,
+          0,
+          num_classes * sizeof(DT),
+          stream));
+    }
+
     checkCUDA(cudaMemcpyAsync(m->handle.workSpace,
                               token_ids,
                               sizeof(BatchConfig::TokenId) * num_bwd_tokens,

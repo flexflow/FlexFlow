@@ -602,38 +602,112 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
            request.completed_training_steps < request.max_training_steps);
     int num_peft_tokens = request.dataset[0].first.size();
     int num_peft_label_tokens = request.dataset[0].second.size();
-    if (num_peft_tokens + new_bc.num_active_tokens() <=
-        get_max_tokens_per_batch()) {
-      // The last request slot is reserved for PEFT request
-      int peft_req_idx = get_max_requests_per_batch() - 1;
+
+    int peft_req_idx = get_max_requests_per_batch() - 1;
+    if (new_bc.requestsInfo[peft_req_idx].peft_fwd_tokens == 0) {
       assert(new_bc.request_completed[peft_req_idx]);
-      new_bc.request_completed[peft_req_idx] = false;
-      new_bc.requestsInfo[peft_req_idx].first_token_depth_in_request = 0;
-      new_bc.requestsInfo[peft_req_idx].first_token_offset_in_batch =
-          new_bc.num_tokens;
-      new_bc.requestsInfo[peft_req_idx].num_tokens_in_batch = num_peft_tokens;
-      new_bc.requestsInfo[peft_req_idx].max_sequence_length =
-          request.max_sequence_length;
-      new_bc.requestsInfo[peft_req_idx].request_guid = request.guid;
-      new_bc.requestsInfo[peft_req_idx].peft_model_id = request.peft_model_id;
-      new_bc.requestsInfo[peft_req_idx].peft_bwd = true;
-      for (size_t i = 0; i < request.dataset[0].first.size(); i++) {
-        new_bc.tokensInfo[new_bc.num_tokens].token_id =
-            request.dataset[0].first[i];
-        new_bc.tokensInfo[new_bc.num_tokens].request_index = peft_req_idx;
-        new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = i;
-        new_bc.num_tokens++;
-        new_bc.num_peft_tokens++;
+    }
+
+    if (new_bc.requestsInfo[peft_req_idx].peft_fwd_tokens == num_peft_tokens) {
+      // peft bwd
+      int num_partial_peft_tokens =
+          (num_peft_tokens -
+           new_bc.requestsInfo[peft_req_idx].first_token_depth_in_request) >=
+                  BatchConfig::MAX_PEFT_TOKENS
+              ? BatchConfig::MAX_PEFT_TOKENS
+              : (num_peft_tokens - new_bc.requestsInfo[peft_req_idx]
+                                       .first_token_depth_in_request);
+
+      int num_bwd_tokens = new_bc.requestsInfo[peft_req_idx].peft_bwd_tokens;
+      if (num_partial_peft_tokens + new_bc.num_active_tokens() <=
+          get_max_tokens_per_batch()) {
+        // The last request slot is reserved for PEFT request
+
+        new_bc.request_completed[peft_req_idx] = false;
+        // new_bc.requestsInfo[peft_req_idx].first_token_depth_in_request =
+        new_bc.requestsInfo[peft_req_idx].first_token_offset_in_batch =
+            new_bc.num_tokens;
+        new_bc.requestsInfo[peft_req_idx].num_tokens_in_batch =
+            num_partial_peft_tokens;
+        new_bc.requestsInfo[peft_req_idx].max_sequence_length =
+            request.max_sequence_length;
+        new_bc.requestsInfo[peft_req_idx].request_guid = request.guid;
+        new_bc.requestsInfo[peft_req_idx].peft_model_id = request.peft_model_id;
+        new_bc.requestsInfo[peft_req_idx].peft_bwd = true;
+
+        for (size_t i = 0; i < num_partial_peft_tokens; i++) {
+          new_bc.tokensInfo[new_bc.num_tokens].token_id =
+              request.dataset[0].first[num_peft_tokens - num_bwd_tokens - i];
+          new_bc.tokensInfo[new_bc.num_tokens].request_index = peft_req_idx;
+          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+              num_peft_tokens - num_bwd_tokens - i;
+          new_bc.num_tokens++;
+          new_bc.num_peft_tokens++;
+        }
+        new_bc.requestsInfo[peft_req_idx].peft_fwd_tokens +=
+            num_partial_peft_tokens;
+        for (size_t i = 0; i < num_partial_peft_tokens; i++) {
+          new_bc.labelsInfo[new_bc.num_peft_label_tokens].token_id =
+              request.dataset[0]
+                  .second[num_peft_label_tokens - num_bwd_tokens - i];
+          new_bc.labelsInfo[new_bc.num_peft_label_tokens].request_index =
+              peft_req_idx;
+          int depth = request.dataset[0].first.size() - num_bwd_tokens - i;
+          new_bc.labelsInfo[new_bc.num_peft_label_tokens].abs_depth_in_request =
+              depth;
+          new_bc.num_peft_label_tokens++;
+        }
       }
-      for (size_t i = 0; i < request.dataset[0].second.size(); i++) {
-        new_bc.labelsInfo[new_bc.num_peft_label_tokens].token_id =
-            request.dataset[0].second[i];
-        new_bc.labelsInfo[new_bc.num_peft_label_tokens].request_index =
-            peft_req_idx;
-        int depth = request.dataset[0].first.size() + i;
-        new_bc.labelsInfo[new_bc.num_peft_label_tokens].abs_depth_in_request =
-            depth;
-        new_bc.num_peft_label_tokens++;
+
+    } else {
+      int num_partial_peft_tokens =
+          (num_peft_tokens -
+           new_bc.requestsInfo[peft_req_idx].first_token_depth_in_request) >=
+                  BatchConfig::MAX_PEFT_TOKENS
+              ? BatchConfig::MAX_PEFT_TOKENS
+              : (num_peft_tokens - new_bc.requestsInfo[peft_req_idx]
+                                       .first_token_depth_in_request);
+      int num_fwd_tokens = new_bc.requestsInfo[peft_req_idx].peft_fwd_tokens;
+      new_bc.requestsInfo[peft_req_idx].peft_bwd_tokens = num_peft_tokens;
+
+      if (num_partial_peft_tokens + new_bc.num_active_tokens() <=
+          get_max_tokens_per_batch()) {
+        // The last request slot is reserved for PEFT request
+
+        new_bc.request_completed[peft_req_idx] = false;
+        new_bc.requestsInfo[peft_req_idx].first_token_depth_in_request =
+            num_fwd_tokens;
+        new_bc.requestsInfo[peft_req_idx].first_token_offset_in_batch =
+            new_bc.num_tokens;
+        new_bc.requestsInfo[peft_req_idx].num_tokens_in_batch =
+            num_partial_peft_tokens;
+        new_bc.requestsInfo[peft_req_idx].max_sequence_length =
+            request.max_sequence_length;
+        new_bc.requestsInfo[peft_req_idx].request_guid = request.guid;
+        new_bc.requestsInfo[peft_req_idx].peft_model_id = request.peft_model_id;
+        new_bc.requestsInfo[peft_req_idx].peft_bwd = false;
+
+        for (size_t i = 0; i < num_partial_peft_tokens; i++) {
+          new_bc.tokensInfo[new_bc.num_tokens].token_id =
+              request.dataset[0].first[i + num_fwd_tokens];
+          new_bc.tokensInfo[new_bc.num_tokens].request_index = peft_req_idx;
+          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+              i + num_fwd_tokens;
+          new_bc.num_tokens++;
+          new_bc.num_peft_tokens++;
+        }
+        new_bc.requestsInfo[peft_req_idx].peft_fwd_tokens +=
+            num_partial_peft_tokens;
+        for (size_t i = 0; i < num_partial_peft_tokens; i++) {
+          new_bc.labelsInfo[new_bc.num_peft_label_tokens].token_id =
+              request.dataset[0].second[i + num_fwd_tokens];
+          new_bc.labelsInfo[new_bc.num_peft_label_tokens].request_index =
+              peft_req_idx;
+          int depth = request.dataset[0].first.size() + i + num_fwd_tokens;
+          new_bc.labelsInfo[new_bc.num_peft_label_tokens].abs_depth_in_request =
+              depth;
+          new_bc.num_peft_label_tokens++;
+        }
       }
     }
   }

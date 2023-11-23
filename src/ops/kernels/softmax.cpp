@@ -24,6 +24,7 @@ using Legion::Domain;
 
 SoftmaxMeta::SoftmaxMeta(FFHandler handler,
                          Softmax const *softmax,
+                         MemoryAllocator &gpu_mem_allocator,
                          Domain const &input_domain)
     : OpMeta(handler) {
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));

@@ -6,6 +6,7 @@
 #include "flexflow/node.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/softmax_params.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
