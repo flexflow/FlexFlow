@@ -109,8 +109,9 @@ else()
     message( STATUS "NCCL include : ${NCCL_INCLUDE_DIRS}" )
     message( STATUS "NCCL libraries : ${NCCL_LIBRARIES}" )
     add_library(nccl SHARED IMPORTED)
+  
+  # Build NCCL from source
   else()
-    # Build NCCL from source
     message(STATUS "Building NCCL from source")
     list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_NVCC_GENCODE)
   
