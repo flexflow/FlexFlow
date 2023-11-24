@@ -24,16 +24,12 @@ namespace FlexFlow {
 using Legion::coord_t;
 
 #define C10_WARP_SIZE 32
-constexpr int kCUDABlockReduceNumThreads = 512;
-constexpr int kCUDANumThreads = 256;
 
 RMSNormMeta::RMSNormMeta(FFHandler handler,
                          RMSNorm const *rms,
                          MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, rms) {
   eps = rms->eps;
-  alpha = 1.0f;
-  beta = 0.0f;
 
   in_dim = rms->data_dim;
   batch_size = rms->effective_batch_size;
@@ -41,15 +37,11 @@ RMSNormMeta::RMSNormMeta(FFHandler handler,
 
   DataType data_type = rms->weights[0]->data_type;
   size_t rms_ptr_size = batch_size;
-  size_t c2_ptr_size = rms_ptr_size;
   size_t norm_ptr_size = num_elements;
-  size_t totalSize =
-      (rms_ptr_size + c2_ptr_size + norm_ptr_size) * data_type_size(data_type);
+  size_t totalSize = (rms_ptr_size + norm_ptr_size) * data_type_size(data_type);
   gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
   rms_ptr = gpu_mem_allocator.allocate_instance_untyped(
       rms_ptr_size * data_type_size(data_type));
-  c2_ptr = gpu_mem_allocator.allocate_instance_untyped(
-      c2_ptr_size * data_type_size(data_type));
   norm_ptr = gpu_mem_allocator.allocate_instance_untyped(
       norm_ptr_size * data_type_size(data_type));
 }
@@ -101,25 +93,6 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 }
 
 template <typename T>
-__inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
-  int const lid = threadIdx.x % C10_WARP_SIZE;
-  int const wid = threadIdx.x / C10_WARP_SIZE;
-  val = WarpReduceSum(val);
-  __syncthreads();
-  if (lid == 0) {
-    shared[wid] = val;
-  }
-  __syncthreads();
-  val = (threadIdx.x < (min(blockDim.x, max_num_threads) / C10_WARP_SIZE))
-            ? shared[lid]
-            : T(0);
-  if (wid == 0) {
-    val = WarpReduceSum(val);
-  }
-  return val;
-}
-
-template <typename T>
 __global__ void RMSNormFusedForwardKernel(int64_t N,
                                           float eps,
                                           T const *X,
@@ -130,16 +103,11 @@ __global__ void RMSNormFusedForwardKernel(int64_t N,
   __shared__ float v_shared[C10_WARP_SIZE];
   int64_t const i = blockIdx.x;
   float sum = 0.0f;
-  for (int64_t j = threadIdx.x; j < N;
-       j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
+  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     int64_t const index = i * N + j;
     sum += (static_cast<float>(X[index]) * static_cast<float>(X[index]));
   }
-  sum = BlockReduceSum<float>(
-      sum,
-      v_shared,
-      min(blockDim.x,
-          kCUDABlockReduceNumThreads)); // use BlockReduceSum() to sum X_ij^2
+  sum = BlockReduceSum<float>(sum, v_shared);
 
   if (threadIdx.x == 0) {
     rms[i] = static_cast<T>(rsqrt((sum / static_cast<float>(N)) + eps));
@@ -147,10 +115,9 @@ __global__ void RMSNormFusedForwardKernel(int64_t N,
 
   __syncthreads();
 
-  using T_ACC = T;
-  for (int64_t j = threadIdx.x; j < N; j += min(blockDim.x, kCUDANumThreads)) {
+  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     const int64_t index = i * N + j;
-    Y[index] = static_cast<T_ACC>(X[index]) * static_cast<T_ACC>(rms[i]);
+    Y[index] = static_cast<T>(X[index]) * static_cast<T>(rms[i]);
     output[index] = Y[index] * weights[index % N];
   }
 }
@@ -162,24 +129,15 @@ void forward_kernel(RMSNormMeta const *m,
                     T *output_ptr,
                     cudaStream_t stream) {
 
-  std::pair<int, int> kernel1_parallelism =
-      std::make_pair(m->batch_size, kCUDABlockReduceNumThreads);
-  std::pair<int, int> kernel2_parallelism =
-      std::make_pair(m->batch_size, kCUDANumThreads);
-
-  int num_blocks =
-      std::max(kernel1_parallelism.first, kernel2_parallelism.first);
-  int num_threads =
-      std::max(kernel1_parallelism.second, kernel2_parallelism.second);
-
   RMSNormFusedForwardKernel<T>
-      <<<num_blocks, num_threads, 0, stream>>>(m->in_dim,
-                                               m->eps,
-                                               input_ptr,
-                                               static_cast<T *>(m->rms_ptr),
-                                               static_cast<T *>(m->norm_ptr),
-                                               weight_ptr,
-                                               output_ptr);
+      <<<m->batch_size, std::min(CUDA_NUM_THREADS, m->in_dim), 0, stream>>>(
+          m->in_dim,
+          m->eps,
+          input_ptr,
+          static_cast<T *>(m->rms_ptr),
+          static_cast<T *>(m->norm_ptr),
+          weight_ptr,
+          output_ptr);
 }
 
 void forward_kernel_wrapper(RMSNormMeta const *m,
@@ -326,14 +284,20 @@ __global__ void ComputeInternalGradientsCUDAKernel(
     int64_t N, T const *dY, T const *X, T const *gamma, T const *rrms, T *c2) {
   __shared__ T ds_storage[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
-  T ds = 0;
+  float ds = 0;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     int const index = i * N + j;
-    ds += dY[index] * X[index] * gamma[j];
+    ds += static_cast<float>(dY[index]) * static_cast<float>(X[index]) *
+          static_cast<float>(gamma[j]);
   }
   ds = BlockReduceSum<T>(ds, ds_storage);
   if (threadIdx.x == 0) {
-    c2[i] = -ds * (rrms[i] * rrms[i] * rrms[i]) / static_cast<T>((int)N);
+    float const c2_val =
+        -ds *
+        (static_cast<float>(rrms[i]) * static_cast<float>(rrms[i]) *
+         static_cast<float>(rrms[i])) /
+        static_cast<float>((int)N);
+    c2[i] = static_cast<T>(c2_val);
   }
 }
 
@@ -344,11 +308,20 @@ __global__ void RMSNormBackwardCUDAKernel(int64_t N,
                                           T const *gamma,
                                           T const *c1,
                                           T const *c2,
-                                          T *dX) {
+                                          T *dX,
+                                          bool reset_input_grad) {
   const int64_t i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     const int64_t index = i * N + j;
-    dX[index] = c1[i] * dY[index] * gamma[j] + c2[i] * X[index];
+    float const dX_val =
+        static_cast<float>(c1[i]) * static_cast<float>(dY[index]) *
+            static_cast<float>(gamma[j]) +
+        static_cast<float>(c2[i]) * static_cast<float>(X[index]);
+    if (reset_input_grad) {
+      dX[index] = dX_val;
+    } else {
+      dX[index] += dX_val;
+    }
   }
 }
 
@@ -376,33 +349,33 @@ void backward_kernel(RMSNormMeta const *m,
                      T const *weight_ptr,
                      T *weight_grad_ptr,
                      cudaStream_t stream) {
-  const int64_t M = m->batch_size;
-  const int64_t N = m->num_elements;
+  int M = m->batch_size;
+  int N = m->in_dim;
   ComputeInternalGradientsCUDAKernel<T>
-      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+      <<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
           N,
           output_grad_ptr,
           input_ptr,
           weight_ptr,
           static_cast<T *>(m->rms_ptr),
-          static_cast<T *>(m->c2_ptr));
+          static_cast<T *>(m->norm_ptr));
 
-  RMSNormBackwardCUDAKernel<T>
-      <<<M, kCUDANumThreads, 0, stream>>>(N,
-                                          output_grad_ptr,
-                                          input_ptr,
-                                          weight_ptr,
-                                          static_cast<T *>(m->rms_ptr),
-                                          static_cast<T *>(m->c2_ptr),
-                                          input_grad_ptr);
-  const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
-  GammaBackwardCUDAKernel<T>
-      <<<B, kCUDANumThreads, 0, stream>>>(M,
-                                          N,
-                                          output_grad_ptr,
-                                          input_ptr,
-                                          static_cast<T *>(m->rms_ptr),
-                                          weight_grad_ptr);
+  RMSNormBackwardCUDAKernel<T><<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
+      m->in_dim,
+      output_grad_ptr,
+      input_ptr,
+      weight_ptr,
+      static_cast<T *>(m->rms_ptr),
+      static_cast<T *>(m->norm_ptr),
+      input_grad_ptr,
+      m->reset_input_grads[0]);
+  GammaBackwardCUDAKernel<T><<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
+      M,
+      N,
+      output_grad_ptr,
+      input_ptr,
+      static_cast<T *>(m->rms_ptr),
+      weight_grad_ptr);
 }
 
 void backward_kernel_wrapper(RMSNormMeta const *m,
@@ -475,24 +448,26 @@ void peft_bwd_kernel(RMSNormMeta const *m,
       continue;
     }
 
-    const int64_t M = bc->requestsInfo[i].num_tokens_in_batch;
-    const int64_t N = m->num_elements;
+    int M = bc->requestsInfo[i].num_tokens_in_batch;
+    int N = m->num_elements;
     ComputeInternalGradientsCUDAKernel<T>
-        <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+        <<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
             N,
             output_grad_ptr,
             static_cast<T *>(m->input_activation),
             weight_ptr,
             static_cast<T *>(m->rms_ptr),
-            static_cast<T *>(m->c2_ptr));
-    RMSNormBackwardCUDAKernel<T><<<M, kCUDANumThreads, 0, stream>>>(
-        N,
-        output_grad_ptr,
-        static_cast<T *>(m->input_activation),
-        weight_ptr,
-        static_cast<T *>(m->rms_ptr),
-        static_cast<T *>(m->c2_ptr),
-        input_grad_ptr);
+            static_cast<T *>(m->norm_ptr));
+    RMSNormBackwardCUDAKernel<T>
+        <<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
+            m->in_dim,
+            output_grad_ptr,
+            static_cast<T *>(m->input_activation),
+            weight_ptr,
+            static_cast<T *>(m->rms_ptr),
+            static_cast<T *>(m->norm_ptr),
+            input_grad_ptr,
+            m->reset_input_grads[0]);
   }
 }
 
