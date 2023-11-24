@@ -272,9 +272,8 @@ void SigmoidSiluMulti::peft_bwd_kernel_wrapper(
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
-  int num_elements = output_grad.domain.get_volume();
-  assert(input1_grad.domain.get_volume() == num_elements);
-  assert(input2_grad.domain.get_volume() == num_elements);
+  assert(input1_grad.domain.get_volume() == output_grad.domain.get_volume());
+  assert(input2_grad.domain.get_volume() == input1_grad.domain.get_volume());
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -306,19 +305,20 @@ void SigmoidSiluMulti::peft_bwd_kernel_wrapper(
     assert(num_peft_tokens >= 1);
   }
   int in_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
+  int num_elements = in_dim * num_peft_tokens;
 
   if (m->input_type[0] == DT_FLOAT) {
     SigmoidSiluMultiBackwardKernel<<<GET_BLOCKS(num_elements),
                                      min(CUDA_NUM_THREADS, num_elements),
                                      0,
                                      stream>>>(
-        output_grad.domain.get_volume(),
+        num_elements,
         output_grad.get_float_ptr(),
         static_cast<float const *>(m->input_activation),
         static_cast<float const *>(m->input_activation) +
             num_peft_tokens * in_dim,
         input1_grad.get_float_ptr(),
-        input1_grad.get_float_ptr(),
+        input2_grad.get_float_ptr(),
         m->reset_input_grads[0],
         m->reset_input_grads[1]);
   } else if (m->input_type[0] == DT_HALF) {
@@ -326,7 +326,7 @@ void SigmoidSiluMulti::peft_bwd_kernel_wrapper(
                                      min(CUDA_NUM_THREADS, num_elements),
                                      0,
                                      stream>>>(
-        output_grad.domain.get_volume(),
+        num_elements,
         output_grad.get_half_ptr(),
         static_cast<half const *>(m->input_activation),
         static_cast<half const *>(m->input_activation) +
