@@ -234,6 +234,18 @@ ResidualRMSNorm::ResidualRMSNorm(FFModel &model,
   }
 }
 
+void ResidualRMSNorm::map_output_tensors(FFModel &ff) {
+  assert(numOutputs == 2);
+  assert(outputs[0]->get_volume() == inputs[0]->get_volume());
+  outputs[0]->parallel_is = inputs[0]->parallel_is;
+  outputs[0]->region = inputs[0]->region;
+  outputs[0]->part = inputs[0]->part;
+  outputs[0]->region_grad = inputs[0]->region_grad;
+  outputs[0]->part_grad = inputs[0]->part_grad;
+  // map output 1 to new region
+  ff.map_tensor(outputs[1], this);
+}
+
 void ResidualRMSNorm::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;

@@ -32,6 +32,7 @@ public:
                   ResidualRMSNorm const &other,
                   Input const &inputs,
                   bool allocate_weights);
+  void map_output_tensors(FFModel &ff) override;
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
