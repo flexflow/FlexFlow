@@ -349,12 +349,12 @@ __global__ void RMSNormBackwardCUDAKernel(int64_t N,
     if (reset_input_grad1) {
       dX1[index] = static_cast<T>(dX_val);
     } else {
-      dX1[index] += dX_val;
+      dX1[index] += static_cast<T>(dX_val);
     }
     if (reset_input_grad2) {
-      dX2[index] = static_cast<T>(dX_val);
+      dX2[index] = static_cast<T>(dX1[index]);
     } else {
-      dX2[index] += dX_val;
+      dX2[index] += static_cast<T>(dX1[index]);
     }
   }
 }
