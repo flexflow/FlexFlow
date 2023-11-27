@@ -57,6 +57,8 @@ FF_VISITABLE_STRUCT(ParallelTensor,
                     initializer,
                     sync_type,
                     name);
+FF_VISIT_FMTABLE(ParallelTensor);
+CHECK_FMTABLE(ParallelTensor);
 
 using ParallelParameter = ParallelTensor;
 

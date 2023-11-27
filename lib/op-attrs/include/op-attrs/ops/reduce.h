@@ -16,6 +16,8 @@ struct ReduceAttrs {
   req<bool> keepdims;
 };
 FF_VISITABLE_STRUCT(ReduceAttrs, axes, op_type, keepdims);
+FF_VISIT_FMTABLE(ReduceAttrs);
+CHECK_FMTABLE(ReduceAttrs);
 CHECK_VALID_OP_ATTR(ReduceAttrs);
 
 } // namespace FlexFlow

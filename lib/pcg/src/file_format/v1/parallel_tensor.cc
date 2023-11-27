@@ -13,7 +13,7 @@ ParallelDim from_v1(V1ParallelDim const &vdim) {
 
 V1ParallelTensorShape to_v1(ParallelTensorShape const &shp) {
   std::vector<V1ParallelDim> pdims;
-  for (ParallelDim const &pdim : shp.dims) {
+  for (ParallelDim const &pdim : shp.dims.data) {
     pdims.emplace_back(to_v1(pdim));
   }
   return {pdims, to_v1(shp.data_type)};

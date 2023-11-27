@@ -21,6 +21,9 @@ FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs,
                     bias,
                     add_bias_kv,
                     add_zero_attn);
+FF_VISIT_FMTABLE(MultiHeadAttentionAttrs);
+CHECK_FMTABLE(MultiHeadAttentionAttrs);
+CHECK_VALID_OP_ATTR(MultiHeadAttentionAttrs);
 
 template <typename TensorType>
 struct MultiHeadAttentionInputs
@@ -70,7 +73,6 @@ ParallelTensorShape
 TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
                              MultiHeadAttentionInputs<TensorShape> const &);
 
-CHECK_VALID_OP_ATTR(MultiHeadAttentionAttrs);
 } // namespace FlexFlow
 
 #endif

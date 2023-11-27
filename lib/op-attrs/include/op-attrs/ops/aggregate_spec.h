@@ -12,6 +12,9 @@ struct AggregateSpecAttrs {
   req<float> lambda_bal;
 };
 FF_VISITABLE_STRUCT(AggregateSpecAttrs, n, lambda_bal);
+FF_VISIT_FMTABLE(AggregateSpecAttrs);
+CHECK_FMTABLE(AggregateSpecAttrs);
+CHECK_VALID_OP_ATTR(AggregateSpecAttrs);
 
 ParallelTensorShape
     get_output_shape(AggregateSpecAttrs const &,
@@ -21,7 +24,6 @@ ParallelTensorShape
                      ParallelTensorShape const &gate_gradients_full,
                      std::vector<ParallelTensorShape> const &exp_preds);
 
-CHECK_VALID_OP_ATTR(AggregateSpecAttrs);
 } // namespace FlexFlow
 
 #endif

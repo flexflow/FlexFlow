@@ -16,6 +16,9 @@ struct AggregateAttrs {
   req<float> lambda_bal;
 };
 FF_VISITABLE_STRUCT(AggregateAttrs, n, lambda_bal);
+FF_VISIT_FMTABLE(AggregateAttrs);
+CHECK_FMTABLE(AggregateAttrs);
+CHECK_VALID_OP_ATTR(AggregateAttrs);
 
 DataType get_datatype(AggregateAttrs const &);
 bool is_valid(AggregateAttrs const &,
@@ -32,7 +35,6 @@ ParallelTensorShape
                      ParallelTensorShape const &full_gate_gradients,
                      std::vector<ParallelTensorShape> const &exp_preds);
 
-CHECK_VALID_OP_ATTR(AggregateAttrs);
 } // namespace FlexFlow
 
 #endif

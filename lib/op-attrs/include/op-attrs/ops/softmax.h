@@ -12,6 +12,8 @@ struct SoftmaxAttrs {
   ff_dim_t dim;
 };
 FF_VISITABLE_STRUCT(SoftmaxAttrs, dim);
+FF_VISIT_FMTABLE(SoftmaxAttrs);
+CHECK_FMTABLE(SoftmaxAttrs);
 CHECK_VALID_OP_ATTR(SoftmaxAttrs);
 
 } // namespace FlexFlow

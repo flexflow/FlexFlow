@@ -12,8 +12,10 @@ struct CastAttrs {
   req<DataType> dtype;
 };
 FF_VISITABLE_STRUCT(CastAttrs, dtype);
-
+FF_VISIT_FMTABLE(CastAttrs);
+CHECK_FMTABLE(CastAttrs);
 CHECK_VALID_OP_ATTR(CastAttrs);
+
 } // namespace FlexFlow
 
 #endif

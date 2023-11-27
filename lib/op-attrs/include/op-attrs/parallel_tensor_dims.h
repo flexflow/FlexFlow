@@ -53,4 +53,20 @@ TensorDims get_tensor_dims_unsafe(ParallelTensorDims const &);
 
 } // namespace FlexFlow
 
+namespace fmt {
+
+template <>
+struct formatter<::FlexFlow::ParallelTensorDims> : formatter<string_view> {
+  template <typename FormatContext>
+  auto format(::FlexFlow::ParallelTensorDims dims, FormatContext &ctx) const
+      -> decltype(ctx.out()) {
+    using namespace FlexFlow;
+
+    std::vector<ParallelDim> v(dims.data.begin(), dims.data.end());
+    return formatter<string_view>::format(fmt::to_string(v), ctx);
+  }
+};
+
+} // namespace fmt
+
 #endif

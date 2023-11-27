@@ -94,6 +94,32 @@ struct formatter<::FlexFlow::DataType> : formatter<string_view> {
   }
 };
 
+template <>
+struct formatter<::FlexFlow::DataTypeValue> : formatter<string_view> {
+  template <typename FormatContext>
+  auto format(::FlexFlow::DataTypeValue v, FormatContext &ctx)
+      -> decltype(ctx.out()) {
+    using namespace FlexFlow;
+
+    string_view s = "unknown";
+    if (auto const *f32 = get_if<real_type<DataType::FLOAT>>(&v)) {
+      s = fmt::to_string(*f32);
+    } else if (auto const *f64 = get_if<real_type<DataType::DOUBLE>>(&v)) {
+      s = fmt::to_string(*f64);
+    } else if (auto const *i32 = get_if<real_type<DataType::INT32>>(&v)) {
+      s = fmt::to_string(*i32);
+    } else if (auto const *i64 = get_if<real_type<DataType::INT64>>(&v)) {
+      s = fmt::to_string(*i64);
+    } else if (auto const *h = get_if<real_type<DataType::HALF>>(&v)) {
+      s = fmt::to_string(*h);
+    } else if (auto const *b = get_if<real_type<DataType::BOOL>>(&v)) {
+      s = fmt::to_string(*b);
+    }
+    return formatter<string_view>::format(s, ctx);
+  }
+};
+
 } // namespace fmt
+// namespace fmt
 
 #endif

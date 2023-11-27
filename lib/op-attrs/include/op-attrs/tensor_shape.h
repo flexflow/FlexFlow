@@ -21,7 +21,25 @@ public:
 };
 
 FF_VISITABLE_STRUCT(TensorShape, dims, data_type);
+FF_VISIT_FMTABLE(TensorShape);
+CHECK_FMTABLE(TensorShape);
 
 } // namespace FlexFlow
+
+namespace fmt {
+
+template <>
+struct formatter<::FlexFlow::TensorDims> : formatter<string_view> {
+  template <typename FormatContext>
+  auto format(::FlexFlow::TensorDims dims, FormatContext &ctx) const
+      -> decltype(ctx.out()) {
+    using namespace FlexFlow;
+
+    std::vector<size_t> v(dims.begin(), dims.end());
+    return formatter<string_view>::format(fmt::to_string(v), ctx);
+  }
+};
+
+} // namespace fmt
 
 #endif

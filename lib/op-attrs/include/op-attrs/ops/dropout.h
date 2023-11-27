@@ -12,6 +12,8 @@ struct DropoutAttrs {
   req<unsigned long long> seed;
 };
 FF_VISITABLE_STRUCT(DropoutAttrs, rate, seed);
+FF_VISIT_FMTABLE(DropoutAttrs);
+CHECK_FMTABLE(DropoutAttrs);
 CHECK_VALID_OP_ATTR(DropoutAttrs);
 
 } // namespace FlexFlow

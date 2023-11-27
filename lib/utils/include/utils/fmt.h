@@ -67,7 +67,7 @@ auto formatter<::std::unordered_set<T>>::format(
     -> decltype(ctx.out()) {
   CHECK_FMTABLE(T);
 
-  std::string result = join_strings(
+  std::string result = ::FlexFlow::join_strings(
       m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); });
   return formatter<std::string>::format(result, ctx);
 }
@@ -78,7 +78,7 @@ auto formatter<::std::vector<T>>::format(::std::vector<T> const &m,
                                          FormatContext &ctx)
     -> decltype(ctx.out()) {
   CHECK_FMTABLE(T);
-  std::string result = join_strings(
+  std::string result = ::FlexFlow::join_strings(
       m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); });
   return formatter<std::string>::format(result, ctx);
 }

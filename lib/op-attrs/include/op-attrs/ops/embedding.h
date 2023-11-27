@@ -21,6 +21,8 @@ struct EmbeddingAttrs {
   req<DataType> data_type;
 };
 FF_VISITABLE_STRUCT(EmbeddingAttrs, num_entries, out_channels, aggr, data_type);
+FF_VISIT_FMTABLE(EmbeddingAttrs);
+CHECK_FMTABLE(EmbeddingAttrs);
 CHECK_VALID_OP_ATTR(EmbeddingAttrs);
 
 TensorShape get_weights_shape(EmbeddingAttrs const &, TensorShape const &);

@@ -12,6 +12,8 @@ struct ParallelDim {
   req<bool> is_replica_dim;
 };
 FF_VISITABLE_STRUCT(ParallelDim, size, degree, is_replica_dim);
+FF_VISIT_FMTABLE(ParallelDim);
+CHECK_FMTABLE(ParallelDim);
 
 bool is_valid(ParallelDim const &);
 bool is_replica_dim(ParallelDim const &);

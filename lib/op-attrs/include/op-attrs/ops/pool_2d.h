@@ -27,6 +27,8 @@ FF_VISITABLE_STRUCT(Pool2DAttrs,
                     padding_w,
                     pool_type,
                     activation);
+FF_VISIT_FMTABLE(Pool2DAttrs);
+CHECK_FMTABLE(Pool2DAttrs);
 CHECK_VALID_OP_ATTR(Pool2DAttrs);
 
 } // namespace FlexFlow

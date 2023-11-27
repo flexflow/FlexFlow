@@ -13,6 +13,8 @@ struct RepartitionAttrs {
   req<int> repartition_degree;
 };
 FF_VISITABLE_STRUCT(RepartitionAttrs, repartition_dim, repartition_degree);
+FF_VISIT_FMTABLE(RepartitionAttrs);
+CHECK_FMTABLE(RepartitionAttrs);
 CHECK_VALID_OP_ATTR(RepartitionAttrs);
 
 } // namespace FlexFlow

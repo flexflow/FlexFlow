@@ -11,6 +11,8 @@ struct ReverseAttrs {
   ff_dim_t axis;
 };
 FF_VISITABLE_STRUCT(ReverseAttrs, axis);
+FF_VISIT_FMTABLE(ReverseAttrs);
+CHECK_FMTABLE(ReverseAttrs);
 CHECK_VALID_OP_ATTR(ReverseAttrs);
 
 } // namespace FlexFlow

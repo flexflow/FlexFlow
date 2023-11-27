@@ -14,6 +14,8 @@ struct LayerNormAttrs {
   req<float> eps;
 };
 FF_VISITABLE_STRUCT(LayerNormAttrs, axes, elementwise_affine, eps);
+FF_VISIT_FMTABLE(LayerNormAttrs);
+CHECK_FMTABLE(LayerNormAttrs);
 CHECK_VALID_OP_ATTR(LayerNormAttrs);
 
 } // namespace FlexFlow

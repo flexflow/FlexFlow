@@ -25,6 +25,8 @@ public:
 };
 FF_VISITABLE_STRUCT(
     Tensor, dims, data_type, create_gradients, initializer, sync_type, name);
+FF_VISIT_FMTABLE(Tensor);
+CHECK_FMTABLE(Tensor);
 
 using Parameter = Tensor;
 

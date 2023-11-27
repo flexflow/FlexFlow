@@ -35,6 +35,8 @@ public:
   req<DataType> data_type;
 };
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ParallelTensorShape, dims, data_type);
+FF_VISIT_FMTABLE(ParallelTensorShape);
+CHECK_FMTABLE(ParallelTensorShape);
 
 TensorShape get_piece_shape(ParallelTensorShape const &);
 int get_num_replica_dims(ParallelTensorShape const &);

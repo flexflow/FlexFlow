@@ -12,6 +12,8 @@ struct ConcatAttrs {
   ff_dim_t axis;
 };
 FF_VISITABLE_STRUCT(ConcatAttrs, axis);
+FF_VISIT_FMTABLE(ConcatAttrs);
+CHECK_FMTABLE(ConcatAttrs);
 CHECK_VALID_OP_ATTR(ConcatAttrs);
 
 } // namespace FlexFlow

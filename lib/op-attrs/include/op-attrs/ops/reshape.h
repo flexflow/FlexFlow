@@ -11,6 +11,8 @@ struct ReshapeAttrs {
   TensorShape shape;
 };
 FF_VISITABLE_STRUCT(ReshapeAttrs, shape);
+FF_VISIT_FMTABLE(ReshapeAttrs);
+CHECK_FMTABLE(ReshapeAttrs);
 CHECK_VALID_OP_ATTR(ReshapeAttrs);
 
 } // namespace FlexFlow

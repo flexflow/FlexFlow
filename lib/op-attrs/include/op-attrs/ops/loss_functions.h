@@ -22,12 +22,16 @@ struct SparseCategoricalCrossEntropyLossAttrs {
   req<bool> replace_labels; // for aggregate_spec: More predictions than labels
 };
 FF_VISITABLE_STRUCT(SparseCategoricalCrossEntropyLossAttrs, replace_labels);
+FF_VISIT_FMTABLE(SparseCategoricalCrossEntropyLossAttrs);
+CHECK_FMTABLE(SparseCategoricalCrossEntropyLossAttrs);
 CHECK_VALID_OP_ATTR(SparseCategoricalCrossEntropyLossAttrs);
 
 struct OtherLossAttrs {
   req<LossFunction> loss_type;
 };
 FF_VISITABLE_STRUCT(OtherLossAttrs, loss_type);
+FF_VISIT_FMTABLE(OtherLossAttrs);
+CHECK_FMTABLE(OtherLossAttrs);
 CHECK_VALID_OP_ATTR(OtherLossAttrs);
 
 using LossAttrs =
