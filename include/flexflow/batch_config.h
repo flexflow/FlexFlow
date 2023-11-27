@@ -61,7 +61,11 @@ public:
   static int const MAX_NUM_TOKENS = 1024;
 
   //  Set by update
+
   int num_tokens = 0, num_peft_tokens = 0, num_peft_label_tokens = 0;
+  // number of tokens in prompt phase, start offset of tokens in inc_decoding
+  // phase. num_tokens - num_prompt_tokens = num_generation_tokens;
+  int num_generation_tokens=0;
 
   struct PerRequestInfo {
     PerRequestInfo() {

@@ -29,7 +29,7 @@ public:
 
   IncMultiHeadSelfAttention(FFModel &model,
                             LayerID const &layer_guid,
-                            const ParallelTensor _input,
+                            ParallelTensor const _input,
                             int _embed_dim,
                             int _num_q_heads,
                             int _num_kv_heads,
@@ -50,8 +50,8 @@ public:
                             int _tensor_parallelism_degree,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
-                            const ParallelTensor _input,
-                            const ParallelTensor _weight,
+                            ParallelTensor const _input,
+                            ParallelTensor const _weight,
                             int _embed_dim,
                             int _num_q_heads,
                             int _num_kv_heads,
@@ -73,7 +73,7 @@ public:
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
                             IncMultiHeadSelfAttention const &other,
-                            const ParallelTensor input,
+                            ParallelTensor const input,
                             bool allocate_weights);
   IncMultiHeadSelfAttention(FFModel &model,
                             Params const &params,
@@ -207,9 +207,11 @@ public:
   void *attn_heads;
   char *quantized_weight_ptr;
   BatchConfig::PerTokenInfo *token_infos;
+  BatchConfig::PerRequestInfo *request_infos;
   DataType quantization_type;
   bool offload;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  // cudaStream_t task_local_stream;
   cudnnTensorDescriptor_t qk_tensor;
   cuFloatComplex *complex_input;
 #elif defined(FF_USE_HIP_ROCM)

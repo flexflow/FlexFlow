@@ -378,6 +378,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       // log_req_mgr.print("Output: %s", output.c_str());
     }
   }
+  int num_generation_tokens = 0;
 
   // Step 2: prepare the next batch for existing requests
   BatchConfig new_bc;
@@ -511,6 +512,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
               request.tokens.size()) {
             // Incremental phase
             new_bc.requestsInfo[i].num_tokens_in_batch = 1;
+            num_generation_tokens++;
           } else {
             // Prompt phase
             new_bc.requestsInfo[i].num_tokens_in_batch = std::min(
@@ -534,6 +536,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       }
     }
   }
+  new_bc.num_generation_tokens = num_generation_tokens;
 
   // Step 3: add new requests to the next batch if there is space
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
@@ -690,6 +693,8 @@ BeamSearchBatchConfig
   new_bc.num_tokens = 0;
   new_bc.model_id = model_id;
   int result_index = 0;
+
+  int num_generation_tokens = 0;
 
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (old_bc.request_completed[i]) {
@@ -1017,6 +1022,7 @@ BeamSearchBatchConfig
       }
     }
   }
+  new_bc.num_generation_tokens = num_generation_tokens;
 
   if (verbose) {
     std::cout << "prepare_next_batch_init OLD vs NEW batchconfigs below:"
@@ -1079,6 +1085,7 @@ BeamSearchBatchConfig
   BeamSearchBatchConfig new_bc;
   new_bc.model_id = old_bc.model_id;
   // std::cout << "old_bc.model_id: " << old_bc.model_id << "\n";
+  int num_generation_tokens = 0;
 
   // Add incremental tokens to the batch
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
@@ -1283,11 +1290,13 @@ BeamSearchBatchConfig
 
           new_bc.beamTokenInfo[new_bc.num_tokens].sub_request_index = k;
           new_bc.num_tokens++;
+          num_generation_tokens++;
         }
       }
     }
   }
 
+  new_bc.num_generation_tokens = num_generation_tokens;
   if (verbose) {
     std::cout << "prepare_next_batch_beam OLD vs NEW batchconfigs:"
               << std::endl;
