@@ -32,9 +32,6 @@ public:
   void *rms_ptr;
   void *norm_ptr;
 
-  float alpha;
-  float beta;
-
   int in_dim;
   int batch_size;
   int num_elements;

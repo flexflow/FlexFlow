@@ -31,10 +31,6 @@ public:
   float eps;
   void *rms_ptr;
   void *norm_ptr;
-  void *c2_ptr;
-
-  float alpha;
-  float beta;
 
   int in_dim;
   int batch_size;

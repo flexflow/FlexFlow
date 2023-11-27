@@ -24,16 +24,12 @@ namespace FlexFlow {
 using Legion::coord_t;
 
 #define C10_WARP_SIZE 32
-constexpr int kCUDABlockReduceNumThreads = 512;
-constexpr int kCUDANumThreads = 256;
 
 ResidualRMSNormMeta::ResidualRMSNormMeta(FFHandler handler,
                                          ResidualRMSNorm const *rms,
                                          MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, rms) {
   eps = rms->eps;
-  alpha = 1.0f;
-  beta = 0.0f;
 
   in_dim = rms->data_dim;
   batch_size = rms->effective_batch_size;
@@ -90,25 +86,6 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
   }
   __syncthreads();
   val = (threadIdx.x < (blockDim.x / C10_WARP_SIZE)) ? shared[lid] : T(0);
-  if (wid == 0) {
-    val = WarpReduceSum(val);
-  }
-  return val;
-}
-
-template <typename T>
-__inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
-  int const lid = threadIdx.x % C10_WARP_SIZE;
-  int const wid = threadIdx.x / C10_WARP_SIZE;
-  val = WarpReduceSum(val);
-  __syncthreads();
-  if (lid == 0) {
-    shared[wid] = val;
-  }
-  __syncthreads();
-  val = (threadIdx.x < (min(blockDim.x, max_num_threads) / C10_WARP_SIZE))
-            ? shared[lid]
-            : T(0);
   if (wid == 0) {
     val = WarpReduceSum(val);
   }
@@ -359,7 +336,9 @@ __global__ void RMSNormBackwardCUDAKernel(int64_t N,
                                           T const *c1,
                                           T const *c2,
                                           T *dX1,
-                                          T *dX2) {
+                                          T *dX2,
+                                          bool reset_input_grad1,
+                                          bool reset_input_grad2) {
   const int64_t i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     const int64_t index = i * N + j;
@@ -367,10 +346,16 @@ __global__ void RMSNormBackwardCUDAKernel(int64_t N,
         static_cast<float>(c1[i]) * static_cast<float>(dY[index]) *
             static_cast<float>(gamma[j]) +
         static_cast<float>(c2[i]) * static_cast<float>(X[index]);
-    // dX1[index] += dX_val;
-    // dX2[index] += dX_val;
-    dX1[index] = static_cast<T>(dX_val);
-    dX2[index] = static_cast<T>(dX_val);
+    if (reset_input_grad1) {
+      dX1[index] = static_cast<T>(dX_val);
+    } else {
+      dX1[index] += static_cast<T>(dX_val);
+    }
+    if (reset_input_grad2) {
+      dX2[index] = static_cast<T>(dX1[index]);
+    } else {
+      dX2[index] += static_cast<T>(dX1[index]);
+    }
   }
 }
 
@@ -399,10 +384,10 @@ void backward_kernel(ResidualRMSNormMeta const *m,
                      T const *weight_ptr,
                      T *weight_grad_ptr,
                      cudaStream_t stream) {
-  const int64_t M = m->batch_size;
-  const int64_t N = m->num_elements;
+  int M = m->batch_size;
+  int N = m->in_dim;
   ComputeInternalGradientsCUDAKernel<T>
-      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+      <<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
           N,
           output_grad_ptr,
           residual_output_rms_input_ptr,
@@ -410,23 +395,25 @@ void backward_kernel(ResidualRMSNormMeta const *m,
           static_cast<T *>(m->rms_ptr),
           static_cast<T *>(m->norm_ptr));
 
-  RMSNormBackwardCUDAKernel<T>
-      <<<M, kCUDANumThreads, 0, stream>>>(N,
-                                          output_grad_ptr,
-                                          residual_output_rms_input_ptr,
-                                          weight_ptr,
-                                          static_cast<T *>(m->rms_ptr),
-                                          static_cast<T *>(m->norm_ptr),
-                                          residual_input0_grad_ptr,
-                                          residual_input1_grad_ptr);
-  const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
-  GammaBackwardCUDAKernel<T>
-      <<<B, kCUDANumThreads, 0, stream>>>(M,
-                                          N,
-                                          output_grad_ptr,
-                                          residual_output_rms_input_ptr,
-                                          static_cast<T *>(m->rms_ptr),
-                                          weight_grad_ptr);
+  RMSNormBackwardCUDAKernel<T><<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
+      N,
+      output_grad_ptr,
+      residual_output_rms_input_ptr,
+      weight_ptr,
+      static_cast<T *>(m->rms_ptr),
+      static_cast<T *>(m->norm_ptr),
+      residual_input0_grad_ptr,
+      residual_input1_grad_ptr,
+      m->reset_input_grads[0],
+      m->reset_input_grads[1]);
+
+  GammaBackwardCUDAKernel<T><<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
+      M,
+      N,
+      output_grad_ptr,
+      residual_output_rms_input_ptr,
+      static_cast<T *>(m->rms_ptr),
+      weight_grad_ptr);
 }
 
 template <typename T>
@@ -450,8 +437,7 @@ void peft_bwd_kernel(ResidualRMSNormMeta const *m,
       continue;
     }
 
-    int M = m->batch_size; // TODO: replace with
-                           // m->requestsInfo[i].num_tokens_in_batch;
+    int M = bc->requestsInfo[i].num_tokens_in_batch;
     int N = m->in_dim;
 
     T const *residual_output_rms_input_ptr =
@@ -468,14 +454,16 @@ void peft_bwd_kernel(ResidualRMSNormMeta const *m,
 
     RMSNormBackwardCUDAKernel<T>
         <<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
-            m->in_dim,
+            N,
             output_grad_ptr,
             residual_output_rms_input_ptr,
             weight_ptr,
             static_cast<T *>(m->rms_ptr),
             static_cast<T *>(m->norm_ptr),
             residual_input0_grad_ptr,
-            residual_input1_grad_ptr);
+            residual_input1_grad_ptr,
+            m->reset_input_grads[0],
+            m->reset_input_grads[1]);
   }
 }
 
