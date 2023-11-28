@@ -84,35 +84,7 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOy5NKYdE8Cwgid59rx6xMqyj9vLaWuXIwy/BSRiK4su
 
 ## 5. Test FlexFlow
 
-<<<<<<< HEAD
-Follow step 6 in the [Build from source guide](https://flexflow.readthedocs.io/en/latest/installation.html) to set environment variables.
+Follow step 6 in the [Build from source guide](https://flexflow.readthedocs.io/en/latest/installation.html) to set the environment variables.
 
-A script to run a Python example on multiple nodes is available at `scripts/mnist_mlp_run.sh`. You can run the script using [`mpirun`](https://www.open-mpi.org/doc/current/man1/mpirun.1.php) (if you configured it in step 3) or [`srun`](https://slurm.schedmd.com/srun.html).
-=======
-Follow step 6 in [INSTALL.md](INSTALL.md#6-test-flexflow) to set environment variables.
+A script to run a Python example on multiple nodes is available at `scripts/mnist_mlp_run.sh`. Run the script to test FlexFlow on mnist mlp training. You can adjust the script to run any other program. Make sure to change the `FLEXFLOW_DIR` and `UCX_DIR` variables in it to appropriate paths. 
 
-Save the following script as `mnist_mlp_run.sh` and make sure to change `FLEXFLOW_DIR` and `UCX_DIR` to appropriate paths:
-
-```bash
-#!/bin/bash
-eval "$(conda shell.bash hook)"
-conda activate flexflow
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
-
-# Path to your FlexFlow build
-FLEXFLOW_DIR=/home/ubuntu/FlexFlow/build
-
-# Path to your UCX installation
-UCX_DIR=/home/ubuntu/ucx-1.15.0/install
-
-export REALM_UCP_BOOTSTRAP_PLUGIN=$FLEXFLOW_DIR/deps/legion/lib/realm_ucp_bootstrap_mpi.so
-export LD_LIBRARY_PATH=$FLEXFLOW_DIR/deps/legion/lib:$LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=$FLEXFLOW_DIR:$LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=$UCX_DIR/lib:$LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=/opt/conda/envs/flexflow/lib:$LD_LIBRARY_PATH
-
-mpiexec -x REALM_UCP_BOOTSTRAP_PLUGIN -x PATH -x LD_LIBRARY_PATH --hostfile ~/hostfile --mca btl_tcp_if_include ens5 -np 2 "$FLEXFLOW_DIR"/flexflow_python "$FLEXFLOW_DIR"/../examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize 8000 -ll:zsize 8000
-```
-
-Run the script to test FlexFlow on mnist mlp training. You can adjust the script to run any other program.
->>>>>>> c031ab1f... fix ucx
