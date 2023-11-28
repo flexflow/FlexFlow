@@ -1285,7 +1285,7 @@ __global__ void store_query_cache(DT const *devQKVProjArray,
 }
 
 template <typename DT>
-void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
+void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
                                      BatchConfig const *bc,
                                      int shard_id,
                                      DT const *bias_ptr,
