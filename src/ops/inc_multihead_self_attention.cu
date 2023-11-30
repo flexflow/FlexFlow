@@ -1157,7 +1157,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       DT const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
       // matrix C: gradients for query (saved as part of m->devQKVProjArray)
       // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
-      DT *C = static_cast<DT *>(m->devQKVProjArray)
+      DT *C = static_cast<DT *>(m->devQKVProjArray);
       // after transposition & striding
       // after transposition & striding
       int m_ = num_tokens;
