@@ -894,26 +894,6 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
   //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
   //   }
   // #endif
-  std::string op_name_without_uid = std::string(m->op_name);
-  size_t last_underscore = op_name_without_uid.length() - 1;
-  for (int i = op_name_without_uid.length() - 1; i > 0; i--) {
-    if (!(std::isdigit(m->op_name[i]) || m->op_name[i] == '_')) {
-      break;
-    } else if (m->op_name[i] == '_') {
-      last_underscore = i;
-    }
-  }
-  op_name_without_uid.erase(last_underscore);
-
-  std::string base_filepath =
-        "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
-        "_bwd-step_" + std::to_string(m->bwd_step) +
-        "_layer-num_" + std::to_string(m->layer_guid.transformer_layer_id) +
-        "_layer-name_" + op_name_without_uid + "_shard-id_" +
-        std::to_string(shard_id);
-
-
-
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
@@ -975,10 +955,6 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              ldc,
                              compute_type,
                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      // save result to file for checking
-      std::string filename = base_filepath + "_o_proj_in_grad";
-      std::cout << "FILENAME: " << filename << std::endl;
-      save_tensor(C, m_*n_, filename.c_str());
     }
     // Step 2: compute gradients w.r.t. value
     {
@@ -1027,13 +1003,6 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_q_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      // save result to file for checking
-      std::string filename = base_filepath + "_v_proj_in_grad";
-      std::cout << "FILENAME: " << filename << std::endl;
-      save_tensor(C, m_*n_*m->num_q_heads, filename.c_str());
-      std::string filename2 = base_filepath + "_qk_prods_softmax";
-      std::cout << "FILENAME: " << filename2 << std::endl;
-      save_tensor(A, m_*k_*m->num_q_heads, filename2.c_str());
     }
     // Step 3: compute gradients w.r.t. the qk_prods_softmax tensor
     {
