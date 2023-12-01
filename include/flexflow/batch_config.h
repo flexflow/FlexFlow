@@ -59,6 +59,9 @@ public:
 
   //  Set by update
   int num_tokens;
+  // number of tokens in prompt phase, start offset of tokens in inc_decoding
+  // phase. num_tokens - num_prompt_tokens = num_generation_tokens;
+  int num_generation_tokens;
 
   struct PerRequestInfo {
     int first_token_depth_in_request;

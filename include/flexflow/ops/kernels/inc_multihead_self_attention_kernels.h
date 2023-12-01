@@ -15,6 +15,22 @@ namespace Kernels {
 namespace IncMultiHeadAttention {
 
 template <typename DT>
+void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
+                                         BatchConfig const *bc,
+                                         DT *output_ptr,
+                                         ffStream_t stream);
+
+template <typename DT>
+void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
+                         BatchConfig const *bc,
+                         int shard_id,
+                         DT *output_ptr,
+                         DT const *weight_ptr,
+                         DT const *bias_ptr,
+                         int num_tokens,
+                         ffStream_t stream);
+
+template <typename DT>
 __global__ void apply_position_bias_qkprd(DT *input_ptr,
                                           int num_tokens,
                                           int num_total_tokens,
