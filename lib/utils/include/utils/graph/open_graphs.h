@@ -61,7 +61,7 @@ public:
   static typename std::enable_if<std::is_base_of<IOpenMultiDiGraph, T>::value,
                                  OpenMultiDiGraph>::type
       create() {
-    return OpenMultiDiGraphView(make_cow_ptr<T>()); // TODO, has some problem
+    return OpenMultiDiGraph(make_cow_ptr<T>()); // TODO, has some problem
   }
 
 private:

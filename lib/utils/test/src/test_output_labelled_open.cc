@@ -48,55 +48,60 @@ TEST_CASE("OutputLabelledOpenMultiDiGraph implementation") {
 
   CHECK(get_nodelabels == nodel_labels);
 
-  // we should add_label for input and output
-  //(no,po,n1, p1), (n1,p1, n2, p2) , (n1,p1, n3, p3) this may have some
-  // problem, we can fix
   std::vector<MultiDiEdge> multi_diedges = {
-      {nodes[0], node_ports[0], nodes[1], node_ports[1]},
-      {nodes[1], node_ports[1], nodes[2], node_ports[2]},
-      {nodes[1], node_ports[1], nodes[3], node_ports[3]}};
-
-  std::vector<InputMultiDiEdge> input_multi_diedges = {
-      {dst = nodes[1], dst_idx = node_ports[1]},
-      {nodes[2], node_ports[2]},
-      {nodes[3], node_ports[3]}};
-
-  std::vector<OutputMultiDiEdge> output_multi_diedges = {
-      {nodes[0], node_ports[0]},
-      {nodes[1], node_ports[1]},
-      {nodes[1], node_ports[1]}};
+      {nodes[1], node_ports[1], nodes[0], node_ports[0]}, // dst_node, dst_nodeport,src_node,src_nodeport,
+      {nodes[2], node_ports[2], nodes[0], node_ports[0]},
+      {nodes[0], node_ports[0], nodes[2], node_ports[2]},
+      {nodes[1], node_ports[1], nodes[2], node_ports[2]}};
 
   for (MultiDiEdge const &edge : multi_diedges) {
     OpenMultiDiEdge e{edge};
     g.add_edge(e);
   }
 
-  for (int i = 0; i < input_edge_labels.size(); i++) {
-    g.add_label(input_multi_diedges[i], input_edge_labels[i]);
-  }
+  CHECK(g.query_nodes(NodeQuery::all()) == without_order(nodes));
 
-  for (int i = 0; i < output_edge_labels.size(); i++) {
-    g.add_label(output_multi_diedges[i], output_edge_labels[i]);
-  }
+  CHECK(transform(g.query_edges(OpenMultiDiEdgeQuery(MultiDiEdgeQuery::all())),
+  [](OpenMultiDiEdge const &edge) {
+                    return get<MultiDiEdge>(edge);
+                  }) == without_order(multi_diedges));
 
-  std::vector<std::string> expected_input_edge_labels;
-  for (int i = 0; i < input_edge_labels.size(); i++) {
-    expected_input_edge_labels.push_back(g.at(input_multi_diedges[i]));
-  }
+  CHECK(transform(g.query_edges(OpenMultiDiEdgeQuery{
+                      MultiDiEdgeQuery::all().with_src_nodes(
+                          query_set<Node>({nodes[1], nodes[2]}))}),
+                  [](OpenMultiDiEdge const &edge) {
+                    return get<MultiDiEdge>(edge);
+                  }) == std::unordered_set<MultiDiEdge>{multi_diedges[2], multi_diedges[3]});
 
-  CHECK(expected_input_edge_labels == input_edge_labels);
+  CHECK(transform(g.query_edges(OpenMultiDiEdgeQuery{
+                      MultiDiEdgeQuery::all().with_dst_nodes(
+                          query_set<Node>({nodes[0], nodes[2]}))}),
+                  [](OpenMultiDiEdge const &edge) {
+                    return get<MultiDiEdge>(edge);
+                  }) == std::unordered_set<MultiDiEdge>{multi_diedges[1], multi_diedges[2]});
 
-  std::vector<std::string> expected_output_edge_labels;
-  for (int i = 0; i < output_edge_labels.size(); i++) {
-    expected_output_edge_labels.push_back(g.at(output_multi_diedges[i]));
-  }
+  CHECK(transform(g.query_edges(OpenMultiDiEdgeQuery{
+                      MultiDiEdgeQuery::all().with_src_idxs(
+                          query_set<NodePort>({node_ports[0], node_ports[2]}))}),
+                  [](OpenMultiDiEdge const &edge) {
+                    return get<MultiDiEdge>(edge);
+                  }) == without_order(multi_diedges));
 
-  CHECK(expected_output_edge_labels == output_edge_labels);
+  CHECK(transform(g.query_edges(OpenMultiDiEdgeQuery{
+                      MultiDiEdgeQuery::all().with_dst_idxs(
+                          query_set<NodePort>({node_ports[0]}))}),
+                  [](OpenMultiDiEdge const &edge) {
+                    return get<MultiDiEdge>(edge);
+                  }) == std::unordered_set<MultiDiEdge>{multi_diedges[2]});
 
-  CHECK(g.query_nodes(NodeQuery::all()) == nodes);
-
-  CHECK(g.query_edges(OpenMultiDiEdgeQuery(MultiDiEdgeQuery::all())) ==
-        multi_diedges); // this may have some problem
-  // add test for MultiDiEdgeQuery::with_src_nodes/with_dst_nodes/
-  // with_src_idxs/with_dst_idxs
+  CHECK(transform(g.query_edges(OpenMultiDiEdgeQuery{
+                      MultiDiEdgeQuery::all()
+                          .with_dst_nodes(query_set<Node>({nodes[1]}))
+                          .with_src_nodes(query_set<Node>({nodes[0]}))
+                          .with_src_idxs(query_set<NodePort>({node_ports[0]}))
+                          .with_dst_idxs(query_set<NodePort>({node_ports[1]}))}),
+                  [](OpenMultiDiEdge const &edge) {
+                    return get<MultiDiEdge>(edge);
+                  }) == std::unordered_set<MultiDiEdge>{multi_diedges[0]});
+  
 }

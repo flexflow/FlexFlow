@@ -25,8 +25,9 @@ using edge_uid_t = std::pair<std::size_t, std::size_t>;
 
 struct InputMultiDiEdge : MultiDiInput {
   req<edge_uid_t> uid; // necessary to differentiate multiple input edges from
-                       // different sources resulting from a graph cut
+                      // different sources resulting from a graph cut
 };
+
 FF_VISITABLE_STRUCT(InputMultiDiEdge, dst, dst_idx, uid);
 // FF_VISIT_FMTABLE(InputMultiDiEdge);
 
