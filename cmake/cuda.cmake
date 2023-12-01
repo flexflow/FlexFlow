@@ -70,6 +70,7 @@ if(CUDA_FOUND)
   endforeach()
   string(REGEX REPLACE "([0-9]+)" "-gencode arch=compute_\\1,code=sm_\\1" CUDA_GENCODE "${CUDA_GENCODE}")
 
+  set(CMAKE_CUDA_COMPILER "${CUDA_NVCC_EXECUTABLE}")
   #output
   message( STATUS "CUDA_VERSION: ${CUDA_VERSION}")
   message( STATUS "CUDA root path : ${CUDA_TOOLKIT_ROOT_DIR}" )
@@ -80,6 +81,7 @@ if(CUDA_FOUND)
   message( STATUS "CURAND libraries : ${CUDA_curand_LIBRARY}" )
   message( STATUS "CUDA Arch : ${FF_CUDA_ARCH}" )
   message( STATUS "CUDA_GENCODE: ${CUDA_GENCODE}")
+  message( STATUS "CMAKE_CUDA_COMPILER: ${CMAKE_CUDA_COMPILER}")
 
   list(APPEND FLEXFLOW_INCLUDE_DIRS
     ${CUDA_INCLUDE_DIRS})
