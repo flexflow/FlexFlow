@@ -2,10 +2,11 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_UNORDERED_LABELLED_GRAPHS_H
 
 #include "labelled_open_interfaces.h"
-#include "node_labelled_interfaces.h"
+#include "node_labelled.h"
 #include "output_labelled_interfaces.h"
 #include "standard_labelled_interfaces.h"
 #include "utils/graph/open_graphs.h"
+#include "views.h"
 
 namespace FlexFlow {
 
@@ -109,11 +110,23 @@ public:
   }
 
   void add_edge(InputMultiDiEdge const &e) {
-    NOT_IMPLEMENTED();
+    OpenMultiDiEdge edge{e};
+    this->base_graph.add_edge(edge);
+  }
+
+  void add_edge(MultiDiEdge const &e, EdgeLabel const &l) {
+    this->add_edge(e);
+    this->edge_map.insert({e, l});
   }
 
   void add_edge(OutputMultiDiEdge const &e) {
-     NOT_IMPLEMENTED();
+    OpenMultiDiEdge edge{e};
+    this->base_graph.add_edge(edge);
+  }
+
+  void add_edge(MultiDiEdge const &e) {
+    OpenMultiDiEdge edge{e};
+    this->base_graph.add_edge(edge);
   }
 
   InputLabel const &at(InputMultiDiEdge const &e) const {
@@ -133,13 +146,14 @@ public:
   }
 
   UnorderedLabelledOpenMultiDiGraph() {
-    NOT_IMPLEMENTED();
+    base_graph = OpenMultiDiGraph::create<AdjacencyOpenMultiDiGraph>();
   }
 
 private:
   OpenMultiDiGraph base_graph;
   std::unordered_map<InputMultiDiEdge, InputLabel> input_map;
   std::unordered_map<OutputMultiDiEdge, OutputLabel> output_map;
+  std::unordered_map<MultiDiEdge, EdgeLabel> edge_map;
 };
 
 } // namespace FlexFlow

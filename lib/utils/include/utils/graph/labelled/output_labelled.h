@@ -80,7 +80,7 @@ public:
 
   Node add_node(NodeLabel const &l) {
     Node n = get_ptr().add_node();
-    nl->add_label(n, l);
+    nl.get_mutable()->add_label(n, l);
     return n;
   }
 
@@ -96,8 +96,8 @@ public:
     return nl->get_label(n);
   }
 
-  void add_output(MultiDiOutput const &o, OutputLabel const &l) {
-    ol->add_label(o, l);
+  void add_edge(MultiDiOutput const &o, OutputLabel const &l) {
+    ol.get_mutable()->add_label(o, l);
   };
 
   void add_edge(MultiDiOutput const &o, MultiDiInput const &i) {
@@ -109,7 +109,7 @@ public:
   }
 
   OutputLabel &at(MultiDiOutput const &o) {
-    return ol->get_label(o);
+    return ol.get_mutable()->get_label(o);
   }
 
   OutputLabel const &at(MultiDiOutput const &o) const {
@@ -139,7 +139,9 @@ private:
                              cow_ptr_t<INodeLabel> nl,
                              cow_ptr_t<IOutputLabel> ol)
       : OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel>(ptr), nl(nl),
-        ol(ol) {}
+        ol(ol) {
+  } // this exists some problem, interface is IMultiDiGraph, but
+    // OutputLabelledMultiDiGraphView needs  IOutputLabelledMultiDiGraphView
 
 private:
   Interface &get_ptr() const {

@@ -2,22 +2,23 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_STANDARD_LABELLED_H
 
 #include "node_labelled.h"
+#include "utils/graph/labelled/standard_labelled_interfaces.h"
 
 namespace FlexFlow {
 
-template <typename NodeLabel, typename EdgeLabel>
-struct ILabelledMultiDiGraphView
-    : public INodeLabelledMultiDiGraphView<NodeLabel> {
-  ILabelledMultiDiGraphView() = default;
-  ILabelledMultiDiGraphView(ILabelledMultiDiGraphView const &) = delete;
-  ILabelledMultiDiGraphView &
-      operator=(ILabelledMultiDiGraphView const &) = delete;
+// template <typename NodeLabel, typename EdgeLabel>
+// struct ILabelledMultiDiGraphView
+//     : public INodeLabelledMultiDiGraphView<NodeLabel> {
+//   ILabelledMultiDiGraphView() = default;
+//   ILabelledMultiDiGraphView(ILabelledMultiDiGraphView const &) = delete;
+//   ILabelledMultiDiGraphView &
+//       operator=(ILabelledMultiDiGraphView const &) = delete;
 
-  virtual ~ILabelledMultiDiGraphView() = default;
+//   virtual ~ILabelledMultiDiGraphView() = default;
 
-  virtual EdgeLabel const &at(MultiDiEdge const &) const = 0;
-};
-CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledMultiDiGraphView<int, int>);
+//   virtual EdgeLabel const &at(MultiDiEdge const &) const = 0;
+// };
+// CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledMultiDiGraphView<int, int>);
 
 template <typename NodeLabel, typename EdgeLabel>
 struct LabelledMultiDiGraphView
@@ -57,7 +58,9 @@ public:
 
 protected:
   LabelledMultiDiGraphView(cow_ptr_t<Interface const> ptr)
-      : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {} //todo: this may have some problem, because it seems we don't have constructor method NodeLabelledMultiDiGraphView<NodeLabel>(ptr
+      : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {
+  } // todo: this may have some problem, because it seems we don't have
+    // constructor method NodeLabelledMultiDiGraphView<NodeLabel>(ptr
   cow_ptr_t<Interface> get_ptr() const {
     return cow_ptr_t(static_cast<Interface const &>(*GraphView::ptr));
   }
@@ -79,37 +82,44 @@ public:
 
   Node add_node(NodeLabel const &l) {
     Node n = MultiDiGraph::add_node();
-    nl->add_label(n, l);
+    nl.get_mutable()->add_label(n, l);
     return n;
   }
 
   NodePort add_node_port() {
-    return this->get_ptr()->add_node_port();
+    return get_ptr().add_node_port();
   }
 
   NodeLabel &at(Node const &n) {
-    return nl->get_label(n);
+    return get_nodelabel_ptr().get_label(n);
   }
 
   NodeLabel const &at(Node const &n) const {
     return nl->get_label(n);
   }
 
-  void add_edge(MultiDiEdge const &e, EdgeLabel const &l) {
-    return this->get_ptr()->add_edge(e, l);
+  void add_edge(MultiDiEdge const &e) {
+    return get_ptr().add_edge(e);
   }
+
+  void add_label(MultiDiEdge const &e, EdgeLabel const &l) {
+    el.get_mutable()->add_label(e, l);
+  }
+
   EdgeLabel &at(MultiDiEdge const &e) {
     return el->get_label(e);
   }
+
   EdgeLabel const &at(MultiDiEdge const &e) const {
-    return el->get_label(e);
+    return get_edgelabel_ptr().get_label(e);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return this->get_ptr()->query_nodes(q);
+    return get_ptr().query_nodes(q);
   }
+
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
-    return this->get_ptr()->query_edges(q);
+    return get_ptr().query_edges(q);
   }
 
   template <typename BaseImpl, typename N, typename E>
@@ -127,12 +137,21 @@ private:
   LabelledMultiDiGraph(cow_ptr_t<Interface> ptr,
                        cow_ptr_t<INodeLabel> nl,
                        cow_ptr_t<IEdgeLabel> el)
-      : LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr), nl(nl), el(el) {} 
-      //todo: this may have some problem, because it seems we don't have constructor method  LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr)
+      : LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr), nl(nl), el(el) {}
+  // todo: this may have some problem, because it seems we don't have
+  // constructor method  LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr)
 
+  Interface &get_ptr() const {
+    return *std::reinterpret_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
+  }
 
-  cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(static_cast<Interface const &>(*GraphView::ptr));
+  INodeLabel &get_nodelabel_ptr() const {
+    return *std::reinterpret_pointer_cast<INodeLabel>(nl.get_mutable());
+  }
+
+  IEdgeLabel &get_edgelabel_ptr() const {
+    return *std::reinterpret_pointer_cast<IEdgeLabel>(el.get_mutable());
   }
 
   cow_ptr_t<INodeLabel> nl;

@@ -27,15 +27,16 @@ struct InputMultiDiEdge : MultiDiInput {
   req<edge_uid_t> uid; // necessary to differentiate multiple input edges from
                        // different sources resulting from a graph cut
 };
+
 FF_VISITABLE_STRUCT(InputMultiDiEdge, dst, dst_idx, uid);
-FF_VISIT_FMTABLE(InputMultiDiEdge);
+// FF_VISIT_FMTABLE(InputMultiDiEdge);
 
 struct OutputMultiDiEdge : MultiDiOutput {
   req<edge_uid_t> uid; // necessary to differentiate multiple output edges from
                        // different sources resulting from a graph cut
 };
 FF_VISITABLE_STRUCT(OutputMultiDiEdge, src, src_idx, uid);
-FF_VISIT_FMTABLE(OutputMultiDiEdge);
+// FF_VISIT_FMTABLE(OutputMultiDiEdge);
 
 struct OutputMultiDiEdgeQuery {
   query_set<Node> srcs;

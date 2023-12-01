@@ -41,14 +41,39 @@ void AdjacencyMultiDiGraph::remove_node_unsafe(Node const &n) {
 }
 
 void AdjacencyMultiDiGraph::add_edge(MultiDiEdge const &e) {
-  this->adjacency.at(e.dst);
+  /*
+  this->adjacency.at(e.dst);  //has some bug
   this->adjacency.at(e.src)[e.dst][e.src_idx].insert(e.dst_idx);
+  this cause terminate called after throwing an instance of 'std::out_of_range'
+  what():  _Map_base::at when we first meet e.dst
+  */
+  if (this->adjacency.count(e.dst) == 0) {
+    this->adjacency.insert({e.dst, {}});
+  } else {
+    this->adjacency.at(e.dst);
+  }
+  if (this->adjacency.count(e.src) == 0) {
+    this->adjacency.insert({e.src, {}});
+  }
+  if (this->adjacency.at(e.src).count(e.dst) == 0) {
+    this->adjacency.at(e.src).insert({e.dst, {}});
+  }
+  if (this->adjacency.at(e.src).at(e.dst).count(e.src_idx) == 0) {
+    this->adjacency.at(e.src)[e.dst].insert({e.src_idx, {e.dst_idx}});
+  } else {
+    this->adjacency.at(e.src)[e.dst][e.src_idx].insert(e.dst_idx);
+  }
 }
 
 void AdjacencyMultiDiGraph::remove_edge(MultiDiEdge const &e) {
   this->adjacency.at(e.src)[e.dst][e.src_idx].erase(e.dst_idx);
 }
 
+// this has some bug, for example, for q, we only has the q.dsts, but don't have
+// q.srcs how to handle the case when q doesn't hold
+// src/dst/srcidx/dstidx(q.srcs is null),
+// TODO:fix the corner case(q doesn't hold src/dst/srcidx/dstidx(q.srcs is
+// null)) q.src is null, we return this->adjacency
 std::unordered_set<MultiDiEdge>
     AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
   std::unordered_set<MultiDiEdge> result;

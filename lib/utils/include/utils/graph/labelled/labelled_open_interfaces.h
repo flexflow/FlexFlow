@@ -15,12 +15,11 @@ struct ILabelledOpenMultiDiGraphView
     : public IOpenMultiDiGraphView,
       public ILabelledMultiDiGraphView<NodeLabel, EdgeLabel> {
 public:
-  std::unordered_set<MultiDiEdge>
-      query_edges(MultiDiEdgeQuery const &q) const final {
-    return map_over_unordered_set(
-        [](OpenMultiDiEdge const &e) { return get<MultiDiEdge>(e); },
-        IOpenMultiDiGraphView::query_edges(
-            static_cast<OpenMultiDiEdgeQuery>(q)));
+  using IOpenMultiDiGraphView::query_edges; // Add this line
+
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
+    // return IOpenMultiDiGraphView::query_edges(q);
+    return IOpenMultiDiGraphView::query_edges(q);
   }
 
   using ILabelledMultiDiGraphView<NodeLabel, EdgeLabel>::at;
