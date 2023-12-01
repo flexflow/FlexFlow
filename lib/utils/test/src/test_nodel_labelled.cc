@@ -30,7 +30,6 @@ TEST_CASE("NodeLabelledMultiDiGraph implementations") {
   for (int i = 0; i < num_nodes; i++) {
     n.push_back(g.add_node(labels[i]));
   }
-  std::cout << "n.size():" << n.size() << std::endl;
 
   std::vector<NodePort> p = repeat(3, [&] { return g.add_node_port(); });
 

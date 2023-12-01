@@ -35,7 +35,7 @@ protected:
 private:
   IDiGraphView &get_ptr() const;
 
- // friend struct GraphInternal;
+  // friend struct GraphInternal;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
 
@@ -70,7 +70,7 @@ protected:
 private:
   IDiGraph &get_ptr() const;
 
-  //friend struct GraphInternal;
+  // friend struct GraphInternal;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraph);
 
