@@ -138,7 +138,10 @@ private:
   OutputLabelledMultiDiGraph(cow_ptr_t<Interface> ptr,
                              cow_ptr_t<INodeLabel> nl,
                              cow_ptr_t<IOutputLabel> ol)
-      : GraphView(ptr), nl(nl), ol(ol) {}
+      : OutputLabelledMultiDiGraphView<NodeLabel, OutputLabel>(ptr), nl(nl),
+        ol(ol) {
+  } // this exists some problem, interface is IMultiDiGraph, but
+    // OutputLabelledMultiDiGraphView needs  IOutputLabelledMultiDiGraphView
 
 private:
   Interface &get_ptr() const {
