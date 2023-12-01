@@ -82,16 +82,16 @@ public:
 
   Node add_node(NodeLabel const &l) {
     Node n = MultiDiGraph::add_node();
-    nl->add_label(n, l);
+    nl.get_mutable()->add_label(n, l);
     return n;
   }
 
   NodePort add_node_port() {
-    return this->get_ptr()->add_node_port();
+    return get_ptr().add_node_port();
   }
 
   NodeLabel &at(Node const &n) {
-    return nl->get_label(n);
+    return get_nodelabel_ptr().get_label(n);
   }
 
   NodeLabel const &at(Node const &n) const {
@@ -99,11 +99,11 @@ public:
   }
 
   void add_edge(MultiDiEdge const &e) {
-    return this->get_ptr()->add_edge(e);
+    return get_ptr().add_edge(e);
   }
 
   void add_label(MultiDiEdge const &e, EdgeLabel const &l) {
-    el->add_label(e, l);
+    el.get_mutable()->add_label(e, l);
   }
 
   EdgeLabel &at(MultiDiEdge const &e) {
@@ -111,15 +111,15 @@ public:
   }
 
   EdgeLabel const &at(MultiDiEdge const &e) const {
-    return el->get_label(e);
+    return get_edgelabel_ptr().get_label(e);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return this->get_ptr()->query_nodes(q);
+    return get_ptr().query_nodes(q);
   }
 
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
-    return this->get_ptr()->query_edges(q);
+    return get_ptr().query_edges(q);
   }
 
   template <typename BaseImpl, typename N, typename E>
@@ -141,8 +141,17 @@ private:
   // todo: this may have some problem, because it seems we don't have
   // constructor method  LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr)
 
-  cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(static_cast<Interface const &>(*GraphView::ptr));
+  Interface &get_ptr() const {
+    return *std::reinterpret_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
+  }
+
+  INodeLabel &get_nodelabel_ptr() const {
+    return *std::reinterpret_pointer_cast<INodeLabel>(nl.get_mutable());
+  }
+
+  IEdgeLabel &get_edgelabel_ptr() const {
+    return *std::reinterpret_pointer_cast<IEdgeLabel>(el.get_mutable());
   }
 
   cow_ptr_t<INodeLabel> nl;
