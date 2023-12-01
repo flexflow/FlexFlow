@@ -1,0 +1,1597 @@
+{
+	"nameShort": "Code",
+	"nameLong": "Visual Studio Code",
+	"applicationName": "code",
+	"win32AppId": "{{F8A2A208-72B3-4D61-95FC-8A65D340689B}",
+	"win32x64AppId": "{{EA457B21-F73E-494C-ACAB-524FDE069978}",
+	"win32arm64AppId": "{{A5270FC5-65AD-483E-AC30-2C276B63D0AC}",
+	"win32UserAppId": "{{D628A17A-9713-46BF-8D57-E671B46A741E}",
+	"win32x64UserAppId": "{{771FD6B0-FA20-440A-A002-3B3BAC16DC50}",
+	"win32arm64UserAppId": "{{D9E514E7-1A56-452D-9337-2990C0DC4310}",
+	"win32NameVersion": "Microsoft Visual Studio Code",
+	"win32DirName": "Microsoft VS Code",
+	"win32SetupExeBasename": "VSCodeSetup",
+	"win32AppUserModelId": "Microsoft.VisualStudioCode",
+	"win32ShellNameShort": "Code",
+	"win32MutexName": "vscode",
+	"win32RegValueName": "VSCode",
+	"darwinCredits": "resources/darwin/Credits.rtf",
+	"darwinBundleIdentifier": "com.microsoft.VSCode",
+	"darwinExecutable": "VSCode",
+	"linuxIconName": "vscode",
+	"licenseFileName": "LICENSE.rtf",
+	"licenseName": "Multiple, see https://code.visualstudio.com/license",
+	"serverGreeting": [],
+	"serverLicense": ["*", "* Visual Studio Code Server", "*", "* By using the software, you agree to", "* the Visual Studio Code Server License Terms (https://aka.ms/vscode-server-license) and", "* the Microsoft Privacy Statement (https://privacy.microsoft.com/en-US/privacystatement).", "*"],
+	"serverLicensePrompt": "Do you accept the terms in the License Agreement (Y/n)?",
+	"serverApplicationName": "code-server",
+	"urlProtocol": "vscode",
+	"dataFolderName": ".vscode",
+	"serverDataFolderName": ".vscode-server",
+	"downloadUrl": "https://code.visualstudio.com",
+	"updateUrl": "https://update.code.visualstudio.com",
+	"webUrl": "https://vscode.dev",
+	"webEndpointUrl": "https://main.vscode-cdn.net",
+	"webEndpointUrlTemplate": "https://{{uuid}}.vscode-cdn.net/{{quality}}/{{commit}}",
+	"webviewContentExternalBaseUrlTemplate": "https://{{uuid}}.vscode-cdn.net/{{quality}}/{{commit}}/out/vs/workbench/contrib/webview/browser/pre/",
+	"quality": "stable",
+	"extensionsGallery": {
+		"nlsBaseUrl": "https://www.vscode-unpkg.net/_lp/",
+		"serviceUrl": "https://marketplace.visualstudio.com/_apis/public/gallery",
+		"cacheUrl": "https://vscode.blob.core.windows.net/gallery/index",
+		"itemUrl": "https://marketplace.visualstudio.com/items",
+		"publisherUrl": "https://marketplace.visualstudio.com/publishers",
+		"resourceUrlTemplate": "https://{publisher}.vscode-unpkg.net/{publisher}/{name}/{version}/{path}",
+		"controlUrl": "https://az764295.vo.msecnd.net/extensions/marketplace.json"
+	},
+	"profileTemplatesUrl": "https://az764295.vo.msecnd.net/profile-templates/profile-templates.json",
+	"extensionRecommendations": {
+		"ms-dotnettools.csdevkit": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.cs,**/global.json,**/*.csproj,**/*.cshtml,**/*.sln}",
+				"important": true
+			}, {
+				"languages": ["csharp"],
+				"important": true
+			}, {
+				"pathGlob": "{**/project.json,**/appsettings.json}"
+			}]
+		},
+		"ms-python.python": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.py}",
+				"important": true
+			}, {
+				"languages": ["python"],
+				"important": true
+			}, {
+				"pathGlob": "{**/*.ipynb}"
+			}]
+		},
+		"ms-toolsai.jupyter": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.py}",
+				"contentPattern": "^#\\s*%%$",
+				"important": true,
+				"whenInstalled": ["ms-python.python"]
+			}, {
+				"pathGlob": "{**/*.ipynb}"
+			}]
+		},
+		"golang.Go": {
+			"onFileOpen": [{
+				"pathGlob": "**/*.go",
+				"important": true
+			}, {
+				"languages": ["go"],
+				"important": true
+			}]
+		},
+		"vscjava.vscode-java-pack": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.java}",
+				"important": true,
+				"whenNotInstalled": ["ASF.apache-netbeans-java"]
+			}, {
+				"languages": ["java"],
+				"important": true,
+				"whenNotInstalled": ["ASF.apache-netbeans-java"]
+			}]
+		},
+		"ms-vscode.PowerShell": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.ps1,**/*.psd1,**/*.psm1}",
+				"important": true
+			}, {
+				"languages": ["powershell"],
+				"important": true
+			}, {
+				"pathGlob": "{**/*.ps.config,**/*.ps1.config}"
+			}]
+		},
+		"ms-vscode.cpptools-extension-pack": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.c,**/*.cpp,**/*.cc,**/.cxx,**/*.hh,**/*.hpp,**/*.hxx,**/*.h}",
+				"important": true,
+				"whenNotInstalled": ["llvm-vs-code-extensions.vscode-clangd"]
+			}, {
+				"languages": ["c", "cpp"],
+				"important": true,
+				"whenNotInstalled": ["llvm-vs-code-extensions.vscode-clangd"]
+			}]
+		},
+		"ms-azuretools.vscode-docker": {
+			"onFileOpen": [{
+				"pathGlob": "{**/dockerfile,**/Dockerfile,**/docker-compose.yml,**/docker-compose.*.yml}",
+				"important": true
+			}, {
+				"languages": ["dockerfile"],
+				"important": true
+			}, {
+				"pathGlob": "{**/*.cs,**/project.json,**/global.json,**/*.csproj,**/*.cshtml,**/*.sln,**/appsettings.json,**/*.py,**/*.ipynb,**/*.js,**/*.ts,**/package.json}"
+			}]
+		},
+		"vue.volar": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.vue}",
+				"important": true
+			}, {
+				"languages": ["vue"],
+				"important": true
+			}]
+		},
+		"ms-vscode.makefile-tools": {
+			"onFileOpen": [{
+				"pathGlob": "{**/makefile,**/Makefile}",
+				"important": true
+			}, {
+				"languages": ["makefile"],
+				"important": true
+			}]
+		},
+		"ms-vscode.cmake-tools": {
+			"onFileOpen": [{
+				"pathGlob": "{**/CMakeLists.txt}",
+				"important": true
+			}]
+		},
+		"ms-azure-devops.azure-pipelines": {
+			"onFileOpen": [{
+				"pathGlob": "{**/azure-pipelines.yaml}",
+				"important": true
+			}]
+		},
+		"msazurermtools.azurerm-vscode-tools": {
+			"onFileOpen": [{
+				"pathGlob": "{**/azuredeploy.json}",
+				"important": true
+			}]
+		},
+		"ms-vscode-remote.remote-containers": {
+			"onFileOpen": [{
+				"pathGlob": "{**/devcontainer.json}",
+				"important": true
+			}]
+		},
+		"ms-azuretools.vscode-bicep": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.bicep}",
+				"important": true,
+				"whenNotInstalled": ["ms-azuretools.rad-vscode-bicep"]
+			}]
+		},
+		"svelte.svelte-vscode": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.svelte}",
+				"important": true
+			}]
+		},
+		"ms-vscode.vscode-github-issue-notebooks": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.github-issues}",
+				"important": true
+			}]
+		},
+		"ms-playwright.playwright": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*playwright*.config.ts,**/*playwright*.config.js,**/*playwright*.config.mjs}",
+				"important": true
+			}]
+		},
+		"vscjava.vscode-gradle": {
+			"onFileOpen": [{
+				"pathGlob": "{**/gradlew,**/gradlew.bat,**/build.gradle,**/build.gradle.kts,**/settings.gradle,**/settings.gradle.kts}",
+				"important": true
+			}]
+		},
+		"REditorSupport.r": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.r}",
+				"important": true
+			}, {
+				"languages": ["r"],
+				"important": true
+			}]
+		},
+		"firefox-devtools.vscode-firefox-debug": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.ts,**/*.tsx,**/*.js,**/*.jsx,**/*.es6,**/.babelrc}"
+			}]
+		},
+		"ms-edgedevtools.vscode-edge-devtools": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.ts,**/*.tsx,**/*.js,**/*.css,**/*.html}"
+			}]
+		},
+		"Ionide.Ionide-fsharp": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.fsx,**/*.fsi,**/*.fs,**/*.ml,**/*.mli}"
+			}]
+		},
+		"dbaeumer.vscode-eslint": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.js,**/*.jsx,**/*.es6,**/.eslintrc.*,**/.eslintrc,**/.babelrc,**/jsconfig.json}"
+			}]
+		},
+		"ms-vscode.vscode-typescript-tslint-plugin": {
+			"onFileOpen": [{
+				"pathGlob": "{**/tslint.json}"
+			}]
+		},
+		"bmewburn.vscode-intelephense-client": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.php,**/php.ini}"
+			}]
+		},
+		"xdebug.php-debug": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.php,**/php.ini}"
+			}]
+		},
+		"rust-lang.rust-analyzer": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.rs,**/*.rslib}"
+			}]
+		},
+		"DavidAnson.vscode-markdownlint": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.md}"
+			}]
+		},
+		"EditorConfig.EditorConfig": {
+			"onFileOpen": [{
+				"pathGlob": "{**/.editorconfig}"
+			}]
+		},
+		"HookyQR.beautify": {
+			"onFileOpen": [{
+				"pathGlob": "{**/.jsbeautifyrc}"
+			}]
+		},
+		"donjayamanne.githistory": {
+			"onFileOpen": [{
+				"pathGlob": "{**/.gitignore,**/.git}"
+			}]
+		},
+		"felipecaputo.git-project-manager": {
+			"onFileOpen": [{
+				"pathGlob": "{**/.gitignore,**/.git}"
+			}]
+		},
+		"eamodio.gitlens": {
+			"onFileOpen": [{
+				"pathGlob": "{**/.gitignore,**/.git}"
+			}]
+		},
+		"Shopify.ruby-lsp": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.rb,**/*.erb,**/*.reek,**/.fasterer.yml,**/ruby-lint.yml,**/.rubocop.yml}"
+			}]
+		},
+		"DotJoshJohnson.xml": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.xml}"
+			}]
+		},
+		"stylelint.vscode-stylelint": {
+			"onFileOpen": [{
+				"pathGlob": "{**/.stylelintrc,**/stylelint.config.js}"
+			}]
+		},
+		"ms-mssql.mssql": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.sql}"
+			}]
+		},
+		"mtxr.sqltools": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.sql}"
+			}]
+		},
+		"usqlextpublisher.usql-vscode-ext": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.usql}"
+			}]
+		},
+		"ms-vscode.sublime-keybindings": {
+			"onFileOpen": [{
+				"pathGlob": "{**/.sublime-project,**/.sublime-workspace}"
+			}]
+		},
+		"k--kato.intellij-idea-keybindings": {
+			"onFileOpen": [{
+				"pathGlob": "{**/.idea}"
+			}]
+		},
+		"christian-kohler.npm-intellisense": {
+			"onFileOpen": [{
+				"pathGlob": "{**/package.json}"
+			}]
+		},
+		"cake-build.cake-vscode": {
+			"onFileOpen": [{
+				"pathGlob": "{**/build.cake}"
+			}]
+		},
+		"Angular.ng-template": {
+			"onFileOpen": [{
+				"pathGlob": "{**/.angular-cli.json,**/angular.json,**/*.ng.html,**/*.ng,**/*.ngml}"
+			}]
+		},
+		"vscjava.vscode-maven": {
+			"onFileOpen": [{
+				"pathGlob": "**/pom.xml"
+			}]
+		},
+		"ms-azuretools.vscode-azureterraform": {
+			"onFileOpen": [{
+				"pathGlob": "**/*.tf"
+			}]
+		},
+		"HashiCorp.terraform": {
+			"onFileOpen": [{
+				"pathGlob": "**/*.tf"
+			}]
+		},
+		"vsciot-vscode.vscode-arduino": {
+			"onFileOpen": [{
+				"pathGlob": "**/*.ino"
+			}]
+		},
+		"ms-kubernetes-tools.vscode-kubernetes-tools": {
+			"onFileOpen": [{
+				"pathGlob": "{**/Chart.yaml}"
+			}]
+		},
+		"GoogleCloudTools.cloudcode": {
+			"onFileOpen": [{
+				"pathGlob": "{**/skaffold.yaml}"
+			}]
+		},
+		"Oracle.oracledevtools": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.sql}"
+			}]
+		},
+		"betterthantomorrow.calva": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.clj,**/*.cljs}"
+			}]
+		},
+		"Pivotal.vscode-boot-dev-pack": {
+			"onFileOpen": [{
+				"pathGlob": "{**/application.properties}"
+			}]
+		},
+		"GitHub.copilot": {
+			"onFileOpen": [{
+				"pathGlob": "{**/*.ts,**/*.tsx,**/*.js,**/*.py,**/*.go,**/*.rb}"
+			}],
+			"onSettingsEditorOpen": {}
+		},
+		"GitHub.vscode-github-actions": {
+			"onFileOpen": [{
+				"pathGlob": "{**/.github/workflows/*.yml}",
+				"important": true
+			}]
+		},
+		"circleci.circleci": {
+			"onFileOpen": [{
+				"pathGlob": "{**/.circleci/config.yml}"
+			}]
+		},
+		"mechatroner.rainbow-csv": {
+			"onFileOpen": [{
+				"pathGlob": "**/*.csv",
+				"important": true
+			}]
+		},
+		"tomoki1207.pdf": {
+			"onFileOpen": [{
+				"pathGlob": "**/*.pdf",
+				"important": true
+			}]
+		}
+	},
+	"keymapExtensionTips": ["vscodevim.vim", "ms-vscode.sublime-keybindings", "ms-vscode.atom-keybindings", "ms-vscode.brackets-keybindings", "ms-vscode.vs-keybindings", "ms-vscode.notepadplusplus-keybindings", "k--kato.intellij-idea-keybindings", "lfs.vscode-emacs-friendly", "alphabotsec.vscode-eclipse-keybindings", "alefragnani.delphi-keybindings"],
+	"languageExtensionTips": ["ms-python.python", "ms-vscode.cpptools-extension-pack", "ms-dotnettools.csdevkit", "ms-toolsai.jupyter", "vscjava.vscode-java-pack", "ecmel.vscode-html-css", "vue.volar", "bmewburn.vscode-intelephense-client", "dsznajder.es7-react-js-snippets", "golang.go", "ms-vscode.powershell", "dart-code.dart-code", "rust-lang.rust-analyzer", "Shopify.ruby-lsp", "GitHub.copilot"],
+	"configBasedExtensionTips": {
+		"git": {
+			"configPath": ".git/config",
+			"configName": "Git",
+			"recommendations": {
+				"github.vscode-pull-request-github": {
+					"name": "GitHub Pull Request",
+					"contentPattern": "^\\s*url\\s*=\\s*https:\\/\\/github\\.com.*$"
+				},
+				"eamodio.gitlens": {
+					"name": "GitLens"
+				}
+			}
+		},
+		"devContainer": {
+			"configPath": ".devcontainer/devcontainer.json",
+			"configName": "Dev Container",
+			"recommendations": {
+				"ms-vscode-remote.remote-containers": {
+					"name": "Dev Containers",
+					"important": true
+				}
+			}
+		},
+		"maven": {
+			"configPath": "pom.xml",
+			"configName": "Maven",
+			"recommendations": {
+				"vscjava.vscode-java-pack": {
+					"name": "Java",
+					"important": true,
+					"isExtensionPack": true,
+					"whenNotInstalled": ["ASF.apache-netbeans-java"]
+				},
+				"Pivotal.vscode-boot-dev-pack": {
+					"name": "Spring Boot Extension Pack",
+					"isExtensionPack": true
+				}
+			}
+		},
+		"gradle": {
+			"configPath": "build.gradle",
+			"configName": "Gradle",
+			"recommendations": {
+				"vscjava.vscode-java-pack": {
+					"name": "Java",
+					"important": true,
+					"isExtensionPack": true,
+					"whenNotInstalled": ["ASF.apache-netbeans-java"]
+				}
+			}
+		},
+		"github-pull-request": {
+			"configPath": ".vscode/.github-pull-request.rec",
+			"configName": "GitHub",
+			"configScheme": "vscode-vfs",
+			"recommendations": {
+				"github.vscode-pull-request-github": {
+					"name": "GitHub Pull Request",
+					"important": true
+				}
+			}
+		},
+		"pyproject-formatter": {
+			"configPath": "pyproject.toml",
+			"configName": "Python Formatter",
+			"recommendations": {
+				"ms-python.black-formatter": {
+					"name": "Black Formatter",
+					"contentPattern": "(^\\s*\\[\\[?\\s*\"?tool\"?\\s*\\.\\s*\"?black\"?\\s*[\\].])|(\"black\\s*[\"[(<=>!~;@])"
+				},
+				"ms-python.autopep8": {
+					"name": "Autopep8",
+					"contentPattern": "(^\\s*\\[\\[?\\s*\"?tool\"?\\s*\\.\\s*\"?autopep8\"?\\s*[\\].])|(\"autopep8\\s*[\"[(<=>!~;@])"
+				}
+			}
+		},
+		"pep8-formatter": {
+			"configPath": ".pep8",
+			"configName": "Python Formatter",
+			"recommendations": {
+				"ms-python.autopep8": {
+					"name": "Autopep8"
+				}
+			}
+		},
+		"python-setup-cgf-formatter": {
+			"configPath": "setup.cfg",
+			"configName": "Python Formatter",
+			"recommendations": {
+				"ms-python.autopep8": {
+					"name": "Autopep8",
+					"contentPattern": "^\\[pep8\\]"
+				}
+			}
+		},
+		"tox-ini-formatter": {
+			"configPath": "tox.ini",
+			"configName": "Python Formatter",
+			"recommendations": {
+				"ms-python.autopep8": {
+					"name": "Autopep8",
+					"contentPattern": "^\\[pep8\\]"
+				}
+			}
+		},
+		"pyproject-linter": {
+			"configPath": "pyproject.toml",
+			"configName": "Python Linter",
+			"recommendations": {
+				"ms-python.pylint": {
+					"name": "Pylint",
+					"contentPattern": "(^\\s*\\[\\[?\\s*\"?tool\"?\\s*\\.\\s*\"?pylint\"?\\s*[\\].])|(\"pylint\\s*[\"[(<=>!~;@])"
+				},
+				"charliermarsh.ruff": {
+					"name": "Ruff",
+					"contentPattern": "(^\\s*\\[\\[?\\s*\"?tool\"?\\s*\\.\\s*\"?ruff\"?\\s*[\\].])|(\"ruff\\s*[\"[(<=>!~;@])"
+				},
+				"ms-python.mypy-type-checker": {
+					"name": "Mypy Type Checker",
+					"contentPattern": "(^\\s*\\[\\[?\\s*\"?tool\"?\\s*\\.\\s*\"?mypy\"?\\s*[\\].])|(\"mypy\\s*[\"[(<=>!~;@])"
+				},
+				"ms-python.flake8": {
+					"name": "Flake8",
+					"contentPattern": "(^\\s*\\[\\[?\\s*\"?tool\"?\\s*\\.\\s*\"?flake8\"?\\s*[\\].])|(\"flake8\\s*[\"[(<=>!~;@])"
+				}
+			}
+		},
+		".pylintrc-linter": {
+			"configPath": ".pylintrc",
+			"configName": "Python Linter",
+			"recommendations": {
+				"ms-python.pylint": {
+					"name": "Pylint"
+				}
+			}
+		},
+		"pylintrc-linter": {
+			"configPath": "pylintrc",
+			"configName": "Python Linter",
+			"recommendations": {
+				"ms-python.pylint": {
+					"name": "Pylint"
+				}
+			}
+		},
+		"mypy-ini-linter": {
+			"configPath": ".mypy.ini",
+			"configName": "Python Linter",
+			"recommendations": {
+				"ms-python.mypy-type-checker": {
+					"name": "Mypy Type Checker"
+				}
+			}
+		},
+		"tox-ini-linter": {
+			"configPath": "tox.ini",
+			"configName": "Python Linter",
+			"recommendations": {
+				"ms-python.flake8": {
+					"name": "Flake8",
+					"contentPattern": "^\\[flake8\\]"
+				}
+			}
+		},
+		".flake8-linter": {
+			"configPath": ".flake8",
+			"configName": "Python Linter",
+			"recommendations": {
+				"ms-python.flake8": {
+					"name": "Flake8"
+				}
+			}
+		},
+		"python-setup-cgf-linter": {
+			"configPath": "setup.cfg",
+			"configName": "Python Linter",
+			"recommendations": {
+				"ms-python.flake8": {
+					"name": "Flake8",
+					"contentPattern": "^\\[flake8\\]"
+				}
+			}
+		}
+	},
+	"exeBasedExtensionTips": {
+		"az": {
+			"friendlyName": "Azure CLI",
+			"windowsPath": "%ProgramFiles(x86)%\\Microsoft SDKs\\Azure\\CLI2\\wbin\\az.cmd",
+			"recommendations": {
+				"ms-vscode.azurecli": {
+					"name": "Azure CLI Tools"
+				}
+			}
+		},
+		"azd": {
+			"friendlyName": "Azure Dev CLI",
+			"windowsPath": "%USERPROFILE%\\AppData\\Local\\Programs\\Azure Dev CLI\\azd.exe",
+			"recommendations": {
+				"ms-azuretools.azure-dev": {
+					"name": "Azure Developer CLI"
+				},
+				"ms-azuretools.vscode-azureresourcegroups": {
+					"name": "Azure Resources"
+				}
+			}
+		},
+		"azd-user": {
+			"friendlyName": "Azure Dev CLI",
+			"windowsPath": "%ProgramFiles%\\Azure Dev CLI\\azd.exe",
+			"recommendations": {
+				"ms-azuretools.azure-dev": {
+					"name": "Azure Developer CLI"
+				},
+				"ms-azuretools.vscode-azureresourcegroups": {
+					"name": "Azure Resources"
+				}
+			}
+		},
+		"heroku": {
+			"friendlyName": "Heroku CLI",
+			"windowsPath": "%ProgramFiles%\\Heroku\\bin\\heroku.cmd",
+			"recommendations": {
+				"ms-azuretools.vscode-azureappservice": {
+					"name": "Azure App Service"
+				},
+				"pkosta2005.heroku-command": {
+					"name": "heroku-cli"
+				}
+			}
+		},
+		"mongo": {
+			"friendlyName": "Mongo",
+			"windowsPath": "%ProgramFiles%\\MongoDB\\Server\\3.6\\bin\\mongod.exe",
+			"recommendations": {
+				"ms-azuretools.vscode-cosmosdb": {
+					"name": "Azure Databases"
+				}
+			}
+		},
+		"serverless": {
+			"friendlyName": "Serverless framework",
+			"windowsPath": "%APPDATA%\\npm\\serverless.cmd",
+			"recommendations": {
+				"ms-azuretools.vscode-azurefunctions": {
+					"name": "Azure Functions"
+				}
+			}
+		},
+		"func": {
+			"friendlyName": "Azure Function SDK",
+			"windowsPath": "%APPDATA%\\npm\\func.cmd",
+			"recommendations": {
+				"ms-azuretools.vscode-azurefunctions": {
+					"name": "Azure Functions"
+				}
+			}
+		},
+		"mysql": {
+			"friendlyName": "MySQL",
+			"windowsPath": "%ProgramFiles%\\MySQL\\MySQL Server 8.0\\bin\\mysqld.exe",
+			"recommendations": {
+				"mtxr.sqltools": {
+					"name": "SQLTools"
+				}
+			}
+		},
+		"postgres": {
+			"friendlyName": "PostgreSQL",
+			"windowsPath": "%ProgramFiles%\\PostgreSQL\\11\\bin\\psql.exe",
+			"recommendations": {
+				"ms-ossdata.vscode-postgresql": {
+					"name": "PostgreSQL"
+				},
+				"mtxr.sqltools": {
+					"name": "SQLTools"
+				}
+			}
+		},
+		"sqlcmd": {
+			"friendlyName": "SQL CLI",
+			"recommendations": {
+				"ms-mssql.mssql": {
+					"name": "SQL Server (mssql)"
+				}
+			}
+		},
+		"now": {
+			"friendlyName": "Now CLI",
+			"windowsPath": "%APPDATA%\\npm\\now.cmd",
+			"recommendations": {
+				"ms-azuretools.vscode-azureappservice": {
+					"name": "Azure App Service"
+				},
+				"ms-azuretools.vscode-docker": {
+					"name": "Docker"
+				}
+			}
+		},
+		"docker": {
+			"friendlyName": "Docker",
+			"windowsPath": "%ProgramFiles%\\Docker\\Docker\\Resources\\bin\\docker.exe",
+			"recommendations": {
+				"ms-azuretools.vscode-docker": {
+					"name": "Docker",
+					"important": true
+				},
+				"ms-vscode-remote.remote-containers": {
+					"name": "Dev Containers",
+					"important": true
+				},
+				"ms-kubernetes-tools.vscode-kubernetes-tools": {
+					"name": "Kubernetes"
+				},
+				"GoogleCloudTools.cloudcode": {
+					"name": "Cloud Code"
+				}
+			}
+		},
+		"kubectl": {
+			"friendlyName": "Kubernetes",
+			"windowsPath": "%ProgramFiles%\\Docker\\Docker\\Resources\\bin\\kubectl.exe",
+			"recommendations": {
+				"ms-azuretools.vscode-docker": {
+					"name": "Docker"
+				},
+				"ms-kubernetes-tools.vscode-kubernetes-tools": {
+					"name": "Kubernetes"
+				},
+				"GoogleCloudTools.cloudcode": {
+					"name": "Cloud Code"
+				},
+				"ms-vscode-remote.remote-containers": {
+					"name": "Dev Containers"
+				}
+			}
+		},
+		"ng": {
+			"friendlyName": "Angular CLI",
+			"windowsPath": "%APPDATA%\\npmexit\\ng.cmd",
+			"recommendations": {
+				"johnpapa.Angular2": {
+					"name": "Angular Snippets"
+				}
+			}
+		},
+		"create-react-app": {
+			"friendlyName": "Create React App",
+			"windowsPath": "%APPDATA%\\npm\\create-react-app.cmd",
+			"recommendations": {
+				"msjsdiag.vscode-react-native": {
+					"name": "React Native Tools"
+				}
+			}
+		},
+		"react-native": {
+			"friendlyName": "React Native",
+			"windowsPath": "%APPDATA%\\npm\\react-native-cli",
+			"recommendations": {
+				"msjsdiag.vscode-react-native": {
+					"name": "React Native Tools"
+				}
+			}
+		},
+		"p4": {
+			"friendlyName": "Perforce",
+			"recommendations": {
+				"slevesque.perforce": {
+					"name": "Perforce for VS Code"
+				}
+			}
+		},
+		"hg": {
+			"friendlyName": "Mercurial",
+			"recommendations": {
+				"mrcrowl.hg": {
+					"name": "Hg"
+				}
+			}
+		},
+		"git": {
+			"friendlyName": "Git",
+			"windowsPath": "%ProgramFiles%\\Git\\git-bash.exe",
+			"recommendations": {
+				"eamodio.gitlens": {
+					"name": "GitLens"
+				}
+			}
+		},
+		"svn": {
+			"friendlyName": "Subversion",
+			"windowsPath": "%ProgramFiles%\\TortoiseSVN\\bin\\TortoiseProc.exe",
+			"recommendations": {
+				"johnstoncode.svn-scm": {
+					"name": "SVN"
+				}
+			}
+		},
+		"subl": {
+			"friendlyName": "Sublime",
+			"windowsPath": "%ProgramFiles%\\Sublime Text3\\sublime_text.exe",
+			"recommendations": {
+				"ms-vscode.sublime-keybindings": {
+					"name": "Sublime Text Keymap and Settings Importer"
+				}
+			}
+		},
+		"atom": {
+			"friendlyName": "Atom",
+			"windowsPath": "%USERPROFILE%\\AppData\\Local\\atom\\bin\\atom.cmd",
+			"recommendations": {
+				"ms-vscode.atom-keybindings": {
+					"name": "Atom Keymap"
+				}
+			}
+		},
+		"brackets": {
+			"friendlyName": "Brackets",
+			"windowsPath": "%ProgramFiles(x86)%\\Brackets\\Brackets.exe",
+			"recommendations": {
+				"ms-vscode.brackets-keybindings": {
+					"name": "Brackets Keymap"
+				}
+			}
+		},
+		"notepadplusplus": {
+			"friendlyName": "Notepad++",
+			"windowsPath": "%ProgramFiles%\\Notepad++\\Notepad++.exe",
+			"recommendations": {
+				"ms-vscode.notepadplusplus-keybindings": {
+					"name": "Notepad++ keymap"
+				}
+			}
+		},
+		"vi": {
+			"friendlyName": "VIM",
+			"windowsPath": "%ProgramFiles(x86)%\\Vim\\vim80\\gvim.exe",
+			"recommendations": {
+				"vscodevim.vim": {
+					"name": "Vim"
+				}
+			}
+		},
+		"mvn": {
+			"friendlyName": "Maven",
+			"recommendations": {
+				"vscjava.vscode-java-pack": {
+					"name": "Java",
+					"important": true,
+					"isExtensionPack": true,
+					"whenNotInstalled": ["ASF.apache-netbeans-java"]
+				}
+			}
+		},
+		"gradle": {
+			"friendlyName": "Gradle",
+			"recommendations": {
+				"vscjava.vscode-java-pack": {
+					"name": "Java",
+					"important": true,
+					"isExtensionPack": true,
+					"whenNotInstalled": ["ASF.apache-netbeans-java"]
+				}
+			}
+		},
+		"Microsoft Edge": {
+			"friendlyName": "Microsoft Edge",
+			"windowsPath": "%USERPROFILE%\\AppData\\Local\\Microsoft\\Edge\\Application\\msedge.exe",
+			"recommendations": {
+				"ms-edgedevtools.vscode-edge-devtools": {
+					"name": "Microsoft Edge Developer Tools"
+				}
+			}
+		},
+		"Microsoft Edge Dev": {
+			"friendlyName": "Microsoft Edge Dev",
+			"windowsPath": "%USERPROFILE%\\AppData\\Local\\Microsoft\\Edge Dev\\Application\\msedge.exe",
+			"recommendations": {
+				"ms-edgedevtools.vscode-edge-devtools": {
+					"name": "Microsoft Edge Developer Tools"
+				}
+			}
+		},
+		"Microsoft Edge Beta": {
+			"friendlyName": "Microsoft Edge Beta",
+			"windowsPath": "%USERPROFILE%\\AppData\\Local\\Microsoft\\Edge Beta\\Application\\msedge.exe",
+			"recommendations": {
+				"ms-edgedevtools.vscode-edge-devtools": {
+					"name": "Microsoft Edge Developer Tools"
+				}
+			}
+		},
+		"Microsoft Edge Canary": {
+			"friendlyName": "Microsoft Edge Canary",
+			"windowsPath": "%USERPROFILE%\\AppData\\Local\\Microsoft\\Edge SxS\\Application\\msedge.exe",
+			"recommendations": {
+				"ms-edgedevtools.vscode-edge-devtools": {
+					"name": "Microsoft Edge Developer Tools"
+				}
+			}
+		},
+		"Mozilla Firefox (x86)": {
+			"friendlyName": "Mozilla Firefox",
+			"windowsPath": "%ProgramFiles(x86)%\\Mozilla Firefox\\firefox.exe",
+			"recommendations": {
+				"firefox-devtools.vscode-firefox-debug": {
+					"name": "Debugger for Firefox"
+				}
+			}
+		},
+		"Mozilla Firefox Developer Edition (x86)": {
+			"friendlyName": "Mozilla Firefox Developer Edition",
+			"windowsPath": "%ProgramFiles(x86)%\\Firefox Developer Edition\\firefox.exe",
+			"recommendations": {
+				"firefox-devtools.vscode-firefox-debug": {
+					"name": "Debugger for Firefox"
+				}
+			}
+		},
+		"Mozilla Firefox": {
+			"friendlyName": "Mozilla Firefox",
+			"windowsPath": "%ProgramFiles%\\Mozilla Firefox\\firefox.exe",
+			"recommendations": {
+				"firefox-devtools.vscode-firefox-debug": {
+					"name": "Debugger for Firefox"
+				}
+			}
+		},
+		"Mozilla Firefox Developer Edition": {
+			"friendlyName": "Mozilla Firefox Developer Edition",
+			"windowsPath": "%ProgramFiles%\\Firefox Developer Edition\\firefox.exe",
+			"recommendations": {
+				"firefox-devtools.vscode-firefox-debug": {
+					"name": "Debugger for Firefox"
+				}
+			}
+		},
+		"cordova": {
+			"friendlyName": "Cordova",
+			"windowsPath": "%APPDATA%\\npm\\cordova",
+			"recommendations": {
+				"msjsdiag.cordova-tools": {
+					"name": "Cordova Tools"
+				}
+			}
+		},
+		"gcloud": {
+			"friendlyName": "Google GCloud CLI",
+			"windowsPath": "%ProgramFiles(x86)%\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+			"recommendations": {
+				"GoogleCloudTools.cloudcode": {
+					"name": "Cloud Code"
+				}
+			}
+		},
+		"skaffold": {
+			"friendlyName": "Skaffold Code to Cluster",
+			"recommendations": {
+				"ms-azuretools.vscode-docker": {
+					"name": "Docker"
+				},
+				"ms-kubernetes-tools.vscode-kubernetes-tools": {
+					"name": "Kubernetes"
+				},
+				"GoogleCloudTools.cloudcode": {
+					"name": "Cloud Code"
+				}
+			}
+		},
+		"minikube": {
+			"friendlyName": "MiniKube Local Kubernetes Cluster",
+			"recommendations": {
+				"ms-azuretools.vscode-docker": {
+					"name": "Docker"
+				},
+				"ms-kubernetes-tools.vscode-kubernetes-tools": {
+					"name": "Kubernetes"
+				},
+				"GoogleCloudTools.cloudcode": {
+					"name": "Cloud Code"
+				},
+				"ms-vscode-remote.remote-containers": {
+					"name": "Dev Containers"
+				}
+			}
+		},
+		"podman": {
+			"friendlyName": "Podman",
+			"recommendations": {
+				"ms-vscode-remote.remote-containers": {
+					"name": "Dev Containers"
+				}
+			}
+		},
+		"wsl": {
+			"friendlyName": "Windows Subsystem for Linux (WSL)",
+			"windowsPath": "%WINDIR%\\system32\\lxss\\LxssManager.dll",
+			"important": true,
+			"recommendations": {
+				"ms-vscode-remote.remote-wsl": {
+					"name": "WSL",
+					"important": true
+				}
+			}
+		}
+	},
+	"webExtensionTips": ["tyriar.luna-paint", "codespaces-contrib.codeswing", "ms-vscode.vscode-github-issue-notebooks", "esbenp.prettier-vscode", "hediet.vscode-drawio"],
+	"virtualWorkspaceExtensionTips": {
+		"vscode-vfs": {
+			"friendlyName": "Remote Repositories",
+			"extensionId": "ms-vscode.remote-repositories",
+			"startEntry": {
+				"helpLink": "https://aka.ms/vscode-remote/remote-repositories",
+				"startConnectLabel": "Remote Repository",
+				"startCommand": "remoteHub.continueOn.openRepository",
+				"priority": 5
+			}
+		}
+	},
+	"remoteExtensionTips": {
+		"wsl": {
+			"friendlyName": "WSL",
+			"extensionId": "ms-vscode-remote.remote-wsl",
+			"supportedPlatforms": ["Windows", "Web"],
+			"startEntry": {
+				"helpLink": "https://aka.ms/vscode-remote/wsl",
+				"startConnectLabel": "WSL",
+				"startCommand": "remote-wsl.connect",
+				"priority": 3
+			}
+		},
+		"ssh-remote": {
+			"friendlyName": "Remote - SSH",
+			"extensionId": "ms-vscode-remote.remote-ssh",
+			"supportedPlatforms": ["Windows", "Linux", "Mac"],
+			"startEntry": {
+				"helpLink": "https://aka.ms/vscode-remote/ssh",
+				"startConnectLabel": "SSH ",
+				"startCommand": "opensshremotes.openEmptyWindowInCurrentWindow",
+				"priority": 1
+			}
+		},
+		"dev-container": {
+			"friendlyName": "Dev Containers",
+			"extensionId": "ms-vscode-remote.remote-containers",
+			"supportedPlatforms": ["Windows", "Linux", "Mac"],
+			"startEntry": {
+				"helpLink": "https://aka.ms/vscode-remote/containers",
+				"startConnectLabel": "Dev Container",
+				"startCommand": "remote-containers.reopenInContainer",
+				"priority": 2
+			}
+		},
+		"attached-container": {
+			"friendlyName": "Dev Containers",
+			"extensionId": "ms-vscode-remote.remote-containers"
+		},
+		"codespaces": {
+			"friendlyName": "GitHub Codespaces",
+			"extensionId": "github.codespaces",
+			"startEntry": {
+				"helpLink": "https://aka.ms/vscode-remote-codespaces",
+				"startConnectLabel": "GitHub Codespace ",
+				"startCommand": "github.codespaces.connect",
+				"priority": 4
+			}
+		},
+		"tunnel": {
+			"friendlyName": "Remote - Tunnels",
+			"extensionId": "ms-vscode.remote-server",
+			"startEntry": {
+				"helpLink": "https://aka.ms/remote-tunnels-doc",
+				"startConnectLabel": "Tunnel",
+				"startCommand": "remote-tunnels.connectCurrentWindowToTunnel",
+				"priority": 0
+			}
+		}
+	},
+	"commandPaletteSuggestedCommandIds": ["workbench.action.files.openFile", "workbench.action.files.openFileFolder", "workbench.action.files.openFolder", "workbench.action.remote.showMenu", "editor.action.formatDocument", "editor.action.commentLine", "workbench.action.tasks.runTask", "workbench.action.openSettings2", "workbench.action.selectTheme", "workbench.action.openWalkthrough", "workbench.action.openIssueReporter"],
+	"extensionKeywords": {
+		"md": ["Markdown"],
+		"js": ["JavaScript"],
+		"jsx": ["JavaScript"],
+		"es6": ["JavaScript"],
+		"html": ["Html"],
+		"ts": ["TypeScript"],
+		"tsx": ["TypeScript"],
+		"css": ["CSS"],
+		"scss": ["SASS"],
+		"txt": ["Text"],
+		"php": ["PHP"],
+		"php3": ["PHP"],
+		"php4": ["PHP"],
+		"ph3": ["PHP"],
+		"ph4": ["PHP"],
+		"xml": ["XML"],
+		"py": ["Python"],
+		"pyc": ["Python"],
+		"pyd": ["Python"],
+		"pyo": ["Python"],
+		"pyw": ["Python"],
+		"pyz": ["Python"],
+		"java": ["Java"],
+		"class": ["Java"],
+		"jar": ["Java"],
+		"c": ["c", "objective c", "objective-c"],
+		"m": ["objective c", "objective-c"],
+		"mm": ["objective c", "objective-c"],
+		"cpp": ["cpp", "c plus plus", "c", "c++"],
+		"cc": ["cpp", "c plus plus", "c", "c++"],
+		"cxx": ["cpp", "c plus plus", "c++"],
+		"hh": ["cpp", "c plus plus", "c++"],
+		"hpp": ["cpp", "c++"],
+		"h": ["cpp", "c plus plus", "c++", "c", "objective c", "objective-c"],
+		"sql": ["sql"],
+		"sh": ["bash"],
+		"bash": ["bash"],
+		"zsh": ["bash", "zshell"],
+		"cs": ["c#", "csharp"],
+		"csproj": ["c#", "csharp"],
+		"sln": ["c#", "csharp"],
+		"go": ["go"],
+		"sty": ["latex"],
+		"tex": ["latex"],
+		"ps": ["powershell"],
+		"ps1": ["powershell"],
+		"rs": ["rust"],
+		"rslib": ["rust"],
+		"hs": ["haskell"],
+		"lhs": ["haskell"],
+		"scm": ["scheme"],
+		"ss": ["scheme"],
+		"clj": ["clojure"],
+		"cljs": ["clojure"],
+		"cljc": ["clojure"],
+		"edn": ["clojure"],
+		"erl": ["erlang"],
+		"hrl": ["erlang"],
+		"scala": ["scala"],
+		"sc": ["scala"],
+		"pl": ["perl"],
+		"pm": ["perl"],
+		"t": ["perl"],
+		"pod": ["perl"],
+		"groovy": ["groovy"],
+		"swift": ["swift"],
+		"rb": ["ruby"],
+		"rbw": ["ruby"],
+		"jl": ["julia"],
+		"f": ["fortran"],
+		"for": ["fortran"],
+		"f90": ["fortran"],
+		"f95": ["fortran"],
+		"coffee": ["CoffeeScript"],
+		"litcoffee": ["CoffeeScript"],
+		"yaml": ["yaml"],
+		"yml": ["yaml"],
+		"dart": ["dart"],
+		"json": ["json"]
+	},
+	"extensionAllowedBadgeProviders": ["api.bintray.com", "api.travis-ci.com", "api.travis-ci.org", "app.fossa.io", "badge.buildkite.com", "badge.fury.io", "badge.waffle.io", "badgen.net", "badges.frapsoft.com", "badges.gitter.im", "badges.greenkeeper.io", "cdn.travis-ci.com", "cdn.travis-ci.org", "ci.appveyor.com", "circleci.com", "cla.opensource.microsoft.com", "codacy.com", "codeclimate.com", "codecov.io", "coveralls.io", "david-dm.org", "deepscan.io", "dev.azure.com", "docs.rs", "flat.badgen.net", "gemnasium.com", "githost.io", "gitlab.com", "godoc.org", "goreportcard.com", "img.shields.io", "isitmaintained.com", "marketplace.visualstudio.com", "nodesecurity.io", "opencollective.com", "snyk.io", "travis-ci.com", "travis-ci.org", "visualstudio.com", "vsmarketplacebadge.apphb.com", "www.bithound.io", "www.versioneye.com"],
+	"extensionAllowedBadgeProvidersRegex": ["^https:\\/\\/github\\.com\\/[^/]+\\/[^/]+\\/(actions\\/)?workflows\\/.*badge\\.svg"],
+	"crashReporter": {
+		"productName": "VSCode",
+		"companyName": "Microsoft"
+	},
+	"appCenter": {
+		"win32-ia32": "appcenter://code?aid=f4289815-a66e-4ad9-b74f-d8e5bc093e41",
+		"win32-x64": "appcenter://code?aid=a4e3233c-699c-46ec-b4f4-9c2a77254662",
+		"win32-arm64": "appcenter://code?aid=3712d786-7cc8-4f11-8b08-cc12eab6d4f7",
+		"linux-x64": "appcenter://code?aid=fba07a4d-84bd-4fc8-a125-9640fc8ce171",
+		"darwin": "appcenter://code?aid=860d6632-f65b-490b-85a8-3e72944f7774",
+		"darwin-arm64": "appcenter://code?aid=be71415d-3893-4ae5-b453-e537b9668a10",
+		"darwin-universal": "appcenter://code?aid=de75e3cc-e22f-4f42-a03f-1409c21d8af8"
+	},
+	"enableTelemetry": true,
+	"aiConfig": {
+		"ariaKey": "5bbf946d11a54f6783919c455abaddaf-fd62977b-c92d-4714-a45d-649d06980372-7168"
+	},
+	"msftInternalDomains": ["redmond.corp.microsoft.com", "northamerica.corp.microsoft.com", "fareast.corp.microsoft.com", "ntdev.corp.microsoft.com", "wingroup.corp.microsoft.com", "southpacific.corp.microsoft.com", "wingroup.windeploy.ntdev.microsoft.com", "ddnet.microsoft.com", "europe.corp.microsoft.com"],
+	"documentationUrl": "https://go.microsoft.com/fwlink/?LinkID=533484#vscode",
+	"serverDocumentationUrl": "https://aka.ms/vscode-server-doc",
+	"releaseNotesUrl": "https://go.microsoft.com/fwlink/?LinkID=533483#vscode",
+	"keyboardShortcutsUrlMac": "https://go.microsoft.com/fwlink/?linkid=832143",
+	"keyboardShortcutsUrlLinux": "https://go.microsoft.com/fwlink/?linkid=832144",
+	"keyboardShortcutsUrlWin": "https://go.microsoft.com/fwlink/?linkid=832145",
+	"introductoryVideosUrl": "https://go.microsoft.com/fwlink/?linkid=832146",
+	"tipsAndTricksUrl": "https://go.microsoft.com/fwlink/?linkid=852118",
+	"newsletterSignupUrl": "https://www.research.net/r/vsc-newsletter",
+	"youTubeUrl": "https://aka.ms/vscode-youtube",
+	"requestFeatureUrl": "https://go.microsoft.com/fwlink/?LinkID=533482",
+	"reportIssueUrl": "https://github.com/Microsoft/vscode/issues/new",
+	"reportMarketplaceIssueUrl": "https://github.com/microsoft/vsmarketplace/issues/new",
+	"licenseUrl": "https://go.microsoft.com/fwlink/?LinkID=533485",
+	"serverLicenseUrl": "https://aka.ms/vscode-server-license",
+	"privacyStatementUrl": "https://go.microsoft.com/fwlink/?LinkId=521839",
+	"showTelemetryOptOut": true,
+	"npsSurveyUrl": "https://aka.ms/vscode-nps",
+	"cesSurveyUrl": "https://aka.ms/new-to-vscode-feedback",
+	"checksumFailMoreInfoUrl": "https://go.microsoft.com/fwlink/?LinkId=828886",
+	"electronRepository": "Microsoft/vscode-electron-prebuilt",
+	"nodejsRepository": "Microsoft/vscode-node",
+	"settingsSearchUrl": "https://bingsettingssearch.trafficmanager.net/api/Search",
+	"surveys": [{
+		"surveyId": "cpp.1",
+		"surveyUrl": "https://www.research.net/r/VBVV6C6",
+		"languageId": "cpp",
+		"editCount": 10,
+		"userProbability": 0.15
+	}, {
+		"surveyId": "java.2",
+		"surveyUrl": "https://www.research.net/r/vscodejava",
+		"languageId": "java",
+		"editCount": 10,
+		"userProbability": 0.3
+	}, {
+		"surveyId": "javascript.1",
+		"surveyUrl": "https://www.research.net/r/vscode-js",
+		"languageId": "javascript",
+		"editCount": 10,
+		"userProbability": 0.05
+	}, {
+		"surveyId": "typescript.1",
+		"surveyUrl": "https://www.research.net/r/vscode-ts",
+		"languageId": "typescript",
+		"editCount": 10,
+		"userProbability": 0.05
+	}, {
+		"surveyId": "csharp.1",
+		"surveyUrl": "https://www.research.net/r/8KGJ9V8",
+		"languageId": "csharp",
+		"editCount": 10,
+		"userProbability": 0.05
+	}],
+	"extensionEnabledApiProposals": {
+		"ms-vscode.vscode-selfhost-test-provider": ["testObserver", "testMessageContextValue"],
+		"VisualStudioExptTeam.vscodeintellicode-completions": ["inlineCompletionsAdditions"],
+		"ms-vsliveshare.vsliveshare": ["contribMenuBarHome", "contribShareMenu", "contribStatusBarItems", "diffCommand", "documentFiltersExclusive", "fileSearchProvider", "findTextInFiles", "notebookCellExecutionState", "notebookLiveShare", "terminalDimensions", "terminalDataWriteEvent", "textSearchProvider"],
+		"ms-vscode.js-debug": ["portsAttributes", "findTextInFiles", "workspaceTrust", "tunnels"],
+		"ms-toolsai.vscode-ai-remote": ["resolvers"],
+		"ms-python.python": ["contribEditorContentMenu", "quickPickSortByLabel", "portsAttributes", "testObserver", "quickPickItemTooltip", "terminalDataWriteEvent", "saveEditor"],
+		"ms-dotnettools.dotnet-interactive-vscode": ["notebookMessaging", "languageConfigurationAutoClosingPairs"],
+		"GitHub.codespaces": ["contribEditSessions", "contribMenuBarHome", "contribRemoteHelp", "contribViewsRemote", "resolvers", "tunnels", "terminalDataWriteEvent", "treeViewReveal", "notebookKernelSource"],
+		"ms-vscode.azure-repos": ["extensionRuntime", "fileSearchProvider", "textSearchProvider"],
+		"ms-vscode.remote-repositories": ["canonicalUriProvider", "contribEditSessions", "contribRemoteHelp", "contribMenuBarHome", "contribViewsRemote", "contribViewsWelcome", "contribShareMenu", "documentFiltersExclusive", "editSessionIdentityProvider", "extensionRuntime", "fileSearchProvider", "quickPickSortByLabel", "workspaceTrust", "shareProvider", "scmActionButton", "scmSelectedProvider", "scmValidation", "textSearchProvider", "timeline"],
+		"ms-vscode-remote.remote-wsl": ["resolvers", "contribRemoteHelp", "contribViewsRemote", "telemetry"],
+		"ms-vscode-remote.remote-ssh": ["resolvers", "tunnels", "terminalDataWriteEvent", "contribRemoteHelp", "contribViewsRemote", "telemetry"],
+		"ms-vscode.remote-server": ["resolvers", "tunnels", "contribViewsWelcome"],
+		"ms-vscode.remote-explorer": ["contribRemoteHelp", "contribViewsRemote", "extensionsAny"],
+		"ms-vscode-remote.remote-containers": ["contribEditSessions", "resolvers", "tunnels", "workspaceTrust", "terminalDimensions", "contribRemoteHelp", "contribViewsRemote"],
+		"ms-vscode.js-debug-nightly": ["portsAttributes", "findTextInFiles", "workspaceTrust", "tunnels"],
+		"ms-vscode.lsif-browser": ["documentFiltersExclusive"],
+		"GitHub.vscode-pull-request-github": ["contribCommentThreadAdditionalMenu", "tokenInformation", "contribShareMenu", "fileComments", "contribCommentPeekContext", "codiconDecoration", "diffCommand", "contribCommentEditorActionsMenu", "readonlyMessage", "treeViewMarkdownMessage", "shareProvider", "quickDiffProvider"],
+		"GitHub.copilot": ["inlineCompletionsAdditions"],
+		"GitHub.copilot-nightly": ["inlineCompletionsAdditions"],
+		"GitHub.copilot-chat": ["handleIssueUri", "interactive", "interactiveUserActions", "terminalContextMenu", "terminalDataWriteEvent", "terminalSelection", "terminalQuickFixProvider", "chatSlashCommands", "chatVariables", "chatAgents", "readonlyMessage", "chatProvider", "mappedEditsProvider", "aiRelatedInformation"],
+		"GitHub.remotehub": ["contribRemoteHelp", "contribMenuBarHome", "contribViewsRemote", "contribViewsWelcome", "documentFiltersExclusive", "extensionRuntime", "fileSearchProvider", "quickPickSortByLabel", "workspaceTrust", "scmSelectedProvider", "scmValidation", "textSearchProvider", "timeline"],
+		"ms-python.gather": ["notebookCellExecutionState"],
+		"ms-python.vscode-pylance": ["notebookCellExecutionState"],
+		"ms-python.debugpy": ["portsAttributes"],
+		"ms-toolsai.jupyter-renderers": ["contribNotebookStaticPreloads"],
+		"ms-toolsai.jupyter": ["notebookDeprecated", "notebookMessaging", "notebookMime", "notebookCellExecutionState", "portsAttributes", "quickPickSortByLabel", "notebookKernelSource", "interactiveWindow", "notebookControllerAffinityHidden", "contribNotebookStaticPreloads", "quickPickItemTooltip", "notebookExecution"],
+		"dbaeumer.vscode-eslint": ["notebookCellExecutionState"],
+		"ms-vscode.azure-sphere-tools-ui": ["tunnels"],
+		"ms-azuretools.vscode-azureappservice": ["terminalDataWriteEvent"],
+		"ms-azuretools.vscode-azureresourcegroups": ["authGetSessions"],
+		"ms-vscode.anycode": ["extensionsAny"],
+		"ms-vscode.cpptools": ["terminalDataWriteEvent"],
+		"redhat.java": ["documentPaste"],
+		"ms-dotnettools.csdevkit": ["inlineCompletionsAdditions"],
+		"ms-dotnettools.vscodeintellicode-csharp": ["inlineCompletionsAdditions"],
+		"microsoft-IsvExpTools.powerplatform-vscode": ["fileSearchProvider", "textSearchProvider"],
+		"microsoft-IsvExpTools.powerplatform-vscode-preview": ["fileSearchProvider", "textSearchProvider"]
+	},
+	"tasConfig": {
+		"endpoint": "https://default.exp-tas.com/vscode/ab",
+		"telemetryEventName": "query-expfeature",
+		"featuresTelemetryPropertyName": "VSCode.ABExp.Features",
+		"assignmentContextTelemetryPropertyName": "abexp.assignmentcontext"
+	},
+	"extensionKind": {
+		"Shan.code-settings-sync": ["ui"],
+		"shalldie.background": ["ui"],
+		"techer.open-in-browser": ["ui"],
+		"CoenraadS.bracket-pair-colorizer-2": ["ui"],
+		"CoenraadS.bracket-pair-colorizer": ["ui", "workspace"],
+		"hiro-sun.vscode-emacs": ["ui", "workspace"],
+		"hnw.vscode-auto-open-markdown-preview": ["ui", "workspace"],
+		"wayou.vscode-todo-highlight": ["ui", "workspace"],
+		"aaron-bond.better-comments": ["ui", "workspace"],
+		"vscodevim.vim": ["ui"],
+		"ollyhayes.colmak-vim": ["ui"]
+	},
+	"extensionPointExtensionKind": {
+		"typescriptServerPlugins": ["workspace"]
+	},
+	"extensionSyncedKeys": {
+		"ritwickdey.liveserver": ["liveServer.setup.version"]
+	},
+	"extensionVirtualWorkspacesSupport": {
+		"esbenp.prettier-vscode": {
+			"default": false
+		},
+		"msjsdiag.debugger-for-chrome": {
+			"default": false
+		},
+		"redhat.java": {
+			"default": false
+		},
+		"HookyQR.beautify": {
+			"default": false
+		},
+		"ritwickdey.LiveServer": {
+			"default": false
+		},
+		"VisualStudioExptTeam.vscodeintellicode": {
+			"default": false
+		},
+		"octref.vetur": {
+			"default": false
+		},
+		"formulahendry.code-runner": {
+			"default": false
+		},
+		"xdebug.php-debug": {
+			"default": false
+		},
+		"ms-mssql.mssql": {
+			"default": false
+		},
+		"christian-kohler.path-intellisense": {
+			"default": false
+		},
+		"eg2.tslint": {
+			"default": false
+		},
+		"eg2.vscode-npm-script": {
+			"default": false
+		},
+		"donjayamanne.githistory": {
+			"default": false
+		},
+		"Zignd.html-css-class-completion": {
+			"default": false
+		},
+		"christian-kohler.npm-intellisense": {
+			"default": false
+		},
+		"EditorConfig.EditorConfig": {
+			"default": false
+		},
+		"austin.code-gnu-global": {
+			"default": false
+		},
+		"johnpapa.Angular2": {
+			"default": false
+		},
+		"ms-vscode.vscode-typescript-tslint-plugin": {
+			"default": false
+		},
+		"DotJoshJohnson.xml": {
+			"default": false
+		},
+		"techer.open-in-browser": {
+			"default": false
+		},
+		"tht13.python": {
+			"default": false
+		},
+		"bmewburn.vscode-intelephense-client": {
+			"default": false
+		},
+		"Angular.ng-template": {
+			"default": false
+		},
+		"xdebug.php-pack": {
+			"default": false
+		},
+		"dbaeumer.jshint": {
+			"default": false
+		},
+		"yzhang.markdown-all-in-one": {
+			"default": false
+		},
+		"Dart-Code.flutter": {
+			"default": false
+		},
+		"streetsidesoftware.code-spell-checker": {
+			"default": false
+		},
+		"rebornix.Ruby": {
+			"default": false
+		},
+		"ms-vscode.sublime-keybindings": {
+			"default": false
+		},
+		"mitaki28.vscode-clang": {
+			"default": false
+		},
+		"steoates.autoimport": {
+			"default": false
+		},
+		"donjayamanne.python-extension-pack": {
+			"default": false
+		},
+		"shd101wyy.markdown-preview-enhanced": {
+			"default": false
+		},
+		"mikestead.dotenv": {
+			"default": false
+		},
+		"pranaygp.vscode-css-peek": {
+			"default": false
+		},
+		"ikappas.phpcs": {
+			"default": false
+		},
+		"platformio.platformio-ide": {
+			"default": false
+		},
+		"jchannon.csharpextensions": {
+			"default": false
+		},
+		"gruntfuggly.todo-tree": {
+			"default": false
+		}
+	},
+	"linkProtectionTrustedDomains": ["https://*.visualstudio.com", "https://*.microsoft.com", "https://aka.ms", "https://*.gallerycdn.vsassets.io", "https://*.github.com", "https://login.microsoftonline.com", "https://*.vscode.dev", "https://*.github.dev", "https://gh.io", "https://portal.azure.com"],
+	"trustedExtensionAuthAccess": ["vscode.git", "vscode.github", "ms-vscode.remote-repositories", "github.remotehub", "ms-vscode.azure-repos", "ms-vscode.remote-server", "github.vscode-pull-request-github", "github.codespaces", "ms-vsliveshare.vsliveshare", "github.copilot", "github.copilot-chat", "ms-azuretools.vscode-azureresourcegroups", "ms-edu.vscode-learning"],
+	"trustedExtensionProtocolHandlers": ["vscode.git", "vscode.github-authentication", "vscode.microsoft-authentication"],
+	"auth": {
+		"loginUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+		"tokenUrl": "https://login.microsoftonline.com/common/oauth2/token",
+		"redirectUrl": "https://vscode-redirect.azurewebsites.net/",
+		"clientId": "aebc6443-996d-45c2-90f0-388ff96faa56"
+	},
+	"configurationSync.store": {
+		"url": "https://vscode-sync.trafficmanager.net/",
+		"stableUrl": "https://vscode-sync.trafficmanager.net/",
+		"insidersUrl": "https://vscode-sync-insiders.trafficmanager.net/",
+		"canSwitch": false,
+		"authenticationProviders": {
+			"github": {
+				"scopes": ["user:email"]
+			},
+			"microsoft": {
+				"scopes": ["openid", "profile", "email", "offline_access"]
+			}
+		}
+	},
+	"editSessions.store": {
+		"url": "https://vscode-sync.trafficmanager.net/",
+		"authenticationProviders": {
+			"microsoft": {
+				"scopes": ["openid", "profile", "email", "offline_access"]
+			},
+			"github": {
+				"scopes": ["user:email"]
+			}
+		}
+	},
+	"tunnelServerQualities": {
+		"stable": {
+			"serverApplicationName": "code-server"
+		},
+		"exploration": {
+			"serverApplicationName": "code-server-exploration"
+		},
+		"insider": {
+			"serverApplicationName": "code-server-insiders"
+		}
+	},
+	"tunnelApplicationName": "code-tunnel",
+	"tunnelApplicationConfig": {
+		"editorWebUrl": "https://vscode.dev",
+		"extension": {
+			"friendlyName": "Remote - Tunnels",
+			"extensionId": "ms-vscode.remote-server"
+		},
+		"authenticationProviders": {
+			"github": {
+				"scopes": ["user:email", "read:org"]
+			}
+		}
+	},
+	"win32TunnelServiceMutex": "vscode-tunnelservice",
+	"win32TunnelMutex": "vscode-tunnel",
+	"commonlyUsedSettings": ["files.autoSave", "editor.fontSize", "editor.fontFamily", "GitHub.copilot.manageExtension", "editor.tabSize", "editor.renderWhitespace", "editor.cursorStyle", "editor.multiCursorModifier", "editor.insertSpaces", "editor.wordWrap", "files.exclude", "files.associations", "workbench.editor.enablePreview"],
+	"builtInExtensions": [{
+		"name": "ms-vscode.js-debug-companion",
+		"version": "1.1.2",
+		"sha256": "e034b8b41beb4e97e02c70f7175bd88abe66048374c2bd629f54bb33354bc2aa",
+		"repo": "https://github.com/microsoft/vscode-js-debug-companion",
+		"metadata": {
+			"id": "99cb0b7f-7354-4278-b8da-6cc79972169d",
+			"publisherId": {
+				"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
+				"publisherName": "ms-vscode",
+				"displayName": "Microsoft",
+				"flags": "verified"
+			},
+			"publisherDisplayName": "Microsoft"
+		}
+	}, {
+		"name": "ms-vscode.js-debug",
+		"version": "1.83.1",
+		"sha256": "1452fdbab8d0d83ca5765bb66170d50b005c97ca4dcd13e154c3401d842a92d4",
+		"repo": "https://github.com/microsoft/vscode-js-debug",
+		"metadata": {
+			"id": "25629058-ddac-4e17-abba-74678e126c5d",
+			"publisherId": {
+				"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
+				"publisherName": "ms-vscode",
+				"displayName": "Microsoft",
+				"flags": "verified"
+			},
+			"publisherDisplayName": "Microsoft"
+		}
+	}, {
+		"name": "ms-vscode.vscode-js-profile-table",
+		"version": "1.0.3",
+		"sha256": "b9dab017506d9e6a469a0f82b392e4cb1d7a25a4843f1db8ba396cbee209cfc5",
+		"repo": "https://github.com/microsoft/vscode-js-profile-visualizer",
+		"metadata": {
+			"id": "7e52b41b-71ad-457b-ab7e-0620f1fc4feb",
+			"publisherId": {
+				"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
+				"publisherName": "ms-vscode",
+				"displayName": "Microsoft",
+				"flags": "verified"
+			},
+			"publisherDisplayName": "Microsoft"
+		}
+	}, {
+		"name": "ms-vscode-remote.remote-wsl-recommender",
+		"version": "0.0.19",
+		"sha256": "926095d290dc7cdb9daf40ef5ae7591db12171ba1af1f61afcb5a368d0fc66aa",
+		"repo": "https://github.com/microsoft/vscode-remote-wsl-recommender",
+		"metadata": {
+			"id": "cb296d3c-017a-4dee-83af-ebb5a5a16e9a",
+			"publisherId": {
+				"publisherId": "ac9410a2-0d75-40ec-90de-b59bb705801d",
+				"publisherName": "ms-vscode-remote",
+				"displayName": "Microsoft",
+				"flags": "verified"
+			},
+			"publisherDisplayName": "Microsoft"
+		},
+		"platforms": ["win32"],
+		"clientOnly": true
+	}],
+	"walkthroughMetadata": [{
+		"id": "Setup",
+		"steps": [{
+			"id": "copilotInstall",
+			"title": "Supercharge your coding with AI-based suggestions",
+			"description": "Throw that rubber duck away! Code more efficiently with AI at your fingertips. Try [GitHub Copilot](command:extension.open?\"github.copilot\") free for 60 days.\n[Install Copilot](command:workbench.extensions.installExtension?%22github.copilot%22)",
+			"media": {
+				"type": "image",
+				"altText": "Copilot Statistics",
+				"path": "copilotStep.png"
+			}
+		}]
+	}],
+	"featuredExtensions": [{
+		"id": "github.copilot",
+		"title": "GitHub Copilot",
+		"description": "Supercharge your coding experience for as little as $10/month with cutting edge AI code generation."
+	}],
+	"aiGeneratedWorkspaceTrust": {
+		"title": "This workspace was generated by GitHub Copilot",
+		"checkboxText": "Trust the contents of all files in this workspace",
+		"trustOption": "Yes, I trust the contents",
+		"dontTrustOption": "No, I don't trust the contents",
+		"startupTrustRequestLearnMore": "If you don't trust the contents of the files generated by GitHub Copilot, we recommend continuing in restricted mode. See [our docs](https://aka.ms/vscode-workspace-trust) to learn more. "
+	},
+	"commit": "f1b07bd25dfad64b0167beb15359ae573aecd2cc",
+	"date": "2023-10-10T23:46:05.701Z",
+	"version": "1.83.1"
+}

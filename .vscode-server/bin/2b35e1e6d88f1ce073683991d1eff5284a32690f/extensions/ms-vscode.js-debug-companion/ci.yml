@@ -1,0 +1,43 @@
+trigger:
+  branches:
+    include:
+      - main
+pr: none
+
+resources:
+  repositories:
+    - repository: templates
+      type: github
+      name: microsoft/vscode-engineering
+      endpoint: Monaco
+
+parameters:
+  - name: publishExtension
+    displayName: 🚀 Publish Extension
+    type: boolean
+    default: false
+
+extends:
+  template: azure-pipelines/extension/stable.yml@templates
+  parameters:
+    publishExtension: ${{ parameters.publishExtension }}
+    ghCreateRelease: true
+    ghReleaseAddChangeLog: true
+    buildSteps:
+      - script: npm install
+        displayName: Install dependencies
+
+      - script: npm run vscode:prepublish
+        displayName: Compile
+    tsa:
+      enabled: true
+      options:
+        codebaseName: 'devdiv_$(Build.Repository.Name)'
+        serviceTreeID: '053e3ba6-924d-456c-ace0-67812c5ccc52'
+        instanceUrl: 'https://devdiv.visualstudio.com/defaultcollection'
+        projectName: 'DevDiv'
+        areaPath: 'DevDiv\\VS Code (compliance tracking only)\\Visual Studio Code Debugging Extensions'
+        notificationAliases:
+          - 'stbatt@microsoft.com'
+          - 'lszomoru@microsoft.com'
+          - 'copeet@microsoft.com'
