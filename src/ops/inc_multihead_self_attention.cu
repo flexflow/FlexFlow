@@ -936,7 +936,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
-    } else if (tokens_previous_requests <= bc->num_generation_tokens) {
+    } else if (tokens_previous_requests < bc->num_generation_tokens) {
       tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
       continue;
     }
