@@ -713,7 +713,7 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
                                          BatchConfig const *bc,
                                          DT *output_ptr,
                                          cudaStream_t stream) {
-  dim3 grid(m->num_q_heads, bc->num_active_requests());
+  dim3 grid(m->num_q_heads, bc->num_generation_tokens);
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
   size_t smem_sz;
@@ -935,6 +935,9 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
+      continue;
+    } else if (tokens_previous_requests <= bc->num_generation_tokens) {
+      tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
       continue;
     }
     assert(tokens_previous_requests ==
