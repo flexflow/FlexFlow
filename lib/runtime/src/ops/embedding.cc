@@ -82,7 +82,7 @@ static void forward_task(Task const *task,
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
-  auto weight_grad = acc.get_tensor_grad<Permissions::RO>(WEIGHT);
+  auto weight_grad = acc.get_tensor_grad<Permissions::RW>(WEIGHT);
 
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   EmbeddingAttrs attrs = acc.get_argument<EmbeddingAttrs>(ATTRS);
@@ -98,7 +98,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  attrs.aggr,
                  input.shape.get_dim(),
                  output.shape.get_dim(),
-                 input.shape[legion_dim_t(1)]);
+                 input.shape[ff_dim_t(0)]);
 }
 
 static void backward_task(Task const *task,
