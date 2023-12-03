@@ -967,7 +967,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       DT const *B = static_cast<DT *>(m->handle.workSpace);
       // matrix C: gradients for value (saved as part of m->devQKVProjArray)
       // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
-      DT *C = static_cast<DT *>(m->devQKVProjArray) + 2*(m->qProjSize * m->num_q_heads); // skip over regions reserved for Q and K gradients
+      DT *C = static_cast<DT *>(m->devQKVProjArray) + 2 * num_tokens * (m->qProjSize * m->num_q_heads); // skip over regions reserved for Q and K gradients
       // after transpositions
       int m_ = num_tokens; // total_tokens
       int n_ = m->vProjSize; // num_new_tokens
@@ -1107,7 +1107,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       DT const *B = static_cast<DT *>(m->query_activation_buffer);
       // matrix C: gradients for key (saved as part of m->devQKVProjArray)
       // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
-      DT *C = static_cast<DT *>(m->devQKVProjArray) + (m->qProjSize * m->num_q_heads); // skip over regions reserved for Q gradients
+      DT *C = static_cast<DT *>(m->devQKVProjArray) + num_tokens * (m->qProjSize * m->num_q_heads); // skip over regions reserved for Q gradients
       // after transposition & striding
       int m_ = num_tokens;
       int n_ = m->kProjSize;
