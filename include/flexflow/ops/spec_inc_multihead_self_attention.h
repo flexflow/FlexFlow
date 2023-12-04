@@ -140,7 +140,6 @@ public:
 
 public:
   Realm::RegionInstance beam_search_reserve_inst;
-  BatchConfig::PerRequestInfo *request_infos;
   BeamSearchBatchConfig::BeamSearchPerTokenInfo *beam_token_infos;
   BeamSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos;
 };
