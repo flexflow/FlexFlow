@@ -1160,9 +1160,9 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       DT *C = static_cast<DT *>(m->devQKVProjArray);
       // after transposition & striding
       // after transposition & striding
-      int m_ = num_tokens;
+      int m_ = num_tokens; // num_new_tokens
       int n_ = m->qProjSize;
-      int k_ = num_tokens; // num_new_tokens
+      int k_ = num_tokens; 
       // before transposition and striding
       int lda = num_tokens; // num_new_tokens
       int ldb = m->qProjSize * m->num_q_heads;
@@ -1171,7 +1171,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       int strideB = m->qProjSize;
       int strideC = num_tokens * m->qProjSize;
       checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                           CUBLAS_OP_T,
+                                           CUBLAS_OP_N,
                                            CUBLAS_OP_T,
                                            m_,
                                            n_,
