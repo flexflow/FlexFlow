@@ -89,8 +89,21 @@ Tensor FFModel::binary(OperatorType op,
   }
   // Assert type match after broadcast
   assert(ele->inputs[0]->data_type == ele->inputs[1]->data_type);
+
+  int numdim = in1->num_dims;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++) {
+    if (in1->dims[i] == 1) {
+      dims[i] = in2->dims[i];
+    } else if (in2->dims[i] == 1) {
+      dims[i] = in1->dims[i];
+    } else {
+      dims[i] = in1->dims[i];
+    }
+  }
+
   ele->outputs[0] = create_tensor_legion_ordering(
-      in1->num_dims, in1->dims, ele->data_type, ele, 0, true /*create_grad*/);
+      in1->num_dims, dims, ele->data_type, ele, 0, true /*create_grad*/);
   ele->add_int_property("inplace_a", inplace_a);
   layers.push_back(ele);
   return ele->outputs[0];
