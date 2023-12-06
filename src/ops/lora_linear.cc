@@ -586,17 +586,17 @@ FutureMap LoraLinear::peft_bwd(FFModel const &ff,
                          0 /*mapper_id*/,
                          machine_view_hash);
   launcher.add_future(bc);
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part_grad,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
                                                     EXCLUSIVE,
-                                                    batch_inputs[0]->region));
+                                                    batch_inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part_grad,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    READ_WRITE,
                                                     EXCLUSIVE,
-                                                    batch_inputs[1]->region));
+                                                    batch_inputs[1]->region_grad));
   launcher.add_field(1, FID_DATA);
   return runtime->execute_index_space(ctx, launcher);
 }

@@ -537,18 +537,18 @@ Legion::FutureMap
                          machine_view_hash);
   launcher.add_future(bc);
   // regions[0](I): output_grad
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  // regions[1](I/O): input_grad
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part_grad,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
                                                     EXCLUSIVE,
-                                                    batch_inputs[0]->region));
+                                                    batch_outputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  // regions[1](I/O): input_grad
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): weight
   launcher.add_region_requirement(RegionRequirement(weights[0]->part,

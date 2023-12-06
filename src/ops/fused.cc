@@ -561,11 +561,11 @@ FutureMap FusedOp::peft_bwd(FFModel const &ff,
   for (int i = 0; i < numInputs; i++) {
     assert(inputs[i]->part != LogicalPartition::NO_PART);
     assert(inputs[i]->region != LogicalRegion::NO_REGION);
-    launcher.add_region_requirement(RegionRequirement(batch_inputs[i]->part,
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[i]->part_grad,
                                                       0 /*projection id*/,
                                                       READ_WRITE,
                                                       EXCLUSIVE,
-                                                      batch_inputs[i]->region));
+                                                      batch_inputs[i]->region_grad));
     launcher.add_field(offset + i, FID_DATA);
   }
   offset += numInputs;
@@ -582,11 +582,11 @@ FutureMap FusedOp::peft_bwd(FFModel const &ff,
   for (int i = 0; i < numOutputs; i++) {
     assert(outputs[i]->region != LogicalRegion::NO_REGION);
     launcher.add_region_requirement(
-        RegionRequirement(batch_outputs[i]->part,
+        RegionRequirement(batch_outputs[i]->part_grad,
                           0 /*projection id*/,
                           READ_WRITE,
                           EXCLUSIVE,
-                          batch_outputs[i]->region));
+                          batch_outputs[i]->region_grad));
     launcher.add_field(offset + i, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);

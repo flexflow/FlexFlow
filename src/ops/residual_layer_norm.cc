@@ -712,33 +712,33 @@ Legion::FutureMap ResidualLayerNorm::peft_bwd(
   launcher.add_future(bc);
   int field_id = 0;
   // output_grad
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part_grad,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    READ_WRITE,
                                                     EXCLUSIVE,
-                                                    batch_outputs[1]->region));
+                                                    batch_outputs[1]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
   // input grad
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part_grad,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
                                                     EXCLUSIVE,
-                                                    batch_inputs[0]->region));
+                                                    batch_inputs[0]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
   // residual grad 1
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part_grad,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
                                                     EXCLUSIVE,
-                                                    batch_inputs[1]->region));
+                                                    batch_inputs[1]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
   if (use_two_residuals) {
     // residual grad 2
-    launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part,
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part_grad,
                                                       0 /*projection id*/,
                                                       READ_WRITE,
                                                       EXCLUSIVE,
-                                                      batch_inputs[2]->region));
+                                                      batch_inputs[2]->region_grad));
     launcher.add_field(field_id++, FID_DATA);
   }
   if (elementwise_affine) {

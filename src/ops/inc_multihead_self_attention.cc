@@ -899,11 +899,11 @@ FutureMap IncMultiHeadSelfAttention::peft_bwd(
                          0 /*mapper_id*/,
                          machine_view_hash);
   launcher.add_future(bc);
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part_grad,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
                                                     EXCLUSIVE,
-                                                    batch_inputs[0]->region));
+                                                    batch_inputs[0]->region_grad));
   launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(weights[0]->part,
@@ -913,11 +913,11 @@ FutureMap IncMultiHeadSelfAttention::peft_bwd(
                         weights[0]->region,
                         ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
   launcher.add_field(idx++, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part_grad,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    READ_WRITE,
                                                     EXCLUSIVE,
-                                                    batch_outputs[0]->region));
+                                                    batch_outputs[0]->region_grad));
   launcher.add_field(idx++, FID_DATA);
   if (qkv_bias || final_bias) {
     launcher.add_region_requirement(
