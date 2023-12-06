@@ -910,50 +910,36 @@ Legion::FutureMap AddBiasResidualLayerNorm::peft_bwd(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   IndexLauncher launcher(ADD_BIAS_RESIDUAL_LAYERNORM_PEFT_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
+                         parallel_is, TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
                          machine_view_hash);
   launcher.add_future(bc);
   int field_id = 0;
   // output_grad
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[1]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[1]->part_grad, 0 /*projection id*/,
+                        READ_WRITE, EXCLUSIVE, batch_outputs[1]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
   // input grad
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad, 0 /*projection id*/,
+                        READ_WRITE, EXCLUSIVE, batch_inputs[0]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
   // residual grad
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[1]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[1]->part_grad, 0 /*projection id*/,
+                        READ_WRITE, EXCLUSIVE, batch_inputs[1]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
   // attn bias grad
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[2]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[2]->part_grad, 0 /*projection id*/,
+                        READ_WRITE, EXCLUSIVE, batch_inputs[2]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
   if (elementwise_affine) {
     // gamma
-    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      weights[0]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(weights[0]->part, 0 /*projection id*/, READ_ONLY,
+                          EXCLUSIVE, weights[0]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);
