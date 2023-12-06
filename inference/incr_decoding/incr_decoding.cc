@@ -292,13 +292,13 @@ void FlexFlow::top_level_task(Task const *task,
       requests.push_back(inference_req);
       total_num_requests++;
       // Add fine-tuning request
-      Request fine_tuning_req;
-      fine_tuning_req.req_type = Request::RequestType::REQ_FINETUNING;
-      fine_tuning_req.max_sequence_length = 128;
-      fine_tuning_req.peft_model_id = peft_model_id;
-      fine_tuning_req.dataset_text.push_back(std::make_pair(text, ""));
-      requests.push_back(fine_tuning_req);
-      total_num_requests++;
+      // Request fine_tuning_req;
+      // fine_tuning_req.req_type = Request::RequestType::REQ_FINETUNING;
+      // fine_tuning_req.max_sequence_length = 128;
+      // fine_tuning_req.peft_model_id = peft_model_id;
+      // fine_tuning_req.dataset_text.push_back(std::make_pair(text, ""));
+      // requests.push_back(fine_tuning_req);
+      // total_num_requests++;
     }
     GenerationResult result = model.generate(requests);
   }
