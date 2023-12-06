@@ -701,38 +701,57 @@ Legion::FutureMap ResidualLayerNorm::peft_bwd(
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
-  IndexLauncher launcher(RESIDUAL_LAYERNORM_PEFT_BWD_TASK_ID, parallel_is,
-                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
-                         false /*must*/, 0 /*mapper_id*/, machine_view_hash);
+  IndexLauncher launcher(RESIDUAL_LAYERNORM_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
   launcher.add_future(bc);
   int field_id = 0;
   // output_grad
   launcher.add_region_requirement(
-      RegionRequirement(batch_outputs[1]->part_grad, 0 /*projection id*/,
-                        READ_WRITE, EXCLUSIVE, batch_outputs[1]->region_grad));
+      RegionRequirement(batch_outputs[1]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[1]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
   // input grad
   launcher.add_region_requirement(
-      RegionRequirement(batch_inputs[0]->part_grad, 0 /*projection id*/,
-                        READ_WRITE, EXCLUSIVE, batch_inputs[0]->region_grad));
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
   // residual grad 1
   launcher.add_region_requirement(
-      RegionRequirement(batch_inputs[1]->part_grad, 0 /*projection id*/,
-                        READ_WRITE, EXCLUSIVE, batch_inputs[1]->region_grad));
+      RegionRequirement(batch_inputs[1]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[1]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
   if (use_two_residuals) {
     // residual grad 2
     launcher.add_region_requirement(
-        RegionRequirement(batch_inputs[2]->part_grad, 0 /*projection id*/,
-                          READ_WRITE, EXCLUSIVE, batch_inputs[2]->region_grad));
+        RegionRequirement(batch_inputs[2]->part_grad,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          batch_inputs[2]->region_grad));
     launcher.add_field(field_id++, FID_DATA);
   }
   if (elementwise_affine) {
     // gamma
-    launcher.add_region_requirement(
-        RegionRequirement(weights[0]->part, 0 /*projection id*/, READ_ONLY,
-                          EXCLUSIVE, weights[0]->region));
+    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[0]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);

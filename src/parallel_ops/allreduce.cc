@@ -355,16 +355,26 @@ FutureMap AllReduce::peft_bwd(FFModel const &ff,
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   IndexLauncher launcher(ALLREDUCE_PEFT_BWD_TASK_ID,
                          batch_outputs[0]->parallel_is,
-                         TaskArgument(nullptr, 0), argmap, Predicate::TRUE_PRED,
-                         false /*must*/, 0 /*mapper_id*/, machine_view_hash);
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
   launcher.add_future(bc);
   launcher.add_region_requirement(
-      RegionRequirement(batch_inputs[0]->part_grad, 0 /*projection id*/,
-                        READ_WRITE, EXCLUSIVE, batch_inputs[0]->region_grad));
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(batch_outputs[0]->part_grad, 0 /*projection id*/,
-                        READ_WRITE, EXCLUSIVE, batch_outputs[0]->region_grad));
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   return runtime->execute_index_space(ctx, launcher);
 }

@@ -891,26 +891,44 @@ FutureMap IncMultiHeadSelfAttention::peft_bwd(
   size_t machine_view_hash = view->hash();
   int idx = 0;
   IndexLauncher launcher(INC_MULTIHEAD_SELF_ATTENTION_PEFT_BWD_TASK_ID,
-                         parallel_is, TaskArgument(nullptr, 0), argmap,
-                         Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          machine_view_hash);
   launcher.add_future(bc);
   launcher.add_region_requirement(
-      RegionRequirement(batch_inputs[0]->part_grad, 0 /*projection id*/,
-                        READ_WRITE, EXCLUSIVE, batch_inputs[0]->region_grad));
-  launcher.add_field(idx++, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(
-      weights[0]->part, 0 /*projection id*/, READ_ONLY, EXCLUSIVE,
-      weights[0]->region, ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
   launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(batch_outputs[0]->part_grad, 0 /*projection id*/,
-                        READ_WRITE, EXCLUSIVE, batch_outputs[0]->region_grad));
+      RegionRequirement(weights[0]->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        weights[0]->region,
+                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+  launcher.add_field(idx++, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
   launcher.add_field(idx++, FID_DATA);
   if (qkv_bias || final_bias) {
-    launcher.add_region_requirement(RegionRequirement(
-        weights[1]->part, 0 /*projection id*/, READ_ONLY, EXCLUSIVE,
-        weights[1]->region, ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+    launcher.add_region_requirement(
+        RegionRequirement(weights[1]->part,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          weights[1]->region,
+                          ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
     launcher.add_field(idx++, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);
