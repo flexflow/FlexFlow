@@ -138,9 +138,9 @@ void FlexFlow::top_level_task(Task const *task,
   bool do_sample = false;
   float temperature = 0.0f;
   float topp = 0.0f;
-  int max_requests_per_batch = 8;
-  int max_tokens_per_batch = 128;
-  int max_sequence_length = 256;
+  int max_requests_per_batch = 2;
+  int max_tokens_per_batch = 300;
+  int max_sequence_length = 300;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -272,6 +272,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   int total_num_requests = 0;
   {
+#ifdef DEADCODE
     using json = nlohmann::json;
     std::ifstream file_handle(file_paths.prompt_file_path);
     assert(file_handle.good() && "Prompt file does not exist.");
@@ -291,15 +292,26 @@ void FlexFlow::top_level_task(Task const *task,
       inference_req.peft_model_id = peft_model_id;
       requests.push_back(inference_req);
       total_num_requests++;
-      // Add fine-tuning request
-      Request fine_tuning_req;
-      fine_tuning_req.req_type = Request::RequestType::REQ_FINETUNING;
-      fine_tuning_req.max_sequence_length = 128;
-      fine_tuning_req.peft_model_id = peft_model_id;
-      fine_tuning_req.dataset_text.push_back(std::make_pair(text, ""));
-      requests.push_back(fine_tuning_req);
+    }
+#endif
+    std::vector<Request> requests;
+    for (int i = 0; i < (max_requests_per_batch - 1) * 4; i++) {
+      Request inference_req;
+      inference_req.prompt = "b";
+      inference_req.max_sequence_length = 40;
+      requests.push_back(inference_req);
       total_num_requests++;
     }
+    // Add a fine-tuning request
+    Request fine_tuning_req;
+    fine_tuning_req.req_type = Request::RequestType::REQ_FINETUNING;
+    fine_tuning_req.max_sequence_length = 256;
+    fine_tuning_req.max_training_steps = 256;
+    fine_tuning_req.peft_model_id = peft_model_id;
+    fine_tuning_req.dataset_text.push_back(std::make_pair("b", ""));
+    requests.push_back(fine_tuning_req);
+    total_num_requests++;
+
     GenerationResult result = model.generate(requests);
   }
 
