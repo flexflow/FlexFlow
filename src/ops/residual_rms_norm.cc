@@ -630,42 +630,29 @@ Legion::FutureMap
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
-  IndexLauncher launcher(RESIDUAL_RMSNORM_PEFT_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         machine_view_hash);
+  IndexLauncher launcher(RESIDUAL_RMSNORM_PEFT_BWD_TASK_ID, parallel_is,
+                         TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                         false /*must*/, 0 /*mapper_id*/, machine_view_hash);
   launcher.add_future(bc);
   // regions[0](I): RMS output_grad
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[1]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[1]->part_grad, 0 /*projection id*/,
+                        READ_WRITE, EXCLUSIVE, batch_outputs[1]->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[2](I/O): residual input grad 0
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad, 0 /*projection id*/,
+                        READ_WRITE, EXCLUSIVE, batch_inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[3](I/O): residual input grad 1
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[1]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[1]->part_grad, 0 /*projection id*/,
+                        READ_WRITE, EXCLUSIVE, batch_inputs[1]->region_grad));
   launcher.add_field(2, FID_DATA);
   // regions[4](I): gamma
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part, 0 /*projection id*/, READ_ONLY,
+                        EXCLUSIVE, weights[0]->region));
   launcher.add_field(3, FID_DATA);
   return runtime->execute_index_space(ctx, launcher);
 }
