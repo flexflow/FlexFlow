@@ -1,3 +1,18 @@
+# Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import gradio as gr
 import flexflow.serve as ff
 import argparse, json, os
@@ -60,9 +75,15 @@ def get_configs():
         return ff_init_configs
 
 
-def generate_response(user_input):
+# def generate_response(user_input):
+#     result = llm.generate(user_input)
+#     return result.output_text.decode('utf-8')
+
+def generate_response(message, history):
+    user_input = message 
     result = llm.generate(user_input)
     return result.output_text.decode('utf-8')
+
 
 
 def main():
@@ -94,13 +115,19 @@ def main():
         max_seq_length=256,
         max_tokens_per_batch=64,
     )
-
-    iface = gr.Interface(
-        fn=generate_response, 
-        inputs="text", 
-        outputs="text"
-    )
+    
+    # # interface version 1
+    # iface = gr.Interface(
+    #     fn=generate_response, 
+    #     inputs="text", 
+    #     outputs="text"
+    # )
+    
+    # interface version 2
+    iface = gr.ChatInterface(fn=generate_response)
+    
     llm.start_server()
+    
 
     iface.launch()
 

@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import gradio as gr
+import os
 import flexflow.serve as ff
-import argparse, json, os
+import argparse, json
 from types import SimpleNamespace
+from typing import Any, List, Mapping, Optional
+from langchain.callbacks.manager import CallbackManagerForLLMRun
+from flexflow.serve.serve import LLM
 
 
 def get_configs():
@@ -41,9 +46,9 @@ def get_configs():
         # Define sample configs
         ff_init_configs = {
             # required parameters
-            "num_gpus": 2,
+            "num_gpus": 4,
             "memory_per_gpu": 14000,
-            "zero_copy_memory_per_node": 40000,
+            "zero_copy_memory_per_node": 30000,
             # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
@@ -60,7 +65,7 @@ def get_configs():
         }
         llm_configs = {
             # required llm arguments
-            "llm_model": "meta-llama/Llama-2-7b-hf",
+            "llm_model": "decapoda-research/llama-7b-hf",
             # optional llm parameters
             "cache_path": "",
             "refresh_cache": False,
@@ -68,7 +73,7 @@ def get_configs():
             "ssms": [
                 {
                     # required ssm parameter
-                    "ssm_model": "JackFram/llama-160m",
+                    "ssm_model": "JackFram/llama-160m-base",
                     # optional ssm parameters
                     "cache_path": "",
                     "refresh_cache": False,
@@ -89,75 +94,83 @@ def get_configs():
         # Merge dictionaries
         ff_init_configs.update(llm_configs)
         return ff_init_configs
+    
 
+class FF_LLM(LLM):
+    def __init__(self):
+        self.init_model()
 
-def main():
-    configs_dict = get_configs()
-    configs = SimpleNamespace(**configs_dict)
+    @property
+    def _llm_type(self) -> str:
+        return "custom"
+    
+    def init_model(self):
+        configs_dict = get_configs()
+        configs = SimpleNamespace(**configs_dict)
 
-    # Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
-    ff.init(configs_dict)
+        # Initialize the FlexFlow runtime.
+        ff.init(configs_dict)
 
-    # Create the FlexFlow LLM
-    ff_data_type = (
-        ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
-    )
-    llm = ff.LLM(
-        configs.llm_model,
-        data_type=ff_data_type,
-        cache_path=configs.cache_path,
-        refresh_cache=configs.refresh_cache,
-        output_file=configs.output_file,
-    )
-
-    # Create the SSMs
-    ssms = []
-    for ssm_config in configs.ssms:
-        ssm_config = SimpleNamespace(**ssm_config)
+        # Create the FlexFlow LLM
         ff_data_type = (
-            ff.DataType.DT_FLOAT if ssm_config.full_precision else ff.DataType.DT_HALF
+            ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
         )
-        ssm = ff.SSM(
-            ssm_config.ssm_model,
+        self.llm = ff.LLM(
+            configs.llm_model,
             data_type=ff_data_type,
-            cache_path=ssm_config.cache_path,
-            refresh_cache=ssm_config.refresh_cache,
+            cache_path=configs.cache_path,
+            refresh_cache=configs.refresh_cache,
             output_file=configs.output_file,
         )
-        ssms.append(ssm)
 
-    # Create the sampling configs
-    generation_config = ff.GenerationConfig(
-        do_sample=False, temperature=0.9, topp=0.8, topk=1
-    )
+        # Create the SSMs
+        self.ssms = []
+        for ssm_config in configs.ssms:
+            ssm_config = SimpleNamespace(**ssm_config)
+            ff_data_type = (
+                ff.DataType.DT_FLOAT if ssm_config.full_precision else ff.DataType.DT_HALF
+            )
+            ssm = ff.SSM(
+                ssm_config.ssm_model,
+                data_type=ff_data_type,
+                cache_path=ssm_config.cache_path,
+                refresh_cache=ssm_config.refresh_cache,
+                output_file=configs.output_file,
+            )
+            self.ssms.append(ssm)
 
-    # Compile the SSMs for inference and load the weights into memory
-    for ssm in ssms:
-        ssm.compile(
+        # Create the sampling configs
+        generation_config = ff.GenerationConfig(
+            do_sample=False, temperature=0.9, topp=0.8, topk=1
+        )
+
+        # Compile the SSMs for inference and load the weights into memory
+        for ssm in self.ssms:
+            ssm.compile(
+                generation_config,
+                max_requests_per_batch=1,
+                max_seq_length=256,
+                max_tokens_per_batch=64,
+            )
+
+        # Compile the LLM for inference and load the weights into memory
+        self.llm.compile(
             generation_config,
             max_requests_per_batch=1,
             max_seq_length=256,
             max_tokens_per_batch=64,
+            ssms=self.ssms,
         )
 
-    # Compile the LLM for inference and load the weights into memory
-    llm.compile(
-        generation_config,
-        max_requests_per_batch=1,
-        max_seq_length=256,
-        max_tokens_per_batch=64,
-        ssms=ssms,
-    )
-    llm.start_server()
-    # Generation begins!
-    if len(configs.prompt) > 0:
-        prompts = [s for s in json.load(open(configs.prompt))]
-        results = llm.generate(prompts)
-    else:
-        result = llm.generate("Three tips for staying healthy are: ")
-    llm.stop_server()
+    def _call(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> str:
+        if stop is not None:
+            raise ValueError("stop kwargs are not permitted.")
+        results = self.llm.generate(prompt)
+        return results.output_text.decode('utf-8')
 
-
-if __name__ == "__main__":
-    print("flexflow inference example (speculative inference)")
-    main()
