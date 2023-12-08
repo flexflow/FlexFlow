@@ -37,13 +37,11 @@ class FlexFlowLLM(LLM):
         stop: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> str:
-        # 在这里调用 FlexFlow LLM 来生成回应
         result = self.llm.generate(prompt)
         return result.output_text.decode('utf-8')
 
     @property
     def _identifying_params(self) -> dict:
-        # 返回识别参数，例如模型的名称
         return {"model": "FlexFlow Model"}
     
 
