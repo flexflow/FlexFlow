@@ -17,7 +17,35 @@ import gradio as gr
 import flexflow.serve as ff
 import argparse, json, os
 from types import SimpleNamespace
+from langchain.llms.base import LLM
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
+from typing import Any, List, Optional
+import chainlit as cl
 
+class FlexFlowLLM(LLM):
+    def __init__(self, llm):
+        self.llm = llm
+
+    @property
+    def _llm_type(self) -> str:
+        return "flexflow"
+
+    def _call(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> str:
+        # 在这里调用 FlexFlow LLM 来生成回应
+        result = self.llm.generate(prompt)
+        return result.output_text.decode('utf-8')
+
+    @property
+    def _identifying_params(self) -> dict:
+        # 返回识别参数，例如模型的名称
+        return {"model": "FlexFlow Model"}
+    
 
 def get_configs():
     parser = argparse.ArgumentParser()
@@ -73,64 +101,34 @@ def get_configs():
         # Merge dictionaries
         ff_init_configs.update(llm_configs)
         return ff_init_configs
-
-
-# def generate_response(user_input):
-#     result = llm.generate(user_input)
-#     return result.output_text.decode('utf-8')
-
-def generate_response(message, history):
-    user_input = message 
-    result = llm.generate(user_input)
-    return result.output_text.decode('utf-8')
-
-
-def main():
     
+
+
+@cl.on_chat_start
+def start_chat():
     global llm
-    
     configs_dict = get_configs()
     configs = SimpleNamespace(**configs_dict)
 
     ff.init(configs_dict)
-
-    ff_data_type = (
-        ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
-    )
-    llm = ff.LLM(
-        configs.llm_model,
-        data_type=ff_data_type,
-        cache_path=configs.cache_path,
-        refresh_cache=configs.refresh_cache,
-        output_file=configs.output_file,
-    )
-
-    generation_config = ff.GenerationConfig(
-        do_sample=False, temperature=0.9, topp=0.8, topk=1
-    )
-    llm.compile(
-        generation_config,
-        max_requests_per_batch=1,
-        max_seq_length=256,
-        max_tokens_per_batch=64,
-    )
+    ff_data_type = ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
+    llm = ff.LLM(configs.llm_model, data_type=ff_data_type, cache_path=configs.cache_path, refresh_cache=configs.refresh_cache, output_file=configs.output_file)
     
-    # # interface version 1
-    # iface = gr.Interface(
-    #     fn=generate_response, 
-    #     inputs="text", 
-    #     outputs="text"
-    # )
-    
-    # interface version 2
-    iface = gr.ChatInterface(fn=generate_response)
-    
+    generation_config = ff.GenerationConfig(do_sample=False, temperature=0.9, topp=0.8, topk=1)
+    llm.compile(generation_config, max_requests_per_batch=1, max_seq_length=256, max_tokens_per_batch=64)
     llm.start_server()
+    
+    flexflow_llm = FlexFlowLLM(llm)
+    prompt_template = PromptTemplate(template="{query}", input_variables=['query'])
+    llm_chain = LLMChain(llm=flexflow_llm, prompt=prompt_template, verbose=True)
+    cl.user_session.set("llm_chain", llm_chain)
 
-    iface.launch()
-
-    llm.stop_server()
+@cl.on_message
+async def handle_message(message: cl.Message):
+    llm_chain = cl.user_session.get("llm_chain")
+    text = message.content[:1200]
+    res = await llm_chain.acall(text, callbacks=[cl.AsyncLangchainCallbackHandler()])
+    await cl.Message(content=res["text"]).send()
 
 if __name__ == "__main__":
-    print("flexflow inference example with gradio interface")
-    main()
+    cl.run()
