@@ -17,8 +17,9 @@
 Running Instructions:
 - To run this FastAPI application, make sure you have FastAPI and Uvicorn installed.
 - Save this script as 'fastapi_app.py'.
-- Run the application using the command: `uvicorn fastapi_app:app --reload --port 8000`
-- The server will start on `http://localhost:8000`. Use this base URL to make API requests.
+- Run the application using the command: `uvicorn fastapi_app:app --reload --port PORT_NUMBER`
+- The server will start on `http://localhost:PORT_NUMBER`. Use this base URL to make API requests.
+- Go to `http://localhost:PORT_NUMBER/docs` for API documentation.
 """
 
 
@@ -142,6 +143,13 @@ async def generate(prompt_request: PromptRequest):
         "prompt": prompt_request.prompt,
         "response": response_text
     }
+    
+# Shutdown event to stop the model server
+@app.on_event("shutdown")
+async def shutdown_event():
+    global llm_model
+    if llm_model is not None:
+        llm_model.stop_server()
 
 # Main function to run Uvicorn server
 if __name__ == "__main__":
