@@ -146,7 +146,6 @@ if __name__ == "__main__":
         max_tokens_per_batch=64
     )
 
-    # 使用 FF_LLM_wrapper
     ff_llm_wrapper = FF_LLM_wrapper(flexflow_llm=ff_llm)
     
     template = """Question: {question}
