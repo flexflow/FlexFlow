@@ -12,6 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Running Instructions for Gradio Interface:
+- Ensure Gradio, FlexFlow, and other required libraries are installed.
+- Save this script as 'gradio_xxx.py'.
+- Run the script using the command: `python gradio_xxx.py`.
+- The script will start a Gradio interface, accessible through a local URL provided in the command line output.
+- Interact with the model through the Gradio interface by inputting text and receiving generated responses.
+"""
+
 
 import gradio as gr
 import flexflow.serve as ff
