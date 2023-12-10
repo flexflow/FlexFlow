@@ -13,14 +13,30 @@
 # limitations under the License.
 
 """
-Running Instructions for Gradio Interface:
-- Ensure Gradio, FlexFlow, and other required libraries are installed.
-- Save this script as 'gradio_xxx.py'.
-- Run the script using the command: `python gradio_xxx.py`.
-- The script will start a Gradio interface, accessible through a local URL provided in the command line output.
-- Interact with the model through the Gradio interface by inputting text and receiving generated responses.
-"""
+Functionality:
+1. Configuration Handling:
+   - Parses command-line arguments to get a configuration file path.
+   - Loads configuration settings from a JSON file if provided, or uses default settings.
 
+2. FlexFlow Model Initialization:
+   - Initializes FlexFlow with the provided or default configurations.
+   - Sets up the LLM with the specified model and configurations.
+   - Compiles the model with generation settings and starts the FlexFlow server.
+
+3. Gradio Interface Setup:
+   - Defines a function to generate responses based on user input using FlexFlow.
+   - Sets up a Gradio Chat Interface to interact with the model in a conversational format.
+
+4. Main Execution:
+   - Calls the main function to initialize configurations, set up the FlexFlow LLM, and launch the Gradio interface.
+   - Stops the FlexFlow server after the Gradio interface is closed.
+
+Usage:
+1. Run the script with an optional configuration file argument for custom settings.
+2. Interact with the FlexFlow model through the Gradio web interface.
+3. Enter text inputs to receive generated responses from the model.
+4. The script will stop the FlexFlow server automatically upon closing the Gradio interface.
+"""
 
 import gradio as gr
 import flexflow.serve as ff

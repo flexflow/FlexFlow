@@ -28,13 +28,31 @@
 
 
 """
+Functionality:
+1. FlexFlowLLM Class:
+   - Initializes and configures FlexFlow.
+   - Loads configurations from a file or uses default settings.
+   - Compiles and starts the language model server for text generation.
+   - Stops the server when operations are complete.
+
+2. FF_LLM_wrapper Class:
+   - Serves as a wrapper for FlexFlow.
+   - Implements the necessary interface to interact with the LangChain library.
+
+3. Main Execution:
+   - Initializes FlexFlow.
+   - Compiles and starts the server with specific generation configurations.
+   - Sets up a prompt template for generating responses to questions.
+   - Uses the LLMChain from LangChain to run the model and generate a response to a provided question.
+   - Stops the FlexFlow server after generating the response.
+
 Usage:
 1. Initialize the FlexFlowLLM with a configuration file (if available).
 2. Compile and start the server with specified generation configurations.
-3. Generate text using the LLM.
-4. Stop the server when done.
+3. Create an instance of FF_LLM_wrapper and set up a prompt template.
+4. Use LLMChain to run the model and generate a response to a predefined question.
+5. Stop the server when done.
 """
-
 
 import flexflow.serve as ff
 import argparse, json, os
@@ -146,6 +164,7 @@ if __name__ == "__main__":
         max_tokens_per_batch=64
     )
 
+    # the wrapper class serves as the 'Model' in LCEL 
     ff_llm_wrapper = FF_LLM_wrapper(flexflow_llm=ff_llm)
     
     template = """Question: {question}
