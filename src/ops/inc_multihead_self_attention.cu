@@ -1023,39 +1023,40 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     }
     // Step 2: Add alibi position bias to qk production
-    {
-      if (*m->position_bias) {
-        size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
-        apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
+    // matrix C: qk_prods
+    // matrix C's layout: [num_new_tokens, total_tokens, num_heads]
+    // To get C, skip over QK.T products from previous requests
+    DT *C = static_cast<DT *>(m->qk_prods);
+    if (*m->position_bias) {
+      size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
+      apply_position_bias_qkprd<<<GET_BLOCKS(parallelism),
+                                  min((size_t)CUDA_NUM_THREADS, parallelism),
+                                  0,
+                                  stream>>>(C,
+                                            num_new_tokens,
+                                            total_tokens,
+                                            m->num_q_heads,
+                                            m->global_num_q_heads,
+                                            shard_id);
+    }
+
+    // Step 3: Apply causal mask. Fill all elements above diagonal in qk prods
+    // with -inf to force causal attention.
+    assert(num_new_tokens <= total_tokens);
+    size_t entries_above_diagonal = num_new_tokens * (num_new_tokens - 1) / 2;
+    if (entries_above_diagonal > 0) {
+      size_t parallelism = m->num_q_heads * entries_above_diagonal;
+      fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
                                     min((size_t)CUDA_NUM_THREADS, parallelism),
                                     0,
                                     stream>>>(C,
                                               num_new_tokens,
                                               total_tokens,
                                               m->num_q_heads,
-                                              m->global_num_q_heads,
-                                              shard_id);
-      }
+                                              entries_above_diagonal,
+                                              static_cast<DT>(-INFINITY));
     }
-    // Step 3: Apply causal mask. Fill all elements above diagonal in qk prods
-    // with -inf to force causal attention.
-    {
-      assert(num_new_tokens <= total_tokens);
-      size_t entries_above_diagonal = num_new_tokens * (num_new_tokens - 1) / 2;
-      if (entries_above_diagonal > 0) {
-        size_t parallelism = m->num_q_heads * entries_above_diagonal;
-        fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
-                                      min((size_t)CUDA_NUM_THREADS,
-                                          parallelism),
-                                      0,
-                                      stream>>>(C,
-                                                num_new_tokens,
-                                                total_tokens,
-                                                m->num_q_heads,
-                                                entries_above_diagonal,
-                                                static_cast<DT>(-INFINITY));
-      }
-    }
+
     // Step 4: Compute Softmax(QK.T/sqrt(d_k))
     {
       // Before modifying the parameters below, make sure to read the following
@@ -1112,20 +1113,21 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
       // matrix A's layout: [vProjSize, num_heads, total_tokens]
       // To get A, skip over V.T entries from previous requests (all heads +
       // padding)
-      A = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
+      DT *A = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
       // matrix B: qk_prods_softmax
       // matrix B's layout: [num_new_tokens, total_tokens, num_heads]
       // To get B, skip over softmax(QK.T/sqrt(d_k)) entries from previous
       // requests (all heads)
-      B = C_softmax;
+      DT *B = static_cast<DT *>(m->qk_prods_softmax);
+      ;
       // matrix C: attn heads
       // matrix C's layout: [vProjSize, num_heads, num_new_tokens]
       // To get C, skip over softmax(QK.T/sqrt(d_k))V products from previous
       // requests
       // store the result attn heads, also skip the genration tokens
-      C = static_cast<DT *>(m->attn_heads) +
-          (tokens_previous_requests + bc->num_generation_tokens) *
-              m->num_q_heads * m->vProjSize;
+      DT *C = static_cast<DT *>(m->attn_heads) +
+              (tokens_previous_requests + bc->num_generation_tokens) *
+                  m->num_q_heads * m->vProjSize;
       checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                            CUBLAS_OP_N,
                                            CUBLAS_OP_T,
