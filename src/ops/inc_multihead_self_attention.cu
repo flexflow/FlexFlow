@@ -517,7 +517,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
   }
 #endif
-  
+
   // Step 1: Compute QKV projections
   {
     DT alpha = 1.0f, beta = 0.0f;
@@ -557,11 +557,11 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
-  
+
   int num_tokens = bc->num_active_tokens();
   int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
   size_t q_array_size = m->qProjSize * num_tokens * m->num_q_heads;
-  
+
   // Step 2: apply bias for QKV, or scale the query
   if (*m->qkv_bias) {
     apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
@@ -590,7 +590,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                      m->scaling_factor,
                                      m->hidden_size);
   }
-  
+
   // Step 3: apply rotary embedding if needed
   if (*m->apply_rotary_embedding) {
     /*q&k*/
@@ -982,7 +982,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
       int strideA = q_block_size;
       int strideB = kt_block_size;
       int strideC = num_new_tokens * total_tokens;
-      
+
       // matrix A: devQKVProjArray
       // matrix A's layout: [qProjSize, num_heads, 3, num_new_tokens]
       // To get query projection, skip over Q entries from previous requests
@@ -1037,14 +1037,16 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
                                               shard_id);
       }
     }
-    // Step 3: Apply causal mask. Fill all elements above diagonal in qk prods with -inf to force causal attention.
+    // Step 3: Apply causal mask. Fill all elements above diagonal in qk prods
+    // with -inf to force causal attention.
     {
       assert(num_new_tokens <= total_tokens);
       size_t entries_above_diagonal = num_new_tokens * (num_new_tokens - 1) / 2;
       if (entries_above_diagonal > 0) {
         size_t parallelism = m->num_q_heads * entries_above_diagonal;
         fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
-                                      min((size_t)CUDA_NUM_THREADS, parallelism),
+                                      min((size_t)CUDA_NUM_THREADS,
+                                          parallelism),
                                       0,
                                       stream>>>(C,
                                                 num_new_tokens,
@@ -1092,7 +1094,8 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
                                      m->qk_tensor,
                                      C_softmax));
     }
-    // Step 5: Matmul softmax(QK.T/sqrt(d_k)) by V. Implemented as V @ softmax(QK.T/sqrt(d_k)).T
+    // Step 5: Matmul softmax(QK.T/sqrt(d_k)) by V. Implemented as V @
+    // softmax(QK.T/sqrt(d_k)).T
     {
       DT alpha = 1.0f, beta = 0.0f;
       // after transpositions
