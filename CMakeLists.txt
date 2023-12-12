@@ -14,6 +14,7 @@ endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 set(CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS} -fPIC -UNDEBUG")
+set(CMAKE_HIP_FLAGS "-std=c++17 ${CMAKE_HIP_FLAGS} -fPIC -UNDEBUG")
 
 # set std 17
 #set(CMAKE_CXX_STANDARD 17)
@@ -51,6 +52,7 @@ endif()
 
 # do not disable assertions even if in release mode
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UNDEBUG")
+set(CMAKE_HIP_FLAGS_RELEASE "${CMAKE_HIP_FLAGS_RELEASE} -UNDEBUG")
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(LIBEXT ".so")
@@ -157,6 +159,7 @@ endif()
 
 # HIP
 if (FF_GPU_BACKEND STREQUAL "hip_rocm" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
+  enable_language(HIP)
   include(hip)
 endif()
 
@@ -299,7 +302,10 @@ if(NOT BUILD_LEGION_ONLY)
       LIST_DIRECTORIES False
       ${FLEXFLOW_ROOT}/src/*.cpp)
 
-    if(BUILD_SHARED_LIBS)
+      set_source_files_properties(${FLEXFLOW_GPU_SRC} PROPERTIES LANGUAGE HIP)
+      set_source_files_properties(${FLEXFLOW_SRC} PROPERTIES LANGUAGE HIP)
+    
+      if(BUILD_SHARED_LIBS)
       add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
     else()
       add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
@@ -474,9 +480,6 @@ if(NOT BUILD_LEGION_ONLY)
     endif()
 
   if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_TOKENIZER)
-    if (FF_GPU_BACKEND STREQUAL "hip_rocm")
-      SET(SPM_USE_BUILTIN_PROTOBUF OFF CACHE BOOL "Use builtin version of protobuf to compile SentencePiece")
-    endif()
     # Ensure Rust is installed
     execute_process(COMMAND rustc --version
                   RESULT_VARIABLE RUST_COMMAND_RESULT
