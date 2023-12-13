@@ -56,8 +56,6 @@ from langchain.vectorstores import Chroma
 import warnings
 warnings.filterwarnings("ignore")
 
-OPENAI_API_KEY = "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"
-
 
 class FlexFlowLLM:
     def __init__(self, config_file=""):
