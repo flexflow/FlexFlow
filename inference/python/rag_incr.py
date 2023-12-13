@@ -12,17 +12,51 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+"""
+Usage:
+1. Initialize the FlexFlowLLM with a configuration file (if available).
+2. Compile and start the server with specified generation configurations.
+3. Generate text using the LLM.
+4. Stop the server when done.
+"""
+
 
 import flexflow.serve as ff
 import argparse, json, os
 from types import SimpleNamespace
 from langchain.llms.base import LLM
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema import StrOutputParser
-import chainlit as cl
 from typing import Any, List, Mapping, Optional
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+import bs4
+from langchain import hub
+from langchain.chat_models import ChatOpenAI
+from langchain.document_loaders import WebBaseLoader
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.schema import StrOutputParser
+from langchain.schema.runnable import RunnablePassthrough
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import Chroma
+
+import warnings
+warnings.filterwarnings("ignore")
+
+OPENAI_API_KEY = "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"
 
 
 class FlexFlowLLM:
@@ -112,8 +146,8 @@ class FF_LLM_wrapper(LLM):
         response = self.flexflow_llm.generate(prompt)
         return response
 
-@cl.on_chat_start
-def start_chat():
+
+if __name__ == "__main__":
     # initialization
     ff_llm = FlexFlowLLM()
 
@@ -126,23 +160,48 @@ def start_chat():
         max_tokens_per_batch=64
     )
 
+    # the wrapper class serves as the 'Model' in LCEL 
     ff_llm_wrapper = FF_LLM_wrapper(flexflow_llm=ff_llm)
     
-    prompt_template = PromptTemplate(template="{query}", input_variables=['query'])
-    llm_chain = LLMChain(llm=ff_llm_wrapper, prompt=prompt_template, verbose=True)
-    cl.user_session.set("llm_chain", llm_chain)
+    loader = WebBaseLoader(
+        web_paths=("https://lilianweng.github.io/posts/2023-06-23-agent/",),
+        bs_kwargs=dict(
+            parse_only=bs4.SoupStrainer(
+                class_=("post-content", "post-title", "post-header")
+            )
+        ),
+    )
+    docs = loader.load()
+    print("loaded documents")
 
-@cl.on_message
-async def handle_message(message: cl.Message):
-    llm_chain = cl.user_session.get("llm_chain")
-    text = message.content[:1200]
-    res = await llm_chain.acall(text, callbacks=[cl.AsyncLangchainCallbackHandler()])
-    await cl.Message(content=res["text"]).send()
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    splits = text_splitter.split_documents(docs)
+    print("split documents")
+
+    vectorstore = Chroma.from_documents(
+        documents=splits, 
+        embedding=OpenAIEmbeddings(openai_api_key = "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"))
+    retriever = vectorstore.as_retriever()
+    print("vector store for documents")
+
+    prompt = hub.pull("rlm/rag-prompt")
+    # llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0, openai_api_key = "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")
+    llm = ff_llm_wrapper
+    
 
 
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+
+
+    rag_chain = (
+        {"context": retriever | format_docs, "question": RunnablePassthrough()}
+        | prompt
+        | llm
+        | StrOutputParser()
+    )
+    print("chained")
     
-if __name__ == "__main__":
-    cl.run()
-    
-    
-# chainlit run chainlit_incr.py -w
+    print(rag_chain.invoke("What is Task Decomposition?"))
+    # stop the server
+    ff_llm.stop_server()

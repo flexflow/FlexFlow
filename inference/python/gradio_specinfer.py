@@ -12,10 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Functionality:
+1. Configuration Handling:
+   - Parses command-line arguments to get a configuration file path.
+   - Loads configuration settings from a JSON file if provided, or uses default settings.
+
+2. FlexFlow Model Initialization:
+   - Initializes FlexFlow with the provided or default configurations.
+   - Sets up the LLM with the specified model and configurations.
+   - Compiles the model with generation settings and starts the FlexFlow server.
+
+3. Gradio Interface Setup:
+   - Defines a function to generate responses based on user input using FlexFlow.
+   - Sets up a Gradio Chat Interface to interact with the model in a conversational format.
+
+4. Main Execution:
+   - Calls the main function to initialize configurations, set up the FlexFlow LLM, and launch the Gradio interface.
+   - Stops the FlexFlow server after the Gradio interface is closed.
+
+Usage:
+1. Run the script with an optional configuration file argument for custom settings.
+2. Interact with the FlexFlow model through the Gradio web interface.
+3. Enter text inputs to receive generated responses from the model.
+4. The script will stop the FlexFlow server automatically upon closing the Gradio interface.
+"""
+
+import gradio as gr
 import flexflow.serve as ff
 import argparse, json, os
 from types import SimpleNamespace
-
 
 def get_configs():
     parser = argparse.ArgumentParser()
@@ -91,7 +117,21 @@ def get_configs():
         return ff_init_configs
 
 
+# def generate_response(user_input):
+#     result = llm.generate(user_input)
+#     return result.output_text.decode('utf-8')
+
+def generate_response(message, history):
+    user_input = message 
+    result = llm.generate(user_input)
+    return result.output_text.decode('utf-8')
+
+
 def main():
+    
+    global llm
+    
+    
     configs_dict = get_configs()
     configs = SimpleNamespace(**configs_dict)
 
@@ -148,16 +188,23 @@ def main():
         max_tokens_per_batch=64,
         ssms=ssms,
     )
+    
+    # # interface version 1
+    # iface = gr.Interface(
+    #     fn=generate_response, 
+    #     inputs="text", 
+    #     outputs="text"
+    # )
+    
+    # interface version 2
+    iface = gr.ChatInterface(fn=generate_response)
+    
     llm.start_server()
-    # Generation begins!
-    if len(configs.prompt) > 0:
-        prompts = [s for s in json.load(open(configs.prompt))]
-        results = llm.generate(prompts)
-    else:
-        result = llm.generate("Three tips for staying healthy are: ")
+
+    iface.launch()
+
     llm.stop_server()
 
-
 if __name__ == "__main__":
-    print("flexflow inference example (speculative inference)")
+    print("flexflow inference example with gradio interface")
     main()

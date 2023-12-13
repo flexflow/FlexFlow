@@ -155,4 +155,8 @@ async def shutdown_event():
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
+# Running within the entrypoint folder:
 # uvicorn fastapi_app:app --reload --port
+
+# Running within the python folder:
+# uvicorn entrypoint.fastapi_app:app --reload --port 3000
