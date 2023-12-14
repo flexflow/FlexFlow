@@ -860,6 +860,8 @@ void IncMultiHeadSelfAttention::inference_task(
 
   assert(task->index_point.get_dim() == 1);
 
+  std::string op_name_without_uid = IncMultiHeadSelfAttention::get_op_name_without_uid(m);
+  std::cout << "INF " << op_name_without_uid << std::endl;
   IncMultiHeadSelfAttention::inference_kernel_wrapper(
       m, bc, task->index_point.point_data[0], input, weight, output, biases);
 
@@ -992,6 +994,8 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
 
   assert(task->index_point.get_dim() == 1);
 
+  std::string op_name_without_uid = IncMultiHeadSelfAttention::get_op_name_without_uid(m);
+  std::cout << "BWD " << op_name_without_uid << std::endl;
   IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
       m,
       bc,
