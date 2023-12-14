@@ -246,16 +246,12 @@ RequestManager::RequestGuid
   request.peft_model_id = request_.peft_model_id;
   request.req_type = Request::REQ_FINETUNING;
   request.completed_training_steps = 0;
-  request.max_training_steps = request_.max_training_steps;
+  request.max_training_steps = 1; // TODO: let user set this
   for (auto const &sample : request_.dataset_text) {
     std::vector<int32_t> input_tokens;
     input_tokens = this->tokenizer_->Encode(sample.first);
     if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
       input_tokens.insert(input_tokens.begin(), bos_token_id);
-    }
-    // FIXME: this is a hack, must undo
-    while (input_tokens.size() < 256) {
-      input_tokens.push_back(293);
     }
     std::vector<int32_t> output_tokens =
         this->tokenizer_->Encode(sample.second);
@@ -359,7 +355,6 @@ BatchConfig RequestManager::prepare_next_batch_task(
 
 BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                                                InferenceResult const &result) {
-  log_req_mgr.print("[Old BC] Num tokens: %d", old_bc.num_tokens);
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Step 1: append result from previous iteration to request's tokens
   for (int i = 0; i < old_bc.num_tokens; i++) {
@@ -544,8 +539,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   new_bc.num_generation_tokens = num_generation_tokens;
 
   // Step 3: add new requests to the next batch if there is space
-  // FIXME: we reserve one slot for PEFT req now
-  for (int i = 0; i < BatchConfig::max_requests_per_batch() - 1; i++) {
+  for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (new_bc.request_completed[i]) {
       if (!pending_infr_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
