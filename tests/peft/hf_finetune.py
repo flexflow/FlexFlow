@@ -72,6 +72,8 @@ def peft_backward_hook(module, grad_input, grad_output):
             print("\t", go.shape)
             print(f"\t\tSaving to {dst_filepath}")
             torch.save(go, dst_filepath)
+            if dst_filepath == "./hf_peft_tensors/bwd_step_0_layers.11.self_attn.o_proj.go_0":
+                go.detach().cpu().numpy().tofile(f"{dst_filepath}.flexflow")
         else:
             print(go)
     print("Backward GRAD Input:")
@@ -81,6 +83,8 @@ def peft_backward_hook(module, grad_input, grad_output):
             print("\t", gi.shape)
             print(f"\t\tSaving to {dst_filepath}")
             torch.save(gi, dst_filepath)
+            if dst_filepath == "./hf_peft_tensors/bwd_step_0_layers.11.post_attention_layernorm.gi_0" or dst_filepath == "./hf_peft_tensors/bwd_step_0_norm.gi_0":
+                gi.detach().cpu().numpy().tofile(f"{dst_filepath}.flexflow")
         else:
             print(gi)
 

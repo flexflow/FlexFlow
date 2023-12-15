@@ -673,6 +673,37 @@ Legion::FutureMap
   return runtime->execute_index_space(ctx, launcher);
 }
 
+template <typename DT>
+void load_tensor_from_file(DT *ptr, size_t size, std::string filepath) {
+  std::ifstream in(filepath, std::ios::in | std::ios::binary);
+  if (!in.good()) {
+    std::cout << "Could not open file: " << filepath << std::endl;
+  }
+  assert(in.good() && "incorrect weight file path");
+  std::vector<DT> host_array(size);
+  size_t loaded_data_size = sizeof(DT) * size;
+  in.seekg(0, in.end);
+  in.seekg(0, in.beg);
+  in.read((char *)host_array.data(), loaded_data_size);
+
+  size_t in_get_size = in.gcount();
+  if (in_get_size != loaded_data_size) {
+    std::cout << "load weight data error " << in_get_size << ", "
+              << loaded_data_size << ", " << sizeof(DT) << std::endl;
+    assert(false);
+  }
+  assert(size == host_array.size());
+
+  copy_tensor_host_to_dev(ptr, host_array.data(), size);
+
+  // // normal
+  // long data_index = 0;
+  // for (auto v : host_array) {
+  //   ptr[data_index++] = v;
+  // }
+  in.close();
+}
+
 /*
   regions[0](I): RMS output_grad
   regions[1](I/O): Residual input 0 grad
@@ -710,6 +741,43 @@ void ResidualRMSNorm::peft_bwd_task(Task const *task,
       m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
   peft_bwd_kernel_wrapper(
       m, bc, output_grad, residual_input0_grad, residual_input1_grad, weight);
+  int numdims = residual_input0_grad.domain.get_dim();
+  std::cout << "in grad dims: ";
+  for (int i=0; i<numdims; i++) {
+    std::cout << residual_input0_grad.domain.hi()[i] - residual_input0_grad.domain.lo()[i] + 1 << ", ";
+  }
+  std::cout << std::endl;
+  // get name
+  std::string op_name_without_uid = ResidualRMSNorm::get_op_name_without_uid(m);
+  std::cout << "BWD " << op_name_without_uid << std::endl;
+  // print shape
+
+  if (op_name_without_uid == "norm") {
+    load_tensor_from_file(
+      residual_input0_grad.get_float_ptr(), 
+      (residual_input0_grad.domain.get_volume()/128)*24, 
+      "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_norm.gi_0.flexflow"
+    );
+    load_tensor_from_file(
+      residual_input1_grad.get_float_ptr(), 
+      (residual_input1_grad.domain.get_volume()/128)*24, 
+      "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_norm.gi_0.flexflow"
+    );
+  } else if (op_name_without_uid == "layers_11_ffn_norm") {
+    load_tensor_from_file(
+      residual_input0_grad.get_float_ptr(), 
+      (residual_input0_grad.domain.get_volume()/128)*24, 
+      "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_layers.11.post_attention_layernorm.gi_0.flexflow"
+    );
+    load_tensor_from_file(
+      residual_input1_grad.get_float_ptr(), 
+      (residual_input1_grad.domain.get_volume()/128)*24, 
+      "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_layers.11.post_attention_layernorm.gi_0.flexflow"
+    );
+  }
+  // if name is layers_11_rms_norm, copy both
+  //load_tensor_from_file(DT *ptr, size_t size, std::string filepath)
+  
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
