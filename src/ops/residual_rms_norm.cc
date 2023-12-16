@@ -741,21 +741,24 @@ void ResidualRMSNorm::peft_bwd_task(Task const *task,
       m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
   peft_bwd_kernel_wrapper(
       m, bc, output_grad, residual_input0_grad, residual_input1_grad, weight);
+  
+  // get name
+  std::string op_name_without_uid = ResidualRMSNorm::get_op_name_without_uid(m);
+  std::cout << "BWD " << op_name_without_uid << " reset_in_grad[0]: " <<  m->reset_input_grads[0] << " reset_in_grad[1]: " <<  m->reset_input_grads[1] << std::endl;
+  // print shape
   int numdims = residual_input0_grad.domain.get_dim();
   std::cout << "in grad dims: ";
   for (int i=0; i<numdims; i++) {
     std::cout << residual_input0_grad.domain.hi()[i] - residual_input0_grad.domain.lo()[i] + 1 << ", ";
   }
   std::cout << std::endl;
-  // get name
-  std::string op_name_without_uid = ResidualRMSNorm::get_op_name_without_uid(m);
-  std::cout << "BWD " << op_name_without_uid << std::endl;
-  // print shape
 
   if (op_name_without_uid == "norm") {
+    int amount = (residual_input1_grad.domain.get_volume()/128)*24;
+    std::cout << "Loading " << amount << " elements from /usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_norm.gi_0.flexflow..." << std::endl;
     load_tensor_from_file(
       residual_input0_grad.get_float_ptr(), 
-      (residual_input0_grad.domain.get_volume()/128)*24, 
+      (residual_input0_grad.domain.get_volume()/128)*24,
       "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_norm.gi_0.flexflow"
     );
     load_tensor_from_file(

@@ -229,6 +229,8 @@ def main():
                 torch.save(params, f"./hf_peft_tensors/{name}")
             if "lm_head" in name or "norm" in name:
                 torch.save(params, f"./hf_peft_tensors/{name}")
+            if "down_proj" in name or "self_attn" in name:
+                torch.save(params, f"./hf_peft_tensors/{name}")
 
     # Load fine-tuning dataset
     data = load_dataset("Abirate/english_quotes")
