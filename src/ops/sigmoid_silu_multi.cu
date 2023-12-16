@@ -233,7 +233,7 @@ void SigmoidSiluMulti::backward_kernel_wrapper(
                                                input1.get_float_ptr(),
                                                input2.get_float_ptr(),
                                                input1_grad.get_float_ptr(),
-                                               input1_grad.get_float_ptr(),
+                                               input2_grad.get_float_ptr(),
                                                m->reset_input_grads[0],
                                                m->reset_input_grads[1]);
   } else if (m->input_type[0] == DT_HALF) {
