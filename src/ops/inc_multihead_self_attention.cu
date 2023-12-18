@@ -493,6 +493,47 @@ __global__ void
 }
 
 template <typename DT>
+__global__ void apply_rotary_embedding_bwd(DT *input_ptr,
+                                          cuFloatComplex *complex_input,
+                                          BatchConfig::PerTokenInfo const *tokenInfos,
+                                          int proj_size,
+                                          int num_tokens,
+                                          int hidden_size) {
+  CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
+    // compute indexes to visit first half proj_size of each of q/k tensor.
+    // devQKVProj has shape [num_tokens, qProjSize, num_heads, 3] in peft_bwd
+    bool q_tensor = i < (num_tokens * hidden_size / 2);
+    int real_i = q_tensor ? i : i - num_tokens * hidden_size / 2;
+    assert(hidden_size % proj_size == 0);
+    int num_heads = hidden_size / proj_size;
+
+    int token_idx = real_i % num_tokens;
+    int idx = (real_i / num_tokens) % (proj_size / 2);
+    int head_idx = real_i / (num_tokens * proj_size / 2);
+    assert(head_idx < num_heads);
+
+    int complex_part_index = 
+      (q_tensor ? 0 : 1) * num_tokens * hidden_size + 
+      head_idx * num_tokens * proj_size +
+      idx * num_tokens +
+      token_idx;
+    int real_part_index = complex_part_index + (proj_size / 2) * num_tokens;
+
+    complex_input[i] = {input_ptr[real_part_index],
+                        input_ptr[complex_part_index]};
+
+    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
+
+    float freq = pos * (1.0 / pow(10000.0, (float)2 * idx / proj_size));
+    cuFloatComplex complex_pos = {cos(freq), sin(freq)};
+
+    complex_input[i] = cuCmulf(complex_input[i], complex_pos);
+    input_ptr[real_part_index] = complex_input[i].x;
+    input_ptr[complex_part_index] = complex_input[i].y;
+  }
+}
+
+template <typename DT>
 __global__ void fill_entries_above_diagonal(DT *matrix,
                                             size_t num_rows,
                                             size_t num_cols,
@@ -1200,7 +1241,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
     std::string filename8 = base_filepath + "_query_activation";
     std::cout << "FILENAME: " << filename8 << std::endl;
     save_tensor(B, m->qProjSize * m->num_q_heads *num_tokens, filename8.c_str());
-    std::string filename9 = base_filepath + "_devkproj";
+    std::string filename9 = base_filepath + "_devkproj_pre";
     std::cout << "FILENAME: " << filename9 << std::endl;
     save_tensor(C, num_tokens * (m->qProjSize * m->num_q_heads), filename9.c_str());
     }
@@ -1253,9 +1294,41 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_q_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    std::string filename3 = base_filepath + "_devQKVPRojArray";
-    std::cout << "FILENAME: " << filename3 << std::endl;
-    save_tensor(C, num_tokens * m->qProjSize * m->num_q_heads * 3, filename3.c_str());
+      std::string filename3 = base_filepath + "_devQKVPRojArray_pre";
+      std::cout << "FILENAME: " << filename3 << std::endl;
+      save_tensor(C, num_tokens * m->qProjSize * m->num_q_heads * 3, filename3.c_str());
+    }
+
+    // Compute rotary embeddings bwd
+    {
+      if (*m->apply_rotary_embedding) {
+        assert(m->hidden_size == m->qProjSize * m->num_q_heads);
+        assert(m->qProjSize == m->kProjSize);
+        printf("ROTARY EMBEDDING bwd: num_tokens: %i, m->hidden_size: %i\n",  num_tokens, m->hidden_size);
+        /*q&k*/
+        int parallelism = num_tokens * m->hidden_size;
+        DT *A = static_cast<DT *>(m->devQKVProjArray);
+        apply_rotary_embedding_bwd<<<GET_BLOCKS(parallelism),
+                                    min(CUDA_NUM_THREADS, parallelism),
+                                    0,
+                                    stream>>>(A,
+                                              m->complex_input,
+                                              m->token_infos,
+                                              m->qProjSize,
+                                              num_tokens,
+                                              m->hidden_size);
+        DT *C = static_cast<DT *>(m->devQKVProjArray);
+        std::string filename3 = base_filepath + "_devQKVPRojArray";
+        std::cout << "FILENAME: " << filename3 << std::endl;
+        save_tensor(C, num_tokens * m->qProjSize * m->num_q_heads * 3, filename3.c_str());
+      }
+
+      // matrix C: gradients for key (saved as part of m->devQKVProjArray)
+      // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
+      DT *C = static_cast<DT *>(m->devQKVProjArray) + num_tokens * (m->qProjSize * m->num_q_heads); // skip over regions reserved for Q gradients
+      std::string filename9 = base_filepath + "_devkproj";
+      std::cout << "FILENAME: " << filename9 << std::endl;
+      save_tensor(C, num_tokens * (m->qProjSize * m->num_q_heads), filename9.c_str());
     }
     // Step 7: compute gradients w.r.t. input
     {
