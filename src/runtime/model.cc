@@ -2474,6 +2474,10 @@ void FFModel::update() {
   }
 }
 
+void FFModel::unified_update() {
+  optimizer->unified_update(parameters);
+}
+
 Op *FFModel::get_final_operator() const {
   int idx = operators.size() - 1;
   while (operators[idx]->op_type == OP_INPUT ||
@@ -5299,6 +5303,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<AdamOptimizer::nccl_update_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ADAM_UNIFY_UPD_NCCL_TASK_ID, "Adam unified NCCL Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AdamOptimizer::nccl_unified_update_task>(
+          registrar, "Adam unified NCCL Update Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AdamOptimizer::nccl_unified_update_task>(
           registrar);
     }
   }

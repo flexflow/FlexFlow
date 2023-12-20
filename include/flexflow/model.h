@@ -151,6 +151,7 @@ enum TaskIDs {
   // Optimizer with NCCL
   SGD_UPD_NCCL_TASK_ID,
   ADAM_UPD_NCCL_TASK_ID,
+  ADAM_UNIFY_UPD_NCCL_TASK_ID,
   // Initializer
   GLOROT_INIT_TASK_ID,
   ZERO_INIT_TASK_ID,
@@ -777,6 +778,7 @@ public:
   void get_metrics();
   void backward(int seq_length = -1);
   void update();
+  void unified_update();
   bool apply_fusion(std::vector<Op *> const &operators,
                     std::vector<Op *> &new_operators);
   Op *get_final_operator() const;

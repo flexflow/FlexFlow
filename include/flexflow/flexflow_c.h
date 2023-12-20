@@ -95,6 +95,8 @@ void flexflow_model_compute_metrics(flexflow_model_t handle);
 
 void flexflow_model_update(flexflow_model_t handle);
 
+void flexflow_model_unified_update(flexflow_model_t handle);
+
 void flexflow_model_compile(flexflow_model_t handle,
                             enum LossType loss_type,
                             int *metrics,

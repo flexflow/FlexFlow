@@ -2018,6 +2018,13 @@ class FFModel(object):
     :returns:  None -- no returns.
     """
     ffc.flexflow_model_update(self.handle)
+    
+  def unified_update(self):
+    """Update weights and biases of all layers.
+             
+    :returns:  None -- no returns.
+    """
+    ffc.flexflow_model_unified_update(self.handle)
 
   def compile(self, optimizer=None, loss_type=None, metrics=None, comp_mode=None):
     """Configure the model for trainting. FlexFlow uses lazy initialization,

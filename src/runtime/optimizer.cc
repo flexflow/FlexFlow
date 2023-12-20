@@ -333,6 +333,7 @@ void AdamOptimizer::init(void) {
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;
   Initializer *initializer = new ZeroInitializer();
+  reservedWorkSpaceSize = 0;
   for (size_t i = 0; i < model->parameters.size(); i++) {
     ParallelTensor p = model->parameters[i];
     Domain domain =
@@ -381,6 +382,8 @@ void AdamOptimizer::update(const ParallelTensor p) {
   assert(v_values.find(p->region) != v_values.end());
   assert(m_values.find(p->region) != m_values.end());
   assert(p->owner_op != NULL);
+  reservedWorkSpaceSize += p->get_volume() * sizeof(float);
+  printf("update workspace: %d", reservedWorkSpaceSize);
   if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(ADAM_UPD_PS_TASK_ID,
                           TaskArgument(this, sizeof(AdamOptimizer)),
@@ -490,6 +493,105 @@ void AdamOptimizer::update(const ParallelTensor p) {
   } else {
     assert(false);
   }
+}
+
+void AdamOptimizer::unified_update(std::vector<ParallelTensor> parameters) {
+  Context ctx = model->config.lg_ctx;
+  Runtime *runtime = model->config.lg_hlr;
+  
+  
+  printf("update workspace: %d", reservedWorkSpaceSize);
+
+  const ParallelTensor p0 = parameters.at(0);
+  ArgumentMap argmap;
+    Domain domain = runtime->get_index_space_domain(ctx, p0->parallel_is);
+    switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      OpMeta *mp = p0->owner_op->meta[idx++];                                   \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+    }                                                                          \
+    break;                                                                     \
+  }
+      LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+      default:
+        assert(false);
+    }
+
+  int offset = 0;
+
+  while(parameters_num < parameters.size()){
+    for(int i = 0; i < parameters.size(); i++){
+      const ParallelTensor p = parameters.at(i);
+      assert(v_values.find(p->region) != v_values.end());
+      assert(m_values.find(p->region) != m_values.end());
+      assert(p->owner_op != NULL);
+      if(reservedWorkSpaceSize + p->get_volume() * sizeof(float) >= model->handlers->workSpaceSize){
+         break;
+      }
+      reservedWorkSpaceSize += p->get_volume() * sizeof(float);
+      parameters_num += 1;
+      assert (p->sync_type == ParameterSyncType::NCCL);
+      assert(p->parallel_is != IndexSpace::NO_SPACE);
+    }
+    assert(parameters_num <= parameters.size());
+
+    //launch a unified task
+    for(int j = 0; j < parameters_num; j++){
+        this->next();
+        const ParallelTensor p = parameters.at(processed_parameters_num + j);
+        IndexLauncher launcher(ADAM_UNIFY_UPD_NCCL_TASK_ID,
+                           p0->parallel_is,
+                           TaskArgument(this, sizeof(AdamOptimizer)),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must_epoch*/,
+                           0 /*mapper_id*/,
+                           p0->machine_view.hash());
+         // regions[0]: region_grad
+        launcher.add_region_requirement(RegionRequirement(p->part_grad,
+                                                          0 /*projection id*/,
+                                                          READ_ONLY,
+                                                          EXCLUSIVE,
+                                                          p->region_grad));
+        launcher.add_field(offset, FID_DATA);
+        // regions[1]: region
+        launcher.add_region_requirement(RegionRequirement(
+            p->part, 0 /*projection id*/, READ_WRITE, EXCLUSIVE, p->region));
+        launcher.add_field(offset + 1, FID_DATA);
+        // regions[2]: w_region
+        launcher.add_region_requirement(
+            RegionRequirement(v_values[p->region]->part,
+                              0 /*projection id*/,
+                              READ_WRITE,
+                              EXCLUSIVE,
+                              v_values[p->region]->region));
+        launcher.add_field(offset + 2, FID_DATA);
+        // regions[3]: m_region
+        launcher.add_region_requirement(
+            RegionRequirement(m_values[p->region]->part,
+                              0 /*projection id*/,
+                              READ_WRITE,
+                              EXCLUSIVE,
+                              m_values[p->region]->region));
+        launcher.add_field(offset + 3, FID_DATA);
+        offset += 4;
+        launcher.concurrent = true;
+        FutureMap fm = runtime->execute_index_space(ctx, launcher);
+        // runtime->execute_must_epoch(ctx, must_epoch_launcher);
+        runtime->issue_execution_fence(ctx);
+        reservedWorkSpaceSize = 0;
+        offset = 0;
+        processed_parameters_num += parameters_num;
+    }
+    printf("offset: %d\n", offset);
+    
+  }
+
 }
 
 void AdamOptimizer::ps_update_task(Task const *task,
@@ -604,6 +706,71 @@ void AdamOptimizer::nccl_update_task(Task const *task,
   }
 
   nccl_update_task_gpu(op, meta, w_grad_ptr, size, w_ptr, v_ptr, m_ptr);
+}
+
+
+void AdamOptimizer::nccl_unified_update_task(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
+  // assert(regions.size() == 4);
+  // assert(task->regions.size() == 4);
+  AdamOptimizer const *op = (AdamOptimizer *)task->args;
+  OpMeta const *meta = *((OpMeta **)task->local_args);
+  // FFHandler handler = *((FFHandler*) task->local_args);
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+
+  printf("parameters_num: %d\n", op->parameters_num);    
+  float const *w_grad_ptr = NULL;
+  float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
+  size_t size = 0;
+
+  for(int i = 0; i < op->parameters_num; i++){
+
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    TensorAccessorR<float, DIM> accWGrad(                                      \
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);                 \
+    TensorAccessorW<float, DIM> accW(regions[1],                               \
+                                     task->regions[1],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     true /*readOutput*/);                     \
+    TensorAccessorW<float, DIM> accV(regions[2],                               \
+                                     task->regions[2],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     true /*readOutput*/);                     \
+    TensorAccessorW<float, DIM> accM(regions[3],                               \
+                                     task->regions[3],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     true /*readOutput*/);                     \
+    size = accW.rect.volume();                                                 \
+    assert(accWGrad.rect == accW.rect);                                        \
+    assert(accWGrad.rect == accV.rect);                                        \
+    assert(accWGrad.rect == accM.rect);                                        \
+    w_grad_ptr = accWGrad.ptr;                                                 \
+    w_ptr = accW.ptr;                                                          \
+    v_ptr = accV.ptr;                                                          \
+    m_ptr = accM.ptr;                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default: {
+      // Unsupported dims
+      assert(false);
+    }
+  }
+  }
+
+  nccl_unified_update_task_gpu(op, meta, w_grad_ptr, size, w_ptr, v_ptr, m_ptr);
 }
 #endif
 
