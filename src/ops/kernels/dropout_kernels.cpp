@@ -30,6 +30,11 @@ DropoutMeta::DropoutMeta(FFHandler handler,
                          Domain const &output_domain)
     : OpMeta(handler) {
   profiling = dropout->profiling;
+  rate = dropout->rate;
+  seed = dropout->seed;
+  input_type[0] = dropout->data_type;
+  output_type[0] = dropout->data_type;
+
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   checkCUDNN(miopenCreateDropoutDescriptor(&dropoutDesc));
@@ -78,20 +83,68 @@ DropoutMeta::~DropoutMeta(void) {
 namespace Kernels {
 namespace Dropout {
 
+__global__ void dropout_forward_kernel(float p,
+                                       long long seed,
+                                       size_t num_elements,
+                                       float const *input_ptr,
+                                       float *output_ptr) {
+  CUDA_KERNEL_LOOP(i, num_elements) {
+    float scale = 1.0 / p;
+    hiprandStatePhilox4_32_10_t state;
+    hiprand_init(seed, i, 0, &state);
+    float rand = hiprand_uniform(&state);
+    if (input_ptr[i] < p) {
+      output_ptr[i] = 0;
+    } else {
+      output_ptr[i] = input_ptr[i] * scale;
+    }
+  }
+}
+
+__global__ void dropout_backward_kernel(float p,
+                                        long long seed,
+                                        size_t num_elements,
+                                        float const *input_ptr,
+                                        float *output_ptr) {
+  CUDA_KERNEL_LOOP(i, num_elements) {
+    float scale = 1.0 / p;
+    hiprandStatePhilox4_32_10_t state;
+    hiprand_init(seed, i, 0, &state);
+    float rand = hiprand_uniform(&state);
+    if (input_ptr[i] < p) {
+      output_ptr[i] = 0;
+    } else {
+      output_ptr[i] = input_ptr[i] * scale;
+    }
+  }
+}
+
 void forward_kernel_wrapper(DropoutMeta *m,
-                            float const *input_ptr,
-                            float *output_ptr) {
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &output) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  Internal::forward_kernel(m, input_ptr, output_ptr, stream);
+
+  Internal::forward_kernel(m,
+                           input.get_float_ptr(),
+                           output.get_float_ptr(),
+                           input.domain.get_volume(),
+                           stream);
+
+  // printf("dropout %d\n", input.domain.get_volume());
+  // assert(false);
 }
 
 void backward_kernel_wrapper(DropoutMeta *m,
-                             float const *output_grad_ptr,
-                             float *input_grad_ptr) {
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorW const &input_grad) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel(m, output_grad_ptr, input_grad_ptr, stream);
+  Internal::backward_kernel(m,
+                            output_grad.get_float_ptr(),
+                            input_grad.get_float_ptr(),
+                            output_grad.domain.get_volume(),
+                            stream);
 }
 
 namespace Internal {
@@ -99,35 +152,58 @@ namespace Internal {
 void forward_kernel(DropoutMeta *m,
                     float const *input_ptr,
                     float *output_ptr,
+                    size_t num_elements,
                     hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+  int parallelism = num_elements;
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(dropout_forward_kernel),
+                     GET_BLOCKS(parallelism),
+                     min(CUDA_NUM_THREADS, parallelism),
+                     0,
+                     stream,
+                     m->seed,
+                     m->rate,
+                     num_elements,
+                     input_ptr,
+                     output_ptr);
 
-  checkCUDNN(miopenDropoutForward(m->handle.dnn,
-                                  m->dropoutDesc,
-                                  m->inputTensor /* not used */,
-                                  m->inputTensor,
-                                  input_ptr,
-                                  m->outputTensor,
-                                  output_ptr,
-                                  m->reserveSpace,
-                                  m->reserveSpaceSize));
+  // checkCUDNN(miopenDropoutForward(m->handle.dnn,
+  //                                 m->dropoutDesc,
+  //                                 m->inputTensor /* not used */,
+  //                                 m->inputTensor,
+  //                                 input_ptr,
+  //                                 m->outputTensor,
+  //                                 output_ptr,
+  //                                 m->reserveSpace,
+  //                                 m->reserveSpaceSize));
 }
 
 void backward_kernel(DropoutMeta *m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr,
+                     size_t num_elements,
                      hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
-
-  checkCUDNN(miopenDropoutBackward(m->handle.dnn,
-                                   m->dropoutDesc,
-                                   m->inputTensor /* not used */,
-                                   m->outputTensor,
-                                   output_grad_ptr,
-                                   m->inputTensor,
-                                   input_grad_ptr,
-                                   m->reserveSpace,
-                                   m->reserveSpaceSize));
+  int parallelism = num_elements;
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(dropout_backward_kernel),
+                     GET_BLOCKS(parallelism),
+                     min(CUDA_NUM_THREADS, parallelism),
+                     0,
+                     stream,
+                     m->seed,
+                     m->rate,
+                     num_elements,
+                     output_grad_ptr,
+                     input_grad_ptr);
+  // checkCUDNN(miopenDropoutBackward(m->handle.dnn,
+  //                                  m->dropoutDesc,
+  //                                  m->inputTensor /* not used */,
+  //                                  m->outputTensor,
+  //                                  output_grad_ptr,
+  //                                  m->inputTensor,
+  //                                  input_grad_ptr,
+  //                                  m->reserveSpace,
+  //                                  m->reserveSpaceSize));
 }
 
 } // namespace Internal

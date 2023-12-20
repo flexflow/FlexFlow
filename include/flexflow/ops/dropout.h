@@ -5,6 +5,13 @@
 #include "flexflow/node.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/dropout_params.h"
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+#include <curand.h>
+#include <curand_kernel.h>
+#elif defined(FF_USE_HIP_ROCM)
+#include <hiprand/hiprand.h>
+#include <hiprand/hiprand_kernel.h>
+#endif
 
 namespace FlexFlow {
 

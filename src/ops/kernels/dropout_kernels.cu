@@ -75,19 +75,19 @@ namespace Kernels {
 namespace Dropout {
 
 void forward_kernel_wrapper(DropoutMeta *m,
-                            float const *input_ptr,
-                            float *output_ptr) {
+                             GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  Internal::forward_kernel(m, input_ptr, output_ptr, stream);
+  Internal::forward_kernel(m, input.get_float_ptr(), output.get_float_ptr(), stream);
 }
 
 void backward_kernel_wrapper(DropoutMeta *m,
-                             float const *output_grad_ptr,
-                             float *input_grad_ptr) {
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorW const &input_grad) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel(m, output_grad_ptr, input_grad_ptr, stream);
+  Internal::backward_kernel(m, output_grad.get_float_ptr(), input_grad.get_float_ptr(), stream);
 }
 
 namespace Internal {
