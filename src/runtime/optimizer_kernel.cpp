@@ -262,18 +262,11 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(AdamOptimizer const *o
   void *workSpace_ptr = meta->handle.workSpace;
 
   for(int i = 0; i < op->parameters_num; i++){
-    // hipMemcpyAsync(static_cast<float*>(workSpace_ptr),
-    //                        w_grad_ptr[i],
-    //                        size[i] * sizeof(float),
-    //                        hipMemcpyDeviceToDevice,
-    //                        stream);
-    // hipError_t error = hipGetLastError();
-    // if(error != hipSuccess)
-    // {
-    //   // print the CUDA error message and exit
-    //   printf("CUDA error: %s\n", hipGetErrorString(error));
-    // }                       
-
+    hipMemcpyAsync(workSpace_ptr,
+                           w_grad_ptr[i],
+                           size[i] * sizeof(float),
+                           hipMemcpyDeviceToDevice,
+                           stream);                    
     workSpace_ptr = static_cast<char *>(workSpace_ptr) + size[i] * sizeof(float);                       
   }
 
@@ -292,7 +285,7 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(AdamOptimizer const *o
   float beta2_t = op->beta2_t;
   for(int i = 0; i < op->parameters_num; i++){
     // update
-    std::cout<<"update"<<"\n";
+    // printf("update %d\n", i);
       hipLaunchKernelGGL(HIP_KERNEL_NAME(adam_update),
                       GET_BLOCKS(size[i]),
                       CUDA_NUM_THREADS,

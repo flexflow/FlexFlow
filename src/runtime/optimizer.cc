@@ -522,7 +522,7 @@ void AdamOptimizer::unified_update(std::vector<ParallelTensor> const parameters)
     }
 
   int offset = 0;
-  printf("param size: %d, %d\n", parameters.size(), parameters_num);
+  // printf("param size: %d, %d\n", parameters.size(), parameters_num);
 
   while(processed_parameters_num < parameters.size()){
     
@@ -540,7 +540,7 @@ void AdamOptimizer::unified_update(std::vector<ParallelTensor> const parameters)
       assert(p->parallel_is != IndexSpace::NO_SPACE);
     }
 
-    printf("parameters_num: %d %d, %d\n", parameters_num, reservedWorkSpaceSize, model->handlers->workSpaceSize);
+    // printf("parameters_num: %d %d, %d\n", parameters_num, reservedWorkSpaceSize, model->handlers->workSpaceSize);
     assert(parameters_num <= parameters.size());
 
     IndexLauncher launcher(ADAM_UNIFY_UPD_NCCL_TASK_ID,
@@ -729,7 +729,12 @@ void AdamOptimizer::nccl_unified_update_task(Task const *task,
 
   float const *w_grad_ptr[op->parameters_num];
   float *w_ptr[op->parameters_num], *v_ptr[op->parameters_num], *m_ptr[op->parameters_num];
-  size_t size[op->parameters_num];
+
+  hipMalloc(w_grad_ptr, sizeof(float*) * op->parameters_num);
+  hipMalloc(w_ptr, sizeof(float*) * op->parameters_num);
+  hipMalloc(v_ptr, sizeof(float*) * op->parameters_num);
+  hipMalloc(m_ptr, sizeof(float*) * op->parameters_num);
+  size_t *size = new size_t[op->parameters_num];
   int offset = 0;
 
   printf("parameters_num: %d\n", op->parameters_num);    
@@ -741,10 +746,11 @@ void AdamOptimizer::nccl_unified_update_task(Task const *task,
   GenericTensorAccessorW accM = helperGetGenericTensorAccessorWO(DataType::DT_FLOAT, regions[offset+3], task->regions[offset+3], FID_DATA, ctx, runtime);
   offset += 4;
 
-  size[i] = accW.domain.get_volume();
+  size[i] = accWGrad.domain.get_volume();
   // assert(accWGrad.rect == accW.rect);
   // assert(accWGrad.rect == accV.rect);
   // assert(accWGrad.rect == accM.rect);
+  w_grad_ptr[i] = accWGrad.get_float_ptr();
   w_ptr[i] = accW.get_float_ptr();
   v_ptr[i] = accV.get_float_ptr();
   m_ptr[i] = accM.get_float_ptr();
