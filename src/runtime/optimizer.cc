@@ -383,7 +383,6 @@ void AdamOptimizer::update(const ParallelTensor p) {
   assert(m_values.find(p->region) != m_values.end());
   assert(p->owner_op != NULL);
   reservedWorkSpaceSize += p->get_volume() * sizeof(float);
-  printf("update workspace: %d", reservedWorkSpaceSize);
   if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(ADAM_UPD_PS_TASK_ID,
                           TaskArgument(this, sizeof(AdamOptimizer)),
@@ -495,13 +494,13 @@ void AdamOptimizer::update(const ParallelTensor p) {
   }
 }
 
-void AdamOptimizer::unified_update(std::vector<ParallelTensor> parameters) {
+void SGDOptimizer::unified_update(std::vector<ParallelTensor> const parameters) {
+  //todo
+}
+
+void AdamOptimizer::unified_update(std::vector<ParallelTensor> const parameters) {
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;
-  
-  
-  printf("update workspace: %d", reservedWorkSpaceSize);
-
   const ParallelTensor p0 = parameters.at(0);
   ArgumentMap argmap;
     Domain domain = runtime->get_index_space_domain(ctx, p0->parallel_is);
@@ -523,8 +522,10 @@ void AdamOptimizer::unified_update(std::vector<ParallelTensor> parameters) {
     }
 
   int offset = 0;
+  printf("param size: %d, %d\n", parameters.size(), parameters_num);
 
-  while(parameters_num < parameters.size()){
+  while(processed_parameters_num < parameters.size()){
+    
     for(int i = 0; i < parameters.size(); i++){
       const ParallelTensor p = parameters.at(i);
       assert(v_values.find(p->region) != v_values.end());
@@ -538,13 +539,11 @@ void AdamOptimizer::unified_update(std::vector<ParallelTensor> parameters) {
       assert (p->sync_type == ParameterSyncType::NCCL);
       assert(p->parallel_is != IndexSpace::NO_SPACE);
     }
+
+    printf("parameters_num: %d %d, %d\n", parameters_num, reservedWorkSpaceSize, model->handlers->workSpaceSize);
     assert(parameters_num <= parameters.size());
 
-    //launch a unified task
-    for(int j = 0; j < parameters_num; j++){
-        this->next();
-        const ParallelTensor p = parameters.at(processed_parameters_num + j);
-        IndexLauncher launcher(ADAM_UNIFY_UPD_NCCL_TASK_ID,
+    IndexLauncher launcher(ADAM_UNIFY_UPD_NCCL_TASK_ID,
                            p0->parallel_is,
                            TaskArgument(this, sizeof(AdamOptimizer)),
                            argmap,
@@ -552,6 +551,10 @@ void AdamOptimizer::unified_update(std::vector<ParallelTensor> parameters) {
                            false /*must_epoch*/,
                            0 /*mapper_id*/,
                            p0->machine_view.hash());
+    //launch a unified task
+    for(int j = 0; j < parameters_num; j++){
+        const ParallelTensor p = parameters.at(processed_parameters_num + j);
+
          // regions[0]: region_grad
         launcher.add_region_requirement(RegionRequirement(p->part_grad,
                                                           0 /*projection id*/,
@@ -580,16 +583,19 @@ void AdamOptimizer::unified_update(std::vector<ParallelTensor> parameters) {
                               m_values[p->region]->region));
         launcher.add_field(offset + 3, FID_DATA);
         offset += 4;
-        launcher.concurrent = true;
-        FutureMap fm = runtime->execute_index_space(ctx, launcher);
-        // runtime->execute_must_epoch(ctx, must_epoch_launcher);
-        runtime->issue_execution_fence(ctx);
-        reservedWorkSpaceSize = 0;
-        offset = 0;
-        processed_parameters_num += parameters_num;
     }
-    printf("offset: %d\n", offset);
     
+    //update alpha, beta
+    for(int i = 0; i < parameters_num; i++){
+      this->next();
+    }
+    launcher.concurrent = true;
+    FutureMap fm = runtime->execute_index_space(ctx, launcher);
+    // runtime->execute_must_epoch(ctx, must_epoch_launcher);
+    runtime->issue_execution_fence(ctx);
+    reservedWorkSpaceSize = 0;
+    offset = 0;
+    processed_parameters_num += parameters_num; 
   }
 
 }
@@ -721,55 +727,28 @@ void AdamOptimizer::nccl_unified_update_task(Task const *task,
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
+  float const *w_grad_ptr[op->parameters_num];
+  float *w_ptr[op->parameters_num], *v_ptr[op->parameters_num], *m_ptr[op->parameters_num];
+  size_t size[op->parameters_num];
+  int offset = 0;
+
   printf("parameters_num: %d\n", op->parameters_num);    
-  float const *w_grad_ptr = NULL;
-  float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
-  size_t size = 0;
-
+  
   for(int i = 0; i < op->parameters_num; i++){
+  GenericTensorAccessorR accWGrad = helperGetGenericTensorAccessorRO(DataType::DT_FLOAT, regions[offset], task->regions[offset], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW accW = helperGetGenericTensorAccessorWO(DataType::DT_FLOAT, regions[offset+1], task->regions[offset+1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW accV = helperGetGenericTensorAccessorWO(DataType::DT_FLOAT, regions[offset+2], task->regions[offset+2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW accM = helperGetGenericTensorAccessorWO(DataType::DT_FLOAT, regions[offset+3], task->regions[offset+3], FID_DATA, ctx, runtime);
+  offset += 4;
 
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    TensorAccessorR<float, DIM> accWGrad(                                      \
-        regions[0], task->regions[0], FID_DATA, ctx, runtime);                 \
-    TensorAccessorW<float, DIM> accW(regions[1],                               \
-                                     task->regions[1],                         \
-                                     FID_DATA,                                 \
-                                     ctx,                                      \
-                                     runtime,                                  \
-                                     true /*readOutput*/);                     \
-    TensorAccessorW<float, DIM> accV(regions[2],                               \
-                                     task->regions[2],                         \
-                                     FID_DATA,                                 \
-                                     ctx,                                      \
-                                     runtime,                                  \
-                                     true /*readOutput*/);                     \
-    TensorAccessorW<float, DIM> accM(regions[3],                               \
-                                     task->regions[3],                         \
-                                     FID_DATA,                                 \
-                                     ctx,                                      \
-                                     runtime,                                  \
-                                     true /*readOutput*/);                     \
-    size = accW.rect.volume();                                                 \
-    assert(accWGrad.rect == accW.rect);                                        \
-    assert(accWGrad.rect == accV.rect);                                        \
-    assert(accWGrad.rect == accM.rect);                                        \
-    w_grad_ptr = accWGrad.ptr;                                                 \
-    w_ptr = accW.ptr;                                                          \
-    v_ptr = accV.ptr;                                                          \
-    m_ptr = accM.ptr;                                                          \
-    break;                                                                     \
+  size[i] = accW.domain.get_volume();
+  // assert(accWGrad.rect == accW.rect);
+  // assert(accWGrad.rect == accV.rect);
+  // assert(accWGrad.rect == accM.rect);
+  w_ptr[i] = accW.get_float_ptr();
+  v_ptr[i] = accV.get_float_ptr();
+  m_ptr[i] = accM.get_float_ptr();
   }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default: {
-      // Unsupported dims
-      assert(false);
-    }
-  }
-  }
-
   nccl_unified_update_task_gpu(op, meta, w_grad_ptr, size, w_ptr, v_ptr, m_ptr);
 }
 #endif

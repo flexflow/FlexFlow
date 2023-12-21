@@ -30,7 +30,7 @@ public:
   virtual void init(void) = 0;
   virtual void next(void) = 0;
   virtual void update(const ParallelTensor p) = 0;
-  virtual void unified_update(std::vector<ParallelTensor> parameters) = 0;
+  virtual void unified_update(std::vector<ParallelTensor> const parameters) = 0;
   FFModel const *model;
 };
 
@@ -44,7 +44,7 @@ public:
   void init(void);
   void next(void);
   void update(const ParallelTensor p);
-  void unified_update(std::vector<ParallelTensor> parameters);
+  void unified_update(std::vector<ParallelTensor> const parameters);
   void set_weight_decay(double _weight_decay);
   static void ps_update_task(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,
@@ -92,7 +92,7 @@ public:
   void init(void);
   void next(void);
   void update(const ParallelTensor p);
-  void unified_update(std::vector<ParallelTensor> parameters);
+  void unified_update(std::vector<ParallelTensor> const parameters);
   void set_weight_decay(double _weight_decay);
   static void ps_update_task(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,
@@ -134,9 +134,9 @@ public:
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;
   std::map<Legion::LogicalRegion, ParallelTensor> v_values, m_values;
-  size_t reservedWorkSpaceSize;
-  int parameters_num;
-  int processed_parameters_num;
+  size_t reservedWorkSpaceSize = 0;
+  int parameters_num = 0;
+  int processed_parameters_num = 0;
 };
 
 }; // namespace FlexFlow

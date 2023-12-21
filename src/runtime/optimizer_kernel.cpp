@@ -254,19 +254,27 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(AdamOptimizer const *o
                                                   float *w_ptr[],
                                                   float *v_ptr[],
                                                   float *m_ptr[]) {
+
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));       
   assert(op->reservedWorkSpaceSize < meta->handle.workSpaceSize);
 
-  void *workSpace_ptr = static_cast<char *>(meta->handle.workSpace);
+  void *workSpace_ptr = meta->handle.workSpace;
 
   for(int i = 0; i < op->parameters_num; i++){
-    checkCUDA(hipMemcpyAsync(workSpace_ptr,
-                           w_grad_ptr[i],
-                           size[i] * sizeof(float),
-                           hipMemcpyDeviceToDevice,
-                           stream));
-    workSpace_ptr += size[i] * sizeof(float);                       
+    // hipMemcpyAsync(static_cast<float*>(workSpace_ptr),
+    //                        w_grad_ptr[i],
+    //                        size[i] * sizeof(float),
+    //                        hipMemcpyDeviceToDevice,
+    //                        stream);
+    // hipError_t error = hipGetLastError();
+    // if(error != hipSuccess)
+    // {
+    //   // print the CUDA error message and exit
+    //   printf("CUDA error: %s\n", hipGetErrorString(error));
+    // }                       
+
+    workSpace_ptr = static_cast<char *>(workSpace_ptr) + size[i] * sizeof(float);                       
   }
 
   //do allreduce once
@@ -284,8 +292,9 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(AdamOptimizer const *o
   float beta2_t = op->beta2_t;
   for(int i = 0; i < op->parameters_num; i++){
     // update
+    std::cout<<"update"<<"\n";
       hipLaunchKernelGGL(HIP_KERNEL_NAME(adam_update),
-                      GET_BLOCKS(size),
+                      GET_BLOCKS(size[i]),
                       CUDA_NUM_THREADS,
                       0,
                       stream,
@@ -299,12 +308,12 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(AdamOptimizer const *o
                       m_ptr[i],
                       v_ptr[i],
                       w_ptr[i]);
-     workSpace_ptr += size[i] * sizeof(float);
+      workSpace_ptr = static_cast<char *>(workSpace_ptr) + size[i] * sizeof(float);
 
       //update
-      beta1_t *= beta1;
-      beta2_t *= beta2;
-      alpha_t = alpha * sqrt(1 - beta2_t) / (1 - beta1_t);                     
+      beta1_t *= op->beta1;
+      beta2_t *= op->beta2;
+      alpha_t = op->alpha * sqrt(1 - beta2_t) / (1 - beta1_t);                     
   }                         
  
   // checkCUDA(hipDeviceSynchronize());
