@@ -61,7 +61,11 @@ from langchain.llms.base import LLM
 from typing import Any, List, Mapping, Optional
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
-
+from langchain.document_loaders import WebBaseLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Chroma
+from langchain.vectorstores import FAISS
 
 class FlexFlowLLM:
     def __init__(self, config_file=""):
@@ -167,15 +171,64 @@ if __name__ == "__main__":
     # the wrapper class serves as the 'Model' in LCEL 
     ff_llm_wrapper = FF_LLM_wrapper(flexflow_llm=ff_llm)
     
+    # USE CASE 1: Prompt Template
     template = """Question: {question}
-    Answer: Let's think step by step."""
+                    Answer: Let's think step by step."""
     prompt = PromptTemplate(template=template, input_variables=["question"])
 
     llm_chain = LLMChain(prompt=prompt, llm=ff_llm_wrapper)
-
     question = "Who was the US president in the year the first Pokemon game was released?"
-
     print(llm_chain.run(question))
+    
+    # USE CASE 2: Rag Search
+   
+    # Define a function to remove non-ASCII characters 
+    # TODO: modify this function to fit the structure of "Document" returned by WebBaseLoader
+    def remove_non_ascii(documents):
+        cleaned_documents = []
+        for doc in documents:
+            cleaned_text = ''.join(char for char in doc.text if ord(char) < 128)
+            doc.text = cleaned_text 
+            cleaned_documents.append(doc)
+        return cleaned_documents
+
+    # Load web page content
+    loader = WebBaseLoader("https://lilianweng.github.io/posts/2023-06-23-agent/")
+    data = loader.load()
+
+    # Clean non-ASCII characters
+    cleaned_data = remove_non_ascii(data)
+
+    # Split text
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0)
+    all_splits = text_splitter.split_documents(cleaned_data)
+
+    # Initialize embeddings
+    embeddings = OpenAIEmbeddings(openai_api_key="API_KEY") # fill in openai api key
+
+    # Create VectorStore
+    vectorstore = Chroma.from_documents(all_splits, embeddings)
+
+    # Use VectorStore as a retriever
+    retriever = vectorstore.as_retriever()
+
+    # Test if similarity search is working
+    question = "What are the approaches to Task Decomposition?"
+    docs = vectorstore.similarity_search(question)
+        
+    # combining with LLM Chain
+    # Prompt
+    prompt_rag = PromptTemplate.from_template(
+        "Summarize the main themes in these retrieved docs: {docs}"
+    )
+
+    # Chain
+    llm_chain_rag = LLMChain(llm=ff_llm_wrapper, prompt=prompt_rag)
+
+    # Run
+    rag_result = llm_chain_rag(docs)
+    # Output
+    print(rag_result["text"])
 
     # stop the server
     ff_llm.stop_server()
