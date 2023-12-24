@@ -537,7 +537,7 @@ __host__ void
                             Context ctx,
                             Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
+  FusedOpMeta *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
   // BatchConfig const *bc = (BatchConfig *)task->args;
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
@@ -607,6 +607,22 @@ __host__ void
       assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
     }
   }
+
+  // create cuda graph if not yet available
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  cudaGraph_t graph;
+  cudaGraphExec_t instance;
+  // check if graph exists
+  std::pair<int, int> graph_params = std::make_pair<int, int>(
+      bc->num_active_tokens(), bc->num_active_requests());
+  if (metas->graph_collections.find(graph_params) !=
+      metas->graph_collections.end()) {
+    cudaGraphExec_t instance = metas->graph_collections[graph_params];
+    cudaGraphLaunch(instance, stream);
+    return;
+  }
+  cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
 
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
@@ -1133,6 +1149,10 @@ __host__ void
   // for (int i = 0; i < fused->numOutputs; i++)
   //   print_tensor<float>(output_ptr[i], output_domain[i].get_volume(),
   //   "[Fused:forward:output]");
+  cudaStreamEndCapture(stream, &graph);
+  cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+  metas->graph_collections[graph_params] = instance;
+  cudaGraphLaunch(instance, stream);
 }
 
 /*

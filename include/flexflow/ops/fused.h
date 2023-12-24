@@ -12,6 +12,7 @@ public:
   OpMeta *meta[MAX_NUM_FUSED_OPERATORS];
   FusedOp *fused_op;
   int numOperators;
+  std::map<std::pair<int, int>, cudaGraphExec_t> graph_collections;
 };
 
 class FusedOp : public Op {
