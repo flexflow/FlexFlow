@@ -154,6 +154,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "SpecIncMultiHeadSelfAttention";
     case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION:
       return "TreeIncMultiHeadSelfAttention";
+     case OP_SPECINFER_INC_MULTIHEAD_SELF_ATTENTION:
+      return "SpecInferPgraoIncMultiHeadSelfAttention";
     case OP_INPUT:
       return "Input";
     case OP_WEIGHT:

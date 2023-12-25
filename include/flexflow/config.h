@@ -16,6 +16,7 @@
 #ifndef _FLEXFLOW_CONFIG_H_
 #define _FLEXFLOW_CONFIG_H_
 #include "ffconst.h"
+#include "flexflow/batch_config.h"
 #include "legion.h"
 #include <cstring>
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -75,6 +76,14 @@ struct FFHandler {
 #endif
   void *workSpace;
   size_t workSpaceSize;
+  void *batch_config_metadata;
+
+  // request info + token info + topolopgy mask info
+  size_t batch_config_metadata_size =
+      sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
+      sizeof(BeamSearchBatchConfig::topology_mask) +
+      sizeof(BeamSearchBatchConfig::beamTokenInfo) +
+      sizeof(BeamSearchBatchConfig::beamRequestsInfo);
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
   DataType quantization_type;

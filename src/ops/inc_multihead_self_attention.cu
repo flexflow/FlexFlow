@@ -826,17 +826,17 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
 
   // todo Xinhao copy how many requests if requests are not continous?
-  cudaMemcpyAsync(m->token_infos,
-                  &(bc->tokensInfo),
-                  bc->num_active_tokens() * sizeof(BatchConfig::PerTokenInfo),
-                  cudaMemcpyHostToDevice,
-                  stream);
-  cudaMemcpyAsync(m->request_infos,
-                  &(bc->requestsInfo),
-                  bc->max_requests_per_batch() *
-                      sizeof(BatchConfig::PerRequestInfo),
-                  cudaMemcpyHostToDevice,
-                  stream);
+  // cudaMemcpyAsync(m->token_infos,
+  //                 &(bc->tokensInfo),
+  //                 bc->num_active_tokens() *
+  //                 sizeof(BatchConfig::PerTokenInfo), cudaMemcpyHostToDevice,
+  //                 stream);
+  // cudaMemcpyAsync(m->request_infos,
+  //                 &(bc->requestsInfo),
+  //                 bc->max_requests_per_batch() *
+  //                     sizeof(BatchConfig::PerRequestInfo),
+  //                 cudaMemcpyHostToDevice,
+  //                 stream);
 
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
@@ -1375,14 +1375,15 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         break;
       }
       case BEAM_SEARCH_MODE: {
+        // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_q_heads * kProjSize *
                          BeamSearchBatchConfig::max_requests_per_batch() *
                          BatchConfig::max_sequence_length() *
-                         BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+                         BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
         value_cache_size = num_q_heads * vProjSize *
                            BeamSearchBatchConfig::max_requests_per_batch() *
                            BatchConfig::max_sequence_length() *
-                           BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+                           BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
         break;
       }
       default:
@@ -1400,10 +1401,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         (qkv_max_proj_size + key_cache_size + value_cache_size +
          2 * qk_prod_size + attn_heads_size) *
             size_of_dt +
-        tokeninfo_size * sizeof(BatchConfig::PerTokenInfo) +
-        complex_size * sizeof(cuFloatComplex) +
-        requestinfo_size *
-            sizeof(BatchConfig::PerRequestInfo); // more components will
+        complex_size * sizeof(cuFloatComplex); // more components will
                                                  // be added here later
     if (offload) {
       // assert that we have enough reserved work space left
@@ -1447,10 +1445,15 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     valueCache = gpu_mem_allocator.allocate_instance_untyped(value_cache_size *
                                                              size_of_dt);
 
+    token_infos =
+        static_cast<BatchConfig::PerTokenInfo *>(handler.batch_config_metadata);
+    request_infos = static_cast<BatchConfig::PerRequestInfo *>(
+        handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo));
+
     if (offload) {
-      token_infos =
-          gpu_mem_allocator.allocate_reserved<BatchConfig::PerTokenInfo>(
-              tokeninfo_size);
+      // token_infos =
+      //     gpu_mem_allocator.allocate_reserved<BatchConfig::PerTokenInfo>(
+      //         tokeninfo_size);
       // offset += sizeof(BatchConfig::PerTokenInfo) * tokeninfo_size;
       qk_prods = gpu_mem_allocator.allocate_reserved_untyped(qk_prod_size *
                                                              size_of_dt);
@@ -1464,13 +1467,13 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       complex_input =
           gpu_mem_allocator.allocate_reserved<cuFloatComplex>(complex_size);
       // offset += complex_size * sizeof(cuFloatComplex);
-      request_infos =
-          gpu_mem_allocator.allocate_reserved<BatchConfig::PerRequestInfo>(
-              requestinfo_size);
+      // request_infos =
+      //     gpu_mem_allocator.allocate_reserved<BatchConfig::PerRequestInfo>(
+      //         requestinfo_size);
     } else {
-      token_infos =
-          gpu_mem_allocator.allocate_instance<BatchConfig::PerTokenInfo>(
-              tokeninfo_size);
+      // token_infos =
+      //     gpu_mem_allocator.allocate_instance<BatchConfig::PerTokenInfo>(
+      //         tokeninfo_size);
       qk_prods = gpu_mem_allocator.allocate_instance_untyped(qk_prod_size *
                                                              size_of_dt);
       qk_prods_softmax = gpu_mem_allocator.allocate_instance_untyped(
@@ -1479,9 +1482,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                                size_of_dt);
       complex_input =
           gpu_mem_allocator.allocate_instance<cuFloatComplex>(complex_size);
-      request_infos =
-          gpu_mem_allocator.allocate_instance<BatchConfig::PerRequestInfo>(
-              requestinfo_size);
+      // request_infos =
+      //     gpu_mem_allocator.allocate_instance<BatchConfig::PerRequestInfo>(
+      //         requestinfo_size);
     }
 
     // allocate more size for quantization data

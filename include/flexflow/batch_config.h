@@ -129,6 +129,9 @@ public:
   inline static int const MAX_BEAM_WIDTH = 1;
   inline static int const MAX_BEAM_DEPTH = 8;
 
+  // maximum tree branches for a request
+  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 9;
+
   int model_id;
 
   struct BeamSearchPerRequestInfo {
@@ -139,14 +142,23 @@ public:
     BatchConfig::TokenId tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
     float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
     int parent_id[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    int sub_request_num;
   };
 
   struct BeamSearchPerTokenInfo {
     int sub_request_index;
   };
 
+  struct SpecInferTopology {
+    int real_token_pos[MAX_SPECULATIVE_TREE_BRANCHES][MAX_NUM_TOKENS];
+    int allocated_tokens;
+  };
+
+
   BeamSearchPerRequestInfo beamRequestsInfo[MAX_NUM_REQUESTS];
   BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS * MAX_BEAM_WIDTH];
+  SpecInferTopology topology_mask[MAX_NUM_REQUESTS];
+
   // why is this == MAX_NUM_REQUESTS * MAX_BEAM_WIDTH?
   int sub_requests[MAX_NUM_REQUESTS * MAX_BEAM_WIDTH];
 

@@ -30,6 +30,7 @@ void RequestManager::load_tokens_task(
 
   // BatchConfig const batch_config = *((BatchConfig *)task->args);
   BatchConfig const *batch_config = BatchConfig::from_future(task->futures[0]);
+
   BatchConfig::TokenId dram_copy[BatchConfig::MAX_NUM_TOKENS];
 
   // Extreme long prompts are not supported, only load up to
@@ -55,6 +56,55 @@ void RequestManager::load_tokens_task(
                             sizeof(TokenId) * batch_config->num_tokens,
                             cudaMemcpyHostToDevice,
                             stream));
+
+  // copy meta data to workSpace
+  FFHandler handle = *((FFHandler const *)task->local_args);
+  cudaMemcpyAsync(handle.batch_config_metadata,
+                  &(batch_config->tokensInfo),
+                  batch_config->num_active_tokens() *
+                      sizeof(BatchConfig::PerTokenInfo),
+                  cudaMemcpyHostToDevice,
+                  stream);
+  cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                      sizeof(BatchConfig::tokensInfo),
+                  &(batch_config->requestsInfo),
+                  batch_config->max_requests_per_batch() *
+                      sizeof(BatchConfig::PerRequestInfo),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+  
+  // load speculative metadata
+  if (batch_config->get_mode() == BEAM_SEARCH_MODE) {
+    BeamSearchBatchConfig const *beam_batch_config =
+        static_cast<BeamSearchBatchConfig const *>(batch_config);
+
+    cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                      sizeof(BatchConfig::tokensInfo) +
+                      sizeof(BatchConfig::requestsInfo),
+                  &(beam_batch_config->topology_mask),
+                  sizeof(BeamSearchBatchConfig::topology_mask),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
+    cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                        sizeof(BatchConfig::tokensInfo) +
+                        sizeof(BatchConfig::requestsInfo) +
+                        sizeof(BeamSearchBatchConfig::topology_mask),
+                    &(beam_batch_config->beamRequestsInfo),
+                    sizeof(BeamSearchBatchConfig::beamRequestsInfo),
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                        sizeof(BatchConfig::tokensInfo) +
+                        sizeof(BatchConfig::requestsInfo) +
+                        sizeof(BeamSearchBatchConfig::topology_mask) +
+                        sizeof(BeamSearchBatchConfig::beamRequestsInfo),
+                    &(beam_batch_config->beamTokenInfo),
+                    sizeof(BeamSearchBatchConfig::beamTokenInfo),
+                    cudaMemcpyHostToDevice,
+                    stream);
+  }
 }
 
 void RequestManager::load_positions_task(

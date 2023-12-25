@@ -56,6 +56,22 @@ void RequestManager::load_tokens_task(
                            sizeof(TokenId) * batch_config->num_tokens,
                            hipMemcpyHostToDevice,
                            stream));
+
+  // copy meta data to workSpace
+  FFHandler handle = *((FFHandler const *)task->local_args);
+  cudaMemcpyAsync(handle.batch_config_metadata,
+                  &(batch_config->tokensInfo),
+                  batch_config->num_active_tokens() *
+                      sizeof(BatchConfig::PerTokenInfo),
+                  cudaMemcpyHostToDevice,
+                  stream);
+  cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                      sizeof(BatchConfig::tokensInfo),
+                  &(batch_config->requestsInfo),
+                  batch_config->max_requests_per_batch() *
+                      sizeof(BatchConfig::PerRequestInfo),
+                  cudaMemcpyHostToDevice,
+                  stream);
 }
 
 void RequestManager::load_positions_task(

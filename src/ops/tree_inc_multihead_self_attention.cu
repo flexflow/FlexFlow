@@ -834,18 +834,18 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
         m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
-  cudaMemcpyAsync(m->token_infos,
-                  &(bc->tokensInfo),
-                  bc->num_active_tokens() *
-                      sizeof(TreeVerifyBatchConfig::PerTokenInfo),
-                  cudaMemcpyHostToDevice,
-                  stream);
-  cudaMemcpyAsync(m->request_infos,
-                  &(bc->requestsInfo),
-                  bc->max_requests_per_batch() *
-                      sizeof(BatchConfig::PerRequestInfo),
-                  cudaMemcpyHostToDevice,
-                  stream);
+  // cudaMemcpyAsync(m->token_infos,
+  //                 &(bc->tokensInfo),
+  //                 bc->num_active_tokens() *
+  //                     sizeof(TreeVerifyBatchConfig::PerTokenInfo),
+  //                 cudaMemcpyHostToDevice,
+  //                 stream);
+  // cudaMemcpyAsync(m->request_infos,
+  //                 &(bc->requestsInfo),
+  //                 bc->max_requests_per_batch() *
+  //                     sizeof(BatchConfig::PerRequestInfo),
+  //                 cudaMemcpyHostToDevice,
+  //                 stream);
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,

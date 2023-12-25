@@ -726,7 +726,8 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
 
   if (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
       l->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION ||
-      l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION) {
+      l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+      l->op_type == OP_SPECINFER_INC_MULTIHEAD_SELF_ATTENTION) {
     if (weight_filename.find("self_attention") != std::string::npos) {
       load_attention_weights_multi_query(
           data, weight_filename, weights_folder, hidden_dim, num_heads);

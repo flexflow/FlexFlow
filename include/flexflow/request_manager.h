@@ -38,7 +38,8 @@ public:
   Legion::FutureMap
       inference(FFModel *model, int index, BatchConfigFuture const &bc);
   void load_input_tokens_from_batch_config(BatchConfigFuture const &bc,
-                                           ParallelTensor const input);
+                                           ParallelTensor const input,
+                                           FFHandler *handlers);
   void load_positions(BatchConfigFuture const &bc,
                       ParallelTensor position_input,
                       int offset);
@@ -72,9 +73,10 @@ struct Request {
 struct BeamTree {
   struct treeLayer {
     BeamSearchBatchConfig::TokenId
-        tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+        tokens[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
     int parent_ids[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-    float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    float probs[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    int nodes_num_this_layer = 0;
   };
   treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1];
 };
@@ -100,6 +102,7 @@ public:
   void set_max_tokens_per_batch(int max_num_tokens);
   int get_max_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
+  void push_spec_infer_tree_width(int tree_width);
   int get_max_sequence_length();
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
@@ -148,6 +151,7 @@ public:
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
   void update_beam_metadata(BeamSearchBatchConfig &new_bc,
+                            BeamSearchBatchConfig const &old_bc,
                             BeamTree &tree,
                             int request_index);
 
@@ -210,6 +214,7 @@ private:
   int max_requests_per_batch;
   int max_tokens_per_batch;
   int max_sequence_length;
+  std::vector<int> spec_infer_tree_width;
   // private fields
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -243,7 +248,8 @@ private:
 
 private:
   struct ProfileInfo {
-    int decoding_steps;
+    int llm_decoding_steps;
+    int ssm_decoding_steps;
     double start_time, finish_time;
   };
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
