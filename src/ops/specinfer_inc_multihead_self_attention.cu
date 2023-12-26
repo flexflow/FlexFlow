@@ -133,6 +133,13 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
           q_ptr + (hidden_size * QKV_WEIGHT_NUM * sub_req_idx) + ki +
           ii * THREADS_PER_KEY * K_VEC_SIZE);
     }
+
+     if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+    printf("cacheposssss %d, %d\n", tree_branch_num, topology.real_token_pos[0][0]);
+     printf("cacheposssss %d, %d\n", tree_branch_num, topology.real_token_pos[0][1]);
+      printf("cacheposssss %d, %d\n", tree_branch_num, topology.real_token_pos[0][2]);
+       printf("cacheposssss %d, %d\n", tree_branch_num, topology.real_token_pos[0][10]);
+  }
     __syncthreads();
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
       K_vec k[K_VECS_PER_THREAD];
@@ -317,26 +324,38 @@ __global__ void specinfer_store_kv_cache(
     DT kVal = devQKVProjArray[val_idx];
     DT vVal = devQKVProjArray[val_idx + hidden_size];
 
-    // above no need to be changed
-    // int const req_id = id_map[token_idx].request_index;
-    // int const tok_id = id_map[token_idx].token_position;
-    // int const sub_req_id = id_map[token_idx].sub_request_index;
-    // int const parent_id = id_map[token_idx].parent_id;
-    // int const beam_depth = id_map[token_idx].beam_depth;
-    // int const beam_width = id_map[token_idx].beam_width;
-
     int const req_id = tokenInfos[token_idx].request_index;
     int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
+    int const first_token_in_req = requestInfo[req_id].first_token_depth_in_request;
     int const sub_req_id = beamTokenInfos[token_idx].sub_request_index;
-    // int const parent_id = beamRequestInfos[req_id].parent_id[sub_req_id];
-    // int const beam_depth = beamRequestInfos[req_id].current_depth;
-    // int const beam_width = beamRequestInfos[req_id].beam_size;
     int const allocated_tokens = beam_topology_mask[req_id].allocated_tokens;
 
+    int const beam_size = beamRequestInfos[req_id].sub_request_num;
+
+    int real_idx = tok_id - first_token_in_req + allocated_tokens;
+
+    if (i == 0) {
+      printf("ffasdasds%d, %d, %d, %d, %d, %d\n",
+             beamTokenInfos[0].sub_request_index,
+             allocated_tokens,
+             sub_req_id,
+             tok_id,
+             first_token_in_req,
+             real_idx);
+    }
+    // }else if(i == hidden_size * 2){
+    //   printf("ffasdasdskkkk%d, %d, %d\n", allocated_tokens, tok_id,
+    //   sub_req_id);
+    // }
+    
+    
+
     kCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
-               (allocated_tokens + sub_req_id) * hidden_size + offset] = kVal;
+               (real_idx) * hidden_size +
+               offset] = kVal;
     vCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
-               (allocated_tokens + sub_req_id) * hidden_size + offset] = vVal;
+               (real_idx) * hidden_size +
+               offset] = vVal;
   }
 }
 
@@ -350,6 +369,9 @@ void update_kv_cache_kernel(SpecInferIncMultiHeadSelfAttentionMeta const *m,
   // assert(curr_depth < 3);
   if (num_tokens > 0) {
     int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_tokens;
+    printf("tokenInfo %d, %d\n",
+           bc->beamTokenInfo[0].sub_request_index,
+           num_tokens);
     specinfer_store_kv_cache<<<GET_BLOCKS(parallelism),
                                min(CUDA_NUM_THREADS, parallelism),
                                0,
@@ -484,10 +506,11 @@ void compute_attention_kernel_prompt(
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
-    } else if (tokens_previous_requests < bc->num_generation_tokens) {
-      tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
-      continue;
-    }
+    } 
+    // else if (tokens_previous_requests < bc->num_generation_tokens) {
+    //   tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
+    //   continue;
+    // }
 
     // all requests in prompt phase should only have one sub requests;
     assert(bc->sub_requests[i] == 1);
@@ -523,6 +546,9 @@ void compute_attention_kernel_prompt(
                       m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM;
     // To get B, skip over K entries from previous requests (all heads +
     // padding)
+
+    print_tensor<float>((float*)A, 32, "A");
+    std::cout << "meta: " << num_new_tokens << ", " << total_tokens << "\n";
     DT const *B = static_cast<DT *>(m->keyCache) +
                   (i * bc->MAX_SPECULATIVE_TREE_BRANCHES) * kt_req_block_size;
 
@@ -557,6 +583,7 @@ void compute_attention_kernel_prompt(
                                          m->num_q_heads,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    print_tensor<float>((float*)C, 32, "C");
     // add alibi position bias to qk production
     // add alibi position bias to qk production
     if (*m->position_bias) {
@@ -641,6 +668,8 @@ void compute_attention_kernel_prompt(
     B = C_softmax;
     // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
     // requests
+
+    print_tensor<float>((float*)C_softmax, 32, "C_softmax");
     C = static_cast<DT *>(m->attn_heads) +
         (tokens_previous_requests + bc->num_generation_tokens) *
             m->num_q_heads * m->vProjSize;
@@ -695,6 +724,8 @@ void inference_kernel(SpecInferIncMultiHeadSelfAttentionMeta const *m,
                      stream);
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
+  std::cout << "specinfer kernel token num: " << bc->num_generation_tokens
+            << ", " << bc->num_tokens << "\n";
   if (bc->num_generation_tokens > 0) {
     compute_specinfer_attention_kernel_generation<DT>(
         m, bc, static_cast<DT *>(m->attn_heads), stream);
@@ -705,6 +736,8 @@ void inference_kernel(SpecInferIncMultiHeadSelfAttentionMeta const *m,
     compute_attention_kernel_prompt(
         m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
   }
+  // compute_attention_kernel_prompt(
+  //       m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
 
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
@@ -783,6 +816,12 @@ void SpecInferIncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
+
+  // if(bc->num_tokens == 1){
+  //   print_tensor<float>(input.get_float_ptr(), 32, "specinc input");
+  //   print_tensor<float>(output.get_float_ptr(), 32, "specinc output");
+  //   assert(false);
+  // }
 }
 
 SpecInferIncMultiHeadSelfAttentionMeta::SpecInferIncMultiHeadSelfAttentionMeta(
@@ -825,24 +864,6 @@ SpecInferIncMultiHeadSelfAttentionMeta::SpecInferIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    // int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
-    // size_t beam_tokeninfo_size =
-    //     max_tokens_per_batch * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-    // size_t requestinfo_size =
-    // BeamSearchBatchConfig::max_requests_per_batch(); size_t
-    // beam_requestinfo_size =
-    //     BeamSearchBatchConfig::max_requests_per_batch();
-    // size_t total_size =
-    //     beam_tokeninfo_size *
-    //         sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo) +
-    //     beam_requestinfo_size *
-    //         sizeof(BeamSearchBatchConfig::
-    //                    BeamSearchPerRequestInfo); // more components will
-    //                                               // be added here later
-
-    // We always directly allocate memory for small speculative models
-    // gpu_mem_allocator.create_legion_instance(beam_search_reserve_inst,
-    //                                          total_size);
     beam_topology_mask =
         static_cast<BeamSearchBatchConfig::SpecInferTopology *>(
             handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +

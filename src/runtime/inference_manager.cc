@@ -257,6 +257,7 @@ void InferenceManager::init_operators_inference(FFModel *model) {
         ((ParallelOp *)op)
             ->create_input_partition_inference(*model, inputs, outputs);
       }
+      printf("init op %s\n", op->name);
       op->init_inference(*model, inputs, outputs);
     }
   }

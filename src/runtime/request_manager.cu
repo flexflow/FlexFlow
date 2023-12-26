@@ -91,17 +91,17 @@ void RequestManager::load_tokens_task(
                         sizeof(BatchConfig::tokensInfo) +
                         sizeof(BatchConfig::requestsInfo) +
                         sizeof(BeamSearchBatchConfig::topology_mask),
-                    &(beam_batch_config->beamRequestsInfo),
-                    sizeof(BeamSearchBatchConfig::beamRequestsInfo),
+                    &(beam_batch_config->beamTokenInfo),
+                    sizeof(BeamSearchBatchConfig::beamTokenInfo),
                     cudaMemcpyHostToDevice,
                     stream);
     cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
                         sizeof(BatchConfig::tokensInfo) +
                         sizeof(BatchConfig::requestsInfo) +
                         sizeof(BeamSearchBatchConfig::topology_mask) +
-                        sizeof(BeamSearchBatchConfig::beamRequestsInfo),
-                    &(beam_batch_config->beamTokenInfo),
-                    sizeof(BeamSearchBatchConfig::beamTokenInfo),
+                        sizeof(BeamSearchBatchConfig::beamTokenInfo),
+                    &(beam_batch_config->beamRequestsInfo),
+                    sizeof(BeamSearchBatchConfig::beamRequestsInfo),
                     cudaMemcpyHostToDevice,
                     stream);
   }

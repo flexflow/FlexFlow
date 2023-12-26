@@ -366,14 +366,18 @@ BeamInferenceResult
   GenericTensorAccessorW value = helperGetGenericTensorAccessorWO(
       DT_FLOAT, regions[2], task->regions[2], FID_DATA, ctx, runtime);
   GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
-      DT_FLOAT, regions[3], task->regions[3], FID_DATA, ctx, runtime);
+      DT_INT32, regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-
+  
+  printf("----------1-----------\n");
   int *index_ptr = index.get_int32_ptr();
+  printf("----------2-----------\n");
   float *value_ptr = value.get_float_ptr();
+  printf("----------3-----------\n");
   int *parent_ptr = parent.get_int32_ptr();
+  printf("----------4-----------\n");
 
   // embedding size: eg. 4096
   int length = input_domain.hi()[0] - input_domain.lo()[0] + 1;
@@ -397,6 +401,9 @@ BeamInferenceResult
   download_tensor<float>(value_ptr, ir.probs, batch_size * m->max_beam_width);
   download_tensor<int>(
       parent_ptr, ir.parent_id, batch_size * m->max_beam_width);
+
+  print_tensor<int>(index_ptr, 32, "indexxxxxxx");
+  printf("max beam width %d\n", m->max_beam_width);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);

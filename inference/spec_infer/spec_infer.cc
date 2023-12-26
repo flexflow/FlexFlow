@@ -303,7 +303,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->register_output_filepath(file_paths.output_file_path);
 
   //first decoding step: 3 results
-  rm->push_spec_infer_tree_width(1);
+  rm->push_spec_infer_tree_width(3);
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
@@ -404,7 +404,7 @@ void FlexFlow::top_level_task(Task const *task,
       prompts.push_back(text);
       // tree_model.generate(text, 128 /*max_sequence_length*/);
     }
-    tree_model.generate(prompts, 128 /*max_sequence_length*/);
+    tree_model.generate(prompts, 15 /*max_sequence_length*/);
   }
 
   // Execution fence

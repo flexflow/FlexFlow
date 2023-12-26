@@ -126,11 +126,11 @@ public:
 
   size_t beam_width;
   size_t target_iterations;
-  inline static int const MAX_BEAM_WIDTH = 1;
+  inline static int const MAX_BEAM_WIDTH = 3;
   inline static int const MAX_BEAM_DEPTH = 8;
 
   // maximum tree branches for a request
-  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 9;
+  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3;
 
   int model_id;
 
