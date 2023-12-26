@@ -664,24 +664,6 @@ void LayerNorm::peft_bwd_kernel(LayerNormMeta const *m,
                                 cudaStream_t stream) {
   const int64_t M = m->effective_batch_size;
   const int64_t N = m->effective_num_elements;
-  ComputeInternalGradientsCUDAKernel<T>
-      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
-          N,
-          output_grad_ptr,
-          static_cast<T *>(m->input_activation),
-          gamma_ptr,
-          static_cast<T *>(m->ds_ptr),
-          static_cast<T *>(m->db_ptr));
-  const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
-  ComputeGradientFusedParamsCUDAKernel<T>
-      <<<B, kCUDANumThreads, 0, stream>>>(M,
-                                          N,
-                                          static_cast<T *>(m->mean_ptr),
-                                          static_cast<T *>(m->rstd_ptr),
-                                          static_cast<T *>(m->ds_ptr),
-                                          static_cast<T *>(m->db_ptr),
-                                          static_cast<T *>(m->scale_ptr),
-                                          static_cast<T *>(m->bias_ptr));
   int const warp_size = C10_WARP_SIZE;
   int const num_threads = 128;
   const dim3 blocks(M);

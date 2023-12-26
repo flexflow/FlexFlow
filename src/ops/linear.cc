@@ -564,6 +564,7 @@ FutureMap Linear::inference(FFModel const &ff,
                             std::vector<ParallelTensor> const &batch_inputs,
                             std::vector<ParallelTensor> const &batch_outputs,
                             MachineView const *mv) {
+  printf("\tentering inference for %s\n", name);
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -617,10 +618,14 @@ void Linear::inference_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
+  printf("\tEntering inference task\n");
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   LinearMeta *m = *((LinearMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  std::string op_name_without_uid = Linear::get_op_name_without_uid(m);
+  printf("FWD %s\n", op_name_without_uid.c_str());
+  bc->print();
   if (bc->num_tokens == 0) {
     return;
   }
@@ -700,7 +705,7 @@ FutureMap Linear::peft_bwd(FFModel const &ff,
   launcher.add_region_requirement(
       RegionRequirement(batch_inputs[0]->part_grad,
                         0 /*projection id*/,
-                        READ_WRITE,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
                         EXCLUSIVE,
                         batch_inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
@@ -756,6 +761,9 @@ void Linear::peft_bwd_task(Task const *task,
       m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   int in_dim = input_grad.domain.hi()[0] - input_grad.domain.lo()[0] + 1;
   int out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
+
+  std::string op_name_without_uid = Linear::get_op_name_without_uid(m);
+  std::cout << "BWD " << op_name_without_uid << std::endl;
 
   int num_infr_tokens = bc->num_active_infr_tokens();
   int num_peft_tokens = bc->num_active_peft_tokens();

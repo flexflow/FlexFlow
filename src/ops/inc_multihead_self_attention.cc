@@ -935,7 +935,7 @@ FutureMap IncMultiHeadSelfAttention::peft_bwd(
   launcher.add_region_requirement(
       RegionRequirement(batch_inputs[0]->part_grad,
                         0 /*projection id*/,
-                        READ_WRITE,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
                         EXCLUSIVE,
                         batch_inputs[0]->region_grad));
   launcher.add_field(idx++, FID_DATA);

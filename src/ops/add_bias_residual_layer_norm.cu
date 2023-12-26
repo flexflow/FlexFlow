@@ -101,9 +101,9 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
     shared[wid] = val;
   }
   __syncthreads();
-  val = (threadIdx.x < min(blockDim.x, max_num_threads) / C10_WARP_SIZE)
+  val = (threadIdx.x < (min(blockDim.x, max_num_threads) / C10_WARP_SIZE))
             ? shared[lid]
-            : 0;
+            : T(0);
   if (wid == 0) {
     val = WarpReduceSum(val);
   }
@@ -536,8 +536,9 @@ __device__ __inline__ void compute_gI(T const *__restrict__ dY,
                                       T const *__restrict__ rstd,
                                       T const *__restrict__ gamma,
                                       T *dX,
-                                      T *dX_residual1,
-                                      T *dX_residual2,
+                                      T *dX_residual,
+                                      bool reset_input_grad,
+                                      bool reset_residual_grad,
                                       int const N,
                                       T *buf) {
   auto const i1 = blockIdx.x;
@@ -549,9 +550,7 @@ __device__ __inline__ void compute_gI(T const *__restrict__ dY,
   T const *X_i = X + i1 * N;
   T const *dY_i = dY + i1 * N;
   T *dX_i = dX + i1 * N;
-  T *dX_residual1_i = dX_residual1 + i1 * N;
-  T *dX_residual2_i =
-      (dX_residual2 != nullptr) ? dX_residual2 + i1 * N : nullptr;
+  T *dX_residual_i = dX_residual + i1 * N;
   // vectorized reads don't improve perf, so use regular unrolling
 
   for (; l + unroll - 1 < N; l += blockDim.x * unroll) {
@@ -592,10 +591,15 @@ __device__ __inline__ void compute_gI(T const *__restrict__ dY,
     f_grad_input -= (x - mean_val) * rstd_val * stats_x2;
     f_grad_input -= stats_x1;
     f_grad_input *= term1;
-    dX_i[l] += f_grad_input;
-    dX_residual1_i[l] += f_grad_input;
-    if (dX_residual2 != nullptr) {
-      dX_residual2_i[l] += f_grad_input;
+    if (reset_input_grad) {
+      dX_i[l] = f_grad_input;
+    } else {
+      dX_i[l] += f_grad_input;
+    }
+    if (reset_residual_grad) {
+      dX_residual_i[l] = f_grad_input;
+    } else {
+      dX_residual_i[l] += f_grad_input;
     }
   }
 }
@@ -607,13 +611,14 @@ __global__ void layer_norm_grad_input_kernel(T const *__restrict__ dY,
                                              T const *__restrict__ rstd,
                                              T const *__restrict__ gamma,
                                              T *dX,
-                                             T *dX_residual1,
-                                             T *dX_residual2,
+                                             T *dX_residual,
+                                             bool reset_input_grad,
+                                             bool reset_residual_grad,
                                              int const N) {
   alignas(sizeof(double)) extern __shared__ char s_data1[];
   T *buf = reinterpret_cast<T *>(&s_data1);
 
-  compute_gI(dY, X, mean, rstd, gamma, dX, dX_residual1, dX_residual2, N, buf);
+  compute_gI(dY, X, mean, rstd, gamma, dX, dX_residual, reset_input_grad, reset_residual_grad, N, buf);
 }
 
 /*static*/
@@ -661,7 +666,8 @@ void AddBiasResidualLayerNorm::backward_kernel(
       gamma_ptr,
       input_grad_ptr,
       residual_grad_ptr,
-      attn_bias_grad_ptr,
+      m->reset_input_grads[0],
+      m->reset_input_grads[1],
       N);
 
   if (gamma_grad_ptr != NULL || beta_grad_ptr != NULL) {
@@ -764,29 +770,11 @@ void AddBiasResidualLayerNorm::peft_bwd_kernel(
     T const *output_grad_ptr,
     T *input_grad_ptr,
     T *residual_grad_ptr,
-    T *attn_bias_grad_ptr,
     T const *gamma_ptr,
     cudaStream_t stream) {
   const int64_t M = m->effective_batch_size;
   const int64_t N = m->effective_num_elements;
-  ComputeInternalGradientsCUDAKernel<T>
-      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
-          N,
-          output_grad_ptr,
-          static_cast<T const *>(m->input_activation),
-          gamma_ptr,
-          static_cast<T *>(m->ds_ptr),
-          static_cast<T *>(m->db_ptr));
-  const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
-  ComputeGradientFusedParamsCUDAKernel<T>
-      <<<B, kCUDANumThreads, 0, stream>>>(M,
-                                          N,
-                                          static_cast<T *>(m->mean_ptr),
-                                          static_cast<T *>(m->rstd_ptr),
-                                          static_cast<T *>(m->ds_ptr),
-                                          static_cast<T *>(m->db_ptr),
-                                          static_cast<T *>(m->scale_ptr),
-                                          static_cast<T *>(m->bias_ptr));
+  
   int const warp_size = C10_WARP_SIZE;
   int const num_threads = 128;
   const dim3 blocks(M);
@@ -799,7 +787,8 @@ void AddBiasResidualLayerNorm::peft_bwd_kernel(
       gamma_ptr,
       input_grad_ptr,
       residual_grad_ptr,
-      attn_bias_grad_ptr,
+      m->reset_input_grads[0],
+      m->reset_input_grads[1],
       N);
 }
 
@@ -809,7 +798,6 @@ void AddBiasResidualLayerNorm::peft_bwd_kernel_wrapper(
     GenericTensorAccessorR const &output_grad,
     GenericTensorAccessorW &input_grad,
     GenericTensorAccessorW const &residual_grad,
-    GenericTensorAccessorW const &attn_bias_grad,
     GenericTensorAccessorR const &gamma) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -825,7 +813,6 @@ void AddBiasResidualLayerNorm::peft_bwd_kernel_wrapper(
                     output_grad.get_float_ptr(),
                     input_grad.get_float_ptr(),
                     residual_grad.get_float_ptr(),
-                    attn_bias_grad.get_float_ptr(),
                     m->elementwise_affine ? gamma.get_float_ptr() : nullptr,
                     stream);
   } else if (m->output_type[0] == DT_HALF) {
@@ -833,7 +820,6 @@ void AddBiasResidualLayerNorm::peft_bwd_kernel_wrapper(
                     output_grad.get_half_ptr(),
                     input_grad.get_half_ptr(),
                     residual_grad.get_half_ptr(),
-                    attn_bias_grad.get_half_ptr(),
                     m->elementwise_affine ? gamma.get_half_ptr() : nullptr,
                     stream);
   } else {

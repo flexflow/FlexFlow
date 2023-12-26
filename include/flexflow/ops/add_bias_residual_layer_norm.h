@@ -124,7 +124,6 @@ public:
                               T const *output_grad_ptr,
                               T *input_grad_ptr,
                               T *residual_grad_ptr,
-                              T *attn_bias_grad_ptr,
                               T const *gamma_ptr,
                               ffStream_t stream);
   static void
@@ -132,7 +131,6 @@ public:
                               GenericTensorAccessorR const &output_grad,
                               GenericTensorAccessorW &input_grad,
                               GenericTensorAccessorW const &residual_grad,
-                              GenericTensorAccessorW const &attn_bias_grad,
                               GenericTensorAccessorR const &gamma);
 
 public:

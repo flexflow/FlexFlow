@@ -723,7 +723,7 @@ Legion::FutureMap ResidualLayerNorm::peft_bwd(
   launcher.add_region_requirement(
       RegionRequirement(batch_inputs[0]->part_grad,
                         0 /*projection id*/,
-                        READ_WRITE,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
                         EXCLUSIVE,
                         batch_inputs[0]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
@@ -731,7 +731,7 @@ Legion::FutureMap ResidualLayerNorm::peft_bwd(
   launcher.add_region_requirement(
       RegionRequirement(batch_inputs[1]->part_grad,
                         0 /*projection id*/,
-                        READ_WRITE,
+                        reset_input_grads[1] ? WRITE_ONLY : READ_WRITE,
                         EXCLUSIVE,
                         batch_inputs[1]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
@@ -740,7 +740,7 @@ Legion::FutureMap ResidualLayerNorm::peft_bwd(
     launcher.add_region_requirement(
         RegionRequirement(batch_inputs[2]->part_grad,
                           0 /*projection id*/,
-                          READ_WRITE,
+                          reset_input_grads[2] ? WRITE_ONLY : READ_WRITE,
                           EXCLUSIVE,
                           batch_inputs[2]->region_grad));
     launcher.add_field(field_id++, FID_DATA);
@@ -768,9 +768,7 @@ void ResidualLayerNorm::peft_bwd_task(
   }
   assert(task->regions.size() == regions.size());
   ResidualLayerNormMeta *m = *((ResidualLayerNormMeta **)task->local_args);
-  assert(regions.size() ==
-         4 + m->use_two_residuals +
-             (m->elementwise_affine ? (m->use_bias ? 3 : 2) : 0));
+  assert(regions.size() == 3 + m->use_two_residuals + m->elementwise_affine);
 
   int region_idx = 0, task_region_idx = 0;
 
@@ -807,14 +805,16 @@ void ResidualLayerNorm::peft_bwd_task(
   }
   GenericTensorAccessorR gamma;
   if (m->elementwise_affine) {
-    assert(m->use_bias == (regions.size() == 6));
-    gamma = helperGetGenericTensorAccessorRO(m->output_type[0],
+    gamma = helperGetGenericTensorAccessorRO(m->weight_type[0],
                                              regions[region_idx++],
                                              task->regions[task_region_idx++],
                                              FID_DATA,
                                              ctx,
                                              runtime);
   }
+  std::string op_name_without_uid = ResidualLayerNorm::get_op_name_without_uid(m);
+  std::cout << "BWD " << op_name_without_uid << " reset_in_grad[0]: " <<  m->reset_input_grads[0] << " reset_in_grad[1]: " <<  m->reset_input_grads[1] << std::endl;
+  
   ResidualLayerNorm::peft_bwd_kernel_wrapper(
       m, output_grad, input_grad, residual1_grad, residual2_grad, gamma);
 
@@ -942,11 +942,13 @@ void ResidualLayerNorm::inference_task(
 
   assert(task->regions.size() == regions.size());
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  ResidualLayerNormMeta *m = *((ResidualLayerNormMeta **)task->local_args);
+  std::string op_name_without_uid = ResidualLayerNorm::get_op_name_without_uid(m);
+  std::cout << "INF " << op_name_without_uid << std::endl;
   if (bc->num_tokens == 0) {
+    bc->print();
     return;
   }
-
-  ResidualLayerNormMeta *m = *((ResidualLayerNormMeta **)task->local_args);
 
   assert(regions.size() ==
          4 + m->use_two_residuals +
