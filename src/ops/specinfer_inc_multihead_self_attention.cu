@@ -134,11 +134,20 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
           ii * THREADS_PER_KEY * K_VEC_SIZE);
     }
 
-     if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
-    printf("cacheposssss %d, %d\n", tree_branch_num, topology.real_token_pos[0][0]);
-     printf("cacheposssss %d, %d\n", tree_branch_num, topology.real_token_pos[0][1]);
-      printf("cacheposssss %d, %d\n", tree_branch_num, topology.real_token_pos[0][2]);
-       printf("cacheposssss %d, %d\n", tree_branch_num, topology.real_token_pos[0][10]);
+     if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && sub_req_idx == 0) {
+    printf("cacheposssssA %d, %d\n", tree_branch_num, topology.real_token_pos[0][0]);
+     printf("cacheposssssB %d, %d\n", tree_branch_num, topology.real_token_pos[0][1]);
+      printf("cacheposssssC %d, %d\n", tree_branch_num, topology.real_token_pos[0][2]);
+       printf("cacheposssssD %d, %d\n", tree_branch_num, topology.real_token_pos[0][11]);
+       printf("cacheposssssD %d, %d\n", tree_branch_num, topology.real_token_pos[0][12]);
+       printf("cacheposssssD %d, %d\n", tree_branch_num, topology.real_token_pos[0][13]);
+  }else if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && sub_req_idx == 1) {
+    printf("cacheposssssE %d, %d\n", tree_branch_num, topology.real_token_pos[sub_req_idx][0]);
+     printf("cacheposssssF %d, %d\n", tree_branch_num, topology.real_token_pos[sub_req_idx][1]);
+      printf("cacheposssssG %d, %d\n", tree_branch_num, topology.real_token_pos[sub_req_idx][2]);
+       printf("cacheposssssH %d, %d\n", tree_branch_num, topology.real_token_pos[sub_req_idx][11]);
+       printf("cacheposssssH %d, %d\n", tree_branch_num, topology.real_token_pos[sub_req_idx][12]);
+       printf("cacheposssssH %d, %d\n", tree_branch_num, topology.real_token_pos[sub_req_idx][13]);
   }
     __syncthreads();
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
@@ -289,7 +298,7 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
     // Output the final values.
     if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
       convert_from_float(
-          *reinterpret_cast<V_vec *>(output_ptr + request_idx * hidden_size +
+          *reinterpret_cast<V_vec *>(output_ptr + (request_idx + sub_req_idx) * hidden_size +
                                      head_idx * per_head_size + vi),
           out);
     }
@@ -332,7 +341,7 @@ __global__ void specinfer_store_kv_cache(
 
     int const beam_size = beamRequestInfos[req_id].sub_request_num;
 
-    int real_idx = tok_id - first_token_in_req + allocated_tokens;
+    int real_idx = tok_id - first_token_in_req + allocated_tokens + sub_req_id;
 
     if (i == 0) {
       printf("ffasdasds%d, %d, %d, %d, %d, %d\n",
@@ -343,10 +352,15 @@ __global__ void specinfer_store_kv_cache(
              first_token_in_req,
              real_idx);
     }
-    // }else if(i == hidden_size * 2){
-    //   printf("ffasdasdskkkk%d, %d, %d\n", allocated_tokens, tok_id,
-    //   sub_req_id);
-    // }
+    else if(i == hidden_size * 2){
+      printf("hshddhdhdsdaww%d, %d, %d, %d, %d, %d\n",
+             beamTokenInfos[0].sub_request_index,
+             allocated_tokens,
+             sub_req_id,
+             tok_id,
+             first_token_in_req,
+             real_idx);
+    }
     
     
 
@@ -547,7 +561,7 @@ void compute_attention_kernel_prompt(
     // To get B, skip over K entries from previous requests (all heads +
     // padding)
 
-    print_tensor<float>((float*)A, 32, "A");
+    // print_tensor<float>((float*)A, 32, "A");
     std::cout << "meta: " << num_new_tokens << ", " << total_tokens << "\n";
     DT const *B = static_cast<DT *>(m->keyCache) +
                   (i * bc->MAX_SPECULATIVE_TREE_BRANCHES) * kt_req_block_size;
@@ -583,7 +597,7 @@ void compute_attention_kernel_prompt(
                                          m->num_q_heads,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    print_tensor<float>((float*)C, 32, "C");
+    // print_tensor<float>((float*)C, 32, "C");
     // add alibi position bias to qk production
     // add alibi position bias to qk production
     if (*m->position_bias) {
@@ -669,7 +683,7 @@ void compute_attention_kernel_prompt(
     // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
     // requests
 
-    print_tensor<float>((float*)C_softmax, 32, "C_softmax");
+    // print_tensor<float>((float*)C_softmax, 32, "C_softmax");
     C = static_cast<DT *>(m->attn_heads) +
         (tokens_previous_requests + bc->num_generation_tokens) *
             m->num_q_heads * m->vProjSize;
