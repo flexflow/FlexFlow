@@ -143,6 +143,7 @@ public:
   BeamSearchBatchConfig::BeamSearchPerTokenInfo *beam_token_infos;
   BeamSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos;
   BeamSearchBatchConfig::SpecInferTopology *beam_topology_mask;
+  BatchConfig::BitMask *causalMask;
 };
 
 }; // namespace FlexFlow

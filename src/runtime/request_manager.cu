@@ -104,6 +104,18 @@ void RequestManager::load_tokens_task(
                     sizeof(BeamSearchBatchConfig::beamRequestsInfo),
                     cudaMemcpyHostToDevice,
                     stream);
+
+    // cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+    //                     sizeof(BatchConfig::tokensInfo) +
+    //                     sizeof(BatchConfig::requestsInfo) +
+    //                     sizeof(BeamSearchBatchConfig::topology_mask) +
+    //                     sizeof(BeamSearchBatchConfig::beamTokenInfo) +
+    //                     sizeof(BeamSearchBatchConfig::beamRequestsInfo),
+    //                 &(beam_batch_config->causalMask),
+    //                 sizeof(BatchConfig::causalMask),
+    //                 cudaMemcpyHostToDevice,
+    //                 stream);
+    //  std::cout << "copy calsual mask info: " << beam_batch_config->causalMask[0].prompt_size << "\n";
   }
 }
 

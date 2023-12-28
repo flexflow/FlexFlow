@@ -1364,8 +1364,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                        vProjSize * num_q_heads);
     size_t key_cache_size = 0, value_cache_size = 0;
     switch (infer_mode) {
-      case INC_DECODING_MODE:
-      case TREE_VERIFY_MODE: {
+      case INC_DECODING_MODE: {
         key_cache_size = num_q_heads * kProjSize *
                          BatchConfig::max_requests_per_batch() *
                          BatchConfig::max_sequence_length();
@@ -1374,7 +1373,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                            BatchConfig::max_sequence_length();
         break;
       }
-      case BEAM_SEARCH_MODE: {
+      case BEAM_SEARCH_MODE:
+      case TREE_VERIFY_MODE: {
         // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_q_heads * kProjSize *
                          BeamSearchBatchConfig::max_requests_per_batch() *
@@ -1402,7 +1402,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
          2 * qk_prod_size + attn_heads_size) *
             size_of_dt +
         complex_size * sizeof(cuFloatComplex); // more components will
-                                                 // be added here later
+                                               // be added here later
     if (offload) {
       // assert that we have enough reserved work space left
       size_t totalSharedSize =

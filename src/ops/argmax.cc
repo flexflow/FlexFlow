@@ -398,6 +398,8 @@ InferenceResult
     ArgMax::save_inference_tensors_to_file(
         m, shard_id, bc, {}, {}, {input, indices});
   }
+
+  print_tensor<int>(indices.get_int32_ptr(), 32, "tree attn output");
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   return ir;

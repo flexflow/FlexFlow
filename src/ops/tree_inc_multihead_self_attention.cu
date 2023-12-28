@@ -53,6 +53,8 @@ __global__ void compute_attention_kernel_fused_kernel(
     BatchConfig::PerRequestInfo *request_infos,
     int num_heads,
     int num_requests,
+    int max_tree_branches,
+    BatchConfig::BitMask *causalMask,
     int qk_smem_sz) {
 
   // q, k
@@ -80,6 +82,17 @@ __global__ void compute_attention_kernel_fused_kernel(
   int const tlength = request_infos[request_idx].first_token_depth_in_request +
                       request_infos[request_idx].num_tokens_in_batch;
   int const qlength = request_infos[request_idx].num_tokens_in_batch;
+
+  BatchConfig::BitMask bitmask = causalMask[request_idx];
+
+  // bitmask.mask[1] = 3;
+  if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+    printf("tree attn fused kernel %d, %d, %d, %lld\n",
+           tlength,
+           qlength,
+           bitmask.non_tree_cache_size,
+           bitmask.mask[1]);
+  }
 
   int first_token_idx = 0;
   for (int r = 0; r < request_idx; r++) {
@@ -115,7 +128,8 @@ __global__ void compute_attention_kernel_fused_kernel(
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
   DT const *k_cache_batch =
-      key_cache + request_idx * max_seq_length * hidden_size + ki;
+      key_cache +
+      request_idx * max_tree_branches * max_seq_length * hidden_size + ki;
 
   int ti_end =
       div_up(tlength - first_step, K_PER_WARP) * K_PER_WARP + first_step;
@@ -127,10 +141,12 @@ __global__ void compute_attention_kernel_fused_kernel(
           q_ptr + (hidden_size * QKV_WEIGHT_NUM * qi) + ki +
           ii * THREADS_PER_KEY * K_VEC_SIZE);
     }
+
     __syncthreads();
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
       K_vec k[K_VECS_PER_THREAD];
       int const ti_circ = ti % max_seq_length;
+
       for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
         int jj = ii * THREADS_PER_KEY * K_VEC_SIZE;
         if (ti < tlength) {
@@ -142,22 +158,35 @@ __global__ void compute_attention_kernel_fused_kernel(
       float qk = scale * Qk_dot<DT, THREADS_PER_KEY>::dot(q_vecs[ki_o], k);
 
       if (ti < tlength && tidx % THREADS_PER_KEY == 0) {
-        bool const mask = ti_circ >= tlength;
-        if (mask) {
-          assert(false);
+        bool const mask =
+            (ti >= bitmask.non_tree_cache_size &&
+             (!(bitmask.mask[ti - bitmask.non_tree_cache_size] & (1 << qi))));
+        
+        if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 0 && mask) {
+          printf("tree attn mask for first token %d, %lld, %d, %d\n",
+                 ti,
+                 bitmask.mask[ti - bitmask.non_tree_cache_size],
+                 bitmask.non_tree_cache_size,
+                 qi);
         }
 
-        int pos = ti * qlength + qi;
-        if (((pos / qlength) % tlength) > (pos % qlength + tlength - qlength)) {
-          qk = -FLT_MAX;
-        }
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
-        qk_smem[pos] = mask ? 0.f : qk;
+        if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 1 && !mask) {
+          printf("tree attn mask for second token %d, %lld, %d, %d, %.10f\n",
+                 ti,
+                 bitmask.mask[ti - bitmask.non_tree_cache_size],
+                 bitmask.non_tree_cache_size,
+                 qi,
+                 qk);
+        }
+        qk_smem[ti - first_step] = mask ? 0.0f : qk;
       }
     }
+
     __syncthreads();
 
+#pragma unroll
     for (int mask = WARP_SIZE / 2; mask >= THREADS_PER_KEY; mask /= 2) {
       qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
     }
@@ -176,65 +205,96 @@ __global__ void compute_attention_kernel_fused_kernel(
 
     // The warps finalize the reduction.
     qk_max = lane < WARPS_PER_BLOCK ? red_smem[lane] : -FLT_MAX;
-
+#pragma unroll
     for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
       qk_max = fmaxf(qk_max, __shfl_xor_sync(uint32_t(-1), qk_max, mask));
     }
 
     // Broadcast to all the threads in the warp.
     qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
+    
+     if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 0 && tidx == 0) {
+          printf("tree attn first token qk_max %f\n",
+                 qk_max);
+      }
+
 
     float exp_sum = 0.f;
-
     for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
-      float logit = __expf(qk_smem[ti * qlength + qi] - qk_max);
+      bool const mask =
+          (ti >= bitmask.non_tree_cache_size &&
+           (!(bitmask.mask[ti - bitmask.non_tree_cache_size] & (1 << qi))));
+      float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
       exp_sum += logit;
-      qk_smem[ti * qlength + qi] = logit;
+      qk_smem[ti - first_step] = mask ? 0.0f : logit;
     }
 
     // Compute the sum.
     exp_sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], exp_sum);
 
+    if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
+      printf("expsum %.10f\n", exp_sum);
+    }
+
     // softmax
     float inv_sum = __fdividef(1.f, exp_sum + 1.e-6);
-
     for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
-      qk_smem[ti * qlength + qi] *= inv_sum;
+      qk_smem[ti - first_step] *= inv_sum;
     }
 
     __syncthreads();
-  }
+    if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
+      printf("softmax %.10f\n", qk_smem[0]);
+    }
 
-  // value projection
-  constexpr int V_VEC_SIZE = 16 / sizeof(DT);
-  // The value computed by this thread.
-  int vo = tidx / THREADS_PER_VALUE;
-  // The hidden dimensions computed by this particular thread.
-  int vi = tidx % THREADS_PER_VALUE * V_VEC_SIZE;
-  constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
+    // value projection
+    constexpr int V_VEC_SIZE = 16 / sizeof(DT);
+    // A vector of V elements for the current timestep.
+    // using V_vec_k = typename V_vec_k_<DT, V_VEC_SIZE>::Type;
+    // using V_vec_acum = typename V_vec_acum_fp32_<V_vec_k>::Type;
 
-  Out_sum out;
-  // The base pointer for the value in the cache buffer.
-  DT const *v_cache_batch =
-      value_cache + request_idx * max_seq_length * hidden_size + vi;
+    // The value computed by this thread.
+    int vo = tidx / THREADS_PER_VALUE;
+    // The hidden dimensions computed by this particular thread.
+    int vi = tidx % THREADS_PER_VALUE * V_VEC_SIZE;
+    constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
 
-  for (int qi = 0; qi < qlength; qi++) {
+    Out_sum out;
     zero(out);
-    __syncthreads();
+
+    // The base pointer for the value in the cache buffer.
+    DT const *v_cache_batch =
+        value_cache +
+        request_idx * max_seq_length * hidden_size * max_tree_branches + vi;
+    // DT const *v_cache_batch =
+    //     value_cache +
+    //     (beam_request_idx * max_beam_width + beam_sub_request_idx) *
+    //         max_seq_length * hidden_size +
+    //     vi;
+
     if (Dh == Dh_MAX || vi < Dh) {
       for (int ti = first_step + vo; ti < tlength; ti += V_PER_ITER) {
         // Load the values from the cache.
         int const ti_circ = ti % max_seq_length;
-
+        // int const real_cache_idx = topology.real_token_pos[sub_req_idx][ti];
         V_vec v = *reinterpret_cast<V_vec const *>(
             v_cache_batch + ti_circ * hidden_size + head_idx * per_head_size);
-        float logit = qk_smem[ti * qlength + qi];
+
+        bool const mask =
+            (ti >= bitmask.non_tree_cache_size &&
+             (!(bitmask.mask[ti - bitmask.non_tree_cache_size] & (1 << qi))));
+        float logit = mask ? 0.0f : qk_smem[ti - first_step];
         out = FlexFlow::fma(logit, cast_to_float(v), out);
+        
       }
     }
 
-    // Make sure we can start writing to shared memory.
+    //   // Make sure we can start writing to shared memory.
     __syncthreads();
+
+    if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
+      printf("valueX %.10f\n", out.x);
+    }
 
     // Run the final reduction amongst the different groups computing different
     // partial outputs.
@@ -268,6 +328,11 @@ __global__ void compute_attention_kernel_fused_kernel(
                              output_ptr + (first_token_idx + qi) * hidden_size +
                              head_idx * per_head_size + vi),
                          out);
+       if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
+          printf("tree attn final value, %.9f, %.9f, %.9f, %.9f, %d, %d\n",
+                 out.x, out.y, out.z, out.w, vi, (first_token_idx + qi) * hidden_size +
+                             head_idx * per_head_size + vi);
+        }                  
     }
   }
 }
@@ -380,7 +445,9 @@ __global__ void update_tree_branch_kv_cache_fused(
     int vProjSize,
     int num_new_tokens,
     int max_seq_len,
-    int hidden_size) {
+    int hidden_size,
+    int max_tree_branches,
+    int first_token_depth) {
   CUDA_KERNEL_LOOP(i, num_new_tokens * hidden_size) {
 
     int token_idx = i / hidden_size;
@@ -393,10 +460,10 @@ __global__ void update_tree_branch_kv_cache_fused(
 
     int const req_id = tokenInfos[token_idx].request_index;
     int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
-    kCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
-               offset] = kVal;
-    vCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
-               offset] = vVal;
+    kCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
+               (token_idx + first_token_depth) * hidden_size + offset] = kVal;
+    vCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
+               (token_idx + first_token_depth) * hidden_size + offset] = vVal;
   }
 }
 
@@ -473,7 +540,6 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       }
 
       std::cout << "num_new_tokens: " << num_new_tokens << "\n";
-      assert(false);
 
       int total_tokens_in_request = bc->tokensInfo[j].abs_depth_in_request + 1;
       assert(num_new_tokens >= 1 && total_tokens_in_request >= num_new_tokens);
@@ -728,22 +794,11 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                         THDS_PER_KEY,                          \
                                         THDS_PER_VALUE>                        \
       <<<grid, THDS_PER_BLOCK, smem_sz[1], stream>>>(                          \
-          static_cast<DT *>(m->devQKVProjArray),                               \
-          static_cast<DT *>(m->keyCache),                                      \
-          static_cast<DT *>(m->valueCache),                                    \
-          output_ptr,                                                          \
-          scale,                                                               \
-          BatchConfig::max_sequence_length(),                                  \
-          BatchConfig::max_tokens_per_batch(),                                 \
-          m->qProjSize,                                                        \
-          m->hidden_size,                                                      \
-          m->request_infos,                                                    \
-          m->num_q_heads,                                                      \
-          bc->num_active_requests(),                                           \
+          static_cast<DT *>(m->devQKVProjArray), static_cast<DT *>(m->keyCache), static_cast<DT *>(m->valueCache), output_ptr, scale, BatchConfig::max_sequence_length(), BatchConfig::max_tokens_per_batch(), m->qProjSize, m->hidden_size, m->request_infos, m->num_q_heads, bc->num_active_requests(), BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES, m->causalMask,                                                       \  
           smem_sz[0])
 
 template <typename DT>
-void compute_attention_kernel_fused(IncMultiHeadSelfAttentionMeta const *m,
+void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
                                     TreeVerifyBatchConfig const *bc,
                                     DT *output_ptr,
                                     cudaStream_t stream) {
@@ -752,6 +807,12 @@ void compute_attention_kernel_fused(IncMultiHeadSelfAttentionMeta const *m,
   //  update K-V cache
   int num_new_tokens = bc->num_active_tokens();
   int parallelism = m->hidden_size * num_new_tokens;
+  printf("update KV cache %d, idx: %d\n",
+         num_new_tokens,
+         bc->requestsInfo[0].first_token_depth_in_request);
+  for (int i = 0; i < num_new_tokens; i++) {
+    printf("abs depth:%d\n", bc->tokensInfo[i].abs_depth_in_request);
+  }
   update_tree_branch_kv_cache_fused<<<GET_BLOCKS(parallelism),
                                       min(CUDA_NUM_THREADS, parallelism),
                                       0,
@@ -765,7 +826,9 @@ void compute_attention_kernel_fused(IncMultiHeadSelfAttentionMeta const *m,
       m->vProjSize,
       num_new_tokens,
       BatchConfig::max_sequence_length(),
-      m->hidden_size);
+      m->hidden_size,
+      BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES,
+      bc->requestsInfo[0].first_token_depth_in_request);
 
   dim3 grid(m->num_q_heads, bc->num_active_requests());
   int const per_head_size = m->qProjSize;
@@ -816,10 +879,17 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // Note that m->num_active_tokens stores the number of active
   // tokens in the previous batch, which is needed for committing
   // keys/values to the key-value cache
+  std::cout << "tokens to be committed: " << bc->num_tokens_to_commit << "\n";
+
   cudaMemcpyAsync(m->committed_token_infos,
                   &(bc->committed_tokens),
                   bc->num_tokens_to_commit *
                       sizeof(TreeVerifyBatchConfig::CommittedTokensInfo),
+                  cudaMemcpyHostToDevice,
+                  stream);
+  cudaMemcpyAsync(m->causalMask,
+                  &(bc->causalMask),
+                  bc->num_active_requests() * sizeof(BatchConfig::BitMask),
                   cudaMemcpyHostToDevice,
                   stream);
   commit_tokens<DT>(m, bc, stream);
@@ -948,6 +1018,20 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
   }
+
+  // print_tensor<float>(output.get_float_ptr(), 32, "tree attn kernel");
+
+  // save_tensor<float>(
+  //     input.get_float_ptr(),
+  //     768 * bc->num_active_tokens(),
+  //     "/home/xinhaoc/FlexFlow/inference/output/Newtreeinput.txt");
+  // save_tensor<float>(
+  //     output.get_float_ptr(),
+  //     768 * bc->num_active_tokens(),
+  //     "/home/xinhaoc/FlexFlow/inference/output/Newtreeoutput.txt");
+  // std::cout << "new tokens: " << bc->num_active_tokens() << "\n";
+
+  // assert(bc->num_tokens_to_commit == 0);
 }
 
 TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
@@ -993,8 +1077,11 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   {
     int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
     size_t committed_tokeninfo_size = max_tokens_per_batch;
+    size_t causal_mask_size = BatchConfig::MAX_NUM_REQUESTS;
+
     size_t total_size = committed_tokeninfo_size *
-                        sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);
+                            sizeof(TreeVerifyBatchConfig::CommittedTokensInfo) +
+                        causal_mask_size * sizeof(BatchConfig::BitMask);
     if (offload) {
       // assert that we have enough reserved work space left
       assert(gpu_mem_allocator.reserved_total_size -
@@ -1004,6 +1091,8 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
           gpu_mem_allocator
               .allocate_reserved<TreeVerifyBatchConfig::CommittedTokensInfo>(
                   committed_tokeninfo_size);
+      causalMask = gpu_mem_allocator.allocate_instance<BatchConfig::BitMask>(
+          causal_mask_size);
     } else {
       gpu_mem_allocator.create_legion_instance(committed_token_reserve_inst,
                                                total_size);
@@ -1011,6 +1100,8 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
           gpu_mem_allocator
               .allocate_instance<TreeVerifyBatchConfig::CommittedTokensInfo>(
                   committed_tokeninfo_size);
+      causalMask = gpu_mem_allocator.allocate_instance<BatchConfig::BitMask>(
+          causal_mask_size);
     }
   }
 

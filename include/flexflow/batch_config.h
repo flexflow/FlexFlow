@@ -56,6 +56,7 @@ public:
   // across workers
   static int const MAX_NUM_REQUESTS = 64;
   static int const MAX_NUM_TOKENS = 1024;
+  static int const MAX_SPEC_TREE_TOKEN_NUM = 64;
 
   //  Set by update
   int num_tokens;
@@ -75,6 +76,24 @@ public:
     int request_index;
     TokenId token_id;
   };
+
+  struct BitMask {
+    unsigned long long mask[MAX_SPEC_TREE_TOKEN_NUM] = {0};
+
+    // how many tokens before the tree, every sub requests need this part of
+    // cache
+    int non_tree_cache_size;
+
+    // current tree size
+    int tree_size;
+
+    int this_layer_size;
+
+    // input length-> prompt/root
+    int prompt_size;
+  };
+
+  BitMask causalMask[MAX_NUM_REQUESTS];
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 
@@ -153,7 +172,6 @@ public:
     int real_token_pos[MAX_SPECULATIVE_TREE_BRANCHES][MAX_NUM_TOKENS];
     int allocated_tokens;
   };
-
 
   BeamSearchPerRequestInfo beamRequestsInfo[MAX_NUM_REQUESTS];
   BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS * MAX_BEAM_WIDTH];
