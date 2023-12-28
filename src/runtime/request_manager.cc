@@ -630,8 +630,11 @@ BeamSearchBatchConfig
     }
 
     if (request.status == Request::RUNNING) {
+      std::cout << "verify running: " << dfs_tree_inputs.at(guid).size() << ", "
+                << tree_outputs.size() << "\n";
       std::vector<std::pair<BatchConfig::TokenId, int>> verified_tokens =
           traverse_verify_tree(guid, dfs_tree_inputs.at(guid), tree_outputs);
+
       log_req_mgr.print("Number of Verified Tokens = %zu",
                         verified_tokens.size());
 
@@ -1426,7 +1429,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 
     if (request.status == Request::RUNNING) {
 
-      std::cout << "prepare next batch running: pending\n"
+      std::cout << "prepare next batch running:\n"
                 << "\n";
       new_bc.request_running[i] = true;
       std::cout << "[Verify] Request " << request.guid << " is running"
@@ -1662,6 +1665,9 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       assert(false && "Request status is not RUNNING or PENDING");
     }
   }
+
+  std::cout << "check dfs tree input size: " << dfs_tree_inputs[1000000].size()
+            << "\n";
 
   return new_bc;
 }
@@ -2198,6 +2204,7 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
         int root_depth,
         RequestGuid guid) {
   assert(input_trees.size() == 1 && "currently using one ssm");
+  dfs_tree_inputs[guid] = input_trees.at(0);
   return input_trees.at(0);
 
   std::vector<std::pair<BatchConfig::TokenId, int>> merged_tree;
@@ -2249,6 +2256,8 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   }
 
   dfs_tree_inputs[guid] = merged_tree;
+  // std::cout << "assign dfr tree: " << guid << ", " << merged_tree.size() << ", "
+  //           << dfs_tree_inputs[guid].size() << "\n";
 
   return merged_tree;
 }

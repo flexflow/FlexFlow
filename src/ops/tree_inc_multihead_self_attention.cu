@@ -162,24 +162,24 @@ __global__ void compute_attention_kernel_fused_kernel(
             (ti >= bitmask.non_tree_cache_size &&
              (!(bitmask.mask[ti - bitmask.non_tree_cache_size] & (1 << qi))));
         
-        if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 0 && mask) {
-          printf("tree attn mask for first token %d, %lld, %d, %d\n",
-                 ti,
-                 bitmask.mask[ti - bitmask.non_tree_cache_size],
-                 bitmask.non_tree_cache_size,
-                 qi);
-        }
+        // if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 0 && mask) {
+        //   printf("tree attn mask for first token %d, %lld, %d, %d\n",
+        //          ti,
+        //          bitmask.mask[ti - bitmask.non_tree_cache_size],
+        //          bitmask.non_tree_cache_size,
+        //          qi);
+        // }
 
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
-        if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 1 && !mask) {
-          printf("tree attn mask for second token %d, %lld, %d, %d, %.10f\n",
-                 ti,
-                 bitmask.mask[ti - bitmask.non_tree_cache_size],
-                 bitmask.non_tree_cache_size,
-                 qi,
-                 qk);
-        }
+        // if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 1 && !mask) {
+        //   printf("tree attn mask for second token %d, %lld, %d, %d, %.10f\n",
+        //          ti,
+        //          bitmask.mask[ti - bitmask.non_tree_cache_size],
+        //          bitmask.non_tree_cache_size,
+        //          qi,
+        //          qk);
+        // }
         qk_smem[ti - first_step] = mask ? 0.0f : qk;
       }
     }
@@ -213,10 +213,10 @@ __global__ void compute_attention_kernel_fused_kernel(
     // Broadcast to all the threads in the warp.
     qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
     
-     if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 0 && tidx == 0) {
-          printf("tree attn first token qk_max %f\n",
-                 qk_max);
-      }
+    //  if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 0 && tidx == 0) {
+    //       printf("tree attn first token qk_max %f\n",
+    //              qk_max);
+    //   }
 
 
     float exp_sum = 0.f;
@@ -232,9 +232,9 @@ __global__ void compute_attention_kernel_fused_kernel(
     // Compute the sum.
     exp_sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], exp_sum);
 
-    if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
-      printf("expsum %.10f\n", exp_sum);
-    }
+    // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
+    //   printf("expsum %.10f\n", exp_sum);
+    // }
 
     // softmax
     float inv_sum = __fdividef(1.f, exp_sum + 1.e-6);
@@ -243,9 +243,9 @@ __global__ void compute_attention_kernel_fused_kernel(
     }
 
     __syncthreads();
-    if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
-      printf("softmax %.10f\n", qk_smem[0]);
-    }
+    // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
+    //   printf("softmax %.10f\n", qk_smem[0]);
+    // }
 
     // value projection
     constexpr int V_VEC_SIZE = 16 / sizeof(DT);
@@ -292,9 +292,9 @@ __global__ void compute_attention_kernel_fused_kernel(
     //   // Make sure we can start writing to shared memory.
     __syncthreads();
 
-    if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
-      printf("valueX %.10f\n", out.x);
-    }
+    // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
+    //   printf("valueX %.10f\n", out.x);
+    // }
 
     // Run the final reduction amongst the different groups computing different
     // partial outputs.
@@ -328,11 +328,11 @@ __global__ void compute_attention_kernel_fused_kernel(
                              output_ptr + (first_token_idx + qi) * hidden_size +
                              head_idx * per_head_size + vi),
                          out);
-       if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
-          printf("tree attn final value, %.9f, %.9f, %.9f, %.9f, %d, %d\n",
-                 out.x, out.y, out.z, out.w, vi, (first_token_idx + qi) * hidden_size +
-                             head_idx * per_head_size + vi);
-        }                  
+      //  if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
+      //     printf("tree attn final value, %.9f, %.9f, %.9f, %.9f, %d, %d\n",
+      //            out.x, out.y, out.z, out.w, vi, (first_token_idx + qi) * hidden_size +
+      //                        head_idx * per_head_size + vi);
+      //   }                  
     }
   }
 }
@@ -807,12 +807,12 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
   //  update K-V cache
   int num_new_tokens = bc->num_active_tokens();
   int parallelism = m->hidden_size * num_new_tokens;
-  printf("update KV cache %d, idx: %d\n",
-         num_new_tokens,
-         bc->requestsInfo[0].first_token_depth_in_request);
-  for (int i = 0; i < num_new_tokens; i++) {
-    printf("abs depth:%d\n", bc->tokensInfo[i].abs_depth_in_request);
-  }
+  // printf("update KV cache %d, idx: %d\n",
+  //        num_new_tokens,
+  //        bc->requestsInfo[0].first_token_depth_in_request);
+  // for (int i = 0; i < num_new_tokens; i++) {
+  //   printf("abs depth:%d\n", bc->tokensInfo[i].abs_depth_in_request);
+  // }
   update_tree_branch_kv_cache_fused<<<GET_BLOCKS(parallelism),
                                       min(CUDA_NUM_THREADS, parallelism),
                                       0,
