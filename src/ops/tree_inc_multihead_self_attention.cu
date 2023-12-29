@@ -99,6 +99,10 @@ __global__ void compute_attention_kernel_fused_kernel(
     first_token_idx += request_infos[request_idx].num_tokens_in_batch;
   }
 
+  // if(tidx == 0 && head_idx == 0){
+  //   printf("tree req: %d, %d\n", request_idx, first_token_idx);
+  // }
+
   // shared memory objects
   extern __shared__ char smem_[];
 
@@ -140,6 +144,12 @@ __global__ void compute_attention_kernel_fused_kernel(
       q_vecs[ki_o][ii] = *reinterpret_cast<Q_vec const *>(
           q_ptr + (hidden_size * QKV_WEIGHT_NUM * qi) + ki +
           ii * THREADS_PER_KEY * K_VEC_SIZE);
+
+      // if (head_idx == 0 && qi == 1 && tidx == 0) {
+      //     printf("laod q %d,  %d %.10f\n",
+      //     request_idx,
+      //            qi,q_vecs[ki_o][ii].x);
+      //   }
     }
 
     __syncthreads();
@@ -162,11 +172,12 @@ __global__ void compute_attention_kernel_fused_kernel(
             (ti >= bitmask.non_tree_cache_size &&
              (!(bitmask.mask[ti - bitmask.non_tree_cache_size] & (1 << qi))));
 
-        // if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 0 && mask) {
-        //   printf("tree attn mask for first token %d, %lld, %d, %d\n",
+        // if (head_idx == 0 && qi == 9 && mask) {
+        //   printf("tree attn mask for first token %d, %lld, %d, %d, %d\n",
         //          ti,
         //          bitmask.mask[ti - bitmask.non_tree_cache_size],
         //          bitmask.non_tree_cache_size,
+        //         request_idx,
         //          qi);
         // }
         // if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 3 && mask) {
@@ -179,11 +190,15 @@ __global__ void compute_attention_kernel_fused_kernel(
 
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
-        // if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 1 && !mask) {
-        //   printf("tree attn qkqkqkqk %d %.10f, %.10f, %.10f\n",
+        // if (head_idx == 0 && qi == 1 && !mask && tidx == 0) {
+        //   printf("tree attn qkqkqkqk request id %d,  %d %.10f, %.10f, %.10f\n",
+        //   request_idx,
         //          ti,
         //          qk,
         //          q_vecs[ki_o][0].x,
+        //          q_vecs[ki_o][1].x,
+        //          q_vecs[ki_o][2].x,
+        //          q_vecs[ki_o][3].x,
         //          k[0].x);
         // }
         qk_smem[ti - first_step] = mask ? 0.0f : qk;
@@ -219,7 +234,7 @@ __global__ void compute_attention_kernel_fused_kernel(
     // Broadcast to all the threads in the warp.
     qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
 
-    // if (blockIdx.y == 0 && blockIdx.x == 0 && qi == 1 && tidx == 0) {
+    // if (head_idx == 0 && qi == 9 && tidx == 0) {
     //   printf("tree attn first token qk_max %f\n", qk_max);
     // }
 
@@ -236,7 +251,7 @@ __global__ void compute_attention_kernel_fused_kernel(
     // Compute the sum.
     exp_sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], exp_sum);
 
-    // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
+    // if (head_idx == 0 && tidx == 0 && qi == 9) {
     //   printf("expsum %.10f\n", exp_sum);
     // }
 
@@ -247,7 +262,7 @@ __global__ void compute_attention_kernel_fused_kernel(
     }
 
     __syncthreads();
-    // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 1) {
+    // if (head_idx == 0 && tidx == 0 && qi == 9) {
     //   printf("softmax %.10f\n", qk_smem[1]);
     // }
 
@@ -465,6 +480,7 @@ __global__ void update_tree_branch_kv_cache_fused(
     DT *kCache_ptr,
     DT *vCache_ptr,
     TreeVerifyBatchConfig::PerTokenInfo const *tokenInfos,
+    BatchConfig::PerRequestInfo *request_infos,
     int qProjSize,
     int kProjSize,
     int vProjSize,
@@ -486,14 +502,15 @@ __global__ void update_tree_branch_kv_cache_fused(
     int const req_id = tokenInfos[token_idx].request_index;
     int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
 
+    int const request_token_offset = request_infos[req_id].first_token_offset_in_batch;
+
     // if(i % hidden_size == 0){
-    //   printf("update token id: %d, %d\n", token_idx, token_idx +
-    //   first_token_depth);
+    //   printf("update token request id: %d, %d, %d  value%.10f\n", req_id, token_idx, request_token_offset, kVal);
     // }
     kCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
-               (token_idx + first_token_depth) * hidden_size + offset] = kVal;
+               (token_idx + first_token_depth - request_token_offset) * hidden_size + offset] = kVal;
     vCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
-               (token_idx + first_token_depth) * hidden_size + offset] = vVal;
+               (token_idx + first_token_depth - request_token_offset) * hidden_size + offset] = vVal;
   }
 }
 
@@ -851,6 +868,7 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
       static_cast<DT *>(m->keyCache),
       static_cast<DT *>(m->valueCache),
       m->token_infos,
+      m->request_infos,
       m->qProjSize,
       m->kProjSize,
       m->vProjSize,
@@ -956,7 +974,8 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
                      stream);
-  // print_tensor<float>((float *)m->devQKVProjArray, 32, "qkvtenor");
+  // print_tensor<float>((float *)m->devQKVProjArray + 768 * 8 * 3 + 768, 32, "qkvtenor1");                   
+  // print_tensor<float>((float *)m->devQKVProjArray + 768 * 18 * 3 + 768, 32, "qkvtenor2");
 
   // phase 2: No need to update key/val cache
   // IncMultiHeadSelfAttention::update_kv_cache_kernel(
@@ -999,6 +1018,8 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
+
+  std::cout << "tree input tokens: " <<bc->num_active_tokens() << "\n";
 
   // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);

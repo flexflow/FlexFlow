@@ -626,7 +626,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                             stream));
   // trick, set acc_probs to 0;
   checkCUDA(
-      cudaMemsetAsync(m->acc_probs, 1.0, batch_size * sizeof(DT), stream));
+      cudaMemsetAsync(m->acc_probs, 1.0, max_total_requests * sizeof(DT), stream));
   checkCUDA(cudaMemcpyAsync(m->block_start_index,
                             beam_block_start_index.data(),
                             sizeof(int) * beam_num_blocks,
@@ -644,6 +644,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                        stream));
   // int depth =
   //     bc->beamRequestsInfo[bc->tokensInfo[0].request_index].current_depth;
+  beam_num_blocks = bc->num_active_tokens();
   beam_topk_forward_kernel<<<beam_num_blocks, num_shards, 0, stream>>>(
       input_ptr,
       shared_memory_size,

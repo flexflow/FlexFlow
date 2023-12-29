@@ -100,6 +100,10 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
     first_token_idx += bitmask.this_layer_size;
   }
 
+  // if (tidx == 0 && head_idx == 0) {
+  //   printf("spec req: %d, %d\n", request_idx, first_token_idx);
+  // }
+
   // shared memory objects
   extern __shared__ char smem_[];
 
@@ -135,17 +139,16 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
   int ti_end =
       div_up(totalCacheSize - first_step, K_PER_WARP) * K_PER_WARP + first_step;
 
-  for (int sub_req_idx = 0; sub_req_idx < tree_branch_num; sub_req_idx += 1) {
+  for (int qi = 0; qi < tree_branch_num; qi += 1) {
 #pragma unroll
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       q_vecs[ki_o][ii] = *reinterpret_cast<Q_vec const *>(
-          q_ptr + (hidden_size * QKV_WEIGHT_NUM * sub_req_idx) + ki +
+          q_ptr + (hidden_size * QKV_WEIGHT_NUM * qi) + ki +
           ii * THREADS_PER_KEY * K_VEC_SIZE);
     }
 
-    int const query_token = bitmask.tree_size - tree_branch_num + sub_req_idx;
-
-    if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && sub_req_idx == 0) {
+    int const query_token = bitmask.tree_size - tree_branch_num + qi;
+    if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 0) {
       // printf("fuckmasksss %d, %d, %d, %d, %d\n",
       //        bitmask.prompt_size,
       //        bitmask.non_tree_cache_size,
@@ -345,11 +348,10 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
 
     // Output the final values.
     if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
-      convert_from_float(
-          *reinterpret_cast<V_vec *>(output_ptr +
-                                     (request_idx + sub_req_idx) * hidden_size +
-                                     head_idx * per_head_size + vi),
-          out);
+      convert_from_float(*reinterpret_cast<V_vec *>(
+                             output_ptr + (first_token_idx + qi) * hidden_size +
+                             head_idx * per_head_size + vi),
+                         out);
     }
   }
 }
@@ -391,6 +393,9 @@ __global__ void specinfer_store_kv_cache(
     int const allocated_tokens = beam_topology_mask[req_id].allocated_tokens;
     int const total_token = requestInfo[req_id].num_tokens_in_batch;
 
+    int const request_token_offset =
+        requestInfo[req_id].first_token_offset_in_batch;
+
     BatchConfig::BitMask bitmask = causalMask[req_id];
 
     int const sub_request_num = beamRequestInfos[req_id].sub_request_num;
@@ -404,42 +409,18 @@ __global__ void specinfer_store_kv_cache(
     // if prompt token -> token id
     // if tree token:
     int const cache_idx = bitmask.non_tree_cache_size + bitmask.tree_size -
-                          bitmask.this_layer_size + token_idx;
+                          bitmask.this_layer_size + token_idx -
+                          request_token_offset;
 
     int real_idx = tok_id - first_token_in_req + allocated_tokens + sub_req_id;
 
-    // if (i == 0) {
-    //   printf("ffasdasds%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
-    //          beamTokenInfos[0].sub_request_index,
-    //          allocated_tokens,
-    //          sub_req_id,
-    //          tok_id,
-    //          first_token_in_req,
-    //          real_idx,
-    //          cache_idx,
-    //          bitmask.non_tree_cache_size,
-    //          bitmask.tree_size,
-    //          sub_request_num,
-    //         token_idx );
-    // } else if (i == hidden_size * 2) {
-    //   printf("hshddhdhdsdaww%d, %d, %d, %d, %d, %d, %d\n",
-    //          beamTokenInfos[0].sub_request_index,
-    //          allocated_tokens,
-    //          sub_req_id,
-    //          tok_id,
-    //          first_token_in_req,
-    //          real_idx,
-    //          cache_idx);
-    // }
-
     // if (i % hidden_size == 0) {
-    //   printf("update cache: %d, %d, %d, %d, %d, %d\n",
+    //   printf("ffasdasds request %d, real idx %d, cache idx %d  token id %d, kval %.10f\n",
+    //          req_id,
+    //          real_idx,
     //          cache_idx,
-    //          num_tokens,
-    //          bitmask.non_tree_cache_size,
-    //          bitmask.tree_size,
-    //          bitmask.this_layer_size,
-    //          token_idx);
+    //          tok_id,
+    //          kVal);
     // }
 
     kCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
@@ -846,6 +827,8 @@ void inference_kernel(SpecInferIncMultiHeadSelfAttentionMeta const *m,
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
 
+  // std::cout << "specinfer num tokens: " << num_tokens;
+
   compute_o_prod_bias(
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
 }
@@ -920,7 +903,8 @@ void SpecInferIncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
-  // print_tensor<float>(output.get_float_ptr(), 32, "specinc output");
+  // save_tensor<float>(output.get_float_ptr(), 768 * 3, "/home/xinhaoc/FlexFlow/inference/output/fk1.txt");
+  // save_tensor<float>(output.get_float_ptr() + 768 * 3, 768 * 3, "/home/xinhaoc/FlexFlow/inference/output/fk2.txt");
 
   // if(bc->num_tokens == 1){
   //   print_tensor<float>(input.get_float_ptr(), 32, "specinc input");
