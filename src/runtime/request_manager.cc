@@ -766,12 +766,6 @@ BeamSearchBatchConfig
         new_bc.beamRequestsInfo[i].sub_request_num = 1;
 
         new_bc.sub_requests[i] = 1;
-        new_bc.topology_mask[i].allocated_tokens = request.tokens.size();
-
-        // assign new kv cache position
-        for (int j = 0; j < request.tokens.size(); j++) {
-          new_bc.topology_mask[i].real_token_pos[0][j] = j;
-        }
 
         updateBitMask(new_bc.causalMask[i],
                       verified_tokens.size(),
@@ -786,8 +780,6 @@ BeamSearchBatchConfig
           new_bc.tokensInfo[new_bc.num_tokens].token_id = token.first;
           new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
               token.second;
-          new_bc.topology_mask[i].real_token_pos[0][token.second] =
-              new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request;
 
           // Beam Token Info
           new_bc.beamTokenInfo[new_bc.num_tokens].sub_request_index = 0;
@@ -846,7 +838,6 @@ BeamSearchBatchConfig
       }
 
       new_bc.beamRequestsInfo[i].sub_request_num = 1;
-      new_bc.topology_mask[i].allocated_tokens = 0;
 
       new_bc.sub_requests[i] = 1;
 
@@ -919,14 +910,12 @@ BeamSearchBatchConfig
           assert(depth < new_request.tokens.size());
           new_bc.tokensInfo[new_bc.num_tokens].token_id =
               new_request.tokens[depth];
-          new_bc.topology_mask[i].real_token_pos[0][depth] = depth;
 
           // beam search meta data, indicate which sub request this token
           // belongs to, init to 0;
           new_bc.beamTokenInfo[new_bc.num_tokens].sub_request_index = 0;
           new_bc.num_tokens++;
         }
-        new_bc.topology_mask[i].allocated_tokens = 0;
 
         initBitMask(new_bc.causalMask[i],
                     new_bc.requestsInfo[i].num_tokens_in_batch);
@@ -1120,9 +1109,6 @@ BeamSearchBatchConfig
         update_beam_metadata(
             new_bc, old_bc, request.beam_trees.at(old_bc.model_id), i);
 
-        new_bc.topology_mask[i].allocated_tokens =
-            old_bc.topology_mask[i].allocated_tokens +
-            old_bc.beamRequestsInfo[i].sub_request_num;
       } else {
         assert(false && "Request should not be pending in beam search phase");
       }
@@ -1156,31 +1142,9 @@ BeamSearchBatchConfig
                   << std::endl;
       }
 
-      //       for (int j = 0; j < request.tokens.size(); j++) {
-      //     new_bc.topology_mask[i].real_token_pos[0][j] = j;
-      // }
-
       // register more tokens due to the beam width
-      std::cout << "register more tokens: "
-                << new_bc.beamRequestsInfo[i].sub_request_num << ", "
-                << new_bc.requestsInfo[i].num_tokens_in_batch << ", "
-                << new_bc.topology_mask[i].allocated_tokens << "\n";
 
-      // copy meta data and replicate
-      int replicate_num = new_bc.beamRequestsInfo[i].sub_request_num /
-                          old_bc.beamRequestsInfo[i].sub_request_num;
-
-      for (int j = 0; j < old_bc.beamRequestsInfo[i].sub_request_num; j++) {
-        int old_idx = j;
-        for (int k = 0; k < replicate_num; k++) {
-          int new_idx = j * replicate_num + k;
-          std::cout << "copy from " << old_idx << "to: " << new_idx << "\n";
-          memcpy(new_bc.topology_mask[i].real_token_pos[new_idx],
-                 old_bc.topology_mask[i].real_token_pos[old_idx],
-                 sizeof(int) * BatchConfig::MAX_NUM_TOKENS);
-        }
-      }
-
+      //copy metadata
       memcpy(&new_bc.causalMask[i],
              &old_bc.causalMask[i],
              sizeof(BatchConfig::BitMask));
@@ -1215,14 +1179,6 @@ BeamSearchBatchConfig
           new_bc.beamTokenInfo[new_bc.num_tokens].sub_request_index = k;
           new_bc.num_tokens++;
 
-          // width first
-          new_bc.topology_mask[i].real_token_pos[k][depth] =
-              new_bc.topology_mask[i].allocated_tokens + num_generation_tokens;
-
-          // std::cout << "topology: sub request: " << k << ", "
-          //           << ", " << depth << ", "
-          //           << new_bc.topology_mask[i].real_token_pos[k][depth] <<
-          //           "\n";
           num_generation_tokens++;
         }
       }

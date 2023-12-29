@@ -168,14 +168,8 @@ public:
     int sub_request_index;
   };
 
-  struct SpecInferTopology {
-    int real_token_pos[MAX_SPECULATIVE_TREE_BRANCHES][MAX_NUM_TOKENS];
-    int allocated_tokens;
-  };
-
   BeamSearchPerRequestInfo beamRequestsInfo[MAX_NUM_REQUESTS];
   BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS * MAX_BEAM_WIDTH];
-  SpecInferTopology topology_mask[MAX_NUM_REQUESTS];
 
   // why is this == MAX_NUM_REQUESTS * MAX_BEAM_WIDTH?
   int sub_requests[MAX_NUM_REQUESTS * MAX_BEAM_WIDTH];

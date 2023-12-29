@@ -825,19 +825,6 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
 
-  // todo Xinhao copy how many requests if requests are not continous?
-  // cudaMemcpyAsync(m->token_infos,
-  //                 &(bc->tokensInfo),
-  //                 bc->num_active_tokens() *
-  //                 sizeof(BatchConfig::PerTokenInfo), cudaMemcpyHostToDevice,
-  //                 stream);
-  // cudaMemcpyAsync(m->request_infos,
-  //                 &(bc->requestsInfo),
-  //                 bc->max_requests_per_batch() *
-  //                     sizeof(BatchConfig::PerRequestInfo),
-  //                 cudaMemcpyHostToDevice,
-  //                 stream);
-
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,

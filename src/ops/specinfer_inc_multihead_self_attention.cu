@@ -50,7 +50,6 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
     int hidden_size,
     BatchConfig::PerRequestInfo *request_infos,
     BeamSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos,
-    BeamSearchBatchConfig::SpecInferTopology *topology_mask,
     BatchConfig::BitMask *causalMask,
     int max_tree_branches) {
 
@@ -74,8 +73,6 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
   // request idx
   int const request_idx = blockIdx.y;
 
-  BeamSearchBatchConfig::SpecInferTopology topology =
-      topology_mask[request_idx];
   BatchConfig::BitMask bitmask = causalMask[request_idx];
 
   int const first_step = 0;
@@ -148,23 +145,7 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
     }
 
     int const query_token = bitmask.tree_size - tree_branch_num + qi;
-    if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0 && qi == 0) {
-      // printf("fuckmasksss %d, %d, %d, %d, %d\n",
-      //        bitmask.prompt_size,
-      //        bitmask.non_tree_cache_size,
-      //        tree_branch_num,
-      //        bitmask.tree_size,
-      //        tlength);
-      //  printf("cacheposssssB %d, %d\n", tree_branch_num,
-      //  topology.real_token_pos[0][1]);
-      //   printf("cacheposssssC %d, %d\n", tree_branch_num,
-      //   topology.real_token_pos[0][2]);
-      //    printf("cacheposssssD %d, %d\n", tree_branch_num,
-      //    topology.real_token_pos[0][11]); printf("cacheposssssD %d, %d\n",
-      //    tree_branch_num, topology.real_token_pos[0][12]);
-      //    printf("cacheposssssD %d, %d\n", tree_branch_num,
-      //    topology.real_token_pos[0][13]);
-    }
+
     __syncthreads();
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
       K_vec k[K_VECS_PER_THREAD];
@@ -173,10 +154,7 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
       for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
         int jj = ii * THREADS_PER_KEY * K_VEC_SIZE;
         if (ti < totalCacheSize) {
-          // find the real position of the cache;
-          // depth: 0, 1, 2, 3, 4, 4, 5, 5 ,5, 5,
-          // int const real_cache_idx =
-          // topology.real_token_pos[sub_req_idx][ti];
+
           k[ii] = *reinterpret_cast<K_vec const *>(
               k_cache_batch + ti_circ * hidden_size + head_idx * per_head_size +
               jj);
@@ -291,17 +269,12 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
     DT const *v_cache_batch =
         value_cache +
         request_idx * max_seq_length * hidden_size * max_tree_branches + vi;
-    // DT const *v_cache_batch =
-    //     value_cache +
-    //     (beam_request_idx * max_beam_width + beam_sub_request_idx) *
-    //         max_seq_length * hidden_size +
-    //     vi;
+
 
     if (Dh == Dh_MAX || vi < Dh) {
       for (int ti = first_step + vo; ti < totalCacheSize; ti += V_PER_ITER) {
         // Load the values from the cache.
         int const ti_circ = ti % max_seq_length;
-        // int const real_cache_idx = topology.real_token_pos[sub_req_idx][ti];
         V_vec v = *reinterpret_cast<V_vec const *>(
             v_cache_batch + ti_circ * hidden_size + head_idx * per_head_size);
 
@@ -365,7 +338,6 @@ __global__ void specinfer_store_kv_cache(
     BatchConfig::PerRequestInfo *requestInfo,
     BeamSearchBatchConfig::BeamSearchPerTokenInfo *beamTokenInfos,
     BeamSearchBatchConfig::BeamSearchPerRequestInfo *beamRequestInfos,
-    BeamSearchBatchConfig::SpecInferTopology *beam_topology_mask,
     BatchConfig::BitMask *causalMask,
     int qProjSize,
     int kProjSize,
@@ -390,7 +362,6 @@ __global__ void specinfer_store_kv_cache(
     int const first_token_in_req =
         requestInfo[req_id].first_token_depth_in_request;
     int const sub_req_id = beamTokenInfos[token_idx].sub_request_index;
-    int const allocated_tokens = beam_topology_mask[req_id].allocated_tokens;
     int const total_token = requestInfo[req_id].num_tokens_in_batch;
 
     int const request_token_offset =
@@ -411,17 +382,6 @@ __global__ void specinfer_store_kv_cache(
     int const cache_idx = bitmask.non_tree_cache_size + bitmask.tree_size -
                           bitmask.this_layer_size + token_idx -
                           request_token_offset;
-
-    int real_idx = tok_id - first_token_in_req + allocated_tokens + sub_req_id;
-
-    // if (i % hidden_size == 0) {
-    //   printf("ffasdasds request %d, real idx %d, cache idx %d  token id %d, kval %.10f\n",
-    //          req_id,
-    //          real_idx,
-    //          cache_idx,
-    //          tok_id,
-    //          kVal);
-    // }
 
     kCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
                (cache_idx)*hidden_size + offset] = kVal;
@@ -454,7 +414,6 @@ void update_kv_cache_kernel(SpecInferIncMultiHeadSelfAttentionMeta const *m,
         m->request_infos,
         m->beam_token_infos,
         m->beam_request_infos,
-        m->beam_topology_mask,
         m->causalMask,
         m->qProjSize,
         m->kProjSize,
@@ -490,7 +449,6 @@ void update_kv_cache_kernel(SpecInferIncMultiHeadSelfAttentionMeta const *m,
           m->hidden_size,                                                      \
           m->request_infos,                                                    \
           m->beam_request_infos,                                               \
-          m->beam_topology_mask,                                               \
           m->causalMask,                                                       \
           BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES)
 
@@ -788,16 +746,6 @@ void inference_kernel(SpecInferIncMultiHeadSelfAttentionMeta const *m,
                       cudaStream_t stream) {
   // phase 1: Implement kernel to compute KQV for input tokens
 
-  cudaMemcpyAsync(m->causalMask,
-                  &(bc->causalMask),
-                  bc->num_active_requests() * sizeof(BatchConfig::BitMask),
-                  cudaMemcpyHostToDevice,
-                  stream);
-  // std::cout << "kernel bit mask: " << bc->causalMask[0].prompt_size << ", "
-  //           << bc->causalMask[0].non_tree_cache_size << ", "
-  //           << bc->causalMask[0].mask[0] << ", " <<
-  //           sizeof(BatchConfig::BitMask)
-  //           << "\n";
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
@@ -953,38 +901,30 @@ SpecInferIncMultiHeadSelfAttentionMeta::SpecInferIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    size_t causal_mask_size = BatchConfig::MAX_NUM_REQUESTS;
-    size_t total_size = causal_mask_size * sizeof(BatchConfig::BitMask);
-    gpu_mem_allocator.create_legion_instance(beam_search_reserve_inst,
-                                             total_size);
+    // size_t causal_mask_size = BatchConfig::MAX_NUM_REQUESTS;
+    // size_t total_size = causal_mask_size * sizeof(BatchConfig::BitMask);
+    // gpu_mem_allocator.create_legion_instance(beam_search_reserve_inst,
+    //                                          total_size);
 
-    beam_topology_mask =
-        static_cast<BeamSearchBatchConfig::SpecInferTopology *>(
-            handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
-            sizeof(BatchConfig::requestsInfo));
 
     beam_token_infos =
         static_cast<BeamSearchBatchConfig::BeamSearchPerTokenInfo *>(
             handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
-            sizeof(BatchConfig::requestsInfo) +
-            sizeof(BeamSearchBatchConfig::topology_mask));
+            sizeof(BatchConfig::requestsInfo));
 
     beam_request_infos =
         static_cast<BeamSearchBatchConfig::BeamSearchPerRequestInfo *>(
             handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
-            sizeof(BatchConfig::requestsInfo) +
-            sizeof(BeamSearchBatchConfig::topology_mask) +
+            sizeof(BatchConfig::requestsInfo)  +
             sizeof(BeamSearchBatchConfig::beamTokenInfo));
-    // causalMask =
-    //     static_cast<BatchConfig::BitMask *>(
-    //         handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
-    //         sizeof(BatchConfig::requestsInfo) +
-    //         sizeof(BeamSearchBatchConfig::topology_mask) +
-    //         sizeof(BeamSearchBatchConfig::beamTokenInfo)) +
-    //     sizeof(BeamSearchBatchConfig::beamRequestsInfo);
+    causalMask =  static_cast<BatchConfig::BitMask *>(
+            handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
+            sizeof(BatchConfig::requestsInfo)  +
+            sizeof(BeamSearchBatchConfig::beamTokenInfo)
+            + sizeof(BeamSearchBatchConfig::beamRequestsInfo));      
 
-    causalMask = gpu_mem_allocator.allocate_instance<BatchConfig::BitMask>(
-        causal_mask_size);
+    // causalMask = gpu_mem_allocator.allocate_instance<BatchConfig::BitMask>(
+    //     causal_mask_size);
     // beam_token_infos =
     //     gpu_mem_allocator
     //         .allocate_instance<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(

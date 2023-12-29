@@ -59,64 +59,74 @@ void RequestManager::load_tokens_task(
 
   // copy meta data to workSpace
   FFHandler handle = *((FFHandler const *)task->local_args);
+  size_t total_copy_size = 0;
   cudaMemcpyAsync(handle.batch_config_metadata,
                   &(batch_config->tokensInfo),
-                  batch_config->num_active_tokens() *
-                      sizeof(BatchConfig::PerTokenInfo),
+                  sizeof(BatchConfig::tokensInfo),
                   cudaMemcpyHostToDevice,
                   stream);
-  cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                      sizeof(BatchConfig::tokensInfo),
-                  &(batch_config->requestsInfo),
-                  batch_config->max_requests_per_batch() *
-                      sizeof(BatchConfig::PerRequestInfo),
-                  cudaMemcpyHostToDevice,
-                  stream);
+  total_copy_size += sizeof(BatchConfig::tokensInfo);
 
-  
+  cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                      total_copy_size,
+                  &(batch_config->requestsInfo),
+                  sizeof(BatchConfig::requestsInfo),
+                  cudaMemcpyHostToDevice,
+                  stream);
+  total_copy_size += sizeof(BatchConfig::requestsInfo);
+
   // load speculative metadata
   if (batch_config->get_mode() == BEAM_SEARCH_MODE) {
     BeamSearchBatchConfig const *beam_batch_config =
         static_cast<BeamSearchBatchConfig const *>(batch_config);
 
     cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                      sizeof(BatchConfig::tokensInfo) +
-                      sizeof(BatchConfig::requestsInfo),
-                  &(beam_batch_config->topology_mask),
-                  sizeof(BeamSearchBatchConfig::topology_mask),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
-    cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                        sizeof(BatchConfig::tokensInfo) +
-                        sizeof(BatchConfig::requestsInfo) +
-                        sizeof(BeamSearchBatchConfig::topology_mask),
+                        total_copy_size,
                     &(beam_batch_config->beamTokenInfo),
                     sizeof(BeamSearchBatchConfig::beamTokenInfo),
                     cudaMemcpyHostToDevice,
                     stream);
+
+    total_copy_size += sizeof(BeamSearchBatchConfig::beamTokenInfo);
+
     cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                        sizeof(BatchConfig::tokensInfo) +
-                        sizeof(BatchConfig::requestsInfo) +
-                        sizeof(BeamSearchBatchConfig::topology_mask) +
-                        sizeof(BeamSearchBatchConfig::beamTokenInfo),
+                        total_copy_size,
                     &(beam_batch_config->beamRequestsInfo),
                     sizeof(BeamSearchBatchConfig::beamRequestsInfo),
                     cudaMemcpyHostToDevice,
                     stream);
+    total_copy_size += sizeof(BeamSearchBatchConfig::beamRequestsInfo);
 
-    // cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-    //                     sizeof(BatchConfig::tokensInfo) +
-    //                     sizeof(BatchConfig::requestsInfo) +
-    //                     sizeof(BeamSearchBatchConfig::topology_mask) +
-    //                     sizeof(BeamSearchBatchConfig::beamTokenInfo) +
-    //                     sizeof(BeamSearchBatchConfig::beamRequestsInfo),
-    //                 &(beam_batch_config->causalMask),
-    //                 sizeof(BatchConfig::causalMask),
-    //                 cudaMemcpyHostToDevice,
-    //                 stream);
-    //  std::cout << "copy calsual mask info: " << beam_batch_config->causalMask[0].prompt_size << "\n";
+    cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                        total_copy_size,
+                    &(beam_batch_config->causalMask),
+                    sizeof(BatchConfig::causalMask),
+                    cudaMemcpyHostToDevice,
+                    stream);
+
+    total_copy_size += sizeof(BatchConfig::causalMask);
+  } else if (batch_config->get_mode() == TREE_VERIFY_MODE) {
+    TreeVerifyBatchConfig const *tree_batch_config =
+        static_cast<TreeVerifyBatchConfig const *>(batch_config);
+
+    cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                        total_copy_size,
+                    &(tree_batch_config->causalMask),
+                    sizeof(BatchConfig::causalMask),
+                    cudaMemcpyHostToDevice,
+                    stream);
+    total_copy_size += sizeof(BatchConfig::causalMask);
+    cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                        total_copy_size,
+                    &(tree_batch_config->committed_tokens),
+                    sizeof(TreeVerifyBatchConfig::committed_tokens),
+                    cudaMemcpyHostToDevice,
+                    stream);
+    total_copy_size += sizeof(TreeVerifyBatchConfig::committed_tokens);
   }
+
+  // add a size check
+  assert(total_copy_size <= handle.batch_config_metadata_size);
 }
 
 void RequestManager::load_positions_task(

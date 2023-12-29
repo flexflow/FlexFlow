@@ -81,10 +81,10 @@ struct FFHandler {
   // request info + token info + topolopgy mask info
   size_t batch_config_metadata_size =
       sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-      sizeof(BeamSearchBatchConfig::topology_mask) +
       sizeof(BeamSearchBatchConfig::beamTokenInfo) +
       sizeof(BeamSearchBatchConfig::beamRequestsInfo) +
-      sizeof(BatchConfig::causalMask);
+      sizeof(BatchConfig::causalMask) +
+      sizeof(TreeVerifyBatchConfig::committed_tokens);
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
   DataType quantization_type;

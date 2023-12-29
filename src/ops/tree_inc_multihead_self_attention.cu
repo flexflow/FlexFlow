@@ -191,8 +191,8 @@ __global__ void compute_attention_kernel_fused_kernel(
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
         // if (head_idx == 0 && qi == 1 && !mask && tidx == 0) {
-        //   printf("tree attn qkqkqkqk request id %d,  %d %.10f, %.10f, %.10f\n",
-        //   request_idx,
+        //   printf("tree attn qkqkqkqk request id %d,  %d %.10f, %.10f,
+        //   %.10f\n", request_idx,
         //          ti,
         //          qk,
         //          q_vecs[ki_o][0].x,
@@ -355,7 +355,8 @@ __global__ void compute_attention_kernel_fused_kernel(
       //          out.z,
       //          out.w,
       //          vi,
-      //          (first_token_idx + qi) * hidden_size + head_idx * per_head_size +
+      //          (first_token_idx + qi) * hidden_size + head_idx *
+      //          per_head_size +
       //              vi);
       // }
     }
@@ -502,15 +503,21 @@ __global__ void update_tree_branch_kv_cache_fused(
     int const req_id = tokenInfos[token_idx].request_index;
     int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
 
-    int const request_token_offset = request_infos[req_id].first_token_offset_in_batch;
+    int const request_token_offset =
+        request_infos[req_id].first_token_offset_in_batch;
 
     // if(i % hidden_size == 0){
-    //   printf("update token request id: %d, %d, %d  value%.10f\n", req_id, token_idx, request_token_offset, kVal);
+    //   printf("update token request id: %d, %d, %d  value%.10f\n", req_id,
+    //   token_idx, request_token_offset, kVal);
     // }
     kCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
-               (token_idx + first_token_depth - request_token_offset) * hidden_size + offset] = kVal;
+               (token_idx + first_token_depth - request_token_offset) *
+                   hidden_size +
+               offset] = kVal;
     vCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
-               (token_idx + first_token_depth - request_token_offset) * hidden_size + offset] = vVal;
+               (token_idx + first_token_depth - request_token_offset) *
+                   hidden_size +
+               offset] = vVal;
   }
 }
 
@@ -974,8 +981,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
                      stream);
-  // print_tensor<float>((float *)m->devQKVProjArray + 768 * 8 * 3 + 768, 32, "qkvtenor1");                   
-  // print_tensor<float>((float *)m->devQKVProjArray + 768 * 18 * 3 + 768, 32, "qkvtenor2");
+  // print_tensor<float>((float *)m->devQKVProjArray + 768 * 8 * 3 + 768, 32,
+  // "qkvtenor1"); print_tensor<float>((float *)m->devQKVProjArray + 768 * 18 *
+  // 3 + 768, 32, "qkvtenor2");
 
   // phase 2: No need to update key/val cache
   // IncMultiHeadSelfAttention::update_kv_cache_kernel(
@@ -1019,7 +1027,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
 
-  std::cout << "tree input tokens: " <<bc->num_active_tokens() << "\n";
+  std::cout << "tree input tokens: " << bc->num_active_tokens() << "\n";
 
   // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
@@ -1128,34 +1136,15 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
-    size_t committed_tokeninfo_size = max_tokens_per_batch;
-    size_t causal_mask_size = BatchConfig::MAX_NUM_REQUESTS;
 
-    size_t total_size = committed_tokeninfo_size *
-                            sizeof(TreeVerifyBatchConfig::CommittedTokensInfo) +
-                        causal_mask_size * sizeof(BatchConfig::BitMask);
-    if (offload) {
-      // assert that we have enough reserved work space left
-      assert(gpu_mem_allocator.reserved_total_size -
-                 gpu_mem_allocator.reserved_allocated_size >=
-             total_size);
-      committed_token_infos =
-          gpu_mem_allocator
-              .allocate_reserved<TreeVerifyBatchConfig::CommittedTokensInfo>(
-                  committed_tokeninfo_size);
-      causalMask = gpu_mem_allocator.allocate_instance<BatchConfig::BitMask>(
-          causal_mask_size);
-    } else {
-      gpu_mem_allocator.create_legion_instance(committed_token_reserve_inst,
-                                               total_size);
-      committed_token_infos =
-          gpu_mem_allocator
-              .allocate_instance<TreeVerifyBatchConfig::CommittedTokensInfo>(
-                  committed_tokeninfo_size);
-      causalMask = gpu_mem_allocator.allocate_instance<BatchConfig::BitMask>(
-          causal_mask_size);
-    }
+    causalMask = static_cast<BatchConfig::BitMask *>(
+        handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
+        sizeof(BatchConfig::requestsInfo));
+    committed_token_infos =
+        static_cast<TreeVerifyBatchConfig::CommittedTokensInfo *>(
+            handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
+            sizeof(BatchConfig::requestsInfo) +
+            sizeof(BatchConfig::causalMask));
   }
 
   cudaStreamSynchronize(stream);
