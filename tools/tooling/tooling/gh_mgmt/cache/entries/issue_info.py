@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from github import Github
 from datetime import timedelta
-from tooling.gh_mgmt.cache.core.stateless_cache_entry import StatelessCacheEntry 
+from tooling.gh_mgmt.cache.core.stateless_cache_entry import StatelessCacheEntry
 from tooling.gh_mgmt.issues.triage.data_model.issue_state import IssueState
 from tooling.gh_mgmt.issues.triage.data_model.issue_info import IssueInfo
-from tooling.gh_mgmt.issues.triage.config import get_beginning_of_time 
+from tooling.gh_mgmt.issues.triage.config import get_beginning_of_time
 from tooling.json import Json
 import dataclasses
 

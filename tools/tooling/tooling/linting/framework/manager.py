@@ -1,5 +1,5 @@
 from typing import Dict, FrozenSet, Union, cast, Iterable
-from tooling.linting.framework.response import Response, did_succeed, ErrorResponse, FixResponse, CheckResponse 
+from tooling.linting.framework.response import Response, did_succeed, ErrorResponse, FixResponse, CheckResponse
 from tooling.linting.framework.specification import Specification
 from tooling.linting.framework.settings import Settings
 from tooling.linting.framework.method import Method
@@ -9,16 +9,17 @@ import logging
 
 _l = logging.getLogger(__name__)
 
+
 @dataclass(frozen=True)
 class Manager:
     specs: FrozenSet[Specification] = frozenset()
 
-    def __plus__(self, other: 'Manager') -> 'Manager':
+    def __plus__(self, other: "Manager") -> "Manager":
         return Manager(self.specs | other.specs)
 
     def run(self, settings: Settings, project: Project, method: Method) -> Dict[str, Response]:
         responses: Dict[str, Response] = {}
-        specs = {spec.name : spec for spec in self.specs}
+        specs = {spec.name: spec for spec in self.specs}
         job_queue = list(specs)
 
         def _add_job(name: str) -> None:
@@ -47,19 +48,17 @@ class Manager:
     def check(self, settings: Settings, project: Project) -> Dict[str, Union[CheckResponse, ErrorResponse]]:
         responses = self.run(settings=settings, project=project, method=Method.CHECK)
         for k, v in responses.items():
-            _l.debug(f'Linter {k} returned response of type {type(v)}')
+            _l.debug(f"Linter {k} returned response of type {type(v)}")
             assert isinstance(v, (CheckResponse, ErrorResponse))
-        return cast(Dict[str, Union[CheckResponse, ErrorResponse]],
-                    responses)
+        return cast(Dict[str, Union[CheckResponse, ErrorResponse]], responses)
 
     def fix(self, settings: Settings, project: Project) -> Dict[str, Union[FixResponse, ErrorResponse]]:
         responses = self.run(settings=settings, project=project, method=Method.FIX)
         for k, v in responses.items():
-            _l.debug(f'Linter {k} returned response of type {type(v)}')
+            _l.debug(f"Linter {k} returned response of type {type(v)}")
             assert isinstance(v, (CheckResponse, ErrorResponse))
-        return cast(Dict[str, Union[FixResponse, ErrorResponse]],
-                    responses)
+        return cast(Dict[str, Union[FixResponse, ErrorResponse]], responses)
 
     @classmethod
-    def from_iter(cls, it: Iterable[Specification]) -> 'Manager':
+    def from_iter(cls, it: Iterable[Specification]) -> "Manager":
         return cls(frozenset(it))

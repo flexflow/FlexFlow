@@ -3,8 +3,9 @@ from github import Github
 from github import Auth
 from tooling.gh_mgmt.cache.cache import Cache
 from datetime import timedelta
-from tooling.gh_mgmt.issues.triage.data_model.issue_info import IssueInfo 
+from tooling.gh_mgmt.issues.triage.data_model.issue_info import IssueInfo
 from typing import Mapping
+
 
 def get_unanswered_issues() -> Mapping[int, IssueInfo]:
     auth = Auth.Token(get_auth_token())

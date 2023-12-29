@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from tooling.gh_mgmt.cache.core.cache_entry import CacheEntry
 from typing import Dict, Optional
 from tooling.gh_mgmt.issues.triage.data_model.modification import Modification
-from tooling.gh_mgmt.cache.core.previous_value_tag import PreviousValueTag 
+from tooling.gh_mgmt.cache.core.previous_value_tag import PreviousValueTag
 from github import Github
 from tooling.gh_mgmt.issues.triage.config import get_beginning_of_time
 from datetime import timedelta
@@ -17,10 +17,9 @@ class IssueLastModificationsEntry(CacheEntry[Dict[int, Modification]]):
     def _cache_entry_name(self) -> str:
         return f"issues_last_modifications-{self.repo_name}"
 
-    def _update(self, 
-                new: Dict[int, Modification], 
-                prev: PreviousValueTag[Optional[Dict[int, Modification]]]
-                ) -> Dict[int, Modification]:
+    def _update(
+        self, new: Dict[int, Modification], prev: PreviousValueTag[Optional[Dict[int, Modification]]]
+    ) -> Dict[int, Modification]:
         assert prev.last_value is not None
 
         result: Dict[int, Modification] = {}

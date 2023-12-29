@@ -2,6 +2,7 @@ from enum import Enum, auto
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from typing import FrozenSet
 
+
 class ComponentType(Enum):
     SOURCE = auto()
     TEST = auto()
@@ -26,10 +27,12 @@ class ComponentType(Enum):
         return not self.is_header()
 
     @staticmethod
-    def all() -> FrozenSet['ComponentType']:
-        return frozenset({
-            ComponentType.SOURCE,
-            ComponentType.TEST,
-            ComponentType.PRIVATE_HEADER,
-            ComponentType.PUBLIC_HEADER,
-        })
+    def all() -> FrozenSet["ComponentType"]:
+        return frozenset(
+            {
+                ComponentType.SOURCE,
+                ComponentType.TEST,
+                ComponentType.PRIVATE_HEADER,
+                ComponentType.PUBLIC_HEADER,
+            }
+        )

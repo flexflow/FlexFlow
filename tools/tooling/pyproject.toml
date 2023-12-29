@@ -14,6 +14,7 @@ gh = ["pygithub", "frozendict", "sqlitedict"]
 [tool.black]
 line-length = 120
 target-version = ['py36']
+required-version = "23.3.0"
 
 [tool.ruff]
 line-length = 120

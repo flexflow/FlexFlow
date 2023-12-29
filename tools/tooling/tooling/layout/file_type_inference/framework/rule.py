@@ -7,15 +7,17 @@ from dataclasses import dataclass
 Attrs = Callable[[AbsolutePath], FrozenSet[FileAttribute]]
 SaveFunc = Callable[[Any], None]
 
+
 @dataclass(frozen=True)
 class ExprExtra:
     save: SaveFunc
 
+
 class Expr(ABC):
-    def __and__(self, other: 'Expr') -> 'Expr':
+    def __and__(self, other: "Expr") -> "Expr":
         return And.from_iter([self, other])
 
-    def __or__(self, other: 'Expr') -> 'Expr':
+    def __or__(self, other: "Expr") -> "Expr":
         return Or.from_iter([self, other])
 
     @abstractmethod
@@ -25,6 +27,7 @@ class Expr(ABC):
     @abstractproperty
     def inputs(self) -> FrozenSet[FileAttribute]:
         ...
+
 
 @dataclass(frozen=True)
 class HasAttribute(Expr):
@@ -38,7 +41,8 @@ class HasAttribute(Expr):
         return frozenset([self.attribute])
 
     def __repr__(self) -> str:
-        return f'?{self.attribute}'
+        return f"?{self.attribute}"
+
 
 @dataclass(frozen=True)
 class HasAnyOfAttributes(Expr):
@@ -48,7 +52,7 @@ class HasAnyOfAttributes(Expr):
         return any(attr in attrs(p) for attr in self.attributes)
 
     @staticmethod
-    def from_iter(it: Iterable[FileAttribute]) -> 'HasAnyOfAttributes':
+    def from_iter(it: Iterable[FileAttribute]) -> "HasAnyOfAttributes":
         return HasAnyOfAttributes(frozenset(it))
 
     @property
@@ -56,7 +60,8 @@ class HasAnyOfAttributes(Expr):
         return self.attributes
 
     def __repr__(self) -> str:
-        return 'HasAny(' + ', '.join(repr(a) for a in self.attributes) + ')'
+        return "HasAny(" + ", ".join(repr(a) for a in self.attributes) + ")"
+
 
 @dataclass(frozen=True)
 class HasAllOfAttributes(Expr):
@@ -66,7 +71,7 @@ class HasAllOfAttributes(Expr):
         return all(attr in attrs(p) for attr in self.attributes)
 
     @staticmethod
-    def from_iter(it: Iterable[FileAttribute]) -> 'HasAllOfAttributes':
+    def from_iter(it: Iterable[FileAttribute]) -> "HasAllOfAttributes":
         return HasAllOfAttributes(frozenset(it))
 
     @property
@@ -88,7 +93,7 @@ class And(Expr):
             return And.from_iter([*self.children, other])
 
     @staticmethod
-    def from_iter(it: Iterable[Expr]) -> 'And':
+    def from_iter(it: Iterable[Expr]) -> "And":
         return And(frozenset(it))
 
     @property
@@ -99,7 +104,8 @@ class And(Expr):
         return result
 
     def __repr__(self) -> str:
-        return 'And(' + ', '.join(repr(c) for c in self.children) + ')'
+        return "And(" + ", ".join(repr(c) for c in self.children) + ")"
+
 
 @dataclass(frozen=True)
 class Or(Expr):
@@ -109,7 +115,7 @@ class Or(Expr):
         return any(child.evaluate(p, attrs, extra=extra) for child in self.children)
 
     @staticmethod
-    def from_iter(it: Iterable[Expr]) -> 'Or':
+    def from_iter(it: Iterable[Expr]) -> "Or":
         return Or(frozenset(it))
 
     @property
@@ -118,6 +124,7 @@ class Or(Expr):
         for child in self.children:
             result |= child.inputs
         return result
+
 
 @dataclass(frozen=True)
 class Not(Expr):
@@ -131,7 +138,8 @@ class Not(Expr):
         return self.expr.inputs
 
     def __repr__(self) -> str:
-        return f'!{self.expr}'
+        return f"!{self.expr}"
+
 
 @dataclass(frozen=True)
 class ChildSatisfies(Expr):
@@ -146,7 +154,8 @@ class ChildSatisfies(Expr):
         return self.expr.inputs
 
     def __repr__(self) -> str:
-        return f'v@/{self.name}/{self.expr}'
+        return f"v@/{self.name}/{self.expr}"
+
 
 @dataclass(frozen=True)
 class IsNamed(Expr):
@@ -160,7 +169,8 @@ class IsNamed(Expr):
         return frozenset()
 
     def __repr__(self) -> str:
-        return f'?/{self.name}/'
+        return f"?/{self.name}/"
+
 
 @dataclass(frozen=True)
 class IsFile(Expr):
@@ -172,7 +182,8 @@ class IsFile(Expr):
         return frozenset()
 
     def __repr__(self) -> str:
-        return '?F?'
+        return "?F?"
+
 
 @dataclass(frozen=True)
 class IsDir(Expr):
@@ -184,7 +195,8 @@ class IsDir(Expr):
         return frozenset()
 
     def __repr__(self) -> str:
-        return '?D?'
+        return "?D?"
+
 
 @dataclass(frozen=True)
 class HasExtension(Expr):
@@ -198,7 +210,8 @@ class HasExtension(Expr):
         return frozenset()
 
     def __repr__(self) -> str:
-        return f'?/*{self.extension}/'
+        return f"?/*{self.extension}/"
+
 
 @dataclass(frozen=True)
 class ParentSatisfies(Expr):
@@ -212,7 +225,8 @@ class ParentSatisfies(Expr):
         return self.expr.inputs
 
     def __repr__(self) -> str:
-        return f'^{self.expr}'
+        return f"^{self.expr}"
+
 
 @dataclass(frozen=True)
 class AncestorSatisfies(Expr):
@@ -226,28 +240,29 @@ class AncestorSatisfies(Expr):
         return self.expr.inputs
 
     def __repr__(self) -> str:
-        return f'^^{self.expr}'
+        return f"^^{self.expr}"
 
 
 @dataclass(frozen=True)
 class DescendantSatisfies(Expr):
     expr: Expr
-    
+
     def evaluate(self, p: AbsolutePath, attrs: Attrs, extra: ExprExtra) -> bool:
         for child in children(p):
             if self.expr.evaluate(child, attrs, extra):
                 return True
         return False
 
+
 @dataclass(frozen=True)
 class FileContentsSatisfy(Expr):
     condition: Callable[[AbsolutePath, str], bool]
 
     def evaluate(self, p: AbsolutePath, attrs: Attrs, extra: ExprExtra) -> bool:
-        if not p.is_file(): 
+        if not p.is_file():
             return False
         try:
-            with p.open('r') as f:
+            with p.open("r") as f:
                 contents = f.read()
             return self.condition(p, contents)
         except UnicodeDecodeError:
@@ -256,6 +271,7 @@ class FileContentsSatisfy(Expr):
     @property
     def inputs(self) -> FrozenSet[FileAttribute]:
         return frozenset()
+
 
 @dataclass(frozen=True)
 class OpaqueFunction(Expr):
@@ -272,6 +288,7 @@ class OpaqueFunction(Expr):
     @property
     def inputs(self) -> FrozenSet[FileAttribute]:
         return self.precondition.inputs.union(self.extra_inputs)
+
 
 @dataclass(frozen=True)
 class DoesNotCreateNesting(Expr):
@@ -292,7 +309,8 @@ class DoesNotCreateNesting(Expr):
         return self.expr.inputs
 
     def __repr__(self) -> str:
-        return f'<!>{self.expr}'
+        return f"<!>{self.expr}"
+
 
 @dataclass(frozen=True)
 class Rule:
@@ -315,41 +333,7 @@ class Rule:
     def signature(self) -> str:
         return f'{self.name} :: ({", ".join(map(str, self.inputs))}) -> {self.result}'
 
-def exclude_blacklisted(expr: Expr) -> Expr:
-    return And.from_iter([
-        expr,
-        Not(HasAttribute(FileAttribute.IS_BLACKLISTED))
-    ])
 
-def make_update_rules(
-        base_name: str,
-        is_supported: FileAttribute,
-        old_incorrect: FileAttribute, 
-        old_correct: FileAttribute, 
-        new_incorrect: FileAttribute, 
-        new_correct: FileAttribute, 
-        did_fix: Optional[FileAttribute] = None
-) -> FrozenSet[Rule]:
-    rules: Set[Rule] = set()
-    rules.add(Rule(
-        f'{base_name}.old_to_new_correct',
-        HasAttribute(old_correct), 
-        new_correct
-    ))
-    rules.add(Rule(
-        f'{base_name}.old_incorrect',
-        HasAttribute(is_supported) & Not(HasAttribute(old_correct)), 
-        old_incorrect
-    ))
-    rules.add(Rule(
-        f'{base_name}.new_incorrect',
-        HasAttribute(old_incorrect) & Not(HasAttribute(new_correct)), 
-        new_incorrect
-    ))
-    if did_fix is not None:
-        rules.add(Rule(
-            f'{base_name}.old_to_new_when_fixed',
-            HasAttribute(old_incorrect) & HasAttribute(did_fix), 
-            new_correct
-        ))
-    return frozenset(rules)
+def rule_executor(r: Rule, s: Mapping[FileAttribute, FrozenSet[AbsolutePath]]) -> FrozenSet[AbsolutePath]:
+    if isinstance(r.condition, 
+

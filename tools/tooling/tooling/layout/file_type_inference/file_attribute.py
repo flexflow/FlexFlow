@@ -1,5 +1,6 @@
 from enum import Enum, auto
 
+
 class FileAttribute(Enum):
     CPP = auto()
     CPP_PUBLIC_HEADER = auto()
@@ -12,7 +13,7 @@ class FileAttribute(Enum):
     IS_CUDA_KERNEL = auto()
     IS_HIP_KERNEL = auto()
     CPP_LIBRARY = auto()
-    CMAKELISTS = auto() 
+    CMAKELISTS = auto()
     CMAKE = auto()
     CPP_LIBRARY_CMAKELIST = auto()
     CPP_LIBRARY_SRC_DIR = auto()
@@ -66,7 +67,6 @@ class FileAttribute(Enum):
     NOW_FAILS_CLANG_TIDY_CHECKS = auto()
     NOW_PASSES_CLANG_TIDY_CHECKS = auto()
     DID_FIX_CLANG_TIDY_FAILED_CHECKS = auto()
-
 
     HEADER = auto()
     IMPL = auto()

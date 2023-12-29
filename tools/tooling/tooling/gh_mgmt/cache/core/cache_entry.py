@@ -1,5 +1,5 @@
 from typing import Generic, Optional, TypeVar, Callable
-from typing_extensions import TypeAlias 
+from typing_extensions import TypeAlias
 from abc import ABC, abstractmethod
 from tooling.gh_mgmt.cache.core.previous_value_tag import PreviousValueTag
 from tooling.gh_mgmt.issues.triage.config import get_beginning_of_time, get_cache, get_now
@@ -23,11 +23,11 @@ class CacheEntry(ABC, Generic[T]):
         tag: PreviousValueTag[Optional[T]]
         if cache_key in cache:
             tag = PreviousValueTag.from_jsonable(self._from_jsonable, cache[cache_key])
-            _l.debug(f'Cache key {cache_key} found in cache. Returning previous value tag: {tag}')
+            _l.debug(f"Cache key {cache_key} found in cache. Returning previous value tag: {tag}")
             return tag
         else:
             tag = PreviousValueTag(last_run=get_beginning_of_time(), last_value=self._default_value())
-            _l.debug(f'Cache key {cache_key} not found in cache. Hallucinating previous value tag: {tag}')
+            _l.debug(f"Cache key {cache_key} not found in cache. Hallucinating previous value tag: {tag}")
             return tag
 
     def _save_in_cache(self, value: Lazy[T], cache: Optional[SqliteDict[str, Json]] = None) -> T:
@@ -44,7 +44,9 @@ class CacheEntry(ABC, Generic[T]):
             if cache_expired:
                 _l.debug("Reason for miss: cache_expired (%s > %s)", time_alive, self._ttl())
             elif lookback_changed:
-                _l.debug("Reason for miss: lookback_changed (%s > %s)", prev.last_beginning_of_time, get_beginning_of_time())
+                _l.debug(
+                    "Reason for miss: lookback_changed (%s > %s)", prev.last_beginning_of_time, get_beginning_of_time()
+                )
             new_value = value()
             _l.debug("New value: %s", new_value)
             cache[cache_key] = PreviousValueTag(last_run=get_now(), last_value=new_value).as_jsonable(

@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class IssueState(Enum):
     open = "open"
     closed = "closed"

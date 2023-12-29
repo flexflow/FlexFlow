@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from github import Github
-from tooling.gh_mgmt.cache.entries.issue_info import IssueInfoEntry 
-from tooling.gh_mgmt.cache.entries.repo_members import RepoMembersEntry 
+from tooling.gh_mgmt.cache.entries.issue_info import IssueInfoEntry
+from tooling.gh_mgmt.cache.entries.repo_members import RepoMembersEntry
 from tooling.gh_mgmt.cache.entries.org_members import OrgMembersEntry
 from tooling.gh_mgmt.cache.entries.issue_last_modifications import IssueLastModificationsEntry
-from tooling.gh_mgmt.issues.triage.data_model.issue_info import IssueInfo 
+from tooling.gh_mgmt.issues.triage.data_model.issue_info import IssueInfo
 from tooling.gh_mgmt.issues.triage.data_model.modification import Modification
 from typing import Dict, Set
 

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from tooling.json import Json
 from typing import Union, Optional
 
+
 @dataclass(frozen=True)
 class CheckResponse:
     num_errors: int
@@ -9,9 +10,10 @@ class CheckResponse:
 
     def as_json(self) -> Json:
         return {
-            'num_errors' : self.num_errors,
-            'json_data' : self.json_data,
+            "num_errors": self.num_errors,
+            "json_data": self.json_data,
         }
+
 
 @dataclass(frozen=True)
 class FixResponse:
@@ -22,22 +24,23 @@ class FixResponse:
 
     def as_json(self) -> Json:
         return {
-            'did_succeed' : self.did_succeed,
-            'num_fixes': self.num_fixes,
-            'message': self.message,
-            'json_data': self.json_data,
+            "did_succeed": self.did_succeed,
+            "num_fixes": self.num_fixes,
+            "message": self.message,
+            "json_data": self.json_data,
         }
+
 
 @dataclass(frozen=True)
 class ErrorResponse:
     message: str
 
     def as_json(self) -> Json:
-        return {
-            'message': self.message
-        }
+        return {"message": self.message}
+
 
 Response = Union[CheckResponse, FixResponse, ErrorResponse]
+
 
 def did_succeed(r: Response) -> bool:
     if isinstance(r, CheckResponse):
@@ -47,4 +50,3 @@ def did_succeed(r: Response) -> bool:
     else:
         assert isinstance(r, ErrorResponse)
         return False
-

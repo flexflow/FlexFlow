@@ -10,5 +10,3 @@ sys.path.append(str(DIR))
 from tooling.linting.__main__ import main
 
 main()
-
-# python3 -m tooling.linting -- "$@"

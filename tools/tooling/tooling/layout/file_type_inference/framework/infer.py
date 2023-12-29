@@ -1,16 +1,34 @@
 from abc import ABC, abstractmethod
-from tooling.layout.file_type_inference.rules.rule import Rule, ExprExtra
+from tooling.layout.file_type_inference.framework.rule import Rule, ExprExtra
 from tooling.layout.path import AbsolutePath, children
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from dataclasses import dataclass, field
-from typing import Dict, Generic, TypeVar, Set, DefaultDict, Union, Iterator, Optional, FrozenSet, Iterable, Any, Callable, List, Sequence, Tuple, Mapping
+from typing import (
+    Dict,
+    Generic,
+    TypeVar,
+    Set,
+    DefaultDict,
+    Union,
+    Iterator,
+    Optional,
+    FrozenSet,
+    Iterable,
+    Any,
+    Callable,
+    List,
+    Sequence,
+    Tuple,
+    Mapping,
+)
 from collections import defaultdict
 import logging
 import time
 
 _l = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 class ExprExtraBackend(ABC):
     @abstractmethod
@@ -21,13 +39,15 @@ class ExprExtraBackend(ABC):
     def result(self) -> Callable[[FileAttribute], Sequence[Any]]:
         ...
 
+
 @dataclass
 class DictBackend(ExprExtraBackend):
     _d: DefaultDict[FileAttribute, List[Any]] = field(default_factory=lambda: defaultdict(list))
 
     def for_rule(self, rule: Rule) -> ExprExtra:
-        def save_func(to_save: Any, backend: 'DictBackend' = self, rule: Rule = rule) -> None:
+        def save_func(to_save: Any, backend: "DictBackend" = self, rule: Rule = rule) -> None:
             self._d[rule.result].append(to_save)
+
         return ExprExtra(save_func)
 
     def result(self) -> Callable[[FileAttribute], Sequence[Any]]:
@@ -62,52 +82,48 @@ class DiGraph(Generic[T]):
                         self._connectivity[src].update(self._connectivity[dst])
                         did_update = True
 
-    def transitive_closure(self) -> 'DiGraph[T]':
+    def transitive_closure(self) -> "DiGraph[T]":
         result = self.copy()
         result._inplace_transitive_closure()
         return result
 
     def __repr__(self) -> str:
-        return '\n\n'.join([
-            'DiGraph {',
-            *(f'  {k} --> {v}' for k, v in self._connectivity.items()),
-            '}'
-        ])
+        return "\n\n".join(["DiGraph {", *(f"  {k} --> {v}" for k, v in self._connectivity.items()), "}"])
 
     @property
     def nodes(self) -> FrozenSet[T]:
         return frozenset(self._nodes)
 
     @property
-    def edges(self) -> FrozenSet[Tuple[T, T]]: 
-        return frozenset(sum( # type: ignore
-            [[(src, dst) for dst in dsts] for src, dsts in self._connectivity.items()],
-            start=list()
-        ))
+    def edges(self) -> FrozenSet[Tuple[T, T]]:
+        return frozenset(
+            sum(  # type: ignore
+                [[(src, dst) for dst in dsts] for src, dsts in self._connectivity.items()], start=list()
+            )
+        )
 
     def dot(self) -> str:
         lines = []
-        lines.append('digraph {')
+        lines.append("digraph {")
         node_nums = {}
         for i, node in enumerate(self.nodes):
             node_nums[node] = i
             lines.append(f'  n{i} [label="{node}"];')
         for src, dst in self.edges:
-            lines.append(f'  n{node_nums[src]} -> n{node_nums[dst]};')
-        lines.append('}')
-        return '\n'.join(lines)
-
+            lines.append(f"  n{node_nums[src]} -> n{node_nums[dst]};")
+        lines.append("}")
+        return "\n".join(lines)
 
     def is_acyclic(self) -> bool:
-        _l.debug(f'Checking presence of cycles in \n{self}')
+        _l.debug(f"Checking presence of cycles in \n{self}")
         tr = self.transitive_closure()
         for src, dsts in tr._connectivity.items():
             if src in dsts:
                 return False
         return True
 
-    def copy(self) -> 'DiGraph[T]':
-        return DiGraph(_nodes=set(self.nodes), _connectivity={k : set(v) for k, v in self._connectivity.items()})
+    def copy(self) -> "DiGraph[T]":
+        return DiGraph(_nodes=set(self.nodes), _connectivity={k: set(v) for k, v in self._connectivity.items()})
 
     def topological_order(self) -> Iterator[T]:
         assert self.is_acyclic()
@@ -124,29 +140,28 @@ class DiGraph(Generic[T]):
             visited.add(node)
             for dst in self._connectivity[node]:
                 if dst not in visited:
-                        queue.append(dst)
+                    queue.append(dst)
+
+    def predecessors(self, node: T) -> FrozenSet[T]:
+        return self._reverse_connectivity[node]
+
+    @lru_cache
+    def _ancestors(self, node: T) -> FrozenSet[T]:
+        return frozenset({node}).union(self._ancestors(p) for p in self.predecessors(node))
+
+    def ancestors(self, node: T) -> FrozenSet[T]:
+        result = self._ancestors(node)
+        self._ancestors.cache_clear()
+        return result
 
 @dataclass(frozen=True)
 class RuleCollection:
     predefined: Mapping[AbsolutePath, FrozenSet[FileAttribute]]
     rules: FrozenSet[Rule]
 
-    def run(self, root: AbsolutePath) -> 'InferenceResult':
+    def run(self, root: AbsolutePath) -> "InferenceResult":
         backend = DictBackend()
         dependency_graph: DiGraph[Union[Rule, FileAttribute]] = DiGraph()
-
-        for rule in self.rules:
-            dependency_graph.add_node(rule)
-            for inp in rule.inputs:
-                _l.debug(f'Adding dependency from {inp} to {rule.name}')
-                dependency_graph.add_edge(inp, rule)
-            for out in rule.outputs:
-                _l.debug(f'Adding dependency from {rule.name} to {out}')
-                dependency_graph.add_edge(rule, out)
-        _l.debug('Built dependency graph:\n' + dependency_graph.dot())
-
-        _l.debug('Checking dependency graph for cycles')
-        assert dependency_graph.is_acyclic()
 
         all_children = list(children(root))
         attrs: DefaultDict[AbsolutePath, FrozenSet[FileAttribute]] = defaultdict(frozenset)
@@ -154,7 +169,7 @@ class RuleCollection:
             attrs[k] = v
         for node in dependency_graph.topological_order():
             if isinstance(node, Rule):
-                _l.debug(f'Running rule {node.signature}')
+                _l.debug(f"Running rule {node.signature}")
                 start_time = time.perf_counter()
                 extra = backend.for_rule(node)
                 num_added = 0
@@ -164,11 +179,85 @@ class RuleCollection:
                         attrs[p] |= node.outputs
                 end_time = time.perf_counter()
                 rule_time = end_time - start_time
-                _l.debug(f'Rule {node.name} found {num_added} paths that satisfy {node.result} (took {rule_time*1000:.4f}ms)')
+                _l.debug(
+                    f"Rule {node.name} found {num_added} paths that satisfy {node.result} (took {rule_time*1000:.4f}ms)"
+                )
         return InferenceResult(dict(attrs), get_saved=backend.result())
 
+def construct_dependency_graph(rules: FrozenSet[Rule]) -> DiGraph[Union[Rule, FileAttribute]]:
+    g: DiGraph[Union[Rule, FileAttribute]] = DiGraph()
+    for rule in rules:
+        g.add_node(rule)
+        for inp in rule.inputs:
+            _l.debug(f"Adding dependency from {inp} to {rule.name}")
+            g.add_edge(inp, rule)
+        for out in rule.outputs:
+            _l.debug(f"Adding dependency from {rule.name} to {out}")
+            g.add_edge(rule, out)
+    _l.debug("Built dependency graph:\n" + g.dot())
+
+    _l.debug("Checking dependency graph for cycles")
+    assert g.is_acyclic()
+    return g
+
+def rule_executor(r: Rule, s: Mapping[FileAttribute, FrozenSet[AbsolutePath]]) -> FrozenSet[AbsolutePath]:
+    if r.condition 
+
+class InferenceSolver:
+    rules: FrozenSet[Rule]
+    root: AbsolutePath
+
+    _solution: Dict[FileAttribute, FrozenSet[AbsolutePath]]
+    _dependency_graph: DiGraph[Union[Rule, FileAttribute]]
+    _backend: ExprExtraBackend
+
+    def __init__(self, rules: FrozenSet[Rule], root: AbsolutePath) -> None:
+        self.rules = rules
+        self.root = root
+        self._dependency_graph = construct_dependency_graph(rules)
+        self._solution = dict()
+        self._backend = DictBackend()
+
+    def _get_attr_execution_plan(self, attr: FileAttribute) -> Iterator[Rule]:
+        dependencies = self._dependency_graph.ancestors(attr)
+        for node in self._dependency_graph.topological_order():
+            if isinstance(node, Rule) and (node in dependencies) and (node not in self._solution):
+                yield node
+
+    def _run_rule(self, rule: Rule) -> None:
+        all_children = list(children(root))
+        attrs: DefaultDict[AbsolutePath, FrozenSet[FileAttribute]] = defaultdict(frozenset)
+        for k, v in self.predefined.items():
+            attrs[k] = v
+        for node in dependency_graph.topological_order():
+            if isinstance(node, Rule):
+                _l.debug(f"Running rule {node.signature}")
+                start_time = time.perf_counter()
+                extra = backend.for_rule(node)
+                num_added = 0
+                for p in all_children:
+                    if node.condition.evaluate(p, lambda path: attrs[path], extra=extra):
+                        num_added += 1
+                        attrs[p] |= node.outputs
+                end_time = time.perf_counter()
+                rule_time = end_time - start_time
+                _l.debug(
+                    f"Rule {node.name} found {num_added} paths that satisfy {node.result} (took {rule_time*1000:.4f}ms)"
+                )
+
+    def _eval_attr(self, attr: FileAttribute) -> None:
+        for rule in self._get_attr_execution_plan(attr):
+
+    def __getitem__(self, attr: FileAttribute) -> FrozenSet[AbsolutePath]:
+        if attr not in self._solution:
+            self._eval_attr(attr)
+        return self._solution[attr]
+
+
 class InferenceResult:
-    def __init__(self, attrs: Dict[AbsolutePath, FrozenSet[FileAttribute]], get_saved: Callable[[FileAttribute], Any]) -> None:
+    def __init__(
+        self, attrs: Dict[AbsolutePath, FrozenSet[FileAttribute]], get_saved: Callable[[FileAttribute], Any]
+    ) -> None:
         self._attrs = attrs
         self._reverse_attrs: DefaultDict[FileAttribute, Set[AbsolutePath]] = defaultdict(set)
         self._get_saved = get_saved
@@ -197,13 +286,19 @@ class InferenceResult:
         else:
             return frozenset(p for p in self._attrs.keys() if p.is_relative_to(within))
 
-    def without_all_of_attrs(self, attrs: Iterable[FileAttribute], within: Optional[AbsolutePath] = None) -> FrozenSet[AbsolutePath]:
+    def without_all_of_attrs(
+        self, attrs: Iterable[FileAttribute], within: Optional[AbsolutePath] = None
+    ) -> FrozenSet[AbsolutePath]:
         return self._all_paths(within) - self.with_all_of_attrs(attrs, within=within)
 
-    def without_any_of_attrss(self, attrs: Iterable[FileAttribute], within: Optional[AbsolutePath] = None) -> FrozenSet[AbsolutePath]:
+    def without_any_of_attrss(
+        self, attrs: Iterable[FileAttribute], within: Optional[AbsolutePath] = None
+    ) -> FrozenSet[AbsolutePath]:
         return self._all_paths(within) - self.with_any_of_attrs(attrs, within=within)
 
-    def with_all_of_attrs(self, attrs: Iterable[FileAttribute], within: Optional[AbsolutePath] = None) -> FrozenSet[AbsolutePath]:
+    def with_all_of_attrs(
+        self, attrs: Iterable[FileAttribute], within: Optional[AbsolutePath] = None
+    ) -> FrozenSet[AbsolutePath]:
         result: Optional[FrozenSet[AbsolutePath]] = None
         for at in attrs:
             if result is None:
@@ -212,11 +307,13 @@ class InferenceResult:
                 result &= self.with_attr(at, within=within)
 
         if result is None:
-            raise ValueError('Cannot call with_all_of_attrs on empty attr set')
+            raise ValueError("Cannot call with_all_of_attrs on empty attr set")
         else:
             return result
 
-    def with_any_of_attrs(self, attrs: Iterable[FileAttribute], within: Optional[AbsolutePath] = None) -> FrozenSet[AbsolutePath]:
+    def with_any_of_attrs(
+        self, attrs: Iterable[FileAttribute], within: Optional[AbsolutePath] = None
+    ) -> FrozenSet[AbsolutePath]:
         result: Optional[FrozenSet[AbsolutePath]] = None
         for at in attrs:
             if result is None:
@@ -225,7 +322,6 @@ class InferenceResult:
                 result |= self.with_attr(at, within=within)
 
         if result is None:
-            raise ValueError('Cannot call with_any_of_attrs on empty attr set')
+            raise ValueError("Cannot call with_any_of_attrs on empty attr set")
         else:
             return result
-

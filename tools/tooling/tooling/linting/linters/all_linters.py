@@ -1,5 +1,5 @@
 import tooling.linting.linters.find_missing_files as find_missing_files
-import tooling.linting.linters.fix_include_guards as fix_include_guards 
+import tooling.linting.linters.fix_include_guards as fix_include_guards
 import tooling.linting.linters.clang_format as clang_format
 import tooling.linting.linters.clang_tidy as clang_tidy
 from tooling.linting.framework.manager import Manager
@@ -8,6 +8,7 @@ from tooling.linting.framework.method import Method
 from typing import cast, Any
 from enum import Enum, auto
 import argparse
+
 
 class SpecificLinter(Enum):
     missing_files = auto()
@@ -35,9 +36,7 @@ class SpecificLinter(Enum):
         return cast(Specification, self._module.spec)
 
     def get_manager(self) -> Manager:
-        return Manager.from_iter([
-            self.spec
-        ])
+        return Manager.from_iter([self.spec])
 
     @property
     def supports_fix(self) -> bool:
@@ -53,9 +52,4 @@ class SpecificLinter(Enum):
 
 
 def all_linters() -> Manager:
-    return Manager(frozenset({
-        find_missing_files.spec,
-        fix_include_guards.spec,
-        clang_format.spec,
-        clang_tidy.spec
-    }))
+    return Manager(frozenset({find_missing_files.spec, fix_include_guards.spec, clang_format.spec, clang_tidy.spec}))

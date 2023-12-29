@@ -1,4 +1,5 @@
 # custom tooling
+.envrc
 /.tools/
 /.state/
 

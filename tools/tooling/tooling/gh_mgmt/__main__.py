@@ -1,9 +1,10 @@
-from tooling.gh_mgmt.issues.cli import get_issues_parser 
+from tooling.gh_mgmt.issues.cli import get_issues_parser
 import argparse
 import sys
 import json
-from tooling.cli.verbosity import add_verbosity_args, calculate_log_level 
+from tooling.cli.verbosity import add_verbosity_args, calculate_log_level
 from tooling.cli.parsing import instantiate, parser_root
+
 
 def main() -> int:
     PROGRAM_NAME = "repo"
@@ -11,10 +12,7 @@ def main() -> int:
     _p = argparse.ArgumentParser(prog=PROGRAM_NAME, add_help=False)
     add_verbosity_args(_p)
 
-    p = parser_root(instantiate(
-        _p,
-        issues=get_issues_parser
-    ))
+    p = parser_root(instantiate(_p, issues=get_issues_parser))
 
     args = p.parse_args()
     args.log_level = calculate_log_level(args)

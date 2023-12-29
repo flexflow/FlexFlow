@@ -1,33 +1,35 @@
 from dataclasses import dataclass
 from typing import Optional, FrozenSet
-from tooling.layout.cpp.file_group.component_type import ComponentType 
-from tooling.layout.path import AbsolutePath, with_all_suffixes_removed, full_suffix 
+from tooling.layout.cpp.file_group.component_type import ComponentType
+from tooling.layout.path import AbsolutePath, with_all_suffixes_removed, full_suffix
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
-from tooling.layout.cpp.file_group.file_group_component import FileGroupComponent 
+from tooling.layout.cpp.file_group.file_group_component import FileGroupComponent
 from pathlib import Path
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from tooling.layout.cpp.library import Library
 
 
 @dataclass(frozen=True)
 class FileGroup:
-    library: 'Library'
+    library: "Library"
     _logical_path: Path
-    
+
     @property
     def source_extension(self) -> str:
-        return '.cc'
+        return ".cc"
 
     @property
     def test_extension(self) -> str:
-        return '.test' + self.source_extension
+        return ".test" + self.source_extension
 
     @property
     def header_extension(self) -> str:
-        return '.h'
-    #property
+        return ".h"
+
+    # property
 
     @property
     def source_path(self) -> AbsolutePath:
@@ -70,10 +72,7 @@ class FileGroup:
         return self.get_component(ComponentType.TEST)
 
     def get_component(self, component_type: ComponentType) -> FileGroupComponent:
-        return FileGroupComponent(
-            file_group=self,
-            component_type=component_type
-        )
+        return FileGroupComponent(file_group=self, component_type=component_type)
 
     def path_of_component(self, component_type: ComponentType) -> AbsolutePath:
         if component_type == ComponentType.PUBLIC_HEADER:
@@ -99,11 +98,13 @@ class FileGroup:
         return self.all_component_paths - self.existing_components
 
     @classmethod
-    def try_create(cls, path: AbsolutePath, library: 'Library') -> Optional['FileGroup']:
+    def try_create(cls, path: AbsolutePath, library: "Library") -> Optional["FileGroup"]:
         if FileAttribute.CPP_FILE_GROUP_MEMBER in library.file_types.for_path(path):
-            base_path = next(parent for parent in path.parents if FileAttribute.CPP_FILE_GROUP_BASE in library.file_types.for_path(parent))
-            return FileGroup(
-                library=library, _logical_path=with_all_suffixes_removed(path.relative_to(base_path))
+            base_path = next(
+                parent
+                for parent in path.parents
+                if FileAttribute.CPP_FILE_GROUP_BASE in library.file_types.for_path(parent)
             )
+            return FileGroup(library=library, _logical_path=with_all_suffixes_removed(path.relative_to(base_path)))
         else:
             return None
