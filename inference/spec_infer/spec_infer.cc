@@ -402,9 +402,9 @@ void FlexFlow::top_level_task(Task const *task,
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
       prompts.push_back(text);
-      // tree_model.generate(text, 128 /*max_sequence_length*/);
+    // tree_model.generate(text, 128 /*max_sequence_length*/);
     }
-    tree_model.generate(prompts, 23 /*max_sequence_length*/);
+    tree_model.generate(prompts, 128 /*max_sequence_length*/);
   }
 
   // Execution fence

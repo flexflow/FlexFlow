@@ -609,6 +609,8 @@ BeamSearchBatchConfig
         committed_tokens[guid].emplace_back(abs_depth, result_index);
       } else if (abs_depth >= root_abs_depth) {
         tree_outputs.emplace_back(token_id, abs_depth + 1);
+        std::cout << "committred tokens push: " << abs_depth
+                  << " ,result index: " << result_index << "\n";
         committed_tokens[guid].emplace_back(abs_depth, result_index);
 
         if (verbose) {
@@ -789,9 +791,9 @@ BeamSearchBatchConfig
           // Beam Token Info
           new_bc.beamTokenInfo[new_bc.num_tokens].sub_request_index = 0;
           new_bc.num_tokens++;
-          std::cout << "num_gen ++ "
-                    << "\n";
-          num_generation_tokens++;
+          // std::cout << "num_gen ++ "
+          //           << "\n";
+          // num_generation_tokens++;
 
           // Add verified token to request's token list
           request.tokens.push_back(token.first);
@@ -923,9 +925,7 @@ BeamSearchBatchConfig
           new_bc.num_tokens++;
         }
         new_bc.topology_mask[i].allocated_tokens = 0;
-        new_bc.causalMask[i].non_tree_cache_size = 0;
-        new_bc.causalMask[i].tree_size =
-            new_bc.requestsInfo[i].num_tokens_in_batch;
+
         initBitMask(new_bc.causalMask[i],
                     new_bc.requestsInfo[i].num_tokens_in_batch);
 
@@ -1185,14 +1185,14 @@ BeamSearchBatchConfig
       // sub_request_num -> nodes of input next iteration
       //  beam_size replicate num
 
-      std::cout << "print beam tree: "
-                << old_bc.beamRequestsInfo[i].current_depth << "\n";
+      // std::cout << "print beam tree: "
+      //           << old_bc.beamRequestsInfo[i].current_depth << "\n";
       BeamTree tree = request.beam_trees[old_bc.model_id];
-      for (int k = 0; k <= old_bc.beamRequestsInfo[i].current_depth; k++) {
-        std::cout << "layer: " << k << "\n";
-        std::cout << "nodes: " << tree.treeLayers[k].nodes_num_this_layer
-                  << "\n";
-      }
+      // for (int k = 0; k <= old_bc.beamRequestsInfo[i].current_depth; k++) {
+      //   std::cout << "layer: " << k << "\n";
+      //   std::cout << "nodes: " << tree.treeLayers[k].nodes_num_this_layer
+      //             << "\n";
+      // }
       appendBitMask(new_bc.causalMask[i],
                     new_bc.beamRequestsInfo[i].sub_request_num,
                     old_bc.beamRequestsInfo[i].beam_size,
@@ -1217,9 +1217,10 @@ BeamSearchBatchConfig
           new_bc.topology_mask[i].real_token_pos[k][depth] =
               new_bc.topology_mask[i].allocated_tokens + num_generation_tokens;
 
-          std::cout << "topology: sub request: " << k << ", "
-                    << ", " << depth << ", "
-                    << new_bc.topology_mask[i].real_token_pos[k][depth] << "\n";
+          // std::cout << "topology: sub request: " << k << ", "
+          //           << ", " << depth << ", "
+          //           << new_bc.topology_mask[i].real_token_pos[k][depth] <<
+          //           "\n";
           num_generation_tokens++;
         }
       }
@@ -1354,13 +1355,13 @@ BeamSearchBatchConfig
   }
 
   if (true) {
-    std::cout << "print all resultsBBB"
-              << "\n";
-    for (int i = 0; i < 40; i++) {
-      std::cout << result.token_ids[i] << ", ";
-    }
-    std::cout << "Current Beam DepthBBB: "
-              << old_bc.beamRequestsInfo[0].current_depth << "\n";
+    // std::cout << "print all resultsBBB"
+    //           << "\n";
+    // for (int i = 0; i < 40; i++) {
+    //   std::cout << result.token_ids[i] << ", ";
+    // }
+    // std::cout << "Current Beam DepthBBB: "
+    //           << old_bc.beamRequestsInfo[0].current_depth << "\n";
   }
   return new_bc;
 }
@@ -1449,11 +1450,11 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           merge_dfs_trees(all_dfs_trees, request.tokens.size() - 1, guid);
 
       if (true) {
-        std::cout << "Request Tokens Size: " << request.tokens.size()
-                  << std::endl;
-        for (int k = 0; k < request.tokens.size(); k++) {
-          std::cout << k << ": " << request.tokens[k] << std::endl;
-        }
+        // std::cout << "Request Tokens Size: " << request.tokens.size()
+        //           << std::endl;
+        // for (int k = 0; k < request.tokens.size(); k++) {
+        //   std::cout << k << ": " << request.tokens[k] << std::endl;
+        // }
       }
 
       // Normal Request Info
@@ -1475,27 +1476,42 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       new_bc.requestsInfo[i].num_tokens_in_batch = 0;
       new_bc.request_completed[i] = false;
 
+      std::cout << "dfs_tree_inputs: " << dfs_tree_inputs.size() << ", "
+                << new_bc.causalMask[i].tree_size << ", "
+                << new_bc.causalMask[i].non_tree_cache_size << "\n";
+      std::cout << "mask: " << std::bitset<64>(new_bc.causalMask[i].mask[0])
+                << "\n";
+      std::cout << "mask: " << std::bitset<64>(new_bc.causalMask[i].mask[1])
+                << "\n";
+      std::cout << "mask: " << std::bitset<64>(new_bc.causalMask[i].mask[2])
+                << "\n";
+      std::cout << "mask: " << std::bitset<64>(new_bc.causalMask[i].mask[3])
+                << "\n";
+      std::cout << "mask: " << std::bitset<64>(new_bc.causalMask[i].mask[4])
+                << "\n";
+
       // Committed Tokens
       if (committed_tokens.find(guid) != committed_tokens.end()) {
-        for (int j = 0; j < dfs_tree_inputs.size(); j++) {
-          if (j < committed_tokens.at(guid).size()) {
-            auto committed_token = committed_tokens.at(guid).at(j);
-            new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
-                committed_token.second;
-            new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
-                i;
-            new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
-                committed_token.first;
-            if (true) {
-              std::cout << new_bc.num_tokens_to_commit
-                        << "- committed_token.token_depth: "
-                        << committed_token.first
-                        << ", token_index: " << committed_token.second
-                        << std::endl;
-            }
-            new_bc.num_tokens_to_commit++;
-            request.llm_cache_size++;
+        for (int j = 0; j < committed_tokens.at(guid).size(); j++) {
+          // if (j < committed_tokens.at(guid).size()) {
+
+          auto committed_token = committed_tokens.at(guid).at(j);
+          new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
+              committed_token.second;
+          new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
+              i;
+          new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
+              committed_token.first;
+          if (true) {
+            std::cout << new_bc.num_tokens_to_commit
+                      << "- committed_token.token_depth: "
+                      << committed_token.first
+                      << ", token_index: " << committed_token.second
+                      << std::endl;
           }
+          new_bc.num_tokens_to_commit++;
+          request.llm_cache_size++;
+          // }
         }
       }
       if (true) {
@@ -1759,11 +1775,11 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
         request.beam_trees.at(old_bc.model_id)
             .treeLayers[depth]
             .parent_ids[beam_id] = result.parent_id[result_index];
-        std::cout << "??????? beam id: " << beam_id << ", token: "
-                  << request.beam_trees.at(old_bc.model_id)
-                         .treeLayers[depth]
-                         .tokens[beam_id]
-                  << "\n";
+        // std::cout << "??????? beam id: " << beam_id << ", token: "
+        //           << request.beam_trees.at(old_bc.model_id)
+        //                  .treeLayers[depth]
+        //                  .tokens[beam_id]
+        //           << "\n";
 
         // if (true) {
         //   std::cout << "tree value: " << depth << "token: "
@@ -1844,19 +1860,20 @@ void RequestManager::initBitMask(BatchConfig::BitMask &bitmask,
          "do not support tree size > 64");
   // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100, t4:
   // 0000000..1000
+  bitmask.non_tree_cache_size = 0;
+  bitmask.tree_size = initLength;
 
   bitmask.prompt_size = initLength;
   bitmask.this_layer_size = initLength;
-  bitmask.tree_size = initLength;
   for (int i = 0; i < bitmask.prompt_size; i++) {
     for (int j = i; j < bitmask.prompt_size; j++) {
       bitmask.mask[i] |= (1 << j);
     }
   }
-  std::cout << "see bit mask" << bitmask.prompt_size << "\n";
-  std::cout << "see bit mask" << std::bitset<64>(bitmask.mask[0]) << "\n";
-  std::cout << "see bit mask" << std::bitset<64>(bitmask.mask[1]) << "\n";
-  std::cout << "see bit mask" << std::bitset<64>(bitmask.mask[2]) << "\n";
+  // std::cout << "see bit mask" << bitmask.prompt_size << "\n";
+  // std::cout << "see bit mask" << std::bitset<64>(bitmask.mask[0]) << "\n";
+  // std::cout << "see bit mask" << std::bitset<64>(bitmask.mask[1]) << "\n";
+  // std::cout << "see bit mask" << std::bitset<64>(bitmask.mask[2]) << "\n";
 }
 
 // prepare next init
@@ -1868,11 +1885,16 @@ void RequestManager::updateBitMask(BatchConfig::BitMask &bitmask,
   // 0000000..1000
   assert(initLength <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM &&
          "do not support tree size > 64");
-  bitmask.non_tree_cache_size = non_tree_size;
-  bitmask.tree_size = initLength;
+  assert(initLength >= 1 && "verified token num should >= 1");
+
+  std::cout << "non tree size: " << non_tree_size << ", "
+            << bitmask.non_tree_cache_size << "\n";
+
+  bitmask.non_tree_cache_size = non_tree_size + initLength - 1;
+  bitmask.tree_size = 1;
   bitmask.this_layer_size = initLength;
   std::cout << "non_tree_size: " << non_tree_size << "\n";
-  bitmask.prompt_size = initLength;
+  bitmask.prompt_size = 1;
   for (int i = 0; i < bitmask.prompt_size; i++) {
     for (int j = i; j < bitmask.prompt_size; j++) {
       bitmask.mask[i] |= (1 << j);
@@ -1906,14 +1928,14 @@ void RequestManager::appendBitMask(BatchConfig::BitMask &bitmask,
   for (int i = 0; i < bitmask.prompt_size; i++) {
     for (int j = pre_tree_size; j < bitmask.tree_size; j++) {
       bitmask.mask[i] |= (1 << j);
-      std::cout << "see bit mask append: " << i << ", to" << j
-                << std::bitset<64>(bitmask.mask[i]) << "\n";
+      // std::cout << "see bit mask append: " << i << ", to" << j
+      //           << std::bitset<64>(bitmask.mask[i]) << "\n";
     }
   }
 
-  std::cout << "bitmask.tree_size: " << bitmask.tree_size << ", "
-            << pre_tree_size << ", " << bitmask.prompt_size << ", "
-            << preBeamSize << "\n";
+  // std::cout << "bitmask.tree_size: " << bitmask.tree_size << ", "
+  //           << pre_tree_size << ", " << bitmask.prompt_size << ", "
+  //           << preBeamSize << "\n";
 
   // int num_groups = newNodes / preBeamSize;
   // int group_size = newNodes / num_groups;
@@ -1924,12 +1946,12 @@ void RequestManager::appendBitMask(BatchConfig::BitMask &bitmask,
   //  skip the root prompt/tokens
   int token_idx = bitmask.prompt_size;
   int new_nodes_start_idx = pre_tree_size;
-  std::cout << "new nodes start " << new_nodes_start_idx << "\n";
+  // std::cout << "new nodes start " << new_nodes_start_idx << "\n";
   for (int i = 1; i < currentDepth; i++) {
     new_nodes_start_idx = pre_tree_size;
     int nodes_this_layer = tree.treeLayers[i].nodes_num_this_layer;
-    std::cout << "tree layer: " << i << " nodes:" << nodes_this_layer
-              << "group size: " << newNodes / nodes_this_layer << "\n";
+    // std::cout << "tree layer: " << i << " nodes:" << nodes_this_layer
+    //           << "group size: " << newNodes / nodes_this_layer << "\n";
     for (int j = 0; j < nodes_this_layer; j++) {
       int group_size = newNodes / nodes_this_layer;
       for (int k = 0; k < group_size; k++) {
@@ -1940,12 +1962,12 @@ void RequestManager::appendBitMask(BatchConfig::BitMask &bitmask,
     }
   }
 
-  std::cout << "token idx: " << token_idx << ", " << pre_tree_size << ", "
-            << new_nodes_start_idx << ", " << newNodes
-            << "current depth: " << currentDepth << "\n";
-  std::cout << "new nodes end " << new_nodes_start_idx << "\n";
+  // std::cout << "token idx: " << token_idx << ", " << pre_tree_size << ", "
+  //           << new_nodes_start_idx << ", " << newNodes
+  //           << "current depth: " << currentDepth << "\n";
+  // std::cout << "new nodes end " << new_nodes_start_idx << "\n";
 
-  std::cout << "tree size: " << bitmask.tree_size << "\n";
+  // std::cout << "tree size: " << bitmask.tree_size << "\n";
   assert(token_idx == pre_tree_size);
   assert(currentDepth <= 1 || new_nodes_start_idx == bitmask.tree_size);
 
@@ -1953,8 +1975,23 @@ void RequestManager::appendBitMask(BatchConfig::BitMask &bitmask,
   // set last layer, all tokens are only relevant to it self;
   for (int i = token_idx; i < bitmask.tree_size; i++) {
     bitmask.mask[i] |= (1 << i);
-    std::cout << "set rel: " << i << "to: " << i << "\n";
+    // std::cout << "set rel: " << i << "to: " << i << "\n";
   }
+
+  // if(bitmask.non_tree_cache_size == 19 && bitmask.tree_size > 2){
+  //   assert(false);
+  // }
+
+  std::cout << "see bit mask append" << bitmask.prompt_size << "\n";
+  std::cout << "see bit mask append" << bitmask.non_tree_cache_size << "\n";
+  std::cout << "see bit mask append" << std::bitset<64>(bitmask.mask[0])
+            << "\n";
+  std::cout << "see bit mask append" << std::bitset<64>(bitmask.mask[1])
+            << "\n";
+  std::cout << "see bit mask append" << std::bitset<64>(bitmask.mask[2])
+            << "\n";
+  std::cout << "see bit mask append" << std::bitset<64>(bitmask.mask[3])
+            << "\n";
 }
 
 bool PreOrder(
@@ -2146,16 +2183,16 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   //           << std::endl;
   BeamTree tree = request.beam_trees.at(old_bc.model_id);
 
-  std::cout << "print beam tree: "
-            << "\n";
+  // std::cout << "print beam tree: "
+  //           << "\n";
   std::vector<std::pair<BatchConfig::TokenId, int>> serializedTree;
   for (int i = 0; i <= old_bc.beamRequestsInfo[request_index].max_depth; i++) {
-    std::cout << "tree layer: " << i
-              << ", num_nodes: " << tree.treeLayers[i].nodes_num_this_layer
-              << "\n";
+    // std::cout << "tree layer: " << i
+    //           << ", num_nodes: " << tree.treeLayers[i].nodes_num_this_layer
+    //           << "\n";
     // push tokens into tree
     for (int j = 0; j < tree.treeLayers[i].nodes_num_this_layer; j++) {
-      std::cout << "token: " << tree.treeLayers[i].tokens[j] << "\n";
+      // std::cout << "token: " << tree.treeLayers[i].tokens[j] << "\n";
       serializedTree.push_back(std::make_pair(tree.treeLayers[i].tokens[j], i));
     }
   }
@@ -2256,7 +2293,8 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   }
 
   dfs_tree_inputs[guid] = merged_tree;
-  // std::cout << "assign dfr tree: " << guid << ", " << merged_tree.size() << ", "
+  // std::cout << "assign dfr tree: " << guid << ", " << merged_tree.size() <<
+  // ", "
   //           << dfs_tree_inputs[guid].size() << "\n";
 
   return merged_tree;
