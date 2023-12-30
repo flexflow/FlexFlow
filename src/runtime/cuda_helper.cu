@@ -226,7 +226,7 @@ __host__ void print_tensor(T const *ptr,
   printf("%s, %d---->", prefix, shard_id);
   for (idx = 0; idx < num_elements; idx++) {
     printf(" %.20lf", (float)host_ptr[idx]);
-    if (idx >= 200) {
+    if (idx >= 100) {
       break;
     }
   }

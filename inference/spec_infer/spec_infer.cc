@@ -266,9 +266,9 @@ void FlexFlow::top_level_task(Task const *task,
   ModelMeta model_metadata;
   bool use_full_precision = false;
   bool verbose = false;
-  int max_requests_per_batch = 10;
-  int max_tokens_per_batch = 199;
-  int max_sequence_length = 200;
+  int max_requests_per_batch = 16;
+  int max_tokens_per_batch = 256;
+  int max_sequence_length = 1024;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -302,7 +302,7 @@ void FlexFlow::top_level_task(Task const *task,
                          model_metadata.llm_tokenizer_path);
   rm->register_output_filepath(file_paths.output_file_path);
 
-  //first decoding step: 3 results
+  // first decoding step: 3 results
   rm->push_spec_infer_tree_width(3);
 
   // Create LLM model
@@ -402,7 +402,7 @@ void FlexFlow::top_level_task(Task const *task,
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
       prompts.push_back(text);
-    // tree_model.generate(text, 128 /*max_sequence_length*/);
+      // tree_model.generate(text, 128 /*max_sequence_length*/);
     }
     tree_model.generate(prompts, 128 /*max_sequence_length*/);
   }
