@@ -4344,6 +4344,23 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  // RequestManager load metadata
+  {
+    TaskVariantRegistrar registrar(RM_LOAD_BATCH_CONFIG_TASK_ID,
+                                   "RequestManager Load meta data");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RequestManager::load_batch_config_task>(
+          registrar, "RequestManager Load metadata Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::load_batch_config_task>(
+          registrar);
+    }
+  }
   // RequestManager prepare_next_batch
   {
     TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_TASK_ID,

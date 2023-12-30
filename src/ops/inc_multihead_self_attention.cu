@@ -1365,12 +1365,12 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_q_heads * kProjSize *
                          BeamSearchBatchConfig::max_requests_per_batch() *
-                         BatchConfig::max_sequence_length() *
-                         BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+                         (BatchConfig::max_sequence_length() +
+                          BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
         value_cache_size = num_q_heads * vProjSize *
                            BeamSearchBatchConfig::max_requests_per_batch() *
-                           BatchConfig::max_sequence_length() *
-                           BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+                           (BatchConfig::max_sequence_length() +
+                            BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
         break;
       }
       default:

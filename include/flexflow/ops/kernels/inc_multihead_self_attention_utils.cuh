@@ -456,7 +456,7 @@ inline size_t smem_size_in_bytes(int hidden_size_per_head,
                                  int threads_per_block) {
   // The amount of shared memory needed to store the Q*K^T values in float.
 
-  size_t qk_sz = div_up(1000 + 1, 4) * 16;
+  size_t qk_sz = div_up(2000 + 1, 4) * 16;
   size_t logits_sz = qk_sz;
 
   // The total size needed during softmax.
@@ -493,7 +493,7 @@ inline void smem_size_in_bytes_tree(int hidden_size_per_head,
   }
 
   // todo fix this
-  int max_qk_length = max_query_length * max_total_length;
+  int max_qk_length = max_query_length * max_total_length + 1000;
 
   // The amount of shared memory needed to store the Q*K^T values in float.
   size_t qk_sz = div_up(max_qk_length + 1, 4) * 16;

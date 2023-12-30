@@ -320,6 +320,7 @@ FutureMap InferenceManager::inference(FFModel *model,
         assert(op->numOutputs == 1);
         ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
         load_input_tokens_from_batch_config(bc, pt, model->handlers);
+        load_inference_metadata_batch_config(bc, model->handlers);
       }
     }
 
@@ -349,18 +350,32 @@ FutureMap InferenceManager::inference(FFModel *model,
 };
 
 void InferenceManager::load_input_tokens_from_batch_config(
-    BatchConfigFuture const &bc, ParallelTensor const input, FFHandler *handlers) {
+    BatchConfigFuture const &bc,
+    ParallelTensor const input,
+    FFHandler *handlers) {
   Context ctx = ff_config.lg_ctx;
   Runtime *runtime = ff_config.lg_hlr;
   size_t machine_view_hash = input->machine_view.hash();
   ArgumentMap argmap;
-  Rect<1> task_rect(Point<1>(0),
-                    Point<1>(ff_config.workersPerNode * ff_config.numNodes - 1));
-  IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect);
-  MachineView view = input->machine_view;
-  for (PointInRectIterator<1> it(task_rect); it(); it++) {
-    FFHandler handle = handlers[view.get_device_id(*it)];
-    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
+  Domain domain = runtime->get_index_space_domain(ctx, input->parallel_is);
+
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    MachineView view = input->machine_view;                                    \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      argmap.set_point(*it,                                                    \
+                       TaskArgument(&handlers[view.get_device_id(*it)],        \
+                                    sizeof(FFHandler)));                       \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
   }
 
   IndexLauncher launcher(RM_LOAD_TOKENS_TASK_ID,
@@ -375,6 +390,36 @@ void InferenceManager::load_input_tokens_from_batch_config(
   launcher.add_region_requirement(RegionRequirement(
       input->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, input->region));
   launcher.add_field(0, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void InferenceManager::load_inference_metadata_batch_config(
+    BatchConfigFuture const &bc,
+    FFHandler *handlers) {
+  Context ctx = ff_config.lg_ctx;
+  Runtime *runtime = ff_config.lg_hlr;
+  ArgumentMap argmap;
+
+  Rect<1> task_rect(Point<1>(0),
+                    Point<1>(ff_config.workersPerNode * ff_config.numNodes - 1));
+  IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect);
+
+  // int rank = 0;
+  int idx = 0;
+  for (PointInRectIterator<1> it(task_rect); it(); it++) {
+    FFHandler handler = handlers[idx++];
+    argmap.set_point(*it, TaskArgument(&handler, sizeof(FFHandler)));
+  }
+
+  IndexLauncher launcher(RM_LOAD_BATCH_CONFIG_TASK_ID,
+                         task_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         FFConfig::DataParallelism_GPU);
+  launcher.add_future(bc);
   runtime->execute_index_space(ctx, launcher);
 }
 

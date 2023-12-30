@@ -266,9 +266,9 @@ void FlexFlow::top_level_task(Task const *task,
   ModelMeta model_metadata;
   bool use_full_precision = false;
   bool verbose = false;
-  int max_requests_per_batch = 16;
-  int max_tokens_per_batch = 256;
-  int max_sequence_length = 1024;
+  int max_requests_per_batch = 10;
+  int max_tokens_per_batch = 199;
+  int max_sequence_length = 200;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;

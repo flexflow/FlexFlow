@@ -53,7 +53,6 @@ __global__ void compute_attention_kernel_fused_kernel(
     BatchConfig::PerRequestInfo *request_infos,
     int num_heads,
     int num_requests,
-    int max_tree_branches,
     BatchConfig::BitMask *causalMask,
     int qk_smem_sz) {
 
@@ -86,8 +85,9 @@ __global__ void compute_attention_kernel_fused_kernel(
   BatchConfig::BitMask bitmask = causalMask[request_idx];
 
   // bitmask.mask[1] = 3;
-  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
-  //   printf("tree attn fused kernel %d, %d, %d, %lld\n",
+  // if (head_idx == 0 && tidx == 0) {
+  //   printf("tree attn fused kernel req id %d %d, %d, %d, %lld\n",
+  //          request_idx,
   //          tlength,
   //          qlength,
   //          bitmask.non_tree_cache_size,
@@ -96,12 +96,12 @@ __global__ void compute_attention_kernel_fused_kernel(
 
   int first_token_idx = 0;
   for (int r = 0; r < request_idx; r++) {
-    first_token_idx += request_infos[request_idx].num_tokens_in_batch;
+    first_token_idx += request_infos[r].num_tokens_in_batch;
   }
 
-  // if(tidx == 0 && head_idx == 0){
-  //   printf("tree req: %d, %d\n", request_idx, first_token_idx);
-  // }
+  if(tidx == 0 && head_idx == 0){
+    printf("tree req: %d, %d\n", request_idx, first_token_idx);
+  }
 
   // shared memory objects
   extern __shared__ char smem_[];
@@ -132,8 +132,7 @@ __global__ void compute_attention_kernel_fused_kernel(
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
   DT const *k_cache_batch =
-      key_cache +
-      request_idx * max_tree_branches * max_seq_length * hidden_size + ki;
+      key_cache + request_idx * max_seq_length * hidden_size + ki;
 
   int ti_end =
       div_up(tlength - first_step, K_PER_WARP) * K_PER_WARP + first_step;
@@ -190,17 +189,14 @@ __global__ void compute_attention_kernel_fused_kernel(
 
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
-        // if (head_idx == 0 && qi == 1 && !mask && tidx == 0) {
-        //   printf("tree attn qkqkqkqk request id %d,  %d %.10f, %.10f,
-        //   %.10f\n", request_idx,
-        //          ti,
-        //          qk,
-        //          q_vecs[ki_o][0].x,
-        //          q_vecs[ki_o][1].x,
-        //          q_vecs[ki_o][2].x,
-        //          q_vecs[ki_o][3].x,
-        //          k[0].x);
-        // }
+        if (head_idx == 0 && qi == 0 && !mask) {
+          printf("tree attn qkqkqkqk request id %d,  %d %.10f, %.10f, %.10f\n ",
+                 request_idx,
+                 ti,
+                 qk,
+                 q_vecs[ki_o][0].x,
+                 k[0].x);
+        }
         qk_smem[ti - first_step] = mask ? 0.0f : qk;
       }
     }
@@ -283,8 +279,7 @@ __global__ void compute_attention_kernel_fused_kernel(
 
     // The base pointer for the value in the cache buffer.
     DT const *v_cache_batch =
-        value_cache +
-        request_idx * max_seq_length * hidden_size * max_tree_branches + vi;
+        value_cache + request_idx * max_seq_length * hidden_size + vi;
     // DT const *v_cache_batch =
     //     value_cache +
     //     (beam_request_idx * max_beam_width + beam_sub_request_idx) *
@@ -375,8 +370,7 @@ __global__ void commit_tokens_kernel(
     int num_tokens_to_commit,
     int num_active_tokens_in_last_batch,
     int max_seq_len,
-    int hidden_size,
-    int max_tree_branches) {
+    int hidden_size) {
 
   CUDA_KERNEL_LOOP(i, num_tokens_to_commit * hidden_size) {
 
@@ -407,10 +401,10 @@ __global__ void commit_tokens_kernel(
     //   kVal);
     // }
 
-    kCache_ptr[req_id * max_tree_branches * (hidden_size * max_seq_len) +
-               tok_id * hidden_size + offset] = kVal;
-    vCache_ptr[req_id * max_tree_branches * (hidden_size * max_seq_len) +
-               tok_id * hidden_size + offset] = vVal;
+    kCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
+               offset] = kVal;
+    vCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
+               offset] = vVal;
   }
 }
 
@@ -434,9 +428,9 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
         m->vProjSize,
         num_tokens_to_commit,
         m->num_active_tokens, // number of active tokens in previous batch
-        BatchConfig::max_sequence_length(),
-        m->hidden_size,
-        BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
+        BatchConfig::max_sequence_length() +
+            BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,
+        m->hidden_size);
   }
 }
 
@@ -488,7 +482,6 @@ __global__ void update_tree_branch_kv_cache_fused(
     int num_new_tokens,
     int max_seq_len,
     int hidden_size,
-    int max_tree_branches,
     int first_token_depth) {
   CUDA_KERNEL_LOOP(i, num_new_tokens * hidden_size) {
 
@@ -510,11 +503,11 @@ __global__ void update_tree_branch_kv_cache_fused(
     //   printf("update token request id: %d, %d, %d  value%.10f\n", req_id,
     //   token_idx, request_token_offset, kVal);
     // }
-    kCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
+    kCache_ptr[req_id * (hidden_size * max_seq_len) +
                (token_idx + first_token_depth - request_token_offset) *
                    hidden_size +
                offset] = kVal;
-    vCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
+    vCache_ptr[req_id * (hidden_size * max_seq_len) +
                (token_idx + first_token_depth - request_token_offset) *
                    hidden_size +
                offset] = vVal;
@@ -569,10 +562,12 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   int q_block_size = m->qProjSize;
   int kt_block_size = m->kProjSize;
   int kt_req_block_size =
-      kt_block_size * m->num_q_heads * BatchConfig::max_sequence_length();
+      kt_block_size * m->num_q_heads * BatchConfig::max_sequence_length() +
+      BatchConfig::MAX_SPEC_TREE_TOKEN_NUM;
   int vt_block_size = m->vProjSize;
   int vt_req_block_size =
-      vt_block_size * m->num_q_heads * BatchConfig::max_sequence_length();
+      vt_block_size * m->num_q_heads * BatchConfig::max_sequence_length() +
+      BatchConfig::MAX_SPEC_TREE_TOKEN_NUM;
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -836,7 +831,8 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
 #define LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(                             \
     DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)      \
   smem_size_in_bytes_tree<DT>(m->qProjSize,                                    \
-                              BatchConfig::max_sequence_length(),              \
+                              BatchConfig::max_sequence_length() +             \
+                                  BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,        \
                               THDS_PER_VALUE,                                  \
                               THDS_PER_BLOCK,                                  \
                               bc,                                              \
@@ -848,7 +844,20 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                         THDS_PER_KEY,                          \
                                         THDS_PER_VALUE>                        \
       <<<grid, THDS_PER_BLOCK, smem_sz[1], stream>>>(                          \
-          static_cast<DT *>(m->devQKVProjArray), static_cast<DT *>(m->keyCache), static_cast<DT *>(m->valueCache), output_ptr, scale, BatchConfig::max_sequence_length(), BatchConfig::max_tokens_per_batch(), m->qProjSize, m->hidden_size, m->request_infos, m->num_q_heads, bc->num_active_requests(), BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES, m->causalMask,                                                       \  
+          static_cast<DT *>(m->devQKVProjArray),                               \
+          static_cast<DT *>(m->keyCache),                                      \
+          static_cast<DT *>(m->valueCache),                                    \
+          output_ptr,                                                          \
+          scale,                                                               \
+          BatchConfig::max_sequence_length() +                                 \
+              BatchConfig::BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,               \
+          BatchConfig::max_tokens_per_batch(),                                 \
+          m->qProjSize,                                                        \
+          m->hidden_size,                                                      \
+          m->request_infos,                                                    \
+          m->num_q_heads,                                                      \
+          bc->num_active_requests(),                                           \
+          m->causalMask,                                                       \
           smem_sz[0])
 
 template <typename DT>
@@ -880,9 +889,8 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
       m->kProjSize,
       m->vProjSize,
       num_new_tokens,
-      BatchConfig::max_sequence_length(),
+      BatchConfig::max_sequence_length() + BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,
       m->hidden_size,
-      BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES,
       bc->requestsInfo[0].first_token_depth_in_request);
 
   dim3 grid(m->num_q_heads, bc->num_active_requests());
@@ -981,9 +989,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
                      stream);
-  // print_tensor<float>((float *)m->devQKVProjArray + 768 * 8 * 3 + 768, 32,
-  // "qkvtenor1"); print_tensor<float>((float *)m->devQKVProjArray + 768 * 18 *
-  // 3 + 768, 32, "qkvtenor2");
+
+  // print_tensor<float>((float *)m->devQKVProjArray, 32, "qkvtenor1"); 
+  // print_tensor<float>((float *)m->devQKVProjArray + 768 * (25 * 7) * 3, 32, "qkvtenor2");
 
   // phase 2: No need to update key/val cache
   // IncMultiHeadSelfAttention::update_kv_cache_kernel(

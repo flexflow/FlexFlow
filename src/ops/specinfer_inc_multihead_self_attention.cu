@@ -50,8 +50,7 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
     int hidden_size,
     BatchConfig::PerRequestInfo *request_infos,
     BeamSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos,
-    BatchConfig::BitMask *causalMask,
-    int max_tree_branches) {
+    BatchConfig::BitMask *causalMask) {
 
   // q, k
   using Q_vec = typename VEC_K<DT, THREADS_PER_KEY>::Type;
@@ -83,8 +82,14 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
   // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
   //   printf("specinfer attn fused kernel %lld\n", bitmask.mask[1]);
   // }
+  
 
   int const totalCacheSize = bitmask.non_tree_cache_size + bitmask.tree_size;
+
+  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+  //   printf("specinfer attn fused kernel %d, %d\n",
+  //          totalCacheSize,request_infos[request_idx].num_tokens_in_batch);
+  // }
   // int const qlength = request_infos[request_idx].num_tokens_in_batch;
   int const tree_branch_num = beam_request_infos[request_idx].sub_request_num;
 
@@ -94,7 +99,7 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
   int first_token_idx = 0;
   for (int r = 0; r < request_idx; r++) {
     // first_token_idx += request_infos[request_idx].num_tokens_in_batch;
-    first_token_idx += bitmask.this_layer_size;
+    first_token_idx += causalMask[r].this_layer_size;
   }
 
   // if (tidx == 0 && head_idx == 0) {
@@ -130,8 +135,7 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
   DT const *k_cache_batch =
-      key_cache +
-      request_idx * max_seq_length * hidden_size * max_tree_branches + ki;
+      key_cache + request_idx * max_seq_length * hidden_size + ki;
 
   int ti_end =
       div_up(totalCacheSize - first_step, K_PER_WARP) * K_PER_WARP + first_step;
@@ -267,9 +271,7 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
 
     // The base pointer for the value in the cache buffer.
     DT const *v_cache_batch =
-        value_cache +
-        request_idx * max_seq_length * hidden_size * max_tree_branches + vi;
-
+        value_cache + request_idx * max_seq_length * hidden_size + vi;
 
     if (Dh == Dh_MAX || vi < Dh) {
       for (int ti = first_step + vo; ti < totalCacheSize; ti += V_PER_ITER) {
@@ -344,7 +346,6 @@ __global__ void specinfer_store_kv_cache(
     int vProjSize,
     int num_tokens,
     int max_seq_len,
-    int max_tree_branches,
     bool is_root,
     int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
@@ -383,10 +384,10 @@ __global__ void specinfer_store_kv_cache(
                           bitmask.this_layer_size + token_idx -
                           request_token_offset;
 
-    kCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
-               (cache_idx)*hidden_size + offset] = kVal;
-    vCache_ptr[(req_id * max_tree_branches) * (hidden_size * max_seq_len) +
-               (cache_idx)*hidden_size + offset] = vVal;
+    kCache_ptr[req_id * (hidden_size * max_seq_len) + (cache_idx)*hidden_size +
+               offset] = kVal;
+    vCache_ptr[req_id * (hidden_size * max_seq_len) + (cache_idx)*hidden_size +
+               offset] = vVal;
   }
 }
 
@@ -419,8 +420,8 @@ void update_kv_cache_kernel(SpecInferIncMultiHeadSelfAttentionMeta const *m,
         m->kProjSize,
         m->vProjSize,
         num_tokens,
-        BatchConfig::max_sequence_length(),
-        BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES,
+        BatchConfig::max_sequence_length() +
+            BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,
         /*root*/ curr_depth == 0,
         m->hidden_size);
   }
@@ -429,7 +430,8 @@ void update_kv_cache_kernel(SpecInferIncMultiHeadSelfAttentionMeta const *m,
 #define LAUNCH_SPECINFER_ATTENTION_SCORE_KERNEL(                               \
     DT, Dh, Dh_MAX, THDS_PER_KEY, THREADS_PER_VALUE, THDS_PER_BLOCK, stream)   \
   smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                               \
-                                   BatchConfig::max_sequence_length(),         \
+                                   BatchConfig::max_sequence_length() +        \
+                                       BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,   \
                                    THREADS_PER_VALUE,                          \
                                    THDS_PER_BLOCK);                            \
   compute_specinfer_attention_kernel_generation_kernel<DT,                     \
@@ -444,13 +446,13 @@ void update_kv_cache_kernel(SpecInferIncMultiHeadSelfAttentionMeta const *m,
           static_cast<DT *>(m->valueCache),                                    \
           output_ptr,                                                          \
           scale,                                                               \
-          BatchConfig::max_sequence_length(),                                  \
+          BatchConfig::max_sequence_length() +                                 \
+              BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,                            \
           m->qProjSize,                                                        \
           m->hidden_size,                                                      \
           m->request_infos,                                                    \
           m->beam_request_infos,                                               \
-          m->causalMask,                                                       \
-          BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES)
+          m->causalMask)
 
 template <typename DT>
 void compute_specinfer_attention_kernel_generation(
@@ -527,11 +529,13 @@ void compute_attention_kernel_prompt(
   int q_block_size = m->qProjSize;
 
   int kt_block_size = m->kProjSize;
-  int kt_req_block_size =
-      kt_block_size * m->num_q_heads * BatchConfig::max_sequence_length();
+  int kt_req_block_size = kt_block_size * m->num_q_heads *
+                          (BatchConfig::max_sequence_length() +
+                           BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
   int vt_block_size = m->vProjSize;
-  int vt_req_block_size =
-      vt_block_size * m->num_q_heads * BatchConfig::max_sequence_length();
+  int vt_req_block_size = vt_block_size * m->num_q_heads *
+                          (BatchConfig::max_sequence_length() +
+                           BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -580,8 +584,7 @@ void compute_attention_kernel_prompt(
 
     // print_tensor<float>((float*)A, 32, "A");
     std::cout << "meta: " << num_new_tokens << ", " << total_tokens << "\n";
-    DT const *B = static_cast<DT *>(m->keyCache) +
-                  (i * bc->MAX_SPECULATIVE_TREE_BRANCHES) * kt_req_block_size;
+    DT const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
 
     // if (i == 0 && sub_req_id == 0 &&
     //     bc->beam_slots.at(0).current_depth == 1) {
@@ -692,8 +695,7 @@ void compute_attention_kernel_prompt(
     strideC = m->vProjSize;
     // To get A, skip over V^T entries from previous requests (all heads +
     // padding)
-    A = static_cast<DT *>(m->valueCache) +
-        (i * bc->MAX_SPECULATIVE_TREE_BRANCHES) * vt_req_block_size;
+    A = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
     // To get B, skip over softmax(QK^T/sqrt(d_k)) entries from previous
     // requests (all heads)
     B = C_softmax;
@@ -851,8 +853,10 @@ void SpecInferIncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
-  // save_tensor<float>(output.get_float_ptr(), 768 * 3, "/home/xinhaoc/FlexFlow/inference/output/fk1.txt");
-  // save_tensor<float>(output.get_float_ptr() + 768 * 3, 768 * 3, "/home/xinhaoc/FlexFlow/inference/output/fk2.txt");
+  // save_tensor<float>(output.get_float_ptr(), 768 * 3,
+  // "/home/xinhaoc/FlexFlow/inference/output/fk1.txt");
+  // save_tensor<float>(output.get_float_ptr() + 768 * 3, 768 * 3,
+  // "/home/xinhaoc/FlexFlow/inference/output/fk2.txt");
 
   // if(bc->num_tokens == 1){
   //   print_tensor<float>(input.get_float_ptr(), 32, "specinc input");
@@ -906,7 +910,6 @@ SpecInferIncMultiHeadSelfAttentionMeta::SpecInferIncMultiHeadSelfAttentionMeta(
     // gpu_mem_allocator.create_legion_instance(beam_search_reserve_inst,
     //                                          total_size);
 
-
     beam_token_infos =
         static_cast<BeamSearchBatchConfig::BeamSearchPerTokenInfo *>(
             handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
@@ -915,13 +918,13 @@ SpecInferIncMultiHeadSelfAttentionMeta::SpecInferIncMultiHeadSelfAttentionMeta(
     beam_request_infos =
         static_cast<BeamSearchBatchConfig::BeamSearchPerRequestInfo *>(
             handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
-            sizeof(BatchConfig::requestsInfo)  +
+            sizeof(BatchConfig::requestsInfo) +
             sizeof(BeamSearchBatchConfig::beamTokenInfo));
-    causalMask =  static_cast<BatchConfig::BitMask *>(
-            handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
-            sizeof(BatchConfig::requestsInfo)  +
-            sizeof(BeamSearchBatchConfig::beamTokenInfo)
-            + sizeof(BeamSearchBatchConfig::beamRequestsInfo));      
+    causalMask = static_cast<BatchConfig::BitMask *>(
+        handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
+        sizeof(BatchConfig::requestsInfo) +
+        sizeof(BeamSearchBatchConfig::beamTokenInfo) +
+        sizeof(BeamSearchBatchConfig::beamRequestsInfo));
 
     // causalMask = gpu_mem_allocator.allocate_instance<BatchConfig::BitMask>(
     //     causal_mask_size);

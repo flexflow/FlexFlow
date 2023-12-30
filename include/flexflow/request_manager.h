@@ -43,6 +43,8 @@ public:
   void load_positions(BatchConfigFuture const &bc,
                       ParallelTensor position_input,
                       int offset);
+  void load_inference_metadata_batch_config(BatchConfigFuture const &bc,
+                                            FFHandler *handlers);
 
 public:
   FFConfig ff_config;
@@ -195,6 +197,11 @@ public:
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
 
+  static void
+      load_batch_config_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static BatchConfig prepare_next_batch_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,

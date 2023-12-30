@@ -111,15 +111,15 @@ __global__ void spec_store_kv_cache(
 
     // naive cache stealing
     if (sub_req_id != parent_id) {
-      if (offset == 0 && tok_id == 0) {
-        printf("cache stealing!, depth %d req_id %d sub_req_id %d, parentid "
-               "%d, tok_id %d\n",
-               beam_depth,
-               req_id,
-               sub_req_id,
-               parent_id,
-               tok_id);
-      }
+      // if (offset == 0 && tok_id == 0) {
+      //   printf("cache stealing!, depth %d req_id %d sub_req_id %d, parentid "
+      //          "%d, tok_id %d\n",
+      //          beam_depth,
+      //          req_id,
+      //          sub_req_id,
+      //          parent_id,
+      //          tok_id);
+      // }
 
       for (int depth = 0; depth < beam_depth; depth++) {
         int steal_token_idx = tok_id - beam_depth + depth;
