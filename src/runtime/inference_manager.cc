@@ -257,7 +257,6 @@ void InferenceManager::init_operators_inference(FFModel *model) {
         ((ParallelOp *)op)
             ->create_input_partition_inference(*model, inputs, outputs);
       }
-      printf("init op %s\n", op->name);
       op->init_inference(*model, inputs, outputs);
     }
   }
@@ -394,14 +393,13 @@ void InferenceManager::load_input_tokens_from_batch_config(
 }
 
 void InferenceManager::load_inference_metadata_batch_config(
-    BatchConfigFuture const &bc,
-    FFHandler *handlers) {
+    BatchConfigFuture const &bc, FFHandler *handlers) {
   Context ctx = ff_config.lg_ctx;
   Runtime *runtime = ff_config.lg_hlr;
   ArgumentMap argmap;
 
-  Rect<1> task_rect(Point<1>(0),
-                    Point<1>(ff_config.workersPerNode * ff_config.numNodes - 1));
+  Rect<1> task_rect(
+      Point<1>(0), Point<1>(ff_config.workersPerNode * ff_config.numNodes - 1));
   IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect);
 
   // int rank = 0;

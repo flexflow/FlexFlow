@@ -148,11 +148,10 @@ FFHandler
         .wait();
     handle.offload_reserve_space =
         workspaceInst.pointer_untyped(0, sizeof(char));
-  }else {
+  } else {
     handle.offload_reserve_space = nullptr;
   }
   if (handle.batch_config_metadata_size > 0) {
-    printf("allocate instance for metadata %d\n", handle.batch_config_metadata_size);
     // allocate memory for offload reserve space
     Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
                          .only_kind(Memory::GPU_FB_MEM)
@@ -173,7 +172,7 @@ FFHandler
         .wait();
     handle.batch_config_metadata =
         workspaceInst.pointer_untyped(0, sizeof(char));
-  }else {
+  } else {
     handle.batch_config_metadata = nullptr;
   }
    

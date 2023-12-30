@@ -51,7 +51,6 @@
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
-#include "flexflow/ops/specinfer_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
@@ -70,7 +69,7 @@ using FlexFlow::MachineView;
 LegionRuntime::Logger::Category log_graph("graph");
 LegionRuntime::Logger::Category log_simplify("graph_simplify");
 
-Node const Node::INVALID_NODE = Node();
+const Node Node::INVALID_NODE = Node();
 
 Node::Node(void) : guid(0), ptr(NULL) {}
 
@@ -2385,28 +2384,6 @@ GraphOptimalViewSerialized
         sez.serialize(attn->tensor_parallelism_degree);
         break;
       }
-      case OP_SPECINFER_INC_MULTIHEAD_SELF_ATTENTION: {
-        SpecInferIncMultiHeadSelfAttention *attn =
-            (SpecInferIncMultiHeadSelfAttention *)op;
-        sez.serialize(attn->layer_guid.id);
-        sez.serialize(attn->layer_guid.transformer_layer_id);
-        sez.serialize(attn->layer_guid.model_id);
-        sez.serialize(attn->oProjSize);
-        sez.serialize(attn->num_q_heads);
-        sez.serialize(attn->qProjSize);
-        sez.serialize(attn->vProjSize);
-        sez.serialize(attn->dropout);
-        sez.serialize(attn->qkv_bias);
-        sez.serialize(attn->final_bias);
-        sez.serialize(attn->add_zero_attn);
-        sez.serialize(attn->apply_rotary_embedding);
-        sez.serialize(attn->scaling_query);
-        sez.serialize(attn->scaling_factor);
-        sez.serialize(attn->qk_prod_scaling);
-        sez.serialize(attn->position_bias);
-        sez.serialize(attn->num_kv_heads);
-        break;
-      }
       case OP_SOFTMAX: {
         Softmax *softmax = (Softmax *)op;
         sez.serialize(softmax->dim);
@@ -2935,52 +2912,6 @@ void FFModel::deserialize_graph_optimal_view(
         params.tensor_parallelism_degree = tensor_parallelism_degree;
         node = get_or_create_node<TreeIncMultiHeadSelfAttention>(inputs[0],
                                                                  params);
-        break;
-      }
-      case OP_SPECINFER_INC_MULTIHEAD_SELF_ATTENTION: {
-        assert(num_inputs == 1);
-        int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads;
-        float dropout, scaling_factor;
-        bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
-            scaling_query, qk_prod_scaling, position_bias;
-        size_t id, transformer_layer_id, deserialized_model_id;
-        dez.deserialize(id);
-        dez.deserialize(transformer_layer_id);
-        dez.deserialize(deserialized_model_id);
-        LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
-        dez.deserialize(embed_dim);
-        dez.deserialize(num_q_heads);
-        dez.deserialize(k_dim);
-        dez.deserialize(v_dim);
-        dez.deserialize(dropout);
-        dez.deserialize(qkv_bias);
-        dez.deserialize(final_bias);
-        dez.deserialize(add_zero_attn);
-        dez.deserialize(apply_rotary_embedding);
-        dez.deserialize(scaling_query);
-        dez.deserialize(scaling_factor);
-        dez.deserialize(qk_prod_scaling);
-        dez.deserialize(position_bias);
-        dez.deserialize(num_kv_heads);
-
-        SpecInferIncMultiHeadSelfAttentionParams params;
-        params.embed_dim = embed_dim;
-        params.num_q_heads = num_q_heads;
-        params.kdim = k_dim;
-        params.vdim = v_dim;
-        params.dropout = dropout;
-        params.qkv_bias = qkv_bias;
-        params.final_bias = final_bias;
-        params.add_zero_attn = add_zero_attn;
-        params.layer_guid = layer_guid;
-        params.apply_rotary_embedding = apply_rotary_embedding;
-        params.scaling_query = scaling_query;
-        params.scaling_factor = scaling_factor;
-        params.qk_prod_scaling = qk_prod_scaling;
-        params.position_bias = position_bias;
-        params.num_kv_heads = num_kv_heads;
-        node = get_or_create_node<SpecInferIncMultiHeadSelfAttention>(inputs[0],
-                                                                      params);
         break;
       }
       case OP_TOPK: {

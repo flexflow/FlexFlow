@@ -231,6 +231,8 @@ private:
   int max_requests_per_batch;
   int max_tokens_per_batch;
   int max_sequence_length;
+
+  // tree width in each speculative step, if not specified 1
   std::vector<int> spec_infer_tree_width;
   // private fields
   std::unique_ptr<Tokenizer> tokenizer_;

@@ -90,7 +90,7 @@ void LLAMA::create_llama_model(FFModel &ff,
     Tensor mha;
     switch (mode) {
       case BEAM_SEARCH_MODE: {
-        mha = ff.specinfer_inc_multihead_self_attention(
+        mha = ff.spec_inc_multihead_self_attention(
             att_norm,
             llama_config.hidden_size,
             llama_config.num_attention_heads,

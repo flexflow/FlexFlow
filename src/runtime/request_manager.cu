@@ -212,7 +212,6 @@ void RequestManager::load_batch_config_task(
   }
 
   // add a size check
-  std::cout << "hahaha handle.batch_config_metadata_size: " << handle.batch_config_metadata_size << ", "<< total_copy_size << "\n";
   assert(total_copy_size <= handle.batch_config_metadata_size);
 }
 

@@ -106,7 +106,8 @@ __global__ void compute_attention_kernel_generation_kernel(
   // first WARPS_PER_BLOCK for store qk_max, second WARPS_PER_BLOCK for sum
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
 
-  const DT *q_ptr = query + batch_config_request_id * hidden_size * QKV_WEIGHT_NUM +
+  const DT *q_ptr = query +
+                    batch_config_request_id * hidden_size * QKV_WEIGHT_NUM +
                     head_idx * per_head_size;
   __shared__ Q_vec q_vecs[THREADS_PER_KEY][K_VECS_PER_THREAD];
   // DT const *q_ptr =

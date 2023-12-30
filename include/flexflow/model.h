@@ -172,8 +172,6 @@ enum TaskIDs {
   SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   TREE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
-  SPECINFER_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
-  SPECINFER_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   MSELOSS_BWD_TASK_ID,
   FUSEDOP_INIT_TASK_ID,
   FUSEDOP_FWD_TASK_ID,
@@ -327,7 +325,6 @@ class Linear;
 class MultiHeadAttention;
 class IncMultiHeadSelfAttention;
 class TreeIncMultiHeadSelfAttention;
-class SpecInferIncMultiHeadSelfAttention;
 class Pool2D;
 class Reduce;
 class Reshape;
@@ -747,25 +744,6 @@ public:
       bool qk_prod_scaling = true,
       bool position_bias = false,
       char const *name = NULL);
-
-Tensor specinfer_inc_multihead_self_attention(
-      const Tensor input,
-      int embed_dim,
-      int num_heads,
-      int kdim = 0,
-      int vdim = 0,
-      float dropout = 0.0f,
-      bool bias = false,
-      bool add_bias_kv = false,
-      bool add_zero_attn = false,
-      DataType data_type = DT_NONE,
-      Initializer *kernel_initializer = NULL,
-      bool apply_rotary_embedding = false,
-      bool scaling_query = false,
-      float scaling_factor = 1.0f,
-      bool qk_prod_scaling = true,
-      bool position_bias = false,
-      char const *name = NULL);
   Tensor inc_multiquery_self_attention(const Tensor input,
                                        int embed_dim,
                                        int num_q_heads,
@@ -804,26 +782,6 @@ Tensor specinfer_inc_multihead_self_attention(
                                          bool position_bias = false,
                                          char const *name = NULL);
   Tensor inc_multiquery_self_attention_verify(
-      const Tensor input,
-      int embed_dim,
-      int num_q_heads,
-      int num_kv_heads,
-      int kdim = 0,
-      int vdim = 0,
-      float dropout = 0.0f,
-      bool bias = false,
-      bool add_bias_kv = false,
-      bool add_zero_attn = false,
-      DataType data_type = DT_NONE,
-      Initializer *kernel_initializer = NULL,
-      bool apply_rotary_embedding = false,
-      bool scaling_query = false,
-      float scaling_factor = 1.0f,
-      bool qk_prod_scaling = true,
-      bool position_bias = false,
-      char const *name = NULL);
-
-  Tensor specinfer_inc_multiquery_self_attention(
       const Tensor input,
       int embed_dim,
       int num_q_heads,
@@ -1243,9 +1201,6 @@ public:
       std::unordered_map<
           std::pair<ParallelTensorShape, TreeIncMultiHeadSelfAttentionParams>,
           TreeIncMultiHeadSelfAttention *>,
-      std::unordered_map<
-          std::pair<ParallelTensorShape, SpecInferIncMultiHeadSelfAttentionParams>,
-          SpecInferIncMultiHeadSelfAttention *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReduceParams>,
                          Reduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,

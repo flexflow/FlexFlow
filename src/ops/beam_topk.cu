@@ -379,9 +379,9 @@ template <typename T>
 __global__ void
     mergeSubRequestsKernel(int64_t N, T const *X, T const *rstd, T *Y) {
   using T_ACC = T;
-  int64_t const i = blockIdx.x;
+  const int64_t i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    int64_t const index = i * N + j;
+    const int64_t index = i * N + j;
     Y[index] = static_cast<T_ACC>(X[index]) * static_cast<T_ACC>(rstd[i]);
   }
 }
@@ -556,7 +556,6 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     int beam_size = bc->beamRequestsInfo[i].beam_size;
 
     // initial request
-    std::cout << "sub_requests: " << i << ", " << sub_requests[i] << "\n";
     assert(sub_requests[i] > 0);
     // process sub requests
     for (int j = 0; j < sub_requests[i]; j++) {
@@ -564,12 +563,13 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
       // beam_slots[i].parent_id[j];
       acc_probs[req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j] =
           bc->beamRequestsInfo[i].probs[j];
-      std::cout << "probbbb req: " << i << ", sub req probability : "
-                << bc->beamRequestsInfo[i].probs[j] << ", sub request id " << j
-                << ", parent id " << bc->beamRequestsInfo[i].parent_id[j]
-                << ", data inddd"
-                << req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j
-                << "\n";
+      // std::cout << "probbbb req: " << i << ", sub req probability : "
+      //           << bc->beamRequestsInfo[i].probs[j] << ", sub request id " <<
+      //           j
+      //           << ", parent id " << bc->beamRequestsInfo[i].parent_id[j]
+      //           << ", data inddd"
+      //           << req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j
+      //           << "\n";
     }
 
     // process tokens
@@ -584,7 +584,6 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     max_heap_size = std::max(max_heap_size, beam_size * sub_requests[i]);
     max_beam_width = std::max(max_beam_width, beam_size);
 
-    std::cout << "max beam width: " << max_beam_width << "\n";
     req_index += 1;
     block_start_index += (sub_requests[i] - 1) * num_new_tokens * length;
   }
@@ -625,23 +624,23 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                             cudaMemcpyHostToDevice,
                             stream));
   // trick, set acc_probs to 0;
-  checkCUDA(
-      cudaMemsetAsync(m->acc_probs, 1.0, max_total_requests * sizeof(DT), stream));
+  checkCUDA(cudaMemsetAsync(
+      m->acc_probs, 1.0, max_total_requests * sizeof(DT), stream));
   checkCUDA(cudaMemcpyAsync(m->block_start_index,
                             beam_block_start_index.data(),
                             sizeof(int) * beam_num_blocks,
                             cudaMemcpyHostToDevice,
                             stream));
   checkCUDA(cudaMemcpyAsync(m->request_id,
-                       request_id.data(),
-                       sizeof(int) * beam_num_blocks,
-                       cudaMemcpyHostToDevice,
-                       stream));
+                            request_id.data(),
+                            sizeof(int) * beam_num_blocks,
+                            cudaMemcpyHostToDevice,
+                            stream));
   checkCUDA(cudaMemcpyAsync(m->tokens_per_request,
-                       tokens_per_request.data(),
-                       sizeof(int) * beam_num_blocks,
-                       cudaMemcpyHostToDevice,
-                       stream));
+                            tokens_per_request.data(),
+                            sizeof(int) * beam_num_blocks,
+                            cudaMemcpyHostToDevice,
+                            stream));
   // int depth =
   //     bc->beamRequestsInfo[bc->tokensInfo[0].request_index].current_depth;
   beam_num_blocks = bc->num_active_tokens();
