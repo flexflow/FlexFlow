@@ -181,30 +181,17 @@ if __name__ == "__main__":
     print(llm_chain.run(question))
     
     # USE CASE 2: Rag Search
-   
-    # Define a function to remove non-ASCII characters 
-    # TODO: modify this function to fit the structure of "Document" returned by WebBaseLoader
-    def remove_non_ascii(documents):
-        cleaned_documents = []
-        for doc in documents:
-            cleaned_text = ''.join(char for char in doc.text if ord(char) < 128)
-            doc.text = cleaned_text 
-            cleaned_documents.append(doc)
-        return cleaned_documents
-
+    
     # Load web page content
     loader = WebBaseLoader("https://lilianweng.github.io/posts/2023-06-23-agent/")
     data = loader.load()
 
-    # Clean non-ASCII characters
-    cleaned_data = remove_non_ascii(data)
-
     # Split text
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0)
-    all_splits = text_splitter.split_documents(cleaned_data)
+    all_splits = text_splitter.split_documents(data)
 
     # Initialize embeddings
-    embeddings = OpenAIEmbeddings(openai_api_key="API_KEY") # fill in openai api key
+    embeddings = OpenAIEmbeddings(openai_api_key="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") # fill in openai api key
 
     # Create VectorStore
     vectorstore = Chroma.from_documents(all_splits, embeddings)
@@ -215,20 +202,22 @@ if __name__ == "__main__":
     # Test if similarity search is working
     question = "What are the approaches to Task Decomposition?"
     docs = vectorstore.similarity_search(question)
+    max_chars_per_doc = 100
+    # docs_text_list = [docs[i].page_content for i in range(len(docs))]
+    docs_text_list = [docs[i].page_content[:max_chars_per_doc] for i in range(len(docs))]
+    docs_text = ''.join(docs_text_list)
         
     # combining with LLM Chain
     # Prompt
     prompt_rag = PromptTemplate.from_template(
-        "Summarize the main themes in these retrieved docs: {docs}"
+        "Summarize the main themes in these retrieved docs: {docs_text}"
     )
-
+    
     # Chain
     llm_chain_rag = LLMChain(llm=ff_llm_wrapper, prompt=prompt_rag)
 
     # Run
-    rag_result = llm_chain_rag(docs)
-    # Output
-    print(rag_result["text"])
+    rag_result = llm_chain_rag(docs_text)
 
     # stop the server
     ff_llm.stop_server()
