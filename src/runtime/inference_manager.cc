@@ -398,11 +398,10 @@ void InferenceManager::load_inference_metadata_batch_config(
   Runtime *runtime = ff_config.lg_hlr;
   ArgumentMap argmap;
 
-  Rect<1> task_rect(
-      Point<1>(0), Point<1>(ff_config.workersPerNode * ff_config.numNodes - 1));
-  IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect);
+  Domain domain =
+      runtime->get_index_space_domain(ctx, ff_config.all_gpu_task_is);
+  Rect<1> task_rect = domain;
 
-  // int rank = 0;
   int idx = 0;
   for (PointInRectIterator<1> it(task_rect); it(); it++) {
     FFHandler handler = handlers[idx++];
@@ -410,7 +409,7 @@ void InferenceManager::load_inference_metadata_batch_config(
   }
 
   IndexLauncher launcher(RM_LOAD_BATCH_CONFIG_TASK_ID,
-                         task_is,
+                         ff_config.all_gpu_task_is,
                          TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,

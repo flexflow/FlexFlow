@@ -152,7 +152,7 @@ FFHandler
         .wait();
     handle.offload_reserve_space =
         workspaceInst.pointer_untyped(0, sizeof(char));
-   } else {
+  } else {
     handle.offload_reserve_space = nullptr;
   }
   if (handle.batch_config_metadata_size > 0) {

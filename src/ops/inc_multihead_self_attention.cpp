@@ -1106,7 +1106,7 @@ template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<float>(
     float const *weight_ptr,
     float const *bias_ptr,
     int num_tokens,
-    cudaStream_t stream);
+    hipStream_t stream);
 template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<half>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
@@ -1115,6 +1115,6 @@ template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<half>(
     half const *weight_ptr,
     half const *bias_ptr,
     int num_tokens,
-    cudaStream_t stream);
+    hipStream_t stream);
 
 }; // namespace FlexFlow
