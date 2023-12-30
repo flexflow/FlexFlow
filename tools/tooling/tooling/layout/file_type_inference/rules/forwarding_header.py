@@ -1,4 +1,4 @@
-from tooling.layout.file_type_inference.rules.rule import Rule, And, HasAttribute, FileContentsSatisfy
+from tooling.layout.file_type_inference.framework.rule import Rule, And, HasAttribute, FileContentsSatisfy
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from tooling.layout.path import AbsolutePath
 from typing import FrozenSet

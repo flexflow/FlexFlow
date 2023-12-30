@@ -1,4 +1,4 @@
-from tooling.layout.file_type_inference.rules.rule import Rule, IsNamed, IsFile, exclude_blacklisted
+from tooling.layout.file_type_inference.framework.rule import Rule, IsNamed, IsFile, exclude_blacklisted
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
 from typing import FrozenSet
 

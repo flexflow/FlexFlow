@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod, abstractproperty
 from tooling.layout.path import AbsolutePath, full_suffix, children
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
-from typing import FrozenSet, Callable, Iterable, Any, Set, Optional
+from typing import FrozenSet, Callable, Iterable, Any
 from dataclasses import dataclass
 
 Attrs = Callable[[AbsolutePath], FrozenSet[FileAttribute]]
@@ -332,8 +332,3 @@ class Rule:
     @property
     def signature(self) -> str:
         return f'{self.name} :: ({", ".join(map(str, self.inputs))}) -> {self.result}'
-
-
-def rule_executor(r: Rule, s: Mapping[FileAttribute, FrozenSet[AbsolutePath]]) -> FrozenSet[AbsolutePath]:
-    if isinstance(r.condition, 
-

@@ -10,6 +10,7 @@ dependencies = [ ]
 
 [project.optional-dependencies]
 gh = ["pygithub", "frozendict", "sqlitedict"]
+test = ["pytest"]
 
 [tool.black]
 line-length = 120

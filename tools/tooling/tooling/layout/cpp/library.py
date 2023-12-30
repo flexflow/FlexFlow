@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import FrozenSet, Callable, cast, Optional
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
-from tooling.layout.file_type_inference.rules.infer import InferenceResult
+from tooling.layout.file_type_inference.framework.inference_result import InferenceResult
 from tooling.layout.cpp.file_group.file_group import FileGroup
 from tooling.layout.path import AbsolutePath
 from functools import lru_cache

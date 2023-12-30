@@ -1,4 +1,4 @@
-from tooling.layout.file_type_inference.rules.rule import (
+from tooling.layout.file_type_inference.framework.rule import (
     Rule,
     IsDir,
     And,

@@ -4,17 +4,17 @@ from typing import Union, Generator, cast, Any, Optional, Iterator, Callable
 import functools
 
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def cached_is_file(p: "AbsolutePath") -> bool:
     return super(AbsolutePath, p).is_file()
 
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def cached_is_dir(p: "AbsolutePath") -> bool:
     return super(AbsolutePath, p).is_dir()
 
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def cached_exists(p: "AbsolutePath") -> bool:
     return super(AbsolutePath, p).exists()
 

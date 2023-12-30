@@ -3,12 +3,12 @@ from tooling.layout.path import AbsolutePath
 from tooling.layout.file_type_inference.rules.rule import (
     Rule,
     HasAllOfAttributes,
-    make_update_rules,
     OpaqueFunction,
     HasAttribute,
     Attrs,
     ExprExtra,
 )
+from tooling.layout.file_type_inference.framework.rule_patterns import make_update_rules
 from tooling.linting.framework.response import CheckResponse, FixResponse, Response, ErrorResponse
 from tooling.linting.framework.clang_tools import ClangToolsConfig, TOOL_CONFIGS, System, Arch, Tool, download_tool
 from tooling.linting.framework.method import Method

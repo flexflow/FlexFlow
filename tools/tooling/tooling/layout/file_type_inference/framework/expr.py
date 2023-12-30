@@ -1,7 +1,12 @@
 from dataclasses import dataclass
 from tooling.layout.file_type_inference.file_attribute import FileAttribute
-from typing import FrozenSet
+from typing import (
+    FrozenSet,
+    Callable,
+    Iterable,
+)
 from tooling.layout.path import AbsolutePath
+from abc import ABC, abstractmethod, abstractproperty
 
 Attrs = Callable[[AbsolutePath], FrozenSet[FileAttribute]]
 
