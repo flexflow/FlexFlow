@@ -151,7 +151,9 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
 
       std::vector<ParallelTensor> list;
       bool found_parallel_tensor = false;
-      if (model->cpu_offload) {
+      // Always enable memory reuse
+      // if (model->cpu_offload) {
+      if (true) {
         for (auto const &pre_pt : tensor_buffer) {
           bool used_by_future_operator = false;
           bool used_by_current_operator = false;
@@ -220,6 +222,67 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
       tensor_buffer[pt_base] = list;
     }
     // std::cout << std::endl;
+  }
+
+  // Perform fusion optimizations
+  if (model->config.perform_fusion) {
+    fprintf(stderr, "Applying fusion optimizations during compilation...\n");
+    fprintf(
+        stderr, "%zu operators before fusion...\n", model->operators.size());
+    std::vector<Op *> new_operators;
+    std::vector<Op *> old_operators = model->operators;
+    while (
+        model->apply_fusion(model->operators, new_operators, &tensor_buffer)) {
+      for (size_t i = 0; i < new_operators.size(); i++) {
+        for (int idx = 0; idx < new_operators[i]->numInputs; idx++) {
+          for (size_t j = i + 1; j < new_operators.size(); j++) {
+            if (new_operators[i]->inputs[idx]->owner_op == new_operators[j]) {
+              assert(false);
+            }
+          }
+        }
+      }
+      model->operators = new_operators;
+    }
+    assert(model->check_operators_integrity(old_operators, &tensor_buffer));
+    fprintf(stderr, "%zu operators after fusion...\n", model->operators.size());
+  }
+
+  // print optimized graph
+  for (size_t i = 0; i < model->operators.size(); i++) {
+    Op *op = model->operators[i];
+    if (op->op_type == OP_INPUT || op->op_type == OP_WEIGHT) {
+      continue;
+    }
+    printf("operator[%zu]: type(%s) guid(%lu)\n",
+           i,
+           get_operator_type_name(model->operators[i]->op_type).c_str(),
+           model->operators[i]->op_guid);
+    for (int j = 0; j < op->numInputs; j++) {
+      assert(tensor_buffer.find(op->inputs[j]) != tensor_buffer.end());
+      LogicalRegion handle = tensor_buffer[op->inputs[j]][0]->region;
+      printf("\tinputs[%d] mapped_region(%d,%d,%d)\n",
+             j,
+             handle.get_index_space().get_id(),
+             handle.get_field_space().get_id(),
+             handle.get_tree_id());
+    }
+    for (int j = 0; j < op->numOutputs; j++) {
+      LogicalRegion handle = tensor_buffer[op->outputs[j]][0]->region;
+      printf("\toutputs[%d] mapped_region(%d,%d,%d)\n",
+             j,
+             handle.get_index_space().get_id(),
+             handle.get_field_space().get_id(),
+             handle.get_tree_id());
+    }
+    for (int j = 0; j < op->numWeights; j++) {
+      LogicalRegion handle = op->weights[j]->region;
+      printf("\tweights[%d] mapped_region(%d,%d,%d)\n",
+             j,
+             handle.get_index_space().get_id(),
+             handle.get_field_space().get_id(),
+             handle.get_tree_id());
+    }
   }
 }
 
@@ -525,124 +588,7 @@ void FFModel::compile_inference() {
       assert(op->outputs[i]->parallel_tensor_guid != 0);
     }
   }
-  // Perform fusion optimizations
-  if (config.perform_fusion) {
-    fprintf(stderr, "Applying fusion optimizations during compilation...\n");
-    fprintf(stderr, "%zu operators before fusion...\n", operators.size());
-    std::vector<Op *> new_operators;
-    std::vector<Op *> old_operators = operators;
-    while (apply_fusion(operators, new_operators)) {
-      for (size_t i = 0; i < new_operators.size(); i++) {
-        for (int idx = 0; idx < new_operators[i]->numInputs; idx++) {
-          for (size_t j = i + 1; j < new_operators.size(); j++) {
-            if (new_operators[i]->inputs[idx]->owner_op == new_operators[j]) {
-              assert(false);
-            }
-          }
-        }
-      }
-      operators = new_operators;
-    }
-    // Check integrity
-    for (size_t l = 0; l < operators.size(); l++) {
-      if (operators[l]->op_type == OP_FUSED) {
-        FusedOp *fused = (FusedOp *)operators[l];
-        int ioff = 0, woff = 0, ooff = 0;
-        for (int op = 0; op < fused->numOperators; op++) {
-          Op *old_op = fused->operators[op];
-          for (int i = 0; i < fused->op_num_inputs[op]; i++) {
-            int my_off = fused->op_input_idx[i + ioff];
-            if (fused->op_input_source[i + ioff] == FusedOp::SOURCE_INPUT) {
-              assert(fused->inputs[my_off]->region ==
-                     old_op->inputs[i]->region);
-            } else if (fused->op_input_source[i + ioff] ==
-                       FusedOp::SOURCE_OUTPUT) {
-              assert(fused->outputs[my_off]->region ==
-                     old_op->inputs[i]->region);
-            } else {
-              assert(false);
-            }
-          }
-          for (int i = 0; i < fused->op_num_weights[op]; i++) {
-            int my_off = fused->op_weight_idx[i + woff];
-            assert(fused->op_weight_source[i + woff] == FusedOp::SOURCE_WEIGHT);
-            assert(fused->weights[my_off]->region ==
-                   old_op->weights[i]->region);
-          }
-          for (int i = 0; i < fused->op_num_outputs[op]; i++) {
-            int my_off = fused->op_output_idx[i + ooff];
-            assert(fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT);
-            assert(fused->outputs[my_off]->region ==
-                   old_op->outputs[i]->region);
-          }
-          ioff += fused->op_num_inputs[op];
-          woff += fused->op_num_weights[op];
-          ooff += fused->op_num_outputs[op];
-        }
-      } else {
-        bool found = false;
-        for (size_t i = 0; i < old_operators.size(); i++) {
-          if (old_operators[i] == operators[l]) {
-            assert(!found);
-            found = true;
-          }
-        }
-        assert(found);
-      }
-    }
-    fprintf(stderr, "%zu operators after fusion...\n", operators.size());
-    for (size_t i = 0; i < operators.size(); i++) {
-      Op *op = operators[i];
-      printf("operator[%zu]: type(%s) guid(%lu)\n",
-             i,
-             get_operator_type_name(operators[i]->op_type).c_str(),
-             operators[i]->op_guid);
-      for (int j = 0; j < op->numInputs; j++) {
-        LogicalRegion handle = op->inputs[j]->region;
-        printf("\tinputs[%d] region(%d,%d,%d)\n",
-               j,
-               handle.get_index_space().get_id(),
-               handle.get_field_space().get_id(),
-               handle.get_tree_id());
-      }
-      for (int j = 0; j < op->numOutputs; j++) {
-        LogicalRegion handle = op->outputs[j]->region;
-        printf("\toutputs[%d] region(%d,%d,%d)\n",
-               j,
-               handle.get_index_space().get_id(),
-               handle.get_field_space().get_id(),
-               handle.get_tree_id());
-      }
-      for (int j = 0; j < op->numWeights; j++) {
-        LogicalRegion handle = op->weights[j]->region;
-        printf("\tweights[%d] region(%d,%d,%d)\n",
-               j,
-               handle.get_index_space().get_id(),
-               handle.get_field_space().get_id(),
-               handle.get_tree_id());
-      }
-    }
-  }
-  for (size_t i = 0; i < operators.size(); i++) {
-    Op *op = operators[i];
-    printf("operator[%zu]: type(%d)\n", i, operators[i]->op_type);
-    for (int j = 0; j < op->numInputs; j++) {
-      LogicalRegion handle = op->inputs[j]->region;
-      printf("\tinputs[%d] region(%d,%d,%d)\n",
-             j,
-             handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(),
-             handle.get_tree_id());
-    }
-    for (int j = 0; j < op->numOutputs; j++) {
-      LogicalRegion handle = op->outputs[j]->region;
-      printf("\toutputs[%d] region(%d,%d,%d)\n",
-             j,
-             handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(),
-             handle.get_tree_id());
-    }
-  }
+
 #ifdef FF_USE_NCCL
   for (size_t l = 0; l < operators.size(); l++) {
     // Only create nccl for allreduce and fusedop for inference
