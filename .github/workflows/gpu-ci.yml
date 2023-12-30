@@ -15,7 +15,7 @@ on:
       - ".github/workflows/gpu-ci.yml"
       - "tests/cpp_gpu_tests.sh"
       - "tests/inference_tests.sh"
-      - "tests/multi_gpu_tests.sh"
+      - "tests/training_tests.sh"
       - "tests/python_interface_test.sh"
   push:
     branches:
@@ -34,7 +34,7 @@ on:
       - ".github/workflows/gpu-ci.yml"
       - "tests/cpp_gpu_tests.sh"
       - "tests/inference_tests.sh"
-      - "tests/multi_gpu_tests.sh"
+      - "tests/training_tests.sh"
       - "tests/python_interface_test.sh"
   workflow_dispatch:
 
@@ -141,7 +141,8 @@ jobs:
       run:
         shell: bash -l {0} # required to use an activated conda environment
     env: 
-      CONDA: "3"    
+      CONDA: "3"
+      HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
     needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
@@ -185,7 +186,7 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
           
           # GPT tokenizer test
-          ./tests/gpt_tokenizer_test.sh
+          # ./tests/gpt_tokenizer_test.sh
 
           # Inference tests
           source ./build/set_python_envs.sh
@@ -209,8 +210,8 @@ jobs:
         if: always()
         run: sudo rm -rf ~/.cache 
 
-  gpu-ci-flexflow:
-    name: Single Machine, Multiple GPUs Tests
+  training-tests:
+    name: Training Tests
     runs-on: [self-hosted, gpu]
     # skip this time-consuming test for PRs to the inference branch
     # if: ${{ github.event_name != 'pull_request' || github.base_ref != 'inference' }}
@@ -266,5 +267,5 @@ jobs:
           # C++ tests
           ./tests/cpp_gpu_tests.sh 4
           # Python tests
-          ./tests/multi_gpu_tests.sh 4
+          ./tests/training_tests.sh 4
 

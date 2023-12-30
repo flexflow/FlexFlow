@@ -72,7 +72,7 @@ ff.init(
 Second, we specify the LLM to serve and the SSM(s) used to accelerate LLM serving. The list of supported LLMs and SSMs is available at [supported models](#supported-llms-and-ssms).
 ```python
 # Specify the LLM
-llm = ff.LLM("decapoda-research/llama-7b-hf")
+llm = ff.LLM("meta-llama/Llama-2-7b-hf")
 
 # Specify a list of SSMs (just one in this case)
 ssms=[]
@@ -116,7 +116,7 @@ ff.init(
     )
 
 # Create the FlexFlow LLM
-llm = ff.LLM("decapoda-research/llama-7b-hf")
+llm = ff.LLM("meta-llama/Llama-2-7b-hf")
 
 # Create the sampling configs
 generation_config = ff.GenerationConfig(
@@ -152,7 +152,7 @@ A C++ example is available at [this folder](../inference/spec_infer/). After bui
 * `-ll:gpu`: number of GPU processors to use on each node for serving an LLM (default: 0)
 * `-ll:fsize`: size of device memory on each GPU in MB
 * `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) in MB. FlexFlow Serve keeps a replica of the LLM parameters on zero-copy memory, and therefore requires that the zero-copy memory is sufficient for storing the LLM parameters.
-* `-llm-model`: the LLM model ID from HuggingFace (e.g. "decapoda-research/llama-7b-hf")
+* `-llm-model`: the LLM model ID from HuggingFace (e.g. "meta-llama/Llama-2-7b-hf")
 * `-ssm-model`: the SSM model ID from HuggingFace (e.g. "JackFram/llama-160m"). You can use multiple `-ssm-model`s in the command line to launch multiple SSMs.
 * `-cache-folder`: the folder
 * `-data-parallelism-degree`, `-tensor-parallelism-degree` and `-pipeline-parallelism-degree`: parallelization degrees in the data, tensor, and pipeline dimensions. Their product must equal the number of GPUs available on the machine. When any of the three parallelism degree arguments is omitted, a default value of 1 will be used. 
@@ -162,7 +162,7 @@ A C++ example is available at [this folder](../inference/spec_infer/). After bui
 For example, you can use the following command line to serve a LLaMA-7B or LLaMA-13B model on 4 GPUs and use two collectively boost-tuned LLaMA-68M models for speculative inference.
 
 ```bash
-./inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model decapoda-research/llama-7b-hf -ssm-model JackFram/llama-68m -prompt /path/to/prompt.json -tensor-parallelism-degree 4 --fusion
+./inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -ssm-model JackFram/llama-68m -prompt /path/to/prompt.json -tensor-parallelism-degree 4 --fusion
 ```
 </details>
 
@@ -193,7 +193,7 @@ Below is a list of models that we have explicitly tested and for which a SSM may
 
 | Model | Model id on HuggingFace | Boost-tuned SSMs |
 | :---- | :---- | :---- |
-| LLaMA-7B | decapoda-research/llama-7b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
+| LLaMA-7B | meta-llama/Llama-2-7b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
 | LLaMA-13B | decapoda-research/llama-13b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
 | LLaMA-30B | decapoda-research/llama-30b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
 | LLaMA-65B | decapoda-research/llama-65b-hf | [LLaMA-68M](https://huggingface.co/JackFram/llama-68m) , [LLaMA-160M](https://huggingface.co/JackFram/llama-160m) |
