@@ -69,36 +69,43 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
   int const tidx = threadIdx.x;
   // head id
   int const head_idx = blockIdx.x;
-  // request idx
+  // nth request idx
   int const request_idx = blockIdx.y;
 
-  BatchConfig::BitMask bitmask = causalMask[request_idx];
+  // request id in batch config
+  int const batch_config_request_id =
+      request_infos[request_idx].batch_config_request_id;
+
+  // request_idx = re
+
+  BatchConfig::BitMask bitmask = causalMask[batch_config_request_id];
 
   int const first_step = 0;
 
-  int const tlength = request_infos[request_idx].first_token_depth_in_request +
-                      request_infos[request_idx].num_tokens_in_batch;
+  int const tlength =
+      request_infos[batch_config_request_id].first_token_depth_in_request +
+      request_infos[batch_config_request_id].num_tokens_in_batch;
 
-  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
-  //   printf("specinfer attn fused kernel %lld\n", bitmask.mask[1]);
-  // }
-  
+  if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+    printf("specinfer attn fused kernel!!!\n");
+  }
 
   int const totalCacheSize = bitmask.non_tree_cache_size + bitmask.tree_size;
 
-  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
-  //   printf("specinfer attn fused kernel %d, %d\n",
-  //          totalCacheSize,request_infos[request_idx].num_tokens_in_batch);
-  // }
+  if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
+    printf("specinfer attn fused kernel %d, %d\n",
+           totalCacheSize,
+           request_infos[batch_config_request_id].num_tokens_in_batch);
+  }
   // int const qlength = request_infos[request_idx].num_tokens_in_batch;
-  int const tree_branch_num = beam_request_infos[request_idx].sub_request_num;
+  int const tree_branch_num =
+      beam_request_infos[batch_config_request_id].sub_request_num;
 
   // will decode qlength tokens in this thread block
   // int const qlength = tree_branch_num;
 
   int first_token_idx = 0;
   for (int r = 0; r < request_idx; r++) {
-    // first_token_idx += request_infos[request_idx].num_tokens_in_batch;
     first_token_idx += causalMask[r].this_layer_size;
   }
 
@@ -135,7 +142,7 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
   DT const *k_cache_batch =
-      key_cache + request_idx * max_seq_length * hidden_size + ki;
+      key_cache + batch_config_request_id * max_seq_length * hidden_size + ki;
 
   int ti_end =
       div_up(totalCacheSize - first_step, K_PER_WARP) * K_PER_WARP + first_step;
@@ -166,10 +173,6 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
       }
       float qk = scale * Qk_dot<DT, THREADS_PER_KEY>::dot(q_vecs[ki_o], k);
 
-      // if (blockIdx.y == 0 && blockIdx.x == 0) {
-      //   printf("spec inc attn qkqkqk %d,  %.10f, %d\n", ti, qk, sub_req_idx);
-      // }
-
       if (ti < totalCacheSize && tidx % THREADS_PER_KEY == 0) {
         // todo add alobi here
         // bool const mask = ti_circ >= totalCacheSize;
@@ -177,14 +180,8 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
                            (!(bitmask.mask[ti - bitmask.non_tree_cache_size] &
                               (1 << query_token))));
 
-        // if (blockIdx.y == 0 && blockIdx.x == 0 && sub_req_idx == 0) {
-        //   printf("specinfer mask: ti:%d, %d, %d, %d, %lld\n",
-        //          ti,
-        //          totalCacheSize,
-        //          bitmask.non_tree_cache_size,
-        //          query_token,
-        //          bitmask.mask[ti - bitmask.non_tree_cache_size]);
-        //   // assert(false);
+        // if (blockIdx.y == 0 && blockIdx.x == 0 && !mask) {
+        //   printf("spec inc attn qkqkqk %d,  %.10f, %d\n", ti, qk, qi);
         // }
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
         qk_smem[ti - first_step] = mask ? 0.f : qk;
@@ -271,7 +268,8 @@ __global__ void compute_specinfer_attention_kernel_generation_kernel(
 
     // The base pointer for the value in the cache buffer.
     DT const *v_cache_batch =
-        value_cache + request_idx * max_seq_length * hidden_size + vi;
+        value_cache + batch_config_request_id * max_seq_length * hidden_size +
+        vi;
 
     if (Dh == Dh_MAX || vi < Dh) {
       for (int ti = first_step + vo; ti < totalCacheSize; ti += V_PER_ITER) {
@@ -461,6 +459,7 @@ void compute_specinfer_attention_kernel_generation(
     DT *output_ptr,
     cudaStream_t stream) {
   // one block == one head per request
+  printf("??? at here: %d\n", bc->num_active_requests());
   dim3 grid(m->num_q_heads, bc->num_active_requests());
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
@@ -761,13 +760,14 @@ void inference_kernel(SpecInferIncMultiHeadSelfAttentionMeta const *m,
   // std::cout << "specinfer kernel token num: " << bc->num_generation_tokens
   //           << ", " << bc->num_tokens << "\n";
   if (bc->num_generation_tokens > 0) {
+    printf("spec inc generation decoding\n");
     compute_specinfer_attention_kernel_generation<DT>(
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
   if (bc->num_tokens > bc->num_generation_tokens) {
-    // printf("spec inc prompt decoding\n");
+    printf("spec inc prompt decoding\n");
     compute_attention_kernel_prompt(
         m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
   }

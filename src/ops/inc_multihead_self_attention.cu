@@ -82,6 +82,9 @@ __global__ void compute_attention_kernel_generation_kernel(
   // request idx
   int const request_idx = blockIdx.y;
 
+  int const batch_config_request_id =
+      request_infos[request_idx].batch_config_request_id;
+
   int const beam_request_idx =
       is_beam ? request_idx / max_beam_width : request_idx;
   int const beam_sub_request_idx = is_beam ? request_idx % max_beam_width : 0;
@@ -89,8 +92,8 @@ __global__ void compute_attention_kernel_generation_kernel(
   int const first_step = 0;
 
   int const tlength =
-      request_infos[beam_request_idx].first_token_depth_in_request +
-      request_infos[beam_request_idx].num_tokens_in_batch;
+      request_infos[batch_config_request_id].first_token_depth_in_request +
+      request_infos[batch_config_request_id].num_tokens_in_batch;
 
   // shared memory objects
   extern __shared__ char smem_[];
@@ -103,7 +106,7 @@ __global__ void compute_attention_kernel_generation_kernel(
   // first WARPS_PER_BLOCK for store qk_max, second WARPS_PER_BLOCK for sum
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
 
-  const DT *q_ptr = query + beam_request_idx * hidden_size * QKV_WEIGHT_NUM +
+  const DT *q_ptr = query + batch_config_request_id * hidden_size * QKV_WEIGHT_NUM +
                     head_idx * per_head_size;
   __shared__ Q_vec q_vecs[THREADS_PER_KEY][K_VECS_PER_THREAD];
   // DT const *q_ptr =
@@ -139,7 +142,7 @@ __global__ void compute_attention_kernel_generation_kernel(
 
   DT const *k_cache_batch =
       key_cache +
-      (beam_request_idx * max_beam_width + beam_sub_request_idx) *
+      (batch_config_request_id * max_beam_width + beam_sub_request_idx) *
           max_seq_length * hidden_size +
       ki;
 
@@ -245,7 +248,7 @@ __global__ void compute_attention_kernel_generation_kernel(
   // The base pointer for the value in the cache buffer.
   DT const *v_cache_batch =
       value_cache +
-      (beam_request_idx * max_beam_width + beam_sub_request_idx) *
+      (batch_config_request_id * max_beam_width + beam_sub_request_idx) *
           max_seq_length * hidden_size +
       vi;
 

@@ -69,6 +69,9 @@ public:
     int first_token_offset_in_batch;
     int num_tokens_in_batch;
     int max_sequence_length;
+
+    //request id in batch config:
+    int batch_config_request_id;
     RequestGuid request_guid;
   };
   struct PerTokenInfo {

@@ -364,6 +364,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     }
   }
   int num_generation_tokens = 0;
+  int num_active_req = -1;
 
   // Step 2: prepare the next batch for existing requests
   BatchConfig new_bc;
@@ -454,6 +455,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             old_bc.requestsInfo[i].request_guid;
         new_bc.requestsInfo[i].max_sequence_length =
             old_bc.requestsInfo[i].max_sequence_length;
+        num_active_req++;
+        new_bc.requestsInfo[num_active_req].batch_config_request_id = i; 
         if (new_bc.requestsInfo[i].first_token_depth_in_request + 1 ==
             request.tokens.size()) {
           // Incremental phase
@@ -490,6 +493,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         Request new_request = pending_request_queue.front();
         pending_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
+
         new_bc.requestsInfo[i].first_token_depth_in_request = 0;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid = new_request.guid;
@@ -499,6 +503,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         new_bc.requestsInfo[i].max_sequence_length =
             new_request.max_sequence_length;
         new_bc.request_completed[i] = false;
+        num_active_req++;
+        new_bc.requestsInfo[num_active_req].batch_config_request_id = i; 
         // add profile_info for the new request
         ProfileInfo profile_info;
         profile_info.llm_decoding_steps = 1;
@@ -574,6 +580,7 @@ BeamSearchBatchConfig
   int result_index = 0;
 
   int num_generation_tokens = 0;
+  int num_active_req = -1;
 
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (old_bc.request_completed[i]) {
@@ -596,10 +603,11 @@ BeamSearchBatchConfig
     } else {
       committed_tokens[guid].clear();
     }
+    
 
     // iterate through all the tokens that belong to request i
     int root_abs_depth = request.tokens.size() - 1;
-
+    
     while (result_index < old_bc.num_tokens &&
            old_bc.tokensInfo[result_index].request_index == i) {
       int abs_depth = old_bc.tokensInfo[result_index].abs_depth_in_request;
@@ -639,7 +647,7 @@ BeamSearchBatchConfig
           traverse_verify_tree(guid, dfs_tree_inputs.at(guid), tree_outputs);
 
       log_req_mgr.print("Number of Verified Tokens = %zu",
-                        verified_tokens.size());
+                        verified_tokens.size());                 
       // check if the request is finished
       if (verified_tokens.size() + request.tokens.size() >=
           request.max_sequence_length) {
@@ -723,8 +731,10 @@ BeamSearchBatchConfig
 
         std::cout << "parse to next iteration: "
                   << "\n";
+
         new_bc.request_completed[i] = false;
         new_bc.request_running[i] = true;
+        num_active_req++;
 
         // Normal Request Info
         new_bc.requestsInfo[i].first_token_depth_in_request =
@@ -735,6 +745,7 @@ BeamSearchBatchConfig
         new_bc.requestsInfo[i].max_sequence_length =
             old_bc.requestsInfo[i].max_sequence_length;
         new_bc.requestsInfo[i].num_tokens_in_batch = verified_tokens.size();
+        new_bc.requestsInfo[num_active_req].batch_config_request_id = i; 
 
         // TODO: Beam Request Info, missing from VerifyTreeBatchConfig
         int new_max_depth =
@@ -805,14 +816,15 @@ BeamSearchBatchConfig
         log_req_mgr.print("Output: %s", output.c_str());
       }
 
-      if (request.tokens.size() > 19 && i >= 7) {
-        std::cout << request.tokens.size() << "\n";
-        assert(false);
-      }
+      // if (request.tokens.size() > 19 && i >= 7) {
+      //   std::cout << request.tokens.size() << "\n";
+      //   assert(false);
+      // }
 
     } else if (request.status == Request::PENDING) {
       new_bc.request_completed[i] = false;
       new_bc.request_running[i] = false;
+      num_active_req++;
 
       std::cout << "ssm_cache_size: " << request.ssm_cache_size << ", "
                 << "initial_len: " << request.initial_len << std::endl;
@@ -826,6 +838,7 @@ BeamSearchBatchConfig
       new_bc.requestsInfo[i].max_sequence_length =
           old_bc.requestsInfo[i].max_sequence_length;
       new_bc.requestsInfo[i].num_tokens_in_batch = 0;
+      new_bc.requestsInfo[num_active_req].batch_config_request_id = i; 
 
       // TODO: Beam Request Info, missing from VerifyTreeBatchConfig
       new_bc.beamRequestsInfo[i].current_depth = 1;
@@ -867,6 +880,7 @@ BeamSearchBatchConfig
         Request new_request = pending_request_queue.front();
         pending_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
+        num_active_req++;
         new_bc.requestsInfo[i].first_token_depth_in_request = 0;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid = new_request.guid;
@@ -875,6 +889,7 @@ BeamSearchBatchConfig
                      (int)new_request.tokens.size());
         new_bc.requestsInfo[i].max_sequence_length =
             new_request.max_sequence_length;
+        new_bc.requestsInfo[num_active_req].batch_config_request_id = i; 
 
         // add profile_info for the new request
         ProfileInfo profile_info;
@@ -967,6 +982,8 @@ BeamSearchBatchConfig
     old_bc.print();
     new_bc.print();
   }
+  std::cout << "prepare next batch init active tokens: "
+            << new_bc.num_tokens << "\n";
   return new_bc;
 }
 
@@ -1027,10 +1044,12 @@ BeamSearchBatchConfig
   int num_generation_tokens = 0;
 
   // Add incremental tokens to the batch
+  int num_active_req = -1;
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
     if (old_bc.request_completed[i] || !old_bc.request_running[i]) {
       continue;
     }
+    num_active_req ++;
     // Comment out this assertion since num_tokens_in_batch can be
     // zero when beam search has reached required sequence length
     // assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
@@ -1040,29 +1059,6 @@ BeamSearchBatchConfig
 
     // assert(processed_tokens < request.tokens.size());
     log_req_mgr.debug() << "processed_tokens: " << processed_tokens << "\n";
-    // if (processed_tokens >
-    //         old_bc.beamRequestsInfo[i].max_depth + request.tokens.size() &&
-    //     request.status == Request::RUNNING
-    //     // || ir.results[t] == 0 TODO: replace this with <EOS>
-    // ) {
-    //   // log_req_mgr.print("[Done] guid(%zu) with spec_tree_depth(%d)",
-    //   //                   old_bc.requestsInfo[i].request_guid,
-    //   //                   old_bc.beamRequestsInfo[i].max_depth);
-    //   // // new_bc.request_completed[i] = true;
-    //   // new_bc.request_completed[i] = false;
-    //   // new_bc.requestsInfo[i].first_token_depth_in_request =
-    //   processed_tokens;
-    //   // new_bc.requestsInfo[i].request_guid =
-    //   // old_bc.requestsInfo[i].request_guid;
-    //   // new_bc.requestsInfo[i].max_sequence_length =
-    //   //     old_bc.requestsInfo[i].max_sequence_length;
-    //   // new_bc.beamRequestsInfo[i].current_depth =
-    //   //       old_bc.beamRequestsInfo[i].current_depth;
-    //   // new_bc.request_running[i] = false;
-    //   std::cout << "beam search end:" << request.status << i << ", "
-    //             << new_bc.requestsInfo[i].num_tokens_in_batch << "\n";
-    // }
-    // else
     {
       log_req_mgr.debug() << "num tokens: " << old_bc.num_tokens << ", "
                           << new_bc.num_tokens;
@@ -1073,6 +1069,7 @@ BeamSearchBatchConfig
       new_bc.requestsInfo[i].max_sequence_length =
           old_bc.requestsInfo[i].max_sequence_length;
       profiling_requests[request.guid].ssm_decoding_steps += 1;
+      new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
       // update the beam search metadata
       // how many sub request in current request
       // why is sub_requests has max_requests_per_batch() * MAX_BEAM_WIDTH
@@ -1164,6 +1161,7 @@ BeamSearchBatchConfig
       //   std::cout << "nodes: " << tree.treeLayers[k].nodes_num_this_layer
       //             << "\n";
       // }
+      std::cout << "append bit mask: "<< i << "\n";
       appendBitMask(new_bc.causalMask[i],
                     new_bc.beamRequestsInfo[i].sub_request_num,
                     old_bc.beamRequestsInfo[i].beam_size,
@@ -1198,6 +1196,7 @@ BeamSearchBatchConfig
     if (old_bc.request_completed[i] || old_bc.request_running[i]) {
       continue;
     }
+    num_active_req++;
     // Comment out this assertion since num_tokens_in_batch can be
     // zero when beam search has reached required sequence length
     // assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
@@ -1217,6 +1216,7 @@ BeamSearchBatchConfig
       new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
       new_bc.requestsInfo[i].max_sequence_length =
           old_bc.requestsInfo[i].max_sequence_length;
+      new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
 
       // update the beam search metadata
       // how many sub request in current request
@@ -1330,6 +1330,8 @@ BeamSearchBatchConfig
     // std::cout << "Current Beam DepthBBB: "
     //           << old_bc.beamRequestsInfo[0].current_depth << "\n";
   }
+  std::cout << "prepare next batch beam total tokens: " << new_bc.num_tokens
+  << "gneration tokens: " << new_bc.num_generation_tokens <<  "\n";
   return new_bc;
 }
 
@@ -1384,11 +1386,12 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       max_prompt_load_size -= 1;
     }
   }
-
+  int num_active_req = -1;
   for (int i = 0; i < TreeVerifyBatchConfig::max_requests_per_batch(); i++) {
     if (old_batches.at(0).request_completed[i]) {
       continue;
     }
+    num_active_req++;
     size_t guid = old_batches.at(0).requestsInfo[i].request_guid;
     Request &request = all_requests[guid];
 
@@ -1432,6 +1435,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           old_batches.at(0).requestsInfo[i].request_guid;
       new_bc.requestsInfo[i].max_sequence_length =
           old_batches.at(0).requestsInfo[i].max_sequence_length;
+      new_bc.requestsInfo[num_active_req].batch_config_request_id = i;    
 
       // copy bitmask to verify batchconfig
       memcpy(&(new_bc.causalMask[i]),
@@ -1590,6 +1594,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           old_batches.at(0).requestsInfo[i].request_guid;
       new_bc.requestsInfo[i].max_sequence_length =
           old_batches.at(0).requestsInfo[i].max_sequence_length;
+      new_bc.requestsInfo[num_active_req].batch_config_request_id = i; 
 
       new_bc.request_completed[i] = false;
 

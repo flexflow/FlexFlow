@@ -76,13 +76,16 @@ __global__ void compute_attention_kernel_fused_kernel(
   // request idx
   int const request_idx = blockIdx.y;
 
+  int const batch_config_request_id =
+      request_infos[request_idx].batch_config_request_id;
+
   int const first_step = 0;
 
-  int const tlength = request_infos[request_idx].first_token_depth_in_request +
-                      request_infos[request_idx].num_tokens_in_batch;
-  int const qlength = request_infos[request_idx].num_tokens_in_batch;
+  int const tlength = request_infos[batch_config_request_id].first_token_depth_in_request +
+                      request_infos[batch_config_request_id].num_tokens_in_batch;
+  int const qlength = request_infos[batch_config_request_id].num_tokens_in_batch;
 
-  BatchConfig::BitMask bitmask = causalMask[request_idx];
+  BatchConfig::BitMask bitmask = causalMask[batch_config_request_id];
 
   // bitmask.mask[1] = 3;
   // if (head_idx == 0 && tidx == 0) {
@@ -132,7 +135,7 @@ __global__ void compute_attention_kernel_fused_kernel(
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
   DT const *k_cache_batch =
-      key_cache + request_idx * max_seq_length * hidden_size + ki;
+      key_cache + batch_config_request_id * max_seq_length * hidden_size + ki;
 
   int ti_end =
       div_up(tlength - first_step, K_PER_WARP) * K_PER_WARP + first_step;
@@ -189,14 +192,14 @@ __global__ void compute_attention_kernel_fused_kernel(
 
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
-        if (head_idx == 0 && qi == 0 && !mask) {
-          printf("tree attn qkqkqkqk request id %d,  %d %.10f, %.10f, %.10f\n ",
-                 request_idx,
-                 ti,
-                 qk,
-                 q_vecs[ki_o][0].x,
-                 k[0].x);
-        }
+        // if (head_idx == 0 && qi == 0 && !mask) {
+        //   printf("tree attn qkqkqkqk request id %d,  %d %.10f, %.10f, %.10f\n ",
+        //          request_idx,
+        //          ti,
+        //          qk,
+        //          q_vecs[ki_o][0].x,
+        //          k[0].x);
+        // }
         qk_smem[ti - first_step] = mask ? 0.0f : qk;
       }
     }
@@ -279,7 +282,7 @@ __global__ void compute_attention_kernel_fused_kernel(
 
     // The base pointer for the value in the cache buffer.
     DT const *v_cache_batch =
-        value_cache + request_idx * max_seq_length * hidden_size + vi;
+        value_cache + batch_config_request_id * max_seq_length * hidden_size + vi;
     // DT const *v_cache_batch =
     //     value_cache +
     //     (beam_request_idx * max_beam_width + beam_sub_request_idx) *
@@ -481,8 +484,7 @@ __global__ void update_tree_branch_kv_cache_fused(
     int vProjSize,
     int num_new_tokens,
     int max_seq_len,
-    int hidden_size,
-    int first_token_depth) {
+    int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_new_tokens * hidden_size) {
 
     int token_idx = i / hidden_size;
@@ -498,10 +500,11 @@ __global__ void update_tree_branch_kv_cache_fused(
 
     int const request_token_offset =
         request_infos[req_id].first_token_offset_in_batch;
+    int const first_token_depth = request_infos[req_id].first_token_depth_in_request;
 
     // if(i % hidden_size == 0){
-    //   printf("update token request id: %d, %d, %d  value%.10f\n", req_id,
-    //   token_idx, request_token_offset, kVal);
+    //   printf("update token request id: %d, %d, %d  real id %d, value%.10f\n", req_id,
+    //   token_idx, request_token_offset,(token_idx + first_token_depth - request_token_offset), kVal);
     // }
     kCache_ptr[req_id * (hidden_size * max_seq_len) +
                (token_idx + first_token_depth - request_token_offset) *
@@ -890,8 +893,7 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
       m->vProjSize,
       num_new_tokens,
       BatchConfig::max_sequence_length() + BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,
-      m->hidden_size,
-      bc->requestsInfo[0].first_token_depth_in_request);
+      m->hidden_size);
 
   dim3 grid(m->num_q_heads, bc->num_active_requests());
   int const per_head_size = m->qProjSize;
