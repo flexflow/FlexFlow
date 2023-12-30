@@ -2,7 +2,7 @@ To convert the weights of a HuggingFace LLM to SpecInfer's weight format, we fir
 
 ```python
 from transformers import AutoModelForCausalLM
-model = AutoModelForCausalLM.from_pretrained("decapoda-research/llama-7b-hf")
+model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-2-7b-hf")
 
 for name, params in model.named_parameters():
     for name, params in model.named_parameters():
