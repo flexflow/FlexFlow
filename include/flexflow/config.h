@@ -132,6 +132,7 @@ public:
   size_t workSpaceSize;
   Legion::Context lg_ctx;
   Legion::Runtime *lg_hlr;
+  Legion::IndexSpaceT<1> all_gpu_task_is;
   // Legion::FieldSpace field_space;
   bool syntheticInput, profiling, perform_fusion;
   bool inference_debugging;
