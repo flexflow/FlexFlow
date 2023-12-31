@@ -302,6 +302,9 @@ void FlexFlow::top_level_task(Task const *task,
                          model_metadata.llm_tokenizer_path);
   rm->register_output_filepath(file_paths.output_file_path);
 
+  // first decoding step: 3 results
+  rm->push_spec_infer_tree_width(3);
+
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
   if (model_metadata.llm_model_type == ModelType::LLAMA) {

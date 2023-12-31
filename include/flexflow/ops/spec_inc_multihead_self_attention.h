@@ -142,6 +142,7 @@ public:
   Realm::RegionInstance beam_search_reserve_inst;
   BeamSearchBatchConfig::BeamSearchPerTokenInfo *beam_token_infos;
   BeamSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos;
+  BatchConfig::BitMask *causalMask;
 };
 
 }; // namespace FlexFlow

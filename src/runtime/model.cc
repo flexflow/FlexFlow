@@ -1499,10 +1499,8 @@ FFRuntime::FFRuntime(FFConfig &config) {
   Context ctx = config.lg_ctx;
 
   ArgumentMap argmap;
-  Rect<1> task_rect(Point<1>(0),
-                    Point<1>(config.workersPerNode * config.numNodes - 1));
-  IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect);
-
+  Domain domain = runtime->get_index_space_domain(ctx, config.all_gpu_task_is);
+  Rect<1> task_rect = domain;
   // int rank = 0;
   for (PointInRectIterator<1> it(task_rect); it(); it++) {
     FFInitInfo info;
@@ -1518,7 +1516,7 @@ FFRuntime::FFRuntime(FFConfig &config) {
 
   // Init CUDA library on each worker
   IndexLauncher initLauncher(FF_INIT_TASK_ID,
-                             task_is,
+                             config.all_gpu_task_is,
                              TaskArgument(NULL, 0),
                              argmap,
                              Predicate::TRUE_PRED,
@@ -2993,6 +2991,12 @@ Op *FFModel::create_operator_from_layer(
       dims[num_dims].degree = 1;
       dims[num_dims].parallel_idx = -1;
       dims[num_dims].is_replica_dim = true;
+      if (config.computationMode == COMP_MODE_INFERENCE &&
+          config.tensor_parallelism_degree > 1) {
+        dims[num_dims].size *= config.tensor_parallelism_degree;
+        dims[num_dims].degree *= config.tensor_parallelism_degree;
+        dims[num_dims].parallel_idx = 0;
+      }
       // create_parallel_tensor adds an NoOp into operators
       ParallelTensor pt =
           create_parallel_tensor_legion_ordering(num_dims + 1,
@@ -3002,6 +3006,7 @@ Op *FFModel::create_operator_from_layer(
                                                  0,
                                                  true /*gradients*/,
                                                  tensor->tensor_guid);
+      assert(pt->get_shape().is_valid());
       // assert that this tensor hasn't been mapped before
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
@@ -3260,12 +3265,12 @@ void FFModel::create_operators_from_layers() {
     if (config.computationMode == COMP_MODE_INFERENCE &&
         config.tensor_parallelism_degree > 1 && l->op_type == OP_EMBEDDING) {
       assert(op->numOutputs == 1);
-      Replicate *repl = new Replicate(*this,
-                                      op->outputs[0],
-                                      op->outputs[0]->num_dims - 1,
-                                      config.tensor_parallelism_degree);
-      operators.push_back(repl);
-      op = repl;
+      // Replicate *repl = new Replicate(*this,
+      //                                 op->outputs[0],
+      //                                 op->outputs[0]->num_dims - 1,
+      //                                 config.tensor_parallelism_degree);
+      // operators.push_back(repl);
+      // op = repl;
     } else if (config.computationMode == COMP_MODE_INFERENCE &&
                config.tensor_parallelism_degree > 1 &&
                (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
@@ -4076,6 +4081,10 @@ FFConfig::FFConfig() {
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;
   lg_ctx = Runtime::get_context();
+  Rect<1> task_rect(Point<1>(0), Point<1>(workersPerNode * numNodes - 1));
+  // Create an index space for tasks running on all GPUs
+  all_gpu_task_is = runtime->create_index_space(lg_ctx, task_rect);
+
   // field_space = runtime->create_field_space(lg_ctx);
 }
 
@@ -4334,6 +4343,23 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<RequestManager::load_positions_task>(
+          registrar);
+    }
+  }
+  // RequestManager load metadata
+  {
+    TaskVariantRegistrar registrar(RM_LOAD_BATCH_CONFIG_TASK_ID,
+                                   "RequestManager Load meta data");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RequestManager::load_batch_config_task>(
+          registrar, "RequestManager Load metadata Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::load_batch_config_task>(
           registrar);
     }
   }
