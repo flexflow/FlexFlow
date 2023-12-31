@@ -445,7 +445,7 @@ __global__ void update_tree_branch_kv_cache_fused(
     DT vVal = devQKVProjArray[val_idx + hidden_size];
 
     int const req_id = tokenInfos[token_idx].request_index;
-    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
+    // int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
 
     int const request_token_offset =
         request_infos[req_id].first_token_offset_in_batch;
@@ -1059,12 +1059,13 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   // allocate memory for the seqArray and reserve space
   {
 
-    causalMask = static_cast<BatchConfig::BitMask *>(
-        handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
-        sizeof(BatchConfig::requestsInfo));
+    causalMask = reinterpret_cast<BatchConfig::BitMask *>(
+        reinterpret_cast<char *>(handler.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo));
     committed_token_infos =
-        static_cast<TreeVerifyBatchConfig::CommittedTokensInfo *>(
-            handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
+        reinterpret_cast<TreeVerifyBatchConfig::CommittedTokensInfo *>(
+            reinterpret_cast<char *>(handler.batch_config_metadata) +
+            sizeof(BatchConfig::tokensInfo) +
             sizeof(BatchConfig::requestsInfo) +
             sizeof(BatchConfig::causalMask));
   }

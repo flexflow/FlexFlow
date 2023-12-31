@@ -82,28 +82,19 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
 
   int const first_step = 0;
 
-  int const tlength =
-      request_infos[batch_config_request_id].first_token_depth_in_request +
-      request_infos[batch_config_request_id].num_tokens_in_batch;
+  // int const tlength =
+  //     request_infos[batch_config_request_id].first_token_depth_in_request +
+  //     request_infos[batch_config_request_id].num_tokens_in_batch;
 
   int const totalCacheSize = bitmask.non_tree_cache_size + bitmask.tree_size;
-
-  // if (blockIdx.y == 0 && blockIdx.x == 0 && tidx == 0) {
-  //   printf("spec inc attn fused kernel %d, %d\n",
-  //          totalCacheSize,
-  //          request_infos[batch_config_request_id].num_tokens_in_batch);
-  // }
-  // int const qlength = request_infos[request_idx].num_tokens_in_batch;
-  int const tree_branch_num =
-      beam_request_infos[batch_config_request_id].sub_request_num;
-
-  // will decode qlength tokens in this thread block
-  // int const qlength = tree_branch_num;
 
   int first_token_idx = 0;
   for (int r = 0; r < request_idx; r++) {
     first_token_idx += causalMask[r].this_layer_size;
   }
+
+  int const tree_branch_num =
+      beam_request_infos[batch_config_request_id].sub_request_num;
 
   // shared memory objects
   extern __shared__ char smem_[];
@@ -338,20 +329,14 @@ __global__ void spec_inc_store_kv_cache(
     DT vVal = devQKVProjArray[val_idx + hidden_size];
 
     int const req_id = tokenInfos[token_idx].request_index;
-    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
-    int const first_token_in_req =
-        requestInfo[req_id].first_token_depth_in_request;
-    int const sub_req_id = beamTokenInfos[token_idx].sub_request_index;
-    int const total_token = requestInfo[req_id].num_tokens_in_batch;
+    // int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
 
     int const request_token_offset =
         requestInfo[req_id].first_token_offset_in_batch;
 
     BatchConfig::BitMask bitmask = causalMask[req_id];
 
-    int const sub_request_num = beamRequestInfos[req_id].sub_request_num;
-
-    int const tree_branch_num = beamRequestInfos[req_id].sub_request_num;
+    // int const tree_branch_num = beamRequestInfos[req_id].sub_request_num;
 
     // int const query_token = bitmask.non_tree_cache_size + bitmask.tree_size -
     //                         tree_branch_num + sub_req_id + tok_id;
@@ -379,9 +364,9 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   if (num_tokens > 0) {
     int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_tokens;
     spec_inc_store_kv_cache<<<GET_BLOCKS(parallelism),
-                               min(CUDA_NUM_THREADS, parallelism),
-                               0,
-                               stream>>>(
+                              min(CUDA_NUM_THREADS, parallelism),
+                              0,
+                              stream>>>(
         static_cast<DT *>(m->devQKVProjArray),
         static_cast<DT *>(m->keyCache),
         static_cast<DT *>(m->valueCache),
@@ -401,19 +386,19 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
-#define LAUNCH_SPEC_INC_ATTENTION_SCORE_KERNEL(                               \
+#define LAUNCH_SPEC_INC_ATTENTION_SCORE_KERNEL(                                \
     DT, Dh, Dh_MAX, THDS_PER_KEY, THREADS_PER_VALUE, THDS_PER_BLOCK, stream)   \
   smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                               \
                                    BatchConfig::max_sequence_length() +        \
                                        BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,   \
                                    THREADS_PER_VALUE,                          \
                                    THDS_PER_BLOCK);                            \
-  compute_spec_inc_attention_kernel_generation_kernel<DT,                     \
-                                                       THDS_PER_BLOCK,         \
-                                                       Dh,                     \
-                                                       Dh_MAX,                 \
-                                                       THDS_PER_KEY,           \
-                                                       THREADS_PER_VALUE>      \
+  compute_spec_inc_attention_kernel_generation_kernel<DT,                      \
+                                                      THDS_PER_BLOCK,          \
+                                                      Dh,                      \
+                                                      Dh_MAX,                  \
+                                                      THDS_PER_KEY,            \
+                                                      THREADS_PER_VALUE>       \
       <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                             \
           static_cast<DT *>(m->devQKVProjArray),                               \
           static_cast<DT *>(m->keyCache),                                      \
@@ -470,14 +455,13 @@ __global__ void spec_fill_entries_above_diagonal(DT *matrix,
 }
 
 template <typename DT>
-void compute_attention_kernel_prompt(
-    SpecIncMultiHeadSelfAttentionMeta const *m,
-    BeamSearchBatchConfig const *bc,
-    int shard_id,
-    DT *output_ptr,
-    DT const *bias_ptr,
-    DT const *weight_ptr,
-    cudaStream_t stream) {
+void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
+                                     BeamSearchBatchConfig const *bc,
+                                     int shard_id,
+                                     DT *output_ptr,
+                                     DT const *bias_ptr,
+                                     DT const *weight_ptr,
+                                     cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
@@ -812,8 +796,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("SpecIncMultiHeadSelfAttention forward time = %.2fms\n",
-           elapsed);
+    printf("SpecIncMultiHeadSelfAttention forward time = %.2fms\n", elapsed);
     // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
@@ -860,51 +843,29 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    // size_t causal_mask_size = BatchConfig::MAX_NUM_REQUESTS;
-    // size_t total_size = causal_mask_size * sizeof(BatchConfig::BitMask);
-    // gpu_mem_allocator.create_legion_instance(beam_search_reserve_inst,
-    //                                          total_size);
-
     beam_token_infos =
-        static_cast<BeamSearchBatchConfig::BeamSearchPerTokenInfo *>(
-            handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
+        reinterpret_cast<BeamSearchBatchConfig::BeamSearchPerTokenInfo *>(
+            reinterpret_cast<char *>(handler.batch_config_metadata) +
+            sizeof(BatchConfig::tokensInfo) +
             sizeof(BatchConfig::requestsInfo));
 
     beam_request_infos =
-        static_cast<BeamSearchBatchConfig::BeamSearchPerRequestInfo *>(
-            handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
+        reinterpret_cast<BeamSearchBatchConfig::BeamSearchPerRequestInfo *>(
+            reinterpret_cast<char *>(handler.batch_config_metadata) +
+            sizeof(BatchConfig::tokensInfo) +
             sizeof(BatchConfig::requestsInfo) +
             sizeof(BeamSearchBatchConfig::beamTokenInfo));
-    causalMask = static_cast<BatchConfig::BitMask *>(
-        handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo) +
-        sizeof(BatchConfig::requestsInfo) +
+    causalMask = reinterpret_cast<BatchConfig::BitMask *>(
+        reinterpret_cast<char *>(handler.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
         sizeof(BeamSearchBatchConfig::beamTokenInfo) +
         sizeof(BeamSearchBatchConfig::beamRequestsInfo));
-
-    // causalMask = gpu_mem_allocator.allocate_instance<BatchConfig::BitMask>(
-    //     causal_mask_size);
-    // beam_token_infos =
-    //     gpu_mem_allocator
-    //         .allocate_instance<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(
-    //             beam_tokeninfo_size);
-    // offset += beam_tokeninfo_size *
-    //           sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo);
-    // beam_request_infos =
-    //     gpu_mem_allocator
-    //         .allocate_instance<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(
-    //             beam_requestinfo_size);
-    // offset += beam_requestinfo_size *
-    //           sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo);
-    // assert(offset == total_size);
-    // assert(gpu_mem_allocator.instance_total_size ==
-    //        gpu_mem_allocator.instance_allocated_size);
   }
 
   cudaStreamSynchronize(stream);
 }
 
-SpecIncMultiHeadSelfAttentionMeta::~SpecIncMultiHeadSelfAttentionMeta(
-    void) {
+SpecIncMultiHeadSelfAttentionMeta::~SpecIncMultiHeadSelfAttentionMeta(void) {
   if (beam_search_reserve_inst != Realm::RegionInstance::NO_INST) {
     beam_search_reserve_inst.destroy();
   }

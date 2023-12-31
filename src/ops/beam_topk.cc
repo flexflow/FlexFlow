@@ -398,8 +398,6 @@ BeamInferenceResult
   download_tensor<int>(
       parent_ptr, ir.parent_id, batch_size * m->max_beam_width);
 
-  // print_tensor<int>(index_ptr, 32, "indexxxxxxx");
-
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];

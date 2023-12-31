@@ -1381,7 +1381,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         assert(false && "Unkown inference mode");
     }
     size_t requestinfo_size = BatchConfig::max_requests_per_batch();
-    size_t tokeninfo_size = max_tokens_per_batch;
+    // size_t tokeninfo_size = max_tokens_per_batch;
     size_t qk_prod_size =
         max_tokens_per_batch * BatchConfig::max_sequence_length() * num_q_heads;
     size_t attn_heads_size = max_tokens_per_batch * num_q_heads * vProjSize;
@@ -1438,8 +1438,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
     token_infos =
         static_cast<BatchConfig::PerTokenInfo *>(handler.batch_config_metadata);
-    request_infos = static_cast<BatchConfig::PerRequestInfo *>(
-        handler.batch_config_metadata + sizeof(BatchConfig::tokensInfo));
+    request_infos = reinterpret_cast<BatchConfig::PerRequestInfo *>(
+        reinterpret_cast<char *>(handler.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo));
 
     if (offload) {
       // token_infos =
