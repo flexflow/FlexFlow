@@ -161,6 +161,12 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
             // Continue if shape mismatches
             continue;
           }
+          // Skip if pre_pt and pt_base are in different pipeline stages
+          // we compare their pipeline stages using the machine views
+          // of the first data pipeline
+          if (pre_pt.second[0]->machine_view != machine_views[0]) {
+            continue;
+          }
           // Check that pt cannot be used as an input to the current operator
           for (int j = 0; j < op->numInputs; j++) {
             if (parallel_tensor_list_overlaps(tensor_buffer[op->inputs[j]],

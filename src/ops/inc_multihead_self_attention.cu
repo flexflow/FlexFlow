@@ -1535,4 +1535,18 @@ template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<half>(
     half const *bias_ptr,
     int num_tokens,
     cudaStream_t stream);
+
+template void
+    Kernels::IncMultiHeadAttention::compute_attention_kernel_generation<float>(
+        IncMultiHeadSelfAttentionMeta const *m,
+        BatchConfig const *bc,
+        float *output_ptr,
+        cudaStream_t stream);
+
+template void
+    Kernels::IncMultiHeadAttention::compute_attention_kernel_generation<half>(
+        IncMultiHeadSelfAttentionMeta const *m,
+        BatchConfig const *bc,
+        half *output_ptr,
+        cudaStream_t stream);
 }; // namespace FlexFlow
