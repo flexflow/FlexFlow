@@ -1,4 +1,4 @@
-from tooling.util.lisp.combinators import (
+from .combinators import (
     anychar,
     char,
     matches,
@@ -14,6 +14,8 @@ from tooling.util.lisp.combinators import (
     repeat,
     one_or_more,
     leaftree,
+    LeafTree,
+    repeat_one_or_more_until,
 )
 from contextlib import contextmanager
 from typing import Iterator
@@ -176,15 +178,40 @@ def test_repeat_until() -> None:
     with fails_to_parse('bababa') as s:
         repeat_until(char('a'), exactly('ba'))(s)
 
+def test_repeat_one_or_more_until() -> None:
+    vv, rest = repeat_one_or_more_until(char('b'), char('a'))('aabba')
+    assert list(vv) == ['a', 'a']
+    assert rest == 'ba'
+
+    vv, rest = repeat_one_or_more_until(undo(char('b')), char('a'))('aabba')
+    assert list(vv) == ['a', 'a']
+    assert rest == 'bba'
+
+    vv, rest = repeat_one_or_more_until(char('a'), exactly('ba'))('bababaaba')
+    assert list(vv) == ['ba', 'ba', 'ba']
+    assert rest == 'ba'
+
+    with fails_to_parse('aaba') as s:
+        repeat_one_or_more_until(char('a'), char('b'))('aaba')
+
+    with fails_to_parse('aaba') as s:
+        repeat_one_or_more_until(char('a'), char('a'))('aaba')
+    
+    with fails_to_parse('bababa') as s:
+        repeat_one_or_more_until(char('a'), exactly('ba'))(s)
+
 def test_repeat() -> None:
-    assert repeat(exactly('ab'))('aba') == ('ab', 'a')
+    vv, rest = repeat(exactly('ab'))('aba') 
+    assert list(vv) == ['ab']
+    assert rest == 'a'
+
+    vv, rest = repeat(exactly('ab'))('baab')
+    assert list(vv) == []
+    assert rest == 'baab'
     
     vv, rest = repeat(exactly('ab'))('abababa')
     assert list(vv) == ['ab', 'ab', 'ab']
     assert rest == 'a'
-
-    with fails_to_parse('baab') as s:
-        repeat(exactly('ab'))(s)
 
 def test_one_or_more() -> None:
     vv, rest = one_or_more(exactly('ab'))('aba')
@@ -198,6 +225,29 @@ def test_one_or_more() -> None:
     with fails_to_parse('baab') as s:
         one_or_more(exactly('ab'))(s)
 
-# @pytest.xfail('TODO: leaftree')
-# def test_leaftree(): 
-#     pass
+def test_leaftree() -> None: 
+    open_parser = char('(')
+    close_parser = char(')')
+    child = char('a')
+    example = '(aa(aa(a)a)(aa))'
+    test_parser = leaftree(open_parser, child, close_parser)
+    vv, rest = test_parser(example)
+    assert vv == LeafTree.from_iter([
+        'a',
+        'a',
+        LeafTree.from_iter([
+            'a',
+            'a',
+            LeafTree.from_iter([
+                'a'
+            ]),
+            'a',
+        ]),
+        LeafTree.from_iter([
+            'a',
+            'a',
+        ]),
+    ])
+
+    with fails_to_parse('(aa(a)') as s:
+        test_parser(s)
