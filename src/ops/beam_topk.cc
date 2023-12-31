@@ -366,7 +366,7 @@ BeamInferenceResult
   GenericTensorAccessorW value = helperGetGenericTensorAccessorWO(
       DT_FLOAT, regions[2], task->regions[2], FID_DATA, ctx, runtime);
   GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
-      DT_FLOAT, regions[3], task->regions[3], FID_DATA, ctx, runtime);
+      DT_INT32, regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());

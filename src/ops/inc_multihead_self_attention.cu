@@ -82,6 +82,9 @@ __global__ void compute_attention_kernel_generation_kernel(
   // request idx
   int const request_idx = blockIdx.y;
 
+  int const batch_config_request_id =
+      request_infos[request_idx].batch_config_request_id;
+
   int const beam_request_idx =
       is_beam ? request_idx / max_beam_width : request_idx;
   int const beam_sub_request_idx = is_beam ? request_idx % max_beam_width : 0;
@@ -89,8 +92,8 @@ __global__ void compute_attention_kernel_generation_kernel(
   int const first_step = 0;
 
   int const tlength =
-      request_infos[beam_request_idx].first_token_depth_in_request +
-      request_infos[beam_request_idx].num_tokens_in_batch;
+      request_infos[batch_config_request_id].first_token_depth_in_request +
+      request_infos[batch_config_request_id].num_tokens_in_batch;
 
   // shared memory objects
   extern __shared__ char smem_[];
@@ -103,7 +106,8 @@ __global__ void compute_attention_kernel_generation_kernel(
   // first WARPS_PER_BLOCK for store qk_max, second WARPS_PER_BLOCK for sum
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
 
-  const DT *q_ptr = query + beam_request_idx * hidden_size * QKV_WEIGHT_NUM +
+  const DT *q_ptr = query +
+                    batch_config_request_id * hidden_size * QKV_WEIGHT_NUM +
                     head_idx * per_head_size;
   __shared__ Q_vec q_vecs[THREADS_PER_KEY][K_VECS_PER_THREAD];
   // DT const *q_ptr =
@@ -139,7 +143,7 @@ __global__ void compute_attention_kernel_generation_kernel(
 
   DT const *k_cache_batch =
       key_cache +
-      (beam_request_idx * max_beam_width + beam_sub_request_idx) *
+      (batch_config_request_id * max_beam_width + beam_sub_request_idx) *
           max_seq_length * hidden_size +
       ki;
 
@@ -245,7 +249,7 @@ __global__ void compute_attention_kernel_generation_kernel(
   // The base pointer for the value in the cache buffer.
   DT const *v_cache_batch =
       value_cache +
-      (beam_request_idx * max_beam_width + beam_sub_request_idx) *
+      (batch_config_request_id * max_beam_width + beam_sub_request_idx) *
           max_seq_length * hidden_size +
       vi;
 
@@ -825,19 +829,6 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
 
-  // todo Xinhao copy how many requests if requests are not continous?
-  cudaMemcpyAsync(m->token_infos,
-                  &(bc->tokensInfo),
-                  bc->num_active_tokens() * sizeof(BatchConfig::PerTokenInfo),
-                  cudaMemcpyHostToDevice,
-                  stream);
-  cudaMemcpyAsync(m->request_infos,
-                  &(bc->requestsInfo),
-                  bc->max_requests_per_batch() *
-                      sizeof(BatchConfig::PerRequestInfo),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
@@ -1364,8 +1355,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                        vProjSize * num_q_heads);
     size_t key_cache_size = 0, value_cache_size = 0;
     switch (infer_mode) {
-      case INC_DECODING_MODE:
-      case TREE_VERIFY_MODE: {
+      case INC_DECODING_MODE: {
         key_cache_size = num_q_heads * kProjSize *
                          BatchConfig::max_requests_per_batch() *
                          BatchConfig::max_sequence_length();
@@ -1374,22 +1364,24 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                            BatchConfig::max_sequence_length();
         break;
       }
-      case BEAM_SEARCH_MODE: {
+      case BEAM_SEARCH_MODE:
+      case TREE_VERIFY_MODE: {
+        // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_q_heads * kProjSize *
                          BeamSearchBatchConfig::max_requests_per_batch() *
-                         BatchConfig::max_sequence_length() *
-                         BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+                         (BatchConfig::max_sequence_length() +
+                          BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
         value_cache_size = num_q_heads * vProjSize *
                            BeamSearchBatchConfig::max_requests_per_batch() *
-                           BatchConfig::max_sequence_length() *
-                           BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+                           (BatchConfig::max_sequence_length() +
+                            BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
         break;
       }
       default:
         assert(false && "Unkown inference mode");
     }
     size_t requestinfo_size = BatchConfig::max_requests_per_batch();
-    size_t tokeninfo_size = max_tokens_per_batch;
+    // size_t tokeninfo_size = max_tokens_per_batch;
     size_t qk_prod_size =
         max_tokens_per_batch * BatchConfig::max_sequence_length() * num_q_heads;
     size_t attn_heads_size = max_tokens_per_batch * num_q_heads * vProjSize;
@@ -1400,11 +1392,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         (qkv_max_proj_size + key_cache_size + value_cache_size +
          2 * qk_prod_size + attn_heads_size) *
             size_of_dt +
-        tokeninfo_size * sizeof(BatchConfig::PerTokenInfo) +
-        complex_size * sizeof(cuFloatComplex) +
-        requestinfo_size *
-            sizeof(BatchConfig::PerRequestInfo); // more components will
-                                                 // be added here later
+        complex_size * sizeof(cuFloatComplex); // more components will
+                                               // be added here later
     if (offload) {
       // assert that we have enough reserved work space left
       size_t totalSharedSize =
@@ -1447,10 +1436,16 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     valueCache = gpu_mem_allocator.allocate_instance_untyped(value_cache_size *
                                                              size_of_dt);
 
+    token_infos =
+        static_cast<BatchConfig::PerTokenInfo *>(handler.batch_config_metadata);
+    request_infos = reinterpret_cast<BatchConfig::PerRequestInfo *>(
+        reinterpret_cast<char *>(handler.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo));
+
     if (offload) {
-      token_infos =
-          gpu_mem_allocator.allocate_reserved<BatchConfig::PerTokenInfo>(
-              tokeninfo_size);
+      // token_infos =
+      //     gpu_mem_allocator.allocate_reserved<BatchConfig::PerTokenInfo>(
+      //         tokeninfo_size);
       // offset += sizeof(BatchConfig::PerTokenInfo) * tokeninfo_size;
       qk_prods = gpu_mem_allocator.allocate_reserved_untyped(qk_prod_size *
                                                              size_of_dt);
@@ -1464,13 +1459,13 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       complex_input =
           gpu_mem_allocator.allocate_reserved<cuFloatComplex>(complex_size);
       // offset += complex_size * sizeof(cuFloatComplex);
-      request_infos =
-          gpu_mem_allocator.allocate_reserved<BatchConfig::PerRequestInfo>(
-              requestinfo_size);
+      // request_infos =
+      //     gpu_mem_allocator.allocate_reserved<BatchConfig::PerRequestInfo>(
+      //         requestinfo_size);
     } else {
-      token_infos =
-          gpu_mem_allocator.allocate_instance<BatchConfig::PerTokenInfo>(
-              tokeninfo_size);
+      // token_infos =
+      //     gpu_mem_allocator.allocate_instance<BatchConfig::PerTokenInfo>(
+      //         tokeninfo_size);
       qk_prods = gpu_mem_allocator.allocate_instance_untyped(qk_prod_size *
                                                              size_of_dt);
       qk_prods_softmax = gpu_mem_allocator.allocate_instance_untyped(
@@ -1479,9 +1474,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                                size_of_dt);
       complex_input =
           gpu_mem_allocator.allocate_instance<cuFloatComplex>(complex_size);
-      request_infos =
-          gpu_mem_allocator.allocate_instance<BatchConfig::PerRequestInfo>(
-              requestinfo_size);
+      // request_infos =
+      //     gpu_mem_allocator.allocate_instance<BatchConfig::PerRequestInfo>(
+      //         requestinfo_size);
     }
 
     // allocate more size for quantization data

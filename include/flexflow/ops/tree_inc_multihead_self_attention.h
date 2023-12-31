@@ -147,6 +147,7 @@ public:
   int num_active_tokens;
   Realm::RegionInstance committed_token_reserve_inst;
   TreeVerifyBatchConfig::CommittedTokensInfo *committed_token_infos;
+  BatchConfig::BitMask *causalMask;
 };
 
 }; // namespace FlexFlow
