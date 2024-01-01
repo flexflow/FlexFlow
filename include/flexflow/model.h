@@ -146,6 +146,7 @@ enum TaskIDs {
   TOPK_BWD_TASK_ID,
   ARG_TOPK_INIT_TASK_ID,
   ARG_TOPK_INF_TASK_ID,
+  ARG_TOPK_INF_SPECULATIVE_TASK_ID,
   SAMPLING_INIT_TASK_ID,
   SAMPLING_INF_TASK_ID,
   ARGMAX_INIT_TASK_ID,
@@ -674,6 +675,7 @@ public:
                    // Tensor *outputs,
                    int k,
                    bool sorted,
+                   bool speculative_decoding,
                    char const *name = NULL);
   Tensor argmax(const Tensor input, bool beam_search, char const *name = NULL);
   Tensor sampling(const Tensor input, float top_p, char const *name = NULL);

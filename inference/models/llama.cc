@@ -247,7 +247,7 @@ void LLAMA::create_llama_model(FFModel &ff,
     Tensor softmax = ff.softmax(dense, -1);
     // output = ff.beam_top_k(softmax, llama_config.max_beam_width, false);
     // output = ff.argmax(softmax, /*beam_Search*/ true);
-    output = ff.beam_top_k(softmax, llama_config.max_beam_width, false);
+    output = ff.arg_top_k(softmax, llama_config.max_beam_width, false, true);
     // output = ff.top_k(softmax, )
   } else {
     // Tensor softmax = ff.softmax(dense, -1);

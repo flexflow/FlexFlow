@@ -262,8 +262,9 @@ __device__ void mergeShards(int num_shards,
                             int k,
                             Entry<T> *__restrict__ entries,
                             Entry<T> *__restrict__ top_k_heap,
-                            // T *top_k_values,
-                            int *top_k_indices) {
+                            float *top_k_values,
+                            int *top_k_indices,
+                            bool speculative_decoding) {
   // If k < num_shards, we can use a min-heap with k elements to get the top k
   // of the sorted blocks.
   // If k > num_shards, we can initialize a min-heap with the top element from
@@ -313,7 +314,11 @@ __device__ void mergeShards(int num_shards,
     int const last_k = k - 1;
     for (int rank = 0; rank < last_k; rank++) {
       Entry<T> const &max_element = max_heap.root();
-      // top_k_values[rank] = max_element.value;
+      if (speculative_decoding) {
+        assert(top_k_values != nullptr);
+        top_k_values[rank] = static_cast<float>(max_element.value);
+      }
+
       int shard_index = max_element.index;
       top_k_indices[rank] = entries[shard_index].index;
       int next_shard_index = shard_index + num_shards;
@@ -337,8 +342,9 @@ __global__ void arg_topk_forward_kernel(T const *__restrict__ input,
                                         int length,
                                         int k,
                                         bool sorted,
-                                        // T *__restrict__ output,
-                                        int *__restrict__ indices) {
+                                        float *__restrict__ output,
+                                        int *__restrict__ indices,
+                                        bool speculative_decoding) {
   __shared__ char shared_memory[48 << 10];
   int const batch_index = blockIdx.x;
   T const *batch_input = input + batch_index * length;
@@ -350,15 +356,16 @@ __global__ void arg_topk_forward_kernel(T const *__restrict__ input,
   __syncthreads();
   if (thread_index == 0) {
     int const offset = batch_index * k;
-    // auto batch_output = output + offset;
+    auto batch_output = output + offset;
     auto batch_indices = indices + offset;
     Entry<T> *top_k_heap = shared_entries + thread_count * k;
     mergeShards(thread_count,
                 k,
                 shared_entries,
                 top_k_heap,
-                // batch_output,
-                batch_indices);
+                batch_output,
+                batch_indices,
+                speculative_decoding);
   }
 }
 
@@ -366,12 +373,13 @@ __global__ void arg_topk_forward_kernel(T const *__restrict__ input,
 template <typename DT>
 void ArgTopK::forward_kernel(ArgTopKMeta const *m,
                              DT const *input_ptr,
-                             // float *output_ptr,
+                             float *output_ptr,
                              int *indices_ptr,
                              size_t batch_size,
                              int length,
                              int k,
                              bool sorted,
+                             BeamSearchBatchConfig const *bc,
                              cudaStream_t stream) {
   // Adopted from TensorFlow's ArgTopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
@@ -390,24 +398,58 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
   size_t shared_memory_size = (num_shards + 1) * k * sizeof(Entry<DT>);
   // size_t num_blocks = (batch_size + num_shards - 1) / num_shards;
   size_t num_blocks = batch_size;
-  assert(num_shards >= (size_t)k);
-  num_shards = k;
-  arg_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
-      input_ptr,
-      shared_memory_size,
-      length,
-      k,
-      sorted,
-      // output_ptr,
-      indices_ptr);
+
+  // all requests are in the same beam stages
+  if (m->speculative_decoding) {
+    assert(bc->num_active_requests() >= 0);
+
+    // check
+    int beam_size = -1;
+    for (int i = 1; i < bc->max_requests_per_batch(); i++) {
+      if (bc->request_completed[i]) {
+        continue;
+      } else if (beam_size == -1) {
+        beam_size = bc->beamRequestsInfo[i].beam_size;
+      } else {
+        assert(beam_size == bc->beamRequestsInfo[i].beam_size);
+      }
+    }
+
+    assert(num_shards >= (size_t)beam_size);
+    num_shards = k;
+    arg_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
+        input_ptr,
+        shared_memory_size,
+        length,
+        beam_size,
+        sorted,
+        output_ptr,
+        indices_ptr,
+        m->speculative_decoding);
+  } else {
+
+    assert(num_shards >= (size_t)k);
+    num_shards = k;
+    arg_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
+        input_ptr,
+        shared_memory_size,
+        length,
+        k,
+        sorted,
+        nullptr,
+        indices_ptr,
+        false);
+  }
 }
 
 /*static*/
 void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
                                      GenericTensorAccessorR const &input,
                                      // float *output_ptr,
+                                     GenericTensorAccessorW const &probs,
                                      GenericTensorAccessorW const &indices,
-                                     int batch_size) {
+                                     int batch_size,
+                                     BeamSearchBatchConfig const *bc) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -439,6 +481,7 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
   int length = input.domain.hi()[0] - input.domain.lo()[0] + 1;
   int k = indices.domain.hi()[0] - indices.domain.lo()[0] +
           1; /*TODO: This prints to 5*/
+
   // batch_size = input.domain.get_volume() / length;
   // assert(indices.domain.get_volume() / k == batch_size);
   cudaEvent_t t_start, t_end;
@@ -451,22 +494,26 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
   if (input.data_type == DT_HALF) {
     ArgTopK::forward_kernel(m,
                             input.get_half_ptr(),
-                            // output_ptr,
+                            m->speculative_decoding ? probs.get_float_ptr()
+                                                    : nullptr,
                             indices.get_int32_ptr(),
                             batch_size,
                             length,
                             k,
                             m->sorted,
+                            m->speculative_decoding ? bc : nullptr,
                             stream);
   } else if (input.data_type == DT_FLOAT) {
     ArgTopK::forward_kernel(m,
                             input.get_float_ptr(),
-                            // output_ptr,
+                            m->speculative_decoding ? probs.get_float_ptr()
+                                                    : nullptr,
                             indices.get_int32_ptr(),
                             batch_size,
                             length,
                             k,
                             m->sorted,
+                            m->speculative_decoding ? bc : nullptr,
                             stream);
   } else {
     assert(false && "Unsupported data type");

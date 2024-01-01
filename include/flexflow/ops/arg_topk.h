@@ -12,6 +12,8 @@ class ArgTopKMeta : public OpMeta {
 public:
   ArgTopKMeta(FFHandler handle, Op const *op);
   bool sorted;
+  int k;
+  bool speculative_decoding;
 };
 
 class ArgTopK : public Op {
@@ -23,6 +25,7 @@ public:
           const ParallelTensor input,
           int k,
           bool sorted,
+          bool speculative_decoding,
           char const *name);
   ArgTopK(FFModel &model,
           LayerID const &layer_guid,
@@ -61,6 +64,11 @@ public:
                      std::vector<Legion::PhysicalRegion> const &regions,
                      Legion::Context ctx,
                      Legion::Runtime *runtime);
+  static BeamInferenceResult inference_speculative_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
   void serialize(Legion::Serializer &s) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
@@ -75,22 +83,26 @@ public:
   template <typename DT>
   static void forward_kernel(ArgTopKMeta const *m,
                              DT const *input_ptr,
-                             // float *output_ptr,
+                             float *output_ptr,
                              int *indices_ptr,
                              size_t batch_size,
                              int length,
                              int k,
                              bool sorted,
+                             BeamSearchBatchConfig const *bc,
                              ffStream_t stream);
   static void forward_kernel_wrapper(ArgTopKMeta const *m,
                                      GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorW const &prob,
                                      GenericTensorAccessorW const &indices,
-                                     int batch_size);
+                                     int batch_size,
+                                     BeamSearchBatchConfig const *bc);
   Params get_params() const;
 
 public:
   int k;
   bool sorted;
+  bool speculative_decoding;
 };
 
 }; // namespace FlexFlow
