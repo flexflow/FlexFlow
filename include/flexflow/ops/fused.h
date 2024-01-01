@@ -23,7 +23,16 @@ public:
     SOURCE_OUTPUT,
   };
   FusedOp(FFModel &model, Op *op);
-  bool add_operator(FFModel &model, Op *op);
+  static bool use_same_regions(
+      ParallelTensor const source_tensor,
+      ParallelTensor const target_tensor,
+      std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+          *pt_mapping = nullptr);
+  bool add_operator(
+      FFModel &model,
+      Op *op,
+      std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+          *parallel_tensor_mapping = nullptr);
   ParallelTensor init_inout(FFModel &model, const ParallelTensor input) {
     assert(0);
     return ParallelTensor();
