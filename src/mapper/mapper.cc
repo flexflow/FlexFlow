@@ -934,13 +934,14 @@ void FFMapper::map_inline(const MapperContext ctx,
                              &footprint)) {
     log_ff_mapper.error(
         "FlexFlow Mapper failed allocation of size %zd bytes"
-        " for region requirement of inline ammping in task %s (UID %lld)"
+        " for region requirement of inline mapping in task %s (UID %lld)"
         " in memory " IDFMT "for processor " IDFMT ".",
         footprint,
         inline_op.parent_task->get_task_name(),
         inline_op.parent_task->get_unique_id(),
         target_memory.id,
         inline_op.parent_task->current_proc.id);
+    printf("target_memory.kind() = %d\n", target_memory.kind());
     assert(false);
   } else {
     output.chosen_instances.push_back(result);
