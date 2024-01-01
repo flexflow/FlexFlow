@@ -478,6 +478,7 @@ FutureMap Embedding::inference(FFModel const &ff,
                          0 /*mapper_id*/,
                          machine_view_hash);
   // regions[0]: input
+  launcher.add_future(bc);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection*/,
                                                     READ_ONLY,
@@ -516,6 +517,10 @@ void Embedding::forward_task(Task const *task,
   assert(task->regions.size() == 3);
   // Assert that weight and output must have the same data type
   // otherwise, a cast operator should be inserted
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_tokens() == 0) {
+    return;
+  }
   assert(m->weight_type[0] == m->output_type[0]);
   assert(m->input_type[0] == DT_INT32 || m->input_type[0] == DT_INT64);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
