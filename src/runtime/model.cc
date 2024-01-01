@@ -5929,6 +5929,24 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(ARG_TOPK_INF_SPECULATIVE_TASK_ID,
+                                   "ArgTopK Speculative Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<BeamInferenceResult,
+                                        ArgTopK::inference_speculative_task>(
+          registrar, "ArgTopK Speculative Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BeamInferenceResult,
+                                     ArgTopK::inference_speculative_task>(
+          registrar);
+    }
+  }
   // BeamTopk task
   {
     TaskVariantRegistrar registrar(BEAM_TOPK_INIT_TASK_ID, "BeamTopK Init");
