@@ -564,7 +564,6 @@ FutureMap Linear::inference(FFModel const &ff,
                             std::vector<ParallelTensor> const &batch_inputs,
                             std::vector<ParallelTensor> const &batch_outputs,
                             MachineView const *mv) {
-  printf("\tentering inference for %s\n", name);
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -618,14 +617,12 @@ void Linear::inference_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
-  printf("\tEntering inference task\n");
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   LinearMeta *m = *((LinearMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   std::string op_name_without_uid = Linear::get_op_name_without_uid(m);
-  printf("FWD %s\n", op_name_without_uid.c_str());
-  bc->print();
+  printf("INF %s\n", op_name_without_uid.c_str());
   if (bc->num_tokens == 0) {
     return;
   }

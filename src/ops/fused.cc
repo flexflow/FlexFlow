@@ -487,6 +487,11 @@ FutureMap FusedOp::inference(FFModel const &ff,
   // so we transfer the maximum of them
   // size_t batch_config_size =
   //    std::max(sizeof(TreeVerifyBatchConfig), sizeof(BeamSearchBatchConfig));
+  printf("FUSED! INFERENCE! %i ops\n", numOperators);
+  for (int i=0; i<numOperators; i++) {
+    Op *oppp = operators[i];
+    std::cout << oppp->op_type << " " << oppp->name << std::endl;
+  }
   IndexLauncher launcher(FUSEDOP_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),
@@ -527,6 +532,19 @@ FutureMap FusedOp::inference(FFModel const &ff,
                           EXCLUSIVE,
                           batch_outputs[i]->region));
     launcher.add_field(offset + i, FID_DATA);
+  }
+  offset += numOutputs;
+  // add softmax output grad
+  if (operators[numOperators-1]->op_type == OP_SOFTMAX) {
+    printf("operator %i is last SOFTMAX! adding output %i\n", numOperators-1, numOutputs-1);
+    assert(outputs[numOutputs-1]->region != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[numOutputs-1]->part_grad,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[numOutputs-1]->region_grad));
+    launcher.add_field(offset, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);
 }

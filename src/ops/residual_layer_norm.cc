@@ -117,7 +117,6 @@ void FFModel::residual_layer_norm(const Tensor input,
   }
 
   int num_weights = elementwise_affine ? (use_bias ? 2 : 1) : 0;
-  Layer *ln = nullptr;
   Tensor casted_input =
       (data_type != input->data_type)
           ? cast(input, data_type, "type cast for residual_layer_norm")
@@ -133,7 +132,7 @@ void FFModel::residual_layer_norm(const Tensor input,
             ? cast(residual2, data_type, "type cast for residual2_layer_norm")
             : residual2;
   }
-  ln = new Layer(this,
+  Layer *ln = new Layer(this,
                  OP_RESIDUAL_LAYERNORM,
                  data_type,
                  name,
@@ -144,9 +143,9 @@ void FFModel::residual_layer_norm(const Tensor input,
                  casted_residual1,
                  casted_residual2);
   ln->outputs[0] = create_tensor_legion_ordering(
-      input->num_dims, input->dims, data_type, ln, 0, false /*create_grad*/);
+      input->num_dims, input->dims, data_type, ln, 0, true /*create_grad*/);
   ln->outputs[1] = create_tensor_legion_ordering(
-      input->num_dims, input->dims, data_type, ln, 1, false /*create_grad*/);
+      input->num_dims, input->dims, data_type, ln, 1, true /*create_grad*/);
   {
     int numdims = axes.size();
     int dims[numdims];
@@ -326,6 +325,18 @@ ResidualLayerNorm::ResidualLayerNorm(FFModel &model,
   }
 }
 
+void ResidualLayerNorm::map_output_tensors(FFModel &ff) {
+  assert(numOutputs == 2);
+  assert(outputs[0]->get_volume() == inputs[0]->get_volume());
+  outputs[0]->parallel_is = inputs[0]->parallel_is;
+  outputs[0]->region = inputs[0]->region;
+  outputs[0]->part = inputs[0]->part;
+  outputs[0]->region_grad = inputs[0]->region_grad;
+  outputs[0]->part_grad = inputs[0]->part_grad;
+  // map output 1 to new region
+  ff.map_tensor(outputs[1], this);
+}
+
 void ResidualLayerNorm::init_inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
@@ -439,11 +450,11 @@ void ResidualLayerNorm::init(FFModel const &ff) {
   launcher.add_field(field_id++, FID_DATA);
   // residual2
   if (use_two_residuals) {
-    launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+    launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
                                                       EXCLUSIVE,
-                                                      inputs[1]->region));
+                                                      inputs[2]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
   // added: input + residual(s)
@@ -946,7 +957,7 @@ void ResidualLayerNorm::inference_task(
   std::string op_name_without_uid = ResidualLayerNorm::get_op_name_without_uid(m);
   std::cout << "INF " << op_name_without_uid << std::endl;
   if (bc->num_tokens == 0) {
-    bc->print();
+    printf("Zero tokens\n");
     return;
   }
 

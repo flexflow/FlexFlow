@@ -734,7 +734,6 @@ void peft_bwd_kernel(ResidualLayerNormMeta const *m,
   const dim3 blocks(M);
   int nshared = (num_threads / warp_size) * sizeof(T);
 
-  sleep(10);
   printf("Attempting to access %p\n", m->input_activation);
   check_device_vs_host_ptr(static_cast<T const *>(m->input_activation));
   check_device_vs_host_ptr(static_cast<T const *>(m->mean_ptr));
@@ -742,8 +741,8 @@ void peft_bwd_kernel(ResidualLayerNormMeta const *m,
   check_device_vs_host_ptr(static_cast<T const *>(gamma_ptr));
   check_device_vs_host_ptr(static_cast<T const *>(input_grad_ptr));
   check_device_vs_host_ptr(static_cast<T const *>(residual1_grad_ptr));
-  sleep(10);
-  assert(false);
+  
+  return;
 
   layer_norm_grad_input_kernel<<<blocks, num_threads, nshared, stream>>>(
       output_grad_ptr,

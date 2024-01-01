@@ -818,12 +818,16 @@ void IncMultiHeadSelfAttention::inference_task(
   log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
                     bc->num_tokens,
                     bc->num_active_requests());
-  if (bc->num_tokens == 0) {
-    return;
-  }
+  
 
   IncMultiHeadSelfAttentionMeta *m =
       *((IncMultiHeadSelfAttentionMeta **)task->local_args);
+  std::string op_name_without_uid = IncMultiHeadSelfAttention::get_op_name_without_uid(m);
+  std::cout << "INF " << op_name_without_uid << std::endl;
+
+  if (bc->num_tokens == 0) {
+    return;
+  }
 
   assert(((*m->qkv_bias || *m->final_bias) ? regions.size() == 4
                                            : regions.size() == 3));
@@ -860,8 +864,6 @@ void IncMultiHeadSelfAttention::inference_task(
 
   assert(task->index_point.get_dim() == 1);
 
-  std::string op_name_without_uid = IncMultiHeadSelfAttention::get_op_name_without_uid(m);
-  std::cout << "INF " << op_name_without_uid << std::endl;
   IncMultiHeadSelfAttention::inference_kernel_wrapper(
       m, bc, task->index_point.point_data[0], input, weight, output, biases);
 

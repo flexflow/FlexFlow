@@ -355,6 +355,13 @@ FutureMap Softmax::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
+  // we add the region below in order to copy the output to the grad tensor
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region_grad));
+  launcher.add_field(2, FID_DATA);
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -363,20 +370,26 @@ void Softmax::inference_task(Task const *task,
                              Context ctx,
                              Runtime *runtime) {
   assert(task->regions.size() == regions.size());
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
+  
+  std::string op_name_without_uid = Softmax::get_op_name_without_uid(m);
+  std::cout << "INF " << op_name_without_uid << std::endl;
   if (bc->num_tokens == 0) {
     return;
   }
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
+  
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  inference_kernel_wrapper(m, bc, input, output);
+  GenericTensorAccessorW output_grad = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  inference_kernel_wrapper(m, bc, input, output, output_grad);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -429,6 +442,7 @@ void Softmax::peft_bwd_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
+  printf("BWD softmax\n");
   assert(task->regions.size() == regions.size());
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);

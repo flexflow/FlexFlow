@@ -618,12 +618,15 @@ void AddBiasResidualLayerNorm::inference_task(
 
   assert(task->regions.size() == regions.size());
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
-  if (bc->num_tokens == 0) {
-    return;
-  }
+  
 
   AddBiasResidualLayerNormMeta *m =
       *((AddBiasResidualLayerNormMeta **)task->local_args);
+  std::string op_name_without_uid = AddBiasResidualLayerNorm::get_op_name_without_uid(m);
+  std::cout << "INF " << op_name_without_uid << std::endl;
+  if (bc->num_tokens == 0) {
+    return;
+  }
 
   assert(regions.size() ==
          5 + (m->elementwise_affine ? (m->use_bias ? 2 : 1) : 0));
@@ -945,11 +948,11 @@ Legion::FutureMap AddBiasResidualLayerNorm::peft_bwd(
   launcher.add_field(field_id++, FID_DATA);
   if (elementwise_affine) {
     // gamma
-    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
                                                       EXCLUSIVE,
-                                                      weights[0]->region));
+                                                      weights[1]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);

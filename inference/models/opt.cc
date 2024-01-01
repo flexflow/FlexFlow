@@ -224,6 +224,8 @@ void OPT::create_opt_model(FFModel &ff,
 
   // final
   Tensor final_residual_ln_output[2] = {nullptr, nullptr};
+  // ff.residual_rms_norm(added, fc2, final_residual_ln_output, 1e-05, opt_config.hidden_size,
+  //                      DT_NONE, "final_layer_norm");
   ff.residual_layer_norm(added,
                          fc2,
                          nullptr,

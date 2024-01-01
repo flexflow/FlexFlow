@@ -121,7 +121,8 @@ void backward_kernel_wrapper(SoftmaxMeta const *m,
 void inference_kernel_wrapper(SoftmaxMeta const *m,
                               BatchConfig const *bc,
                               GenericTensorAccessorR const &input,
-                              GenericTensorAccessorW const &output) {
+                              GenericTensorAccessorW const &output,
+                              GenericTensorAccessorW const &output_grad) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   cudaEvent_t t_start, t_end;
@@ -138,6 +139,11 @@ void inference_kernel_wrapper(SoftmaxMeta const *m,
                                output.get_float_ptr(),
                                num_classes,
                                stream);
+    checkCUDA(cudaMemcpyAsync(output_grad.get_float_ptr(),
+                              output.get_float_ptr(),
+                              output.domain.get_volume() * sizeof(float),
+                              cudaMemcpyDeviceToDevice,
+                              stream));
   } else if (m->output_type[0] == DT_HALF) {
     Internal::inference_kernel(m,
                                bc,
@@ -145,6 +151,11 @@ void inference_kernel_wrapper(SoftmaxMeta const *m,
                                output.get_half_ptr(),
                                num_classes,
                                stream);
+    checkCUDA(cudaMemcpyAsync(output_grad.get_half_ptr(),
+                              output.get_half_ptr(),
+                              output.domain.get_volume() * sizeof(half),
+                              cudaMemcpyDeviceToDevice,
+                              stream));
   } else {
     assert(false && "Unsupported data type");
   }
