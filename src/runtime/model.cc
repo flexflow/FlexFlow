@@ -2859,8 +2859,11 @@ void FFModel::compile(Optimizer *_optimizer,
   compile(loss_type, metrics, comp_mode);
 }
 
-bool FFModel::apply_fusion(std::vector<Op *> const &operators,
-                           std::vector<Op *> &new_operators) {
+bool FFModel::apply_fusion(
+    std::vector<Op *> const &operators,
+    std::vector<Op *> &new_operators,
+    std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+        *parallel_tensor_mapping) {
   // Context ctx = config.lg_ctx;
   // Runtime* runtime = config.lg_hlr;
   for (size_t l = 1; l < operators.size() - 1; l++) {
@@ -2925,7 +2928,8 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
           fused_op = new FusedOp(*this, operators[i]);
           allocate_new_fused_op = true;
         }
-        if (fused_op->add_operator(*this, operators[l])) {
+        if (fused_op->add_operator(
+                *this, operators[l], parallel_tensor_mapping)) {
           // Construct new operators
           new_operators.clear();
           for (size_t j = 0; j < i; j++) {
@@ -2943,7 +2947,9 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
                   (op->inputs[idx]->owner_op == operators[i])) {
                 int found = -1;
                 for (int k = 0; k < fused_op->numOutputs; k++) {
-                  if (fused_op->outputs[k]->region == op->inputs[idx]->region) {
+                  if (fused_op->use_same_regions(fused_op->outputs[k],
+                                                 op->inputs[idx],
+                                                 parallel_tensor_mapping)) {
                     assert(found == -1);
                     found = k;
                   }
@@ -2959,7 +2965,6 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
           assert(new_operators.size() + 1 == operators.size());
           return true;
         } else {
-          // TODO: delete fused_op to avoid memory leakage
           if (allocate_new_fused_op) {
             delete fused_op;
           }
@@ -3490,53 +3495,7 @@ void FFModel::compile(LossType loss_type,
       }
       operators = new_operators;
     }
-    // Check integrity
-    for (size_t l = 0; l < operators.size(); l++) {
-      if (operators[l]->op_type == OP_FUSED) {
-        FusedOp *fused = (FusedOp *)operators[l];
-        int ioff = 0, woff = 0, ooff = 0;
-        for (int op = 0; op < fused->numOperators; op++) {
-          Op *old_op = fused->operators[op];
-          for (int i = 0; i < fused->op_num_inputs[op]; i++) {
-            int my_off = fused->op_input_idx[i + ioff];
-            if (fused->op_input_source[i + ioff] == FusedOp::SOURCE_INPUT) {
-              assert(fused->inputs[my_off]->region ==
-                     old_op->inputs[i]->region);
-            } else if (fused->op_input_source[i + ioff] ==
-                       FusedOp::SOURCE_OUTPUT) {
-              assert(fused->outputs[my_off]->region ==
-                     old_op->inputs[i]->region);
-            } else {
-              assert(false);
-            }
-          }
-          for (int i = 0; i < fused->op_num_weights[op]; i++) {
-            int my_off = fused->op_weight_idx[i + woff];
-            assert(fused->op_weight_source[i + woff] == FusedOp::SOURCE_WEIGHT);
-            assert(fused->weights[my_off]->region ==
-                   old_op->weights[i]->region);
-          }
-          for (int i = 0; i < fused->op_num_outputs[op]; i++) {
-            int my_off = fused->op_output_idx[i + ooff];
-            assert(fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT);
-            assert(fused->outputs[my_off]->region ==
-                   old_op->outputs[i]->region);
-          }
-          ioff += fused->op_num_inputs[op];
-          woff += fused->op_num_weights[op];
-          ooff += fused->op_num_outputs[op];
-        }
-      } else {
-        bool found = false;
-        for (size_t i = 0; i < old_operators.size(); i++) {
-          if (old_operators[i] == operators[l]) {
-            assert(!found);
-            found = true;
-          }
-        }
-        assert(found);
-      }
-    }
+    assert(check_operators_integrity(old_operators));
     fprintf(stderr, "%zu operators after fusion...\n", operators.size());
     for (size_t i = 0; i < operators.size(); i++) {
       Op *op = operators[i];
@@ -3676,6 +3635,59 @@ void FFModel::compile(LossType loss_type,
     }
   }
 #endif
+}
+
+bool FFModel::check_operators_integrity(
+    std::vector<Op *> const &old_operators,
+    std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+        *pt_mapping) {
+  // Check integrity
+  for (size_t l = 0; l < operators.size(); l++) {
+    if (operators[l]->op_type == OP_FUSED) {
+      FusedOp *fused = (FusedOp *)operators[l];
+      int ioff = 0, woff = 0, ooff = 0;
+      for (int op = 0; op < fused->numOperators; op++) {
+        Op *old_op = fused->operators[op];
+        for (int i = 0; i < fused->op_num_inputs[op]; i++) {
+          int my_off = fused->op_input_idx[i + ioff];
+          if (fused->op_input_source[i + ioff] == FusedOp::SOURCE_INPUT) {
+            assert(FusedOp::use_same_regions(
+                fused->inputs[my_off], old_op->inputs[i], pt_mapping));
+          } else if (fused->op_input_source[i + ioff] ==
+                     FusedOp::SOURCE_OUTPUT) {
+            assert(FusedOp::use_same_regions(
+                fused->outputs[my_off], old_op->inputs[i], pt_mapping));
+          } else {
+            assert(false);
+          }
+        }
+        for (int i = 0; i < fused->op_num_weights[op]; i++) {
+          int my_off = fused->op_weight_idx[i + woff];
+          assert(fused->op_weight_source[i + woff] == FusedOp::SOURCE_WEIGHT);
+          assert(fused->weights[my_off]->region == old_op->weights[i]->region);
+        }
+        for (int i = 0; i < fused->op_num_outputs[op]; i++) {
+          int my_off = fused->op_output_idx[i + ooff];
+          assert(fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT);
+          assert(FusedOp::use_same_regions(
+              fused->outputs[my_off], old_op->outputs[i], pt_mapping));
+        }
+        ioff += fused->op_num_inputs[op];
+        woff += fused->op_num_weights[op];
+        ooff += fused->op_num_outputs[op];
+      }
+    } else {
+      bool found = false;
+      for (size_t i = 0; i < old_operators.size(); i++) {
+        if (old_operators[i] == operators[l]) {
+          assert(!found);
+          found = true;
+        }
+      }
+      assert(found);
+    }
+  }
+  return true;
 }
 
 struct PropagationEdgeInfo {

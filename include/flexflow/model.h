@@ -1034,8 +1034,15 @@ public:
   void get_metrics();
   void backward(int seq_length = -1);
   void update();
-  bool apply_fusion(std::vector<Op *> const &operators,
-                    std::vector<Op *> &new_operators);
+  bool apply_fusion(
+      std::vector<Op *> const &operators,
+      std::vector<Op *> &new_operators,
+      std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+          *parallel_tensor_mapping = nullptr);
+  bool check_operators_integrity(
+      std::vector<Op *> const &old_operators,
+      std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+          *pt_mapping = nullptr);
   Op *get_final_operator() const;
   void compile(LossType loss_type,
                std::vector<MetricsType> const &metrics,

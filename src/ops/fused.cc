@@ -115,7 +115,42 @@ FusedOp::FusedOp(FFModel &model, Op *op)
   }
 }
 
-bool FusedOp::add_operator(FFModel &model, Op *op) {
+bool FusedOp::use_same_regions(
+    ParallelTensor const source_tensor,
+    ParallelTensor const target_tensor,
+    std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+        *pt_mapping) {
+  if (pt_mapping == nullptr) {
+    return (source_tensor->region == target_tensor->region);
+  } else {
+    assert(pt_mapping->find(source_tensor) != pt_mapping->end());
+    assert(pt_mapping->find(target_tensor) != pt_mapping->end());
+    std::vector<ParallelTensor> const &source_mapped_tensor_vector =
+        (*pt_mapping)[source_tensor];
+    std::vector<ParallelTensor> const &target_mapped_tensor_vector =
+        (*pt_mapping)[target_tensor];
+    assert(source_mapped_tensor_vector.size() ==
+           target_mapped_tensor_vector.size());
+    bool same_region = source_mapped_tensor_vector[0]->region ==
+                               target_mapped_tensor_vector[0]->region
+                           ? true
+                           : false;
+    // Same that the two vectors use the exact same regions
+    if (same_region) {
+      for (size_t i = 0; i < source_mapped_tensor_vector.size(); i++) {
+        assert(source_mapped_tensor_vector[i]->region ==
+               target_mapped_tensor_vector[i]->region);
+      }
+    }
+    return same_region;
+  }
+}
+
+bool FusedOp::add_operator(
+    FFModel &model,
+    Op *op,
+    std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+        *pt_mapping) {
   // Context ctx = model.config.lg_ctx;
   // Runtime* runtime = model.config.lg_hlr;
   //  Currently assume fusion optimization is performed
@@ -164,7 +199,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
   for (int i = 0; i < op->numInputs; i++) {
     bool found = false;
     for (int j = 0; j < numInputs; j++) {
-      if (inputs[j]->region == op->inputs[i]->region) {
+      if (use_same_regions(inputs[j], op->inputs[i], pt_mapping)) {
         // This input is one of my inputs
         assert(!found);
         assert(inputs[j]->region != LogicalRegion::NO_REGION);
@@ -175,7 +210,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
       }
     }
     for (int j = 0; j < numOutputs; j++) {
-      if ((outputs[j]->region == op->inputs[i]->region) && (!found)) {
+      if (use_same_regions(outputs[j], op->inputs[i], pt_mapping) && (!found)) {
         // This input is one of my outputs
         assert(!found);
         assert(outputs[j]->region != LogicalRegion::NO_REGION);
@@ -201,6 +236,11 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
   for (int i = 0; i < op->numWeights; i++) {
     bool found = false;
     for (int j = 0; j < numWeights; j++) {
+      // pt_mapping does not apply to weights
+      if (pt_mapping != nullptr) {
+        assert(pt_mapping->find(weights[j]) == pt_mapping->end());
+        assert(pt_mapping->find(op->weights[i]) == pt_mapping->end());
+      }
       if (weights[j]->region == op->weights[i]->region) {
         assert(!found);
         assert(weights[j]->region != LogicalRegion::NO_REGION);
@@ -226,7 +266,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
   for (int i = 0; i < op->numOutputs; i++) {
     bool found = false;
     for (int j = 0; j < numOutputs; j++) {
-      if (outputs[j]->region == op->outputs[i]->region) {
+      if (use_same_regions(outputs[j], op->outputs[i], pt_mapping)) {
         assert(!found);
         found = true;
         op_output_source[output_offset + i] = SOURCE_OUTPUT;
@@ -347,22 +387,26 @@ void FusedOp::init_inference(FFModel const &ff,
   Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
   int ioff = 0, ooff = 0;
   for (int op = 0; op < numOperators; op++) {
-    // prepare batch_inputs, batch_outputs for operators[i]
+    // prepare batch_inputs, batch_outputs for operators[op]
     std::vector<ParallelTensor> my_batch_inputs;
     std::vector<ParallelTensor> my_batch_outputs;
     for (int i = 0; i < op_num_inputs[op]; i++) {
       int my_off = op_input_idx[i + ioff];
       if (op_input_source[i + ioff] == SOURCE_INPUT) {
+        assert(my_off < batch_inputs.size());
         my_batch_inputs.push_back(batch_inputs[my_off]);
       } else if (op_input_source[i + ioff] == SOURCE_OUTPUT) {
+        assert(my_off < batch_outputs.size());
         my_batch_inputs.push_back(batch_outputs[my_off]);
       } else {
         assert(false);
       }
     }
     for (int i = 0; i < op_num_outputs[op]; i++) {
+      int my_off = op_output_idx[i + ooff];
       assert(op_output_source[i + ooff] == SOURCE_OUTPUT);
-      my_batch_outputs.push_back(batch_outputs[i + ooff]);
+      assert(my_off < batch_outputs.size());
+      my_batch_outputs.push_back(batch_outputs[my_off]);
     }
     ioff += op_num_inputs[op];
     ooff += op_num_outputs[op];
