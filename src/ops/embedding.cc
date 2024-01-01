@@ -517,6 +517,70 @@ void Embedding::forward_task(Task const *task,
   assert(task->regions.size() == 3);
   // Assert that weight and output must have the same data type
   // otherwise, a cast operator should be inserted
+  assert(m->weight_type[0] == m->output_type[0]);
+  assert(m->input_type[0] == DT_INT32 || m->input_type[0] == DT_INT64);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR kernel = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  if (m->aggr == AGGR_MODE_NONE) {
+    // assert(kernel_domain.get_dim() == 2);
+    assert(input.domain.get_dim() + 1 == output.domain.get_dim());
+    for (size_t i = 0; i < input.domain.get_dim(); i++) {
+      assert(input.domain.hi()[i] == output.domain.hi()[i + 1]);
+      assert(input.domain.lo()[i] == output.domain.lo()[i + 1]);
+    }
+    assert(kernel.domain.hi()[0] - kernel.domain.lo()[0] ==
+           output.domain.hi()[0] - output.domain.lo()[0]);
+  } else {
+    // assert(kernel_domain.get_dim() == 2);
+    assert(input.domain.get_dim() == output.domain.get_dim());
+    for (size_t i = 1; i < input.domain.get_dim(); i++) {
+      assert(input.domain.hi()[i] == output.domain.hi()[i]);
+      assert(input.domain.lo()[i] == output.domain.lo()[i]);
+    }
+    assert(kernel.domain.hi()[0] - kernel.domain.lo()[0] ==
+           output.domain.hi()[0] - output.domain.lo()[0]);
+  }
+
+  int in_dim, out_dim, effective_batch_size;
+  if (m->aggr == AGGR_MODE_NONE) {
+    in_dim = 1;
+    out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+    effective_batch_size = output.domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input.domain.get_volume());
+  } else {
+    in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+    out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+    effective_batch_size = output.domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input.domain.get_volume());
+  }
+  forward_kernel_wrapper(
+      m, input, output, kernel, in_dim, out_dim, effective_batch_size);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Embedding::save_inference_tensors_to_file(
+        m, shard_id, nullptr, {input}, {kernel}, {output});
+  }
+}
+
+/*
+  regions[0](I): input
+  regions[1](O): output
+  regions[2](I): kernel
+*/
+void Embedding::inference_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
+  EmbeddingMeta *m = *((EmbeddingMeta **)task->local_args);
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
+  // Assert that weight and output must have the same data type
+  // otherwise, a cast operator should be inserted
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_active_tokens() == 0) {
     return;
