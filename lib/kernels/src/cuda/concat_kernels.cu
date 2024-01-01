@@ -25,11 +25,11 @@ namespace Concat {
 void calc_blk_size(size_t &num_blocks,
                    size_t &blk_size,
                    ArrayShape const &shape,
-                   ff_dim_t legion_axis) {
+                   ff_dim_t axis) {
   num_blocks = 1;
   blk_size = 1;
   for (int d = 0; d < shape.num_dims(); d++) {
-    if (d <= legion_axis) {
+    if (d <= axis) {
       blk_size *= shape[legion_dim_t(d)];
     } else {
       num_blocks *= shape[legion_dim_t(d)];
@@ -40,15 +40,14 @@ void calc_blk_size(size_t &num_blocks,
 void forward_kernel(cudaStream_t stream,
                     GenericTensorAccessorW const &output,
                     std::vector<GenericTensorAccessorR> const &inputs,
-                    int num_inputs,
-                    ff_dim_t legion_axis) {
+                    ff_dim_t axis) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
+  int num_inputs = inputs.size();
   assert(num_inputs <= MAX_NUM_INPUTS);
-  calc_blk_size(num_blocks, output_blk_size, output.shape, legion_axis);
+  calc_blk_size(num_blocks, output_blk_size, output.shape, axis);
   for (int i = 0; i < num_inputs; i++) {
     size_t input_num_blocks = 1;
-    calc_blk_size(
-        input_num_blocks, input_blk_sizes[i], inputs[i].shape, legion_axis);
+    calc_blk_size(input_num_blocks, input_blk_sizes[i], inputs[i].shape, axis);
     assert(input_num_blocks == num_blocks);
   }
 
@@ -69,17 +68,16 @@ void forward_kernel(cudaStream_t stream,
 void backward_kernel(cudaStream_t stream,
                      GenericTensorAccessorR const &output_grad,
                      std::vector<GenericTensorAccessorW> const &input_grads,
-                     int num_inputs,
-                     ff_dim_t legion_axis) {
+                     ff_dim_t axis) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
+  int num_inputs = input_grads.size();
   assert(num_inputs <= MAX_NUM_INPUTS);
 
-  ArrayShape shape = output_grad.shape;
-  calc_blk_size(num_blocks, output_blk_size, shape, legion_axis);
+  calc_blk_size(num_blocks, output_blk_size, output_grad.shape, axis);
   for (int i = 0; i < num_inputs; i++) {
     shape = input_grads[i].shape;
     size_t input_num_blocks = 1;
-    calc_blk_size(input_num_blocks, input_blk_sizes[i], shape, legion_axis);
+    calc_blk_size(input_num_blocks, input_blk_sizes[i], shape, axis);
     assert(input_num_blocks == num_blocks);
   }
 

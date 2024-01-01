@@ -56,8 +56,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  profiling,
                  "[Combine] forward_time = %.2lfms\n",
                  input,
-                 output,
-                 input.data_type);
+                 output);
 }
 
 static void forward_task(Task const *task,
@@ -78,8 +77,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  profiling,
                  "[Combine] forward_time = %.2lfms\n",
                  input_grad,
-                 output_grad,
-                 input_grad.data_type);
+                 output_grad);
 }
 
 static void backward_task(Task const *task,
