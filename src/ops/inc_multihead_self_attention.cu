@@ -1349,7 +1349,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
+    int max_tokens_per_batch = infer_mode == TREE_VERIFY_MODE
+                                   ? BatchConfig::max_verify_tokens_per_batch()
+                                   : BatchConfig::max_tokens_per_batch();
     size_t qkv_max_proj_size = max_tokens_per_batch * (qProjSize * num_q_heads +
                                                        kProjSize * num_q_heads +
                                                        vProjSize * num_q_heads);

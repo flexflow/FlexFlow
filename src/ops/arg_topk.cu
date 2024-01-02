@@ -404,17 +404,22 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
     assert(bc->num_active_requests() >= 0);
 
     // check
+    // allow last request different with others
     int beam_size = -1;
-    for (int i = 1; i < bc->max_requests_per_batch(); i++) {
+    int num_activate_requests = bc->num_active_requests();
+    int last_request_idx =
+        bc->requestsInfo[num_activate_requests - 1].batch_config_request_id;
+    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
       if (bc->request_completed[i]) {
         continue;
       } else if (beam_size == -1) {
         beam_size = bc->beamRequestsInfo[i].beam_size;
-      } else {
+
+      } else if (i != last_request_idx) {
         assert(beam_size == bc->beamRequestsInfo[i].beam_size);
+      } else if (i == last_request_idx) {
       }
     }
-
     assert(num_shards >= (size_t)beam_size);
     num_shards = k;
     arg_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(

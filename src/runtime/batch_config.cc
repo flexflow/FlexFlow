@@ -85,6 +85,12 @@ int BatchConfig::max_tokens_per_batch() {
 }
 
 /*static*/
+int BatchConfig::max_verify_tokens_per_batch() {
+  return RequestManager::get_request_manager()
+      ->get_max_verify_tokens_per_batch();
+}
+
+/*static*/
 int BatchConfig::max_sequence_length() {
   return RequestManager::get_request_manager()->get_max_sequence_length();
 }

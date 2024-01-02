@@ -4806,6 +4806,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
+    TaskVariantRegistrar registrar(EMBED_INF_TASK_ID, "Embedding Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Embedding::inference_task>(
+          registrar, "Embedding Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Embedding::inference_task>(registrar);
+    }
+  }
+  {
     TaskVariantRegistrar registrar(EMBED_BWD_TASK_ID, "Embedding Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();

@@ -54,6 +54,7 @@ __global__ void compute_attention_kernel_fused_kernel(
     int num_heads,
     int num_requests,
     BatchConfig::BitMask *causalMask,
+    bool *request_completed,
     int qk_smem_sz) {
 
   // q, k
@@ -90,13 +91,14 @@ __global__ void compute_attention_kernel_fused_kernel(
   BatchConfig::BitMask bitmask = causalMask[batch_config_request_id];
 
   int first_token_idx = 0;
-  for (int r = 0; r < request_idx; r++) {
-    first_token_idx += request_infos[r].num_tokens_in_batch;
+  for (int r = 0; r < batch_config_request_id; r++) {
+    first_token_idx +=
+        request_completed[r] ? 0 : request_infos[r].num_tokens_in_batch;
   }
 
-  // if(tidx == 0 && head_idx == 0){
-  //   printf("tree req: %d, %d\n", request_idx, first_token_idx);
-  // }
+  bool prompt_phase = request_infos[batch_config_request_id].prompt_phase;
+  int q_start =
+      request_infos[batch_config_request_id].first_token_depth_in_request;
 
   // shared memory objects
   extern __shared__ char smem_[];
@@ -139,7 +141,7 @@ __global__ void compute_attention_kernel_fused_kernel(
           q_ptr + (hidden_size * QKV_WEIGHT_NUM * qi) + ki +
           ii * THREADS_PER_KEY * K_VEC_SIZE);
 
-      // if (head_idx == 0 && qi == 1 && tidx == 0) {
+      // if (head_idx == 0 && request_idx == 1 && tidx == 0) {
       //     printf("laod q %d,  %d %.10f\n",
       //     request_idx,
       //            qi,q_vecs[ki_o][ii].x);
@@ -163,19 +165,23 @@ __global__ void compute_attention_kernel_fused_kernel(
 
       if (ti < tlength && tidx % THREADS_PER_KEY == 0) {
         bool const mask =
-            (ti >= bitmask.non_tree_cache_size &&
-             (!(bitmask.mask[ti - bitmask.non_tree_cache_size] & (1 << qi))));
+            prompt_phase ? (qi + q_start < ti)
+                         : (ti >= bitmask.non_tree_cache_size &&
+                            (!(bitmask.mask[ti - bitmask.non_tree_cache_size] &
+                               (1 << qi))));
 
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
-        // if (head_idx == 0 && qi == 0 && !mask) {
-        //   printf("tree attn qkqkqkqk request id %d,  %d %.10f, %.10f, %.10f\n
-        //   ",
+        // if (head_idx == 0 && !mask) {
+        //   printf("tree attn qkqkqkqk request id %d qi%d, ti %d, %.10f, %.10f,
+        //   %.10f, %d\n",
         //          request_idx,
+        //          qi,
         //          ti,
         //          qk,
         //          q_vecs[ki_o][0].x,
-        //          k[0].x);
+        //          k[0].x,
+        //          bitmask.non_tree_cache_size);
         // }
         qk_smem[ti - first_step] = mask ? 0.0f : qk;
       }
@@ -217,8 +223,10 @@ __global__ void compute_attention_kernel_fused_kernel(
     float exp_sum = 0.f;
     for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
       bool const mask =
-          (ti >= bitmask.non_tree_cache_size &&
-           (!(bitmask.mask[ti - bitmask.non_tree_cache_size] & (1 << qi))));
+          prompt_phase ? (q_start + qi < ti)
+                       : (ti >= bitmask.non_tree_cache_size &&
+                          (!(bitmask.mask[ti - bitmask.non_tree_cache_size] &
+                             (1 << qi))));
       float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
       exp_sum += logit;
       qk_smem[ti - first_step] = mask ? 0.0f : logit;
@@ -265,8 +273,11 @@ __global__ void compute_attention_kernel_fused_kernel(
 
         if (ti < tlength) {
           bool const mask =
-              (ti >= bitmask.non_tree_cache_size &&
-               (!(bitmask.mask[ti - bitmask.non_tree_cache_size] & (1 << qi))));
+              prompt_phase
+                  ? (q_start + qi < ti)
+                  : (ti >= bitmask.non_tree_cache_size &&
+                     (!(bitmask.mask[ti - bitmask.non_tree_cache_size] &
+                        (1 << qi))));
           float logit = mask ? 0.0f : qk_smem[ti - first_step];
           out = FlexFlow::fma(logit, cast_to_float(v), out);
         }
@@ -810,6 +821,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
           m->num_q_heads,                                                      \
           bc->num_active_requests(),                                           \
           m->causalMask,                                                       \
+          m->request_completed,                                                \
           smem_sz[0])
 
 template <typename DT>
@@ -841,7 +853,6 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
   dim3 grid(m->num_q_heads, bc->num_active_requests());
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
-
   // 0->qk production size, 1->total shared size
   int smem_sz[2];
   if (per_head_size == 64) {
@@ -890,17 +901,6 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // std::cout << "tokens to be committed: " << bc->num_tokens_to_commit <<
   // "\n";
 
-  cudaMemcpyAsync(m->committed_token_infos,
-                  &(bc->committed_tokens),
-                  bc->num_tokens_to_commit *
-                      sizeof(TreeVerifyBatchConfig::CommittedTokensInfo),
-                  cudaMemcpyHostToDevice,
-                  stream);
-  cudaMemcpyAsync(m->causalMask,
-                  &(bc->causalMask),
-                  bc->num_active_requests() * sizeof(BatchConfig::BitMask),
-                  cudaMemcpyHostToDevice,
-                  stream);
   commit_tokens<DT>(m, bc, stream);
 
   // After commit we update m->num_active_tokens to be the number of active
@@ -1068,6 +1068,12 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
             sizeof(BatchConfig::tokensInfo) +
             sizeof(BatchConfig::requestsInfo) +
             sizeof(BatchConfig::causalMask));
+
+    request_completed = reinterpret_cast<bool *>(
+        reinterpret_cast<char *>(handler.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
+        sizeof(BatchConfig::causalMask) +
+        sizeof(TreeVerifyBatchConfig::committed_tokens));
   }
 
   cudaStreamSynchronize(stream);
