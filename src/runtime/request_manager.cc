@@ -1188,10 +1188,7 @@ BeamSearchBatchConfig
       int ssm_decoding_steps =
           profiling_requests[request.guid].ssm_decoding_steps;
 
-      new_bc.beamRequestsInfo[i].beam_size =
-          spec_infer_tree_width.size() > ssm_decoding_steps
-              ? spec_infer_tree_width[ssm_decoding_steps]
-              : 1;
+      new_bc.beamRequestsInfo[i].beam_size = 1;
       // printf("beam size: %d, %d\n",
       //        new_bc.beamRequestsInfo[i].beam_size,
       //        ssm_decoding_steps);
@@ -1820,7 +1817,7 @@ void RequestManager::updateBitMask(BatchConfig::BitMask &bitmask,
 void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
                                           int initLength) {
   assert(initLength > 0);
-  std::cout << "append pending bit mask: " << initLength << "\n";
+  // std::cout << "append pending bit mask: " << initLength << "\n";
   // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100, t4:
   // 0000000..1000
   bitmask.non_tree_cache_size = 0;
