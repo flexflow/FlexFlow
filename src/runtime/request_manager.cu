@@ -35,9 +35,16 @@ void RequestManager::load_tokens_task(
 
   // Extreme long prompts are not supported, only load up to
   // BatchConfig::max_tokens_per_batch() as prompt
-  if (batch_config->num_tokens > BatchConfig::max_tokens_per_batch()) {
+  if (batch_config->num_tokens > BatchConfig::max_tokens_per_batch() &&
+      batch_config->get_mode() == INC_DECODING_MODE) {
     printf("Warning: too many tokens in prompt, only load up to %d tokens\n",
            BatchConfig::max_tokens_per_batch());
+    printf("Got: %d tokens\n", batch_config->num_tokens);
+  } else if (batch_config->num_tokens >
+             BatchConfig::max_verify_tokens_per_batch()) {
+    printf("Warning: Speculative decoding. too many tokens in prompt, only "
+           "load up to %d tokens\n",
+           BatchConfig::max_verify_tokens_per_batch());
     printf("Got: %d tokens\n", batch_config->num_tokens);
   }
 
@@ -117,8 +124,16 @@ void RequestManager::load_batch_config_task(
         sizeof(BatchConfig::causalMask),
         cudaMemcpyHostToDevice,
         stream));
-
     total_copy_size += sizeof(BatchConfig::causalMask);
+
+    checkCUDA(cudaMemcpyAsync(
+        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
+        &(batch_config->request_completed),
+        sizeof(BatchConfig::request_completed),
+        cudaMemcpyHostToDevice,
+        stream));
+
+    total_copy_size += sizeof(BatchConfig::request_completed);
   } else if (batch_config->get_mode() == TREE_VERIFY_MODE) {
     TreeVerifyBatchConfig const *tree_batch_config =
         static_cast<TreeVerifyBatchConfig const *>(batch_config);
@@ -137,6 +152,15 @@ void RequestManager::load_batch_config_task(
         cudaMemcpyHostToDevice,
         stream));
     total_copy_size += sizeof(TreeVerifyBatchConfig::committed_tokens);
+
+    checkCUDA(cudaMemcpyAsync(
+        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
+        &(batch_config->request_completed),
+        sizeof(BatchConfig::request_completed),
+        cudaMemcpyHostToDevice,
+        stream));
+
+    total_copy_size += sizeof(BatchConfig::request_completed);
   }
 
   // add a size check

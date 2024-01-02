@@ -405,13 +405,20 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
 
     // check
     int beam_size = -1;
-    for (int i = 1; i < bc->max_requests_per_batch(); i++) {
+
+    // allow last request different with others
+    int num_activate_requests = bc->num_active_requests();
+    int last_request_idx =
+        bc->requestsInfo[num_activate_requests - 1].batch_config_request_id;
+    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
       if (bc->request_completed[i]) {
         continue;
       } else if (beam_size == -1) {
         beam_size = bc->beamRequestsInfo[i].beam_size;
-      } else {
+
+      } else if (i != last_request_idx) {
         assert(beam_size == bc->beamRequestsInfo[i].beam_size);
+      } else if (i == last_request_idx) {
       }
     }
 

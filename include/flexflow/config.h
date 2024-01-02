@@ -84,7 +84,8 @@ struct FFHandler {
       sizeof(BeamSearchBatchConfig::beamTokenInfo) +
       sizeof(BeamSearchBatchConfig::beamRequestsInfo) +
       sizeof(BatchConfig::causalMask) +
-      sizeof(TreeVerifyBatchConfig::committed_tokens);
+      sizeof(TreeVerifyBatchConfig::committed_tokens) +
+      sizeof(BatchConfig::request_completed);
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
   DataType quantization_type;

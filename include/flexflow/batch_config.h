@@ -45,6 +45,7 @@ public:
   int num_active_tokens() const;
   static int max_requests_per_batch();
   static int max_tokens_per_batch();
+  static int max_verify_tokens_per_batch();
   static int max_sequence_length();
   friend std::ostream &operator<<(std::ostream &os, BatchConfig const &bc);
   void print() const;
@@ -72,6 +73,7 @@ public:
 
     // request id in batch config:
     int batch_config_request_id;
+    bool prompt_phase = false;
     RequestGuid request_guid;
   };
   struct PerTokenInfo {
@@ -85,15 +87,15 @@ public:
 
     // how many tokens before the tree, every sub requests need this part of
     // cache
-    int non_tree_cache_size;
+    int non_tree_cache_size = 0;
 
     // current tree size
-    int tree_size;
+    int tree_size = 0;
 
-    int this_layer_size;
+    int this_layer_size = 0;
 
     // input length-> prompt/root
-    int prompt_size;
+    int prompt_size = 0;
   };
 
   BitMask causalMask[MAX_NUM_REQUESTS];
@@ -145,9 +147,13 @@ public:
   bool done() const;
   int max_beam_depth_all_requests() const;
   int current_depth_all_requests() const;
+  int get_speculative_request_num() const;
 
   size_t beam_width;
   size_t target_iterations;
+
+  // how many requests is in speculative phase
+  int speculative_request_num = 0;
   inline static int const MAX_BEAM_WIDTH = 3;
   inline static int const MAX_BEAM_DEPTH = 8;
 
