@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_FUSED_H_
 #define _FLEXFLOW_FUSED_H_
 
+#include "flexflow/batch_config.h"
 #include "flexflow/model.h"
 
 namespace FlexFlow {
@@ -12,7 +13,8 @@ public:
   OpMeta *meta[MAX_NUM_FUSED_OPERATORS];
   FusedOp *fused_op;
   int numOperators;
-  std::map<std::pair<int, int>, cudaGraphExec_t> graph_collections;
+  cudaGraphExec_t graph_collections[BatchConfig::MAX_NUM_REQUESTS]
+                                   [BatchConfig::MAX_NUM_TOKENS] = {nullptr};
 };
 
 class FusedOp : public Op {

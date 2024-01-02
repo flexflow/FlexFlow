@@ -608,20 +608,20 @@ __host__ void
     }
   }
 
-  // create cuda graph if not yet available
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  cudaGraph_t graph;
-  cudaGraphExec_t instance;
   // check if graph exists
-  std::pair<int, int> graph_params = std::make_pair<int, int>(
-      bc->num_active_tokens(), bc->num_active_requests());
-  if (metas->graph_collections.find(graph_params) !=
-      metas->graph_collections.end()) {
-    cudaGraphExec_t instance = metas->graph_collections[graph_params];
+  if (metas->graph_collections[bc->num_active_requests()]
+                              [bc->num_active_tokens()] != nullptr) {
+    cudaGraphExec_t instance =
+        metas->graph_collections[bc->num_active_requests()]
+                                [bc->num_active_tokens()];
     cudaGraphLaunch(instance, stream);
     return;
   }
+  // create new cuda graph
+  cudaGraph_t graph;
+  cudaGraphExec_t instance;
   cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
 
   int ioff = 0, woff = 0, ooff = 0;
@@ -1149,9 +1149,13 @@ __host__ void
   // for (int i = 0; i < fused->numOutputs; i++)
   //   print_tensor<float>(output_ptr[i], output_domain[i].get_volume(),
   //   "[Fused:forward:output]");
+
   cudaStreamEndCapture(stream, &graph);
   cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
-  metas->graph_collections[graph_params] = instance;
+  metas->graph_collections[bc->num_active_requests()][bc->num_active_tokens()] =
+      instance;
+  assert(metas->graph_collections[bc->num_active_requests()]
+                                 [bc->num_active_tokens()] != nullptr);
   cudaGraphLaunch(instance, stream);
 }
 
