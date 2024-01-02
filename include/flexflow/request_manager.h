@@ -103,6 +103,7 @@ public:
   int get_max_requests_per_batch();
   void set_max_tokens_per_batch(int max_num_tokens);
   int get_max_tokens_per_batch();
+  int get_max_verify_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
   void push_spec_infer_tree_width(int tree_width);
   int get_max_sequence_length();
@@ -113,6 +114,7 @@ public:
                           std::string const &path);
   void register_output_filepath(std::string const &);
   void initBitMask(BatchConfig::BitMask &bitmask, int initLength);
+  void appendPendingRequest(BatchConfig::BitMask &bitmask, int initLength);
   void appendBitMask(BatchConfig::BitMask &bitmask,
                      int newNodes,
                      int preBeamSize,

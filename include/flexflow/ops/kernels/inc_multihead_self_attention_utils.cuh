@@ -493,7 +493,7 @@ inline void smem_size_in_bytes_tree(int hidden_size_per_head,
   }
 
   // todo fix this
-  int max_qk_length = max_query_length * max_total_length;
+  int max_qk_length = max_query_length;
 
   // The amount of shared memory needed to store the Q*K^T values in float.
   size_t qk_sz = div_up(max_qk_length + 1, 4) * 16;

@@ -50,7 +50,8 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
     int hidden_size,
     BatchConfig::PerRequestInfo *request_infos,
     BeamSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos,
-    BatchConfig::BitMask *causalMask) {
+    BatchConfig::BitMask *causalMask,
+    bool *request_completed) {
 
   // q, k
   using Q_vec = typename VEC_K<DT, THREADS_PER_KEY>::Type;
@@ -86,11 +87,12 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
   //     request_infos[batch_config_request_id].first_token_depth_in_request +
   //     request_infos[batch_config_request_id].num_tokens_in_batch;
 
-  int const totalCacheSize = bitmask.non_tree_cache_size + bitmask.tree_size;
+  int const totalCacheSize =
+      bitmask.non_tree_cache_size + bitmask.tree_size + bitmask.prompt_size - 1;
 
   int first_token_idx = 0;
-  for (int r = 0; r < request_idx; r++) {
-    first_token_idx += causalMask[r].this_layer_size;
+  for (int r = 0; r < batch_config_request_id; r++) {
+    first_token_idx += request_completed[r] ? 0 : causalMask[r].this_layer_size;
   }
 
   int const tree_branch_num =
@@ -138,7 +140,8 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
           ii * THREADS_PER_KEY * K_VEC_SIZE);
     }
 
-    int const query_token = bitmask.tree_size - tree_branch_num + qi;
+    int const query_token =
+        bitmask.prompt_size + bitmask.tree_size - 1 - tree_branch_num + qi;
 
     __syncthreads();
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
@@ -163,8 +166,12 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
                            (!(bitmask.mask[ti - bitmask.non_tree_cache_size] &
                               (1 << query_token))));
 
-        // if (blockIdx.y == 0 && blockIdx.x == 0 && !mask) {
-        //   printf("spec inc attn qkqkqk %d,  %.10f, %d\n", ti, qk, qi);
+        // if (head_idx == 0 && ti == 0 && request_idx == 15 && !mask) {
+        //   printf("spec inc attn qkqkqk  request id %d,  %.10f, %d\n",
+        //          batch_config_request_id,
+        //          ti,
+        //          qk,
+        //          qi);
         // }
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
         qk_smem[ti - first_step] = mask ? 0.f : qk;
@@ -336,17 +343,12 @@ __global__ void spec_inc_store_kv_cache(
 
     BatchConfig::BitMask bitmask = causalMask[req_id];
 
-    // int const tree_branch_num = beamRequestInfos[req_id].sub_request_num;
-
-    // int const query_token = bitmask.non_tree_cache_size + bitmask.tree_size -
-    //                         tree_branch_num + sub_req_id + tok_id;
-    // bitmask.tree_size - tree_branch_num + sub_req_id;
-
     // if prompt token -> token id
     // if tree token:
-    int const cache_idx = bitmask.non_tree_cache_size + bitmask.tree_size -
-                          bitmask.this_layer_size + token_idx -
-                          request_token_offset;
+
+    int const cache_idx = bitmask.prompt_size + bitmask.non_tree_cache_size +
+                          bitmask.tree_size - 1 - bitmask.this_layer_size +
+                          token_idx - request_token_offset;
 
     kCache_ptr[req_id * (hidden_size * max_seq_len) + (cache_idx)*hidden_size +
                offset] = kVal;
@@ -411,7 +413,8 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
           m->hidden_size,                                                      \
           m->request_infos,                                                    \
           m->beam_request_infos,                                               \
-          m->causalMask)
+          m->causalMask,                                                       \
+          m->request_completed)
 
 template <typename DT>
 void compute_spec_inc_attention_kernel_generation(
@@ -420,7 +423,8 @@ void compute_spec_inc_attention_kernel_generation(
     DT *output_ptr,
     cudaStream_t stream) {
   // one block == one head per request
-  dim3 grid(m->num_q_heads, bc->num_active_requests());
+  // how many generation requests
+  dim3 grid(m->num_q_heads, bc->get_speculative_request_num());
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
   size_t smem_sz;
@@ -499,11 +503,10 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
+    } else if (tokens_previous_requests < bc->num_generation_tokens) {
+      tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
+      continue;
     }
-    // else if (tokens_previous_requests < bc->num_generation_tokens) {
-    //   tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
-    //   continue;
-    // }
 
     // all requests in prompt phase should only have one sub requests;
     assert(bc->sub_requests[i] == 1);
@@ -659,10 +662,10 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
     // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
     // requests
 
-    // print_tensor<float>((float*)C_softmax, 32, "C_softmax");
+    int token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
+
     C = static_cast<DT *>(m->attn_heads) +
-        (tokens_previous_requests + bc->num_generation_tokens) *
-            m->num_q_heads * m->vProjSize;
+        (token_offset)*m->num_q_heads * m->vProjSize;
     checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                          CUBLAS_OP_N,
                                          CUBLAS_OP_T,
@@ -860,6 +863,13 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
         sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
         sizeof(BeamSearchBatchConfig::beamTokenInfo) +
         sizeof(BeamSearchBatchConfig::beamRequestsInfo));
+
+    request_completed = reinterpret_cast<bool *>(
+        reinterpret_cast<char *>(handler.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
+        sizeof(BeamSearchBatchConfig::beamTokenInfo) +
+        sizeof(BeamSearchBatchConfig::beamRequestsInfo) +
+        sizeof(BatchConfig::causalMask));
   }
 
   cudaStreamSynchronize(stream);
