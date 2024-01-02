@@ -622,7 +622,7 @@ __host__ void
   // create new cuda graph
   cudaGraph_t graph;
   cudaGraphExec_t instance;
-  cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+  cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
 
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
