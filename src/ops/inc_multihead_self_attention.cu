@@ -1018,10 +1018,12 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              ldc,
                              compute_type,
                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      // save result to file for checking
-      std::string filename = base_filepath + "_o_proj_in_grad";
-      std::cout << "FILENAME: " << filename << std::endl;
-      save_tensor(C, m_*n_, filename.c_str());
+      if (m->inference_debugging) {
+        // save result to file for checking
+        std::string filename = base_filepath + "_o_proj_in_grad";
+        std::cout << "FILENAME: " << filename << std::endl;
+        save_tensor(C, m_*n_, filename.c_str());
+      }
     }
     // Step 2: compute gradients w.r.t. value
     {
@@ -1074,12 +1076,14 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       // save result to file for checking
-      std::string filename = base_filepath + "_v_proj_in_grad";
-      std::cout << "FILENAME: " << filename << std::endl;
-      save_tensor(C, m_*n_*m->num_q_heads, filename.c_str());
-      std::string filename2 = base_filepath + "_qk_prods_softmax";
-      std::cout << "FILENAME: " << filename2 << std::endl;
-      save_tensor(A, m_*k_*m->num_q_heads, filename2.c_str());
+      if (m->inference_debugging) {
+        std::string filename = base_filepath + "_v_proj_in_grad";
+        std::cout << "FILENAME: " << filename << std::endl;
+        save_tensor(C, m_*n_*m->num_q_heads, filename.c_str());
+        std::string filename2 = base_filepath + "_qk_prods_softmax";
+        std::cout << "FILENAME: " << filename2 << std::endl;
+        save_tensor(A, m_*k_*m->num_q_heads, filename2.c_str());
+      }
     }
     // Step 3: compute gradients w.r.t. the qk_prods_softmax tensor
     {
@@ -1128,12 +1132,14 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_q_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      std::string filename4 = base_filepath + "_qk_prods_softmax_grad";
-      std::cout << "FILENAME: " << filename4 << std::endl;
-      save_tensor(C, num_tokens * num_tokens * m->num_q_heads, filename4.c_str());
-      std::string filename5 = base_filepath + "_vcache";
-      std::cout << "FILENAME: " << filename5 << std::endl;
-      save_tensor(B, m->vProjSize * m->num_q_heads * num_tokens, filename5.c_str());
+      if (m->inference_debugging) {
+        std::string filename4 = base_filepath + "_qk_prods_softmax_grad";
+        std::cout << "FILENAME: " << filename4 << std::endl;
+        save_tensor(C, num_tokens * num_tokens * m->num_q_heads, filename4.c_str());
+        std::string filename5 = base_filepath + "_vcache";
+        std::cout << "FILENAME: " << filename5 << std::endl;
+        save_tensor(B, m->vProjSize * m->num_q_heads * num_tokens, filename5.c_str());
+      }
     }
     // Step 4: softmax backpropagation
     {
@@ -1161,10 +1167,12 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                       m->qk_tensor,
                                       m->qk_prods));
       
-      DT *C = static_cast<DT *>(m->qk_prods);
-      std::string filename6 = base_filepath + "_qk_prods_softmax_grad_in";
-      std::cout << "FILENAME: " << filename6 << std::endl;
-      save_tensor(C, num_tokens * num_tokens * m->num_q_heads, filename6.c_str());
+      if (m->inference_debugging) {
+        DT *C = static_cast<DT *>(m->qk_prods);
+        std::string filename6 = base_filepath + "_qk_prods_softmax_grad_in";
+        std::cout << "FILENAME: " << filename6 << std::endl;
+        save_tensor(C, num_tokens * num_tokens * m->num_q_heads, filename6.c_str());
+      }
       
       //  TODO: fill all elements above diagonal to force causal attention
       size_t entries_above_diagonal = num_tokens * (num_tokens - 1) / 2;
@@ -1181,9 +1189,12 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                                 entries_above_diagonal,
                                                 DT(0.0f));
       }
-      std::string filename7 = base_filepath + "_qk_prods_softmax_grad_in_masked";
-      std::cout << "FILENAME: " << filename7 << std::endl;
-      save_tensor(C, num_tokens * num_tokens * m->num_q_heads, filename7.c_str());
+      if (m->inference_debugging) {
+        DT *C = static_cast<DT *>(m->qk_prods);
+        std::string filename7 = base_filepath + "_qk_prods_softmax_grad_in_masked";
+        std::cout << "FILENAME: " << filename7 << std::endl;
+        save_tensor(C, num_tokens * num_tokens * m->num_q_heads, filename7.c_str());
+      }
     }
     // Step 5: compute gradients w.r.t. key
     {
@@ -1238,12 +1249,14 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_q_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    std::string filename8 = base_filepath + "_query_activation";
-    std::cout << "FILENAME: " << filename8 << std::endl;
-    save_tensor(B, m->qProjSize * m->num_q_heads *num_tokens, filename8.c_str());
-    std::string filename9 = base_filepath + "_devkproj_pre";
-    std::cout << "FILENAME: " << filename9 << std::endl;
-    save_tensor(C, num_tokens * (m->qProjSize * m->num_q_heads), filename9.c_str());
+      if (m->inference_debugging) {
+        std::string filename8 = base_filepath + "_query_activation";
+        std::cout << "FILENAME: " << filename8 << std::endl;
+        save_tensor(B, m->qProjSize * m->num_q_heads *num_tokens, filename8.c_str());
+        std::string filename9 = base_filepath + "_devkproj_pre";
+        std::cout << "FILENAME: " << filename9 << std::endl;
+        save_tensor(C, num_tokens * (m->qProjSize * m->num_q_heads), filename9.c_str());
+      }
     }
     // Step 6: compute gradients w.r.t query
     {
@@ -1294,9 +1307,11 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_q_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      std::string filename3 = base_filepath + "_devQKVPRojArray_pre";
-      std::cout << "FILENAME: " << filename3 << std::endl;
-      save_tensor(C, num_tokens * m->qProjSize * m->num_q_heads * 3, filename3.c_str());
+      if (m->inference_debugging) {
+        std::string filename3 = base_filepath + "_devQKVPRojArray_pre";
+        std::cout << "FILENAME: " << filename3 << std::endl;
+        save_tensor(C, num_tokens * m->qProjSize * m->num_q_heads * 3, filename3.c_str());
+      }
     }
 
     // Compute rotary embeddings bwd
@@ -1318,17 +1333,21 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                               num_tokens,
                                               m->hidden_size);
         DT *C = static_cast<DT *>(m->devQKVProjArray);
-        std::string filename3 = base_filepath + "_devQKVPRojArray";
-        std::cout << "FILENAME: " << filename3 << std::endl;
-        save_tensor(C, num_tokens * m->qProjSize * m->num_q_heads * 3, filename3.c_str());
+        if (m->inference_debugging) {
+          std::string filename3 = base_filepath + "_devQKVPRojArray";
+          std::cout << "FILENAME: " << filename3 << std::endl;
+          save_tensor(C, num_tokens * m->qProjSize * m->num_q_heads * 3, filename3.c_str());
+        }
       }
 
       // matrix C: gradients for key (saved as part of m->devQKVProjArray)
       // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
       DT *C = static_cast<DT *>(m->devQKVProjArray) + num_tokens * (m->qProjSize * m->num_q_heads); // skip over regions reserved for Q gradients
-      std::string filename9 = base_filepath + "_devkproj";
-      std::cout << "FILENAME: " << filename9 << std::endl;
-      save_tensor(C, num_tokens * (m->qProjSize * m->num_q_heads), filename9.c_str());
+      if (m->inference_debugging) {
+        std::string filename9 = base_filepath + "_devkproj";
+        std::cout << "FILENAME: " << filename9 << std::endl;
+        save_tensor(C, num_tokens * (m->qProjSize * m->num_q_heads), filename9.c_str());
+      }
     }
     // Step 7: compute gradients w.r.t. input
     {
@@ -1371,9 +1390,11 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              ldc,
                              compute_type,
                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      std::string filename12 = base_filepath + "_attn_final_grad_in";
-      std::cout << "FILENAME: " << filename12 << std::endl;
-      save_tensor(C, num_tokens * m->qSize, filename12.c_str());
+      if (m->inference_debugging) {
+        std::string filename12 = base_filepath + "_attn_final_grad_in";
+        std::cout << "FILENAME: " << filename12 << std::endl;
+        save_tensor(C, num_tokens * m->qSize, filename12.c_str());
+      }
     }
   }
 }
