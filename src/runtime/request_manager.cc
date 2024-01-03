@@ -468,12 +468,14 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           // Incremental phase
           new_bc.requestsInfo[i].num_tokens_in_batch = 1;
           num_generation_tokens++;
+          new_bc.requestsInfo[i].prompt_phase = false;
         } else {
           // Prompt phase
           new_bc.requestsInfo[i].num_tokens_in_batch =
               std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
                        (int)request.tokens.size() -
                            new_bc.requestsInfo[i].first_token_depth_in_request);
+          new_bc.requestsInfo[i].prompt_phase = true;
         }
         for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
           int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
@@ -509,6 +511,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         new_bc.requestsInfo[i].max_sequence_length =
             new_request.max_sequence_length;
         new_bc.request_completed[i] = false;
+        new_bc.requestsInfo[i].prompt_phase = true;
         num_active_req++;
         new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
         // add profile_info for the new request
@@ -755,6 +758,7 @@ BeamSearchBatchConfig
         new_bc.beamRequestsInfo[i].current_depth = 1;
 
         profiling_requests[request.guid].ssm_decoding_steps = 0;
+        new_bc.requestsInfo[i].prompt_phase = true;
 
         int ssm_decoding_steps = 0;
         new_bc.beamRequestsInfo[i].beam_size =
@@ -902,6 +906,7 @@ BeamSearchBatchConfig
         }
 
         new_bc.request_completed[i] = false;
+        new_bc.requestsInfo[i].prompt_phase = true;
 
         new_bc.beamRequestsInfo[i].sub_request_num = 1;
         printf("sub request num == 1, %d \n",
@@ -1188,10 +1193,7 @@ BeamSearchBatchConfig
       int ssm_decoding_steps =
           profiling_requests[request.guid].ssm_decoding_steps;
 
-      new_bc.beamRequestsInfo[i].beam_size =
-          spec_infer_tree_width.size() > ssm_decoding_steps
-              ? spec_infer_tree_width[ssm_decoding_steps]
-              : 1;
+      new_bc.beamRequestsInfo[i].beam_size = 1;
       // printf("beam size: %d, %d\n",
       //        new_bc.beamRequestsInfo[i].beam_size,
       //        ssm_decoding_steps);
@@ -1223,6 +1225,7 @@ BeamSearchBatchConfig
              &old_bc.causalMask[i],
              sizeof(BatchConfig::BitMask));
 
+      new_bc.requestsInfo[i].prompt_phase = true;
       if (new_bc.requestsInfo[i].first_token_depth_in_request >=
           request.tokens.size()) {
         // request is done
@@ -1820,7 +1823,7 @@ void RequestManager::updateBitMask(BatchConfig::BitMask &bitmask,
 void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
                                           int initLength) {
   assert(initLength > 0);
-  std::cout << "append pending bit mask: " << initLength << "\n";
+  // std::cout << "append pending bit mask: " << initLength << "\n";
   // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100, t4:
   // 0000000..1000
   bitmask.non_tree_cache_size = 0;
