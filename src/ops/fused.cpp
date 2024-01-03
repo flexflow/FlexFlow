@@ -1101,7 +1101,7 @@ __host__ void FusedOp::backward_task(Task const *task,
                                      Context ctx,
                                      Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
+  FusedOpMeta *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
 
   assert(metas->numOperators == fused->numOperators);
