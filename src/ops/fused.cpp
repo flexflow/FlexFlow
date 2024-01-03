@@ -587,6 +587,20 @@ __host__ void
     checkCUDA(get_legion_stream(&stream));
   }
 
+  // check if graph exists
+  if (metas->graph_collections[bc->num_active_requests()]
+                              [bc->num_active_tokens()] != nullptr) {
+    hipGraphExec_t instance =
+        metas->graph_collections[bc->num_active_requests()]
+                                [bc->num_active_tokens()];
+    hipGraphLaunch(instance, stream);
+    return;
+  }
+  // create new hip graph
+  hipGraph_t graph;
+  hipGraphExec_t instance;
+  hipStreamBeginCapture(stream, hipStreamCaptureModeThreadLocal);
+
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
     GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
@@ -1061,6 +1075,14 @@ __host__ void
     woff += fused->op_num_weights[op];
     ooff += fused->op_num_outputs[op];
   }
+  hipStreamEndCapture(stream, &graph);
+  hipGraphInstantiate(&instance, graph, NULL, NULL, 0);
+  metas->graph_collections[bc->num_active_requests()][bc->num_active_tokens()] =
+      instance;
+  assert(metas->graph_collections[bc->num_active_requests()]
+                                 [bc->num_active_tokens()] != nullptr);
+  hipGraphLaunch(instance, stream);
+
   // for (int i = 0; i < fused->numOutputs; i++)
   //   print_tensor<float>(output_ptr[i], output_domain[i].get_volume(),
   //   "[Fused:forward:output]");

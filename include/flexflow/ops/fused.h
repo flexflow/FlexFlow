@@ -13,8 +13,13 @@ public:
   OpMeta *meta[MAX_NUM_FUSED_OPERATORS];
   FusedOp *fused_op;
   int numOperators;
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudaGraphExec_t graph_collections[BatchConfig::MAX_NUM_REQUESTS]
                                    [BatchConfig::MAX_NUM_TOKENS] = {nullptr};
+#else
+  hipGraphExec_t graph_collections[BatchConfig::MAX_NUM_REQUESTS]
+                                  [BatchConfig::MAX_NUM_TOKENS] = {nullptr};
+#endif
 };
 
 class FusedOp : public Op {
