@@ -16,8 +16,8 @@
 """
 Running Instructions:
 - To run this FastAPI application, make sure you have FastAPI and Uvicorn installed.
-- Save this script as 'fastapi_app.py'.
-- Run the application using the command: `uvicorn fastapi_app:app --reload --port PORT_NUMBER`
+- Save this script as 'fastapi_incr.py'.
+- Run the application using the command: `uvicorn fastapi_incr:app --reload --port PORT_NUMBER`
 - The server will start on `http://localhost:PORT_NUMBER`. Use this base URL to make API requests.
 - Go to `http://localhost:PORT_NUMBER/docs` for API documentation.
 """
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 # Running within the entrypoint folder:
-# uvicorn fastapi_app:app --reload --port
+# uvicorn fastapi_incr:app --reload --port
 
 # Running within the python folder:
-# uvicorn entrypoint.fastapi_app:app --reload --port 3000
+# uvicorn entrypoint.fastapi_incr:app --reload --port 3000

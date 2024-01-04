@@ -28,6 +28,8 @@
 
 
 """
+This script implements langchain usecases of prompt template and rag-search upon FlexFlow.
+
 Functionality:
 1. FlexFlowLLM Class:
    - Initializes and configures FlexFlow.
@@ -39,19 +41,13 @@ Functionality:
    - Serves as a wrapper for FlexFlow.
    - Implements the necessary interface to interact with the LangChain library.
 
-3. Main Execution:
+3. Main:
    - Initializes FlexFlow.
    - Compiles and starts the server with specific generation configurations.
-   - Sets up a prompt template for generating responses to questions.
-   - Uses the LLMChain from LangChain to run the model and generate a response to a provided question.
+   - Use Case 1: Sets up a prompt template for generating responses to questions.
+   - Use Case 2: Taking in specific source information with RAG(Retrieval Augmented Generation) technique for Q&A towards specific realm/knowledgebase.
+   - Use LLMChain to run the model and generate response.
    - Stops the FlexFlow server after generating the response.
-
-Usage:
-1. Initialize the FlexFlowLLM with a configuration file (if available).
-2. Compile and start the server with specified generation configurations.
-3. Create an instance of FF_LLM_wrapper and set up a prompt template.
-4. Use LLMChain to run the model and generate a response to a predefined question.
-5. Stop the server when done.
 """
 
 import flexflow.serve as ff
@@ -182,42 +178,42 @@ if __name__ == "__main__":
     
     # USE CASE 2: Rag Search
     
-    # Load web page content
-    loader = WebBaseLoader("https://lilianweng.github.io/posts/2023-06-23-agent/")
-    data = loader.load()
+    # # Load web page content
+    # loader = WebBaseLoader("https://lilianweng.github.io/posts/2023-06-23-agent/")
+    # data = loader.load()
 
-    # Split text
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0)
-    all_splits = text_splitter.split_documents(data)
+    # # Split text
+    # text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0)
+    # all_splits = text_splitter.split_documents(data)
 
-    # Initialize embeddings
-    embeddings = OpenAIEmbeddings(openai_api_key="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") # fill in openai api key
+    # # Initialize embeddings
+    # embeddings = OpenAIEmbeddings(openai_api_key="OPEN_AI_API_KEY") # fill in openai api key
 
-    # Create VectorStore
-    vectorstore = Chroma.from_documents(all_splits, embeddings)
+    # # Create VectorStore
+    # vectorstore = Chroma.from_documents(all_splits, embeddings)
 
-    # Use VectorStore as a retriever
-    retriever = vectorstore.as_retriever()
+    # # Use VectorStore as a retriever
+    # retriever = vectorstore.as_retriever()
 
-    # Test if similarity search is working
-    question = "What are the approaches to Task Decomposition?"
-    docs = vectorstore.similarity_search(question)
-    max_chars_per_doc = 100
-    # docs_text_list = [docs[i].page_content for i in range(len(docs))]
-    docs_text_list = [docs[i].page_content[:max_chars_per_doc] for i in range(len(docs))]
-    docs_text = ''.join(docs_text_list)
+    # # Test if similarity search is working
+    # question = "What are the approaches to Task Decomposition?"
+    # docs = vectorstore.similarity_search(question)
+    # max_chars_per_doc = 100
+    # # docs_text_list = [docs[i].page_content for i in range(len(docs))]
+    # docs_text_list = [docs[i].page_content[:max_chars_per_doc] for i in range(len(docs))]
+    # docs_text = ''.join(docs_text_list)
         
-    # combining with LLM Chain
-    # Prompt
-    prompt_rag = PromptTemplate.from_template(
-        "Summarize the main themes in these retrieved docs: {docs_text}"
-    )
+    # # combining with LLM Chain
+    # # Prompt
+    # prompt_rag = PromptTemplate.from_template(
+    #     "Summarize the main themes in these retrieved docs: {docs_text}"
+    # )
     
-    # Chain
-    llm_chain_rag = LLMChain(llm=ff_llm_wrapper, prompt=prompt_rag)
+    # # Chain
+    # llm_chain_rag = LLMChain(llm=ff_llm_wrapper, prompt=prompt_rag)
 
-    # Run
-    rag_result = llm_chain_rag(docs_text)
+    # # Run
+    # rag_result = llm_chain_rag(docs_text)
 
     # stop the server
     ff_llm.stop_server()
