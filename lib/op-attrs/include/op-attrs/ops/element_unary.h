@@ -1,38 +1,23 @@
-#ifndef _ELEMENT_UNARY_H
-#define _ELEMENT_UNARY_H
+#ifndef _FLEXFLOW_ELEMENTARY_UNARY_ATTRS_H
+#define _FLEXFLOW_ELEMENTARY_UNARY_ATTRS_H
 
-#include "op-attrs/ops/element_unary.h"
-#include "sim_environment.h"
+#include "core.h"
+#include "op-attrs/op.h"
+#include "op-attrs/parallel_tensor_shape.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
-template <>
-void register_task<ELEMENTUNARY_INIT_TASK_ID>();
-template <>
-void register_task<ELEMENTUNARY_FWD_TASK_ID>();
-template <>
-void register_task<ELEMENTUNARY_BWD_TASK_ID>();
+struct ElementScalarUnaryAttrs {
+  req<Op> op;
+  /* bool inplace; */
+  req<float> scalar;
+};
+FF_VISITABLE_STRUCT(ElementScalarUnaryAttrs, op, scalar);
+CHECK_VALID_OP_ATTR(ElementScalarUnaryAttrs);
 
-OpTaskInvocation init(ElementUnaryAttrs const &);
-OpTaskInvocation forward(ElementUnaryAttrs const &);
-OpTaskInvocation backward(ElementUnaryAttrs const &);
-
-OpTaskInvocation init(ElementScalarUnaryAttrs const &);
-OpTaskInvocation forward(ElementScalarUnaryAttrs const &);
-OpTaskInvocation backward(ElementScalarUnaryAttrs const &);
-
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ElementUnaryAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ElementScalarUnaryAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
-} // namespace FlexFlow
-
-#endif
+struct ElementUnaryAttrs {
+  req<Op> op;
+};
+FF_VISITABLE_STRUCT(ElementUnaryAttrs, op);
+CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
