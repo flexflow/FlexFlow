@@ -504,6 +504,9 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
     if (bc->request_completed[i] || (!bc->requestsInfo[i].prompt_phase) ||
         (bc->requestsInfo[i].num_tokens_in_batch == 0)) {
       continue;
+    } else if (tokens_previous_requests < bc->num_generation_tokens) {
+      tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
+      continue;
     }
 
     // all requests in prompt phase should only have one sub requests;
