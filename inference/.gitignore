@@ -3,3 +3,7 @@ weights
 tokenizers
 prompt
 output
+python/.chainlit
+python/chainlit.md
+.env
+python/chain_testing.py
