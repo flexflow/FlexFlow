@@ -167,9 +167,10 @@ public:
     int current_depth = -1;
     int max_depth = MAX_BEAM_DEPTH;
 
-    BatchConfig::TokenId tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-    float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-    int parent_id[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    BatchConfig::TokenId
+        tokens[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    float probs[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    int parent_id[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
     int sub_request_num;
   };
 
@@ -178,10 +179,11 @@ public:
   };
 
   BeamSearchPerRequestInfo beamRequestsInfo[MAX_NUM_REQUESTS];
-  BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS * MAX_BEAM_WIDTH];
+  BeamSearchPerTokenInfo
+      beamTokenInfo[MAX_NUM_TOKENS +
+                    MAX_SPEC_TREE_TOKEN_NUM * MAX_NUM_REQUESTS];
 
-  // why is this == MAX_NUM_REQUESTS * MAX_BEAM_WIDTH?
-  int sub_requests[MAX_NUM_REQUESTS * MAX_BEAM_WIDTH];
+  int sub_requests[MAX_SPECULATIVE_TREE_BRANCHES];
 
 private:
   size_t current_iteration;
@@ -190,9 +192,12 @@ private:
 struct BeamInferenceResult {
   static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId
-      token_ids[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-  float probs[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-  int parent_id[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+      token_ids[MAX_NUM_TOKENS *
+                BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+  float probs[MAX_NUM_TOKENS *
+              BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+  int parent_id[MAX_NUM_TOKENS *
+                BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
 };
 
 }; // namespace FlexFlow
