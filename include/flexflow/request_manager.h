@@ -76,7 +76,7 @@ struct BeamTree {
   struct treeLayer {
     BeamSearchBatchConfig::TokenId
         tokens[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-    int parent_ids[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    int parent_ids[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
     float probs[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
     int nodes_num_this_layer = 0;
   };
