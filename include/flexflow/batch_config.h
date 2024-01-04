@@ -183,7 +183,7 @@ public:
       beamTokenInfo[MAX_NUM_TOKENS +
                     MAX_SPEC_TREE_TOKEN_NUM * MAX_NUM_REQUESTS];
 
-  int sub_requests[MAX_SPECULATIVE_TREE_BRANCHES];
+  int sub_requests[MAX_NUM_REQUESTS];
 
 private:
   size_t current_iteration;
