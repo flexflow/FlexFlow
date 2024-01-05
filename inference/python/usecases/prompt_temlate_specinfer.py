@@ -28,7 +28,7 @@
 
 
 """
-This script implements langchain usecases of prompt template and rag-search upon FlexFlow.
+This script implements the usecase of prompt template upon FlexFlow.
 
 Functionality:
 1. FlexFlowLLM Class:
@@ -44,8 +44,7 @@ Functionality:
 3. Main:
    - Initializes FlexFlow.
    - Compiles and starts the server with specific generation configurations.
-   - Use Case 1: Sets up a prompt template for generating responses to questions.
-   - Use Case 2: Taking in specific source information with RAG(Retrieval Augmented Generation) technique for Q&A towards specific realm/knowledgebase.
+   - Sets up a prompt template for generating responses to questions.
    - Use LLMChain to run the model and generate response.
    - Stops the FlexFlow server after generating the response.
 """
@@ -57,17 +56,14 @@ from langchain.llms.base import LLM
 from typing import Any, List, Mapping, Optional
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
-from langchain.document_loaders import WebBaseLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Chroma
-from langchain.vectorstores import FAISS
+
 
 class FlexFlowLLM:
     def __init__(self, config_file=""):
         self.configs = self.get_configs(config_file)
         ff.init(self.configs)
         self.llm = self.create_llm()
+        self.ssms = self.create_ssms()
 
     def get_configs(self, config_file):
         # Load configurations from a file or use default settings
@@ -96,19 +92,37 @@ class FlexFlowLLM:
                 "fusion": True,
             }
             llm_configs = {
-                # required parameters
-                "llm_model": "tiiuae/falcon-7b",
-                # optional parameters
+                # required llm arguments
+                "llm_model": "meta-llama/Llama-2-7b-hf",
+                # optional llm parameters
                 "cache_path": "",
                 "refresh_cache": False,
                 "full_precision": False,
-                "prompt": "",
+                "ssms": [
+                    {
+                        # required ssm parameter
+                        "ssm_model": "JackFram/llama-160m",
+                        # optional ssm parameters
+                        "cache_path": "",
+                        "refresh_cache": False,
+                        "full_precision": False,
+                    },
+                    {
+                        # required ssm parameter
+                        "ssm_model": "facebook/opt-125m",
+                        # optional ssm parameters
+                        "cache_path": "",
+                        "refresh_cache": False,
+                        "full_precision": False,
+                    },
+                ],
+                # "prompt": "../prompt/test.json",
                 "output_file": "",
             }
             # Merge dictionaries
             ff_init_configs.update(llm_configs)
             return ff_init_configs
-        
+            
     def create_llm(self):
         configs = SimpleNamespace(**self.configs)
         ff_data_type = ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
@@ -120,9 +134,44 @@ class FlexFlowLLM:
             output_file=configs.output_file,
         )
         return llm
-
+    
+    def create_ssms(self):
+        # Create the SSMs
+        ssms = []
+        for ssm_config in configs.ssms:
+            ssm_config = SimpleNamespace(**ssm_config)
+            ff_data_type = (
+                ff.DataType.DT_FLOAT if ssm_config.full_precision else ff.DataType.DT_HALF
+            )
+            ssm = ff.SSM(
+                ssm_config.ssm_model,
+                data_type=ff_data_type,
+                cache_path=ssm_config.cache_path,
+                refresh_cache=ssm_config.refresh_cache,
+                output_file=configs.output_file,
+            )
+            ssms.append(ssm)
+        return ssms
+    
     def compile_and_start(self, generation_config, max_requests_per_batch, max_seq_length, max_tokens_per_batch):
-        self.llm.compile(generation_config, max_requests_per_batch, max_seq_length, max_tokens_per_batch)
+        
+        # Compile the SSMs for inference and load the weights into memory
+        for ssm in self.ssms:
+            self.ssm.compile(
+                generation_config,
+                max_requests_per_batch,
+                max_seq_length,
+                max_tokens_per_batch,
+            )
+            
+        # Compile the LLM for inference and load the weights into memory
+        self.llm.compile(
+            generation_config, 
+            max_requests_per_batch, 
+            max_seq_length, 
+            max_tokens_per_batch,
+            ssms = self.ssms
+        )
         self.llm.start_server()
 
     def generate(self, prompt):
@@ -130,7 +179,6 @@ class FlexFlowLLM:
 
     def stop_server(self):
         self.llm.stop_server()
-
 
 class FF_LLM_wrapper(LLM):
     flexflow_llm: FlexFlowLLM
@@ -175,45 +223,6 @@ if __name__ == "__main__":
     llm_chain = LLMChain(prompt=prompt, llm=ff_llm_wrapper)
     question = "Who was the US president in the year the first Pokemon game was released?"
     print(llm_chain.run(question))
-    
-    # USE CASE 2: Rag Search
-    
-    # # Load web page content
-    # loader = WebBaseLoader("https://lilianweng.github.io/posts/2023-06-23-agent/")
-    # data = loader.load()
-
-    # # Split text
-    # text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0)
-    # all_splits = text_splitter.split_documents(data)
-
-    # # Initialize embeddings
-    # embeddings = OpenAIEmbeddings(openai_api_key="OPEN_AI_API_KEY") # fill in openai api key
-
-    # # Create VectorStore
-    # vectorstore = Chroma.from_documents(all_splits, embeddings)
-
-    # # Use VectorStore as a retriever
-    # retriever = vectorstore.as_retriever()
-
-    # # Test if similarity search is working
-    # question = "What are the approaches to Task Decomposition?"
-    # docs = vectorstore.similarity_search(question)
-    # max_chars_per_doc = 100
-    # # docs_text_list = [docs[i].page_content for i in range(len(docs))]
-    # docs_text_list = [docs[i].page_content[:max_chars_per_doc] for i in range(len(docs))]
-    # docs_text = ''.join(docs_text_list)
-        
-    # # combining with LLM Chain
-    # # Prompt
-    # prompt_rag = PromptTemplate.from_template(
-    #     "Summarize the main themes in these retrieved docs: {docs_text}"
-    # )
-    
-    # # Chain
-    # llm_chain_rag = LLMChain(llm=ff_llm_wrapper, prompt=prompt_rag)
-
-    # # Run
-    # rag_result = llm_chain_rag(docs_text)
 
     # stop the server
     ff_llm.stop_server()

@@ -38,6 +38,10 @@ Usage:
 4. The script will stop the FlexFlow server automatically upon closing the Gradio interface.
 """
 
+"""
+TODO: fix current issue: model init is stuck at "prepare next batch init" and "prepare next batch verify"
+"""
+
 import gradio as gr
 import flexflow.serve as ff
 import argparse, json, os
