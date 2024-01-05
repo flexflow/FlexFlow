@@ -587,15 +587,6 @@ __host__ void
     checkCUDA(get_legion_stream(&stream));
   }
 
-  // check if graph exists
-  if (metas->graph_collections[bc->num_active_requests()]
-                              [bc->num_active_tokens()] != nullptr) {
-    hipGraphExec_t instance =
-        metas->graph_collections[bc->num_active_requests()]
-                                [bc->num_active_tokens()];
-    hipGraphLaunch(instance, stream);
-    return;
-  }
   // create new hip graph
   hipGraph_t graph;
   hipGraphExec_t instance;
@@ -1076,11 +1067,26 @@ __host__ void
     ooff += fused->op_num_outputs[op];
   }
   hipStreamEndCapture(stream, &graph);
-  hipGraphInstantiate(&instance, graph, NULL, NULL, 0);
-  metas->graph_collections[bc->num_active_requests()][bc->num_active_tokens()] =
-      instance;
-  assert(metas->graph_collections[bc->num_active_requests()]
-                                 [bc->num_active_tokens()] != nullptr);
+  std::tuple<int, int, int> graph_params =
+      std::make_tuple(bc->num_active_requests(),
+                      bc->num_active_tokens(),
+                      bc->num_generation_tokens);
+  // check if graph exists
+  if (metas->graph_collections.find(graph_params) !=
+      metas->graph_collections.end()) {
+    instance = metas->graph_collections[graph_params];
+    hipError_t update_result = hipGraphExecUpdate(instance, graph, NULL);
+    if (update_result != hipSuccess) {
+      hipGraphExecDestroy(instance);
+      hipGraphInstantiate(&instance, graph, NULL, NULL, 0);
+    }
+  } else {
+    hipGraphInstantiate(&instance, graph, NULL, NULL, 0);
+  }
+  metas->graph_collections[graph_params] = instance;
+  assert(metas->graph_collections.find(graph_params) !=
+         metas->graph_collections.end());
+  hipGraphDestroy(graph);
   hipGraphLaunch(instance, stream);
 
   // for (int i = 0; i < fused->numOutputs; i++)

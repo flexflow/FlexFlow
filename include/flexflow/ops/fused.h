@@ -9,16 +9,19 @@ namespace FlexFlow {
 class FusedOp;
 class FusedOpMeta {
 public:
-  FusedOpMeta(void) {}
+  FusedOpMeta(void) {
+    graph_collections.reserve(BatchConfig::MAX_NUM_REQUESTS *
+                              BatchConfig::MAX_NUM_TOKENS);
+  }
   OpMeta *meta[MAX_NUM_FUSED_OPERATORS];
   FusedOp *fused_op;
   int numOperators;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudaGraphExec_t graph_collections[BatchConfig::MAX_NUM_REQUESTS]
-                                   [BatchConfig::MAX_NUM_TOKENS] = {nullptr};
+  std::unordered_map<std::tuple<int, int, int>, cudaGraphExec_t>
+      graph_collections;
 #else
-  hipGraphExec_t graph_collections[BatchConfig::MAX_NUM_REQUESTS]
-                                  [BatchConfig::MAX_NUM_TOKENS] = {nullptr};
+  std::unordered_map<std::tuple<int, int, int>, hipGraphExec_t>
+      graph_collections;
 #endif
 };
 

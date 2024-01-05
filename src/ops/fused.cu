@@ -610,15 +610,7 @@ __host__ void
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  // check if graph exists
-  if (metas->graph_collections[bc->num_active_requests()]
-                              [bc->num_active_tokens()] != nullptr) {
-    cudaGraphExec_t instance =
-        metas->graph_collections[bc->num_active_requests()]
-                                [bc->num_active_tokens()];
-    cudaGraphLaunch(instance, stream);
-    return;
-  }
+
   // create new cuda graph
   cudaGraph_t graph;
   cudaGraphExec_t instance;
@@ -1151,11 +1143,26 @@ __host__ void
   //   "[Fused:forward:output]");
 
   cudaStreamEndCapture(stream, &graph);
-  cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
-  metas->graph_collections[bc->num_active_requests()][bc->num_active_tokens()] =
-      instance;
-  assert(metas->graph_collections[bc->num_active_requests()]
-                                 [bc->num_active_tokens()] != nullptr);
+  std::tuple<int, int, int> graph_params =
+      std::make_tuple(bc->num_active_requests(),
+                      bc->num_active_tokens(),
+                      bc->num_generation_tokens);
+  // check if graph exists
+  if (metas->graph_collections.find(graph_params) !=
+      metas->graph_collections.end()) {
+    instance = metas->graph_collections[graph_params];
+    cudaError_t update_result = cudaGraphExecUpdate(instance, graph, NULL);
+    if (update_result != cudaSuccess) {
+      cudaGraphExecDestroy(instance);
+      cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+    }
+  } else {
+    cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+  }
+  metas->graph_collections[graph_params] = instance;
+  assert(metas->graph_collections.find(graph_params) !=
+         metas->graph_collections.end());
+  cudaGraphDestroy(graph);
   cudaGraphLaunch(instance, stream);
 }
 
