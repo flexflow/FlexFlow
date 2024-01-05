@@ -49,12 +49,6 @@ Functionality:
    - Stops the FlexFlow server after generating the response.
 """
 
-"""
-TODO: 
-fix issue: "python: /home/ubuntu/FlexFlow/src/runtime/request_manager.cc:779: FlexFlow::BeamSearchBatchConfig FlexFlow::RequestManager::prepare_next_batch_init(const FlexFlow::TreeVerifyBatchConfig&, const FlexFlow::InferenceResult&, int): Assertion `request.ssm_cache_size == request.initial_len' failed.
-Aborted (core dumped)"
-"""
-
 import flexflow.serve as ff
 import argparse, json, os
 from types import SimpleNamespace
@@ -220,7 +214,7 @@ if __name__ == "__main__":
         gen_config, 
         max_requests_per_batch=1, 
         max_seq_length=256, 
-        max_tokens_per_batch=64
+        max_tokens_per_batch=200
     )
 
     # the wrapper class serves as the 'Model' in LCEL 
