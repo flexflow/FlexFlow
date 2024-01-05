@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "cuda.h"
 #include "flexflow/accessor.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/add_bias_residual_layer_norm.h"
@@ -1151,8 +1152,16 @@ __host__ void
   if (metas->graph_collections.find(graph_params) !=
       metas->graph_collections.end()) {
     instance = metas->graph_collections[graph_params];
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 12000)
+    cudaGraphExecUpdateResult updateResult;
+    cudaGraphNode_t errorNode;
+    cudaGraphExecUpdate(instance, graph, &errorNode, &updateResult);
+    bool update_failed = (updateResult != cudaGraphExecUpdateSuccess);
+#else
     cudaError_t update_result = cudaGraphExecUpdate(instance, graph, NULL);
-    if (update_result != cudaSuccess) {
+    bool update_failed = (update_result != cudaSuccess);
+#endif
+    if (update_failed) {
       cudaGraphExecDestroy(instance);
       cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
     }
