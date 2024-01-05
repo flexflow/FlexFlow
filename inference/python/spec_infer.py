@@ -148,14 +148,15 @@ def main():
         max_tokens_per_batch=64,
         ssms=ssms,
     )
-    llm.start_server()
-    # Generation begins!
-    if len(configs.prompt) > 0:
-        prompts = [s for s in json.load(open(configs.prompt))]
-        results = llm.generate(prompts)
-    else:
-        result = llm.generate("Three tips for staying healthy are: ")
-    llm.stop_server()
+
+    with llm:
+        # Inside this block, the server is running, generation begins!
+        if len(configs.prompt) > 0:
+            prompts = [s for s in json.load(open(configs.prompt))]
+            results = llm.generate(prompts)
+        else:
+            result = llm.generate("Three tips for staying healthy are: ")
+
 
 
 if __name__ == "__main__":
