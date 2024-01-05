@@ -1,4 +1,3 @@
-add_library(
-  NAME
-    deduplicated-priority-queue
+ff_add_library(
+  NAME utils-deduplicated_priority_queue
 )

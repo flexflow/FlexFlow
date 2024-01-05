@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_ALGORITHMS_INCLUDE_UTILS_ALGORITHMS_GENERIC_EXTENDED_H
 #define _FLEXFLOW_LIB_UTILS_ALGORITHMS_INCLUDE_UTILS_ALGORITHMS_GENERIC_EXTENDED_H
 
-#include "utils/algorithms/type/functor/functor.h"
-#include "utils/algorithms/type/monoid/monoid.h"
+#include "utils/algorithms/typeclass/functor/functor.h"
+#include "utils/algorithms/typeclass/monoid/monoid.h"
 
 namespace FlexFlow {
 

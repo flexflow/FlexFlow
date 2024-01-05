@@ -3,8 +3,8 @@
 #include "utils/rapidcheck_extra.h"
 #include "utils/rapidcheck_extra/optional.h"
 #include <utility>
-#include "utils/algorithms/type/monoid/instances/vector.h"
-#include "utils/algorithms/type/functor/instances/vector.h"
+#include "utils/algorithms/typeclass/monoid/instances/vector.h"
+#include "utils/algorithms/typeclass/functor/instances/vector.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE_TEMPLATE("extended(std::vector, _)", 

@@ -2,7 +2,7 @@
 #define _FLEXFLOW_LIB_UTILS_ALGORITHMS_INCLUDE_UTILS_ALGORITHMS_TYPE_FUNCTOR_INSTANCES_VECTOR_H
 
 #include <vector>
-#include "utils/algorithms/type/functor/functor.h"
+#include "utils/algorithms/typeclass/functor/functor.h"
 #include "utils/backports/type_identity.h" 
 
 namespace FlexFlow {
