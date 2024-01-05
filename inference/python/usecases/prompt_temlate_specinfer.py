@@ -137,6 +137,7 @@ class FlexFlowLLM:
     
     def create_ssms(self):
         # Create the SSMs
+        configs = SimpleNamespace(**self.configs)
         ssms = []
         for ssm_config in configs.ssms:
             ssm_config = SimpleNamespace(**ssm_config)
@@ -157,7 +158,7 @@ class FlexFlowLLM:
         
         # Compile the SSMs for inference and load the weights into memory
         for ssm in self.ssms:
-            self.ssm.compile(
+            ssm.compile(
                 generation_config,
                 max_requests_per_batch,
                 max_seq_length,

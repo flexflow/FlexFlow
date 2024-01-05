@@ -49,6 +49,12 @@ Functionality:
    - Stops the FlexFlow server after generating the response.
 """
 
+"""
+TODO: 
+fix issue: "python: /home/ubuntu/FlexFlow/src/runtime/request_manager.cc:779: FlexFlow::BeamSearchBatchConfig FlexFlow::RequestManager::prepare_next_batch_init(const FlexFlow::TreeVerifyBatchConfig&, const FlexFlow::InferenceResult&, int): Assertion `request.ssm_cache_size == request.initial_len' failed.
+Aborted (core dumped)"
+"""
+
 import flexflow.serve as ff
 import argparse, json, os
 from types import SimpleNamespace
@@ -141,6 +147,7 @@ class FlexFlowLLM:
     
     def create_ssms(self):
         # Create the SSMs
+        configs = SimpleNamespace(**self.configs)
         ssms = []
         for ssm_config in configs.ssms:
             ssm_config = SimpleNamespace(**ssm_config)
@@ -161,7 +168,7 @@ class FlexFlowLLM:
         
         # Compile the SSMs for inference and load the weights into memory
         for ssm in self.ssms:
-            self.ssm.compile(
+            ssm.compile(
                 generation_config,
                 max_requests_per_batch,
                 max_seq_length,
@@ -183,7 +190,6 @@ class FlexFlowLLM:
 
     def stop_server(self):
         self.llm.stop_server()
-
 
 class FF_LLM_wrapper(LLM):
     flexflow_llm: FlexFlowLLM
@@ -242,7 +248,7 @@ if __name__ == "__main__":
     # Test if similarity search is working
     question = "What are the approaches to Task Decomposition?"
     docs = vectorstore.similarity_search(question)
-    max_chars_per_doc = 100
+    max_chars_per_doc = 50
     # docs_text_list = [docs[i].page_content for i in range(len(docs))]
     docs_text_list = [docs[i].page_content[:max_chars_per_doc] for i in range(len(docs))]
     docs_text = ''.join(docs_text_list)
