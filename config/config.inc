@@ -190,6 +190,8 @@ if [ -n "$ROCM_PATH" ]; then
   SET_ROCM_PATH="-DROCM_PATH=${ROCM_PATH}"
 fi
 
+ADD_ROCM_TO_PATH=""
+
 # set GPU backend
 if [ -n "$FF_GPU_BACKEND" ]; then
   SET_FF_GPU_BACKEND="-DFF_GPU_BACKEND=${FF_GPU_BACKEND}"
@@ -222,7 +224,8 @@ if [ -n "$FF_GPU_BACKEND" ]; then
         chmod +x "$(pwd)/nvidia_hipcc"
         SET_CXX="-DCMAKE_CXX_COMPILER=$(pwd)/nvidia_hipcc -DCMAKE_CXX_LINKER=$(pwd)/nvidia_hipcc"
       else
-        SET_CXX="-DCMAKE_CXX_COMPILER=/opt/rocm/bin/hipcc -DCMAKE_CXX_LINKER=/opt/rocm/bin/hipcc"
+        ADD_ROCM_TO_PATH="PATH=${PATH}:${ROCM_PATH}/bin"
+        #SET_CXX="-DCMAKE_CXX_COMPILER=/opt/rocm/bin/hipcc -DCMAKE_CXX_LINKER=/opt/rocm/bin/hipcc"
       fi
     fi
   fi
@@ -232,7 +235,7 @@ CMAKE_FLAGS="-DCUDA_USE_STATIC_CUDA_RUNTIME=OFF -DLegion_HIJACK_CUDART=OFF ${SET
 
 function run_cmake() {
 SRC_LOCATION=${SRC_LOCATION:=`dirname $0`/../}
-CMAKE_COMMAND="${SET_CC_FLAGS} ${SET_NVCC_FLAGS} ${SET_LD_FLAGS} ${SET_CUDA_LIB_PATH} cmake ${CMAKE_FLAGS} $* ${SRC_LOCATION}"
+CMAKE_COMMAND="${SET_CC_FLAGS} ${SET_NVCC_FLAGS} ${SET_LD_FLAGS} ${SET_CUDA_LIB_PATH} ${ADD_ROCM_TO_PATH} cmake ${CMAKE_FLAGS} $* ${SRC_LOCATION}"
 echo $CMAKE_COMMAND
 eval $CMAKE_COMMAND
 }

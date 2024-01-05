@@ -48,7 +48,10 @@ void STARCODER::create_starcoder_model(
   ff.set_position_offset(0);
   {
     // assert(startcoder_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
-    int const token_dims[] = {BatchConfig::max_tokens_per_batch(), 1};
+    int const token_dims[] = {mode == TREE_VERIFY_MODE
+                                  ? BatchConfig::max_verify_tokens_per_batch()
+                                  : BatchConfig::max_tokens_per_batch(),
+                              1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
     position_input = ff.create_tensor<2>(token_dims, DT_INT32);
   }

@@ -418,12 +418,17 @@ class LLM:
             ]
         else:
             assert False, "Please pass a non-empty string or list of strings"
-
-    def start_server(self):
+        
+    def __enter__(self):
+        # Start the server when entering the context
         self.rm.start_server(self.model.ffmodel)
+        return self
 
-    def stop_server(self):
+    def __exit__(self, exc_type, exc_value, traceback):
+        # Stop the server when exiting the context
         self.rm.stop_server()
+        if exc_type:
+            print(f"Exception occurred: {exc_value}")
 
 class SSM(LLM):
     """This class creates a SSM (Small-Speculative Model) object based on a model from HuggingFace"""

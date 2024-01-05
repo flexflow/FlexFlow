@@ -571,6 +571,7 @@ flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,
                                                int k,
                                                bool sorted,
+                                               bool speculative_decoding,
                                                char const *name);
 
 flexflow_tensor_t flexflow_model_add_beam_top_k(flexflow_model_t handle_,
