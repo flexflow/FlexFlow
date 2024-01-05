@@ -3349,7 +3349,7 @@ class FFModel(object):
             handles_array[1], owner_op_type=OpType.RESIDUAL_RMS_NORM
         )
 
-    def arg_top_k(self, input, k, sorted, name=None):
+    def arg_top_k(self, input, k, sorted, speculative_decoding, name=None):
         """Defines the Arg TopK layer.
 
         :param input: the input Tensor.
@@ -3360,6 +3360,9 @@ class FFModel(object):
 
         :param sorted: Whether the entries should be sorted
         :type sorted: bool
+
+        :param speculative_decoding: Whether you need to perform beam search
+        :type speculative_decoding: bool
 
         :param name: the name of the layer. Default is None.
         :type name: string

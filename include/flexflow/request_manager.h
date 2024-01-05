@@ -41,12 +41,15 @@ public:
       inference(FFModel *model, int index, BatchConfigFuture const &bc);
   void load_input_tokens_from_batch_config(FFModel *model,
                                            BatchConfigFuture const &bc,
-                                           ParallelTensor const input);
+                                           ParallelTensor const input,
+                                           FFHandler *handlers);
   void load_positions(FFModel *model,
                       BatchConfigFuture const &bc,
                       ParallelTensor position_input,
                       int offset);
   void register_model_weights_loader(FFModel *, FileDataLoader *);
+  void load_inference_metadata_batch_config(BatchConfigFuture const &bc,
+                                            FFHandler *handlers);
 
 public:
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
@@ -77,9 +80,10 @@ struct Request {
 struct BeamTree {
   struct treeLayer {
     BeamSearchBatchConfig::TokenId
-        tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-    int parent_ids[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-    float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+        tokens[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    int parent_ids[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    float probs[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    int nodes_num_this_layer = 0;
   };
   treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1];
 };
@@ -110,7 +114,9 @@ public:
   int get_max_requests_per_batch();
   void set_max_tokens_per_batch(int max_num_tokens);
   int get_max_tokens_per_batch();
+  int get_max_verify_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
+  void push_spec_infer_tree_width(int tree_width);
   int get_max_sequence_length();
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
@@ -118,6 +124,17 @@ public:
                           int eos_token_id,
                           std::string const &path);
   void register_output_filepath(std::string const &);
+  void initBitMask(BatchConfig::BitMask &bitmask, int initLength);
+  void appendPendingRequest(BatchConfig::BitMask &bitmask, int initLength);
+  void appendBitMask(BatchConfig::BitMask &bitmask,
+                     int newNodes,
+                     int preBeamSize,
+                     int old_sub_num,
+                     BeamTree const tree,
+                     int currentDepth);
+  void updateBitMask(BatchConfig::BitMask &bitmask,
+                     int initLength,
+                     int non_tree_size);
 
   FFModel *get_ssm_model(int model_id);
 
@@ -170,6 +187,7 @@ public:
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
   void update_beam_metadata(BeamSearchBatchConfig &new_bc,
+                            BeamSearchBatchConfig const &old_bc,
                             BeamTree &tree,
                             int request_index);
 
@@ -207,6 +225,11 @@ public:
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
 
+  static void
+      load_batch_config_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static BatchConfig prepare_next_batch_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
@@ -237,6 +260,10 @@ private:
   int max_tokens_per_batch;
   int max_sequence_length;
   Status request_manager_status;
+
+  // tree width in each speculative step, if not specified 1
+  std::vector<int> spec_infer_tree_width;
+
   // private fields
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -270,7 +297,8 @@ private:
 
 private:
   struct ProfileInfo {
-    int decoding_steps;
+    int llm_decoding_steps;
+    int ssm_decoding_steps;
     double start_time, finish_time;
   };
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;

@@ -73,6 +73,7 @@ enum TaskIDs {
   DROPOUT_BWD_TASK_ID,
   EMBED_INIT_TASK_ID,
   EMBED_FWD_TASK_ID,
+  EMBED_INF_TASK_ID,
   EMBED_BWD_TASK_ID,
   GATHER_INIT_TASK_ID,
   GATHER_FWD_TASK_ID,
@@ -146,6 +147,7 @@ enum TaskIDs {
   TOPK_BWD_TASK_ID,
   ARG_TOPK_INIT_TASK_ID,
   ARG_TOPK_INF_TASK_ID,
+  ARG_TOPK_INF_SPECULATIVE_TASK_ID,
   SAMPLING_INIT_TASK_ID,
   SAMPLING_INF_TASK_ID,
   ARGMAX_INIT_TASK_ID,
@@ -240,6 +242,7 @@ enum TaskIDs {
   // InferenceManager & RequestManager
   RM_LOAD_TOKENS_TASK_ID,
   RM_LOAD_POSITION_TASK_ID,
+  RM_LOAD_BATCH_CONFIG_TASK_ID,
   RM_PREPARE_NEXT_BATCH_TASK_ID,
   RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
   RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
@@ -674,6 +677,7 @@ public:
                    // Tensor *outputs,
                    int k,
                    bool sorted,
+                   bool speculative_decoding,
                    char const *name = NULL);
   Tensor argmax(const Tensor input, bool beam_search, char const *name = NULL);
   Tensor sampling(const Tensor input, float top_p, char const *name = NULL);
@@ -1034,8 +1038,15 @@ public:
   void get_metrics();
   void backward(int seq_length = -1);
   void update();
-  bool apply_fusion(std::vector<Op *> const &operators,
-                    std::vector<Op *> &new_operators);
+  bool apply_fusion(
+      std::vector<Op *> const &operators,
+      std::vector<Op *> &new_operators,
+      std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+          *parallel_tensor_mapping = nullptr);
+  bool check_operators_integrity(
+      std::vector<Op *> const &old_operators,
+      std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+          *pt_mapping = nullptr);
   Op *get_final_operator() const;
   void compile(LossType loss_type,
                std::vector<MetricsType> const &metrics,

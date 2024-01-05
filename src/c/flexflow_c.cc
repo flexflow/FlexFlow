@@ -1489,10 +1489,12 @@ flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,
                                                int k,
                                                bool sorted,
+                                               bool speculative_decoding,
                                                char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor tensor = handle->arg_top_k(input, k, sorted, name);
+  Tensor tensor =
+      handle->arg_top_k(input, k, sorted, speculative_decoding, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
