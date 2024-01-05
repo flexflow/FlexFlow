@@ -418,21 +418,15 @@ class LLM:
             ]
         else:
             assert False, "Please pass a non-empty string or list of strings"
-
-    def start_server(self):
-        self.rm.start_server(self.model.ffmodel)
-
-    def stop_server(self):
-        self.rm.stop_server()
         
     def __enter__(self):
         # Start the server when entering the context
-        self.start_server()
+        self.rm.start_server(self.model.ffmodel)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         # Stop the server when exiting the context
-        self.stop_server()
+        self.rm.stop_server()
         if exc_type:
             print(f"Exception occurred: {exc_value}")
 
