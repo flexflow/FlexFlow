@@ -48,7 +48,8 @@ public:
                       ParallelTensor position_input,
                       int offset);
   void register_model_weights_loader(FFModel *, FileDataLoader *);
-  void load_inference_metadata_batch_config(BatchConfigFuture const &bc,
+  void load_inference_metadata_batch_config(FFModel *model,
+                                            BatchConfigFuture const &bc,
                                             FFHandler *handlers);
 
 public:

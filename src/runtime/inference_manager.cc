@@ -389,7 +389,7 @@ FutureMap InferenceManager::inference(FFModel *model,
         assert(op->numOutputs == 1);
         ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
         load_input_tokens_from_batch_config(model, bc, pt, model->handlers);
-        load_inference_metadata_batch_config(bc, model->handlers);
+        load_inference_metadata_batch_config(model, bc, model->handlers);
       }
     }
 
@@ -464,13 +464,13 @@ void InferenceManager::load_input_tokens_from_batch_config(
 }
 
 void InferenceManager::load_inference_metadata_batch_config(
-    BatchConfigFuture const &bc, FFHandler *handlers) {
-  Context ctx = ff_config.lg_ctx;
-  Runtime *runtime = ff_config.lg_hlr;
+    FFModel *model, BatchConfigFuture const &bc, FFHandler *handlers) {
+  Context ctx = model->config.lg_ctx;
+  Runtime *runtime = model->config.lg_hlr;
   ArgumentMap argmap;
 
   Domain domain =
-      runtime->get_index_space_domain(ctx, ff_config.all_gpu_task_is);
+      runtime->get_index_space_domain(ctx, model->config.all_gpu_task_is);
   Rect<1> task_rect = domain;
 
   int idx = 0;
@@ -480,7 +480,7 @@ void InferenceManager::load_inference_metadata_batch_config(
   }
 
   IndexLauncher launcher(RM_LOAD_BATCH_CONFIG_TASK_ID,
-                         ff_config.all_gpu_task_is,
+                         model->config.all_gpu_task_is,
                          TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
