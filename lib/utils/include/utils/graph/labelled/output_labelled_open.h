@@ -134,6 +134,16 @@ public:
     return il->get_label(e);
   }
 
+  template<typename... Ts>
+  EdgeLabel const &at(variant<Ts...> const &e) const {
+    return visit([&](auto const &e) { return this->at(e); }, e);
+  }
+
+  template<typename... Ts>
+  EdgeLabel &at(variant<Ts...> const &e) {
+    return visit([&](auto const &e) { return this->at(e); }, e);
+  }
+
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
     return get_ptr().query_nodes(q);
   }

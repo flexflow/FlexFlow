@@ -227,18 +227,18 @@ bool assignment_satisfies(SubParallelComputationGraph const &pcg,
                           MultiDiGraphPatternMatch const &patternMatch) {
   bool result = true;
   for (auto const &kv : patternMatch.node_assignment) {
-    auto patternNode = kv.first;
-    auto pcgNode = kv.second;
+    Node patternNode = kv.first;
+    Node pcgNode = kv.second;
     optional<bool> constraintResult =
         satisfies(pcg.at(pcgNode), pattern.value().at(patternNode));
     result &= constraintResult.value_or(false);
   }
 
   for (auto const &kv : patternMatch.edge_assignment) {
-    auto patternEdge = kv.first;
-    auto pcgEdge = kv.second;
+    OpenMultiDiEdge patternEdge = kv.first;
+    OpenMultiDiEdge pcgEdge = kv.second;
     optional<bool> constraintResult =
-        satisfies(at(pcg, pcgEdge), at(pattern.value(), patternEdge));
+        satisfies(pcg.at(pcgEdge), pattern.value().at(patternEdge));
     result &= constraintResult.value_or(false);
   }
 
