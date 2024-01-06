@@ -58,8 +58,10 @@ public:
 protected:
   LabelledMultiDiGraphView(cow_ptr_t<Interface const> ptr)
       : NodeLabelledMultiDiGraphView<NodeLabel>(ptr) {}
-  cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(static_cast<Interface const &>(*GraphView::ptr));
+
+  Interface const &get_ptr() const {
+    return *std::reinterpret_pointer_cast<Interface const>(
+        GraphView::ptr.get());
   }
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(LabelledMultiDiGraphView<int, int>);
@@ -129,8 +131,14 @@ private:
                        cow_ptr_t<IEdgeLabel> el)
       : LabelledMultiDiGraphView<NodeLabel, EdgeLabel>(ptr), nl(nl), el(el) {}
 
-  cow_ptr_t<Interface> get_ptr() const {
-    return cow_ptr_t(static_cast<Interface const &>(*GraphView::ptr));
+  Interface &get_ptr() {
+    return *std::reinterpret_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
+  }
+
+  Interface const &get_ptr() const {
+    return *std::reinterpret_pointer_cast<Interface const>(
+        GraphView::ptr.get());
   }
 
   cow_ptr_t<INodeLabel> nl;

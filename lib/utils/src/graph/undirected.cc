@@ -25,7 +25,12 @@ void UndirectedGraph::remove_edge(UndirectedEdge const &e) {
   return this->get_ptr().remove_edge(e);
 }
 
-IUndirectedGraph &UndirectedGraph::get_ptr() const {
+IUndirectedGraph const &UndirectedGraph::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IUndirectedGraph const>(
+      GraphView::ptr.get());
+}
+
+IUndirectedGraph &UndirectedGraph::get_ptr() {
   return *std::reinterpret_pointer_cast<IUndirectedGraph>(
       GraphView::ptr.get_mutable());
 }
@@ -50,9 +55,9 @@ std::unordered_set<Node>
   return this->get_ptr().query_nodes(q);
 }
 
-IUndirectedGraphView &UndirectedGraphView::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IUndirectedGraphView>(
-      GraphView::ptr.get_mutable());
+IUndirectedGraphView const &UndirectedGraphView::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IUndirectedGraphView const>(
+      GraphView::ptr.get());
 }
 
 } // namespace FlexFlow

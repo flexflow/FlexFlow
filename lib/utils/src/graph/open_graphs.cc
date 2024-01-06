@@ -21,9 +21,9 @@ std::unordered_set<OpenMultiDiEdge>
   return this->get_ptr().query_edges(q);
 }
 
-IOpenMultiDiGraphView &OpenMultiDiGraphView::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IOpenMultiDiGraphView>(
-      GraphView::ptr.get_mutable());
+IOpenMultiDiGraphView const &OpenMultiDiGraphView::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IOpenMultiDiGraphView const>(
+      GraphView::ptr.get());
 }
 
 Node OpenMultiDiGraph::add_node() {
@@ -51,9 +51,14 @@ std::unordered_set<OpenMultiDiEdge>
   return this->get_ptr().query_edges(q);
 }
 
-IOpenMultiDiGraph &OpenMultiDiGraph::get_ptr() const {
+IOpenMultiDiGraph &OpenMultiDiGraph::get_ptr() {
   return *std::reinterpret_pointer_cast<IOpenMultiDiGraph>(
       GraphView::ptr.get_mutable());
+}
+
+IOpenMultiDiGraph const &OpenMultiDiGraph::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IOpenMultiDiGraph const>(
+      GraphView::ptr.get());
 }
 
 std::unordered_set<Node>
@@ -67,9 +72,9 @@ std::unordered_set<UpwardOpenMultiDiEdge>
   return get_ptr().query_edges(q);
 }
 
-IUpwardOpenMultiDiGraphView &UpwardOpenMultiDiGraphView::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IUpwardOpenMultiDiGraphView>(
-      GraphView::ptr.get_mutable());
+IUpwardOpenMultiDiGraphView const &UpwardOpenMultiDiGraphView::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IUpwardOpenMultiDiGraphView const>(
+      GraphView::ptr.get());
 }
 
 Node UpwardOpenMultiDiGraph::add_node() {
@@ -97,7 +102,12 @@ std::unordered_set<UpwardOpenMultiDiEdge> UpwardOpenMultiDiGraph::query_edges(
   return this->get_ptr().query_edges(q);
 }
 
-IUpwardOpenMultiDiGraph &UpwardOpenMultiDiGraph::get_ptr() const {
+IUpwardOpenMultiDiGraph const &UpwardOpenMultiDiGraph::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IUpwardOpenMultiDiGraph const>(
+      GraphView::ptr.get());
+}
+
+IUpwardOpenMultiDiGraph &UpwardOpenMultiDiGraph::get_ptr() {
   return *std::reinterpret_pointer_cast<IUpwardOpenMultiDiGraph>(
       GraphView::ptr.get_mutable());
 }
@@ -113,9 +123,9 @@ std::unordered_set<DownwardOpenMultiDiEdge>
   return this->get_ptr().query_edges(q);
 }
 
-IDownwardOpenMultiDiGraphView &DownwardOpenMultiDiGraphView::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IDownwardOpenMultiDiGraphView>(
-      GraphView::ptr.get_mutable());
+IDownwardOpenMultiDiGraphView const &DownwardOpenMultiDiGraphView::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IDownwardOpenMultiDiGraphView const>(
+      GraphView::ptr.get());
 }
 
 Node DownwardOpenMultiDiGraph::add_node() {
@@ -149,9 +159,14 @@ std::unordered_set<DownwardOpenMultiDiEdge>
   return this->get_ptr().query_edges(q);
 }
 
-IDownwardOpenMultiDiGraph &DownwardOpenMultiDiGraph::get_ptr() const {
+IDownwardOpenMultiDiGraph &DownwardOpenMultiDiGraph::get_ptr() {
   return *std::reinterpret_pointer_cast<IDownwardOpenMultiDiGraph>(
       GraphView::ptr.get_mutable());
+}
+
+IDownwardOpenMultiDiGraph const &DownwardOpenMultiDiGraph::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IDownwardOpenMultiDiGraph const>(
+      GraphView::ptr.get());
 }
 
 } // namespace FlexFlow
