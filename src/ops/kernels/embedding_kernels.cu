@@ -70,6 +70,16 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
                                m->aggr,
                                output.domain.get_volume(),
                                stream);
+    } else if (weight.data_type == DT_B16) {
+      Internal::forward_kernel(input.get_int32_ptr(),
+                               output.get_bfloat16_ptr(),
+                               weight.get_bfloat16_ptr(),
+                               in_dim,
+                               out_dim,
+                               batch_size,
+                               m->aggr,
+                               output.domain.get_volume(),
+                               stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");
     }
@@ -98,6 +108,16 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
       Internal::forward_kernel(input.get_int64_ptr(),
                                output.get_double_ptr(),
                                weight.get_double_ptr(),
+                               in_dim,
+                               out_dim,
+                               batch_size,
+                               m->aggr,
+                               output.domain.get_volume(),
+                               stream);
+    } else if (weight.data_type == DT_B16) {
+      Internal::forward_kernel(input.get_int64_ptr(),
+                               output.get_bfloat16_ptr(),
+                               weight.get_bfloat16_ptr(),
                                in_dim,
                                out_dim,
                                batch_size,
@@ -161,6 +181,16 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
                                 m->aggr,
                                 output.domain.get_volume(),
                                 stream);
+    } else if (m->output_type[0] == DT_B16) {
+      Internal::backward_kernel(input.get_int32_ptr(),
+                                output.get_bfloat16_ptr(),
+                                weight_grad.get_bfloat16_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");
     }
@@ -189,6 +219,16 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
       Internal::backward_kernel(input.get_int64_ptr(),
                                 output.get_double_ptr(),
                                 weight_grad.get_double_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
+    } else if (m->output_type[0] == DT_B16) {
+      Internal::backward_kernel(input.get_int64_ptr(),
+                                output.get_bfloat16_ptr(),
+                                weight_grad.get_bfloat16_ptr(),
                                 in_dim,
                                 out_dim,
                                 batch_size,
@@ -322,6 +362,50 @@ __global__ void embed_backward_no_aggr<int64_t, half>(int64_t const *input,
   }
 }
 
+template <>
+__global__ void
+    embed_backward_no_aggr<int, __nv_bfloat16>(int const *input,
+                                               __nv_bfloat16 const *output,
+                                               __nv_bfloat16 *embed,
+                                               int out_dim,
+                                               int batch_size) {
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    int wordIdx = input[idx];
+#if __CUDA_ARCH__ >= 700
+    atomicAdd(embed + wordIdx * out_dim + off, output[i]);
+#else
+    assert(false);
+    // TODO: this implementation may result in race condition
+    // so we use an assertion failure to warn users
+    embed[wordIdx * out_dim + off] += output[i];
+#endif
+  }
+}
+
+template <>
+__global__ void
+    embed_backward_no_aggr<int64_t, __nv_bfloat16>(int64_t const *input,
+                                                   __nv_bfloat16 const *output,
+                                                   __nv_bfloat16 *embed,
+                                                   int out_dim,
+                                                   int batch_size) {
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    int64_t wordIdx = input[idx];
+#if __CUDA_ARCH__ >= 700
+    atomicAdd(embed + wordIdx * out_dim + off, output[i]);
+#else
+    assert(false);
+    // TODO: this implementation may result in race condition
+    // so we use an assertion failure to warn users
+    embed[wordIdx * out_dim + off] += output[i];
+#endif
+  }
+}
+
 template <typename TI, typename TD>
 __global__ void embed_backward_with_aggr(TI const *input,
                                          TD const *output,
@@ -396,6 +480,74 @@ __global__ void embed_backward_with_aggr<int64_t, half>(int64_t const *input,
     int idx = i / out_dim;
     int off = i % out_dim;
     half gradient;
+    if (aggr == AGGR_MODE_SUM) {
+      gradient = output[i];
+    } else {
+      assert(aggr == AGGR_MODE_AVG);
+      gradient = output[i] * scale;
+    }
+    for (int j = 0; j < in_dim; j++) {
+      int64_t wordIdx = input[idx * in_dim + j];
+#if __CUDA_ARCH__ >= 700
+      atomicAdd(embed + wordIdx * out_dim + off, gradient);
+#else
+      assert(false);
+      // TODO: this implementation may result in race condition
+      // so we use an assertion failure to warn users
+      embed[wordIdx * out_dim + off] += gradient;
+#endif
+    }
+  }
+}
+
+template <>
+__global__ void
+    embed_backward_with_aggr<int, __nv_bfloat16>(int const *input,
+                                                 __nv_bfloat16 const *output,
+                                                 __nv_bfloat16 *embed,
+                                                 int out_dim,
+                                                 int in_dim,
+                                                 int batch_size,
+                                                 AggrMode aggr) {
+  __nv_bfloat16 scale = 1.0f / in_dim;
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    __nv_bfloat16 gradient;
+    if (aggr == AGGR_MODE_SUM) {
+      gradient = output[i];
+    } else {
+      assert(aggr == AGGR_MODE_AVG);
+      gradient = output[i] * scale;
+    }
+    for (int j = 0; j < in_dim; j++) {
+      int wordIdx = input[idx * in_dim + j];
+#if __CUDA_ARCH__ >= 700
+      atomicAdd(embed + wordIdx * out_dim + off, gradient);
+#else
+      assert(false);
+      // TODO: this implementation may result in race condition
+      // so we use an assertion failure to warn users
+      embed[wordIdx * out_dim + off] += gradient;
+#endif
+    }
+  }
+}
+
+template <>
+__global__ void embed_backward_with_aggr<int64_t, __nv_bfloat16>(
+    int64_t const *input,
+    __nv_bfloat16 const *output,
+    __nv_bfloat16 *embed,
+    int out_dim,
+    int in_dim,
+    int batch_size,
+    AggrMode aggr) {
+  __nv_bfloat16 scale = 1.0f / in_dim;
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    __nv_bfloat16 gradient;
     if (aggr == AGGR_MODE_SUM) {
       gradient = output[i];
     } else {

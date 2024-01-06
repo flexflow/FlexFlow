@@ -15,7 +15,7 @@
 from flexflow.core import *
 from .base import FlexFlowModel
 import random
-
+import torch
 
 class LLAMAConfig:
     def __init__(self, hf_config):

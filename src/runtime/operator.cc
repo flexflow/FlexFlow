@@ -62,6 +62,10 @@ void Op::save_inference_tensors_to_file(
       save_tensor(input_tensors[i].get_half_ptr(),
                   input_tensors[i].domain.get_volume(),
                   filename.c_str());
+    } else if (input_tensors[i].data_type == DT_B16) {
+      save_tensor(input_tensors[i].get_bfloat16_ptr(),
+                  input_tensors[i].domain.get_volume(),
+                  filename.c_str());
     } else if (input_tensors[i].data_type == DT_INT32) {
       save_tensor(input_tensors[i].get_int32_ptr(),
                   input_tensors[i].domain.get_volume(),
@@ -86,6 +90,10 @@ void Op::save_inference_tensors_to_file(
         save_tensor(weight_tensors[i].get_half_ptr(),
                     weight_tensors[i].domain.get_volume(),
                     filename.c_str());
+      } else if (weight_tensors[i].data_type == DT_B16) {
+        save_tensor(weight_tensors[i].get_bfloat16_ptr(),
+                    weight_tensors[i].domain.get_volume(),
+                    filename.c_str());
       } else if (weight_tensors[i].data_type == DT_INT32) {
         save_tensor(weight_tensors[i].get_int32_ptr(),
                     weight_tensors[i].domain.get_volume(),
@@ -108,6 +116,10 @@ void Op::save_inference_tensors_to_file(
                   filename.c_str());
     } else if (output_tensors[i].data_type == DT_HALF) {
       save_tensor(output_tensors[i].get_half_ptr(),
+                  output_tensors[i].domain.get_volume(),
+                  filename.c_str());
+    } else if (output_tensors[i].data_type == DT_B16) {
+      save_tensor(output_tensors[i].get_bfloat16_ptr(),
                   output_tensors[i].domain.get_volume(),
                   filename.c_str());
     } else if (output_tensors[i].data_type == DT_INT32) {

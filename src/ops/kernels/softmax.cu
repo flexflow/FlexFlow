@@ -105,7 +105,10 @@ template void forward_kernel_wrapper<float>(SoftmaxMeta const *m,
 template void forward_kernel_wrapper<half>(SoftmaxMeta const *m,
                                            half const *input_ptr,
                                            half *output_ptr);
-
+template void
+    forward_kernel_wrapper<__nv_bfloat16>(SoftmaxMeta const *m,
+                                          __nv_bfloat16 const *input_ptr,
+                                          __nv_bfloat16 *output_ptr);
 template void backward_kernel_wrapper<float>(SoftmaxMeta const *m,
                                              float *input_grad_ptr,
                                              float const *output_grad_ptr,
@@ -114,6 +117,12 @@ template void backward_kernel_wrapper<half>(SoftmaxMeta const *m,
                                             half *input_grad_ptr,
                                             half const *output_grad_ptr,
                                             size_t num_elements);
+
+template void
+    backward_kernel_wrapper<__nv_bfloat16>(SoftmaxMeta const *m,
+                                           __nv_bfloat16 *input_grad_ptr,
+                                           __nv_bfloat16 const *output_grad_ptr,
+                                           size_t num_elements);
 namespace Internal {
 template <typename DT>
 void forward_kernel(SoftmaxMeta const *m,

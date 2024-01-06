@@ -105,6 +105,9 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
                              in2.get_float_ptr(),
                              out.get_float_ptr(),
                              stream);
+  } else if (out.data_type == DT_B16) {
+    Internal::forward_kernel(
+        m, in1.get_bfloat16_ptr(), in2.get_bfloat16_ptr(), out.get_bfloat16_ptr(), stream);
   } else {
     assert(false && "Unsupported data type");
   }

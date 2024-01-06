@@ -52,7 +52,7 @@ SoftmaxParams Softmax::get_params() const {
   return params;
 }
 
-Tensor FFModel::softmax(const Tensor _input,
+Tensor FFModel::softmax(Tensor const _input,
                         int dim,
                         DataType data_type,
                         char const *name) {
@@ -93,7 +93,7 @@ Op *Softmax::create_operator_from_layer(
 }
 
 Softmax::Softmax(FFModel &model,
-                 const ParallelTensor _input,
+                 ParallelTensor const _input,
                  int _dim,
                  char const *name)
     : Op(model,
@@ -117,7 +117,7 @@ Softmax::Softmax(FFModel &model,
 
 Softmax::Softmax(FFModel &model,
                  SoftmaxParams const &params,
-                 const ParallelTensor input,
+                 ParallelTensor const input,
                  char const *name)
     : Softmax(model, input, params.dim, name) {}
 
@@ -319,6 +319,9 @@ void Softmax::forward_task(Task const *task,
     forward_kernel_wrapper(m, input.get_half_ptr(), output.get_half_ptr());
   } else if (m->output_type == DT_FLOAT) {
     forward_kernel_wrapper(m, input.get_float_ptr(), output.get_float_ptr());
+  } else if (m->output_type == DT_B16) {
+    forward_kernel_wrapper(
+        m, input.get_bfloat16_ptr(), output.get_bfloat16_ptr());
   } else {
     assert(false && "Unsupported data type");
   }
@@ -366,6 +369,9 @@ void Softmax::backward_task(Task const *task,
       return backward_task_with_dim<half, DIM>(task, regions, ctx, runtime);   \
     } else if (m->output_type == DT_FLOAT) {                                   \
       return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
+    } else if (m->output_type == DT_B16) {                                     \
+      return backward_task_with_dim<__nv_bfloat16, DIM>(                       \
+          task, regions, ctx, runtime);                                        \
     } else {                                                                   \
       assert(false && "Unsupported data type");                                \
     }
@@ -429,6 +435,9 @@ void Softmax::inference_task(Task const *task,
     forward_kernel_wrapper(m, input.get_half_ptr(), output.get_half_ptr());
   } else if (m->output_type == DT_FLOAT) {
     forward_kernel_wrapper(m, input.get_float_ptr(), output.get_float_ptr());
+  } else if (m->output_type == DT_B16) {
+    forward_kernel_wrapper(
+        m, input.get_bfloat16_ptr(), output.get_bfloat16_ptr());
   } else {
     assert(false && "Unsupported data type");
   }

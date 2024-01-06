@@ -308,6 +308,12 @@ template void
                                                 float *output_ptr,
                                                 size_t num_elements);
 template void
+    ElementUnary::forward_kernel_wrapper<__nv_bfloat16>(ElementUnaryMeta const *m,
+                                               __nv_bfloat16 const *input_ptr,
+                                               __nv_bfloat16 *output_ptr,
+                                               size_t num_elements);
+
+template void
     ElementUnary::forward_kernel_wrapper<double>(ElementUnaryMeta const *m,
                                                  double const *input_ptr,
                                                  double *output_ptr,
@@ -329,6 +335,7 @@ template void
                                                  float const *output_ptr,
                                                  float const *output_grad_ptr,
                                                  size_t num_elements);
+
 template void
     ElementUnary::backward_kernel_wrapper<double>(ElementUnaryMeta const *m,
                                                   double const *input_ptr,

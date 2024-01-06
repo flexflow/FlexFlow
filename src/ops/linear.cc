@@ -33,7 +33,7 @@ using namespace FlexFlow::Kernels::Linear;
 static constexpr int KERNEL_IDX = 0;
 static constexpr int BIAS_IDX = 1;
 
-Tensor FFModel::dense(const Tensor input,
+Tensor FFModel::dense(Tensor const input,
                       int outDim,
                       ActiMode activation,
                       bool use_bias,
@@ -157,7 +157,7 @@ Op *Linear::create_operator_from_layer(
 
 Linear::Linear(FFModel &model,
                Linear const &other,
-               const ParallelTensor input,
+               ParallelTensor const input,
                bool allocate_weights)
     : Linear(model,
              other.layer_guid,
@@ -194,7 +194,7 @@ Linear::Linear(FFModel &model,
 
 Linear::Linear(FFModel &model,
                LayerID const &_layer_guid,
-               const ParallelTensor _input,
+               ParallelTensor const _input,
                int out_dim,
                ActiMode _activation,
                RegularizerMode _kernel_reg_type,
@@ -435,6 +435,14 @@ OpMeta *Linear::init_task(Task const *task,
             task, regions, ctx, runtime);                                      \
       } else {                                                                 \
         return init_task_with_dim<float, float, DIM>(                          \
+            task, regions, ctx, runtime);                                      \
+      }                                                                        \
+    } else if (output.data_type == DT_B16) {                                   \
+      if (linear->quantization_type != DT_NONE) {                              \
+        return init_task_with_dim<__nv_bfloat16, char, DIM>(                   \
+            task, regions, ctx, runtime);                                      \
+      } else {                                                                 \
+        return init_task_with_dim<__nv_bfloat16, __nv_bfloat16, DIM>(          \
             task, regions, ctx, runtime);                                      \
       }                                                                        \
     } else {                                                                   \
@@ -704,6 +712,14 @@ void Linear::forward_task(Task const *task,
         return forward_task_with_dim<float, float, DIM>(                       \
             task, regions, ctx, runtime);                                      \
       }                                                                        \
+    } else if (m->output_type[0] == DT_B16) {                                  \
+      if (m->quantization_type != DT_NONE) {                                   \
+        return forward_task_with_dim<__nv_bfloat16, char, DIM>(                \
+            task, regions, ctx, runtime);                                      \
+      } else {                                                                 \
+        return forward_task_with_dim<__nv_bfloat16, __nv_bfloat16, DIM>(       \
+            task, regions, ctx, runtime);                                      \
+      }                                                                        \
     } else {                                                                   \
       assert(false && "Unsupported data type");                                \
     }
@@ -859,6 +875,9 @@ void Linear::backward_task(Task const *task,
       return backward_task_with_dim<half, DIM>(task, regions, ctx, runtime);   \
     } else if (m->output_type[0] == DT_FLOAT) {                                \
       return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
+    } else if (m->output_type[0] == DT_B16) {                                  \
+      return backward_task_with_dim<__nv_bfloat16, DIM>(                       \
+          task, regions, ctx, runtime);                                        \
     } else {                                                                   \
       assert(false && "Unsupported data type");                                \
     }
@@ -1341,7 +1360,7 @@ bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
  * It takes a the input tensor as a parameter, instead of the input's
  * ParallelTensorShape.
  */
-void LinearParams::solve_dims(const ParallelTensor input,
+void LinearParams::solve_dims(ParallelTensor const input,
                               ParallelDim output_dims[MAX_TENSOR_DIM],
                               int *output_ndims,
                               ParallelDim kernel_dims[MAX_TENSOR_DIM],

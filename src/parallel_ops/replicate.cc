@@ -59,7 +59,7 @@ ReplicateParams Replicate::get_params() const {
 }
 
 Replicate::Replicate(FFModel &model,
-                     const ParallelTensor _input,
+                     ParallelTensor const _input,
                      int _replicate_legion_dim,
                      int _replicate_degree,
                      char const *name)
@@ -373,6 +373,10 @@ void Replicate::forward_task(Task const *task,
     forward_kernel<float>(input.get_float_ptr(),
                           output.get_float_ptr(),
                           input_domain.get_volume());
+  } else if (input.data_type == DT_B16) {
+    forward_kernel<__nv_bfloat16>(input.get_bfloat16_ptr(),
+                                  output.get_bfloat16_ptr(),
+                                  input_domain.get_volume());
   } else {
     assert(false && "Unspported data type");
   }

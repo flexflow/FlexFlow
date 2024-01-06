@@ -30,6 +30,11 @@ def parse_args():
         action="store_true",
         help="Only download the half precision version of the weights",
     )
+    group.add_argument(
+        "--bfloat16-precision-only",
+        action="store_true",
+        help="Only download the bfloat16 precision version of the weights",
+    )
     args = parser.parse_args()
     return args
 
@@ -39,8 +44,10 @@ def main(args):
         data_types = ff.DataType.DT_FLOAT
     elif args.half_precision_only:
         data_types = ff.DataType.DT_HALF
+    elif args.bfloat16_precision_only:
+        data_types = ff.DataType.DT_B16
     else:
-        data_types = (ff.DataType.DT_FLOAT, ff.DataType.DT_HALF)
+        data_types = (ff.DataType.DT_FLOAT, ff.DataType.DT_HALF, ff.DataType.DT_B16)
 
     for model_name in args.model_names:
         for data_type in data_types:

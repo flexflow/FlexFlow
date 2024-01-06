@@ -235,6 +235,12 @@ void ZeroInitializer::init_task(Task const *task,
       assign_kernel<half>
           <<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
               w, domain.get_volume(), 0.0f);
+    } else if (meta->data_types[i] == DT_B16) {
+      __nv_bfloat16 *w = helperGetTensorPointerWO<__nv_bfloat16>(
+          regions[i], task->regions[i], FID_DATA, ctx, runtime);
+      assign_kernel<__nv_bfloat16>
+          <<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
+              w, domain.get_volume(), 0.0f);
     } else if (meta->data_types[i] == DT_FLOAT) {
       float *w = helperGetTensorPointerWO<float>(
           regions[i], task->regions[i], FID_DATA, ctx, runtime);

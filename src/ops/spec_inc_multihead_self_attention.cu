@@ -789,6 +789,18 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
         output.get_float_ptr(),
         bias_ptr,
         stream);
+  }else if (input.data_type == DT_B16) {
+    __nv_bfloat16 const *bias_ptr =
+        use_bias ? bias.get_bfloat16_ptr() : static_cast<__nv_bfloat16 const *>(nullptr);
+    Kernels::SpecIncMultiHeadSelfAttention::inference_kernel(
+        m,
+        bc,
+        shard_id,
+        input.get_bfloat16_ptr(),
+        weight.get_bfloat16_ptr(),
+        output.get_bfloat16_ptr(),
+        bias_ptr,
+        stream);
   } else {
     assert(false && "Unspported data type");
   }

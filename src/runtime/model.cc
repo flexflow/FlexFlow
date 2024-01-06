@@ -1947,6 +1947,9 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
     case DT_HALF:
       allocator.allocate_field(sizeof(half), FID_DATA);
       break;
+    case DT_B16:
+      allocator.allocate_field(sizeof(__nv_bfloat16), FID_DATA);
+      break;
     case DT_FLOAT:
       allocator.allocate_field(sizeof(float), FID_DATA);
       break;

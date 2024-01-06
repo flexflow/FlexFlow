@@ -264,6 +264,7 @@ void FlexFlow::top_level_task(Task const *task,
   FFConfig ffconfig;
   FilePaths file_paths;
   ModelMeta model_metadata;
+  DataType data_type = DT_B16;
   bool use_full_precision = false;
   bool verbose = false;
   int max_requests_per_batch = 16;
@@ -313,7 +314,7 @@ void FlexFlow::top_level_task(Task const *task,
                               model_metadata.llm_weights_path,
                               TREE_VERIFY_MODE,
                               generationConfig,
-                              use_full_precision);
+                              data_type);
   } else if (model_metadata.llm_model_type == ModelType::OPT) {
     OPT::create_opt_model(tree_model,
                           model_metadata.llm_model_config_path,
@@ -357,7 +358,7 @@ void FlexFlow::top_level_task(Task const *task,
                                 model_metadata.ssm_model_weights_paths[ssm_id],
                                 BEAM_SEARCH_MODE,
                                 generationConfig,
-                                use_full_precision);
+                                data_type);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::OPT) {
       OPT::create_opt_model(beam_model,
                             model_metadata.ssm_model_config_paths[ssm_id],

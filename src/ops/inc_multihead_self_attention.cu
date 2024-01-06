@@ -792,6 +792,12 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       m->weightSize,
                       cudaMemcpyHostToDevice,
                       stream);
+    } else if (data_type == DT_B16) {
+      cudaMemcpyAsync(m->weight_ptr,
+                      weight.get_bfloat16_ptr(),
+                      m->weightSize,
+                      cudaMemcpyHostToDevice,
+                      stream);
     } else {
       assert(false);
     }
@@ -1185,6 +1191,22 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         output.get_float_ptr(),
         bias_ptr,
         stream);
+  }else if (input.data_type == DT_B16) {
+    if (m->offload) {
+      pre_build_weight_kernel<__nv_bfloat16>(m, weight, input.data_type, stream);
+    }
+    __nv_bfloat16 const *bias_ptr =
+        use_bias ? bias.get_bfloat16_ptr() : static_cast<__nv_bfloat16 const *>(nullptr);
+    Kernels::IncMultiHeadAttention::inference_kernel(
+        m,
+        bc,
+        shard_id,
+        input.get_bfloat16_ptr(),
+        m->offload ? static_cast<__nv_bfloat16 *>(m->weight_ptr)
+                   : weight.get_bfloat16_ptr(),
+        output.get_bfloat16_ptr(),
+        bias_ptr,
+        stream);
   } else {
     assert(false && "Unspported data type");
   }
@@ -1493,6 +1515,12 @@ template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<half>(
     DataType data_type,
     cudaStream_t stream);
 
+template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<__nv_bfloat16>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    GenericTensorAccessorR const weight,
+    DataType data_type,
+    cudaStream_t stream);
+
 template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<float>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
@@ -1513,6 +1541,16 @@ template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<half>(
     int num_tokens,
     cudaStream_t stream);
 
+template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<__nv_bfloat16>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    int shard_id,
+    __nv_bfloat16 *output_ptr,
+    __nv_bfloat16 const *weight_ptr,
+    __nv_bfloat16 const *bias_ptr,
+    int num_tokens,
+    cudaStream_t stream);
+
 template void
     Kernels::IncMultiHeadAttention::compute_attention_kernel_generation<float>(
         IncMultiHeadSelfAttentionMeta const *m,
@@ -1525,5 +1563,12 @@ template void
         IncMultiHeadSelfAttentionMeta const *m,
         BatchConfig const *bc,
         half *output_ptr,
+        cudaStream_t stream);
+
+template void
+    Kernels::IncMultiHeadAttention::compute_attention_kernel_generation<__nv_bfloat16>(
+        IncMultiHeadSelfAttentionMeta const *m,
+        BatchConfig const *bc,
+        __nv_bfloat16 *output_ptr,
         cudaStream_t stream);
 }; // namespace FlexFlow

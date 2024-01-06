@@ -113,7 +113,7 @@ class LLM:
             self.config_class,
         ) = self.__get_ff_model_type()
         self.data_type = data_type
-        assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT
+        assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT or self.data_type == DataType.DT_B16
         self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
         self.refresh_cache = refresh_cache
         self.output_file = output_file
@@ -172,6 +172,8 @@ class LLM:
             torch.set_default_tensor_type(torch.HalfTensor)
         elif self.data_type == DataType.DT_FLOAT:
             torch.set_default_tensor_type(torch.FloatTensor)
+        elif self.data_type == DataType.DT_B16:
+            torch.set_default_tensor_type(torch.BFloat16Tensor)
         else:
             assert False, "Data type not yet supported -- cannot download weights!"
 
@@ -182,6 +184,7 @@ class LLM:
             self.model_name.lower(),
             "full-precision"
             if self.data_type == DataType.DT_FLOAT
+            else "bfloat16-precision" if self.data_type == DataType.DT_B16
             else "half-precision",
         )
         if self.refresh_cache:

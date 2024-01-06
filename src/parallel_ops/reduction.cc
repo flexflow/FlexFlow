@@ -60,7 +60,7 @@ ReductionParams Reduction::get_params() const {
 }
 
 Reduction::Reduction(FFModel &model,
-                     const ParallelTensor _input,
+                     ParallelTensor const _input,
                      int _reduction_legion_dim,
                      int _reduction_degree,
                      char const *name)
@@ -380,6 +380,11 @@ void Reduction::forward_task(Task const *task,
                           output.get_float_ptr(),
                           num_elements,
                           num_replicas);
+  } else if (input.data_type == DT_B16) {
+    forward_kernel<__nv_bfloat16>(input.get_bfloat16_ptr(),
+                                  output.get_bfloat16_ptr(),
+                                  num_elements,
+                                  num_replicas);
   } else {
     assert(false && "Unspported data type");
   }

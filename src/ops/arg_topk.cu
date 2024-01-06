@@ -520,7 +520,19 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
                             m->sorted,
                             m->speculative_decoding ? bc : nullptr,
                             stream);
-  } else {
+  } else if (input.data_type == DT_B16) {
+    ArgTopK::forward_kernel(m,
+                            input.get_bfloat16_ptr(),
+                            m->speculative_decoding ? probs.get_float_ptr()
+                                                    : nullptr,
+                            indices.get_int32_ptr(),
+                            batch_size,
+                            length,
+                            k,
+                            m->sorted,
+                            m->speculative_decoding ? bc : nullptr,
+                            stream);
+  }else {
     assert(false && "Unsupported data type");
   }
 

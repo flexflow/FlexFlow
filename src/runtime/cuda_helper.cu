@@ -321,6 +321,33 @@ __host__ void
 }
 
 template <>
+__host__ void save_tensor(__nv_bfloat16 const *ptr,
+                          size_t num_elements,
+                          char const *file_name) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  __nv_bfloat16 *host_ptr;
+  checkCUDA(cudaHostAlloc(&host_ptr,
+                          sizeof(__nv_bfloat16) * num_elements,
+                          cudaHostAllocPortable | cudaHostAllocMapped));
+  checkCUDA(cudaMemcpyAsync(host_ptr,
+                            ptr,
+                            sizeof(__nv_bfloat16) * num_elements,
+                            cudaMemcpyDeviceToHost,
+                            stream));
+  checkCUDA(cudaDeviceSynchronize());
+  FILE *tensor_file;
+  tensor_file = fopen(file_name, "w");
+  assert(tensor_file != NULL);
+  for (unsigned i = 0; i < num_elements; i++) {
+    fprintf(tensor_file, "%.9f, ", (float)host_ptr[i]);
+  }
+
+  fclose(tensor_file);
+  checkCUDA(cudaFreeHost(host_ptr));
+}
+
+template <>
 __host__ void save_tensor(int32_t const *ptr,
                           size_t num_elements,
                           char const *file_name) {
@@ -519,6 +546,8 @@ cudnnDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return CUDNN_DATA_HALF;
+    case DT_B16:
+      return CUDNN_DATA_BFLOAT16;
     case DT_FLOAT:
       return CUDNN_DATA_FLOAT;
     case DT_DOUBLE:
@@ -535,6 +564,8 @@ cudaDataType_t ff_to_cuda_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return CUDA_R_16F;
+    case DT_B16:
+      return CUDA_R_16BF;
     case DT_FLOAT:
       return CUDA_R_32F;
     case DT_DOUBLE:
@@ -552,6 +583,8 @@ ncclDataType_t ff_to_nccl_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return ncclHalf;
+    case DT_B16:
+      return ncclBfloat16;
     case DT_FLOAT:
       return ncclFloat;
     case DT_DOUBLE:
@@ -595,6 +628,9 @@ cudnnDataType_t cuda_to_cudnn_datatype(cudaDataType_t type) {
 
 template __global__ void
     assign_kernel<half>(half *ptr, coord_t size, half value);
+template __global__ void assign_kernel<__nv_bfloat16>(__nv_bfloat16 *ptr,
+                                                      coord_t size,
+                                                      __nv_bfloat16 value);
 template __global__ void
     assign_kernel<float>(float *ptr, coord_t size, float value);
 template __global__ void
@@ -699,6 +735,10 @@ template __host__ void save_tensor<int64_t>(int64_t const *ptr,
                                             char const *file_name);
 template __host__ void
     save_tensor<half>(half const *ptr, size_t rect, char const *file_name);
+
+template __host__ void save_tensor<__nv_bfloat16>(__nv_bfloat16 const *ptr,
+                                                  size_t rect,
+                                                  char const *file_name);
 
 template __host__ float *download_tensor<float>(float const *ptr,
                                                 size_t num_elements);

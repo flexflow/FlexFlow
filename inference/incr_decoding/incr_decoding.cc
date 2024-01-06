@@ -39,6 +39,7 @@ void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
                       std::string &llm_model_name,
+                      DataType &data_type,
                       bool &use_full_precision,
                       bool &verbose,
                       bool &do_sample,
@@ -72,7 +73,7 @@ void parse_input_args(char **argv,
       continue;
     }
     if (!strcmp(argv[i], "--use-full-precision")) {
-      use_full_precision = true;
+      data_type = DT_FLOAT;
       continue;
     }
     // verbose logging to stdout
@@ -125,6 +126,7 @@ void FlexFlow::top_level_task(Task const *task,
   }
   FilePaths file_paths;
   std::string llm_model_name;
+  DataType data_type = DT_B16;
   bool use_full_precision = false;
   bool verbose = false;
   bool do_sample = false;
@@ -141,6 +143,7 @@ void FlexFlow::top_level_task(Task const *task,
                    argc,
                    file_paths,
                    llm_model_name,
+                   data_type,
                    use_full_precision,
                    verbose,
                    do_sample,
@@ -219,7 +222,7 @@ void FlexFlow::top_level_task(Task const *task,
                               weights_filepath,
                               INC_DECODING_MODE,
                               generationConfig,
-                              use_full_precision);
+                              data_type);
   } else if (model_type == ModelType::OPT) {
     OPT::create_opt_model(model,
                           config_filepath,
