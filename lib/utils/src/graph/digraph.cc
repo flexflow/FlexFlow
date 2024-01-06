@@ -52,6 +52,7 @@ IDiGraph &DiGraph::get_ptr() {
 }
 
 IDiGraph const &DiGraph::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IDiGraph const>(GraphView::ptr.get_mutable());
+  return *std::reinterpret_pointer_cast<IDiGraph const>(
+      GraphView::ptr.get_mutable());
 }
 } // namespace FlexFlow

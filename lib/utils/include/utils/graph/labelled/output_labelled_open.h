@@ -134,12 +134,12 @@ public:
     return il->get_label(e);
   }
 
-  template<typename... Ts>
+  template <typename... Ts>
   EdgeLabel const &at(variant<Ts...> const &e) const {
     return visit([&](auto const &e) { return this->at(e); }, e);
   }
 
-  template<typename... Ts>
+  template <typename... Ts>
   EdgeLabel &at(variant<Ts...> const &e) {
     return visit([&](auto const &e) { return this->at(e); }, e);
   }

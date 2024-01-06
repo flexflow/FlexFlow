@@ -123,7 +123,8 @@ std::unordered_set<DownwardOpenMultiDiEdge>
   return this->get_ptr().query_edges(q);
 }
 
-IDownwardOpenMultiDiGraphView const &DownwardOpenMultiDiGraphView::get_ptr() const {
+IDownwardOpenMultiDiGraphView const &
+    DownwardOpenMultiDiGraphView::get_ptr() const {
   return *std::reinterpret_pointer_cast<IDownwardOpenMultiDiGraphView const>(
       GraphView::ptr.get());
 }
