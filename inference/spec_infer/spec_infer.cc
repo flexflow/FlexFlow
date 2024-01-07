@@ -99,6 +99,7 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--use-full-precision")) {
       use_full_precision = true;
+      data_type = DT_FLOAT;
       continue;
     }
     if (!strcmp(argv[i], "--use-bfloat16-precision")) {
