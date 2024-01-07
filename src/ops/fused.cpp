@@ -1075,10 +1075,10 @@ __host__ void
   if (metas->graph_collections.find(graph_params) !=
       metas->graph_collections.end()) {
     instance = metas->graph_collections[graph_params];
-    cudaGraphExecUpdateResult updateResult;
-    cudaGraphNode_t errorNode;
-    cudaGraphExecUpdate(instance, graph, &errorNode, &updateResult);
-    if (updateResult != cudaGraphExecUpdateSuccess) {
+    hipGraphExecUpdateResult updateResult;
+    hipGraphNode_t errorNode;
+    hipGraphExecUpdate(instance, graph, &errorNode, &updateResult);
+    if (updateResult != hipGraphExecUpdateSuccess) {
       hipGraphExecDestroy(instance);
       hipGraphInstantiate(&instance, graph, NULL, NULL, 0);
     }
