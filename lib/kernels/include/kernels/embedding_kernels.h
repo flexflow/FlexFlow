@@ -5,29 +5,25 @@
 #include "kernels/device.h"
 
 namespace FlexFlow {
-
-class EmbeddingPerDeviceState : public PerDeviceOpState {
-public:
-  EmbeddingPerDeviceState(FFHandler handle);
-  DataType input_data_type, output_data_type;
-  AggrMode aggr;
-};
-
 namespace Kernels {
 namespace Embedding {
 void forward_kernel(ffStream_t stream,
-                    EmbeddingPerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
                     GenericTensorAccessorR const &weight,
+                    DataType input_data_type,
+                    DataType output_data_type,
+                    AggrMode aggr,
                     int in_dim,
                     int out_dim,
                     int batch_size);
 void backward_kernel(ffStream_t stream,
-                     EmbeddingPerDeviceState const *m,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorR const &output,
                      GenericTensorAccessorW const &weight_grad,
+                     DataType input_data_type,
+                     DataType output_data_type,
+                     AggrMode aggr,
                      int in_dim,
                      int out_dim,
                      int batch_size);
