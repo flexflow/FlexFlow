@@ -160,14 +160,14 @@ void forward_kernel_wrapper(LinearMeta const *m,
                                    stream);
   } else if (m->input_type[0] == DT_B16) {
     Internal::forward_kernel<__nv_bfloat16>(m,
-                                   input_ptr,
-                                   output_ptr,
-                                   weight_ptr,
-                                   bias_ptr,
-                                   in_dim,
-                                   out_dim,
-                                   batch_size,
-                                   stream);
+                                            input_ptr,
+                                            output_ptr,
+                                            weight_ptr,
+                                            bias_ptr,
+                                            in_dim,
+                                            out_dim,
+                                            batch_size,
+                                            stream);
   }
 
   if (m->profiling) {
@@ -234,17 +234,17 @@ void backward_kernel_wrapper(LinearMeta const *m,
                                     stream);
   } else if (m->input_type[0] == DT_B16) {
     Internal::backward_kernel<__nv_bfloat16>(m,
-                                    input_ptr,
-                                    input_grad_ptr,
-                                    output_ptr,
-                                    output_grad_ptr,
-                                    kernel_ptr,
-                                    kernel_grad_ptr,
-                                    bias_grad_ptr,
-                                    in_dim,
-                                    out_dim,
-                                    batch_size,
-                                    stream);
+                                             input_ptr,
+                                             input_grad_ptr,
+                                             output_ptr,
+                                             output_grad_ptr,
+                                             kernel_ptr,
+                                             kernel_grad_ptr,
+                                             bias_grad_ptr,
+                                             in_dim,
+                                             out_dim,
+                                             batch_size,
+                                             stream);
   }
 
   if (m->profiling) {
@@ -333,7 +333,7 @@ void forward_kernel(LinearMeta const *m,
   }
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  DT alpha = 1.0f, beta = 0.0f;
+  float alpha = 1.0f, beta = 0.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
   cudaDataType_t weight_type = m->offload
                                    ? ff_to_cuda_datatype(m->weight_ptr_type)
@@ -349,6 +349,8 @@ void forward_kernel(LinearMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   if (m->output_type[0] == DT_FLOAT) {
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  } else if (m->output_type[0] == DT_B16) {
+    compute_type = CUBLAS_COMPUTE_32F;
   }
 #endif
   checkCUDA(cublasGemmEx(m->handle.blas,

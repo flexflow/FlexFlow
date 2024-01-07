@@ -142,7 +142,8 @@ void load_from_file_b16(__nv_bfloat16 *ptr, size_t size, std::string filepath) {
   size_t in_get_size = in.gcount();
   if (in_get_size != loaded_data_size) {
     std::cout << "load weight data error " << in_get_size << ", "
-              << loaded_data_size << ", " << sizeof(float) << ", file path: " << filepath << std::endl;
+              << loaded_data_size << ", " << sizeof(float)
+              << ", file path: " << filepath << std::endl;
     assert(false);
   }
   assert(size == host_array.size());
@@ -373,7 +374,6 @@ void FileDataLoader::load_single_weight_tensor_b16(FFModel *ff,
                                                    Layer *l,
                                                    int weight_idx) {
   Tensor weight = l->weights[weight_idx];
-  
 
   // Create a buffer to store weight data from the file
   size_t volume = 1;
@@ -685,7 +685,8 @@ void FileDataLoader::load_from_file(DT *ptr,
   size_t in_get_size = in.gcount();
   if (in_get_size != loaded_data_size) {
     std::cout << "load weight data error " << in_get_size << ", "
-              << loaded_data_size << ", " << sizeof(DT) << std::endl;
+              << loaded_data_size << ", " << sizeof(DT)
+              << ", filepath: " << filepath << std::endl;
     assert(false);
   }
   assert(size == host_array.size());

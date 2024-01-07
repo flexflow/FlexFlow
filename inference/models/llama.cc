@@ -276,7 +276,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                             llama_config.hidden_size /
                                 llama_config.num_attention_heads,
                             ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, data_type);
+  fileloader.load_weights(&ff, false);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators

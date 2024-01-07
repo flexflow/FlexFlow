@@ -24,7 +24,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                                  std::string const &model_config_file_path,
                                  std::string const &weight_file_path,
                                  InferenceMode mode,
-                                 bool use_full_precision) {
+                                 DataType data_type) {
   FalconConfig falcon_config(model_config_file_path);
   falcon_config.print();
 
@@ -53,7 +53,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                               falcon_config.vocab_size,
                               falcon_config.hidden_size,
                               AGGR_MODE_NONE,
-                              use_full_precision ? DT_FLOAT : DT_HALF,
+                              data_type,
                               NULL,
                               embed_init,
                               "word_embeddings");
@@ -251,7 +251,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                             falcon_config.hidden_size / falcon_config.n_head,
                             ff.config.tensor_parallelism_degree);
   std::cout << "------load weights ----------" << std::endl;
-  fileloader.load_weights(&ff, use_full_precision);
+  fileloader.load_weights(&ff, false);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators

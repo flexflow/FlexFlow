@@ -480,6 +480,8 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   if (m->output_type[0] == DT_FLOAT) {
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  }else if (m->output_type[0] == DT_B16) {
+    compute_type = CUBLAS_COMPUTE_32F;
   }
 #endif
   // int num_requests = bc->num_active_requests();
@@ -533,7 +535,7 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
     int strideC = num_new_tokens * total_tokens;
 
     // a flag of using this scaling alpha
-    DT alpha = 1.0f, beta = 0.0f;
+    float alpha = 1.0f, beta = 0.0f;
     if (*m->qk_prod_scaling) {
       alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
     }
