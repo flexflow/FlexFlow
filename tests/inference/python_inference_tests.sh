@@ -19,6 +19,7 @@ for file in ./python_test_configs/*.json; do
     fi
     # Run script
     python "$script" -config-file "$file" 
+    nvidia-smi
 done
 
 
