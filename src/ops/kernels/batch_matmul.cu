@@ -136,6 +136,9 @@ void forward_kernel(BatchMatmulMeta const *meta,
                     int b_seq_length_dim,
                     int seq_length) {
   checkCUDA(cublasSetStream(meta->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(meta->handle.blas,
+                               meta->handle.cublasWorkSpace,
+                               meta->handle.cublasWorkSpaceSize));
   checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
 
   // int a_stride = n * k;
@@ -213,6 +216,9 @@ void backward_kernel(BatchMatmulMeta const *meta,
                      int batch,
                      cudaStream_t stream) {
   checkCUDA(cublasSetStream(meta->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(meta->handle.blas,
+                               meta->handle.cublasWorkSpace,
+                               meta->handle.cublasWorkSpaceSize));
   checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
 
   int a_stride = n * k;

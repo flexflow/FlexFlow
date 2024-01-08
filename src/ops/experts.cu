@@ -305,6 +305,9 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
                                         ffStream_t stream) {
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(m->handle.blas,
+                               m->handle.cublasWorkSpace,
+                               m->handle.cublasWorkSpaceSize));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;

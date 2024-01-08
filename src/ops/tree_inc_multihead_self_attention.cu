@@ -504,8 +504,6 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                               DT const *bias_ptr,
                               DT const *weight_ptr,
                               cudaStream_t stream) {
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
@@ -877,6 +875,11 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(m->handle.blas,
+                               m->handle.cublasWorkSpace,
+                               m->handle.cublasWorkSpaceSize));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   // additional processing for weight uploading
   if (m->handle.offload_reserve_space != nullptr) {
     // Note that we update weight_ptr and bias_ptr when uploading weight and

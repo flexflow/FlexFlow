@@ -76,6 +76,8 @@ struct FFHandler {
 #endif
   void *workSpace;
   size_t workSpaceSize;
+  void *cublasWorkSpace;
+  size_t cublasWorkSpaceSize;
   void *batch_config_metadata;
 
   // request info + token info + topolopgy mask info
@@ -97,6 +99,7 @@ struct FFHandler {
 
 struct FFInitInfo {
   size_t workSpaceSize;
+  size_t cublasWorkSpaceSize;
   size_t offload_reserve_space_size;
   DataType quantization_type;
   bool allowTensorOpMathConversion;
@@ -141,6 +144,7 @@ public:
   float device_mem; // The device (GPU) memory threshold; given by -ll:fsize
   float learningRate, weightDecay;
   size_t workSpaceSize;
+  size_t cublasWorkSpaceSize;
   Legion::Context lg_ctx;
   Legion::Runtime *lg_hlr;
   Legion::IndexSpaceT<1> all_gpu_task_is;

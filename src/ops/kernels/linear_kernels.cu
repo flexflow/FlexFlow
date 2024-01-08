@@ -303,6 +303,9 @@ void forward_kernel(LinearMeta const *m,
     }
   }
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(m->handle.blas,
+                               m->handle.cublasWorkSpace,
+                               m->handle.cublasWorkSpaceSize));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   DT alpha = 1.0f, beta = 0.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
@@ -399,6 +402,9 @@ void backward_kernel(LinearMeta const *m,
                      int batch_size,
                      ffStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(m->handle.blas,
+                               m->handle.cublasWorkSpace,
+                               m->handle.cublasWorkSpaceSize));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   DT alpha = 1.0f;

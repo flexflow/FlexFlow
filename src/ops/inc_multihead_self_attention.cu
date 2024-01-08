@@ -492,9 +492,6 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         DT *output_ptr,
                         DT const *bias_ptr,
                         cudaStream_t stream) {
-
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   assert(m->qSize == m->vSize && m->qSize == m->kSize);
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
 #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
@@ -807,6 +804,11 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(m->handle.blas,
+                               m->handle.cublasWorkSpace,
+                               m->handle.cublasWorkSpaceSize));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   if (m->offload && m->biasSize > 0) {
     cudaMemcpyAsync(
@@ -900,8 +902,6 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
                                      DT const *bias_ptr,
                                      DT const *weight_ptr,
                                      cudaStream_t stream) {
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));

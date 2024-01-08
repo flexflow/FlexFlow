@@ -75,6 +75,8 @@ Simulator::Simulator(FFModel const *model,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(handler.blas, stream));
+  checkCUDA(cublasSetWorkspace(
+      handler.blas, handler.cublasWorkSpace, handler.cublasWorkSpaceSize));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
   size_t max_num_tasks = 1024 * 1024;
