@@ -523,7 +523,7 @@ __host__ void
                             Context ctx,
                             Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
+  FusedOpMeta *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
