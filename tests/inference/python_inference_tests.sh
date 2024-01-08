@@ -6,11 +6,12 @@ set -e
 cd "${BASH_SOURCE[0]%/*}"
 
 # Generate test configs
+rm -rf python_test_configs/*.json
 python python_test_configs/generate_configs.py
 
 # Run all tests
 # Loop through .json files in the ./python_test_configs dir 
-for file in ./python_test_configs/*.json; do
+for file in ./python_test_configs/*"llama"*.json; do
     # Check filename prefix
     if [[ $file == *"incr_dec"* ]]; then
       script="../../inference/python/incr_decoding.py"
