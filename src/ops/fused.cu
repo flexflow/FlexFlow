@@ -1144,10 +1144,10 @@ __host__ void
   //   "[Fused:forward:output]");
 
   cudaStreamEndCapture(stream, &graph);
-  std::tuple<int, int, int> graph_params =
+  std::tuple<int, int, bool> graph_params =
       std::make_tuple(bc->num_active_requests(),
                       bc->num_active_tokens(),
-                      bc->num_generation_tokens);
+                      bc->num_generation_tokens > 0);
   // check if graph exists
   if (metas->graph_collections.find(graph_params) !=
       metas->graph_collections.end()) {

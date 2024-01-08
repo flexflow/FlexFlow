@@ -11,16 +11,16 @@ class FusedOpMeta {
 public:
   FusedOpMeta(void) {
     graph_collections.reserve(BatchConfig::MAX_NUM_REQUESTS *
-                              BatchConfig::MAX_NUM_TOKENS);
+                              BatchConfig::MAX_NUM_TOKENS * 2);
   }
   OpMeta *meta[MAX_NUM_FUSED_OPERATORS];
   FusedOp *fused_op;
   int numOperators;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  std::unordered_map<std::tuple<int, int, int>, cudaGraphExec_t>
+  std::unordered_map<std::tuple<int, int, bool>, cudaGraphExec_t>
       graph_collections;
 #else
-  std::unordered_map<std::tuple<int, int, int>, hipGraphExec_t>
+  std::unordered_map<std::tuple<int, int, bool>, hipGraphExec_t>
       graph_collections;
 #endif
 };
