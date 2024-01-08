@@ -43,7 +43,8 @@ std::string LoadBytesFromFile(std::string const &path) {
 }
 
 RequestManager::RequestManager()
-    : verbose(false), next_available_guid(1000000), num_processed_requests(0) {
+    : verbose(false), next_available_guid(1000000), num_processed_requests(0),
+      total_request_run_time(0.0f) {
   // The following config parameters are set
   // during ffmodel.compile()
   // Initialize them to -1 to make sure no one
