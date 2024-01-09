@@ -6,6 +6,7 @@ set -e
 cd "${BASH_SOURCE[0]%/*}"
 
 # Generate test configs
+rm -rf python_test_configs/*.json
 python python_test_configs/generate_configs.py
 
 # Run all tests
