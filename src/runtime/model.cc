@@ -3280,9 +3280,10 @@ void FFModel::create_operators_from_layers() {
                config.tensor_parallelism_degree > 1 &&
                (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
                 l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
-                (l->op_type == OP_LINEAR && layer_idx >= 2 &&
-                 layers[layer_idx - 1]->op_type == OP_RELU &&
-                 layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+                // mlp layer
+                (l->op_type == OP_LINEAR && layer_idx >= 1 &&
+                 // layers[layer_idx - 1]->op_type == OP_RELU &&
+                 layers[layer_idx - 1]->op_type == OP_LINEAR) ||
                 (l->op_type == OP_LINEAR && layer_idx >= 2 &&
                  layers[layer_idx - 1]->op_type == OP_GELU &&
                  layers[layer_idx - 2]->op_type == OP_LINEAR) ||

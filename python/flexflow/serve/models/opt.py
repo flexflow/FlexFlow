@@ -216,13 +216,12 @@ class FlexFlowOPT(FlexFlowModel):
             fc1 = ffmodel.dense(
                 ff_norm,
                 self.opt_config.ffn_dim,
-                ActiMode.AC_MODE_NONE,
+                ActiMode.AC_MODE_RELU,
                 True,
                 name=f"layers_{i}_fc1",
             )
-            activation = ffmodel.relu(fc1, False)
             fc2 = ffmodel.dense(
-                activation,
+                fc1,
                 self.opt_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 True,
