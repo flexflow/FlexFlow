@@ -56,7 +56,7 @@ def get_c_name(name):
     if name is None:
         return ffi.NULL
     else:
-        return ffi.new("char[]", name.encode("ascii"))
+        return ffi.new("char[]", name.encode("utf-8"))
 
 
 def get_datatype_size(datatype):

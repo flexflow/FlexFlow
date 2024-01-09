@@ -187,3 +187,4 @@ gpt_tokenizer
 python/flexflow/version.txt
 
 inference_tensors
+tests/inference/python_test_configs/*.json

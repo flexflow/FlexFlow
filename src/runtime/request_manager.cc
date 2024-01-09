@@ -43,7 +43,8 @@ std::string LoadBytesFromFile(std::string const &path) {
 }
 
 RequestManager::RequestManager()
-    : verbose(false), next_available_guid(1000000), num_processed_requests(0) {
+    : verbose(false), next_available_guid(1000000), num_processed_requests(0),
+      total_request_run_time(0.0f) {
   // The following config parameters are set
   // during ffmodel.compile()
   // Initialize them to -1 to make sure no one
@@ -767,7 +768,9 @@ BeamSearchBatchConfig
                 : 1;
         new_bc.beamRequestsInfo[i].max_depth =
             std::min(new_max_depth, BeamSearchBatchConfig::MAX_BEAM_DEPTH);
-        for (int j = 0; j < BeamSearchBatchConfig::MAX_BEAM_WIDTH; j++) {
+        for (int j = 0;
+             j < BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+             j++) {
           new_bc.beamRequestsInfo[i].parent_id[j] = 0;
           new_bc.beamRequestsInfo[i].probs[j] = 1;
         }
@@ -840,7 +843,8 @@ BeamSearchBatchConfig
               ? spec_infer_tree_width[ssm_decoding_steps]
               : 1;
       new_bc.beamRequestsInfo[i].max_depth = 0;
-      for (int j = 0; j < BeamSearchBatchConfig::MAX_BEAM_WIDTH; j++) {
+      for (int j = 0; j < BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+           j++) {
         new_bc.beamRequestsInfo[i].parent_id[j] = 0;
         new_bc.beamRequestsInfo[i].probs[j] = 1;
       }
@@ -900,7 +904,9 @@ BeamSearchBatchConfig
             std::min(BeamSearchBatchConfig::MAX_BEAM_DEPTH,
                      get_max_tokens_per_batch() -
                          new_bc.requestsInfo[i].num_tokens_in_batch - 1);
-        for (int j = 0; j < BeamSearchBatchConfig::MAX_BEAM_WIDTH; j++) {
+        for (int j = 0;
+             j < BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+             j++) {
           new_bc.beamRequestsInfo[i].parent_id[j] = 0;
           new_bc.beamRequestsInfo[i].probs[j] = 1;
         }
