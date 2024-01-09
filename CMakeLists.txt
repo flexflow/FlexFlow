@@ -413,6 +413,7 @@ if(NOT BUILD_LEGION_ONLY)
 
   # python related
   if (FF_USE_PYTHON)
+    find_package(Python COMPONENTS Interpreter Development)
     # create flexflow_cffi_header.py
     add_custom_command(TARGET flexflow
       PRE_BUILD	
@@ -424,13 +425,13 @@ if(NOT BUILD_LEGION_ONLY)
       # generate the Legion Python bindings library. When building from pip, we need to do this post-install to prevent Legion from overwriting the path to the Legion shared library
       add_custom_command(TARGET flexflow
         POST_BUILD	
-        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
+        COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
       )
       # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
       add_custom_command(TARGET flexflow
         PRE_BUILD	
-        COMMAND ${PYTHON_EXECUTABLE} ${FLEXFLOW_ROOT}/python/flexflow_python_build.py --build-dir ${CMAKE_BINARY_DIR}
+        COMMAND ${Python_EXECUTABLE} ${FLEXFLOW_ROOT}/python/flexflow_python_build.py --build-dir ${CMAKE_BINARY_DIR}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Creating flexflow_python interpreter..."
       )
@@ -567,7 +568,8 @@ if(NOT BUILD_LEGION_ONLY)
   install(TARGETS flexflow DESTINATION ${LIB_DEST})
   # install python
   if (FF_USE_PYTHON)
-    execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import site, os; print([pkg for func in (site.getsitepackages(), site.getusersitepackages()) for pkg in ([func] if isinstance(func, str) else func) if os.access(pkg, os.W_OK)][0])" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
+    find_package(Python COMPONENTS Interpreter Development)
+    execute_process(COMMAND ${Python_EXECUTABLE} -c "import site, os; print([pkg for func in (site.getsitepackages(), site.getusersitepackages()) for pkg in ([func] if isinstance(func, str) else func) if os.access(pkg, os.W_OK)][0])" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
     if (NOT FF_BUILD_FROM_PYPI)
       install(
         DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
