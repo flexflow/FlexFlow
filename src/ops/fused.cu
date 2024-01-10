@@ -628,7 +628,6 @@ __host__ void
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
         if (op == fused->numOperators -1) { // if this is the final operator
-        printf("op %i is softmax! Accessing region %i\n", fused->numOperators -1, roff);
           output_accessor[fused->numOutputs] = 
             helperGetGenericTensorAccessorWO(fused->output_data_types[fused->numOutputs-1],
                                             regions[roff],

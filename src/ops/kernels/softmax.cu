@@ -290,11 +290,10 @@ __global__ void sparse_categorical_crossentropy_loss_peft_backward(
     int num_tokens,
     int num_classes) {
   CUDA_KERNEL_LOOP(i, num_tokens * num_classes) {
-    input_grad[i] = 0.5;
-    // input_grad[i] = output_grad[i];
-    // if (i % num_classes == token_ids[i / num_classes]) {
-    //   input_grad[i] -= 1.0f;
-    // }
+    input_grad[i] = output_grad[i];
+    if (i % num_classes == token_ids[i / num_classes]) {
+      input_grad[i] -= 1.0f;
+    }
   }
 }
 
@@ -346,14 +345,14 @@ void peft_bwd_kernel(SoftmaxMeta const *m,
         num_bwd_tokens,
         num_classes);
     // scale
-    // scale_kernel<<<GET_BLOCKS(num_bwd_tokens * num_classes),
-    //                CUDA_NUM_THREADS,
-    //                0,
-    //                stream>>>(input_grad_ptr +
-    //                              tokens_previous_requests * num_classes,
-    //                          num_bwd_tokens * num_classes,
-    //                          DT(0.0),
-    //                          scale_factor);
+    scale_kernel<<<GET_BLOCKS(num_bwd_tokens * num_classes),
+                   CUDA_NUM_THREADS,
+                   0,
+                   stream>>>(input_grad_ptr +
+                                 tokens_previous_requests * num_classes,
+                             num_bwd_tokens * num_classes,
+                             DT(0.0),
+                             scale_factor);
 
     tokens_previous_requests += num_bwd_tokens;
   }

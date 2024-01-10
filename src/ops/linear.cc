@@ -621,8 +621,6 @@ void Linear::inference_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   LinearMeta *m = *((LinearMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
-  std::string op_name_without_uid = Linear::get_op_name_without_uid(m);
-  printf("INF %s\n", op_name_without_uid.c_str());
   if (bc->num_tokens == 0) {
     return;
   }
@@ -758,9 +756,6 @@ void Linear::peft_bwd_task(Task const *task,
       m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   int in_dim = input_grad.domain.hi()[0] - input_grad.domain.lo()[0] + 1;
   int out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
-
-  std::string op_name_without_uid = Linear::get_op_name_without_uid(m);
-  std::cout << "BWD " << op_name_without_uid << std::endl;
 
   int num_infr_tokens = bc->num_active_infr_tokens();
   int num_peft_tokens = bc->num_active_peft_tokens();

@@ -449,8 +449,6 @@ void LoraLinear::inference_task(Task const *task,
                                 Context ctx,
                                 Runtime *runtime) {
   LoraLinearMeta *m = *((LoraLinearMeta **)task->local_args);
-  std::string op_name_without_uid = LoraLinear::get_op_name_without_uid(m);
-  std::cout << "INF " << op_name_without_uid << std::endl;
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_active_tokens() == 0) {
     return;

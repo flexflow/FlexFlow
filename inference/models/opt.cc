@@ -202,7 +202,6 @@ void OPT::create_opt_model(FFModel &ff,
                  REG_MODE_NONE,
                  0.0f,
                  std::string("layers_" + std::to_string(i) + "_fc1").c_str());
-    //Tensor activation = ff.relu(fc1, false);
     fc2 = ff.dense(fc1,
                    opt_config.hidden_size,
                    AC_MODE_NONE,
@@ -223,13 +222,10 @@ void OPT::create_opt_model(FFModel &ff,
   }
 
   // final
-  Tensor final_residual_ln_output[2] = {nullptr, nullptr};
-  // ff.residual_rms_norm(added, fc2, final_residual_ln_output, 1e-05, opt_config.hidden_size,
-  //                      DT_NONE, "final_layer_norm");
   ff.residual_layer_norm(added,
                          fc2,
                          nullptr,
-                         final_residual_ln_output,
+                         res_ln_outputs,
                          false,
                          axes,
                          opt_config.layer_norm_elementwise_affine,
@@ -237,8 +233,9 @@ void OPT::create_opt_model(FFModel &ff,
                          true,
                          DT_NONE,
                          "final_layer_norm");
+  Tensor all_final_norm = res_ln_outputs[1];
 
-  Tensor lm_head = ff.dense(final_residual_ln_output[1],
+  Tensor lm_head = ff.dense(all_final_norm,
                             opt_config.vocab_size,
                             AC_MODE_NONE,
                             false,

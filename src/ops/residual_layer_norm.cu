@@ -254,7 +254,6 @@ void ResidualLayerNorm::inference_kernel_wrapper(
         MemoryAllocator *allocator = m->handle.peft_activation_allocator;
         m->input_activation = allocator->allocate_instance_untyped(
             data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
-        printf("Allocating input_activation (%p) of size: %i*%i*%i=%i for %s...\n", m->input_activation, data_type_size(m->input_type[0]), num_peft_tokens,in_dim, data_type_size(m->input_type[0]) * num_peft_tokens * in_dim, m->op_name);
         // copy input activation
         if (m->input_type[0] == DT_FLOAT) {
           checkCUDA(cudaMemcpyAsync(
@@ -733,16 +732,6 @@ void peft_bwd_kernel(ResidualLayerNormMeta const *m,
   int const num_threads = 128;
   const dim3 blocks(M);
   int nshared = (num_threads / warp_size) * sizeof(T);
-
-  printf("Attempting to access %p\n", m->input_activation);
-  check_device_vs_host_ptr(static_cast<T const *>(m->input_activation));
-  check_device_vs_host_ptr(static_cast<T const *>(m->mean_ptr));
-  check_device_vs_host_ptr(static_cast<T const *>(m->rstd_ptr));
-  check_device_vs_host_ptr(static_cast<T const *>(gamma_ptr));
-  check_device_vs_host_ptr(static_cast<T const *>(input_grad_ptr));
-  check_device_vs_host_ptr(static_cast<T const *>(residual1_grad_ptr));
-  
-  return;
 
   layer_norm_grad_input_kernel<<<blocks, num_threads, nshared, stream>>>(
       output_grad_ptr,
