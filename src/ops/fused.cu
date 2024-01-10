@@ -95,9 +95,11 @@ __host__ void
 
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
-  bool softmax_grad_additional_region = (fused->op_op_type[fused->numOperators-1] == OP_SOFTMAX);
-  assert((int)regions.size() ==
-         fused->numInputs + fused->numWeights + fused->numOutputs + softmax_grad_additional_region);
+  bool softmax_grad_additional_region =
+      (fused->op_op_type[fused->numOperators - 1] == OP_SOFTMAX);
+  assert((int)regions.size() == fused->numInputs + fused->numWeights +
+                                    fused->numOutputs +
+                                    softmax_grad_additional_region);
   // Domain input_domain[MAX_NUM_INPUTS];
   // Domain weight_domain[MAX_NUM_WEIGHTS];
   // Domain output_domain[MAX_NUM_OUTPUTS];
@@ -627,19 +629,22 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        if (op == fused->numOperators -1) { // if this is the final operator
-        printf("op %i is softmax! Accessing region %i\n", fused->numOperators -1, roff);
-          output_accessor[fused->numOutputs] = 
-            helperGetGenericTensorAccessorWO(fused->output_data_types[fused->numOutputs-1],
-                                            regions[roff],
-                                            task->regions[roff],
-                                            FID_DATA,
-                                            ctx,
-                                            runtime);
+        if (op == fused->numOperators - 1) { // if this is the final operator
+          output_accessor[fused->numOutputs] = helperGetGenericTensorAccessorWO(
+              fused->output_data_types[fused->numOutputs - 1],
+              regions[roff],
+              task->regions[roff],
+              FID_DATA,
+              ctx,
+              runtime);
         }
         SoftmaxMeta *m = (SoftmaxMeta *)metas->meta[op];
         Kernels::Softmax::inference_kernel_wrapper(
-            m, bc, my_input_accessor[0], my_output_accessor[0], output_accessor[fused->numOutputs]);
+            m,
+            bc,
+            my_input_accessor[0],
+            my_output_accessor[0],
+            output_accessor[fused->numOutputs]);
         break;
       }
       case OP_ALLREDUCE: {
@@ -1124,12 +1129,13 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
         if (m->elementwise_affine) {
           gamma = my_weight_accessor[1];
         }
-        
-        AddBiasResidualLayerNorm::peft_bwd_kernel_wrapper(m, 
-                                                          my_output_grad_accessor[1], 
-                                                          my_input_grad_accessor[0],
-                                                          my_input_grad_accessor[1], 
-                                                          gamma);
+
+        AddBiasResidualLayerNorm::peft_bwd_kernel_wrapper(
+            m,
+            my_output_grad_accessor[1],
+            my_input_grad_accessor[0],
+            my_input_grad_accessor[1],
+            gamma);
         break;
       }
       case OP_SIGMOID_SILU_MULTI: {

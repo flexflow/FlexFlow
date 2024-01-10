@@ -535,15 +535,17 @@ FutureMap FusedOp::inference(FFModel const &ff,
   }
   offset += numOutputs;
   // add softmax output grad
-  if (operators[numOperators-1]->op_type == OP_SOFTMAX) {
-    printf("operator %i is last SOFTMAX! adding output %i\n", numOperators-1, numOutputs-1);
-    assert(outputs[numOutputs-1]->region != LogicalRegion::NO_REGION);
+  if (operators[numOperators - 1]->op_type == OP_SOFTMAX) {
+    printf("operator %i is last SOFTMAX! adding output %i\n",
+           numOperators - 1,
+           numOutputs - 1);
+    assert(outputs[numOutputs - 1]->region != LogicalRegion::NO_REGION);
     launcher.add_region_requirement(
-        RegionRequirement(batch_outputs[numOutputs-1]->part_grad,
+        RegionRequirement(batch_outputs[numOutputs - 1]->part_grad,
                           0 /*projection id*/,
                           WRITE_ONLY,
                           EXCLUSIVE,
-                          batch_outputs[numOutputs-1]->region_grad));
+                          batch_outputs[numOutputs - 1]->region_grad));
     launcher.add_field(offset, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);

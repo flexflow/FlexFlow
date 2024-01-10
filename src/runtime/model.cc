@@ -3249,6 +3249,27 @@ Op *FFModel::create_operator_from_layer(
   }
 }
 
+bool FFModel::is_mlp_block(int layer_idx) const {
+  auto const &l = layers[layer_idx];
+  if (l->op_type != OP_LINEAR) {
+    return false;
+  }
+  // standard opt relu
+  if (layer_idx >= 2 && layers[layer_idx - 1]->op_type == OP_RELU &&
+      layers[layer_idx - 2]->op_type == OP_LINEAR) {
+    return true;
+  }
+  // mlp layer with relu embedded in first dense layer
+  long long value;
+  l->get_int_property("activation", value);
+  ActiMode activation = (ActiMode)value;
+  if (layer_idx >= 1 && layers[layer_idx - 1]->op_type == OP_LINEAR &&
+      activation == AC_MODE_RELU) {
+    return true;
+  }
+  return false;
+}
+
 void FFModel::create_operators_from_layers() {
   std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
   // for (auto const &l : layers) {
@@ -3293,9 +3314,9 @@ void FFModel::create_operators_from_layers() {
                config.tensor_parallelism_degree > 1 &&
                (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
                 l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
-                (l->op_type == OP_LINEAR && layer_idx >= 2 &&
-                 layers[layer_idx - 1]->op_type == OP_RELU &&
-                 layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+                // mlp layer
+                is_mlp_block(layer_idx) ||
+                // llama mlp layer
                 (l->op_type == OP_LINEAR && layer_idx >= 2 &&
                  layers[layer_idx - 1]->op_type == OP_GELU &&
                  layers[layer_idx - 2]->op_type == OP_LINEAR) ||

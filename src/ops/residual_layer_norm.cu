@@ -571,7 +571,19 @@ __global__ void layer_norm_grad_input_kernel(T const *__restrict__ dY,
                                              int const N) {
   alignas(sizeof(double)) extern __shared__ char s_data1[];
   T *buf = reinterpret_cast<T *>(&s_data1);
-  compute_gI(dY, X, mean, rstd, gamma, dX, dX_residual1, dX_residual2, reset_input_grad, reset_residual_grad1, reset_residual_grad2, N, buf);
+  compute_gI(dY,
+             X,
+             mean,
+             rstd,
+             gamma,
+             dX,
+             dX_residual1,
+             dX_residual2,
+             reset_input_grad,
+             reset_residual_grad1,
+             reset_residual_grad2,
+             N,
+             buf);
 }
 
 /*static*/
@@ -728,21 +740,11 @@ void peft_bwd_kernel(ResidualLayerNormMeta const *m,
                      cudaStream_t stream) {
   const int64_t M = m->effective_batch_size;
   const int64_t N = m->effective_num_elements;
-  
+
   int const warp_size = C10_WARP_SIZE;
   int const num_threads = 128;
   const dim3 blocks(M);
   int nshared = (num_threads / warp_size) * sizeof(T);
-
-  printf("Attempting to access %p\n", m->input_activation);
-  check_device_vs_host_ptr(static_cast<T const *>(m->input_activation));
-  check_device_vs_host_ptr(static_cast<T const *>(m->mean_ptr));
-  check_device_vs_host_ptr(static_cast<T const *>(m->rstd_ptr));
-  check_device_vs_host_ptr(static_cast<T const *>(gamma_ptr));
-  check_device_vs_host_ptr(static_cast<T const *>(input_grad_ptr));
-  check_device_vs_host_ptr(static_cast<T const *>(residual1_grad_ptr));
-  
-  return;
 
   layer_norm_grad_input_kernel<<<blocks, num_threads, nshared, stream>>>(
       output_grad_ptr,

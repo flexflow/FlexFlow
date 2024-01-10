@@ -307,6 +307,18 @@ Parameter* Linear::get_parameter(int index)
 namespace Internal {
 
 template <typename DT>
+__global__ void AddBiasWithReLU(DT *output_ptr,
+                                DT const *bias_ptr,
+                                int out_dim,
+                                int batch_size) {
+  CUDA_KERNEL_LOOP(i, out_dim * batch_size) {
+    int bias_idx = i % out_dim;
+    DT value = output_ptr[i] + bias_ptr[bias_idx];
+    output_ptr[i] = ((float)value > 0.0f) ? value : (DT)0.0f;
+  }
+}
+
+template <typename DT>
 void forward_kernel(LinearMeta const *m,
                     void const *input_ptr,
                     void *output_ptr,
@@ -398,6 +410,16 @@ void forward_kernel(LinearMeta const *m,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // use_bias = True
   if (bias_ptr != NULL) {
+    // fuse bias and relu
+    if (m->activation == AC_MODE_RELU) {
+      int parallelism = out_dim * batch_size;
+      AddBiasWithReLU<<<GET_BLOCKS(parallelism), CUDA_NUM_THREADS, 0, stream>>>(
+          static_cast<DT *>(output_ptr),
+          static_cast<DT const *>(bias_ptr),
+          out_dim,
+          batch_size);
+      return;
+    }
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,
                            CUBLAS_OP_N,
