@@ -876,7 +876,6 @@ void IncMultiHeadSelfAttention::inference_task(
   }
 }
 
-
 FutureMap IncMultiHeadSelfAttention::peft_bwd(
     FFModel const &ff,
     BatchConfigFuture const &bc,
@@ -992,7 +991,6 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
   assert(output_grad_domain.get_dim() == 4);
 
   assert(task->index_point.get_dim() == 1);
-
 
   IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
       m,

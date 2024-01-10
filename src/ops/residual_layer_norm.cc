@@ -133,15 +133,15 @@ void FFModel::residual_layer_norm(const Tensor input,
             : residual2;
   }
   Layer *ln = new Layer(this,
-                 OP_RESIDUAL_LAYERNORM,
-                 data_type,
-                 name,
-                 2 + use_two_residuals /*inputs*/,
-                 num_weights,
-                 2 /*outputs*/,
-                 casted_input,
-                 casted_residual1,
-                 casted_residual2);
+                        OP_RESIDUAL_LAYERNORM,
+                        data_type,
+                        name,
+                        2 + use_two_residuals /*inputs*/,
+                        num_weights,
+                        2 /*outputs*/,
+                        casted_input,
+                        casted_residual1,
+                        casted_residual2);
   ln->outputs[0] = create_tensor_legion_ordering(
       input->num_dims, input->dims, data_type, ln, 0, true /*create_grad*/);
   ln->outputs[1] = create_tensor_legion_ordering(

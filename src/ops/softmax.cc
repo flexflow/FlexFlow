@@ -356,11 +356,12 @@ FutureMap Softmax::inference(FFModel const &ff,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   // we add the region below in order to copy the output to the grad tensor
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
   launcher.add_field(2, FID_DATA);
   return runtime->execute_index_space(ctx, launcher);
 }

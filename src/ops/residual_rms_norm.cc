@@ -673,7 +673,6 @@ Legion::FutureMap
   return runtime->execute_index_space(ctx, launcher);
 }
 
-
 /*
   regions[0](I): RMS output_grad
   regions[1](I/O): Residual input 0 grad
@@ -711,7 +710,7 @@ void ResidualRMSNorm::peft_bwd_task(Task const *task,
       m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
   peft_bwd_kernel_wrapper(
       m, bc, output_grad, residual_input0_grad, residual_input1_grad, weight);
-  
+
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];

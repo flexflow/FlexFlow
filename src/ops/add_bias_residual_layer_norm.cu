@@ -618,7 +618,17 @@ __global__ void layer_norm_grad_input_kernel(T const *__restrict__ dY,
   alignas(sizeof(double)) extern __shared__ char s_data1[];
   T *buf = reinterpret_cast<T *>(&s_data1);
 
-  compute_gI(dY, X, mean, rstd, gamma, dX, dX_residual, reset_input_grad, reset_residual_grad, N, buf);
+  compute_gI(dY,
+             X,
+             mean,
+             rstd,
+             gamma,
+             dX,
+             dX_residual,
+             reset_input_grad,
+             reset_residual_grad,
+             N,
+             buf);
 }
 
 /*static*/
@@ -774,7 +784,7 @@ void AddBiasResidualLayerNorm::peft_bwd_kernel(
     cudaStream_t stream) {
   const int64_t M = m->effective_batch_size;
   const int64_t N = m->effective_num_elements;
-  
+
   int const warp_size = C10_WARP_SIZE;
   int const num_threads = 128;
   const dim3 blocks(M);
