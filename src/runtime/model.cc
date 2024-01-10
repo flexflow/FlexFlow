@@ -3238,21 +3238,21 @@ Op *FFModel::create_operator_from_layer(
 
 bool FFModel::is_mlp_block(int layer_idx) const {
   auto const &l = layers[layer_idx];
-  if (l->op_type != OP_LINEAR) {
-    return false;
-  }
   // standard opt relu
-  if (layer_idx >= 2 && layers[layer_idx - 1]->op_type == OP_RELU &&
+  if (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+      layers[layer_idx - 1]->op_type == OP_RELU &&
       layers[layer_idx - 2]->op_type == OP_LINEAR) {
     return true;
   }
   // mlp layer with relu embedded in first dense layer
-  long long value;
-  l->get_int_property("activation", value);
-  ActiMode activation = (ActiMode)value;
-  if (layer_idx >= 1 && layers[layer_idx - 1]->op_type == OP_LINEAR &&
-      activation == AC_MODE_RELU) {
-    return true;
+  if (l->op_type == OP_LINEAR && layer_idx >= 1 &&
+      layers[layer_idx - 1]->op_type == OP_LINEAR) {
+    long long value;
+    layers[layer_idx - 1]->get_int_property("activation", value);
+    ActiMode activation = (ActiMode)value;
+    if (activation == AC_MODE_RELU) {
+      return true;
+    }
   }
   return false;
 }
