@@ -493,12 +493,13 @@ __global__ void
 }
 
 template <typename DT>
-__global__ void apply_rotary_embedding_bwd(DT *input_ptr,
-                                          cuFloatComplex *complex_input,
-                                          BatchConfig::PerTokenInfo const *tokenInfos,
-                                          int proj_size,
-                                          int num_tokens,
-                                          int hidden_size) {
+__global__ void
+    apply_rotary_embedding_bwd(DT *input_ptr,
+                               cuFloatComplex *complex_input,
+                               BatchConfig::PerTokenInfo const *tokenInfos,
+                               int proj_size,
+                               int num_tokens,
+                               int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
     // compute indexes to visit first half proj_size of each of q/k tensor.
     // devQKVProj has shape [num_tokens, qProjSize, num_heads, 3] in peft_bwd
@@ -512,11 +513,9 @@ __global__ void apply_rotary_embedding_bwd(DT *input_ptr,
     int head_idx = real_i / (num_tokens * proj_size / 2);
     assert(head_idx < num_heads);
 
-    int complex_part_index = 
-      (q_tensor ? 0 : 1) * num_tokens * hidden_size + 
-      head_idx * num_tokens * proj_size +
-      idx * num_tokens +
-      token_idx;
+    int complex_part_index = (q_tensor ? 0 : 1) * num_tokens * hidden_size +
+                             head_idx * num_tokens * proj_size +
+                             idx * num_tokens + token_idx;
     int real_part_index = complex_part_index + (proj_size / 2) * num_tokens;
 
     complex_input[i] = {input_ptr[real_part_index],
@@ -1241,7 +1240,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     }
-    // Compute rotary embeddings bwd
+    // Step 7: perform rotary position embeddings (RoPE) bwd
     {
       if (*m->apply_rotary_embedding) {
         assert(m->hidden_size == m->qProjSize * m->num_q_heads);
@@ -1250,17 +1249,17 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
         int parallelism = num_tokens * m->hidden_size;
         DT *A = static_cast<DT *>(m->devQKVProjArray);
         apply_rotary_embedding_bwd<<<GET_BLOCKS(parallelism),
-                                    min(CUDA_NUM_THREADS, parallelism),
-                                    0,
-                                    stream>>>(A,
-                                              m->complex_input,
-                                              m->token_infos,
-                                              m->qProjSize,
-                                              num_tokens,
-                                              m->hidden_size);
+                                     min(CUDA_NUM_THREADS, parallelism),
+                                     0,
+                                     stream>>>(A,
+                                               m->complex_input,
+                                               m->token_infos,
+                                               m->qProjSize,
+                                               num_tokens,
+                                               m->hidden_size);
       }
     }
-    // Step 7: compute gradients w.r.t. input
+    // Step 8: compute gradients w.r.t. input
     {
       float alpha = 1.0f, beta = 0.0f;
       if (!m->reset_input_grads[0]) {
