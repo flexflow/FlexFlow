@@ -90,9 +90,9 @@ void FFModel::residual_rms_norm(const Tensor input1,
                         casted_input2);
 
   rm->outputs[0] = create_tensor_legion_ordering(
-      input1->num_dims, input1->dims, data_type, rm, 0, false /*create_grad*/);
+      input1->num_dims, input1->dims, data_type, rm, 0, true /*create_grad*/);
   rm->outputs[1] = create_tensor_legion_ordering(
-      input1->num_dims, input1->dims, data_type, rm, 1, false /*create_grad*/);
+      input1->num_dims, input1->dims, data_type, rm, 1, true /*create_grad*/);
 
   // weights
   int weight_dims[1] = {dim};
@@ -100,7 +100,7 @@ void FFModel::residual_rms_norm(const Tensor input1,
                                                  weight_dims,
                                                  data_type,
                                                  rm,
-                                                 true /*create_grad*/,
+                                                 false /*create_grad*/,
                                                  nullptr,
                                                  CHOSEN_SYNC_TYPE);
 
@@ -710,6 +710,7 @@ void ResidualRMSNorm::peft_bwd_task(Task const *task,
       m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
   peft_bwd_kernel_wrapper(
       m, bc, output_grad, residual_input0_grad, residual_input1_grad, weight);
+
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];

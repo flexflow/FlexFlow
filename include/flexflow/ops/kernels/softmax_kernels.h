@@ -39,7 +39,8 @@ void backward_kernel_wrapper(SoftmaxMeta const *m,
 void inference_kernel_wrapper(SoftmaxMeta const *m,
                               BatchConfig const *bc,
                               GenericTensorAccessorR const &input,
-                              GenericTensorAccessorW const &output);
+                              GenericTensorAccessorW const &output,
+                              GenericTensorAccessorW const &output_grad);
 
 void peft_bwd_kernel_wrapper(SoftmaxMeta const *m,
                              BatchConfig const *bc,

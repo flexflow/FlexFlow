@@ -28,6 +28,7 @@ public:
                     float _eps,
                     bool allocate_weights,
                     char const *name);
+  void map_output_tensors(FFModel &ff) override;
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,

@@ -193,7 +193,7 @@ void OPT::create_opt_model(FFModel &ff,
     Tensor fc1 =
         ff.dense(final_norm,
                  opt_config.ffn_dim,
-                 AC_MODE_NONE,
+                 AC_MODE_RELU,
                  true,
                  DT_NONE,
                  nullptr,
@@ -202,8 +202,7 @@ void OPT::create_opt_model(FFModel &ff,
                  REG_MODE_NONE,
                  0.0f,
                  std::string("layers_" + std::to_string(i) + "_fc1").c_str());
-    Tensor activation = ff.relu(fc1, false);
-    fc2 = ff.dense(activation,
+    fc2 = ff.dense(fc1,
                    opt_config.hidden_size,
                    AC_MODE_NONE,
                    true,
@@ -216,7 +215,7 @@ void OPT::create_opt_model(FFModel &ff,
                    std::string("layers_" + std::to_string(i) + "_fc2").c_str());
     // Low-Rank Adapter (LoRA) for the second linear layer
     ff.lora_linear(
-        activation,
+        fc1,
         fc2,
         OP_LORA_MLP_SECOND,
         std::string("layers_" + std::to_string(i) + "_fc2_lora").c_str());
@@ -255,7 +254,8 @@ void OPT::create_opt_model(FFModel &ff,
     output = ff.argmax(softmax, /*beam_Search*/ true);
   } else {
     // output = ff.arg_top_k(lm_head, /*k=*/1, false);
-    output = ff.argmax(lm_head, /*beam_Search*/ false);
+    Tensor softmax = ff.softmax(lm_head, -1);
+    output = ff.argmax(softmax, /*beam_Search*/ false);
   }
 
   //------------------- compile the model --------------------------------

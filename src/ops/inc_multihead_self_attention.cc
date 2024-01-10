@@ -902,7 +902,7 @@ FutureMap IncMultiHeadSelfAttention::peft_bwd(
   launcher.add_region_requirement(
       RegionRequirement(batch_inputs[0]->part_grad,
                         0 /*projection id*/,
-                        READ_WRITE,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
                         EXCLUSIVE,
                         batch_inputs[0]->region_grad));
   launcher.add_field(idx++, FID_DATA);
@@ -964,7 +964,7 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
       m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+  GenericTensorAccessorW output_grad = helperGetGenericTensorAccessorRW(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   GenericTensorAccessorR biases;
   if (*m->qkv_bias || *m->final_bias) {

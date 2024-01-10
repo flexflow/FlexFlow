@@ -931,7 +931,7 @@ Legion::FutureMap AddBiasResidualLayerNorm::peft_bwd(
   launcher.add_region_requirement(
       RegionRequirement(batch_inputs[0]->part_grad,
                         0 /*projection id*/,
-                        READ_WRITE,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
                         EXCLUSIVE,
                         batch_inputs[0]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
@@ -939,25 +939,17 @@ Legion::FutureMap AddBiasResidualLayerNorm::peft_bwd(
   launcher.add_region_requirement(
       RegionRequirement(batch_inputs[1]->part_grad,
                         0 /*projection id*/,
-                        READ_WRITE,
+                        reset_input_grads[1] ? WRITE_ONLY : READ_WRITE,
                         EXCLUSIVE,
                         batch_inputs[1]->region_grad));
   launcher.add_field(field_id++, FID_DATA);
-  // attn bias grad
-  launcher.add_region_requirement(
-      RegionRequirement(batch_inputs[2]->part_grad,
-                        0 /*projection id*/,
-                        READ_WRITE,
-                        EXCLUSIVE,
-                        batch_inputs[2]->region_grad));
-  launcher.add_field(field_id++, FID_DATA);
   if (elementwise_affine) {
     // gamma
-    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
                                                       EXCLUSIVE,
-                                                      weights[0]->region));
+                                                      weights[1]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);
@@ -1001,14 +993,6 @@ void AddBiasResidualLayerNorm::peft_bwd_task(
                                        ctx,
                                        runtime);
 
-  GenericTensorAccessorW attn_bias_grad =
-      helperGetGenericTensorAccessorRW(m->weight_type[0],
-                                       regions[region_idx++],
-                                       task->regions[task_region_idx++],
-                                       FID_DATA,
-                                       ctx,
-                                       runtime);
-
   GenericTensorAccessorR gamma;
   if (m->elementwise_affine) {
     assert(m->use_bias == (regions.size() == 6));
@@ -1020,13 +1004,12 @@ void AddBiasResidualLayerNorm::peft_bwd_task(
                                              runtime);
   }
   AddBiasResidualLayerNorm::peft_bwd_kernel_wrapper(
-      m, output_grad, input_grad, residual_grad, attn_bias_grad, gamma);
+      m, output_grad, input_grad, residual_grad, gamma);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     std::vector<GenericTensorAccessorR> weights_accessors;
-    weights_accessors.push_back(attn_bias_grad);
     if (m->elementwise_affine) {
       weights_accessors.push_back(gamma);
     }
