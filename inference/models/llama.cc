@@ -41,7 +41,7 @@ void LLAMA::create_llama_model(FFModel &ff,
 
   Tensor input;
   {
-    int const token_dims[] = {(mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+    int const token_dims[] = {mode == TREE_VERIFY_MODE
                                   ? BatchConfig::max_verify_tokens_per_batch()
                                   : BatchConfig::max_tokens_per_batch(),
                               1};
