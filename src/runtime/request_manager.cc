@@ -17,7 +17,6 @@
 #include "flexflow/parallel_ops/parallel_op.h"
 // #include "flexflow/tokenizers.h"
 #include <bitset>
-#include <chrono>
 #include <filesystem>
 #include <future>
 #include <iomanip>
@@ -29,8 +28,6 @@ namespace FlexFlow {
 
 using namespace Legion;
 using tokenizers::Tokenizer;
-
-const std::chrono::seconds TIMEOUT_DURATION(300);
 
 LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
@@ -2310,6 +2307,18 @@ void RequestManager::start_background_server(FFModel *model) {
   TaskLauncher launcher(RM_BACKGROUND_SERVING_TASK_ID,
                         TaskArgument(&model, sizeof(FFModel *)));
   background_server_handler = runtime->execute_task(ctx, launcher);
+  // Register callbacks for normal exit
+  {
+    int ret = std::atexit(RequestManager::terminate_background_server_at_exit);
+    assert(ret == 0); // make sure the callback is successfully registered
+  }
+  // Register callbacks for termination
+  {
+    std::set_terminate([]() {
+      RequestManager::terminate_background_server_at_exit();
+      std::abort();
+    });
+  }
 }
 
 void RequestManager::background_serving_task(
@@ -2370,15 +2379,7 @@ void RequestManager::serve_incr_decoding(FFModel *llm) {
       batch_pipeline;
   { batch_pipeline.push(std::make_pair(last_bcf, last_irf)); }
 
-  auto last_process_time = std::chrono::steady_clock::now();
   while (!is_background_server_terminated()) {
-    auto current_time = std::chrono::steady_clock::now();
-    if (current_time - last_process_time > TIMEOUT_DURATION) {
-      std::cout
-          << "No more new request for 300 seconds. Background server exits."
-          << std::endl;
-      break; // Exit the loop after timeout
-    }
 
     if (batch_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
@@ -2390,7 +2391,6 @@ void RequestManager::serve_incr_decoding(FFModel *llm) {
       auto const &batch = batch_pipeline.front();
       if (batch.second.is_ready()) {
         batch_pipeline.pop();
-        last_process_time = std::chrono::steady_clock::now();
       } else {
         break;
       }
@@ -2450,15 +2450,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   }
   batch_pipeline.push(std::make_pair(last_tree_bcf, last_tree_irf));
 
-  auto last_process_time = std::chrono::steady_clock::now();
   while (!is_background_server_terminated()) {
-    auto current_time = std::chrono::steady_clock::now();
-    if (current_time - last_process_time > TIMEOUT_DURATION) {
-      std::cout
-          << "No more new request for 300 seconds. Background server exits."
-          << std::endl;
-      break; // Exit the loop after timeout
-    }
 
     if (batch_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
@@ -2470,7 +2462,6 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
       auto const &batch = batch_pipeline.front();
       if (batch.second.is_ready()) {
         batch_pipeline.pop();
-        last_process_time = std::chrono::steady_clock::now();
       } else {
         break;
       }
@@ -2519,12 +2510,20 @@ void RequestManager::trigger_request_completion_future(
   request_to_promise[guid]->set_value();
 }
 
+/*static*/
+void RequestManager::terminate_background_server_at_exit() {
+  RequestManager *rm = RequestManager::get_request_manager();
+  rm->terminate_background_server();
+}
+
 void RequestManager::terminate_background_server() {
-  request_manager_status = TERMINATED;
-  // Wait for the background server to terminate
-  Runtime *runtime = Runtime::get_runtime();
-  Context ctx = Runtime::get_context();
-  background_server_handler.get_void_result();
+  if (request_manager_status == SERVING) {
+    request_manager_status = TERMINATED;
+    // Wait for the background server to terminate
+    Runtime *runtime = Runtime::get_runtime();
+    Context ctx = Runtime::get_context();
+    background_server_handler.get_void_result();
+  }
 }
 
 bool RequestManager::is_background_server_terminated() {
