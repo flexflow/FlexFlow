@@ -1597,7 +1597,11 @@ flexflow_generation_result_t
       handle->generate(prompts, max_seq_length);
   DEBUG_PRINT(
       "[Model] generate %p %s %i", handle, text_str.c_str(), max_seq_length);
-  assert(results[0].output_tokens.size() <= max_seq_length);
+  // If the prompt exceeds max seq len, check that we return the prompt with no
+  // additional token. Otherwise, check that the output does not exceed the max
+  // sequence length.
+  assert(results[0].output_tokens.size() <= max_seq_length ||
+         results[0].output_tokens.size() == results[0].input_tokens.size());
   output_length_and_tokens[0] = results[0].output_tokens.size();
   std::copy(results[0].output_tokens.begin(),
             results[0].output_tokens.end(),

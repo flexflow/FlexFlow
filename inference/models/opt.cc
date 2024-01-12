@@ -196,7 +196,7 @@ void OPT::create_opt_model(FFModel &ff,
     Tensor fc1 =
         ff.dense(final_norm,
                  opt_config.ffn_dim,
-                 AC_MODE_NONE,
+                 AC_MODE_RELU,
                  true,
                  DT_NONE,
                  nullptr,
@@ -205,8 +205,7 @@ void OPT::create_opt_model(FFModel &ff,
                  REG_MODE_NONE,
                  0.0f,
                  std::string("layers_" + std::to_string(i) + "_fc1").c_str());
-    Tensor activation = ff.relu(fc1, false);
-    fc2 = ff.dense(activation,
+    fc2 = ff.dense(fc1,
                    opt_config.hidden_size,
                    AC_MODE_NONE,
                    true,
