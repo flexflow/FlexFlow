@@ -743,7 +743,7 @@ void AdamOptimizer::nccl_unified_update_task(Task const *task,
   size_t *size = new size_t[op->parameters_num];
   int offset = 0;
 
-  printf("parameters_num: %d\n", op->parameters_num);    
+  // printf("parameters_num: %d\n", op->parameters_num);    
   
   for(int i = 0; i < op->parameters_num; i++){
   accWGrads[i] = helperGetGenericTensorAccessorRO(DataType::DT_FLOAT, regions[offset], task->regions[offset], FID_DATA, ctx, runtime);
