@@ -18,6 +18,7 @@
 
 #include "flexflow/parallel_tensor.h"
 #include "legion.h"
+#include "accessor.h"
 
 namespace FlexFlow {
 
@@ -125,11 +126,11 @@ public:
                                    float *m_ptr);
   static void nccl_unified_update_task_gpu(AdamOptimizer const *op,
                                    OpMeta const *meta,
-                                   float const *w_grad_ptr[],
+                                   GenericTensorAccessorR *accWGrads,
                                    size_t *size,
-                                   float *w_ptr[],
-                                   float *v_ptr[],
-                                   float *m_ptr[]);                                 
+                                   GenericTensorAccessorW *accWs,
+                                   GenericTensorAccessorW *accVs,
+                                   GenericTensorAccessorW *accMs);                                 
 #endif
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;

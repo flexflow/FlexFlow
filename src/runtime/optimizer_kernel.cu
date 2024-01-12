@@ -216,6 +216,68 @@ __host__ void AdamOptimizer::nccl_update_task_gpu(AdamOptimizer const *op,
       w_ptr);
   // checkCUDA(cudaDeviceSynchronize());
 }
+
+__host__ void AdamOptimizer::nccl_unified_update_task_gpu(
+    AdamOptimizer const *op,
+    OpMeta const *meta,
+    GenericTensorAccessorR *accWGrads,
+    size_t *size,
+    GenericTensorAccessorW *accWs,
+    GenericTensorAccessorW *accVs,
+    GenericTensorAccessorW *accMs) {
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  assert(op->reservedWorkSpaceSize < meta->handle.workSpaceSize);
+
+  void *workSpace_ptr = meta->handle.workSpace;
+
+  for (int i = 0; i < op->parameters_num; i++) {
+    cudaMemcpyAsync(workSpace_ptr,
+                    accWGrads[i].get_float_ptr(),
+                    size[i] * sizeof(float),
+                    cudaMemcpyDeviceToDevice,
+                    stream);
+    workSpace_ptr =
+        static_cast<char *>(workSpace_ptr) + size[i] * sizeof(float);
+  }
+
+  // do allreduce once
+  checkNCCL(ncclAllReduce(meta->handle.workSpace,
+                          (float *)meta->handle.workSpace,
+                          op->reservedWorkSpaceSize / sizeof(float),
+                          ncclFloat,
+                          ncclSum,
+                          meta->handle.ncclComm,
+                          stream));
+
+  workSpace_ptr = static_cast<char *>(meta->handle.workSpace);
+  float alpha_t = op->alpha_t;
+  float beta1_t = op->beta1_t;
+  float beta2_t = op->beta2_t;
+  for (int i = 0; i < op->parameters_num; i++) {
+    // update
+    // printf("update %d\n", i);
+    adam_update<<<GET_BLOCKS(size[i]), CUDA_NUM_THREADS, 0, stream>>>(
+        size[i],
+        alpha_t,
+        op->beta1,
+        op->beta2,
+        op->weight_decay,
+        op->epsilon,
+        static_cast<float *>(workSpace_ptr),
+        accMs[i].get_float_ptr(),
+        accVs[i].get_float_ptr(),
+        accWs[i].get_float_ptr());
+    workSpace_ptr =
+        static_cast<char *>(workSpace_ptr) + size[i] * sizeof(float);
+
+    // update
+    beta1_t *= op->beta1;
+    beta2_t *= op->beta2;
+    alpha_t = op->alpha * sqrt(1 - beta2_t) / (1 - beta1_t);
+  }
+}
 #endif
 
 }; // namespace FlexFlow

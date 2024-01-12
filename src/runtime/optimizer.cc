@@ -727,35 +727,36 @@ void AdamOptimizer::nccl_unified_update_task(Task const *task,
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
-  float const *w_grad_ptr[op->parameters_num];
-  float *w_ptr[op->parameters_num], *v_ptr[op->parameters_num], *m_ptr[op->parameters_num];
+  // float const *w_grad_ptr[op->parameters_num];
+  // float *w_ptr[op->parameters_num], *v_ptr[op->parameters_num], *m_ptr[op->parameters_num];
 
-  hipMalloc(w_grad_ptr, sizeof(float*) * op->parameters_num);
-  hipMalloc(w_ptr, sizeof(float*) * op->parameters_num);
-  hipMalloc(v_ptr, sizeof(float*) * op->parameters_num);
-  hipMalloc(m_ptr, sizeof(float*) * op->parameters_num);
+  // hipMalloc(w_grad_ptr, sizeof(float*) * op->parameters_num);
+  // hipMalloc(w_ptr, sizeof(float*) * op->parameters_num);
+  // hipMalloc(v_ptr, sizeof(float*) * op->parameters_num);
+  // hipMalloc(m_ptr, sizeof(float*) * op->parameters_num);
+  GenericTensorAccessorR accWGrads[op->parameters_num];
+  GenericTensorAccessorW accWs[op->parameters_num];
+  GenericTensorAccessorW accVs[op->parameters_num];
+  GenericTensorAccessorW accMs[op->parameters_num];
   size_t *size = new size_t[op->parameters_num];
   int offset = 0;
 
   printf("parameters_num: %d\n", op->parameters_num);    
   
   for(int i = 0; i < op->parameters_num; i++){
-  GenericTensorAccessorR accWGrad = helperGetGenericTensorAccessorRO(DataType::DT_FLOAT, regions[offset], task->regions[offset], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW accW = helperGetGenericTensorAccessorWO(DataType::DT_FLOAT, regions[offset+1], task->regions[offset+1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW accV = helperGetGenericTensorAccessorWO(DataType::DT_FLOAT, regions[offset+2], task->regions[offset+2], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW accM = helperGetGenericTensorAccessorWO(DataType::DT_FLOAT, regions[offset+3], task->regions[offset+3], FID_DATA, ctx, runtime);
+  accWGrads[i] = helperGetGenericTensorAccessorRO(DataType::DT_FLOAT, regions[offset], task->regions[offset], FID_DATA, ctx, runtime);
+  accWs[i] = helperGetGenericTensorAccessorWO(DataType::DT_FLOAT, regions[offset+1], task->regions[offset+1], FID_DATA, ctx, runtime);
+  accVs[i] = helperGetGenericTensorAccessorWO(DataType::DT_FLOAT, regions[offset+2], task->regions[offset+2], FID_DATA, ctx, runtime);
+  accMs[i] = helperGetGenericTensorAccessorWO(DataType::DT_FLOAT, regions[offset+3], task->regions[offset+3], FID_DATA, ctx, runtime);
   offset += 4;
 
-  size[i] = accWGrad.domain.get_volume();
-  // assert(accWGrad.rect == accW.rect);
-  // assert(accWGrad.rect == accV.rect);
-  // assert(accWGrad.rect == accM.rect);
-  w_grad_ptr[i] = accWGrad.get_float_ptr();
-  w_ptr[i] = accW.get_float_ptr();
-  v_ptr[i] = accV.get_float_ptr();
-  m_ptr[i] = accM.get_float_ptr();
+  size[i] = accWGrads[i].domain.get_volume();
+  // w_grad_ptr[i] = accWGrad.get_float_ptr();
+  // w_ptr[i] = accW.get_float_ptr();
+  // v_ptr[i] = accV.get_float_ptr();
+  // m_ptr[i] = accM.get_float_ptr();
   }
-  nccl_unified_update_task_gpu(op, meta, w_grad_ptr, size, w_ptr, v_ptr, m_ptr);
+  nccl_unified_update_task_gpu(op, meta, accWGrads, size, accWs, accVs, accMs);
 }
 #endif
 
