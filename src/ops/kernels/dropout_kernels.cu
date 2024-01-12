@@ -29,6 +29,10 @@ DropoutMeta::DropoutMeta(FFHandler handler,
                          Domain const &output_domain)
     : OpMeta(handler) {
   profiling = dropout->profiling;
+  rate = dropout->rate;
+  seed = dropout->seed;
+  input_type[0] = dropout->data_type;
+  output_type[0] = dropout->data_type;
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateDropoutDescriptor(&dropoutDesc));
@@ -115,11 +119,28 @@ void forward_kernel_wrapper(DropoutMeta *m,
                             GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+
   Internal::forward_kernel(m,
                            input.get_float_ptr(),
                            output.get_float_ptr(),
                            input.domain.get_volume(),
                            stream);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf(" [dropout] forward time = %.2lfms\n", elapsed);
+  }
 }
 
 void backward_kernel_wrapper(DropoutMeta *m,
@@ -127,11 +148,27 @@ void backward_kernel_wrapper(DropoutMeta *m,
                              GenericTensorAccessorW const &input_grad) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
   Internal::backward_kernel(m,
                             output_grad.get_float_ptr(),
                             input_grad.get_float_ptr(),
                             output_grad.domain.get_volume(),
                             stream);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf(" [dropout] backward time = %.2lfms\n", elapsed);
+  }
 }
 
 namespace Internal {
