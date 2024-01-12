@@ -137,7 +137,6 @@ public:
   std::map<Legion::LogicalRegion, ParallelTensor> v_values, m_values;
   size_t reservedWorkSpaceSize = 0;
   int parameters_num = 0;
-  int processed_parameters_num = 0;
 };
 
 }; // namespace FlexFlow

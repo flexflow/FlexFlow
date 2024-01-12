@@ -522,6 +522,8 @@ void AdamOptimizer::unified_update(std::vector<ParallelTensor> const parameters)
     }
 
   int offset = 0;
+  int processed_parameters_num = 0;
+  parameters_num = 0;
   // printf("param size: %d, %d\n", parameters.size(), parameters_num);
 
   while(processed_parameters_num < parameters.size()){
