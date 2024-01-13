@@ -127,9 +127,12 @@ def get_configs():
 
 def generate_response(message, history):
     user_input = message 
-    result = llm.generate(user_input)
-    return result.output_text.decode('utf-8')
-
+    results = llm.generate(user_input)
+    if isinstance(results, list):
+        result_txt = results[0].output_text.decode('utf-8')
+    else:
+        result_txt = results.output_text.decode('utf-8')
+    return result_txt
 
 def main():
     

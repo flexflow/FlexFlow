@@ -190,13 +190,6 @@ async def generate(prompt_request: PromptRequest):
             "prompt": prompt_request.prompt,
             "response": response_text
         }
-    
-# Shutdown event to stop the model server
-@app.on_event("shutdown")
-async def shutdown_event():
-    global llm_model
-    if llm_model is not None:
-        llm_model.__exit__()
 
 # Main function to run Uvicorn server
 if __name__ == "__main__":

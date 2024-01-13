@@ -124,7 +124,13 @@ class FlexFlowLLM:
         self.llm.compile(generation_config, max_requests_per_batch, max_seq_length, max_tokens_per_batch)
 
     def generate(self, prompt):
-        return self.llm.generate(prompt).output_text.decode('utf-8')
+        user_input = prompt
+        results = self.llm.generate(user_input)
+        if isinstance(results, list):
+            result_txt = results[0].output_text.decode('utf-8')
+        else:
+            result_txt = results.output_text.decode('utf-8')
+        return result_txt
 
     def __enter__(self):
         return self.llm.__enter__()
