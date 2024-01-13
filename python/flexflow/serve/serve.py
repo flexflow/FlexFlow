@@ -432,7 +432,7 @@ class LLM:
         print("Background server started.")
         
     def stop_server(self):
-        self.rm.start_server()
+        self.rm.stop_server()
         print("Background server stoped.")
         
     def __enter__(self):
