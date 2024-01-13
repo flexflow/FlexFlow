@@ -407,7 +407,6 @@ class LLM:
         if (mode == InferenceMode.TREE_VERIFY_MODE) or (mode == InferenceMode.INC_DECODING_MODE):
             import atexit
             atexit.register(self.rm.stop_server)
-            self.rm.start_server(self.model.ffmodel)
 
     def generate(self, prompts: Union[str, List[str]], max_length: int = 128):
         """Generate tokens based on the input prompt(s)
@@ -427,6 +426,14 @@ class LLM:
             return self.model.ffmodel.generate(prompts, max_length)
         else:
             assert False, "Please pass a non-empty string or list of strings"
+    
+    def start_server(self):
+        self.rm.start_server(self.model.ffmodel)
+        print("Background server started.")
+        
+    def stop_server(self):
+        self.rm.start_server()
+        print("Background server stoped.")
         
     def __enter__(self):
         # Start the server when entering the context
