@@ -187,9 +187,6 @@ We provide five prompt datasets for evaluating FlexFlow Serve: [Chatbot instruct
 FlexFlow Serve is still under active development. We currently focus on the following tasks and strongly welcome all contributions from bug fixes to new features and extensions.
 
 * AMD benchmarking. We are actively working on benchmarking FlexFlow Serve on AMD GPUs and comparing it with the performance on NVIDIA GPUs.
-* Chatbot prompt templates and Multi-round conversations
-* Support for FastAPI server
-* Integration with LangChain for document question answering
 
 ## Acknowledgements
 This project is initiated by members from CMU, Stanford, and UCSD. We will be continuing developing and supporting FlexFlow Serve. Please cite FlexFlow Serve as:
