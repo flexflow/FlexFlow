@@ -79,7 +79,12 @@ ssms=[]
 ssm = ff.SSM("JackFram/llama-68m")
 ssms.append(ssm)
 ```
-Next, we declare the generation configuration and compile both the LLM and SSMs. Note that all SSMs should run in the **beam search** mode, and the LLM should run in the **tree verification** mode to verify the speculated tokens from SSMs.
+Next, we declare the generation configuration and compile both the LLM and SSMs. Note that all SSMs should run in the **beam search** mode, and the LLM should run in the **tree verification** mode to verify the speculated tokens from SSMs. You can also use the following arguments to specify serving configuration when compiling LLMs and SSMs:
+
+* max\_requests\_per\_batch: the maximum number of requests to serve in a batch (default: 16)
+* max\_seq\_length: the maximum number of tokens in a request (default: 256)
+* max\_tokens\_per\_batch: the maximum number of tokens to process in a batch (default: 128)
+
 ```python
 # Create the sampling configs
 generation_config = ff.GenerationConfig(
@@ -91,11 +96,16 @@ for ssm in ssms:
     ssm.compile(generation_config)
 
 # Compile the LLM for inference and load the weights into memory
-llm.compile(generation_config, ssms=ssms)
+llm.compile(generation_config,
+            max_requests_per_batch = 16,
+            max_seq_length = 256,
+            max_tokens_per_batch = 128,
+            ssms=ssms)
 ```
 Finally, we call `llm.generate` to generate the output, which is organized as a list of `GenerationResult`, which include the output tokens and text.
 ```python
-result = llm.generate("Here are some travel tips for Tokyo:\n")
+with llm:
+  result = llm.generate("Here are some travel tips for Tokyo:\n")
 ```
 
 ### Incremental decoding
@@ -124,10 +134,14 @@ generation_config = ff.GenerationConfig(
 )
 
 # Compile the LLM for inference and load the weights into memory
-llm.compile(generation_config)
+llm.compile(generation_config,
+            max_requests_per_batch = 16,
+            max_seq_length = 256,
+            max_tokens_per_batch = 128)
 
 # Generation begins!
-result = llm.generate("Here are some travel tips for Tokyo:\n")
+with llm:
+  result = llm.generate("Here are some travel tips for Tokyo:\n")
 ```
 
 </details>

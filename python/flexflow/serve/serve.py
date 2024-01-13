@@ -463,9 +463,9 @@ class SSM(LLM):
     def compile(
         self,
         generation_config: GenerationConfig = GenerationConfig(),
-        max_requests_per_batch: int = 1,
+        max_requests_per_batch: int = 16,
         max_seq_length: int = 256,
-        max_tokens_per_batch: int = 64,
+        max_tokens_per_batch: int = 128,
         model_specific_data_parallelism_degree: int = 1,
         model_specific_tensor_parallelism_degree: int = 1,
         model_specific_pipeline_parallelism_degree: int = 1,
@@ -477,11 +477,11 @@ class SSM(LLM):
         :type mode: InferenceMode, optional
         :param generation_config: The GenerationConfig object with the configurations to use for sampling, defaults to GenerationConfig()
         :type generation_config: GenerationConfig, optional
-        :param max_requests_per_batch: The maximum batch size to allow, defaults to 1
+        :param max_requests_per_batch: The maximum batch size to allow, defaults to 16
         :type max_requests_per_batch: int, optional
         :param max_seq_length: The maximum sequence length to allow per batch, defaults to 256
         :type max_seq_length: int, optional
-        :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 64
+        :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 128
         :type max_tokens_per_batch: int, optional
         :param model_specific_data_parallelism_degree: Use this parameter if you want to give the SSM a different data parallelism degree than the default one, defaults to 1
         :type model_specific_data_parallelism_degree: int, optional
