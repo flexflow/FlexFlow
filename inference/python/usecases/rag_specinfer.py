@@ -177,14 +177,16 @@ class FlexFlowLLM:
             max_tokens_per_batch,
             ssms = self.ssms
         )
-        self.llm.start_server()
 
     def generate(self, prompt):
         return self.llm.generate(prompt).output_text.decode('utf-8')
 
-    def stop_server(self):
-        self.llm.stop_server()
+    def __enter__(self):
+        return self.llm.__enter__()
 
+    def __exit__(self, exc_type, exc_value, traceback):
+        return self.llm.__exit__(exc_type, exc_value, traceback)
+    
 class FF_LLM_wrapper(LLM):
     flexflow_llm: FlexFlowLLM
 
@@ -256,7 +258,6 @@ if __name__ == "__main__":
     llm_chain_rag = LLMChain(llm=ff_llm_wrapper, prompt=prompt_rag)
 
     # Run
-    rag_result = llm_chain_rag(docs_text)
+    with ff_llm:
+        rag_result = llm_chain_rag(docs_text)
 
-    # stop the server
-    ff_llm.stop_server()
