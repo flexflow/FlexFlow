@@ -537,6 +537,12 @@ void FFModel::set_position_offset(int offset) {
 }
 
 void FFModel::compile_inference() {
+  // Request at least four CPU processors for inference runs
+  assert(
+      config.cpusPerNode >= 4 &&
+      "FlexFlow Serve requires at least four CPU cores per node, please add "
+      "`-ll:cpu 4` in the command line if you are using the C++ interface or "
+      "set `num_cpus` in `ff.init` if you are using the Python interface");
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   config.computationMode = COMP_MODE_INFERENCE;
