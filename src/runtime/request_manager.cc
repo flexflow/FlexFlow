@@ -44,7 +44,8 @@ std::string LoadBytesFromFile(std::string const &path) {
 }
 
 RequestManager::RequestManager()
-    : verbose(false), next_available_guid(1000000), num_processed_requests(0),
+    : request_manager_status(INITIALIZED), verbose(false),
+      next_available_guid(1000000), num_processed_requests(0),
       total_request_run_time(0.0f) {
   // The following config parameters are set
   // during ffmodel.compile()
@@ -2306,6 +2307,18 @@ void RequestManager::start_background_server(FFModel *model) {
   TaskLauncher launcher(RM_BACKGROUND_SERVING_TASK_ID,
                         TaskArgument(&model, sizeof(FFModel *)));
   background_server_handler = runtime->execute_task(ctx, launcher);
+  // Register callbacks for normal exit
+  {
+    int ret = std::atexit(RequestManager::terminate_background_server_at_exit);
+    assert(ret == 0); // make sure the callback is successfully registered
+  }
+  // Register callbacks for termination
+  {
+    std::set_terminate([]() {
+      RequestManager::terminate_background_server_at_exit();
+      std::abort();
+    });
+  }
 }
 
 void RequestManager::background_serving_task(
@@ -2365,7 +2378,9 @@ void RequestManager::serve_incr_decoding(FFModel *llm) {
   std::queue<std::pair<BatchConfigFuture, InferenceResultFuture>>
       batch_pipeline;
   { batch_pipeline.push(std::make_pair(last_bcf, last_irf)); }
+
   while (!is_background_server_terminated()) {
+
     if (batch_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
       auto const &batch = batch_pipeline.front();
@@ -2434,7 +2449,9 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
     last_tree_irf = Future::from_value<InferenceResult>(tree_ir);
   }
   batch_pipeline.push(std::make_pair(last_tree_bcf, last_tree_irf));
+
   while (!is_background_server_terminated()) {
+
     if (batch_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
       auto const &batch = batch_pipeline.front();
@@ -2493,12 +2510,20 @@ void RequestManager::trigger_request_completion_future(
   request_to_promise[guid]->set_value();
 }
 
+/*static*/
+void RequestManager::terminate_background_server_at_exit() {
+  RequestManager *rm = RequestManager::get_request_manager();
+  rm->terminate_background_server();
+}
+
 void RequestManager::terminate_background_server() {
-  request_manager_status = TERMINATED;
-  // Wait for the background server to terminate
-  Runtime *runtime = Runtime::get_runtime();
-  Context ctx = Runtime::get_context();
-  background_server_handler.get_void_result();
+  if (request_manager_status == SERVING) {
+    request_manager_status = TERMINATED;
+    // Wait for the background server to terminate
+    Runtime *runtime = Runtime::get_runtime();
+    Context ctx = Runtime::get_context();
+    background_server_handler.get_void_result();
+  }
 }
 
 bool RequestManager::is_background_server_terminated() {
