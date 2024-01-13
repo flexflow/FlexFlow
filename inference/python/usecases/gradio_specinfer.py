@@ -180,7 +180,7 @@ def main():
             generation_config,
             max_requests_per_batch=1,
             max_seq_length=256,
-            max_tokens_per_batch=64,
+            max_tokens_per_batch=256,
         )
 
     # Compile the LLM for inference and load the weights into memory
@@ -188,7 +188,7 @@ def main():
         generation_config,
         max_requests_per_batch=1,
         max_seq_length=256,
-        max_tokens_per_batch=64,
+        max_tokens_per_batch=256,
         ssms=ssms,
     )
     
@@ -200,10 +200,9 @@ def main():
     # )
     
     # interface version 2
-    llm.start_server()
-    iface = gr.ChatInterface(fn=generate_response)
-    iface.launch()
-    llm.stop_server()
+    with llm:
+        iface = gr.ChatInterface(fn=generate_response)
+        iface.launch()
 
 if __name__ == "__main__":
     print("flexflow inference example with gradio interface")

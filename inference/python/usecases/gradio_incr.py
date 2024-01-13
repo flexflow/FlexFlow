@@ -148,13 +148,9 @@ def main():
     # )
     
     # interface version 2
-    iface = gr.ChatInterface(fn=generate_response)
-    
-    llm.start_server()
-
-    iface.launch()
-
-    llm.stop_server()
+    with llm:
+        iface = gr.ChatInterface(fn=generate_response)
+        iface.launch()
 
 if __name__ == "__main__":
     print("flexflow inference example with gradio interface")

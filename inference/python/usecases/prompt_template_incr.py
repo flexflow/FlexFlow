@@ -57,13 +57,11 @@ from typing import Any, List, Mapping, Optional
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
-
 class FlexFlowLLM:
     def __init__(self, config_file=""):
         self.configs = self.get_configs(config_file)
         ff.init(self.configs)
         self.llm = self.create_llm()
-        self.ssms = self.create_ssms()
 
     def get_configs(self, config_file):
         # Load configurations from a file or use default settings
@@ -92,37 +90,19 @@ class FlexFlowLLM:
                 "fusion": True,
             }
             llm_configs = {
-                # required llm arguments
-                "llm_model": "meta-llama/Llama-2-7b-hf",
-                # optional llm parameters
+                # required parameters
+                "llm_model": "tiiuae/falcon-7b",
+                # optional parameters
                 "cache_path": "",
                 "refresh_cache": False,
                 "full_precision": False,
-                "ssms": [
-                    {
-                        # required ssm parameter
-                        "ssm_model": "JackFram/llama-160m",
-                        # optional ssm parameters
-                        "cache_path": "",
-                        "refresh_cache": False,
-                        "full_precision": False,
-                    },
-                    {
-                        # required ssm parameter
-                        "ssm_model": "facebook/opt-125m",
-                        # optional ssm parameters
-                        "cache_path": "",
-                        "refresh_cache": False,
-                        "full_precision": False,
-                    },
-                ],
-                # "prompt": "../prompt/test.json",
+                "prompt": "",
                 "output_file": "",
             }
             # Merge dictionaries
             ff_init_configs.update(llm_configs)
             return ff_init_configs
-            
+        
     def create_llm(self):
         configs = SimpleNamespace(**self.configs)
         ff_data_type = ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
@@ -134,52 +114,18 @@ class FlexFlowLLM:
             output_file=configs.output_file,
         )
         return llm
-    
-    def create_ssms(self):
-        # Create the SSMs
-        configs = SimpleNamespace(**self.configs)
-        ssms = []
-        for ssm_config in configs.ssms:
-            ssm_config = SimpleNamespace(**ssm_config)
-            ff_data_type = (
-                ff.DataType.DT_FLOAT if ssm_config.full_precision else ff.DataType.DT_HALF
-            )
-            ssm = ff.SSM(
-                ssm_config.ssm_model,
-                data_type=ff_data_type,
-                cache_path=ssm_config.cache_path,
-                refresh_cache=ssm_config.refresh_cache,
-                output_file=configs.output_file,
-            )
-            ssms.append(ssm)
-        return ssms
-    
+
     def compile_and_start(self, generation_config, max_requests_per_batch, max_seq_length, max_tokens_per_batch):
-        
-        # Compile the SSMs for inference and load the weights into memory
-        for ssm in self.ssms:
-            ssm.compile(
-                generation_config,
-                max_requests_per_batch,
-                max_seq_length,
-                max_tokens_per_batch,
-            )
-            
-        # Compile the LLM for inference and load the weights into memory
-        self.llm.compile(
-            generation_config, 
-            max_requests_per_batch, 
-            max_seq_length, 
-            max_tokens_per_batch,
-            ssms = self.ssms
-        )
-        self.llm.start_server()
+        self.llm.compile(generation_config, max_requests_per_batch, max_seq_length, max_tokens_per_batch)
 
     def generate(self, prompt):
         return self.llm.generate(prompt).output_text.decode('utf-8')
 
-    def stop_server(self):
-        self.llm.stop_server()
+    def __enter__(self):
+        return self.llm.__enter__()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return self.llm.__exit__(exc_type, exc_value, traceback)
 
 class FF_LLM_wrapper(LLM):
     flexflow_llm: FlexFlowLLM
@@ -222,8 +168,7 @@ if __name__ == "__main__":
     prompt = PromptTemplate(template=template, input_variables=["question"])
 
     llm_chain = LLMChain(prompt=prompt, llm=ff_llm_wrapper)
-    question = "Who was the US president in the year the first Pokemon game was released?"
-    print(llm_chain.run(question))
+    with ff_llm:
+        question = "Who was the US president in the year the first Pokemon game was released?"
+        print(llm_chain.run(question))
 
-    # stop the server
-    ff_llm.stop_server()

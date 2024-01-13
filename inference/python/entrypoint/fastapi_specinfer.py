@@ -22,11 +22,6 @@ Running Instructions:
 - Go to `http://localhost:PORT_NUMBER/docs` for API documentation.
 """
 
-"""
-TODO: fix issue: 
-"python3.10: /home/ubuntu/FlexFlow/src/runtime/model.cc:3237: void FlexFlow::FFModel:: create operators from layers (): Assertion "tensors_to parallel_tensors. find(1->inputs[il) |= tensors_to parallel_tensors.end()' failed"
-"""
-
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel

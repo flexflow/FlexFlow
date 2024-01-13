@@ -151,11 +151,11 @@ def main():
 
     with llm:
         # Inside this block, the server is running, generation begins!
-        if len(configs.prompt) > 0:
-            prompts = [s for s in json.load(open(configs.prompt))]
-            results = llm.generate(prompts)
-        else:
-            result = llm.generate("Three tips for staying healthy are: ")
+        # if len(configs.prompt) > 0:
+        #     prompts = [s for s in json.load(open(configs.prompt))]
+        #     results = llm.generate(prompts)
+        # else:
+        result = llm.generate("Three tips for staying healthy are: ")
 
 
 
