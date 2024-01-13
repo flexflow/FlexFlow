@@ -120,7 +120,6 @@ async def startup_event():
         max_seq_length=256,
         max_tokens_per_batch=64,
     )
-    llm_model.start_server()
 
 # API endpoint to generate response
 @app.post("/generate/")
@@ -129,27 +128,28 @@ async def generate(prompt_request: PromptRequest):
         raise HTTPException(status_code=503, detail="LLM model is not initialized.")
     
     # Call the model to generate a response
-    full_output = llm_model.generate([prompt_request.prompt])[0].output_text.decode('utf-8')
-    
-    # Separate the prompt and response
-    split_output = full_output.split('\n', 1)
-    if len(split_output) > 1:
-        response_text = split_output[1] 
-    else:
-        response_text = "" 
+    with llm_model:
+        full_output = llm_model.generate([prompt_request.prompt])[0].output_text.decode('utf-8')
         
-    # Return the prompt and the response in JSON format
-    return {
-        "prompt": prompt_request.prompt,
-        "response": response_text
-    }
+        # Separate the prompt and response
+        split_output = full_output.split('\n', 1)
+        if len(split_output) > 1:
+            response_text = split_output[1] 
+        else:
+            response_text = "" 
+            
+        # Return the prompt and the response in JSON format
+        return {
+            "prompt": prompt_request.prompt,
+            "response": response_text
+        }
     
 # Shutdown event to stop the model server
 @app.on_event("shutdown")
 async def shutdown_event():
     global llm_model
     if llm_model is not None:
-        llm_model.stop_server()
+        llm_model.__exit__()
 
 # Main function to run Uvicorn server
 if __name__ == "__main__":
