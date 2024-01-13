@@ -118,6 +118,11 @@ class LLM:
         self.refresh_cache = refresh_cache
         self.output_file = output_file
 
+    def __del__(self):
+        # Stop the background server before deleting the object
+        if type(self) == LLM:
+            self.rm.stop_server()
+
     def __get_ff_model_type(self):
         architectures = getattr(self.hf_config, "architectures", [])
         ff_arch = None
@@ -398,6 +403,12 @@ class LLM:
         for ssm in self.ssms:
             self.rm.register_ssm_model(ssm.model.ffmodel)
 
+        # start background server
+        if (mode == InferenceMode.TREE_VERIFY_MODE) or (mode == InferenceMode.INC_DECODING_MODE):
+            import atexit
+            atexit.register(self.rm.stop_server)
+            self.rm.start_server(self.model.ffmodel)
+
     def generate(self, prompts: Union[str, List[str]], max_length: int = 128):
         """Generate tokens based on the input prompt(s)
 
@@ -419,12 +430,12 @@ class LLM:
         
     def __enter__(self):
         # Start the server when entering the context
-        self.rm.start_server(self.model.ffmodel)
+        #self.rm.start_server(self.model.ffmodel)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         # Stop the server when exiting the context
-        self.rm.stop_server()
+        #self.rm.stop_server()
         if exc_type:
             print(f"Exception occurred: {exc_value}")
 

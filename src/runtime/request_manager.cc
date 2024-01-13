@@ -583,8 +583,6 @@ BeamSearchBatchConfig
     std::cout << "\n############### prepare_next_batch_init ###############\n";
   }
 
-  std::cout << "\n############### prepare_next_batch_init ###############\n";
-
   // Step 1: use result to update requests
   BeamSearchBatchConfig new_bc;
   new_bc.num_tokens = 0;
@@ -1331,7 +1329,10 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
     std::vector<BeamSearchBatchConfig> const &old_batches) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
 
-  std::cout << "\n############### prepare_next_batch_verify ###############\n";
+  if (verbose) {
+    std::cout
+        << "\n############### prepare_next_batch_verify ###############\n";
+  }
 
   assert(old_batches.size() > 0);
 
