@@ -3812,26 +3812,28 @@ class FFModel(object):
         assert ret_val == True
         return np_array
 
-    def generate(self, prompt, max_sequence_length):
-        c_input_text = get_c_name(prompt)
-        max_num_chars = 36000
-        c_output_text = ffi.new("char[]", max_num_chars)
-        c_output_length_and_tokens = ffi.new("int[]", max_sequence_length + 100)
+    def generate(self, prompt_list, max_sequence_length):
+        assert isinstance(prompt_list, list)
+        c_input_texts = [get_c_name(prompt) for prompt in prompt_list]
+        max_num_chars = 5 * (max_sequence_length + 100)
+        c_output_texts = [ffi.new("char[]", max_num_chars) for prompt in prompt_list]
+        c_output_length_and_tokens = [ffi.new("int[]", max_sequence_length + 100) for prompt in prompt_list]
         ffc().flexflow_model_generate(
             self.handle,
-            c_input_text,
+            len(prompt_list),
+            c_input_texts,
             max_num_chars,
-            c_output_text,
+            c_output_texts,
             max_sequence_length,
             c_output_length_and_tokens,
         )
-        output_length = c_output_length_and_tokens[0]
-        output_tokens = []
-        for i in range(output_length):
-            output_tokens.append(c_output_length_and_tokens[i + 1])
+        #output_length = c_output_length_and_tokens[0]
+        #output_tokens = []
+        #for i in range(output_length):
+        #    output_tokens.append(c_output_length_and_tokens[i + 1])
         from flexflow.serve import GenerationResult
 
-        return GenerationResult(ffi.string(c_output_text), output_tokens)
+        return [GenerationResult(ffi.string(c_output_text), []) for c_output_text in c_output_texts]
 
     def set_position_offset(self, offset):
         ffc().flexflow_model_set_position_offset(self.handle, offset)

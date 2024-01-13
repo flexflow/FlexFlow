@@ -150,6 +150,7 @@ public:
   void start_background_server(FFModel *model);
   bool is_background_server_terminated();
   void terminate_background_server();
+  static void terminate_background_server_at_exit();
   // Methods to check and mark request completion
   bool is_request_completed(RequestGuid const &guid);
   void trigger_request_completion_future(RequestGuid const &guid);
