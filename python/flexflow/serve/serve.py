@@ -409,13 +409,11 @@ class LLM:
         if type(prompts) == str:
             if len(prompts) == 0:
                 return None
-            return self.model.ffmodel.generate(prompts, max_length)
+            return self.model.ffmodel.generate([prompts], max_length)
         elif type(prompts) == list:
             if len(prompts) == 0:
                 return []
-            return [
-                self.model.ffmodel.generate(prompt, max_length) for prompt in prompts
-            ]
+            return self.model.ffmodel.generate(prompts, max_length)
         else:
             assert False, "Please pass a non-empty string or list of strings"
         

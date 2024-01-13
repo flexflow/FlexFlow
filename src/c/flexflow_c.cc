@@ -1582,34 +1582,41 @@ void flexflow_model_set_transformer_layer_id(flexflow_model_t handle_, int id) {
   handle->set_transformer_layer_id(id);
 }
 
-flexflow_generation_result_t
-    flexflow_model_generate(flexflow_model_t handle_,
-                            char const *input_text,
-                            int max_num_chars,
-                            char *output_text,
-                            int max_seq_length,
-                            int *output_length_and_tokens) {
+void flexflow_model_generate(flexflow_model_t handle_,
+                             int num_requests,
+                             char const **input_texts,
+                             int max_num_chars,
+                             char **output_texts,
+                             int max_seq_length,
+                             int **output_length_and_tokens) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::vector<std::string> prompts;
-  std::string const text_str(input_text);
-  prompts.push_back(input_text);
+  for (int i = 0; i < num_requests; i++) {
+    std::string const text_str(input_texts[i]);
+    prompts.push_back(text_str);
+    DEBUG_PRINT("[Model] generate[%d] %p %s %i",
+                i,
+                handle,
+                text_str.c_str(),
+                max_seq_length);
+  }
   std::vector<GenerationResult> results =
       handle->generate(prompts, max_seq_length);
-  DEBUG_PRINT(
-      "[Model] generate %p %s %i", handle, text_str.c_str(), max_seq_length);
   // If the prompt exceeds max seq len, check that we return the prompt with no
   // additional token. Otherwise, check that the output does not exceed the max
   // sequence length.
-  assert(results[0].output_tokens.size() <= max_seq_length ||
-         results[0].output_tokens.size() == results[0].input_tokens.size());
-  output_length_and_tokens[0] = results[0].output_tokens.size();
-  std::copy(results[0].output_tokens.begin(),
-            results[0].output_tokens.end(),
-            output_length_and_tokens + 1);
-  std::memcpy(output_text,
-              results[0].output_text.c_str(),
-              results[0].output_text.length());
-  return FFCObjectWrapper::wrap(&results[0]);
+  for (int i = 0; i < num_requests; i++) {
+    assert(results[i].output_tokens.size() <= max_seq_length ||
+           results[i].output_tokens.size() == results[i].input_tokens.size());
+    output_length_and_tokens[i][0] = results[i].output_tokens.size();
+    std::copy(results[i].output_tokens.begin(),
+              results[i].output_tokens.end(),
+              output_length_and_tokens[i] + 1);
+    std::memcpy(output_texts[i],
+                results[i].output_text.c_str(),
+                results[i].output_text.length());
+  }
+  // return FFCObjectWrapper::wrap(&results[0]);
 }
 
 void flexflow_model_set_position_offset(flexflow_model_t handle_,
