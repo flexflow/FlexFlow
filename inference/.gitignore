@@ -3,9 +3,4 @@ weights
 tokenizers
 prompt
 output
-python/.chainlit
-python/chainlit.md
-python/spec_infer.py
-python/incr_decoding.py
 .env
-python/chain_testing.py
