@@ -32,21 +32,21 @@ class FalconConfig:
         )
         self.new_decoder_architecture = hf_config.new_decoder_architecture
 
-        self.n_head = hf_config.num_attention_heads
-        self.n_head_kv = (
+        self.num_attention_heads = hf_config.num_attention_heads
+        self.num_kv_heads = (
             hf_config.num_kv_heads
             if (self.new_decoder_architecture or not self.multi_query)
             else 1
         )
-        self.head_dim = self.hidden_size // self.n_head
+        self.head_dim = self.hidden_size // self.num_attention_heads
 
         self.n_layer = hf_config.num_hidden_layers
         self.parallel_attn = hf_config.parallel_attn
         self.vocab_size = hf_config.vocab_size
 
         # Standardized FlexFlow num heads fields below
-        self.num_attention_heads = self.n_head
-        self.num_key_value_heads = self.n_head_kv
+        # self.num_attention_heads = self.n_head
+        self.num_key_value_heads = self.num_kv_heads
 
 
 class FlexFlowFalcon(FlexFlowModel):
@@ -74,16 +74,19 @@ class FlexFlowFalcon(FlexFlowModel):
         )
 
         # Sanity checks
-        if self.falcon_config.hidden_size % self.falcon_config.n_head != 0:
+        if self.falcon_config.hidden_size % self.falcon_config.num_attention_heads != 0:
             raise ValueError(
-                f"Hidden size ({self.falcon_config.hidden_size}) is not divisible by n_head ({self.falcon_config.n_head})"
+                f"Hidden size ({self.falcon_config.hidden_size}) is not divisible by num_attention_heads ({self.falcon_config.num_attention_heads})"
             )
         if (
-            self.falcon_config.n_head < self.ffconfig.tensor_parallelism_degree
-            or self.falcon_config.n_head % self.ffconfig.tensor_parallelism_degree != 0
+            self.falcon_config.num_attention_heads
+            < self.ffconfig.tensor_parallelism_degree
+            or self.falcon_config.num_attention_heads
+            % self.ffconfig.tensor_parallelism_degree
+            != 0
         ):
             raise ValueError(
-                f"Number of q attention heads ({self.falcon_config.n_head}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
+                f"Number of q attention heads ({self.falcon_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
 
         self.build_model(
@@ -140,8 +143,8 @@ class FlexFlowFalcon(FlexFlowModel):
                 mha = ffmodel.spec_inc_multiquery_self_attention(
                     att_norm,
                     self.falcon_config.hidden_size,
-                    self.falcon_config.n_head,
-                    self.falcon_config.n_head_kv,
+                    self.falcon_config.num_attention_heads,
+                    self.falcon_config.num_kv_heads,
                     self.falcon_config.head_dim,
                     self.falcon_config.head_dim,
                     0.0,  # dropout
@@ -157,8 +160,8 @@ class FlexFlowFalcon(FlexFlowModel):
                 mha = ffmodel.inc_multiquery_self_attention_verify(
                     att_norm,
                     self.falcon_config.hidden_size,
-                    self.falcon_config.n_head,
-                    self.falcon_config.n_head_kv,
+                    self.falcon_config.num_attention_heads,
+                    self.falcon_config.num_kv_heads,
                     self.falcon_config.head_dim,
                     self.falcon_config.head_dim,
                     0.0,  # dropout
@@ -174,8 +177,8 @@ class FlexFlowFalcon(FlexFlowModel):
                 mha = ffmodel.inc_multiquery_self_attention(
                     att_norm,
                     self.falcon_config.hidden_size,
-                    self.falcon_config.n_head,
-                    self.falcon_config.n_head_kv,
+                    self.falcon_config.num_attention_heads,
+                    self.falcon_config.num_kv_heads,
                     self.falcon_config.head_dim,
                     self.falcon_config.head_dim,
                     0.0,  # dropout
@@ -243,7 +246,7 @@ class FlexFlowFalcon(FlexFlowModel):
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
-        n_head_kv = (
+        num_kv_heads = (
             model.config.num_kv_heads
             if (model.config.new_decoder_architecture or not model.config.multi_query)
             else 1
@@ -265,8 +268,8 @@ class FlexFlowFalcon(FlexFlowModel):
                     params,
                     [
                         model.config.head_dim * model.config.num_attention_heads,
-                        model.config.head_dim * n_head_kv,
-                        model.config.head_dim * n_head_kv,
+                        model.config.head_dim * num_kv_heads,
+                        model.config.head_dim * num_kv_heads,
                     ],
                     0,
                 )
