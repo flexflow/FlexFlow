@@ -102,10 +102,11 @@ llm.compile(generation_config,
             max_tokens_per_batch = 128,
             ssms=ssms)
 ```
-Finally, we call `llm.generate` to generate the output, which is organized as a list of `GenerationResult`, which include the output tokens and text.
+Next, we call `llm.start_server()` to start an LLM server running on a seperate background thread, which allows users to perform computations in parallel with LLM serving. Finally, we call `llm.generate` to generate the output, which is organized as a list of `GenerationResult`, which include the output tokens and text. After all serving requests are processed, you can either call `llm.stop_server()` to terminate the background thread or directly exit the python program, which will automatically terminate the background server thread.
 ```python
-with llm:
-  result = llm.generate("Here are some travel tips for Tokyo:\n")
+llm.start_server()
+result = llm.generate("Here are some travel tips for Tokyo:\n")
+llm.stop_server() # This invocation is optional
 ```
 
 ### Incremental decoding
@@ -140,8 +141,9 @@ llm.compile(generation_config,
             max_tokens_per_batch = 128)
 
 # Generation begins!
-with llm:
-  result = llm.generate("Here are some travel tips for Tokyo:\n")
+llm.start_server()
+result = llm.generate("Here are some travel tips for Tokyo:\n")
+llm.stop_server() # This invocation is optional
 ```
 
 </details>
