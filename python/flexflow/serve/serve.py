@@ -426,12 +426,6 @@ class LLM:
             return self.model.ffmodel.generate(prompts, max_length)
         else:
             assert False, "Please pass a non-empty string or list of strings"
-<<<<<<< HEAD
-        
-    def __enter__(self):
-        # Start the server when entering the context
-        self.rm.start_server(self.model.ffmodel)
-=======
     
     def start_server(self):
         self.rm.start_server(self.model.ffmodel)
@@ -444,16 +438,11 @@ class LLM:
     def __enter__(self):
         # Start the server when entering the context
         #self.rm.start_server(self.model.ffmodel)
->>>>>>> origin/inference
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         # Stop the server when exiting the context
-<<<<<<< HEAD
-        self.rm.stop_server()
-=======
         #self.rm.stop_server()
->>>>>>> origin/inference
         if exc_type:
             print(f"Exception occurred: {exc_value}")
 

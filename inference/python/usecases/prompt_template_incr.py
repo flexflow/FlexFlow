@@ -116,16 +116,19 @@ class FlexFlowLLM:
         return llm
 
     def compile_and_start(self, generation_config, max_requests_per_batch, max_seq_length, max_tokens_per_batch):
-        self.llm.compile(generation_config, max_requests_per_batch, max_seq_length, max_tokens_per_batch)
+        self.llm.compile(generation_config, max_requests_per_batch, max_seq_length, max_tokens_per_batch)   
+        self.llm.start_server()
 
     def generate(self, prompt):
-        user_input = prompt
-        results = self.llm.generate(user_input)
+        results = self.llm.generate(prompt)
         if isinstance(results, list):
             result_txt = results[0].output_text.decode('utf-8')
         else:
             result_txt = results.output_text.decode('utf-8')
         return result_txt
+    
+    def stop_server(self):
+        self.llm.stop_server()
 
     def __enter__(self):
         return self.llm.__enter__()
@@ -171,10 +174,14 @@ if __name__ == "__main__":
     # USE CASE 1: Prompt Template
     template = """Question: {question}
                     Answer: Let's think step by step."""
-    prompt = PromptTemplate(template=template, input_variables=["question"])
 
+    # Build prompt template and langchain
+    prompt = PromptTemplate(template=template, input_variables=["question"])
     llm_chain = LLMChain(prompt=prompt, llm=ff_llm_wrapper)
-    with ff_llm:
-        question = "Who was the US president in the year the first Pokemon game was released?"
-        print(llm_chain.run(question))
+
+    question = "Who was the US president in the year the first Pokemon game was released?"
+    print(llm_chain.run(question))
+    
+    # stop the server
+    ff_llm.stop_server()
 

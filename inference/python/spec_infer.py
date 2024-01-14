@@ -143,13 +143,15 @@ def main():
     
     llm.start_server()
 
-    if len(configs.prompt) > 0:
-        prompts = [s for s in json.load(open(configs.prompt))]
-        results = llm.generate(prompts)
-    else:
-        result = llm.generate("Three tips for staying healthy are: ")
-        
-    llm.stop_server()
+    # if len(configs.prompt) > 0:
+    #     prompts = [s for s in json.load(open(configs.prompt))]
+    #     results = llm.generate(prompts)
+    # else:
+    #     result = llm.generate("Three tips for staying healthy are: ")
+
+    result = llm.generate("Three tips for staying healthy are: ")
+
+
 
 if __name__ == "__main__":
     print("flexflow inference example (speculative inference)")

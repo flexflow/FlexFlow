@@ -38,7 +38,7 @@ class PromptRequest(BaseModel):
     prompt: str
 
 # Global variable to store the LLM model
-llm_model = None
+llm = None
 
 
 def get_configs():
@@ -95,7 +95,7 @@ def get_configs():
 # Initialize model on startup
 @app.on_event("startup")
 async def startup_event():
-    global llm_model
+    global llm
 
     # Initialize your LLM model configuration here
     configs_dict = get_configs()
@@ -103,7 +103,7 @@ async def startup_event():
     ff.init(configs_dict)
 
     ff_data_type = ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
-    llm_model = ff.LLM(
+    llm = ff.LLM(
         configs.llm_model,
         data_type=ff_data_type,
         cache_path=configs.cache_path,
@@ -114,35 +114,42 @@ async def startup_event():
     generation_config = ff.GenerationConfig(
         do_sample=False, temperature=0.9, topp=0.8, topk=1
     )
-    llm_model.compile(
+    llm.compile(
         generation_config,
         max_requests_per_batch=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
     )
+    llm.start_server()
 
 # API endpoint to generate response
 @app.post("/generate/")
 async def generate(prompt_request: PromptRequest):
-    if llm_model is None:
+    if llm is None:
         raise HTTPException(status_code=503, detail="LLM model is not initialized.")
     
     # Call the model to generate a response
-    with llm_model:
-        full_output = llm_model.generate([prompt_request.prompt])[0].output_text.decode('utf-8')
+    full_output = llm.generate([prompt_request.prompt])[0].output_text.decode('utf-8')
+    
+    # Separate the prompt and response
+    split_output = full_output.split('\n', 1)
+    if len(split_output) > 1:
+        response_text = split_output[1] 
+    else:
+        response_text = "" 
         
-        # Separate the prompt and response
-        split_output = full_output.split('\n', 1)
-        if len(split_output) > 1:
-            response_text = split_output[1] 
-        else:
-            response_text = "" 
-            
-        # Return the prompt and the response in JSON format
-        return {
-            "prompt": prompt_request.prompt,
-            "response": response_text
-        }
+    # Return the prompt and the response in JSON format
+    return {
+        "prompt": prompt_request.prompt,
+        "response": response_text
+    }
+    
+# Shutdown event to stop the model server
+@app.on_event("shutdown")
+async def shutdown_event():
+    global llm
+    if llm is not None:
+        llm.stop_server()
 
 # Main function to run Uvicorn server
 if __name__ == "__main__":

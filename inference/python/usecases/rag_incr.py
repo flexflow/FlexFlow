@@ -122,15 +122,18 @@ class FlexFlowLLM:
 
     def compile_and_start(self, generation_config, max_requests_per_batch, max_seq_length, max_tokens_per_batch):
         self.llm.compile(generation_config, max_requests_per_batch, max_seq_length, max_tokens_per_batch)
+        self.llm.start_server()
 
     def generate(self, prompt):
-        user_input = prompt
-        results = self.llm.generate(user_input)
+        results = self.llm.generate(prompt)
         if isinstance(results, list):
             result_txt = results[0].output_text.decode('utf-8')
         else:
             result_txt = results.output_text.decode('utf-8')
         return result_txt
+
+    def stop_server(self):
+        self.llm.stop_server()
 
     def __enter__(self):
         return self.llm.__enter__()
@@ -205,11 +208,13 @@ if __name__ == "__main__":
     prompt_rag = PromptTemplate.from_template(
         "Summarize the main themes in these retrieved docs: {docs_text}"
     )
-    
+        
     # Chain
     llm_chain_rag = LLMChain(llm=ff_llm_wrapper, prompt=prompt_rag)
 
     # Run
-    with ff_llm:
-        rag_result = llm_chain_rag(docs_text)
+    rag_result = llm_chain_rag(docs_text)
+
+    # Stop the server
+    ff_llm.stop_server()
 

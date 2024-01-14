@@ -103,17 +103,9 @@ def get_configs():
                     "cache_path": "",
                     "refresh_cache": False,
                     "full_precision": False,
-                },
-                {
-                    # required ssm parameter
-                    "ssm_model": "facebook/opt-125m",
-                    # optional ssm parameters
-                    "cache_path": "",
-                    "refresh_cache": False,
-                    "full_precision": False,
-                },
+                }
             ],
-            # "prompt": "../prompt/test.json",
+            # "prompt": "",
             "output_file": "",
         }
         # Merge dictionaries
@@ -203,9 +195,10 @@ def main():
     # )
     
     # interface version 2
-    with llm:
-        iface = gr.ChatInterface(fn=generate_response)
-        iface.launch()
+    iface = gr.ChatInterface(fn=generate_response)
+    llm.start_server()
+    iface.launch()
+    llm.stop_server()
 
 if __name__ == "__main__":
     print("flexflow inference example with gradio interface")

@@ -84,5 +84,7 @@ Example Implementation:
       llm_chain_rag = LLMChain(llm=ff_llm_wrapper, prompt=prompt_rag)
 
       # Run
-      with ff_llm:
-         rag_result = llm_chain_rag(docs_text)
+      rag_result = llm_chain_rag(docs_text)
+
+      # Stop the server
+      ff_llm.stop_server()

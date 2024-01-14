@@ -42,7 +42,7 @@ Example
    class PromptRequest(BaseModel):
        prompt: str
 
-   llm_model = None
+   llm = None
 
 Endpoint Creation
 =================
@@ -62,19 +62,20 @@ Example
 
    @app.on_event("startup")
    async def startup_event():
-       global llm_model
-       # Initialize and compile the LLM model
-       # ...
+      global llm
+      # Initialize and compile the LLM model
+      llm.compile(
+         generation_config,
+         # ... other params as needed
+      )
+      llm.start_server()
 
    @app.post("/generate/")
    async def generate(prompt_request: PromptRequest):
-       global llm_model
-       if llm_model is None:
-           raise HTTPException(status_code=503, detail="LLM model is not initialized.")
-       
-       with llm_model:
-           full_output = llm_model.generate([prompt_request.prompt])[0].output_text.decode('utf-8')
-           return {"prompt": prompt_request.prompt, "response": full_output}
+      # ... exception handling
+      full_output = llm.generate([prompt_request.prompt])[0].output_text.decode('utf-8')
+      # ... split prompt and response text for returning results
+      return {"prompt": prompt_request.prompt, "response": full_output}
 
 Running and Testing
 ===================
@@ -91,6 +92,15 @@ Example
 -------
 
 .. code-block:: bash
-    # Running within the inference/python folder:
-    uvicorn entrypoint.fastapi_incr:app --reload --port 3000
 
+   # Running within the inference/python folder:
+   uvicorn entrypoint.fastapi_incr:app --reload --port 3000
+
+Full API Entrypoint Code 
+=========================
+
+A complete code example for a web-document Q&A using FlexFlow can be found here: 
+
+1. `FastAPI Example with incremental decoding <https://github.com/flexflow/FlexFlow/blob/chatbot-2/inference/python/entrypoint/fastapi_incr.py>`__
+
+2. `FastAPI Example with speculative inference <https://github.com/flexflow/FlexFlow/blob/chatbot-2/inference/python//entrypoint/fastapi_specinfer.py>`__

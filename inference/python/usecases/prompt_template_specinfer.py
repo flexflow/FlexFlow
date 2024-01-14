@@ -106,17 +106,9 @@ class FlexFlowLLM:
                         "cache_path": "",
                         "refresh_cache": False,
                         "full_precision": False,
-                    },
-                    {
-                        # required ssm parameter
-                        "ssm_model": "facebook/opt-125m",
-                        # optional ssm parameters
-                        "cache_path": "",
-                        "refresh_cache": False,
-                        "full_precision": False,
-                    },
+                    }
                 ],
-                # "prompt": "../prompt/test.json",
+                # "prompt": "",
                 "output_file": "",
             }
             # Merge dictionaries
@@ -173,15 +165,18 @@ class FlexFlowLLM:
             max_tokens_per_batch,
             ssms = self.ssms
         )
+        self.llm.start_server()
 
     def generate(self, prompt):
-        user_input = prompt
-        results = self.llm.generate(user_input)
+        results = self.llm.generate(prompt)
         if isinstance(results, list):
             result_txt = results[0].output_text.decode('utf-8')
         else:
             result_txt = results.output_text.decode('utf-8')
         return result_txt
+    
+    def stop_server(self):
+        self.llm.stop_server()
 
     def __enter__(self):
         return self.llm.__enter__()
@@ -227,10 +222,15 @@ if __name__ == "__main__":
     # USE CASE 1: Prompt Template
     template = """Question: {question}
                     Answer: Let's think step by step."""
+    
+    # Build prompt template and langchain
     prompt = PromptTemplate(template=template, input_variables=["question"])
-
     llm_chain = LLMChain(prompt=prompt, llm=ff_llm_wrapper)
-    with ff_llm:
-        question = "Who was the US president in the year the first Pokemon game was released?"
-        print(llm_chain.run(question))
+
+    question = "Who was the US president in the year the first Pokemon game was released?"
+    print(llm_chain.run(question))
+    
+    # stop the server
+    ff_llm.stop_server()
+
 

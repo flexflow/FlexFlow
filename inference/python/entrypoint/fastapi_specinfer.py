@@ -38,7 +38,7 @@ class PromptRequest(BaseModel):
     prompt: str
 
 # Global variable to store the LLM model
-llm_model = None
+llm = None
 
 def get_configs():
     # Fetch configuration file path from environment variable
@@ -90,28 +90,19 @@ def get_configs():
                     "cache_path": "",
                     "refresh_cache": False,
                     "full_precision": False,
-                },
-                {
-                    # required ssm parameter
-                    "ssm_model": "facebook/opt-125m",
-                    # optional ssm parameters
-                    "cache_path": "",
-                    "refresh_cache": False,
-                    "full_precision": False,
-                },
+                }
             ],
-            # "prompt": "../prompt/test.json",
+            # "prompt": "",
             "output_file": "",
         }
         # Merge dictionaries
         ff_init_configs.update(llm_configs)
         return ff_init_configs
 
-
 # Initialize model on startup
 @app.on_event("startup")
 async def startup_event():
-    global llm_model
+    global llm
 
     # Initialize your LLM model configuration here
     configs_dict = get_configs()
@@ -145,11 +136,12 @@ async def startup_event():
             output_file=configs.output_file,
         )
         ssms.append(ssm)
-        
+
     # Create the sampling configs
     generation_config = ff.GenerationConfig(
         do_sample=False, temperature=0.9, topp=0.8, topk=1
     )
+
     # Compile the SSMs for inference and load the weights into memory
     for ssm in ssms:
         ssm.compile(
@@ -167,29 +159,37 @@ async def startup_event():
         max_tokens_per_batch=64,
         ssms=ssms,
     )
+    
+    llm.start_server()
 
 # API endpoint to generate response
 @app.post("/generate/")
 async def generate(prompt_request: PromptRequest):
-    if llm_model is None:
+    if llm is None:
         raise HTTPException(status_code=503, detail="LLM model is not initialized.")
     
     # Call the model to generate a response
-    with llm_model:
-        full_output = llm_model.generate([prompt_request.prompt])[0].output_text.decode('utf-8')
+    full_output = llm.generate([prompt_request.prompt])[0].output_text.decode('utf-8')
+
+    # Separate the prompt and response
+    split_output = full_output.split('\n', 1)
+    if len(split_output) > 1:
+        response_text = split_output[1] 
+    else:
+        response_text = "" 
+        
+    # Return the prompt and the response in JSON format
+    return {
+        "prompt": prompt_request.prompt,
+        "response": response_text
+    }
     
-        # Separate the prompt and response
-        split_output = full_output.split('\n', 1)
-        if len(split_output) > 1:
-            response_text = split_output[1] 
-        else:
-            response_text = "" 
-            
-        # Return the prompt and the response in JSON format
-        return {
-            "prompt": prompt_request.prompt,
-            "response": response_text
-        }
+# Shutdown event to stop the model server
+@app.on_event("shutdown")
+async def shutdown_event():
+    global llm
+    if llm is not None:
+        llm.stop_server()
 
 # Main function to run Uvicorn server
 if __name__ == "__main__":

@@ -110,17 +110,9 @@ class FlexFlowLLM:
                         "cache_path": "",
                         "refresh_cache": False,
                         "full_precision": False,
-                    },
-                    {
-                        # required ssm parameter
-                        "ssm_model": "facebook/opt-125m",
-                        # optional ssm parameters
-                        "cache_path": "",
-                        "refresh_cache": False,
-                        "full_precision": False,
-                    },
+                    }
                 ],
-                # "prompt": "../prompt/test.json",
+                # "prompt": "",
                 "output_file": "",
             }
             # Merge dictionaries
@@ -177,15 +169,19 @@ class FlexFlowLLM:
             max_tokens_per_batch,
             ssms = self.ssms
         )
+        # start server
+        self.llm.start_server()
 
     def generate(self, prompt):
-        user_input = prompt
-        results = self.llm.generate(user_input)
+        results = self.llm.generate(prompt)
         if isinstance(results, list):
             result_txt = results[0].output_text.decode('utf-8')
         else:
             result_txt = results.output_text.decode('utf-8')
         return result_txt
+    
+    def stop_server(self):
+        self.llm.stop_server()
     
     def __enter__(self):
         return self.llm.__enter__()
@@ -264,6 +260,7 @@ if __name__ == "__main__":
     llm_chain_rag = LLMChain(llm=ff_llm_wrapper, prompt=prompt_rag)
 
     # Run
-    with ff_llm:
-        rag_result = llm_chain_rag(docs_text)
+    rag_result = llm_chain_rag(docs_text)
 
+    # stop the server
+    ff_llm.stop_server()
