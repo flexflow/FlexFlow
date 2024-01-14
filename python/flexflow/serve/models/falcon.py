@@ -19,28 +19,31 @@ import random, torch
 
 class FalconConfig:
     def __init__(self, hf_config):
-        #self.max_seq_len = 256
-        #self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
         self.max_spec_tree_token_num = 64
+
         self.bias = hf_config.bias
+        self.hidden_dropout = hf_config.hidden_dropout
         self.hidden_size = hf_config.hidden_size
         self.layer_norm_epsilon = hf_config.layer_norm_epsilon
-        self.multi_query = hf_config.multi_query
-        self.n_head = (
-            hf_config.n_head
-            if "n_head" in hf_config.__dict__
-            else hf_config.num_attention_heads
+        self.multi_query = (
+            hf_config.multi_query if "multi_query" in hf_config.__dict__ else True
         )
-        self.n_head_kv = hf_config.n_head_kv if "n_head_kv" in hf_config.__dict__ else 1
-        self.n_layer = (
-            hf_config.n_layer
-            if "n_layer" in hf_config.__dict__
-            else hf_config.num_hidden_layers
+        self.new_decoder_architecture = hf_config.new_decoder_architecture
+
+        self.n_head = hf_config.num_attention_heads
+        self.n_head_kv = (
+            hf_config.num_kv_heads
+            if (self.new_decoder_architecture or not self.multi_query)
+            else 1
         )
+        self.head_dim = self.hidden_size // self.n_head
+
+        self.n_layer = hf_config.num_hidden_layers
         self.parallel_attn = hf_config.parallel_attn
         self.vocab_size = hf_config.vocab_size
+
         # Standardized FlexFlow num heads fields below
         self.num_attention_heads = self.n_head
         self.num_key_value_heads = self.n_head_kv
@@ -54,8 +57,6 @@ class FlexFlowFalcon(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
-        #max_batch_size=1,
-        #max_seq_length=256,
         max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
@@ -63,15 +64,14 @@ class FlexFlowFalcon(FlexFlowModel):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
-        #self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.falcon_config = FalconConfig(hf_config)
-        #self.falcon_config.max_seq_length = max_seq_length
-        #self.falcon_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
-        max_verify_tokens_per_batch = max_tokens_per_batch + self.falcon_config.max_spec_tree_token_num
+        max_verify_tokens_per_batch = (
+            max_tokens_per_batch + self.falcon_config.max_spec_tree_token_num
+        )
 
         # Sanity checks
         if self.falcon_config.hidden_size % self.falcon_config.n_head != 0:
@@ -86,7 +86,11 @@ class FlexFlowFalcon(FlexFlowModel):
                 f"Number of q attention heads ({self.falcon_config.n_head}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
 
-        self.build_model(max_tokens_per_batch if self.mode == InferenceMode.INC_DECODING_MODE else max_verify_tokens_per_batch)
+        self.build_model(
+            max_tokens_per_batch
+            if self.mode == InferenceMode.INC_DECODING_MODE
+            else max_verify_tokens_per_batch
+        )
 
     def build_model(self, max_tokens_per_batch):
         ffmodel = FFModel(self.ffconfig)
@@ -138,8 +142,8 @@ class FlexFlowFalcon(FlexFlowModel):
                     self.falcon_config.hidden_size,
                     self.falcon_config.n_head,
                     self.falcon_config.n_head_kv,
-                    self.falcon_config.hidden_size // self.falcon_config.n_head,
-                    self.falcon_config.hidden_size // self.falcon_config.n_head,
+                    self.falcon_config.head_dim,
+                    self.falcon_config.head_dim,
                     0.0,  # dropout
                     False,  # qkv_bias
                     False,  # final_bias
@@ -155,8 +159,8 @@ class FlexFlowFalcon(FlexFlowModel):
                     self.falcon_config.hidden_size,
                     self.falcon_config.n_head,
                     self.falcon_config.n_head_kv,
-                    self.falcon_config.hidden_size // self.falcon_config.n_head,
-                    self.falcon_config.hidden_size // self.falcon_config.n_head,
+                    self.falcon_config.head_dim,
+                    self.falcon_config.head_dim,
                     0.0,  # dropout
                     False,  # qkv_bias
                     False,  # final_bias
@@ -172,8 +176,8 @@ class FlexFlowFalcon(FlexFlowModel):
                     self.falcon_config.hidden_size,
                     self.falcon_config.n_head,
                     self.falcon_config.n_head_kv,
-                    self.falcon_config.hidden_size // self.falcon_config.n_head,
-                    self.falcon_config.hidden_size // self.falcon_config.n_head,
+                    self.falcon_config.head_dim,
+                    self.falcon_config.head_dim,
                     0.0,  # dropout
                     False,  # qkv_bias
                     False,  # final_bias
@@ -239,10 +243,10 @@ class FlexFlowFalcon(FlexFlowModel):
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
-        n_head = (
-            model.config.n_head
-            if "n_head" in model.config.__dict__
-            else model.config.num_attention_heads
+        n_head_kv = (
+            model.config.num_kv_heads
+            if (model.config.new_decoder_architecture or not model.config.multi_query)
+            else 1
         )
         for name, params in model.named_parameters():
             name = (
@@ -256,12 +260,13 @@ class FlexFlowFalcon(FlexFlowModel):
                 name_q = name.replace("self_attention_query_key_value", "attention_wq")
                 name_k = name.replace("self_attention_query_key_value", "attention_wk")
                 name_v = name.replace("self_attention_query_key_value", "attention_wv")
+                # We split first dim of tensor, which is the output dimension. Second dimension is the input dimension, and is always equal to the hidden size
                 q, k, v = torch.split(
                     params,
                     [
-                        model.config.hidden_size,
-                        model.config.hidden_size // n_head,
-                        model.config.hidden_size // n_head,
+                        model.config.head_dim * model.config.num_attention_heads,
+                        model.config.head_dim * n_head_kv,
+                        model.config.head_dim * n_head_kv,
                     ],
                     0,
                 )
