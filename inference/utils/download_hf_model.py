@@ -36,9 +36,9 @@ def parse_args():
 
 def main(args):
     if args.full_precision_only:
-        data_types = ff.DataType.DT_FLOAT
+        data_types = (ff.DataType.DT_FLOAT,)
     elif args.half_precision_only:
-        data_types = ff.DataType.DT_HALF
+        data_types = (ff.DataType.DT_HALF,)
     else:
         data_types = (ff.DataType.DT_FLOAT, ff.DataType.DT_HALF)
 
