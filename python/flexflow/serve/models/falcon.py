@@ -125,7 +125,9 @@ class FlexFlowFalcon(FlexFlowModel):
                     axes,
                     True,
                     self.falcon_config.layer_norm_epsilon,
-                    name=f"layers_{i}_input_layernorm",
+                    name=f"layers_{i}_input_layernorm"
+                    if not self.falcon_config.new_decoder_architecture
+                    else f"layers_{i}_ln_attn",
                 )
             else:
                 token, att_norm = ffmodel.residual_layer_norm(
@@ -136,7 +138,22 @@ class FlexFlowFalcon(FlexFlowModel):
                     axes,
                     True,
                     self.falcon_config.layer_norm_epsilon,
-                    name=f"layers_{i}_input_layernorm",
+                    name=f"layers_{i}_input_layernorm"
+                    if not self.falcon_config.new_decoder_architecture
+                    else f"layers_{i}_ln_attn",
+                )
+
+            # MLP norm (identical to att norm for old architecture)
+            if not self.falcon_config.new_decoder_architecture:
+                mlp_norm = att_norm
+            else:
+                # Residual has already computed by attn norm (token = token + mha + mlp_output)
+                mlp_norm = ffmodel.layer_norm(
+                    token,
+                    axes,
+                    True,
+                    self.falcon_config.layer_norm_epsilon,
+                    name=f"layers_{i}_ln_mlp",
                 )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
@@ -194,7 +211,7 @@ class FlexFlowFalcon(FlexFlowModel):
                 assert False
 
             dense_h_to_4h = ffmodel.dense(
-                att_norm,
+                mlp_norm,
                 self.falcon_config.hidden_size * 4,
                 ActiMode.AC_MODE_NONE,
                 False,
