@@ -99,6 +99,9 @@ Group_byParams Group_by::get_params() const {
   Group_byParams params;
   params.n = this->n;
   params.alpha = this->alpha;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -161,8 +164,12 @@ Group_by::Group_by(FFModel &model,
                    Group_byParams const &params,
                    std::pair<ParallelTensor, ParallelTensor> const &inputs,
                    char const *name)
-    : Group_by(
-          model, inputs.first, inputs.second, params.n, params.alpha, name) {}
+    : Group_by(model,
+               inputs.first,
+               inputs.second,
+               params.n,
+               params.alpha,
+               params.name) {}
 
 void Group_by::init_inference(FFModel const &ff,
                               std::vector<ParallelTensor> const &batch_inputs,
@@ -522,6 +529,8 @@ void Group_by::backward_task(Task const *task,
 void Group_by::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->n);
   sez.serialize(this->alpha);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 Node Group_by::deserialize(FFModel &ff,
@@ -533,9 +542,14 @@ Node Group_by::deserialize(FFModel &ff,
   float alpha;
   dez.deserialize(n);
   dez.deserialize(alpha);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   Group_byParams params;
   params.n = n;
   params.alpha = alpha;
+  strcpy(params.name, name);
   return ff.get_or_create_node<Group_by>(std::make_pair(inputs[0], inputs[1]),
                                          params);
 }

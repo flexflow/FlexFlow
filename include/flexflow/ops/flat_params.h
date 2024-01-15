@@ -7,6 +7,7 @@
 namespace FlexFlow {
 
 struct FlatParams {
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
   void solve_dims(ParallelTensorShape const &input,
                   ParallelDim output_dims[MAX_TENSOR_DIM],
