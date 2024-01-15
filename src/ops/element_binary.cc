@@ -252,7 +252,7 @@ ElementBinary::ElementBinary(
                     inputs.first,
                     inputs.second,
                     params.inplace_a,
-                    name) {}
+                    params.name) {}
 
 void ElementBinary::map_output_tensors(FFModel &ff) {
   if (has_inplace_output()) {
@@ -1128,6 +1128,8 @@ void ElementBinary::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->op_type);
   sez.serialize(this->inplace_a);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -1146,11 +1148,16 @@ Node ElementBinary::deserialize(FFModel &ff,
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(op_type);
   dez.deserialize(inplace_a);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
 
   ElementBinaryParams params;
   params.layer_guid = layer_guid;
   params.type = op_type;
   params.inplace_a = inplace_a;
+  strcpy(params.name, name);
   return ff.get_or_create_node<ElementBinary>({inputs[0], inputs[1]}, params);
 }
 

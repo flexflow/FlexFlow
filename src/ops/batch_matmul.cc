@@ -138,7 +138,7 @@ BatchMatmul::BatchMatmul(
                   inputs.second,
                   params.a_seq_length_dim,
                   params.b_seq_length_dim,
-                  name) {}
+                  params.name) {}
 
 // return A*B
 BatchMatmul::BatchMatmul(FFModel &model,
@@ -190,6 +190,8 @@ void BatchMatmul::serialize(Legion::Serializer &sez) const {
   BatchMatmulParams params = get_params();
   sez.serialize(params.a_seq_length_dim);
   sez.serialize(params.b_seq_length_dim);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -202,10 +204,15 @@ Node BatchMatmul::deserialize(FFModel &ff,
   int a_seq_length_dim, b_seq_length_dim;
   dez.deserialize(a_seq_length_dim);
   dez.deserialize(b_seq_length_dim);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
 
   BatchMatmulParams params;
   params.a_seq_length_dim = a_seq_length_dim;
   params.b_seq_length_dim = b_seq_length_dim;
+  strcpy(params.name, name);
   return ff.get_or_create_node<BatchMatmul>({inputs[0], inputs[1]}, params);
 }
 
