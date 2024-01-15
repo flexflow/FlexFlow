@@ -157,7 +157,7 @@ Op *Linear::create_operator_from_layer(
 
 Linear::Linear(FFModel &model,
                Linear const &other,
-               ParallelTensor const input,
+               const ParallelTensor input,
                bool allocate_weights)
     : Linear(model,
              other.layer_guid,
@@ -175,7 +175,7 @@ Linear::Linear(FFModel &model,
 
 Linear::Linear(FFModel &model,
                LinearParams const &params,
-               ParallelTensor const input,
+               const ParallelTensor input,
                char const *name,
                bool allocate_weights)
     : Linear(model,
@@ -439,10 +439,10 @@ OpMeta *Linear::init_task(Task const *task,
       }                                                                        \
     } else if (output.data_type == DT_B16) {                                   \
       if (linear->quantization_type != DT_NONE) {                              \
-        return init_task_with_dim<__nv_bfloat16, char, DIM>(                   \
+        return init_task_with_dim<__ff_bfloat16, char, DIM>(                   \
             task, regions, ctx, runtime);                                      \
       } else {                                                                 \
-        return init_task_with_dim<__nv_bfloat16, __nv_bfloat16, DIM>(          \
+        return init_task_with_dim<__ff_bfloat16, __ff_bfloat16, DIM>(          \
             task, regions, ctx, runtime);                                      \
       }                                                                        \
     } else {                                                                   \
@@ -714,10 +714,10 @@ void Linear::forward_task(Task const *task,
       }                                                                        \
     } else if (m->output_type[0] == DT_B16) {                                  \
       if (m->quantization_type != DT_NONE) {                                   \
-        return forward_task_with_dim<__nv_bfloat16, char, DIM>(                \
+        return forward_task_with_dim<__ff_bfloat16, char, DIM>(                \
             task, regions, ctx, runtime);                                      \
       } else {                                                                 \
-        return forward_task_with_dim<__nv_bfloat16, __nv_bfloat16, DIM>(       \
+        return forward_task_with_dim<__ff_bfloat16, __ff_bfloat16, DIM>(       \
             task, regions, ctx, runtime);                                      \
       }                                                                        \
     } else {                                                                   \
@@ -876,7 +876,7 @@ void Linear::backward_task(Task const *task,
     } else if (m->output_type[0] == DT_FLOAT) {                                \
       return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
     } else if (m->output_type[0] == DT_B16) {                                  \
-      return backward_task_with_dim<__nv_bfloat16, DIM>(                       \
+      return backward_task_with_dim<__ff_bfloat16, DIM>(                       \
           task, regions, ctx, runtime);                                        \
     } else {                                                                   \
       assert(false && "Unsupported data type");                                \
@@ -1360,7 +1360,7 @@ bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
  * It takes a the input tensor as a parameter, instead of the input's
  * ParallelTensorShape.
  */
-void LinearParams::solve_dims(ParallelTensor const input,
+void LinearParams::solve_dims(const ParallelTensor input,
                               ParallelDim output_dims[MAX_TENSOR_DIM],
                               int *output_ndims,
                               ParallelDim kernel_dims[MAX_TENSOR_DIM],

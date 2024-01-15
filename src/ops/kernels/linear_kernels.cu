@@ -333,7 +333,8 @@ void forward_kernel(LinearMeta const *m,
   }
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  float alpha = 1.0f, beta = 0.0f;
+  typename cublasAlphaBetaType<DT>::type alpha = 1.0;
+  typename cublasAlphaBetaType<DT>::type beta = 0.0;
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
   cudaDataType_t weight_type = m->offload
                                    ? ff_to_cuda_datatype(m->weight_ptr_type)

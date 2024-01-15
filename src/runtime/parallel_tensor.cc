@@ -847,10 +847,10 @@ template bool ParallelTensorBase::get_tensor<half>(FFModel const *ff,
                                                    half *data,
                                                    bool get_gradients);
 
-template bool ParallelTensorBase::set_tensor<__nv_bfloat16>(
-    FFModel const *ff, std::vector<int> const &dims, __nv_bfloat16 const *data);
-template bool ParallelTensorBase::get_tensor<__nv_bfloat16>(FFModel const *ff,
-                                                            __nv_bfloat16 *data,
+template bool ParallelTensorBase::set_tensor<__ff_bfloat16>(
+    FFModel const *ff, std::vector<int> const &dims, __ff_bfloat16 const *data);
+template bool ParallelTensorBase::get_tensor<__ff_bfloat16>(FFModel const *ff,
+                                                            __ff_bfloat16 *data,
                                                             bool get_gradients);
 
 template bool ParallelTensorBase::set_tensor<char>(FFModel const *ff,

@@ -60,7 +60,7 @@ ReductionParams Reduction::get_params() const {
 }
 
 Reduction::Reduction(FFModel &model,
-                     ParallelTensor const _input,
+                     const ParallelTensor _input,
                      int _reduction_legion_dim,
                      int _reduction_degree,
                      char const *name)
@@ -381,7 +381,7 @@ void Reduction::forward_task(Task const *task,
                           num_elements,
                           num_replicas);
   } else if (input.data_type == DT_B16) {
-    forward_kernel<__nv_bfloat16>(input.get_bfloat16_ptr(),
+    forward_kernel<__ff_bfloat16>(input.get_bfloat16_ptr(),
                                   output.get_bfloat16_ptr(),
                                   num_elements,
                                   num_replicas);

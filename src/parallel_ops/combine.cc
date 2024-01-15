@@ -72,7 +72,7 @@ Combine::Combine(FFModel &model,
               name) {}
 
 Combine::Combine(FFModel &model,
-                 ParallelTensor const _input,
+                 const ParallelTensor _input,
                  int _combine_legion_dim,
                  int _combine_degree,
                  char const *name)
@@ -366,7 +366,7 @@ void Combine::forward_task(Task const *task,
   if (data_type == DT_HALF) {
     forward_task_with_type<half>(task, regions, ctx, runtime);
   } else if (data_type == DT_B16) {
-    forward_task_with_type<__nv_bfloat16>(task, regions, ctx, runtime);
+    forward_task_with_type<__ff_bfloat16>(task, regions, ctx, runtime);
   } else if (data_type == DT_FLOAT) {
     forward_task_with_type<float>(task, regions, ctx, runtime);
   } else if (data_type == DT_DOUBLE) {

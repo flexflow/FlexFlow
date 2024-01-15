@@ -161,6 +161,20 @@ T *download_tensor(T const *ptr, size_t num_elements);
 template <typename T>
 bool download_tensor(T const *ptr, T *dst, size_t num_elements);
 
+// data type for cublasgemm
+template <typename T>
+struct cublasAlphaBetaType {
+  using type = float; // default
+};
+template <>
+struct cublasAlphaBetaType<half> {
+  using type = half;
+};
+template <>
+struct cublasAlphaBetaType<__nv_bfloat16> {
+  using type = float;
+};
+
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain,
                                                  DataType data_type = DT_FLOAT);

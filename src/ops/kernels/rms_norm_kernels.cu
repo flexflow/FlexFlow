@@ -137,7 +137,7 @@ __global__ void
 template <typename T>
 __global__ void NormKernel(int64_t N, T const *X, T const *rstd, T *Y) {
   using T_ACC = T;
-  int64_t const i = blockIdx.x;
+  const int64_t i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     int64_t const index = i * N + j;
     Y[index] = static_cast<T_ACC>(X[index]) * static_cast<T_ACC>(rstd[i]);

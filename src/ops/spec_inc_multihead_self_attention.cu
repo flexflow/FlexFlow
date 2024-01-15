@@ -480,7 +480,7 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   if (m->output_type[0] == DT_FLOAT) {
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }else if (m->output_type[0] == DT_B16) {
+  } else if (m->output_type[0] == DT_B16) {
     compute_type = CUBLAS_COMPUTE_32F;
   }
 #endif
@@ -535,7 +535,8 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
     int strideC = num_new_tokens * total_tokens;
 
     // a flag of using this scaling alpha
-    float alpha = 1.0f, beta = 0.0f;
+    typename cublasAlphaBetaType<DT>::type alpha = 1.0;
+    typename cublasAlphaBetaType<DT>::type beta = 0.0;
     if (*m->qk_prod_scaling) {
       alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
     }
@@ -791,9 +792,10 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
         output.get_float_ptr(),
         bias_ptr,
         stream);
-  }else if (input.data_type == DT_B16) {
+  } else if (input.data_type == DT_B16) {
     __nv_bfloat16 const *bias_ptr =
-        use_bias ? bias.get_bfloat16_ptr() : static_cast<__nv_bfloat16 const *>(nullptr);
+        use_bias ? bias.get_bfloat16_ptr()
+                 : static_cast<__nv_bfloat16 const *>(nullptr);
     Kernels::SpecIncMultiHeadSelfAttention::inference_kernel(
         m,
         bc,

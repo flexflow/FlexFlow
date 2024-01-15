@@ -59,7 +59,7 @@ ReplicateParams Replicate::get_params() const {
 }
 
 Replicate::Replicate(FFModel &model,
-                     ParallelTensor const _input,
+                     const ParallelTensor _input,
                      int _replicate_legion_dim,
                      int _replicate_degree,
                      char const *name)
@@ -374,7 +374,7 @@ void Replicate::forward_task(Task const *task,
                           output.get_float_ptr(),
                           input_domain.get_volume());
   } else if (input.data_type == DT_B16) {
-    forward_kernel<__nv_bfloat16>(input.get_bfloat16_ptr(),
+    forward_kernel<__ff_bfloat16>(input.get_bfloat16_ptr(),
                                   output.get_bfloat16_ptr(),
                                   input_domain.get_volume());
   } else {

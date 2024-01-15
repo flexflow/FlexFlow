@@ -52,7 +52,7 @@ SoftmaxParams Softmax::get_params() const {
   return params;
 }
 
-Tensor FFModel::softmax(Tensor const _input,
+Tensor FFModel::softmax(const Tensor _input,
                         int dim,
                         DataType data_type,
                         char const *name) {
@@ -93,7 +93,7 @@ Op *Softmax::create_operator_from_layer(
 }
 
 Softmax::Softmax(FFModel &model,
-                 ParallelTensor const _input,
+                 const ParallelTensor _input,
                  int _dim,
                  char const *name)
     : Op(model,
@@ -117,7 +117,7 @@ Softmax::Softmax(FFModel &model,
 
 Softmax::Softmax(FFModel &model,
                  SoftmaxParams const &params,
-                 ParallelTensor const input,
+                 const ParallelTensor input,
                  char const *name)
     : Softmax(model, input, params.dim, name) {}
 
@@ -370,7 +370,7 @@ void Softmax::backward_task(Task const *task,
     } else if (m->output_type == DT_FLOAT) {                                   \
       return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
     } else if (m->output_type == DT_B16) {                                     \
-      return backward_task_with_dim<__nv_bfloat16, DIM>(                       \
+      return backward_task_with_dim<__ff_bfloat16, DIM>(                       \
           task, regions, ctx, runtime);                                        \
     } else {                                                                   \
       assert(false && "Unsupported data type");                                \

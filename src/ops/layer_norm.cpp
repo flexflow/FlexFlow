@@ -182,6 +182,15 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
                                     gamma.get_half_ptr(),
                                     m->use_bias ? beta.get_half_ptr() : nullptr,
                                     stream);
+  } else if (m->input_type[0] == DT_B16) {
+    LayerNorm::forward_kernel<hip_bfloat16>(
+        m,
+        input.get_bfloat16_ptr(),
+        output.get_bfloat16_ptr(),
+        m->elementwise_affine ? gamma.get_bfloat16_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_bfloat16_ptr()
+                                               : nullptr,
+        stream);
   } else {
     assert(false && "unsupport datatype in layernorm");
   }

@@ -259,6 +259,17 @@ void ZeroInitializer::init_task(Task const *task,
                          w,
                          domain.get_volume(),
                          0.0f);
+    } else if (meta->data_types[i] == DT_B16) {
+      hip_bfloat16 *w = helperGetTensorPointerWO<hip_bfloat16>(
+          regions[i], task->regions[i], FID_DATA, ctx, runtime);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<hip_bfloat16>),
+                         GET_BLOCKS(domain.get_volume()),
+                         CUDA_NUM_THREADS,
+                         0,
+                         stream,
+                         w,
+                         domain.get_volume(),
+                         0.0f);
     } else if (meta->data_types[i] == DT_INT32) {
       int32_t *w = helperGetTensorPointerWO<int32_t>(
           regions[i], task->regions[i], FID_DATA, ctx, runtime);

@@ -77,12 +77,12 @@ half const *GenericTensorAccessorR::get_half_ptr() const {
   }
 }
 
-__nv_bfloat16 const *GenericTensorAccessorR::get_bfloat16_ptr() const {
+__ff_bfloat16 const *GenericTensorAccessorR::get_bfloat16_ptr() const {
   if (data_type == DT_B16) {
-    return static_cast<__nv_bfloat16 const *>(ptr);
+    return static_cast<__ff_bfloat16 const *>(ptr);
   } else {
     assert(false && "Invalid Accessor Type");
-    return static_cast<__nv_bfloat16 const *>(nullptr);
+    return static_cast<__ff_bfloat16 const *>(nullptr);
   }
 }
 
@@ -174,12 +174,12 @@ half *GenericTensorAccessorW::get_half_ptr() const {
   }
 }
 
-__nv_bfloat16 *GenericTensorAccessorW::get_bfloat16_ptr() const {
+__ff_bfloat16 *GenericTensorAccessorW::get_bfloat16_ptr() const {
   if (data_type == DT_B16) {
-    return static_cast<__nv_bfloat16 *>(ptr);
+    return static_cast<__ff_bfloat16 *>(ptr);
   } else {
     assert(false && "Invalid Accessor Type");
-    return static_cast<__nv_bfloat16 *>(nullptr);
+    return static_cast<__ff_bfloat16 *>(nullptr);
   }
 }
 
@@ -290,7 +290,7 @@ GenericTensorAccessorR
       break;
     }
     case DT_B16: {
-      ptr = helperGetTensorPointerRO<__nv_bfloat16>(
+      ptr = helperGetTensorPointerRO<__ff_bfloat16>(
           region, req, fid, ctx, runtime);
       break;
     }
@@ -341,7 +341,7 @@ GenericTensorAccessorW
       break;
     }
     case DT_B16: {
-      ptr = helperGetTensorPointerWO<__nv_bfloat16>(
+      ptr = helperGetTensorPointerWO<__ff_bfloat16>(
           region, req, fid, ctx, runtime);
       break;
     }
@@ -392,7 +392,7 @@ GenericTensorAccessorW
       break;
     }
     case DT_B16: {
-      ptr = helperGetTensorPointerRW<__nv_bfloat16>(
+      ptr = helperGetTensorPointerRW<__ff_bfloat16>(
           region, req, fid, ctx, runtime);
       break;
     }

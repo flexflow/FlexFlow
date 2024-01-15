@@ -127,7 +127,7 @@ void load_attention_weights_multi_query(DT *ptr,
 
 ///////////////////////bfloat16 function///////////////////////
 
-void load_from_file_b16(__nv_bfloat16 *ptr, size_t size, std::string filepath) {
+void load_from_file_b16(__ff_bfloat16 *ptr, size_t size, std::string filepath) {
   std::ifstream in(filepath, std::ios::in | std::ios::binary);
   if (!in.good()) {
     std::cout << "Could not open file: " << filepath << std::endl;
@@ -156,7 +156,7 @@ void load_from_file_b16(__nv_bfloat16 *ptr, size_t size, std::string filepath) {
   in.close();
 }
 
-void load_attention_weights_v2_b16(__nv_bfloat16 *ptr,
+void load_attention_weights_v2_b16(__ff_bfloat16 *ptr,
                                    int num_heads,
                                    int num_kv_heads,
                                    size_t hidden_dim,
@@ -290,7 +290,7 @@ void load_attention_weights_v2_b16(__nv_bfloat16 *ptr,
   }
 }
 
-void load_attention_bias_v2_b16(__nv_bfloat16 *ptr,
+void load_attention_bias_v2_b16(__ff_bfloat16 *ptr,
                                 int num_heads,
                                 int num_kv_heads,
                                 size_t hidden_dim,
@@ -382,8 +382,8 @@ void FileDataLoader::load_single_weight_tensor_b16(FFModel *ff,
     dims_vec.push_back(weight->dims[i]);
     volume *= weight->dims[i];
   }
-  assert(data_type_size(weight->data_type) == sizeof(__nv_bfloat16));
-  __nv_bfloat16 *data = (__nv_bfloat16 *)malloc(sizeof(__nv_bfloat16) * volume);
+  assert(data_type_size(weight->data_type) == sizeof(__ff_bfloat16));
+  __ff_bfloat16 *data = (__ff_bfloat16 *)malloc(sizeof(__ff_bfloat16) * volume);
 
   std::string weight_filename = removeGuidOperatorName(std::string(l->name));
 
@@ -446,7 +446,7 @@ void FileDataLoader::load_single_weight_tensor_b16(FFModel *ff,
   // Copy the weight data from the buffer to the weight's ParallelTensor
   ParallelTensor weight_pt;
   ff->get_parallel_tensor_from_tensor(weight, weight_pt);
-  weight_pt->set_tensor<__nv_bfloat16>(ff, dims_vec, data);
+  weight_pt->set_tensor<__ff_bfloat16>(ff, dims_vec, data);
 
   // Free buffer memory
   delete data;

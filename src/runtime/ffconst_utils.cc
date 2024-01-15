@@ -214,7 +214,7 @@ size_t data_type_size(DataType type) {
     case DT_HALF:
       return sizeof(half);
     case DT_B16:
-      return sizeof(__nv_bfloat16);
+      return sizeof(__ff_bfloat16);
     case DT_FLOAT:
       return sizeof(float);
     case DT_DOUBLE:

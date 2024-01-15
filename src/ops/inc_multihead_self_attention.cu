@@ -513,7 +513,8 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
   // Step 1: Compute QKV projections
   {
-    float alpha = 1.0f, beta = 0.0f;
+    typename cublasAlphaBetaType<DT>::type alpha = 1.0;
+    typename cublasAlphaBetaType<DT>::type beta = 0.0;
     // after transpositions
     int m_q = m->qProjSize * m->num_q_heads;
     int m_k = m->kProjSize * m->num_q_heads;
@@ -645,7 +646,8 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
 #endif
   // Project to output, save result directly on output tensor
   {
-    float alpha = 1.0f, beta = 0.0f;
+    typename cublasAlphaBetaType<DT>::type alpha = 1.0;
+    typename cublasAlphaBetaType<DT>::type beta = 0.0;
     // after transpositions
     int m_ = m->oProjSize;
     int k = m->vProjSize * m->num_q_heads;
@@ -925,7 +927,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   if (m->output_type[0] == DT_FLOAT) {
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }else if (m->output_type[0] == DT_B16) {
+  } else if (m->output_type[0] == DT_B16) {
     compute_type = CUBLAS_COMPUTE_32F;
   }
 #endif
@@ -951,7 +953,8 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
     // Step 1: compute query-key product QK.T/sqrt(d_k)
     {
       // Scale by sqrt(d_k) as per the original attention paper
-      float alpha = 1.0f, beta = 0.0f;
+      typename cublasAlphaBetaType<DT>::type alpha = 1.0;
+      typename cublasAlphaBetaType<DT>::type beta = 0.0;
       if (*m->qk_prod_scaling) {
         alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
       }
@@ -1082,7 +1085,8 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
     // Step 5: Matmul softmax(QK.T/sqrt(d_k)) by V. Implemented as V @
     // softmax(QK.T/sqrt(d_k)).T
     {
-      float alpha = 1.0f, beta = 0.0f;
+      typename cublasAlphaBetaType<DT>::type alpha = 1.0;
+      typename cublasAlphaBetaType<DT>::type beta = 0.0;
       // after transpositions
       int m_ = m->vProjSize;
       int n = num_new_tokens;

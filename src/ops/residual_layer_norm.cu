@@ -234,9 +234,10 @@ void ResidualLayerNorm::inference_kernel_wrapper(
         added_output.get_bfloat16_ptr(),
         output.get_bfloat16_ptr(),
         m->elementwise_affine ? gamma.get_bfloat16_ptr() : nullptr,
-        (m->elementwise_affine && m->use_bias) ? beta.get_bfloat16_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_bfloat16_ptr()
+                                               : nullptr,
         stream);
-  }else {
+  } else {
     assert(false && "unsupport datatype in layernorm");
   }
 
