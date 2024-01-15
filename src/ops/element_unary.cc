@@ -557,7 +557,7 @@ void ElementUnary::forward_task_with_type(
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     std::vector<GenericTensorAccessorR> input_accessors;
-    std::vector<GenericTensorAccessorW> output_accessors;
+    std::vector<GenericTensorAccessorR> output_accessors;
     if (m->inplace) {
       GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
           m->data_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
