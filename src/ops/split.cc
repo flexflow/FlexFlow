@@ -50,6 +50,9 @@ SplitParams Split::get_params() const {
   SplitParams params;
   params.splits = this->splits;
   params.legion_axis = this->legion_axis;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -137,7 +140,7 @@ Split::Split(FFModel &model,
              SplitParams const &params,
              const ParallelTensor input,
              char const *name)
-    : Split(model, input, params.splits, params.legion_axis, name) {}
+    : Split(model, input, params.splits, params.legion_axis, params.name) {}
 
 void Split::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());

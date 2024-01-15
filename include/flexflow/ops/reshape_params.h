@@ -10,6 +10,7 @@ namespace FlexFlow {
 struct ReshapeParams {
   std::vector<int> shape;
   LayerID layer_guid;
+  char name[MAX_OPNAME];
 
   bool is_valid(ParallelTensorShape const &) const;
 };

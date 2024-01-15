@@ -8,6 +8,7 @@ namespace FlexFlow {
 struct SplitParams {
   std::vector<int> splits;
   int legion_axis;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 

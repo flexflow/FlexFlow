@@ -8,6 +8,7 @@ namespace FlexFlow {
 
 struct SamplingParams {
   float top_p;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(SamplingParams const &, SamplingParams const &);

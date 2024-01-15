@@ -55,6 +55,9 @@ bool AllReduceParams::is_valid(ParallelTensorShape const &input) const {
 AllReduceParams AllReduce::get_params() const {
   AllReduceParams params;
   params.allreduce_legion_dim = this->allreduce_dim;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -79,7 +82,7 @@ AllReduce::AllReduce(FFModel &model,
                      AllReduceParams const &params,
                      ParallelTensor const input,
                      char const *name)
-    : AllReduce(model, input, params.allreduce_legion_dim, name) {}
+    : AllReduce(model, input, params.allreduce_legion_dim, params.name) {}
 
 void AllReduce::create_input_partition(FFModel &ff) {
   // Do nothing

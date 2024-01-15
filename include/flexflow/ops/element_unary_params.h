@@ -12,6 +12,7 @@ struct ElementUnaryParams {
   bool inplace;
   float scalar = 0.0;
   LayerID layer_guid;
+  char name[MAX_OPNAME];
 
   bool is_valid(ParallelTensorShape const &) const;
 };

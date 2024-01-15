@@ -112,6 +112,9 @@ ArgTopKParams ArgTopK::get_params() const {
   params.k = this->k;
   params.sorted = this->sorted;
   params.speculative_decoding = this->speculative_decoding;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -183,7 +186,7 @@ ArgTopK::ArgTopK(FFModel &model,
               params.k,
               params.sorted,
               params.speculative_decoding,
-              name) {}
+              params.name) {}
 
 void ArgTopK::init_inference(FFModel const &ff,
                              std::vector<ParallelTensor> const &batch_inputs,
@@ -446,6 +449,8 @@ void ArgTopK::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->k);
   sez.serialize(this->sorted);
   sez.serialize(this->speculative_decoding);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 Node ArgTopK::deserialize(FFModel &ff,
@@ -464,11 +469,16 @@ Node ArgTopK::deserialize(FFModel &ff,
   dez.deserialize(k);
   dez.deserialize(sorted);
   dez.deserialize(speculative_decoding);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   ArgTopKParams params;
   params.layer_guid = layer_guid;
   params.k = k;
   params.sorted = sorted;
   params.speculative_decoding = speculative_decoding;
+  strcpy(params.name, name);
   return ff.get_or_create_node<ArgTopK>(inputs[0], params);
 }
 

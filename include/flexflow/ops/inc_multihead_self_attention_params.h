@@ -16,6 +16,7 @@ struct IncMultiHeadSelfAttentionParams {
       scaling_query, qk_prod_scaling, position_bias;
   DataType quantization_type;
   bool offload;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 

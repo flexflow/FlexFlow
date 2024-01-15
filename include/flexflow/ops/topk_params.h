@@ -9,6 +9,7 @@ namespace FlexFlow {
 struct TopKParams {
   int k;
   bool sorted;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(TopKParams const &, TopKParams const &);

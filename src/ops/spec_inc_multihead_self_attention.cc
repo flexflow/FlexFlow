@@ -511,7 +511,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
                                     params.qk_prod_scaling,
                                     params.position_bias,
                                     allocate_weights,
-                                    name) {}
+                                    params.name) {}
 
 void SpecIncMultiHeadSelfAttention::init_inference(
     FFModel const &ff,
@@ -853,6 +853,9 @@ SpecIncMultiHeadSelfAttentionParams
   params.scaling_factor = this->scaling_factor;
   params.qk_prod_scaling = this->qk_prod_scaling;
   params.position_bias = this->position_bias;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
 
   return params;
 }

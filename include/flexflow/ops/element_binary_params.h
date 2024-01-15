@@ -11,6 +11,7 @@ struct ElementBinaryParams {
   LayerID layer_guid;
   OperatorType type;
   bool inplace_a;
+  char name[MAX_OPNAME];
 
   bool is_valid(
       std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;

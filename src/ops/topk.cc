@@ -87,6 +87,9 @@ TopKParams TopK::get_params() const {
   TopKParams params;
   params.k = this->k;
   params.sorted = this->sorted;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -134,7 +137,7 @@ TopK::TopK(FFModel &model,
            TopKParams const &params,
            const ParallelTensor input,
            char const *name)
-    : TopK(model, input, params.k, params.sorted, name) {}
+    : TopK(model, input, params.k, params.sorted, params.name) {}
 
 void TopK::init_inference(FFModel const &ff,
                           std::vector<ParallelTensor> const &batch_inputs,
@@ -426,6 +429,8 @@ void TopK::backward_task(Task const *task,
 void TopK::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->k);
   sez.serialize(this->sorted);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 Node TopK::deserialize(FFModel &ff,
@@ -437,9 +442,14 @@ Node TopK::deserialize(FFModel &ff,
   bool sorted;
   dez.deserialize(k);
   dez.deserialize(sorted);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   TopKParams params;
   params.k = k;
   params.sorted = sorted;
+  strcpy(params.name, name);
   return ff.get_or_create_node<TopK>(inputs[0], params);
 }
 

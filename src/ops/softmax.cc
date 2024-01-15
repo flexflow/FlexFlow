@@ -49,6 +49,9 @@ bool SoftmaxParams::is_valid(ParallelTensorShape const &input) const {
 SoftmaxParams Softmax::get_params() const {
   SoftmaxParams params;
   params.dim = this->dim;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -119,7 +122,7 @@ Softmax::Softmax(FFModel &model,
                  SoftmaxParams const &params,
                  const ParallelTensor input,
                  char const *name)
-    : Softmax(model, input, params.dim, name) {}
+    : Softmax(model, input, params.dim, params.name) {}
 
 void Softmax::init_inference(FFModel const &ff,
                              std::vector<ParallelTensor> const &batch_inputs,

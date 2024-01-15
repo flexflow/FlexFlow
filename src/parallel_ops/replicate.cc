@@ -55,6 +55,9 @@ ReplicateParams Replicate::get_params() const {
   ReplicateParams params;
   params.replicate_legion_dim = this->replicate_dim;
   params.replicate_degree = this->replicate_degree;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -88,7 +91,7 @@ Replicate::Replicate(FFModel &model,
                 input,
                 params.replicate_legion_dim,
                 params.replicate_degree,
-                name) {}
+                params.name) {}
 
 void Replicate::create_input_partition(FFModel &ff) {
   assert(outputs[0]->part != LogicalPartition::NO_PART);

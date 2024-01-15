@@ -17,6 +17,7 @@ struct ExpertsParams {
   int experts_internal_dim_size;
   bool use_bias;
   ActiMode activation;
+  char name[MAX_OPNAME];
 
   bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };

@@ -56,6 +56,9 @@ ReductionParams Reduction::get_params() const {
   ReductionParams params;
   params.reduction_legion_dim = this->reduction_dim;
   params.reduction_degree = this->reduction_degree;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -89,7 +92,7 @@ Reduction::Reduction(FFModel &model,
                 input,
                 params.reduction_legion_dim,
                 params.reduction_degree,
-                name) {}
+                params.name) {}
 
 void Reduction::create_input_partition(FFModel &ff) {
   assert(outputs[0]->part != LogicalPartition::NO_PART);

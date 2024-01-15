@@ -58,6 +58,9 @@ CombineParams Combine::get_params() const {
   CombineParams params;
   params.combine_legion_dim = this->combine_dim;
   params.combine_degree = this->combine_degree;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -69,7 +72,7 @@ Combine::Combine(FFModel &model,
               input,
               params.combine_legion_dim,
               params.combine_degree,
-              name) {}
+              params.name) {}
 
 Combine::Combine(FFModel &model,
                  const ParallelTensor _input,

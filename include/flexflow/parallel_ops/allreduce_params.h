@@ -5,6 +5,7 @@ namespace FlexFlow {
 
 struct AllReduceParams {
   int allreduce_legion_dim;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(AllReduceParams const &, AllReduceParams const &);

@@ -125,7 +125,7 @@ Gather::Gather(FFModel &model,
              inputs.first,
              inputs.second,
              params.legion_dim,
-             name) {}
+             params.name) {}
 
 Gather::Gather(FFModel &model,
                LayerID const &_layer_guid,
@@ -168,6 +168,8 @@ void Gather::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->layer_guid.model_id);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -183,11 +185,16 @@ Node Gather::deserialize(FFModel &ff,
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
   dez.deserialize(deserialized_model_id);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
   GatherParams params;
   params.legion_dim = legion_dim;
   params.layer_guid = layer_guid;
+  strcpy(params.name, name);
   return ff.get_or_create_node<Gather>({inputs[0], inputs[1]}, params);
 }
 

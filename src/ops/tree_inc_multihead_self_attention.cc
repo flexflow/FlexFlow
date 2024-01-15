@@ -562,7 +562,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
                                     params.quantization_type,
                                     params.offload,
                                     params.tensor_parallelism_degree,
-                                    name) {}
+                                    params.name) {}
 
 void TreeIncMultiHeadSelfAttention::init_inference(
     FFModel const &ff,
@@ -927,6 +927,9 @@ TreeIncMultiHeadSelfAttentionParams
   params.qk_prod_scaling = this->qk_prod_scaling;
   params.position_bias = this->position_bias;
   params.tensor_parallelism_degree = this->tensor_parallelism_degree;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
