@@ -26,7 +26,7 @@ void STARCODER::create_starcoder_model(
     std::string const &weight_file_path,
     InferenceMode mode,
     GenerationConfig generationConfig,
-    DataType data_type) {
+    bool use_full_precision) {
   // do not apply cpu offload in beam search model.
   STARCODERConfig startcoder_config(model_config_file_path);
   startcoder_config.print();
@@ -62,7 +62,7 @@ void STARCODER::create_starcoder_model(
                               startcoder_config.vocab_size,
                               startcoder_config.hidden_size,
                               AGGR_MODE_NONE,
-                              data_type,
+                              use_full_precision ? DT_FLOAT : DT_HALF,
                               NULL,
                               embed_init,
                               "transformer_wte");
@@ -72,7 +72,7 @@ void STARCODER::create_starcoder_model(
                    startcoder_config.max_position_embeddings,
                    startcoder_config.hidden_size,
                    AGGR_MODE_NONE,
-                   data_type,
+                   use_full_precision ? DT_FLOAT : DT_HALF,
                    NULL,
                    embed_init,
                    "transformer_wpe");
@@ -232,7 +232,7 @@ void STARCODER::create_starcoder_model(
                             startcoder_config.hidden_size /
                                 startcoder_config.num_attention_heads,
                             ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, false);
+  fileloader.load_weights(&ff, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators
