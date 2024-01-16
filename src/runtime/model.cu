@@ -175,7 +175,6 @@ FFHandler
   } else {
     handle.batch_config_metadata = nullptr;
   }
-   
 
   // checkCUDA(cudaMalloc(&handle.workSpace, handle.workSpaceSize));
 #ifdef FF_USE_NCCL

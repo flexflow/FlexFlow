@@ -475,12 +475,12 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
                                        ctx,
                                        runtime,
                                        false /*readOutput*/);
-  TensorAccessorW<WT, NDIM> acc_kernel(regions[2],
-                                       task->regions[2],
-                                       FID_DATA,
-                                       ctx,
-                                       runtime,
-                                       false /*readOutput*/);
+  // TensorAccessorW<WT, NDIM> acc_kernel(regions[2],
+  //                                      task->regions[2],
+  //                                      FID_DATA,
+  //                                      ctx,
+  //                                      runtime,
+  //                                      false /*readOutput*/);
 
   // TensorAccessorR<float, 1> acc_bias(
   //     regions[3], task->regions[3], FID_DATA, ctx, runtime);

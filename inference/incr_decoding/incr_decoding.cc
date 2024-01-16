@@ -24,6 +24,7 @@
 
 #include <nlohmann/json.hpp>
 
+using namespace FlexFlow;
 using namespace Legion;
 using json = nlohmann::json;
 
@@ -258,6 +259,8 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false && "unknow model type");
   }
 
+  rm->start_background_server(&model);
+
   int total_num_requests = 0;
   {
     using json = nlohmann::json;
@@ -274,9 +277,12 @@ void FlexFlow::top_level_task(Task const *task,
       total_num_requests++;
       prompts.push_back(text);
     }
-    GenerationResult result =
+    std::vector<GenerationResult> result =
         model.generate(prompts, 128 /*max_sequence_length*/);
   }
+
+  // terminate the request manager by stopping the background thread
+  rm->terminate_background_server();
 
   // Execution fence
   {

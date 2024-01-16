@@ -7,7 +7,6 @@ set(project_target incr_decoding)
 set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
   incr_decoding.cc
-  ../file_loader.cc
   ../models/llama.cc
   ../models/opt.cc
   ../models/falcon.cc
