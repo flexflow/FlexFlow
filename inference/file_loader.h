@@ -50,12 +50,12 @@ public:
                       ParallelTensor position_pt,
                       int max_seq_length,
                       int offset);
-  template <typename DT>
-  void load_from_file(DT *ptr, size_t size, std::string filepath);
+  // template <typename DT>
+  // void load_from_file(DT *ptr, size_t size, std::string filepath);
 
-      private : int num_heads,
-                num_kv_heads,
-                tensor_parallelism_degree;
+
+private:
+  int num_heads, num_kv_heads, tensor_parallelism_degree;
   size_t hidden_dim, qkv_inner_dim;
   std::string prompts_filepath;
   std::string weights_folder;

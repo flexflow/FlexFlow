@@ -235,17 +235,11 @@ void FlexFlow::top_level_task(Task const *task,
                               generationConfig,
                               data_type);
   } else if (model_type == ModelType::OPT) {
-    OPT::create_opt_model(model,
-                          config_filepath,
-                          weights_filepath,
-                          INC_DECODING_MODE,
-                          data_type);
+    OPT::create_opt_model(
+        model, config_filepath, weights_filepath, INC_DECODING_MODE, data_type);
   } else if (model_type == ModelType::FALCON) {
-    FALCON::create_falcon_model(model,
-                                config_filepath,
-                                weights_filepath,
-                                INC_DECODING_MODE,
-                                data_type);
+    FALCON::create_falcon_model(
+        model, config_filepath, weights_filepath, INC_DECODING_MODE, data_type);
   } else if (model_type == ModelType::STARCODER) {
     STARCODER::create_starcoder_model(model,
                                       config_filepath,

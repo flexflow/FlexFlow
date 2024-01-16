@@ -25,7 +25,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                                std::string const &weight_file_path,
                                InferenceMode mode,
                                GenerationConfig generation_config,
-                               DataType data_type) {
+                               bool use_full_precision) {
   // do not apply cpu offload in beam search model.
   LLAMAConfig llama_config(model_config_file_path);
   llama_config.print();
@@ -54,7 +54,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                               llama_config.vocab_size,
                               llama_config.hidden_size,
                               AGGR_MODE_NONE,
-                              data_type,
+                              use_full_precision ? DT_FLOAT : DT_HALF,
                               NULL,
                               embed_init,
                               "tok_embeddings");
@@ -276,7 +276,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                             llama_config.hidden_size /
                                 llama_config.num_attention_heads,
                             ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, false);
+  fileloader.load_weights(&ff, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators

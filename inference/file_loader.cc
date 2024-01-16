@@ -668,9 +668,7 @@ void load_attention_weights_v2(DT *ptr,
 }
 
 template <typename DT>
-void FileDataLoader::load_from_file(DT *ptr,
-                                    size_t size,
-                                    std::string filepath) {
+void load_from_file(DT *ptr, size_t size, std::string filepath) {
   std::ifstream in(filepath, std::ios::in | std::ios::binary);
   if (!in.good()) {
     std::cout << "Could not open file: " << filepath << std::endl;
