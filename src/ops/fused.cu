@@ -95,8 +95,11 @@ __host__ void
 
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
-  assert((int)regions.size() ==
-         fused->numInputs + fused->numWeights + fused->numOutputs);
+  bool softmax_grad_additional_region =
+      (fused->op_op_type[fused->numOperators - 1] == OP_SOFTMAX);
+  assert((int)regions.size() == fused->numInputs + fused->numWeights +
+                                    fused->numOutputs +
+                                    softmax_grad_additional_region);
   // Domain input_domain[MAX_NUM_INPUTS];
   // Domain weight_domain[MAX_NUM_WEIGHTS];
   // Domain output_domain[MAX_NUM_OUTPUTS];
@@ -141,6 +144,7 @@ __host__ void
                                          ctx,
                                          runtime);
   }
+  roff += fused->numOutputs;
   // Assert that all meta share the same dnn/blas handler
   int start = 0;
   for (start = 0; start < fused->numOperators; start++) {
@@ -625,9 +629,22 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
+        if (op == fused->numOperators - 1) { // if this is the final operator
+          output_accessor[fused->numOutputs] = helperGetGenericTensorAccessorWO(
+              fused->output_data_types[fused->numOutputs - 1],
+              regions[roff],
+              task->regions[roff],
+              FID_DATA,
+              ctx,
+              runtime);
+        }
         SoftmaxMeta *m = (SoftmaxMeta *)metas->meta[op];
         Kernels::Softmax::inference_kernel_wrapper(
-            m, bc, my_input_accessor[0], my_output_accessor[0]);
+            m,
+            bc,
+            my_input_accessor[0],
+            my_output_accessor[0],
+            output_accessor[fused->numOutputs]);
         break;
       }
       case OP_ALLREDUCE: {
@@ -1008,7 +1025,7 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
         Kernels::ResidualRMSNorm::peft_bwd_kernel_wrapper(
             m,
             bc,
-            my_output_grad_accessor[0],
+            my_output_grad_accessor[1],
             my_input_grad_accessor[0],
             my_input_grad_accessor[1],
             my_weight_accessor[0]);
@@ -1078,27 +1095,20 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
             assert(fused->op_num_weights[op] == 2); // weight + bias
           }
         }
-        GenericTensorAccessorR residual2;
+        GenericTensorAccessorW residual2;
         if (m->use_two_residuals) {
           residual2 = my_input_grad_accessor[2];
         }
-        GenericTensorAccessorR gamma, beta;
+        GenericTensorAccessorR gamma;
         if (m->elementwise_affine) {
           gamma = my_weight_accessor[0];
-          if (m->use_bias) {
-            beta = my_weight_accessor[1];
-          }
         }
-        // TODO: implment me
-        assert(false);
-        // ResidualLayerNorm::inference_kernel_wrapper(m,
-        //                                             my_input_accessor[0],
-        //                                             my_input_accessor[1],
-        //                                             residual2,
-        //                                             my_output_accessor[0],
-        //                                             my_output_accessor[1],
-        //                                             gamma,
-        //                                             beta);
+        ResidualLayerNorm::peft_bwd_kernel_wrapper(m,
+                                                   my_output_grad_accessor[1],
+                                                   my_input_grad_accessor[0],
+                                                   my_input_grad_accessor[1],
+                                                   residual2,
+                                                   gamma);
         break;
       }
       case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
@@ -1115,31 +1125,17 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
             assert(fused->op_num_weights[op] == 3); // attn bias + weight + bias
           }
         }
-        GenericTensorAccessorR gamma, beta;
+        GenericTensorAccessorR gamma;
         if (m->elementwise_affine) {
           gamma = my_weight_accessor[1];
-          if (m->use_bias) {
-            beta = my_weight_accessor[2];
-          }
         }
-        Domain attn_bias_domain = my_weight_accessor[0].domain;
-        Domain residual_domain = my_input_grad_accessor[1].domain;
-        int attn_bias_dim =
-            attn_bias_domain.hi()[0] - attn_bias_domain.lo()[0] + 1;
-        int residual_volume = residual_domain.get_volume();
-        // TODO: implement me
-        assert(false);
-        // AddBiasResidualLayerNorm::inference_kernel_wrapper(
-        //     m,
-        //     attn_bias_dim,
-        //     residual_volume,
-        //     my_input_accessor[0],
-        //     my_output_accessor[0],
-        //     my_output_accessor[1],
-        //     my_input_accessor[1],
-        //     my_weight_accessor[0],
-        //     gamma,
-        //     beta);
+
+        AddBiasResidualLayerNorm::peft_bwd_kernel_wrapper(
+            m,
+            my_output_grad_accessor[1],
+            my_input_grad_accessor[0],
+            my_input_grad_accessor[1],
+            gamma);
         break;
       }
       case OP_SIGMOID_SILU_MULTI: {

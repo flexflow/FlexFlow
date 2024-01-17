@@ -1114,7 +1114,7 @@ public:
   std::unordered_map<Op *, std::vector<std::pair<Op *, int>>>
       get_bwd_edge_map() const;
 
-  // Internal funcitons
+  // Internal functions
   Legion::IndexSpace get_or_create_task_is(ParallelConfig const &pc);
   Legion::IndexSpace get_or_create_task_is(MachineView const &view);
   Legion::IndexSpace get_or_create_task_is(Legion::Domain const &domain);
@@ -1122,6 +1122,7 @@ public:
   Legion::IndexSpace get_task_is(Legion::Domain const &domain) const;
   Legion::IndexSpace get_task_is(ParallelConfig const &pc) const;
   Legion::IndexSpace get_task_is(MachineView const &view) const;
+  bool is_mlp_block(int layer_idx) const;
   void create_operators_from_layers();
   Op *create_operator_from_layer(Layer *layer,
                                  std::vector<ParallelTensor> const &inputs);

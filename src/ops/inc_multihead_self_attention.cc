@@ -899,11 +899,12 @@ FutureMap IncMultiHeadSelfAttention::peft_bwd(
                          0 /*mapper_id*/,
                          machine_view_hash);
   launcher.add_future(bc);
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
   launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(weights[0]->part,
@@ -913,11 +914,12 @@ FutureMap IncMultiHeadSelfAttention::peft_bwd(
                         weights[0]->region,
                         ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
   launcher.add_field(idx++, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
   launcher.add_field(idx++, FID_DATA);
   if (qkv_bias || final_bias) {
     launcher.add_region_requirement(
@@ -962,7 +964,7 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
       m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+  GenericTensorAccessorW output_grad = helperGetGenericTensorAccessorRW(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   GenericTensorAccessorR biases;
   if (*m->qkv_bias || *m->final_bias) {

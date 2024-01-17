@@ -239,20 +239,17 @@ void ResidualLayerNorm::inference_kernel_wrapper(
     }
     assert(num_peft_requests <= 1);
 
-    int tokens_previous_requests = 0;
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {
       if (bc->request_completed[i]) {
         continue;
       }
       // Skip non-PEFT requests
       if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
-        // FIXME: use the new approach to computing token offset
-        tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
         continue;
       }
       int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-      int in_dim =
-          added_output.domain.hi()[0] - added_output.domain.lo()[0] + 1;
+      int first_token_offset = bc->requestsInfo[i].num_tokens_in_batch;
+      int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
       if (bc->requestsInfo[i].peft_bwd) {
         MemoryAllocator *allocator = m->handle.peft_activation_allocator;
         m->input_activation = allocator->allocate_instance_untyped(
@@ -261,14 +258,14 @@ void ResidualLayerNorm::inference_kernel_wrapper(
         if (m->input_type[0] == DT_FLOAT) {
           checkCUDA(cudaMemcpyAsync(
               m->input_activation,
-              added_output.get_float_ptr() + tokens_previous_requests * in_dim,
+              added_output.get_float_ptr() + first_token_offset * in_dim,
               data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
               cudaMemcpyDeviceToDevice,
               stream));
         } else if (m->input_type[0] == DT_HALF) {
           checkCUDA(cudaMemcpyAsync(
               m->input_activation,
-              added_output.get_half_ptr() + tokens_previous_requests * in_dim,
+              added_output.get_half_ptr() + first_token_offset * in_dim,
               data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
               cudaMemcpyDeviceToDevice,
               stream));
@@ -481,6 +478,9 @@ __device__ __inline__ void compute_gI(T const *__restrict__ dY,
                                       T *dX,
                                       T *dX_residual1,
                                       T *dX_residual2,
+                                      bool reset_input_grad,
+                                      bool reset_residual_grad1,
+                                      bool reset_residual_grad2,
                                       int const N,
                                       T *buf) {
   auto const i1 = blockIdx.x;
@@ -535,10 +535,22 @@ __device__ __inline__ void compute_gI(T const *__restrict__ dY,
     f_grad_input -= (x - mean_val) * rstd_val * stats_x2;
     f_grad_input -= stats_x1;
     f_grad_input *= term1;
-    dX_i[l] += f_grad_input;
-    dX_residual1_i[l] += f_grad_input;
+    if (reset_input_grad) {
+      dX_i[l] = f_grad_input;
+    } else {
+      dX_i[l] += f_grad_input;
+    }
+    if (reset_residual_grad1) {
+      dX_residual1_i[l] = f_grad_input;
+    } else {
+      dX_residual1_i[l] += f_grad_input;
+    }
     if (dX_residual2 != nullptr) {
-      dX_residual2_i[l] += f_grad_input;
+      if (reset_residual_grad2) {
+        dX_residual2_i[l] = f_grad_input;
+      } else {
+        dX_residual2_i[l] += f_grad_input;
+      }
     }
   }
 }
@@ -552,11 +564,25 @@ __global__ void layer_norm_grad_input_kernel(T const *__restrict__ dY,
                                              T *dX,
                                              T *dX_residual1,
                                              T *dX_residual2,
+                                             bool reset_input_grad,
+                                             bool reset_residual_grad1,
+                                             bool reset_residual_grad2,
                                              int const N) {
   alignas(sizeof(double)) extern __shared__ char s_data1[];
   T *buf = reinterpret_cast<T *>(&s_data1);
-
-  compute_gI(dY, X, mean, rstd, gamma, dX, dX_residual1, dX_residual2, N, buf);
+  compute_gI(dY,
+             X,
+             mean,
+             rstd,
+             gamma,
+             dX,
+             dX_residual1,
+             dX_residual2,
+             reset_input_grad,
+             reset_residual_grad1,
+             reset_residual_grad2,
+             N,
+             buf);
 }
 
 /*static*/
@@ -604,6 +630,9 @@ void backward_kernel(ResidualLayerNormMeta const *m,
       input_grad_ptr,
       residual1_grad_ptr,
       residual2_grad_ptr,
+      m->reset_input_grads[0],
+      m->reset_input_grads[1],
+      m->reset_input_grads[2],
       N);
 
   if (gamma_grad_ptr != NULL || beta_grad_ptr != NULL) {
@@ -710,28 +739,12 @@ void peft_bwd_kernel(ResidualLayerNormMeta const *m,
                      cudaStream_t stream) {
   const int64_t M = m->effective_batch_size;
   const int64_t N = m->effective_num_elements;
-  ComputeInternalGradientsCUDAKernel<T>
-      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
-          N,
-          output_grad_ptr,
-          static_cast<T const *>(m->input_activation),
-          gamma_ptr,
-          static_cast<T *>(m->ds_ptr),
-          static_cast<T *>(m->db_ptr));
-  const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
-  ComputeGradientFusedParamsCUDAKernel<T>
-      <<<B, kCUDANumThreads, 0, stream>>>(M,
-                                          N,
-                                          static_cast<T *>(m->mean_ptr),
-                                          static_cast<T *>(m->rstd_ptr),
-                                          static_cast<T *>(m->ds_ptr),
-                                          static_cast<T *>(m->db_ptr),
-                                          static_cast<T *>(m->scale_ptr),
-                                          static_cast<T *>(m->bias_ptr));
+
   int const warp_size = C10_WARP_SIZE;
   int const num_threads = 128;
   const dim3 blocks(M);
   int nshared = (num_threads / warp_size) * sizeof(T);
+
   layer_norm_grad_input_kernel<<<blocks, num_threads, nshared, stream>>>(
       output_grad_ptr,
       static_cast<T const *>(m->input_activation),
@@ -741,6 +754,9 @@ void peft_bwd_kernel(ResidualLayerNormMeta const *m,
       input_grad_ptr,
       residual1_grad_ptr,
       residual2_grad_ptr,
+      m->reset_input_grads[0],
+      m->reset_input_grads[1],
+      m->reset_input_grads[2],
       N);
 }
 

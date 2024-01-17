@@ -373,25 +373,28 @@ FutureMap
                          machine_view_hash);
   launcher.add_future(bc);
   // output grad
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   // input 1 grad
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   // input 2 grad
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[1]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[1]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[1]->region_grad));
   launcher.add_field(2, FID_DATA);
   return runtime->execute_index_space(ctx, launcher);
 }

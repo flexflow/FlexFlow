@@ -528,6 +528,21 @@ FutureMap FusedOp::inference(FFModel const &ff,
                           batch_outputs[i]->region));
     launcher.add_field(offset + i, FID_DATA);
   }
+  offset += numOutputs;
+  // add softmax output grad
+  if (operators[numOperators - 1]->op_type == OP_SOFTMAX) {
+    printf("operator %i is last SOFTMAX! adding output %i\n",
+           numOperators - 1,
+           numOutputs - 1);
+    assert(outputs[numOutputs - 1]->region != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[numOutputs - 1]->part_grad,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[numOutputs - 1]->region_grad));
+    launcher.add_field(offset, FID_DATA);
+  }
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -561,11 +576,12 @@ FutureMap FusedOp::peft_bwd(FFModel const &ff,
   for (int i = 0; i < numInputs; i++) {
     assert(inputs[i]->part != LogicalPartition::NO_PART);
     assert(inputs[i]->region != LogicalRegion::NO_REGION);
-    launcher.add_region_requirement(RegionRequirement(batch_inputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      READ_WRITE,
-                                                      EXCLUSIVE,
-                                                      batch_inputs[i]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[i]->part_grad,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          batch_inputs[i]->region_grad));
     launcher.add_field(offset + i, FID_DATA);
   }
   offset += numInputs;
@@ -582,11 +598,11 @@ FutureMap FusedOp::peft_bwd(FFModel const &ff,
   for (int i = 0; i < numOutputs; i++) {
     assert(outputs[i]->region != LogicalRegion::NO_REGION);
     launcher.add_region_requirement(
-        RegionRequirement(batch_outputs[i]->part,
+        RegionRequirement(batch_outputs[i]->part_grad,
                           0 /*projection id*/,
                           READ_WRITE,
                           EXCLUSIVE,
-                          batch_outputs[i]->region));
+                          batch_outputs[i]->region_grad));
     launcher.add_field(offset + i, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);
