@@ -1,5 +1,6 @@
 #include "test/utils/doctest.h"
 #include "utils/bidict.h"
+#include "utils/containers.h"
 
 using namespace FlexFlow;
 

@@ -68,8 +68,8 @@ struct required_inheritance_impl : public T {
 
   using T::T;
   required_inheritance_impl() = delete;
-  required_inheritance_impl(T const &);
-  required_inheritance_impl(T &&t);
+  required_inheritance_impl(T const &t) : T(t) {}
+  required_inheritance_impl(T &&t) : T(std::move(t)) {}
 
   template <typename TT>
   required_inheritance_impl(
