@@ -170,6 +170,113 @@ void forward_kernel_wrapper(LinearMeta const *m,
   }
 }
 
+void inference_kernel_wrapper(LinearMeta *m,
+                              BatchConfig const *bc,
+                              void const *input_ptr,
+                              void *output_ptr,
+                              void const *weight_ptr,
+                              void const *bias_ptr,
+                              int in_dim,
+                              int out_dim,
+                              int batch_size) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+
+  if (m->input_type[0] == DT_FLOAT) {
+    Internal::forward_kernel<float>(m,
+                                    input_ptr,
+                                    output_ptr,
+                                    weight_ptr,
+                                    bias_ptr,
+                                    in_dim,
+                                    out_dim,
+                                    batch_size,
+                                    stream);
+  } else if (m->input_type[0] == DT_HALF) {
+    Internal::forward_kernel<half>(m,
+                                  input_ptr,
+                                  output_ptr,
+                                  weight_ptr,
+                                  bias_ptr,
+                                  in_dim,
+                                  out_dim,
+                                  batch_size,
+                                  stream);
+  }
+
+
+  if (m->activation == AC_MODE_RELU || m->activation == AC_MODE_SIGMOID) {
+    // save input activation if needed for PEFT
+    if (bc->num_active_peft_tokens() > 0) {
+      // Check that we have at most one request that requires peft_bwd
+      int num_peft_requests = 0;
+      for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+        if (bc->request_completed[i]) {
+          continue;
+        }
+        if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+          continue;
+        }
+        if (bc->requestsInfo[i].peft_bwd) {
+          num_peft_requests++;
+        }
+      }
+      assert(num_peft_requests <= 1);
+
+      for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+        if (bc->request_completed[i]) {
+          continue;
+        }
+        // Skip non-PEFT requests
+        if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+          continue;
+        }
+        int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+        int first_token_offset = bc->requestsInfo[i].num_tokens_in_batch;
+        if (bc->requestsInfo[i].peft_bwd) {
+          MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+          m->output_activation_buffer = allocator->allocate_instance_untyped(
+              data_type_size(m->output_type[0]) * num_peft_tokens * out_dim);
+          // copy output activation
+          if (m->output_type[0] == DT_FLOAT) {
+            checkCUDA(cudaMemcpyAsync(
+                m->output_activation_buffer,
+                static_cast<float*>(output_ptr) + first_token_offset * out_dim,
+                data_type_size(m->output_type[0]) * num_peft_tokens * out_dim,
+                cudaMemcpyDeviceToDevice,
+                stream));
+          } else if (m->output_type[0] == DT_HALF) {
+            checkCUDA(cudaMemcpyAsync(
+                m->output_activation_buffer,
+                static_cast<half*>(output_ptr) + first_token_offset * out_dim,
+                data_type_size(m->output_type[0]) * num_peft_tokens * out_dim,
+                cudaMemcpyDeviceToDevice,
+                stream));
+          } else {
+            assert(false && "unsupport datatype in layernorm");
+          }
+        }
+      }
+    }
+  }
+
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("%s [Linear] inference time = %.2lfms\n", m->op_name, elapsed);
+  }
+}
+
 void peft_bwd_kernel_wrapper(LinearMeta const *m,
                              void *input_grad_ptr,
                              void *output_grad_ptr,
