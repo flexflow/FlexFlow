@@ -172,7 +172,7 @@ void FlexFlow::top_level_task(Task const *task,
   std::string tokenizer_filepath =
       join_path({file_paths.cache_folder_path, "tokenizers", llm_model_name});
 
-  // bfloat16 shares same weight file with float32    
+  // bfloat16 shares same weight file with float32
   std::string weights_filepath = join_path(
       {file_paths.cache_folder_path,
        "weights",

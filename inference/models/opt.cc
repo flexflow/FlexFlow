@@ -63,15 +63,14 @@ void OPT::create_opt_model(FFModel &ff,
                               embed_init,
                               "embed_tokens");
 
-  Tensor positional_embedding =
-      ff.embedding(position_input,
-                   opt_config.max_position_embeddings,
-                   opt_config.hidden_size,
-                   AGGR_MODE_NONE,
-                   data_type,
-                   NULL,
-                   embed_init,
-                   "embed_positions");
+  Tensor positional_embedding = ff.embedding(position_input,
+                                             opt_config.max_position_embeddings,
+                                             opt_config.hidden_size,
+                                             AGGR_MODE_NONE,
+                                             data_type,
+                                             NULL,
+                                             embed_init,
+                                             "embed_positions");
 
   Tensor fc2 = nullptr, added = nullptr;
   Tensor res_ln_outputs[2] = {nullptr, nullptr};
