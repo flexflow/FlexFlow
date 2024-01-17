@@ -967,7 +967,7 @@ void AddBiasResidualLayerNorm::peft_bwd_task(
   assert(task->regions.size() == regions.size());
   AddBiasResidualLayerNormMeta *m =
       *((AddBiasResidualLayerNormMeta **)task->local_args);
-  assert(regions.size() == 4 + m->elementwise_affine);
+  assert(regions.size() == 3 + m->elementwise_affine);
 
   int region_idx = 0, task_region_idx = 0;
 
@@ -995,7 +995,6 @@ void AddBiasResidualLayerNorm::peft_bwd_task(
 
   GenericTensorAccessorR gamma;
   if (m->elementwise_affine) {
-    assert(m->use_bias == (regions.size() == 6));
     gamma = helperGetGenericTensorAccessorRO(m->output_type[0],
                                              regions[region_idx++],
                                              task->regions[task_region_idx++],
