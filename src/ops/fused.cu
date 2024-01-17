@@ -613,6 +613,14 @@ __host__ void
   checkCUDA(get_legion_stream(&stream));
 
   // create new cuda graph
+  cudaEvent_t t_start_capture, t_end_capture;
+  cudaEvent_t t_start_update, t_end_update;
+  cudaEvent_t t_start_instantiate, t_end_instantiate;
+  cudaEvent_t t_start_launch, t_end_launch;
+
+  cudaEventCreate(&t_start_capture);
+  cudaEventCreate(&t_end_capture);
+  cudaEventRecord(t_start_capture, stream);
   cudaGraph_t graph;
   cudaGraphExec_t instance;
   cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
@@ -1144,14 +1152,24 @@ __host__ void
   //   "[Fused:forward:output]");
 
   cudaStreamEndCapture(stream, &graph);
+  cudaEventRecord(t_end_capture, stream);
+  checkCUDA(cudaEventSynchronize(t_end_capture));
   std::tuple<int, int, bool> graph_params =
       std::make_tuple(bc->num_active_requests(),
                       bc->num_active_tokens(),
                       bc->num_generation_tokens > 0);
   // check if graph exists
+  int cuda_graph_scenario = 0;
+  // 0: not found, need to create from scratch
+  // 1: found, update suceeded
+  // 2: found, update failed
   if (metas->graph_collections.find(graph_params) !=
       metas->graph_collections.end()) {
     instance = metas->graph_collections[graph_params];
+    // update
+    cudaEventCreate(&t_start_update);
+    cudaEventCreate(&t_end_update);
+    cudaEventRecord(t_start_update, stream);
 #if defined(CUDA_VERSION) && (CUDA_VERSION < 12000)
     cudaGraphExecUpdateResult updateResult;
     cudaGraphNode_t errorNode;
@@ -1161,18 +1179,67 @@ __host__ void
     cudaError_t update_result = cudaGraphExecUpdate(instance, graph, NULL);
     bool update_failed = (update_result != cudaSuccess);
 #endif
+    cudaEventRecord(t_end_update, stream);
+    checkCUDA(cudaEventSynchronize(t_end_update));
+    
+    cuda_graph_scenario = 1;
     if (update_failed) {
+      cuda_graph_scenario = 2;
+      cudaEventCreate(&t_start_instantiate);
+      cudaEventCreate(&t_end_instantiate);
+      cudaEventRecord(t_start_instantiate, stream);
+      
       cudaGraphExecDestroy(instance);
       cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+      
+      cudaEventRecord(t_end_instantiate, stream);
+      checkCUDA(cudaEventSynchronize(t_end_instantiate));
     }
   } else {
+    cudaEventCreate(&t_start_instantiate);
+    cudaEventCreate(&t_end_instantiate);
+    cudaEventRecord(t_start_instantiate, stream);
+
     cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+
+    cudaEventRecord(t_end_instantiate, stream);
+    checkCUDA(cudaEventSynchronize(t_end_instantiate));
   }
   metas->graph_collections[graph_params] = instance;
   assert(metas->graph_collections.find(graph_params) !=
          metas->graph_collections.end());
+  
+  cudaEventCreate(&t_start_launch);
+  cudaEventCreate(&t_end_launch);
+  cudaEventRecord(t_start_launch, stream);
+
   cudaGraphDestroy(graph);
   cudaGraphLaunch(instance, stream);
+
+  cudaEventRecord(t_end_launch, stream);
+  checkCUDA(cudaEventSynchronize(t_end_launch));
+
+  float capture_elapsed = 0.0f, update_elapsed = 0.0f, instantiate_elapsed = 0.0f, launch_elapsed = 0.0f;
+  checkCUDA(cudaEventElapsedTime(&capture_elapsed, t_start_capture, t_end_capture));
+  cudaEventDestroy(t_start_capture); cudaEventDestroy(t_end_capture);
+  if (cuda_graph_scenario != 0) {
+    checkCUDA(cudaEventElapsedTime(&update_elapsed, t_start_update, t_end_update));
+    cudaEventDestroy(t_start_update); cudaEventDestroy(t_end_update);
+  }
+  if (cuda_graph_scenario != 1) {
+    checkCUDA(cudaEventElapsedTime(&instantiate_elapsed, t_start_instantiate, t_end_instantiate));
+    cudaEventDestroy(t_start_instantiate); cudaEventDestroy(t_end_instantiate);
+  }
+  checkCUDA(cudaEventElapsedTime(&launch_elapsed, t_start_launch, t_end_launch));
+  cudaEventDestroy(t_start_launch); cudaEventDestroy(t_end_launch);
+  printf("CUDAgraph %i %i %.6lfms %.6lfms %.6lfms %.6lfms X\n", 
+    fused->numOperators, 
+    cuda_graph_scenario, 
+    capture_elapsed,
+    update_elapsed,
+    instantiate_elapsed,
+    launch_elapsed
+  );
 }
 
 /*

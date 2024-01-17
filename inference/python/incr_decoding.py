@@ -98,7 +98,7 @@ def main():
     )
     llm.compile(
         generation_config,
-        max_requests_per_batch=1,
+        max_requests_per_batch=4,
         max_seq_length=256,
         max_tokens_per_batch=64,
     )
