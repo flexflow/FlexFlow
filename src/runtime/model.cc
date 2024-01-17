@@ -3237,6 +3237,27 @@ Op *FFModel::create_operator_from_layer(
   }
 }
 
+bool FFModel::is_mlp_block(int layer_idx) const {
+  auto const &l = layers[layer_idx];
+  // standard opt relu
+  if (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+      layers[layer_idx - 1]->op_type == OP_RELU &&
+      layers[layer_idx - 2]->op_type == OP_LINEAR) {
+    return true;
+  }
+  // mlp layer with relu embedded in first dense layer
+  if (l->op_type == OP_LINEAR && layer_idx >= 1 &&
+      layers[layer_idx - 1]->op_type == OP_LINEAR) {
+    long long value;
+    layers[layer_idx - 1]->get_int_property("activation", value);
+    ActiMode activation = (ActiMode)value;
+    if (activation == AC_MODE_RELU) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void FFModel::create_operators_from_layers() {
   std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
   // for (auto const &l : layers) {
@@ -3281,9 +3302,9 @@ void FFModel::create_operators_from_layers() {
                config.tensor_parallelism_degree > 1 &&
                (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
                 l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
-                (l->op_type == OP_LINEAR && layer_idx >= 2 &&
-                 layers[layer_idx - 1]->op_type == OP_RELU &&
-                 layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+                // mlp layer
+                is_mlp_block(layer_idx) ||
+                // llama mlp layer
                 (l->op_type == OP_LINEAR && layer_idx >= 2 &&
                  layers[layer_idx - 1]->op_type == OP_GELU &&
                  layers[layer_idx - 2]->op_type == OP_LINEAR) ||
@@ -4460,6 +4481,24 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<
           TreeVerifyBatchConfig,
           RequestManager::prepare_next_batch_verify_task>(registrar);
+    }
+  }
+  // RequestManager background serving task
+  {
+    TaskVariantRegistrar registrar(RM_BACKGROUND_SERVING_TASK_ID,
+                                   "RequestManager Background Serving Task");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    // registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          RequestManager::background_serving_task>(
+          registrar, "RequestManager Background Serving Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::background_serving_task>(
+          registrar);
     }
   }
   // ElementUnary task

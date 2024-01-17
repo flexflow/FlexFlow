@@ -39,10 +39,11 @@ void FALCON::create_falcon_model(FFModel &ff,
   Tensor input;
   {
     // assert(falcon_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
-    int const token_dims[] = {mode == TREE_VERIFY_MODE
-                                  ? BatchConfig::max_verify_tokens_per_batch()
-                                  : BatchConfig::max_tokens_per_batch(),
-                              1};
+    int const token_dims[] = {
+        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+            ? BatchConfig::max_verify_tokens_per_batch()
+            : BatchConfig::max_tokens_per_batch(),
+        1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 
@@ -239,6 +240,20 @@ void FALCON::create_falcon_model(FFModel &ff,
     output = ff.argmax(lm_head, /*beam_Search*/ false);
   }
 
+  FileDataLoader *fileloader =
+      new FileDataLoader("",
+                         weight_file_path,
+                         falcon_config.n_head,
+                         falcon_config.n_head_kv,
+                         falcon_config.hidden_size,
+                         falcon_config.hidden_size / falcon_config.n_head,
+                         ff.config.tensor_parallelism_degree,
+                         use_full_precision);
+
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  im->register_model_weights_loader(&ff, fileloader);
+
+#ifdef DEADCODE
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
   InferenceManager *im = InferenceManager::get_inference_manager();
@@ -256,6 +271,7 @@ void FALCON::create_falcon_model(FFModel &ff,
 
   // init operators
   im->init_operators_inference(&ff);
+#endif
 }
 
 }; // namespace FlexFlow

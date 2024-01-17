@@ -23,6 +23,7 @@ class OPTConfig:
         #self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
+        self.max_spec_tree_token_num = 64
         self.do_layer_norm_before = hf_config.do_layer_norm_before
         self.dropout = hf_config.dropout
         self.enable_bias = hf_config.enable_bias
@@ -63,6 +64,7 @@ class FlexFlowOPT(FlexFlowModel):
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
+        max_verify_tokens_per_batch = max_tokens_per_batch + self.opt_config.max_spec_tree_token_num
 
         # Sanity checks
         if self.opt_config.hidden_size % self.opt_config.num_attention_heads != 0:
@@ -82,7 +84,7 @@ class FlexFlowOPT(FlexFlowModel):
                 f"Number of attention heads ({self.opt_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
 
-        self.build_model(max_tokens_per_batch)
+        self.build_model(max_tokens_per_batch if self.mode == InferenceMode.INC_DECODING_MODE else max_verify_tokens_per_batch)
 
     def build_model(self, max_tokens_per_batch):
         ffmodel = FFModel(self.ffconfig)
@@ -216,13 +218,12 @@ class FlexFlowOPT(FlexFlowModel):
             fc1 = ffmodel.dense(
                 ff_norm,
                 self.opt_config.ffn_dim,
-                ActiMode.AC_MODE_NONE,
+                ActiMode.AC_MODE_RELU,
                 True,
                 name=f"layers_{i}_fc1",
             )
-            activation = ffmodel.relu(fc1, False)
             fc2 = ffmodel.dense(
-                activation,
+                fc1,
                 self.opt_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 True,

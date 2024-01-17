@@ -247,6 +247,7 @@ enum TaskIDs {
   RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
   RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
   RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
+  RM_BACKGROUND_SERVING_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
   CUSTOM_GPU_TASK_ID_1,
@@ -806,8 +807,8 @@ public:
   // ========================================
   // Inference APIs
   // ========================================
-  GenerationResult generate(std::vector<std::string> &prompts,
-                            int max_seq_length);
+  std::vector<GenerationResult> generate(std::vector<std::string> &prompts,
+                                         int max_seq_length);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
@@ -1090,7 +1091,7 @@ public:
   std::unordered_map<Op *, std::vector<std::pair<Op *, int>>>
       get_bwd_edge_map() const;
 
-  // Internal funcitons
+  // Internal functions
   Legion::IndexSpace get_or_create_task_is(ParallelConfig const &pc);
   Legion::IndexSpace get_or_create_task_is(MachineView const &view);
   Legion::IndexSpace get_or_create_task_is(Legion::Domain const &domain);
@@ -1098,6 +1099,7 @@ public:
   Legion::IndexSpace get_task_is(Legion::Domain const &domain) const;
   Legion::IndexSpace get_task_is(ParallelConfig const &pc) const;
   Legion::IndexSpace get_task_is(MachineView const &view) const;
+  bool is_mlp_block(int layer_idx) const;
   void create_operators_from_layers();
   Op *create_operator_from_layer(Layer *layer,
                                  std::vector<ParallelTensor> const &inputs);
