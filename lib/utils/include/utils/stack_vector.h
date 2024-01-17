@@ -187,8 +187,11 @@ public:
     bool operator>=(Iterator const &rhs) const {
       return this->ptr >= rhs.ptr;
     }
-  };
 
+    Iterator reverse() const {
+      return Iterator(this->ptr - 1);
+    }
+  };
   using iterator = Iterator<false>;
   using const_iterator = Iterator<true>;
   using reverse_iterator = std::reverse_iterator<iterator>;
@@ -275,6 +278,13 @@ public:
     }
 
     return (this->m_size < other.m_size);
+  }
+
+  bool operator>(stack_vector const &other) const {
+    if (*this < other) {
+      return false;
+    }
+    return *this != other;
   }
 
   std::size_t size() const {

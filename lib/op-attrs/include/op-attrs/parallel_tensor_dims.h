@@ -2,6 +2,7 @@
 #define _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_PARALLEL_TENSOR_DIMS_H
 
 #include "parallel_dim.h"
+#include "tensor_shape.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
@@ -21,21 +22,55 @@ struct ParallelTensorDims : public use_visitable_cmp<ParallelTensorDims> {
   using pointer = typename FFOrdered<ParallelDim>::pointer;
   using const_pointer = typename FFOrdered<ParallelDim>::const_pointer;
 
-  ParallelDim const &at(ff_dim_t const &) const;
-  ParallelDim &at(ff_dim_t const &);
+  ParallelDim at(ff_dim_t const &) const;
+  //  ParallelDim &at(ff_dim_t const &);
 
-  iterator begin();
-  const_iterator begin() const;
-  const_iterator cbegin() const;
-  iterator end();
-  const_iterator end() const;
-  const_iterator cend() const;
-  reverse_iterator rbegin();
-  const_reverse_iterator rbegin() const;
-  const_reverse_iterator crbegin() const;
-  reverse_iterator rend();
-  const_reverse_iterator rend() const;
-  const_reverse_iterator crend() const;
+  iterator begin() {
+    return this->data.begin();
+  }
+
+  const_iterator begin() const {
+    return this->cbegin();
+  };
+
+  const_iterator cbegin() const {
+    return this->data.cbegin();
+  }
+
+  iterator end() {
+    return this->data.end();
+  }
+
+  const_iterator end() const {
+    return this->cend();
+  }
+
+  const_iterator cend() const {
+    return this->data.cend();
+  }
+
+  reverse_iterator rbegin() {
+    return this->data.rbegin();
+  }
+
+  const_reverse_iterator rbegin() const {
+    return this->crbegin();
+  }
+  const_reverse_iterator crbegin() const {
+    return this->data.crbegin();
+  }
+
+  reverse_iterator rend() {
+    NOT_IMPLEMENTED();
+  }
+
+  const_reverse_iterator rend() const {
+    NOT_IMPLEMENTED();
+  }
+
+  const_reverse_iterator crend() const {
+    NOT_IMPLEMENTED();
+  }
 
 public:
   FFOrdered<ParallelDim> data;
