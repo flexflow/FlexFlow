@@ -24,10 +24,7 @@ It will lookup the inputs in its table, fetch relevant memory regions, apply its
 
 To complete this definition, let's introduce two ideas: 
 1. `taskGraph` - a DAG that defines the interactions between `task`s
-2. `future` - a pointer to the index of another `task`'s lookup table. This must follow the direction established in a `taskGraph` in that the `task` being pointed *to* must be sequentially prior to the `task` being pointed *from*. 
-
-To handle asynchronous execution, even if the result of a future is unavailable, a `task`'s transformations can still be theoretically applied. Its output will aggregate the transformations that need to be applied and then execute those transformations once the result is available. 
-
+2. `dependency` - a pointer to the index of another `task`'s lookup table. This must follow the direction established in a `taskGraph` in that the `task` being pointed *to* must be sequentially prior to the `task` being pointed *from*. 
 
 ## Composition
 
@@ -38,10 +35,10 @@ A more complicated example. Let $T_1$ and $T_2$ represent our sequential `task`s
 This composition gives us a useful tactic: the ability to aggregate `task`s into a single `task`. The inputs for the aggregated `task` are the union of the inputs to all the `task`s that are **not** intermediate results. The output is the output of the final `task`. 
 
 There are two rules we have to follow when aggregating:
-1. Source rule: If the inputs of a `task` $t$ is are `future`s to more than one `task`, $t$ can only be the first `task` in its aggregation chain.
-2. Sink rule: If an output of a `task` $t$ is referenced by `future`s in more than one `task`, $t$ will be the final `task` in its aggregation chain. 
+1. Source rule: If the inputs of a `task` $t$ is have a `dependency` to more than one `task`, $t$ can only be the source in its aggregation chain.
+2. Sink rule: If more than one `task` has a `dependency` on an output of a `task` $t$, $t$ can only be the sink in its aggregation chain. 
    
-Basically, aggregation must stop at branches in the `taskGraph`.  
+Basically, aggregation cannot be branched.   
 
 ## `Legion::Future`
 
@@ -65,14 +62,26 @@ In `Cache` the futures are stored in an `std::vector<Legion::Future> score_futur
 
 In `optimizer.cc`, `SGDOptimizer::update` and `AdamOptimizer::update` have this code
 ```
-    FutureMap fm = runtime->execute_index_space(ctx, launcher);
-    // runtime->execute_must_epoch(ctx, must_epoch_launcher);
-    runtime->issue_execution_fence(ctx);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  // runtime->execute_must_epoch(ctx, must_epoch_launcher);
+  runtime->issue_execution_fence(ctx);
 ```
-But `fm` is never referenced
+But `fm` is never referenced again
 
 The `inference` branch uses futures everywhere
 ```
   launcher.add_future(bc);
   runtime->execute_index_space(ctx, launcher);
 ```
+
+To handle asynchronous execution, even if the result of a `dependency` is unavailable, a `task`'s transformations can still be theoretically applied. Hence, we can extend the definition of inputs and outputs to include `future`: a list of transformations applied in sequence to other `future` or memory regions.
+
+## Local Task Backend
+
+The local task backend executes a computational graph on a single devices. It has three use cases: testing, operator fusion, and simulator/profiling. 
+
+**TODO**:
+- A parallel computation graph can be reduced to a computation graph
+  - Remove parallel operators
+  - Select one fragment of operators that have been partitioned to compute
+- What tasks actually need a local interface
