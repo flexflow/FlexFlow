@@ -268,11 +268,11 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
 
 void forward_kernel(cudaStream_t stream,
                     Conv2DPerDeviceState const &m,
-                    optional<Activation> const &activation,
                     float const *input_ptr,
                     float *output_ptr,
                     float const *filter_ptr,
-                    float const *bias_ptr) {
+                    float const *bias_ptr,
+                    optional<Activation> activation) {
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
@@ -313,14 +313,14 @@ void forward_kernel(cudaStream_t stream,
 
 void backward_kernel(cudaStream_t stream,
                      Conv2DPerDeviceState const &m,
-                     optional<Activation> const &activation,
                      float const *input_ptr,
                      float *input_grad_ptr,
                      float const *output_ptr,
                      float *output_grad_ptr,
-                     float const *kernel_ptr,
-                     float *kernel_grad_ptr,
-                     float *bias_grad_ptr) {
+                     float const *filter_ptr,
+                     float *filter_grad_ptr,
+                     float *bias_grad_ptr,
+                     optional<Activation> activation) {
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f;
@@ -355,7 +355,7 @@ void backward_kernel(cudaStream_t stream,
                                             m.handle.workSpaceSize,
                                             &alpha,
                                             m.filterDesc,
-                                            kernel_grad_ptr));
+                                            filter_grad_ptr));
   // Compute bias gradiant
   // NOTE: we use alpha for bias_grad to accumulate gradients
   if (bias_grad_ptr != NULL) {

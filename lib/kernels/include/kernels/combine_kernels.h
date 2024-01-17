@@ -10,13 +10,11 @@ namespace Combine {
 
 void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output,
-                    DataType dataType);
+                    GenericTensorAccessorW const &output);
 
 void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &output_grad,
-                     GenericTensorAccessorW const &input_grad,
-                     DataType dataType);
+                     GenericTensorAccessorW const &input_grad);
 
 } // namespace Combine
 } // namespace Kernels
