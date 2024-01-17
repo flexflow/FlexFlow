@@ -69,7 +69,6 @@ ElementUnaryPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
         cudnnSetActivationDescriptor(actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
     checkCUDNN(
         cudnnSetTensorDescriptorFromArrayShape(inputTensor, input_shape));
-    // input_shape == output_shape
     checkCUDNN(
         cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
   }
