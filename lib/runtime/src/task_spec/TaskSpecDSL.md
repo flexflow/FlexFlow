@@ -26,10 +26,53 @@ To complete this definition, let's introduce two ideas:
 1. `taskGraph` - a DAG that defines the interactions between `task`s
 2. `future` - a pointer to the index of another `task`'s lookup table. This must follow the direction established in a `taskGraph` in that the `task` being pointed *to* must be sequentially prior to the `task` being pointed *from*. 
 
+To handle asynchronous execution, even if the result of a future is unavailable, a `task`'s transformations can still be theoretically applied. Its output will aggregate the transformations that need to be applied and then execute those transformations once the result is available. 
+
+
 ## Composition
 
 Given two `task` in a sequence, our representation allows composition into a single `task`. Let $T_1$ and $T_2$ represent our sequential `task`s. The result of executing $T_2 \circ T_1$ is $F_2(F_1(x_1))$. $T_2 \circ T_1$ itself is a `task` because it meets the definition of a task: its input is $x_1$, its transformation is $F_2 \circ F_1$, and the output is $y_2$.
 
 A more complicated example. Let $T_1$ and $T_2$ represent our sequential `task`s. In this case, $T_2$ has inputs $\{x_2, x_3\}$ where only $x_2$ holds a future to $F_1(x_1)$. Hence, $T_2 \circ T_1$ is $F_2(F_1(x_1), x_3)$. Still, it is a task, only with inputs: $x_1, x_3$. Conveniently, this is $X_1 \cup (X_2 \cap Y_1'))$.
 
-This composition gives us a useful tactic: the ability to aggregate `task`s into a single `task`. The inputs for the aggregated `task` are the union of the inputs to all the `task`s that are **not** intermediate results. The output is the output of the final `task`. The only rule we have to follow when aggregating is that if an output of a `task` $t$ is referenced by `future`s in more than one `task`, $t$ will be the final `task` in its aggregation chain. Basically, aggregation must stop at branches in the `taskGraph`.  
+This composition gives us a useful tactic: the ability to aggregate `task`s into a single `task`. The inputs for the aggregated `task` are the union of the inputs to all the `task`s that are **not** intermediate results. The output is the output of the final `task`. 
+
+There are two rules we have to follow when aggregating:
+1. Source rule: If the inputs of a `task` $t$ is are `future`s to more than one `task`, $t$ can only be the first `task` in its aggregation chain.
+2. Sink rule: If an output of a `task` $t$ is referenced by `future`s in more than one `task`, $t$ will be the final `task` in its aggregation chain. 
+   
+Basically, aggregation must stop at branches in the `taskGraph`.  
+
+## `Legion::Future`
+
+In `Metrics::compute`
+```
+  FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
+  // Update metrics
+  TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID,
+                            TaskArgument(this, sizeof(Metrics)));
+  metrics_task.add_future(model->current_metrics);
+  for (Domain::DomainPointIterator it(part_domain); it; it++) {
+    metrics_task.add_future(new_metrics[*it]);
+  }
+  model->current_metrics = runtime->execute_task(ctx, metrics_task);
+```
+
+In `BatchNorm::backward` it’s called without `wait_all_results()` (but nothing is ever done with the future map)
+- Same for Conv2D
+
+In `Cache` the futures are stored in an `std::vector<Legion::Future> score_futures` but this is only utilized in the MOE examples, nowhere else.
+
+In `optimizer.cc`, `SGDOptimizer::update` and `AdamOptimizer::update` have this code
+```
+    FutureMap fm = runtime->execute_index_space(ctx, launcher);
+    // runtime->execute_must_epoch(ctx, must_epoch_launcher);
+    runtime->issue_execution_fence(ctx);
+```
+But `fm` is never referenced
+
+The `inference` branch uses futures everywhere
+```
+  launcher.add_future(bc);
+  runtime->execute_index_space(ctx, launcher);
+```
