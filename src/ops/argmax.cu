@@ -123,7 +123,7 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
                                   length,
                                   batch_size,
                                   stream);
-  } else if (input.data_type == DT_B16) {
+  } else if (input.data_type == DT_BF16) {
     ArgMax::forward_kernel<__nv_bfloat16>(
         m,
         input.get_bfloat16_ptr(),
@@ -163,7 +163,7 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
 
   size_t d_offsets_size = batch_size;
   size_t prob_size = batch_size;
-  assert(data_type == DT_FLOAT || data_type == DT_HALF || data_type == DT_B16);
+  assert(data_type == DT_FLOAT || data_type == DT_HALF || data_type == DT_BF16);
   size_t total_size =
       d_offsets_size * sizeof(int) +
       (data_type == DT_FLOAT
@@ -214,7 +214,7 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
         d_offsets,
         d_offsets + 1,
         stream));
-  } else if (data_type == DT_B16) {
+  } else if (data_type == DT_BF16) {
     checkCUDA(cub::DeviceSegmentedReduce::ArgMax(
         d_temp_storage,
         temp_storage_bytes,

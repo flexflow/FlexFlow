@@ -1137,7 +1137,7 @@ void FileDataLoader::load_weights(FFModel *ff) {
         case DT_FLOAT:
           load_single_weight_tensor<float>(ff, l, i);
           break;
-        case DT_B16:
+        case DT_BF16:
           load_single_weight_tensor_b16(ff, l, i);
           break;
         case DT_INT4:

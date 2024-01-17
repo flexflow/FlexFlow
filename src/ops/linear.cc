@@ -437,7 +437,7 @@ OpMeta *Linear::init_task(Task const *task,
         return init_task_with_dim<float, float, DIM>(                          \
             task, regions, ctx, runtime);                                      \
       }                                                                        \
-    } else if (output.data_type == DT_B16) {                                   \
+    } else if (output.data_type == DT_BF16) {                                   \
       if (linear->quantization_type != DT_NONE) {                              \
         return init_task_with_dim<__ff_bfloat16, char, DIM>(                   \
             task, regions, ctx, runtime);                                      \
@@ -712,7 +712,7 @@ void Linear::forward_task(Task const *task,
         return forward_task_with_dim<float, float, DIM>(                       \
             task, regions, ctx, runtime);                                      \
       }                                                                        \
-    } else if (m->output_type[0] == DT_B16) {                                  \
+    } else if (m->output_type[0] == DT_BF16) {                                  \
       if (m->quantization_type != DT_NONE) {                                   \
         return forward_task_with_dim<__ff_bfloat16, char, DIM>(                \
             task, regions, ctx, runtime);                                      \
@@ -875,7 +875,7 @@ void Linear::backward_task(Task const *task,
       return backward_task_with_dim<half, DIM>(task, regions, ctx, runtime);   \
     } else if (m->output_type[0] == DT_FLOAT) {                                \
       return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
-    } else if (m->output_type[0] == DT_B16) {                                  \
+    } else if (m->output_type[0] == DT_BF16) {                                  \
       return backward_task_with_dim<__ff_bfloat16, DIM>(                       \
           task, regions, ctx, runtime);                                        \
     } else {                                                                   \

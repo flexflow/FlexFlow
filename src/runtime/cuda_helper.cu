@@ -546,7 +546,7 @@ cudnnDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return CUDNN_DATA_HALF;
-    case DT_B16:
+    case DT_BF16:
       return CUDNN_DATA_BFLOAT16;
     case DT_FLOAT:
       return CUDNN_DATA_FLOAT;
@@ -564,7 +564,7 @@ cudaDataType_t ff_to_cuda_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return CUDA_R_16F;
-    case DT_B16:
+    case DT_BF16:
       return CUDA_R_16BF;
     case DT_FLOAT:
       return CUDA_R_32F;
@@ -583,7 +583,7 @@ ncclDataType_t ff_to_nccl_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return ncclHalf;
-    case DT_B16:
+    case DT_BF16:
       return ncclBfloat16;
     case DT_FLOAT:
       return ncclFloat;

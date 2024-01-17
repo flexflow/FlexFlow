@@ -70,7 +70,7 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
                                m->aggr,
                                output.domain.get_volume(),
                                stream);
-    } else if (weight.data_type == DT_B16) {
+    } else if (weight.data_type == DT_BF16) {
       Internal::forward_kernel(input.get_int32_ptr(),
                                output.get_bfloat16_ptr(),
                                weight.get_bfloat16_ptr(),
@@ -114,7 +114,7 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
                                m->aggr,
                                output.domain.get_volume(),
                                stream);
-    } else if (weight.data_type == DT_B16) {
+    } else if (weight.data_type == DT_BF16) {
       Internal::forward_kernel(input.get_int64_ptr(),
                                output.get_bfloat16_ptr(),
                                weight.get_bfloat16_ptr(),
@@ -181,7 +181,7 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
                                 m->aggr,
                                 output.domain.get_volume(),
                                 stream);
-    } else if (m->output_type[0] == DT_B16) {
+    } else if (m->output_type[0] == DT_BF16) {
       Internal::backward_kernel(input.get_int32_ptr(),
                                 output.get_bfloat16_ptr(),
                                 weight_grad.get_bfloat16_ptr(),
@@ -225,7 +225,7 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
                                 m->aggr,
                                 output.domain.get_volume(),
                                 stream);
-    } else if (m->output_type[0] == DT_B16) {
+    } else if (m->output_type[0] == DT_BF16) {
       Internal::backward_kernel(input.get_int64_ptr(),
                                 output.get_bfloat16_ptr(),
                                 weight_grad.get_bfloat16_ptr(),

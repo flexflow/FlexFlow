@@ -58,7 +58,7 @@ LinearMeta::LinearMeta(FFHandler handler,
                         min(CUDA_NUM_THREADS, parallelism),
                         0,
                         stream>>>((half *)one_ptr, batch_size);
-  } else if (data_type == DT_B16) {
+  } else if (data_type == DT_BF16) {
     Kernels::Linear::Internal::
         build_one_ptr<<<GET_BLOCKS(parallelism),
                         min(CUDA_NUM_THREADS, parallelism),
@@ -158,7 +158,7 @@ void forward_kernel_wrapper(LinearMeta const *m,
                                    out_dim,
                                    batch_size,
                                    stream);
-  } else if (m->input_type[0] == DT_B16) {
+  } else if (m->input_type[0] == DT_BF16) {
     Internal::forward_kernel<__nv_bfloat16>(m,
                                             input_ptr,
                                             output_ptr,
@@ -232,7 +232,7 @@ void backward_kernel_wrapper(LinearMeta const *m,
                                     out_dim,
                                     batch_size,
                                     stream);
-  } else if (m->input_type[0] == DT_B16) {
+  } else if (m->input_type[0] == DT_BF16) {
     Internal::backward_kernel<__nv_bfloat16>(m,
                                              input_ptr,
                                              input_grad_ptr,
@@ -362,7 +362,7 @@ void forward_kernel(LinearMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   if (m->output_type[0] == DT_FLOAT) {
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  } else if (m->output_type[0] == DT_B16) {
+  } else if (m->output_type[0] == DT_BF16) {
     compute_type = CUBLAS_COMPUTE_32F;
   }
 #endif

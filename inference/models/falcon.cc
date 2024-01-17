@@ -248,7 +248,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                          falcon_config.hidden_size,
                          falcon_config.hidden_size / falcon_config.n_head,
                          ff.config.tensor_parallelism_degree,
-                         use_full_precision);
+                         true);
 
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->register_model_weights_loader(&ff, fileloader);

@@ -259,7 +259,7 @@ void ZeroInitializer::init_task(Task const *task,
                          w,
                          domain.get_volume(),
                          0.0f);
-    } else if (meta->data_types[i] == DT_B16) {
+    } else if (meta->data_types[i] == DT_BF16) {
       hip_bfloat16 *w = helperGetTensorPointerWO<hip_bfloat16>(
           regions[i], task->regions[i], FID_DATA, ctx, runtime);
       hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<hip_bfloat16>),

@@ -38,18 +38,10 @@ public:
   template <typename DT>
   void load_single_weight_tensor(FFModel *ff, Layer *l, int weight_idx);
 
-<<<<<<< HEAD:inference/file_loader.h
   void load_single_weight_tensor_b16(FFModel *ff, Layer *l, int weight_idx);
 
-  void load_quantization_weight(FFModel *ff,
-                                Layer *l,
-                                int weight_idx,
-                                bool use_full_precision);
-  void load_weights(FFModel *ff, bool use_full_precision);
-=======
   void load_quantization_weight(FFModel *ff, Layer *l, int weight_idx);
   void load_weights(FFModel *ff);
->>>>>>> origin/inference:include/flexflow/utils/file_loader.h
 
   void load_positions(FFModel *ff,
                       Tensor pt,
@@ -58,7 +50,6 @@ public:
                       int offset);
   // template <typename DT>
   // void load_from_file(DT *ptr, size_t size, std::string filepath);
-
 
 private:
   int num_heads, num_kv_heads, tensor_parallelism_degree;

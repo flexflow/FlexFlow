@@ -190,7 +190,7 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
                    weight.get_float_ptr(),
                    output.get_float_ptr(),
                    stream);
-  } else if (output.data_type == DT_B16) {
+  } else if (output.data_type == DT_BF16) {
     forward_kernel(m,
                    input.get_bfloat16_ptr(),
                    weight.get_bfloat16_ptr(),

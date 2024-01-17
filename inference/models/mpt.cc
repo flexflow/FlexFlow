@@ -255,7 +255,7 @@ void MPT::create_mpt_model(FFModel &ff,
                          mpt_config.hidden_size,
                          mpt_config.hidden_size / mpt_config.n_heads,
                          ff.config.tensor_parallelism_degree,
-                         use_full_precision);
+                         true);
 
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->register_model_weights_loader(&ff, fileloader);

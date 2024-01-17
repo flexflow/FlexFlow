@@ -45,9 +45,9 @@ def main(args):
     elif args.half_precision_only:
         data_types = ff.DataType.DT_HALF
     elif args.bfloat16_precision_only:
-        data_types = ff.DataType.DT_B16
+        data_types = ff.DataType.DT_BF16
     else:
-        data_types = (ff.DataType.DT_FLOAT, ff.DataType.DT_HALF, ff.DataType.DT_B16)
+        data_types = (ff.DataType.DT_FLOAT, ff.DataType.DT_HALF, ff.DataType.DT_BF16)
 
     for model_name in args.model_names:
         for data_type in data_types:

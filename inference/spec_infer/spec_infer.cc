@@ -105,7 +105,7 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--use-bfloat16-precision")) {
       use_bfloat16_precision = true;
-      data_type = DT_B16;
+      data_type = DT_BF16;
     }
     // verbose logging to stdout
     if (!strcmp(argv[i], "--verbose")) {

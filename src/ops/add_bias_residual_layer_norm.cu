@@ -234,7 +234,7 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
         m->elementwise_affine ? gamma.get_half_ptr() : nullptr,
         (m->elementwise_affine && m->use_bias) ? beta.get_half_ptr() : nullptr,
         stream);
-  } else if (m->input_type[0] == DT_B16) {
+  } else if (m->input_type[0] == DT_BF16) {
     AddBiasResidualLayerNorm::inference_kernel<__nv_bfloat16>(
         m,
         attn_bias_dim,

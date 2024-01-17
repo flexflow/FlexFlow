@@ -182,7 +182,7 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
                                     gamma.get_half_ptr(),
                                     m->use_bias ? beta.get_half_ptr() : nullptr,
                                     stream);
-  } else if (m->input_type[0] == DT_B16) {
+  } else if (m->input_type[0] == DT_BF16) {
     LayerNorm::forward_kernel<hip_bfloat16>(
         m,
         input.get_bfloat16_ptr(),

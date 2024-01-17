@@ -365,7 +365,7 @@ void Combine::forward_task(Task const *task,
   DataType data_type = m->input_type[0];
   if (data_type == DT_HALF) {
     forward_task_with_type<half>(task, regions, ctx, runtime);
-  } else if (data_type == DT_B16) {
+  } else if (data_type == DT_BF16) {
     forward_task_with_type<__ff_bfloat16>(task, regions, ctx, runtime);
   } else if (data_type == DT_FLOAT) {
     forward_task_with_type<float>(task, regions, ctx, runtime);

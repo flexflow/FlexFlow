@@ -81,7 +81,7 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--use-bfloat16-precision")) {
       use_bfloat16_precision = true;
-      data_type = DT_B16;
+      data_type = DT_BF16;
       continue;
     }
     // verbose logging to stdout
@@ -171,6 +171,8 @@ void FlexFlow::top_level_task(Task const *task,
       {file_paths.cache_folder_path, "configs", llm_model_name, "config.json"});
   std::string tokenizer_filepath =
       join_path({file_paths.cache_folder_path, "tokenizers", llm_model_name});
+
+  // bfloat16 shares same weight file with float32    
   std::string weights_filepath = join_path(
       {file_paths.cache_folder_path,
        "weights",

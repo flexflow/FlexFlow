@@ -480,7 +480,7 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   if (m->output_type[0] == DT_FLOAT) {
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  } else if (m->output_type[0] == DT_B16) {
+  } else if (m->output_type[0] == DT_BF16) {
     compute_type = CUBLAS_COMPUTE_32F;
   }
 #endif
@@ -792,7 +792,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
         output.get_float_ptr(),
         bias_ptr,
         stream);
-  } else if (input.data_type == DT_B16) {
+  } else if (input.data_type == DT_BF16) {
     __nv_bfloat16 const *bias_ptr =
         use_bias ? bias.get_bfloat16_ptr()
                  : static_cast<__nv_bfloat16 const *>(nullptr);

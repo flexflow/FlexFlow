@@ -506,7 +506,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   if (m->output_type[0] == DT_FLOAT) {
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  } else if (m->output_type[0] == DT_B16) {
+  } else if (m->output_type[0] == DT_BF16) {
     compute_type = CUBLAS_COMPUTE_32F;
   }
 #endif
@@ -640,7 +640,7 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
   cudaDataType_t compute_type = cublas_data_type;
-  if (m->output_type[0] == DT_B16) {
+  if (m->output_type[0] == DT_BF16) {
     compute_type = CUDA_R_32F;
   }
 #endif
@@ -799,7 +799,7 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       m->weightSize,
                       cudaMemcpyHostToDevice,
                       stream);
-    } else if (data_type == DT_B16) {
+    } else if (data_type == DT_BF16) {
       cudaMemcpyAsync(m->weight_ptr,
                       weight.get_bfloat16_ptr(),
                       m->weightSize,
@@ -927,7 +927,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   if (m->output_type[0] == DT_FLOAT) {
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  } else if (m->output_type[0] == DT_B16) {
+  } else if (m->output_type[0] == DT_BF16) {
     compute_type = CUBLAS_COMPUTE_32F;
   }
 #endif
@@ -1202,7 +1202,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         output.get_float_ptr(),
         bias_ptr,
         stream);
-  } else if (input.data_type == DT_B16) {
+  } else if (input.data_type == DT_BF16) {
     if (m->offload) {
       pre_build_weight_kernel<__nv_bfloat16>(
           m, weight, input.data_type, stream);

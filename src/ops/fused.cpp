@@ -428,7 +428,7 @@ __host__ void FusedOp::forward_task(Task const *task,
               m,
               my_input_accessor[0].get_float_ptr(),
               my_output_accessor[0].get_float_ptr());
-        } else if (m->input_type == DT_B16) {
+        } else if (m->input_type == DT_BF16) {
           Kernels::Softmax::forward_kernel_wrapper(
               m,
               my_input_accessor[0].get_bfloat16_ptr(),
@@ -820,7 +820,7 @@ __host__ void
               my_input_accessor[0].get_float_ptr(),
               my_output_accessor[0].get_float_ptr(),
               my_input_accessor[0].domain.get_volume());
-        } else if (m->data_type == DT_B16) {
+        } else if (m->data_type == DT_BF16) {
           ElementUnary::forward_kernel_wrapper(
               m,
               my_input_accessor[0].get_bfloat16_ptr(),
@@ -1050,7 +1050,7 @@ __host__ void
               m,
               my_input_accessor[0].get_float_ptr(),
               my_output_accessor[0].get_float_ptr());
-        } else if (m->input_type == DT_B16) {
+        } else if (m->input_type == DT_BF16) {
           Kernels::Softmax::forward_kernel_wrapper(
               m,
               my_input_accessor[0].get_bfloat16_ptr(),

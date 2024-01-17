@@ -562,7 +562,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
                                                          output.get_float_ptr(),
                                                          bias_ptr,
                                                          stream);
-  } else if (input.data_type == DT_B16) {
+  } else if (input.data_type == DT_BF16) {
     float const *bias_ptr = use_bias
                                 ? bias.get_bfloat16_ptr()
                                 : static_cast<hip_bfloat16 const *>(nullptr);

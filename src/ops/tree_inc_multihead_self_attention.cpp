@@ -570,7 +570,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
         output.get_float_ptr(),
         bias_ptr,
         stream);
-  } else if (input.data_type == DT_B16) {
+  } else if (input.data_type == DT_BF16) {
     if (m->offload) {
       pre_build_weight_kernel<hip_bfloat16>(m, weight, input.data_type, stream);
     }

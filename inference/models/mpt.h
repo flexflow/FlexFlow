@@ -70,7 +70,7 @@ public:
                                std::string const &weight_file_path,
                                InferenceMode mode,
                                GenerationConfig generationConfig,
-                               DataType DataType);
+                               DataType data_type);
 };
 
 }; // namespace FlexFlow

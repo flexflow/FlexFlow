@@ -319,7 +319,7 @@ void Softmax::forward_task(Task const *task,
     forward_kernel_wrapper(m, input.get_half_ptr(), output.get_half_ptr());
   } else if (m->output_type == DT_FLOAT) {
     forward_kernel_wrapper(m, input.get_float_ptr(), output.get_float_ptr());
-  } else if (m->output_type == DT_B16) {
+  } else if (m->output_type == DT_BF16) {
     forward_kernel_wrapper(
         m, input.get_bfloat16_ptr(), output.get_bfloat16_ptr());
   } else {
@@ -369,7 +369,7 @@ void Softmax::backward_task(Task const *task,
       return backward_task_with_dim<half, DIM>(task, regions, ctx, runtime);   \
     } else if (m->output_type == DT_FLOAT) {                                   \
       return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
-    } else if (m->output_type == DT_B16) {                                     \
+    } else if (m->output_type == DT_BF16) {                                     \
       return backward_task_with_dim<__ff_bfloat16, DIM>(                       \
           task, regions, ctx, runtime);                                        \
     } else {                                                                   \
@@ -435,7 +435,7 @@ void Softmax::inference_task(Task const *task,
     forward_kernel_wrapper(m, input.get_half_ptr(), output.get_half_ptr());
   } else if (m->output_type == DT_FLOAT) {
     forward_kernel_wrapper(m, input.get_float_ptr(), output.get_float_ptr());
-  } else if (m->output_type == DT_B16) {
+  } else if (m->output_type == DT_BF16) {
     forward_kernel_wrapper(
         m, input.get_bfloat16_ptr(), output.get_bfloat16_ptr());
   } else {

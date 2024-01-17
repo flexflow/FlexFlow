@@ -373,7 +373,7 @@ void Replicate::forward_task(Task const *task,
     forward_kernel<float>(input.get_float_ptr(),
                           output.get_float_ptr(),
                           input_domain.get_volume());
-  } else if (input.data_type == DT_B16) {
+  } else if (input.data_type == DT_BF16) {
     forward_kernel<__ff_bfloat16>(input.get_bfloat16_ptr(),
                                   output.get_bfloat16_ptr(),
                                   input_domain.get_volume());

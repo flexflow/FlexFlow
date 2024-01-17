@@ -182,7 +182,7 @@ void Sampling::forward_kernel_wrapper(SamplingMeta const *m,
                                     length,
                                     batch_size,
                                     stream);
-  } else if (input.data_type == DT_B16) {
+  } else if (input.data_type == DT_BF16) {
     Sampling::forward_kernel<__nv_bfloat16>(m,
                                             input.get_bfloat16_ptr(),
                                             indices.get_int32_ptr(),
@@ -278,7 +278,7 @@ SamplingMeta::SamplingMeta(FFHandler handler,
         0,                             // begin_bit
         data_type_size(data_type) * 8, // end_bit = sizeof(KeyT) * 8
         stream));
-  }  else if (data_type == DT_B16) {
+  }  else if (data_type == DT_BF16) {
     checkCUDA(cub::DeviceSegmentedRadixSort::SortPairsDescending(
         d_temp_storage,
         temp_storage_bytes,

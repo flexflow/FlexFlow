@@ -263,7 +263,7 @@ void OPT::create_opt_model(FFModel &ff,
       opt_config.hidden_size,
       opt_config.hidden_size / opt_config.num_attention_heads,
       ff.config.tensor_parallelism_degree,
-      use_full_precision);
+      true);
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->register_model_weights_loader(&ff, fileloader);
 

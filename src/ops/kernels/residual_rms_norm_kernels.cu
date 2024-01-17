@@ -204,7 +204,7 @@ void forward_kernel_wrapper(ResidualRMSNormMeta const *m,
                    residual_output.get_float_ptr(),
                    output.get_float_ptr(),
                    stream);
-  } else if (output.data_type == DT_B16) {
+  } else if (output.data_type == DT_BF16) {
     forward_kernel(m,
                    input1.get_bfloat16_ptr(),
                    input2.get_bfloat16_ptr(),

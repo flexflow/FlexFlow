@@ -516,7 +516,7 @@ miopenDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return miopenHalf;
-    case DT_B16:
+    case DT_BF16:
       return miopenBFloat16;
     case DT_FLOAT:
       return miopenFloat;
@@ -539,7 +539,7 @@ hipblasDatatype_t ff_to_cuda_datatype(DataType type) {
       return HIPBLAS_R_64F;
     case DT_INT32:
       return HIPBLAS_R_32I;
-    case DT_B16:
+    case DT_BF16:
       return HIPBLAS_R_16B;
     case DT_HALF:
       return HIPBLAS_R_16F;
@@ -553,7 +553,7 @@ ncclDataType_t ff_to_nccl_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return ncclHalf;
-    case DT_B16:
+    case DT_BF16:
       return ncclBfloat16;
     case DT_FLOAT:
       return ncclFloat;
