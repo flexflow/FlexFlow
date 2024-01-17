@@ -300,7 +300,8 @@ void FlexFlow::top_level_task(Task const *task,
                    max_tokens_per_batch,
                    max_sequence_length);
 
-  get_model_meta(file_paths, model_metadata, use_full_precision, use_bfloat16_precision);
+  get_model_meta(
+      file_paths, model_metadata, use_full_precision, use_bfloat16_precision);
 
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
