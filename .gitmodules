@@ -49,3 +49,6 @@
 [submodule "deps/boost_preprocessor"]
 	path = deps/boost_preprocessor
 	url = https://github.com/boostorg/preprocessor.git
+[submodule "deps/range-v3"]
+	path = deps/range-v3
+	url = git@github.com:ericniebler/range-v3.git
