@@ -64,8 +64,8 @@ OpTaskInvocation backward(LayerNormAttrs const &attrs) {
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permission::RO>(INPUT);
   auto output = acc.get_tensor<Permission::WO>(OUTPUT);
-  auto gamma = acc.get_tensor<Permission::WO>(GAMMA);
-  auto beta = acc.get_tensor<Permission::WO>(BETA);
+  auto gamma = acc.get_tensor<Permission::RW>(GAMMA);
+  auto beta = acc.get_tensor<Permission::RW>(BETA);
 
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto &state = acc.get_argument<LayerNormPerDeviceState>(PER_DEVICE_STATE);
@@ -136,9 +136,8 @@ static DeviceSpecific<LayerNormPerDeviceState>
   int num_replicas = 1;
   for (int i = 0; i < intput.shape.num_dims(); i++) {
     num_replicas *= input.shape.at(legion_dim_t(i));
-  }
   effective_num_elements = M;
-  effective_batch_size = input.shape.get_volume() / num_replicas / M;
+  effective_batch_size = input.shape.get_volume() / M;
 
   DeviceSpecific<LayerNormPerDeviceState> per_device_state =
       acc.create_device_specific<LayerNormPerDeviceState>(
@@ -184,7 +183,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
 
   // TODO how to handle gamma and beta, where are they from
-
+fwd_binding.bind(GAMMA, input_shape);
+fwd_binding.bind(BETA, input_shape);
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
   auto fwd_accessor = env.get_fwd_accessor(LAYERNORM_FWD_TASK_ID, fwd_binding);
