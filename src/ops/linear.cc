@@ -652,14 +652,15 @@ void Linear::inference_task(Task const *task,
                                             runtime);
     assert(bias.domain.get_volume() == static_cast<size_t>(out_dim));
   }
-  forward_kernel_wrapper(m,
-                         input.ptr,
-                         output.ptr,
-                         weight.ptr,
-                         bias.ptr,
-                         in_dim,
-                         out_dim,
-                         batch_size);
+  inference_kernel_wrapper(m,
+                          bc,
+                          input.ptr,
+                          output.ptr,
+                          weight.ptr,
+                          bias.ptr,
+                          in_dim,
+                          out_dim,
+                          batch_size);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -719,14 +720,6 @@ FutureMap Linear::peft_bwd(FFModel const &ff,
                         weights[0]->region,
                         ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
   launcher.add_field(2, FID_DATA);
-  if (use_bias) {
-    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region));
-    launcher.add_field(3, FID_DATA);
-  }
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -741,8 +734,8 @@ void Linear::peft_bwd_task(Task const *task,
   if (bc->num_active_peft_tokens() == 0) {
     return;
   }
-  assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
-  assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3 );
   if (m->quantization_type == DT_NONE) {
     assert(m->input_type[0] == m->weight_type[0]);
   }
