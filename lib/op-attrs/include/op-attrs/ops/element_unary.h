@@ -21,3 +21,9 @@ struct ElementUnaryAttrs {
 };
 FF_VISITABLE_STRUCT(ElementUnaryAttrs, op);
 CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
+
+}
+
+// namespace FlexFlow
+
+#endif
