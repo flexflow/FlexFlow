@@ -957,7 +957,6 @@ void ResidualLayerNorm::inference_task(
   std::string op_name_without_uid = ResidualLayerNorm::get_op_name_without_uid(m);
   std::cout << "INF " << op_name_without_uid << std::endl;
   if (bc->num_tokens == 0) {
-    printf("Zero tokens\n");
     return;
   }
 

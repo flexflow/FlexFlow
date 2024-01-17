@@ -1030,13 +1030,13 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
   std::string op_name_without_uid = IncMultiHeadSelfAttention::get_op_name_without_uid(m);
   std::cout << "BWD " << op_name_without_uid << std::endl;
 
-  if (op_name_without_uid == "layers_11_attention") {
-    load_tensor_from_file(
-      output_grad.get_float_ptr(), 
-      (output_grad.domain.get_volume()/128)*24, 
-      "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_layers.11.self_attn.o_proj.go_0.flexflow"
-    );
-  }
+  // if (op_name_without_uid == "layers_11_attention") {
+  //   load_tensor_from_file(
+  //     output_grad.get_float_ptr(), 
+  //     (output_grad.domain.get_volume()/128)*24, 
+  //     "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_layers.11.self_attn.o_proj.go_0.flexflow"
+  //   );
+  // }
 
   IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
       m,
