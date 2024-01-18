@@ -79,6 +79,7 @@ class ModelType(Enum):
     FALCON = 3004
     STARCODER = 3005
     MPT = 3006
+    MIXTRAL = 3007
 
 
 class OpType(Enum):

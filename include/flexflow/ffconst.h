@@ -189,7 +189,8 @@ enum ModelType {
   OPT = 3003,
   FALCON = 3004,
   STARCODER = 3005,
-  MPT = 3006
+  MPT = 3006,
+  MIXTRAL = 3007,
 };
 
 enum PMParameter {

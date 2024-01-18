@@ -10,6 +10,7 @@ set(CPU_SRC
   ../models/llama.cc
   ../models/opt.cc
   ../models/falcon.cc
+  ../models/mixtral.cc
   ../models/starcoder.cc
   ../models/mpt.cc)
 
