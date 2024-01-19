@@ -2398,13 +2398,6 @@ GraphOptimalViewSerialized
         sez.serialize(attn->name, strlen(attn->name));
         break;
       }
-      case OP_SOFTMAX: {
-        Softmax *softmax = (Softmax *)op;
-        sez.serialize(softmax->dim);
-        sez.serialize(strlen(softmax->name));
-        sez.serialize(softmax->name, strlen(softmax->name));
-        break;
-      }
       case OP_REPARTITION: {
         Repartition *repart = (Repartition *)op;
         sez.serialize(repart->repartition_dim);
@@ -3020,10 +3013,7 @@ void FFModel::deserialize_graph_optimal_view(
         break;
       }
       case OP_SOFTMAX: {
-        assert(num_inputs == 1);
-        int softmax_dim;
-        dez.deserialize(softmax_dim);
-        node = get_or_create_node<Softmax>(inputs[0], {softmax_dim});
+        node = Softmax::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_TRANSPOSE: {
@@ -3056,6 +3046,10 @@ void FFModel::deserialize_graph_optimal_view(
         int repartition_dim, repartition_degree;
         dez.deserialize(repartition_dim);
         dez.deserialize(repartition_degree);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Repartition>(
             inputs[0], {repartition_dim, repartition_degree});
         break;
