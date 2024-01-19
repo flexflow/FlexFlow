@@ -138,9 +138,9 @@ __global__ void LayerNormFusedForwardKernel(int64_t N,
   for (int64_t j = threadIdx.x; j < N; j += min(blockDim.x, kCUDANumThreads)) {
     int64_t const index = i * N + j;
     const T_ACC gamma_v =
-        gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
+        gamma == nullptr ? T_ACC(1.0f) : static_cast<T_ACC>(gamma[j]);
     const T_ACC beta_v =
-        beta == nullptr ? T_ACC(0) : static_cast<T_ACC>(beta[j]);
+        beta == nullptr ? T_ACC(0.0f) : static_cast<T_ACC>(beta[j]);
     Y[index] = (static_cast<T_ACC>(X[index]) - static_cast<T_ACC>(mean[i])) *
                    static_cast<T_ACC>(rstd[i]) * gamma_v +
                beta_v;
