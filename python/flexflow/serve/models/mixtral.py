@@ -37,9 +37,6 @@ class MixtralConfig:
         self.sliding_window = hf_config.sliding_window
         self.tie_word_embeddings = hf_config.tie_word_embeddings
         self.vocab_size = hf_config.vocab_size
-        # Standardized FlexFlow num heads fields below
-        self.num_attention_heads = self.n_head
-        self.num_key_value_heads = self.n_head_kv
 
 
 class FlexFlowMixtral(FlexFlowModel):
@@ -67,16 +64,16 @@ class FlexFlowMixtral(FlexFlowModel):
         )
 
         # Sanity checks
-        if self.mixtral_config.hidden_size % self.mixtral_config.n_head != 0:
+        if self.mixtral_config.hidden_size % self.mixtral_config.num_attention_heads != 0:
             raise ValueError(
-                f"Hidden size ({self.mixtral_config.hidden_size}) is not divisible by n_head ({self.mixtral_config.n_head})"
+                f"Hidden size ({self.mixtral_config.hidden_size}) is not divisible by num_attention_heads ({self.mixtral_config.num_attention_heads})"
             )
         if (
-            self.mixtral_config.n_head < self.ffconfig.tensor_parallelism_degree
-            or self.mixtral_config.n_head % self.ffconfig.tensor_parallelism_degree != 0
+            self.mixtral_config.num_attention_heads < self.ffconfig.tensor_parallelism_degree
+            or self.mixtral_config.num_attention_heads % self.ffconfig.tensor_parallelism_degree != 0
         ):
             raise ValueError(
-                f"Number of q attention heads ({self.mixtral_config.n_head}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
+                f"Number of q attention heads ({self.mixtral_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
 
         self.build_model(
@@ -116,7 +113,7 @@ class FlexFlowMixtral(FlexFlowModel):
             else:
                 token, attn_norm = ffmodel.residual_rms_norm(
                     token,
-                    w2,
+                    mlp_out,
                     self.llama_config.rms_norm_eps,
                     self.llama_config.hidden_size,
                     name=f"layers_{i}_input_layernorm",

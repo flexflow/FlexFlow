@@ -24,12 +24,16 @@ void MIXTRAL::create_mixtral_model(FFModel &ff,
                                    std::string const &model_config_file_path,
                                    std::string const &weight_file_path,
                                    InferenceMode mode,
+                                   GenerationConfig generation_config,
                                    bool use_full_precision) {
   MixtralConfig mixtral_config(model_config_file_path);
   mixtral_config.print();
 
-  if (ff.config.tensor_parallelism_degree > mixtral_config.n_head ||
-      mixtral_config.n_head % ff.config.tensor_parallelism_degree != 0) {
+  if (ff.config.tensor_parallelism_degree >
+          mixtral_config.num_attention_heads ||
+      mixtral_config.num_attention_heads %
+              ff.config.tensor_parallelism_degree !=
+          0) {
     assert(false && "The number of attention heads is smaller, or it is not "
                     "divisible by the tensor parallelism degree");
   }
@@ -38,7 +42,6 @@ void MIXTRAL::create_mixtral_model(FFModel &ff,
 
   Tensor input;
   {
-    // assert(mixtral_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
     int const token_dims[] = {
         (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
             ? BatchConfig::max_verify_tokens_per_batch()
@@ -47,9 +50,8 @@ void MIXTRAL::create_mixtral_model(FFModel &ff,
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 
-  std::vector<int> axes = {0};
-
   Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
+
   Tensor token = ff.embedding(input,
                               mixtral_config.vocab_size,
                               mixtral_config.hidden_size,
@@ -57,54 +59,48 @@ void MIXTRAL::create_mixtral_model(FFModel &ff,
                               use_full_precision ? DT_FLOAT : DT_HALF,
                               NULL,
                               embed_init,
-                              "word_embeddings");
+                              "embed_tokens");
 
-  Tensor mha = nullptr, mlp_output = nullptr;
-  Tensor res_ln_outputs[2] = {nullptr, nullptr};
+  Tensor mlp_out = nullptr;
 
-  for (int i = 0; i < mixtral_config.n_layer; i++) {
+  for (int i = 0; i < mixtral_config.num_hidden_layers; i++) {
     // set transformer layer id
     ff.set_transformer_layer_id(i);
 
     // step 1: attention
     Tensor att_norm = nullptr;
+    Tensor token_att_norm[2] = {nullptr, nullptr};
     if (i == 0) {
-      att_norm = ff.layer_norm(
+      att_norm = ff.rms_norm(
           token,
-          axes,
-          true,
-          mixtral_config.layer_norm_epsilon,
-          true,
+          mixtral_config.rms_norm_eps,
+          mixtral_config.hidden_size,
           DT_NONE,
           std::string("layers_" + std::to_string(i) + "_input_layernorm")
               .c_str());
     } else {
-      ff.residual_layer_norm(
+      ff.residual_rms_norm(
           token,
-          mha,
-          mlp_output,
-          res_ln_outputs,
-          true,
-          axes,
-          true,
-          mixtral_config.layer_norm_epsilon,
-          true,
+          mlp_out,
+          token_att_norm,
+          mixtral_config.rms_norm_eps,
+          mixtral_config.hidden_size,
           DT_NONE,
           std::string("layers_" + std::to_string(i) + "_input_layernorm")
               .c_str());
-      token = res_ln_outputs[0];
-      att_norm = res_ln_outputs[1];
+      token = token_att_norm[0];
+      att_norm = token_att_norm[1];
     }
 
+    Tensor mha;
     switch (mode) {
       case BEAM_SEARCH_MODE: {
-        mha = ff.spec_inc_multiquery_self_attention(
+        mha = ff.spec_inc_multihead_self_attention(
             att_norm,
             mixtral_config.hidden_size,
-            mixtral_config.n_head,
-            mixtral_config.n_head_kv,
-            mixtral_config.hidden_size / mixtral_config.n_head,
-            mixtral_config.hidden_size / mixtral_config.n_head,
+            mixtral_config.num_attention_heads,
+            mixtral_config.hidden_size / mixtral_config.num_attention_heads,
+            mixtral_config.hidden_size / mixtral_config.num_attention_heads,
             0.0f,    /*dropout*/
             false,   /*qkv_bias*/
             false,   /*final_bias*/
@@ -116,20 +112,18 @@ void MIXTRAL::create_mixtral_model(FFModel &ff,
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
             false,   /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers_" + std::to_string(i) + "_self_attn")
                 .c_str() /*name*/
         );
         break;
       }
-
       case TREE_VERIFY_MODE: {
-        mha = ff.inc_multiquery_self_attention_verify(
+        mha = ff.inc_multihead_self_attention_verify(
             att_norm,
             mixtral_config.hidden_size,
-            mixtral_config.n_head,
-            mixtral_config.n_head_kv,
-            mixtral_config.hidden_size / mixtral_config.n_head,
-            mixtral_config.hidden_size / mixtral_config.n_head,
+            mixtral_config.num_attention_heads,
+            mixtral_config.hidden_size / mixtral_config.num_attention_heads,
+            mixtral_config.hidden_size / mixtral_config.num_attention_heads,
             0.0f,    /*dropout*/
             false,   /*qkv_bias*/
             false,   /*final_bias*/
@@ -141,20 +135,18 @@ void MIXTRAL::create_mixtral_model(FFModel &ff,
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
             false,   /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers_" + std::to_string(i) + "_self_attn")
                 .c_str() /*name*/
         );
         break;
       }
-
       case INC_DECODING_MODE: {
-        mha = ff.inc_multiquery_self_attention(
+        mha = ff.inc_multihead_self_attention(
             att_norm,
             mixtral_config.hidden_size,
-            mixtral_config.n_head,
-            mixtral_config.n_head_kv,
-            mixtral_config.hidden_size / mixtral_config.n_head,
-            mixtral_config.hidden_size / mixtral_config.n_head,
+            mixtral_config.num_attention_heads,
+            mixtral_config.hidden_size / mixtral_config.num_attention_heads,
+            mixtral_config.hidden_size / mixtral_config.num_attention_heads,
             0.0f,    /*dropout*/
             false,   /*qkv_bias*/
             false,   /*final_bias*/
@@ -166,7 +158,7 @@ void MIXTRAL::create_mixtral_model(FFModel &ff,
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
             false,   /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers_" + std::to_string(i) + "_self_attn")
                 .c_str() /*name*/
         );
         break;
@@ -176,25 +168,24 @@ void MIXTRAL::create_mixtral_model(FFModel &ff,
       }
     }
 
-    Tensor dense_h_to_4h = ff.dense(
-        att_norm,
-        mixtral_config.hidden_size * 4,
-        AC_MODE_NONE,
-        false,
-        DT_NONE,
-        nullptr,
-        nullptr,
-        nullptr,
-        REG_MODE_NONE,
-        0.0f,
-        std::string("layers_" + std::to_string(i) + "_mlp_dense_h_to_4h")
-            .c_str());
-
-    dense_h_to_4h = ff.gelu(dense_h_to_4h);
-
-    mlp_output = ff.dense(
-        dense_h_to_4h,
+    // step 2: SILU activaion
+    Tensor token_ff_norm[2] = {nullptr, nullptr};
+    ff.residual_rms_norm(
+        token,
+        mha,
+        token_ff_norm,
+        mixtral_config.rms_norm_eps,
         mixtral_config.hidden_size,
+        DT_NONE,
+        std::string("layers_" + std::to_string(i) + "_post_attention_layernorm")
+            .c_str());
+    token = token_ff_norm[0];
+    Tensor ff_norm = token_ff_norm[1];
+
+    // MoE
+    Tensor gate = ff.dense(
+        ff_norm,
+        mixtral_config.num_local_experts,
         AC_MODE_NONE,
         false,
         DT_NONE,
@@ -203,52 +194,158 @@ void MIXTRAL::create_mixtral_model(FFModel &ff,
         nullptr,
         REG_MODE_NONE,
         0.0f,
-        std::string("layers_" + std::to_string(i) + "_mlp_dense_4h_to_h")
+        std::string("layers_" + std::to_string(i) + "_block_sparse_moe_gate")
             .c_str());
+    gate = ff.softmax(
+        gate,
+        0,
+        DT_NONE,
+        std::string("layers_" + std::to_string(i) + "_block_sparse_moe_softmax")
+            .c_str());
+
+    Tensor topk_out[2] = {nullptr, nullptr};
+    ff.top_k(
+        gate,
+        topk_out,
+        mixtral_config.num_experts_per_tok,
+        false,
+        std::string("layers_" + std::to_string(i) + "_block_sparse_moe_topk")
+            .c_str());
+    Tensor topk_values = topk_out[0];
+    Tensor topk_indices = topk_out[1];
+
+    Tensor grouped_tokens[mixtral_config.num_local_experts] = {nullptr};
+    ff.group_by(
+        ff_norm,
+        topk_indices,
+        grouped_tokens,
+        mixtral_config.num_local_experts,
+        0.0f,
+        std::string("layers_" + std::to_string(i) + "_block_sparse_moe_groupby")
+            .c_str());
+
+    Tensor aggregate_inputs[4 + mixtral_config.num_local_experts] = {nullptr};
+    for (int expert_idx = 0; expert_idx < mixtral_config.num_local_experts;
+         expert_idx++) {
+      Tensor w1 = ff.dense(grouped_tokens[expert_idx],
+                           mixtral_config.intermediate_size,
+                           AC_MODE_NONE,
+                           false,
+                           DT_NONE,
+                           nullptr,
+                           nullptr,
+                           nullptr,
+                           REG_MODE_NONE,
+                           0.0f,
+                           std::string("layers_" + std::to_string(i) +
+                                       "_block_sparse_moe_experts_" +
+                                       std::to_string(expert_idx) + "_w1")
+                               .c_str());
+
+      Tensor w3 = ff.dense(grouped_tokens[expert_idx],
+                           mixtral_config.intermediate_size,
+                           AC_MODE_NONE,
+                           false,
+                           DT_NONE,
+                           nullptr,
+                           nullptr,
+                           nullptr,
+                           REG_MODE_NONE,
+                           0.0f,
+                           std::string("layers_" + std::to_string(i) +
+                                       "_block_sparse_moe_experts_" +
+                                       std::to_string(expert_idx) + "_w3")
+                               .c_str());
+
+      Tensor multi =
+          ff.sigmoid_silu_multi(w1,
+                                w3,
+                                DT_NONE,
+                                std::string("layers_" + std::to_string(i) +
+                                            "_block_sparse_moe_experts_" +
+                                            std::to_string(expert_idx) + "ssm")
+                                    .c_str());
+
+      Tensor w2 = ff.dense(multi,
+                           mixtral_config.hidden_size,
+                           AC_MODE_NONE,
+                           false,
+                           DT_NONE,
+                           nullptr,
+                           nullptr,
+                           nullptr,
+                           REG_MODE_NONE,
+                           0.0f,
+                           std::string("layers_" + std::to_string(i) +
+                                       "_block_sparse_moe_experts_" +
+                                       std::to_string(expert_idx) + "_w2")
+                               .c_str());
+      aggregate_inputs[4 + expert_idx] = w2;
+    }
+
+    Tensor topk_values_reduced = ff.reduce_sum(topk_values, {0}, true);
+    topk_values = ff.divide(topk_values, topk_values_reduced);
+
+    aggregate_inputs[0] = topk_values;
+    aggregate_inputs[1] = topk_indices;
+    aggregate_inputs[2] = aggregate_inputs[3] = nullptr;
+    mlp_out = ff.aggregate(aggregate_inputs,
+                           mixtral_config.num_local_experts,
+                           0.0f,
+                           std::string("layers_" + std::to_string(i) +
+                                       "_block_sparse_moe_experts_aggregate")
+                               .c_str());
   }
   // final normalization and linear
-  ff.residual_layer_norm(token,
-                         mha,
-                         mlp_output,
-                         res_ln_outputs,
-                         true,
-                         axes,
-                         true,
-                         mixtral_config.layer_norm_epsilon,
-                         true,
-                         DT_NONE,
-                         "ln_f");
-  Tensor ln_f = res_ln_outputs[1];
+  Tensor final_rms_norm_output[2] = {nullptr, nullptr};
+  ff.residual_rms_norm(token,
+                       mlp_out,
+                       final_rms_norm_output,
+                       mixtral_config.rms_norm_eps,
+                       mixtral_config.hidden_size,
+                       DT_NONE,
+                       "norm");
 
-  Tensor lm_head = ff.dense(ln_f,
-                            mixtral_config.vocab_size,
-                            AC_MODE_NONE,
-                            false,
-                            DT_NONE,
-                            nullptr,
-                            nullptr,
-                            nullptr,
-                            REG_MODE_NONE,
-                            0.0f,
-                            "lm_head");
+  Tensor dense = ff.dense(final_rms_norm_output[1],
+                          mixtral_config.vocab_size,
+                          AC_MODE_NONE,
+                          false,
+                          DT_NONE,
+                          nullptr,
+                          nullptr,
+                          nullptr,
+                          REG_MODE_NONE,
+                          0.0f,
+                          "lm_head");
 
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {
-    Tensor softmax = ff.softmax(lm_head, -1);
-    output = ff.argmax(softmax, /*beam_Search*/ true);
+    Tensor softmax = ff.softmax(dense, -1);
+    // output = ff.beam_top_k(softmax, mixtral_config.max_beam_width, false);
+    // output = ff.argmax(softmax, /*beam_Search*/ true);
+    output = ff.arg_top_k(softmax, mixtral_config.max_beam_width, false, true);
+    // output = ff.top_k(softmax, )
   } else {
-    output = ff.argmax(lm_head, /*beam_Search*/ false);
+    // Tensor softmax = ff.softmax(dense, -1);
+    if (generation_config.do_sample) {
+      dense = ff.scalar_truediv(dense, generation_config.temperature, false);
+      Tensor softmax = ff.softmax(dense, -1);
+      output = ff.sampling(softmax, generation_config.topp);
+    } else {
+      // output = ff.arg_top_k(dense, /*k=*/1, false);
+      output = ff.argmax(dense, /*beam_Search*/ false);
+    }
   }
 
-  FileDataLoader *fileloader =
-      new FileDataLoader("",
-                         weight_file_path,
-                         mixtral_config.n_head,
-                         mixtral_config.n_head_kv,
-                         mixtral_config.hidden_size,
-                         mixtral_config.hidden_size / mixtral_config.n_head,
-                         ff.config.tensor_parallelism_degree,
-                         use_full_precision);
+  FileDataLoader *fileloader = new FileDataLoader(
+      "",
+      weight_file_path,
+      mixtral_config.num_attention_heads,
+      mixtral_config.num_key_value_heads,
+      mixtral_config.hidden_size,
+      mixtral_config.hidden_size / mixtral_config.num_attention_heads,
+      ff.config.tensor_parallelism_degree,
+      use_full_precision);
 
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->register_model_weights_loader(&ff, fileloader);
