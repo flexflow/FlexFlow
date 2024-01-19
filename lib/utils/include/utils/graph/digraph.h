@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
-#define _FLEXFLOW_UTILS_GRAPH_DIGRAPH_H
+#ifndef UTILS_GRAPH_INCLUDE_UTILS_GRAPH_DIGRAPH
+#define UTILS_GRAPH_INCLUDE_UTILS_GRAPH_DIGRAPH
 
 #include "cow_ptr_t.h"
 #include "digraph_interfaces.h"
@@ -11,53 +11,41 @@
 
 namespace FlexFlow {
 
-struct DiGraphView {
+struct DiGraphView : virtual public GraphView {
 public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
 
-  DiGraphView() = delete;
-
-  operator GraphView() const;
-
-  friend void swap(DiGraphView &, DiGraphView &);
+  DiGraphView(DiGraphView const &) = default;
+  DiGraphView &operator=(DiGraphView const &) = default;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-  friend bool is_ptr_equal(DiGraphView const &, DiGraphView const &);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IDiGraphView, T>::value,
                                  DiGraphView>::type
       create(Args &&...args) {
-    return DiGraphView(std::make_shared<T>(std::forward<Args>(args)...));
+    return DiGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
-  static DiGraphView
-      unsafe_create_without_ownership(IDiGraphView const &graphView);
+protected:
+  using GraphView::GraphView;
 
 private:
-  DiGraphView(std::shared_ptr<IDiGraphView const> ptr);
+  IDiGraphView const &get_ptr() const;
 
   friend struct GraphInternal;
-
-private:
-  std::shared_ptr<IDiGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraphView);
 
-struct DiGraph {
+struct DiGraph : virtual DiGraphView {
 public:
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
 
-  DiGraph() = delete;
   DiGraph(DiGraph const &) = default;
   DiGraph &operator=(DiGraph const &) = default;
-
-  operator DiGraphView() const;
-
-  friend void swap(DiGraph &, DiGraph &);
 
   Node add_node();
   void add_node_unsafe(Node const &);
@@ -76,13 +64,14 @@ public:
     return DiGraph(make_cow_ptr<T>());
   }
 
+protected:
+  using DiGraphView::DiGraphView;
+
 private:
-  DiGraph(cow_ptr_t<IDiGraph>);
+  IDiGraph &get_ptr();
+  IDiGraph const &get_ptr() const;
 
   friend struct GraphInternal;
-
-private:
-  cow_ptr_t<IDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DiGraph);
 

@@ -11,10 +11,10 @@ TEST_CASE_TEMPLATE("MultiDiGraph implementations", T, AdjacencyMultiDiGraph) {
   std::vector<Node> n = repeat(3, [&] { return g.add_node(); });
   std::vector<NodePort> p = repeat(3, [&] { return g.add_node_port(); });
 
-  std::vector<MultiDiEdge> e = {{n[0], n[1], p[0], p[1]},
-                                {n[0], n[2], p[0], p[2]},
-                                {n[2], n[0], p[2], p[0]},
-                                {n[2], n[1], p[2], p[1]}};
+  std::vector<MultiDiEdge> e = {{n[1], p[1], n[0], p[0]},
+                                {n[2], p[2], n[0], p[0]},
+                                {n[0], p[0], n[2], p[2]},
+                                {n[1], p[1], n[2], p[2]}};
   for (MultiDiEdge const &edge : e) {
     g.add_edge(edge);
   }
