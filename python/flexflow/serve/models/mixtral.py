@@ -240,6 +240,8 @@ class FlexFlowMixtral(FlexFlowModel):
                 )
                 expert_predictions.append(w2)
             assert len(expert_predictions) == self.mixtral_config.num_local_experts
+            topk_values_reduced = ffmodel.reduce_sum(topk_values, [0], keepdims=True)
+            topk_values = ffmodel.divide(topk_values, topk_values_reduced)
             mlp_out = ffmodel.aggregate(
                 topk_values,
                 topk_indices,
