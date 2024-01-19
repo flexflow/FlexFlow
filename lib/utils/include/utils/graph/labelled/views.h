@@ -42,8 +42,7 @@ public:
   //   return g.query_edges(q);
   // }
 
-  std::unordered_set<MultiDiEdge>
-      query_edges(MultiDiEdgeQuery const &q) const {
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
     return g.query_edges(q);
   }
 

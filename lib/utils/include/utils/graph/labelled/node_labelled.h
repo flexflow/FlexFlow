@@ -28,7 +28,7 @@ public:
   NodeLabelledMultiDiGraphView &
       operator=(NodeLabelledMultiDiGraphView const &) = default;
 
-   NodeLabel const &at(Node const &n) const {
+  NodeLabel const &at(Node const &n) const {
     return get_ptr().at(n);
   }
 
@@ -36,8 +36,7 @@ public:
     return get_ptr().query_nodes(q);
   }
 
-  std::unordered_set<MultiDiEdge>
-      query_edges(MultiDiEdgeQuery const &q) const {
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
     return get_ptr().query_edges(q);
   }
 
