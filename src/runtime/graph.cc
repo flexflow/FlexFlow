@@ -2642,6 +2642,10 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_CONCAT: {
         int legion_axis;
         dez.deserialize(legion_axis);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Concat>(
             {std::begin(inputs), std::begin(inputs) + num_inputs},
             {legion_axis});
