@@ -3043,6 +3043,10 @@ void FFModel::deserialize_graph_optimal_view(
         int combine_dim, combine_degree;
         dez.deserialize(combine_dim);
         dez.deserialize(combine_degree);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Combine>(inputs[0],
                                            {combine_dim, combine_degree});
         break;
@@ -3061,6 +3065,10 @@ void FFModel::deserialize_graph_optimal_view(
         int replicate_dim, replicate_degree;
         dez.deserialize(replicate_dim);
         dez.deserialize(replicate_degree);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Replicate>(inputs[0],
                                              {replicate_dim, replicate_degree});
         break;
@@ -3070,6 +3078,10 @@ void FFModel::deserialize_graph_optimal_view(
         int reduction_dim, reduction_degree;
         dez.deserialize(reduction_dim);
         dez.deserialize(reduction_degree);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Reduction>(inputs[0],
                                              {reduction_dim, reduction_degree});
         break;
@@ -3078,6 +3090,10 @@ void FFModel::deserialize_graph_optimal_view(
         assert(num_inputs == 1);
         int allreduce_dim;
         dez.deserialize(allreduce_dim);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<AllReduce>(inputs[0], {allreduce_dim});
         break;
       }
@@ -3091,6 +3107,10 @@ void FFModel::deserialize_graph_optimal_view(
           dez.deserialize(info);
           parallel_ops.push_back(info);
         }
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<FusedParallelOp>(inputs[0], {parallel_ops});
         break;
       }

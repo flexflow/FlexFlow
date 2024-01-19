@@ -437,7 +437,7 @@ class LLM:
 
     def stop_server(self):
         self.rm.stop_server()
-        print("Background server stoped.")
+        print("Background server stopped.")
 
     def __enter__(self):
         # Start the server when entering the context
