@@ -2662,6 +2662,10 @@ void FFModel::deserialize_graph_optimal_view(
           dez.deserialize(dim_size);
           splits.push_back(dim_size);
         }
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Split>(inputs[0], {splits, legion_axis});
         break;
       }
