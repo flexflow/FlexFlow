@@ -2,6 +2,9 @@
 set -x
 set -e
 
+# Enable backtrace in case we run into a segfault or assertion failure
+export LEGION_BACKTRACE=1
+
 # Default to single-node, single GPU
 GPUS=${1:-1} # number of GPUS per node
 NUM_NODES=${2:-1} # number of nodes
@@ -88,5 +91,3 @@ $EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat_model.py -config-f
 $EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat_seq_model.py -config-file /tmp/flexflow/training_tests/test_params.json
 $EXE "$FF_HOME"/examples/python/native/cifar10_cnn_concat.py -config-file /tmp/flexflow/training_tests/test_params_40_epochs_no_batch_size.json
 
-# Enable backtrace in case we run into a segfault or assertion failure
-export LEGION_BACKTRACE=1
