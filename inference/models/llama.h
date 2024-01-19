@@ -83,7 +83,7 @@ public:
                                  std::string const &weight_file_path,
                                  InferenceMode mode,
                                  GenerationConfig generation_config,
-                                 bool use_full_precision = false);
+                                 DataType data_type);
 };
 
 }; // namespace FlexFlow

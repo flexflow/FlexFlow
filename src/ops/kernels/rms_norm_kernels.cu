@@ -139,7 +139,7 @@ __global__ void NormKernel(int64_t N, T const *X, T const *rstd, T *Y) {
   using T_ACC = T;
   const int64_t i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
+    int64_t const index = i * N + j;
     Y[index] = static_cast<T_ACC>(X[index]) * static_cast<T_ACC>(rstd[i]);
   }
 }
@@ -186,7 +186,7 @@ __global__ void RMSNormFusedForwardKernel(int64_t N,
 
   using T_ACC = T;
   for (int64_t j = threadIdx.x; j < N; j += min(blockDim.x, kCUDANumThreads)) {
-    const int64_t index = i * N + j;
+    int64_t const index = i * N + j;
     Y[index] = static_cast<T_ACC>(X[index]) * static_cast<T_ACC>(rms[i]);
     output[index] = Y[index] * weights[index % N];
   }
@@ -245,6 +245,12 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
                    input.get_float_ptr(),
                    weight.get_float_ptr(),
                    output.get_float_ptr(),
+                   stream);
+  } else if (output.data_type == DT_BF16) {
+    forward_kernel(m,
+                   input.get_bfloat16_ptr(),
+                   weight.get_bfloat16_ptr(),
+                   output.get_bfloat16_ptr(),
                    stream);
   } else {
     assert(false && "Unsupported data type");

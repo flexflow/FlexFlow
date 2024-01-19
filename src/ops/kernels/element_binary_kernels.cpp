@@ -82,8 +82,24 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
   }
   // print_tensor<float>(in1_ptr, in1_domain.get_volume(), "input1:");
   // print_tensor<float>(in2_ptr, in2_domain.get_volume(), "input2:");
-  Internal::forward_kernel(
-      m, in1.get_float_ptr(), in2.get_float_ptr(), out.get_float_ptr(), stream);
+  if (out.data_type == DT_HALF) {
+    Internal::forward_kernel(
+        m, in1.get_half_ptr(), in2.get_half_ptr(), out.get_half_ptr(), stream);
+  } else if (out.data_type == DT_FLOAT) {
+    Internal::forward_kernel(m,
+                             in1.get_float_ptr(),
+                             in2.get_float_ptr(),
+                             out.get_float_ptr(),
+                             stream);
+  } else if (out.data_type == DT_BF16) {
+    Internal::forward_kernel(m,
+                             in1.get_bfloat16_ptr(),
+                             in2.get_bfloat16_ptr(),
+                             out.get_bfloat16_ptr(),
+                             stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
   // print_tensor<float>(out_ptr, in1_domain.get_volume(), "output:");
   if (m->profiling) {
     checkCUDA(hipEventRecord(t_end, stream));

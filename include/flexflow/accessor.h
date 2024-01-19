@@ -5,15 +5,24 @@
 
 #if defined(FF_USE_CUDA)
 #include <cuda_fp16.h>
+#include <cuda_bf16.h>
 #elif defined(FF_USE_HIP_CUDA)
 #include <cuda_fp16.h>
+#include <cuda_bf16.h>
 #elif defined(FF_USE_HIP_ROCM)
 #include <hip/hip_fp16.h>
+#include <hip_bfloat16.h>
 #endif
 
 // using namespace Legion;
 
 namespace FlexFlow {
+
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+typedef __nv_bfloat16 __ff_bfloat16;
+#elif defined(FF_USE_HIP_ROCM)
+typedef hip_bfloat16 __ff_bfloat16;
+#endif
 
 template <typename FT, int N, typename T = Legion::coord_t>
 using AccessorRO =
@@ -61,6 +70,7 @@ public:
   float *get_float_ptr() const;
   double *get_double_ptr() const;
   half *get_half_ptr() const;
+  __ff_bfloat16 *get_bfloat16_ptr() const;
   char *get_byte_ptr() const;
   DataType data_type;
   Legion::Domain domain;
@@ -80,6 +90,7 @@ public:
   float const *get_float_ptr() const;
   double const *get_double_ptr() const;
   half const *get_half_ptr() const;
+  __ff_bfloat16 const *get_bfloat16_ptr() const;
   char const *get_byte_ptr() const;
   DataType data_type;
   Legion::Domain domain;

@@ -35,6 +35,7 @@ class DataType(Enum):
     DT_HALF = 43
     DT_FLOAT = 44
     DT_DOUBLE = 45
+    DT_BF16 = 48
     DT_NONE = 49
 
 

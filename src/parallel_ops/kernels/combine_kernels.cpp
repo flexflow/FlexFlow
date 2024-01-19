@@ -57,6 +57,9 @@ template void forward_kernel<half>(half const *input_ptr,
 template void forward_kernel<float>(float const *input_ptr,
                                     float *output_ptr,
                                     size_t num_elements);
+template void forward_kernel<hip_bfloat16>(hip_bfloat16 const *input_ptr,
+                                           hip_bfloat16 *output_ptr,
+                                           size_t num_elements);
 template void forward_kernel<double>(double const *input_ptr,
                                      double *output_ptr,
                                      size_t num_elements);

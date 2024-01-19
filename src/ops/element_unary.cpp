@@ -314,6 +314,12 @@ template void
                                                   int64_t *output_ptr,
                                                   size_t num_elements);
 
+template void ElementUnary::forward_kernel_wrapper<hip_bfloat16>(
+    ElementUnaryMeta const *m,
+    hip_bfloat16 const *input_ptr,
+    hip_bfloat16 *output_ptr,
+    size_t num_elements);
+
 template void
     ElementUnary::backward_kernel_wrapper<float>(ElementUnaryMeta const *m,
                                                  float const *input_ptr,

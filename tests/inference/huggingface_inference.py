@@ -26,6 +26,9 @@ def main():
     parser.add_argument(
         "--use-full-precision", action="store_true", help="Use full precision"
     )
+    parser.add_argument(
+        "--use-bfloat16-precision", action="store_true", help="Use bf16 precision"
+    )
     parser.add_argument("--do-sample", action="store_true", help="Use sampling")
     parser.add_argument("--gpu", action="store_true", help="Run on GPU")
     args = parser.parse_args()
@@ -47,7 +50,11 @@ def main():
             return
 
     # Set default tensor type depending on argument indicating the float type to use
-    if not args.use_full_precision:
+    if args.use_full_precision:
+        torch.set_default_tensor_type(torch.FloatTensor)
+    elif args.use_bfloat16_precision:
+        torch.set_default_tensor_type(torch.BFloat16Tensor)
+    else:
         torch.set_default_tensor_type(torch.HalfTensor)
 
     # Run huggingface model

@@ -123,6 +123,16 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
                                   length,
                                   batch_size,
                                   stream);
+  } else if (input.data_type == DT_BF16) {
+    ArgMax::forward_kernel<__nv_bfloat16>(
+        m,
+        input.get_bfloat16_ptr(),
+        indices.get_int32_ptr(),
+        m->probs,
+        m->beam_search ? parent.get_int32_ptr() : nullptr,
+        length,
+        batch_size,
+        stream);
   } else {
     assert(false && "Unsupported data type");
   }
@@ -153,20 +163,27 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
 
   size_t d_offsets_size = batch_size;
   size_t prob_size = batch_size;
-  assert(data_type == DT_FLOAT || data_type == DT_HALF);
+  assert(data_type == DT_FLOAT || data_type == DT_HALF || data_type == DT_BF16);
   size_t total_size =
       d_offsets_size * sizeof(int) +
       (data_type == DT_FLOAT
            ? sizeof(cub::KeyValuePair<int, float>) * batch_size
-           : sizeof(cub::KeyValuePair<int, half>) * batch_size) +
+           : (data_type == DT_HALF
+                  ? sizeof(cub::KeyValuePair<int, half>) * batch_size
+                  : sizeof(cub::KeyValuePair<int, __nv_bfloat16>) *
+                        batch_size)) +
       prob_size * sizeof(float);
   gpu_mem_allocator.create_legion_instance(reserveInst, total_size);
   d_offsets = gpu_mem_allocator.allocate_instance<int>(d_offsets_size);
   d_out = data_type == DT_FLOAT
               ? gpu_mem_allocator.allocate_instance_untyped(
                     batch_size * sizeof(cub::KeyValuePair<int, float>))
-              : gpu_mem_allocator.allocate_instance_untyped(
-                    batch_size * sizeof(cub::KeyValuePair<int, half>));
+              : (data_type == DT_HALF
+                     ? gpu_mem_allocator.allocate_instance_untyped(
+                           batch_size * sizeof(cub::KeyValuePair<int, half>))
+                     : gpu_mem_allocator.allocate_instance_untyped(
+                           batch_size *
+                           sizeof(cub::KeyValuePair<int, __nv_bfloat16>)));
   probs = gpu_mem_allocator.allocate_instance<float>(prob_size);
   // init offset
   int parallelism = total_ele;
@@ -193,6 +210,16 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
         temp_storage_bytes,
         input.get_half_ptr(),
         static_cast<cub::KeyValuePair<int, half> *>(d_out),
+        batch_size,
+        d_offsets,
+        d_offsets + 1,
+        stream));
+  } else if (data_type == DT_BF16) {
+    checkCUDA(cub::DeviceSegmentedReduce::ArgMax(
+        d_temp_storage,
+        temp_storage_bytes,
+        input.get_bfloat16_ptr(),
+        static_cast<cub::KeyValuePair<int, __nv_bfloat16> *>(d_out),
         batch_size,
         d_offsets,
         d_offsets + 1,

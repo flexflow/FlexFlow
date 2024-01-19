@@ -124,6 +124,16 @@ void forward_kernel_wrapper(LinearMeta const *m,
                                    out_dim,
                                    batch_size,
                                    stream);
+  } else if (m->input_type[0] == DT_BF16) {
+    Internal::forward_kernel<hip_bfloat16>(m,
+                                           input_ptr,
+                                           output_ptr,
+                                           weight_ptr,
+                                           bias_ptr,
+                                           in_dim,
+                                           out_dim,
+                                           batch_size,
+                                           stream);
   }
 
   if (m->profiling) {
@@ -189,6 +199,19 @@ void backward_kernel_wrapper(LinearMeta const *m,
                                     out_dim,
                                     batch_size,
                                     stream);
+  } else if (m->input_type[0] == DT_BF16) {
+    Internal::backward_kernel<hip_bfloat16>(m,
+                                            input_ptr,
+                                            input_grad_ptr,
+                                            output_ptr,
+                                            output_grad_ptr,
+                                            kernel_ptr,
+                                            kernel_grad_ptr,
+                                            bias_grad_ptr,
+                                            in_dim,
+                                            out_dim,
+                                            batch_size,
+                                            stream);
   }
 
   if (m->profiling) {

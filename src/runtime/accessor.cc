@@ -77,6 +77,15 @@ half const *GenericTensorAccessorR::get_half_ptr() const {
   }
 }
 
+__ff_bfloat16 const *GenericTensorAccessorR::get_bfloat16_ptr() const {
+  if (data_type == DT_BF16) {
+    return static_cast<__ff_bfloat16 const *>(ptr);
+  } else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<__ff_bfloat16 const *>(nullptr);
+  }
+}
+
 char const *GenericTensorAccessorR::get_byte_ptr() const {
   if (data_type == DT_INT4 || data_type == DT_INT8) {
     return static_cast<char const *>(ptr);
@@ -162,6 +171,15 @@ half *GenericTensorAccessorW::get_half_ptr() const {
   } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<half *>(nullptr);
+  }
+}
+
+__ff_bfloat16 *GenericTensorAccessorW::get_bfloat16_ptr() const {
+  if (data_type == DT_BF16) {
+    return static_cast<__ff_bfloat16 *>(ptr);
+  } else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<__ff_bfloat16 *>(nullptr);
   }
 }
 
@@ -271,6 +289,11 @@ GenericTensorAccessorR
       ptr = helperGetTensorPointerRO<half>(region, req, fid, ctx, runtime);
       break;
     }
+    case DT_BF16: {
+      ptr = helperGetTensorPointerRO<__ff_bfloat16>(
+          region, req, fid, ctx, runtime);
+      break;
+    }
     case DT_FLOAT: {
       ptr = helperGetTensorPointerRO<float>(region, req, fid, ctx, runtime);
       break;
@@ -317,6 +340,11 @@ GenericTensorAccessorW
       ptr = helperGetTensorPointerWO<half>(region, req, fid, ctx, runtime);
       break;
     }
+    case DT_BF16: {
+      ptr = helperGetTensorPointerWO<__ff_bfloat16>(
+          region, req, fid, ctx, runtime);
+      break;
+    }
     case DT_FLOAT: {
       ptr = helperGetTensorPointerWO<float>(region, req, fid, ctx, runtime);
       break;
@@ -361,6 +389,11 @@ GenericTensorAccessorW
     }
     case DT_HALF: {
       ptr = helperGetTensorPointerRW<half>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_BF16: {
+      ptr = helperGetTensorPointerRW<__ff_bfloat16>(
+          region, req, fid, ctx, runtime);
       break;
     }
     case DT_FLOAT: {

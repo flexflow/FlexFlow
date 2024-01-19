@@ -50,6 +50,11 @@ template void forward_kernel<half>(half const *input_ptr,
 template void forward_kernel<float>(float const *input_ptr,
                                     float *output_ptr,
                                     size_t num_elements);
+
+template void forward_kernel<__nv_bfloat16>(__nv_bfloat16 const *input_ptr,
+                                            __nv_bfloat16 *output_ptr,
+                                            size_t num_elements);
+
 template void forward_kernel<double>(double const *input_ptr,
                                      double *output_ptr,
                                      size_t num_elements);

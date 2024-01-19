@@ -24,7 +24,7 @@ void OPT::create_opt_model(FFModel &ff,
                            std::string const &model_config_file_path,
                            std::string const &weight_file_path,
                            InferenceMode mode,
-                           bool use_full_precision) {
+                           DataType data_type) {
   OPTConfig opt_config(model_config_file_path);
   opt_config.print();
 
@@ -58,20 +58,19 @@ void OPT::create_opt_model(FFModel &ff,
                               opt_config.vocab_size,
                               opt_config.word_embed_proj_dim,
                               AGGR_MODE_NONE,
-                              use_full_precision ? DT_FLOAT : DT_HALF,
+                              data_type,
                               NULL,
                               embed_init,
                               "embed_tokens");
 
-  Tensor positional_embedding =
-      ff.embedding(position_input,
-                   opt_config.max_position_embeddings,
-                   opt_config.hidden_size,
-                   AGGR_MODE_NONE,
-                   use_full_precision ? DT_FLOAT : DT_HALF,
-                   NULL,
-                   embed_init,
-                   "embed_positions");
+  Tensor positional_embedding = ff.embedding(position_input,
+                                             opt_config.max_position_embeddings,
+                                             opt_config.hidden_size,
+                                             AGGR_MODE_NONE,
+                                             data_type,
+                                             NULL,
+                                             embed_init,
+                                             "embed_positions");
 
   Tensor fc2 = nullptr, added = nullptr;
   Tensor res_ln_outputs[2] = {nullptr, nullptr};
@@ -263,7 +262,7 @@ void OPT::create_opt_model(FFModel &ff,
       opt_config.hidden_size,
       opt_config.hidden_size / opt_config.num_attention_heads,
       ff.config.tensor_parallelism_degree,
-      use_full_precision);
+      true);
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->register_model_weights_loader(&ff, fileloader);
 
@@ -280,7 +279,7 @@ void OPT::create_opt_model(FFModel &ff,
                             opt_config.hidden_size /
                                 opt_config.num_attention_heads,
                             ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, use_full_precision);
+  fileloader.load_weights(&ff, false);
   std::cout << "------finished loading weights----------" << std::endl;
   im->init_operators_inference(&ff);
 #endif

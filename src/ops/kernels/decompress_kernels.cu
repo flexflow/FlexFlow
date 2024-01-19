@@ -209,10 +209,14 @@ template __global__ void decompress_int4_general_weights<float>(
     char const *input_weight_ptr, float *weight_ptr, int in_dim, int valueSize);
 template __global__ void decompress_int4_general_weights<half>(
     char const *input_weight_ptr, half *weight_ptr, int in_dim, int valueSize);
+template __global__ void decompress_int4_general_weights<__nv_bfloat16>(
+    char const *input_weight_ptr, __nv_bfloat16 *weight_ptr, int in_dim, int valueSize);
 template __global__ void decompress_int8_general_weights<float>(
     char const *input_weight_ptr, float *weight_ptr, int in_dim, int valueSize);
 template __global__ void decompress_int8_general_weights<half>(
     char const *input_weight_ptr, half *weight_ptr, int in_dim, int valueSize);
+template __global__ void decompress_int8_general_weights<__nv_bfloat16>(
+    char const *input_weight_ptr, __nv_bfloat16 *weight_ptr, int in_dim, int valueSize);
 template __global__ void
     decompress_int4_attention_weights<float>(char *input_weight_ptr,
                                              float *weight_ptr,
@@ -223,6 +227,12 @@ template __global__ void
 template __global__ void
     decompress_int4_attention_weights<half>(char *input_weight_ptr,
                                             half *weight_ptr,
+                                            int qProjSize,
+                                            int qSize,
+                                            int num_heads);
+template __global__ void
+    decompress_int4_attention_weights<__nv_bfloat16>(char *input_weight_ptr,
+                                            __nv_bfloat16 *weight_ptr,
                                             int qProjSize,
                                             int qSize,
                                             int num_heads);
@@ -240,6 +250,13 @@ template __global__ void
                                             int qProjSize,
                                             int qSize,
                                             int num_heads);
+
+template __global__ void
+    decompress_int8_attention_weights<__nv_bfloat16>(char *input_weight_ptr,
+                                            __nv_bfloat16 *weight_ptr,
+                                            int qProjSize,
+                                            int qSize,
+                                            int num_heads);                                            
 // template <typename T1, typename T2>
 // void decompress_weight_bias(T1 *input_weight_ptr,
 //                             T2 *weight_ptr,

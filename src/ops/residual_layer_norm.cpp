@@ -230,6 +230,18 @@ void ResidualLayerNorm::inference_kernel_wrapper(
         m->elementwise_affine ? gamma.get_half_ptr() : nullptr,
         (m->elementwise_affine && m->use_bias) ? beta.get_half_ptr() : nullptr,
         stream);
+  } else if (m->input_type[0] == DT_BF16) {
+    ResidualLayerNorm::inference_kernel<hip_bfloat16>(
+        m,
+        input.get_bfloat16_ptr(),
+        residual1.get_bfloat16_ptr(),
+        m->use_two_residuals ? residual2.get_bfloat16_ptr() : nullptr,
+        added_output.get_bfloat16_ptr(),
+        output.get_bfloat16_ptr(),
+        m->elementwise_affine ? gamma.get_bfloat16_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_bfloat16_ptr()
+                                               : nullptr,
+        stream);
   } else {
     assert(false && "unsupport datatype in layernorm");
   }

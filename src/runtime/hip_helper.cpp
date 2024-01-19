@@ -300,6 +300,33 @@ __host__ void
 }
 
 template <>
+__host__ void save_tensor(hip_bfloat16 const *ptr,
+                          size_t num_elements,
+                          char const *file_name) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  hip_bfloat16 *host_ptr;
+  checkCUDA(hipHostMalloc(&host_ptr,
+                          sizeof(hip_bfloat16) * num_elements,
+                          hipHostMallocPortable | hipHostMallocMapped));
+  checkCUDA(hipMemcpyAsync(host_ptr,
+                           ptr,
+                           sizeof(hip_bfloat16) * num_elements,
+                           hipMemcpyDeviceToHost,
+                           stream));
+  checkCUDA(hipDeviceSynchronize());
+  FILE *tensor_file;
+  tensor_file = fopen(file_name, "w");
+  assert(tensor_file != NULL);
+  for (unsigned i = 0; i < num_elements; i++) {
+    fprintf(tensor_file, "%.9f, ", (float)host_ptr[i]);
+  }
+
+  fclose(tensor_file);
+  checkCUDA(hipHostFree(host_ptr));
+}
+
+template <>
 __host__ void save_tensor(int32_t const *ptr,
                           size_t num_elements,
                           char const *file_name) {
@@ -489,6 +516,8 @@ miopenDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return miopenHalf;
+    case DT_BF16:
+      return miopenBFloat16;
     case DT_FLOAT:
       return miopenFloat;
     case DT_DOUBLE:
@@ -510,6 +539,10 @@ hipblasDatatype_t ff_to_cuda_datatype(DataType type) {
       return HIPBLAS_R_64F;
     case DT_INT32:
       return HIPBLAS_R_32I;
+    case DT_BF16:
+      return HIPBLAS_R_16B;
+    case DT_HALF:
+      return HIPBLAS_R_16F;
     default:
       assert(false && "Unspoorted cuda data type");
   }
@@ -520,6 +553,8 @@ ncclDataType_t ff_to_nccl_datatype(DataType type) {
   switch (type) {
     case DT_HALF:
       return ncclHalf;
+    case DT_BF16:
+      return ncclBfloat16;
     case DT_FLOAT:
       return ncclFloat;
     case DT_DOUBLE:
@@ -540,6 +575,9 @@ void handle_unimplemented_hip_kernel(OperatorType op_type) {
 
 template __global__ void
     assign_kernel<half>(half *ptr, coord_t size, half value);
+template __global__ void assign_kernel<hip_bfloat16>(hip_bfloat16 *ptr,
+                                                     coord_t size,
+                                                     hip_bfloat16 value);
 template __global__ void
     assign_kernel<float>(float *ptr, coord_t size, float value);
 template __global__ void
@@ -609,7 +647,9 @@ template __host__ void save_tensor<int64_t>(int64_t const *ptr,
                                             char const *file_name);
 template __host__ void
     save_tensor<half>(half const *ptr, size_t rect, char const *file_name);
-
+template __host__ void save_tensor<hip_bfloat16>(hip_bfloat16 const *ptr,
+                                                 size_t rect,
+                                                 char const *file_name);
 template __host__ float *download_tensor<float>(float const *ptr,
                                                 size_t num_elements);
 template __host__ half *download_tensor<half>(half const *ptr,

@@ -58,7 +58,9 @@ void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
                       ModelNames &model_names,
+                      DataType &data_type,
                       bool &use_full_precision,
+                      bool &use_bfloat16_precision,
                       bool &verbose,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
@@ -98,7 +100,12 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--use-full-precision")) {
       use_full_precision = true;
+      data_type = DT_FLOAT;
       continue;
+    }
+    if (!strcmp(argv[i], "--use-bfloat16-precision")) {
+      use_bfloat16_precision = true;
+      data_type = DT_BF16;
     }
     // verbose logging to stdout
     if (!strcmp(argv[i], "--verbose")) {
@@ -130,7 +137,8 @@ void parse_input_args(char **argv,
 
 void get_model_meta(FilePaths &file_paths,
                     ModelMeta &model_metadata,
-                    bool use_full_precision) {
+                    bool use_full_precision,
+                    bool use_bfloat16_precision) {
   if (model_metadata.model_names.llm_model_name.empty() ||
       model_metadata.model_names.ssm_model_names.size() == 0) {
     assert(false && "SpecInfer needs at least one LLM and one SSM for "
@@ -145,11 +153,13 @@ void get_model_meta(FilePaths &file_paths,
       join_path({file_paths.cache_folder_path,
                  "tokenizers",
                  model_metadata.model_names.llm_model_name});
-  model_metadata.llm_weights_path =
-      join_path({file_paths.cache_folder_path,
-                 "weights",
-                 model_metadata.model_names.llm_model_name,
-                 use_full_precision ? "full-precision" : "half-precision"});
+  model_metadata.llm_weights_path = join_path(
+      {file_paths.cache_folder_path,
+       "weights",
+       model_metadata.model_names.llm_model_name,
+       use_full_precision
+           ? "full-precision"
+           : (use_bfloat16_precision ? "full-precision" : "half-precision")});
 
   std::ifstream llm_config_file_handle(model_metadata.llm_model_config_path);
   if (!llm_config_file_handle.good()) {
@@ -196,11 +206,13 @@ void get_model_meta(FilePaths &file_paths,
                                              "config.json"});
     std::string ssm_tokenizer_path =
         join_path({file_paths.cache_folder_path, "tokenizers", ssm_model_name});
-    std::string ssm_weights_path =
-        join_path({file_paths.cache_folder_path,
-                   "weights",
-                   ssm_model_name,
-                   use_full_precision ? "full-precision" : "half-precision"});
+    std::string ssm_weights_path = join_path(
+        {file_paths.cache_folder_path,
+         "weights",
+         ssm_model_name,
+         use_full_precision
+             ? "full-precision"
+             : (use_bfloat16_precision ? "full-precision" : "half-precision")});
 
     std::ifstream ssm_config_file_handle(ssm_config_path);
     if (!ssm_config_file_handle.good()) {
@@ -265,7 +277,9 @@ void FlexFlow::top_level_task(Task const *task,
   FFConfig ffconfig;
   FilePaths file_paths;
   ModelMeta model_metadata;
+  DataType data_type = DT_HALF;
   bool use_full_precision = false;
+  bool use_bfloat16_precision = false;
   bool verbose = false;
   int max_requests_per_batch = 16;
   int max_tokens_per_batch = 256;
@@ -278,13 +292,16 @@ void FlexFlow::top_level_task(Task const *task,
                    argc,
                    file_paths,
                    model_metadata.model_names,
+                   data_type,
                    use_full_precision,
+                   use_bfloat16_precision,
                    verbose,
                    max_requests_per_batch,
                    max_tokens_per_batch,
                    max_sequence_length);
 
-  get_model_meta(file_paths, model_metadata, use_full_precision);
+  get_model_meta(
+      file_paths, model_metadata, use_full_precision, use_bfloat16_precision);
 
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
@@ -314,26 +331,26 @@ void FlexFlow::top_level_task(Task const *task,
                               model_metadata.llm_weights_path,
                               TREE_VERIFY_MODE,
                               generationConfig,
-                              use_full_precision);
+                              data_type);
   } else if (model_metadata.llm_model_type == ModelType::OPT) {
     OPT::create_opt_model(tree_model,
                           model_metadata.llm_model_config_path,
                           model_metadata.llm_weights_path,
                           TREE_VERIFY_MODE,
-                          use_full_precision);
+                          data_type);
   } else if (model_metadata.llm_model_type == ModelType::FALCON) {
     FALCON::create_falcon_model(tree_model,
                                 model_metadata.llm_model_config_path,
                                 model_metadata.llm_weights_path,
                                 TREE_VERIFY_MODE,
-                                use_full_precision);
+                                data_type);
   } else if (model_metadata.llm_model_type == ModelType::MPT) {
     MPT::create_mpt_model(tree_model,
                           model_metadata.llm_model_config_path,
                           model_metadata.llm_weights_path,
                           TREE_VERIFY_MODE,
                           generationConfig,
-                          use_full_precision);
+                          data_type);
   } else {
     assert(false && "Invalid LLM model type passed (or no type was passed).");
   }
@@ -358,27 +375,27 @@ void FlexFlow::top_level_task(Task const *task,
                                 model_metadata.ssm_model_weights_paths[ssm_id],
                                 BEAM_SEARCH_MODE,
                                 generationConfig,
-                                use_full_precision);
+                                data_type);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::OPT) {
       OPT::create_opt_model(beam_model,
                             model_metadata.ssm_model_config_paths[ssm_id],
                             model_metadata.ssm_model_weights_paths[ssm_id],
                             BEAM_SEARCH_MODE,
-                            use_full_precision);
+                            data_type);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::FALCON) {
       FALCON::create_falcon_model(
           beam_model,
           model_metadata.ssm_model_config_paths[ssm_id],
           model_metadata.ssm_model_weights_paths[ssm_id],
           BEAM_SEARCH_MODE,
-          use_full_precision);
+          data_type);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::MPT) {
       MPT::create_mpt_model(beam_model,
                             model_metadata.ssm_model_config_paths[ssm_id],
                             model_metadata.ssm_model_weights_paths[ssm_id],
                             BEAM_SEARCH_MODE,
                             generationConfig,
-                            use_full_precision);
+                            data_type);
     } else {
       assert(false && "Invalid SSM model type passed.");
     }

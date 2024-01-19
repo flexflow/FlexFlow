@@ -506,12 +506,15 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   if (m->output_type[0] == DT_FLOAT) {
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  } else if (m->output_type[0] == DT_BF16) {
+    compute_type = CUBLAS_COMPUTE_32F;
   }
 #endif
 
   // Step 1: Compute QKV projections
   {
-    DT alpha = 1.0f, beta = 0.0f;
+    typename cublasAlphaBetaType<DT>::type alpha = 1.0;
+    typename cublasAlphaBetaType<DT>::type beta = 0.0;
     // after transpositions
     int m_q = m->qProjSize * m->num_q_heads;
     int m_k = m->kProjSize * m->num_q_heads;
@@ -637,10 +640,14 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
   cudaDataType_t compute_type = cublas_data_type;
+  if (m->output_type[0] == DT_BF16) {
+    compute_type = CUDA_R_32F;
+  }
 #endif
   // Project to output, save result directly on output tensor
   {
-    DT alpha = 1.0f, beta = 0.0f;
+    typename cublasAlphaBetaType<DT>::type alpha = 1.0;
+    typename cublasAlphaBetaType<DT>::type beta = 0.0;
     // after transpositions
     int m_ = m->oProjSize;
     int k = m->vProjSize * m->num_q_heads;
@@ -792,6 +799,12 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       m->weightSize,
                       cudaMemcpyHostToDevice,
                       stream);
+    } else if (data_type == DT_BF16) {
+      cudaMemcpyAsync(m->weight_ptr,
+                      weight.get_bfloat16_ptr(),
+                      m->weightSize,
+                      cudaMemcpyHostToDevice,
+                      stream);
     } else {
       assert(false);
     }
@@ -914,6 +927,8 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
   if (m->output_type[0] == DT_FLOAT) {
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  } else if (m->output_type[0] == DT_BF16) {
+    compute_type = CUBLAS_COMPUTE_32F;
   }
 #endif
   // int num_requests = bc->num_active_requests();
@@ -938,7 +953,8 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
     // Step 1: compute query-key product QK.T/sqrt(d_k)
     {
       // Scale by sqrt(d_k) as per the original attention paper
-      DT alpha = 1.0f, beta = 0.0f;
+      typename cublasAlphaBetaType<DT>::type alpha = 1.0;
+      typename cublasAlphaBetaType<DT>::type beta = 0.0;
       if (*m->qk_prod_scaling) {
         alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
       }
@@ -1069,7 +1085,8 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
     // Step 5: Matmul softmax(QK.T/sqrt(d_k)) by V. Implemented as V @
     // softmax(QK.T/sqrt(d_k)).T
     {
-      DT alpha = 1.0f, beta = 0.0f;
+      typename cublasAlphaBetaType<DT>::type alpha = 1.0;
+      typename cublasAlphaBetaType<DT>::type beta = 0.0;
       // after transpositions
       int m_ = m->vProjSize;
       int n = num_new_tokens;
@@ -1183,6 +1200,24 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         m->offload ? static_cast<float *>(m->weight_ptr)
                    : weight.get_float_ptr(),
         output.get_float_ptr(),
+        bias_ptr,
+        stream);
+  } else if (input.data_type == DT_BF16) {
+    if (m->offload) {
+      pre_build_weight_kernel<__nv_bfloat16>(
+          m, weight, input.data_type, stream);
+    }
+    __nv_bfloat16 const *bias_ptr =
+        use_bias ? bias.get_bfloat16_ptr()
+                 : static_cast<__nv_bfloat16 const *>(nullptr);
+    Kernels::IncMultiHeadAttention::inference_kernel(
+        m,
+        bc,
+        shard_id,
+        input.get_bfloat16_ptr(),
+        m->offload ? static_cast<__nv_bfloat16 *>(m->weight_ptr)
+                   : weight.get_bfloat16_ptr(),
+        output.get_bfloat16_ptr(),
         bias_ptr,
         stream);
   } else {
@@ -1493,6 +1528,13 @@ template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<half>(
     DataType data_type,
     cudaStream_t stream);
 
+template void
+    Kernels::IncMultiHeadAttention::pre_build_weight_kernel<__nv_bfloat16>(
+        IncMultiHeadSelfAttentionMeta const *m,
+        GenericTensorAccessorR const weight,
+        DataType data_type,
+        cudaStream_t stream);
+
 template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<float>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
@@ -1514,6 +1556,17 @@ template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<half>(
     cudaStream_t stream);
 
 template void
+    Kernels::IncMultiHeadAttention::compute_o_prod_bias<__nv_bfloat16>(
+        IncMultiHeadSelfAttentionMeta const *m,
+        BatchConfig const *bc,
+        int shard_id,
+        __nv_bfloat16 *output_ptr,
+        __nv_bfloat16 const *weight_ptr,
+        __nv_bfloat16 const *bias_ptr,
+        int num_tokens,
+        cudaStream_t stream);
+
+template void
     Kernels::IncMultiHeadAttention::compute_attention_kernel_generation<float>(
         IncMultiHeadSelfAttentionMeta const *m,
         BatchConfig const *bc,
@@ -1526,4 +1579,11 @@ template void
         BatchConfig const *bc,
         half *output_ptr,
         cudaStream_t stream);
+
+template void
+    Kernels::IncMultiHeadAttention::compute_attention_kernel_generation<
+        __nv_bfloat16>(IncMultiHeadSelfAttentionMeta const *m,
+                       BatchConfig const *bc,
+                       __nv_bfloat16 *output_ptr,
+                       cudaStream_t stream);
 }; // namespace FlexFlow

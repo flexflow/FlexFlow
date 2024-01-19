@@ -380,6 +380,11 @@ void Reduction::forward_task(Task const *task,
                           output.get_float_ptr(),
                           num_elements,
                           num_replicas);
+  } else if (input.data_type == DT_BF16) {
+    forward_kernel<__ff_bfloat16>(input.get_bfloat16_ptr(),
+                                  output.get_bfloat16_ptr(),
+                                  num_elements,
+                                  num_replicas);
   } else {
     assert(false && "Unspported data type");
   }

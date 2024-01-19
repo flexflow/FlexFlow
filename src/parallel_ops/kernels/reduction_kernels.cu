@@ -71,6 +71,13 @@ template __global__ void reduction_forward_kernel<half>(half const *input_ptr,
                                                         half *output_ptr,
                                                         size_t num_elements,
                                                         size_t num_replicas);
+
+template __global__ void
+    reduction_forward_kernel<__nv_bfloat16>(__nv_bfloat16 const *input_ptr,
+                                            __nv_bfloat16 *output_ptr,
+                                            size_t num_elements,
+                                            size_t num_replicas);
+
 template void forward_kernel<float>(float const *input_ptr,
                                     float *output_ptr,
                                     size_t num_elements,
@@ -79,6 +86,12 @@ template void forward_kernel<half>(half const *input_ptr,
                                    half *output_ptr,
                                    size_t num_elements,
                                    size_t num_replicas);
+
+template void forward_kernel<__nv_bfloat16>(__nv_bfloat16 const *input_ptr,
+                                            __nv_bfloat16 *output_ptr,
+                                            size_t num_elements,
+                                            size_t num_replicas);
+
 template void backward_kernel<float>(float const *output_grad_ptr,
                                      float *input_grad_ptr,
                                      size_t num_elements);

@@ -80,6 +80,14 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
                                        input1.get_half_ptr(),
                                        input2.get_half_ptr(),
                                        output.get_half_ptr());
+  } else if (m->input_type[0] == DT_BF16) {
+    SigmoidSiluMultiKernel<<<GET_BLOCKS(num_elements),
+                             min(CUDA_NUM_THREADS, num_elements),
+                             0,
+                             stream>>>(input1.domain.get_volume(),
+                                       input1.get_bfloat16_ptr(),
+                                       input2.get_bfloat16_ptr(),
+                                       output.get_bfloat16_ptr());
   } else {
     assert(false && "unsupport datatype in SigmoidSiluMulti");
   }

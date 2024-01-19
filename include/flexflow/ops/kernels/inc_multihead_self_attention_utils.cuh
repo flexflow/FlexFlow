@@ -23,6 +23,25 @@ struct half8 {
   half c;
   half d;
 };
+
+struct __nv_bfloat164 {
+  __nv_bfloat16 x;
+  __nv_bfloat16 y;
+  __nv_bfloat16 z;
+  __nv_bfloat16 w;
+};
+
+struct __nv_bfloat168 {
+  __nv_bfloat16 x;
+  __nv_bfloat16 y;
+  __nv_bfloat16 z;
+  __nv_bfloat16 w;
+  __nv_bfloat16 a;
+  __nv_bfloat16 b;
+  __nv_bfloat16 c;
+  __nv_bfloat16 d;
+};
+
 struct float8 {
   float x;
   float y;
@@ -61,6 +80,18 @@ template <>
 struct VEC_K<half, 4> {
   using Type = half4;
 };
+template <>
+struct VEC_K<__nv_bfloat16, 1> {
+  using Type = __nv_bfloat16;
+};
+template <>
+struct VEC_K<__nv_bfloat16, 2> {
+  using Type = __nv_bfloat162;
+};
+template <>
+struct VEC_K<__nv_bfloat16, 4> {
+  using Type = __nv_bfloat164;
+};
 
 // data type for QK production
 template <typename T>
@@ -95,6 +126,23 @@ struct Vec_fp32_<half8> {
   using Type = float8;
 };
 
+template <>
+struct Vec_fp32_<__nv_bfloat16> {
+  using Type = float;
+};
+template <>
+struct Vec_fp32_<__nv_bfloat162> {
+  using Type = float2;
+};
+template <>
+struct Vec_fp32_<__nv_bfloat164> {
+  using Type = float4;
+};
+template <>
+struct Vec_fp32_<__nv_bfloat168> {
+  using Type = float8;
+};
+
 template <typename DT>
 struct VEC_V {};
 template <>
@@ -104,6 +152,10 @@ struct VEC_V<float> {
 template <>
 struct VEC_V<half> {
   using Type = half8;
+};
+template <>
+struct VEC_V<__nv_bfloat16> {
+  using Type = __nv_bfloat168;
 };
 
 ////////////////data structures half///////////////
@@ -331,6 +383,42 @@ inline __device__ float8 cast_to_float(half8 u) {
   return tmp;
 }
 
+inline __device__ float cast_to_float(__nv_bfloat16 u) {
+  return __bfloat162float(u);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline __device__ float2 cast_to_float(__nv_bfloat162 u) {
+  float2 tmp;
+  tmp.x = __bfloat162float(u.x);
+  tmp.y = __bfloat162float(u.y);
+  return tmp;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline __device__ float4 cast_to_float(__nv_bfloat164 u) {
+  float4 tmp;
+  tmp.x = __bfloat162float(u.x);
+  tmp.y = __bfloat162float(u.y);
+  tmp.z = __bfloat162float(u.z);
+  tmp.w = __bfloat162float(u.w);
+  return tmp;
+}
+inline __device__ float8 cast_to_float(__nv_bfloat168 u) {
+  float8 tmp;
+  tmp.x = __bfloat162float(u.x);
+  tmp.y = __bfloat162float(u.y);
+  tmp.z = __bfloat162float(u.z);
+  tmp.w = __bfloat162float(u.w);
+  tmp.a = __bfloat162float(u.a);
+  tmp.b = __bfloat162float(u.b);
+  tmp.c = __bfloat162float(u.c);
+  tmp.d = __bfloat162float(u.d);
+  return tmp;
+}
+
 inline __device__ void convert_from_float(float4 &dst, float4 src) {
   dst = src;
 }
@@ -367,6 +455,32 @@ inline __device__ void convert_from_float(half2 &dst, float2 src) {
 }
 inline __device__ void convert_from_float(half &dst, float src) {
   dst = __float2half(src);
+}
+
+//
+inline __device__ void convert_from_float(__nv_bfloat164 &dst, float4 src) {
+  dst.x = __float2bfloat16(src.x);
+  dst.y = __float2bfloat16(src.y);
+  dst.z = __float2bfloat16(src.z);
+  dst.w = __float2bfloat16(src.w);
+}
+
+inline __device__ void convert_from_float(__nv_bfloat168 &dst, float8 src) {
+  dst.x = __float2bfloat16(src.x);
+  dst.y = __float2bfloat16(src.y);
+  dst.z = __float2bfloat16(src.z);
+  dst.w = __float2bfloat16(src.w);
+  dst.a = __float2bfloat16(src.a);
+  dst.b = __float2bfloat16(src.b);
+  dst.c = __float2bfloat16(src.c);
+  dst.d = __float2bfloat16(src.d);
+}
+inline __device__ void convert_from_float(__nv_bfloat162 &dst, float2 src) {
+  dst.x = __float2bfloat16(src.x);
+  dst.y = __float2bfloat16(src.y);
+}
+inline __device__ void convert_from_float(__nv_bfloat16 &dst, float src) {
+  dst = __float2bfloat16(src);
 }
 
 //////////////////////////////////////utils///////////////////////////////////////////////

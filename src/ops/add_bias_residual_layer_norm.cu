@@ -107,13 +107,13 @@ __global__ void LayerNormFusedForwardKernel(int64_t N,
                                             T *Y) {
   __shared__ float m_shared[C10_WARP_SIZE];
   __shared__ float v_shared[C10_WARP_SIZE];
-  const int64_t i = blockIdx.x;
+  int64_t const i = blockIdx.x;
   float sum1 = 0.0f;
   float sum2 = 0.0f;
   for (int64_t j = threadIdx.x; j < N;
        j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
-    const int64_t index = i * N + j;
-    const int64_t bias_idx = index % attn_bias_dim;
+    int64_t const index = i * N + j;
+    int64_t const bias_idx = index % attn_bias_dim;
     X[index] = input_ptr[index] + attn_bias_ptr[bias_idx] + residual_ptr[index];
     sum1 += static_cast<float>(X[index]);
     sum2 += static_cast<float>(X[index]) * static_cast<float>(X[index]);
@@ -136,11 +136,11 @@ __global__ void LayerNormFusedForwardKernel(int64_t N,
 
   using T_ACC = T;
   for (int64_t j = threadIdx.x; j < N; j += min(blockDim.x, kCUDANumThreads)) {
-    const int64_t index = i * N + j;
+    int64_t const index = i * N + j;
     const T_ACC gamma_v =
-        gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
+        gamma == nullptr ? T_ACC(1.0f) : static_cast<T_ACC>(gamma[j]);
     const T_ACC beta_v =
-        beta == nullptr ? T_ACC(0) : static_cast<T_ACC>(beta[j]);
+        beta == nullptr ? T_ACC(0.0f) : static_cast<T_ACC>(beta[j]);
     Y[index] = (static_cast<T_ACC>(X[index]) - static_cast<T_ACC>(mean[i])) *
                    static_cast<T_ACC>(rstd[i]) * gamma_v +
                beta_v;
@@ -233,6 +233,20 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
         output.get_half_ptr(),
         m->elementwise_affine ? gamma.get_half_ptr() : nullptr,
         (m->elementwise_affine && m->use_bias) ? beta.get_half_ptr() : nullptr,
+        stream);
+  } else if (m->input_type[0] == DT_BF16) {
+    AddBiasResidualLayerNorm::inference_kernel<__nv_bfloat16>(
+        m,
+        attn_bias_dim,
+        residual_volume,
+        input.get_bfloat16_ptr(),
+        attn_bias.get_bfloat16_ptr(),
+        residual.get_bfloat16_ptr(),
+        added_output.get_bfloat16_ptr(),
+        output.get_bfloat16_ptr(),
+        m->elementwise_affine ? gamma.get_bfloat16_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_bfloat16_ptr()
+                                               : nullptr,
         stream);
   } else {
     assert(false && "unsupport datatype in layernorm");
