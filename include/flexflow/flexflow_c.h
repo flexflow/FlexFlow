@@ -566,7 +566,24 @@ flexflow_tensor_t *
                                          float eps,
                                          int dim,
                                          char const *name);
-
+flexflow_tensor_t *
+    flexflow_model_add_group_by(flexflow_model_t handle_,
+                                const flexflow_tensor_t input_,
+                                const flexflow_tensor_t topk_indices_,
+                                int num_experts,
+                                char const *name);
+flexflow_tensor_t
+    flexflow_model_add_aggregate(flexflow_model_t handle_,
+                                 const flexflow_tensor_t topk_coefficients_,
+                                 const flexflow_tensor_t topk_indices_,
+                                 flexflow_tensor_t *expert_predictions_,
+                                 int num_experts,
+                                 char const *name);
+flexflow_tensor_t *flexflow_model_add_top_k(flexflow_model_t handle_,
+                                            const flexflow_tensor_t input_,
+                                            int k,
+                                            bool sorted,
+                                            char const *name);
 flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,
                                                int k,

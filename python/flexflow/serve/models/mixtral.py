@@ -62,7 +62,9 @@ class FlexFlowMixtral(FlexFlowModel):
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
-        max_verify_tokens_per_batch = max_tokens_per_batch + self.mixtral_config.max_spec_tree_token_num
+        max_verify_tokens_per_batch = (
+            max_tokens_per_batch + self.mixtral_config.max_spec_tree_token_num
+        )
 
         # Sanity checks
         if self.mixtral_config.hidden_size % self.mixtral_config.n_head != 0:
@@ -77,7 +79,11 @@ class FlexFlowMixtral(FlexFlowModel):
                 f"Number of q attention heads ({self.mixtral_config.n_head}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
 
-        self.build_model(max_tokens_per_batch if self.mode == InferenceMode.INC_DECODING_MODE else max_verify_tokens_per_batch)
+        self.build_model(
+            max_tokens_per_batch
+            if self.mode == InferenceMode.INC_DECODING_MODE
+            else max_verify_tokens_per_batch
+        )
 
     def build_model(self, max_tokens_per_batch):
         ffmodel = FFModel(self.ffconfig)
@@ -94,7 +100,7 @@ class FlexFlowMixtral(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="tok_embeddings",
+            name="embed_tokens",
         )
 
         for i in range(self.llama_config.num_hidden_layers):
@@ -122,8 +128,10 @@ class FlexFlowMixtral(FlexFlowModel):
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
                     self.llama_config.num_key_value_heads,
-                    self.llama_config.hidden_size // self.llama_config.num_attention_heads,
-                    self.llama_config.hidden_size // self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
                     0.0,  # dropout
                     False,  # qkv_bias
                     False,  # final_bias
@@ -139,8 +147,10 @@ class FlexFlowMixtral(FlexFlowModel):
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
                     self.llama_config.num_key_value_heads,
-                    self.llama_config.hidden_size // self.llama_config.num_attention_heads,
-                    self.llama_config.hidden_size // self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
                     0.0,  # dropout
                     False,  # qkv_bias
                     False,  # final_bias
@@ -156,8 +166,10 @@ class FlexFlowMixtral(FlexFlowModel):
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
                     self.llama_config.num_key_value_heads,
-                    self.llama_config.hidden_size // self.llama_config.num_attention_heads,
-                    self.llama_config.hidden_size // self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
+                    self.llama_config.hidden_size
+                    // self.llama_config.num_attention_heads,
                     0.0,  # dropout
                     False,  # qkv_bias
                     False,  # final_bias
@@ -177,32 +189,68 @@ class FlexFlowMixtral(FlexFlowModel):
                 self.llama_config.hidden_size,
                 name=f"layers_{i}_post_attention_layernorm",
             )
-            w1 = ffmodel.dense(
+            ## Start of MoE block ##
+            gate = ffmodel.dense(
                 ff_norm,
-                self.llama_config.intermediate_size,
+                self.mixtral_config.num_local_experts,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_feed_forward_w1",
+                name=f"layers_{i}_block_sparse_moe_gate",
             )
-            w3 = ffmodel.dense(
+            gate = ffmodel.softmax(gate, name=f"layers_{i}_block_sparse_moe_softmax")
+            topk_values, topk_indices = ffmodel.top_k(
                 ff_norm,
-                self.llama_config.intermediate_size,
-                ActiMode.AC_MODE_NONE,
+                self.mixtral_config.num_experts_per_tok,
                 False,
-                name=f"layers_{i}_feed_forward_w3",
+                name=f"layers_{i}_block_sparse_moe_topk",
             )
-            multi = ffmodel.sigmoid_silu_multi(w1, w3)
-            w2 = ffmodel.dense(
-                multi,
-                self.llama_config.hidden_size,
-                ActiMode.AC_MODE_NONE,
-                False,
-                name=f"layers_{i}_feed_forward_w2",
+            grouped_tokens = ffmodel.groupby(
+                ff_norm,
+                topk_indices,
+                self.mixtral_config.num_local_experts,
+                name=f"layers_{i}_block_sparse_moe_groupby",
+            )
+            expert_predictions = []
+            for expert_idx in self.mixtral_config.num_local_experts:
+                w1 = ffmodel.dense(
+                    grouped_tokens[expert_idx],
+                    self.llama_config.intermediate_size,
+                    ActiMode.AC_MODE_NONE,
+                    False,
+                    name=f"layers_{i}_block_sparse_moe_experts_{expert_idx}_w1",
+                )
+                w3 = ffmodel.dense(
+                    grouped_tokens[expert_idx],
+                    self.llama_config.intermediate_size,
+                    ActiMode.AC_MODE_NONE,
+                    False,
+                    name=f"layers_{i}_block_sparse_moe_experts_{expert_idx}_w3",
+                )
+                multi = ffmodel.sigmoid_silu_multi(
+                    w1,
+                    w3,
+                    name=f"layers_{i}_block_sparse_moe_experts_{expert_idx}_ssm",
+                )
+                w2 = ffmodel.dense(
+                    multi,
+                    self.llama_config.hidden_size,
+                    ActiMode.AC_MODE_NONE,
+                    False,
+                    name=f"layers_{i}_block_sparse_moe_experts_{expert_idx}_w2",
+                )
+                expert_predictions.append(w2)
+            assert len(expert_predictions) == self.mixtral_config.num_local_experts
+            mlp_out = ffmodel.aggregate(
+                topk_values,
+                topk_indices,
+                expert_predictions,
+                self.mixtral_config.num_local_experts,
+                name=f"layers_{i}_block_sparse_moe_experts_aggregate",
             )
 
         _, token = ffmodel.residual_rms_norm(
             token,
-            w2,
+            mlp_out,
             self.llama_config.rms_norm_eps,
             self.llama_config.hidden_size,
             name="norm",
@@ -234,38 +282,6 @@ class FlexFlowMixtral(FlexFlowModel):
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
-        n_head = (
-            model.config.n_head
-            if "n_head" in model.config.__dict__
-            else model.config.num_attention_heads
-        )
         for name, params in model.named_parameters():
-            name = (
-                name.replace(".", "_")
-                .replace("transformer_h_", "layers_")
-                .replace("transformer_", "")
-                .replace("self_attention_dense", "attention_wo")
-            )
-            # Split Q,K,V attention weights
-            if "self_attention_query_key_value" in name:
-                name_q = name.replace("self_attention_query_key_value", "attention_wq")
-                name_k = name.replace("self_attention_query_key_value", "attention_wk")
-                name_v = name.replace("self_attention_query_key_value", "attention_wv")
-                q, k, v = torch.split(
-                    params,
-                    [
-                        model.config.hidden_size,
-                        model.config.hidden_size // n_head,
-                        model.config.hidden_size // n_head,
-                    ],
-                    0,
-                )
-                q.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_q))
-                k.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_k))
-                v.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_v))
-            else:
-                params.detach().cpu().numpy().tofile(os.path.join(dst_folder, name))
-        # LM head weight
-        model.lm_head.weight.detach().cpu().numpy().tofile(
-            os.path.join(dst_folder, "lm_head_weight")
-        )
+            name = name.replace(".", "_").replace("model_", "")
+            params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")

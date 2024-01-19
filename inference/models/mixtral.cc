@@ -21,10 +21,10 @@ using namespace Legion;
 using json = nlohmann::json;
 
 void MIXTRAL::create_mixtral_model(FFModel &ff,
-                                 std::string const &model_config_file_path,
-                                 std::string const &weight_file_path,
-                                 InferenceMode mode,
-                                 bool use_full_precision) {
+                                   std::string const &model_config_file_path,
+                                   std::string const &weight_file_path,
+                                   InferenceMode mode,
+                                   bool use_full_precision) {
   MixtralConfig mixtral_config(model_config_file_path);
   mixtral_config.print();
 
@@ -252,7 +252,6 @@ void MIXTRAL::create_mixtral_model(FFModel &ff,
 
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->register_model_weights_loader(&ff, fileloader);
-
 }
 
 }; // namespace FlexFlow

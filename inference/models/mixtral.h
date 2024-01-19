@@ -65,23 +65,30 @@ public:
       std::cout << "Mixtral Config:" << std::endl;
       std::cout << "\thidden_size: " << hidden_size << std::endl;
       std::cout << "\tintermediate_size: " << intermediate_size << std::endl;
-      std::cout << "\tmax_position_embeddings: " << max_position_embeddings << std::endl;
-      std::cout << "\tnum_attention_heads: " << num_attention_heads << std::endl;
-      std::cout << "\tnum_key_value_heads: " << num_key_value_heads << std::endl;
-      std::cout << "\tnum_experts_per_tok: " << num_experts_per_tok << std::endl;
+      std::cout << "\tmax_position_embeddings: " << max_position_embeddings
+                << std::endl;
+      std::cout << "\tnum_attention_heads: " << num_attention_heads
+                << std::endl;
+      std::cout << "\tnum_key_value_heads: " << num_key_value_heads
+                << std::endl;
+      std::cout << "\tnum_experts_per_tok: " << num_experts_per_tok
+                << std::endl;
       std::cout << "\tnum_local_experts: " << num_local_experts << std::endl;
       std::cout << "\tnum_hidden_layers: " << num_hidden_layers << std::endl;
-      std::cout << "\toutput_router_logits: " << output_router_logits << std::endl;
+      std::cout << "\toutput_router_logits: " << output_router_logits
+                << std::endl;
       std::cout << "\trms_norm_eps: " << rms_norm_eps << std::endl;
       std::cout << "\trope_theta: " << rope_theta << std::endl;
-      std::cout << "\trouter_aux_loss_coef: " << router_aux_loss_coef << std::endl;
+      std::cout << "\trouter_aux_loss_coef: " << router_aux_loss_coef
+                << std::endl;
       std::cout << "\tsliding_window: " << sliding_window << std::endl;
-      std::cout << "\ttie_word_embeddings: " << tie_word_embeddings << std::endl;
+      std::cout << "\ttie_word_embeddings: " << tie_word_embeddings
+                << std::endl;
       std::cout << "\tvocab_size: " << vocab_size << std::endl;
       std::cout << "\tmax_beam_width: " << max_beam_width << std::endl;
       std::cout << "\tmax_beam_depth: " << max_beam_depth << std::endl;
     }
-    int hidden_size, intermediate_size; 
+    int hidden_size, intermediate_size;
     int max_position_embeddings;
     int num_attention_heads, num_key_value_heads;
     int num_experts_per_tok, num_local_experts;
@@ -97,10 +104,10 @@ public:
   };
 
   static void create_mixtral_model(FFModel &ff,
-                                  std::string const &model_config_file_path,
-                                  std::string const &weight_file_path,
-                                  InferenceMode mode,
-                                  bool use_full_precision = false);
+                                   std::string const &model_config_file_path,
+                                   std::string const &weight_file_path,
+                                   InferenceMode mode,
+                                   bool use_full_precision = false);
 };
 
 }; // namespace FlexFlow

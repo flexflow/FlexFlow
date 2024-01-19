@@ -61,6 +61,10 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void inference_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static void backward_task(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
@@ -81,6 +85,14 @@ public:
                                      int k, // chosen experts
                                      int batch_size,
                                      int data_dim);
+  static void inference_kernel_wrapper(GroupByMeta const *m,
+                                       float const *input,
+                                       int const *exp_assign,
+                                       float **outputs,
+                                       int n, // num experts
+                                       int k, // chosen experts
+                                       int batch_size,
+                                       int data_dim);
   static void backward_kernel_wrapper(GroupByMeta const *m,
                                       float *input_grad,
                                       int const *exp_assign,

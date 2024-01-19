@@ -15,8 +15,8 @@
 
 #include "flexflow/inference.h"
 #include "models/falcon.h"
-#include "models/mixtral.h"
 #include "models/llama.h"
+#include "models/mixtral.h"
 #include "models/mpt.h"
 #include "models/opt.h"
 #include <filesystem>
@@ -394,12 +394,13 @@ void FlexFlow::top_level_task(Task const *task,
                             generationConfig,
                             use_full_precision);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::MIXTRAL) {
-      MIXTRAL::create_mixtral_model(beam_model,
-                                    model_metadata.ssm_model_config_paths[ssm_id],
-                                    model_metadata.ssm_model_weights_paths[ssm_id],
-                                    BEAM_SEARCH_MODE,
-                                    generationConfig,
-                                    use_full_precision);
+      MIXTRAL::create_mixtral_model(
+          beam_model,
+          model_metadata.ssm_model_config_paths[ssm_id],
+          model_metadata.ssm_model_weights_paths[ssm_id],
+          BEAM_SEARCH_MODE,
+          generationConfig,
+          use_full_precision);
     } else {
       assert(false && "Invalid SSM model type passed.");
     }
