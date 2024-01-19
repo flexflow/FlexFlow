@@ -4480,6 +4480,24 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           RequestManager::prepare_next_batch_verify_task>(registrar);
     }
   }
+  // RequestManager background serving task
+  {
+    TaskVariantRegistrar registrar(RM_BACKGROUND_SERVING_TASK_ID,
+                                   "RequestManager Background Serving Task");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    // registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          RequestManager::background_serving_task>(
+          registrar, "RequestManager Background Serving Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::background_serving_task>(
+          registrar);
+    }
+  }
   // ElementUnary task
   {
     TaskVariantRegistrar registrar(ELEMENTUNARY_INIT_TASK_ID,

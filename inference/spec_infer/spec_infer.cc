@@ -22,6 +22,7 @@
 #include <nlohmann/json.hpp>
 #include <wordexp.h>
 
+using namespace FlexFlow;
 using namespace Legion;
 using json = nlohmann::json;
 
@@ -385,6 +386,8 @@ void FlexFlow::top_level_task(Task const *task,
     rm->register_ssm_model(&beam_model);
   }
 
+  rm->start_background_server(&tree_model);
+
   // Register requests from prompt file
   int total_num_requests = 0;
   {
@@ -406,6 +409,9 @@ void FlexFlow::top_level_task(Task const *task,
     }
     tree_model.generate(prompts, 128 /*max_sequence_length*/);
   }
+
+  // terminate the request manager by stopping the background thread
+  rm->terminate_background_server();
 
   // Execution fence
   {

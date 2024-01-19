@@ -40,10 +40,11 @@ void MPT::create_mpt_model(FFModel &ff,
   //------------------------------ build the model --------------------------
   Tensor input;
   {
-    int const token_dims[] = {(mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
-                                  ? BatchConfig::max_verify_tokens_per_batch()
-                                  : BatchConfig::max_tokens_per_batch(),
-                              1};
+    int const token_dims[] = {
+        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+            ? BatchConfig::max_verify_tokens_per_batch()
+            : BatchConfig::max_tokens_per_batch(),
+        1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 
@@ -246,7 +247,20 @@ void MPT::create_mpt_model(FFModel &ff,
   } else {
     output = ff.argmax(lm_head, /*beam_Search*/ false);
   }
+  FileDataLoader *fileloader =
+      new FileDataLoader("",
+                         weight_file_path,
+                         mpt_config.n_heads,
+                         mpt_config.n_heads,
+                         mpt_config.hidden_size,
+                         mpt_config.hidden_size / mpt_config.n_heads,
+                         ff.config.tensor_parallelism_degree,
+                         use_full_precision);
 
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  im->register_model_weights_loader(&ff, fileloader);
+
+#ifdef DEADCODE
   //------------------- compile the model --------------------------------
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->compile_model_and_allocate_buffer(&ff);
@@ -259,6 +273,7 @@ void MPT::create_mpt_model(FFModel &ff,
                             ff.config.tensor_parallelism_degree);
   fileloader.load_weights(&ff, use_full_precision);
   im->init_operators_inference(&ff);
+#endif
 }
 
 }; // namespace FlexFlow

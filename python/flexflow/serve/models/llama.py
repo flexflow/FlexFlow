@@ -23,6 +23,7 @@ class LLAMAConfig:
         #self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
+        self.max_spec_tree_token_num = 64
         self.num_hidden_layers = hf_config.num_hidden_layers
         self.vocab_size = hf_config.vocab_size
         self.hidden_size = hf_config.hidden_size
@@ -62,6 +63,8 @@ class FlexFlowLLAMA(FlexFlowModel):
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
+        max_verify_tokens_per_batch = max_tokens_per_batch + self.llama_config.max_spec_tree_token_num
+    
 
         # Sanity checks
         if self.llama_config.hidden_size % self.llama_config.num_attention_heads != 0:
@@ -81,7 +84,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                 f"Number of attention heads ({self.llama_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
 
-        self.build_model(max_tokens_per_batch)
+        self.build_model(max_tokens_per_batch if self.mode == InferenceMode.INC_DECODING_MODE else max_verify_tokens_per_batch)
 
     def build_model(self, max_tokens_per_batch):
         ffmodel = FFModel(self.ffconfig)

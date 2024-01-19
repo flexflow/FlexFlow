@@ -42,10 +42,11 @@ void OPT::create_opt_model(FFModel &ff,
   Tensor position_input;
   ff.set_position_offset(2);
   {
-    int const token_dims[] = {(mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
-                                  ? BatchConfig::max_verify_tokens_per_batch()
-                                  : BatchConfig::max_tokens_per_batch(),
-                              1};
+    int const token_dims[] = {
+        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+            ? BatchConfig::max_verify_tokens_per_batch()
+            : BatchConfig::max_tokens_per_batch(),
+        1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
     position_input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
@@ -254,6 +255,19 @@ void OPT::create_opt_model(FFModel &ff,
     output = ff.argmax(lm_head, /*beam_Search*/ false);
   }
 
+  FileDataLoader *fileloader = new FileDataLoader(
+      "",
+      weight_file_path,
+      opt_config.num_attention_heads,
+      opt_config.num_attention_heads,
+      opt_config.hidden_size,
+      opt_config.hidden_size / opt_config.num_attention_heads,
+      ff.config.tensor_parallelism_degree,
+      use_full_precision);
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  im->register_model_weights_loader(&ff, fileloader);
+
+#ifdef DEADCODE
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
   InferenceManager *im = InferenceManager::get_inference_manager();
@@ -269,6 +283,7 @@ void OPT::create_opt_model(FFModel &ff,
   fileloader.load_weights(&ff, use_full_precision);
   std::cout << "------finished loading weights----------" << std::endl;
   im->init_operators_inference(&ff);
+#endif
 }
 
 }; // namespace FlexFlow

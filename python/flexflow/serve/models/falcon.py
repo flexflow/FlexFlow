@@ -23,6 +23,7 @@ class FalconConfig:
         #self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
+        self.max_spec_tree_token_num = 64
         self.bias = hf_config.bias
         self.hidden_size = hf_config.hidden_size
         self.layer_norm_epsilon = hf_config.layer_norm_epsilon
@@ -70,6 +71,7 @@ class FlexFlowFalcon(FlexFlowModel):
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
+        max_verify_tokens_per_batch = max_tokens_per_batch + self.falcon_config.max_spec_tree_token_num
 
         # Sanity checks
         if self.falcon_config.hidden_size % self.falcon_config.n_head != 0:
@@ -84,7 +86,7 @@ class FlexFlowFalcon(FlexFlowModel):
                 f"Number of q attention heads ({self.falcon_config.n_head}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
 
-        self.build_model(max_tokens_per_batch)
+        self.build_model(max_tokens_per_batch if self.mode == InferenceMode.INC_DECODING_MODE else max_verify_tokens_per_batch)
 
     def build_model(self, max_tokens_per_batch):
         ffmodel = FFModel(self.ffconfig)
