@@ -205,9 +205,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
         Kernels::Dropout::forward_kernel_wrapper(
-            m,
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr());
+            m, my_input_accessor[0], my_output_accessor[0]);
         break;
       }
       case OP_LINEAR: {
