@@ -72,7 +72,7 @@ public:
   NodeLabelledOpenMultiDiGraph &
       operator=(NodeLabelledOpenMultiDiGraph const &) = default;
 
-  NodeLabel const &at(Node const &n) const override {
+  NodeLabel const &at(Node const &n) const {
     return nl->get_label(n);
   }
 

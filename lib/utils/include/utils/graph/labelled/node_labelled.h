@@ -28,15 +28,15 @@ public:
   NodeLabelledMultiDiGraphView &
       operator=(NodeLabelledMultiDiGraphView const &) = default;
 
-  virtual NodeLabel const &at(Node const &n) const {
+   NodeLabel const &at(Node const &n) const {
     return get_ptr().at(n);
   }
 
-  virtual std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return get_ptr().query_nodes(q);
   }
 
-  virtual std::unordered_set<MultiDiEdge>
+  std::unordered_set<MultiDiEdge>
       query_edges(MultiDiEdgeQuery const &q) const {
     return get_ptr().query_edges(q);
   }
@@ -72,7 +72,7 @@ public:
   NodeLabelledMultiDiGraph &
       operator=(NodeLabelledMultiDiGraph const &) = default;
 
-  NodeLabel const &at(Node const &n) const override {
+  NodeLabel const &at(Node const &n) const {
     return nl->get_label(n);
   }
 
