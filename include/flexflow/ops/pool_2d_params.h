@@ -10,6 +10,7 @@ struct Pool2DParams {
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
   ActiMode activation;
+  char name[MAX_OPNAME];
 
   bool is_valid(ParallelTensorShape const &input) const;
   void solve_dims(ParallelTensorShape const &input,
