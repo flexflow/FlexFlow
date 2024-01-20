@@ -112,7 +112,7 @@ Cast::Cast(FFModel &model,
            CastParams const &params,
            ParallelTensor const &input,
            char const *name)
-    : Cast(model, input, params.dtype, name) {}
+    : Cast(model, input, params.dtype, params.name) {}
 
 void Cast::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -409,6 +409,8 @@ bool Cast::measure_operator_cost(Simulator *sim,
 
 void Cast::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->outputs[0]->data_type);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -420,6 +422,10 @@ Node Cast::deserialize(FFModel &ff,
   assert(num_inputs == 1);
   DataType dtype;
   dez.deserialize(dtype);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   return ff.get_or_create_node<Cast>(inputs[0], {dtype});
 }
 
