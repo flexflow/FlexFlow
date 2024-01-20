@@ -222,7 +222,7 @@ jobs:
       CONDA: "3"
     needs: inference-tests
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version
