@@ -243,7 +243,7 @@ Embedding::Embedding(FFModel &model,
                 params.aggr,
                 allocate_weights,
                 params.data_type,
-                name) {}
+                params.name) {}
 
 Embedding::Embedding(FFModel &model,
                      Embedding const &other,

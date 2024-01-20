@@ -389,7 +389,7 @@ Conv2D::Conv2D(FFModel &model,
              params.groups,
              params.use_bias,
              allocate_weights,
-             name) {}
+             params.name) {}
 
 bool Conv2DParams::is_valid(ParallelTensorShape const &input) const {
   ParallelTensorShape output_shape, kernel_shape, bias_shape;
@@ -1026,6 +1026,8 @@ void Conv2D::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->groups);
   sez.serialize(this->use_bias);
   sez.serialize(this->activation);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -1055,6 +1057,10 @@ Node Conv2D::deserialize(FFModel &ff,
   dez.deserialize(groups);
   dez.deserialize(use_bias);
   dez.deserialize(activation);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
 
   Conv2DParams params;
   params.layer_guid = layer_guid;
@@ -1068,6 +1074,7 @@ Node Conv2D::deserialize(FFModel &ff,
   params.groups = groups;
   params.use_bias = use_bias;
   params.activation = activation;
+  strcpy(params.name, name);
 
   return ff.get_or_create_node<Conv2D>(inputs[0], params);
 }
