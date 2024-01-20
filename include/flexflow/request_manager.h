@@ -55,7 +55,6 @@ public:
 public:
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
   std::unordered_map<FFModel *, FileDataLoader *> model_weights_loaders;
-  int num_devices;
 };
 
 struct Request {
