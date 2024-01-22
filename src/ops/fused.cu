@@ -43,6 +43,7 @@
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
+#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -609,6 +610,7 @@ __host__ void
   }
 
   int ioff = 0, woff = 0, ooff = 0;
+  clock_t last_timer = clock();
   for (int op = 0; op < fused->numOperators; op++) {
     // Domain my_id[MAX_NUM_INPUTS];
     // Domain my_wd[MAX_NUM_WEIGHTS];
@@ -1128,6 +1130,14 @@ __host__ void
     ioff += fused->op_num_inputs[op];
     woff += fused->op_num_weights[op];
     ooff += fused->op_num_outputs[op];
+    clock_t current_timer = clock();
+    int shard_id = task->index_point.point_data[0];
+    printf("[%d]FusedOp::forward_task: %s, %lf\n",
+           shard_id,
+          //  op,
+           get_operator_type_name(fused->op_op_type[op]).c_str(),
+           (double)(current_timer - last_timer) / CLOCKS_PER_SEC);
+    last_timer = current_timer;
   }
   // for (int i = 0; i < fused->numOutputs; i++)
   //   print_tensor<float>(output_ptr[i], output_domain[i].get_volume(),
