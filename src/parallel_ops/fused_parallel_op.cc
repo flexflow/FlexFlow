@@ -59,6 +59,9 @@ FusedParallelOpParams FusedParallelOp::get_params() const {
   std::vector<ParallelOpInfo> ops(std::begin(this->parallel_ops),
                                   std::end(this->parallel_ops));
   params.parallel_ops = ops;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 

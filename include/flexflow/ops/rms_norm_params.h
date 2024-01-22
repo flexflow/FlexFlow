@@ -11,6 +11,7 @@ struct RMSNormParams {
   LayerID layer_guid;
   float eps;
   int dim;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 

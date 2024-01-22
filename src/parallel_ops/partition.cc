@@ -60,6 +60,9 @@ RepartitionParams Repartition::get_params() const {
   RepartitionParams params;
   params.repartition_legion_dim = this->repartition_dim;
   params.repartition_degree = this->repartition_degree;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -92,7 +95,7 @@ Repartition::Repartition(FFModel &model,
                   input,
                   params.repartition_legion_dim,
                   params.repartition_degree,
-                  name) {}
+                  params.name) {}
 
 OpMeta *Repartition::init_task(Task const *task,
                                std::vector<PhysicalRegion> const &regions,

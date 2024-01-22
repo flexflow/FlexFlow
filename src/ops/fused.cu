@@ -1106,7 +1106,7 @@ __host__ void
     if (metas->meta[op]->inference_debugging) {
       std::vector<GenericTensorAccessorR> input_accessors_to_save;
       std::vector<GenericTensorAccessorR> weight_accessors_to_save;
-      std::vector<GenericTensorAccessorW> output_accessors_to_save;
+      std::vector<GenericTensorAccessorR> output_accessors_to_save;
       for (int i = 0; i < fused->op_num_inputs[op]; i++) {
         int my_off = fused->op_input_idx[i + ioff];
         if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
@@ -1123,8 +1123,7 @@ __host__ void
             weight_accessor[fused->op_weight_idx[i + woff]]);
       }
       for (int i = 0; i < fused->op_num_outputs[op]; i++) {
-        int my_off = fused->op_output_idx[i + ooff];
-        output_accessors_to_save.push_back(output_accessor[my_off]);
+        output_accessors_to_save.push_back(output_accessor[i + ooff]);
       }
       assert(task->index_point.get_dim() == 1);
       int shard_id = task->index_point.point_data[0];

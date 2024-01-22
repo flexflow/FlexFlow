@@ -12,6 +12,7 @@ struct EmbeddingParams {
   LayerID layer_guid;
   AggrMode aggr;
   DataType data_type;
+  char name[MAX_OPNAME];
 
   bool is_valid(ParallelTensorShape const &) const;
 };
