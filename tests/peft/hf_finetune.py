@@ -60,6 +60,7 @@ def lm_head_pre_backward_hook(module, grad_output):
 
 
 def peft_backward_hook(module, grad_input, grad_output):
+    assert(type(grad_input) == tuple and type(grad_output) == tuple)
     if len(grad_input) == 0 or len(grad_output) == 0:
         return
     assert module.name is not None and module.bwd_step is not None
@@ -99,23 +100,39 @@ def peft_forward_hook(module, input, output):
     name = module.name.replace("base_model.model.model.", "")
     print(f"Forward Hook activated for module: {name}, fwd step: {module.fwd_step}")
     print("Input:")
-    for i, inp in enumerate(input):
-        if type(inp) == torch.Tensor:
-            print(inp.shape)
-            torch.save(
-                inp, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.input_{i}"
-            )
-        else:
-            print(inp)
+    if type(input) == torch.Tensor:
+        print(input.shape)
+        torch.save(
+            input, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.input_0"
+        )
+    elif type(input) == tuple:
+        for i, inp in enumerate(input):
+            if type(inp) == torch.Tensor:
+                print(inp.shape)
+                torch.save(
+                    inp, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.input_{i}"
+                )
+            else:
+                print(inp)
+    else:
+        assert False
     print("Output:")
-    for i, out in enumerate(output):
-        if type(out) == torch.Tensor:
-            print(out.shape)
-            torch.save(
-                out, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.output_{i}"
-            )
-        else:
-            print(out)
+    if type(output) == torch.Tensor:
+        print(output.shape)
+        torch.save(
+            output, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.output_0"
+        )
+    elif type(output) == tuple:
+        for i, out in enumerate(output):
+            if type(out) == torch.Tensor:
+                print(out.shape)
+                torch.save(
+                    out, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.output_{i}"
+                )
+            else:
+                print(out)
+    else:
+        assert False
     # print("Forward Input/Output: ", input[0].shape, output[0].shape)
     print("===")
     module.fwd_step += 1
@@ -124,7 +141,7 @@ def peft_forward_hook(module, input, output):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--peft-model-id", type=str, default="goliaro/llama-160m-lora-full"
+        "--peft-model-id", type=str, default="goliaro/opt-125m-lora-full"
     )
     parser.add_argument("--lora-alpha", type=int, default=16)
     parser.add_argument("--lora-dropout", type=float, default=0.0)
@@ -225,12 +242,13 @@ def main():
                 layer.register_full_backward_pre_hook(lm_head_pre_backward_hook)
         # Save any weights of interest
         for name, params in model.named_parameters():
+            simplified_name = name.replace("base_model.model.model.", "")
             if "lora" in name:
-                torch.save(params, f"./hf_peft_tensors/{name}")
+                torch.save(params, f"./hf_peft_tensors/{simplified_name}")
             if "lm_head" in name or "norm" in name:
-                torch.save(params, f"./hf_peft_tensors/{name}")
+                torch.save(params, f"./hf_peft_tensors/{simplified_name}")
             if "down_proj" in name or "self_attn" in name:
-                torch.save(params, f"./hf_peft_tensors/{name}")
+                torch.save(params, f"./hf_peft_tensors/{simplified_name}")
 
     # Load fine-tuning dataset
     data = load_dataset("Abirate/english_quotes")
