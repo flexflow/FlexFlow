@@ -39,11 +39,12 @@ public:
     return get_ptr().at(o);
   }
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
+  virtual std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return get_ptr().query_nodes(q);
   }
 
-  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
+  virtual std::unordered_set<MultiDiEdge>
+      query_edges(MultiDiEdgeQuery const &q) const {
     return get_ptr().query_edges(q);
   }
 
@@ -115,11 +116,12 @@ public:
     return ol->get_label(o);
   }
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
     return get_ptr().query_nodes(q);
   }
 
-  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
+  std::unordered_set<MultiDiEdge>
+      query_edges(MultiDiEdgeQuery const &q) const override {
     return get_ptr().query_edges(q);
   }
 
