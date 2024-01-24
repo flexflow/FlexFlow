@@ -1,17 +1,22 @@
 import os, re, torch
 import numpy as np
 abs_dirname = os.path.dirname(os.path.abspath(__file__))
-hf_weight_base_path = os.path.join(abs_dirname, "hf_peft_tensors")
-ff_weight_base_path = os.path.join(os.path.dirname(os.path.dirname(abs_dirname)), "build", "inference_tensors")
+hf_path = os.path.join(abs_dirname, "hf_peft_tensors")
+ff_path = os.path.join(os.path.dirname(os.path.dirname(abs_dirname)), "build", "inference_tensors")
 def print_unique_files_list(dirname):
     files_list = os.listdir(dirname)
     for f in sorted(files_list):
         match = re.search(r'layers.\d+', f)
         if match:
-            layer_num = int(match[0].split(".")[1])
-            if layer_num > 0:
-                files_list.remove(f)
-    return files_list
+            if "layers." in match[0]:
+                layer_num = int(match[0].split(".")[1])
+                if layer_num > 0:
+                    files_list.remove(f)
+            elif "layers_" in match[0]:
+                layer_num = int(match[0].split("_")[1])
+                if layer_num > 0:
+                    files_list.remove(f)
+    return sorted(files_list)
 def compare_tensors(hf_tensor_filepath, ff_tensor_filepath, tolerance=1e-2):
     if not (os.path.exists(hf_tensor_filepath) and os.path.exists(ff_tensor_filepath)):
         print(hf_tensor_filepath, os.path.exists(hf_tensor_filepath))
@@ -210,3 +215,14 @@ def check_flexflow_tensors_sum(ff_tensor_sum_fp, ff_tensor1_fp, ff_tensor2_fp, t
     #assert(np.allclose(ff_tensor, hf_tensor, atol=tolerance))
     assert(len(mismatches) <= .05*len(ff_tensor1))
     print("Ok!")
+def load_ff_tensor(filename, shape):
+    if ff_path not in filename:
+        filename = os.path.join(ff_path, filename)
+    ff_tensor = np.loadtxt(filename, delimiter=',').reshape(shape, order = 'F')
+    return ff_tensor
+def load_hf_tensor(filename):
+    if hf_path not in filename:
+        filename = os.path.join(hf_path, filename)
+    hf_tensor = torch.load(filename)
+    hf_tensor = hf_tensor.detach().cpu().numpy()
+    return hf_tensor
