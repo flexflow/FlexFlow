@@ -43,20 +43,23 @@ public:
   //   return g.query_edges(q);
   // }
 
-  virtual std::unordered_set<MultiDiEdge>
-      query_edges(MultiDiEdgeQuery const &q) const override {
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
     return g.query_edges(q);
   }
 
-  virtual NodeLabel const &at(Node const &n) const override {
+  NodeLabel const &at(Node const &n) const {
     return node_label(n);
   }
 
-  virtual OutputLabel const &at(MultiDiOutput const &o) const override {
+  OutputLabel &at(MultiDiOutput const &o) {
     return output_label(o);
   }
 
-  ViewMultiDiGraphAsOutputLabelled *clone() const override {
+  OutputLabel const &at(MultiDiOutput const &o) const override {
+    return output_label(o);
+  }
+
+  ViewMultiDiGraphAsOutputLabelled *clone() const {
     return new ViewMultiDiGraphAsOutputLabelled(g, node_label, output_label);
   }
 

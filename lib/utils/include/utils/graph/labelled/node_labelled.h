@@ -29,16 +29,15 @@ public:
   NodeLabelledMultiDiGraphView &
       operator=(NodeLabelledMultiDiGraphView const &) = default;
 
-  virtual NodeLabel const &at(Node const &n) const {
+  NodeLabel const &at(Node const &n) const {
     return get_ptr().at(n);
   }
 
-  virtual std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return get_ptr().query_nodes(q);
   }
 
-  virtual std::unordered_set<MultiDiEdge>
-      query_edges(MultiDiEdgeQuery const &q) const {
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
     return get_ptr().query_edges(q);
   }
 
@@ -55,7 +54,8 @@ protected:
 
 private:
   Interface const &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());
+    return *std::dynamic_pointer_cast<Interface const>(
+        GraphView::ptr.get());
   }
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(NodeLabelledMultiDiGraphView<int>);
@@ -72,7 +72,7 @@ public:
   NodeLabelledMultiDiGraph &
       operator=(NodeLabelledMultiDiGraph const &) = default;
 
-  NodeLabel const &at(Node const &n) const override {
+  NodeLabel const &at(Node const &n) const {
     return nl->get_label(n);
   }
 
@@ -116,8 +116,14 @@ protected:
   NodeLabelledMultiDiGraph(cow_ptr_t<Interface> ptr, cow_ptr_t<NodeLabelIf> nl)
       : NodeLabelledMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
 
-  Interface &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable());
+  Interface &get_ptr() {
+    return *std::dynamic_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
+  }
+
+  Interface const &get_ptr() const {
+    return *std::dynamic_pointer_cast<Interface const>(
+        GraphView::ptr.get());
   }
 
   cow_ptr_t<NodeLabelIf> nl;

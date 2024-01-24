@@ -3,6 +3,7 @@
 
 #include "op-attrs/operator_attrs.h"
 #include "op-attrs/parallel_tensor_shape.h"
+#include "ops/reverse.h"
 #include "tensor_shape.h"
 #include "utils/containers.h"
 #include "utils/optional.h"
@@ -150,6 +151,8 @@ ParallelTensorShape get_output_shape(RepartitionAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ReplicateAttrs const &,
                                      ParallelTensorShape const &);
+ParallelTensorShape get_output_shape(ReverseAttrs const &,
+                                     ParallelTensorShape const &);
 std::vector<ParallelTensorShape> get_output_shapes(SplitAttrs const &,
                                                    ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(SoftmaxAttrs const &,
@@ -157,7 +160,7 @@ ParallelTensorShape get_output_shape(SoftmaxAttrs const &,
 ParallelTensorShape get_output_shape(TopKAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(TransposeAttrs const &,
-                                     ParallelTensorShape const &);
+                                     std::vector<ParallelTensorShape> const &);
 
 struct GetOutputShapesFunctor {
   GetOutputShapesFunctor(std::vector<ParallelTensorShape> const &s) : s(s) {}

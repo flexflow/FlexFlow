@@ -114,8 +114,8 @@ TEST_CASE("apply_substitution") {
       },
       [&](OpenMultiDiEdge const &pattern_edge,
           OpenMultiDiEdge const &graph_edge) {
-        return parallel_tensor_satisfies(at(pcg, graph_edge),
-                                         at(input_graph.value(), pattern_edge));
+        return parallel_tensor_satisfies(pcg.at(graph_edge),
+                                         input_graph.value().at(pattern_edge));
       }};
 
   RC_ASSERT(criterion.node_criterion(n0, n5));

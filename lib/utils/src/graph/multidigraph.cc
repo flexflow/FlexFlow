@@ -65,7 +65,12 @@ std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const &q) const {
   return this->get_ptr().query_nodes(q);
 }
 
-IMultiDiGraph &MultiDiGraph::get_ptr() const {
+IMultiDiGraph const &MultiDiGraph::get_ptr() const {
+  return *std::dynamic_pointer_cast<IMultiDiGraph const>(
+      GraphView::ptr.get());
+}
+
+IMultiDiGraph &MultiDiGraph::get_ptr() {
   return *std::dynamic_pointer_cast<IMultiDiGraph>(
       GraphView::ptr.get_mutable());
 }

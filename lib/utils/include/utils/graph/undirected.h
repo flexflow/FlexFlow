@@ -103,7 +103,8 @@ public:
   friend struct GraphInternal;
 
 private:
-  IUndirectedGraph &get_ptr() const;
+  IUndirectedGraph const &get_ptr() const;
+  IUndirectedGraph &get_ptr();
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UndirectedGraph);
 

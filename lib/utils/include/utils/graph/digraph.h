@@ -68,7 +68,8 @@ protected:
   using DiGraphView::DiGraphView;
 
 private:
-  IDiGraph &get_ptr() const;
+  IDiGraph &get_ptr();
+  IDiGraph const &get_ptr() const;
 
   friend struct GraphInternal;
 };

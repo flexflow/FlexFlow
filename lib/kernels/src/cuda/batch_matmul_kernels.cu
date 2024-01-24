@@ -13,136 +13,28 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/batch_matmul_kernels.h"
-#include "kernels/cuda_helper.h"
+#include "kernels/device.h"
 
 namespace FlexFlow {
-
-BatchMatmulPerDeviceState::BatchMatmulPerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {}
-
 namespace Kernels {
 namespace BatchMatmul {
 
-/* void forward_kernel_wrapper(BatchMatmulPerDeviceState const *meta, */
-/*                             float *o_ptr, */
-/*                             float const *a_ptr, */
-/*                             float const *b_ptr, */
-/*                             float const *c_ptr, */
-/*                             int m, */
-/*                             int n, */
-/*                             int k, */
-/*                             int batch, */
-/*                             int a_seq_length_dim, */
-/*                             int b_seq_length_dim, */
-/*                             int seq_length) { */
-/*   cudaStream_t stream; */
-/*    */
-
-/*   cudaEvent_t t_start, t_end; */
-/*   if (meta->profiling) { */
-/*     cudaEventCreate(&t_start); */
-/*     cudaEventCreate(&t_end); */
-/*     cudaEventRecord(t_start, stream); */
-/*   } */
-/*   Internal::forward_kernel(meta, */
-/*                            o_ptr, */
-/*                            a_ptr, */
-/*                            b_ptr, */
-/*                            c_ptr, */
-/*                            m, */
-/*                            n, */
-/*                            k, */
-/*                            batch, */
-/*                            stream, */
-/*                            a_seq_length_dim, */
-/*                            b_seq_length_dim, */
-/*                            seq_length); */
-/*   if (meta->profiling) { */
-/*     cudaEventRecord(t_end, stream); */
-/*     checkCUDA(cudaEventSynchronize(t_end)); */
-/*     float elapsed = 0; */
-/*     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end)); */
-/*     cudaEventDestroy(t_start); */
-/*     cudaEventDestroy(t_end); */
-/*     printf("BatchMatmul forward time = %.2lfms\n", elapsed); */
-/*   } */
-/* } */
-
-/* void backward_kernel_wrapper(BatchMatmulPerDeviceState const *meta, */
-/*                              float const *o_ptr, */
-/*                              float const *o_grad_ptr, */
-/*                              float const *a_ptr, */
-/*                              float *a_grad_ptr, */
-/*                              float const *b_ptr, */
-/*                              float *b_grad_ptr, */
-/*                              float *c_grad_ptr, */
-/*                              int m, */
-/*                              int n, */
-/*                              int k, */
-/*                              int batch) { */
-/*   cudaStream_t stream; */
-/*    */
-
-/*   cudaEvent_t t_start, t_end; */
-/*   if (meta->profiling) { */
-/*     cudaEventCreate(&t_start); */
-/*     cudaEventCreate(&t_end); */
-/*     cudaEventRecord(t_start, stream); */
-/*   } */
-/*   Internal::backward_kernel(meta, */
-/*                             o_ptr, */
-/*                             o_grad_ptr, */
-/*                             a_ptr, */
-/*                             a_grad_ptr, */
-/*                             b_ptr, */
-/*                             b_grad_ptr, */
-/*                             c_grad_ptr, */
-/*                             m, */
-/*                             n, */
-/*                             k, */
-/*                             batch, */
-/*                             stream); */
-/*   if (meta->profiling) { */
-/*     cudaEventRecord(t_end, stream); */
-/*     checkCUDA(cudaEventSynchronize(t_end)); */
-/*     float elapsed = 0; */
-/*     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end)); */
-/*     cudaEventDestroy(t_start); */
-/*     cudaEventDestroy(t_end); */
-/*     printf("BatchMatmul backward time = %.2lfms\n", elapsed); */
-/*   } */
-/* } */
-
-/* namespace Internal { */
-
-/*
-A: (batch, n, k)
-B: (batch, k, m)
-O: (batch, n, m)
-O = A * B
-*/
-
 void forward_kernel(cudaStream_t stream,
-                    BatchMatmulPerDeviceState const *meta,
-                    float *o_ptr,
-                    float const *a_ptr,
-                    float const *b_ptr,
-                    float const *c_ptr,
+                    PerDeviceFFHandle const &handle,
+                    float *output_ptr,
+                    float const *a_input_ptr,
+                    float const *b_input_ptr,
                     int m,
                     int n,
                     int k,
                     int batch,
-                    cudaStream_t stream,
                     int a_seq_length_dim,
                     int b_seq_length_dim,
                     int seq_length) {
-  checkCUDA(cublasSetStream(meta->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
-
-  // int a_stride = n * k;
-  // int b_stride = m * k;
-  // int o_stride = n * m;
+  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
   int lda = k;
   int ldb = m;
   int ldo = m;
@@ -172,56 +64,46 @@ void forward_kernel(cudaStream_t stream,
   }
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDA(cublasSgemmStridedBatched(meta->handle.blas,
+  checkCUDA(cublasSgemmStridedBatched(handle.blas,
                                       CUBLAS_OP_N,
                                       CUBLAS_OP_N,
                                       m,
                                       n,
                                       k,
                                       &alpha,
-                                      b_ptr,
+                                      b_input_ptr,
                                       ldb,
                                       strideB,
-                                      a_ptr,
+                                      a_input_ptr,
                                       lda,
                                       strideA,
                                       &beta,
-                                      o_ptr,
+                                      output_ptr,
                                       ldo,
                                       strideO,
                                       batch));
-  // current assume c is null
-  assert(c_ptr == NULL);
 }
 
-/*
-A, AGrad: (batch, n, k)
-B, BGrad: (batch, k, m)
-O, OGrad: (batch, n, m)
-AGrad = OGrad * B^T
-BGrad = A^T * OGrad
-*/
 void backward_kernel(cudaStream_t stream,
-                     BatchMatmulPerDeviceState const *meta,
+                     PerDeviceFFHandle const &handle,
                      float const *o_ptr,
                      float const *o_grad_ptr,
                      float const *a_ptr,
                      float *a_grad_ptr,
                      float const *b_ptr,
                      float *b_grad_ptr,
-                     float *c_grad_ptr,
                      int m,
                      int n,
                      int k,
                      int batch) {
-  checkCUDA(cublasSetStream(meta->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
+  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
   int a_stride = n * k;
   int b_stride = m * k;
   int o_stride = n * m;
   float alpha = 1.0f;
-  checkCUDA(cublasSgemmStridedBatched(meta->handle.blas,
+  checkCUDA(cublasSgemmStridedBatched(handle.blas,
                                       CUBLAS_OP_T,
                                       CUBLAS_OP_N,
                                       k,
@@ -239,7 +121,7 @@ void backward_kernel(cudaStream_t stream,
                                       k,
                                       a_stride,
                                       batch));
-  checkCUDA(cublasSgemmStridedBatched(meta->handle.blas,
+  checkCUDA(cublasSgemmStridedBatched(handle.blas,
                                       CUBLAS_OP_N,
                                       CUBLAS_OP_T,
                                       m,
@@ -257,10 +139,8 @@ void backward_kernel(cudaStream_t stream,
                                       m,
                                       b_stride,
                                       batch));
-  assert(c_grad_ptr == NULL);
 }
 
-/* } // namespace Internal */
 } // namespace BatchMatmul
 } // namespace Kernels
 } // namespace FlexFlow

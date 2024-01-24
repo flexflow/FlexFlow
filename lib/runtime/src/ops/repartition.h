@@ -2,8 +2,8 @@
 #define _FLEXFLOW_PARTITION_H
 
 #include "op-attrs/ops/repartition.h"
-#include "op_task_invocation.h"
 #include "sim_environment.h"
+#include "task_spec/op_task_invocation.h"
 
 namespace FlexFlow {
 
@@ -20,7 +20,7 @@ OpTaskInvocation backward(RepartitionAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   RepartitionAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
+                                  InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);
 

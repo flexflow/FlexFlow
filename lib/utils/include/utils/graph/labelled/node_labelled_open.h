@@ -55,7 +55,8 @@ protected:
 
 private:
   Interface const &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());
+    return *std::dynamic_pointer_cast<Interface const>(
+        GraphView::ptr.get());
   }
 };
 
@@ -72,7 +73,7 @@ public:
   NodeLabelledOpenMultiDiGraph &
       operator=(NodeLabelledOpenMultiDiGraph const &) = default;
 
-  NodeLabel const &at(Node const &n) const override {
+  NodeLabel const &at(Node const &n) const {
     return nl->get_label(n);
   }
 
@@ -118,8 +119,14 @@ private:
                                cow_ptr_t<INodeLabel> nl)
       : GraphView(ptr), nl(nl) {}
 
-  Interface &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable());
+  Interface &get_ptr() {
+    return *std::dynamic_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
+  }
+
+  Interface const &get_ptr() const {
+    return *std::dynamic_pointer_cast<Interface const>(
+        GraphView::ptr.get());
   }
 
   cow_ptr_t<INodeLabel> nl;
