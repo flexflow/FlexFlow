@@ -56,7 +56,8 @@ std::unordered_set<Node>
 }
 
 IUndirectedGraphView const &UndirectedGraphView::get_ptr() const {
-  return *std::dynamic_pointer_cast<IUndirectedGraphView const>(GraphView::ptr.get());
+  return *std::dynamic_pointer_cast<IUndirectedGraphView const>(
+      GraphView::ptr.get());
 }
 
 } // namespace FlexFlow

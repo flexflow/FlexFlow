@@ -55,8 +55,7 @@ protected:
 
 private:
   Interface const &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface const>(
-        GraphView::ptr.get());
+    return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());
   }
 };
 
@@ -120,13 +119,11 @@ private:
       : GraphView(ptr), nl(nl) {}
 
   Interface &get_ptr() {
-    return *std::dynamic_pointer_cast<Interface>(
-        GraphView::ptr.get_mutable());
+    return *std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable());
   }
 
   Interface const &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface const>(
-        GraphView::ptr.get());
+    return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());
   }
 
   cow_ptr_t<INodeLabel> nl;
