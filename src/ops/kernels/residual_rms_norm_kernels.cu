@@ -38,12 +38,15 @@ ResidualRMSNormMeta::ResidualRMSNormMeta(FFHandler handler,
   DataType data_type = rms->weights[0]->data_type;
   size_t rms_ptr_size = batch_size;
   size_t norm_ptr_size = num_elements;
-  size_t totalSize = (rms_ptr_size + norm_ptr_size) * data_type_size(data_type);
+  size_t activation_size = BatchConfig::max_sequence_length() * in_dim;
+  size_t totalSize = (rms_ptr_size + norm_ptr_size + activation_size) * data_type_size(data_type);
   gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
   rms_ptr = gpu_mem_allocator.allocate_instance_untyped(
       rms_ptr_size * data_type_size(data_type));
   norm_ptr = gpu_mem_allocator.allocate_instance_untyped(
       norm_ptr_size * data_type_size(data_type));
+  input_activation = gpu_mem_allocator.allocate_instance_untyped(
+            data_type_size(data_type) * activation_size);
 }
 ResidualRMSNormMeta::~ResidualRMSNormMeta(void) {
   if (reserveInst != Realm::RegionInstance::NO_INST) {
@@ -222,7 +225,7 @@ void inference_kernel_wrapper(ResidualRMSNormMeta *m,
   assert(residual_output.data_type == output.data_type);
 
   // save input activation if needed for PEFT
-  if (bc->num_active_peft_tokens() > 0) {
+  if (bc->num_active_peft_fwd_tokens_() > 0) {
     // Check that we have at most one request that requires peft_bwd
     int num_peft_requests = 0;
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -247,23 +250,27 @@ void inference_kernel_wrapper(ResidualRMSNormMeta *m,
         continue;
       }
       int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-      int first_token_offset = bc->requestsInfo[i].num_tokens_in_batch;
+      int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
       int in_dim = input1.domain.hi()[0] - input1.domain.lo()[0] + 1;
-      if (bc->requestsInfo[i].peft_bwd) {
-        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
-        m->input_activation = allocator->allocate_instance_untyped(
-            data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
+      int num_processed_tokens = bc->requestsInfo[i].peft_fwd_tokens - num_peft_tokens;
+
+      if (bc->requestsInfo[i].peft_total_tokens > 0) {
+        // MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+        // m->input_activation = allocator->allocate_instance_untyped(
+        //     data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
         // copy input activation
+        // std::cout << "num_processed_tokens: " <<  num_processed_tokens << "\n";
+        // print_tensor<float>(residual_output.get_float_ptr() + first_token_offset * in_dim, 32, "redidual rms norm");
         if (m->input_type[0] == DT_FLOAT) {
           checkCUDA(cudaMemcpyAsync(
-              m->input_activation,
+              m->input_activation + num_processed_tokens * in_dim * data_type_size(m->input_type[0]),
               residual_output.get_float_ptr() + first_token_offset * in_dim,
               data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
               cudaMemcpyDeviceToDevice,
               stream));
         } else if (m->input_type[0] == DT_HALF) {
           checkCUDA(cudaMemcpyAsync(
-              m->input_activation,
+              m->input_activation + num_processed_tokens * in_dim * data_type_size(m->input_type[0]),
               residual_output.get_half_ptr() + first_token_offset * in_dim,
               data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
               cudaMemcpyDeviceToDevice,
@@ -294,6 +301,8 @@ void inference_kernel_wrapper(ResidualRMSNormMeta *m,
   } else {
     assert(false && "Unsupported data type");
   }
+  print_tensor<float>(residual_output.get_float_ptr(), 32, "redidual rms norm");
+
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -437,11 +446,17 @@ void peft_bwd_kernel(ResidualRMSNormMeta const *m,
       continue;
     }
 
+    output_grad_ptr = output_grad_ptr + 1 * 768;
+
     int M = bc->requestsInfo[i].num_tokens_in_batch;
     int N = m->in_dim;
+    int num_total_tokens = bc->requestsInfo[i].peft_fwd_tokens;
 
+    int token_start_offset = num_total_tokens - bc->requestsInfo[i].peft_bwd_tokens;
+    
+    printf("start offset: %d, %d\n", token_start_offset, m->in_dim);
     T const *residual_output_rms_input_ptr =
-        static_cast<T *>(m->input_activation);
+        static_cast<T *>(m->input_activation) + token_start_offset * m->in_dim;
 
     ComputeInternalGradientsCUDAKernel<T>
         <<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
@@ -464,6 +479,24 @@ void peft_bwd_kernel(ResidualRMSNormMeta const *m,
             residual_input1_grad_ptr,
             m->reset_input_grads[0],
             m->reset_input_grads[1]);
+
+    save_tensor<float>(
+      (float *)output_grad_ptr,
+      768 * 5,
+      "/home/xinhaoc/FlexFlow/inference/output_tensors/residualOP.txt");
+  save_tensor<float>(
+      (float *)residual_input0_grad_ptr,
+      768 * 5,
+      "/home/xinhaoc/FlexFlow/inference/output_tensors/reidualIP0.txt");
+  save_tensor<float>(
+      (float *)residual_output_rms_input_ptr,
+      768 * 5,
+      "/home/xinhaoc/FlexFlow/inference/output_tensors/residualACT.txt");
+  save_tensor<float>(
+      (float *)residual_input1_grad_ptr,
+      768 * 5,
+      "/home/xinhaoc/FlexFlow/inference/output_tensors/reidualIP1.txt");
+      assert(false);
   }
 }
 

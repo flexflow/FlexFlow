@@ -966,9 +966,9 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
     if (!bc->requestsInfo[i].peft_bwd) {
       continue;
     }
-    int num_tokens = bc->requestsInfo[i].num_tokens_in_batch;
     int num_total_tokens = bc->requestsInfo[i].peft_fwd_tokens;
-    int num_processed_tokens = bc->requestsInfo[i].peft_bwd_tokens;
+    int num_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    int num_processed_tokens = bc->requestsInfo[i].peft_bwd_tokens - num_tokens;
     // int num_total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
     //                        bc->requestsInfo[i].num_tokens_in_batch;
     // Currently assume we are calculating gradients for all tokens
@@ -998,8 +998,10 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       // matrix B: output gradients
 
       // matrix B's layout: [oProjSize, num_new_tokens]
+      printf("ffff: %d", bc->requestsInfo[i].first_token_offset_in_batch);
       DT const *B =
-          output_grad_ptr + bc->requestsInfo[i].peft_bwd_tokens * m->oProjSize;
+          output_grad_ptr + bc->requestsInfo[i].first_token_offset_in_batch * m->oProjSize;
+      save_tensor<float>((float*)B, 768 * 5, "/home/xinhaoc/FlexFlow/inference/output_tensors/attenBWD.txt");
       // matrix C: attn_heads gradients
       // matrix C's layout: [vProjSize * num_heads, num_new_tokens]
       DT *C = static_cast<DT *>(m->handle.workSpace);
@@ -1029,26 +1031,28 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
       // matrix A: qk_prods_softmax
       // matrix A's layout: [num_new_tokens, total_tokens, num_heads]
-      
+
       // matrix B: attn_heads gradients
       // matrix B's layout: [vProjSize * num_heads, num_new_tokens]
       DT const *A = static_cast<DT *>(m->softmax_activation_buffer) +
-                    (num_total_tokens - num_processed_tokens - num_tokens) *
+                    (num_total_tokens - bc->requestsInfo[i].peft_bwd_tokens) *
                         num_total_tokens;
       DT const *B = static_cast<DT *>(m->handle.workSpace);
-     // matrix C: gradients for value (saved as part of m->devQKVProjArray)
+      // matrix C: gradients for value (saved as part of m->devQKVProjArray)
       // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
-      DT *C = static_cast<DT *>(m->devQKVProjArray) + KV_WEIGHT_NUM * num_tokens * (m->qProjSize * m->num_q_heads); 
+      DT *C = static_cast<DT *>(m->devQKVProjArray) +
+              KV_WEIGHT_NUM * num_tokens * (m->qProjSize * m->num_q_heads);
       // after transpositions
       int m_ = num_total_tokens; // total_tokens
-      int n_ = m->vProjSize; // num_new_tokens
-      int k_ = num_tokens;   // num_new_tokens
+      int n_ = m->vProjSize;     // num_new_tokens
+      int k_ = num_tokens;       // num_new_tokens
       // before transpositions
       int lda = num_tokens; // num_new_tokens
       int ldb = m->vProjSize * m->num_q_heads;
       int ldc = num_tokens; // total_tokens
       // N.B. strides are applied before transpose operations
-      int strideA = num_tokens * num_total_tokens; // num_new_tokens * total_tokens
+      int strideA =
+          num_tokens * num_total_tokens; // num_new_tokens * total_tokens
       int strideB = m->vProjSize;
       int strideC = num_tokens * m->vProjSize;
       checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
@@ -1097,7 +1101,8 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       int ldc = num_tokens; // num_new_tokens
       int strideA = m->vProjSize;
       int strideB = m->vProjSize;
-      int strideC = num_tokens * num_total_tokens; // num_new_tokens * total_tokens
+      int strideC =
+          num_tokens * num_total_tokens; // num_new_tokens * total_tokens
       checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                            CUBLAS_OP_T,
                                            CUBLAS_OP_N,
@@ -1175,11 +1180,15 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       // matrix B: query activation (in query_activation_buffer)
       // matrix B's layout: [m->qProjSize * num_heads, num_new_tokens]
       DT const *B = static_cast<DT *>(m->query_activation_buffer) +
-                    (num_total_tokens - num_processed_tokens + num_tokens) *
+                    (num_total_tokens - bc->requestsInfo[i].peft_bwd_tokens) *
                         m->hidden_size;
       // matrix C: gradients for key (saved as part of m->devQKVProjArray)
       // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
-      DT *C = static_cast<DT *>(m->devQKVProjArray) + num_tokens * (m->qProjSize * m->num_q_heads); // skip over regions reserved for Q gradients
+      DT *C =
+          static_cast<DT *>(m->devQKVProjArray) +
+          num_tokens *
+              (m->qProjSize *
+               m->num_q_heads); // skip over regions reserved for Q gradients
       int m_ = num_total_tokens;
       int n_ = m->kProjSize;
       int k_ = num_tokens; // num_new_tokens
@@ -1245,7 +1254,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       // after transposition & striding
       int m_ = num_tokens; // num_new_tokens
       int n_ = m->qProjSize;
-      int k_ = num_total_tokens; 
+      int k_ = num_total_tokens;
       // before transposition and striding
       int lda = num_tokens; // num_new_tokens
       int ldb = m->qProjSize * m->num_q_heads;
@@ -1337,6 +1346,8 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              ldc,
                              compute_type,
                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+     save_tensor<float>((float*)C, 768 * 5, "/home/xinhaoc/FlexFlow/inference/output_tensors/attenBWDOP.txt");
+     assert(false);                        
     }
   }
 }
@@ -1417,6 +1428,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
   //   }
   // #endif
   // int num_requests = bc->num_active_requests();
+  std::cout << "attn kernel: " << "\n";
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
   int q_block_size = m->qProjSize;
@@ -1435,7 +1447,10 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
       tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
       continue;
     }
+    std::cout << "attn kernel inside: " << "\n";
+    print_tensor<float>((float*)(m->devQKVProjArray), 32, "attn ip");
     int start_offset = bc->requestsInfo[i].first_token_depth_in_request;
+    
     assert(tokens_previous_requests ==
            bc->requestsInfo[i].first_token_offset_in_batch);
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
@@ -1443,7 +1458,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
                        bc->requestsInfo[i].num_tokens_in_batch;
     // Copy query to m->query_activation_buffer if we need to compute
     // PEFT backward
-    if (bc->requestsInfo[i].peft_bwd) {
+    if (bc->requestsInfo[i].peft_total_tokens != 0) {
       // MemoryAllocator *allocator = m->handle.peft_activation_allocator;
       // m->query_activation_buffer = allocator->allocate_instance_untyped(
       //     sizeof(DT) * total_tokens * m->num_q_heads * m->qProjSize);
@@ -1506,6 +1521,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
                                          m->num_q_heads,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    print_tensor<float>((float*)C, 32, "attn qk");                                  
     // add alibi position bias to qk production
     if (*m->position_bias) {
       size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
@@ -1574,12 +1590,12 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
                                    C_softmax));
     // Copy C_softmax to m->softmax_activation_buffer if we need to compute
     // PEFT backward
-    if (bc->requestsInfo[i].peft_bwd) {
+    if (bc->requestsInfo[i].peft_total_tokens != 0) {
       // MemoryAllocator *allocator = m->handle.peft_activation_allocator;
       // m->softmax_activation_buffer = allocator->allocate_instance_untyped(
       //     sizeof(DT) * total_tokens * num_new_tokens * m->num_q_heads);
       DT *softmax_cache = static_cast<DT *>(m->softmax_activation_buffer) +
-                          start_offset * bc->requestsInfo[i].peft_bwd_tokens;
+                          start_offset * bc->requestsInfo[i].peft_total_tokens;
       checkCUDA(cudaMemcpyAsync(softmax_cache,
                                 C_softmax,
                                 sizeof(DT) * total_tokens * num_new_tokens *
@@ -1708,6 +1724,18 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventDestroy(t_end);
     printf("IncMultiHeadSelfAttention forward time = %.9fms\n", elapsed);
   }
+
+  // printf("see attention alignment");
+  print_tensor<float>(output.get_float_ptr(), 32, "attn op");
+
+  save_tensor<float>(
+      (float *)input.get_float_ptr(),
+      768 * 15,
+      "/home/xinhaoc/FlexFlow/inference/output_tensors/attin.txt");
+  save_tensor<float>(
+      (float *)output.get_float_ptr(),
+      768 * 15,
+      "/home/xinhaoc/FlexFlow/inference/output_tensors/attop.txt");
 }
 
 /*static*/
@@ -1945,8 +1973,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         (qkv_max_proj_size + key_cache_size + value_cache_size +
          2 * qk_prod_size + attn_heads_size) *
             size_of_dt +
-        tokeninfo_size * sizeof(BatchConfig::PerTokenInfo) + 
-      complex_size * sizeof(cuFloatComplex) +
+        tokeninfo_size * sizeof(BatchConfig::PerTokenInfo) +
+        complex_size * sizeof(cuFloatComplex) +
         requestinfo_size *
             sizeof(BatchConfig::PerRequestInfo); // more components will
                                                  // be added here later
@@ -1962,7 +1990,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                      BatchConfig::max_sequence_length();
 
     totalSize += (key_grad_cache_size + value_grad_cache_size +
-                  query_activation_size + softmax_activation_size);
+                  query_activation_size + softmax_activation_size) *
+                 size_of_dt;
     if (offload) {
       // assert that we have enough reserved work space left
       size_t totalSharedSize =

@@ -38,12 +38,15 @@ RMSNormMeta::RMSNormMeta(FFHandler handler,
   DataType data_type = rms->weights[0]->data_type;
   size_t rms_ptr_size = batch_size;
   size_t norm_ptr_size = num_elements;
-  size_t totalSize = (rms_ptr_size + norm_ptr_size) * data_type_size(data_type);
+  size_t activation_size = BatchConfig::max_sequence_length() * in_dim;
+  size_t totalSize = (rms_ptr_size + norm_ptr_size + activation_size) * data_type_size(data_type);
   gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
   rms_ptr = gpu_mem_allocator.allocate_instance_untyped(
       rms_ptr_size * data_type_size(data_type));
   norm_ptr = gpu_mem_allocator.allocate_instance_untyped(
       norm_ptr_size * data_type_size(data_type));
+  input_activation = gpu_mem_allocator.allocate_instance_untyped(
+        data_type_size(data_type) * activation_size);
 }
 RMSNormMeta::~RMSNormMeta(void) {
   if (reserveInst != Realm::RegionInstance::NO_INST) {
@@ -200,7 +203,7 @@ void inference_kernel_wrapper(RMSNormMeta *m,
   assert(weight.data_type == output.data_type);
 
   // save input activation if needed for PEFT
-  if (bc->num_active_peft_tokens() > 0) {
+  if (bc->num_active_peft_fwd_tokens_() > 0) {
     // check that at most one dimension after the first is > 1. TODO(goliaro):
     // support case where this condition does not hold
     int non_unit_dims_encountered = 0;
@@ -213,11 +216,11 @@ void inference_kernel_wrapper(RMSNormMeta *m,
     assert(non_unit_dims_encountered <= 1);
 
     // allocate space for all peft tokens
-    MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+    // MemoryAllocator *allocator = m->handle.peft_activation_allocator;
     int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
-    m->input_activation = allocator->allocate_instance_untyped(
-        data_type_size(input.data_type) * bc->num_active_peft_tokens() *
-        in_dim);
+    // m->input_activation = allocator->allocate_instance_untyped(
+    //     data_type_size(input.data_type) * bc->num_active_peft_tokens() *
+    //     in_dim);
 
     int tokens_previous_requests = 0;
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -231,17 +234,18 @@ void inference_kernel_wrapper(RMSNormMeta *m,
         continue;
       }
       int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+      int num_processed_tokens = bc->requestsInfo[i].peft_fwd_tokens - num_peft_tokens;
 
       if (input.data_type == DT_FLOAT) {
         checkCUDA(cudaMemcpyAsync(
-            m->input_activation,
+            m->input_activation + in_dim * data_type_size(input.data_type) * num_processed_tokens,
             input.get_float_ptr() + tokens_previous_requests * in_dim,
             data_type_size(input.data_type) * num_peft_tokens * in_dim,
             cudaMemcpyDeviceToDevice,
             stream));
       } else if (input.data_type == DT_HALF) {
         checkCUDA(cudaMemcpyAsync(
-            m->input_activation,
+            m->input_activation + in_dim * data_type_size(input.data_type) * num_processed_tokens,
             input.get_half_ptr() + tokens_previous_requests * in_dim,
             data_type_size(input.data_type) * num_peft_tokens * in_dim,
             cudaMemcpyDeviceToDevice,
@@ -447,6 +451,8 @@ void peft_bwd_kernel(RMSNormMeta const *m,
     if (!bc->requestsInfo[i].peft_bwd) {
       continue;
     }
+    int num_total_tokens = bc->requestsInfo[i].peft_fwd_tokens;
+    int token_start_offset = num_total_tokens - bc->requestsInfo[i].peft_bwd_tokens;
 
     int M = bc->requestsInfo[i].num_tokens_in_batch;
     int N = m->num_elements;
@@ -454,7 +460,7 @@ void peft_bwd_kernel(RMSNormMeta const *m,
         <<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
             N,
             output_grad_ptr,
-            static_cast<T *>(m->input_activation),
+            static_cast<T *>(m->input_activation) + token_start_offset * m->in_dim,
             weight_ptr,
             static_cast<T *>(m->rms_ptr),
             static_cast<T *>(m->norm_ptr));
@@ -462,7 +468,7 @@ void peft_bwd_kernel(RMSNormMeta const *m,
         <<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
             m->in_dim,
             output_grad_ptr,
-            static_cast<T *>(m->input_activation),
+            static_cast<T *>(m->input_activation) + token_start_offset * m->in_dim,
             weight_ptr,
             static_cast<T *>(m->rms_ptr),
             static_cast<T *>(m->norm_ptr),

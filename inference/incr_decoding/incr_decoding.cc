@@ -284,7 +284,7 @@ void FlexFlow::top_level_task(Task const *task,
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-      // Add inference request
+      // // Add inference request
       // Request inference_req;
       // inference_req.prompt = text;
       // inference_req.max_sequence_length = 128;
@@ -296,7 +296,7 @@ void FlexFlow::top_level_task(Task const *task,
       fine_tuning_req.req_type = Request::RequestType::REQ_FINETUNING;
       fine_tuning_req.max_sequence_length = 128;
       fine_tuning_req.peft_model_id = peft_model_id;
-      fine_tuning_req.dataset_text.push_back(std::make_pair(text, ""));
+      fine_tuning_req.dataset_text.push_back(std::make_pair(text, text));
       requests.push_back(fine_tuning_req);
       total_num_requests++;
     }

@@ -229,13 +229,11 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
                                              pt_base->region.get_field_space());
           pt->part = runtime->get_logical_partition(
               ctx, pt->region, pt_base->part.get_index_partition());
-
           pt->region_grad =
               runtime->create_logical_region(ctx,
                                              pt_base->region.get_index_space(),
                                              pt_base->region.get_field_space());
-          pt->part_grad = runtime->get_logical_partition(
-              ctx, pt->region_grad, pt_base->part.get_index_partition());
+          pt->part_grad = runtime->get_logical_partition(ctx, pt->region_grad, pt_base->part.get_index_partition());
           pt->machine_view = machine_views[j];
           // std::cout << "output mv: " << pt->machine_view << std::endl;
           Domain part_domain =

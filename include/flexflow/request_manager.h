@@ -131,6 +131,7 @@ public:
   bool is_request_completed(RequestGuid const &guid);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
+  void prepare_next_batch_peft(BatchConfig const &old_bc, BatchConfig &new_bc, int peft_req_idx);                              
   BatchConfigFuture prepare_next_batch(BatchConfigFuture const &bc,
                                        InferenceResultFuture const &result);
   BeamSearchBatchConfig
@@ -248,6 +249,7 @@ private:
 
   // Performance profiling
   size_t num_processed_requests;
+  size_t num_processing_finetune_requests;
 
 private:
   struct ProfileInfo {

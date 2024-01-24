@@ -567,6 +567,11 @@ void forward_kernel(LinearMeta const *m,
   } else {
     assert(false && "Unsupported activation for Linear");
   }
+  // if(out_dim == 32000){
+  //   save_tensor<float>((float*)input_ptr + in_dim * 10, 5 * in_dim, "/home/xinhaoc/FlexFlow/inference/output_tensors/linear.txt");
+  //   std::cout << "lm_head fwd: " << batch_size << ", " << in_dim << "\n"; 
+  //   assert(false);
+  // }
 }
 
 template <typename DT>
@@ -587,6 +592,7 @@ void peft_bwd_kernel(LinearMeta const *m,
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   // update input_grad_ptr and output_grad_ptr offset
   int num_infr_only_tokens = num_infr_tokens - num_peft_tokens;
+  std::cout << "num inference tokens: " << num_infr_only_tokens << ", " << num_infr_tokens << "\n";
   input_grad_ptr =
       static_cast<DT *>(input_grad_ptr) + num_infr_only_tokens * in_dim;
   output_grad_ptr =
@@ -645,6 +651,9 @@ void peft_bwd_kernel(LinearMeta const *m,
                            in_dim,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  std::cout << "in dim: " << num_peft_tokens << "\n";
+  save_tensor<float>((float*)input_grad_ptr, 768 * 5, "/home/xinhaoc/FlexFlow/inference/output_tensors/linearbwd11.txt");
+  // assert(false);  
   }
 }
 

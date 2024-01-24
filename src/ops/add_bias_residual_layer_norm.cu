@@ -226,7 +226,7 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
   // save input activation if needed for PEFT
-  if (bc->num_active_peft_tokens() > 0) {
+  if (bc->num_active_peft_fwd_tokens_() > 0) {
     // Check that we have at most one request that requires peft_bwd
     int num_peft_requests = 0;
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {

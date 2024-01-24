@@ -21,12 +21,16 @@ public:
   miopenTensorDescriptor_t inputTensor;
   miopenTensorDescriptor_t outputTensor;
 #endif
+  ~SoftmaxMeta(void);
+
+public:
   bool profiling;
   bool inference_debugging;
   int dim;
 
   // PEFT partial loss
   void *lm_head_cache;
+  Realm::RegionInstance reserveInst;
 };
 
 namespace Kernels {
