@@ -14,7 +14,7 @@ def print_unique_files_list(dirname):
                     files_list.remove(f)
             elif "layers_" in match[0]:
                 layer_num = int(match[0].split("_")[1])
-                if layer_num > 0:
+                if layer_num > 0 and layer_num != 100:
                     files_list.remove(f)
     return sorted(files_list)
 def compare_tensors(hf_tensor_filepath, ff_tensor_filepath, tolerance=1e-2):
@@ -226,3 +226,15 @@ def load_hf_tensor(filename):
     hf_tensor = torch.load(filename)
     hf_tensor = hf_tensor.detach().cpu().numpy()
     return hf_tensor
+def compare_loaded_tensors(hf_tensor, ff_tensor, tolerance=1e-2):
+    assert(hf_tensor.shape == ff_tensor.shape)
+    mismatches = []
+    if not np.allclose(hf_tensor, ff_tensor, atol=tolerance):
+        print(f"mismatch between hf_tensor and ff_tensor")
+        print(f"HF: {hf_tensor}\nFF:{ff_tensor}")
+        print(np.isclose(hf_tensor, ff_tensor, atol=tolerance))
+        mismatches = np.where(~np.isclose(hf_tensor, ff_tensor, atol=tolerance))[0]
+        print(mismatches)
+    len_hf_tensor = hf_tensor.flatten().shape[0]
+    assert(len(mismatches) <= .05*len_hf_tensor)
+    print("Ok!")

@@ -939,7 +939,8 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
   //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
   //   }
   // #endif
-  std::string op_name_without_uid = IncMultiHeadSelfAttention::get_op_name_without_uid(m);
+  std::string op_name_without_uid =
+      IncMultiHeadSelfAttention::get_op_name_without_uid(m);
   char const *folder_path = "./inference_tensors/";
   std::string base_filepath = std::string(folder_path);
   if (m->layer_guid.model_id > 0) {
@@ -947,8 +948,8 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
   base_filepath += "bwd_step_" + std::to_string(m->bwd_step);
   base_filepath += "_layers_" +
-                    std::to_string(m->layer_guid.transformer_layer_id) + "_" +
-                    op_name_without_uid + "_shard_" + std::to_string(shard_id);
+                   std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+                   op_name_without_uid + "_shard_" + std::to_string(shard_id);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {

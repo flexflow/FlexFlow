@@ -500,9 +500,9 @@ void LoraLinear::inference_task(Task const *task,
       base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
     }
     base_filepath += "fwd_step_" + std::to_string(m->decoding_step);
-    base_filepath += "_layers_" +
-                     std::to_string(m->layer_guid.transformer_layer_id) + "_" +
-                     lora_layername_substr + "_shard_" + std::to_string(shard_id);
+    base_filepath +=
+        "_layers_" + std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+        lora_layername_substr + "_shard_" + std::to_string(shard_id);
 
     // save batch config, if passed
     if (bc != nullptr) {
@@ -664,9 +664,9 @@ void LoraLinear::peft_bwd_task(Task const *task,
       base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
     }
     base_filepath += "bwd_step_" + std::to_string(m->bwd_step);
-    base_filepath += "_layers_" +
-                     std::to_string(m->layer_guid.transformer_layer_id) + "_" +
-                     lora_layername_substr + "_shard_" + std::to_string(shard_id);
+    base_filepath +=
+        "_layers_" + std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+        lora_layername_substr + "_shard_" + std::to_string(shard_id);
 
     // save batch config, if passed
     if (bc != nullptr) {
