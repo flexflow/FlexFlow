@@ -488,7 +488,7 @@ FutureMap FusedOp::inference(FFModel const &ff,
   // size_t batch_config_size =
   //    std::max(sizeof(TreeVerifyBatchConfig), sizeof(BeamSearchBatchConfig));
   printf("FUSED! INFERENCE! %i ops\n", numOperators);
-  for (int i=0; i<numOperators; i++) {
+  for (int i = 0; i < numOperators; i++) {
     Op *oppp = operators[i];
     std::cout << oppp->op_type << " " << oppp->name << std::endl;
   }

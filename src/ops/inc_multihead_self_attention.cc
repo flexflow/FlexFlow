@@ -818,11 +818,11 @@ void IncMultiHeadSelfAttention::inference_task(
   log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
                     bc->num_tokens,
                     bc->num_active_requests());
-  
 
   IncMultiHeadSelfAttentionMeta *m =
       *((IncMultiHeadSelfAttentionMeta **)task->local_args);
-  std::string op_name_without_uid = IncMultiHeadSelfAttention::get_op_name_without_uid(m);
+  std::string op_name_without_uid =
+      IncMultiHeadSelfAttention::get_op_name_without_uid(m);
   std::cout << "INF " << op_name_without_uid << std::endl;
 
   if (bc->num_tokens == 0) {
@@ -1027,13 +1027,14 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
 
   assert(task->index_point.get_dim() == 1);
 
-  std::string op_name_without_uid = IncMultiHeadSelfAttention::get_op_name_without_uid(m);
+  std::string op_name_without_uid =
+      IncMultiHeadSelfAttention::get_op_name_without_uid(m);
   std::cout << "BWD " << op_name_without_uid << std::endl;
 
   // if (op_name_without_uid == "layers_11_attention") {
   //   load_tensor_from_file(
-  //     output_grad.get_float_ptr(), 
-  //     (output_grad.domain.get_volume()/128)*24, 
+  //     output_grad.get_float_ptr(),
+  //     (output_grad.domain.get_volume()/128)*24,
   //     "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_layers.11.self_attn.o_proj.go_0.flexflow"
   //   );
   // }

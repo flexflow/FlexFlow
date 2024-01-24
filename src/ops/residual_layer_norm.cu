@@ -254,7 +254,14 @@ void ResidualLayerNorm::inference_kernel_wrapper(
         MemoryAllocator *allocator = m->handle.peft_activation_allocator;
         m->input_activation = allocator->allocate_instance_untyped(
             data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
-        printf("Allocating input_activation (%p) of size: %i*%i*%i=%i for %s...\n", m->input_activation, data_type_size(m->input_type[0]), num_peft_tokens,in_dim, data_type_size(m->input_type[0]) * num_peft_tokens * in_dim, m->op_name);
+        printf(
+            "Allocating input_activation (%p) of size: %i*%i*%i=%i for %s...\n",
+            m->input_activation,
+            data_type_size(m->input_type[0]),
+            num_peft_tokens,
+            in_dim,
+            data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
+            m->op_name);
         // copy input activation
         if (m->input_type[0] == DT_FLOAT) {
           checkCUDA(cudaMemcpyAsync(

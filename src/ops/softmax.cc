@@ -375,7 +375,7 @@ void Softmax::inference_task(Task const *task,
   assert(task->regions.size() == 3);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
-  
+
   std::string op_name_without_uid = Softmax::get_op_name_without_uid(m);
   std::cout << "INF " << op_name_without_uid << std::endl;
   if (bc->num_tokens == 0) {
@@ -383,7 +383,7 @@ void Softmax::inference_task(Task const *task,
   }
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  
+
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(

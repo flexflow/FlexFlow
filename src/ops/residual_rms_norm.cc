@@ -741,46 +741,52 @@ void ResidualRMSNorm::peft_bwd_task(Task const *task,
       m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
   peft_bwd_kernel_wrapper(
       m, bc, output_grad, residual_input0_grad, residual_input1_grad, weight);
-  
+
   // get name
   std::string op_name_without_uid = ResidualRMSNorm::get_op_name_without_uid(m);
-  std::cout << "BWD " << op_name_without_uid << " reset_in_grad[0]: " <<  m->reset_input_grads[0] << " reset_in_grad[1]: " <<  m->reset_input_grads[1] << std::endl;
+  std::cout << "BWD " << op_name_without_uid
+            << " reset_in_grad[0]: " << m->reset_input_grads[0]
+            << " reset_in_grad[1]: " << m->reset_input_grads[1] << std::endl;
   // print shape
   int numdims = residual_input0_grad.domain.get_dim();
   std::cout << "in grad dims: ";
-  for (int i=0; i<numdims; i++) {
-    std::cout << residual_input0_grad.domain.hi()[i] - residual_input0_grad.domain.lo()[i] + 1 << ", ";
+  for (int i = 0; i < numdims; i++) {
+    std::cout << residual_input0_grad.domain.hi()[i] -
+                     residual_input0_grad.domain.lo()[i] + 1
+              << ", ";
   }
   std::cout << std::endl;
 
   if (op_name_without_uid == "norm") {
-    int amount = (residual_input1_grad.domain.get_volume()/128)*24;
-    std::cout << "Loading " << amount << " elements from /usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_norm.gi_0.flexflow..." << std::endl;
-    load_tensor_from_file(
-      residual_input0_grad.get_float_ptr(), 
-      (residual_input0_grad.domain.get_volume()/128)*24,
-      "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_norm.gi_0.flexflow"
-    );
-    load_tensor_from_file(
-      residual_input1_grad.get_float_ptr(), 
-      (residual_input1_grad.domain.get_volume()/128)*24, 
-      "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_norm.gi_0.flexflow"
-    );
+    int amount = (residual_input1_grad.domain.get_volume() / 128) * 24;
+    std::cout << "Loading " << amount
+              << " elements from "
+                 "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/"
+                 "hf_peft_tensors/bwd_step_0_norm.gi_0.flexflow..."
+              << std::endl;
+    load_tensor_from_file(residual_input0_grad.get_float_ptr(),
+                          (residual_input0_grad.domain.get_volume() / 128) * 24,
+                          "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/"
+                          "hf_peft_tensors/bwd_step_0_norm.gi_0.flexflow");
+    load_tensor_from_file(residual_input1_grad.get_float_ptr(),
+                          (residual_input1_grad.domain.get_volume() / 128) * 24,
+                          "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/"
+                          "hf_peft_tensors/bwd_step_0_norm.gi_0.flexflow");
   } else if (op_name_without_uid == "layers_11_ffn_norm") {
     load_tensor_from_file(
-      residual_input0_grad.get_float_ptr(), 
-      (residual_input0_grad.domain.get_volume()/128)*24, 
-      "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_layers.11.post_attention_layernorm.gi_0.flexflow"
-    );
+        residual_input0_grad.get_float_ptr(),
+        (residual_input0_grad.domain.get_volume() / 128) * 24,
+        "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/"
+        "bwd_step_0_layers.11.post_attention_layernorm.gi_0.flexflow");
     load_tensor_from_file(
-      residual_input1_grad.get_float_ptr(), 
-      (residual_input1_grad.domain.get_volume()/128)*24, 
-      "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_layers.11.post_attention_layernorm.gi_0.flexflow"
-    );
+        residual_input1_grad.get_float_ptr(),
+        (residual_input1_grad.domain.get_volume() / 128) * 24,
+        "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/"
+        "bwd_step_0_layers.11.post_attention_layernorm.gi_0.flexflow");
   }
   // if name is layers_11_rms_norm, copy both
-  //load_tensor_from_file(DT *ptr, size_t size, std::string filepath)
-  
+  // load_tensor_from_file(DT *ptr, size_t size, std::string filepath)
+
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
