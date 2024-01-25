@@ -8,22 +8,13 @@
 
 namespace FlexFlow {
 
-struct ElementScalarUnaryAttrs {
-  req<Op> op;
-  /* bool inplace; */
+struct ElementUnaryAttrs {
+  req<Op> op_type;
   req<float> scalar;
 };
-FF_VISITABLE_STRUCT(ElementScalarUnaryAttrs, op, scalar);
-CHECK_VALID_OP_ATTR(ElementScalarUnaryAttrs);
-
-struct ElementUnaryAttrs {
-  req<Op> op;
-};
-FF_VISITABLE_STRUCT(ElementUnaryAttrs, op);
+FF_VISITABLE_STRUCT(ElementUnaryAttrs, op_type, scalar);
 CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
 
-}
-
-// namespace FlexFlow
+} // namespace FlexFlow
 
 #endif

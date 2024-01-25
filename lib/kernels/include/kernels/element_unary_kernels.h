@@ -10,39 +10,33 @@
 namespace FlexFlow {
 
 struct ElementUnaryPerDeviceState {
-  PerDeviceFFHandle handle;
   ffTensorDescriptor_t inputTensor, outputTensor;
   ffActivationDescriptor_t actiDesc;
-
-  OperatorType op_type;
-  DataType data_type;
-  float scalar;
 };
 
 FF_VISITABLE_STRUCT_NO_EQ(ElementUnaryPerDeviceState,
-                          handle,
                           inputTensor,
                           outputTensor,
-                          actiDesc,
-                          op_type,
-                          data_type,
-                          scalar);
+                          actiDesc);
 
 namespace Kernels {
 namespace ElementUnary {
 
-ElementUnaryPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
-                                       ArrayShape const &input_shape,
+ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
                                        ArrayShape const &output_shape,
-                                       DataType data_type);
+                                       ElementUnaryAttrs const &attrs);
 
 void forward_kernel(ffStream_t stream,
                     ElementUnaryPerDeviceState const &device_state,
+                    ElementUnaryAttrs const &attrs,
+                    PerDeviceFFHandle &handle,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
 void backward_kernel(ffStream_t stream,
                      ElementUnaryPerDeviceState const &device_state,
+                     ElementUnaryAttrs const &attrs,
+                     PerDeviceFFHandle &handle,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &input_grad,
                      GenericTensorAccessorR const &output,

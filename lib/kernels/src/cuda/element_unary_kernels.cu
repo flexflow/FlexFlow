@@ -33,11 +33,9 @@ static bool use_cudnn(OperatorType op_type) {
   }
 }
 
-ElementUnaryPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
-                                       ArrayShape const &input_shape,
+ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
                                        ArrayShape const &output_shape,
-                                       OperatorType op_type,
-                                       DataType data_type) {
+                                       ElementUnaryAttrs const &attrs) {
 
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
@@ -47,9 +45,9 @@ ElementUnaryPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
 
-  if (use_cudnn(op_type)) {
+  if (use_cudnn(attrs.op_type)) {
     cudnnActivationMode_t mode;
-    switch (op_type) {
+    switch (attrs.op_type) {
       case OP_SIGMOID:
         mode = CUDNN_ACTIVATION_SIGMOID;
         break;
@@ -74,7 +72,7 @@ ElementUnaryPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
   }
 
   ElementUnaryPerDeviceState per_device_state = {
-      handle, inputTensor, outputTensor, actiDesc, op_type, data_type, scalar};
+      inputTensor, outputTensor, actiDesc};
 
   return per_device_state;
 }
@@ -83,12 +81,14 @@ template <DataType T>
 struct ForwardKernel {
   void operator()(ffStream_t stream,
                   ElementUnaryPerDeviceState const &m,
+                  ElementUnaryAttrs const &attrs,
+                  PerDeviceFFHandle const &handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) const {
-    checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
-    if (use_cudnn(m.op_type)) {
+    checkCUDNN(cudnnSetStream(handle.dnn, stream));
+    if (use_cudnn(attrs.op_type)) {
       float alpha = 1.0f, beta = 0.0f;
-      checkCUDNN(cudnnActivationForward(m.handle.dnn,
+      checkCUDNN(cudnnActivationForward(handle.dnn,
                                         m.actiDesc,
                                         &alpha,
                                         m.inputTensor,
@@ -102,8 +102,8 @@ struct ForwardKernel {
                                      CUDA_NUM_THREADS,
                                      0,
                                      stream>>>(num_elements,
-                                               (T)m.scalar,
-                                               m.op_type,
+                                               (T)attrs.scalar,
+                                               attrs.op_type,
                                                input.get<T>(),
                                                output.get<T>());
     }
@@ -114,15 +114,17 @@ template <DataType T>
 struct BackwardKernel {
   void operator()(ffStream_t stream,
                   ElementUnaryPerDeviceState const &m,
+                  ElementUnaryAttrs const &attrs,
+                  PerDeviceFFHandle const &handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &input_grad,
                   GenericTensorAccessorR const &output,
                   GenericTensorAccessorR const &output_grad) {
-    checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
+    checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
-    if (use_cudnn(m.op_type)) {
+    if (use_cudnn(attrs.op_type)) {
       float alpha = 1.0f;
-      checkCUDNN(cudnnActivationBackward(m.handle.dnn,
+      checkCUDNN(cudnnActivationBackward(handle.dnn,
                                         m.actiDesc,
                                         &alpha,
                                         m.outputTensor,
@@ -139,8 +141,8 @@ struct BackwardKernel {
       elewise_unary_backward_kernel<T>
           <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
               num_elements,
-              m.scalar,
-              m.op_type,
+              attrs.scalar,
+              attrs.op_type,
               output.get<T>(),
               output_grad.get<T>(),
               input.get<T>(),
@@ -151,18 +153,31 @@ struct BackwardKernel {
 
 void forward_kernel(ffStream_t stream,
                     ElementUnaryPerDeviceState const &device_state,
+                    ElementUnaryAttrs const &attrs,
+                    PerDeviceFFHandle const &handle,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
-  { DataTypeDispatch1<ForwardKernel>{}(m.data_type, stream, m, input, output); }
+  DataTypeDispatch1<ForwardKernel>{}(
+      input.data_type, stream, m, attrs, handle, input, output);
+}
 
-  void backward_kernel(ffStream_t stream,
-                       ElementUnaryPerDeviceState const &device_state,
-                       GenericTensorAccessorR const &input,
-                       GenericTensorAccessorR const &input_grad,
-                       GenericTensorAccessorW const &output,
-                       GenericTensorAccessorW const &output_grad)
-      DataTypeDispatch1<BackwardKernel>{}(
-          m.data_type, stream, m, input, input_grad, output, output_grad);
+void backward_kernel(ffStream_t stream,
+                     ElementUnaryPerDeviceState const &device_state,
+                     ElementUnaryAttrs const &attrs,
+                     PerDeviceFFHandle const &handle,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorR const &input_grad,
+                     GenericTensorAccessorW const &output,
+                     GenericTensorAccessorW const &output_grad) {
+  DataTypeDispatch1<BackwardKernel>{}(input.data_type,
+                                      stream,
+                                      m,
+                                      attrs,
+                                      handle,
+                                      input,
+                                      input_grad,
+                                      output,
+                                      output_grad);
 }
 
 template <typename T>
