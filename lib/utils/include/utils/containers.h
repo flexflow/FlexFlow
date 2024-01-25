@@ -494,7 +494,7 @@ bool are_all_same(C const &c) {
 
 template <typename C, typename E>
 std::vector<E> as_vector(C const &c) {
-  std::vector<E> result(c.cbegin(), c.end());
+  std::vector<E> result(c.cbegin(), c.cend());
   return result;
 }
 

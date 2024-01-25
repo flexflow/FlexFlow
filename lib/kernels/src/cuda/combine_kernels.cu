@@ -50,17 +50,15 @@ struct BackwardKernel {
 
 void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output,
-                    DataType data_type) {
-  DataTypeDispatch1<ForwardKernel>{}(data_type, stream, input, output);
+                    GenericTensorAccessorW const &output) {
+  DataTypeDispatch1<ForwardKernel>{}(input.data_type, stream, input, output);
 }
 
 void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &output_grad,
-                     GenericTensorAccessorW const &input_grad,
-                     DataType data_type) {
+                     GenericTensorAccessorW const &input_grad) {
   DataTypeDispatch1<BackwardKernel>{}(
-      data_type, stream, output_grad, input_grad);
+      input_grad.data_type, stream, output_grad, input_grad);
 }
 
 } // namespace Combine
