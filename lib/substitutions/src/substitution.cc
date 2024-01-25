@@ -178,7 +178,7 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
     case Op::SCALAR_SUB:
     case Op::SCALAR_TRUE_DIV:
       return Operator(
-          ElementScalarUnaryAttrs{
+          ElementUnaryAttrs{
               op_type,
               get<float>(assignments.at(OperatorAttributeKey::SCALAR))},
           nullopt);

@@ -34,7 +34,7 @@ static std::string get_default_name(variant<Args...> const &attrs) {
 }
 
 Tensor ComputationGraphBuilder::element_unary(
-    variant<ElementUnaryAttrs, ElementScalarUnaryAttrs> const &attrs,
+    ElementUnaryAttrs const &attrs,
     Tensor const &x,
     optional<std::string> const &maybe_name) {
   std::string name = maybe_name.value_or(get_default_name(attrs));
@@ -60,7 +60,7 @@ Tensor ComputationGraphBuilder::element_scalar_unary(
     Tensor const &input,
     float scalar,
     optional<std::string> const &name) {
-  ElementScalarUnaryAttrs attrs = {op_type, scalar};
+  ElementUnaryAttrs attrs = {op_type, scalar};
   return this->element_unary(attrs, input, name);
 }
 

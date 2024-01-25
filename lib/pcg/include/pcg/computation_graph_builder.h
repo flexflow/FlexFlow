@@ -247,7 +247,7 @@ private:
                               float scalar,
                               optional<std::string> const &name = nullopt);
   Tensor
-      element_unary(variant<ElementUnaryAttrs, ElementScalarUnaryAttrs> const &,
+      element_unary(ElementUnaryAttrs const &,
                     Tensor const &input,
                     optional<std::string> const &name = nullopt);
 

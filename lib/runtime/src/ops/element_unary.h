@@ -18,18 +18,8 @@ OpTaskInvocation init(ElementUnaryAttrs const &);
 OpTaskInvocation forward(ElementUnaryAttrs const &);
 OpTaskInvocation backward(ElementUnaryAttrs const &);
 
-OpTaskInvocation init(ElementScalarUnaryAttrs const &);
-OpTaskInvocation forward(ElementScalarUnaryAttrs const &);
-OpTaskInvocation backward(ElementScalarUnaryAttrs const &);
-
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ElementUnaryAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ElementScalarUnaryAttrs const &attrs,
                                   InputParallelTensorDesc const &input_shape,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);
