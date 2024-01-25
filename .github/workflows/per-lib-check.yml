@@ -83,3 +83,28 @@ jobs:
         run: |
           cd build
           make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) kernels
+
+      - name: Build substitutions
+        run: |
+          cd build
+          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) substitutions
+
+      - name: Build compiler
+        run: |
+          cd build
+          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) compiler
+
+      - name: Build substitutions-test
+        run: |
+          cd build
+          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) substitutions-test
+
+      - name: Build compiler-test
+        run: |
+          cd build
+          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) compiler-test
+
+      - name: Unit tests
+        run: |
+          cd build
+          ctest
