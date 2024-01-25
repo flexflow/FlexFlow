@@ -525,16 +525,19 @@ void AdamOptimizer::unified_update(std::vector<ParallelTensor> const parameters)
   int processed_parameters_num = 0;
   // printf("param size: %d\n", parameters.size());
 
-  while(processed_parameters_num < parameters.size()){
+  size_t workSpaceSize = model->handlers->workSpaceSize *
+                         model->config.workersPerNode * model->config.numNodes;
+
+  while (processed_parameters_num < parameters.size()) {
     parameters_num = 0;
-    
+
     for(int i = processed_parameters_num; i < parameters.size(); i++){
       const ParallelTensor p = parameters.at(i);
       assert(v_values.find(p->region) != v_values.end());
       assert(m_values.find(p->region) != m_values.end());
       assert(p->owner_op != NULL);
       if (reservedWorkSpaceSize + p->get_volume() * sizeof(float) >=
-          model->handlers->workSpaceSize) {
+          workSpaceSize) {
         break;
       }
       reservedWorkSpaceSize += p->get_volume() * sizeof(float);
@@ -543,8 +546,9 @@ void AdamOptimizer::unified_update(std::vector<ParallelTensor> const parameters)
       assert(p->parallel_is != IndexSpace::NO_SPACE);
     }
 
-    printf("parameters_num: %d %zu, %zu, %d\n", parameters_num,
-    reservedWorkSpaceSize, model->handlers->workSpaceSize, parameters.size());
+    // printf("parameters_num: %d %zu, %zu, %d\n", parameters_num,
+    // reservedWorkSpaceSize, model->handlers->workSpaceSize,
+    // parameters.size());
     assert(processed_parameters_num <= parameters.size());
 
     IndexLauncher launcher(ADAM_UNIFY_UPD_NCCL_TASK_ID,
