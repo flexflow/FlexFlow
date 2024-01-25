@@ -148,6 +148,8 @@ def main():
         results = llm.generate(prompts)
     else:
         result = llm.generate("Three tips for staying healthy are: ")
+        
+    llm.stop_server()
 
 if __name__ == "__main__":
     print("flexflow inference example (speculative inference)")
