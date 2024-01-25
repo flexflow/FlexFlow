@@ -58,6 +58,9 @@ AddBiasResidualLayerNormParams AddBiasResidualLayerNorm::get_params() const {
   params.elementwise_affine = this->elementwise_affine;
   params.eps = this->eps;
   params.use_bias = this->use_bias;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -213,7 +216,7 @@ AddBiasResidualLayerNorm::AddBiasResidualLayerNorm(
                                params.use_bias,
                                params.eps,
                                allocate_weights,
-                               name) {}
+                               params.name) {}
 
 AddBiasResidualLayerNorm::AddBiasResidualLayerNorm(
     FFModel &model,
@@ -755,6 +758,8 @@ void AddBiasResidualLayerNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->elementwise_affine);
   sez.serialize(this->eps);
   sez.serialize(this->use_bias);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -783,6 +788,10 @@ Node AddBiasResidualLayerNorm::deserialize(FFModel &ff,
   dez.deserialize(elementwise_affine);
   dez.deserialize(eps);
   dez.deserialize(use_bias);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
 
   AddBiasResidualLayerNormParams params;
   params.layer_guid = layer_guid;
@@ -790,6 +799,7 @@ Node AddBiasResidualLayerNorm::deserialize(FFModel &ff,
   params.elementwise_affine = elementwise_affine;
   params.eps = eps;
   params.use_bias = use_bias;
+  strcpy(params.name, name);
   return ff.get_or_create_node<AddBiasResidualLayerNorm>({inputs[0], inputs[1]},
                                                          params);
 }

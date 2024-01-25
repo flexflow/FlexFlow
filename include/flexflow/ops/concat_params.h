@@ -7,7 +7,7 @@ namespace FlexFlow {
 
 struct ConcatParams {
   int axis;
-
+  char name[MAX_OPNAME];
   bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };
 
