@@ -28,33 +28,7 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_inf_mgr("InferenceManager");
 LegionRuntime::Logger::Category log_offload("Offloading");
 
-InferenceManager::InferenceManager() {
-#ifdef DEADCODE
-  num_devices = ff_config.workersPerNode * ff_config.numNodes;
-  // Check parallelization degrees
-  assert(ff_config.data_parallelism_degree <= num_devices &&
-         "Data parallelism degree exceeds number of available devices");
-  assert(num_devices % ff_config.data_parallelism_degree == 0 &&
-         "Number of available devices is not divisible by data parallelism "
-         "degree");
-  assert(ff_config.tensor_parallelism_degree <= num_devices &&
-         "Tensor parallelism degree exceeds number of available devices");
-  assert(num_devices % ff_config.tensor_parallelism_degree == 0 &&
-         "Number of available devices is not divisible by tensor parallelism "
-         "degree");
-  assert(ff_config.pipeline_parallelism_degree <= num_devices &&
-         "Pipeline parallelism degree exceeds number of available devices");
-  assert(num_devices % ff_config.pipeline_parallelism_degree == 0 &&
-         "Number of available devices is not divisible by pipeline parallelism "
-         "degree");
-  assert(ff_config.data_parallelism_degree *
-                 ff_config.tensor_parallelism_degree *
-                 ff_config.pipeline_parallelism_degree ==
-             num_devices &&
-         "Product of data, tensor, and pipeline parallelism degrees does not "
-         "match the number of available devices");
-#endif
-}
+InferenceManager::InferenceManager() {}
 
 InferenceManager *inference_manager_singleton = nullptr;
 
@@ -296,8 +270,6 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
 void InferenceManager::init_operators_inference(FFModel *model) {
   for (int batch_index = 0; batch_index < model->config.data_parallelism_degree;
        batch_index++) {
-    int expert_device_index = 0;
-    int device_index = batch_index % num_devices;
     for (size_t o = 0; o < model->operators.size(); o++) {
       Op *op = model->operators[o];
       if (op->op_type == OP_WEIGHT) {
