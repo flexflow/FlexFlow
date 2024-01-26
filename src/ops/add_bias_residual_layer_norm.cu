@@ -212,20 +212,17 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
     }
     assert(num_peft_requests <= 1);
 
-    int tokens_previous_requests = 0;
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {
       if (bc->request_completed[i]) {
         continue;
       }
       // Skip non-PEFT requests
       if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
-        // FIXME: use the new approach to computing token offset
-        tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
         continue;
       }
       int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-      int in_dim =
-          added_output.domain.hi()[0] - added_output.domain.lo()[0] + 1;
+      int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
+      int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
       if (bc->requestsInfo[i].peft_bwd) {
         MemoryAllocator *allocator = m->handle.peft_activation_allocator;
         m->input_activation = allocator->allocate_instance_untyped(
@@ -234,14 +231,14 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
         if (m->input_type[0] == DT_FLOAT) {
           checkCUDA(cudaMemcpyAsync(
               m->input_activation,
-              added_output.get_float_ptr() + tokens_previous_requests * in_dim,
+              added_output.get_float_ptr() + first_token_offset * in_dim,
               data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
               cudaMemcpyDeviceToDevice,
               stream));
         } else if (m->input_type[0] == DT_HALF) {
           checkCUDA(cudaMemcpyAsync(
               m->input_activation,
-              added_output.get_half_ptr() + tokens_previous_requests * in_dim,
+              added_output.get_half_ptr() + first_token_offset * in_dim,
               data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
               cudaMemcpyDeviceToDevice,
               stream));
@@ -251,6 +248,7 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
       }
     }
   }
+
   // inference kernel
   int attn_bias_dim = attn_bias.domain.hi()[0] - attn_bias.domain.lo()[0] + 1;
   int residual_volume = residual.domain.get_volume();

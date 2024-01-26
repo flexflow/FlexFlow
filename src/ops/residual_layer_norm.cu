@@ -92,25 +92,6 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 }
 
 template <typename T>
-__inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
-  int const lid = threadIdx.x % C10_WARP_SIZE;
-  int const wid = threadIdx.x / C10_WARP_SIZE;
-  val = WarpReduceSum(val);
-  __syncthreads();
-  if (lid == 0) {
-    shared[wid] = val;
-  }
-  __syncthreads();
-  val = (threadIdx.x < min(blockDim.x, max_num_threads) / C10_WARP_SIZE)
-            ? shared[lid]
-            : 0;
-  if (wid == 0) {
-    val = WarpReduceSum(val);
-  }
-  return val;
-}
-
-template <typename T>
 __global__ void ResidualLayerNormKernel(int64_t N,
                                         float eps,
                                         T const *input_ptr,
@@ -127,8 +108,7 @@ __global__ void ResidualLayerNormKernel(int64_t N,
   const int64_t i = blockIdx.x;
   float sum1 = 0.0f;
   float sum2 = 0.0f;
-  for (int64_t j = threadIdx.x; j < N;
-       j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
+  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     const int64_t index = i * N + j;
     const T residual2_val = (residual2_ptr == nullptr)
                                 ? T(0)
@@ -137,12 +117,10 @@ __global__ void ResidualLayerNormKernel(int64_t N,
     sum1 += static_cast<float>(X[index]);
     sum2 += static_cast<float>(X[index]) * static_cast<float>(X[index]);
   }
-  if (threadIdx.x < kCUDABlockReduceNumThreads) {
-    sum1 = BlockReduceSum<float>(
-        sum1, m_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
-    sum2 = BlockReduceSum<float>(
-        sum2, v_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
-  }
+
+  sum1 = BlockReduceSum<float>(sum1, m_shared);
+  sum2 = BlockReduceSum<float>(sum2, v_shared);
+
   if (threadIdx.x == 0) {
     float const scale = float(1) / static_cast<float>(N);
     sum1 *= scale;
@@ -154,7 +132,7 @@ __global__ void ResidualLayerNormKernel(int64_t N,
   __syncthreads();
 
   using T_ACC = T;
-  for (int64_t j = threadIdx.x; j < N; j += min(blockDim.x, kCUDANumThreads)) {
+  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     const int64_t index = i * N + j;
     const T_ACC gamma_v =
         gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
@@ -178,28 +156,57 @@ void ResidualLayerNorm::inference_kernel(ResidualLayerNormMeta const *m,
                                          T const *beta_ptr,
                                          cudaStream_t stream) {
 
-  std::pair<int, int> kernel1_parallelism =
-      std::make_pair(m->effective_batch_size, kCUDABlockReduceNumThreads);
-  std::pair<int, int> kernel2_parallelism =
-      std::make_pair(m->effective_batch_size, kCUDANumThreads);
-
-  int num_blocks =
-      std::max(kernel1_parallelism.first, kernel2_parallelism.first);
-  int num_threads =
-      std::max(kernel1_parallelism.second, kernel2_parallelism.second);
-
   ResidualLayerNormKernel<T>
-      <<<num_blocks, num_threads, 0, stream>>>(m->effective_num_elements,
-                                               m->eps,
-                                               input_ptr,
-                                               residual1_ptr,
-                                               residual2_ptr,
-                                               added_output_ptr,
-                                               static_cast<T *>(m->mean_ptr),
-                                               static_cast<T *>(m->rstd_ptr),
-                                               gamma_ptr,
-                                               beta_ptr,
-                                               output_ptr);
+      <<<m->effective_batch_size,
+         std::min(CUDA_NUM_THREADS, (int)m->effective_num_elements),
+         0,
+         stream>>>(m->effective_num_elements,
+                   m->eps,
+                   input_ptr,
+                   residual1_ptr,
+                   residual2_ptr,
+                   added_output_ptr,
+                   static_cast<T *>(m->mean_ptr),
+                   static_cast<T *>(m->rstd_ptr),
+                   gamma_ptr,
+                   beta_ptr,
+                   output_ptr);
+}
+template <typename T>
+void save_inference_tensors(ResidualLayerNormMeta const *m) {
+  if (m->inference_debugging) {
+    // save stuff here
+    std::string op_name_without_uid =
+        ResidualLayerNorm::get_op_name_without_uid(m);
+    char const *folder_path = "./inference_tensors/";
+    std::string base_filepath = std::string(folder_path);
+    if (m->layer_guid.model_id > 0) {
+      base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+    }
+    base_filepath += "fwd_step_" + std::to_string(m->decoding_step);
+    base_filepath += "_layers_" +
+                     std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+                     op_name_without_uid + "_shard_" + std::to_string(0);
+
+    std::string filename1 = base_filepath + "_mean";
+    std::cout << "FILENAME: " << filename1 << std::endl;
+    save_tensor(static_cast<T *>(m->mean_ptr),
+                m->effective_batch_size,
+                filename1.c_str());
+    std::string filename2 = base_filepath + "_rstd";
+    std::cout << "FILENAME: " << filename2 << std::endl;
+    save_tensor(static_cast<T *>(m->rstd_ptr),
+                m->effective_batch_size,
+                filename2.c_str());
+    std::string filename3 = base_filepath + "_input_activation";
+    std::cout << "FILENAME: " << filename3 << std::endl;
+    printf("m->effective_batch_size: %i, m->effective_num_elements: %i\n",
+           m->effective_batch_size,
+           m->effective_num_elements);
+    save_tensor(static_cast<T *>(m->input_activation),
+                m->effective_batch_size * m->effective_num_elements,
+                filename3.c_str());
+  }
 }
 
 /*static*/
@@ -221,67 +228,6 @@ void ResidualLayerNorm::inference_kernel_wrapper(
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
-  }
-  // save input activation if needed for PEFT
-  if (bc->num_active_peft_tokens() > 0) {
-    // Check that we have at most one request that requires peft_bwd
-    int num_peft_requests = 0;
-    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-      if (bc->request_completed[i]) {
-        continue;
-      }
-      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
-        continue;
-      }
-      if (bc->requestsInfo[i].peft_bwd) {
-        num_peft_requests++;
-      }
-    }
-    assert(num_peft_requests <= 1);
-
-    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-      if (bc->request_completed[i]) {
-        continue;
-      }
-      // Skip non-PEFT requests
-      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
-        continue;
-      }
-      int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-      int first_token_offset = bc->requestsInfo[i].num_tokens_in_batch;
-      int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
-      if (bc->requestsInfo[i].peft_bwd) {
-        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
-        m->input_activation = allocator->allocate_instance_untyped(
-            data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
-        printf(
-            "Allocating input_activation (%p) of size: %i*%i*%i=%i for %s...\n",
-            m->input_activation,
-            data_type_size(m->input_type[0]),
-            num_peft_tokens,
-            in_dim,
-            data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
-            m->op_name);
-        // copy input activation
-        if (m->input_type[0] == DT_FLOAT) {
-          checkCUDA(cudaMemcpyAsync(
-              m->input_activation,
-              added_output.get_float_ptr() + first_token_offset * in_dim,
-              data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
-              cudaMemcpyDeviceToDevice,
-              stream));
-        } else if (m->input_type[0] == DT_HALF) {
-          checkCUDA(cudaMemcpyAsync(
-              m->input_activation,
-              added_output.get_half_ptr() + first_token_offset * in_dim,
-              data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
-              cudaMemcpyDeviceToDevice,
-              stream));
-        } else {
-          assert(false && "unsupport datatype in layernorm");
-        }
-      }
-    }
   }
 
   if (m->input_type[0] == DT_FLOAT) {
@@ -308,6 +254,89 @@ void ResidualLayerNorm::inference_kernel_wrapper(
         stream);
   } else {
     assert(false && "unsupport datatype in layernorm");
+  }
+
+  // save input activation if needed for PEFT
+  if (bc->num_active_peft_tokens() > 0) {
+    // Check that we have at most one request that requires peft_bwd
+    int num_peft_requests = 0;
+    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+      if (bc->request_completed[i]) {
+        continue;
+      }
+      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+        continue;
+      }
+      if (bc->requestsInfo[i].peft_bwd) {
+        num_peft_requests++;
+      }
+    }
+    assert(num_peft_requests <= 1);
+
+    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+      if (bc->request_completed[i]) {
+        continue;
+      }
+      // Skip non-PEFT requests
+      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+        continue;
+      }
+      int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+      int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
+      int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+      if (bc->requestsInfo[i].peft_bwd) {
+        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+        m->input_activation = allocator->allocate_instance_untyped(
+            data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
+        printf(
+            "Allocating input_activation (%p) of size: %i*%i*%i=%i for %s...\n",
+            m->input_activation,
+            data_type_size(m->input_type[0]),
+            num_peft_tokens,
+            in_dim,
+            data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
+            m->op_name);
+        printf("Copying data from added_output + (first_token_offset=%i) * "
+               "(in_dim=%i). num_peft_tokens: %i\n",
+               first_token_offset,
+               in_dim,
+               num_peft_tokens);
+        // copy input activation
+        if (m->input_type[0] == DT_FLOAT) {
+          checkCUDA(cudaMemcpyAsync(
+              m->input_activation,
+              added_output.get_float_ptr() + first_token_offset * in_dim,
+              data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
+              cudaMemcpyDeviceToDevice,
+              stream));
+        } else if (m->input_type[0] == DT_HALF) {
+          checkCUDA(cudaMemcpyAsync(
+              m->input_activation,
+              added_output.get_half_ptr() + first_token_offset * in_dim,
+              data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
+              cudaMemcpyDeviceToDevice,
+              stream));
+        } else {
+          assert(false && "unsupport datatype in layernorm");
+        }
+        print_tensor(added_output.get_float_ptr() + first_token_offset * in_dim,
+                     10,
+                     "added_output");
+        print_tensor(static_cast<float *>(m->input_activation),
+                     10,
+                     "m->input_activation");
+      }
+    }
+  }
+
+  if (m->inference_debugging) {
+    if (m->input_type[0] == DT_FLOAT) {
+      save_inference_tensors<float>(m);
+    } else if (m->input_type[0] == DT_HALF) {
+      save_inference_tensors<half>(m);
+    } else {
+      assert(false && "unsupport datatype in layernorm");
+    }
   }
 
   if (m->profiling) {
@@ -747,6 +776,40 @@ void peft_bwd_kernel(ResidualLayerNormMeta const *m,
                      cudaStream_t stream) {
   const int64_t M = m->effective_batch_size;
   const int64_t N = m->effective_num_elements;
+
+  if (m->inference_debugging) {
+    // save stuff here
+    std::string op_name_without_uid =
+        ResidualLayerNorm::get_op_name_without_uid(m);
+    char const *folder_path = "./inference_tensors/";
+    std::string base_filepath = std::string(folder_path);
+    if (m->layer_guid.model_id > 0) {
+      base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+    }
+    base_filepath += "bwd_step_" + std::to_string(m->bwd_step);
+    base_filepath += "_layers_" +
+                     std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+                     op_name_without_uid + "_shard_" + std::to_string(0);
+
+    std::string filename1 = base_filepath + "_mean";
+    std::cout << "FILENAME: " << filename1 << std::endl;
+    save_tensor(static_cast<T *>(m->mean_ptr),
+                m->effective_batch_size,
+                filename1.c_str());
+    std::string filename2 = base_filepath + "_rstd";
+    std::cout << "FILENAME: " << filename2 << std::endl;
+    save_tensor(static_cast<T *>(m->rstd_ptr),
+                m->effective_batch_size,
+                filename2.c_str());
+    std::string filename3 = base_filepath + "_input_activation";
+    std::cout << "FILENAME: " << filename3 << std::endl;
+    printf("m->effective_batch_size: %i, m->effective_num_elements: %i\n",
+           m->effective_batch_size,
+           m->effective_num_elements);
+    save_tensor(static_cast<T *>(m->input_activation),
+                m->effective_batch_size * m->effective_num_elements,
+                filename3.c_str());
+  }
 
   int const warp_size = C10_WARP_SIZE;
   int const num_threads = 128;

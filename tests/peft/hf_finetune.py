@@ -122,6 +122,13 @@ def peft_forward_hook(module, input, output):
         torch.save(
             output, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.output_0"
         )
+        # if "layer_norm" in name:
+        #     torch.save(
+        #         output.grad_fn._saved_result1, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.saved_result_1"
+        #     )
+        #     torch.save(
+        #         output.grad_fn._saved_result2, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.saved_result_2"
+        #     )
     elif type(output) == tuple:
         for i, out in enumerate(output):
             if type(out) == torch.Tensor:
@@ -129,6 +136,13 @@ def peft_forward_hook(module, input, output):
                 torch.save(
                     out, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.output_{i}"
                 )
+                # if "layer_norm" in name:
+                #     torch.save(
+                #         out.grad_fn._saved_result1, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.saved_result_1"
+                #     )
+                #     torch.save(
+                #         out.grad_fn._saved_result2, f"./hf_peft_tensors/fwd_step_{module.fwd_step}_{name}.saved_result_2"
+                #     )
             else:
                 print(out)
     else:
