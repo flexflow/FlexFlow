@@ -202,7 +202,6 @@ enum TaskIDs {
   // NCCL tasks
   NCCL_GETUNIQUEID_TASK_ID,
   NCCL_INIT_COMMS_TASK_ID,
-  NCCL_FINISH_COMMS_TASK_ID,
   // Search
   STRATEGY_SEARCH_TASK_ID,
   // Graph
@@ -398,7 +397,6 @@ std::vector<ParallelTensorShape>
 class FFModel {
 public:
   FFModel(FFConfig &config, bool cpu_offload = false);
-  ~FFModel();
 
   static constexpr float PROPAGATION_CHANCE = 0.25;
   static constexpr float CONTINUE_PROPAGATION_CHANCE = 0.75;
