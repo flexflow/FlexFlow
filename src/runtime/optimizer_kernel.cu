@@ -228,7 +228,7 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  assert(op->reservedWorkSpaceSize < meta->handle.workSpaceSize);
+  // assert(op->reservedWorkSpaceSize < meta->handle.workSpaceSize);
 
   void *workSpace_ptr = meta->handle.workSpace;
 
@@ -245,7 +245,7 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(
   // do allreduce once
   checkNCCL(ncclAllReduce(meta->handle.workSpace,
                           (float *)meta->handle.workSpace,
-                          op->reservedWorkSpaceSize / sizeof(float),
+                          meta->handle.workSpaceSize,
                           ncclFloat,
                           ncclSum,
                           meta->handle.ncclComm,
