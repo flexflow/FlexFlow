@@ -661,44 +661,37 @@ void FFMapper::map_task(const MapperContext ctx,
   } // for idx
 }
 
-void FFMapper::map_replicate_task(const MapperContext ctx,
-                                  Task const &task,
-                                  MapTaskInput const &input,
-                                  MapTaskOutput const &default_output,
-                                  MapReplicateTaskOutput &output) {
+void FFMapper::replicate_task(const MapperContext ctx,
+                              Task const &task,
+                              ReplicateTaskInput const &input,
+                              ReplicateTaskOutput &output) {
   // Should only be replicated for the top-level task
   assert((task.get_depth() == 0) && (task.regions.size() == 0));
   const Processor::Kind target_kind = task.target_proc.kind();
-  VariantID chosen_variant;
+  VariantID vid;
   {
     std::vector<VariantID> variant_ids;
-    runtime->find_valid_variants(
-        ctx, task.task_id, variant_ids, task.target_proc.kind());
+    runtime->find_valid_variants(ctx, task.task_id, variant_ids, target_kind);
     // Currently assume there is exactly one variant
     assert(variant_ids.size() == 1);
-    chosen_variant = variant_ids[0];
+    output.chosen_variant = variant_ids[0];
   }
-  std::vector<Processor> const &all_procs = all_procs_by_kind(target_kind);
-  // Place on replicate on each node by default
-  output.task_mappings.resize(total_nodes, default_output);
-  // Assume default_output does not include any target_procs
-  assert(default_output.target_procs.size() == 0);
-  for (std::vector<Processor>::const_iterator it = all_procs.begin();
-       it != all_procs.end();
+  output.target_processors.resize(total_nodes);
+  std::vector<bool> handled(total_nodes, false);
+  size_t count = 0;
+  Machine::ProcessorQuery procs(machine);
+  procs.only_kind(target_kind);
+  for (Machine::ProcessorQuery::iterator it = procs.begin(); it != procs.end();
        it++) {
-    AddressSpace space = it->address_space();
-    assert(space < output.task_mappings.size());
-    // Add *it as a target_proc if we haven't found one
-    if (output.task_mappings[space].target_procs.size() == 0) {
-      output.task_mappings[space].target_procs.push_back(*it);
+    const AddressSpace space = it->address_space();
+    if (handled[space]) {
+      continue;
     }
+    output.target_processors[space] = *it;
+    handled[space] = true;
+    count++;
   }
-  output.control_replication_map.resize(total_nodes);
-  for (int idx = 0; idx < total_nodes; idx++) {
-    output.task_mappings[idx].chosen_variant = chosen_variant;
-    output.control_replication_map[idx] =
-        output.task_mappings[idx].target_procs[0];
-  }
+  assert(count == total_nodes);
 }
 
 void FFMapper::select_task_variant(const MapperContext ctx,
