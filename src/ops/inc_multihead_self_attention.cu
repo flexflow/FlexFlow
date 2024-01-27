@@ -1317,7 +1317,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       }
     }
 
-    // Compute rotary embeddings bwd
+    // Step 7: perform rotary position embeddings (RoPE) bwd
     {
       if (*m->apply_rotary_embedding) {
         assert(m->hidden_size == m->qProjSize * m->num_q_heads);
@@ -1361,25 +1361,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
             C, num_tokens * (m->qProjSize * m->num_q_heads), filename9.c_str());
       }
     }
-    // Step 7: perform rotary position embeddings (RoPE) bwd
-    {
-      if (*m->apply_rotary_embedding) {
-        assert(m->hidden_size == m->qProjSize * m->num_q_heads);
-        assert(m->qProjSize == m->kProjSize);
-        /*q&k*/
-        int parallelism = num_tokens * m->hidden_size;
-        DT *A = static_cast<DT *>(m->devQKVProjArray);
-        apply_rotary_embedding_bwd<<<GET_BLOCKS(parallelism),
-                                     min(CUDA_NUM_THREADS, parallelism),
-                                     0,
-                                     stream>>>(A,
-                                               m->complex_input,
-                                               m->token_infos,
-                                               m->qProjSize,
-                                               num_tokens,
-                                               m->hidden_size);
-      }
-    }
+
     // Step 8: compute gradients w.r.t. input
     {
       float alpha = 1.0f, beta = 0.0f;
