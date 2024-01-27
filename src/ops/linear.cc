@@ -621,6 +621,8 @@ void Linear::inference_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   LinearMeta *m = *((LinearMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  std::string op_name_without_uid = Linear::get_op_name_without_uid(m);
+  printf("INF %s\n", op_name_without_uid.c_str());
   if (bc->num_tokens == 0) {
     return;
   }
@@ -653,14 +655,14 @@ void Linear::inference_task(Task const *task,
     assert(bias.domain.get_volume() == static_cast<size_t>(out_dim));
   }
   inference_kernel_wrapper(m,
-                          bc,
-                          input.ptr,
-                          output.ptr,
-                          weight.ptr,
-                          bias.ptr,
-                          in_dim,
-                          out_dim,
-                          batch_size);
+                           bc,
+                           input.ptr,
+                           output.ptr,
+                           weight.ptr,
+                           bias.ptr,
+                           in_dim,
+                           out_dim,
+                           batch_size);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -735,7 +737,7 @@ void Linear::peft_bwd_task(Task const *task,
     return;
   }
   assert(regions.size() == 3);
-  assert(task->regions.size() == 3 );
+  assert(task->regions.size() == 3);
   if (m->quantization_type == DT_NONE) {
     assert(m->input_type[0] == m->weight_type[0]);
   }

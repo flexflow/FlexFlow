@@ -201,53 +201,53 @@ void inference_kernel_wrapper(RMSNormMeta *m,
 
   // save input activation if needed for PEFT
   if (bc->num_active_peft_tokens() > 0) {
-    // check that at most one dimension after the first is > 1. TODO(goliaro):
-    // support case where this condition does not hold
-    int non_unit_dims_encountered = 0;
-    for (int i = 1; i < input.domain.get_dim(); i++) {
-      int dim_i = input.domain.hi()[i] - input.domain.lo()[i] + 1;
-      if (dim_i > 1) {
-        non_unit_dims_encountered++;
-      }
-    }
-    assert(non_unit_dims_encountered <= 1);
-
-    // allocate space for all peft tokens
-    MemoryAllocator *allocator = m->handle.peft_activation_allocator;
-    int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
-    m->input_activation = allocator->allocate_instance_untyped(
-        data_type_size(input.data_type) * bc->num_active_peft_tokens() *
-        in_dim);
-
-    int tokens_previous_requests = 0;
+    // Check that we have at most one request that requires peft_bwd
+    int num_peft_requests = 0;
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {
       if (bc->request_completed[i]) {
         continue;
       }
-      // Skip non-PEFT requests and PEFT forward-only requests
-      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID ||
-          !bc->requestsInfo[i].peft_bwd) {
-        tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
+      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+        continue;
+      }
+      if (bc->requestsInfo[i].peft_bwd) {
+        num_peft_requests++;
+      }
+    }
+    assert(num_peft_requests <= 1);
+    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+      if (bc->request_completed[i]) {
+        continue;
+      }
+      // Skip non-PEFT requests
+      if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
         continue;
       }
       int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+      int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
+      int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+      if (bc->requestsInfo[i].peft_bwd) {
+        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+        m->input_activation = allocator->allocate_instance_untyped(
+            data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
 
-      if (input.data_type == DT_FLOAT) {
-        checkCUDA(cudaMemcpyAsync(
-            m->input_activation,
-            input.get_float_ptr() + tokens_previous_requests * in_dim,
-            data_type_size(input.data_type) * num_peft_tokens * in_dim,
-            cudaMemcpyDeviceToDevice,
-            stream));
-      } else if (input.data_type == DT_HALF) {
-        checkCUDA(cudaMemcpyAsync(
-            m->input_activation,
-            input.get_half_ptr() + tokens_previous_requests * in_dim,
-            data_type_size(input.data_type) * num_peft_tokens * in_dim,
-            cudaMemcpyDeviceToDevice,
-            stream));
-      } else {
-        assert(false && "unsupport datatype in layernorm");
+        if (input.data_type == DT_FLOAT) {
+          checkCUDA(cudaMemcpyAsync(
+              m->input_activation,
+              input.get_float_ptr() + first_token_offset * in_dim,
+              data_type_size(input.data_type) * num_peft_tokens * in_dim,
+              cudaMemcpyDeviceToDevice,
+              stream));
+        } else if (input.data_type == DT_HALF) {
+          checkCUDA(cudaMemcpyAsync(
+              m->input_activation,
+              input.get_half_ptr() + first_token_offset * in_dim,
+              data_type_size(input.data_type) * num_peft_tokens * in_dim,
+              cudaMemcpyDeviceToDevice,
+              stream));
+        } else {
+          assert(false && "unsupport datatype in layernorm");
+        }
       }
     }
   }

@@ -392,11 +392,6 @@ InferenceResult
   GenericTensorAccessorW parent;
   int batch_size = bc->num_active_infr_tokens();
   ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
-  // Note that we free activation allocator here since argmax is the
-  // last operator in forward
-  if (m->handle.peft_activation_allocator != nullptr) {
-    m->handle.peft_activation_allocator->free_all();
-  }
   InferenceResult ir;
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);

@@ -473,7 +473,7 @@ void LoraLinear::inference_task(Task const *task,
     int shard_id = task->index_point.point_data[0];
 
     // Check if output directory exists, and create it if it does not
-    char const *folder_path = "./inference_tensors";
+    char const *folder_path = "./inference_tensors/";
     struct stat st = {0};
     if (stat(folder_path, &st) == -1) {
       // Directory does not exist, create it
@@ -493,15 +493,18 @@ void LoraLinear::inference_task(Task const *task,
         lora_layername.substr(0, found + searchString.length());
 
     // output base filepath, shared by all tensors from the same operator
-    std::string base_filepath =
-        "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
-        "_decoding-step_" + std::to_string(m->decoding_step) + "_layer-num_" +
-        std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
-        lora_layername_substr + "_shard-id_" + std::to_string(shard_id);
+    std::string base_filepath = std::string(folder_path);
+    if (m->layer_guid.model_id > 0) {
+      base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+    }
+    base_filepath += "fwd_step_" + std::to_string(m->decoding_step);
+    base_filepath +=
+        "_layers_" + std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+        lora_layername_substr + "_shard_" + std::to_string(shard_id);
 
     // save batch config, if passed
     if (bc != nullptr) {
-      bc->save_to_file(base_filepath + "_batch-config");
+      bc->save_to_file(base_filepath + "_batch_config");
     }
 
     std::string filename = base_filepath + "_input_" + std::to_string(0);
@@ -634,7 +637,7 @@ void LoraLinear::peft_bwd_task(Task const *task,
     int shard_id = task->index_point.point_data[0];
 
     // Check if output directory exists, and create it if it does not
-    char const *folder_path = "./inference_tensors";
+    char const *folder_path = "./inference_tensors/";
     struct stat st = {0};
     if (stat(folder_path, &st) == -1) {
       // Directory does not exist, create it
@@ -654,15 +657,18 @@ void LoraLinear::peft_bwd_task(Task const *task,
         lora_layername.substr(0, found + searchString.length());
 
     // output base filepath, shared by all tensors from the same operator
-    std::string base_filepath =
-        "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
-        "_bwd-step_" + std::to_string(m->bwd_step) + "_layer-num_" +
-        std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
-        lora_layername_substr + "_shard-id_" + std::to_string(shard_id);
+    std::string base_filepath = std::string(folder_path);
+    if (m->layer_guid.model_id > 0) {
+      base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+    }
+    base_filepath += "bwd_step_" + std::to_string(m->bwd_step);
+    base_filepath +=
+        "_layers_" + std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+        lora_layername_substr + "_shard_" + std::to_string(shard_id);
 
     // save batch config, if passed
     if (bc != nullptr) {
-      bc->save_to_file(base_filepath + "_batch-config");
+      bc->save_to_file(base_filepath + "_batch_config");
     }
 
     std::string filename = base_filepath + "_input_" + std::to_string(0);
