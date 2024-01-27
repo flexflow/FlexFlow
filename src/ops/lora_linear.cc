@@ -272,8 +272,6 @@ void load_peft_from_file(DT *ptr,
                          size_t size,
                          int shard_id,
                          std::string filepath) {
-  std::cout << "Loading LORA weight " << filepath << ", size: " << size
-            << ", shard: " << shard_id << std::endl;
   std::ifstream in(filepath, std::ios::in | std::ios::binary);
   if (!in.good()) {
     printf("Could not open file: %s\n", filepath.c_str());
@@ -360,13 +358,25 @@ void LoraLinear::register_model_task(Task const *task,
   std::string w1_filepath =
       join_path({weights_folder_filepath, lora_layername_substr + "_B_weight"});
   if (dt == DT_FLOAT) {
+    std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
+              << ", size: " << w0_num_elements << ", shard: " << shard_id
+              << std::endl;
     load_peft_from_file(
         (float *)weight.w0_ptr, w0_num_elements, shard_id, w0_filepath);
+    std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
+              << ", size: " << w1_num_elements << ", shard: " << shard_id
+              << std::endl;
     load_peft_from_file(
         (float *)weight.w1_ptr, w1_num_elements, shard_id, w1_filepath);
   } else if (dt == DT_HALF) {
+    std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
+              << ", size: " << w0_num_elements << ", shard: " << shard_id
+              << std::endl;
     load_peft_from_file(
         (half *)weight.w0_ptr, w0_num_elements, shard_id, w0_filepath);
+    std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
+              << ", size: " << w1_num_elements << ", shard: " << shard_id
+              << std::endl;
     load_peft_from_file(
         (half *)weight.w1_ptr, w1_num_elements, shard_id, w1_filepath);
   } else {

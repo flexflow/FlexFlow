@@ -5546,7 +5546,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.set_leaf();
     if (pre_register) {
       Runtime::preregister_task_variant<ResidualRMSNorm::inference_task>(
-          registrar, "RMS Norm Inference Task");
+          registrar, "Residual RMS Norm Inference Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
@@ -5562,7 +5562,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.set_leaf();
     if (pre_register) {
       Runtime::preregister_task_variant<ResidualRMSNorm::backward_task>(
-          registrar, "RMS Norm Backward Task");
+          registrar, "Residual RMS Norm Backward Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
@@ -5577,7 +5577,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.set_leaf();
     if (pre_register) {
       Runtime::preregister_task_variant<ResidualRMSNorm::peft_bwd_task>(
-          registrar, "RMS Norm PEFT Backward Task");
+          registrar, "Residual RMS Norm PEFT Backward Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
