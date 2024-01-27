@@ -189,20 +189,14 @@ void save_inference_tensors(ResidualLayerNormMeta const *m) {
                      op_name_without_uid + "_shard_" + std::to_string(0);
 
     std::string filename1 = base_filepath + "_mean";
-    std::cout << "FILENAME: " << filename1 << std::endl;
     save_tensor(static_cast<T *>(m->mean_ptr),
                 m->effective_batch_size,
                 filename1.c_str());
     std::string filename2 = base_filepath + "_rstd";
-    std::cout << "FILENAME: " << filename2 << std::endl;
     save_tensor(static_cast<T *>(m->rstd_ptr),
                 m->effective_batch_size,
                 filename2.c_str());
     std::string filename3 = base_filepath + "_input_activation";
-    std::cout << "FILENAME: " << filename3 << std::endl;
-    printf("m->effective_batch_size: %i, m->effective_num_elements: %i\n",
-           m->effective_batch_size,
-           m->effective_num_elements);
     save_tensor(static_cast<T *>(m->input_activation),
                 m->effective_batch_size * m->effective_num_elements,
                 filename3.c_str());
@@ -288,19 +282,6 @@ void ResidualLayerNorm::inference_kernel_wrapper(
         MemoryAllocator *allocator = m->handle.peft_activation_allocator;
         m->input_activation = allocator->allocate_instance_untyped(
             data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
-        printf(
-            "Allocating input_activation (%p) of size: %i*%i*%i=%i for %s...\n",
-            m->input_activation,
-            data_type_size(m->input_type[0]),
-            num_peft_tokens,
-            in_dim,
-            data_type_size(m->input_type[0]) * num_peft_tokens * in_dim,
-            m->op_name);
-        printf("Copying data from added_output + (first_token_offset=%i) * "
-               "(in_dim=%i). num_peft_tokens: %i\n",
-               first_token_offset,
-               in_dim,
-               num_peft_tokens);
         // copy input activation
         if (m->input_type[0] == DT_FLOAT) {
           checkCUDA(cudaMemcpyAsync(
@@ -319,12 +300,6 @@ void ResidualLayerNorm::inference_kernel_wrapper(
         } else {
           assert(false && "unsupport datatype in layernorm");
         }
-        print_tensor(added_output.get_float_ptr() + first_token_offset * in_dim,
-                     10,
-                     "added_output");
-        print_tensor(static_cast<float *>(m->input_activation),
-                     10,
-                     "m->input_activation");
       }
     }
   }
@@ -792,20 +767,14 @@ void peft_bwd_kernel(ResidualLayerNormMeta const *m,
                      op_name_without_uid + "_shard_" + std::to_string(0);
 
     std::string filename1 = base_filepath + "_mean";
-    std::cout << "FILENAME: " << filename1 << std::endl;
     save_tensor(static_cast<T *>(m->mean_ptr),
                 m->effective_batch_size,
                 filename1.c_str());
     std::string filename2 = base_filepath + "_rstd";
-    std::cout << "FILENAME: " << filename2 << std::endl;
     save_tensor(static_cast<T *>(m->rstd_ptr),
                 m->effective_batch_size,
                 filename2.c_str());
     std::string filename3 = base_filepath + "_input_activation";
-    std::cout << "FILENAME: " << filename3 << std::endl;
-    printf("m->effective_batch_size: %i, m->effective_num_elements: %i\n",
-           m->effective_batch_size,
-           m->effective_num_elements);
     save_tensor(static_cast<T *>(m->input_activation),
                 m->effective_batch_size * m->effective_num_elements,
                 filename3.c_str());
