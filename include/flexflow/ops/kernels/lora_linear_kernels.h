@@ -19,7 +19,6 @@ class LoraLinearMeta : public OpMeta {
 public:
   LoraLinearMeta(FFHandler handle, LoraLinear const *li);
   ~LoraLinearMeta(void);
-  char op_name[MAX_OPNAME];
   // PEFT related fields
   void *low_rank_activation;
   void *input_activation;
