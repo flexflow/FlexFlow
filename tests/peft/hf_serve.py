@@ -92,14 +92,6 @@ def main():
     model = PeftModel.from_pretrained(model, peft_model_id)
 
     print(model)
-    for name, params in model.named_parameters():
-        print(name)
-        if (
-            name
-            == "base_model.model.model.layers.11.mlp.down_proj.lora_B.default.weight"
-        ):
-            print(params)
-    assert False
 
     # Register hooks to save tensors, if needed
     if save_peft_tensors:
