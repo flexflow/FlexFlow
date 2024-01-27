@@ -864,9 +864,6 @@ void IncMultiHeadSelfAttention::inference_task(
       m, bc, task->index_point.point_data[0], input, weight, output, biases);
 
   if (m->inference_debugging) {
-    std::string op_name_without_uid =
-        IncMultiHeadSelfAttention::get_op_name_without_uid(m);
-    std::cout << "INF " << op_name_without_uid << std::endl;
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     std::vector<GenericTensorAccessorR> weights_accessors;
