@@ -358,11 +358,14 @@ void ResidualLayerNorm::init_inference(
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  assert(batch_outputs[0]->part == batch_inputs[0]->part);
+  assert(batch_outputs[0]->region == batch_inputs[0]->region);
   int field_id = 0;
   // input
+  // added: input + residual(s)
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    READ_WRITE,
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(field_id++, FID_DATA);
@@ -382,13 +385,6 @@ void ResidualLayerNorm::init_inference(
                                                       batch_inputs[2]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
-  // added: input + residual(s)
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region));
-  launcher.add_field(field_id++, FID_DATA);
   // layer norm output
   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
                                                     0 /*projection id*/,
@@ -433,11 +429,14 @@ void ResidualLayerNorm::init(FFModel const &ff) {
                          false /*must*/,
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
+  assert(outputs[0]->part == inputs[0]->part);
+  assert(outputs[0]->region == inputs[0]->region);
   int field_id = 0;
   // input
+  // added: input + residual(s)
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    READ_WRITE,
                                                     EXCLUSIVE,
                                                     inputs[0]->region));
   launcher.add_field(field_id++, FID_DATA);
@@ -457,13 +456,6 @@ void ResidualLayerNorm::init(FFModel const &ff) {
                                                       inputs[2]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
-  // added: input + residual(s)
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(field_id++, FID_DATA);
   // layer norm output
   launcher.add_region_requirement(RegionRequirement(outputs[1]->part,
                                                     0 /*projection id*/,
@@ -884,11 +876,14 @@ FutureMap ResidualLayerNorm::inference(
                          0 /*mapper_id*/,
                          machine_view_hash);
   launcher.add_future(bc);
+  assert(batch_outputs[0]->part == batch_inputs[0]->part);
+  assert(batch_outputs[0]->region == batch_inputs[0]->region);
   int field_id = 0;
   // input
+  // added: input + residual(s)
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    READ_WRITE,
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(field_id++, FID_DATA);
@@ -908,13 +903,6 @@ FutureMap ResidualLayerNorm::inference(
                                                       batch_inputs[2]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
-  // added: input + residual(s)
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region));
-  launcher.add_field(field_id++, FID_DATA);
   // layer norm output
   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
                                                     0 /*projection id*/,
@@ -956,7 +944,7 @@ void ResidualLayerNorm::inference_task(
   }
 
   assert(regions.size() ==
-         4 + m->use_two_residuals +
+         3 + m->use_two_residuals +
              (m->elementwise_affine ? (m->use_bias ? 2 : 1) : 0));
 
   int region_idx = 0, task_region_idx = 0;
@@ -984,13 +972,8 @@ void ResidualLayerNorm::inference_task(
                                          ctx,
                                          runtime);
   }
-  GenericTensorAccessorW added_output =
-      helperGetGenericTensorAccessorWO(m->output_type[0],
-                                       regions[region_idx++],
-                                       task->regions[task_region_idx++],
-                                       FID_DATA,
-                                       ctx,
-                                       runtime);
+  GenericTensorAccessorW added_output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output =
       helperGetGenericTensorAccessorWO(m->output_type[1],
                                        regions[region_idx++],
@@ -1029,7 +1012,7 @@ void ResidualLayerNorm::inference_task(
     assert(residual2_domain == in_domain);
   }
   Domain added_out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[task_region_idx++].region.get_index_space());
+      ctx, task->regions[0].region.get_index_space());
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[task_region_idx++].region.get_index_space());
   Domain gamma_domain, beta_domain;
@@ -1069,7 +1052,7 @@ void ResidualLayerNorm::inference_task(
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     std::vector<GenericTensorAccessorR> input_accessors;
-    input_accessors.push_back(input);
+    // input_accessors.push_back(input);
     input_accessors.push_back(residual1);
     if (m->use_two_residuals) {
       input_accessors.push_back(residual2);

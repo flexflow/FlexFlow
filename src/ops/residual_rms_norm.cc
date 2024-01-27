@@ -261,6 +261,8 @@ void ResidualRMSNorm::init(FFModel const &ff) {
                          false /*must*/,
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
+  assert(outputs[0]->part == inputs[0]->part);
+  assert(outputs[0]->region == inputs[0]->region);
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -273,24 +275,18 @@ void ResidualRMSNorm::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     inputs[1]->region));
   launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(outputs[1]->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     outputs[1]->region));
-  launcher.add_field(3, FID_DATA);
+  launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
-  launcher.add_field(4, FID_DATA);
+  launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -318,9 +314,11 @@ void ResidualRMSNorm::init_inference(
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  assert(batch_outputs[0]->part == batch_inputs[0]->part);
+  assert(batch_outputs[0]->region == batch_inputs[0]->region);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    READ_WRITE,
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
@@ -330,24 +328,18 @@ void ResidualRMSNorm::init_inference(
                                                     EXCLUSIVE,
                                                     batch_inputs[1]->region));
   launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region));
-  launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     batch_outputs[1]->region));
-  launcher.add_field(3, FID_DATA);
+  launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
-  launcher.add_field(4, FID_DATA);
+  launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
@@ -398,6 +390,8 @@ FutureMap
                          0 /*mapper_id*/,
                          machine_view_hash);
   launcher.add_future(bc);
+  assert(batch_outputs[0]->part == batch_inputs[0]->part);
+  assert(batch_outputs[0]->region == batch_inputs[0]->region);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -410,40 +404,33 @@ FutureMap
                                                     EXCLUSIVE,
                                                     batch_inputs[1]->region));
   launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region));
-  launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     batch_outputs[1]->region));
-  launcher.add_field(3, FID_DATA);
+  launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
-  launcher.add_field(4, FID_DATA);
+  launcher.add_field(3, FID_DATA);
   return runtime->execute_index_space(ctx, launcher);
 }
 
 /*
-  regions[0](I): input1
+  regions[0](I/O): input1 / residual output
   regions[1](I): input2
-  regions[2](O): residual output
-  regions[3](O): output
-  regions[4](I/O): weight
+  regions[2](O): output
+  regions[3](I/O): weight
 */
 void ResidualRMSNorm::inference_task(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
-  assert(task->regions.size() == 5);
-  assert(regions.size() == 5);
+  assert(task->regions.size() == 4);
+  assert(regions.size() == 4);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
@@ -453,19 +440,20 @@ void ResidualRMSNorm::inference_task(Task const *task,
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR input2 = helperGetGenericTensorAccessorRO(
       m->input_type[1], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  // residual_output is mapped to the same region as the input
   GenericTensorAccessorW residual_output = helperGetGenericTensorAccessorWO(
-      m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      m->output_type[1], regions[3], task->regions[3], FID_DATA, ctx, runtime);
+      m->output_type[1], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
-      m->weight_type[0], regions[4], task->regions[4], FID_DATA, ctx, runtime);
+      m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
   inference_kernel_wrapper(
       m, bc, input1, input2, weight, residual_output, output);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     ResidualRMSNorm::save_inference_tensors_to_file(
-        m, shard_id, bc, {input1, input2}, {weight}, {residual_output, output});
+        m, shard_id, bc, {input2}, {weight}, {residual_output, output});
   }
 }
 

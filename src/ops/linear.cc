@@ -621,8 +621,6 @@ void Linear::inference_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   LinearMeta *m = *((LinearMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
-  std::string op_name_without_uid = Linear::get_op_name_without_uid(m);
-  printf("INF %s\n", op_name_without_uid.c_str());
   if (bc->num_tokens == 0) {
     return;
   }
