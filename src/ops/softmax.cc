@@ -376,8 +376,6 @@ void Softmax::inference_task(Task const *task,
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
 
-  std::string op_name_without_uid = Softmax::get_op_name_without_uid(m);
-  std::cout << "INF " << op_name_without_uid << std::endl;
   if (bc->num_tokens == 0) {
     return;
   }

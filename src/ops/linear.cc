@@ -752,9 +752,6 @@ void Linear::peft_bwd_task(Task const *task,
   int in_dim = input_grad.domain.hi()[0] - input_grad.domain.lo()[0] + 1;
   int out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
 
-  std::string op_name_without_uid = Linear::get_op_name_without_uid(m);
-  std::cout << "BWD " << op_name_without_uid << std::endl;
-
   int num_infr_tokens = bc->num_active_infr_tokens();
   int num_peft_tokens = bc->num_active_peft_tokens();
   if (m->inference_debugging) {

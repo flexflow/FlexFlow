@@ -275,6 +275,8 @@ public:
     }
     // output base filepath, shared by all tensors from the same operator
     std::string op_name_without_uid = get_op_name_without_uid(m);
+    std::cout << (fwd_pass ? "INF " : "BWD ") << op_name_without_uid
+              << std::endl;
     std::string base_filepath = std::string(folder_path);
     if (m->layer_guid.model_id > 0) {
       base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";

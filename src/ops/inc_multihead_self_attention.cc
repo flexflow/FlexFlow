@@ -818,16 +818,12 @@ void IncMultiHeadSelfAttention::inference_task(
   log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
                     bc->num_tokens,
                     bc->num_active_requests());
-
-  IncMultiHeadSelfAttentionMeta *m =
-      *((IncMultiHeadSelfAttentionMeta **)task->local_args);
-  std::string op_name_without_uid =
-      IncMultiHeadSelfAttention::get_op_name_without_uid(m);
-  std::cout << "INF " << op_name_without_uid << std::endl;
-
   if (bc->num_tokens == 0) {
     return;
   }
+
+  IncMultiHeadSelfAttentionMeta *m =
+      *((IncMultiHeadSelfAttentionMeta **)task->local_args);
 
   assert(((*m->qkv_bias || *m->final_bias) ? regions.size() == 4
                                            : regions.size() == 3));
@@ -868,6 +864,9 @@ void IncMultiHeadSelfAttention::inference_task(
       m, bc, task->index_point.point_data[0], input, weight, output, biases);
 
   if (m->inference_debugging) {
+    std::string op_name_without_uid =
+        IncMultiHeadSelfAttention::get_op_name_without_uid(m);
+    std::cout << "INF " << op_name_without_uid << std::endl;
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     std::vector<GenericTensorAccessorR> weights_accessors;
@@ -878,37 +877,6 @@ void IncMultiHeadSelfAttention::inference_task(
     IncMultiHeadSelfAttention::save_inference_tensors_to_file(
         m, shard_id, bc, {input}, weights_accessors, {output});
   }
-}
-
-template <typename DT>
-void load_tensor_from_file(DT *ptr, size_t size, std::string filepath) {
-  std::ifstream in(filepath, std::ios::in | std::ios::binary);
-  if (!in.good()) {
-    std::cout << "Could not open file: " << filepath << std::endl;
-  }
-  assert(in.good() && "incorrect weight file path");
-  std::vector<DT> host_array(size);
-  size_t loaded_data_size = sizeof(DT) * size;
-  in.seekg(0, in.end);
-  in.seekg(0, in.beg);
-  in.read((char *)host_array.data(), loaded_data_size);
-
-  size_t in_get_size = in.gcount();
-  if (in_get_size != loaded_data_size) {
-    std::cout << "load weight data error " << in_get_size << ", "
-              << loaded_data_size << ", " << sizeof(DT) << std::endl;
-    assert(false);
-  }
-  assert(size == host_array.size());
-
-  copy_tensor_host_to_dev(ptr, host_array.data(), size);
-
-  // // normal
-  // long data_index = 0;
-  // for (auto v : host_array) {
-  //   ptr[data_index++] = v;
-  // }
-  in.close();
 }
 
 FutureMap IncMultiHeadSelfAttention::peft_bwd(
@@ -1026,18 +994,6 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
   assert(output_grad_domain.get_dim() == 4);
 
   assert(task->index_point.get_dim() == 1);
-
-  std::string op_name_without_uid =
-      IncMultiHeadSelfAttention::get_op_name_without_uid(m);
-  std::cout << "BWD " << op_name_without_uid << std::endl;
-
-  // if (op_name_without_uid == "layers_11_attention") {
-  //   load_tensor_from_file(
-  //     output_grad.get_float_ptr(),
-  //     (output_grad.domain.get_volume()/128)*24,
-  //     "/usr0/home/goliaro/Desktop/FlexFlow/tests/peft/hf_peft_tensors/bwd_step_0_layers.11.self_attn.o_proj.go_0.flexflow"
-  //   );
-  // }
 
   IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
       m,
