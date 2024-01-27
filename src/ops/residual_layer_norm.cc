@@ -823,7 +823,6 @@ void ResidualLayerNorm::peft_bwd_task(
                                              ctx,
                                              runtime);
   }
-
   ResidualLayerNorm::peft_bwd_kernel_wrapper(
       m, output_grad, input_grad, residual1_grad, residual2_grad, gamma);
 
@@ -952,7 +951,6 @@ void ResidualLayerNorm::inference_task(
   assert(task->regions.size() == regions.size());
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   ResidualLayerNormMeta *m = *((ResidualLayerNormMeta **)task->local_args);
-
   if (bc->num_tokens == 0) {
     return;
   }

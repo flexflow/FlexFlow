@@ -374,14 +374,12 @@ void Softmax::inference_task(Task const *task,
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
-  SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
-
   if (bc->num_tokens == 0) {
     return;
   }
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-
+  SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
@@ -441,7 +439,6 @@ void Softmax::peft_bwd_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
-  printf("BWD softmax\n");
   assert(task->regions.size() == regions.size());
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
