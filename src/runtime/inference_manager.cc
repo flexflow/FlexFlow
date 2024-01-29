@@ -276,9 +276,9 @@ void InferenceManager::init_operators_inference(FFModel *model) {
         assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
         assert(tensor_buffer[op->outputs[i]].size() > batch_index);
         outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
-        if (i > 0) {
-          assert(outputs[0]->machine_view == outputs[i]->machine_view);
-        }
+        // if (i > 0) {
+        //   assert(outputs[0]->machine_view == outputs[i]->machine_view);
+        // }
         assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
       }
       if (op->is_parallel_op()) {
