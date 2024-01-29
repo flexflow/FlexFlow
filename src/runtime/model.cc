@@ -6784,6 +6784,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<Replicate::backward_task>(registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(REPLICATE_PEFT_BWD_TASK_ID, "Replicate PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Replicate::peft_bwd_task>(
+          registrar, "Replicate PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Replicate::peft_bwd_task>(registrar);
+    }
+  }
   // Reduction
   {
     TaskVariantRegistrar registrar(REDUCTION_INIT_TASK_ID, "Reduction Init");
