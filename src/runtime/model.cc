@@ -3283,11 +3283,11 @@ void FFModel::create_operators_from_layers() {
       inputs.push_back(tensors_to_parallel_tensors[l->inputs[i]]);
     }
     Op *op = nullptr;
-    // add a combine before arg_topk
+    // add a combine before arg_topk / argmax
     if (config.computationMode == COMP_MODE_INFERENCE &&
         config.tensor_parallelism_degree > 1 &&
-        (l->op_type == OP_ARG_TOPK || l->op_type == OP_SOFTMAX ||
-         l->op_type == OP_ARGMAX)) {
+        (layer_idx == layers.size() - 1 &&
+         (l->op_type == OP_ARG_TOPK || l->op_type == OP_ARGMAX))) {
       std::vector<ParallelTensor> partitioned_inputs;
       assert(inputs.size() == 1);
       Combine *comb = new Combine(*this,
