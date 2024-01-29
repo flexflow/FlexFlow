@@ -313,7 +313,7 @@ FutureMap Combine::peft_bwd(FFModel const &ff,
                         EXCLUSIVE,
                         batch_inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Combine::backward(FFModel const &ff) {
