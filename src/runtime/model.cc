@@ -6726,6 +6726,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<Combine::backward_task>(registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(COMBINE_PEFT_BWD_TASK_ID,
+                                   "Combine PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Combine::peft_bwd_task>(
+          registrar, "Combine PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Combine::peft_bwd_task>(registrar);
+    }
+  }
   // Replicate
   {
     TaskVariantRegistrar registrar(REPLICATE_INIT_TASK_ID, "Replicate Init");

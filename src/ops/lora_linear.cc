@@ -268,11 +268,8 @@ void LoraLinear::register_peft_model(
 }
 
 template <typename DT>
-void load_peft_from_file(DT *ptr,
-                         size_t size,
-                         bool sharded,
-                         int shard_id,
-                         std::string filepath) {
+void load_peft_from_file(
+    DT *ptr, size_t size, bool sharded, int shard_id, std::string filepath) {
   std::ifstream in(filepath, std::ios::in | std::ios::binary);
   if (!in.good()) {
     printf("Could not open file: %s\n", filepath.c_str());
