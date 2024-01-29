@@ -270,6 +270,7 @@ void LoraLinear::register_peft_model(
 template <typename DT>
 void load_peft_from_file(DT *ptr,
                          size_t size,
+                         bool sharded,
                          int shard_id,
                          std::string filepath) {
   std::ifstream in(filepath, std::ios::in | std::ios::binary);
@@ -279,7 +280,7 @@ void load_peft_from_file(DT *ptr,
   assert(in.good() && "incorrect weight file path");
   std::vector<DT> host_array(size);
   size_t target_data_size = sizeof(DT) * size;
-  in.seekg(shard_id * target_data_size, in.beg);
+  in.seekg(sharded * shard_id * target_data_size, in.beg);
   in.read((char *)host_array.data(), target_data_size);
 
   size_t in_get_size = in.gcount();
@@ -362,23 +363,23 @@ void LoraLinear::register_model_task(Task const *task,
               << ", size: " << w0_num_elements << ", shard: " << shard_id
               << std::endl;
     load_peft_from_file(
-        (float *)weight.w0_ptr, w0_num_elements, shard_id, w0_filepath);
+        (float *)weight.w0_ptr, w0_num_elements, true, shard_id, w0_filepath);
     std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
               << ", size: " << w1_num_elements << ", shard: " << shard_id
               << std::endl;
     load_peft_from_file(
-        (float *)weight.w1_ptr, w1_num_elements, shard_id, w1_filepath);
+        (float *)weight.w1_ptr, w1_num_elements, false, shard_id, w1_filepath);
   } else if (dt == DT_HALF) {
     std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
               << ", size: " << w0_num_elements << ", shard: " << shard_id
               << std::endl;
     load_peft_from_file(
-        (half *)weight.w0_ptr, w0_num_elements, shard_id, w0_filepath);
+        (half *)weight.w0_ptr, w0_num_elements, true, shard_id, w0_filepath);
     std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
               << ", size: " << w1_num_elements << ", shard: " << shard_id
               << std::endl;
     load_peft_from_file(
-        (half *)weight.w1_ptr, w1_num_elements, shard_id, w1_filepath);
+        (half *)weight.w1_ptr, w1_num_elements, false, shard_id, w1_filepath);
   } else {
     assert(false && "Data type not supported");
   }

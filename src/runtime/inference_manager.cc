@@ -390,12 +390,22 @@ void InferenceManager::peft_bwd(FFModel *model,
   while (model->operators[last_op]->op_type == OP_WEIGHT && last_op > 0) {
     last_op -= 1;
   }
-  // Assert that the previous operator must be softmax
-  assert(model->operators[last_op]->op_type == OP_SOFTMAX ||
-         model->operators[last_op]->op_type == OP_FUSED);
-  if (model->operators[last_op]->op_type == OP_FUSED) {
-    FusedOp *fused_op = static_cast<FusedOp *>(model->operators[last_op]);
-    assert(fused_op->op_op_type[fused_op->numOperators - 1] == OP_SOFTMAX);
+  if (model->config.tensor_parallelism_degree > 1) {
+    if (model->operators[last_op]->op_type == OP_FUSED) {
+      FusedOp *fused_op = static_cast<FusedOp *>(model->operators[last_op]);
+      assert(fused_op->op_op_type[fused_op->numOperators - 1] == OP_COMBINE);
+      assert(fused_op->op_op_type[fused_op->numOperators - 2] == OP_SOFTMAX);
+    } else {
+      assert(model->operators[last_op]->op_type == OP_COMBINE)
+      assert(model->operators[last_op-1]->op_type == OP_SOFTMAX)
+    }
+  } else {
+    // Assert that the previous operator must be softmax
+    assert(model->operators[last_op]->op_type == OP_SOFTMAX || model->operators[last_op]->op_type == OP_FUSED);
+    if (model->operators[last_op]->op_type == OP_FUSED) {
+      FusedOp *fused_op = static_cast<FusedOp *>(model->operators[last_op]);
+      assert(fused_op->op_op_type[fused_op->numOperators - 1] == OP_SOFTMAX);
+    }
   }
   for (int o = last_op; o >= 0; o--) {
     Op *op = model->operators[o];
