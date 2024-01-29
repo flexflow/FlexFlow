@@ -262,7 +262,10 @@ void FlexFlow::top_level_task(Task const *task,
   LoraLinearConfig mlp_second =
       peft_model_name.empty()
           ? LoraLinearConfig::DefaultConfig
-          : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
+          : LoraLinearConfig(file_paths.cache_folder_path,
+                             peft_model_name,
+                             true /*trainable*/,
+                             LoraSGDOptimizerConfig::DefaultConfig);
   PEFTModelID peft_model_id =
       peft_model_name.empty()
           ? PEFTModelID::NO_ID

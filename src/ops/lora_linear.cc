@@ -381,22 +381,27 @@ void LoraLinear::register_model_task(Task const *task,
     assert(false && "Data type not supported");
   }
 
-  if (lora->inputs[0]->dims[num_dims - 1].degree == 1) {
-    // Input is partitioned (no replication)
-    // w0_grad is local weight gradients
-    weight.w0_grad_ptr = allocator->allocate_local_weights_untyped(
-        info->model_id, w0_num_elements * data_type_size(dt));
-    // w1_grad is sync weight gradients
-    weight.w1_grad_ptr = allocator->allocate_sync_weights_untyped(
-        info->model_id, w1_num_elements * data_type_size(dt));
-  } else {
-    // Input is replicated
-    // w0_grad is sync weight gradients
-    weight.w0_grad_ptr = allocator->allocate_sync_weights_untyped(
-        info->model_id, w0_num_elements * data_type_size(dt));
-    // w1_grad is local weight gradients
-    weight.w1_grad_ptr = allocator->allocate_local_weights_untyped(
-        info->model_id, w1_num_elements * data_type_size(dt));
+  // allocate space for gradients if the LoRA layer is trainable
+  if (info->lora_config.trainable) {
+    // Ensure we have an optimizer
+    assert(info->lora_config.optimizer_config.type != OPTIMIZER_TYPE_NONE);
+    if (lora->inputs[0]->dims[num_dims - 1].degree == 1) {
+      // Input is partitioned (no replication)
+      // w0_grad is local weight gradients
+      weight.w0_grad_ptr = allocator->allocate_local_weights_untyped(
+          info->model_id, w0_num_elements * data_type_size(dt));
+      // w1_grad is sync weight gradients
+      weight.w1_grad_ptr = allocator->allocate_sync_weights_untyped(
+          info->model_id, w1_num_elements * data_type_size(dt));
+    } else {
+      // Input is replicated
+      // w0_grad is sync weight gradients
+      weight.w0_grad_ptr = allocator->allocate_sync_weights_untyped(
+          info->model_id, w0_num_elements * data_type_size(dt));
+      // w1_grad is local weight gradients
+      weight.w1_grad_ptr = allocator->allocate_local_weights_untyped(
+          info->model_id, w1_num_elements * data_type_size(dt));
+    }
   }
   m->model_weights[info->model_id] = weight;
 }
