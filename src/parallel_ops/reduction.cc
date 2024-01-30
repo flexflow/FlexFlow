@@ -122,6 +122,13 @@ void Reduction::create_input_partition_inference(
                                batch_outputs[0]->parallel_is,
                                batch_inputs[0]->region,
                                inference_input_lps[batch_inputs[0]]);
+  // output_grad_lp is an aliased partitioning along the replica dim
+  ff.create_aliased_partition(batch_inputs[0]->num_dims,
+                              batch_inputs[0]->dims,
+                              reduction_dim,
+                              batch_inputs[0]->parallel_is,
+                              batch_outputs[0]->region_grad,
+                              inference_output_grad_lps[batch_outputs[0]]);
 }
 
 OpMeta *Reduction::init_task(Task const *task,

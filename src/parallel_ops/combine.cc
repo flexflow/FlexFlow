@@ -205,6 +205,11 @@ void Combine::create_input_partition_inference(
                                batch_outputs[0]->parallel_is,
                                batch_inputs[0]->region,
                                inference_input_lps[batch_inputs[0]]);
+  ff.create_disjoint_partition(batch_inputs[0]->num_dims,
+                               batch_inputs[0]->dims,
+                               batch_inputs[0]->parallel_is,
+                               batch_outputs[0]->region_grad,
+                               inference_output_grad_lps[batch_outputs[0]]);
 }
 
 FutureMap Combine::inference(FFModel const &ff,
@@ -244,6 +249,25 @@ FutureMap Combine::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
+  // if this is the last operator, we add the region below in order to copy the
+  // output to the grad tensor
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
+  int last_op = ff.operators.size() - 1;
+  assert(ff.operators[last_op]->op_type == OP_ARGMAX ||
+         ff.operators[last_op]->op_type == OP_SAMPLING);
+  last_op -= 1;
+  while (ff.operators[last_op]->op_type == OP_WEIGHT && last_op > 0) {
+    last_op -= 1;
+  }
+  if (ff.operators[last_op] == this) {
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part_grad,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region_grad));
+    launcher.add_field(2, FID_DATA);
+  }
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -300,7 +324,7 @@ FutureMap Combine::peft_bwd(FFModel const &ff,
                          0 /*mapper_id*/,
                          machine_view_hash);
   launcher.add_region_requirement(
-      RegionRequirement(batch_outputs[0]->part_grad,
+      RegionRequirement(inference_output_grad_lps[batch_outputs[0]],
                         0 /*projection id*/,
                         READ_ONLY,
                         EXCLUSIVE,
@@ -309,7 +333,7 @@ FutureMap Combine::peft_bwd(FFModel const &ff,
   launcher.add_region_requirement(
       RegionRequirement(batch_inputs[0]->part_grad,
                         0 /*projection id*/,
-                        READ_WRITE,
+                        WRITE_ONLY,
                         EXCLUSIVE,
                         batch_inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
@@ -400,6 +424,7 @@ void Combine::forward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
+  printf("INF combine\n");
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   CombineMeta const *m = *((CombineMeta **)task->local_args);
@@ -442,6 +467,7 @@ void Combine::peft_bwd_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
+  printf("BWD combine\n");
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   CombineMeta const *m = *((CombineMeta **)task->local_args);

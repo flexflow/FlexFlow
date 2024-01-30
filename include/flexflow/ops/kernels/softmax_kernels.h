@@ -38,6 +38,7 @@ void backward_kernel_wrapper(SoftmaxMeta const *m,
 
 void inference_kernel_wrapper(SoftmaxMeta const *m,
                               BatchConfig const *bc,
+                              bool is_last_op,
                               GenericTensorAccessorR const &input,
                               GenericTensorAccessorW const &output,
                               GenericTensorAccessorW const &output_grad);

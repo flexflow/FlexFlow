@@ -6785,7 +6785,8 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
-    TaskVariantRegistrar registrar(REPLICATE_PEFT_BWD_TASK_ID, "Replicate PEFT Backward");
+    TaskVariantRegistrar registrar(REPLICATE_PEFT_BWD_TASK_ID,
+                                   "Replicate PEFT Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {

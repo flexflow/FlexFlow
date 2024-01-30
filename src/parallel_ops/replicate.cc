@@ -122,6 +122,12 @@ void Replicate::create_input_partition_inference(
                               batch_outputs[0]->parallel_is,
                               batch_inputs[0]->region,
                               inference_input_lps[batch_inputs[0]]);
+  // output_grad_lp is a disjoint partition
+  ff.create_disjoint_partition(batch_inputs[0]->num_dims,
+                               batch_inputs[0]->dims,
+                               batch_inputs[0]->parallel_is,
+                               batch_outputs[0]->region_grad,
+                               inference_output_grad_lps[batch_outputs[0]]);
 }
 
 OpMeta *Replicate::init_task(Task const *task,
@@ -274,10 +280,10 @@ void Replicate::forward(FFModel const &ff) {
 }
 
 FutureMap Replicate::peft_bwd(FFModel const &ff,
-                            BatchConfigFuture const &bc,
-                            std::vector<ParallelTensor> const &batch_inputs,
-                            std::vector<ParallelTensor> const &batch_outputs,
-                            MachineView const *mv) {
+                              BatchConfigFuture const &bc,
+                              std::vector<ParallelTensor> const &batch_inputs,
+                              std::vector<ParallelTensor> const &batch_outputs,
+                              MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -297,17 +303,19 @@ FutureMap Replicate::peft_bwd(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(inference_output_grad_lps[batch_outputs[0]],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   return runtime->execute_index_space(ctx, launcher);
 }
