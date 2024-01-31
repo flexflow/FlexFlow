@@ -414,7 +414,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
       assert(optimizer_config != nullptr);
       assert(optimizer_config->type != OPTIMIZER_TYPE_NONE);
       int w0_num_elements = rank * in_dim;
-      // int w1_num_elements = rank * out_dim;
+      int w1_num_elements = rank * out_dim;
 
       // Get optimizer config
       if (optimizer_config->type == OPTIMIZER_TYPE_SGD) {
@@ -433,6 +433,27 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                                static_cast<DT const *>(weight.w0_grad_ptr),
                                static_cast<DT *>(weight.w0_v_values_ptr),
                                static_cast<DT *>(weight.w0_ptr));
+        // LoRA_B weight is replicated w tensor parallelism, so we need to sync
+        // and sum first
+        ncclDataType_t nccl_data_type = ff_to_nccl_datatype(m->output_type[0]);
+        checkCUDA(ncclAllReduce(static_cast<DT const *>(weight.w1_grad_ptr),
+                                static_cast<DT *>(weight.w1_grad_ptr),
+                                w1_num_elements,
+                                nccl_data_type,
+                                ncclSum,
+                                m->handle.ncclComm,
+                                stream));
+        sgd_update<<<GET_BLOCKS(w1_num_elements),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream>>>(w1_num_elements,
+                               sgd_config->lr,
+                               sgd_config->weight_decay,
+                               sgd_config->momentum,
+                               sgd_config->nesterov,
+                               static_cast<DT const *>(weight.w1_grad_ptr),
+                               static_cast<DT *>(weight.w1_v_values_ptr),
+                               static_cast<DT *>(weight.w1_ptr));
       } else if (optimizer_config->type == OPTIMIZER_TYPE_ADAM) {
 
       } else {
