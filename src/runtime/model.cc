@@ -3270,6 +3270,34 @@ bool FFModel::is_mlp_block(int layer_idx) const {
   return false;
 }
 
+bool FFModel::need_to_add_combine(int layer_idx) const {
+  if (config.computationMode != COMP_MODE_INFERENCE ||
+      config.tensor_parallelism_degree == 1 || layers.size() <= 2) {
+    return false;
+  }
+  auto const &l = layers[layer_idx];
+  // softmax followed by argmax/arg_topk: add combine before softmax
+  if (layer_idx == layers.size() - 2) {
+    auto const &l_next = layers[layer_idx + 1];
+    if (l->op_type == OP_SOFTMAX &&
+        (l_next->op_type == OP_ARG_TOPK || l_next->op_type == OP_ARGMAX)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  // argmax/arg_topk not precedent by softmax: add combine before
+  // argmax/arg_topk
+  if (layer_idx == layers.size() - 1 &&
+      (l->op_type == OP_ARG_TOPK || l->op_type == OP_ARGMAX)) {
+    auto const &l_prev = layers[layer_idx - 1];
+    if (l_prev->op_type == OP_SOFTMAX) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
 void FFModel::create_operators_from_layers() {
   std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
   // for (auto const &l : layers) {
@@ -3283,11 +3311,9 @@ void FFModel::create_operators_from_layers() {
       inputs.push_back(tensors_to_parallel_tensors[l->inputs[i]]);
     }
     Op *op = nullptr;
-    // add a combine before arg_topk / argmax
-    if (config.computationMode == COMP_MODE_INFERENCE &&
-        config.tensor_parallelism_degree > 1 &&
-        (layer_idx == layers.size() - 1 &&
-         (l->op_type == OP_ARG_TOPK || l->op_type == OP_ARGMAX))) {
+    // add a combine before last arg_max / arg_topk or before second-to-last
+    // softmax
+    if (need_to_add_combine(layer_idx)) {
       std::vector<ParallelTensor> partitioned_inputs;
       assert(inputs.size() == 1);
       Combine *comb = new Combine(*this,
