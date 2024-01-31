@@ -317,7 +317,7 @@ void LoraLinear::register_model_task(Task const *task,
   assert(dt == lora->inputs[0]->data_type);
   assert(dt == lora->inputs[1]->data_type);
   assert(dt == lora->outputs[0]->data_type);
-  assert(m->model_weights.find(info->model_id) == m->model_weights.end());
+  assert(m->model_state.find(info->model_id) == m->model_state.end());
 
   LoraLinearWeight weight;
   weight.in_dim = in_dim;
@@ -384,7 +384,7 @@ void LoraLinear::register_model_task(Task const *task,
   // allocate space for gradients if the LoRA layer is trainable
   if (info->lora_config.trainable) {
     // Ensure we have an optimizer
-    assert(info->lora_config.optimizer_config.type != OPTIMIZER_TYPE_NONE);
+    assert(info->lora_config.optimizer_config->type != OPTIMIZER_TYPE_NONE);
     if (lora->inputs[0]->dims[num_dims - 1].degree == 1) {
       // Input is partitioned (no replication)
       // w0_grad is local weight gradients
@@ -402,8 +402,28 @@ void LoraLinear::register_model_task(Task const *task,
       weight.w1_grad_ptr = allocator->allocate_local_weights_untyped(
           info->model_id, w1_num_elements * data_type_size(dt));
     }
+    // allocate space for v_values if needed by optimizer
+    if (info->lora_config.optimizer_config->type == OPTIMIZER_TYPE_SGD) {
+      LoraSGDOptimizerConfig const *sgd_config =
+          (LoraSGDOptimizerConfig const *)info->lora_config.optimizer_config;
+      if (sgd_config->momentum > 0.0f) {
+        if (lora->inputs[0]->dims[num_dims - 1].degree == 1) {
+          weight.w0_v_values_ptr = allocator->allocate_local_weights_untyped(
+              info->model_id, w0_num_elements * data_type_size(dt));
+          weight.w1_v_values_ptr = allocator->allocate_sync_weights_untyped(
+              info->model_id, w1_num_elements * data_type_size(dt));
+        } else {
+          weight.w0_v_values_ptr = allocator->allocate_sync_weights_untyped(
+              info->model_id, w0_num_elements * data_type_size(dt));
+          weight.w1_v_values_ptr = allocator->allocate_local_weights_untyped(
+              info->model_id, w1_num_elements * data_type_size(dt));
+        }
+      }
+    }
   }
-  m->model_weights[info->model_id] = weight;
+  m->model_state[info->model_id].weights = weight;
+  m->model_state[info->model_id].optimizer_config =
+      info->lora_config.optimizer_config;
 }
 
 void LoraLinear::forward(FFModel const &ff) {
@@ -534,10 +554,9 @@ void LoraLinear::inference_task(Task const *task,
     // std::cout << "base_filepath: " << base_filepath << std::endl;
     // std::cout << "m->decoding_step: " << m->decoding_step << std::endl;
     if (m->decoding_step == 0) {
-      for (auto it = m->model_weights.begin(); it != m->model_weights.end();
-           ++it) {
+      for (auto it = m->model_state.begin(); it != m->model_state.end(); ++it) {
         PEFTModelID peft_model_id = it->first;
-        LoraLinearWeight weight = m->model_weights[peft_model_id];
+        LoraLinearWeight weight = m->model_state[peft_model_id].weights;
         std::string filenameA = base_filepath + "_weight_A";
         std::string filenameB = base_filepath + "_weight_B";
         if (m->input_type[0] == DT_FLOAT) {
@@ -700,10 +719,9 @@ void LoraLinear::peft_bwd_task(Task const *task,
     // std::cout << "base_filepath: " << base_filepath << std::endl;
     // std::cout << "m->decoding_step: " << m->decoding_step << std::endl;
     if (m->bwd_step == 0) {
-      for (auto it = m->model_weights.begin(); it != m->model_weights.end();
-           ++it) {
+      for (auto it = m->model_state.begin(); it != m->model_state.end(); ++it) {
         PEFTModelID peft_model_id = it->first;
-        LoraLinearWeight weight = m->model_weights[peft_model_id];
+        LoraLinearWeight weight = m->model_state[peft_model_id].weights;
         std::string filenameA = base_filepath + "_weight_A";
         std::string filenameB = base_filepath + "_weight_B";
         if (m->input_type[0] == DT_FLOAT) {

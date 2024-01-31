@@ -12,7 +12,6 @@ namespace FlexFlow {
 
 class LoraOptimizerConfig {
 public:
-  static const LoraOptimizerConfig DefaultConfig;
   LoraOptimizerConfig();
   friend bool operator==(LoraOptimizerConfig const &lhs,
                          LoraOptimizerConfig const &rhs);
@@ -25,7 +24,6 @@ public:
 
 class LoraSGDOptimizerConfig : public LoraOptimizerConfig {
 public:
-  static const LoraSGDOptimizerConfig DefaultConfig;
   LoraSGDOptimizerConfig();
   LoraSGDOptimizerConfig(double lr_,
                          double momentum_ = 0.0f,
@@ -46,7 +44,6 @@ public:
 
 class LoraAdamOptimizerConfig : public LoraOptimizerConfig {
 public:
-  static const LoraAdamOptimizerConfig DefaultConfig;
   LoraAdamOptimizerConfig();
   LoraAdamOptimizerConfig(double alpha_,
                           double beta1_ = 0.9f,
@@ -74,13 +71,11 @@ public:
   LoraLinearConfig();
   LoraLinearConfig(int _rank,
                    bool _trainable = false,
-                   LoraOptimizerConfig _optimizer_config =
-                       LoraOptimizerConfig::DefaultConfig);
+                   LoraOptimizerConfig *_optimizer_config = nullptr);
   LoraLinearConfig(std::string const &cache_folder_,
                    std::string const &peft_model_id_,
                    bool trainable_ = false,
-                   LoraOptimizerConfig optimizer_config_ =
-                       LoraOptimizerConfig::DefaultConfig);
+                   LoraOptimizerConfig *optimizer_config_ = nullptr);
   friend bool operator==(LoraLinearConfig const &lhs,
                          LoraLinearConfig const &rhs);
   friend std::ostream &operator<<(std::ostream &os,
@@ -91,7 +86,7 @@ public:
   // whether the weights are trainable (fine-tuning scenario) or not
   // (inference-only). If set to true, allocate space for the gradients
   bool trainable = false;
-  LoraOptimizerConfig optimizer_config;
+  LoraOptimizerConfig *optimizer_config;
   std::string cache_folder;
   // Huggingface
   std::string peft_model_id;

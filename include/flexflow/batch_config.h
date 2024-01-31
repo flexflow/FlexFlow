@@ -76,6 +76,7 @@ public:
       request_guid = 0;
       peft_model_id = PEFTModelID::NO_ID;
       peft_bwd = false;
+      peft_optimizer_update = false;
     }
     int first_token_depth_in_request;
     int first_token_offset_in_batch;
@@ -85,6 +86,9 @@ public:
     // PEFT fields
     PEFTModelID peft_model_id;
     bool peft_bwd;
+    bool peft_optimizer_update; // whether to update the weights after the
+                                // peft_bwd pass using the gradients, according
+                                // to the optimizer.
   };
   struct PerTokenInfo {
     int abs_depth_in_request;

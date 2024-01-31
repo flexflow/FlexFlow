@@ -10,9 +10,6 @@ namespace FlexFlow {
 // ---------------------------------------------------
 
 // empty optimizer
-const LoraOptimizerConfig LoraOptimizerConfig::DefaultConfig =
-    LoraOptimizerConfig();
-
 LoraOptimizerConfig::LoraOptimizerConfig() : type(OPTIMIZER_TYPE_NONE) {}
 
 bool operator==(LoraOptimizerConfig const &lhs,
@@ -29,9 +26,6 @@ std::ostream &operator<<(std::ostream &os, LoraOptimizerConfig const &llc) {
 }
 
 // SGD optimizer
-const LoraSGDOptimizerConfig LoraSGDOptimizerConfig::DefaultConfig =
-    LoraSGDOptimizerConfig();
-
 LoraSGDOptimizerConfig::LoraSGDOptimizerConfig()
     : type(OPTIMIZER_TYPE_SGD), lr(0.01f), momentum(0.0f), nesterov(false),
       weight_decay(0.0f) {}
@@ -61,9 +55,6 @@ std::ostream &operator<<(std::ostream &os, LoraSGDOptimizerConfig const &llc) {
 }
 
 // Adam optimizer
-const LoraAdamOptimizerConfig LoraAdamOptimizerConfig::DefaultConfig =
-    LoraAdamOptimizerConfig();
-
 LoraAdamOptimizerConfig::LoraAdamOptimizerConfig()
     : type(OPTIMIZER_TYPE_ADAM), alpha(0.001f), beta1(0.9f), beta2(0.999f),
       weight_decay(0.0f), epsilon(1e-8) {}
@@ -98,14 +89,13 @@ std::ostream &operator<<(std::ostream &os, LoraAdamOptimizerConfig const &llc) {
 const LoraLinearConfig LoraLinearConfig::DefaultConfig = LoraLinearConfig();
 
 LoraLinearConfig::LoraLinearConfig()
-    : rank(0), trainable(false),
-      optimizer_config(LoraOptimizerConfig::DefaultConfig), cache_folder(""),
+    : rank(0), trainable(false), optimizer_config(nullptr), cache_folder(""),
       peft_model_id(""), lora_alpha(0), lora_dropout(0.0f),
       load_weights_from_file(false) {}
 
 LoraLinearConfig::LoraLinearConfig(int _rank,
                                    bool _trainable,
-                                   LoraOptimizerConfig _optimizer_config)
+                                   LoraOptimizerConfig *_optimizer_config)
     : rank(_rank), trainable(_trainable), optimizer_config(_optimizer_config),
       cache_folder(""), peft_model_id(""), lora_alpha(0), lora_dropout(0.0f),
       load_weights_from_file(false) {}
@@ -113,7 +103,7 @@ LoraLinearConfig::LoraLinearConfig(int _rank,
 LoraLinearConfig::LoraLinearConfig(std::string const &cache_folder_,
                                    std::string const &peft_model_id_,
                                    bool trainable_,
-                                   LoraOptimizerConfig optimizer_config_)
+                                   LoraOptimizerConfig *optimizer_config_)
     : cache_folder(cache_folder_), peft_model_id(peft_model_id_),
       trainable(trainable_), optimizer_config(optimizer_config_),
       load_weights_from_file(true) {
@@ -150,7 +140,11 @@ std::ostream &operator<<(std::ostream &os, LoraLinearConfig const &llc) {
   os << "LoraLinearConfig: ";
   os << "trainable: " << llc.trainable << ", ";
   os << "rank: " << llc.rank << ", ";
-  os << "optimizer_config: " << llc.optimizer_config << ", ";
+  if (!llc.optimizer_config) {
+    os << "optimizer_config: " << llc.optimizer_config << ", ";
+  } else {
+    os << "optimizer_config: " << *llc.optimizer_config << ", ";
+  }
   os << "cache_folder: " << llc.cache_folder << ", ";
   os << "peft_model_id: " << llc.peft_model_id << ", ";
   os << "lora_alpha: " << llc.lora_alpha << ", ";
