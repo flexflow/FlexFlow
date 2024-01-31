@@ -291,8 +291,12 @@ FutureMap Replicate::peft_bwd(FFModel const &ff,
   assert(numInputs == 1);
   assert(batch_inputs[0]->data_type == batch_outputs[0]->data_type);
   DataType data_type = batch_inputs[0]->data_type;
-  parallel_is = batch_outputs[0]->parallel_is;
-  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+
+  // Warning: we need to use batch_inputs[0] here, instead of the usual
+  // batch_outputs[0]
+  parallel_is = batch_inputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_inputs[0]->machine_view;
+
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   IndexLauncher launcher(REPLICATE_PEFT_BWD_TASK_ID,

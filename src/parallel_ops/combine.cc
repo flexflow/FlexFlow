@@ -199,12 +199,18 @@ void Combine::create_input_partition_inference(
   assert(ff.config.computationMode == COMP_MODE_INFERENCE);
   assert(batch_outputs[0]->part != LogicalPartition::NO_PART);
   assert(batch_inputs[0]->part != LogicalPartition::NO_PART);
-  // input_lp is a disjoint partition
+  // partition batch_inputs[0]->region into inference_input_lps[batch_inputs[0]]
+  // according to the partitioning of batch_outputs[0] (i.e. make the
+  // partitioned dimension whole again by combining the partitions)
   ff.create_disjoint_partition(batch_outputs[0]->num_dims,
                                batch_outputs[0]->dims,
                                batch_outputs[0]->parallel_is,
                                batch_inputs[0]->region,
                                inference_input_lps[batch_inputs[0]]);
+  // partition batch_outputs[0]->region_grad into
+  // inference_output_grad_lps[batch_outputs[0]] according to the partitioning
+  // of batch_inputs[0] (i.e. restore the partition in the dimension that was
+  // combined in the forward pass)
   ff.create_disjoint_partition(batch_inputs[0]->num_dims,
                                batch_inputs[0]->dims,
                                batch_inputs[0]->parallel_is,
@@ -249,25 +255,6 @@ FutureMap Combine::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  // if this is the last operator, we add the region below in order to copy the
-  // output to the grad tensor
-  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
-  int last_op = ff.operators.size() - 1;
-  assert(ff.operators[last_op]->op_type == OP_ARGMAX ||
-         ff.operators[last_op]->op_type == OP_SAMPLING);
-  last_op -= 1;
-  while (ff.operators[last_op]->op_type == OP_WEIGHT && last_op > 0) {
-    last_op -= 1;
-  }
-  if (ff.operators[last_op] == this) {
-    launcher.add_region_requirement(
-        RegionRequirement(inference_output_grad_lps[batch_outputs[0]],
-                          0 /*projection id*/,
-                          WRITE_ONLY,
-                          EXCLUSIVE,
-                          batch_outputs[0]->region_grad));
-    launcher.add_field(2, FID_DATA);
-  }
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -310,23 +297,28 @@ FutureMap Combine::peft_bwd(FFModel const &ff,
   assert(numOutputs == 1);
   assert(numInputs == 1);
   assert(batch_inputs[0]->data_type == batch_outputs[0]->data_type);
-  DataType data_type = batch_inputs[0]->data_type;
-  parallel_is = batch_outputs[0]->parallel_is;
-  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  DataType data_type = inputs[0]->data_type;
+
+  // Warning: we need to use batch_inputs[0] here, instead of the usual
+  // batch_outputs[0]
+  parallel_is = batch_inputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_inputs[0]->machine_view;
+
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   IndexLauncher launcher(COMBINE_PEFT_BWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(NULL, 0),
+                         TaskArgument(&data_type, sizeof(DataType)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(
       RegionRequirement(inference_output_grad_lps[batch_outputs[0]],
                         0 /*projection id*/,
-                        READ_ONLY,
+                        READ_WRITE,
                         EXCLUSIVE,
                         batch_outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
@@ -424,8 +416,8 @@ void Combine::forward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
-  // assert(regions.size() == 2);
-  // assert(task->regions.size() == 2);
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
   CombineMeta const *m = *((CombineMeta **)task->local_args);
   DataType data_type = m->input_type[0];
   if (data_type == DT_HALF) {
@@ -466,15 +458,19 @@ void Combine::peft_bwd_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
-  printf("BWD combine\n");
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  CombineMeta const *m = *((CombineMeta **)task->local_args);
+  // CombineMeta const *m = *((CombineMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
+  // TODO: figure out why m->output_type[0] or m->input_type[0] are not working
+  DataType data_type = *((DataType *)task->args);
   GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
-      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      data_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
-      m->input_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  DataType data_type = output_grad.data_type;
+      data_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(input_grad.data_type == data_type);
   assert(output_grad.domain == input_grad.domain);
   if (data_type == DT_FLOAT) {

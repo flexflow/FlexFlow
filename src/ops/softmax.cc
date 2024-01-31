@@ -360,6 +360,7 @@ FutureMap Softmax::inference(FFModel const &ff,
   assert(ff.config.computationMode == COMP_MODE_INFERENCE);
   int last_op = ff.operators.size() - 1;
   assert(ff.operators[last_op]->op_type == OP_ARGMAX ||
+         ff.operators[last_op]->op_type == OP_ARG_TOPK ||
          ff.operators[last_op]->op_type == OP_SAMPLING);
   last_op -= 1;
   while (ff.operators[last_op]->op_type == OP_WEIGHT && last_op > 0) {

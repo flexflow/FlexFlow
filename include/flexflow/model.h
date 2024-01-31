@@ -1124,6 +1124,7 @@ public:
   Legion::IndexSpace get_task_is(Legion::Domain const &domain) const;
   Legion::IndexSpace get_task_is(ParallelConfig const &pc) const;
   Legion::IndexSpace get_task_is(MachineView const &view) const;
+  bool need_to_add_combine(int layer_idx) const;
   bool is_mlp_block(int layer_idx) const;
   void create_operators_from_layers();
   Op *create_operator_from_layer(Layer *layer,
