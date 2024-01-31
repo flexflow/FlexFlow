@@ -261,7 +261,7 @@ FutureMap Combine::inference(FFModel const &ff,
   }
   if (ff.operators[last_op] == this) {
     launcher.add_region_requirement(
-        RegionRequirement(batch_outputs[0]->part_grad,
+        RegionRequirement(inference_output_grad_lps[batch_outputs[0]],
                           0 /*projection id*/,
                           WRITE_ONLY,
                           EXCLUSIVE,
@@ -424,9 +424,8 @@ void Combine::forward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
-  printf("INF combine\n");
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
+  // assert(regions.size() == 2);
+  // assert(task->regions.size() == 2);
   CombineMeta const *m = *((CombineMeta **)task->local_args);
   DataType data_type = m->input_type[0];
   if (data_type == DT_HALF) {
