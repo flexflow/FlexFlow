@@ -182,6 +182,75 @@ FlexFlow Serve supports int4 and int8 quantization. The compressed tensors are s
 ### Prompt Datasets
 We provide five prompt datasets for evaluating FlexFlow Serve: [Chatbot instruction prompts](https://specinfer.s3.us-east-2.amazonaws.com/prompts/chatbot.json), [ChatGPT Prompts](https://specinfer.s3.us-east-2.amazonaws.com/prompts/chatgpt.json), [WebQA](https://specinfer.s3.us-east-2.amazonaws.com/prompts/webqa.json), [Alpaca](https://specinfer.s3.us-east-2.amazonaws.com/prompts/alpaca.json), and [PIQA](https://specinfer.s3.us-east-2.amazonaws.com/prompts/piqa.json).
 
+
+
+
+## Python Interface Features and Interaction Methods
+
+FlexFlow Serve provides a comprehensive Python interface for serving with low latency and high performance. This interface facilitates the deployment and interaction with the serving platform for a variety of applications, from chatbots and prompt templates to retrieval augmented generation and API services.
+
+### Chatbot with Gradio
+
+The Python interface allows setting up a chatbot application using Gradio, enabling interactive dialogues with users through a user-friendly web interface.
+
+#### Implementation Steps
+1. **FlexFlow Initialization:** Configure and initialize FlexFlow Serve with the desired settings and the specific LLM.
+```python
+import gradio as gr
+import flexflow.serve as ff
+
+ff.init(num_gpus=2, memory_per_gpu=14000, ...)
+```
+2. **Gradio Interface Setup:** Implement a function to generate responses from user inputs and set up the Gradio Chat Interface for interaction.
+```python
+def generate_response(user_input):
+    result = llm.generate(user_input)
+    return result.output_text.decode('utf-8')
+```
+3. **Running the Interface:** Launch the Gradio interface to interact with the LLM through a web-based chat interface.
+```python
+iface = gr.ChatInterface(fn=generate_response)
+iface.launch()
+```
+4. **Shutdown:** Properly stop the FlexFlow server after interaction is complete.
+
+
+
+### Langchain Usecases
+FlexFlow Serve supports langchain usecases including dynamic prompt template handling and RAG usecases, enabling the customization of model responses based on structured input templates and Retrieval Augmented Generation.
+
+#### Implementation Steps
+1. **FlexFlow Initialization**: Start by initializing FlexFlow Serve with the appropriate configurations.
+2. **LLM Setup**: Compile and load the LLM for text generation.
+3. **Prompt Template/RAG Setup**: Configure prompt templates to guide the model's responses.
+4. **Response Generation**: Use the LLM with the prompt template to generate responses.
+
+
+### Python FastAPI Entrypoint
+Flexflow Serve also supports deploying and managing LLMs with FastAPI, offering a RESTful API interface for generating responses from models.
+
+```python
+@app.on_event("startup")
+async def startup_event():
+   global llm
+   # Initialize and compile the LLM model
+   llm.compile(
+      generation_config,
+      # ... other params as needed
+   )
+   llm.start_server()
+
+@app.post("/generate/")
+async def generate(prompt_request: PromptRequest):
+   # ... exception handling
+   full_output = llm.generate([prompt_request.prompt])[0].output_text.decode('utf-8')
+   # ... split prompt and response text for returning results
+   return {"prompt": prompt_request.prompt, "response": full_output}
+```
+
+
+
+
 ## TODOs
 
 FlexFlow Serve is still under active development. We currently focus on the following tasks and strongly welcome all contributions from bug fixes to new features and extensions.
