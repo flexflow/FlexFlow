@@ -39,6 +39,7 @@
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
@@ -2296,6 +2297,13 @@ GraphOptimalViewSerialized
         sez.serialize(reduction->reduction_degree);
         break;
       }
+       case OP_ALLREDUCE: {
+        AllReduce *allreduce = (AllReduce *)op;
+        sez.serialize(allreduce->allreduce_dim);
+        sez.serialize(strlen(allreduce->name));
+        sez.serialize(allreduce->name, strlen(allreduce->name));
+        break;
+      }
       case OP_COMBINE: {
         Combine *combine = (Combine *)op;
         sez.serialize(combine->combine_dim);
@@ -2702,6 +2710,17 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(reduction_degree);
         node = get_or_create_node<Reduction>(inputs[0],
                                              {reduction_dim, reduction_degree});
+        break;
+      }
+      case OP_ALLREDUCE: {
+        assert(num_inputs == 1);
+        int allreduce_dim;
+        dez.deserialize(allreduce_dim);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
+        node = get_or_create_node<AllReduce>(inputs[0], {allreduce_dim});
         break;
       }
       case OP_FUSED_PARALLEL: {

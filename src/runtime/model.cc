@@ -53,6 +53,7 @@
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/parallel_ops/replicate.h"
 #include "flexflow/substitution.h"
@@ -2508,9 +2509,10 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
         operators[l]->op_type == OP_WEIGHT) {
       continue;
     }
-    // don't fuse parallel op since they have different parallel_is in
-    // forward/backward
-    if (operators[l]->is_parallel_op()) {
+     // don't fuse parallel op except allReduce since they have different
+    // parallel_is in forward/backward
+    if (operators[l]->is_parallel_op() &&
+        operators[l]->op_type != OP_ALLREDUCE) {
       continue;
     }
     size_t start = 0;
@@ -2553,9 +2555,10 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
               operators[i]->op_type == OP_WEIGHT) {
             continue;
           }
-          // don't fuse parallel op since they have different parallel_is in
-          // forward/backward
-          if (operators[i]->is_parallel_op()) {
+          // don't fuse parallel op except allReduce since they have different
+          // parallel_is in forward/backward
+          if (operators[i]->is_parallel_op() &&
+              operators[i]->op_type != OP_ALLREDUCE) {
             continue;
           }
           fused_op = new FusedOp(*this, operators[i]);
@@ -3491,7 +3494,7 @@ struct DefaultConfig {
   const static bool profiling = false;
   constexpr static float learningRate = 0.01f;
   constexpr static float weightDecay = 0.0001f;
-  const static size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
+  const static size_t workSpaceSize = (size_t)2 * 1024 * 1024 * 1024; // 2GB
   const static int numNodes = 1;
   const static int workersPerNode = 0;
   const static int cpusPerNode = 0;
@@ -5212,6 +5215,49 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<Reduction::backward_task>(registrar);
+    }
+  }
+  // AllReduce
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_INIT_TASK_ID, "AllReduce Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, AllReduce::init_task>(
+          registrar, "AllReduce init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, AllReduce::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_FWD_TASK_ID, "AllReduce Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::forward_task>(
+          registrar, "AllReduce Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(ALLREDUCE_BWD_TASK_ID, "AllReduce Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<AllReduce::backward_task>(
+          registrar, "AllReduce Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<AllReduce::backward_task>(registrar);
     }
   }
   // FusedParallelOp
