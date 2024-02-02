@@ -34,9 +34,9 @@ Example
 
 Complete code example can be found here: 
 
-1. `Prompt Template Example with incremental decoding <https://github.com/flexflow/FlexFlow/blob/chatbot-2/inference/python/usecases/prompt_template_incr.py>`__
+1. `Prompt Template Example with incremental decoding <https://github.com/flexflow/FlexFlow/blob/inference/inference/python/usecases/prompt_template_incr.py>`__
 
-2. `Prompt Template Example with speculative inference <https://github.com/flexflow/FlexFlow/blob/chatbot-2/inference/python/usecases/prompt_template_specinfer.py>`__
+2. `Prompt Template Example with speculative inference <https://github.com/flexflow/FlexFlow/blob/inference/inference/python/usecases/prompt_template_specinfer.py>`__
 
 
 Example Implementation:

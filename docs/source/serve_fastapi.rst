@@ -101,6 +101,6 @@ Full API Entrypoint Code
 
 A complete code example for a web-document Q&A using FlexFlow can be found here: 
 
-1. `FastAPI Example with incremental decoding <https://github.com/flexflow/FlexFlow/blob/chatbot-2/inference/python/entrypoint/fastapi_incr.py>`__
+1. `FastAPI Example with incremental decoding <https://github.com/flexflow/FlexFlow/blob/inference/inference/python/entrypoint/fastapi_incr.py>`__
 
-2. `FastAPI Example with speculative inference <https://github.com/flexflow/FlexFlow/blob/chatbot-2/inference/python//entrypoint/fastapi_specinfer.py>`__
+2. `FastAPI Example with speculative inference <https://github.com/flexflow/FlexFlow/blob/inference/inference/python//entrypoint/fastapi_specinfer.py>`__
