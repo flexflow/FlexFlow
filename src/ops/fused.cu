@@ -619,7 +619,7 @@ __host__ void
       std::make_tuple(bc->num_active_requests(),
                       bc->num_active_tokens(),
                       bc->num_generation_tokens > 0);
-  if(!graphCaptured) {
+  if(!fused->graphCaptured) {
     cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
 
     int ioff = 0, woff = 0, ooff = 0;
@@ -1150,7 +1150,7 @@ __host__ void
     cudaStreamEndCapture(stream, &graph);
     cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
     metas->graph_collections[graph_params] = instance;
-    graphCaptured = true;
+    fused->graphCaptured = true;
     cudaGraphLaunch(instance, stream);
   }  else {
       // check if graph exists
