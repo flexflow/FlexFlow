@@ -154,6 +154,7 @@ public:
   size_t offload_reserve_space_size;
   DataType quantization_type;
   // PEFT related fields
+  bool enable_peft;
   size_t peft_activation_reserve_space_size;
   size_t peft_weight_reserve_space_size;
   // Control parallelizable dimensions

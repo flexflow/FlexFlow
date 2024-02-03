@@ -1524,8 +1524,9 @@ FFRuntime::FFRuntime(FFConfig &config) {
     info.offload_reserve_space_size =
         config.cpu_offload ? config.offload_reserve_space_size : 0;
     info.peft_activation_reserve_space_size =
-        config.peft_activation_reserve_space_size;
-    info.peft_weight_reserve_space_size = config.peft_weight_reserve_space_size;
+        config.enable_peft ? config.peft_activation_reserve_space_size : 0;
+    info.peft_weight_reserve_space_size =
+        config.enable_peft ? config.peft_weight_reserve_space_size : 0;
     info.quantization_type = config.quantization_type;
     info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
@@ -4062,6 +4063,7 @@ struct DefaultConfig {
   const static size_t offloadReserveSpaceSize =
       (size_t)8 * 1024 * 1024 * 1024; // 8 GB
   // PEFT related fields
+  const static bool enablePeft = false;
   const static size_t peftActivationReserveSpaceSize =
       (size_t)1 * 1024 * 1024 * 1024; // 1GB
   const static size_t peftWeightReserveSpaceSize =
@@ -4102,6 +4104,7 @@ FFConfig::FFConfig() {
   cpu_offload = DefaultConfig::cpuOffload;
   offload_reserve_space_size = DefaultConfig::offloadReserveSpaceSize;
   // PEFT related fields
+  enable_peft = DefaultConfig::enablePeft;
   peft_activation_reserve_space_size =
       DefaultConfig::peftActivationReserveSpaceSize;
   peft_weight_reserve_space_size = DefaultConfig::peftWeightReserveSpaceSize;
@@ -4225,6 +4228,18 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if ((!strcmp(argv[i], "--8bit-quantization"))) {
       quantization_type = DT_INT8;
+      continue;
+    }
+    if ((!strcmp(argv[i], "-enable-peft"))) {
+      enable_peft = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "-peft-activation-reserve-space-size")) {
+      peft_activation_reserve_space_size = atoll(argv[++i]) * 1024 * 1024;
+      continue;
+    }
+    if (!strcmp(argv[i], "-peft-weight-reserve-space-size")) {
+      peft_weight_reserve_space_size = atoll(argv[++i]) * 1024 * 1024;
       continue;
     }
     if ((!strcmp(argv[i], "--only-data-parallel"))) {
