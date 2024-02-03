@@ -53,6 +53,7 @@ FusedOp::FusedOp(FFModel &model, Op *op)
          0 /*weights*/,
          0 /*outputs*/) {
   numInputs = 0;
+  graphCaptured = false;
   for (int i = 0; i < op->numInputs; i++) {
     bool found = false;
     // we also need to check region duplicate for the first op in a fused op

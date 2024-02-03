@@ -101,6 +101,7 @@ public:
   Op *operators[MAX_NUM_FUSED_OPERATORS];
   FusedOpMeta fused_meta[MAX_NUM_WORKERS];
   int numOperators;
+  bool graphCaptured;
 };
 
 }; // namespace FlexFlow

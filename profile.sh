@@ -1,0 +1,2 @@
+nsys profile -w true -t cuda,nvtx,osrt,cudnn,cublas -s cpu -o TP4B4newLegion-lambda -f true -x true \
+    ./inference/incr_decoding/incr_decoding --ll:util 8 -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -cache-folder /home/xiaoxias/weights --fusion -ll:gpu 4 -prompt ../inference/prompt/chatgpt.json -tensor-parallelism-degree 4
