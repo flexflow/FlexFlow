@@ -42,9 +42,9 @@ Example
 
 Complete code example can be found here: 
 
-1. `Chatbot Example with incremental decoding <https://github.com/flexflow/FlexFlow/blob/chatbot-2/inference/python/usecases/gradio_incr.py>`__
+1. `Chatbot Example with incremental decoding <https://github.com/flexflow/FlexFlow/blob/inference/inference/python/usecases/gradio_incr.py>`__
 
-2. `Chatbot Example with speculative inference <https://github.com/flexflow/FlexFlow/blob/chatbot-2/inference/python/usecases/gradio_specinfer.py>`__
+2. `Chatbot Example with speculative inference <https://github.com/flexflow/FlexFlow/blob/inference/inference/python/usecases/gradio_specinfer.py>`__
 
 
 Example Implementation:

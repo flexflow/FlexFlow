@@ -34,9 +34,9 @@ Example
 
 A complete code example for a web-document Q&A using FlexFlow can be found here: 
 
-1. `Rag Q&A Example with incremental decoding <https://github.com/flexflow/FlexFlow/blob/chatbot-2/inference/python/usecases/rag_incr.py>`__
+1. `Rag Q&A Example with incremental decoding <https://github.com/flexflow/FlexFlow/blob/inference/inference/python/usecases/rag_incr.py>`__
 
-2. `Rag Q&A Example with speculative inference <https://github.com/flexflow/FlexFlow/blob/chatbot-2/inference/python/usecases/rag_specinfer.py>`__
+2. `Rag Q&A Example with speculative inference <https://github.com/flexflow/FlexFlow/blob/inference/inference/python/usecases/rag_specinfer.py>`__
 
 
 Example Implementation:
