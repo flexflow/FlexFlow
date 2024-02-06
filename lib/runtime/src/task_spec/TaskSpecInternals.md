@@ -45,7 +45,7 @@ struct LocalBackend {
   map<pair<task_id_t, int>, pair<task_id_t, int>> tensor_dependency_map;
 
   LocalBackend(size_t mem_size) { 
-    this.allocator = Allocator(mem_size); 
+    allocator = Allocator(mem_size); 
   }
 
   F register_task(task_id_t, OpTaskSignature sig, F task_impl) {
@@ -61,7 +61,8 @@ struct LocalBackend {
       if (tensor_dependency_map[pair<task_id_t, i>]) {
         tensor_store[task_id_t].push_back(...) // add tensor from other task
       } else {
-        tensor_store[task_id_t].push_back(& GenericTensorAccessorW());
+        GenericTensorAccessorW tensor_acc = allocator.allocate(tensor);
+        tensor_store[task_id_t].push_back(&tensor_acc);
       }
     } 
 
