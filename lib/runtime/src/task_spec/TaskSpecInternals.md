@@ -4,90 +4,90 @@ A step-by-step walkthrough.
 
 ## Compilation
 
-During compilation, a `ComputationGraph` is generated. We can use this to initialize a `RuntimeBacking` (`LocalTaskBackend` is-a `RuntimeBacking`).
-
+During compilation, a `ComputationGraph` is generated from a `torch.fxGraphModule`. Since we have no need to run a PCG, we can skip the optimization step. Instead, the `ComputationGraph` itself can be considered as the `CompiledModel` and fed to the serializer. Similarly, we can strip down the legion/PCG from `ModelTrainingInstance` and initialize a `LocalModelTrainingInstance` as follows:
 ```
-LocalTaskBackend(ComputationGraph cg) {
-  for (auto op: top_sort(cg)) {
-    register_task<get_fwd_task_id(op)>();
+struct LocalModelTrainingInstance {
+  ComputationGraph computation_graph;
+  EnableProfiling enable_profiling;
+  LocalBackend backend;
+
+  void initialize_backend(size_t mem_size) {
+    backend = LocalBackend(mem_size);
   }
 
-  for (auto op: reverse(top_sort(cg))) {
-    register_task<get_bwd_task_id(op)>();
+  GenericTensorAccessorR forward() {
+    return backend.forward(computation_graph);
   }
 
-  register_task<UPDATE_TASK_ID>();
-}
-
-struct TaskStore {
-  map<task_id, vector<args>> arg_store;
-  map<task_id, vector<tensor>> tensor_store;
-
-  add_arg(id, arg) {
-    arg_store[id].push_back(arg);
+  GenericTensorAccessorR backward() {
+    return backend.backward(computation_graph);
   }
 
-  add_tensor(id, tensor) {
-    tensor_store[id].push_back(tensor);
+  void update() {
+    backend.update(computation_graph);
   }
-}
-
-void register_task(task_id_t, TaskSignature sig, F task_impl) {
-  task_impl_map[task_id_t] = task_impl;
-
-  for (auto arg: sig.get_arg_slots()) {
-    task_store.add_arg(task_id_t, arg)
-  }
-  
-  for (auto tensor: sig.get_tensor_slots()) {
-    task_store.add_tensor(task_id_t, tensor);
-  } 
-}
+};
 ```
+
+Instead of returning `TypedFuture<>` for `forward()` and `backward()`, we can just return the tensor itself since local backend operates synchronously.
 
 ## Runtime
 
-At runtime, we call `forward()`, `backward()`, and `update()` and pass in a `ModelTrainingInstance` which holds references to the `ComputationGraph` and the `RuntimeBacking`.
-
+In the training loop, `LocalModelTrainingInstance::forward` will invoke `LocalBackend::forward` on its computation graph.
 ```
-void forward(ModelTrainingInstance m) {
-  for (auto op: top_sort(m.cg)) {
-    OpTaskInvocation invocation = forward(get_operator_attrs(op));
-    execute(invocation);
+struct LocalBackend {
+  Allocator allocator;
+
+  map<task_id_t, vector<std::type_index> arg_store;
+  map<task_id_t, vector<GenericTensorAccessorW *>> tensor_store;
+
+  map<pair<task_id_t, int>, pair<task_id_t, int>> arg_dependency_map;
+  map<pair<task_id_t, int>, pair<task_id_t, int>> tensor_dependency_map;
+
+  LocalBackend(size_t mem_size) { 
+    this.allocator = Allocator(mem_size); 
   }
-}
 
-void backward(ModelTrainingInstance m) {
-  for (auto op: reverse(top_sort(m.cg))) {
-    OpTaskInvocation invocation = backward(get_operator_attrs(op));
-    execute(invocation);
+  F register_task(task_id_t, OpTaskSignature sig, F task_impl) {
+    for (auto arg: sig.get_arg_slots()) {
+      if (arg_dependency_map[pair<task_id_t, i>]) {
+        arg_store[task_id_t].push_back(...) // add argument from other task
+      } else {
+        arg_store[task_id_t].push_back(arg);
+      }
+    }
+    
+    for (auto tensor: sig.get_tensor_slots()) {
+      if (tensor_dependency_map[pair<task_id_t, i>]) {
+        tensor_store[task_id_t].push_back(...) // add tensor from other task
+      } else {
+        tensor_store[task_id_t].push_back(& GenericTensorAccessorW());
+      }
+    } 
+
+    return task_impl;
   }
-}
 
-void update(ModelTrainingInstance m) {
-  TaskInvocation invocation = {...};
-  execute(invocation);
-}
-```
+  TaskArgumentAccessor get_args(OpTaskInvocation const & inv) {
+    // TODO -- package args and tensors for a particular task
+  }
 
-`execute()` will invoke the backend, which will execute the task itself.
+  GenericTensorAccessorR forward(ComputationGraph const & cg) {
+    set_dependency_maps(cg);
 
-```
-execute(OpTaskInvocation) {
-  TaskArgumentAccessor acc = backend.get_args(invocation);
-  F op_task_impl = backend.get_task_impl(invocation);
-  op_task_impl(acc);
-}
-```
+    GenericTensorAccessorR output_tensor;
 
-The backend functions.
+    for (auto op: top_sort(cg)) {
+      F op_task_impl = register_task<get_fwd_task_id(op)>();
+      OpTaskInvocation invocation = forward(get_operator_attrs(op));
+      TaskArgumentAccessor acc = get_args(invocation);
+      output_tensor = op_task_impl(acc);
+    }
 
-```
-TaskArgumentAccessor get_args(OpTaskInvocation) {
-  return TaskArgumentAccessor(task_store.get_task_args(invocation.task_id));
-}
+    return output_tensor;
+  }
 
-F get_task_impl(OpTaskInvocation) {
-  return task_impl_map[invocation.task_id];
 }
 ```
+
+Similar process for `backward()` and `update()`.
