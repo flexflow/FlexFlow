@@ -13,16 +13,13 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/accessor.h"
 #include "kernels/combine_kernels.h"
-#include "kernels/cuda_helper.h"
 #include "kernels/datatype_dispatch.h"
+#include "kernels/device.h"
 
 namespace FlexFlow {
-
-CombinePerDeviceState::CombinePerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {}
-
 namespace Kernels {
 namespace Combine {
 
@@ -52,18 +49,16 @@ struct BackwardKernel {
 };
 
 void forward_kernel(ffStream_t stream,
-                    CombinePerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
-  DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, input, output);
+  DataTypeDispatch1<ForwardKernel>{}(input.data_type, stream, input, output);
 }
 
 void backward_kernel(ffStream_t stream,
-                     CombinePerDeviceState const *m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const &input_grad) {
   DataTypeDispatch1<BackwardKernel>{}(
-      m->data_type, stream, output_grad, input_grad);
+      input_grad.data_type, stream, output_grad, input_grad);
 }
 
 } // namespace Combine

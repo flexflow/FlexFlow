@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_TYPE_TRAITS_CORE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_TYPE_TRAITS_CORE_H
 
+#include <iterator>
 #include <type_traits>
 
 namespace FlexFlow {
@@ -122,6 +123,119 @@ struct supports_iterator_tag
 #define CHECK_SUPPORTS_ITERATOR_TAG(TAG, ...)                                  \
   static_assert(supports_iterator_tag<__VA_ARGS__, TAG>::value,                \
                 #__VA_ARGS__ " does not support required iterator tag " #TAG);
+
+template <typename T>
+using is_default_constructible = std::is_default_constructible<T>;
+
+template <typename T>
+using is_copy_constructible = std::is_copy_constructible<T>;
+
+template <typename T>
+using is_move_constructible = std::is_move_constructible<T>;
+
+template <typename T>
+using is_copy_assignable = std::is_copy_assignable<T>;
+
+template <typename T>
+using is_move_assignable = std::is_move_assignable<T>;
+
+template <typename T, typename Enable = void>
+struct is_equal_comparable : std::false_type {};
+
+template <typename T>
+struct is_equal_comparable<
+    T,
+    void_t<decltype(std::declval<T>() == std::declval<T>())>>
+    /* std::is_same< */
+    /*   decltype(), */
+    /*   bool */
+    /* >::value */
+    /* >> */
+    : std::true_type {};
+
+template <typename T, typename Enable = void>
+struct is_neq_comparable : std::false_type {};
+
+template <typename T>
+struct is_neq_comparable<
+    T,
+    void_t<decltype((bool)(std::declval<T>() != std::declval<T>()))>>
+    : std::true_type {};
+
+template <typename T, typename Enable = void>
+struct is_hashable : std::false_type {};
+
+template <typename T>
+struct is_hashable<
+    T,
+    void_t<decltype((size_t)(std::declval<std::hash<T>>()(std::declval<T>())))>>
+    : std::true_type {};
+
+template <typename T, typename Enable = void>
+struct is_plusable : std::false_type {};
+
+template <typename T>
+struct is_plusable<T,
+                   void_t<decltype((T)(std::declval<T>() + std::declval<T>()))>>
+    : std::true_type {};
+
+static_assert(is_plusable<int>::value, "");
+
+template <typename T, typename Enable = void>
+struct is_minusable : std::false_type {};
+
+template <typename T>
+struct is_minusable<
+    T,
+    void_t<decltype((T)(std::declval<T>() - std::declval<T>()))>>
+    : std::true_type {};
+
+template <typename T, typename Enable = void>
+struct is_timesable : std::false_type {};
+
+template <typename T>
+struct is_timesable<
+    T,
+    void_t<decltype((T)(std::declval<T>() * std::declval<T>()))>>
+    : std::true_type {};
+
+template <typename T>
+struct is_well_behaved_value_type_no_hash
+    : conjunction<is_equal_comparable<T>,
+                  is_neq_comparable<T>,
+                  is_copy_constructible<T>,
+                  is_move_constructible<T>,
+                  is_copy_assignable<T>,
+                  is_move_assignable<T>> {};
+
+#define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(...)                               \
+  static_assert(is_copy_constructible<__VA_ARGS__>::value,                     \
+                #__VA_ARGS__ " should be copy-constructible");                 \
+  static_assert(is_move_constructible<__VA_ARGS__>::value,                     \
+                #__VA_ARGS__ " should be move-constructible");                 \
+  static_assert(is_copy_assignable<__VA_ARGS__>::value,                        \
+                #__VA_ARGS__ " should be copy-assignable");                    \
+  static_assert(is_move_assignable<__VA_ARGS__>::value,                        \
+                #__VA_ARGS__ " should be move-assignable")
+
+#define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(...)                             \
+  CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(__VA_ARGS__);                            \
+  static_assert(is_equal_comparable<__VA_ARGS__>::value,                       \
+                #__VA_ARGS__ " should support operator==");                    \
+  static_assert(is_neq_comparable<__VA_ARGS__>::value,                         \
+                #__VA_ARGS__ " should support operator!=");
+
+template <typename T>
+struct is_well_behaved_value_type
+    : conjunction<is_well_behaved_value_type_no_hash<T>, is_hashable<T>> {};
+
+#define CHECK_HASHABLE(...)                                                    \
+  static_assert(is_hashable<__VA_ARGS__>::value,                               \
+                #__VA_ARGS__ " should be hashable (but is not)");
+
+#define CHECK_WELL_BEHAVED_VALUE_TYPE(...)                                     \
+  CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(__VA_ARGS__);                          \
+  CHECK_HASHABLE(__VA_ARGS__)
 
 } // namespace FlexFlow
 

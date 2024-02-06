@@ -24,7 +24,7 @@ namespace Embedding {
 template <DataType TI, DataType TD>
 struct ForwardKernel {
   void operator()(cudaStream_t stream,
-                  EmbeddingPerDeviceState const *m,
+                  AggrMode aggr,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output,
                   GenericTensorAccessorR const &weight,
@@ -35,8 +35,8 @@ struct ForwardKernel {
     assert(weight.data_type == DT_HALF || weight.data_type == DT_FLOAT ||
            weight.data_type == DT_DOUBLE);
 
-    if (m->aggr == AGGR_MODE_NONE) {
-      embed_forward_no_aggr<TI, TD><<<GET_BLOCKS(output.domain.get_volume()),
+    if (aggr == AGGR_MODE_NONE) {
+      embed_forward_no_aggr<TI, TD><<<GET_BLOCKS(output.shape.get_volume()),
                                       CUDA_NUM_THREADS,
                                       0,
                                       stream>>>(input.get<TI>(),
@@ -45,8 +45,8 @@ struct ForwardKernel {
                                                 out_dim,
                                                 batch_size);
     } else {
-      assert(m->aggr == AGGR_MODE_AVG || m->aggr == AGGR_MODE_SUM);
-      embed_forward_with_aggr<TI, TD><<<GET_BLOCKS(output.domain.get_volume()),
+      assert(aggr == AGGR_MODE_AVG || aggr == AGGR_MODE_SUM);
+      embed_forward_with_aggr<TI, TD><<<GET_BLOCKS(output.shape.get_volume()),
                                         CUDA_NUM_THREADS,
                                         0,
                                         stream>>>(input.get<TI>(),
@@ -55,7 +55,7 @@ struct ForwardKernel {
                                                   out_dim,
                                                   in_dim,
                                                   batch_size,
-                                                  m->aggr);
+                                                  aggr);
     }
   }
 }
@@ -63,7 +63,7 @@ struct ForwardKernel {
 template <DataType TI, DataType TD>
 struct BackwardKernel {
   void operator()(cudaStream_t stream,
-                  EmbeddingPerDeviceState const *m,
+                  AggrMode aggr,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorR const &output,
                   GenericTensorAccessorW const &weight_grad,
@@ -73,8 +73,8 @@ struct BackwardKernel {
     assert(input.data_type == DT_INT32 || input.data_type == DT_INT64);
     assert(output.data_type == DT_HALF || output.data_type == DT_FLOAT,
            || output.data_type == DT_DOUBLE);
-    if (m->aggr == AGGR_MODE_NONE) {
-      embed_backward_no_aggr<TI, TD><<<GET_BLOCKS(output.domain.get_volume()),
+    if (aggr == AGGR_MODE_NONE) {
+      embed_backward_no_aggr<TI, TD><<<GET_BLOCKS(output.shape.get_volume()),
                                        CUDA_NUM_THREADS,
                                        0,
                                        stream>>>(input.get<TI>(),
@@ -83,7 +83,7 @@ struct BackwardKernel {
                                                  out_dim,
                                                  batch_size);
     } else {
-      embed_backward_with_aggr<TI, TD><<<GET_BLOCKS(output.domain.get_volume()),
+      embed_backward_with_aggr<TI, TD><<<GET_BLOCKS(output.shape.get_volume()),
                                          CUDA_NUM_THREADS,
                                          0,
                                          stream>>>(input.get<TI>(),
@@ -92,23 +92,25 @@ struct BackwardKernel {
                                                    out_dim,
                                                    in_dim,
                                                    batch_size,
-                                                   m->aggr);
+                                                   aggr);
     }
   }
 }
 
-void forward_kernel(cudaStream_t stream,
-                    EmbeddingPerDeviceState const *m,
+void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
                     GenericTensorAccessorR const &weight,
+                    DataType input_data_type,
+                    DataType output_data_type,
+                    AggrMode aggr,
                     int in_dim,
                     int out_dim,
                     int batch_size) {
-  DataTypeDispatch2<ForwardKernel>{}(m->input_data_type,
-                                     m->output_data_type,
+  DataTypeDispatch2<ForwardKernel>{}(input_data_type,
+                                     output_data_type,
                                      stream,
-                                     m,
+                                     aggr,
                                      input,
                                      output,
                                      weight,
@@ -118,17 +120,19 @@ void forward_kernel(cudaStream_t stream,
 }
 
 void backward_kernel(cudaStream_t stream,
-                     EmbeddingPerDeviceState const *m,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorR const &output,
                      GenericTensorAccessorW const &weight_grad,
+                     DataType input_data_type,
+                     DataType output_data_type,
+                     AggrMode aggr,
                      int in_dim,
                      int out_dim,
                      int batch_size) {
-  DataTypeDispatch2<BackwardKernel>{}(m->input_data_type,
-                                      m->output_data_type,
+  DataTypeDispatch2<BackwardKernel>{}(input_data_type,
+                                      output_data_type,
                                       stream,
-                                      m,
+                                      aggr,
                                       input,
                                       output,
                                       weight,

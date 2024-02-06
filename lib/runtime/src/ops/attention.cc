@@ -15,14 +15,27 @@
 
 #include "attention.h"
 #include "kernels/attention_kernels.h"
-#include "kernels/profiling.h"
-#include "realm_allocator.h"
+#include "legion.h"
+#include "op-attrs/ops/attention.h"
+#include "task_spec/op_task_signature.h"
 
 namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::MultiHeadAttention;
 
+using Legion::Context;
+using Legion::PhysicalRegion;
+using Legion::Runtime;
+using Legion::Task;
+
 enum Slots {
+  QUERY_PARALLEL_TENSOR_SHAPE,
+  KEY_PARALLEL_TENSOR_SHAPE,
+  VALUE_PARALLEL_TENSOR_SHAPE,
+  QPROJSIZE,
+  KPROJSIZE,
+  VPROJSIZE,
+  OPROJSIZE,
   ATTRS,
   PROFILING,
   QUERY,
@@ -30,20 +43,24 @@ enum Slots {
   VALUE,
   WEIGHTS,
   OUTPUT,
+  HANDLE,
   PER_DEVICE_STATE
 };
 
 OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
   OpTaskBinding b;
 
-  b.bind(QUERY, input_tensor(0));
-  b.bind(KEY, input_tensor(1));
-  b.bind(VALUE, input_tensor(2));
-  b.bind(WEIGHTS, param_tensor(0));
-  b.bind(OUTPUT, output_tensor(0));
-
+  b.bind_arg(HANDLE, ff_handle());
   b.bind_arg(ATTRS, attrs);
-  b.bind_arg(PROFILING, enable_profiling());
+
+  b.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(0));
+  b.bind_arg(KEY_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(1));
+  b.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE, input_parallel_tensor_shape(2));
+
+  b.bind_arg(QPROJSIZE, get_qProjSize(attrs));
+  b.bind_arg(KPROJSIZE, get_kProjSize(attrs));
+  b.bind_arg(VPROJSIZE, get_vProjSize(attrs));
+  b.bind_arg(OPROJSIZE, get_oProjSize(attrs));
 
   return {ATTENTION_INIT_TASK_ID, b};
 }
@@ -54,572 +71,128 @@ OpTaskInvocation forward(MultiHeadAttentionAttrs const &attrs) {
   b.bind(QUERY, input_tensor(0));
   b.bind(KEY, input_tensor(1));
   b.bind(VALUE, input_tensor(2));
-  b.bind(WEIGHTS, param_tensor(0));
-  b.bind(OUTPUT, param_tensor(0));
+  b.bind(WEIGHTS, weight_tensor(0));
+  b.bind(OUTPUT, output_tensor(0));
+
+  b.bind_arg(PROFILING, profiling_settings());
   b.bind_arg(PER_DEVICE_STATE, per_device_op_state<MHAPerDeviceState>());
 
   return {ATTENTION_FWD_TASK_ID, b};
 }
 
 OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
-  OpTaskBinding b;
-
-  b.bind(QUERY, input_tensor(0));
-  b.bind(KEY, input_tensor(1));
-  b.bind(VALUE, input_tensor(2));
-  b.bind_grad(QUERY, input_tensor(0));
-  b.bind_grad(KEY, input_tensor(1));
-  b.bind_grad(VALUE, input_tensor(2));
-  b.bind(WEIGHTS, param_tensor(0));
-  b.bind_grad(WEIGHTS, param_tensor(0));
-  b.bind_grad(OUTPUT, output_tensor(0));
+  OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
   return {ATTENTION_BWD_TASK_ID, b};
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  MultiHeadAttentionAttrs const &attrs,
-                                  ParallelTensorShape const &query_shape,
-                                  ParallelTensorShape const &key_shape,
-                                  ParallelTensorShape const &value_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-  auto env = sim.new_environment();
-
-  auto query = allocate_input(env, query_shape);
-  auto key = allocate_input(env, key_shape);
-  auto value = allocate_input(env, value_shape);
-
-  auto query_grad = allocate_input_grad(env, query_shape);
-  auto key_grad = allocate_input_grad(env, key_shape);
-  auto value_grad = allocate_input_grad(env, value_shape);
-
-  MultiHeadAttentionInputs<ParallelTensorShape> input_shapes = {
-      query_shape, key_shape, value_shape};
-
-  ParallelTensorShape weight_shape = get_weights_shape(attrs, input_shapes);
-  auto weights = allocate_weight(env, weight_shape);
-  auto weights_grad = allocate_weight_grad(env, weight_shape);
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shapes);
-  auto output = allocate_output(env, output_shape);
-  auto output_grad = allocate_output_grad(env, output_shape);
-
-  MHAPerDeviceState per_device_state =
-      init_kernel(get_ff_handle(env),
-                  create_allocator(env),
-                  get_num_samples(input_shapes),
-                  attrs.num_heads,
-                  get_qSize(input_shapes),
-                  get_kSize(input_shapes),
-                  get_vSize(input_shapes),
-                  get_qProjSize(attrs),
-                  get_kProjSize(attrs),
-                  get_vProjSize(attrs),
-                  get_oProjSize(attrs),
-                  get_qoSeqLength(input_shapes),
-                  get_kvSeqLength(input_shapes),
-                  attrs.add_bias_kv);
-
-  float forward_time = profiling_wrapper(forward_kernel,
-                                         settings,
-                                         get_float_ptr(query),
-                                         get_float_ptr(key),
-                                         get_float_ptr(value),
-                                         get_float_ptr(weights),
-                                         get_float_ptr(output))
-                           .value();
-
-  float backward_time = profiling_wrapper(backward_kernel,
-                                          settings,
-                                          get_float_ptr(query),
-                                          get_float_ptr(query_grad),
-                                          get_float_ptr(key),
-                                          get_float_ptr(key_grad),
-                                          get_float_ptr(value),
-                                          get_float_ptr(value_grad),
-                                          get_float_ptr(weights),
-                                          get_float_ptr(weights_grad),
-                                          get_float_ptr(output_grad))
-                            .value();
-
-  float sync_time = default_estimate_sync_time(env);
-
-  return make_metrics(forward_time, backward_time, sync_time, env);
-}
-
-Tensor FFModel::multihead_attention(const Tensor query,
-                                    const Tensor key,
-                                    const Tensor value,
-                                    int embed_dim,
-                                    int num_heads,
-                                    int kdim,
-                                    int vdim,
-                                    float dropout,
-                                    bool bias,
-                                    bool add_bias_kv,
-                                    bool add_zero_attn,
-                                    Initializer *kernel_initializer,
-                                    char const *name) {
-  Layer *li = new Layer(this,
-                        OP_MULTIHEAD_ATTENTION,
-                        DT_FLOAT,
-                        name,
-                        3 /*inputs*/,
-                        1 /*weights*/,
-                        1 /*outputs*/,
-                        query,
-                        key,
-                        value);
-  {
-    int numdims = query->num_dims;
-    int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < numdims; i++) {
-      dims[i] = query->dims[i];
-    }
-    dims[0] = embed_dim;
-    li->outputs[0] = create_tensor_legion_ordering(
-        numdims, dims, DT_FLOAT, li, 0, true /*create_grad*/);
-  }
-  {
-    // Compute weight size
-    int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim,
-        oProjSize = embed_dim;
-    int qSize = query->dims[0], kSize = key->dims[0], vSize = value->dims[0];
-    int qParas = qProjSize * qSize;
-    int kParas = kProjSize * kSize;
-    int vParas = vProjSize * vSize;
-    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-    int dims[2] = {qParas + kParas + vParas + oParas, num_heads};
-    li->weights[0] = create_weight_legion_ordering(2,
-                                                   dims,
-                                                   DT_FLOAT,
-                                                   li,
-                                                   true /*create_grad*/,
-                                                   kernel_initializer,
-                                                   CHOSEN_SYNC_TYPE);
-  }
-  li->data_type = DT_FLOAT;
-  li->add_int_property("embed_dim", embed_dim);
-  li->add_int_property("num_heads", num_heads);
-  li->add_int_property("kdim", kdim);
-  li->add_int_property("vdim", vdim);
-  li->add_int_property("bias", bias);
-  li->add_int_property("add_bias_kv", add_bias_kv);
-  li->add_int_property("add_zero_attn", add_zero_attn);
-  li->add_float_property("dropout", dropout);
-  layers.push_back(li);
-  return li->outputs[0];
-}
-
-MultiHeadAttention::MultiHeadAttention(FFModel &model,
-                                       LayerID const &_layer_guid,
-                                       const ParallelTensor _query,
-                                       const ParallelTensor _key,
-                                       const ParallelTensor _value,
-                                       int _embed_dim,
-                                       int _num_heads,
-                                       int _kdim,
-                                       int _vdim,
-                                       float _dropout,
-                                       bool _bias,
-                                       bool _add_bias_kv,
-                                       bool _add_zero_attn,
-                                       bool allocate_weights,
-                                       char const *name)
-    // Initializer* _bias_initializer)
-    : Op(model,
-         OP_MULTIHEAD_ATTENTION,
-         DT_FLOAT,
-         name,
-         3 /*inputs*/,
-         1 /*weights*/,
-         1 /*outputs*/,
-         _query,
-         _key,
-         _value),
-      attrs(_embed_dim,
-            _num_heads,
-            _kdim,
-            _vdim,
-            _dropout,
-            _bias,
-            _add_bias_kv,
-            _add_zero_attn),
-      qSize(_query->dims[0].size), kSize(_key->dims[0].size),
-      vSize(_value->dims[0].size), qProjSize(_kdim),
-      qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size) {
-  // overwrite layer_guid
-  layer_guid = _layer_guid;
-
-  // assert key and value have the same sequence length
-  assert(_key->dims[1] == _value->dims[1]);
-  numOutputs = 1;
-  int numdim = _query->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++) {
-    dims[i] = _query->dims[i];
-  }
-  dims[0].size = _embed_dim;
-  // Currently require no parallelism along this dim
-  assert(dims[0].degree == 1);
-  if (allocate_weights) {
-    // Create weight tensor
-    int num_dims = inputs[0]->num_dims;
-    // Compute weight size
-    int qParas = this->qProjSize * this->qSize;
-    int kParas = kProjSize(attrs) * this->kSize;
-    int vParas = vProjSize(attrs) * this->vSize;
-    int oParas = oProjSize(attrs) *
-                 (vProjSize(attrs) > 0 ? vProjSize(attrs) : this->vSize);
-    ParallelDim dims[3];
-    dims[0] = inputs[0]->dims[num_dims - 2];
-    dims[0].size = dims[0].degree;
-    dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->attrs.num_heads;
-    dims[2].size = qParas + kParas + vParas + oParas;
-    dims[2].degree = 1;
-    dims[2].parallel_idx = -1;
-    int seed = std::rand();
-    Initializer *initializer = new GlorotUniform(seed);
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-    weights[0] = model.create_parallel_weight<3>(dims,
-                                                 DT_FLOAT,
-                                                 NULL /*owner_op*/,
-                                                 true /*create_grad*/,
-                                                 initializer,
-                                                 comm_type);
-  }
-
-  outputs[0] = model.create_parallel_tensor_legion_ordering(
-      _query->num_dims, dims, DT_FLOAT, this);
-  /* for (int i = 0; i < numdim; i++) { */
-  /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
-  /* } */
-  /* // Check correctness */
-  /* assert(check_output_input_weight_parallel_dims()); */
-}
-
-MultiHeadAttention::MultiHeadAttention(FFModel &model,
-                                       const ParallelTensor _query,
-                                       const ParallelTensor _key,
-                                       const ParallelTensor _value,
-                                       const ParallelTensor _weight,
-                                       int _embed_dim,
-                                       int _num_heads,
-                                       int _kdim,
-                                       int _vdim,
-                                       float _dropout,
-                                       bool _bias,
-                                       bool _add_bias_kv,
-                                       bool _add_zero_attn,
-                                       bool allocate_weights,
-                                       char const *name)
-    // Initializer* _bias_initializer)
-    : Op(model,
-         OP_MULTIHEAD_ATTENTION,
-         DT_FLOAT,
-         name,
-         3 /*inputs*/,
-         1 /*weights*/,
-         1 /*outputs*/,
-         _query,
-         _key,
-         _value,
-         _weight),
-      attrs(_embed_dim,
-            _num_heads,
-            _kdim,
-            _vdim,
-            _dropout,
-            _bias,
-            _add_bias_kv,
-            _add_zero_attn),
-      qSize(_query->dims[0].size), kSize(_key->dims[0].size),
-      vSize(_value->dims[0].size), qProjSize(_kdim),
-      qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size)
-// bias_initializer(_bias_initializer)
-{
-  // assert key and value have the same sequence length
-  assert(_key->dims[1] == _value->dims[1]);
-  numOutputs = 1;
-  int numdim = _query->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++) {
-    dims[i] = _query->dims[i];
-  }
-  // assert key and value have the same sequence length
-  assert(_key->dims[1] == _value->dims[1]);
-  dims[0].size = _embed_dim;
-  // Currently require no parallelism along this dim
-  assert(dims[0].degree == 1);
-  if (allocate_weights) {
-    // Create weight tensor
-    int num_dims = inputs[0]->num_dims;
-    // Compute weight size
-    int qParas = this->qProjSize * this->qSize;
-    int kParas = kProjSize(attrs) * this->kSize;
-    int vParas = vProjSize(attrs) * this->vSize;
-    int oParas = oProjSize(attrs) *
-                 (vProjSize(attrs) > 0 ? vProjSize(attrs) : this->vSize);
-    ParallelDim dims[3];
-    dims[0] = inputs[0]->dims[num_dims - 2];
-    dims[0].size = dims[0].degree;
-    dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->attrs.num_heads;
-    dims[2].size = qParas + kParas + vParas + oParas;
-    int seed = std::rand();
-    Initializer *initializer = new GlorotUniform(seed);
-#ifdef USE_NCCL
-    ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-    ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-    weights[0] = model.create_parallel_weight<3>(dims,
-                                                 DT_FLOAT,
-                                                 NULL /*owner_op*/,
-                                                 true /*create_grad*/,
-                                                 initializer,
-                                                 comm_type);
-  }
-  outputs[0] = model.create_parallel_tensor_legion_ordering(
-      _query->num_dims, dims, DT_FLOAT, this);
-
-  /* for (int i = 0; i < numdim; i++) { */
-  /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
-  /* } */
-  /* register_output_weight_parallel_dims(outputs[0], numdim-1, _weight, 1); */
-  /* register_output_weight_parallel_dims(outputs[0], numdim-2, _weight, 2); */
-  // Check correctness
-  /* assert(check_output_input_weight_parallel_dims()); */
-}
-
-static PerDeviceOpState *init_task(Task const *task,
-                                   std::vector<PhysicalRegion> const &regions,
-                                   Context ctx,
-                                   Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
-
+static DeviceSpecific<MHAPerDeviceState>
+    init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
-  bool profiling = acc.get_argument<bool>(PROFILING);
-  int kvSeqLength = acc.get_argument<int>(KVSEQLENGTH);
-  int kSize = acc.get_argument<int>(KSIZE);
-  int vSize = acc.get_argument<int>(VSIZE);
+  Allocator allocator = acc.get_allocator();
   int qProjSize = acc.get_argument<int>(QPROJSIZE);
+  int kProjSize = acc.get_argument<int>(KPROJSIZE);
+  int vProjSize = acc.get_argument<int>(VPROJSIZE);
+  int oProjSize = acc.get_argument<int>(OPROJSIZE);
+  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
+  ParallelTensorShape query_parallel_tensor_shape =
+      acc.get_argument<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);
+  ParallelTensorShape key_parallel_tensor_shape =
+      acc.get_argument<ParallelTensorShape>(KEY_PARALLEL_TENSOR_SHAPE);
+  ParallelTensorShape value_parallel_tensor_shape =
+      acc.get_argument<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
 
-  FFHandler handle = *((FFHandler const *)task->local_args);
+  MultiHeadAttentionInputs<ParallelTensorShape> inputs =
+      MultiHeadAttentionInputs<ParallelTensorShape>(
+          query_parallel_tensor_shape,
+          key_parallel_tensor_shape,
+          value_parallel_tensor_shape);
 
-  auto query = acc.get_tensor<READ_ONLY>(QUERY);
-  auto key = acc.get_tensor<READ_ONLY>(KEY);
-  auto value = acc.get_tensor<READ_ONLY>(VALUE);
-  auto weight = acc.get_tensor<READ_ONLY>(WEIGHTS);
-  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
+  ParallelTensorShape output_parallel_tensor_shape =
+      get_output_shape(attrs, inputs);
+  ParallelTensorShape weight_parallel_tensor_shape =
+      get_weights_shape(attrs, inputs);
 
-  int qoSeqLength = query.dims[legion_dim_t(1)];
+  int kvSeqLength = get_kvSeqLength(inputs);
+  int qSize = get_qSize(inputs);
+  int kSize = get_kSize(inputs);
+  int vSize = get_vSize(inputs);
 
-  int num_samples = query.shape[2];
-  assert(qoSeqLength == query.shape[1]);
-  assert(qSize == query.shape[0]);
-  assert(num_samples == key.shape[2]);
-  assert(kvSeqLength == key.shape[1]);
-  assert(kSize == key.shape[0]);
-  assert(num_samples == value.shape[2]);
-  assert(kvSeqLength == value.shape[1]);
-  assert(vSize == value.shape[0]);
-  int num_heads = weight.shape[1];
-  assert(num_samples == output.shape[2]);
-  assert(qoSeqLength == output.shape[1]);
-  assert(oProjSize(attrs) == output.shape[0]);
+  int qoSeqLength = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(1)];
+  int num_samples = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(2)];
+  int num_heads = get_piece_shape(weight_parallel_tensor_shape)[ff_dim_t(1)];
 
-  MHAPerDeviceState *m = new MHAPerDeviceState(handle,
-                                               get_gpu_memory_allocator(task),
-                                               num_samples,
-                                               num_heads,
-                                               qSize,
-                                               kSize,
-                                               vSize,
-                                               qProjSize,
-                                               kProjSize(attrs),
-                                               vProjSize(attrs),
-                                               oProjSize(attrs),
-                                               qoSeqLength,
-                                               kvSeqLength,
-                                               attrs.add_bias_kv);
-
-  m->profiling = profiling;
-  assert(weight.shape.get_volume() * sizeof(float) == m->weightSize);
-  return m;
+  DeviceSpecific<MHAPerDeviceState> per_device_state =
+      acc.create_device_specific<MHAPerDeviceState>(
+          init_kernel(handle,
+                      allocator,
+                      num_samples,
+                      num_heads,
+                      qSize,
+                      kSize,
+                      vSize,
+                      qProjSize,
+                      kProjSize,
+                      vProjSize,
+                      oProjSize,
+                      qoSeqLength,
+                      kvSeqLength,
+                      attrs.add_bias_kv));
+  return per_device_state;
 }
 
-// void MultiHeadAttention::forward(FFModel const &ff) {
-//   ArgumentMap argmap;
-//   Context ctx = ff.config.lg_ctx;
-//   Runtime *runtime = ff.config.lg_hlr;
-//   set_argumentmap_for_forward(ff, argmap);
-//   int idx = 0;
-//   IndexLauncher launcher(ATTENTION_FWD_TASK_ID,
-//                          parallel_is,
-//                          TaskArgument(NULL, 0),
-//                          argmap,
-//                          Predicate::TRUE_PRED,
-//                          false /*must*/,
-//                          0 /*mapper_id*/,
-//                          outputs[0]->machine_view.hash());
-//   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-//                                                     0 /*projection id*/,
-//                                                     READ_ONLY,
-//                                                     EXCLUSIVE,
-//                                                     inputs[0]->region));
-//   launcher.add_field(idx++, FID_DATA);
-//   launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-//                                                     0 /*projection id*/,
-//                                                     READ_ONLY,
-//                                                     EXCLUSIVE,
-//                                                     inputs[1]->region));
-//   launcher.add_field(idx++, FID_DATA);
-//   launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
-//                                                     0 /*projection id*/,
-//                                                     READ_ONLY,
-//                                                     EXCLUSIVE,
-//                                                     inputs[2]->region));
-//   launcher.add_field(idx++, FID_DATA);
-//   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-//                                                     0 /*projection id*/,
-//                                                     READ_ONLY,
-//                                                     EXCLUSIVE,
-//                                                     weights[0]->region));
-//   launcher.add_field(idx++, FID_DATA);
-//   launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-//                                                     0 /*projection id*/,
-//                                                     WRITE_ONLY,
-//                                                     EXCLUSIVE,
-//                                                     outputs[0]->region));
-//   launcher.add_field(4, FID_DATA);
-//   runtime->execute_index_space(ctx, launcher);
-// }
+static DeviceSpecific<MHAPerDeviceState>
+    init_task(Task const *task,
+              std::vector<PhysicalRegion> const &regions,
+              Context ctx,
+              Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  return init_task_impl(acc);
+}
+
+static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+  auto query = acc.get_tensor<Permissions::RO>(QUERY);
+  auto key = acc.get_tensor<Permissions::RO>(KEY);
+  auto value = acc.get_tensor<Permissions::RO>(VALUE);
+  auto weight = acc.get_tensor<Permissions::RO>(WEIGHTS);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
+
+  return profile(forward_kernel,
+                 profiling,
+                 "[MultiHeadAttention] forward_time = %.2lfms\n",
+                 per_device_state,
+                 query.get_float_ptr(),
+                 key.get_float_ptr(),
+                 value.get_float_ptr(),
+                 weight.get_float_ptr(),
+                 output.get_float_ptr());
+}
 
 static void forward_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
-
-  auto query = acc.get_tensor<READ_ONLY>(QUERY);
-  auto key = acc.get_tensor<READ_ONLY>(KEY);
-  auto value = acc.get_tensor<READ_ONLY>(VALUE);
-  auto weight = acc.get_tensor<READ_ONLY>(WEIGHTS);
-  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
-  auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
-
-  profile(forward_kernel,
-          m->profiling,
-          "[MultiHeadAttention] forward_time = %.2lfms\n",
-          m,
-          query.get_float_ptr(),
-          key.get_float_ptr(),
-          value.get_float_ptr(),
-          weight.get_float_ptr(),
-          output.get_float_ptr());
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  forward_task_impl(acc);
 }
 
-// void MultiHeadAttention::backward(FFModel const &ff) {
-//   ArgumentMap argmap;
-//   Context ctx = ff.config.lg_ctx;
-//   Runtime *runtime = ff.config.lg_hlr;
-//   set_argumentmap_for_backward(ff, argmap);
-//   IndexLauncher launcher(ATTENTION_BWD_TASK_ID,
-//                          parallel_is,
-//                          TaskArgument(NULL, 0),
-//                          argmap,
-//                          Predicate::TRUE_PRED,
-//                          false /*must*/,
-//                          0 /*mapper_id*/,
-//                          outputs[0]->machine_view.hash());
-//   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-//                                                     0 /*projection id*/,
-//                                                     READ_ONLY,
-//                                                     EXCLUSIVE,
-//                                                     inputs[0]->region));
-//   launcher.add_field(0, FID_DATA);
-//   launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-//                                                     0 /*projection id*/,
-//                                                     READ_ONLY,
-//                                                     EXCLUSIVE,
-//                                                     inputs[1]->region));
-//   launcher.add_field(1, FID_DATA);
-//   launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
-//                                                     0 /*projection id*/,
-//                                                     READ_ONLY,
-//                                                     EXCLUSIVE,
-//                                                     inputs[2]->region));
-//   launcher.add_field(2, FID_DATA);
-//   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-//                                                     0 /*projection id*/,
-//                                                     READ_ONLY,
-//                                                     EXCLUSIVE,
-//                                                     weights[0]->region));
-//   launcher.add_field(3, FID_DATA);
-//   launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-//                                                     0 /*projection id*/,
-//                                                     READ_ONLY,
-//                                                     EXCLUSIVE,
-//                                                     outputs[0]->region_grad));
-//   launcher.add_field(4, FID_DATA);
-//   launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
-//                                                     0 /*projection id*/,
-//                                                     READ_WRITE,
-//                                                     EXCLUSIVE,
-//                                                     weights[0]->region_grad));
-//   launcher.add_field(5, FID_DATA);
-//   launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-//                                                     0 /*projection id*/,
-//                                                     READ_WRITE,
-//                                                     EXCLUSIVE,
-//                                                     inputs[0]->region_grad));
-//   launcher.add_field(6, FID_DATA);
-//   int num_regions = 7;
-//   if (inputs[1]->region != inputs[0]->region) {
-//     // when key != query
-//     launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
-//                                                       0 /*projection id*/,
-//                                                       READ_WRITE,
-//                                                       EXCLUSIVE,
-//                                                       inputs[1]->region_grad));
-//     launcher.add_field(num_regions++, FID_DATA);
-//   }
-//   if ((inputs[2]->region != inputs[0]->region) &&
-//       (inputs[2]->region != inputs[1]->region)) {
-//     // when value != key and value != query
-//     launcher.add_region_requirement(RegionRequirement(inputs[2]->part_grad,
-//                                                       0 /*projection id*/,
-//                                                       READ_WRITE,
-//                                                       EXCLUSIVE,
-//                                                       inputs[2]->region_grad));
-//     launcher.add_field(num_regions++, FID_DATA);
-//   }
-//   runtime->execute_index_space(ctx, launcher);
-// }
+static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+  auto query = acc.get_tensor<Permissions::RO>(QUERY);
+  auto key = acc.get_tensor<Permissions::RO>(KEY);
+  auto value = acc.get_tensor<Permissions::RO>(VALUE);
+  auto weight = acc.get_tensor<Permissions::RO>(WEIGHTS);
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
+  auto weight_grad = acc.get_tensor_grad<Permissions::RW>(WEIGHTS);
+  auto query_grad = acc.get_tensor_grad<Permissions::RW>(QUERY);
+  auto key_grad = acc.get_tensor_grad<Permissions::RW>(KEY);
+  auto value_grad = acc.get_tensor_grad<Permissions::RW>(VALUE);
 
-  auto query = acc.get_tensor<READ_ONLY>(QUERY);
-  auto key = acc.get_tensor<READ_ONLY>(KEY);
-  auto value = acc.get_tensor<READ_ONLY>(VALUE);
-  auto weight = acc.get_tensor<READ_ONLY>(WEIGHTS);
   auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
-
-  auto output_grad = acc.get_tensor_grad<READ_ONLY>(OUTPUT);
-  auto weight_grad = acc.get_tensor_grad<READ_WRITE>(WEIGHTS);
-  auto query_grad = acc.get_tensor_grad<READ_WRITE>(QUERY);
-  auto key_grad = acc.get_tensor_grad<READ_WRITE>(KEY);
-  auto value_grad = acc.get_tensor_grad<READ_WRITE>(VALUE);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   float *key_grad_ptr =
       (key_grad == query_grad) ? nullptr : key_grad.get_float_ptr();
@@ -633,208 +206,148 @@ static void backward_task(Task const *task,
   assert(query_grad.shape == query.shape);
   assert(weight_grad.shape.get_volume() == weight.shape.get_volume());
 
-  profile(backward_kernel,
-          m->profiling,
-          "[MultiHeadAttention] backward_time = %.2lfms\n",
-          m,
-          query.get_float_ptr(),
-          query_grad.get_float_ptr(),
-          key.get_float_ptr(),
-          key_grad_ptr,
-          value.get_float_ptr(),
-          value_grad_ptr,
-          weight.get_float_ptr(),
-          weight_grad.get_float_ptr(),
-          output_grad.get_float_ptr());
+  return profile(backward_kernel,
+                 profiling,
+                 "[MultiHeadAttention] backward_time = %.2lfms\n",
+                 per_device_state,
+                 query.get_float_ptr(),
+                 query_grad.get_float_ptr(),
+                 key.get_float_ptr(),
+                 key_grad_ptr,
+                 value.get_float_ptr(),
+                 value_grad_ptr,
+                 weight.get_float_ptr(),
+                 weight_grad.get_float_ptr(),
+                 output_grad.get_float_ptr());
 }
 
-bool MultiHeadAttention::measure_operator_cost(
-    Simulator *sim, MachineView const &mv, CostMetrics &cost_metrics) const {
-  ParallelTensorBase sub_output, sub_query, sub_key, sub_value;
-  if (!inputs[0]->get_sub_tensor(mv, sub_query)) {
-    return false;
-  }
-  if (!inputs[1]->get_sub_tensor(mv, sub_key)) {
-    return false;
-  }
-  if (!inputs[2]->get_sub_tensor(mv, sub_value)) {
-    return false;
-  }
-  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
-    return false;
-  }
-  // Currently assume only data parallel
-  size_t num_weights = 0;
-  {
-    // Compute weight size
-    int qSize = sub_query.dims[0].size;
-    int kSize = sub_key.dims[0].size;
-    int vSize = sub_value.dims[0].size;
-    int qParas = qProjSize * qSize;
-    int kParas = kProjSize(attrs) * kSize;
-    int vParas = vProjSize(attrs) * vSize;
-    int oParas =
-        oProjSize(attrs) * (vProjSize(attrs) > 0 ? vProjSize(attrs) : vSize);
-    num_weights = attrs.num_heads * (qParas + kParas + vParas + oParas);
-  }
-  assert(sub_query.num_dims == 4);
-  int num_samples = sub_query.dims[2].size;
+static void backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
+  TaskArgumentAccessor acc(task, regions, ctx, runtime);
+  backward_task_impl(acc);
+}
 
-  auto allocator = std::unique_ptr<IAllocator>(new RealmAllocator(sim->memory));
-  MHAPerDeviceState *m = new MHAPerDeviceState(
-      sim->handler, this, allocator, attrs.num_samples, attrs.num_heads);
+CostMetrics measure_operator_cost(SimEnvFactory const &sim,
+                                  MultiHeadAttentionAttrs const &attrs,
+                                  InputParallelTensorDesc const &query_shape,
+                                  InputParallelTensorDesc const &key_shape,
+                                  InputParallelTensorDesc const &value_shape,
+                                  ProfilingSettings const &settings,
+                                  MachineView const &mv) {
+  auto env = sim.new_environment();
 
-  // allocate tensors in simulator
-  sim->free_all();
-  float const *query_ptr =
-      (float const *)sim->allocate(sub_query.get_volume(), DT_FLOAT);
-  float const *key_ptr =
-      (float const *)sim->allocate(sub_key.get_volume(), DT_FLOAT);
-  float const *value_ptr =
-      (float const *)sim->allocate(sub_value.get_volume(), DT_FLOAT);
-  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  MultiHeadAttentionInputs<ParallelTensorShape> inputs =
+      MultiHeadAttentionInputs<ParallelTensorShape>(
+          query_shape.shape, key_shape.shape, value_shape.shape);
+  ParallelTensorShape output_shape = get_output_shape(attrs, inputs);
+  ParallelTensorShape weight_shape = get_weights_shape(attrs, inputs);
 
-  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_ptr != NULL);
-  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  SimTaskBinding init_binding;
+  init_binding.bind_arg(HANDLE, ff_handle());
+  init_binding.bind_arg(ATTRS, attrs);
+  init_binding.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE,
+                        input_parallel_tensor_shape(0));
+  init_binding.bind_arg(KEY_PARALLEL_TENSOR_SHAPE,
+                        input_parallel_tensor_shape(1));
+  init_binding.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE,
+                        input_parallel_tensor_shape(2));
+  init_binding.bind_arg(QPROJSIZE, get_qProjSize(attrs));
+  init_binding.bind_arg(KPROJSIZE, get_kProjSize(attrs));
+  init_binding.bind_arg(VPROJSIZE, get_vProjSize(attrs));
+  init_binding.bind_arg(OPROJSIZE, get_oProjSize(attrs));
 
-  float const *weight_ptr = (float const *)sim->allocate(num_weights, DT_FLOAT);
-  cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  auto init_accessor =
+      env.get_init_accessor(ATTENTION_INIT_TASK_ID, init_binding);
+  DeviceSpecific<MHAPerDeviceState> per_device_state =
+      init_task_impl(init_accessor);
 
-  assert(m->profiling == false);
+  SimTaskBinding fwd_binding;
+  fwd_binding.bind(QUERY, query_shape);
+  fwd_binding.bind(KEY, key_shape);
+  fwd_binding.bind(VALUE, value_shape);
+  fwd_binding.bind(WEIGHTS, weight_shape);
+  fwd_binding.bind(OUTPUT, output_shape);
+  fwd_binding.bind_arg(PROFILING, settings);
+  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
 
-  std::function<void()> forward, backward;
-  forward = [&](ffStream_t stream) {
-    forward_kernel(m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr);
-  };
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    float *query_grad_ptr =
-        (float *)sim->allocate(sub_query.get_volume(), DT_FLOAT);
-    float *key_grad_ptr =
-        (float *)sim->allocate(sub_key.get_volume(), DT_FLOAT);
-    float *value_grad_ptr =
-        (float *)sim->allocate(sub_value.get_volume(), DT_FLOAT);
-    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
-    float *weight_grad_ptr = (float *)sim->allocate(num_weights, DT_FLOAT);
-    cost_metrics.weights_memory +=
-        cost_metrics.total_mem_diff_from(sim->offset);
+  auto fwd_accessor = env.get_fwd_accessor(ATTENTION_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(ATTENTION_BWD_TASK_ID, bwd_binding);
 
-    float *output_grad_ptr =
-        (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    assert(output_grad_ptr != NULL);
-    cost_metrics.outputs_memory +=
-        cost_metrics.total_mem_diff_from(sim->offset);
+  float forward_time = forward_task_impl(fwd_accessor).value();
+  float backward_time = backward_task_impl(bwd_accessor).value();
 
-    backward = [&](ffStream_t stream) {
-      backward_kernel(stream,
-                      m,
-                      query_ptr,
-                      query_grad_ptr,
-                      key_ptr,
-                      key_grad_ptr,
-                      value_ptr,
-                      value_grad_ptr,
-                      weight_ptr,
-                      weight_grad_ptr,
-                      output_grad_ptr);
-    };
-  }
+  float sync_time = default_estimate_sync_time(env);
+  return make_metrics(forward_time, backward_time, sync_time, env);
+}
 
-  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+template <>
+OpTaskSignature init_signature<ATTENTION_INIT_TASK_ID>() {
+  OpTaskSignature init(OpTaskType::INIT);
+  init.add_arg_slot<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);
+  init.add_arg_slot<ParallelTensorShape>(KEY_PARALLEL_TENSOR_SHAPE);
+  init.add_arg_slot<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
+  init.add_arg_slot<int>(QPROJSIZE);
+  init.add_arg_slot<int>(KPROJSIZE);
+  init.add_arg_slot<int>(VPROJSIZE);
+  init.add_arg_slot<int>(OPROJSIZE);
+  init.add_arg_slot<MultiHeadAttentionAttrs>(ATTRS);
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) "
-           "value(%d %d %d) output(%d %d %d)"
-           "forward_time(%.4lf) backward_time(%.4lf)\n",
-           sub_query.dims[2].size,
-           sub_query.dims[1].size,
-           sub_query.dims[0].size,
-           sub_key.dims[2].size,
-           sub_key.dims[1].size,
-           sub_key.dims[0].size,
-           sub_value.dims[2].size,
-           sub_value.dims[1].size,
-           sub_value.dims[0].size,
-           sub_output.dims[2].size,
-           sub_output.dims[1].size,
-           sub_output.dims[0].size,
-           cost_metrics.forward_time,
-           cost_metrics.backward_time);
-  } else {
-    printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) "
-           "value(%d %d %d) output(%d %d %d)"
-           "forward_time(%.4lf)\n",
-           sub_query.dims[2].size,
-           sub_query.dims[1].size,
-           sub_query.dims[0].size,
-           sub_key.dims[2].size,
-           sub_key.dims[1].size,
-           sub_key.dims[0].size,
-           sub_value.dims[2].size,
-           sub_value.dims[1].size,
-           sub_value.dims[0].size,
-           sub_output.dims[2].size,
-           sub_output.dims[1].size,
-           sub_output.dims[0].size,
-           cost_metrics.forward_time);
-  }
-  // Free multiheadattentionmeta
-  delete m;
-  return true;
+  init.add_return_value<MHAPerDeviceState>();
+
+  return init;
 }
 
 template <>
 void register_task<ATTENTION_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_arg_slot<MultiHeadAttentionAttrs>(ATTRS);
-  init.add_arg_slot<bool>(PROFILING);
-  init.add_arg_slot<int>(KVSEQLENGTH);
-  init.add_arg_slot<int>(KSIZE);
-  init.add_arg_slot<int>(VSIZE);
-  init.add_arg_slot<int>(QPROJSIZE);
-
-  init.add_input_slot(QUERY);
-  init.add_input_slot(KEY);
-  init.add_input_slot(VALUE);
-  init.add_param_slot(WEIGHTS);
-  init.add_output_slot(OUTPUT);
-
-  register_task(
-      ATTENTION_INIT_TASK_ID, "MultiHeadAttention Init", init, init_task);
+  register_task(ATTENTION_INIT_TASK_ID,
+                "Attention Init",
+                init_signature<ATTENTION_INIT_TASK_ID>(),
+                init_task);
 }
 
 template <>
-void register_task<ATTENTION_FWD_TASK_ID>() {
+OpTaskSignature fwd_signature<ATTENTION_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(QUERY);
   fwd.add_input_slot(KEY);
   fwd.add_input_slot(VALUE);
-  fwd.add_param_slot(WEIGHTS);
+  fwd.add_weight_slot(WEIGHTS);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(ATTENTION_FWD_TASK_ID, "MultiHeadAttention Fwd", fwd, fwd_task);
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+  fwd.add_unchecked_arg_slot<MHAPerDeviceState>(PER_DEVICE_STATE);
+
+  return fwd;
+}
+
+template <>
+void register_task<ATTENTION_FWD_TASK_ID>() {
+  register_task(ATTENTION_FWD_TASK_ID,
+                "Attention Fwd",
+                fwd_signature<ATTENTION_FWD_TASK_ID>(),
+                forward_task);
+}
+
+template <>
+OpTaskSignature bwd_signature<ATTENTION_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(ATTENTION_FWD_TASK_ID));
+
+  return bwd;
 }
 
 template <>
 void register_task<ATTENTION_BWD_TASK_ID>() {
-  OpTaskSignature bwd(OpTaskType::BWD);
-
-  bwd.add_input_slot(QUERY);
-  bwd.add_input_grad_slot(QUERY);
-  bwd.add_input_slot(KEY);
-  bwd.add_input_grad_slot(KEY);
-  bwd.add_input_slot(VALUE);
-  bwd.add_input_slot(VALUE);
-
-  bwd.add_param_slot(WEIGHTS);
-  bwd.add_param_grad_slot(WEIGHTS);
-
-  bwd.add_output_grad_slot(OUTPUT);
-
-  register_task(ATTENTION_BWD_TASK_ID, "MultiHeadAttention Bwd", bwd, bwd_task);
+  register_task(ATTENTION_BWD_TASK_ID,
+                "Attention Bwd",
+                bwd_signature<ATTENTION_BWD_TASK_ID>(),
+                backward_task);
 }
 
 } // namespace FlexFlow

@@ -13,7 +13,6 @@ struct BatchMatmulAttrs {
 FF_VISITABLE_STRUCT(BatchMatmulAttrs, a_seq_length_dim, b_seq_length_dim);
 
 CHECK_VALID_OP_ATTR(BatchMatmulAttrs);
-
 } // namespace FlexFlow
 
 #endif

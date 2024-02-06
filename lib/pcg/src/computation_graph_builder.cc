@@ -6,6 +6,37 @@
 
 namespace FlexFlow {
 
+void ComputationGraphBuilder::add_layer(Layer const &layer,
+                                        std::vector<Tensor> const &inputs,
+                                        std::vector<Tensor> const &weights,
+                                        std::vector<Tensor> const &outputs) {
+  NOT_IMPLEMENTED();
+}
+Tensor ComputationGraphBuilder::add_layer(
+    Layer const &layer,
+    std::vector<Tensor> const &inputs,
+    std::vector<std::pair<TensorShape, optional<Initializer>>> const
+        &weight_shapes,
+    TensorShape const &output_shape) {
+  NOT_IMPLEMENTED();
+}
+std::vector<Tensor> ComputationGraphBuilder::add_layer(
+    Layer const &layer,
+    std::vector<Tensor> const &inputs,
+    std::vector<std::pair<TensorShape, optional<Initializer>>> const
+        &weight_shapes,
+    std::vector<TensorShape> const &output_shapes) {
+  NOT_IMPLEMENTED();
+}
+
+Tensor ComputationGraphBuilder::broadcast(Tensor const &, TensorShape const &) {
+  NOT_IMPLEMENTED();
+}
+Tensor ComputationGraphBuilder::cast(Tensor const &input,
+                                     DataType dtype,
+                                     optional<std::string> const &name){
+    NOT_IMPLEMENTED()}
+
 Tensor ComputationGraphBuilder::as_type(Tensor const &x,
                                         DataType data_type,
                                         std::string const &name) {
@@ -310,34 +341,38 @@ std::vector<Tensor>
   return this->add_layer(layer, {input}, {}, output_shapes);
 }
 
-TensorShape get_shape(Tensor const &);
-std::vector<TensorShape> get_shape(std::vector<Tensor> const &);
-
-Tensor ComputationGraphBuilder::aggregate(
-    Tensor const &gate_preds,
-    Tensor const &gate_assign,
-    Tensor const &true_gate_assign,
-    Tensor const &full_gate_gradients,
-    std::vector<Tensor> const &exp_preds,
-    int n,
-    float lambda_bal,
-    optional<std::string> const &maybe_name) {
-  AggregateAttrs attrs = {n, lambda_bal};
-  std::string name = maybe_name.value_or(get_default_name(attrs));
-
-  Layer layer = {attrs, name};
-  TensorShape output_shape = get_output_shape(attrs,
-                                              get_shape(gate_preds),
-                                              get_shape(gate_assign),
-                                              get_shape(true_gate_assign),
-                                              get_shape(full_gate_gradients),
-                                              get_shape(exp_preds));
-
-  std::vector<Tensor> inputs = {
-      gate_preds, gate_assign, true_gate_assign, full_gate_gradients};
-  extend(inputs, exp_preds);
-  return this->add_layer(layer, inputs, {}, output_shape);
+TensorShape get_shape(Tensor const &t) {
+  return t.get_shape();
 }
+std::vector<TensorShape> get_shape(std::vector<Tensor> const &) {
+  NOT_IMPLEMENTED();
+}
+
+// Tensor ComputationGraphBuilder::aggregate(
+//     Tensor const &gate_preds,
+//     Tensor const &gate_assign,
+//     Tensor const &true_gate_assign,
+//     Tensor const &full_gate_gradients,
+//     std::vector<Tensor> const &exp_preds,
+//     int n,
+//     float lambda_bal,
+//     optional<std::string> const &maybe_name) {
+//   AggregateAttrs attrs = {n, lambda_bal};
+//   std::string name = maybe_name.value_or(get_default_name(attrs));
+
+//   Layer layer = {attrs, name};
+//   TensorShape output_shape = get_output_shape(attrs,
+//                                               get_shape(gate_preds),
+//                                               get_shape(gate_assign),
+//                                               get_shape(true_gate_assign),
+//                                               get_shape(full_gate_gradients),
+//                                               get_shape(exp_preds));
+
+//   std::vector<Tensor> inputs = {
+//       gate_preds, gate_assign, true_gate_assign, full_gate_gradients};
+//   extend(inputs, exp_preds);
+//   return this->add_layer(layer, inputs, {}, output_shape);
+// }
 
 Tensor ComputationGraphBuilder::batch_norm(
     Tensor const &input, bool relu, optional<std::string> const &maybe_name) {
@@ -349,6 +384,11 @@ Tensor ComputationGraphBuilder::batch_norm(
   TensorShape output_shape = get_output_shape(attrs, get_shape(input));
 
   return this->add_layer(layer, {input}, {}, output_shape);
+}
+
+TensorShape ComputationGraphBuilder::get_broadcast_target_shape(
+    std::vector<TensorShape> const &) {
+  NOT_IMPLEMENTED();
 }
 
 } // namespace FlexFlow

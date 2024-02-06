@@ -1,7 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 
-#include "utils/containers.h"
+#include "utils/bidict.h"
+#include "utils/containers.decl.h"
 #include "utils/exception.h"
 #include "utils/optional.h"
 #include <unordered_set>
@@ -11,15 +12,12 @@ namespace FlexFlow {
 template <typename T>
 struct query_set {
   query_set() = delete;
-  query_set(T const &) {
-    NOT_IMPLEMENTED();
-  }
-  query_set(std::unordered_set<T> const &) {
-    NOT_IMPLEMENTED();
-  }
-  query_set(optional<std::unordered_set<T>> const &) {
-    NOT_IMPLEMENTED();
-  }
+  query_set(T const &t) : query(std::unordered_set<T>{t}) {}
+
+  query_set(std::unordered_set<T> const &query) : query(query) {}
+
+  query_set(optional<std::unordered_set<T>> const &query) : query(query) {}
+
   query_set(std::initializer_list<T> const &l)
       : query_set(std::unordered_set<T>{l}) {}
 
@@ -53,6 +51,15 @@ private:
 };
 
 template <typename T>
+std::string format_as(query_set<T> const &q) {
+  if (is_matchall(q)) {
+    return "(all)";
+  } else {
+    return fmt::format(FMT_STRING("query_set({})"), allowed_values(q));
+  }
+}
+
+template <typename T>
 query_set<T> matchall() {
   return query_set<T>::matchall();
 }
@@ -75,14 +82,20 @@ template <typename C,
           typename K = typename C::key_type,
           typename V = typename C::mapped_type>
 std::unordered_map<K, V> query_keys(query_set<K> const &q, C const &m) {
-  NOT_IMPLEMENTED();
+  if (is_matchall(q)) {
+    return m;
+  }
+  return filter_keys(m, [&](K const &key) { return includes(q, key); });
 }
 
 template <typename C,
           typename K = typename C::key_type,
           typename V = typename C::mapped_type>
 std::unordered_map<K, V> query_values(query_set<V> const &q, C const &m) {
-  NOT_IMPLEMENTED();
+  if (is_matchall(q)) {
+    return m;
+  }
+  return filter_values(m, [&](V const &value) { return includes(q, value); });
 }
 
 template <typename T>

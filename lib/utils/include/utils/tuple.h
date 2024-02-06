@@ -2,10 +2,11 @@
 #define _FLEXFLOW_UTILS_TUPLE_H
 
 #include "utils/any.h"
-#include "utils/exception.h"
+#include "utils/exception.decl.h"
 #include <cstddef>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 // Adapted from
 // https://github.com/bitwizeshift/BackportCpp/blob/4f33a7f9b219f169e60d8ed2fd5731a3a23288e4/include/bpstd/tuple.hpp
@@ -29,26 +30,6 @@ template <typename T, typename... Types>
 struct index_of : index_of_impl<T, 0, Types...> {};
 
 } // namespace TupleUtils
-
-template <typename T, typename... Types>
-T &get(std::tuple<Types...> &t) noexcept {
-  return std::get<TupleUtils::index_of<T, Types...>::value>(t);
-}
-
-template <typename T, typename... Types>
-T &&get(std::tuple<Types...> &&t) noexcept {
-  return move(std::get<TupleUtils::index_of<T, Types...>::value>(t));
-}
-
-template <typename T, typename... Types>
-T const &get(std::tuple<Types...> const &t) noexcept {
-  return std::get<TupleUtils::index_of<T, Types...>::value>(t);
-}
-
-template <typename T, typename... Types>
-T const &&get(std::tuple<Types...> const &&t) noexcept {
-  return move(std::get<TupleUtils::index_of<T, Types...>::value>(t));
-}
 
 template <int Idx, typename Visitor, typename... Types>
 void visit_tuple_impl(Visitor &v, std::tuple<Types...> const &tup) {
@@ -108,6 +89,30 @@ template <typename T, typename... Args>
 auto tuple_prepend(T const &t, std::tuple<Args...> const &tup)
     -> std::tuple<T, Args...> {
   return std::tuple_cat(std::make_tuple(t), tup);
+}
+
+template <typename Tuple1, typename Tuple2, std::size_t N>
+struct tuple_compare_impl {
+  static bool compare(Tuple1 const &t1, Tuple2 const &t2) {
+    return std::get<N - 1>(t1) == std::get<N - 1>(t2) &&
+           tuple_compare_impl<Tuple1, Tuple2, N - 1>::compare(t1, t2);
+  }
+};
+
+template <typename Tuple1, typename Tuple2>
+struct tuple_compare_impl<Tuple1, Tuple2, 0> {
+  static bool compare(Tuple1 const &, Tuple2 const &) {
+    return true;
+  }
+};
+
+template <typename Tuple1, typename Tuple2>
+bool tuple_compare(Tuple1 const &t1, Tuple2 const &t2) {
+  static_assert(std::tuple_size<Tuple1>::value ==
+                    std::tuple_size<Tuple2>::value,
+                "Tuples must have the same size");
+  return tuple_compare_impl<Tuple1, Tuple2, std::tuple_size<Tuple1>::value>::
+      compare(t1, t2);
 }
 
 template <typename T, typename Tup>

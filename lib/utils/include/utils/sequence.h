@@ -17,12 +17,20 @@ struct seq_head;
 template <int X, int... S>
 struct seq_head<seq<X, S...>> : std::integral_constant<int, X> {};
 
+template <>
+struct seq_head<seq<>> : std::integral_constant<int, -1> {};
+
 template <typename Seq>
 struct seq_tail;
 
 template <int X, int... S>
 struct seq_tail<seq<X, S...>> {
   using type = seq<S...>;
+};
+
+template <>
+struct seq_tail<seq<>> {
+  using type = seq<>;
 };
 
 template <int X, int... S>
@@ -99,13 +107,12 @@ std::tuple<> seq_transform(F const &f, seq<> const &) {
 }
 
 template <typename F, int X, int... S>
-auto seq_select(F const &f, seq<X, S...> const &s)
+auto seq_select(F const &f, int i, seq<X, S...> const &s)
     -> decltype(f(std::declval<std::integral_constant<int, 0>>())) {
-  auto result = f(std::integral_constant<int, X>{});
-  if (f.has_value()) {
-    return f.value();
+  if (i == 0) {
+    return f(std::integral_constant<int, X>{});
   } else {
-    return seq_map(f, seq<S...>{});
+    return seq_select(f, i - 1, seq<S...>{});
   }
 }
 

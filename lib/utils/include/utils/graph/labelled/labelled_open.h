@@ -1,153 +1,171 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_OPEN_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_LABELLED_OPEN_H
 
+#include "labelled_open.decl.h"
 #include "labelled_open_interfaces.h"
 #include "node_labelled.h"
+#include "utils/graph/open_graph_interfaces.h"
 #include "utils/graph/open_graphs.h"
 
 namespace FlexFlow {
 
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = InputLabel>
-struct LabelledOpenMultiDiGraphView {
-private:
-  using Interface = ILabelledOpenMultiDiGraphView<NodeLabel,
-                                                  EdgeLabel,
-                                                  InputLabel,
-                                                  OutputLabel>;
+// LabelledOpenMultiDiGraphView
+template <typename N, typename E, typename I, typename O>
+LabelledOpenMultiDiGraphView<N, E, I, O>::operator OpenMultiDiGraphView()
+    const {
+  return GraphInternal::create_open_multidigraph_view(this->ptr);
+}
 
-public:
-  LabelledOpenMultiDiGraphView() = delete;
+// template <typename N, typename E, typename I, typename O>
+// LabelledOpenMultiDiGraphView<N, E, I, O>::operator MultiDiGraphView() const {
+//   return GraphInternal::create_multidigraphview(this->ptr);
+// }
 
-  operator OpenMultiDiGraphView() const;
+template <typename NodeLabel, typename E, typename I, typename O>
+NodeLabel const &
+    LabelledOpenMultiDiGraphView<NodeLabel, E, I, O>::at(Node const &n) const {
+  return this->ptr->at(n);
+}
 
-  ILabelledOpenMultiDiGraphView<NodeLabel,
-                                EdgeLabel,
-                                InputLabel,
-                                OutputLabel> const *
-      unsafe() const {
-    return this->ptr.get();
-  }
+template <typename N, typename EdgeLabel, typename I, typename O>
+EdgeLabel const &LabelledOpenMultiDiGraphView<N, EdgeLabel, I, O>::at(
+    MultiDiEdge const &e) const {
+  return this->ptr->at(e);
+}
 
-  NodeLabel const &at(Node const &n) const {
-    return this->ptr->at(n);
-  }
+template <typename N, typename E, typename InputLabel, typename O>
+InputLabel const &LabelledOpenMultiDiGraphView<N, E, InputLabel, O>::at(
+    InputMultiDiEdge const &e) const {
+  return this->ptr->at(e);
+}
 
-  EdgeLabel const &at(MultiDiEdge const &e) const {}
+template <typename N, typename E, typename I, typename OutputLabel>
+OutputLabel const &LabelledOpenMultiDiGraphView<N, E, I, OutputLabel>::at(
+    OutputMultiDiEdge const &e) const {
+  return this->ptr->at(e);
+}
 
-private:
-  std::shared_ptr<Interface const> ptr;
-};
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(
-    LabelledOpenMultiDiGraphView<int, int, int, int>);
+template <typename N, typename E, typename I, typename O>
+template <typename BaseImpl>
+enable_if_t<std::is_base_of<
+                typename LabelledOpenMultiDiGraphView<N, E, I, O>::Interface,
+                BaseImpl>::value,
+            LabelledOpenMultiDiGraphView<N, E, I, O>>
+    LabelledOpenMultiDiGraphView<N, E, I, O>::create() {
+  return LabelledOpenMultiDiGraphView<N, E, I, O>(std::make_shared<BaseImpl>());
+}
 
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = InputLabel>
-struct LabelledOpenMultiDiGraph {
-private:
-  using Interface =
-      ILabelledOpenMultiDiGraph<NodeLabel, EdgeLabel, InputLabel, OutputLabel>;
+// LabelledOpenMultiDiGraph
+template <typename N, typename E, typename I, typename O>
+LabelledOpenMultiDiGraph<N, E, I, O>::
+    operator LabelledOpenMultiDiGraphView<N, E, I, O>() const {
+  return GraphInternal::create_labelled_open_multidigraph_view<N, E, I, O>(
+      this->ptr);
+}
 
-public:
-  LabelledOpenMultiDiGraph() = delete;
-  LabelledOpenMultiDiGraph(LabelledOpenMultiDiGraph const &other) = default;
-  LabelledOpenMultiDiGraph &
-      operator=(LabelledOpenMultiDiGraph const &other) = default;
+template <typename N, typename E, typename I, typename O>
+LabelledOpenMultiDiGraph<N, E, I, O>::operator OpenMultiDiGraphView() const {
+  return GraphInternal::create_open_multidigraph_view(this->ptr.get());
+}
 
-  operator LabelledOpenMultiDiGraphView<NodeLabel,
-                                        EdgeLabel,
-                                        InputLabel,
-                                        OutputLabel>() const;
-  operator OpenMultiDiGraphView() const;
+template <typename NodeLabel, typename E, typename I, typename O>
+Node LabelledOpenMultiDiGraph<NodeLabel, E, I, O>::add_node(
+    NodeLabel const &l) {
+  return this->ptr.get_mutable()->add_node(l);
+}
 
-  friend void swap(LabelledOpenMultiDiGraph &lhs,
-                   LabelledOpenMultiDiGraph &rhs) {
-    using std::swap;
+template <typename NodeLabel, typename E, typename I, typename O>
+NodeLabel &LabelledOpenMultiDiGraph<NodeLabel, E, I, O>::at(Node const &n) {
+  return this->ptr->at(n);
+}
 
-    swap(lhs.ptr, rhs.ptr);
-  }
+template <typename NodeLabel, typename E, typename I, typename O>
+NodeLabel const &
+    LabelledOpenMultiDiGraph<NodeLabel, E, I, O>::at(Node const &n) const {
+  return this->ptr->ILabelledMultiDiGraph<NodeLabel, E>::at(n);
+}
 
-  Node add_node(NodeLabel const &l) {
-    return this->ptr->add_node(l);
-  }
-  NodeLabel &at(Node const &n) {
-    return this->ptr->at(n);
-  }
+template <typename NodeLabel, typename E, typename I, typename O>
+void LabelledOpenMultiDiGraph<NodeLabel, E, I, O>::add_node_unsafe(
+    Node const &n, NodeLabel const &l) {
+  this->ptr->add_node_unsafe(n, l);
+}
 
-  NodeLabel const &at(Node const &n) const {
-    return this->ptr->at(n);
-  }
+template <typename N, typename E, typename I, typename O>
+std::unordered_set<Node> LabelledOpenMultiDiGraph<N, E, I, O>::query_nodes(
+    NodeQuery const &q) const {
+  return this->ptr->query_nodes(q);
+}
 
-  void add_node_unsafe(Node const &n, NodeLabel const &l) {
-    this->ptr->add_node_unsafe(n, l);
-  }
+template <typename N, typename E, typename I, typename O>
+std::unordered_set<OpenMultiDiEdge>
+    LabelledOpenMultiDiGraph<N, E, I, O>::query_edges(
+        OpenMultiDiEdgeQuery const &q) const {
+  return this->ptr->query_edges(q);
+}
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return this->ptr->query_nodes(q);
-  }
-  std::unordered_set<OpenMultiDiEdge>
-      query_edges(OpenMultiDiEdgeQuery const &q) const {
-    return this->ptr->query_edges(q);
-  }
+template <typename N, typename EdgeLabel, typename I, typename O>
+void LabelledOpenMultiDiGraph<N, EdgeLabel, I, O>::add_edge(
+    MultiDiEdge const &e, EdgeLabel const &l) {
+  return this->ptr->add_edge(e, l);
+}
 
-  void add_edge(MultiDiEdge const &e, EdgeLabel const &l) {
-    return this->ptr->add_edge(e, l);
-  }
-  EdgeLabel &at(MultiDiEdge const &e) {
-    return this->ptr->at(e);
-  }
-  EdgeLabel const &at(MultiDiEdge const &e) const {
-    return this->ptr->at(e);
-  }
+template <typename N, typename EdgeLabel, typename I, typename O>
+EdgeLabel &
+    LabelledOpenMultiDiGraph<N, EdgeLabel, I, O>::at(MultiDiEdge const &e) {
+  return this->ptr->at(e);
+}
 
-  void add_edge(InputMultiDiEdge const &e, InputLabel const &l) {
-    return this->ptr->add_edge(e, l);
-  }
-  InputLabel &at(InputMultiDiEdge const &e) {
-    return this->ptr->at(e);
-  }
-  InputLabel const &at(InputMultiDiEdge const &e) const {
-    return this->ptr->at(e);
-  }
+template <typename N, typename EdgeLabel, typename I, typename O>
+EdgeLabel const &LabelledOpenMultiDiGraph<N, EdgeLabel, I, O>::at(
+    MultiDiEdge const &e) const {
+  return this->ptr->ILabelledMultiDiGraph<N, EdgeLabel>::at(e);
+}
 
-  void add_edge(OutputMultiDiEdge const &, OutputLabel const &);
-  OutputLabel &at(OutputMultiDiEdge const &);
-  OutputLabel const &at(OutputMultiDiEdge const &) const;
+template <typename N, typename E, typename InputLabel, typename O>
+void LabelledOpenMultiDiGraph<N, E, InputLabel, O>::add_edge(
+    InputMultiDiEdge const &e, InputLabel const &l) {
+  return this->ptr->add_edge(e, l);
+}
 
-  template <typename BaseImpl>
-  static typename std::enable_if<std::is_base_of<Interface, BaseImpl>::value,
-                                 LabelledOpenMultiDiGraph>::type
-      create() {
-    return LabelledOpenMultiDiGraph(make_unique<BaseImpl>());
-  }
+template <typename N, typename E, typename InputLabel, typename O>
+InputLabel &LabelledOpenMultiDiGraph<N, E, InputLabel, O>::at(
+    InputMultiDiEdge const &e) {
+  return this->ptr->at(e);
+}
 
-private:
-  LabelledOpenMultiDiGraph(std::unique_ptr<Interface> ptr)
-      : ptr(std::move(ptr)) {}
+template <typename N, typename E, typename InputLabel, typename O>
+InputLabel const &LabelledOpenMultiDiGraph<N, E, InputLabel, O>::at(
+    InputMultiDiEdge const &e) const {
+  return this->ptr->at(e);
+}
 
-private:
-  cow_ptr_t<Interface> ptr;
-};
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(
-    LabelledOpenMultiDiGraph<int, int, int, int>);
+template <typename N, typename E, typename I, typename OutputLabel>
+void LabelledOpenMultiDiGraph<N, E, I, OutputLabel>::add_edge(
+    OutputMultiDiEdge const &e, OutputLabel const &l) {
+  return this->ptr->add_edge(e, l);
+}
 
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel,
-          typename OutputLabel>
-LabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel, InputLabel, OutputLabel>
-    as_view(LabelledOpenMultiDiGraph<NodeLabel,
-                                     EdgeLabel,
-                                     InputLabel,
-                                     OutputLabel> const &g) {
-  return static_cast<LabelledOpenMultiDiGraphView<NodeLabel,
-                                                  EdgeLabel,
-                                                  InputLabel,
-                                                  OutputLabel>>(g);
+template <typename N, typename E, typename I, typename OutputLabel>
+OutputLabel &LabelledOpenMultiDiGraph<N, E, I, OutputLabel>::at(
+    OutputMultiDiEdge const &e) {
+  return this->ptr->at(e);
+}
+
+template <typename N, typename E, typename I, typename OutputLabel>
+OutputLabel const &LabelledOpenMultiDiGraph<N, E, I, OutputLabel>::at(
+    OutputMultiDiEdge const &e) const {
+  return this->ptr->at(e);
+}
+
+template <typename N, typename E, typename I, typename O>
+template <typename BaseImpl>
+enable_if_t<
+    std::is_base_of<typename LabelledOpenMultiDiGraph<N, E, I, O>::Interface,
+                    BaseImpl>::value,
+    LabelledOpenMultiDiGraph<N, E, I, O>>
+    LabelledOpenMultiDiGraph<N, E, I, O>::create() {
+  return LabelledOpenMultiDiGraph<N, E, I, O>(make_cow_ptr<BaseImpl>());
 }
 
 } // namespace FlexFlow

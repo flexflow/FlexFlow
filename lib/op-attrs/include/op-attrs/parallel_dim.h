@@ -11,7 +11,10 @@ struct ParallelDim {
   int degree;
   req<bool> is_replica_dim;
 };
-FF_VISITABLE_STRUCT(ParallelDim, size, degree, is_replica_dim);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ParallelDim,
+                                             size,
+                                             degree,
+                                             is_replica_dim);
 
 bool is_valid(ParallelDim const &);
 bool is_replica_dim(ParallelDim const &);
