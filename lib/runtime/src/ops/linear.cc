@@ -34,16 +34,16 @@ enum slots {
   OUTPUT,
   WEIGHT,
   BIAS,
-  ATTR,
+  ATTRS,
   PROFILING,
   HANDLE
-}; // Note: this needs add more
+};
 
 OpTaskInvocation init(LinearAttrs const &attrs) {
   OpTaskBinding binding;
 
   bind.bind_arg(HANDLE, ff_handle());
-  bind.bind_arg(ATTR, attrs);
+  bind.bind_arg(ATTRS, attrs);
 
   bind.bind(INPUT, input_tensor(0));   // input
   bind.bind(WEIGHT, weight_tensor(0)); // weight
@@ -82,8 +82,8 @@ static DeviceSpecific<LinearPerDeviceState>
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto weight = acc.get_tensor<Permissions::RO>(WEIGHT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
-  int out_dim = output.shape.at(ff_dim_t{0}) + 1;
-  int batch_size = output.shape.get_volume() / out_dim;
+  int out_dim = output.shape.at(ff_dim_t{0});
+  int batch_size = output.shape.at.(ff_dim_t{1});
 
   float *one_ptr;
 
@@ -94,9 +94,9 @@ static DeviceSpecific<LinearPerDeviceState>
                       one_ptr,
                       attrs.regularizer,
                       attrs.use_bias,
-                      input.shape,
-                      weight.shape,
-                      output.shape,
+                      input.data_type,
+                      weight.data_type,
+                      output.data_type,
                       batch_size,
                       attrs.out_channels));
   return state;
@@ -199,12 +199,12 @@ static void backward_task(Task const *task,
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   LinearAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
+                                  InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
   auto env = sim.new_environment();
 
-  ParallelTensorShape output_shape = get_output_shape(input_shape, attrs);
+  ParallelTensorShape output_shape = get_output_shape(input.shape, attrs);
 
   SimTaskBinding init_binding;
   init_binding.bind(INPUT, input_tensor(0));

@@ -25,7 +25,7 @@ namespace Linear {
 // what's the float * one_ptr
 LinearPerDeviceState
     init_kernel(PerDeviceFFHandle handle, Allocator allocator, float *one_ptr;
-                Activation activation,
+                ActiMode activation,
                 Regularizer regularizer,
                 bool use_bias,
                 DataType input_type,
@@ -69,7 +69,7 @@ LinearPerDeviceState
 
   // todo: how to use allocator to allocate memory for float * one_ptr, how many
   // bytes to allocate?
-
+  checkCUDA(cudaMalloc(one_ptr, sizeof(float) * batch_size));
   LinearPerDeviceState per_device_state = {handle,
                                            outputTensor,
                                            actiDesc,
