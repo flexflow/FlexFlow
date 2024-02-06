@@ -66,24 +66,6 @@ struct is_streamable<T, void_t<decltype(std::cout << std::declval<T>())>>
     : std::true_type {};
 
 template <typename T, typename Enable = void>
-struct is_equal_comparable : std::false_type {};
-
-template <typename T>
-struct is_equal_comparable<
-    T,
-    void_t<decltype((bool)(std::declval<T>() == std::declval<T>()))>>
-    : std::true_type {};
-
-template <typename T, typename Enable = void>
-struct is_neq_comparable : std::false_type {};
-
-template <typename T>
-struct is_neq_comparable<
-    T,
-    void_t<decltype((bool)(std::declval<T>() != std::declval<T>()))>>
-    : std::true_type {};
-
-template <typename T, typename Enable = void>
 struct is_lt_comparable : std::false_type {};
 
 template <typename T>
@@ -91,19 +73,6 @@ struct is_lt_comparable<
     T,
     void_t<decltype((bool)(std::declval<T>() < std::declval<T>()))>>
     : std::true_type {};
-
-template <typename T, typename Enable = void>
-struct is_hashable : std::false_type {};
-
-template <typename T>
-struct is_hashable<
-    T,
-    void_t<decltype((size_t)(std::declval<std::hash<T>>()(std::declval<T>())))>>
-    : std::true_type {};
-
-#define CHECK_HASHABLE(...)                                                    \
-  static_assert(is_hashable<__VA_ARGS__>::value,                               \
-                #__VA_ARGS__ " should be hashable (but is not)");
 
 template <template <typename...> class Cond, typename... Ts>
 struct elements_satisfy_impl;
@@ -137,56 +106,6 @@ struct elements_satisfy<Cond,
 
 static_assert(
     elements_satisfy<is_equal_comparable, std::tuple<int, float>>::value, "");
-
-template <typename T>
-using is_default_constructible = std::is_default_constructible<T>;
-
-template <typename T>
-using is_copy_constructible = std::is_copy_constructible<T>;
-
-template <typename T>
-using is_move_constructible = std::is_move_constructible<T>;
-
-template <typename T>
-using is_copy_assignable = std::is_copy_assignable<T>;
-
-template <typename T>
-using is_move_assignable = std::is_move_assignable<T>;
-
-template <typename T>
-struct is_well_behaved_value_type_no_hash
-    : conjunction<is_equal_comparable<T>,
-                  is_neq_comparable<T>,
-                  is_copy_constructible<T>,
-                  is_move_constructible<T>,
-                  is_copy_assignable<T>,
-                  is_move_assignable<T>> {};
-
-#define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(...)                               \
-  static_assert(is_copy_constructible<__VA_ARGS__>::value,                     \
-                #__VA_ARGS__ " should be copy-constructible");                 \
-  static_assert(is_move_constructible<__VA_ARGS__>::value,                     \
-                #__VA_ARGS__ " should be move-constructible");                 \
-  static_assert(is_copy_assignable<__VA_ARGS__>::value,                        \
-                #__VA_ARGS__ " should be copy-assignable");                    \
-  static_assert(is_move_assignable<__VA_ARGS__>::value,                        \
-                #__VA_ARGS__ " should be move-assignable")
-
-#define CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(...)                             \
-  CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(__VA_ARGS__);                            \
-  static_assert(is_equal_comparable<__VA_ARGS__>::value,                       \
-                #__VA_ARGS__ " should support operator==");                    \
-  static_assert(is_neq_comparable<__VA_ARGS__>::value,                         \
-                #__VA_ARGS__ " should support operator!=");
-
-template <typename T>
-struct is_well_behaved_value_type
-    : conjunction<is_well_behaved_value_type_no_hash<T>, is_hashable<T>> {};
-
-#define CHECK_WELL_BEHAVED_VALUE_TYPE(...)                                     \
-  CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(__VA_ARGS__);                          \
-  static_assert(is_hashable<__VA_ARGS__>::value,                               \
-                #__VA_ARGS__ " should support std::hash")
 
 } // namespace FlexFlow
 

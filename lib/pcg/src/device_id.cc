@@ -12,4 +12,7 @@ DeviceType get_device_type(device_id_t const &id) {
   }
 }
 
+device_id_t operator+(device_id_t, size_t) {
+  NOT_IMPLEMENTED();
+}
 } // namespace FlexFlow

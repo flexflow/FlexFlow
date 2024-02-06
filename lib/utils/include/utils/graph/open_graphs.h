@@ -3,6 +3,7 @@
 
 #include "multidigraph.h"
 #include "node.h"
+#include "open_edge.h"
 #include "open_graph_interfaces.h"
 #include "utils/optional.h"
 #include "utils/variant.h"
@@ -10,16 +11,13 @@
 
 namespace FlexFlow {
 
-struct OpenMultiDiGraphView {
+struct OpenMultiDiGraphView : virtual MultiDiGraphView {
 public:
   using Edge = OpenMultiDiEdge;
   using EdgeQuery = OpenMultiDiEdgeQuery;
 
-  OpenMultiDiGraphView() = delete;
-
-  operator MultiDiGraphView() const;
-
-  friend void swap(OpenMultiDiGraphView &, OpenMultiDiGraphView &);
+  OpenMultiDiGraphView(OpenMultiDiGraphView const &) = default;
+  OpenMultiDiGraphView &operator=(OpenMultiDiGraphView const &) = default;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
@@ -29,29 +27,25 @@ public:
       typename std::enable_if<std::is_base_of<IOpenMultiDiGraphView, T>::value,
                               OpenMultiDiGraphView>::type
       create(Args &&...args) {
-    return OpenMultiDiGraphView(
-        std::make_shared<T>(std::forward<Args>(args)...));
+    return OpenMultiDiGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
+protected:
+  using MultiDiGraphView::MultiDiGraphView;
+
 private:
-  OpenMultiDiGraphView(std::shared_ptr<IOpenMultiDiGraphView const> ptr);
+  IOpenMultiDiGraphView const &get_ptr() const;
 
   friend struct GraphInternal;
-
-  std::shared_ptr<IOpenMultiDiGraphView const> ptr;
 };
 
-struct OpenMultiDiGraph {
+struct OpenMultiDiGraph : virtual OpenMultiDiGraphView {
 public:
   using Edge = OpenMultiDiEdge;
   using EdgeQuery = OpenMultiDiEdgeQuery;
 
   OpenMultiDiGraph() = delete;
-  OpenMultiDiGraph(OpenMultiDiGraph const &);
-
-  friend void swap(OpenMultiDiGraph &, OpenMultiDiGraph &);
-
-  operator OpenMultiDiGraphView() const;
+  OpenMultiDiGraph(OpenMultiDiGraph const &) = default;
 
   Node add_node();
   void add_node_unsafe(Node const &);
@@ -70,23 +64,23 @@ public:
   }
 
 private:
-  OpenMultiDiGraph(cow_ptr_t<IOpenMultiDiGraph> ptr);
+  using OpenMultiDiGraphView::OpenMultiDiGraphView;
+
+  IOpenMultiDiGraph const &get_ptr() const;
+  IOpenMultiDiGraph &get_ptr();
 
   friend struct GraphInternal;
-
-private:
-  cow_ptr_t<IOpenMultiDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(OpenMultiDiGraph);
 
-struct UpwardOpenMultiDiGraphView {
+struct UpwardOpenMultiDiGraphView : virtual MultiDiGraphView {
 public:
   using Edge = UpwardOpenMultiDiEdge;
   using EdgeQuery = UpwardOpenMultiDiEdgeQuery;
 
-  UpwardOpenMultiDiGraphView() = delete;
-
-  friend void swap(OpenMultiDiGraphView &, OpenMultiDiGraphView &);
+  UpwardOpenMultiDiGraphView(UpwardOpenMultiDiGraphView const &) = default;
+  UpwardOpenMultiDiGraphView &
+      operator=(UpwardOpenMultiDiGraphView const &) = default;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &);
   std::unordered_set<Edge> query_edges(EdgeQuery const &);
@@ -97,29 +91,24 @@ public:
       UpwardOpenMultiDiGraphView>::type
       create(Args &&...args) {
     return UpwardOpenMultiDiGraphView(
-        std::make_shared<T>(std::forward<Args>(args)...));
+        cow_ptr_t<T>(std::forward<Args>(args)...));
   }
 
 private:
-  UpwardOpenMultiDiGraphView(
-      std::shared_ptr<IUpwardOpenMultiDiGraphView const>);
+  using MultiDiGraphView::MultiDiGraphView;
 
-private:
-  std::shared_ptr<IUpwardOpenMultiDiGraphView const> ptr;
+  IUpwardOpenMultiDiGraphView const &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UpwardOpenMultiDiGraphView);
 
-struct UpwardOpenMultiDiGraph {
+struct UpwardOpenMultiDiGraph : virtual UpwardOpenMultiDiGraphView {
 public:
   using Edge = UpwardOpenMultiDiEdge;
   using EdgeQuery = UpwardOpenMultiDiEdgeQuery;
 
   UpwardOpenMultiDiGraph() = delete;
-  UpwardOpenMultiDiGraph(UpwardOpenMultiDiGraph const &);
-
-  UpwardOpenMultiDiGraph &operator=(UpwardOpenMultiDiGraph);
-
-  friend void swap(UpwardOpenMultiDiGraph &, UpwardOpenMultiDiGraph &);
+  UpwardOpenMultiDiGraph(UpwardOpenMultiDiGraph const &) = default;
+  UpwardOpenMultiDiGraph &operator=(UpwardOpenMultiDiGraph const &) = default;
 
   Node add_node();
   void add_node_unsafe(Node const &);
@@ -135,28 +124,29 @@ public:
       std::is_base_of<IUpwardOpenMultiDiGraph, T>::value,
       UpwardOpenMultiDiGraph>::type
       create() {
-    return UpwardOpenMultiDiGraph(make_unique<T>());
+    return UpwardOpenMultiDiGraph(make_cow_ptr<T>());
   }
 
 private:
-  UpwardOpenMultiDiGraph(std::unique_ptr<IUpwardOpenMultiDiGraph>);
+  using UpwardOpenMultiDiGraphView::UpwardOpenMultiDiGraphView;
 
-private:
-  cow_ptr_t<IUpwardOpenMultiDiGraph> ptr;
+  IUpwardOpenMultiDiGraph const &get_ptr() const;
+  IUpwardOpenMultiDiGraph &get_ptr();
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(UpwardOpenMultiDiGraph);
 
-struct DownwardOpenMultiDiGraphView {
+struct DownwardOpenMultiDiGraphView : virtual MultiDiGraphView {
 public:
   using Edge = DownwardOpenMultiDiEdge;
   using EdgeQuery = DownwardOpenMultiDiEdgeQuery;
+  using Interface = IDownwardOpenMultiDiGraphView;
 
-  DownwardOpenMultiDiGraphView() = delete;
+  DownwardOpenMultiDiGraphView(DownwardOpenMultiDiGraphView const &) = default;
+  DownwardOpenMultiDiGraphView &
+      operator=(DownwardOpenMultiDiGraphView const &) = default;
 
-  friend void swap(OpenMultiDiGraphView &, OpenMultiDiGraphView &);
-
-  std::unordered_set<Node> query_nodes(NodeQuery const &);
-  std::unordered_set<Edge> query_edges(EdgeQuery const &);
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
+  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T, typename... Args>
   static typename std::enable_if<
@@ -164,29 +154,25 @@ public:
       DownwardOpenMultiDiGraphView>::type
       create(Args &&...args) {
     return DownwardOpenMultiDiGraphView(
-        std::make_shared<T>(std::forward<Args>(args)...));
+        make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
 private:
-  DownwardOpenMultiDiGraphView(
-      std::shared_ptr<IDownwardOpenMultiDiGraphView const>);
+  using MultiDiGraphView::MultiDiGraphView;
 
-private:
-  std::shared_ptr<IDownwardOpenMultiDiGraphView const> ptr;
+  Interface const &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DownwardOpenMultiDiGraphView);
 
-struct DownwardOpenMultiDiGraph {
+struct DownwardOpenMultiDiGraph : virtual DownwardOpenMultiDiGraphView {
 public:
   using Edge = DownwardOpenMultiDiEdge;
   using EdgeQuery = DownwardOpenMultiDiEdgeQuery;
 
   DownwardOpenMultiDiGraph() = delete;
-  DownwardOpenMultiDiGraph(DownwardOpenMultiDiGraph const &);
-
-  DownwardOpenMultiDiGraph &operator=(DownwardOpenMultiDiGraph);
-
-  friend void swap(DownwardOpenMultiDiGraph &, DownwardOpenMultiDiGraph &);
+  DownwardOpenMultiDiGraph(DownwardOpenMultiDiGraph const &) = default;
+  DownwardOpenMultiDiGraph &
+      operator=(DownwardOpenMultiDiGraph const &) = default;
 
   Node add_node();
   void add_node_unsafe(Node const &);
@@ -195,6 +181,7 @@ public:
   void add_edge(Edge const &);
   void remove_edge(Edge const &);
 
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   template <typename T>
@@ -202,14 +189,14 @@ public:
       std::is_base_of<IDownwardOpenMultiDiGraph, T>::value,
       DownwardOpenMultiDiGraph>::type
       create() {
-    return DownwardOpenMultiDiGraph(make_unique<T>());
+    return DownwardOpenMultiDiGraph(make_cow_ptr<T>());
   }
 
 private:
-  DownwardOpenMultiDiGraph(std::unique_ptr<IDownwardOpenMultiDiGraph>);
+  using DownwardOpenMultiDiGraphView::DownwardOpenMultiDiGraphView;
 
-private:
-  cow_ptr_t<IDownwardOpenMultiDiGraph> ptr;
+  IDownwardOpenMultiDiGraph &get_ptr();
+  IDownwardOpenMultiDiGraph const &get_ptr() const;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(DownwardOpenMultiDiGraph);
 
