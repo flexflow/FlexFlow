@@ -92,25 +92,6 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 }
 
 template <typename T>
-__inline__ __device__ T BlockReduceSum(T val, T *shared, int max_num_threads) {
-  int const lid = threadIdx.x % C10_WARP_SIZE;
-  int const wid = threadIdx.x / C10_WARP_SIZE;
-  val = WarpReduceSum(val);
-  __syncthreads();
-  if (lid == 0) {
-    shared[wid] = val;
-  }
-  __syncthreads();
-  val = (threadIdx.x < min(blockDim.x, max_num_threads) / C10_WARP_SIZE)
-            ? shared[lid]
-            : 0;
-  if (wid == 0) {
-    val = WarpReduceSum(val);
-  }
-  return val;
-}
-
-template <typename T>
 __global__ void ResidualLayerNormKernel(int64_t N,
                                         float eps,
                                         T const *input_ptr,
@@ -127,22 +108,19 @@ __global__ void ResidualLayerNormKernel(int64_t N,
   int64_t const i = blockIdx.x;
   float sum1 = 0.0f;
   float sum2 = 0.0f;
-  for (int64_t j = threadIdx.x; j < N;
-       j += min(blockDim.x, kCUDABlockReduceNumThreads)) {
-    int64_t const index = i * N + j;
-    T const residual2_val = (residual2_ptr == nullptr)
+  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
+    const int64_t index = i * N + j;
+    const T residual2_val = (residual2_ptr == nullptr)
                                 ? T(0)
                                 : static_cast<T>(residual2_ptr[index]);
     X[index] = input_ptr[index] + residual1_ptr[index] + residual2_val;
     sum1 += static_cast<float>(X[index]);
     sum2 += static_cast<float>(X[index]) * static_cast<float>(X[index]);
   }
-  if (threadIdx.x < kCUDABlockReduceNumThreads) {
-    sum1 = BlockReduceSum<float>(
-        sum1, m_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
-    sum2 = BlockReduceSum<float>(
-        sum2, v_shared, min(blockDim.x, kCUDABlockReduceNumThreads));
-  }
+
+  sum1 = BlockReduceSum<float>(sum1, m_shared);
+  sum2 = BlockReduceSum<float>(sum2, v_shared);
+
   if (threadIdx.x == 0) {
     float const scale = float(1) / static_cast<float>(N);
     sum1 *= scale;
@@ -154,8 +132,8 @@ __global__ void ResidualLayerNormKernel(int64_t N,
   __syncthreads();
 
   using T_ACC = T;
-  for (int64_t j = threadIdx.x; j < N; j += min(blockDim.x, kCUDANumThreads)) {
-    int64_t const index = i * N + j;
+  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
+    const int64_t index = i * N + j;
     const T_ACC gamma_v =
         gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
     const T_ACC beta_v =
@@ -178,28 +156,51 @@ void ResidualLayerNorm::inference_kernel(ResidualLayerNormMeta const *m,
                                          T const *beta_ptr,
                                          cudaStream_t stream) {
 
-  std::pair<int, int> kernel1_parallelism =
-      std::make_pair(m->effective_batch_size, kCUDABlockReduceNumThreads);
-  std::pair<int, int> kernel2_parallelism =
-      std::make_pair(m->effective_batch_size, kCUDANumThreads);
-
-  int num_blocks =
-      std::max(kernel1_parallelism.first, kernel2_parallelism.first);
-  int num_threads =
-      std::max(kernel1_parallelism.second, kernel2_parallelism.second);
-
   ResidualLayerNormKernel<T>
-      <<<num_blocks, num_threads, 0, stream>>>(m->effective_num_elements,
-                                               m->eps,
-                                               input_ptr,
-                                               residual1_ptr,
-                                               residual2_ptr,
-                                               added_output_ptr,
-                                               static_cast<T *>(m->mean_ptr),
-                                               static_cast<T *>(m->rstd_ptr),
-                                               gamma_ptr,
-                                               beta_ptr,
-                                               output_ptr);
+      <<<m->effective_batch_size,
+         std::min(CUDA_NUM_THREADS, (int)m->effective_num_elements),
+         0,
+         stream>>>(m->effective_num_elements,
+                   m->eps,
+                   input_ptr,
+                   residual1_ptr,
+                   residual2_ptr,
+                   added_output_ptr,
+                   static_cast<T *>(m->mean_ptr),
+                   static_cast<T *>(m->rstd_ptr),
+                   gamma_ptr,
+                   beta_ptr,
+                   output_ptr);
+}
+template <typename T>
+void save_inference_tensors(ResidualLayerNormMeta const *m) {
+  if (m->inference_debugging) {
+    // save stuff here
+    std::string op_name_without_uid =
+        ResidualLayerNorm::get_op_name_without_uid(m);
+    char const *folder_path = "./inference_tensors/";
+    std::string base_filepath = std::string(folder_path);
+    if (m->layer_guid.model_id > 0) {
+      base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+    }
+    base_filepath += "fwd_step_" + std::to_string(m->decoding_step);
+    base_filepath += "_layers_" +
+                     std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+                     op_name_without_uid + "_shard_" + std::to_string(0);
+
+    std::string filename1 = base_filepath + "_mean";
+    save_tensor(static_cast<T *>(m->mean_ptr),
+                m->effective_batch_size,
+                filename1.c_str());
+    std::string filename2 = base_filepath + "_rstd";
+    save_tensor(static_cast<T *>(m->rstd_ptr),
+                m->effective_batch_size,
+                filename2.c_str());
+    std::string filename3 = base_filepath + "_input_activation";
+    save_tensor(static_cast<T *>(m->input_activation),
+                m->effective_batch_size * m->effective_num_elements,
+                filename3.c_str());
+  }
 }
 
 /*static*/
@@ -222,6 +223,33 @@ void ResidualLayerNorm::inference_kernel_wrapper(
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
+
+  if (m->input_type[0] == DT_FLOAT) {
+    ResidualLayerNorm::inference_kernel<float>(
+        m,
+        input.get_float_ptr(),
+        residual1.get_float_ptr(),
+        m->use_two_residuals ? residual2.get_float_ptr() : nullptr,
+        added_output.get_float_ptr(),
+        output.get_float_ptr(),
+        m->elementwise_affine ? gamma.get_float_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_float_ptr() : nullptr,
+        stream);
+  } else if (m->input_type[0] == DT_HALF) {
+    ResidualLayerNorm::inference_kernel<half>(
+        m,
+        input.get_half_ptr(),
+        residual1.get_half_ptr(),
+        m->use_two_residuals ? residual2.get_half_ptr() : nullptr,
+        added_output.get_half_ptr(),
+        output.get_half_ptr(),
+        m->elementwise_affine ? gamma.get_half_ptr() : nullptr,
+        (m->elementwise_affine && m->use_bias) ? beta.get_half_ptr() : nullptr,
+        stream);
+  } else {
+    assert(false && "unsupport datatype in layernorm");
+  }
+
   // save input activation if needed for PEFT
   if (bc->num_active_peft_bwd_tokens_() > 0) {
     // Check that we have at most one request that requires peft_bwd
@@ -248,7 +276,7 @@ void ResidualLayerNorm::inference_kernel_wrapper(
         continue;
       }
       int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-      int first_token_offset = bc->requestsInfo[i].num_tokens_in_batch;
+      int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
       int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
       if (bc->requestsInfo[i].peft_bwd) {
         MemoryAllocator *allocator = m->handle.peft_activation_allocator;
@@ -276,30 +304,14 @@ void ResidualLayerNorm::inference_kernel_wrapper(
     }
   }
 
-  if (m->input_type[0] == DT_FLOAT) {
-    ResidualLayerNorm::inference_kernel<float>(
-        m,
-        input.get_float_ptr(),
-        residual1.get_float_ptr(),
-        m->use_two_residuals ? residual2.get_float_ptr() : nullptr,
-        added_output.get_float_ptr(),
-        output.get_float_ptr(),
-        m->elementwise_affine ? gamma.get_float_ptr() : nullptr,
-        (m->elementwise_affine && m->use_bias) ? beta.get_float_ptr() : nullptr,
-        stream);
-  } else if (m->input_type[0] == DT_HALF) {
-    ResidualLayerNorm::inference_kernel<half>(
-        m,
-        input.get_half_ptr(),
-        residual1.get_half_ptr(),
-        m->use_two_residuals ? residual2.get_half_ptr() : nullptr,
-        added_output.get_half_ptr(),
-        output.get_half_ptr(),
-        m->elementwise_affine ? gamma.get_half_ptr() : nullptr,
-        (m->elementwise_affine && m->use_bias) ? beta.get_half_ptr() : nullptr,
-        stream);
-  } else {
-    assert(false && "unsupport datatype in layernorm");
+  if (m->inference_debugging) {
+    if (m->input_type[0] == DT_FLOAT) {
+      save_inference_tensors<float>(m);
+    } else if (m->input_type[0] == DT_HALF) {
+      save_inference_tensors<half>(m);
+    } else {
+      assert(false && "unsupport datatype in layernorm");
+    }
   }
 
   if (m->profiling) {
@@ -737,26 +749,36 @@ void peft_bwd_kernel(ResidualLayerNormMeta const *m,
                      T *residual2_grad_ptr,
                      T const *gamma_ptr,
                      cudaStream_t stream) {
-  int64_t const M = m->effective_batch_size;
-  int64_t const N = m->effective_num_elements;
-  ComputeInternalGradientsCUDAKernel<T>
-      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
-          N,
-          output_grad_ptr,
-          static_cast<T const *>(m->input_activation),
-          gamma_ptr,
-          static_cast<T *>(m->ds_ptr),
-          static_cast<T *>(m->db_ptr));
-  int64_t const B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
-  ComputeGradientFusedParamsCUDAKernel<T>
-      <<<B, kCUDANumThreads, 0, stream>>>(M,
-                                          N,
-                                          static_cast<T *>(m->mean_ptr),
-                                          static_cast<T *>(m->rstd_ptr),
-                                          static_cast<T *>(m->ds_ptr),
-                                          static_cast<T *>(m->db_ptr),
-                                          static_cast<T *>(m->scale_ptr),
-                                          static_cast<T *>(m->bias_ptr));
+  const int64_t M = m->effective_batch_size;
+  const int64_t N = m->effective_num_elements;
+
+  if (m->inference_debugging) {
+    // save stuff here
+    std::string op_name_without_uid =
+        ResidualLayerNorm::get_op_name_without_uid(m);
+    char const *folder_path = "./inference_tensors/";
+    std::string base_filepath = std::string(folder_path);
+    if (m->layer_guid.model_id > 0) {
+      base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+    }
+    base_filepath += "bwd_step_" + std::to_string(m->bwd_step);
+    base_filepath += "_layers_" +
+                     std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+                     op_name_without_uid + "_shard_" + std::to_string(0);
+
+    std::string filename1 = base_filepath + "_mean";
+    save_tensor(static_cast<T *>(m->mean_ptr),
+                m->effective_batch_size,
+                filename1.c_str());
+    std::string filename2 = base_filepath + "_rstd";
+    save_tensor(static_cast<T *>(m->rstd_ptr),
+                m->effective_batch_size,
+                filename2.c_str());
+    std::string filename3 = base_filepath + "_input_activation";
+    save_tensor(static_cast<T *>(m->input_activation),
+                m->effective_batch_size * m->effective_num_elements,
+                filename3.c_str());
+  }
   int const warp_size = C10_WARP_SIZE;
   int const num_threads = 128;
   dim3 const blocks(M);

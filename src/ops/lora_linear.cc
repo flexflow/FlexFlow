@@ -268,12 +268,8 @@ void LoraLinear::register_peft_model(
 }
 
 template <typename DT>
-void load_peft_from_file(DT *ptr,
-                         size_t size,
-                         int shard_id,
-                         std::string filepath) {
-  std::cout << "Loading LORA weight " << filepath << ", size: " << size
-            << ", shard: " << shard_id << std::endl;
+void load_peft_from_file(
+    DT *ptr, size_t size, bool sharded, int shard_id, std::string filepath) {
   std::ifstream in(filepath, std::ios::in | std::ios::binary);
   if (!in.good()) {
     printf("Could not open file: %s\n", filepath.c_str());
@@ -281,7 +277,7 @@ void load_peft_from_file(DT *ptr,
   assert(in.good() && "incorrect weight file path");
   std::vector<DT> host_array(size);
   size_t target_data_size = sizeof(DT) * size;
-  in.seekg(shard_id * target_data_size, in.beg);
+  in.seekg(sharded * shard_id * target_data_size, in.beg);
   in.read((char *)host_array.data(), target_data_size);
 
   size_t in_get_size = in.gcount();
@@ -360,15 +356,27 @@ void LoraLinear::register_model_task(Task const *task,
   std::string w1_filepath =
       join_path({weights_folder_filepath, lora_layername_substr + "_B_weight"});
   if (dt == DT_FLOAT) {
+    std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
+              << ", size: " << w0_num_elements << ", shard: " << shard_id
+              << std::endl;
     load_peft_from_file(
-        (float *)weight.w0_ptr, w0_num_elements, shard_id, w0_filepath);
+        (float *)weight.w0_ptr, w0_num_elements, true, shard_id, w0_filepath);
+    std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
+              << ", size: " << w1_num_elements << ", shard: " << shard_id
+              << std::endl;
     load_peft_from_file(
-        (float *)weight.w1_ptr, w1_num_elements, shard_id, w1_filepath);
+        (float *)weight.w1_ptr, w1_num_elements, false, shard_id, w1_filepath);
   } else if (dt == DT_HALF) {
+    std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
+              << ", size: " << w0_num_elements << ", shard: " << shard_id
+              << std::endl;
     load_peft_from_file(
-        (half *)weight.w0_ptr, w0_num_elements, shard_id, w0_filepath);
+        (half *)weight.w0_ptr, w0_num_elements, true, shard_id, w0_filepath);
+    std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
+              << ", size: " << w1_num_elements << ", shard: " << shard_id
+              << std::endl;
     load_peft_from_file(
-        (half *)weight.w1_ptr, w1_num_elements, shard_id, w1_filepath);
+        (half *)weight.w1_ptr, w1_num_elements, false, shard_id, w1_filepath);
   } else {
     assert(false && "Data type not supported");
   }
@@ -473,7 +481,7 @@ void LoraLinear::inference_task(Task const *task,
     int shard_id = task->index_point.point_data[0];
 
     // Check if output directory exists, and create it if it does not
-    char const *folder_path = "./inference_tensors";
+    char const *folder_path = "./inference_tensors/";
     struct stat st = {0};
     if (stat(folder_path, &st) == -1) {
       // Directory does not exist, create it
@@ -493,15 +501,18 @@ void LoraLinear::inference_task(Task const *task,
         lora_layername.substr(0, found + searchString.length());
 
     // output base filepath, shared by all tensors from the same operator
-    std::string base_filepath =
-        "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
-        "_decoding-step_" + std::to_string(m->decoding_step) + "_layer-num_" +
-        std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
-        lora_layername_substr + "_shard-id_" + std::to_string(shard_id);
+    std::string base_filepath = std::string(folder_path);
+    if (m->layer_guid.model_id > 0) {
+      base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+    }
+    base_filepath += "fwd_step_" + std::to_string(m->decoding_step);
+    base_filepath +=
+        "_layers_" + std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+        lora_layername_substr + "_shard_" + std::to_string(shard_id);
 
     // save batch config, if passed
     if (bc != nullptr) {
-      bc->save_to_file(base_filepath + "_batch-config");
+      bc->save_to_file(base_filepath + "_batch_config");
     }
 
     std::string filename = base_filepath + "_input_" + std::to_string(0);
@@ -634,7 +645,7 @@ void LoraLinear::peft_bwd_task(Task const *task,
     int shard_id = task->index_point.point_data[0];
 
     // Check if output directory exists, and create it if it does not
-    char const *folder_path = "./inference_tensors";
+    char const *folder_path = "./inference_tensors/";
     struct stat st = {0};
     if (stat(folder_path, &st) == -1) {
       // Directory does not exist, create it
@@ -654,15 +665,18 @@ void LoraLinear::peft_bwd_task(Task const *task,
         lora_layername.substr(0, found + searchString.length());
 
     // output base filepath, shared by all tensors from the same operator
-    std::string base_filepath =
-        "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
-        "_bwd-step_" + std::to_string(m->bwd_step) + "_layer-num_" +
-        std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
-        lora_layername_substr + "_shard-id_" + std::to_string(shard_id);
+    std::string base_filepath = std::string(folder_path);
+    if (m->layer_guid.model_id > 0) {
+      base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+    }
+    base_filepath += "bwd_step_" + std::to_string(m->bwd_step);
+    base_filepath +=
+        "_layers_" + std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+        lora_layername_substr + "_shard_" + std::to_string(shard_id);
 
     // save batch config, if passed
     if (bc != nullptr) {
-      bc->save_to_file(base_filepath + "_batch-config");
+      bc->save_to_file(base_filepath + "_batch_config");
     }
 
     std::string filename = base_filepath + "_input_" + std::to_string(0);

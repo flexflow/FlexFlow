@@ -224,8 +224,30 @@ void inference_kernel_wrapper(ResidualRMSNormMeta *m,
   assert(weight.data_type == output.data_type);
   assert(residual_output.data_type == output.data_type);
 
-  // save input activation if needed for PEFT
-  if (bc->num_active_peft_fwd_tokens_() > 0) {
+
+  if (output.data_type == DT_HALF) {
+    forward_kernel(m,
+                   input1.get_half_ptr(),
+                   input2.get_half_ptr(),
+                   weight.get_half_ptr(),
+                   residual_output.get_half_ptr(),
+                   output.get_half_ptr(),
+                   stream);
+  } else if (output.data_type == DT_FLOAT) {
+    forward_kernel(m,
+                   input1.get_float_ptr(),
+                   input2.get_float_ptr(),
+                   weight.get_float_ptr(),
+                   residual_output.get_float_ptr(),
+                   output.get_float_ptr(),
+                   stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
+
+  // save input activation if needed for PEFT. This must be done after the
+  // forward kernel since that's where we add the residual
+  if (bc->num_active_peft_tokens() > 0) {
     // Check that we have at most one request that requires peft_bwd
     int num_peft_requests = 0;
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -281,29 +303,6 @@ void inference_kernel_wrapper(ResidualRMSNormMeta *m,
       }
     }
   }
-
-  if (output.data_type == DT_HALF) {
-    forward_kernel(m,
-                   input1.get_half_ptr(),
-                   input2.get_half_ptr(),
-                   weight.get_half_ptr(),
-                   residual_output.get_half_ptr(),
-                   output.get_half_ptr(),
-                   stream);
-  } else if (output.data_type == DT_FLOAT) {
-    forward_kernel(m,
-                   input1.get_float_ptr(),
-                   input2.get_float_ptr(),
-                   weight.get_float_ptr(),
-                   residual_output.get_float_ptr(),
-                   output.get_float_ptr(),
-                   stream);
-  } else {
-    assert(false && "Unsupported data type");
-  }
-  print_tensor<float>(residual_output.get_float_ptr(), 32, "redidual rms norm");
-
-
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));

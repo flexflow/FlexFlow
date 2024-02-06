@@ -363,14 +363,26 @@ FutureMap Softmax::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  // we add the region below in order to copy the output to the grad tensor
-  launcher.add_region_requirement(
-      RegionRequirement(batch_outputs[0]->part_grad,
-                        0 /*projection id*/,
-                        WRITE_ONLY,
-                        EXCLUSIVE,
-                        batch_outputs[0]->region_grad));
-  launcher.add_field(2, FID_DATA);
+  // if this is the last operator, we add the region below in order to copy the
+  // output to the grad tensor
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
+  int last_op = ff.operators.size() - 1;
+  assert(ff.operators[last_op]->op_type == OP_ARGMAX ||
+         ff.operators[last_op]->op_type == OP_ARG_TOPK ||
+         ff.operators[last_op]->op_type == OP_SAMPLING);
+  last_op -= 1;
+  while (ff.operators[last_op]->op_type == OP_WEIGHT && last_op > 0) {
+    last_op -= 1;
+  }
+  if (ff.operators[last_op] == this) {
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part_grad,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region_grad));
+    launcher.add_field(2, FID_DATA);
+  }
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -379,8 +391,8 @@ void Softmax::inference_task(Task const *task,
                              Context ctx,
                              Runtime *runtime) {
   assert(task->regions.size() == regions.size());
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
+  assert(regions.size() == 3 || regions.size() == 2);
+  bool is_last_op = (regions.size() == 3);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
@@ -392,9 +404,16 @@ void Softmax::inference_task(Task const *task,
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW output_grad = helperGetGenericTensorAccessorWO(
-      m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  inference_kernel_wrapper(m, bc, input, output, output_grad);
+  GenericTensorAccessorW output_grad;
+  if (is_last_op) {
+    output_grad = helperGetGenericTensorAccessorWO(m->output_type[0],
+                                                   regions[2],
+                                                   task->regions[2],
+                                                   FID_DATA,
+                                                   ctx,
+                                                   runtime);
+  }
+  inference_kernel_wrapper(m, bc, is_last_op, input, output, output_grad);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -436,7 +455,7 @@ FutureMap Softmax::peft_bwd(FFModel const &ff,
   launcher.add_region_requirement(
       RegionRequirement(batch_outputs[0]->part_grad,
                         0 /*projection id*/,
-                        READ_WRITE,
+                        READ_ONLY,
                         EXCLUSIVE,
                         batch_outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);

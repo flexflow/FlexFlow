@@ -122,6 +122,12 @@ void Replicate::create_input_partition_inference(
                               batch_outputs[0]->parallel_is,
                               batch_inputs[0]->region,
                               inference_input_lps[batch_inputs[0]]);
+  // output_grad_lp is a disjoint partition
+  ff.create_disjoint_partition(batch_inputs[0]->num_dims,
+                               batch_inputs[0]->dims,
+                               batch_inputs[0]->parallel_is,
+                               batch_outputs[0]->region_grad,
+                               inference_output_grad_lps[batch_outputs[0]]);
 }
 
 OpMeta *Replicate::init_task(Task const *task,
@@ -273,6 +279,51 @@ void Replicate::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+FutureMap Replicate::peft_bwd(FFModel const &ff,
+                              BatchConfigFuture const &bc,
+                              std::vector<ParallelTensor> const &batch_inputs,
+                              std::vector<ParallelTensor> const &batch_outputs,
+                              MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  assert(batch_inputs[0]->data_type == batch_outputs[0]->data_type);
+  DataType data_type = batch_inputs[0]->data_type;
+
+  // Warning: we need to use batch_inputs[0] here, instead of the usual
+  // batch_outputs[0]
+  parallel_is = batch_inputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_inputs[0]->machine_view;
+
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  IndexLauncher launcher(REPLICATE_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(
+      RegionRequirement(inference_output_grad_lps[batch_outputs[0]],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
+  launcher.add_field(1, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
+}
+
 void Replicate::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -376,6 +427,32 @@ void Replicate::forward_task(Task const *task,
   } else {
     assert(false && "Unspported data type");
   }
+}
+
+void Replicate::peft_bwd_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  Domain output_grad_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Domain input_grad_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  // Currently only support the outter most dimension
+  for (int i = 0; i < output_grad_domain.get_dim() - 1; i++) {
+    assert(output_grad_domain.lo()[i] == input_grad_domain.lo()[i]);
+    assert(output_grad_domain.hi()[i] == input_grad_domain.hi()[i]);
+  }
+  size_t num_elements = input_grad_domain.get_volume();
+  size_t num_replicas = output_grad_domain.get_volume() / num_elements;
+  float const *output_grad_ptr = helperGetTensorPointerRO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float *input_grad_ptr = helperGetTensorPointerRW<float>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  backward_kernel<float>(
+      output_grad_ptr, input_grad_ptr, num_elements, num_replicas);
 }
 
 void Replicate::backward_task(Task const *task,

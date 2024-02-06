@@ -932,6 +932,22 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
 }
 
+std::string get_peft_dbg_folder(IncMultiHeadSelfAttentionMeta const *m,
+                                int shard_id) {
+  std::string op_name_without_uid =
+      IncMultiHeadSelfAttention::get_op_name_without_uid(m);
+  char const *folder_path = "./inference_tensors/";
+  std::string base_filepath = std::string(folder_path);
+  if (m->layer_guid.model_id > 0) {
+    base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+  }
+  base_filepath += "bwd_step_" + std::to_string(m->bwd_step);
+  base_filepath += "_layers_" +
+                   std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+                   op_name_without_uid + "_shard_" + std::to_string(shard_id);
+  return base_filepath;
+}
+
 template <typename DT>
 void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      BatchConfig const *bc,
@@ -959,6 +975,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
   //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
   //   }
   // #endif
+
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     if (bc->request_completed[i]) {
       continue;
@@ -1024,6 +1041,12 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              ldc,
                              compute_type,
                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      if (m->inference_debugging) {
+        // save result to file for checking
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + "_o_proj_in_grad";
+        save_tensor(C, m_ * n_, filename.c_str());
+      }
     }
     // Step 2: compute gradients w.r.t. value
     {
@@ -1078,6 +1101,15 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_q_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      // save result to file for checking
+      if (m->inference_debugging) {
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + "_v_proj_in_grad";
+        save_tensor(C, m_ * n_ * m->num_q_heads, filename.c_str());
+        std::string filename2 =
+            get_peft_dbg_folder(m, shard_id) + "_qk_prods_softmax";
+        save_tensor(A, m_ * k_ * m->num_q_heads, filename2.c_str());
+      }
     }
     // Step 3: compute gradients w.r.t. the qk_prods_softmax tensor
     {
@@ -1126,6 +1158,15 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_q_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      if (m->inference_debugging) {
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + "_qk_prods_softmax_grad";
+        save_tensor(
+            C, num_tokens * num_tokens * m->num_q_heads, filename.c_str());
+        std::string filename2 = get_peft_dbg_folder(m, shard_id) + "_vcache";
+        save_tensor(
+            B, m->vProjSize * m->num_q_heads * num_tokens, filename2.c_str());
+      }
     }
     // Step 4: softmax backpropagation
     {
@@ -1152,8 +1193,17 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                       &beta,
                                       m->qk_tensor,
                                       m->qk_prods));
-      // fill all elements above diagonal to force causal attention
-      size_t entries_above_diagonal = num_tokens * (num_total_tokens - 1) / 2;
+
+      if (m->inference_debugging) {
+        DT *C = static_cast<DT *>(m->qk_prods);
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + "_qk_prods_softmax_grad_in";
+        save_tensor(
+            C, num_tokens * num_tokens * m->num_q_heads, filename.c_str());
+      }
+
+      //  TODO: fill all elements above diagonal to force causal attention
+      size_t entries_above_diagonal = num_tokens * (num_tokens - 1) / 2;
       if (entries_above_diagonal > 0) {
         size_t parallelism = m->num_q_heads * entries_above_diagonal;
         fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
@@ -1166,6 +1216,13 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                                 m->num_q_heads,
                                                 entries_above_diagonal,
                                                 DT(0.0f));
+      }
+      if (m->inference_debugging) {
+        DT *C = static_cast<DT *>(m->qk_prods);
+        std::string filename = get_peft_dbg_folder(m, shard_id) +
+                               "_qk_prods_softmax_grad_in_masked";
+        save_tensor(
+            C, num_tokens * num_tokens * m->num_q_heads, filename.c_str());
       }
     }
     // Step 5: compute gradients w.r.t. key
@@ -1222,6 +1279,16 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_q_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      if (m->inference_debugging) {
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + "_query_activation";
+        save_tensor(
+            B, m->qProjSize * m->num_q_heads * num_tokens, filename.c_str());
+        std::string filename2 =
+            get_peft_dbg_folder(m, shard_id) + "_devkproj_pre";
+        save_tensor(
+            C, num_tokens * (m->qProjSize * m->num_q_heads), filename2.c_str());
+      }
     }
 
     // update the key value gradient cache;
@@ -1285,7 +1352,15 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            m->num_q_heads,
                                            compute_type,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      if (m->inference_debugging) {
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + "_devQKVPRojArray_pre";
+        save_tensor(C,
+                    num_tokens * m->qProjSize * m->num_q_heads * 3,
+                    filename.c_str());
+      }
     }
+
     // Step 7: perform rotary position embeddings (RoPE) bwd
     {
       if (*m->apply_rotary_embedding) {
@@ -1303,8 +1378,30 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                                m->qProjSize,
                                                num_tokens,
                                                m->hidden_size);
+        DT *C = static_cast<DT *>(m->devQKVProjArray);
+        if (m->inference_debugging) {
+          std::string filename =
+              get_peft_dbg_folder(m, shard_id) + "_devQKVPRojArray";
+          save_tensor(C,
+                      num_tokens * m->qProjSize * m->num_q_heads * 3,
+                      filename.c_str());
+        }
+      }
+
+      // matrix C: gradients for key (saved as part of m->devQKVProjArray)
+      // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
+      DT *C =
+          static_cast<DT *>(m->devQKVProjArray) +
+          num_tokens *
+              (m->qProjSize *
+               m->num_q_heads); // skip over regions reserved for Q gradients
+      if (m->inference_debugging) {
+        std::string filename = get_peft_dbg_folder(m, shard_id) + "_devkproj";
+        save_tensor(
+            C, num_tokens * (m->qProjSize * m->num_q_heads), filename.c_str());
       }
     }
+
     // Step 8: compute gradients w.r.t. input
     {
       float alpha = 1.0f, beta = 0.0f;
@@ -1348,6 +1445,11 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
      save_tensor<float>((float*)C, 768 * 5, "/home/xinhaoc/FlexFlow/inference/output_tensors/attenBWDOP.txt");
      assert(false);                        
+      if (m->inference_debugging) {
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + "_attn_final_grad_in";
+        save_tensor(C, num_tokens * m->qSize, filename.c_str());
+      }
     }
   }
 }

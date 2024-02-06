@@ -274,9 +274,9 @@ void InferenceManager::init_operators_inference(FFModel *model) {
         assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
         assert(tensor_buffer[op->outputs[i]].size() > batch_index);
         outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
-        if (i > 0) {
-          assert(outputs[0]->machine_view == outputs[i]->machine_view);
-        }
+        // if (i > 0) {
+        //   assert(outputs[0]->machine_view == outputs[i]->machine_view);
+        // }
         assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
       }
       if (op->is_parallel_op()) {
@@ -383,17 +383,11 @@ void InferenceManager::peft_bwd(FFModel *model,
   int last_op = model->operators.size() - 1;
   // Assert that the last operator must be argmax or sampling
   assert(model->operators[last_op]->op_type == OP_ARGMAX ||
+         model->operators[last_op]->op_type == OP_ARG_TOPK ||
          model->operators[last_op]->op_type == OP_SAMPLING);
   last_op -= 1;
   while (model->operators[last_op]->op_type == OP_WEIGHT && last_op > 0) {
     last_op -= 1;
-  }
-  // Assert that the previous operator must be softmax
-  assert(model->operators[last_op]->op_type == OP_SOFTMAX ||
-         model->operators[last_op]->op_type == OP_FUSED);
-  if (model->operators[last_op]->op_type == OP_FUSED) {
-    FusedOp *fused_op = static_cast<FusedOp *>(model->operators[last_op]);
-    assert(fused_op->op_op_type[fused_op->numOperators - 1] == OP_SOFTMAX);
   }
   for (int o = last_op; o >= 0; o--) {
     Op *op = model->operators[o];

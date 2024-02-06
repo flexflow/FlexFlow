@@ -200,16 +200,15 @@ void inference_kernel_wrapper(LinearMeta *m,
                                     stream);
   } else if (m->input_type[0] == DT_HALF) {
     Internal::forward_kernel<half>(m,
-                                  input_ptr,
-                                  output_ptr,
-                                  weight_ptr,
-                                  bias_ptr,
-                                  in_dim,
-                                  out_dim,
-                                  batch_size,
-                                  stream);
+                                   input_ptr,
+                                   output_ptr,
+                                   weight_ptr,
+                                   bias_ptr,
+                                   in_dim,
+                                   out_dim,
+                                   batch_size,
+                                   stream);
   }
-
 
   if (m->activation == AC_MODE_RELU || m->activation == AC_MODE_SIGMOID) {
     // save input activation if needed for PEFT
@@ -247,14 +246,14 @@ void inference_kernel_wrapper(LinearMeta *m,
           if (m->output_type[0] == DT_FLOAT) {
             checkCUDA(cudaMemcpyAsync(
                 m->output_activation_buffer,
-                static_cast<float*>(output_ptr) + first_token_offset * out_dim,
+                static_cast<float *>(output_ptr) + first_token_offset * out_dim,
                 data_type_size(m->output_type[0]) * num_peft_tokens * out_dim,
                 cudaMemcpyDeviceToDevice,
                 stream));
           } else if (m->output_type[0] == DT_HALF) {
             checkCUDA(cudaMemcpyAsync(
                 m->output_activation_buffer,
-                static_cast<half*>(output_ptr) + first_token_offset * out_dim,
+                static_cast<half *>(output_ptr) + first_token_offset * out_dim,
                 data_type_size(m->output_type[0]) * num_peft_tokens * out_dim,
                 cudaMemcpyDeviceToDevice,
                 stream));

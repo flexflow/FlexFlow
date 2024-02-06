@@ -267,7 +267,7 @@ public:
       bool fwd_pass = true,
       bool before_kernel = false) {
     // Check if output directory exists, and create it if it does not
-    char const *folder_path = "./inference_tensors";
+    char const *folder_path = "./inference_tensors/";
     struct stat st = {0};
     if (stat(folder_path, &st) == -1) {
       // Directory does not exist, create it
@@ -275,20 +275,26 @@ public:
     }
     // output base filepath, shared by all tensors from the same operator
     std::string op_name_without_uid = get_op_name_without_uid(m);
-    std::string base_filepath =
-        "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
-        (fwd_pass ? "_decoding-step_" : "_bwd-step_") +
-        (fwd_pass ? std::to_string(m->decoding_step)
-                  : std::to_string(m->bwd_step)) +
-        "_layer-num_" + std::to_string(m->layer_guid.transformer_layer_id) +
-        "_layer-name_" + op_name_without_uid + "_shard-id_" +
-        std::to_string(shard_id);
+    std::cout << (fwd_pass ? "INF " : "BWD ") << op_name_without_uid
+              << std::endl;
+    std::string base_filepath = std::string(folder_path);
+    if (m->layer_guid.model_id > 0) {
+      base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+    }
+    if (fwd_pass) {
+      base_filepath += "fwd_step_" + std::to_string(m->decoding_step);
+    } else {
+      base_filepath += "bwd_step_" + std::to_string(m->bwd_step);
+    }
+    base_filepath += "_layers_" +
+                     std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+                     op_name_without_uid + "_shard_" + std::to_string(shard_id);
     if (before_kernel) {
       base_filepath += "_pre";
     }
     // save batch config, if passed
     if (bc != nullptr) {
-      bc->save_to_file(base_filepath + "_batch-config");
+      bc->save_to_file(base_filepath + "_batch_config");
     }
     // save all inputs
     for (int i = 0; i < input_tensors.size(); i++) {

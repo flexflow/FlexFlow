@@ -1524,8 +1524,9 @@ FFRuntime::FFRuntime(FFConfig &config) {
     info.offload_reserve_space_size =
         config.cpu_offload ? config.offload_reserve_space_size : 0;
     info.peft_activation_reserve_space_size =
-        config.peft_activation_reserve_space_size;
-    info.peft_weight_reserve_space_size = config.peft_weight_reserve_space_size;
+        config.enable_peft ? config.peft_activation_reserve_space_size : 0;
+    info.peft_weight_reserve_space_size =
+        config.enable_peft ? config.peft_weight_reserve_space_size : 0;
     info.quantization_type = config.quantization_type;
     info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
@@ -3270,6 +3271,34 @@ bool FFModel::is_mlp_block(int layer_idx) const {
   return false;
 }
 
+bool FFModel::need_to_add_combine(int layer_idx) const {
+  if (config.computationMode != COMP_MODE_INFERENCE ||
+      config.tensor_parallelism_degree == 1 || layers.size() <= 2) {
+    return false;
+  }
+  auto const &l = layers[layer_idx];
+  // softmax followed by argmax/arg_topk: add combine before softmax
+  if (layer_idx == layers.size() - 2) {
+    auto const &l_next = layers[layer_idx + 1];
+    if (l->op_type == OP_SOFTMAX &&
+        (l_next->op_type == OP_ARG_TOPK || l_next->op_type == OP_ARGMAX)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  // argmax/arg_topk not precedent by softmax: add combine before
+  // argmax/arg_topk
+  if (layer_idx == layers.size() - 1 &&
+      (l->op_type == OP_ARG_TOPK || l->op_type == OP_ARGMAX)) {
+    auto const &l_prev = layers[layer_idx - 1];
+    if (l_prev->op_type == OP_SOFTMAX) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
 void FFModel::create_operators_from_layers() {
   std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
   // for (auto const &l : layers) {
@@ -3283,11 +3312,9 @@ void FFModel::create_operators_from_layers() {
       inputs.push_back(tensors_to_parallel_tensors[l->inputs[i]]);
     }
     Op *op = nullptr;
-    // add a combine before arg_topk
-    if (config.computationMode == COMP_MODE_INFERENCE &&
-        config.tensor_parallelism_degree > 1 &&
-        (l->op_type == OP_ARG_TOPK || l->op_type == OP_SOFTMAX ||
-         l->op_type == OP_ARGMAX)) {
+    // add a combine before last arg_max / arg_topk or before second-to-last
+    // softmax
+    if (need_to_add_combine(layer_idx)) {
       std::vector<ParallelTensor> partitioned_inputs;
       assert(inputs.size() == 1);
       Combine *comb = new Combine(*this,
@@ -4036,6 +4063,7 @@ struct DefaultConfig {
   const static size_t offloadReserveSpaceSize =
       (size_t)8 * 1024 * 1024 * 1024; // 8 GB
   // PEFT related fields
+  const static bool enablePeft = false;
   const static size_t peftActivationReserveSpaceSize =
       (size_t)1 * 1024 * 1024 * 1024; // 1GB
   const static size_t peftWeightReserveSpaceSize =
@@ -4076,6 +4104,7 @@ FFConfig::FFConfig() {
   cpu_offload = DefaultConfig::cpuOffload;
   offload_reserve_space_size = DefaultConfig::offloadReserveSpaceSize;
   // PEFT related fields
+  enable_peft = DefaultConfig::enablePeft;
   peft_activation_reserve_space_size =
       DefaultConfig::peftActivationReserveSpaceSize;
   peft_weight_reserve_space_size = DefaultConfig::peftWeightReserveSpaceSize;
@@ -4199,6 +4228,18 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if ((!strcmp(argv[i], "--8bit-quantization"))) {
       quantization_type = DT_INT8;
+      continue;
+    }
+    if ((!strcmp(argv[i], "-enable-peft"))) {
+      enable_peft = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "-peft-activation-reserve-space-size")) {
+      peft_activation_reserve_space_size = atoll(argv[++i]) * 1024 * 1024;
+      continue;
+    }
+    if (!strcmp(argv[i], "-peft-weight-reserve-space-size")) {
+      peft_weight_reserve_space_size = atoll(argv[++i]) * 1024 * 1024;
       continue;
     }
     if ((!strcmp(argv[i], "--only-data-parallel"))) {
@@ -5546,7 +5587,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.set_leaf();
     if (pre_register) {
       Runtime::preregister_task_variant<ResidualRMSNorm::inference_task>(
-          registrar, "RMS Norm Inference Task");
+          registrar, "Residual RMS Norm Inference Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
@@ -5562,7 +5603,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.set_leaf();
     if (pre_register) {
       Runtime::preregister_task_variant<ResidualRMSNorm::backward_task>(
-          registrar, "RMS Norm Backward Task");
+          registrar, "Residual RMS Norm Backward Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
@@ -5577,7 +5618,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.set_leaf();
     if (pre_register) {
       Runtime::preregister_task_variant<ResidualRMSNorm::peft_bwd_task>(
-          registrar, "RMS Norm PEFT Backward Task");
+          registrar, "Residual RMS Norm PEFT Backward Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
@@ -6726,6 +6767,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<Combine::backward_task>(registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(COMBINE_PEFT_BWD_TASK_ID,
+                                   "Combine PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Combine::peft_bwd_task>(
+          registrar, "Combine PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Combine::peft_bwd_task>(registrar);
+    }
+  }
   // Replicate
   {
     TaskVariantRegistrar registrar(REPLICATE_INIT_TASK_ID, "Replicate Init");
@@ -6767,6 +6823,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<Replicate::backward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(REPLICATE_PEFT_BWD_TASK_ID,
+                                   "Replicate PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Replicate::peft_bwd_task>(
+          registrar, "Replicate PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Replicate::peft_bwd_task>(registrar);
     }
   }
   // Reduction

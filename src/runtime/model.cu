@@ -164,6 +164,8 @@ FFHandler
     handle.peft_activation_allocator = new MemoryAllocator(gpu_mem);
     handle.peft_activation_allocator->create_legion_instance(
         workspaceInst, info->peft_activation_reserve_space_size);
+  } else {
+    handle.peft_activation_allocator = nullptr;
   }
 
   if (info->peft_weight_reserve_space_size > 0) {
@@ -188,6 +190,8 @@ FFHandler
     void *ptr = workspaceInst.pointer_untyped(0, sizeof(char));
     handle.peft_weight_allocator =
         new PEFTWeightAllocator(ptr, info->peft_weight_reserve_space_size);
+  } else {
+    handle.peft_weight_allocator = nullptr;
   }
   // checkCUDA(cudaMalloc(&handle.workSpace, handle.workSpaceSize));
 #ifdef FF_USE_NCCL

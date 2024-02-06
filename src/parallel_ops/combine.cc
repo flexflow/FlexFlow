@@ -84,9 +84,6 @@ Combine::Combine(FFModel &model,
     dims[i] = _input->dims[i];
   }
   assert(combine_degree > 0 && "Must use combine_degree > 0");
-  std::cout << "combine_dim : " << combine_dim
-            << ", dims[combine_dim].degree: " << dims[combine_dim].degree
-            << ", combine_degree: " << combine_degree << std::endl;
   assert(dims[combine_dim].degree % combine_degree == 0);
   dims[combine_dim].degree /= combine_degree;
   ParallelTensorBase::update_parallel_ids(numdim, dims);
@@ -202,12 +199,23 @@ void Combine::create_input_partition_inference(
   assert(ff.config.computationMode == COMP_MODE_INFERENCE);
   assert(batch_outputs[0]->part != LogicalPartition::NO_PART);
   assert(batch_inputs[0]->part != LogicalPartition::NO_PART);
-  // input_lp is a disjoint partition
+  // partition batch_inputs[0]->region into inference_input_lps[batch_inputs[0]]
+  // according to the partitioning of batch_outputs[0] (i.e. make the
+  // partitioned dimension whole again by combining the partitions)
   ff.create_disjoint_partition(batch_outputs[0]->num_dims,
                                batch_outputs[0]->dims,
                                batch_outputs[0]->parallel_is,
                                batch_inputs[0]->region,
                                inference_input_lps[batch_inputs[0]]);
+  // partition batch_outputs[0]->region_grad into
+  // inference_output_grad_lps[batch_outputs[0]] according to the partitioning
+  // of batch_inputs[0] (i.e. restore the partition in the dimension that was
+  // combined in the forward pass)
+  ff.create_disjoint_partition(batch_inputs[0]->num_dims,
+                               batch_inputs[0]->dims,
+                               batch_inputs[0]->parallel_is,
+                               batch_outputs[0]->region_grad,
+                               inference_output_grad_lps[batch_outputs[0]]);
 }
 
 FutureMap Combine::inference(FFModel const &ff,
@@ -276,6 +284,52 @@ void Combine::forward(FFModel const &ff) {
                                                     outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+FutureMap Combine::peft_bwd(FFModel const &ff,
+                            BatchConfigFuture const &bc,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  assert(batch_inputs[0]->data_type == batch_outputs[0]->data_type);
+  DataType data_type = inputs[0]->data_type;
+
+  // Warning: we need to use batch_inputs[0] here, instead of the usual
+  // batch_outputs[0]
+  parallel_is = batch_inputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_inputs[0]->machine_view;
+
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  IndexLauncher launcher(COMBINE_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(&data_type, sizeof(DataType)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  launcher.add_region_requirement(
+      RegionRequirement(inference_output_grad_lps[batch_outputs[0]],
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
+  launcher.add_field(1, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Combine::backward(FFModel const &ff) {
@@ -398,6 +452,46 @@ void Combine::forward_task_with_type(Task const *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   forward_kernel<DT>(input_ptr, output_ptr, output_domain.get_volume());
+}
+
+void Combine::peft_bwd_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  // CombineMeta const *m = *((CombineMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
+  // TODO: figure out why m->output_type[0] or m->input_type[0] are not working
+  DataType data_type = *((DataType *)task->args);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      data_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      data_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  assert(input_grad.data_type == data_type);
+  assert(output_grad.domain == input_grad.domain);
+  if (data_type == DT_FLOAT) {
+    backward_kernel<float>(output_grad.get_float_ptr(),
+                           input_grad.get_float_ptr(),
+                           output_grad.domain.get_volume());
+  } else if (data_type == DT_DOUBLE) {
+    backward_kernel<double>(output_grad.get_double_ptr(),
+                            input_grad.get_double_ptr(),
+                            output_grad.domain.get_volume());
+  } else if (data_type == DT_INT32) {
+    backward_kernel<int32_t>(output_grad.get_int32_ptr(),
+                             input_grad.get_int32_ptr(),
+                             output_grad.domain.get_volume());
+  } else if (data_type == DT_INT64) {
+    backward_kernel<int64_t>(output_grad.get_int64_ptr(),
+                             input_grad.get_int64_ptr(),
+                             output_grad.domain.get_volume());
+  } else {
+    assert(false && "Unsupported data type in Combine backward");
+  }
 }
 
 void Combine::backward_task(Task const *task,

@@ -642,6 +642,7 @@ __host__ void
         Kernels::Softmax::inference_kernel_wrapper(
             m,
             bc,
+            (op == fused->numOperators - 1),
             my_input_accessor[0],
             my_output_accessor[0],
             output_accessor[fused->numOutputs]);
