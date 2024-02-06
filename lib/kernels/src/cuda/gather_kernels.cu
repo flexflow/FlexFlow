@@ -22,6 +22,11 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Gather {
 
+ GatherPerDeviceState init_kernel(PerDeviceFFHandle handle, int legion_dim, DataType index_data_type) {
+    GatherPerDeviceState per_device_state = {handle, legion_dim, index_data_type};
+    return GatherPerDeviceState;
+ }
+
 void gather_forward(float const *input_ptr,
                     float const *index_ptr,
                     float *output_ptr,

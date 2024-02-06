@@ -5,6 +5,15 @@
 #include "kernels/device.h"
 
 namespace FlexFlow {
+
+struct GatherPerDeviceState {
+   PerDeviceFFHandle handle;
+   DataType index_data_type;
+   int legion_dim;
+};
+
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GatherPerDeviceState, handle, index_data_type, legion_dim);
+
 namespace Kernels {
 namespace Gather {
 void forward_kernel(ffStream_t stream,
