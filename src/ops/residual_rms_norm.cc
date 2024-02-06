@@ -394,7 +394,7 @@ FutureMap
   assert(batch_outputs[0]->region == batch_inputs[0]->region);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
-                                                    READ_ONLY,
+                                                    READ_WRITE,
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
@@ -412,7 +412,7 @@ FutureMap
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                     0 /*projection id*/,
-                                                    READ_WRITE,
+                                                    READ_ONLY,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
   launcher.add_field(3, FID_DATA);
@@ -423,7 +423,7 @@ FutureMap
   regions[0](I/O): input1 / residual output
   regions[1](I): input2
   regions[2](O): output
-  regions[3](I/O): weight
+  regions[3](I): weight
 */
 void ResidualRMSNorm::inference_task(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
