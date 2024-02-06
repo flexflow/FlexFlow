@@ -17,6 +17,7 @@
 #include "kernels/attention_kernels.h"
 #include "legion.h"
 #include "op-attrs/ops/attention.h"
+#include "task_spec/op_task_signature.h"
 
 namespace FlexFlow {
 
@@ -121,18 +122,6 @@ static DeviceSpecific<MHAPerDeviceState>
   int num_samples = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(2)];
   int num_heads = get_piece_shape(weight_parallel_tensor_shape)[ff_dim_t(1)];
 
-  assert(qoSeqLength == query.shape[legion_dim_t(1)]);
-  assert(qSize == query.shape[legion_dim_t(0)]);
-  assert(num_samples == key.shape[legion_dim_t(2)]);
-  assert(kvSeqLength == key.shape[legion_dim_t(1)]);
-  assert(kSize == key.shape[legion_dim_t(0)]);
-  assert(num_samples == value.shape[legion_dim_t(2)]);
-  assert(kvSeqLength == value.shape[legion_dim_t(1)]);
-  assert(vSize == value.shape[legion_dim_t(0)]);
-  assert(num_samples == output.shape[legion_dim_t(2)]);
-  assert(qoSeqLength == output.shape[legion_dim_t(1)]);
-  assert(oProjSize == output.shape[legion_dim_t(0)]);
-
   DeviceSpecific<MHAPerDeviceState> per_device_state =
       acc.create_device_specific<MHAPerDeviceState>(
           init_kernel(handle,
@@ -149,9 +138,6 @@ static DeviceSpecific<MHAPerDeviceState>
                       qoSeqLength,
                       kvSeqLength,
                       attrs.add_bias_kv));
-
-  assert(weight.shape.get_volume() * sizeof(float) ==
-         acc.unwrap(per_device_state)->weightSize);
   return per_device_state;
 }
 
@@ -299,7 +285,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 }
 
 template <>
-void register_task<ATTENTION_INIT_TASK_ID>() {
+OpTaskSignature init_signature<ATTENTION_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
   init.add_arg_slot<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);
   init.add_arg_slot<ParallelTensorShape>(KEY_PARALLEL_TENSOR_SHAPE);
@@ -313,12 +299,19 @@ void register_task<ATTENTION_INIT_TASK_ID>() {
 
   init.add_return_value<MHAPerDeviceState>();
 
-  register_task(
-      ATTENTION_INIT_TASK_ID, "MultiHeadAttention Init", init, init_task);
+  return init;
 }
 
 template <>
-void register_task<ATTENTION_FWD_TASK_ID>() {
+void register_task<ATTENTION_INIT_TASK_ID>() {
+  register_task(ATTENTION_INIT_TASK_ID,
+                "Attention Init",
+                init_signature<ATTENTION_INIT_TASK_ID>(),
+                init_task);
+}
+
+template <>
+OpTaskSignature fwd_signature<ATTENTION_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(QUERY);
@@ -330,17 +323,31 @@ void register_task<ATTENTION_FWD_TASK_ID>() {
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<MHAPerDeviceState>(PER_DEVICE_STATE);
 
-  register_task(
-      ATTENTION_FWD_TASK_ID, "MultiHeadAttention Fwd", fwd, forward_task);
+  return fwd;
+}
+
+template <>
+void register_task<ATTENTION_FWD_TASK_ID>() {
+  register_task(ATTENTION_FWD_TASK_ID,
+                "Attention Fwd",
+                fwd_signature<ATTENTION_FWD_TASK_ID>(),
+                forward_task);
+}
+
+template <>
+OpTaskSignature bwd_signature<ATTENTION_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(get_op_signature(ATTENTION_FWD_TASK_ID));
+
+  return bwd;
 }
 
 template <>
 void register_task<ATTENTION_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(ATTENTION_FWD_TASK_ID));
-
-  register_task(
-      ATTENTION_BWD_TASK_ID, "MultiHeadAttention Bwd", bwd, backward_task);
+  register_task(ATTENTION_BWD_TASK_ID,
+                "Attention Bwd",
+                bwd_signature<ATTENTION_BWD_TASK_ID>(),
+                backward_task);
 }
 
 } // namespace FlexFlow
