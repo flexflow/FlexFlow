@@ -17,12 +17,12 @@ TEST_CASE("MultiDiGraph") {
   std::vector<Node> n = add_nodes(g, 4);
   std::vector<NodePort> p = add_node_ports(g, 4);
 
-  std::vector<MultiDiEdge> e = {
-      {n[0], n[3], p[0], p[3]},
-      {n[1], n[2], p[0], p[2]},
-      {n[1], n[3], p[1], p[3]},
-      {n[2], n[3], p[2], p[3]},
-  };
+  MultiDiEdge e0{n[3], p[3], n[0], p[0]};
+  MultiDiEdge e1{n[2], p[2], n[1], p[0]};
+  MultiDiEdge e2{n[3], p[3], n[1], p[1]};
+  MultiDiEdge e3{n[3], p[3], n[2], p[2]};
+
+  std::vector<MultiDiEdge> e = {e0, e1, e2, e3};
 
   add_edges(g, e);
 

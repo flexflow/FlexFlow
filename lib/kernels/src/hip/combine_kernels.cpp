@@ -19,10 +19,6 @@
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-
-CombinePerDeviceState::CombinePerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {}
-
 namespace Kernels {
 namespace Combine {
 
@@ -57,18 +53,16 @@ struct BackwardKernel {
 };
 
 void forward_kernel(ffStream_t stream,
-                    CombinePerDeviceState const *m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
-  DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, input, output);
+  DataTypeDispatch1<ForwardKernel>{}(input.data_type, stream, input, output);
 }
 
 void backward_kernel(ffStream_t stream,
-                     CombinePerDeviceState const *m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const &input_grad) {
   DataTypeDispatch1<BackwardKernel>{}(
-      m->data_type, stream, output_grad, input_grad);
+      input_grad.data_type, stream, output_grad, input_grad);
 }
 
 } // namespace Combine

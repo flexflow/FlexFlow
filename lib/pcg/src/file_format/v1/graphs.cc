@@ -15,9 +15,9 @@ V1MultiDiGraph to_v1(MultiDiGraphView const &g,
   std::unordered_set<V1GraphEdge> edges;
   for (MultiDiEdge const &e : get_edges(g)) {
     edges.insert({nodes.at(e.src),
-                  node_ports.at(e.srcIdx),
+                  node_ports.at(e.src_idx),
                   nodes.at(e.dst),
-                  node_ports.at(e.dstIdx)});
+                  node_ports.at(e.dst_idx)});
   }
 
   return V1MultiDiGraph{
@@ -43,7 +43,7 @@ V1JsonableGraph<decltype(to_v1(std::declval<NodeLabel>())),
   bidict<size_t, MultiDiOutput> outputs_bidict = enumerate(get_outputs(g));
   std::unordered_map<size_t, V1GraphOutput> outputs =
       map_values(outputs_bidict, [&](MultiDiOutput const &o) {
-        return V1GraphOutput{nodes.at_r(o.node), node_ports.at_r(o.idx)};
+        return V1GraphOutput{nodes.at_r(o.src), node_ports.at_r(o.src_idx)};
       });
   std::unordered_map<size_t, V1OutputLabel> output_labels = map_values(
       outputs_bidict, [&](MultiDiOutput const &o) { return to_v1(g.at(o)); });

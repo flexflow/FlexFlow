@@ -4,7 +4,6 @@
 #include "labelled_open.decl.h"
 #include "labelled_open_interfaces.h"
 #include "node_labelled.h"
-#include "utils/graph/internal.h"
 #include "utils/graph/open_graph_interfaces.h"
 #include "utils/graph/open_graphs.h"
 

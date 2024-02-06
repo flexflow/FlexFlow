@@ -46,7 +46,7 @@ namespace Kernels {
 namespace MultiHeadAttention {
 
 MHAPerDeviceState init_kernel(PerDeviceFFHandle const &,
-                              Allocator const &,
+                              Allocator &,
                               int num_samples,
                               int num_heads,
                               int qSize,
@@ -79,6 +79,9 @@ void backward_kernel(ffStream_t stream,
                      float const *weight_ptr,
                      float *weight_grad_ptr,
                      float const *output_grad_ptr);
+
+void cleanup_kernel(Allocator &allocator,
+                    MHAPerDeviceState const &device_state);
 
 } // namespace MultiHeadAttention
 } // namespace Kernels

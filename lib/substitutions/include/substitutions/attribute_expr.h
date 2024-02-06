@@ -30,7 +30,9 @@ struct AttributeConstraint {
 
 template <typename K, typename V>
 struct AttributePattern {
-  std::unordered_set<AttributeConstraint<K, V>> attribute_constraints;
+  std::vector<AttributeConstraint<K, V>> attribute_constraints;
+  // TODO: Revert to unordered_set once we have visitable for templates
+  // std::unordered_set<AttributeConstraint<K, V>> attribute_constraints;
 };
 
 } // namespace FlexFlow
