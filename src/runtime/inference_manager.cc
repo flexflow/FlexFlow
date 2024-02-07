@@ -664,9 +664,19 @@ void FFModel::compile_inference() {
           }
           for (int i = 0; i < fused->op_num_outputs[op]; i++) {
             int my_off = fused->op_output_idx[i + ooff];
-            assert(fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT);
-            assert(fused->outputs[my_off]->region ==
-                   old_op->outputs[i]->region);
+            assert(
+                fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT ||
+                (fused->op_output_source[i + ooff] == FusedOp::SOURCE_INPUT &&
+                 (old_op->op_type == OP_RESIDUAL_LAYERNORM ||
+                  old_op->op_type == OP_RESIDUAL_RMS_NORM ||
+                  old_op->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM)));
+            if (fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT) {
+              assert(fused->outputs[my_off]->region ==
+                     old_op->outputs[i]->region);
+            } else {
+              assert(fused->inputs[my_off]->region ==
+                     old_op->outputs[i]->region);
+            }
           }
           ioff += fused->op_num_inputs[op];
           woff += fused->op_num_weights[op];
