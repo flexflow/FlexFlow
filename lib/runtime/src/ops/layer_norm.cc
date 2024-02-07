@@ -29,7 +29,7 @@ using Legion::Task;
 
 namespace FlexFlow {
 
-enum Slots { INPUT, OUTPUT, GAMMA, BETA, PER_DEVICE_STATE, ATTRS, HANDLE };
+enum Slots { PROFILING, INPUT, OUTPUT, GAMMA, BETA, PER_DEVICE_STATE, ATTRS, HANDLE };
 
 OpTaskInvocation init(LayerNormAttrs const &attrs) {
   OpTaskBinding b;
@@ -148,6 +148,7 @@ static DeviceSpecific<LayerNormPerDeviceState>
                       effective_num_elements,
                       attrs.eps));
 }
+    }
 
 static DeviceSpecific<LayerNormPerDeviceState>
     init_task(Task const *task,
@@ -198,40 +199,53 @@ fwd_binding.bind(BETA, input_shape);
 }
 
 template <>
-void register_task<LAYERNORM_INIT_TASK_ID>() {
+OpTaskSignature fwd_signature<LAYERNORM_FWD_TASK_ID>() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+  fwd.add_weight_slot(GAMMA);
+  fwd.add_weight_slot(BETA);
+
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+  fwd.add_unchecked_arg_slot<LayerNormPerDeviceState>(PER_DEVICE_STATE);
+  return fwd;
+}
+
+
+template <>
+OpTaskSignature bwd_signature<AYERNORM_BWD_TASK_ID>()  {
+  OpTaskSignature bwd = infer_bwd_signature(fwd_signature<LAYERNORM_FWD_TASK_ID>());
+  return bwd;
+}
+
+template <>
+OpTaskSignature init_signatur<LAYERNORM_INIT_TASK_ID>()  {
   OpTaskSignature init(OpTaskType::INIT);
   init.add_input_slot(INPUT);
   init.add_arg_slot<LayerNormAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   init.add_return_value<LayerNormPerDeviceState>();
+  return init;
+}
 
-  register_task(LAYERNORM_INIT_TASK_ID, "LayerNorm init", init, init_task);
+template <>
+void register_task<LAYERNORM_INIT_TASK_ID>() {
+
+  register_task(LAYERNORM_INIT_TASK_ID, "LayerNorm init", init_signatur<LAYERNORM_INIT_TASK_ID>(), init_task);
 }
 
 template <>
 void register_task<LAYERNORM_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
-
-  fwd.add_input_slot(INPUT);
-  fwd.add_output_slot(OUTPUT);
-  // todo how to hande gamma and beta, this may have some problem
-  fwd.add_weight_slot(GAMMA);
-  fwd.add_weight_slot(BETA);
-
-  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-  fwd.add_unchecked_arg_slot<LayerNormPerDeviceState>(PER_DEVICE_STATE);
-
-  register_task(LAYERNORM_FWD_TASK_ID, "LayerNorm forward", fwd, forward_task);
+  register_task(LAYERNORM_FWD_TASK_ID, "LayerNorm forward", fwd_signature<LAYERNORM_FWD_TASK_ID>() , forward_task);
 }
 
 template <>
 void register_task<LAYERNORM_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(LAYERNORM_FWD_TASK_ID));
-
   register_task(
-      LAYERNORM_BWD_TASK_ID, "LayerNorm backward", bwd, backward_task);
+      LAYERNORM_BWD_TASK_ID, "LayerNorm backward",  bwd_signatur<AYERNORM_BWD_TASK_ID>() , backward_task);
 }
 
-}; // namespace FlexFlow
+}
+
