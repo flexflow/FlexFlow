@@ -20,6 +20,11 @@ GraphSplit split_pattern(OpenMultiDiGraphView const &pattern);
 
 bool is_singleton_pattern(OpenMultiDiGraphView const &);
 
+bool operator_satisfies(Operator const &params, OperatorPattern const &pattern);
+
+bool parallel_tensor_satisfies(ParallelTensor const &params,
+                               ParallelTensorPattern const &pattern);
+
 bool assignment_satisfies(SubParallelComputationGraph const &,
                           GraphPattern const &,
                           MultiDiGraphPatternMatch const &);

@@ -67,6 +67,7 @@ enum class OperatorAttributeKey {
   SORTED,
   COMBINE_DIM,
   COMBINE_DEGREE,
+  NUM_INPUTS
 };
 
 using OperatorAttributeValue = variant<int,
@@ -80,7 +81,7 @@ using OperatorAttributeValue = variant<int,
                                        unsigned long long,
                                        AggregateOp,
                                        stack_vector<ff_dim_t, MAX_TENSOR_DIM>,
-                                       RegularizerAttrs,
+                                       optional<RegularizerAttrs>,
                                        PoolOp,
                                        TensorShape,
                                        DataType>;

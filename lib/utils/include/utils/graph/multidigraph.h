@@ -2,18 +2,19 @@
 #define _FLEXFLOW_UTILS_GRAPH_MULTIDIGRAPH_H
 
 #include "cow_ptr_t.h"
+#include "digraph.h"
+#include "multidiedge.h"
 #include "multidigraph_interfaces.h"
 #include "node.h"
 
 namespace FlexFlow {
-struct MultiDiGraphView {
+struct MultiDiGraphView : virtual DiGraphView {
 public:
   using Edge = MultiDiEdge;
   using EdgeQuery = MultiDiEdgeQuery;
 
-  operator GraphView() const;
-
-  friend void swap(MultiDiGraphView &, MultiDiGraphView &);
+  MultiDiGraphView(MultiDiGraphView const &) = default;
+  MultiDiGraphView &operator=(MultiDiGraphView const &) = default;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
@@ -22,24 +23,20 @@ public:
   static typename std::enable_if<std::is_base_of<IMultiDiGraphView, T>::value,
                                  MultiDiGraphView>::type
       create(Args &&...args) {
-    return MultiDiGraphView(
-        std::make_shared<T const>(std::forward<Args>(args)...));
+    return MultiDiGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
-  static MultiDiGraphView
-      unsafe_create_without_ownership(IMultiDiGraphView const &);
+protected:
+  using DiGraphView::DiGraphView;
 
 private:
-  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const> ptr);
+  IMultiDiGraphView const &get_ptr() const;
 
   friend struct GraphInternal;
-
-private:
-  std::shared_ptr<IMultiDiGraphView const> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraphView);
 
-struct MultiDiGraph {
+struct MultiDiGraph : virtual MultiDiGraphView {
 public:
   using Edge = MultiDiEdge;
   using EdgeQuery = MultiDiEdgeQuery;
@@ -47,11 +44,6 @@ public:
   MultiDiGraph() = delete;
   MultiDiGraph(MultiDiGraph const &) = default;
   MultiDiGraph &operator=(MultiDiGraph const &) = default;
-
-  operator GraphView() const;
-  operator MultiDiGraphView() const;
-
-  friend void swap(MultiDiGraph &, MultiDiGraph &);
 
   Node add_node();
   NodePort add_node_port();
@@ -73,12 +65,12 @@ public:
   }
 
 private:
-  MultiDiGraph(cow_ptr_t<IMultiDiGraph>);
+  using MultiDiGraphView::MultiDiGraphView;
+
+  IMultiDiGraph const &get_ptr() const;
+  IMultiDiGraph &get_ptr();
 
   friend struct GraphInternal;
-
-private:
-  cow_ptr_t<IMultiDiGraph> ptr;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraph);
 
