@@ -17,7 +17,6 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ParallelDim,
                                              degree,
                                              is_replica_dim);
 
-
 bool is_valid(ParallelDim const &);
 bool is_replica_dim(ParallelDim const &);
 
