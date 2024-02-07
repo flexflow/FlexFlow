@@ -29,7 +29,16 @@ using Legion::Task;
 
 namespace FlexFlow {
 
-enum Slots { PROFILING, INPUT, OUTPUT, GAMMA, BETA, PER_DEVICE_STATE, ATTRS, HANDLE };
+enum Slots {
+  PROFILING,
+  INPUT,
+  OUTPUT,
+  GAMMA,
+  BETA,
+  PER_DEVICE_STATE,
+  ATTRS,
+  HANDLE
+};
 
 OpTaskInvocation init(LayerNormAttrs const &attrs) {
   OpTaskBinding b;
@@ -136,19 +145,19 @@ static DeviceSpecific<LayerNormPerDeviceState>
   int num_replicas = 1;
   for (int i = 0; i < intput.shape.num_dims(); i++) {
     num_replicas *= input.shape.at(legion_dim_t(i));
-  effective_num_elements = M;
-  effective_batch_size = input.shape.get_volume() / M;
+    effective_num_elements = M;
+    effective_batch_size = input.shape.get_volume() / M;
 
-  DeviceSpecific<LayerNormPerDeviceState> per_device_state =
-      acc.create_device_specific<LayerNormPerDeviceState>(
-          init_kernel(handle,
-                      allocator,
-                      attrs.elementwise_affine,
-                      effective_batch_size,
-                      effective_num_elements,
-                      attrs.eps));
+    DeviceSpecific<LayerNormPerDeviceState> per_device_state =
+        acc.create_device_specific<LayerNormPerDeviceState>(
+            init_kernel(handle,
+                        allocator,
+                        attrs.elementwise_affine,
+                        effective_batch_size,
+                        effective_num_elements,
+                        attrs.eps));
+  }
 }
-    }
 
 static DeviceSpecific<LayerNormPerDeviceState>
     init_task(Task const *task,
@@ -184,8 +193,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
 
   // TODO how to handle gamma and beta, where are they from
-fwd_binding.bind(GAMMA, input_shape);
-fwd_binding.bind(BETA, input_shape);
+  fwd_binding.bind(GAMMA, input_shape);
+  fwd_binding.bind(BETA, input_shape);
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
   auto fwd_accessor = env.get_fwd_accessor(LAYERNORM_FWD_TASK_ID, fwd_binding);
@@ -212,15 +221,15 @@ OpTaskSignature fwd_signature<LAYERNORM_FWD_TASK_ID>() {
   return fwd;
 }
 
-
 template <>
-OpTaskSignature bwd_signature<AYERNORM_BWD_TASK_ID>()  {
-  OpTaskSignature bwd = infer_bwd_signature(fwd_signature<LAYERNORM_FWD_TASK_ID>());
+OpTaskSignature bwd_signature<AYERNORM_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(fwd_signature<LAYERNORM_FWD_TASK_ID>());
   return bwd;
 }
 
 template <>
-OpTaskSignature init_signatur<LAYERNORM_INIT_TASK_ID>()  {
+OpTaskSignature init_signature<LAYERNORM_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
   init.add_input_slot(INPUT);
   init.add_arg_slot<LayerNormAttrs>(ATTRS);
@@ -233,19 +242,26 @@ OpTaskSignature init_signatur<LAYERNORM_INIT_TASK_ID>()  {
 template <>
 void register_task<LAYERNORM_INIT_TASK_ID>() {
 
-  register_task(LAYERNORM_INIT_TASK_ID, "LayerNorm init", init_signatur<LAYERNORM_INIT_TASK_ID>(), init_task);
+  register_task(LAYERNORM_INIT_TASK_ID,
+                "LayerNorm init",
+                init_signature<LAYERNORM_INIT_TASK_ID>(),
+                init_task);
 }
 
 template <>
 void register_task<LAYERNORM_FWD_TASK_ID>() {
-  register_task(LAYERNORM_FWD_TASK_ID, "LayerNorm forward", fwd_signature<LAYERNORM_FWD_TASK_ID>() , forward_task);
+  register_task(LAYERNORM_FWD_TASK_ID,
+                "LayerNorm forward",
+                fwd_signature<LAYERNORM_FWD_TASK_ID>(),
+                forward_task);
 }
 
 template <>
 void register_task<LAYERNORM_BWD_TASK_ID>() {
-  register_task(
-      LAYERNORM_BWD_TASK_ID, "LayerNorm backward",  bwd_signatur<AYERNORM_BWD_TASK_ID>() , backward_task);
+  register_task(LAYERNORM_BWD_TASK_ID,
+                "LayerNorm backward",
+                bwd_signature<AYERNORM_BWD_TASK_ID>(),
+                backward_task);
 }
 
-}
-
+} // namespace FlexFlow
