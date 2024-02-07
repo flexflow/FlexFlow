@@ -36,7 +36,8 @@ enum slots {
   BIAS,
   ATTRS,
   PROFILING,
-  HANDLE
+  HANDLE,
+  PER_DEVICE_STATE
 };
 
 OpTaskInvocation init(LinearAttrs const &attrs) {
@@ -243,7 +244,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 }
 
 template <>
-void register_task<LINEAR_INIT_TASK_ID>() {
+OpTaskSignature init_signature<LINEAR_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -255,12 +256,11 @@ void register_task<LINEAR_INIT_TASK_ID>() {
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   init.add_return_value<LinearPerDeviceState>();
-
-  register_task(LINEAR_INIT_TASK_ID, "Linear::init_task", init, init_task);
+  return init,
 }
 
 template <>
-void register_task<LINEAR_FWD_TASK_ID>() {
+OpTaskSignature fwd_signature<LINEAR_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -270,17 +270,40 @@ void register_task<LINEAR_FWD_TASK_ID>() {
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_arg_slot<LinearAttrs>(ATTRS);
-  fwd.add_unchecked_arg_slot<MHAPerDeviceState>(PER_DEVICE_STATE);
+  fwd.add_unchecked_arg_slot<LinearPerDeviceState>(PER_DEVICE_STATE);
+  return fwd;
+}
 
-  register_task(LINEAR_FWD_TASK_ID, "Linear::fwd_task", fwd, forward_task);
+template <>
+OpTaskSignature bwd_signature<LINEAR_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(fwd_signature<LINEAR_BWD_TASK_ID>());
+  return bwd;
+}
+
+template <>
+void register_task<LINEAR_INIT_TASK_ID>() {
+
+  register_task(LINEAR_INIT_TASK_ID,
+                "Linear::init_task",
+                init_signature<LINEAR_INIT_TASK_ID>(),
+                init_task);
+}
+
+template <>
+void register_task<LINEAR_FWD_TASK_ID>() {
+  register_task(LINEAR_FWD_TASK_ID,
+                "Linear::fwd_task",
+                fwd_signature<LINEAR_FWD_TASK_ID>(),
+                forward_task);
 }
 
 template <>
 void register_task<LINEAR_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(LINEAR_FWD_TASK_ID));
-
-  register_task(LINEAR_BWD_TASK_ID, "Linear::bwd_task", bwd, backward_task);
+  register_task(LINEAR_BWD_TASK_ID,
+                "Linear::bwd_task",
+                bwd_signature<LINEAR_BWD_TASK_ID>(),
+                backward_task);
 }
 
 }; // namespace FlexFlow

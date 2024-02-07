@@ -69,7 +69,7 @@ LinearPerDeviceState
 
   // todo: how to use allocator to allocate memory for float * one_ptr, how many
   // bytes to allocate?
-  checkCUDA(cudaMalloc(one_ptr, sizeof(float) * batch_size));
+  checkCUDA(cudaMalloc(&one_ptr, sizeof(float) * batch_size));
   LinearPerDeviceState per_device_state = {handle,
                                            outputTensor,
                                            actiDesc,
