@@ -132,46 +132,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-// template <task_id_t>
-// OpTaskSignature fwd_signature<GATHER_FWD_TASK_ID>() {
-//   OpTaskSignature fwd(OpTaskType::FWD);
-
-//   fwd.add_arg_slot<bool>(PROFILING);
-//   fwd.add_arg_slot<GatherAttrs>(ATTRS);
-
-//   fwd.add_input_slot(INPUT);
-//   fwd.add_output_slot(OUTPUT);
-//   fwd.add_weight_slot(INDEX);
-
-//   return fwd;
-// }
-
-// template <>
-// void register_task<GATHER_FWD_TASK_ID>() {
-//   register_task(GATHER_FWD_TASK_ID,
-//                 "Gather Fwd",
-//                 fwd_signature(),
-//                 forward_task);
-// }
-
-// template <task_id_t>
-// OpTaskSignature bwd_signature<GATHER_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(GATHER_FWD_TASK_ID));
-
-//   return bwd;
-// }
-
-// template <>
-// void register_task<GATHER_BWD_TASK_ID>() {
-//   register_task(GATHER_BWD_TASK_ID,
-//                 "Gather Bwd",
-//                 bwd_signature(),
-//                 backward_task);
-// }
-
-template <>
-void register_task<GATHER_FWD_TASK_ID>() {
+template <task_id_t>
+OpTaskSignature fwd_signature<GATHER_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
@@ -180,15 +142,32 @@ void register_task<GATHER_FWD_TASK_ID>() {
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
   fwd.add_weight_slot(INDEX);
-  register_task(GATHER_FWD_TASK_ID, "Gather Fwd", fwd, forward_task);
+
+  return fwd;
+}
+
+template <>
+void register_task<GATHER_FWD_TASK_ID>() {
+  register_task(GATHER_FWD_TASK_ID,
+                "Gather Fwd",
+                fwd_signature<GATHER_FWD_TASK_ID>(),
+                forward_task);
+}
+
+template <task_id_t>
+OpTaskSignature bwd_signature<GATHER_BWD_TASK_ID>() {
+  OpTaskSignature bwd =
+      infer_bwd_signature(fwd_signature<GATHER_FWD_TASK_ID>());
+
+  return bwd;
 }
 
 template <>
 void register_task<GATHER_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(GATHER_BWD_TASK_ID));
-
-  register_task(GATHER_BWD_TASK_ID, "Gather Bwd", bwd, backward_task);
+  register_task(GATHER_BWD_TASK_ID,
+                "Gather Bwd",
+                bwd_signature<GATHER_BWD_TASK_ID>(),
+                backward_task);
 }
 
 }; // namespace FlexFlow
