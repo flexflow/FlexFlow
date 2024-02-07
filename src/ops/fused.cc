@@ -482,8 +482,13 @@ void FusedOp::init_inference(FFModel const &ff,
     }
     for (int i = 0; i < op_num_outputs[op]; i++) {
       int my_off = op_output_idx[i + ooff];
-      assert(op_output_source[i + ooff] == SOURCE_OUTPUT);
-      my_batch_outputs.push_back(batch_outputs[my_off]);
+      if (op_output_source[i + ooff] == SOURCE_OUTPUT) {
+        my_batch_outputs.push_back(batch_outputs[my_off]);
+      } else if (op_output_source[i + ooff] == SOURCE_INPUT) {
+        my_batch_outputs.push_back(batch_inputs[my_off]);
+      } else {
+        assert(false);
+      }
     }
     ioff += op_num_inputs[op];
     ooff += op_num_outputs[op];
