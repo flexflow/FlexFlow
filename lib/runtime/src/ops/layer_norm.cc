@@ -214,13 +214,13 @@ OpTaskSignature fwd_signature<LAYERNORM_FWD_TASK_ID>() {
 
 
 template <>
-OpTaskSignature bwd_signature<AYERNORM_BWD_TASK_ID>()  {
+OpTaskSignature bwd_signature<LAYERNORM_BWD_TASK_ID>()  {
   OpTaskSignature bwd = infer_bwd_signature(fwd_signature<LAYERNORM_FWD_TASK_ID>());
   return bwd;
 }
 
 template <>
-OpTaskSignature init_signatur<LAYERNORM_INIT_TASK_ID>()  {
+OpTaskSignature init_signature<LAYERNORM_INIT_TASK_ID>()  {
   OpTaskSignature init(OpTaskType::INIT);
   init.add_input_slot(INPUT);
   init.add_arg_slot<LayerNormAttrs>(ATTRS);
@@ -233,7 +233,7 @@ OpTaskSignature init_signatur<LAYERNORM_INIT_TASK_ID>()  {
 template <>
 void register_task<LAYERNORM_INIT_TASK_ID>() {
 
-  register_task(LAYERNORM_INIT_TASK_ID, "LayerNorm init", init_signatur<LAYERNORM_INIT_TASK_ID>(), init_task);
+  register_task(LAYERNORM_INIT_TASK_ID, "LayerNorm init", init_signature<LAYERNORM_INIT_TASK_ID>(), init_task);
 }
 
 template <>
@@ -244,7 +244,7 @@ void register_task<LAYERNORM_FWD_TASK_ID>() {
 template <>
 void register_task<LAYERNORM_BWD_TASK_ID>() {
   register_task(
-      LAYERNORM_BWD_TASK_ID, "LayerNorm backward",  bwd_signatur<AYERNORM_BWD_TASK_ID>() , backward_task);
+      LAYERNORM_BWD_TASK_ID, "LayerNorm backward",  bwd_signature<AYERNORM_BWD_TASK_ID>() , backward_task);
 }
 
 }
