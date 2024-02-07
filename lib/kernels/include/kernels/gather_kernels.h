@@ -8,14 +8,17 @@ namespace FlexFlow {
 
 struct GatherPerDeviceState {
    PerDeviceFFHandle handle;
-   DataType index_data_type;
    int legion_dim;
+   DataType index_data_type;
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GatherPerDeviceState, handle, index_data_type, legion_dim);
 
 namespace Kernels {
 namespace Gather {
+
+ GatherPerDeviceState init_kernel(PerDeviceFFHandle handle, int legion_dim, DataType index_data_type);
+
 void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorR const &index,

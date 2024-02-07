@@ -16,8 +16,8 @@ OpTaskInvocation backward(GatherAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   GatherAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
-                                  ParallelTensorShape const &index_shape,
+                                  InputParallelTensorDesc const &input,
+                                  InputParallelTensorDesc const &index,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);
 } // namespace FlexFlow

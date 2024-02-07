@@ -24,7 +24,7 @@ namespace Gather {
 
  GatherPerDeviceState init_kernel(PerDeviceFFHandle handle, int legion_dim, DataType index_data_type) {
     GatherPerDeviceState per_device_state = {handle, legion_dim, index_data_type};
-    return GatherPerDeviceState;
+    return per_device_state ;
  }
 
 void gather_forward(float const *input_ptr,
