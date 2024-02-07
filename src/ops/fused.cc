@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/fused.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
@@ -87,12 +88,32 @@ FusedOp::FusedOp(FFModel &model, Op *op)
     // weights[i]->owner_idx = i;
     weight_data_types[i] = op->weights[i]->data_type;
   }
-  numOutputs = op->numOutputs;
-  for (int i = 0; i < numOutputs; i++) {
-    outputs[i] = op->outputs[i];
-    outputs[i]->owner_op = this;
-    outputs[i]->owner_idx = i;
-    output_data_types[i] = op->outputs[i]->data_type;
+  numOutputs = 0;
+  for (int i = 0; i < op->numOutputs; i++) {
+    bool found = false;
+    // Handle in-place outputs
+    for (int j = 0; j < numInputs; j++) {
+      if (inputs[j]->region == op->outputs[i]->region) {
+        // This output is one of the inputs
+        assert(!found);
+        assert(inputs[j]->region != LogicalRegion::NO_REGION);
+        op_output_source[i] = SOURCE_INPUT;
+        op_input_idx[i] = j;
+        found = true;
+        break;
+      }
+    }
+    if (found) {
+      // do nothing
+    } else {
+      outputs[numOutputs] = op->outputs[i];
+      output_data_types[numOutputs] = op->outputs[i]->data_type;
+      op_output_source[i] = SOURCE_OUTPUT;
+      op_output_idx[i] = numOutputs;
+      outputs[numOutputs]->owner_op = this;
+      outputs[numOutputs]->owner_idx = numOutputs;
+      numOutputs++;
+    }
   }
   numOperators = 1;
   op_num_inputs[0] = op->numInputs;
@@ -109,10 +130,53 @@ FusedOp::FusedOp(FFModel &model, Op *op)
     op_weight_source[i] = SOURCE_WEIGHT;
     op_weight_idx[i] = i;
   }
-  for (int i = 0; i < numOutputs; i++) {
-    op_output_source[i] = SOURCE_OUTPUT;
-    op_output_idx[i] = i;
+  // for (int i = 0; i < numOutputs; i++) {
+  //   op_output_source[i] = SOURCE_OUTPUT;
+  //   op_output_idx[i] = i;
+  // }
+#if 0
+  int input_offset = 0, weight_offset = 0, output_offset = 0;
+  printf("\nNew fused op: %s (%s), #input:%i, #output:%i, #weights:%i. Fused: "
+         "#inputs=%i, #outputs=%i, #weights=%i\n",
+         op->name,
+         get_operator_type_name(op->op_type).c_str(),
+         op->numInputs,
+         op->numOutputs,
+         op->numWeights,
+         numInputs,
+         numOutputs,
+         numWeights);
+  printf("op_input_idx:\t");
+  for (int i = 0; i < input_offset + op->numInputs; i++) {
+    printf("%i\t", op_input_idx[i]);
   }
+  printf("\n");
+  printf("op_input_source:\t");
+  for (int i = 0; i < input_offset + op->numInputs; i++) {
+    printf("%i\t", op_input_source[i]);
+  }
+  printf("\n");
+  printf("op_output_idx:\t");
+  for (int i = 0; i < output_offset + op->numOutputs; i++) {
+    printf("%i\t", op_output_idx[i]);
+  }
+  printf("\n");
+  printf("op_output_source:\t");
+  for (int i = 0; i < output_offset + op->numOutputs; i++) {
+    printf("%i\t", op_output_source[i]);
+  }
+  printf("\n");
+  printf("op_weight_idx:\t");
+  for (int i = 0; i < weight_offset + op->numWeights; i++) {
+    printf("%i\t", op_weight_idx[i]);
+  }
+  printf("\n");
+  printf("op_weight_source:\t");
+  for (int i = 0; i < weight_offset + op->numWeights; i++) {
+    printf("%i\t", op_weight_source[i]);
+  }
+  printf("\n");
+#endif
 }
 
 bool FusedOp::add_operator(FFModel &model, Op *op) {
@@ -231,6 +295,18 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
         found = true;
         op_output_source[output_offset + i] = SOURCE_OUTPUT;
         op_output_idx[output_offset + i] = j;
+        break;
+      }
+    }
+    for (int j = 0; j < numInputs; j++) {
+      if (inputs[j]->region == op->outputs[i]->region) {
+        // This input is one of my inputs
+        assert(!found);
+        assert(inputs[j]->region != LogicalRegion::NO_REGION);
+        op_output_source[output_offset + i] = SOURCE_INPUT;
+        op_output_idx[output_offset + i] = j;
+        found = true;
+        break;
       }
     }
     if (found) {
@@ -271,6 +347,50 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
             "Reach to the #outputs limit during fusion.\n"
             "Consider increase MAX_NUM_OUTPUTS to allow more fusions.\n");
   }
+
+#if 0
+  printf("\nAdd op: %s (%s), #input:%i, #output:%i, #weights:%i. Fused: "
+         "#inputs=%i, #outputs=%i, #weights=%i\n",
+         op->name,
+         get_operator_type_name(op->op_type).c_str(),
+         op->numInputs,
+         op->numOutputs,
+         op->numWeights,
+         numInputs,
+         numOutputs,
+         numWeights);
+  printf("op_input_idx:\t");
+  for (int i = 0; i < input_offset + op->numInputs; i++) {
+    printf("%i\t", op_input_idx[i]);
+  }
+  printf("\n");
+  printf("op_input_source:\t");
+  for (int i = 0; i < input_offset + op->numInputs; i++) {
+    printf("%i\t", op_input_source[i]);
+  }
+  printf("\n");
+  printf("op_output_idx:\t");
+  for (int i = 0; i < output_offset + op->numOutputs; i++) {
+    printf("%i\t", op_output_idx[i]);
+  }
+  printf("\n");
+  printf("op_output_source:\t");
+  for (int i = 0; i < output_offset + op->numOutputs; i++) {
+    printf("%i\t", op_output_source[i]);
+  }
+  printf("\n");
+  printf("op_weight_idx:\t");
+  for (int i = 0; i < weight_offset + op->numWeights; i++) {
+    printf("%i\t", op_weight_idx[i]);
+  }
+  printf("\n");
+  printf("op_weight_source:\t");
+  for (int i = 0; i < weight_offset + op->numWeights; i++) {
+    printf("%i\t", op_weight_source[i]);
+  }
+  printf("\n");
+#endif
+
   return true;
 }
 
