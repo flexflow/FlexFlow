@@ -608,10 +608,6 @@ FutureMap FusedOp::inference(FFModel const &ff,
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
-  // bc is one of BatchConfig, TreeVerifyBatchConfig, and BeamSearchBatchConfig
-  // so we transfer the maximum of them
-  // size_t batch_config_size =
-  //    std::max(sizeof(TreeVerifyBatchConfig), sizeof(BeamSearchBatchConfig));
   IndexLauncher launcher(FUSEDOP_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),

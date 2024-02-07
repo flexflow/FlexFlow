@@ -3320,7 +3320,7 @@ class FFModel(object):
         self.add_layer(OpType.RMS_NORM, name)
         return Tensor(handle, owner_op_type=OpType.RMS_NORM)
 
-    def residual_rms_norm(self, input1, input2, eps, dim, name=None):
+    def residual_rms_norm(self, input1, input2, eps, dim, inplace_residual=False, name=None):
         """Defines the Residual RMS Norm layer.
 
         :param input: the input 1 Tensor.
@@ -3338,11 +3338,14 @@ class FFModel(object):
         :param name: the name of the layer. Default is None.
         :type name: string
 
+        :param inplace_residual: whether to compute the residual inplace using the input tensor. Default is False.
+        :type inplace_residual: bool
+
         :returns:  Tensor -- the output tensor.
         """
         c_name = get_c_name(name)
         handles_array = ffc().flexflow_model_add_residual_rms_norm(
-            self.handle, input1.handle, input2.handle, eps, dim, c_name
+            self.handle, input1.handle, input2.handle, eps, dim, inplace_residual, c_name
         )
         self.add_layer(OpType.RESIDUAL_RMS_NORM, name)
         return Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_RMS_NORM), Tensor(

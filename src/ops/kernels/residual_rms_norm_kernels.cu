@@ -31,6 +31,7 @@ ResidualRMSNormMeta::ResidualRMSNormMeta(FFHandler handler,
     : OpMeta(handler, rms) {
   eps = rms->eps;
 
+  inplace_residual = rms->inplace_residual;
   in_dim = rms->data_dim;
   batch_size = rms->effective_batch_size;
   num_elements = in_dim * batch_size;
