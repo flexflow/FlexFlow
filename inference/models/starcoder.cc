@@ -92,6 +92,7 @@ void STARCODER::create_starcoder_model(
         true,
         startcoder_config.layer_norm_epsilon,
         true,
+        false,
         DT_NONE,
         std::string("layers_" + std::to_string(i) + "_ln_1").c_str());
     Tensor hidden_states = res_ln_outputs[0];
@@ -140,6 +141,7 @@ void STARCODER::create_starcoder_model(
         true,
         startcoder_config.layer_norm_epsilon,
         true,
+        false,
         DT_NONE,
         std::string("layers_" + std::to_string(i) + "_ln_2").c_str());
     residual = res_ln_outputs[0];
@@ -184,6 +186,7 @@ void STARCODER::create_starcoder_model(
                          true,
                          startcoder_config.layer_norm_epsilon,
                          true,
+                         false,
                          DT_NONE,
                          "transformer_ln_f");
   Tensor ln_f = res_ln_outputs[1];

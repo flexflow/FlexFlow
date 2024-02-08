@@ -90,6 +90,7 @@ void OPT::create_opt_model(FFModel &ff,
         opt_config.layer_norm_elementwise_affine,
         1e-05,
         true,
+        false,
         DT_NONE,
         std::string("layers_" + std::to_string(i) + "_attention_layer_norm")
             .c_str());
@@ -182,6 +183,7 @@ void OPT::create_opt_model(FFModel &ff,
                                     opt_config.layer_norm_elementwise_affine,
                                     1e-05,
                                     true,
+                                    false,
                                     DT_NONE,
                                     std::string("layers_" + std::to_string(i) +
                                                 "_add_bias_residual_layer_norm")
@@ -231,6 +233,7 @@ void OPT::create_opt_model(FFModel &ff,
                          opt_config.layer_norm_elementwise_affine,
                          1e-05,
                          true,
+                         false,
                          DT_NONE,
                          "final_layer_norm");
   Tensor all_final_norm = res_ln_outputs[1];

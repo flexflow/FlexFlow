@@ -13,6 +13,7 @@ struct ResidualLayerNormParams {
   float eps;
   bool use_bias;
   bool use_two_residuals;
+  bool inplace_residual;
   char name[MAX_OPNAME];
   bool is_valid(std::tuple<ParallelTensorShape,
                            ParallelTensorShape,

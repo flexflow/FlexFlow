@@ -1945,6 +1945,7 @@ class FFModel(object):
         elementwise_affine=True,
         eps=1e-5,
         use_bias=True,
+        inplace_residual=False,
         name=None,
     ):
         """Add a fused LayerNorm + Residual layer. This operator uses a single kernel, resulting in 
@@ -1966,6 +1967,8 @@ class FFModel(object):
         :type eps: float, optional
         :param use_bias: Whether to add a beta bias to the LayerNorm result, defaults to True
         :type use_bias: bool, optional
+        :param inplace_residual: Whether to perform the residual computation inplace in the input tensor, defaults to False
+        :type inplace_residual: bool, optional
         :param name: Name of the operator, also used for loading weights in inference mode, defaults to None
         :type name: str, optional
         :return: A tensor with the sum of the input and residual(s), and the LayerNorm output
@@ -1990,6 +1993,7 @@ class FFModel(object):
             elementwise_affine,
             eps,
             use_bias,
+            inplace_residual,
             c_name,
         )
         self.add_layer(OpType.RESIDUAL_LAYERNORM, name)
@@ -2005,6 +2009,7 @@ class FFModel(object):
         elementwise_affine=True,
         eps=1e-5,
         use_bias=True,
+        inplace_residual=False,
         name=None,
     ):
         """Add a Attention Bias + Residual + LayerNorm layer. This operator uses a single kernel, 
@@ -2023,6 +2028,8 @@ class FFModel(object):
         :type eps: float, optional
         :param use_bias: Whether to add a beta bias to the LayerNorm result, defaults to True
         :type use_bias: bool, optional
+        :param inplace_residual: Whether to perform the residual computation inplace in the input tensor, defaults to False
+        :type inplace_residual: bool, optional
         :param name: Name of the operator, also used for loading weights in inference mode, defaults to None
         :type name: _type_, optional
         :return: A tensor with the sum of the attention bias, input and residual(s), and the LayerNorm output
@@ -2039,6 +2046,7 @@ class FFModel(object):
             elementwise_affine,
             eps,
             use_bias,
+            inplace_residual,
             c_name,
         )
         self.add_layer(OpType.ADD_BIAS_RESIDUAL_LAYERNORM, name)

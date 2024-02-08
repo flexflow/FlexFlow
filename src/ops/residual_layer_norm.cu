@@ -36,6 +36,7 @@ ResidualLayerNormMeta::ResidualLayerNormMeta(FFHandler handle,
   profiling = ln->profiling;
   inference_debugging = ln->inference_debugging;
   eps = ln->eps;
+  inplace_residual = ln->inplace_residual;
   DataType data_type = ln->data_type;
   size_t totalSize = effective_batch_size * data_type_size(data_type) * 3;
   gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);

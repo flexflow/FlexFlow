@@ -840,6 +840,7 @@ size_t hash<FlexFlow::ResidualRMSNormParams>::operator()(
   hash_combine(key, params.eps);
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.dim);
+  hash_combine(key, params.inplace_residual);
   return key;
 }
 }; // namespace std

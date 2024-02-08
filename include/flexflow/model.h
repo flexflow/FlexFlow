@@ -579,6 +579,7 @@ public:
                            bool elementwise_affine,
                            float eps,
                            bool use_bias = true,
+                           bool inplace_residual = false,
                            DataType data_type = DT_NONE,
                            char const *name = NULL);
   // Add a add_bias_residual_layer_norm layer
@@ -589,6 +590,7 @@ public:
                                     bool elementwise_affine,
                                     float eps,
                                     bool use_bias = true,
+                                    bool inplace_residual = false,
                                     DataType data_type = DT_NONE,
                                     char const *name = NULL);
   // Add a sigmoid_silu_multi layer

@@ -270,6 +270,7 @@ flexflow_tensor_t *
                                            bool elementwise_affine,
                                            float eps,
                                            bool use_bias,
+                                           bool inplace_residual,
                                            char const *name);
 
 flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
@@ -281,6 +282,7 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
     bool elementwise_affine,
     float eps,
     bool use_bias,
+    bool inplace_residual,
     char const *name);
 
 flexflow_tensor_t
