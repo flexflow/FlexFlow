@@ -10,10 +10,16 @@ namespace FlexFlow {
 
 struct ElementUnaryAttrs {
   req<Op> op_type;
-  req<float> scalar;
+  float scalar;
 };
-FF_VISITABLE_STRUCT(ElementUnaryAttrs, op_type, scalar);
+FF_VISITABLE_STRUCT(ElementUnaryAttrs, op_type);
 CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
+
+struct ElementScalarUnaryAttrs : ElementUnaryAttrs {
+  req<float> scalar;
+}
+FF_VISITABLE_STRUCT(ElementScalarUnaryAttrs, op_type, sclar);
+CHECK_VALID_OP_ATTR(ElementScalarUnaryAttrs);
 
 } // namespace FlexFlow
 
