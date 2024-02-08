@@ -12,27 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+"""
+Running Instructions:
+- To run this FastAPI application, make sure you have FastAPI and Uvicorn installed.
+- Save this script as 'fastapi_specinfer.py'.
+- Run the application using the command: `uvicorn fastapi_specinfer:app --reload --port PORT_NUMBER`
+- The server will start on `http://localhost:PORT_NUMBER`. Use this base URL to make API requests.
+- Go to `http://localhost:PORT_NUMBER/docs` for API documentation.
+"""
+
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 import flexflow.serve as ff
-import argparse, json, os
+import uvicorn
+import json, os, argparse
 from types import SimpleNamespace
 
+# Initialize FastAPI application
+app = FastAPI()
+
+# Define the request model
+class PromptRequest(BaseModel):
+    prompt: str
+
+# Global variable to store the LLM model
+llm = None
 
 def get_configs():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-config-file",
-        help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
-        type=str,
-        default="",
-    )
-    args = parser.parse_args()
+    # Fetch configuration file path from environment variable
+    config_file = os.getenv("CONFIG_FILE", "")
 
     # Load configs from JSON file (if specified)
-    if len(args.config_file) > 0:
-        if not os.path.isfile(args.config_file):
-            raise FileNotFoundError(f"Config file {args.config_file} not found.")
+    if config_file:
+        if not os.path.isfile(config_file):
+            raise FileNotFoundError(f"Config file {config_file} not found.")
         try:
-            with open(args.config_file) as f:
+            with open(config_file) as f:
                 return json.load(f)
         except json.JSONDecodeError as e:
             print("JSON format error:")
@@ -82,12 +99,14 @@ def get_configs():
         ff_init_configs.update(llm_configs)
         return ff_init_configs
 
+# Initialize model on startup
+@app.on_event("startup")
+async def startup_event():
+    global llm
 
-def main():
+    # Initialize your LLM model configuration here
     configs_dict = get_configs()
     configs = SimpleNamespace(**configs_dict)
-
-    # Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
     ff.init(configs_dict)
 
     # Create the FlexFlow LLM
@@ -143,14 +162,41 @@ def main():
     
     llm.start_server()
 
-    if len(configs.prompt) > 0:
-        prompts = [s for s in json.load(open(configs.prompt))]
-        results = llm.generate(prompts)
-    else:
-        result = llm.generate("Three tips for staying healthy are: ")
-        
-    llm.stop_server()
+# API endpoint to generate response
+@app.post("/generate/")
+async def generate(prompt_request: PromptRequest):
+    if llm is None:
+        raise HTTPException(status_code=503, detail="LLM model is not initialized.")
+    
+    # Call the model to generate a response
+    full_output = llm.generate([prompt_request.prompt])[0].output_text.decode('utf-8')
 
+    # Separate the prompt and response
+    split_output = full_output.split('\n', 1)
+    if len(split_output) > 1:
+        response_text = split_output[1] 
+    else:
+        response_text = "" 
+        
+    # Return the prompt and the response in JSON format
+    return {
+        "prompt": prompt_request.prompt,
+        "response": response_text
+    }
+    
+# Shutdown event to stop the model server
+@app.on_event("shutdown")
+async def shutdown_event():
+    global llm
+    if llm is not None:
+        llm.stop_server()
+
+# Main function to run Uvicorn server
 if __name__ == "__main__":
-    print("flexflow inference example (speculative inference)")
-    main()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# Running within the entrypoint folder:
+# uvicorn fastapi_specinfer:app --reload --port
+
+# Running within the python folder:
+# uvicorn entrypoint.fastapi_specinfer:app --reload --port 3000
