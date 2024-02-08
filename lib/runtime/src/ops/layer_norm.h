@@ -20,7 +20,7 @@ OpTaskInvocation backward(LayerNormAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   LayerNormAttrs const &,
-                                  ParallelTensorShape const &input_shape,
+                                  InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);
 
