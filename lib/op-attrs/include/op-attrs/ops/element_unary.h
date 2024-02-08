@@ -10,7 +10,7 @@ namespace FlexFlow {
 
 struct ElementUnaryAttrs {
   req<Op> op_type;
-  float scalar;
+  req<optional<float>> scalar;
 };
 FF_VISITABLE_STRUCT(ElementUnaryAttrs, op_type, scalar);
 CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
