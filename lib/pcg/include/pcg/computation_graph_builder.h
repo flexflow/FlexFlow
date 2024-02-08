@@ -246,10 +246,9 @@ private:
                               Tensor const &input,
                               float scalar,
                               optional<std::string> const &name = nullopt);
-  Tensor
-      element_unary(ElementUnaryAttrs const &,
-                    Tensor const &input,
-                    optional<std::string> const &name = nullopt);
+  Tensor element_unary(ElementUnaryAttrs const &,
+                       Tensor const &input,
+                       optional<std::string> const &name = nullopt);
 
 public:
   ComputationGraph computation_graph;
