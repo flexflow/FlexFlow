@@ -1157,14 +1157,19 @@ __host__ void
                             Context ctx,
                             Runtime *runtime) {
   // create new cuda graph
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   cudaGraph_t graph;
   cudaGraphExec_t instance;
-
+  FusedOpMeta *metas = *((FusedOpMeta **)task->local_args);
+   cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  FusedOp const *fused = metas->fused_op;
   std::tuple<int, int, bool> graph_params =
       std::make_tuple(bc->num_active_requests(),
                       bc->num_active_tokens(),
                       bc->num_generation_tokens > 0);
   int scenario = 0;
+  cudaEvent_t t_start_update, t_end_update;
   int shard_id = task->index_point.point_data[0];
   auto it = metas->graph_collections.find(graph_params);
   if(it != metas->graph_collections.end()) {
@@ -1202,7 +1207,7 @@ __host__ void
         cudaEventCreate(&t_end_instantiate);
         cudaEventRecord(t_start_instantiate, stream);
 
-        capture_graph(task, regions, ctx, runtime, graph, instance, metas, fused, stream, graph_params, scenario);
+        capture_graph(task, regions, ctx, runtime, graph, instance);
         cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
 
         cudaEventRecord(t_end_instantiate, stream);
@@ -1220,7 +1225,7 @@ __host__ void
         cudaEventCreate(&t_end_instantiate);
         cudaEventRecord(t_start_instantiate, stream);
 
-        capture_graph(task, regions, ctx, runtime, graph, instance, metas, fused, stream, graph_params, scenario);
+        capture_graph(task, regions, ctx, runtime, graph, instance);
         cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
 
         cudaEventRecord(t_end_instantiate, stream);
@@ -1236,7 +1241,7 @@ __host__ void
   assert(metas->graph_collections.find(graph_params) !=
          metas->graph_collections.end());
   cudaGraphDestroy(graph);
-  printf("[%d]FUSED_OP.SCENARIO: %d, %d\n", shard_id, scenario, fused->numOperators);
+//  printf("[%d]FUSED_OP.SCENARIO: %d, %d\n", shard_id, scenario, fused->numOperators);
 
   cudaEvent_t t_start_launch, t_end_launch;
   cudaEventCreate(&t_start_launch);

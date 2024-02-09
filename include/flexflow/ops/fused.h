@@ -97,7 +97,7 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
-  void capture_graph(Task const *task,
+  static void capture_graph(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime,  cudaGraph_t& graph, cudaGraphExec_t& instance);
