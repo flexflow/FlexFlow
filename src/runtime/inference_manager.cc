@@ -613,7 +613,9 @@ void FFModel::compile_inference() {
         // We should not reset input grads since other operators have already
         // saved gradients into the region
         op->reset_input_grads[i] = false;
-      } else if (i == 0 && (op->op_type == OP_RESIDUAL_LAYERNORM || op->op_type == OP_RESIDUAL_RMS_NORM || op->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM)) {
+      } else if (i == 0 && (op->op_type == OP_RESIDUAL_LAYERNORM ||
+                            op->op_type == OP_RESIDUAL_RMS_NORM ||
+                            op->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM)) {
         if (reset_inputs.find(op->outputs[0]->region) != reset_inputs.end()) {
           reset_inputs.insert(op->inputs[0]->region);
           op->reset_input_grads[0] = false;

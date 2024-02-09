@@ -482,13 +482,13 @@ void ResidualRMSNorm::inference_task(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
-  assert(task->regions.size() == 4);
-  assert(regions.size() == 4);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
   }
   ResidualRMSNormMeta *m = *((ResidualRMSNormMeta **)task->local_args);
+  assert(task->regions.size() == 5 - m->inplace_residual);
+  assert(regions.size() == 5 - m->inplace_residual);
   GenericTensorAccessorR input1 = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR input2 = helperGetGenericTensorAccessorRO(

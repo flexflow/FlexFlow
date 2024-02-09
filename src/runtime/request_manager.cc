@@ -2077,6 +2077,15 @@ bool is_peft_operator_type(OperatorType type) {
 
 PEFTModelID FFModel::register_peft_model(LoraLinearConfig const mlp_first,
                                          LoraLinearConfig const mlp_second) {
+  if (!(mlp_first == LoraLinearConfig::DefaultConfig &&
+        mlp_second == LoraLinearConfig::DefaultConfig)) {
+    if (!config.enable_peft) {
+      fprintf(stderr,
+              "Error: trying to register PEFT model, but peft mode is not "
+              "enabled.\n");
+      assert(false);
+    }
+  }
   PEFTModelID peft_model_id(peft_model_global_guid++);
   InferenceManager *im = InferenceManager::get_inference_manager();
   std::vector<Op *> peft_operators;
