@@ -406,6 +406,11 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void
+      finish_nccl_comms_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
 #endif
 protected:
   void set_argumentmap_for_init(FFModel const &ff, Legion::ArgumentMap &argmap);

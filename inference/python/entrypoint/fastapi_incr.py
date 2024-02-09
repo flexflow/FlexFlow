@@ -12,27 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+"""
+Running Instructions:
+- To run this FastAPI application, make sure you have FastAPI and Uvicorn installed.
+- Save this script as 'fastapi_incr.py'.
+- Run the application using the command: `uvicorn fastapi_incr:app --reload --port PORT_NUMBER`
+- The server will start on `http://localhost:PORT_NUMBER`. Use this base URL to make API requests.
+- Go to `http://localhost:PORT_NUMBER/docs` for API documentation.
+"""
+
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 import flexflow.serve as ff
-import argparse, json, os
+import uvicorn
+import json, os, argparse
 from types import SimpleNamespace
+
+# Initialize FastAPI application
+app = FastAPI()
+
+# Define the request model
+class PromptRequest(BaseModel):
+    prompt: str
+
+# Global variable to store the LLM model
+llm = None
 
 
 def get_configs():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-config-file",
-        help="The path to a JSON file with the configs. If omitted, a sample model and configs will be used instead.",
-        type=str,
-        default="",
-    )
-    args = parser.parse_args()
+    
+    # Fetch configuration file path from environment variable
+    config_file = os.getenv("CONFIG_FILE", "")
 
     # Load configs from JSON file (if specified)
-    if len(args.config_file) > 0:
-        if not os.path.isfile(args.config_file):
-            raise FileNotFoundError(f"Config file {args.config_file} not found.")
+    if config_file:
+        if not os.path.isfile(config_file):
+            raise FileNotFoundError(f"Config file {config_file} not found.")
         try:
-            with open(args.config_file) as f:
+            with open(config_file) as f:
                 return json.load(f)
         except json.JSONDecodeError as e:
             print("JSON format error:")
@@ -71,19 +90,19 @@ def get_configs():
         # Merge dictionaries
         ff_init_configs.update(llm_configs)
         return ff_init_configs
+    
 
+# Initialize model on startup
+@app.on_event("startup")
+async def startup_event():
+    global llm
 
-def main():
+    # Initialize your LLM model configuration here
     configs_dict = get_configs()
     configs = SimpleNamespace(**configs_dict)
-
-    # Initialize the FlexFlow runtime. ff.init() takes a dictionary or the path to a JSON file with the configs
     ff.init(configs_dict)
 
-    # Create the FlexFlow LLM
-    ff_data_type = (
-        ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
-    )
+    ff_data_type = ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
     llm = ff.LLM(
         configs.llm_model,
         data_type=ff_data_type,
@@ -92,7 +111,6 @@ def main():
         output_file=configs.output_file,
     )
 
-    # Compile the LLM for inference and load the weights into memory
     generation_config = ff.GenerationConfig(
         do_sample=False, temperature=0.9, topp=0.8, topk=1
     )
@@ -102,18 +120,43 @@ def main():
         max_seq_length=256,
         max_tokens_per_batch=64,
     )
-    
     llm.start_server()
+
+# API endpoint to generate response
+@app.post("/generate/")
+async def generate(prompt_request: PromptRequest):
+    if llm is None:
+        raise HTTPException(status_code=503, detail="LLM model is not initialized.")
     
-    if len(configs.prompt) > 0:
-        prompts = [s for s in json.load(open(configs.prompt))]
-        results = llm.generate(prompts)
+    # Call the model to generate a response
+    full_output = llm.generate([prompt_request.prompt])[0].output_text.decode('utf-8')
+    
+    # Separate the prompt and response
+    split_output = full_output.split('\n', 1)
+    if len(split_output) > 1:
+        response_text = split_output[1] 
     else:
-        result = llm.generate("Three tips for staying healthy are: ")
+        response_text = "" 
         
-    llm.stop_server()
+    # Return the prompt and the response in JSON format
+    return {
+        "prompt": prompt_request.prompt,
+        "response": response_text
+    }
+    
+# Shutdown event to stop the model server
+@app.on_event("shutdown")
+async def shutdown_event():
+    global llm
+    if llm is not None:
+        llm.stop_server()
 
-
+# Main function to run Uvicorn server
 if __name__ == "__main__":
-    print("flexflow inference example (incremental decoding)")
-    main()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# Running within the entrypoint folder:
+# uvicorn fastapi_incr:app --reload --port
+
+# Running within the python folder:
+# uvicorn entrypoint.fastapi_incr:app --reload --port 3000
