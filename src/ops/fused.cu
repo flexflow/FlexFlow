@@ -630,6 +630,7 @@ __host__ void
     update_failed = (updateResult != cudaGraphExecUpdateSuccess);
 #else
     cudaError_t update_result = cudaGraphExecUpdate(instance, graph, NULL);
+    checkCUDA(update_result);
     update_failed = (update_result != cudaSuccess);
 #endif
 
