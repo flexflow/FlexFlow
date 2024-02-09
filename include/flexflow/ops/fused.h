@@ -85,6 +85,10 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
+  void capture_graph(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime,  cudaGraph_t& graph, cudaGraphExec_t& instance);
 public:
   FFIterationConfig iter_config;
   int op_num_inputs[MAX_NUM_FUSED_OPERATORS];
