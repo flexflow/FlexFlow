@@ -3,6 +3,7 @@
 
 #include "flexflow/batch_config.h"
 #include "flexflow/model.h"
+#include "graph_params.h"
 
 namespace FlexFlow {
 
@@ -31,10 +32,10 @@ public:
   int numOperators;
   bool graphCaptured=false;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  std::unordered_map<std::tuple<int, int, bool>, cudaGraphExec_t>
+  std::unordered_map<GraphParams, cudaGraphExec_t>
       graph_collections;
 #else
-  std::unordered_map<std::tuple<int, int, bool>, hipGraphExec_t>
+  std::unordered_map<GraphParams, hipGraphExec_t>
       graph_collections;
 #endif
 };
@@ -96,7 +97,7 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-                             
+
 public:
   FFIterationConfig iter_config;
   int op_num_inputs[MAX_NUM_FUSED_OPERATORS];
@@ -118,5 +119,9 @@ public:
 };
 
 }; // namespace FlexFlow
+
+
+
+
 
 #endif

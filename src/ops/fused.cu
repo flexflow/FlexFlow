@@ -607,10 +607,9 @@ __host__ void
   cudaGraphExec_t instance;
 
 
-  std::tuple<int, int, bool> graph_params =
-      std::make_tuple(bc->num_active_requests(),
+  GraphParams graph_params = {bc->num_active_requests(),
                       bc->num_active_tokens(),
-                      bc->num_generation_tokens > 0);
+                      bc->num_generation_tokens > 0};
   printf("******graph_params: %d %d %d\n", bc->num_active_requests(), bc->num_active_tokens(), bc->num_generation_tokens);
   int scenario = 0;
   cudaEvent_t t_start_update, t_end_update;
