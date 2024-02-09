@@ -644,7 +644,7 @@ __host__ void
     if (update_failed) {
         cudaGraphExecDestroy(instance);
      //  capture_graph(task, regions, ctx, runtime, graph, instance);
-         {
+         /*{
             cudaEvent_t t_start_capture, t_end_capture;
             cudaEventCreate(&t_start_capture);
             cudaEventCreate(&t_end_capture);
@@ -1196,7 +1196,7 @@ __host__ void
             printf("[%d]FUSED_OP.CAPTURE: %f\n", shard_id, elapsed_capture);
 
 
-       }
+       }*/
         cudaEvent_t t_start_instantiate, t_end_instantiate;
         cudaEventCreate(&t_start_instantiate);
         cudaEventCreate(&t_end_instantiate);
@@ -1764,8 +1764,6 @@ __host__ void
             cudaEventDestroy(t_start_capture);
             cudaEventDestroy(t_end_capture);
             printf("[%d]FUSED_OP.CAPTURE: %f\n", shard_id, elapsed_capture);
-
-
        }
         cudaEvent_t t_start_instantiate, t_end_instantiate;
         cudaEventCreate(&t_start_instantiate);
