@@ -1144,7 +1144,7 @@ __host__ void FusedOp::capture_graph(Task const *task,
   checkCUDA(cudaEventElapsedTime(&elapsed_capture, t_start_capture, t_end_capture));
   cudaEventDestroy(t_start_capture);
   cudaEventDestroy(t_end_capture);
-  printf("[%d]FUSED_OP.CAPTURE: %f\n", shard_id, elapsed_capture);
+  //printf("[%d]FUSED_OP.CAPTURE: %f\n", shard_id, elapsed_capture);
 }
 /*
   regions[...](I): inputs
@@ -1196,7 +1196,7 @@ __host__ void
     checkCUDA(cudaEventElapsedTime(&elapsed_update, t_start_update, t_end_update));
     cudaEventDestroy(t_start_update);
     cudaEventDestroy(t_end_update);
-    printf("[%d]FUSED_OP.UPDATE: %f\n", shard_id, elapsed_update);
+   // printf("[%d]FUSED_OP.UPDATE: %f\n", shard_id, elapsed_update);
     scenario = 1;
     if (update_failed) {
         cudaGraphExecDestroy(instance);
@@ -1216,7 +1216,7 @@ __host__ void
         checkCUDA(cudaEventElapsedTime(&elapsed_instantiate, t_start_instantiate, t_end_instantiate));
         cudaEventDestroy(t_start_instantiate);
         cudaEventDestroy(t_end_instantiate);
-        printf("[%d]1 FUSED_OP.INSTANTIATE: %f\n", shard_id, elapsed_instantiate);
+       // printf("[%d]1 FUSED_OP.INSTANTIATE: %f\n", shard_id, elapsed_instantiate);
         scenario = 2;
     } 
   } else {
@@ -1234,7 +1234,7 @@ __host__ void
         checkCUDA(cudaEventElapsedTime(&elapsed_instantiate, t_start_instantiate, t_end_instantiate));
         cudaEventDestroy(t_start_instantiate);
         cudaEventDestroy(t_end_instantiate);
-        printf("[%d]2 FUSED_OP.INSTANTIATE: %f\n", shard_id, elapsed_instantiate);
+      //  printf("[%d]2 FUSED_OP.INSTANTIATE: %f\n", shard_id, elapsed_instantiate);
   }
 
   metas->graph_collections[graph_params] = instance;
@@ -1256,7 +1256,7 @@ __host__ void
   checkCUDA(cudaEventElapsedTime(&elapsed_launch, t_start_launch, t_end_launch));
   cudaEventDestroy(t_start_launch);
   cudaEventDestroy(t_end_launch);
-  printf("[%d]FUSED_OP.LAUNCH: %f\n", shard_id, elapsed_launch);
+ // printf("[%d]FUSED_OP.LAUNCH: %f\n", shard_id, elapsed_launch);
 
   // check if graph exists
   /*if (metas->graph_collections.find(graph_params) !=
