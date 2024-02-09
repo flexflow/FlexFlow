@@ -1745,10 +1745,10 @@ __host__ void
               ooff += fused->op_num_outputs[op];
               
               clock_t current_timer = clock();
-              printf("[%d]FUSED_OP.OP: %s, %lf\n",
-                    shard_id,
-                    get_operator_type_name(fused->op_op_type[op]).c_str(),
-                    (double)(current_timer - last_timer) / CLOCKS_PER_SEC);
+              // printf("[%d]FUSED_OP.OP: %s, %lf\n",
+              //       shard_id,
+              //       get_operator_type_name(fused->op_op_type[op]).c_str(),
+              //       (double)(current_timer - last_timer) / CLOCKS_PER_SEC);
               last_timer = current_timer;
             }
             // for (int i = 0; i < fused->numOutputs; i++)
@@ -1763,7 +1763,7 @@ __host__ void
             checkCUDA(cudaEventElapsedTime(&elapsed_capture, t_start_capture, t_end_capture));
             cudaEventDestroy(t_start_capture);
             cudaEventDestroy(t_end_capture);
-            printf("[%d]FUSED_OP.CAPTURE: %f\n", shard_id, elapsed_capture);
+          //  printf("[%d]FUSED_OP.CAPTURE: %f\n", shard_id, elapsed_capture);
        }
         cudaEvent_t t_start_instantiate, t_end_instantiate;
         cudaEventCreate(&t_start_instantiate);
@@ -1798,7 +1798,7 @@ __host__ void
   checkCUDA(cudaEventElapsedTime(&elapsed_launch, t_start_launch, t_end_launch));
   cudaEventDestroy(t_start_launch);
   cudaEventDestroy(t_end_launch);
-  //cudaGraphDestroy(graph);
+  cudaGraphDestroy(graph);
  // printf("[%d]FUSED_OP.LAUNCH: %f\n", shard_id, elapsed_launch);
 
   // check if graph exists
