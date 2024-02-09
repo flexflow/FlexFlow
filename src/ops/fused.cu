@@ -1128,12 +1128,12 @@ __host__ void FusedOp::capture_graph(Task const *task,
     woff += fused->op_num_weights[op];
     ooff += fused->op_num_outputs[op];
     
-    clock_t current_timer = clock();
-    printf("[%d]FUSED_OP.OP: %s, %lf\n",
-           shard_id,
-           get_operator_type_name(fused->op_op_type[op]).c_str(),
-           (double)(current_timer - last_timer) / CLOCKS_PER_SEC);
-    last_timer = current_timer;
+    // clock_t current_timer = clock();
+    // printf("[%d]FUSED_OP.OP: %s, %lf\n",
+    //        shard_id,
+    //        get_operator_type_name(fused->op_op_type[op]).c_str(),
+    //        (double)(current_timer - last_timer) / CLOCKS_PER_SEC);
+    // last_timer = current_timer;
   }
 
   cudaStreamEndCapture(stream, &graph);
