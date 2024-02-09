@@ -611,6 +611,7 @@ __host__ void
       std::make_tuple(bc->num_active_requests(),
                       bc->num_active_tokens(),
                       bc->num_generation_tokens > 0);
+  printf("******graph_params: %d %d %d\n", bc->num_active_requests(), bc->num_active_tokens(), bc->num_generation_tokens);
   int scenario = 0;
   cudaEvent_t t_start_update, t_end_update;
   int shard_id = task->index_point.point_data[0];
@@ -1231,7 +1232,7 @@ __host__ void
 
 //  printf("[%d]FUSED_OP.SCENARIO: %d, %d\n", shard_id, scenario, fused->numOperators);
 
-  cudaGraphDestroy(graph);
+  
   cudaEvent_t t_start_launch, t_end_launch;
   cudaEventCreate(&t_start_launch);
   cudaEventCreate(&t_end_launch);
@@ -1245,6 +1246,7 @@ __host__ void
   checkCUDA(cudaEventElapsedTime(&elapsed_launch, t_start_launch, t_end_launch));
   cudaEventDestroy(t_start_launch);
   cudaEventDestroy(t_end_launch);
+  //cudaGraphDestroy(graph);
   
  // printf("[%d]FUSED_OP.LAUNCH: %f\n", shard_id, elapsed_launch);
 
