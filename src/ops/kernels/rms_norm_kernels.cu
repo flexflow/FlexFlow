@@ -217,6 +217,8 @@ void inference_kernel_wrapper(RMSNormMeta *m,
         num_peft_requests++;
       }
     }
+    int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+    int tokens_previous_requests = 0;
     assert(num_peft_requests <= 1);
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {
       if (bc->request_completed[i]) {
