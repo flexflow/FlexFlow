@@ -630,7 +630,7 @@ __host__ void
     update_failed = (updateResult != cudaGraphExecUpdateSuccess);
 #else
     cudaError_t update_result = cudaGraphExecUpdate(instance, graph, NULL);
-    checkCUDA(update_result);
+   // checkCUDA(update_result);
     update_failed = (update_result != cudaSuccess);
 #endif
 
@@ -644,7 +644,6 @@ __host__ void
     scenario = 1;
     if (update_failed) {
         cudaGraphExecDestroy(instance);
-     //  capture_graph(task, regions, ctx, runtime, graph, instance);
          /*{
             cudaEvent_t t_start_capture, t_end_capture;
             cudaEventCreate(&t_start_capture);
@@ -1786,11 +1785,12 @@ __host__ void
 
 //  printf("[%d]FUSED_OP.SCENARIO: %d, %d\n", shard_id, scenario, fused->numOperators);
 
+  cudaGraphDestroy(graph);
   cudaEvent_t t_start_launch, t_end_launch;
   cudaEventCreate(&t_start_launch);
   cudaEventCreate(&t_end_launch);
   cudaEventRecord(t_start_launch, stream);
-
+  
   cudaGraphLaunch(instance, stream);
 
   cudaEventRecord(t_end_launch, stream);
@@ -1799,7 +1799,7 @@ __host__ void
   checkCUDA(cudaEventElapsedTime(&elapsed_launch, t_start_launch, t_end_launch));
   cudaEventDestroy(t_start_launch);
   cudaEventDestroy(t_end_launch);
-  cudaGraphDestroy(graph);
+  
  // printf("[%d]FUSED_OP.LAUNCH: %f\n", shard_id, elapsed_launch);
 
   // check if graph exists
