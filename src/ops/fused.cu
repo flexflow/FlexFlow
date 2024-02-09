@@ -606,17 +606,28 @@ __host__ void
   cudaGraph_t graph;
   cudaGraphExec_t instance;
 
-
+  std::string graph_name = "";
+  for (int op = 0; op < fused->numOperators; op++) {
+    graph_name += get_operator_type_name(fused->op_op_type[op]);
+    if(op < fused->numOperators - 1)
+      graph_name += " ";
+  }
   GraphParams graph_params = {bc->num_active_requests(),
                       bc->num_active_tokens(),
-                      bc->num_generation_tokens > 0};
-  printf("******graph_params: %d %d %d\n", bc->num_active_requests(), bc->num_active_tokens(), bc->num_generation_tokens);
+                      bc->num_generation_tokens > 0, graph_name};
+  // graph_params.Print();
+  // printf("**********\n");
   int scenario = 0;
   cudaEvent_t t_start_update, t_end_update;
   int shard_id = task->index_point.point_data[0];
-  auto it = metas->graph_collections.find(graph_params);
-  if(it != metas->graph_collections.end()) {
-    instance = it->second;
+  //auto it = metas->graph_collections.find(graph_params);
+  // for(auto it = metas->graph_collections.begin(); it != metas->graph_collections.end(); it++) {
+  //     it->first.Print();
+  // }  
+  if(metas->graph_collections.count(graph_params) != 0) {
+ //   graph_params.Print();
+
+    instance = metas->graph_collections[graph_params];
 
     cudaEventCreate(&t_start_update);
     cudaEventCreate(&t_end_update);
@@ -630,7 +641,6 @@ __host__ void
     update_failed = (updateResult != cudaGraphExecUpdateSuccess);
 #else
     cudaError_t update_result = cudaGraphExecUpdate(instance, graph, NULL);
-   // checkCUDA(update_result);
     update_failed = (update_result != cudaSuccess);
 #endif
 
@@ -640,7 +650,7 @@ __host__ void
     checkCUDA(cudaEventElapsedTime(&elapsed_update, t_start_update, t_end_update));
     cudaEventDestroy(t_start_update);
     cudaEventDestroy(t_end_update);
-   // printf("[%d]FUSED_OP.UPDATE: %f\n", shard_id, elapsed_update);
+    printf("shared:[%d]FUSED_OP.UPDATE: %f\n", shard_id, elapsed_update);
     scenario = 1;
     if (update_failed) {
         cudaGraphExecDestroy(instance);
@@ -656,7 +666,8 @@ __host__ void
         checkCUDA(cudaEventElapsedTime(&elapsed_instantiate, t_start_instantiate, t_end_instantiate));
         cudaEventDestroy(t_start_instantiate);
         cudaEventDestroy(t_end_instantiate);
-       // printf("[%d]1 FUSED_OP.INSTANTIATE: %f\n", shard_id, elapsed_instantiate);
+        printf("shard:[%d]1 FUSED_OP.INSTANTIATE: %f\n", shard_id, elapsed_instantiate);
+        metas->graph_collections[graph_params] = instance;
         scenario = 2;
     } 
   } else {
@@ -1191,10 +1202,10 @@ __host__ void
               ooff += fused->op_num_outputs[op];
               
               clock_t current_timer = clock();
-              // printf("[%d]FUSED_OP.OP: %s, %lf\n",
-              //       shard_id,
-              //       get_operator_type_name(fused->op_op_type[op]).c_str(),
-              //       (double)(current_timer - last_timer) / CLOCKS_PER_SEC);
+              printf("shard:[%d] FUSED_OP.OP: %s, %lf\n",
+                    shard_id,
+                    get_operator_type_name(fused->op_op_type[op]).c_str(),
+                    (double)(current_timer - last_timer) / CLOCKS_PER_SEC);
               last_timer = current_timer;
             }
             // for (int i = 0; i < fused->numOutputs; i++)
@@ -1209,7 +1220,7 @@ __host__ void
             checkCUDA(cudaEventElapsedTime(&elapsed_capture, t_start_capture, t_end_capture));
             cudaEventDestroy(t_start_capture);
             cudaEventDestroy(t_end_capture);
-          //  printf("[%d]FUSED_OP.CAPTURE: %f\n", shard_id, elapsed_capture);
+            printf("shard:[%d]FUSED_OP.CAPTURE: %f\n", shard_id, elapsed_capture);
        }
         cudaEvent_t t_start_instantiate, t_end_instantiate;
         cudaEventCreate(&t_start_instantiate);
@@ -1222,14 +1233,15 @@ __host__ void
         checkCUDA(cudaEventElapsedTime(&elapsed_instantiate, t_start_instantiate, t_end_instantiate));
         cudaEventDestroy(t_start_instantiate);
         cudaEventDestroy(t_end_instantiate);
-      //  printf("[%d]2 FUSED_OP.INSTANTIATE: %f\n", shard_id, elapsed_instantiate);
+        printf("shard:[%d]2 FUSED_OP.INSTANTIATE: %f\n", shard_id, elapsed_instantiate);
+        metas->graph_collections[graph_params] = instance;
   }
 
   metas->graph_collections[graph_params] = instance;
   assert(metas->graph_collections.find(graph_params) !=
          metas->graph_collections.end());
 
-//  printf("[%d]FUSED_OP.SCENARIO: %d, %d\n", shard_id, scenario, fused->numOperators);
+ printf("shard: [%d]FUSED_OP.SCENARIO: %d, %d\n", shard_id, scenario, fused->numOperators);
 
   
   cudaEvent_t t_start_launch, t_end_launch;
@@ -1247,7 +1259,7 @@ __host__ void
   cudaEventDestroy(t_end_launch);
   //cudaGraphDestroy(graph);
   
- // printf("[%d]FUSED_OP.LAUNCH: %f\n", shard_id, elapsed_launch);
+ printf("shard [%d]FUSED_OP.LAUNCH: %f\n", shard_id, elapsed_launch);
 
   // check if graph exists
   /*if (metas->graph_collections.find(graph_params) !=
