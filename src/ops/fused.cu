@@ -47,17 +47,6 @@
 #include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::Future;
-using Legion::LogicalPartition;
-using Legion::LogicalRegion;
-using Legion::Memory;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
 
 OpMeta *FusedOp::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
@@ -1127,7 +1116,7 @@ __host__ void FusedOp::capture_graph(Task const *task,
         output_accessors_to_save.push_back(output_accessor[i + ooff]);
       }
       assert(task->index_point.get_dim() == 1);
-      int shard_id = task->index_point.point_data[0];
+      shard_id = task->index_point.point_data[0];
       FusedOp::save_inference_tensors_to_file(metas->meta[op],
                                               shard_id,
                                               bc,
@@ -1176,6 +1165,7 @@ __host__ void
                       bc->num_active_tokens(),
                       bc->num_generation_tokens > 0);
   int scenario = 0;
+  int shard_id = task->index_point.point_data[0];
   auto it = metas->graph_collections.find(graph_params);
   if(it != metas->graph_collections.end()) {
     instance = it->second;

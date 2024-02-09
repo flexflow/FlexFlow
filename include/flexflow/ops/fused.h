@@ -6,6 +6,18 @@
 
 namespace FlexFlow {
 
+// declare Legion names
+using Legion::Context;
+using Legion::coord_t;
+using Legion::Domain;
+using Legion::Future;
+using Legion::LogicalPartition;
+using Legion::LogicalRegion;
+using Legion::Memory;
+using Legion::PhysicalRegion;
+using Legion::Runtime;
+using Legion::Task;
+
 class FusedOp;
 class FusedOpMeta {
 public:
