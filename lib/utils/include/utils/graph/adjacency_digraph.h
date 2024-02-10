@@ -9,6 +9,7 @@ namespace FlexFlow {
 
 class AdjacencyDiGraph : public IDiGraph {
 public:
+  AdjacencyDiGraph() = default;
   Node add_node() override;
   void add_node_unsafe(Node const &) override;
   void remove_node_unsafe(Node const &) override;
@@ -28,8 +29,8 @@ public:
 private:
   using ContentsType = std::unordered_map<Node, std::unordered_set<Node>>;
 
-  AdjacencyDiGraph(std::size_t, ContentsType);
-
+  AdjacencyDiGraph(std::size_t next_node_idx, ContentsType adjacency)
+      : next_node_idx(next_node_idx), adjacency(adjacency) {}
   std::size_t next_node_idx = 0;
   ContentsType adjacency;
 };

@@ -3,11 +3,32 @@
 
 namespace FlexFlow {
 
+AdjacencyMultiDiGraph *AdjacencyMultiDiGraph::clone() const {
+  return new AdjacencyMultiDiGraph(
+      this->next_node_idx, this->next_node_port, this->adjacency);
+}
+
+AdjacencyMultiDiGraph::AdjacencyMultiDiGraph(std::size_t next_node_idx,
+                                             std::size_t next_node_port,
+                                             ContentsType const &adjacency)
+    : next_node_idx(next_node_idx), next_node_port(next_node_port),
+      adjacency(adjacency) {}
+
 Node AdjacencyMultiDiGraph::add_node() {
   Node node{this->next_node_idx};
   adjacency[node];
   this->next_node_idx++;
   return node;
+}
+
+NodePort AdjacencyMultiDiGraph::add_node_port() {
+  auto nodePort = NodePort{this->next_node_port};
+  this->next_node_port++;
+  return nodePort;
+}
+
+void AdjacencyMultiDiGraph::add_node_port_unsafe(NodePort const &nodePort) {
+  this->next_node_port = std::max(this->next_node_port, nodePort.value() + 1);
 }
 
 void AdjacencyMultiDiGraph::add_node_unsafe(Node const &node) {
@@ -21,11 +42,11 @@ void AdjacencyMultiDiGraph::remove_node_unsafe(Node const &n) {
 
 void AdjacencyMultiDiGraph::add_edge(MultiDiEdge const &e) {
   this->adjacency.at(e.dst);
-  this->adjacency.at(e.src)[e.dst][e.srcIdx].insert(e.dstIdx);
+  this->adjacency.at(e.src)[e.dst][e.src_idx].insert(e.dst_idx);
 }
 
 void AdjacencyMultiDiGraph::remove_edge(MultiDiEdge const &e) {
-  this->adjacency.at(e.src)[e.dst][e.srcIdx].erase(e.dstIdx);
+  this->adjacency.at(e.src)[e.dst][e.src_idx].erase(e.dst_idx);
 }
 
 std::unordered_set<MultiDiEdge>
@@ -35,7 +56,8 @@ std::unordered_set<MultiDiEdge>
     for (auto const &dst_kv : query_keys(q.dsts, src_kv.second)) {
       for (auto const &srcIdx_kv : query_keys(q.srcIdxs, dst_kv.second)) {
         for (auto const &dstIdx : apply_query(q.dstIdxs, srcIdx_kv.second)) {
-          result.insert({src_kv.first, dst_kv.first, srcIdx_kv.first, dstIdx});
+          result.insert(
+              MultiDiEdge{dst_kv.first, dstIdx, src_kv.first, srcIdx_kv.first});
         }
       }
     }

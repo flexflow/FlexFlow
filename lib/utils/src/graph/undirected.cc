@@ -1,48 +1,63 @@
 #include "utils/graph/undirected.h"
 #include "utils/containers.h"
+#include "utils/graph/node.h"
 #include <cassert>
 
 namespace FlexFlow {
 
-UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &lhs,
-                                       UndirectedEdgeQuery const &rhs) {
-  return {
-      query_intersection(lhs.nodes, rhs.nodes),
-  };
-}
-
-void swap(UndirectedGraph &lhs, UndirectedGraph &rhs) {
-  using std::swap;
-
-  swap(lhs.ptr, rhs.ptr);
-}
-
 Node UndirectedGraph::add_node() {
-  return this->ptr.get_mutable()->add_node();
+  return this->get_ptr().add_node();
 }
 
 void UndirectedGraph::add_node_unsafe(Node const &n) {
-  return this->ptr.get_mutable()->add_node_unsafe(n);
+  return this->get_ptr().add_node_unsafe(n);
 }
 
 void UndirectedGraph::remove_node_unsafe(Node const &n) {
-  return this->ptr.get_mutable()->remove_node_unsafe(n);
+  return this->get_ptr().remove_node_unsafe(n);
 }
 
 void UndirectedGraph::add_edge(UndirectedEdge const &e) {
-  return this->ptr.get_mutable()->add_edge(e);
+  return this->get_ptr().add_edge(e);
 }
 
 void UndirectedGraph::remove_edge(UndirectedEdge const &e) {
-  return this->ptr.get_mutable()->remove_edge(e);
+  return this->get_ptr().remove_edge(e);
+}
+
+IUndirectedGraph const &UndirectedGraph::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IUndirectedGraph const>(
+      GraphView::ptr.get());
+}
+
+IUndirectedGraph &UndirectedGraph::get_ptr() {
+  return *std::reinterpret_pointer_cast<IUndirectedGraph>(
+      GraphView::ptr.get_mutable());
 }
 
 std::unordered_set<UndirectedEdge>
     UndirectedGraph::query_edges(UndirectedEdgeQuery const &q) const {
-  return this->ptr->query_edges(q);
+  return this->get_ptr().query_edges(q);
 }
 
-UndirectedGraph::UndirectedGraph(std::unique_ptr<IUndirectedGraph> _ptr)
-    : ptr(std::move(_ptr)) {}
+std::unordered_set<Node>
+    UndirectedGraph::query_nodes(NodeQuery const &q) const {
+  return this->get_ptr().query_nodes(q);
+}
+
+std::unordered_set<UndirectedEdge>
+    UndirectedGraphView::query_edges(UndirectedEdgeQuery const &q) const {
+  return this->get_ptr().query_edges(q);
+}
+
+std::unordered_set<Node>
+    UndirectedGraphView::query_nodes(NodeQuery const &q) const {
+  return this->get_ptr().query_nodes(q);
+}
+
+IUndirectedGraphView const &UndirectedGraphView::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IUndirectedGraphView const>(
+      GraphView::ptr.get());
+}
 
 } // namespace FlexFlow

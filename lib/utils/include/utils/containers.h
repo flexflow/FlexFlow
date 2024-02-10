@@ -1,11 +1,14 @@
-#ifndef _FLEXFLOW_UTILS_CONTAINERS_H
-#define _FLEXFLOW_UTILS_CONTAINERS_H
+#ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_INL
+#define _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_INL
 
 #include "bidict.h"
+#include "containers.decl.h"
 #include "invoke.h"
-#include "optional.h"
 #include "required_core.h"
 #include "type_traits_core.h"
+#include "utils/exception.h"
+#include "utils/optional.h"
+#include "utils/type_traits.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -58,7 +61,7 @@ typename Container::const_iterator
   return std::find(c.cbegin(), c.cend(), e);
 }
 
-template <typename Container, typename Element = typename Container::value_type>
+template <typename Container, typename Element>
 Element sum(Container const &container) {
   Element result = 0;
   for (Element const &element : container) {
@@ -67,10 +70,8 @@ Element sum(Container const &container) {
   return result;
 }
 
-template <typename Container,
-          typename ConditionF,
-          typename Element = typename Container::value_type>
-Element sum(Container const &container, ConditionF const &condition) {
+template <typename Container, typename ConditionF, typename Element>
+Element sum_where(Container const &container, ConditionF const &condition) {
   Element result = 0;
   for (Element const &element : container) {
     if (condition(element)) {
@@ -80,7 +81,7 @@ Element sum(Container const &container, ConditionF const &condition) {
   return result;
 }
 
-template <typename Container, typename Element = typename Container::value_type>
+template <typename Container, typename Element>
 Element product(Container const &container) {
   Element result = 1;
   for (Element const &element : container) {
@@ -89,9 +90,7 @@ Element product(Container const &container) {
   return result;
 }
 
-template <typename Container,
-          typename ConditionF,
-          typename Element = typename Container::value_type>
+template <typename Container, typename ConditionF, typename Element>
 Element product_where(Container const &container, ConditionF const &condition) {
   Element result = 1;
   for (Element const &element : container) {
@@ -123,34 +122,28 @@ bool contains_key(C const &m, typename C::key_type const &k) {
 
 template <typename K, typename V>
 bool contains_l(bidict<K, V> const &m, K const &k) {
-  return m.find(k) != m.end();
+  return m.contains_l(k);
 }
 
 template <typename K, typename V>
 bool contains_r(bidict<K, V> const &m, V const &v) {
-  return m.find(v) != m.end();
+  return m.contains_r(v);
 }
 
-template <typename K,
-          typename V,
-          typename F,
-          typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
+template <typename K, typename V, typename F, typename K2>
 std::unordered_map<K2, V> map_keys(std::unordered_map<K, V> const &m,
                                    F const &f) {
   std::unordered_map<K2, V> result;
-  for (auto const &kv : f) {
+  for (auto const &kv : m) {
     result.insert({f(kv.first), kv.second});
   }
   return result;
 }
 
-template <typename K,
-          typename V,
-          typename F,
-          typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
+template <typename K, typename V, typename F, typename K2>
 bidict<K2, V> map_keys(bidict<K, V> const &m, F const &f) {
   bidict<K2, V> result;
-  for (auto const &kv : f) {
+  for (auto const &kv : m) {
     result.equate(f(kv.first), kv.second);
   }
   return result;
@@ -160,7 +153,7 @@ template <typename K, typename V, typename F>
 std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
                                      F const &f) {
   std::unordered_map<K, V> result;
-  for (auto const &kv : f) {
+  for (auto const &kv : m) {
     if (f(kv.first)) {
       result.insert(kv);
     }
@@ -168,10 +161,18 @@ std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
   return result;
 }
 
-template <typename K,
-          typename V,
-          typename F,
-          typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
+template <typename K, typename V, typename F>
+bidict<K, V> filter_values(bidict<K, V> const &m, F const &f) {
+  std::unordered_map<K, V> result;
+  for (auto const &kv : m) {
+    if (f(kv.second)) {
+      result.equate(kv);
+    }
+  }
+  return result;
+}
+
+template <typename K, typename V, typename F, typename V2>
 std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m,
                                      F const &f) {
   std::unordered_map<K, V2> result;
@@ -181,10 +182,7 @@ std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m,
   return result;
 }
 
-template <typename K,
-          typename V,
-          typename F,
-          typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
+template <typename K, typename V, typename F, typename V2>
 bidict<K, V2> map_values(bidict<K, V> const &m, F const &f) {
   bidict<K, V2> result;
   for (auto const &kv : m) {
@@ -235,9 +233,14 @@ std::unordered_set<std::pair<typename C::key_type, typename C::value_type>>
   return {c.begin(), c.end()};
 }
 
-template <typename C, typename T = typename C::value_type>
+template <typename C, typename T>
 std::unordered_set<T> unique(C const &c) {
   return {c.cbegin(), c.cend()};
+}
+
+template <typename C, typename T>
+std::unordered_set<T> without_order(C const &c) {
+  return unique(c);
 }
 
 template <typename Container, typename Element>
@@ -259,6 +262,16 @@ std::unordered_set<T> intersection(std::unordered_set<T> const &l,
       result.insert(ll);
     }
   }
+  return result;
+}
+
+template <typename C, typename T>
+optional<T> intersection(C const &c) {
+  optional<T> result;
+  for (T const &t : c) {
+    result = intersection(result.value_or(t), t);
+  }
+
   return result;
 }
 
@@ -311,6 +324,30 @@ bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
   return result;
 }
 
+template <typename F, typename C, typename K, typename V>
+std::unordered_map<K, V> generate_map(C const &c, F const &f) {
+  static_assert(is_hashable<K>::value,
+                "Key type should be hashable (but is not)");
+
+  auto transformed = transform(c, [&](K const &k) -> std::pair<K, V> {
+    return {k, f(k)};
+  });
+  return {transformed.cbegin(), transformed.cend()};
+}
+
+template <typename F, typename C, typename K, typename V>
+bidict<K, V> generate_bidict(C const &c, F const &f) {
+  static_assert(is_hashable<K>::value,
+                "Key type should be hashable (but is not)");
+  static_assert(is_hashable<V>::value,
+                "Value type should be hashable (but is not)");
+
+  auto transformed = transform(c, [&](K const &k) -> std::pair<K, V> {
+    return {k, f(k)};
+  });
+  return {transformed.cbegin(), transformed.cend()};
+}
+
 template <typename K, typename V>
 std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m) {
   return [&m](K const &k) -> V { return m.at(k); };
@@ -318,12 +355,12 @@ std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m) {
 
 template <typename L, typename R>
 std::function<R(L const &)> lookup_in_l(bidict<L, R> const &m) {
-  return [&m](L const &l) -> L { return m.at_l(l); };
+  return [&m](L const &l) -> R { return m.at_l(l); };
 }
 
 template <typename L, typename R>
 std::function<L(R const &)> lookup_in_r(bidict<L, R> const &m) {
-  return [&m](R const &r) -> R { return m.at_r(r); };
+  return [&m](R const &r) -> L { return m.at_r(r); };
 }
 
 template <typename T>
@@ -334,7 +371,13 @@ std::unordered_set<T> set_union(std::unordered_set<T> const &l,
   return result;
 }
 
-template <typename C, typename T = typename C::value_type::value_type>
+template <typename T>
+std::unordered_set<T> set_difference(std::unordered_set<T> const &l,
+                                     std::unordered_set<T> const &r) {
+  return filter(l, [&](T const &element) { return !contains(r, element); });
+}
+
+template <typename C, typename T>
 std::unordered_set<T> set_union(C const &sets) {
   std::unordered_set<T> result;
   for (std::unordered_set<T> const &s : sets) {
@@ -377,9 +420,20 @@ std::unordered_set<D>
 }
 
 template <typename C>
+optional<typename C::value_type> maybe_get_only(C const &c) {
+  if (c.size() == 1) {
+    return *c.cbegin();
+  } else {
+    return nullopt;
+  }
+}
+
+template <typename C>
 typename C::value_type get_only(C const &c) {
-  assert(c.size() == 1);
-  return *c.cbegin();
+  return unwrap(maybe_get_only(c), [&] {
+    throw mk_runtime_error("Encountered container with size {} in get_only",
+                           c.size());
+  });
 }
 
 template <typename T>
@@ -397,6 +451,13 @@ template <typename T, typename C>
 void extend(std::unordered_set<T> &lhs, C const &rhs) {
   lhs.reserve(lhs.size() + std::distance(rhs.begin(), rhs.end()));
   lhs.insert(rhs.cbegin(), rhs.cend());
+}
+
+template <typename C, typename E>
+void extend(C &lhs, optional<E> const &e) {
+  if (e.has_value()) {
+    return extend(lhs, e.value());
+  }
 }
 
 template <typename C, typename F>
@@ -431,24 +492,13 @@ bool are_all_same(C const &c) {
   return true;
 }
 
-template <typename F,
-          typename In,
-          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
-std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
-  std::vector<Out> result;
-  std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
-  return result;
-}
-
-template <typename C, typename E = typename C::value_type>
+template <typename C, typename E>
 std::vector<E> as_vector(C const &c) {
-  std::vector<E> result(c.cbegin(), c.end());
+  std::vector<E> result(c.cbegin(), c.cend());
   return result;
 }
 
-template <typename F,
-          typename In,
-          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+template <typename F, typename In, typename Out>
 std::vector<Out> transform(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
   std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
@@ -461,9 +511,12 @@ auto transform(req<C> const &c, F const &f)
   return transform(static_cast<C>(c), f);
 }
 
-template <typename F,
-          typename In,
-          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+template <typename F, typename In, typename Out>
+std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
+  return transform(v, f);
+}
+
+template <typename F, typename In, typename Out>
 std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f) {
   std::unordered_set<Out> result;
   for (auto const &e : v) {
@@ -479,6 +532,17 @@ std::string transform(std::string const &s, F const &f) {
   return result;
 }
 
+template <typename F, typename Out>
+std::vector<Out> repeat(int n, F const &f) {
+  assert(n >= 0);
+
+  std::vector<Out> result;
+  for (int i = 0; i < n; i++) {
+    result.push_back(f());
+  }
+  return result;
+}
+
 template <typename T>
 bidict<size_t, T> enumerate(std::unordered_set<T> const &c) {
   bidict<size_t, T> m;
@@ -491,10 +555,7 @@ bidict<size_t, T> enumerate(std::unordered_set<T> const &c) {
 
 std::vector<size_t> count(size_t n);
 
-template <typename In,
-          typename F,
-          typename Out = typename decltype(std::declval<F>()(
-              std::declval<In>()))::value_type>
+template <typename In, typename F, typename Out>
 std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
   for (auto const &elem : v) {
@@ -503,7 +564,20 @@ std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
   return result;
 }
 
-template <typename In, typename F, typename Out = invoke_result_t<F, In>>
+template <typename C, typename Enable>
+struct get_element_type {
+  using type = typename C::value_type;
+};
+
+template <typename T>
+struct get_element_type<optional<T>> {
+  using type = T;
+};
+
+template <typename T>
+using get_element_type_t = typename get_element_type<T>::type;
+
+template <typename In, typename F, typename Out>
 std::unordered_set<Out> flatmap(std::unordered_set<In> const &v, F const &f) {
   std::unordered_set<Out> result;
   for (auto const &elem : v) {
@@ -522,21 +596,26 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
   return result;
 }
 
-template <typename C, typename F, typename Elem = typename C::value_type>
-std::vector<Elem> sorted_by(C const &c, F const &f) {
-  std::vector<Elem> result(c.begin(), c.end());
-  inplace_sorted_by(c, f);
-  return result;
-}
-
-template <typename C, typename F, typename Elem = typename C::value_type>
+template <typename C, typename F, typename Elem>
 void inplace_sorted_by(C &c, F const &f) {
   CHECK_SUPPORTS_ITERATOR_TAG(std::random_access_iterator_tag, C);
 
-  auto custom_comparator = [&](C const &lhs, C const &rhs) -> bool {
+  auto custom_comparator = [&](Elem const &lhs, Elem const &rhs) -> bool {
     return f(lhs, rhs);
   };
   std::sort(c.begin(), c.end(), custom_comparator);
+}
+
+template <typename C, typename F, typename Elem>
+std::vector<Elem> sorted_by(C const &c, F const &f) {
+  std::vector<Elem> result(c.begin(), c.end());
+  inplace_sorted_by(result, f);
+  return result;
+}
+
+template <typename T, typename F>
+std::function<bool(T const &, T const &)> compare_by(F const &f) {
+  return [=](T const &lhs, T const &rhs) { return f(lhs) < f(rhs); };
 }
 
 template <typename C, typename F>
@@ -557,7 +636,7 @@ std::unordered_set<T> filter(std::unordered_set<T> const &v, F const &f) {
   return result;
 }
 
-template <typename C, typename F, typename Elem = typename C::value_type>
+template <typename C, typename F, typename Elem>
 void inplace_filter(C &v, F const &f) {
   std::remove_if(v.begin(), v.end(), [&](Elem const &e) { return !f(e); });
 }
@@ -574,13 +653,13 @@ std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v,
 
 template <typename C>
 typename C::value_type maximum(C const &v) {
-  return std::max_element(v.begin(), v.end());
+  return *std::max_element(v.begin(), v.end());
 }
 
 template <typename T>
 T reversed(T const &t) {
   T r;
-  for (auto i = t.cend() - 1; i >= t.begin(); i++) {
+  for (auto i = t.cend() - 1; i >= t.begin(); i--) {
     r.push_back(*i);
   }
   return r;
@@ -588,13 +667,12 @@ T reversed(T const &t) {
 
 template <typename T>
 std::vector<T> value_all(std::vector<optional<T>> const &v) {
-  std::vector<T> result;
-
-  for (auto const &element : v) {
-    result.push_back(element.value());
-  }
-
-  return result;
+  return transform(v, [](optional<T> const &element) {
+    return unwrap(element, [] {
+      throw mk_runtime_error(
+          "Encountered element without value in call to value_all");
+    });
+  });
 }
 
 template <typename T>
@@ -617,7 +695,7 @@ std::vector<T> subvec(std::vector<T> const &v,
     begin_iter += resolve_loc(maybe_start.value());
   }
   if (maybe_end.has_value()) {
-    end_iter = v.cbegin() + resolve_loc(maybe_start.value());
+    end_iter = v.cbegin() + resolve_loc(maybe_end.value());
   }
 
   std::vector<T> output(begin_iter, end_iter);

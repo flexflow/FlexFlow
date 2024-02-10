@@ -3,7 +3,8 @@
 
 #include "kernels/array_shape.h"
 #include "kernels/device.h"
-#include "op-attrs/ffconst.h"
+#include "op-attrs/datatype.h"
+#include "op-attrs/op.h"
 
 #if defined(FF_USE_CUDA)
 #include <cuda_fp16.h>
@@ -22,6 +23,9 @@
 #else
 #error "Unknown device"
 #endif
+
+using ::FlexFlow::DataType;
+using ::FlexFlow::OperatorType;
 
 #define checkCUDNN(status)                                                     \
   do {                                                                         \

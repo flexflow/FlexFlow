@@ -5,28 +5,27 @@
 #include "multidigraph.h"
 #include "utils/optional.h"
 #include "utils/variant.h"
+#include <vector>
 
 namespace FlexFlow {
 
 Node find_source_node(DiGraphView const &);
 Node find_sink_node(DiGraphView const &);
 
-optional<Node> find_bottleneck_node(MultiDiGraphView const &);
 optional<Node> find_bottleneck_node(DiGraphView const &);
 
 struct Parallel;
 
 struct Serial {
-  req<std::vector<variant<Parallel, Node>>> children;
+  std::vector<variant<Parallel, Node>> children;
 };
+
 struct Parallel {
-  req<std::vector<variant<Serial, Node>>> children;
+  std::vector<variant<Serial, Node>> children;
 };
-static_assert(sizeof(Serial) ==
-                  sizeof(req<std::vector<variant<Parallel, Node>>>),
-              "");
-FF_VISITABLE_STRUCT(Serial, children);
-FF_VISITABLE_STRUCT(Parallel, children);
+
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Parallel, children);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Serial, children);
 
 using SerialParallelDecomposition = variant<Serial, Parallel, Node>;
 

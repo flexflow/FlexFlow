@@ -18,59 +18,35 @@
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-
-// declare Legion names
-using Legion::coord_t;
-using Legion::Rect;
-
 namespace Kernels {
 namespace Concat {
 
-void init_meta(ConcatPerDeviceState *m, int legion_axis) {
-  m->legion_axis = legion_axis;
-}
-
-template <int N>
-void calc_blk_size(coord_t &num_blocks,
-                   coord_t &blk_size,
-                   Rect<N> rect,
-                   int axis) {
+void calc_blk_size(size_t &num_blocks,
+                   size_t &blk_size,
+                   ArrayShape const &shape,
+                   ff_dim_t axis) {
   num_blocks = 1;
   blk_size = 1;
-  for (int d = 0; d < N; d++) {
+  for (int d = 0; d < shape.num_dims(); d++) {
     if (d <= axis) {
-      blk_size *= (rect.hi[d] - rect.lo[d] + 1);
+      blk_size *= shape[legion_dim_t(d)];
     } else {
-      num_blocks *= (rect.hi[d] - rect.lo[d] + 1);
+      num_blocks *= shape[legion_dim_t(d)];
     }
   }
 }
 
 void forward_kernel(hipStream_t stream,
                     GenericTensorAccessorW const &output,
-                    GenericTensorAccessorR const *inputs,
-                    int num_inputs,
-                    int axis) {
-  coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
+                    std::vector<GenericTensorAccessorR> const &inputs,
+                    ff_dim_t axis) {
+  size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
+  int num_inputs = inputs.size();
   assert(num_inputs <= MAX_NUM_INPUTS);
-  switch (output.domain.get_dim()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    Rect<DIM> rect = output.domain;                                            \
-    calc_blk_size<DIM>(num_blocks, output_blk_size, rect, axis);               \
-    for (int i = 0; i < num_inputs; i++) {                                     \
-      rect = inputs[i].domain;                                                 \
-      coord_t input_num_blocks = 1;                                            \
-      calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], rect, axis);    \
-      assert(input_num_blocks == num_blocks);                                  \
-    }                                                                          \
-    break;                                                                     \
-  }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      fprintf(stderr, "Unsupported concat dimension number");
-      assert(false);
+  for (int i = 0; i < num_inputs; i++) {
+    size_t input_num_blocks = 1;
+    calc_blk_size(input_num_blocks, input_blk_sizes[i], inputs[i].shape, axis);
+    assert(input_num_blocks == num_blocks);
   }
 
   off_t offset = 0;
@@ -89,31 +65,19 @@ void forward_kernel(hipStream_t stream,
   }
 }
 
-void backward_kernel(ffStream_t stream,
+void backward_kernel(hipStream_t stream,
                      GenericTensorAccessorR const &output_grad,
-                     GenericTensorAccessorW const *input_grads,
-                     int num_inputs,
-                     int axis) {
+                     std::vector<GenericTensorAccessorW> const &input_grads,
+                     ff_dim_t axis) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
+  int num_inputs = input_grads.size();
   assert(num_inputs <= MAX_NUM_INPUTS);
-  switch (output_grad.domain.get_dim()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    Rect<DIM> rect = output_grad.domain;                                       \
-    calc_blk_size<DIM>(num_blocks, output_blk_size, rect, axis);               \
-    for (int i = 0; i < num_inputs; i++) {                                     \
-      rect = input_grads[i].domain;                                            \
-      coord_t input_num_blocks = 1;                                            \
-      calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], rect, axis);    \
-      assert(input_num_blocks == num_blocks);                                  \
-    }                                                                          \
-    break;                                                                     \
-  }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      fprintf(stderr, "Unsupported concat dimension number");
-      assert(false);
+  calc_blk_size(num_blocks, output_blk_size, output_grad.shape, axis);
+  for (int i = 0; i < num_inputs; i++) {
+    shape = input_grads[i].shape;
+    size_t input_num_blocks = 1;
+    calc_blk_size(input_num_blocks, input_blk_sizes[i], shape, axis);
+    assert(input_num_blocks == num_blocks);
   }
 
   off_t offset = 0;
@@ -130,12 +94,6 @@ void backward_kernel(ffStream_t stream,
                        output_blk_size);
     offset += input_blk_sizes[i];
   }
-
-  // Rect<2> output_rect(Point<2>(0, 0), Point<2>(output_blk_size-1, batch_size
-  // - 1)); Rect<2> input_rect(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1,
-  // batch_size - 1)); print_tensor<2, float>(output_grad - output_blk_size,
-  // output_rect, "[Concat:backward:output]"); print_tensor<2,
-  // float>(input_grads[0], input_rect, "[Concat:backward:input0]");
 }
 
 } // namespace Concat

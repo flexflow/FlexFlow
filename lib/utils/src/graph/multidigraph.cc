@@ -1,101 +1,78 @@
 #include "utils/graph/multidigraph.h"
+#include "utils/graph/multidigraph_interfaces.h"
 
 namespace FlexFlow {
 
-MultiDiInput get_input(MultiDiEdge const &e) {
-  return {e.dst, e.dstIdx};
+std::unordered_set<DirectedEdge>
+    IMultiDiGraphView::query_edges(DirectedEdgeQuery const &q) const {
+  return transform(
+      query_edges(MultiDiEdgeQuery{
+          q.srcs, q.dsts, matchall<NodePort>(), matchall<NodePort>()}),
+      [](MultiDiEdge const &e) {
+        return DirectedEdge{e.src, e.dst};
+      });
 }
 
-MultiDiOutput get_output(MultiDiEdge const &e) {
-  return {e.src, e.srcIdx};
+std::unordered_set<Node>
+    MultiDiGraphView::query_nodes(NodeQuery const &q) const {
+  return this->get_ptr().query_nodes(q);
 }
 
-MultiDiEdgeQuery
-    MultiDiEdgeQuery::with_src_nodes(query_set<Node> const &nodes) const {
-  MultiDiEdgeQuery e = *this;
-  if (is_matchall(e.srcs)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
-  e.srcs = nodes;
-  return e;
+std::unordered_set<MultiDiEdge>
+    MultiDiGraphView::query_edges(MultiDiEdgeQuery const &q) const {
+  return this->get_ptr().query_edges(q);
 }
 
-MultiDiEdgeQuery
-    MultiDiEdgeQuery::with_dst_nodes(query_set<Node> const &nodes) const {
-  MultiDiEdgeQuery e = *this;
-  if (is_matchall(e.dsts)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
-  e.dsts = nodes;
-  return e;
-}
-
-MultiDiEdgeQuery
-    MultiDiEdgeQuery::with_src_idxs(query_set<NodePort> const &idxs) const {
-  MultiDiEdgeQuery e = *this;
-  if (is_matchall(e.srcIdxs)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
-  e.srcIdxs = idxs;
-  return e;
-}
-
-MultiDiEdgeQuery
-    MultiDiEdgeQuery::with_dst_idxs(query_set<NodePort> const &idxs) const {
-  MultiDiEdgeQuery e = *this;
-  if (is_matchall(e.dstIdxs)) {
-    throw mk_runtime_error("Expected matchall previous value");
-  }
-  e.dstIdxs = idxs;
-  return e;
-}
-
-MultiDiEdgeQuery MultiDiEdgeQuery::all() {
-  return {matchall<Node>(),
-          matchall<Node>(),
-          matchall<NodePort>(),
-          matchall<NodePort>()};
-}
-
-void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
-  using std::swap;
-
-  swap(lhs.ptr, rhs.ptr);
-}
-
-void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
-  using std::swap;
-
-  swap(lhs.ptr, rhs.ptr);
-}
-
-MultiDiGraph::operator MultiDiGraphView() const {
-  return MultiDiGraphView(this->ptr.get());
+IMultiDiGraphView const &MultiDiGraphView::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IMultiDiGraphView const>(
+      GraphView::ptr.get());
 }
 
 Node MultiDiGraph::add_node() {
-  return this->ptr.get_mutable()->add_node();
+  return this->get_ptr().add_node();
+}
+
+NodePort MultiDiGraph::add_node_port() {
+  return this->get_ptr().add_node_port();
+}
+
+void MultiDiGraph::add_node_port_unsafe(NodePort const &np) {
+  return this->get_ptr().add_node_port_unsafe(np);
 }
 
 void MultiDiGraph::add_node_unsafe(Node const &n) {
-  return this->ptr.get_mutable()->add_node_unsafe(n);
+  return this->get_ptr().add_node_unsafe(n);
 }
 
 void MultiDiGraph::remove_node_unsafe(Node const &n) {
-  return this->ptr.get_mutable()->remove_node_unsafe(n);
+  return this->get_ptr().remove_node_unsafe(n);
 }
 
 void MultiDiGraph::add_edge(MultiDiEdge const &e) {
-  return this->ptr.get_mutable()->add_edge(e);
+  return this->get_ptr().add_edge(e);
 }
 
 void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
-  return this->ptr.get_mutable()->remove_edge(e);
+  return this->get_ptr().remove_edge(e);
 }
 
 std::unordered_set<MultiDiEdge>
     MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
-  return this->ptr->query_edges(q);
+  return this->get_ptr().query_edges(q);
+}
+
+std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const &q) const {
+  return this->get_ptr().query_nodes(q);
+}
+
+IMultiDiGraph const &MultiDiGraph::get_ptr() const {
+  return *std::reinterpret_pointer_cast<IMultiDiGraph const>(
+      GraphView::ptr.get());
+}
+
+IMultiDiGraph &MultiDiGraph::get_ptr() {
+  return *std::reinterpret_pointer_cast<IMultiDiGraph>(
+      GraphView::ptr.get_mutable());
 }
 
 } // namespace FlexFlow

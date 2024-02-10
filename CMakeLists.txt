@@ -3,6 +3,18 @@ project(FlexFlow)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
+# Detect OS type and Linux version (if it applies)
+set(LINUX_VERSION "")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  find_program(LSB_RELEASE_EXEC lsb_release)
+  if(LSB_RELEASE_EXEC)
+    execute_process(COMMAND ${LSB_RELEASE_EXEC} -r --short 
+                    OUTPUT_VARIABLE LINUX_VERSION 
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message(STATUS "Linux Version: ${LINUX_VERSION}")
+  endif()
+endif()
+
 set(FF_MAX_DIM "5" CACHE STRING "Maximum tensor order")
 set(FF_MAX_OPNAME "128" CACHE STRING "Maximum op name length")
 set(FF_MAX_NUM_OUTPUTS "256" CACHE STRING "Maximum number of outputs (per operator)")
@@ -29,39 +41,7 @@ set(FF_LEGION_NETWORKS "" CACHE STRING "Network backend(s) to use")
 
 set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
 set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
-
-function(define_ff_vars target)
-  target_compile_definitions(${target} PRIVATE 
-    MAX_OPNAME=${FF_MAX_OPNAME}
-    MAX_NUM_OUTPUTS=${FF_MAX_NUM_OUTPUTS}
-    MAX_NUM_INPUTS=${FF_MAX_NUM_INPUTS}
-    MAX_NUM_WEIGHTS=${FF_MAX_NUM_WEIGHTS}
-    MAX_NUM_FUSED_OPERATORS=${FF_MAX_NUM_FUSED_OPERATORS}
-    MAX_NUM_FUSED_TENSORS=${FF_MAX_NUM_FUSED_TENSORS}
-    MAX_NUM_WORKERS=${FF_MAX_NUM_WORKERS}
-    FF_USE_NCCL=${FF_USE_NCCL}
-    MAX_TENSOR_DIM=${FF_MAX_DIM}
-    MAX_NUM_TASK_REGIONS=${FF_MAX_NUM_TASK_REGIONS}
-    MAX_NUM_TASK_ARGUMENTS=${FF_MAX_NUM_TASK_ARGUMENTS}
-    )
-
-  if (FF_GPU_BACKEND STREQUAL "cuda")
-    target_compile_definitions(${target} PRIVATE FF_USE_CUDA)
-  elseif (FF_GPU_BACKEND STREQUAL "hip_cuda")
-    target_compile_definitions(${target} PRIVATE FF_USE_HIP_CUDA)
-  elseif (FF_GPU_BACKEND STREQUAL "hip_rocm")
-    target_compile_definitions(${target} PRIVATE FF_USE_HIP_ROCM)
-  endif()
-endfunction()
-
-function(ff_set_cxx_properties target)
-  set_target_properties(${target}
-    PROPERTIES
-      CXX_STANDARD 11
-      CXX_STANDARD_REQUIRED YES
-      CXX_EXTENSIONS NO
-  )
-endfunction()
+set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 option(FF_USE_EXTERNAL_LEGION "Use pre-installed Legion" OFF)
 option(FF_BUILD_RESNET "build resnet example" OFF)
@@ -111,6 +91,8 @@ include(invoke)
 include(any)
 #include(gtest)
 #include(fmt)
+
+include(flexflow-utils)
 
 # TODO @lockshaw remove me
 # https://discourse.nixos.org/t/get-clangd-to-find-standard-headers-in-nix-shell/11268/6

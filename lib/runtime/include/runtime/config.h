@@ -106,12 +106,13 @@ public:
   int python_data_loader_type = 2;
 };
 
-class FFIterationConfig {
-public:
-  FFIterationConfig();
+struct FFIterationConfig {
+  FFIterationConfig() = delete;
   void reset();
   int seq_length;
 };
+
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(FFIterationConfig, seq_length);
 
 enum FieldIDs {
   FID_DATA,

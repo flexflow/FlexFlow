@@ -83,13 +83,12 @@ template <typename Tag, typename T>
 T underlying_type_impl(strong_typedef<Tag, T>);
 
 template <typename T>
-using underlying_type = decltype(underlying_type_impl(std::declval<T>()));
-
+using underlying_type_t = decltype(underlying_type_impl(std::declval<T>()));
 // derived from
 // https://github.com/foonathan/type_safe/blob/3612e2828b4b4e0d1cc689373e63a6d59d4bfd79/include/type_safe/strong_typedef.hpp
 template <typename StrongTypedef>
-struct hashable : std::hash<underlying_type<StrongTypedef>> {
-  using underlying_ty = underlying_type<StrongTypedef>;
+struct hashable : std::hash<underlying_type_t<StrongTypedef>> {
+  using underlying_ty = underlying_type_t<StrongTypedef>;
   using underlying_hash = std::hash<underlying_ty>;
 
   std::size_t operator()(StrongTypedef const &lhs) const

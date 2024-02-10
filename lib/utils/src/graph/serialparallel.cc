@@ -17,10 +17,6 @@ Node find_sink_node(DiGraphView const &g) {
   return get_only(sinks);
 }
 
-optional<Node> find_bottleneck_node(MultiDiGraphView const &g) {
-  return find_bottleneck_node(as_digraph(g));
-}
-
 optional<Node> find_bottleneck_node(DiGraphView const &g) {
   std::unordered_set<Node> sources = get_sources(g);
   std::unordered_set<Node> sinks = get_sources(g);
@@ -120,7 +116,7 @@ SplitAST sp_decomposition(DiGraphView const &g) {
 }
 
 SplitAST parallel_decomposition(DiGraphView const &g) {
-  std::vector<std::unordered_set<Node>> weakly_connected_components =
+  std::unordered_set<std::unordered_set<Node>> weakly_connected_components =
       get_weakly_connected_components(g);
   assert(weakly_connected_components.size() > 1);
 
@@ -131,6 +127,17 @@ SplitAST parallel_decomposition(DiGraphView const &g) {
 
   return split;
 }
+
+SplitASTNode::SplitASTNode(SplitType type) : SplitASTNode(type, {}) {}
+
+SplitASTNode::SplitASTNode(SplitType type,
+                           SplitAST const &lhs,
+                           SplitAST const &rhs)
+    : SplitASTNode(type, {lhs, rhs}) {}
+
+SplitASTNode::SplitASTNode(SplitType type,
+                           std::vector<SplitAST> const &children)
+    : type(type), children(children) {}
 
 struct FlattenAST {
   void add_flattened_child_to_parent(SplitASTNode &parent,
@@ -225,14 +232,14 @@ std::unordered_map<Node, Node> parallel_extend(MultiDiGraph &g,
   for (Node const &node : get_nodes(MultiDiGraphView(ext))) {
     node_map.emplace(node, g.add_node());
   }
-  for (NodePort const &node_port : get_node_ports(ext)) {
+  for (NodePort const &node_port : get_present_node_ports(ext)) {
     node_port_map.emplace(node_port, g.add_node_port());
   }
   for (MultiDiEdge const &edge : get_edges(ext)) {
-    g.add_edge(MultiDiEdge{node_map.at(edge.src),
-                           node_map.at(edge.dst),
-                           node_port_map.at(edge.srcIdx),
-                           node_port_map.at(edge.dstIdx)});
+    g.add_edge(MultiDiEdge{node_map.at(edge.dst),
+                           node_port_map.at(edge.dst_idx),
+                           node_map.at(edge.src),
+                           node_port_map.at(edge.src_idx)});
   }
   return node_map;
 }
@@ -244,7 +251,7 @@ std::unordered_map<Node, Node> serial_extend(MultiDiGraph &g,
   for (Node const &node1 : original_sinks) {
     for (Node const &node2 : get_sources(ext)) {
       g.add_edge(MultiDiEdge{
-          node1, node_map.at(node2), g.add_node_port(), g.add_node_port()});
+          node_map.at(node2), g.add_node_port(), node1, g.add_node_port()});
     }
   }
   return node_map;

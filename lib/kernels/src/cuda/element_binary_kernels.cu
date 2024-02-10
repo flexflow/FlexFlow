@@ -13,165 +13,67 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
+#include "device.h"
+#include "kernels/device.h"
 #include "kernels/element_binary_kernels.h"
+#include "kernels/ff_handle.h"
+#include "op-attrs/datatype.h"
+#include "op-attrs/op.h"
 
 namespace FlexFlow {
-// declare Legion names
-
-ElementBinaryPerDeviceState::ElementBinaryPerDeviceState(FFHandler handler)
-    : OpPerDeviceState(handler) {
-  checkCUDNN(cudnnCreateTensorDescriptor(&input1Tensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&input2Tensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(cudnnCreateOpTensorDescriptor(&opDesc));
-  checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceAddDesc));
-  op_type = OP_NOOP;
-  profiling = false;
-  inplace_a = false;
-  has_same_operands = false;
-  broadcast_input1 = false;
-  broadcast_input2 = false;
-}
-
 namespace Kernels {
 namespace ElementBinary {
 
-void init_kernel(ElementBinaryPerDeviceState *m,
-                 Domain const &input1_domain,
-                 Domain const &input2_domain,
-                 Domain const &output_domain) {
-  cudnnOpTensorOp_t mode;
-  switch (m->op_type) {
-    case OP_EW_ADD:
-    case OP_EW_SUB:
-      mode = CUDNN_OP_TENSOR_ADD;
-      break;
-    case OP_EW_MUL:
-      mode = CUDNN_OP_TENSOR_MUL;
-      break;
-    case OP_EW_MAX:
-      mode = CUDNN_OP_TENSOR_MAX;
-      break;
-    case OP_EW_MIN:
-      mode = CUDNN_OP_TENSOR_MIN;
-      break;
-    default:
-      assert(false);
-  }
-  checkCUDNN(cudnnSetOpTensorDescriptor(
-      m->opDesc, mode, CUDNN_DATA_FLOAT, CUDNN_PROPAGATE_NAN));
-  checkCUDNN(cudnnSetReduceTensorDescriptor(m->reduceAddDesc,
-                                            CUDNN_REDUCE_TENSOR_ADD,
-                                            CUDNN_DATA_FLOAT,
-                                            CUDNN_PROPAGATE_NAN,
-                                            CUDNN_REDUCE_TENSOR_NO_INDICES,
-                                            CUDNN_32BIT_INDICES));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain(m->input1Tensor, input1_domain));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain(m->input2Tensor, input2_domain));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
-}
+using OperatorType = Op;
 
-__global__ void elewise_binary_forward_kernel(coord_t volume,
-                                              float const alpha,
-                                              float const beta,
-                                              OperatorType type,
-                                              float const *in1,
-                                              float const *in2,
-                                              float *out) {
-  switch (type) {
-    case OP_EW_ADD: {
-      CUDA_KERNEL_LOOP(i, volume) {
-        out[i] = alpha * (in1[i] + in2[i]) + beta * out[i];
-      }
-      break;
-    }
-    case OP_EW_SUB: {
-      CUDA_KERNEL_LOOP(i, volume) {
-        out[i] = alpha * (in1[i] - in2[i]) + beta * out[i];
-      }
-      break;
-    }
-    case OP_EW_MUL: {
-      CUDA_KERNEL_LOOP(i, volume) {
-        out[i] = alpha * in1[i] * in2[i] + beta * out[i];
-      }
-      break;
-    }
-    case OP_EW_DIV: {
-      CUDA_KERNEL_LOOP(i, volume) {
-        out[i] = alpha * (in1[i] / in2[i]) + beta * out[i];
-      }
-      break;
-    }
-    case OP_EW_MAX: {
-      CUDA_KERNEL_LOOP(i, volume) {
-        out[i] = alpha * max(in1[i], in2[i]) + beta * out[i];
-      }
-      break;
-    }
-    case OP_EW_MIN: {
-      CUDA_KERNEL_LOOP(i, volume) {
-        out[i] = alpha * min(in1[i], in2[i]) + beta * out[i];
-      }
-      break;
-    }
-    default:
-      assert(false);
-  }
-}
-
-__global__ void elewise_binary_backward_kernel(coord_t volume,
+__global__ void elewise_binary_backward_kernel(size_t volume,
                                                float const alpha,
                                                float const beta,
                                                OperatorType type,
                                                float const *out_grad,
-                                               float const *in1,
-                                               float const *in2,
-                                               float *in1_grad,
-                                               float *in2_grad) {
+                                               float const *lhs,
+                                               float const *rhs,
+                                               float *lhs_grad,
+                                               float *rhs_grad) {
   CUDA_KERNEL_LOOP(i, volume) {
     switch (type) {
-      case OP_EW_ADD: {
-        in1_grad[i] = alpha * out_grad[i] + beta * in1_grad[i];
-        in2_grad[i] = alpha * out_grad[i] + beta * in2_grad[i];
+      case Op::EW_ADD: {
+        lhs_grad[i] = alpha * out_grad[i] + beta * lhs_grad[i];
+        rhs_grad[i] = alpha * out_grad[i] + beta * rhs_grad[i];
         break;
       }
-      case OP_EW_SUB: {
-        in1_grad[i] = alpha * out_grad[i] + beta * in1_grad[i];
-        in2_grad[i] = -alpha * out_grad[i] + beta * in2_grad[i];
+      case Op::EW_SUB: {
+        lhs_grad[i] = alpha * out_grad[i] + beta * lhs_grad[i];
+        rhs_grad[i] = -alpha * out_grad[i] + beta * rhs_grad[i];
         break;
       }
-      case OP_EW_MUL: {
-        in1_grad[i] = alpha * out_grad[i] * in2[i] + beta * in1_grad[i];
-        in2_grad[i] = alpha * out_grad[i] * in1[i] + beta * in2_grad[i];
+      case Op::EW_MUL: {
+        lhs_grad[i] = alpha * out_grad[i] * rhs[i] + beta * lhs_grad[i];
+        rhs_grad[i] = alpha * out_grad[i] * lhs[i] + beta * rhs_grad[i];
         break;
       }
-      case OP_EW_DIV: {
-        in1_grad[i] = alpha * out_grad[i] / in2[i] + beta * in1_grad[i];
-        in2_grad[i] = -alpha * out_grad[i] * in1[i] / (in2[i] * in2[i]) +
-                      beta * in2_grad[i];
+      case Op::EW_DIV: {
+        lhs_grad[i] = alpha * out_grad[i] / rhs[i] + beta * lhs_grad[i];
+        rhs_grad[i] = -alpha * out_grad[i] * lhs[i] / (rhs[i] * rhs[i]) +
+                      beta * rhs_grad[i];
         break;
       }
-      case OP_EW_MAX: {
-        in1_grad[i] = (in1[i] >= in2[i])
-                          ? alpha * out_grad[i] + beta * in1_grad[i]
-                          : beta * in1_grad[i];
-        in2_grad[i] = (in2[i] >= in1[i])
-                          ? alpha * out_grad[i] + beta * in2_grad[i]
-                          : beta * in2_grad[i];
+      case Op::EW_MAX: {
+        lhs_grad[i] = (lhs[i] >= rhs[i])
+                          ? alpha * out_grad[i] + beta * lhs_grad[i]
+                          : beta * lhs_grad[i];
+        rhs_grad[i] = (rhs[i] >= lhs[i])
+                          ? alpha * out_grad[i] + beta * rhs_grad[i]
+                          : beta * rhs_grad[i];
         break;
       }
-      case OP_EW_MIN: {
-        in1_grad[i] = (in1[i] <= in2[i])
-                          ? alpha * out_grad[i] + beta * in1_grad[i]
-                          : beta * in1_grad[i];
-        in2_grad[i] = (in2[i] <= in1[i])
-                          ? alpha * out_grad[i] + beta * in2_grad[i]
-                          : beta * in2_grad[i];
+      case Op::EW_MIN: {
+        lhs_grad[i] = (lhs[i] <= rhs[i])
+                          ? alpha * out_grad[i] + beta * lhs_grad[i]
+                          : beta * lhs_grad[i];
+        rhs_grad[i] = (rhs[i] <= lhs[i])
+                          ? alpha * out_grad[i] + beta * rhs_grad[i]
+                          : beta * rhs_grad[i];
         break;
       }
       default:
@@ -180,260 +82,326 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
   }
 }
 
+ElementBinaryPerDeviceState init_kernel(PerDeviceFFHandle handle,
+                                        OperatorType op_type,
+                                        bool should_broadcast_lhs,
+                                        bool should_broadcast_rhs,
+                                        ArrayShape lhs_shape,
+                                        ArrayShape rhs_shape,
+                                        ArrayShape output_shape) {
+  ffTensorDescriptor_t inputLHSTensor;
+  ffTensorDescriptor_t inputRHSTensor;
+  ffTensorDescriptor_t outputTensor;
+  ffOpTensorDescriptor_t opDesc;
+  ffReduceTensorDescriptor_t reduceAddDesc;
+  cudnnOpTensorOp_t mode;
+
+  checkCUDNN(cudnnCreateTensorDescriptor(&inputLHSTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&inputRHSTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnCreateOpTensorDescriptor(&opDesc));
+  checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceAddDesc));
+
+  switch (op_type) {
+    case Op::EW_ADD:
+    case Op::EW_SUB:
+      mode = CUDNN_OP_TENSOR_ADD;
+      break;
+    case Op::EW_MUL:
+      mode = CUDNN_OP_TENSOR_MUL;
+      break;
+    case Op::EW_MAX:
+      mode = CUDNN_OP_TENSOR_MAX;
+      break;
+    case Op::EW_MIN:
+      mode = CUDNN_OP_TENSOR_MIN;
+      break;
+    default:
+      assert(false);
+  }
+  checkCUDNN(cudnnSetOpTensorDescriptor(
+      opDesc, mode, CUDNN_DATA_FLOAT, CUDNN_PROPAGATE_NAN));
+  checkCUDNN(cudnnSetReduceTensorDescriptor(reduceAddDesc,
+                                            CUDNN_REDUCE_TENSOR_ADD,
+                                            CUDNN_DATA_FLOAT,
+                                            CUDNN_PROPAGATE_NAN,
+                                            CUDNN_REDUCE_TENSOR_NO_INDICES,
+                                            CUDNN_32BIT_INDICES));
+  checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(inputLHSTensor, lhs_shape));
+  checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(inputRHSTensor, rhs_shape));
+  checkCUDNN(
+      cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
+
+  ElementBinaryPerDeviceState per_device_state = {handle,
+                                                  inputLHSTensor,
+                                                  inputRHSTensor,
+                                                  outputTensor,
+                                                  opDesc,
+                                                  reduceAddDesc};
+  return per_device_state;
+}
+
 void forward_kernel(cudaStream_t stream,
-                    ElementBinaryPerDeviceState const *m,
-                    float const *in1_ptr,
-                    float const *in2_ptr,
-                    float *out_ptr) {
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+                    ElementBinaryPerDeviceState const &m,
+                    float const *lhs_ptr,
+                    float const *rhs_ptr,
+                    float *out_ptr,
+                    OperatorType op_type,
+                    bool broadcast_inputLHS,
+                    PerDeviceFFHandle handle) {
+  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
-  switch (m->op_type) {
-    case OP_EW_SUB:
+  switch (op_type) {
+    case Op::EW_SUB:
       alpha2 = -1.0f;
       break;
-    case OP_EW_ADD:
-    case OP_EW_MUL:
-    case OP_EW_MAX:
-    case OP_EW_MIN:
+    case Op::EW_ADD:
+    case Op::EW_MUL:
+    case Op::EW_MAX:
+    case Op::EW_MIN:
       break;
     default:
       assert(false);
   }
   // cudnn currently does not support broadcasting the first input in
   // cudnnOpTensor
-  if (m->broadcast_input1) {
+  if (broadcast_inputLHS) {
     // currently only handle add and sub
-    assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD ||
-           m->op_type == OP_EW_MUL);
-    if (m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD) {
+    assert(op_type == Op::EW_SUB || op_type == Op::EW_ADD ||
+           op_type == Op::EW_MUL);
+    if (op_type == Op::EW_SUB || op_type == Op::EW_ADD) {
       // output = (beta*output + alpha1*input1) + beta*output = input1
-      checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                               m->opDesc,
+      checkCUDNN(cudnnOpTensor(handle.dnn,
+                               m.opDesc,
                                &beta,
-                               m->outputTensor,
+                               m.outputTensor,
                                out_ptr,
                                &alpha1,
-                               m->input1Tensor,
-                               in1_ptr,
+                               m.inputLHSTensor,
+                               lhs_ptr,
                                &beta,
-                               m->outputTensor,
+                               m.outputTensor,
                                out_ptr));
       // output = (beta*output + alpha2*input2) + alpha1*output = alpha2*input2
       // + alpha1*input1
-      checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                               m->opDesc,
+      checkCUDNN(cudnnOpTensor(handle.dnn,
+                               m.opDesc,
                                &beta,
-                               m->outputTensor,
+                               m.outputTensor,
                                out_ptr,
                                &alpha2,
-                               m->input2Tensor,
-                               in2_ptr,
+                               m.inputRHSTensor,
+                               rhs_ptr,
                                &alpha1,
-                               m->outputTensor,
+                               m.outputTensor,
                                out_ptr));
-    } else if (m->op_type == OP_EW_MUL) {
-      checkCUDNN(cudnnSetOpTensorDescriptor(m->opDesc,
+    } else if (op_type == Op::EW_MUL) {
+      checkCUDNN(cudnnSetOpTensorDescriptor(m.opDesc,
                                             CUDNN_OP_TENSOR_ADD,
                                             CUDNN_DATA_FLOAT,
                                             CUDNN_PROPAGATE_NAN));
       // output = (beta*output + alpha1*input1) + beta*output = input1
-      checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                               m->opDesc,
+      checkCUDNN(cudnnOpTensor(handle.dnn,
+                               m.opDesc,
                                &beta,
-                               m->outputTensor,
+                               m.outputTensor,
                                out_ptr,
                                &alpha1,
-                               m->input1Tensor,
-                               in1_ptr,
+                               m.inputLHSTensor,
+                               lhs_ptr,
                                &beta,
-                               m->outputTensor,
+                               m.outputTensor,
                                out_ptr));
-      checkCUDNN(cudnnSetOpTensorDescriptor(m->opDesc,
+      checkCUDNN(cudnnSetOpTensorDescriptor(m.opDesc,
                                             CUDNN_OP_TENSOR_MUL,
                                             CUDNN_DATA_FLOAT,
                                             CUDNN_PROPAGATE_NAN));
       // output = (alpha1*output * alpha2*input2) + beta*output
-      checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                               m->opDesc,
+      checkCUDNN(cudnnOpTensor(handle.dnn,
+                               m.opDesc,
                                &alpha1,
-                               m->outputTensor,
-                               in1_ptr,
+                               m.outputTensor,
+                               out_ptr,
                                &alpha2,
-                               m->input2Tensor,
-                               in2_ptr,
+                               m.inputRHSTensor,
+                               rhs_ptr,
                                &beta,
-                               m->outputTensor,
+                               m.outputTensor,
                                out_ptr));
     }
   } else {
-    checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                             m->opDesc,
+    checkCUDNN(cudnnOpTensor(handle.dnn,
+                             m.opDesc,
                              &alpha1,
-                             m->input1Tensor,
-                             in1_ptr,
+                             m.inputLHSTensor,
+                             lhs_ptr,
                              &alpha2,
-                             m->input2Tensor,
-                             in2_ptr,
+                             m.inputRHSTensor,
+                             rhs_ptr,
                              &beta,
-                             m->outputTensor,
+                             m.outputTensor,
                              out_ptr));
   }
 }
 
 void backward_kernel(cudaStream_t stream,
-                     ElementBinaryPerDeviceState const *m,
+                     ElementBinaryPerDeviceState const &m,
                      float const *out_grad_ptr,
-                     float const *in1_ptr,
-                     float const *in2_ptr,
-                     float *in1_grad_ptr,
-                     float *in2_grad_ptr) {
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+                     float const *lhs_ptr,
+                     float const *rhs_ptr,
+                     float *lhs_grad_ptr,
+                     float *rhs_grad_ptr,
+                     OperatorType op_type,
+                     bool broadcast_inputLHS,
+                     bool broadcast_inputRHS,
+                     PerDeviceFFHandle handle) {
+  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
-  if (m->op_type == OP_EW_ADD || m->op_type == OP_EW_SUB) {
+  if (op_type == Op::EW_ADD || op_type == Op::EW_SUB) {
     float alpha = 1.0f, beta = 1.0f;
-    if (in1_grad_ptr != nullptr) {
-      if (m->broadcast_input1) {
-        checkCUDNN(cudnnReduceTensor(m->handle.dnn,
-                                     m->reduceAddDesc,
+    if (lhs_grad_ptr != nullptr) {
+      if (broadcast_inputLHS) {
+        checkCUDNN(cudnnReduceTensor(handle.dnn,
+                                     m.reduceAddDesc,
                                      nullptr /*indices*/,
                                      0 /*indicesSizeInBytes*/,
-                                     m->handle.workSpace,
-                                     m->handle.workSpaceSize,
+                                     handle.workSpace,
+                                     handle.workSpaceSize,
                                      &alpha,
-                                     m->outputTensor,
+                                     m.outputTensor,
                                      out_grad_ptr,
                                      &beta,
-                                     m->input1Tensor,
-                                     in1_grad_ptr));
+                                     m.inputLHSTensor,
+                                     lhs_grad_ptr));
       } else {
-        checkCUDNN(cudnnAddTensor(m->handle.dnn,
+        checkCUDNN(cudnnAddTensor(handle.dnn,
                                   &alpha,
-                                  m->outputTensor,
+                                  m.outputTensor,
                                   out_grad_ptr,
                                   &beta,
-                                  m->input1Tensor,
-                                  in1_grad_ptr));
+                                  m.inputLHSTensor,
+                                  lhs_grad_ptr));
       }
     }
-    if (m->op_type == OP_EW_SUB) {
+    if (op_type == Op::EW_SUB) {
       alpha = -1.0f;
     }
-    if (in2_grad_ptr != nullptr) {
-      if (m->broadcast_input2) {
-        checkCUDNN(cudnnReduceTensor(m->handle.dnn,
-                                     m->reduceAddDesc,
+    if (rhs_grad_ptr != nullptr) {
+      if (broadcast_inputRHS) {
+        checkCUDNN(cudnnReduceTensor(handle.dnn,
+                                     m.reduceAddDesc,
                                      nullptr /*indices*/,
                                      0 /*indicesSizeInBytes*/,
-                                     m->handle.workSpace,
-                                     m->handle.workSpaceSize,
+                                     handle.workSpace,
+                                     handle.workSpaceSize,
                                      &alpha,
-                                     m->outputTensor,
+                                     m.outputTensor,
                                      out_grad_ptr,
                                      &beta,
-                                     m->input2Tensor,
-                                     in2_grad_ptr));
+                                     m.inputRHSTensor,
+                                     rhs_grad_ptr));
       } else {
-        checkCUDNN(cudnnAddTensor(m->handle.dnn,
+        checkCUDNN(cudnnAddTensor(handle.dnn,
                                   &alpha,
-                                  m->outputTensor,
+                                  m.outputTensor,
                                   out_grad_ptr,
                                   &beta,
-                                  m->input2Tensor,
-                                  in2_grad_ptr));
+                                  m.inputRHSTensor,
+                                  rhs_grad_ptr));
       }
     }
-  } else if (m->op_type == OP_EW_MUL) {
+  } else if (op_type == Op::EW_MUL) {
     float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f, zero = 0.0f;
-    if (in1_grad_ptr != nullptr) {
-      if (m->broadcast_input1) {
-        checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                                 m->opDesc,
+    if (lhs_grad_ptr != nullptr) {
+      if (broadcast_inputLHS) {
+        checkCUDNN(cudnnOpTensor(handle.dnn,
+                                 m.opDesc,
                                  &alpha1,
-                                 m->outputTensor,
+                                 m.outputTensor,
                                  out_grad_ptr,
                                  &alpha2,
-                                 m->input2Tensor,
-                                 in2_ptr,
+                                 m.inputRHSTensor,
+                                 rhs_ptr,
                                  &zero,
-                                 m->outputTensor,
-                                 m->handle.workSpace));
+                                 m.outputTensor,
+                                 handle.workSpace));
         checkCUDNN(cudnnReduceTensor(
-            m->handle.dnn,
-            m->reduceAddDesc,
+            handle.dnn,
+            m.reduceAddDesc,
             nullptr /*indices*/,
             0 /*indicesSizeInBytes*/,
-            (void *)((char *)m->handle.workSpace + sizeof(*out_grad_ptr)),
-            m->handle.workSpaceSize - sizeof(*out_grad_ptr),
+            (void *)((char *)handle.workSpace + sizeof(*out_grad_ptr)),
+            handle.workSpaceSize - sizeof(*out_grad_ptr),
             &alpha1,
-            m->outputTensor,
-            m->handle.workSpace,
+            m.outputTensor,
+            handle.workSpace,
             &beta,
-            m->input1Tensor,
-            in1_grad_ptr));
+            m.inputLHSTensor,
+            lhs_grad_ptr));
       } else {
-        checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                                 m->opDesc,
+        checkCUDNN(cudnnOpTensor(handle.dnn,
+                                 m.opDesc,
                                  &alpha1,
-                                 m->outputTensor,
+                                 m.outputTensor,
                                  out_grad_ptr,
                                  &alpha2,
-                                 m->input2Tensor,
-                                 in2_ptr,
+                                 m.inputRHSTensor,
+                                 rhs_ptr,
                                  &beta,
-                                 m->input1Tensor,
-                                 in1_grad_ptr));
+                                 m.inputLHSTensor,
+                                 lhs_grad_ptr));
       }
     }
-    if (in2_grad_ptr != nullptr) {
-      if (m->broadcast_input2) {
-        checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                                 m->opDesc,
+    if (rhs_grad_ptr != nullptr) {
+      if (broadcast_inputRHS) {
+        checkCUDNN(cudnnOpTensor(handle.dnn,
+                                 m.opDesc,
                                  &alpha1,
-                                 m->outputTensor,
+                                 m.outputTensor,
                                  out_grad_ptr,
                                  &alpha2,
-                                 m->input1Tensor,
-                                 in1_ptr,
+                                 m.inputLHSTensor,
+                                 lhs_ptr,
                                  &zero,
-                                 m->outputTensor,
-                                 m->handle.workSpace));
+                                 m.outputTensor,
+                                 handle.workSpace));
         checkCUDNN(cudnnReduceTensor(
-            m->handle.dnn,
-            m->reduceAddDesc,
+            handle.dnn,
+            m.reduceAddDesc,
             nullptr /*indices*/,
             0 /*indicesSizeInBytes*/,
-            (void *)((char *)m->handle.workSpace + sizeof(*out_grad_ptr)),
-            m->handle.workSpaceSize - sizeof(*out_grad_ptr),
+            (void *)((char *)handle.workSpace + sizeof(*out_grad_ptr)),
+            handle.workSpaceSize - sizeof(*out_grad_ptr),
             &alpha1,
-            m->outputTensor,
-            m->handle.workSpace,
+            m.outputTensor,
+            handle.workSpace,
             &beta,
-            m->input2Tensor,
-            in2_grad_ptr));
+            m.inputRHSTensor,
+            rhs_grad_ptr));
       } else {
-        checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                                 m->opDesc,
+        checkCUDNN(cudnnOpTensor(handle.dnn,
+                                 m.opDesc,
                                  &alpha1,
-                                 m->outputTensor,
+                                 m.outputTensor,
                                  out_grad_ptr,
                                  &alpha2,
-                                 m->input1Tensor,
-                                 in1_ptr,
+                                 m.inputLHSTensor,
+                                 lhs_ptr,
                                  &beta,
-                                 m->input2Tensor,
-                                 in2_grad_ptr));
+                                 m.inputRHSTensor,
+                                 rhs_grad_ptr));
       }
     }
-  } else if (m->op_type == OP_EW_MIN || m->op_type == OP_EW_MAX) {
+  } else if (op_type == Op::EW_MIN || op_type == Op::EW_MAX) {
     float alpha = 1.0f, beta = 1.0f;
     cudnnDataType_t dataType;
     int n;
     int dims[MAX_TENSOR_DIM];
     int strides[MAX_TENSOR_DIM];
     checkCUDNN(cudnnGetTensorNdDescriptor(
-        m->outputTensor, MAX_TENSOR_DIM, &dataType, &n, dims, strides));
+        m.outputTensor, MAX_TENSOR_DIM, &dataType, &n, dims, strides));
     size_t volume = 1;
     for (int i = 0; i < n; i++) {
       volume *= dims[i];
@@ -444,12 +412,12 @@ void backward_kernel(cudaStream_t stream,
                                      stream>>>(volume,
                                                alpha,
                                                beta,
-                                               m->op_type,
+                                               op_type,
                                                out_grad_ptr,
-                                               in1_ptr,
-                                               in2_ptr,
-                                               in1_grad_ptr,
-                                               in2_grad_ptr);
+                                               lhs_ptr,
+                                               rhs_ptr,
+                                               lhs_grad_ptr,
+                                               rhs_grad_ptr);
   } else {
     assert(false && "Unsupported ElementWise Binary Type");
   }

@@ -13,9 +13,16 @@ struct bidict {
   template <typename InputIt>
   bidict(InputIt first, InputIt last) {
     for (auto it = first; it != last; it++) {
-      fwd_map[it->first] = it->second;
-      bwd_map[it->second] = it->first;
+      this->equate(it->first, it->second);
     }
+  }
+
+  bool contains_l(L const &l) const {
+    return fwd_map.find(l) != fwd_map.end();
+  }
+
+  bool contains_r(R const &r) const {
+    return bwd_map.find(r) != bwd_map.end();
   }
 
   void erase_l(L const &l) {
@@ -32,7 +39,7 @@ struct bidict {
     this->bwd_map.erase(r);
     for (auto const &kv : this->fwd_map) {
       if (kv.second == r) {
-        bwd_map.erase(kv.first);
+        fwd_map.erase(kv.first);
         break;
       }
     }
@@ -145,12 +152,11 @@ struct bidict {
   operator std::unordered_map<L, R> const &() const {
     return this->fwd_map;
   }
-
-private:
   bidict(std::unordered_map<L, R> const &fwd_map,
          std::unordered_map<R, L> const &bwd_map)
       : fwd_map(fwd_map), bwd_map(bwd_map) {}
 
+private:
   friend struct bidict<R, L>;
 
   std::unordered_map<L, R> fwd_map;

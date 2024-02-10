@@ -1,39 +1,34 @@
-#ifndef _FLEXFLOW_SUBSTITUTIONS_GRAPH_PATTERN_H
-#define _FLEXFLOW_SUBSTITUTIONS_GRAPH_PATTERN_H
+#ifndef _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTIONS_H
+#define _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTIONS_H
 
-#include "utils/graph.h"
+#include "graph_pattern_match.h"
+#include "operator_pattern.h"
+#include "parallel_tensor_pattern.h"
+#include "sub_parallel_computation_graph.h"
 
 namespace FlexFlow {
-namespace substitutions {
 
-struct DiGraphPatternMatch {
-  bidict<Node, Node> nodeAssignment;
-  bidict<OpenMultiDiEdge, MultiDiEdge> edgeAssignment;
+struct GraphPattern
+    : public strong_typedef<
+          GraphPattern,
+          OutputLabelledOpenMultiDiGraph<OperatorPattern,
+                                         ParallelTensorPattern>> {
+  using strong_typedef::strong_typedef;
 };
 
-struct MatchSplit {
-  DiGraphPatternMatch prefix_submatch;
-  DiGraphPatternMatch postfix_submatch;
-};
+GraphSplit split_pattern(OpenMultiDiGraphView const &pattern);
 
-GraphSplit split_pattern(IOpenMultiDiGraph const &pattern);
+bool is_singleton_pattern(OpenMultiDiGraphView const &);
 
-bool pattern_matches(IOpenMultiDiGraphView const &,
-                     IMultiDiGraph const &,
-                     DiGraphPatternMatch const &);
-bool is_singleton_pattern(IOpenMultiDiGraphView const &);
+bool operator_satisfies(Operator const &params, OperatorPattern const &pattern);
 
-} // namespace substitutions
+bool parallel_tensor_satisfies(ParallelTensor const &params,
+                               ParallelTensorPattern const &pattern);
+
+bool assignment_satisfies(SubParallelComputationGraph const &,
+                          GraphPattern const &,
+                          MultiDiGraphPatternMatch const &);
+
 } // namespace FlexFlow
-
-namespace std {
-
-template <>
-struct hash<::FlexFlow::substitutions::DiGraphPatternMatch> {
-  size_t
-      operator()(::FlexFlow::substitutions::DiGraphPatternMatch const &) const;
-};
-
-} // namespace std
 
 #endif
