@@ -80,7 +80,7 @@ TEST_CASE("do not pass the optional argument via command") {
 }
 
 //./a.out --args 4  --arg2 -args3 5  or ./a.out --args 4  --arg2 4 -args3  will
-//throw exception
+// throw exception
 TEST_CASE("only pass the args but not value") {
   SUBCASE("./a.out --args1 4  --arg2 4 -args3  ") {
     char const *test_argv[] = {"program_name",

@@ -66,6 +66,8 @@ public:
   FFConfig() = default;
   static Legion::MappingTagID get_hash_id(std::string const &pcname);
 
+  void parse_args(char **argv, int argc);
+
 public:
   int epochs = 1;
   int batchSize = 64;
@@ -103,8 +105,6 @@ public:
   // The default python data loader type is 2 to enable control replication
   int python_data_loader_type = 2;
 };
-
-FFConfig parse_args(int argc, const char ** argv);
 
 class FFIterationConfig {
 public:
