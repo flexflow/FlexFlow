@@ -34,9 +34,12 @@ public:
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   std::unordered_map<GraphParams, cudaGraphExec_t>
       graph_collections;
+  std::unordered_map<GraphParams, cudaGraph_t>
+      cuda_graph_collections;
 #else
   std::unordered_map<GraphParams, hipGraphExec_t>
       graph_collections;
+  std::unordered_map<GraphParams, hipGraph_t> cuda_graph_collections;
 #endif
 };
 
