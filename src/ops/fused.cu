@@ -648,19 +648,19 @@ __host__ void
     printf("shared:[%d]FUSED_OP.UPDATE: %f and  update_failed:%d\n", shard_id, elapsed_update, update_failed);
     scenario = 1;
     if(update_failed) {
-        cudaEvent_t t_start_instantiate, t_end_instantiate;
-        cudaEventCreate(&t_start_instantiate);
-        cudaEventCreate(&t_end_instantiate);
-        cudaEventRecord(t_start_instantiate, stream);
+        // cudaEvent_t t_start_instantiate, t_end_instantiate;
+        // cudaEventCreate(&t_start_instantiate);
+        // cudaEventCreate(&t_end_instantiate);
+        // cudaEventRecord(t_start_instantiate, stream);
         cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
 
-        cudaEventRecord(t_end_instantiate, stream);
-        checkCUDA(cudaEventSynchronize(t_end_instantiate));
-        float elapsed_instantiate = 0;
-        checkCUDA(cudaEventElapsedTime(&elapsed_instantiate, t_start_instantiate, t_end_instantiate));
-        cudaEventDestroy(t_start_instantiate);
-        cudaEventDestroy(t_end_instantiate);
-        printf("shard:[%d]1 FUSED_OP.INSTANTIATE: %f\n", shard_id, elapsed_instantiate);
+        // cudaEventRecord(t_end_instantiate, stream);
+        // checkCUDA(cudaEventSynchronize(t_end_instantiate));
+        // float elapsed_instantiate = 0;
+        // checkCUDA(cudaEventElapsedTime(&elapsed_instantiate, t_start_instantiate, t_end_instantiate));
+        // cudaEventDestroy(t_start_instantiate);
+        // cudaEventDestroy(t_end_instantiate);
+        // printf("shard:[%d]1 FUSED_OP.INSTANTIATE: %f\n", shard_id, elapsed_instantiate);
         metas->graph_collections[graph_params] = instance;
         scenario = 2;
     }
@@ -1208,24 +1208,24 @@ __host__ void
 
             cudaStreamEndCapture(stream, &graph);
             
-            cudaEventRecord(t_end_capture, stream);
-            checkCUDA(cudaEventSynchronize(t_end_capture));
-            float elapsed_capture = 0;
-            checkCUDA(cudaEventElapsedTime(&elapsed_capture, t_start_capture, t_end_capture));
-            cudaEventDestroy(t_start_capture);
-            cudaEventDestroy(t_end_capture);
+            // cudaEventRecord(t_end_capture, stream);
+            // checkCUDA(cudaEventSynchronize(t_end_capture));
+            // float elapsed_capture = 0;
+            // checkCUDA(cudaEventElapsedTime(&elapsed_capture, t_start_capture, t_end_capture));
+            // cudaEventDestroy(t_start_capture);
+            // cudaEventDestroy(t_end_capture);
        }
-        cudaEvent_t t_start_instantiate, t_end_instantiate;
-        cudaEventCreate(&t_start_instantiate);
-        cudaEventCreate(&t_end_instantiate);
-        cudaEventRecord(t_start_instantiate, stream);
+        // cudaEvent_t t_start_instantiate, t_end_instantiate;
+        // cudaEventCreate(&t_start_instantiate);
+        // cudaEventCreate(&t_end_instantiate);
+        // cudaEventRecord(t_start_instantiate, stream);
         cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
-        cudaEventRecord(t_end_instantiate, stream);
-        checkCUDA(cudaEventSynchronize(t_end_instantiate));
-        float elapsed_instantiate = 0;
-        checkCUDA(cudaEventElapsedTime(&elapsed_instantiate, t_start_instantiate, t_end_instantiate));
-        cudaEventDestroy(t_start_instantiate);
-        cudaEventDestroy(t_end_instantiate);
+        // cudaEventRecord(t_end_instantiate, stream);
+        // checkCUDA(cudaEventSynchronize(t_end_instantiate));
+        // float elapsed_instantiate = 0;
+        // checkCUDA(cudaEventElapsedTime(&elapsed_instantiate, t_start_instantiate, t_end_instantiate));
+        // cudaEventDestroy(t_start_instantiate);
+        // cudaEventDestroy(t_end_instantiate);
        // printf("shard:[%d]2 FUSED_OP.INSTANTIATE: %f\n", shard_id, elapsed_instantiate);
         metas->graph_collections[graph_params] = instance;
   }
