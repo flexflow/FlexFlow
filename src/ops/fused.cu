@@ -606,15 +606,9 @@ __host__ void
   cudaGraph_t graph;
   cudaGraphExec_t instance;
 
-  std::string graph_name = "";
-  for (int op = 0; op < fused->numOperators; op++) {
-    graph_name += get_operator_type_name(fused->op_op_type[op]);
-    if(op < fused->numOperators - 1)
-      graph_name += " ";
-  }
   GraphParams graph_params = {bc->num_active_requests(),
                       bc->num_active_tokens(),
-                      bc->num_generation_tokens > 0, graph_name};
+                      bc->num_generation_tokens > 0};
   int scenario = 0;
   cudaEvent_t t_start_update, t_end_update;
   int shard_id = task->index_point.point_data[0];
@@ -634,9 +628,6 @@ __host__ void
 #else
     cudaError_t update_result = cudaGraphExecUpdate(instance, graph, NULL);
     update_failed = (update_result != cudaSuccess);
-    if(update_failed) {
-      graph_params.Print(); 
-    }
 #endif
 
     cudaEventRecord(t_end_update, stream);
