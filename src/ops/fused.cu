@@ -610,7 +610,7 @@ __host__ void
                       bc->num_active_tokens(),
                       bc->num_generation_tokens > 0};
   int scenario = 0;
-  cudaEvent_t t_start_update, t_end_update;
+  // cudaEvent_t t_start_update, t_end_update;
   int shard_id = task->index_point.point_data[0];
   if(metas->graph_collections.count(graph_params) != 0) {
     instance = metas->graph_collections[graph_params];
@@ -645,10 +645,10 @@ __host__ void
     }
   } else {
        {
-            cudaEvent_t t_start_capture, t_end_capture;
-            cudaEventCreate(&t_start_capture);
-            cudaEventCreate(&t_end_capture);
-            cudaEventRecord(t_start_capture, stream);
+            // cudaEvent_t t_start_capture, t_end_capture;
+            // cudaEventCreate(&t_start_capture);
+            // cudaEventCreate(&t_end_capture);
+            // cudaEventRecord(t_start_capture, stream);
             
             cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
             int ioff = 0, woff = 0, ooff = 0;

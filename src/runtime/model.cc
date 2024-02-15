@@ -4061,7 +4061,7 @@ void FFIterationConfig::reset() {
 struct DefaultConfig {
   const static int epochs = 1;
   // const static int iterations = 1;
-  const static int batchSize = 64;
+  const static int batchSize = 2;
   const static bool profiling = false;
   const static bool inference_debugging = false;
   constexpr static float learningRate = 0.01f;
