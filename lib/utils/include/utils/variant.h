@@ -198,6 +198,14 @@ auto narrow(Container const &c) -> decltype(transform(
   return transform(c, [](VariantIn const &i) { return narrow<VariantOut>(i); });
 }
 
+template <typename TypeOut,
+          typename Container,
+          typename VariantIn = typename Container::value_type,
+          typename = std::enable_if<is_in_variant<TypeOut, VariantIn>::value>>
+auto narrow(Container const &c) {
+  return transform(c, [](VariantIn const &e) { return get<TypeOut>(e); });
+}
+
 template <typename T1,
           typename T2,
           typename... Trest,

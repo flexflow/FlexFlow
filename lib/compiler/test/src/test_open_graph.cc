@@ -7,8 +7,6 @@ using namespace FlexFlow;
 TEST_CASE("get_source_sink_open_graph") {
   OpenMultiDiGraph g = OpenMultiDiGraph::create<AdjacencyOpenMultiDiGraph>();
 
-  int s0 = 100000;
-
   Node n0 = g.add_node();
   NodePort p0 = g.add_node_port();
   InputMultiDiEdge e0{
@@ -24,9 +22,6 @@ TEST_CASE("get_source_sink_open_graph") {
 
 TEST_CASE("get_source_sink_open_graph:unconnected") {
   OpenMultiDiGraph g = OpenMultiDiGraph::create<AdjacencyOpenMultiDiGraph>();
-
-  int s0 = 100000;
-  int t0 = s0 + 1;
 
   Node n0 = g.add_node();
   Node n1 = g.add_node();
@@ -54,10 +49,7 @@ TEST_CASE("get_source_sink_open_graph:unconnected") {
 TEST_CASE("get_cut") {
   auto g = OpenMultiDiGraph::create<AdjacencyOpenMultiDiGraph>();
 
-  std::vector<Node> ns;
-  for (int i = 0; i < 5; ++i) {
-    ns.push_back(g.add_node());
-  }
+  std::vector<Node> ns = add_nodes(g, 5);
 
   MultiDiEdge e0{ns[1], g.add_node_port(), ns[0], g.add_node_port()};
   MultiDiEdge e1{ns[2], g.add_node_port(), ns[1], g.add_node_port()};

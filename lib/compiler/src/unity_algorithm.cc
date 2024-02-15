@@ -9,11 +9,17 @@ bool StrategyRuntimeCmp::operator()(Strategy const &lhs, Strategy const &rhs) {
   return lhs.runtime < rhs.runtime;
 }
 
+/*
+ * Gets all substitutions applicable to a PCG
+ */
 std::unordered_set<Substitution>
     get_all_substitutions(ParallelComputationGraph const &pcg) {
   NOT_IMPLEMENTED();
 }
 
+/*
+ * Applies a substitution to all possible positions in PCG
+ */
 std::unordered_set<ParallelComputationGraph>
     apply_substitution(ParallelComputationGraph const &pcg,
                        Substitution const &) {
@@ -53,7 +59,7 @@ Strategy
     Strategy const &current_result = candidates.top();
     candidates.pop();
 
-    if (StrategyRuntimeCmp{}(current_result, best_result)) {
+    if (current_result.runtime < best_result.runtime) {
       best_result = current_result;
     } else if (current_result.runtime >
                best_result.runtime * opt_config.alpha) {

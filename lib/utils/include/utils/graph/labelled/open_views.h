@@ -52,8 +52,6 @@ private:
   std::unordered_set<Node> const &nodes;
 };
 
-// CHECK_NOT_ABSTRACT(OutputLabelledOpenMultiDiSubgraphView);
-
 template <typename NodeLabel, typename EdgeLabel>
 struct ViewOutputLabelledAsOutputLabelledOpen
     : virtual IOutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> {

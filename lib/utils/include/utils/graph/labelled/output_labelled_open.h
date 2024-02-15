@@ -40,6 +40,16 @@ public:
     return get_ptr().at(o);
   }
 
+  template <typename... Ts>
+  EdgeLabel const &at(variant<Ts...> const &e) const {
+    return visit([&](auto const &e) -> auto const & { return this->at(e); }, e);
+  }
+
+  template <typename... Ts>
+  EdgeLabel &at(variant<Ts...> const &e) {
+    return visit([&](auto const &e) -> auto & { return this->at(e); }, e);
+  }
+
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return get_ptr().query_nodes(q);
   }
@@ -85,52 +95,52 @@ public:
 
   Node add_node(NodeLabel const &l) {
     Node n = get_ptr().add_node();
-    nl.get_mutable()->add_label(n, l);
+    this->node_labelling.get_mutable()->add_label(n, l);
     return n;
   }
 
   void add_node_unsafe(Node const &n, NodeLabel const &l) {
-    get_ptr().add_node_unsafe(n);
-    nl.get_mutable()->add_label(n, l);
+    this->get_ptr().add_node_unsafe(n);
+    this->node_labelling.get_mutable()->add_label(n, l);
   }
 
   NodePort add_node_port() {
-    return get_ptr().add_node_port();
+    return this->get_ptr().add_node_port();
   }
 
   NodeLabel &at(Node const &n) {
-    return nl.get_mutable()->get_label(n);
+    return this->node_labelling.get_mutable()->get_label(n);
   }
 
   NodeLabel const &at(Node const &n) const {
-    return nl->get_label(n);
+    return this->node_labelling->get_label(n);
   }
 
   void add_label(MultiDiOutput const &o, EdgeLabel const &l) {
-    ol.get_mutable()->add_label(o, l);
+    this->output_labelling.get_mutable()->add_label(o, l);
   };
 
   void add_label(InputMultiDiEdge const &e, EdgeLabel const &l) {
-    il.get_mutable()->add_label(e, l);
+    this->input_labelling.get_mutable()->add_label(e, l);
   }
 
   void add_edge(OpenMultiDiEdge const &e) {
-    return get_ptr().add_edge(e);
+    return this->get_ptr().add_edge(e);
   }
 
   EdgeLabel &at(MultiDiOutput const &o) {
-    return ol.get_mutable()->get_label(o);
+    return this->output_labelling.get_mutable()->get_label(o);
   }
   EdgeLabel const &at(MultiDiOutput const &o) const {
-    return ol->get_label(o);
+    return this->output_labelling->get_label(o);
   }
 
   EdgeLabel &at(InputMultiDiEdge const &e) {
-    return il.get_mutable()->get_label(e);
+    return this->input_labelling.get_mutable()->get_label(e);
   }
 
   EdgeLabel const &at(InputMultiDiEdge const &e) const {
-    return il->get_label(e);
+    return this->input_labelling->get_label(e);
   }
 
   template <typename... Ts>
@@ -170,7 +180,8 @@ private:
                                  cow_ptr_t<INodeLabel> nl,
                                  cow_ptr_t<IInputLabel> il,
                                  cow_ptr_t<IOutputLabel> ol)
-      : GraphView(ptr), nl(nl), il(il), ol(ol) {}
+      : GraphView(ptr), node_labelling(nl), input_labelling(il),
+        output_labelling(ol) {}
 
   Interface &get_ptr() {
     return *std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable());
@@ -180,9 +191,9 @@ private:
     return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());
   }
 
-  cow_ptr_t<INodeLabel> nl;
-  cow_ptr_t<IInputLabel> il;
-  cow_ptr_t<IOutputLabel> ol;
+  cow_ptr_t<INodeLabel> node_labelling;
+  cow_ptr_t<IInputLabel> input_labelling;
+  cow_ptr_t<IOutputLabel> output_labelling;
 };
 
 template <typename NodeLabel, typename EdgeLabel>

@@ -13,9 +13,6 @@
 namespace FlexFlow {
 
 struct MachineView {
-  // MachineView() = delete;
-  // MachineView(device_id_t const &, StridedRectangle const &);
-
   std::vector<int> device_ids() const;
 
   device_id_t at(FFOrdered<num_points_t> const &coord) const;

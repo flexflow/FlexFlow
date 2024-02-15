@@ -10,4 +10,8 @@ ParallelTensor::ParallelTensor(ParallelTensorDims const &dims,
     : dims(dims), data_type(data_type), sync_type(sync_type),
       initializer(initializer), create_gradients(create_gradients) {}
 
+ParallelTensorShape ParallelTensor::get_shape() const {
+  return ParallelTensorShape(dims, data_type);
+}
+
 } // namespace FlexFlow

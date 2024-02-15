@@ -4,7 +4,7 @@
 
 using namespace FlexFlow;
 
-TEST_CASE("get_subgraph_open_graph") {
+TEST_CASE("get_subgraph(OpenMultiDiGraphView)") {
   auto g = OpenMultiDiGraph::create<AdjacencyOpenMultiDiGraph>();
 
   int t0 = 100000;

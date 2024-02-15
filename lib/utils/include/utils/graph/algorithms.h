@@ -23,6 +23,7 @@ std::vector<Node> add_nodes(Graph &, int);
 std::vector<Node> add_nodes(UndirectedGraph &, int);
 std::vector<Node> add_nodes(DiGraph &, int);
 std::vector<Node> add_nodes(MultiDiGraph &, int);
+std::vector<Node> add_nodes(OpenMultiDiGraph &g, int num_nodes);
 
 std::vector<NodePort> add_node_ports(MultiDiGraph &, int);
 

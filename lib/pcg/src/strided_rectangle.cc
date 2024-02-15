@@ -30,8 +30,4 @@ side_size_t StridedRectangleSide::get_size() const {
   NOT_IMPLEMENTED();
 }
 
-// StridedRectangle::StridedRectangle(
-//     std::vector<StridedRectangleSide> const &sides)
-//     : sides(sides) {}
-
 } // namespace FlexFlow

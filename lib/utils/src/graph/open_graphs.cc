@@ -52,7 +52,7 @@ std::unordered_set<OpenMultiDiEdge>
 }
 
 NodePort OpenMultiDiGraph::add_node_port() {
-  return get_ptr().add_node_port();
+  return this->get_ptr().add_node_port();
 }
 
 IOpenMultiDiGraph &OpenMultiDiGraph::get_ptr() {

@@ -42,6 +42,10 @@ std::vector<Node> add_nodes(MultiDiGraph &g, int num_nodes) {
   return add_nodes_impl<MultiDiGraph>(g, num_nodes);
 }
 
+std::vector<Node> add_nodes(OpenMultiDiGraph &g, int num_nodes) {
+  return add_nodes_impl<OpenMultiDiGraph>(g, num_nodes);
+}
+
 std::vector<NodePort> add_node_ports(MultiDiGraph &g, int num_node_ports) {
   std::vector<NodePort> node_ports;
   for (int i = 0; i < num_node_ports; i++) {
@@ -786,15 +790,13 @@ std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g) {
 
 std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g) {
   return filter(get_nodes(g), [&](Node const &n) {
-    return !g.query_edges(InputMultiDiEdgeQuery::all().with_dst_nodes({n}))
-                .empty();
+    return !get_incoming_edges(g, n).empty();
   });
 }
 
 std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g) {
   return filter(get_nodes(g), [&](Node const &n) {
-    return !g.query_edges(OutputMultiDiEdgeQuery::all().with_src_nodes({n}))
-                .empty();
+    return !get_outgoing_edges(g, n).empty();
   });
 }
 

@@ -96,7 +96,39 @@ float estimate_cost(SubParallelComputationGraphView const &g,
                     MachineMapping const &device_mapping,
                     std::unordered_map<OpenMultiDiEdge, MachineView> const
                         &frontier_machine_views) {
-  return 0.1;
+  float cost = 0;
+  for (Node const &node : get_nodes(g)) {
+    std::unordered_set<UpwardOpenMultiDiEdge> incoming_edges =
+        get_incoming_edges(g, node);
+    std::vector<ParallelTensorShape> inputs =
+        transform(as_vector(incoming_edges),
+                  [&](UpwardOpenMultiDiEdge const &input_edge) {
+                    return g.at(input_edge).get_shape();
+                  });
+    cost += estimator.estimate_cost(
+        g.at(node).attrs, inputs, device_mapping.machine_views.at(node));
+  }
+
+  for (OpenMultiDiEdge const &edge : get_edges(g)) {
+    if (holds_alternative<InputMultiDiEdge>(edge)) {
+      cost += estimator.estimate_cost(
+          g.at(edge).get_shape(),
+          frontier_machine_views.at(edge),
+          device_mapping.machine_views.at(get<InputMultiDiEdge>(edge).dst));
+    } else if (holds_alternative<OutputMultiDiEdge>(edge)) {
+      cost += estimator.estimate_cost(
+          g.at(edge).get_shape(),
+          device_mapping.machine_views.at(get<OutputMultiDiEdge>(edge).src),
+          frontier_machine_views.at(edge));
+    } else {
+      assert(holds_alternative<MultiDiEdge>(edge));
+      cost += estimator.estimate_cost(
+          g.at(edge).get_shape(),
+          device_mapping.machine_views.at(get<MultiDiEdge>(edge).src),
+          device_mapping.machine_views.at(get<MultiDiEdge>(edge).dst));
+    }
+  }
+  return cost;
 }
 
 void minimize_runtime(OptimalCostResult &m1, OptimalCostResult const &m2) {

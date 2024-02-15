@@ -2,9 +2,7 @@ ff_add_test_executable(
   NAME
     compiler-test
   SRC_PATTERNS
-    src/test_labelled_open_graph.cc
-    src/test_open_graph.cc
-    src/test_optimal_cost.cc
+    src/*.cc
   PRIVATE_INCLUDE
     src/
   DEPS

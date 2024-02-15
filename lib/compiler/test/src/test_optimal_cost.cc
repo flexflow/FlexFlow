@@ -33,10 +33,10 @@ TEST_CASE("optimal_cost_0") {
           UnorderedLabelling<Node, Operator>,
           UnorderedLabelling<MultiDiOutput, ParallelTensor>>();
 
-  Node n0 = pcg.add_node(Operator(InputAttrs{}, "input"));
-  Node n1 = pcg.add_node(Operator(
+  Node n0 = pcg.add_node(Operator{InputAttrs{}, "input"});
+  Node n1 = pcg.add_node(Operator{
       LinearAttrs{1, false, DataType::FLOAT, Activation::RELU, nullopt},
-      "linear"));
+      "linear"});
 
   MultiDiEdge e{n1, pcg.add_node_port(), n0, pcg.add_node_port()};
   pcg.add_edge(e);

@@ -41,9 +41,6 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(StridedRectangleSide,
 
 struct StridedRectangle {
 public:
-  // StridedRectangle() = delete;
-  // StridedRectangle(std::vector<StridedRectangleSide> const &);
-
   size_t at(FFOrdered<num_points_t> const &) const;
   StridedRectangleSide at(ff_dim_t const &) const;
   size_t num_dims() const;
@@ -61,11 +58,5 @@ MAKE_TYPEDEF_PRINTABLE(::FlexFlow::num_points_t, "num_points");
 
 MAKE_TYPEDEF_HASHABLE(::FlexFlow::side_size_t);
 MAKE_TYPEDEF_PRINTABLE(::FlexFlow::side_size_t, "side_size");
-
-// VISITABLE_STRUCT(::FlexFlow::StridedRectangleSide, num_points, stride);
-// MAKE_VISIT_HASHABLE(::FlexFlow::StridedRectangleSide);
-
-// VISITABLE_STRUCT(::FlexFlow::StridedRectangle, sides);
-// MAKE_VISIT_HASHABLE(::FlexFlow::StridedRectangle);
 
 #endif
