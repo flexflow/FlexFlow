@@ -82,6 +82,7 @@ void MPT::create_mpt_model(FFModel &ff,
           true,
           1e-05,
           false,
+          false,
           DT_NONE,
           std::string("layers_" + std::to_string(i) + "_norm_1").c_str());
       hidden_states = res_ln_outputs[0];
@@ -177,6 +178,7 @@ void MPT::create_mpt_model(FFModel &ff,
         true,
         1e-05,
         false,
+        false,
         DT_NONE,
         std::string("layers_" + std::to_string(i) + "_norm_2").c_str());
     hidden_states = res_ln_outputs[0];
@@ -219,6 +221,7 @@ void MPT::create_mpt_model(FFModel &ff,
                          axes,
                          true,
                          1e-05,
+                         false,
                          false,
                          DT_NONE,
                          "transformer_norm_f");

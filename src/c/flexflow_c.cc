@@ -649,6 +649,7 @@ flexflow_tensor_t *
                                            bool elementwise_affine,
                                            float eps,
                                            bool use_bias,
+                                           bool inplace_residual,
                                            char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -672,6 +673,7 @@ flexflow_tensor_t *
                               elementwise_affine,
                               eps,
                               use_bias,
+                              inplace_residual,
                               input->data_type,
                               name);
   assert(tensor_outputs[0] != nullptr);
@@ -679,7 +681,7 @@ flexflow_tensor_t *
   DEBUG_PRINT("[ResidualLayerNorm] input %p, residual1 %p, residual2 "
               "%p, output0: %p, "
               "output1: %p, use_two_residuals: %d, elementwise_affine %d, eps "
-              "%f, use_bias: %d, name %s",
+              "%f, use_bias: %d, inplace_residual: %d, name %s",
               input,
               residual1,
               residual2,
@@ -689,6 +691,7 @@ flexflow_tensor_t *
               elementwise_affine,
               eps,
               use_bias,
+              inplace_residual,
               name);
   flexflow_tensor_t *tensor_outputs_wrapped =
       (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
@@ -706,6 +709,7 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
     bool elementwise_affine,
     float eps,
     bool use_bias,
+    bool inplace_residual,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -722,13 +726,14 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
                                        elementwise_affine,
                                        eps,
                                        use_bias,
+                                       inplace_residual,
                                        input->data_type,
                                        name);
   assert(tensor_outputs[0] != nullptr);
   assert(tensor_outputs[1] != nullptr);
   DEBUG_PRINT("[AddBiasResidualLayerNorm] input %p, residual %p, output0: %p, "
               "output1: %p, elementwise_affine %d, eps "
-              "%f, use_bias %d, name %s",
+              "%f, use_bias %d, inplace_residual: %d, name %s",
               input,
               residual,
               tensor_outputs[0],
@@ -736,6 +741,7 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
               elementwise_affine,
               eps,
               use_bias,
+              inplace_residual,
               name);
   flexflow_tensor_t *tensor_outputs_wrapped =
       (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
@@ -1469,13 +1475,20 @@ flexflow_tensor_t *
                                          const flexflow_tensor_t input2_,
                                          float eps,
                                          int dim,
+                                         bool inplace_residual,
                                          char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input1 = FFCObjectWrapper::unwrap(input1_);
   Tensor input2 = FFCObjectWrapper::unwrap(input2_);
   Tensor tensor_outputs[2];
-  handle->residual_rms_norm(
-      input1, input2, tensor_outputs, eps, dim, input1->data_type, name);
+  handle->residual_rms_norm(input1,
+                            input2,
+                            tensor_outputs,
+                            eps,
+                            dim,
+                            inplace_residual,
+                            input1->data_type,
+                            name);
   assert(tensor_outputs[0] != nullptr);
   assert(tensor_outputs[1] != nullptr);
   flexflow_tensor_t *tensor_outputs_wrapped =

@@ -2967,8 +2967,19 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
                     found = k;
                   }
                 }
-                assert(found >= 0);
-                op->inputs[idx] = fused_op->outputs[found];
+                if (found >= 0) {
+                  op->inputs[idx] = fused_op->outputs[found];
+                } else {
+                  for (int k = 0; k < fused_op->numInputs; k++) {
+                    if (fused_op->inputs[k]->region ==
+                        op->inputs[idx]->region) {
+                      assert(found == -1);
+                      found = k;
+                    }
+                  }
+                  assert(found >= 0);
+                  op->inputs[idx] = fused_op->inputs[found];
+                }
               }
             }
             // Insert op

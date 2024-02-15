@@ -32,6 +32,7 @@ public:
   void *rms_ptr;
   void *norm_ptr;
 
+  bool inplace_residual;
   int in_dim;
   int batch_size;
   int num_elements;

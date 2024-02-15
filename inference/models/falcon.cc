@@ -85,6 +85,7 @@ void FALCON::create_falcon_model(FFModel &ff,
           true,
           falcon_config.layer_norm_epsilon,
           true,
+          false,
           DT_NONE,
           std::string("layers_" + std::to_string(i) + "_input_layernorm")
               .c_str());
@@ -212,6 +213,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                          true,
                          falcon_config.layer_norm_epsilon,
                          true,
+                         false,
                          DT_NONE,
                          "ln_f");
   Tensor ln_f = res_ln_outputs[1];

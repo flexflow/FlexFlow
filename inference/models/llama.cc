@@ -80,6 +80,7 @@ void LLAMA::create_llama_model(FFModel &ff,
           token_att_norm,
           llama_config.rms_norm_eps,
           llama_config.hidden_size,
+          false, // inplace_residual
           DT_NONE,
           std::string("layers_" + std::to_string(i) + "_attention_norm")
               .c_str());
@@ -171,6 +172,7 @@ void LLAMA::create_llama_model(FFModel &ff,
         token_ff_norm,
         llama_config.rms_norm_eps,
         llama_config.hidden_size,
+        false, // inplace_residual
         DT_NONE,
         std::string("layers_" + std::to_string(i) + "_ffn_norm").c_str());
     token = token_ff_norm[0];
@@ -234,6 +236,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                        final_rms_norm_output,
                        llama_config.rms_norm_eps,
                        llama_config.hidden_size,
+                       false, // inplace_residual
                        DT_NONE,
                        "norm");
 

@@ -3814,6 +3814,7 @@ bool FFModel::convert_graph_to_operators(
                                               abr_ln->elementwise_affine,
                                               abr_ln->use_bias,
                                               abr_ln->eps,
+                                              abr_ln->inplace_residual,
                                               true,
                                               NULL);
         break;
