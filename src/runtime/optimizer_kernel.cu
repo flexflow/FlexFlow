@@ -230,6 +230,15 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(
   checkCUDA(get_legion_stream(&stream));
   // assert(op->reservedWorkSpaceSize < meta->handle.workSpaceSize);
 
+  cudaEvent_t t_start, t_start1, t_start2, t_end;
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_start1);
+  cudaEventCreate(&t_start2);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start, stream);
+  cudaEventRecord(t_start1, stream);
+  cudaEventRecord(t_start2, stream);
+
   void *workSpace_ptr = meta->handle.workSpace;
 
   for (int i = 0; i < op->parameters_num; i++) {
@@ -242,6 +251,13 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(
         static_cast<char *>(workSpace_ptr) + size[i] * sizeof(float);
   }
 
+  cudaEventRecord(t_end, stream);
+  checkCUDA(cudaEventSynchronize(t_end));
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start1, t_end));
+  cudaEventDestroy(t_start1);
+  printf("[optimizer] data copy time = %.2lfms\n", elapsed);
+
   // do allreduce once
   checkNCCL(ncclAllReduce(meta->handle.workSpace,
                           (float *)meta->handle.workSpace,
@@ -250,6 +266,12 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(
                           ncclSum,
                           meta->handle.ncclComm,
                           stream));
+  cudaEventRecord(t_end, stream);
+  checkCUDA(cudaEventSynchronize(t_end));
+  elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start2, t_end));
+  cudaEventDestroy(t_start2);
+  printf("[optimizer] allreduce time = %.2lfms\n", elapsed);
 
   workSpace_ptr = static_cast<char *>(meta->handle.workSpace);
   float alpha_t = op->alpha_t;
@@ -277,6 +299,14 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(
     beta2_t *= op->beta2;
     alpha_t = op->alpha * sqrt(1 - beta2_t) / (1 - beta1_t);
   }
+  cudaEventRecord(t_end, stream);
+  checkCUDA(cudaEventSynchronize(t_end));
+  elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  printf("[optimizer] total time = %.2lfms\n", elapsed);
+  assert(false);
 }
 #endif
 
