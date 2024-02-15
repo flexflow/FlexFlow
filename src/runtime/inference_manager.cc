@@ -617,9 +617,9 @@ void FFModel::compile_inference() {
                             op->op_type == OP_RESIDUAL_RMS_NORM ||
                             op->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM)) {
         if (reset_inputs.find(op->outputs[0]->region) != reset_inputs.end()) {
-          reset_inputs.insert(op->inputs[0]->region);
           op->reset_input_grads[0] = false;
         }
+        reset_inputs.insert(op->inputs[i]->region);
       } else {
         reset_inputs.insert(op->inputs[i]->region);
       }
