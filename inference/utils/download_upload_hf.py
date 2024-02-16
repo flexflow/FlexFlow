@@ -3,6 +3,7 @@ import argparse
 from huggingface_hub import HfApi, HfFolder
 import flexflow.serve as ff
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Download a model with FlexFlow, process it, and upload it to the Hugging Face Hub.")
     parser.add_argument("model_name", type=str, help="Original Hugging Face model ID to download and process (e.g., 'facebook/opt-125m').")
@@ -12,6 +13,7 @@ def parse_args():
     parser.add_argument("--refresh-cache", action="store_true", help="Use this flag to force the refresh of the model(s) weights/tokenizer cache.")
     parser.add_argument("--full-precision", action="store_true", help="Download the full precision version of the weights.")
     return parser.parse_args()
+
 
 def download_and_process_model(model_name, cache_folder, refresh_cache, full_precision):
     data_type = ff.DataType.DT_FLOAT if full_precision else ff.DataType.DT_HALF
@@ -25,22 +27,20 @@ def download_and_process_model(model_name, cache_folder, refresh_cache, full_pre
     llm.download_hf_weights_if_needed()
     llm.download_hf_tokenizer_if_needed()
     llm.download_hf_config()
-    # any necessary conversion or processing by FlexFlow happens here
+    return llm
 
-def upload_processed_model_to_hub(new_model_id, cache_folder, private):
+
+def upload_processed_model_to_hub(llm, new_model_id, cache_folder, private):
     print(f"Uploading processed model to Hugging Face Hub: {new_model_id}")
-    api = HfApi()
-    if not HfFolder.get_token():
-        print("Hugging Face token not found. Please login using `huggingface-cli login`.")
-        return
-    api.create_repo(repo_id=new_model_id, private=private, exist_ok=True)
-    api.upload_folder(folder_path=cache_folder, repo_id=new_model_id)
+    llm.upload_hf_model(new_model_id, private=private)
     print("Upload completed successfully.")
+
 
 def main():
     args = parse_args()
-    download_and_process_model(args.model_name, args.cache_folder, args.refresh_cache, args.full_precision)
-    upload_processed_model_to_hub(args.new_model_id, args.cache_folder, args.private)
+    llm = download_and_process_model(args.model_name, args.cache_folder, args.refresh_cache, args.full_precision)
+    upload_processed_model_to_hub(llm, args.new_model_id, args.cache_folder, args.private)
+
 
 if __name__ == "__main__":
     main()

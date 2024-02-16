@@ -29,8 +29,8 @@ from flexflow.serve.models import (
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from peft import PeftModel, PeftConfig
-from huggingface_hub import HfApi
-import torch, shutil, hashlib, json, gc
+from huggingface_hub import HfApi, HfFolder, Repository
+import torch, shutil, hashlib, json, gc, os
 from typing import Union, List
 
 
@@ -140,6 +140,7 @@ class LLM:
                 f"Attempting to run PEFT {peft_model_id} before compiling LLM {self.model_name}"
             )
         return peft_dict["ff_peft_model_id"]
+
 
     def download_hf_config(self):
         """Save the HuggingFace model configs to a json file. Useful mainly to run the C++ inference code."""
@@ -342,6 +343,43 @@ class LLM:
             # Save new revision hash to file
             with open(ff_revision_file, "w+") as f:
                 f.write(latest_revision)
+        else:
+            print(f"Loading '{self.model_name}' tokenizer from the cache...")
+
+    def __load_hf_weights(self):
+        print("Loading hf weights...")
+
+        self.download_hf_weights_if_needed()
+
+        # Create file data loader, load weights into tensors
+        model_configs = self.config_class(self.hf_config)
+
+        self.fileloader = FileDataLoader(
+            self.weights_path,
+            model_configs.num_attention_heads,
+            model_configs.num_key_value_heads,
+            model_configs.hidden_size,
+            model_configs.hidden_size // model_configs.num_attention_heads,
+            self.ffconfig.tensor_parallelism_degree,
+        )
+
+        self.fileloader.load_weights(self.model.ffmodel, self.data_type)
+        
+    def upload_hf_model(self, new_model_id: str, private: bool = False):
+        """
+        Uploads the model weights to the Hugging Face Hub.
+        
+        :param repo_id: The repository ID, including the organization/user and model name (e.g., "organization/model_name").
+        :param private: Whether to upload the model as a private model.
+        """
+        print(f"Uploading processed model to Hugging Face Hub: {new_model_id}")
+        if not HfFolder.get_token():
+            print("Hugging Face token not found. Please login using `huggingface-cli login`.")
+            return
+        api = HfApi()
+        api.create_repo(repo_id=new_model_id, private=private, exist_ok=True)
+        api.upload_folder(folder_path=self.cache_path, repo_id=new_model_id)
+        print("Upload completed successfully.")
 
     def compile(
         self,
@@ -591,3 +629,184 @@ class SSM(LLM):
             model_specific_pipeline_parallelism_degree,
             ssms,
         )
+
+class PEFT:
+    """This class creates a PEFT (parameter-efficient transformer) object to be used in concert with a LLM or SSM"""
+
+    def __init__(
+        self,
+        peft_model_id: str,
+        data_type: DataType = DataType.DT_HALF,
+        cache_path: str = "",
+        refresh_cache: bool = False,
+    ):
+        self.hf_config = PeftConfig.from_pretrained(peft_model_id)
+        self.peft_model_id = peft_model_id
+        self.peft_type = self.hf_config.peft_type
+        if self.peft_type != "LORA":
+            raise RuntimeError(
+                f"PEFT type {self.peft_type} not yet supported in FlexFlow"
+            )
+        self.data_type = data_type
+        assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT
+        self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
+        self.refresh_cache = refresh_cache
+        # Base model related
+        if "base_model_name_or_path" not in self.hf_config.to_dict():
+            raise ValueError(
+                f"PEFT model {peft_model_id} does not have an associated based model"
+            )
+        self.base_model = LLM(
+            self.hf_config.base_model_name_or_path, data_type, cache_path, refresh_cache
+        )
+
+    def download_hf_config(self):
+        """Save the HuggingFace model configs to a json file. Useful mainly to run the C++ inference code."""
+        self.config_dir = os.path.join(
+            os.path.expanduser(self.cache_path), "configs", self.peft_model_id.lower()
+        )
+        self.config_path = os.path.join(self.config_dir, "config.json")
+        os.makedirs(self.config_dir, exist_ok=True)
+        print(f"Creating directory {self.config_dir} (if it doesn't exist)...")
+        print(f"Saving {self.peft_model_id} configs to file {self.config_path}...")
+        with open(self.config_path, "w") as json_file:
+            class SetEncoder(json.JSONEncoder):
+                def default(self, obj):
+                    if isinstance(obj, set):
+                        return list(obj)
+                    return super().default(obj)
+            json.dump(self.hf_config.to_dict(), json_file, indent=2, cls=SetEncoder)
+
+    def __get_revision_hashes(self, peft_model_id: str):
+        ff_revision = None
+        ff_revision_file = os.path.join(self.weights_path, "rev_sha.txt")
+        if os.path.exists(ff_revision_file):
+            ff_revision = "".join(open(ff_revision_file).read().split())
+
+        if os.path.exists(peft_model_id) and os.path.isdir(peft_model_id):
+            # Local model
+            files = os.listdir(peft_model_id)
+            state = files + [
+                os.path.getmtime(os.path.join(peft_model_id, f)) for f in files
+            ]
+            latest_revision = hashlib.md5(str(state).encode("utf-8")).hexdigest()
+        else:
+            # Remote HuggingFace model
+            hf_api = HfApi()
+            latest_revision = hf_api.model_info(self.peft_model_id).sha
+        return ff_revision, ff_revision_file, latest_revision
+
+    def convert_peft_model(self, hf_peft_model, weights_path):
+        for name, params in hf_peft_model.named_parameters():
+            if self.peft_type.lower() in name:
+                name = name.replace("base_model.model.model.", "").replace(
+                    ".default", ""
+                )
+                name = self.base_model.model_class.convert_hf_weight_name(name)
+                params.detach().cpu().numpy().tofile(f"{weights_path}/{name}")
+
+    def download_hf_weights_if_needed(self):
+        """Check in the folder specified by the cache_path whether the PEFT's model weights are available and up to date.
+        If not, or if the refresh_cache parameter is set to True, download new weights.
+        """
+        # Use local cache, or download new version
+        self.weights_path = os.path.join(
+            os.path.expanduser(self.cache_path),
+            "weights",
+            self.peft_model_id.lower(),
+            "full-precision"
+            if self.data_type == DataType.DT_FLOAT
+            else "half-precision",
+        )
+        if self.refresh_cache:
+            print(
+                f"Refreshing weights in cache for model {self.peft_model_id} at path {self.weights_path} ..."
+            )
+            if os.path.exists(self.weights_path):
+                shutil.rmtree(self.weights_path)
+        os.makedirs(self.weights_path, exist_ok=True)
+        print(f"Creating directory {self.weights_path} (if it doesn't exist)...")
+
+        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
+            self.peft_model_id
+        )
+
+        # Download if needed
+        if ff_revision != latest_revision:
+            if not os.path.exists(self.peft_model_id) or os.path.isdir(
+                self.peft_model_id
+            ):
+                # Local model
+                print(
+                    f"'{self.peft_model_id}' model weights not found in cache or outdated. Downloading from huggingface.co ..."
+                )
+            else:
+                # Remote model
+                print(
+                    f"'{self.peft_model_id}' local model weights were updated! Converting new weights now..."
+                )
+            # Download base model from HuggingFace, or load it from the local folder
+            self.base_model.download_hf_weights_if_needed()
+            self.base_model.download_hf_tokenizer_if_needed()
+            self.base_model.download_hf_config()
+            hf_base_model = AutoModelForCausalLM.from_pretrained(
+                self.hf_config.base_model_name_or_path,
+                return_dict=True,
+                trust_remote_code=True,
+                torch_dtype=torch.float32
+                if self.data_type == DataType.DT_FLOAT
+                else torch.float16,
+                # device_map="auto",
+            )
+            hf_peft_model = PeftModel.from_pretrained(hf_base_model, self.peft_model_id)
+            # Print log message to notify user download of model has finished
+            if not os.path.exists(self.peft_model_id) or os.path.isdir(
+                self.peft_model_id
+            ):
+                print("Done downloading HF weights. Converting them now...")
+            # Convert the model to FlexFlow format
+            self.convert_peft_model(hf_peft_model, self.weights_path)
+            # Save new revision hash to file
+            with open(ff_revision_file, "w+") as f:
+                f.write(latest_revision)
+            print("Done converting the weights...")
+            # Deallocate hf model
+            del hf_peft_model
+            del hf_base_model
+            gc.collect()
+            torch.cuda.empty_cache()
+        else:
+            print(f"Loading '{self.peft_model_id}' model weights from the cache...")
+
+    def upload_model_to_hf(self, model_directory: str, model_id: str, private: bool = False):
+        """
+        Uploads the model from the specified directory to the Hugging Face Hub.
+
+        Args:
+        - model_directory (str): The directory where the model and its configuration are stored.
+        - model_id (str): The desired model ID on the Hugging Face Hub (e.g., "username/model_name").
+        - private (bool): If True, the model will be uploaded as a private model.
+        """
+        try:
+            # Check for Hugging Face CLI authentication
+            if not HfFolder.get_token():
+                raise ValueError("Hugging Face token not found. Please log in using `huggingface-cli login`.")
+            
+            # Ensure the specified directory contains model files
+            if not os.listdir(model_directory):
+                raise FileNotFoundError(f"No files found in {model_directory}. Please check the path and try again.")
+
+            # Create or get the repository
+            repo_url = HfApi().create_repo(name=model_id, private=private, exist_ok=True, use_auth_token=True)
+            print(f"Repository URL: {repo_url}")
+
+            # Initialize the repository, add files, commit, and push
+            repo = Repository(local_dir=model_directory, clone_from=repo_url, use_auth_token=True)
+            repo.git_add()
+            repo.git_commit("Upload model to Hugging Face Hub")
+            repo.git_push()
+
+            print(f"Model '{model_id}' successfully uploaded to the Hugging Face Hub.")
+        except Exception as e:
+            print(f"Failed to upload the model: {e}")
+        
