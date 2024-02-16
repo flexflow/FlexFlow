@@ -36,13 +36,13 @@ void inference_kernel_wrapper(AllReduceMeta const *m,
   size_t num_elements = bc->num_tokens * hidden_dim_size;
 #ifdef FF_USE_NCCL
   ncclDataType_t nccl_data_type = ff_to_nccl_datatype(input.data_type);
-  // checkNCCL(ncclAllReduce(input.ptr,
-  //                         output.ptr,
-  //                         num_elements,
-  //                         nccl_data_type,
-  //                         ncclSum,
-  //                         m->handle.ncclComm,
-  //                         stream));
+  checkNCCL(ncclAllReduce(input.ptr,
+                          output.ptr,
+                          num_elements,
+                          nccl_data_type,
+                          ncclSum,
+                          m->handle.ncclComm,
+                          stream));
 #else
   assert(false && "Must enable FF_USE_NCCL to use AllReduce operators");
 #endif
