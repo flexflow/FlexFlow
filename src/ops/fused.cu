@@ -441,11 +441,12 @@ __host__ void
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        RMSNormMeta const *m = (RMSNormMeta *)metas->meta[op];
-        Kernels::RMSNorm::forward_kernel_wrapper(m,
-                                                 my_input_accessor[0],
-                                                 my_weight_accessor[0],
-                                                 my_output_accessor[0]);
+        RMSNormMeta *m = (RMSNormMeta *)metas->meta[op];
+        Kernels::RMSNorm::inference_kernel_wrapper(m,
+                                                   bc,
+                                                    my_input_accessor[0],
+                                                    my_weight_accessor[0],
+                                                    my_output_accessor[0]);
         break;
       }
       case OP_RESIDUAL_RMS_NORM: {
@@ -805,6 +806,9 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
   }
 
   for (int op = fused->numOperators - 1; op >= 0; op--) {
+#if 0
+    std::cout << get_operator_type_name(fused->op_op_type[op]) << std::endl;
+#endif
     ioff -= fused->op_num_inputs[op];
     woff -= fused->op_num_weights[op];
     ooff -= fused->op_num_outputs[op];
@@ -813,9 +817,15 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
       if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
         // my_id[i] = input_domain[my_off];
         my_input_grad_accessor[i] = input_grad_accessor[my_off];
+#if 0
+        printf("\tmy_input_grad_accessor[%i] = input_grad_accessor[%i]\n", i, my_off);
+#endif
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
         // my_id[i] = output_domain[my_off];
         my_input_grad_accessor[i] = output_grad_accessor[my_off];
+#if 0
+        printf("\tmy_input_grad_accessor[%i] = output_grad_accessor[%i]\n", i, my_off);
+#endif
       } else {
         assert(false);
       }
@@ -832,6 +842,9 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
       // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
       // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
       my_output_grad_accessor[i] = output_grad_accessor[my_off];
+#if 0
+      printf("\tmy_output_grad_accessor[%i] = output_grad_accessor[%i]\n", i, my_off);
+#endif
     }
     switch (fused->op_op_type[op]) {
       case OP_CONCAT: {
