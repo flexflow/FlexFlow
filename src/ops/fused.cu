@@ -1026,9 +1026,10 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
         Kernels::ResidualRMSNorm::peft_bwd_kernel_wrapper(
             m,
             bc,
-            my_output_grad_accessor[1],
             my_input_grad_accessor[0],
             my_input_grad_accessor[1],
+            my_output_grad_accessor[0],
+            my_output_grad_accessor[1],
             my_weight_accessor[0]);
         break;
       }
