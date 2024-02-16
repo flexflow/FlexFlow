@@ -311,7 +311,7 @@ class LLM:
 
         self.fileloader.load_weights(self.model.ffmodel, self.data_type)
         
-    def upload_hf_model(self, new_model_id: str, private: bool = False):
+    def upload_hf_model(self, new_model_id: str, model_path:str, private: bool = False):
         """
         Uploads the model weights to the Hugging Face Hub.
         
@@ -325,6 +325,7 @@ class LLM:
         api = HfApi()
         api.create_repo(repo_id=new_model_id, private=private, exist_ok=True)
         api.upload_folder(folder_path=self.cache_path, repo_id=new_model_id)
+        # api.upload_folder(folder_path=model_path, repo_id=new_model_id)
         print("Upload completed successfully.")
 
 
@@ -676,36 +677,31 @@ class PEFT:
         else:
             print(f"Loading '{self.peft_model_id}' model weights from the cache...")
 
-    def upload_model_to_hf(self, model_directory: str, model_id: str, private: bool = False):
+    def process_and_upload_hf_model(self, model_id: str, private: bool = False):
         """
-        Uploads the model from the specified directory to the Hugging Face Hub.
+        Processes the PEFT model and uploads it to the Hugging Face Hub.
 
         Args:
-        - model_directory (str): The directory where the model and its configuration are stored.
         - model_id (str): The desired model ID on the Hugging Face Hub (e.g., "username/model_name").
         - private (bool): If True, the model will be uploaded as a private model.
         """
-        try:
-            # Check for Hugging Face CLI authentication
-            if not HfFolder.get_token():
-                raise ValueError("Hugging Face token not found. Please log in using `huggingface-cli login`.")
-            
-            # Ensure the specified directory contains model files
-            if not os.listdir(model_directory):
-                raise FileNotFoundError(f"No files found in {model_directory}. Please check the path and try again.")
+        self.download_hf_weights_if_needed()
+        model_directory = self.weights_path 
+        self.upload_model_to_hf(model_directory, model_id, private)
 
-            # Create or get the repository
-            repo_url = HfApi().create_repo(name=model_id, private=private, exist_ok=True, use_auth_token=True)
-            print(f"Repository URL: {repo_url}")
-
-            # Initialize the repository, add files, commit, and push
-            repo = Repository(local_dir=model_directory, clone_from=repo_url, use_auth_token=True)
-            repo.git_add()
-            repo.git_commit("Upload model to Hugging Face Hub")
-            repo.git_push()
-
-            print(f"Model '{model_id}' successfully uploaded to the Hugging Face Hub.")
-        except Exception as e:
-            print(f"Failed to upload the model: {e}")
+    def upload_hf_model(self, new_model_id: str, model_path:str, private: bool = False):
+        """
+        Uploads the processed PEFT model to the Hugging Face Hub.
         
-    
+        :param new_model_id: The new repository ID on Hugging Face Hub, including the organization/user and model name (e.g., "your_username/new-peft-model-name").
+        :param private: Whether to upload the model as a private model on Hugging Face Hub.
+        """
+        print(f"Uploading processed PEFT model to Hugging Face Hub: {new_model_id}")
+        if not HfFolder.get_token():
+            print("Hugging Face token not found. Please login using `huggingface-cli login`.")
+            return
+        api = HfApi()
+        api.create_repo(repo_id=new_model_id, private=private, exist_ok=True)
+        api.upload_folder(folder_path=self.cache_path, repo_id=new_model_id)
+        # api.upload_folder(folder_path=model_path, repo_id=new_model_id)
+        print("Upload completed successfully.")
