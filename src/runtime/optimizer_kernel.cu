@@ -306,7 +306,6 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(
   cudaEventDestroy(t_start);
   cudaEventDestroy(t_end);
   printf("[optimizer] total time = %.2lfms\n", elapsed);
-  assert(false);
 }
 #endif
 
