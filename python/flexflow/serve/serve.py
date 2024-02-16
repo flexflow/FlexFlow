@@ -29,8 +29,8 @@ from flexflow.serve.models import (
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from peft import PeftModel, PeftConfig
-from huggingface_hub import HfApi
-import torch, shutil, hashlib, json, gc
+from huggingface_hub import HfApi, HfFolder, Repository
+import torch, shutil, hashlib, json, gc, os
 from typing import Union, List
 
 
@@ -136,7 +136,8 @@ class LLM:
         self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
         self.refresh_cache = refresh_cache
         self.output_file = output_file
-
+        
+        
     def download_hf_config(self):
         """Save the HuggingFace model configs to a json file. Useful mainly to run the C++ inference code."""
         self.config_dir = os.path.join(
@@ -309,6 +310,23 @@ class LLM:
         )
 
         self.fileloader.load_weights(self.model.ffmodel, self.data_type)
+        
+    def upload_hf_model(self, new_model_id: str, private: bool = False):
+        """
+        Uploads the model weights to the Hugging Face Hub.
+        
+        :param repo_id: The repository ID, including the organization/user and model name (e.g., "organization/model_name").
+        :param private: Whether to upload the model as a private model.
+        """
+        print(f"Uploading processed model to Hugging Face Hub: {new_model_id}")
+        if not HfFolder.get_token():
+            print("Hugging Face token not found. Please login using `huggingface-cli login`.")
+            return
+        api = HfApi()
+        api.create_repo(repo_id=new_model_id, private=private, exist_ok=True)
+        api.upload_folder(folder_path=self.cache_path, repo_id=new_model_id)
+        print("Upload completed successfully.")
+
 
     def compile(
         self,
@@ -657,3 +675,37 @@ class PEFT:
             torch.cuda.empty_cache()
         else:
             print(f"Loading '{self.peft_model_id}' model weights from the cache...")
+
+    def upload_model_to_hf(self, model_directory: str, model_id: str, private: bool = False):
+        """
+        Uploads the model from the specified directory to the Hugging Face Hub.
+
+        Args:
+        - model_directory (str): The directory where the model and its configuration are stored.
+        - model_id (str): The desired model ID on the Hugging Face Hub (e.g., "username/model_name").
+        - private (bool): If True, the model will be uploaded as a private model.
+        """
+        try:
+            # Check for Hugging Face CLI authentication
+            if not HfFolder.get_token():
+                raise ValueError("Hugging Face token not found. Please log in using `huggingface-cli login`.")
+            
+            # Ensure the specified directory contains model files
+            if not os.listdir(model_directory):
+                raise FileNotFoundError(f"No files found in {model_directory}. Please check the path and try again.")
+
+            # Create or get the repository
+            repo_url = HfApi().create_repo(name=model_id, private=private, exist_ok=True, use_auth_token=True)
+            print(f"Repository URL: {repo_url}")
+
+            # Initialize the repository, add files, commit, and push
+            repo = Repository(local_dir=model_directory, clone_from=repo_url, use_auth_token=True)
+            repo.git_add()
+            repo.git_commit("Upload model to Hugging Face Hub")
+            repo.git_push()
+
+            print(f"Model '{model_id}' successfully uploaded to the Hugging Face Hub.")
+        except Exception as e:
+            print(f"Failed to upload the model: {e}")
+        
+    
