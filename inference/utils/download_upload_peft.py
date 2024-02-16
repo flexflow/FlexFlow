@@ -25,21 +25,19 @@ def download_and_process_peft_model(peft_model_id, cache_folder, refresh_cache, 
     peft.download_hf_weights_if_needed()
     peft.download_hf_config()
     # any necessary conversion or processing by FlexFlow happens here
-
-def upload_processed_peft_model_to_hub(new_model_id, cache_folder, private):
-    print(f"Uploading processed PEFT model to Hugging Face Hub: {new_model_id}")
-    api = HfApi()
-    if not HfFolder.get_token():
-        print("Hugging Face token not found. Please login using `huggingface-cli login`.")
-        return
-    api.create_repo(repo_id=new_model_id, private=private, exist_ok=True)
-    api.upload_folder(folder_path=cache_folder, repo_id=new_model_id)
+    return peft
+    
+    
+def upload_peft_model_to_hub(peft, new_model_id, cache_folder, private):
+    print(f"Uploading peft model to HuggingFace Hub: {new_model_id}")
+    peft.upload_hf_model(new_model_id, cache_folder, private=private)
     print("Upload completed successfully.")
+    
 
 def main():
     args = parse_args()
-    download_and_process_peft_model(args.peft_model_id, args.cache_folder, args.refresh_cache, args.full_precision)
-    upload_processed_peft_model_to_hub(args.new_model_id, args.cache_folder, args.private)
+    peft = download_and_process_peft_model(args.peft_model_id, args.cache_folder, args.refresh_cache, args.full_precision)
+    upload_peft_model_to_hub(peft, args.new_model_id, args.cache_folder, args.private)
 
 if __name__ == "__main__":
     main()

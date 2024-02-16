@@ -32,7 +32,7 @@ def download_and_process_model(model_name, cache_folder, refresh_cache, full_pre
 
 def upload_processed_model_to_hub(llm, new_model_id, cache_folder, private):
     print(f"Uploading processed model to Hugging Face Hub: {new_model_id}")
-    llm.upload_hf_model(new_model_id, private=private)
+    llm.upload_hf_model(new_model_id, cache_folder, private=private)
     print("Upload completed successfully.")
 
 
