@@ -44,6 +44,7 @@
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
+#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -161,6 +162,9 @@ __host__ void
 
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
+#if 0
+    std::cout << get_operator_type_name(fused->op_op_type[op]) << std::endl;
+#endif
     // Domain my_id[MAX_NUM_INPUTS];
     // Domain my_wd[MAX_NUM_WEIGHTS];
     // Domain my_od[MAX_NUM_OUTPUTS];
@@ -172,9 +176,15 @@ __host__ void
       if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
         // my_id[i] = input_domain[my_off];
         my_input_accessor[i] = input_accessor[my_off];
+#if 0
+        printf("\tmy_input_accessor[%i] = input_accessor[%i]\n", i, my_off);
+#endif
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
         // my_id[i] = output_domain[my_off];
         my_input_accessor[i] = output_accessor[my_off];
+#if 0
+        printf("\tmy_input_accessor[%i] = output_accessor[%i]\n", i, my_off);
+#endif
       } else {
         assert(false);
       }
@@ -191,6 +201,9 @@ __host__ void
       // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
       // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
       my_output_accessor[i] = output_accessor[my_off];
+#if 0
+      printf("\tmy_output_accessor[%i] = output_accessor[%i]\n", i, my_off);
+#endif
     }
     switch (fused->op_op_type[op]) {
       case OP_CONCAT: {
@@ -439,13 +452,14 @@ __host__ void
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 2);
-        ResidualRMSNormMeta const *m = (ResidualRMSNormMeta *)metas->meta[op];
-        Kernels::ResidualRMSNorm::forward_kernel_wrapper(m,
-                                                         my_input_accessor[0],
-                                                         my_input_accessor[1],
-                                                         my_weight_accessor[0],
-                                                         my_output_accessor[0],
-                                                         my_output_accessor[1]);
+        ResidualRMSNormMeta *m = (ResidualRMSNormMeta *)metas->meta[op];
+        Kernels::ResidualRMSNorm::inference_kernel_wrapper(m,
+                                                            bc,
+                                                            my_input_accessor[0],
+                                                            my_input_accessor[1],
+                                                            my_weight_accessor[0],
+                                                            my_output_accessor[0],
+                                                            my_output_accessor[1]);
         break;
       }
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -668,22 +682,13 @@ __host__ void
       std::vector<GenericTensorAccessorR> weight_accessors_to_save;
       std::vector<GenericTensorAccessorR> output_accessors_to_save;
       for (int i = 0; i < fused->op_num_inputs[op]; i++) {
-        int my_off = fused->op_input_idx[i + ioff];
-        if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
-          input_accessors_to_save.push_back(input_accessor[my_off]);
-        } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
-          input_accessors_to_save.push_back(output_accessor[my_off]);
-        } else {
-          assert(false);
-        }
+        input_accessors_to_save.push_back(my_input_accessor[i]);
       }
       for (int i = 0; i < fused->op_num_weights[op]; i++) {
-        assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
-        weight_accessors_to_save.push_back(
-            weight_accessor[fused->op_weight_idx[i + woff]]);
+        weight_accessors_to_save.push_back(my_weight_accessor[i]);
       }
       for (int i = 0; i < fused->op_num_outputs[op]; i++) {
-        output_accessors_to_save.push_back(output_accessor[i + ooff]);
+        output_accessors_to_save.push_back(my_output_accessor[i]);
       }
       assert(task->index_point.get_dim() == 1);
       int shard_id = task->index_point.point_data[0];

@@ -652,7 +652,7 @@ FutureMap FusedOp::inference(FFModel const &ff,
   offset += numOutputs;
   // add softmax output grad
   if (operators[numOperators - 1]->op_type == OP_SOFTMAX) {
-    printf("operator %i is last SOFTMAX! adding output %i\n",
+    printf("operator %i is last SOFTMAX! adding grad for output %i\n",
            numOperators - 1,
            numOutputs - 1);
     assert(outputs[numOutputs - 1]->region != LogicalRegion::NO_REGION);
