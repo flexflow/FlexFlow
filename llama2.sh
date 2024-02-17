@@ -14,3 +14,6 @@
 
 
  ./build/inference/incr_decoding/incr_decoding -ll:gpu 1  -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 -llm-model JackFram/llama-68m -cache-folder /home/xiaoxias/weights --fusion -prompt /home/xiaoxias/chatgpt.json > llama2-cuda-graph-bs64-JackFram-llama-68m-1gpu.log 2>&1 
+
+
+ ./build/inference/incr_decoding/incr_decoding -ll:gpu 4  -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -cache-folder /home/xiaoxias/weights --fusion -prompt /home/xiaoxias/chatgpt.json -tensor-parallelism-degree 4 > llama2-cuda-graph-bs64-tp4.log 2>&1 

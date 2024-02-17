@@ -1141,11 +1141,14 @@ __host__ void
         }
         cudaStreamEndCapture(stream, &graph);
        }
-        cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+       //cudaGraphInstantiateWithFlags(&instance, graph, CUDA_GRAPH_INSTANTIATE_FLAG_USE_NODE_PRIORITY);//CUDA_GRAPH_INSTANTIATE_FLAG_AUTO_FREE_ON_LAUNCH
+        cudaGraphInstantiateWithFlags(&instance, graph, CUDA_GRAPH_INSTANTIATE_FLAG_AUTO_FREE_ON_LAUNCH);//CUDA_GRAPH_INSTANTIATE_FLAG_AUTO_FREE_ON_LAUNCH
+        cudaGraphDestroy(graph);
         metas->graph_collections[graph_params] = instance;
   }
   assert(metas->graph_collections.find(graph_params) !=
-         metas->graph_collections.end());  
+         metas->graph_collections.end()); 
+  //cudaStreamSynchronize(stream);
   cudaGraphLaunch(instance, stream);
   //cudaGraphDestroy(graph);
 }
