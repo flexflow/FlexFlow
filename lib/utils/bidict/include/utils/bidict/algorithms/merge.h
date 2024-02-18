@@ -1,18 +1,26 @@
 #ifndef _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_ALGORITHMS_MERGE_H
 #define _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_ALGORITHMS_MERGE_H
 
+#include "utils/bidict/bidict.h"
+#include "utils/ff_exceptions/ff_exceptions.h"
+#include "fmt/format.h"
+
 namespace FlexFlow {
 
-template <typename K, typename V>
-bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
-  assert(are_disjoint(keys(lhs), keys(rhs)));
-
-  bidict<K, V> result;
-  for (auto const &kv : lhs) {
-    result.equate(kv.first, kv.second);
+template <typename L, typename R>
+bidict<L, R> merge_maps(bidict<L, R> const &lhs, bidict<L, R> const &rhs) {
+  bidict<L, R> result;
+  for (auto const &[k, v] : lhs) {
+    result.equate(k, v);
   }
-  for (auto const &kv : rhs) {
-    result.equate(kv.first, kv.second);
+  for (auto const &[k, v] : rhs) {
+    if (result.find_l(k) != result.end()) {
+      throw mk_runtime_error(fmt::format("Refusing to merge non-disjoint maps! Found overlapping key/left {}", k));
+    }
+    if (result.find_r(v) != result.end()) {
+      throw mk_runtime_error(fmt::format("Refusing to merge non-disjoint maps! Found overlapping value/right {}", v));
+    }
+    result.equate(k, v);
   }
 
   return result;

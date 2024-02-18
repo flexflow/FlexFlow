@@ -59,8 +59,13 @@ struct bidict {
   }
 
   std::size_t size() const {
-    assert(fwd_map.size() == bwd_map.size());
+    this->check_invariants();
     return fwd_map.size();
+  }
+
+  bool empty() const {
+    this->check_invariants();
+    return fwd_map.empty();
   }
 
   using const_iterator = typename std::unordered_map<L, R>::const_iterator;
@@ -86,6 +91,19 @@ struct bidict {
     return this->cend();
   }
 
+  const_iterator find_l(L const &l) const {
+    return this->fwd_map.find(l);
+  }
+
+  const_iterator find_r(R const &r) const {
+    auto it = this->bwd_map.find(r);
+    if (it == this->bwd_map.end()) {
+      return this->fwd_map.end();
+    } else {
+      return this->fwd_map.find(it->second);
+    }
+  }
+
   bidict<R, L> reversed() const {
     return bidict<R, L>(bwd_map, fwd_map);
   }
@@ -94,7 +112,24 @@ struct bidict {
     return this->fwd_map;
   }
 
+  friend bool operator==(bidict<L, R> const &lhs, 
+                         bidict<L, R> const &rhs) {
+    lhs.check_invariants();
+    rhs.check_invariants();
+    return lhs.fwd_map == rhs.fwd_map;
+  }
+
+  friend bool operator!=(bidict<L, R> const &lhs,
+                         bidict<L, R> const &rhs) {
+    lhs.check_invariants();
+    rhs.check_invariants();
+    return lhs.fwd_map != rhs.fwd_map;
+  }
 private:
+  void check_invariants() const {
+    assert(fwd_map.size() == bwd_map.size());
+  }
+
   friend struct bidict<R, L>;
 
   std::unordered_map<L, R> fwd_map;

@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_TYPE_LIST_INCLUDE_UTILS_TYPE_LIST_IS_TYPE_LIST_H
 #define _FLEXFLOW_LIB_UTILS_TYPE_LIST_INCLUDE_UTILS_TYPE_LIST_IS_TYPE_LIST_H
 
-#include "type_list.h"
+#include "utils/type_list/type_list.h"
 #include <type_traits>
 
 namespace FlexFlow {

@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_TYPE_LIST_INCLUDE_UTILS_TYPE_LIST_IS_ISOMORPHIC_TO_TYPE_LIST_H
 #define _FLEXFLOW_LIB_UTILS_TYPE_LIST_INCLUDE_UTILS_TYPE_LIST_IS_ISOMORPHIC_TO_TYPE_LIST_H
 
-#include "utils/type_list/is_type_list.h" 
+#include "utils/type_list/functions/is_type_list.h" 
 #include <type_traits>
 
 namespace FlexFlow {

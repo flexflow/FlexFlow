@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_TYPE_TRAITS_EXTRA_INCLUDE_UTILS_TYPE_TRAITS_EXTRA_TYPE_LIST_REPLACE_H
 #define _FLEXFLOW_LIB_UTILS_TYPE_TRAITS_EXTRA_INCLUDE_UTILS_TYPE_TRAITS_EXTRA_TYPE_LIST_REPLACE_H
 
-#include "variant_from_type_list.h"
+#include "utils/type_list/type/variant.h"
 #include "indexing.h"
 #include "concat.h"
 

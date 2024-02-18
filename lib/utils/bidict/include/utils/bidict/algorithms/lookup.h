@@ -1,6 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_ALGORITHMS_LOOKUP_H
 #define _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_ALGORITHMS_LOOKUP_H
 
+#include <functional>
+#include "utils/bidict/bidict.h"
+
 namespace FlexFlow {
 
 template <typename L, typename R>

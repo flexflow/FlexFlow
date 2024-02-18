@@ -4,4 +4,6 @@ ff_add_library(
     utils-strong_typedef
     utils-smart_ptrs
     utils-bidict
+    utils-visitable
+    utils-type_list
 )

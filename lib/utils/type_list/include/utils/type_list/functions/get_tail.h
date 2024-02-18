@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_TYPE_TRAITS_EXTRA_INCLUDE_UTILS_TYPE_TRAITS_EXTRA_TYPE_LIST_GET_TAIL_H
 #define _FLEXFLOW_LIB_UTILS_TYPE_TRAITS_EXTRA_INCLUDE_UTILS_TYPE_TRAITS_EXTRA_TYPE_LIST_GET_TAIL_H
 
-#include "type_list.h"
+#include "utils/type_list/type_list.h"
 #include "utils/backports/type_identity.h"
 
 namespace FlexFlow {

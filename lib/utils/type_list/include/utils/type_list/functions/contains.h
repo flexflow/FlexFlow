@@ -1,9 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_TYPE_TRAITS_EXTRA_INCLUDE_UTILS_TYPE_TRAITS_EXTRA_TYPE_LIST_CONTAINS_H
 #define _FLEXFLOW_LIB_UTILS_TYPE_TRAITS_EXTRA_INCLUDE_UTILS_TYPE_TRAITS_EXTRA_TYPE_LIST_CONTAINS_H
 
-#include "type_list.h"
+#include "utils/type_list/type_list.h"
 #include <type_traits>
-#include "indexing.h"
 
 namespace FlexFlow {
 

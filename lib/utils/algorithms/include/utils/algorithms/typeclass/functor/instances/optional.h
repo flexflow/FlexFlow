@@ -26,7 +26,7 @@ struct optional_functor {
 };
 
 template <typename T>
-struct default_functor<T> : type_identity<optional_functor<T>> {};
+struct default_functor<std::optional<T>> : type_identity<optional_functor<T>> {};
 
 } // namespace FlexFlow
 

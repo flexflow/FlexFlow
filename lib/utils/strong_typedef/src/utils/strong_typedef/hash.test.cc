@@ -12,7 +12,9 @@ struct not_hashable_typedef_t : public strong_typedef<not_hashable_typedef_t, in
   using strong_typedef::strong_typedef;
 };
 
-TEST_CASE("hash<strong_typedef<T>>") {
-  CHECK(is_hashable_v<example_typedef_t>);
-  CHECK_FALSE(is_hashable_v<not_hashable_typedef_t>);
+TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE("hash<strong_typedef<T>>") {
+    CHECK(is_hashable_v<example_typedef_t>);
+    CHECK_FALSE(is_hashable_v<not_hashable_typedef_t>);
+  }
 }

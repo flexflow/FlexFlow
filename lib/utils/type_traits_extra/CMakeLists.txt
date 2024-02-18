@@ -5,4 +5,5 @@ ff_add_library(
     boost_preprocessor
     utils-preprocessor_extra
     utils-backports
+    utils-type_list
 )

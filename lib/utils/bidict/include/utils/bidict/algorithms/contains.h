@@ -5,14 +5,14 @@
 
 namespace FlexFlow {
 
-template <typename K, typename V>
-bool contains_l(bidict<K, V> const &m, K const &k) {
-  return m.find(k) != m.end();
+template <typename L, typename R>
+bool contains_l(bidict<L, R> const &m, L const &k) {
+  return m.find_l(k) != m.end();
 }
 
-template <typename K, typename V>
-bool contains_r(bidict<K, V> const &m, V const &v) {
-  return m.find(v) != m.end();
+template <typename L, typename R>
+bool contains_r(bidict<L, R> const &m, R const &v) {
+  return m.find_r(v) != m.end();
 }
 
 } // namespace FlexFlow

@@ -1,19 +1,29 @@
 #ifndef _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_ALGORITHMS_GENERATE_H
 #define _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_ALGORITHMS_GENERATE_H
 
+#include "utils/bidict/bidict.h"
+#include "utils/type_traits_extra/is_hashable.h"
+
 namespace FlexFlow {
 
-template <typename F, typename C, typename K, typename V>
+template <
+  typename F, 
+  typename C, 
+  typename K = typename C::value_type, 
+  typename V = std::invoke_result_t<F, K>
+>
 bidict<K, V> generate_bidict(C const &c, F const &f) {
-  static_assert(is_hashable<K>::value,
+  static_assert(is_hashable_v<K>,
                 "Key type should be hashable (but is not)");
-  static_assert(is_hashable<V>::value,
+  static_assert(is_hashable_v<V>,
                 "Value type should be hashable (but is not)");
 
-  auto transformed = transform(c, [&](K const &k) -> std::pair<K, V> {
-    return {k, f(k)};
-  });
-  return {transformed.cbegin(), transformed.cend()};
+  bidict<K, V> result;
+  for (K const &k : c) {
+    result.equate(k, f(k));
+  }
+
+  return result;
 }
 
 } // namespace FlexFlow
