@@ -166,7 +166,7 @@ struct OptimalCost {
   template <typename T>
   OptimalCostResult operator()(T const &t) const {
     OptimalCostState state{
-        t, resource /*, given_machine_views, frontier_machine_views*/};
+        t, resource , given_machine_views, frontier_machine_views};
     optional<OptimalCostResult> cached_result =
         cached_subgraph_costs.load(state);
 
