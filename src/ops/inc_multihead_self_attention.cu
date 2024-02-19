@@ -1644,6 +1644,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
     // Copy C_softmax to m->softmax_activation_buffer if we need to compute
     // PEFT backward
     if (bc->requestsInfo[i].peft_bwd) {
+      DT *C_softmax = static_cast<DT *>(m->qk_prods_softmax);
       MemoryAllocator *allocator = m->handle.peft_activation_allocator;
       m->softmax_activation_buffer = allocator->allocate_instance_untyped(
           sizeof(DT) * total_tokens * num_new_tokens * m->num_q_heads);

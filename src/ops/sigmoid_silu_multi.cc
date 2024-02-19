@@ -570,10 +570,6 @@ Node SigmoidSiluMulti::deserialize(FFModel &ff,
   dez.deserialize(name_len);
   dez.deserialize(name, name_len);
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
-  size_t name_len;
-  char name[MAX_OPNAME] = {0};
-  dez.deserialize(name_len);
-  dez.deserialize(name, name_len);
 
   SigmoidSiluMultiParams params;
   params.layer_guid = layer_guid;

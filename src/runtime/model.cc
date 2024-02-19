@@ -3799,14 +3799,16 @@ bool FFModel::check_operators_integrity(
         for (int i = 0; i < fused->op_num_outputs[op]; i++) {
           int my_off = fused->op_output_idx[i + ooff];
           assert(fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT ||
-                (fused->op_output_source[i + ooff] == FusedOp::SOURCE_INPUT &&
-                 (old_op->op_type == OP_RESIDUAL_LAYERNORM ||
-                  old_op->op_type == OP_RESIDUAL_RMS_NORM ||
-                  old_op->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM)));
+                 (fused->op_output_source[i + ooff] == FusedOp::SOURCE_INPUT &&
+                  (old_op->op_type == OP_RESIDUAL_LAYERNORM ||
+                   old_op->op_type == OP_RESIDUAL_RMS_NORM ||
+                   old_op->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM)));
           if (fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT) {
-            assert(FusedOp::use_same_regions(fused->outputs[my_off], old_op->outputs[i], pt_mapping));
+            assert(FusedOp::use_same_regions(
+                fused->outputs[my_off], old_op->outputs[i], pt_mapping));
           } else {
-            assert(FusedOp::use_same_regions(fused->inputs[my_off], old_op->outputs[i], pt_mapping));
+            assert(FusedOp::use_same_regions(
+                fused->inputs[my_off], old_op->outputs[i], pt_mapping));
           }
         }
         ioff += fused->op_num_inputs[op];

@@ -1616,7 +1616,7 @@ void flexflow_model_generate(flexflow_model_t handle_,
                 text_str.c_str(),
                 max_seq_length);
   }
-  
+
   std::vector<GenerationResult> results = handle->generate(requests);
 
   // If the prompt exceeds max seq len, check that we return the prompt with no

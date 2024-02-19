@@ -431,9 +431,10 @@ BeamInferenceResult ArgTopK::inference_speculative_task(
   ArgTopK::forward_kernel_wrapper(m, input, probs, indices, batch_size, &bc);
 
   BeamInferenceResult ir;
-  download_tensor<BatchConfig::TokenId>(
+  copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size * m->k);
-  download_tensor<float>(probs.get_float_ptr(), ir.probs, batch_size * m->k);
+  copy_tensor_dev_to_host<float>(
+      probs.get_float_ptr(), ir.probs, batch_size * m->k);
   return ir;
 }
 

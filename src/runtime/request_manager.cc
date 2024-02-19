@@ -435,12 +435,13 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         }
       } else {
         int processed_tokens =
-          old_bc.requestsInfo[i].first_token_depth_in_request +
-          old_bc.requestsInfo[i].num_tokens_in_batch;
+            old_bc.requestsInfo[i].first_token_depth_in_request +
+            old_bc.requestsInfo[i].num_tokens_in_batch;
         assert(processed_tokens < request.tokens.size());
         bool request_completed = false;
         // printf("model_type = %d\n", this->model_type);
-        if (request.tokens.size() >= old_bc.requestsInfo[i].max_sequence_length) {
+        if (request.tokens.size() >=
+            old_bc.requestsInfo[i].max_sequence_length) {
           request_completed = true;
         } else if (request.tokens.back() == eos_token_id) {
           // Encounter EOS token id
@@ -469,7 +470,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           log_req_mgr.print("Final output: %s", output.c_str());
           num_processed_requests++;
           ProfileInfo profile_info = profiling_requests[request.guid];
-          profile_info.finish_time = Realm::Clock::current_time_in_microseconds();
+          profile_info.finish_time =
+              Realm::Clock::current_time_in_microseconds();
           total_request_run_time +=
               profile_info.finish_time - profile_info.start_time;
           profiling_requests[request.guid] = profile_info;
@@ -486,10 +488,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             std::ofstream outputFile(output_filepath, std::ios::app);
             if (outputFile.is_open()) {
               outputFile << "end-to-end latency: " << std::fixed
-                        << std::setprecision(3) << total_request_run_time
-                        << std::endl;
+                         << std::setprecision(3) << total_request_run_time
+                         << std::endl;
               outputFile << "num decoding steps: "
-                        << profile_info.llm_decoding_steps << std::endl;
+                         << profile_info.llm_decoding_steps << std::endl;
               outputFile << "token IDs: ";
               for (int i = 0; i < request.tokens.size(); i++) {
                 outputFile << request.tokens[i];
@@ -509,11 +511,14 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
 
         } else {
           new_bc.request_completed[i] = false;
-          new_bc.requestsInfo[i].first_token_depth_in_request = processed_tokens;
-          new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
+          new_bc.requestsInfo[i].first_token_depth_in_request =
+              processed_tokens;
+          new_bc.requestsInfo[i].first_token_offset_in_batch =
+              new_bc.num_tokens;
           new_bc.requestsInfo[i].request_guid =
               old_bc.requestsInfo[i].request_guid;
-          new_bc.requestsInfo[i].peft_model_id = old_bc.requestsInfo[i].peft_model_id;
+          new_bc.requestsInfo[i].peft_model_id =
+              old_bc.requestsInfo[i].peft_model_id;
           new_bc.requestsInfo[i].peft_bwd = old_bc.requestsInfo[i].peft_bwd;
           new_bc.requestsInfo[i].max_sequence_length =
               old_bc.requestsInfo[i].max_sequence_length;
@@ -527,10 +532,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             new_bc.requestsInfo[i].prompt_phase = false;
           } else {
             // Prompt phase
-            new_bc.requestsInfo[i].num_tokens_in_batch =
-                std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
-                        (int)request.tokens.size() -
-                            new_bc.requestsInfo[i].first_token_depth_in_request);
+            new_bc.requestsInfo[i].num_tokens_in_batch = std::min(
+                get_max_tokens_per_batch() - new_bc.num_tokens,
+                (int)request.tokens.size() -
+                    new_bc.requestsInfo[i].first_token_depth_in_request);
             new_bc.requestsInfo[i].prompt_phase = true;
           }
           for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
@@ -538,7 +543,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
             new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
             assert(depth < request.tokens.size());
-            new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens[depth];
+            new_bc.tokensInfo[new_bc.num_tokens].token_id =
+                request.tokens[depth];
             new_bc.num_tokens++;
           }
           // Update profiling
@@ -2399,7 +2405,8 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   return merged_tree;
 }
 
-std::vector<GenerationResult> FFModel::generate(std::vector<Request> const &requests) {
+std::vector<GenerationResult>
+    FFModel::generate(std::vector<Request> const &requests) {
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
   for (int i = 0; i < requests.size(); i++) {

@@ -236,8 +236,8 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
   // Check whether we need to reset input grads
   // We use a parallel tensor's region as the key
   std::set<LogicalRegion> reset_inputs;
-  for (int l = operators.size() - 1; l >= 0; l--) {
-    Op *op = operators[l];
+  for (int l = model->operators.size() - 1; l >= 0; l--) {
+    Op *op = model->operators[l];
     for (int i = 0; i < op->numInputs; i++) {
       assert(op->inputs[i]->region != LogicalRegion::NO_REGION);
       if (reset_inputs.find(op->inputs[i]->region) != reset_inputs.end()) {

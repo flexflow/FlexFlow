@@ -270,7 +270,7 @@ void FlexFlow::top_level_task(Task const *task,
           : model.register_peft_model(
                 LoraLinearConfig::DefaultConfig /*mlp_first*/,
                 mlp_second /*mlp_second*/);
-  
+
   // Start background server
   rm->start_background_server(&model);
 
