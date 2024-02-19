@@ -1195,6 +1195,29 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
         assert(false && "Fusion currently does not support type");
       }
     }
+    if (metas->meta[op]->inference_debugging) {
+      std::vector<GenericTensorAccessorR> input_accessors_to_save;
+      std::vector<GenericTensorAccessorR> weight_accessors_to_save;
+      std::vector<GenericTensorAccessorR> output_accessors_to_save;
+      for (int i = 0; i < fused->op_num_inputs[op]; i++) {
+        input_accessors_to_save.push_back(my_input_grad_accessor[i]);
+      }
+      for (int i = 0; i < fused->op_num_weights[op]; i++) {
+        weight_accessors_to_save.push_back(my_weight_accessor[i]);
+      }
+      for (int i = 0; i < fused->op_num_outputs[op]; i++) {
+        output_accessors_to_save.push_back(my_output_grad_accessor[i]);
+      }
+      assert(task->index_point.get_dim() == 1);
+      int shard_id = task->index_point.point_data[0];
+      FusedOp::save_inference_tensors_to_file(metas->meta[op],
+                                              shard_id,
+                                              bc,
+                                              input_accessors_to_save,
+                                              weight_accessors_to_save,
+                                              output_accessors_to_save,
+                                              false);
+    }
   }
 }
 
