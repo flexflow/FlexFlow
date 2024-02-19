@@ -652,9 +652,9 @@ FutureMap FusedOp::inference(FFModel const &ff,
   offset += numOutputs;
   // add softmax output grad
   if (operators[numOperators - 1]->op_type == OP_SOFTMAX) {
-    printf("operator %i is last SOFTMAX! adding grad for output %i\n",
-           numOperators - 1,
-           numOutputs - 1);
+    // printf("operator %i is last SOFTMAX! adding grad for output %i\n",
+    //        numOperators - 1,
+    //        numOutputs - 1);
     assert(outputs[numOutputs - 1]->region != LogicalRegion::NO_REGION);
     launcher.add_region_requirement(
         RegionRequirement(batch_outputs[numOutputs - 1]->part_grad,
@@ -700,7 +700,7 @@ FutureMap FusedOp::peft_bwd(FFModel const &ff,
     launcher.add_region_requirement(
         RegionRequirement(batch_inputs[i]->part_grad,
                           0 /*projection id*/,
-                          READ_WRITE,
+                          WRITE_ONLY,
                           EXCLUSIVE,
                           batch_inputs[i]->region_grad));
     launcher.add_field(offset + i, FID_DATA);
@@ -721,7 +721,7 @@ FutureMap FusedOp::peft_bwd(FFModel const &ff,
     launcher.add_region_requirement(
         RegionRequirement(batch_outputs[i]->part_grad,
                           0 /*projection id*/,
-                          READ_WRITE,
+                          i == numOutputs -1 ? READ_WRITE : WRITE_ONLY,
                           EXCLUSIVE,
                           batch_outputs[i]->region_grad));
     launcher.add_field(offset + i, FID_DATA);
