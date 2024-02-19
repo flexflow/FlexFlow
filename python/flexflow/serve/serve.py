@@ -313,19 +313,43 @@ class LLM:
         
     def upload_hf_model(self, new_model_id: str, model_path:str, private: bool = False):
         """
-        Uploads the model weights to the Hugging Face Hub.
+        Uploads the model weights to the Hugging Face Hub, with reverse conversion of weights.
         
-        :param repo_id: The repository ID, including the organization/user and model name (e.g., "organization/model_name").
+        :param new_model_id: The new model ID for the Hugging Face Hub.
+        :param model_path: The path where the FlexFlow weights are stored.
         :param private: Whether to upload the model as a private model.
         """
-        print(f"Uploading processed model to Hugging Face Hub: {new_model_id}")
+        print(f"Preparing model for upload to Hugging Face Hub: {new_model_id}")
+        
+        # Initialize a new Hugging Face model instance
+        hf_model = AutoModelForCausalLM.from_config(self.hf_config)
+        weights_path = self.weights_path
+        
+        # Load FlexFlow weights into the Hugging Face model instance
+        try:
+            self.model_class.load_weights_into_hf_model(hf_model, weights_path)
+        except Exception as e:
+            print(f"Error loading weights into model: {e}")
+            return
+        
+        # Save the model with converted weights to a temporary directory
+        temp_dir = tempfile.mkdtemp()
+        hf_model.save_pretrained(temp_dir)
+        
+        # Ensure Hugging Face CLI is logged in
         if not HfFolder.get_token():
             print("Hugging Face token not found. Please login using `huggingface-cli login`.")
             return
+        
+        # Upload the model
         api = HfApi()
+        print(f"Uploading processed model to Hugging Face Hub: {new_model_id}")
         api.create_repo(repo_id=new_model_id, private=private, exist_ok=True)
-        api.upload_folder(folder_path=self.cache_path, repo_id=new_model_id)
-        # api.upload_folder(folder_path=model_path, repo_id=new_model_id)
+        api.upload_folder(folder_path=temp_dir, repo_id=new_model_id)
+        
+        # Cleanup temporary directory
+        shutil.rmtree(temp_dir)
+        
         print("Upload completed successfully.")
 
 

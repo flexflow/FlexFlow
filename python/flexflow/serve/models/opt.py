@@ -15,6 +15,8 @@
 from flexflow.core import *
 from .base import FlexFlowModel
 import random, shutil
+import re
+import torch
 
 
 class OPTConfig:
@@ -301,3 +303,59 @@ class FlexFlowOPT(FlexFlowModel):
             os.path.join(dst_folder, "embed_tokens_weight"),
             os.path.join(dst_folder, "embed_tokens_weight_lm_head"),
         )
+        
+    def convert_ff_weight_name(name):
+        # Reverse the previous conversion rules
+        converted_name = (
+            name.replace("wq", "q_proj")
+            .replace("wk", "k_proj")
+            .replace("wv", "v_proj")
+            .replace("wo", "out_proj")
+            .replace("attention", "self_attn")
+            .replace("add_bias_residual_layer_norm_attn_bias", "attention_wo_bias")
+            .replace("_add_bias_residual_layer_norm", "_final_layer_norm")
+            .replace("_bias", ".bias")
+            .replace("_weight", ".weight")
+            .replace("_bias", ".bias")
+        )
+        
+        converted_name = re.sub(r"layers_(\d+)_", r"layers.\1.", converted_name)
+        converted_name = re.sub(r"_(bias|weight)$", r".\1", converted_name)
+        converted_name = re.sub(r"self_attn_(?!layer_norm)", "self_attn.", converted_name)
+        
+        # Prepend "model.decoder." to the weight name
+        converted_name = "model.decoder." + converted_name
+        
+        return converted_name
+
+
+    def load_weights_into_hf_model(model, src_folder):
+        """
+        Load weights from a specified folder and apply them to a Hugging Face model.
+        
+        Parameters:
+        - model: The instance of the Hugging Face model to load the weights into.
+        - src_folder: The path to the folder containing the weight files.
+        """
+        for file_name in os.listdir(src_folder):
+            weight_path = os.path.join(src_folder, file_name)
+            print("converting weight name: ", weight_path)
+            original_name = FlexFlowOPT.convert_ff_weight_name(file_name.replace('.bin', ''))
+            print("original name of the weights is: ", original_name)
+            
+            if not os.path.exists(weight_path):
+                raise FileNotFoundError(f"No weight file found for {file_name}")
+            
+            # weight_data = np.fromfile(weight_path, dtype=np.float32)
+            weight_data = np.fromfile(weight_path, dtype=np.float16).astype(np.float32)
+            if original_name not in model.state_dict():
+                raise KeyError(f"Parameter {original_name} not found in model.")
+            param = model.state_dict()[original_name]
+            
+            if weight_data.size != param.numel():
+                raise ValueError(f"Shape mismatch for {original_name}, model expects {param.numel()} elements, got {weight_data.size}")
+            
+            weight_tensor = torch.from_numpy(weight_data).reshape(param.shape)
+            with torch.no_grad():
+                # Update the model's state dict directly since param.copy_ doesn't work on tensor slices or elements not in place
+                model.state_dict()[original_name].copy_(weight_tensor)
