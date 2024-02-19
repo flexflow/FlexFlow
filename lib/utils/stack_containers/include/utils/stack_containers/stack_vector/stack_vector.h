@@ -1,15 +1,12 @@
-#ifndef _FLEXFLOW_UTILS_STACK_VECTOR_H
-#define _FLEXFLOW_UTILS_STACK_VECTOR_H
+#ifndef _FLEXFLOW_LIB_UTILS_STACK_CONTAINERS_INCLUDE_UTILS_STACK_CONTAINERS_STACK_VECTOR_STACK_VECTOR_H
+#define _FLEXFLOW_LIB_UTILS_STACK_CONTAINERS_INCLUDE_UTILS_STACK_CONTAINERS_STACK_VECTOR_STACK_VECTOR_H
 
-#include "containers.h"
-#include "hash-utils.h"
-#include "optional.h"
-#include "utils/fmt.h"
-#include "utils/test_types.h"
-#include "utils/type_traits.h"
+#include "utils/fmt_extra/is_fmtable.h"
 #include <array>
 #include <cassert>
 #include <type_traits>
+#include <optional>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -17,18 +14,18 @@ template <typename T, std::size_t MAXSIZE>
 struct stack_vector {
 private:
   using element_type =
-      conditional_t<std::is_default_constructible<T>::value, T, optional<T>>;
+      std::conditional_t<std::is_default_constructible<T>::value, T, std::optional<T>>;
 
   static T const &get_value(T const &t) {
     return t;
   }
-  static T const &get_value(optional<T> const &t) {
+  static T const &get_value(std::optional<T> const &t) {
     return t.value();
   }
   static T &get_value(T &t) {
     return t;
   }
-  static T &get_value(optional<T> &t) {
+  static T &get_value(std::optional<T> &t) {
     return t.value();
   }
 
@@ -300,13 +297,14 @@ private:
   std::array<element_type, MAXSIZE> contents;
 
   static_assert(
-      implies<is_equal_comparable<T>, is_equal_comparable<stack_vector>>::value,
-      "");
+      implies_v<is_equal_comparable<T>, is_equal_comparable<stack_vector>>,
+      );
   static_assert(
-      implies<is_neq_comparable<T>, is_neq_comparable<stack_vector>>::value,
-      "");
+      implies_v<is_neq_comparable<T>, is_neq_comparable<stack_vector>>,
+      );
   static_assert(
-      implies<is_lt_comparable<T>, is_lt_comparable<stack_vector>>::value, "");
+      implies_v<is_lt_comparable<T>, is_lt_comparable<stack_vector>>
+      );
 };
 
 CHECK_FMTABLE(stack_vector<test_types::fmtable, 5>);
