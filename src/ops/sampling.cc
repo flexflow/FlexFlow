@@ -88,6 +88,9 @@ Op *Sampling::create_operator_from_layer(
 SamplingParams Sampling::get_params() const {
   SamplingParams params;
   params.top_p = this->top_p;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -136,7 +139,7 @@ Sampling::Sampling(FFModel &model,
                    SamplingParams const &params,
                    const ParallelTensor input,
                    char const *name)
-    : Sampling(model, input, params.top_p, name) {}
+    : Sampling(model, input, params.top_p, params.name) {}
 
 void Sampling::init_inference(FFModel const &ff,
                               std::vector<ParallelTensor> const &batch_inputs,
@@ -325,6 +328,8 @@ void Sampling::backward(FFModel const &ff) {
 
 void Sampling::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->top_p);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 Node Sampling::deserialize(FFModel &ff,
@@ -334,8 +339,13 @@ Node Sampling::deserialize(FFModel &ff,
   assert(num_inputs == 1);
   float top_p;
   dez.deserialize(top_p);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   SamplingParams params;
   params.top_p = top_p;
+  strcpy(params.name, name);
   return ff.get_or_create_node<Sampling>(inputs[0], params);
 }
 

@@ -724,7 +724,7 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
                                      Context ctx,
                                      Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
+  FusedOpMeta *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
   // BatchConfig const *bc = (BatchConfig *)task->args;
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
@@ -1316,9 +1316,11 @@ __host__ void FusedOp::forward_task(Task const *task,
       int my_off = fused->op_input_idx[i + ioff];
       if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
         // my_id[i] = input_domain[my_off];
+        assert(my_off < fused->numInputs);
         my_input_accessor[i] = input_accessor[my_off];
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
         // my_id[i] = output_domain[my_off];
+        assert(my_off < fused->numOutputs);
         my_input_accessor[i] = output_accessor[my_off];
       } else {
         assert(false);
@@ -1328,13 +1330,16 @@ __host__ void FusedOp::forward_task(Task const *task,
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
       // my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
       // my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
+      assert(fused->op_weight_idx[i + woff] < fused->numWeights);
       my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
     }
     for (int i = 0; i < fused->op_num_outputs[op]; i++) {
+      int my_off = fused->op_output_idx[i + ooff];
       assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
+      assert(my_off < fused->numOutputs);
       // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
       // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
-      my_output_accessor[i] = output_accessor[i + ooff];
+      my_output_accessor[i] = output_accessor[my_off];
     }
     switch (fused->op_op_type[op]) {
       case OP_CONCAT: {
@@ -1856,13 +1861,13 @@ __host__ void FusedOp::backward_task(Task const *task,
     }
     for (int i = 0; i < fused->op_num_outputs[op]; i++) {
       assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
-      // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
-      // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
-      my_output_accessor[i] = output_accessor[fused->op_output_idx[i + ooff]];
-      // my_grad_od[i] = output_grad_domain[fused->op_output_idx[i + ooff]];
-      // my_grad_op[i] = output_grad_ptr[fused->op_output_idx[i + ooff]];
-      my_output_grad_accessor[i] =
-          output_grad_accessor[fused->op_output_idx[i + ooff]];
+      int my_off = fused->op_output_idx[i + ooff];
+      // my_od[i] = output_domain[my_off];
+      // my_op[i] = output_ptr[my_off];
+      my_output_accessor[i] = output_accessor[my_off];
+      // my_grad_od[i] = output_grad_domain[my_off];
+      // my_grad_op[i] = output_grad_ptr[my_off];
+      my_output_grad_accessor[i] = output_grad_accessor[my_off];
       assert(my_output_grad_accessor[i].domain == my_output_accessor[i].domain);
     }
     switch (fused->op_op_type[op]) {

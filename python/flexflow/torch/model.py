@@ -955,7 +955,7 @@ class FunctionNode(Node):
         if len(innodes) != 2:
             return False
         return type(innodes[0]) is float or \
-            type(innodes[1]) is int
+            type(innodes[0]) is int
 
     @staticmethod
     def is_elemwise_op(node):

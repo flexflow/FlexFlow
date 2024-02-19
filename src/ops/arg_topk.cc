@@ -51,6 +51,7 @@ using PCG::Node;
 Tensor FFModel::arg_top_k(const Tensor input,
                           int k,
                           bool sorted,
+                          bool speculative_decoding,
                           char const *name) {
   Layer *li = new Layer(this,
                         OP_ARG_TOPK,
@@ -58,7 +59,7 @@ Tensor FFModel::arg_top_k(const Tensor input,
                         name,
                         1 /*inputs*/,
                         0 /*weights*/,
-                        1 /*outputs*/,
+                        speculative_decoding ? 2 : 1 /*outputs*/,
                         input);
   {
     int numdims = input->num_dims;
@@ -71,9 +72,14 @@ Tensor FFModel::arg_top_k(const Tensor input,
     //     numdims, dims, input->data_type, li, 0, true /*create_grad*/);
     li->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, DT_INT32, li, 0, false /*create_grad*/);
+    if (speculative_decoding) {
+      li->outputs[1] = create_tensor_legion_ordering(
+          numdims, dims, DT_FLOAT, li, 1, false /*create_grad*/);
+    }
   }
   li->add_int_property("k", k);
   li->add_int_property("sorted", sorted);
+  li->add_int_property("speculative_decoding", speculative_decoding);
   layers.push_back(li);
   // outputs[0] = li->outputs[0];
   // outputs[1] = li->outputs[1];
@@ -89,14 +95,26 @@ Op *ArgTopK::create_operator_from_layer(
   int k = value;
   layer->get_int_property("sorted", value);
   bool sorted = (bool)value;
-  return new ArgTopK(
-      model, layer->layer_guid, inputs[0], k, sorted, layer->name);
+  layer->get_int_property("speculative_decoding", value);
+  bool speculative_decoding = (bool)value;
+
+  return new ArgTopK(model,
+                     layer->layer_guid,
+                     inputs[0],
+                     k,
+                     sorted,
+                     speculative_decoding,
+                     layer->name);
 }
 
 ArgTopKParams ArgTopK::get_params() const {
   ArgTopKParams params;
   params.k = this->k;
   params.sorted = this->sorted;
+  params.speculative_decoding = this->speculative_decoding;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -106,7 +124,8 @@ bool ArgTopKParams::is_valid(ParallelTensorShape const &) const {
 }
 
 bool operator==(ArgTopKParams const &lhs, ArgTopKParams const &rhs) {
-  return lhs.k == rhs.k && lhs.sorted == rhs.sorted;
+  return lhs.k == rhs.k && lhs.sorted == rhs.sorted &&
+         lhs.speculative_decoding == rhs.speculative_decoding;
 }
 
 ArgTopK::ArgTopK(FFModel &model,
@@ -114,6 +133,7 @@ ArgTopK::ArgTopK(FFModel &model,
                  const ParallelTensor _input,
                  int _k,
                  bool _sorted,
+                 bool _speculative_decoding,
                  char const *name)
     : Op(model,
          OP_ARG_TOPK,
@@ -121,9 +141,9 @@ ArgTopK::ArgTopK(FFModel &model,
          name,
          1 /*inputs*/,
          0 /*weights*/,
-         1 /*outputs*/,
+         _speculative_decoding ? 2 : 1 /*outputs*/,
          _input),
-      k(_k), sorted(_sorted) {
+      k(_k), sorted(_sorted), speculative_decoding(_speculative_decoding) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
   int numdim = inputs[0]->num_dims;
@@ -131,26 +151,42 @@ ArgTopK::ArgTopK(FFModel &model,
   for (int i = 0; i < numdim; i++) {
     dims[i] = inputs[0]->dims[i];
   }
+
   dims[0].size = k;
   assert(inputs[0]->dims[0].degree == 1);
   assert(inputs[0]->dims[0].parallel_idx == -1);
-  //   outputs[0] = model.create_parallel_tensor_legion_ordering(
-  //       numdim, dims, _input->data_type, this, 0 /*owner_idx*/);
+
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, DT_INT32, this, 0 /*owner_idx*/);
+  if (_speculative_decoding) {
+    outputs[1] = model.create_parallel_tensor_legion_ordering(
+        numdim, dims, DT_FLOAT, this, 1 /*owner_idx*/);
+  }
 }
 
 ArgTopK::ArgTopK(FFModel &model,
                  LayerID const &layer_guid,
                  ArgTopK const &other,
                  const ParallelTensor input)
-    : ArgTopK(model, layer_guid, input, other.k, other.sorted, other.name) {}
+    : ArgTopK(model,
+              layer_guid,
+              input,
+              other.k,
+              other.sorted,
+              other.speculative_decoding,
+              other.name) {}
 
 ArgTopK::ArgTopK(FFModel &model,
                  ArgTopKParams const &params,
-                 const ParallelTensor input,
+                 ParallelTensor const input,
                  char const *name)
-    : ArgTopK(model, params.layer_guid, input, params.k, params.sorted, name) {}
+    : ArgTopK(model,
+              params.layer_guid,
+              input,
+              params.k,
+              params.sorted,
+              params.speculative_decoding,
+              params.name) {}
 
 void ArgTopK::init_inference(FFModel const &ff,
                              std::vector<ParallelTensor> const &batch_inputs,
@@ -243,8 +279,10 @@ OpMeta *ArgTopK::init_task(Task const *task,
   m->profiling = topk->profiling;
   m->inference_debugging = topk->inference_debugging;
   m->sorted = topk->sorted;
+  m->k = topk->k;
   std::strcpy(m->op_name, topk->name);
   m->layer_guid = topk->layer_guid;
+  m->speculative_decoding = topk->speculative_decoding;
   return m;
 }
 
@@ -267,34 +305,64 @@ FutureMap ArgTopK::inference(FFModel const &ff,
   size_t machine_view_hash = view->hash();
   /* std::cout << "ArgTopK op machine_view: " << *(MachineView const *)mv
             << std::endl; */
-  IndexLauncher launcher(ARG_TOPK_INF_TASK_ID,
-                         parallel_is,
-                         TaskArgument(nullptr, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         machine_view_hash);
-  launcher.add_future(bc);
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region));
-  launcher.add_field(1, FID_DATA);
-  //   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
-  //                                                     0 /*projection id*/,
-  //                                                     WRITE_ONLY,
-  //                                                     EXCLUSIVE,
-  //                                                     batch_outputs[1]->region));
-  //   launcher.add_field(2, FID_DATA);
-  return runtime->execute_index_space(ctx, launcher);
+  if (speculative_decoding) {
+    IndexLauncher launcher(ARG_TOPK_INF_SPECULATIVE_TASK_ID,
+                           parallel_is,
+                           TaskArgument(nullptr, 0),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must*/,
+                           0 /*mapper_id*/,
+                           machine_view_hash);
+    launcher.add_future(bc);
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_inputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
+    launcher.add_field(1, FID_DATA);
+
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[1]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[1]->region));
+    launcher.add_field(2, FID_DATA);
+    return runtime->execute_index_space(ctx, launcher);
+
+  } else {
+    IndexLauncher launcher(ARG_TOPK_INF_TASK_ID,
+                           parallel_is,
+                           TaskArgument(nullptr, 0),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must*/,
+                           0 /*mapper_id*/,
+                           machine_view_hash);
+    launcher.add_future(bc);
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_inputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
+    launcher.add_field(1, FID_DATA);
+    return runtime->execute_index_space(ctx, launcher);
+  }
 }
 
 InferenceResult
@@ -317,9 +385,11 @@ InferenceResult
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW probs;
 
   int batch_size = bc->num_active_infr_tokens();
-  ArgTopK::forward_kernel_wrapper(m, input, indices, batch_size);
+  ArgTopK::forward_kernel_wrapper(
+      m, input, probs, indices, batch_size, nullptr);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
@@ -334,6 +404,39 @@ InferenceResult
   return ir;
 }
 
+BeamInferenceResult ArgTopK::inference_speculative_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
+  BeamSearchBatchConfig const &bc =
+      Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
+  if (bc.num_active_tokens() == 0) {
+    // Directly return for empty batch config
+    BeamInferenceResult ir;
+    return ir;
+  }
+  ArgTopKMeta *m = *((ArgTopKMeta **)task->local_args);
+
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
+      DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW probs = helperGetGenericTensorAccessorWO(
+      DT_FLOAT, regions[2], task->regions[2], FID_DATA, ctx, runtime);
+
+  int batch_size = bc.num_active_tokens();
+  ArgTopK::forward_kernel_wrapper(m, input, probs, indices, batch_size, &bc);
+
+  BeamInferenceResult ir;
+  download_tensor<BatchConfig::TokenId>(
+      indices.get_int32_ptr(), ir.token_ids, batch_size * m->k);
+  download_tensor<float>(probs.get_float_ptr(), ir.probs, batch_size * m->k);
+  return ir;
+}
+
 void ArgTopK::backward(FFModel const &ff) {
   // ArgTopK does not support backward
   assert(false);
@@ -345,6 +448,9 @@ void ArgTopK::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->k);
   sez.serialize(this->sorted);
+  sez.serialize(this->speculative_decoding);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 Node ArgTopK::deserialize(FFModel &ff,
@@ -359,12 +465,20 @@ Node ArgTopK::deserialize(FFModel &ff,
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   int k;
   bool sorted;
+  bool speculative_decoding;
   dez.deserialize(k);
   dez.deserialize(sorted);
+  dez.deserialize(speculative_decoding);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   ArgTopKParams params;
   params.layer_guid = layer_guid;
   params.k = k;
   params.sorted = sorted;
+  params.speculative_decoding = speculative_decoding;
+  strcpy(params.name, name);
   return ff.get_or_create_node<ArgTopK>(inputs[0], params);
 }
 
@@ -390,6 +504,7 @@ size_t hash<FlexFlow::ArgTopKParams>::operator()(
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.k);
   hash_combine(key, params.sorted);
+  hash_combine(key, params.speculative_decoding);
   return key;
 }
 }; // namespace std

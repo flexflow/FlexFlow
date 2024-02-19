@@ -84,6 +84,9 @@ AggregateSpecParams AggregateSpec::get_params() const {
   AggregateSpecParams params;
   params.n = this->n;
   params.lambda_bal = this->lambda_bal;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 

@@ -24,6 +24,7 @@
 
 #include <nlohmann/json.hpp>
 
+using namespace FlexFlow;
 using namespace Legion;
 using json = nlohmann::json;
 
@@ -269,6 +270,9 @@ void FlexFlow::top_level_task(Task const *task,
           : model.register_peft_model(
                 LoraLinearConfig::DefaultConfig /*mlp_first*/,
                 mlp_second /*mlp_second*/);
+  
+  // Start background server
+  rm->start_background_server(&model);
 
   int total_num_requests = 0;
   {
@@ -300,8 +304,11 @@ void FlexFlow::top_level_task(Task const *task,
       requests.push_back(fine_tuning_req);
       total_num_requests++;
     }
-    GenerationResult result = model.generate(requests);
+    std::vector<GenerationResult> result = model.generate(requests);
   }
+
+  // terminate the request manager by stopping the background thread
+  rm->terminate_background_server();
 
   // Execution fence
   {
