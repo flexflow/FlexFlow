@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/accessor.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/batch_norm.h"
@@ -44,7 +45,6 @@
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
-#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -444,9 +444,9 @@ __host__ void
         RMSNormMeta *m = (RMSNormMeta *)metas->meta[op];
         Kernels::RMSNorm::inference_kernel_wrapper(m,
                                                    bc,
-                                                    my_input_accessor[0],
-                                                    my_weight_accessor[0],
-                                                    my_output_accessor[0]);
+                                                   my_input_accessor[0],
+                                                   my_weight_accessor[0],
+                                                   my_output_accessor[0]);
         break;
       }
       case OP_RESIDUAL_RMS_NORM: {
@@ -454,13 +454,14 @@ __host__ void
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 2);
         ResidualRMSNormMeta *m = (ResidualRMSNormMeta *)metas->meta[op];
-        Kernels::ResidualRMSNorm::inference_kernel_wrapper(m,
-                                                            bc,
-                                                            my_input_accessor[0],
-                                                            my_input_accessor[1],
-                                                            my_weight_accessor[0],
-                                                            my_output_accessor[0],
-                                                            my_output_accessor[1]);
+        Kernels::ResidualRMSNorm::inference_kernel_wrapper(
+            m,
+            bc,
+            my_input_accessor[0],
+            my_input_accessor[1],
+            my_weight_accessor[0],
+            my_output_accessor[0],
+            my_output_accessor[1]);
         break;
       }
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -678,7 +679,11 @@ __host__ void
         assert(false && "Fusion currently does not support type");
       }
     }
-    if (metas->meta[op]->inference_debugging) {
+    if (metas->meta[op]->inference_debugging &&
+        !(fused->op_op_type[op] == OP_ALLREDUCE ||
+          fused->op_op_type[op] == OP_REPLICATE ||
+          fused->op_op_type[op] == OP_REPARTITION ||
+          fused->op_op_type[op] == OP_COMBINE)) {
       std::vector<GenericTensorAccessorR> input_accessors_to_save;
       std::vector<GenericTensorAccessorR> weight_accessors_to_save;
       std::vector<GenericTensorAccessorR> output_accessors_to_save;
@@ -1195,7 +1200,11 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
         assert(false && "Fusion currently does not support type");
       }
     }
-    if (metas->meta[op]->inference_debugging) {
+    if (metas->meta[op]->inference_debugging &&
+        !(fused->op_op_type[op] == OP_ALLREDUCE ||
+          fused->op_op_type[op] == OP_REPLICATE ||
+          fused->op_op_type[op] == OP_REPARTITION ||
+          fused->op_op_type[op] == OP_COMBINE)) {
       std::vector<GenericTensorAccessorR> input_accessors_to_save;
       std::vector<GenericTensorAccessorR> weight_accessors_to_save;
       std::vector<GenericTensorAccessorR> output_accessors_to_save;

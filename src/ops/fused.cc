@@ -721,7 +721,7 @@ FutureMap FusedOp::peft_bwd(FFModel const &ff,
     launcher.add_region_requirement(
         RegionRequirement(batch_outputs[i]->part_grad,
                           0 /*projection id*/,
-                          i == numOutputs -1 ? READ_WRITE : WRITE_ONLY,
+                          i == numOutputs - 1 ? READ_WRITE : WRITE_ONLY,
                           EXCLUSIVE,
                           batch_outputs[i]->region_grad));
     launcher.add_field(offset + i, FID_DATA);
