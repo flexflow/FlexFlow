@@ -183,6 +183,9 @@ void register_tasks() {
   register_tasks<ids...>();
 }
 
+template <task_id_t>
+void* get_task_impl();
+
 } // namespace FlexFlow
 
 #endif

@@ -311,6 +311,16 @@ void register_task<ATTENTION_INIT_TASK_ID>() {
 }
 
 template <>
+OpTaskSignature get_signature<ATTENTION_INIT_TASK_ID>() {
+  return init_signature<ATTENTION_INIT_TASK_ID>();
+}
+
+template <>
+void* get_task_impl<ATTENTION_INIT_TASK_ID>() {
+  return init_task_impl;
+}
+
+template <>
 OpTaskSignature fwd_signature<ATTENTION_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
