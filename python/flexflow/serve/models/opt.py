@@ -305,21 +305,20 @@ class FlexFlowOPT(FlexFlowModel):
     def convert_ff_weight_name(name):
         # Reverse the previous conversion rules
         converted_name = (
-            name.replace("wq", "q_proj")
+            name
+            .replace("add_bias_residual_layer_norm_attn_bias", "attention_wo_bias")
+            .replace("_add_bias_residual_layer_norm", "_final_layer_norm")
+            .replace("wq", "q_proj")
             .replace("wk", "k_proj")
             .replace("wv", "v_proj")
             .replace("wo", "out_proj")
             .replace("attention", "self_attn")
-            .replace("add_bias_residual_layer_norm_attn_bias", "attention_wo_bias")
-            .replace("_add_bias_residual_layer_norm", "_final_layer_norm")
-            .replace("_bias", ".bias")
-            .replace("_weight", ".weight")
-            .replace("_bias", ".bias")
         )
         
         converted_name = re.sub(r"layers_(\d+)_", r"layers.\1.", converted_name)
         converted_name = re.sub(r"_(bias|weight)$", r".\1", converted_name)
         converted_name = re.sub(r"self_attn_(?!layer_norm)", "self_attn.", converted_name)
+        converted_name = converted_name.replace("embed_tokens_weight_lm_head", "embed_tokens.weight")
         
         # Prepend "model.decoder." to the weight name
         converted_name = "model.decoder." + converted_name
@@ -338,8 +337,12 @@ class FlexFlowOPT(FlexFlowModel):
         for file_name in os.listdir(src_folder):
             weight_path = os.path.join(src_folder, file_name)
             print("converting weight name: ", weight_path)
-            original_name = FlexFlowOPT.convert_ff_weight_name(file_name.replace('.bin', ''))
-            print("original name of the weights is: ", original_name)
+            if weight_path.endswith("rev_sha.txt"):
+                print("skipping rev_sha.txt")
+                continue
+            else:
+                original_name = FlexFlowOPT.convert_ff_weight_name(file_name.replace('.bin', ''))
+                print("original name of the weights is: ", original_name)
             
             if not os.path.exists(weight_path):
                 raise FileNotFoundError(f"No weight file found for {file_name}")

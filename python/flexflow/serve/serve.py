@@ -32,6 +32,8 @@ from peft import PeftModel, PeftConfig
 from huggingface_hub import HfApi, HfFolder, Repository
 import torch, shutil, hashlib, json, gc, os
 from typing import Union, List
+import tempfile
+
 
 
 class _SupportedModels:
@@ -374,6 +376,7 @@ class LLM:
         :param private: Whether to upload the model as a private model.
         """
         print(f"Preparing model for upload to Hugging Face Hub: {new_model_id}")
+        print("tokenizer path is: ", self.tokenizer_path)
         
         # Initialize a new Hugging Face model instance
         hf_model = AutoModelForCausalLM.from_config(self.hf_config)
@@ -390,6 +393,11 @@ class LLM:
         temp_dir = tempfile.mkdtemp()
         hf_model.save_pretrained(temp_dir)
         
+        # Copy the tokenizer files to the temporary directory
+        tokenizer_files = [f for f in os.listdir(self.tokenizer_path)]
+        for file_name in tokenizer_files:
+            shutil.copy(os.path.join(self.tokenizer_path, file_name), temp_dir)
+            
         # Ensure Hugging Face CLI is logged in
         if not HfFolder.get_token():
             print("Hugging Face token not found. Please login using `huggingface-cli login`.")
