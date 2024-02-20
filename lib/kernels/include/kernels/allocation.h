@@ -3,11 +3,12 @@
 
 #include <cstddef>
 #include <memory>
+#include "runtime/src/tensor.h"
 
 namespace FlexFlow {
 
 struct IAllocator {
-  virtual void *allocate(size_t) = 0;
+  virtual void *allocate(Tensor) = 0;
   virtual void deallocate(void *) = 0;
 
   virtual ~IAllocator() = default;
@@ -16,7 +17,7 @@ struct IAllocator {
 struct Allocator {
   Allocator() = delete;
 
-  void *allocate(size_t);
+  void *allocate(Tensor);
   void deallocate(void *);
 
   template <typename T, typename... Args>
