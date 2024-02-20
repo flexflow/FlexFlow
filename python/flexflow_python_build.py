@@ -40,7 +40,7 @@ flexflow_python_path = os.path.join(build_dir, "flexflow_python")
 flexflow_python_path = os.path.abspath(flexflow_python_path)
 lines = [
     '#! /usr/bin/env bash',
-    'set set -euo pipefail',
+    'set -euo pipefail',
     f'BUILD_FOLDER="{build_dir}"',
     'SCRIPT_DIR="$(realpath "${BASH_SOURCE[0]%/*}")"',
     'legion_python_args=("$@" "-ll:py" "1")',
