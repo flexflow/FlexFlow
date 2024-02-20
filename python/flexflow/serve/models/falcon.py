@@ -277,3 +277,78 @@ class FlexFlowFalcon(FlexFlowModel):
         model.lm_head.weight.detach().cpu().numpy().tofile(
             os.path.join(dst_folder, "lm_head.weight")
         )
+
+    
+    def convert_ff_weight_name(name):
+        
+        converted_name = name
+        converted_name = converted_name.replace("mlp_dense_h_to_4h", "mlp.dense_h_to_4h")
+        converted_name = converted_name.replace("mlp_dense_4h_to_h", "mlp.dense_4h_to_h")
+        converted_name = converted_name.replace("attention_wo", "self_attention.dense")
+        
+        converted_name = re.sub(r"layers_(\d+)_", r"transformer.h.\1.", converted_name)
+        converted_name = re.sub(r"_(bias|weight)$", r".\1", converted_name)
+
+        return converted_name
+
+
+    def load_weights_into_hf_model(model, src_folder):
+        """
+        Load weights from a specified folder and apply them to a Hugging Face model.
+        
+        Parameters:
+        - model: The instance of the Hugging Face model to load the weights into.
+        - src_folder: The path to the folder containing the weight files.
+        - config: The configuration object for the model.
+        """
+        # Dictionary to hold the combined QKV weights
+        qkv_weights = {}
+        
+        for file_name in os.listdir(src_folder):
+            weight_path = os.path.join(src_folder, file_name)
+            print("converting weight file: ", weight_path)
+            original_name = FlexFlowFalcon.convert_ff_weight_name(file_name.replace('.bin', ''))
+            print("weight name after conversion: ", original_name)
+            
+            if not os.path.exists(weight_path):
+                raise FileNotFoundError(f"No weight file found for {file_name}")
+            
+            weight_data = np.fromfile(weight_path, dtype=np.float16).astype(np.float32)
+            
+            # Check if this is a Q, K, or V weight and combine them
+            if "attention_w" in original_name:
+                # Extract the type (Q, K, or V) and the layer number from the file name
+                qkv_type = re.search("(wq|wk|wv)", file_name).group(0)
+                layer_num = re.search("transformer.h.(\d+)", file_name).group(1)
+                
+                # Initialize the combined QKV weight if it doesn't exist
+                if layer_num not in qkv_weights:
+                    qkv_weights[layer_num] = np.zeros((3 * model.config.hidden_size, model.config.hidden_size))
+                
+                # Determine the position to place this weight in the combined QKV weight
+                type_index = {"wq": 0, "wk": 1, "wv": 2}[qkv_type]
+                qkv_weights[layer_num][type_index * model.config.hidden_size : (type_index + 1) * model.config.hidden_size] = weight_data
+                
+            elif original_name not in model.state_dict():
+                raise KeyError(f"Parameter {original_name} not found in model.")
+            else:
+                param = model.state_dict()[original_name]
+                if weight_data.size != param.numel():
+                    raise ValueError(f"Shape mismatch for {original_name}, model expects {param.numel()} elements, got {weight_data.size}")
+                
+                weight_tensor = torch.from_numpy(weight_data).reshape(param.shape)
+                with torch.no_grad():
+                    param.copy_(weight_tensor)
+        
+        # assign the combined QKV weights to the model
+        for layer_num, combined_weight_data in qkv_weights.items():
+            original_name = f"transformer.h.{layer_num}.self_attention.query_key_value.weight"
+            
+            if original_name not in model.state_dict():
+                raise KeyError(f"Parameter {original_name} not found in model.")
+            
+            param = model.state_dict()[original_name]
+            combined_weight_tensor = torch.from_numpy(combined_weight_data).view(param.shape)
+            
+            with torch.no_grad():
+                param.copy_(combined_weight_tensor)
