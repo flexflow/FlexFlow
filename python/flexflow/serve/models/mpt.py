@@ -92,7 +92,7 @@ class FlexFlowMPT(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="transformer_wte",
+            name="wte",
         )
 
         axes = [
@@ -109,7 +109,7 @@ class FlexFlowMPT(FlexFlowModel):
                     True,
                     1e-05,
                     False,
-                    name=f"layers_{i}_norm_1",
+                    name=f"layers.{i}.norm_1",
                 )
             else:
                 hidden_states, layernorm_output = ffmodel.residual_layer_norm(
@@ -121,7 +121,7 @@ class FlexFlowMPT(FlexFlowModel):
                     True,
                     1e-05,
                     False,
-                    name=f"layers_{i}_norm_1",
+                    name=f"layers.{i}.norm_1",
                 )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
@@ -143,7 +143,7 @@ class FlexFlowMPT(FlexFlowModel):
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
                     True,  # qk_prod_scaling
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.attn",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 attn_outputs = ffmodel.inc_multihead_self_attention_verify(
@@ -164,7 +164,7 @@ class FlexFlowMPT(FlexFlowModel):
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
                     True,  # qk_prod_scaling
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.attn",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 attn_outputs = ffmodel.inc_multihead_self_attention(
@@ -185,7 +185,7 @@ class FlexFlowMPT(FlexFlowModel):
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
                     True,  # qk_prod_scaling
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.attn",
                 )
             else:
                 assert False
@@ -199,7 +199,7 @@ class FlexFlowMPT(FlexFlowModel):
                 True,
                 1e-05,
                 False,
-                name=f"layers_{i}_norm_2",
+                name=f"layers.{i}.norm_2",
             )
             # mlp
             layernorm_output = ffmodel.dense(
@@ -207,7 +207,7 @@ class FlexFlowMPT(FlexFlowModel):
                 4 * self.mpt_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_ffn_up_proj",
+                name=f"layers.{i}.ffn.up_proj",
             )
             layernorm_output = ffmodel.gelu(layernorm_output)
             intermediate_output = ffmodel.dense(
@@ -215,7 +215,7 @@ class FlexFlowMPT(FlexFlowModel):
                 self.mpt_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_ffn_down_proj",
+                name=f"layers.{i}.ffn.down_proj",
             )
 
         _, all_final_norm = ffmodel.residual_layer_norm(
@@ -227,7 +227,7 @@ class FlexFlowMPT(FlexFlowModel):
             True,
             1e-05,
             False,
-            name=f"transformer_norm_f",
+            name=f"norm_f",
         )
         lm_head = ffmodel.dense(
             all_final_norm,
@@ -252,8 +252,8 @@ class FlexFlowMPT(FlexFlowModel):
     def convert_hf_weight_name(name):
         return (
             name.replace("transformer.blocks.", "layers.")
-            .replace(".", "_")
-            .replace("attn_out_proj", "attention_wo")
+            .replace("transformer.", "")
+            .replace("attn.out_proj", "attn.o_proj")
         )
 
     def convert_hf_model(model, dst_folder):
@@ -261,9 +261,9 @@ class FlexFlowMPT(FlexFlowModel):
         for name, params in model.named_parameters():
             name = FlexFlowMPT.convert_hf_weight_name(name)
             if "Wqkv" in name:
-                name_q = name.replace("attn_Wqkv", "attention_wq")
-                name_k = name.replace("attn_Wqkv", "attention_wk")
-                name_v = name.replace("attn_Wqkv", "attention_wv")
+                name_q = name.replace("attn.Wqkv", "attn.q_proj")
+                name_k = name.replace("attn.Wqkv", "attn.k_proj")
+                name_v = name.replace("attn.Wqkv", "attn.v_proj")
                 q, k, v = torch.split(
                     params,
                     [
@@ -280,6 +280,6 @@ class FlexFlowMPT(FlexFlowModel):
                 params.detach().cpu().numpy().tofile(os.path.join(dst_folder, name))
 
         shutil.copy(
-            os.path.join(dst_folder, "transformer_wte_weight"),
-            os.path.join(dst_folder, "lm_head_weight"),
+            os.path.join(dst_folder, "wte.weight"),
+            os.path.join(dst_folder, "lm_head.weight"),
         )

@@ -186,9 +186,11 @@ class LLM:
             os.path.expanduser(self.cache_path),
             "weights",
             self.model_name.lower(),
-            "full-precision"
-            if self.data_type == DataType.DT_FLOAT
-            else "half-precision",
+            (
+                "full-precision"
+                if self.data_type == DataType.DT_FLOAT
+                else "half-precision"
+            ),
         )
         if self.refresh_cache:
             print(
@@ -219,9 +221,11 @@ class LLM:
             hf_model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 trust_remote_code=True,
-                torch_dtype=torch.float32
-                if self.data_type == DataType.DT_FLOAT
-                else torch.float16,
+                torch_dtype=(
+                    torch.float32
+                    if self.data_type == DataType.DT_FLOAT
+                    else torch.float16
+                ),
             )
             # Print log message to notify user download of model has finished
             if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
@@ -575,11 +579,13 @@ class PEFT:
         print(f"Creating directory {self.config_dir} (if it doesn't exist)...")
         print(f"Saving {self.peft_model_id} configs to file {self.config_path}...")
         with open(self.config_path, "w") as json_file:
+
             class SetEncoder(json.JSONEncoder):
                 def default(self, obj):
                     if isinstance(obj, set):
                         return list(obj)
                     return super().default(obj)
+
             json.dump(self.hf_config.to_dict(), json_file, indent=2, cls=SetEncoder)
 
     def __get_revision_hashes(self, peft_model_id: str):
@@ -619,9 +625,11 @@ class PEFT:
             os.path.expanduser(self.cache_path),
             "weights",
             self.peft_model_id.lower(),
-            "full-precision"
-            if self.data_type == DataType.DT_FLOAT
-            else "half-precision",
+            (
+                "full-precision"
+                if self.data_type == DataType.DT_FLOAT
+                else "half-precision"
+            ),
         )
         if self.refresh_cache:
             print(
@@ -658,9 +666,11 @@ class PEFT:
                 self.hf_config.base_model_name_or_path,
                 return_dict=True,
                 trust_remote_code=True,
-                torch_dtype=torch.float32
-                if self.data_type == DataType.DT_FLOAT
-                else torch.float16,
+                torch_dtype=(
+                    torch.float32
+                    if self.data_type == DataType.DT_FLOAT
+                    else torch.float16
+                ),
                 # device_map="auto",
             )
             hf_peft_model = PeftModel.from_pretrained(hf_base_model, self.peft_model_id)

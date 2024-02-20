@@ -118,7 +118,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     axes,
                     True,
                     self.falcon_config.layer_norm_epsilon,
-                    name=f"layers_{i}_input_layernorm",
+                    name=f"layers.{i}.input_layernorm",
                 )
             else:
                 token, att_norm = ffmodel.residual_layer_norm(
@@ -129,7 +129,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     axes,
                     True,
                     self.falcon_config.layer_norm_epsilon,
-                    name=f"layers_{i}_input_layernorm",
+                    name=f"layers.{i}.input_layernorm",
                 )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
@@ -147,7 +147,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.self_attention",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 mha = ffmodel.inc_multiquery_self_attention_verify(
@@ -164,7 +164,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.self_attention",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 mha = ffmodel.inc_multiquery_self_attention(
@@ -181,7 +181,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.self_attention",
                 )
             else:
                 assert False
@@ -191,7 +191,7 @@ class FlexFlowFalcon(FlexFlowModel):
                 self.falcon_config.hidden_size * 4,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_mlp_dense_h_to_4h",
+                name=f"layers.{i}.mlp.dense_h_to_4h",
             )
             dense_h_to_4h = ffmodel.gelu(dense_h_to_4h)
             mlp_output = ffmodel.dense(
@@ -199,7 +199,7 @@ class FlexFlowFalcon(FlexFlowModel):
                 self.falcon_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_mlp_dense_4h_to_h",
+                name=f"layers.{i}.mlp.dense_4h_to_h",
             )
 
         _, ln_f = ffmodel.residual_layer_norm(
@@ -239,11 +239,9 @@ class FlexFlowFalcon(FlexFlowModel):
 
     # TODO: finish this
     def convert_hf_weight_name(name):
-        return (
-            name.replace(".", "_")
-            .replace("transformer_h_", "layers_")
-            .replace("transformer_", "")
-            .replace("self_attention_dense", "attention_wo")
+        return (name.replace("transformer.h.", "layers.")
+            .replace("transformer.", "")
+            .replace("self_attention.dense", "self_attention.o_proj")
         )
 
     def convert_hf_model(model, dst_folder):
@@ -256,10 +254,10 @@ class FlexFlowFalcon(FlexFlowModel):
         for name, params in model.named_parameters():
             name = FlexFlowFalcon.convert_hf_weight_name(name)
             # Split Q,K,V attention weights
-            if "self_attention_query_key_value" in name:
-                name_q = name.replace("self_attention_query_key_value", "attention_wq")
-                name_k = name.replace("self_attention_query_key_value", "attention_wk")
-                name_v = name.replace("self_attention_query_key_value", "attention_wv")
+            if "self_attention.query_key_value" in name:
+                name_q = name.replace("self_attention.query_key_value", "self_attention.q_proj")
+                name_k = name.replace("self_attention.query_key_value", "self_attention.k_proj")
+                name_v = name.replace("self_attention.query_key_value", "self_attention.v_proj")
                 q, k, v = torch.split(
                     params,
                     [
@@ -276,5 +274,5 @@ class FlexFlowFalcon(FlexFlowModel):
                 params.detach().cpu().numpy().tofile(os.path.join(dst_folder, name))
         # LM head weight
         model.lm_head.weight.detach().cpu().numpy().tofile(
-            os.path.join(dst_folder, "lm_head_weight")
+            os.path.join(dst_folder, "lm_head.weight")
         )
