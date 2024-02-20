@@ -12,7 +12,6 @@ namespace FlexFlow {
 Node find_source_node(DiGraphView const &);
 Node find_sink_node(DiGraphView const &);
 
-optional<Node> find_bottleneck_node(MultiDiGraphView const &);
 optional<Node> find_bottleneck_node(DiGraphView const &);
 
 struct Parallel;

@@ -81,6 +81,14 @@ std::vector<ParallelDimMappingRecord>
   return mappings;
 }
 
+TensorShape get_kernel_shape(Conv2DAttrs const &, TensorShape const &) {
+  NOT_IMPLEMENTED();
+}
+
+TensorShape get_bias_shape(Conv2DAttrs const &, TensorShape const &) {
+  NOT_IMPLEMENTED();
+}
+
 /* bool Conv2DAttrs::is_valid(ParallelTensorShape const &input_shape) const { */
 /*   bool is_valid = true; */
 /*   is_valid &= input_shape.is_valid(); */

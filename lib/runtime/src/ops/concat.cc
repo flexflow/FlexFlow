@@ -62,7 +62,6 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  "[Concat] forward_time = %.2lfms\n",
                  output,
                  inputs,
-                 attrs.num_inputs,
                  attrs.axis);
 }
 
@@ -88,7 +87,6 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  "[Concat] backward_time = %.2lfms\n",
                  output_grad,
                  input_grads,
-                 attrs.num_inputs,
                  attrs.axis);
 }
 

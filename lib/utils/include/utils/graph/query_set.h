@@ -51,6 +51,15 @@ private:
 };
 
 template <typename T>
+std::string format_as(query_set<T> const &q) {
+  if (is_matchall(q)) {
+    return "(all)";
+  } else {
+    return fmt::format(FMT_STRING("query_set({})"), allowed_values(q));
+  }
+}
+
+template <typename T>
 query_set<T> matchall() {
   return query_set<T>::matchall();
 }
@@ -111,26 +120,5 @@ query_set<T> query_union(query_set<T> const &lhs, query_set<T> const &rhs) {
 }
 
 } // namespace FlexFlow
-
-namespace fmt {
-
-template <typename T>
-struct formatter<::FlexFlow::query_set<T>> : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::query_set<T> const &q, FormatContext &ctx)
-      -> decltype(ctx.out()) {
-    std::string result;
-    if (is_matchall(q)) {
-      result = "(all)";
-    } else {
-      result = fmt::format("query_set({})", allowed_values(q));
-    }
-    return formatter<std::string>::format(result, ctx);
-  }
-};
-
-} // namespace fmt
-
-#include "utils/containers.h"
 
 #endif

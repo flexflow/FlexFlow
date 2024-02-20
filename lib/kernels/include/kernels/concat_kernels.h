@@ -11,14 +11,12 @@ namespace Concat {
 void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorW const &output,
                     std::vector<GenericTensorAccessorR> const &inputs,
-                    int num_inputs,
-                    ff_dim_t legion_axis);
+                    ff_dim_t axis);
 
 void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &output_grad,
                      std::vector<GenericTensorAccessorW> const &input_grads,
-                     int num_inputs,
-                     ff_dim_t legion_axis);
+                     ff_dim_t axis);
 
 } // namespace Concat
 } // namespace Kernels

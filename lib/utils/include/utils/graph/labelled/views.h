@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_VIEWS_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_VIEWS_H
 
-#include "node_labelled_interfaces.h"
-#include "standard_labelled_interfaces.h"
+#include "node_labelled.h"
+#include "standard_labelled.h"
 
 namespace FlexFlow {
 
@@ -37,17 +37,25 @@ public:
     return g.query_nodes(q);
   }
 
-  virtual std::unordered_set<MultiDiEdge>
-      query_edges(MultiDiEdgeQuery const &q) const override {
+  // virtual std::unordered_set<DirectedEdge>
+  //     query_edges(DirectedEdgeQuery const &q) const override {
+  //   return g.query_edges(q);
+  // }
+
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
     return g.query_edges(q);
   }
 
-  virtual NodeLabel const &at(Node const &n) const override {
+  NodeLabel const &at(Node const &n) const {
     return node_label(n);
   }
 
-  virtual OutputLabel &at(MultiDiOutput const &o) override {
+  OutputLabel &at(MultiDiOutput const &o) {
     return output_label(o);
+  }
+
+  ViewMultiDiGraphAsOutputLabelled *clone() const {
+    return new ViewMultiDiGraphAsOutputLabelled(g, node_label, output_label);
   }
 
 private:

@@ -86,5 +86,11 @@ OperatorType get_op_type(RepartitionAttrs const &) {
 OperatorType get_op_type(ReplicateAttrs const &) {
   return Op::REPLICATE;
 }
+OperatorType get_op_type(ElementScalarUnaryAttrs const &attrs) {
+  return attrs.op;
+}
+OperatorType get_op_type(ReverseAttrs const &attrs) {
+  return Op::REVERSE;
+}
 
 } // namespace FlexFlow
