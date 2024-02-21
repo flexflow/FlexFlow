@@ -7,6 +7,9 @@
 
 namespace FlexFlow {
 
+using ElementUnaryUnifiedAttrs =
+    variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
+
 template <>
 void register_task<ELEMENTUNARY_INIT_TASK_ID>();
 template <>
@@ -14,12 +17,12 @@ void register_task<ELEMENTUNARY_FWD_TASK_ID>();
 template <>
 void register_task<ELEMENTUNARY_BWD_TASK_ID>();
 
-OpTaskInvocation init(ElementUnaryAttrs const &);
-OpTaskInvocation forward(ElementUnaryAttrs const &);
-OpTaskInvocation backward(ElementUnaryAttrs const &);
+OpTaskInvocation init(ElementUnaryUnifiedAttrs const &);
+OpTaskInvocation forward(ElementUnaryUnifiedAttrs const &);
+OpTaskInvocation backward(ElementUnaryUnifiedAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ElementUnaryAttrs const &attrs,
+                                  ElementUnaryUnifiedAttrs const &attrs,
                                   InputParallelTensorDesc const &input_shape,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view);

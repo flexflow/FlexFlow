@@ -33,9 +33,17 @@ static bool use_cudnn(OperatorType op_type) {
   }
 }
 
+template <T>
+optional<T> get_scalar(ElementUnaryAttrs const &attrs) {}
+
+template <T>
+optional<T> get_scalar(ElementScalarUnaryAttrs const &attrs) {
+  return (T)attrs.scalar;
+}
+
 ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
                                        ArrayShape const &output_shape,
-                                       ElementUnaryAttrs const &attrs) {
+                                       ElementUnaryUnifiedAttrs const &attrs) {
 
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
@@ -45,9 +53,11 @@ ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
 
-  if (use_cudnn(attrs.op_type)) {
+  Op op_type = std::visit([](auto &&arg) { get_op_type(arg); }, attrs);
+
+  if (use_cudnn(op_type)) {
     cudnnActivationMode_t mode;
-    switch (attrs.op_type) {
+    switch (op_type) {
       case OP_SIGMOID:
         mode = CUDNN_ACTIVATION_SIGMOID;
         break;
@@ -81,12 +91,13 @@ template <DataType T>
 struct ForwardKernel {
   void operator()(ffStream_t stream,
                   ElementUnaryPerDeviceState const &m,
-                  ElementUnaryAttrs const &attrs,
+                  ElementUnaryUnifiedAttrs const &attrs,
                   PerDeviceFFHandle const &handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) const {
     checkCUDNN(cudnnSetStream(handle.dnn, stream));
-    if (use_cudnn(attrs.op_type)) {
+    Op op_type = std::visit([](auto &&arg) { get_op_type(arg); }, attrs);
+    if (use_cudnn(op_type)) {
       float alpha = 1.0f, beta = 0.0f;
       checkCUDNN(cudnnActivationForward(handle.dnn,
                                         m.actiDesc,
@@ -97,15 +108,14 @@ struct ForwardKernel {
                                         m.outputTensor,
                                         output.get<T>()));
     } else {
+      optional<T> scalar =
+          std::visit([](auto &&arg) { get_scalar<T>(arg); }, attrs);
       size_t num_elements = input.shape.num_elements();
       elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements),
                                      CUDA_NUM_THREADS,
                                      0,
-                                     stream>>>(num_elements,
-                                               (T)attrs.scalar,
-                                               attrs.op_type,
-                                               input.get<T>(),
-                                               output.get<T>());
+                                     stream>>>(
+          num_elements, scalar, op_type, input.get<T>(), output.get<T>());
     }
   }
 }
@@ -114,7 +124,7 @@ template <DataType T>
 struct BackwardKernel {
   void operator()(ffStream_t stream,
                   ElementUnaryPerDeviceState const &m,
-                  ElementUnaryAttrs const &attrs,
+                  ElementUnaryUnifiedAttrs const &attrs,
                   PerDeviceFFHandle const &handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &input_grad,
@@ -122,7 +132,8 @@ struct BackwardKernel {
                   GenericTensorAccessorR const &output_grad) {
     checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
-    if (use_cudnn(attrs.op_type)) {
+    Op op_type = std::visit([](auto &&arg) { get_op_type(arg); }, attrs);
+    if (use_cudnn(op_type)) {
       float alpha = 1.0f;
       checkCUDNN(cudnnActivationBackward(handle.dnn,
                                         m.actiDesc,
@@ -137,12 +148,14 @@ struct BackwardKernel {
                                         m.inputTensor,
                                         input_grad.get<T>()));
     } else {
+      optional<T> scalar =
+          std::visit([](auto &&arg) { get_scalar<T>(arg); }, attrs);
       size_t num_elements = input.shape.num_elements();
       elewise_unary_backward_kernel<T>
           <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
               num_elements,
-              attrs.scalar,
-              attrs.op_type,
+              scalar,
+              op_type,
               output.get<T>(),
               output_grad.get<T>(),
               input.get<T>(),
@@ -153,7 +166,7 @@ struct BackwardKernel {
 
 void forward_kernel(ffStream_t stream,
                     ElementUnaryPerDeviceState const &device_state,
-                    ElementUnaryAttrs const &attrs,
+                    ElementUnaryUnifiedAttrs const &attrs,
                     PerDeviceFFHandle const &handle,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
@@ -163,7 +176,7 @@ void forward_kernel(ffStream_t stream,
 
 void backward_kernel(ffStream_t stream,
                      ElementUnaryPerDeviceState const &device_state,
-                     ElementUnaryAttrs const &attrs,
+                     ElementUnaryUnifiedAttrs const &attrs,
                      PerDeviceFFHandle const &handle,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorR const &input_grad,
@@ -181,8 +194,11 @@ void backward_kernel(ffStream_t stream,
 }
 
 template <typename T>
-__global__ void elewise_unary_forward_kernel(
-    coord_t volume, const T scalar, OperatorType type, T const *in, T *out) {
+__global__ void elewise_unary_forward_kernel(coord_t volume,
+                                             optional<T> const scalar,
+                                             OperatorType type,
+                                             T const *in,
+                                             T *out) {
   CUDA_KERNEL_LOOP(i, volume) {
     switch (type) {
       case OP_EXP: {
@@ -194,19 +210,19 @@ __global__ void elewise_unary_forward_kernel(
         break;
       }
       case OP_SCALAR_MULTIPLY: {
-        out[i] = in[i] * scalar;
+        out[i] = in[i] * scalar.value();
         break;
       }
       case OP_SCALAR_ADD: {
-        out[i] = in[i] + scalar;
+        out[i] = in[i] + scalar.value();
         break;
       }
       case OP_SCALAR_SUB: {
-        out[i] = in[i] - scalar;
+        out[i] = in[i] - scalar.value();
         break;
       }
       case OP_SCALAR_TRUE_DIV: {
-        out[i] = in[i] / scalar;
+        out[i] = in[i] / scalar.value();
         break;
       }
       case OP_GELU: {
@@ -218,7 +234,7 @@ __global__ void elewise_unary_forward_kernel(
         break;
       }
       case OP_POW: {
-        out[i] = (T)(powf(in[i], scalar));
+        out[i] = (T)(powf(in[i], scalar.value()));
         break;
       }
       case OP_SIN: {
@@ -237,7 +253,7 @@ __global__ void elewise_unary_forward_kernel(
 
 template <typename T>
 __global__ void elewise_unary_backward_kernel(coord_t volume,
-                                              const T scalar,
+                                              optional<T> const scalar,
                                               OperatorType type,
                                               T const *output,
                                               T const *output_grad,
@@ -255,7 +271,7 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
         break;
       }
       case OP_SCALAR_MULTIPLY: {
-        input_grad[i] += output_grad[i] * scalar;
+        input_grad[i] += output_grad[i] * scalar.value();
         break;
       }
       case OP_SCALAR_ADD: {
@@ -267,7 +283,7 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
         break;
       }
       case OP_SCALAR_TRUE_DIV: {
-        input_grad[i] += output_grad[i] / scalar;
+        input_grad[i] += output_grad[i] / scalar.value();
         break;
       }
       case OP_GELU: {
@@ -283,8 +299,8 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
         break;
       }
       case OP_POW: {
-        input_grad[i] =
-            (T)(output_grad[i] * scalar * powf(input[i], scalar - 1));
+        input_grad[i] = (T)(output_grad[i] * scalar.value() *
+                            powf(input[i], scalar.value() - 1));
         break;
       }
       case OP_SIN: {

@@ -24,7 +24,7 @@ enum Slots {
 };
 
 /* ElementUnary */
-OpTaskInvocation init(ElementUnaryAttrs const &attrs) {
+OpTaskInvocation init(ElementUnaryUnifiedAttrs const &attrs) {
   OpTaskBinding b;
 
   b.bind_arg(HANDLE, ff_handle());
@@ -34,7 +34,7 @@ OpTaskInvocation init(ElementUnaryAttrs const &attrs) {
   return {ELEMENTUNARY_INIT_TASK_ID, b};
 }
 
-OpTaskInvocation forward(ElementUnaryAttrs const &attrs) {
+OpTaskInvocation forward(ElementUnaryUnifiedAttrs const &attrs) {
   OpTaskBinding b;
 
   b.bind(INPUT, input_tensor(0));
@@ -47,7 +47,7 @@ OpTaskInvocation forward(ElementUnaryAttrs const &attrs) {
   return {ELEMENTUNARY_FWD_TASK_ID, b};
 }
 
-OpTaskInvocation backward(ElementUnaryAttrs const &attrs) {
+OpTaskInvocation backward(ElementUnaryUnifiedAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
   return {ELEMENTUNARY_BWD_TASK_ID, b};
@@ -56,7 +56,7 @@ OpTaskInvocation backward(ElementUnaryAttrs const &attrs) {
 static DeviceSpecific<ElementUnaryPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
 
-  auto const &attrs = acc.get_argument<ElementUnaryAttrs>(ATTRS);
+  auto const &attrs = acc.get_argument<ElementUnaryUnifiedAttrs>(ATTRS);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   ParallelTensorShape input_shape =
@@ -81,7 +81,7 @@ static DeviceSpecific<ElementUnaryPerDeviceState>
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
-  auto const &attrs = acc.get_argument<ElementUnaryAttrs>(ATTRS);
+  auto const &attrs = acc.get_argument<ElementUnaryUnifiedAttrs>(ATTRS);
 
   auto &handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
@@ -113,7 +113,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
-  auto const &attrs = acc.get_argument<ElementUnaryAttrs>(ATTRS);
+  auto const &attrs = acc.get_argument<ElementUnaryUnifiedAttrs>(ATTRS);
   auto &handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto per_device_state =
@@ -141,7 +141,7 @@ static void backward_task(Task const *task,
 }
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  ElementUnaryAttrs const &attrs,
+                                  ElementUnaryUnifiedAttrs const &attrs,
                                   InputParallelTensorDesc const &input_shape,
                                   ProfilingSettings const &settings,
                                   MachineView const &mv) {
@@ -183,7 +183,7 @@ template <>
 OpTaskSignature init_signature<ELEMENTUNARY_INIT_TASK_ID>() {
   OpTaskSignature init(OpTaskType::INIT);
   init.add_arg_slot<ParallelTensorShape>(INPUT_SHAPE);
-  init.add_arg_slot<ElementUnaryAttrs>(ATTRS);
+  init.add_arg_slot<ElementUnaryUnifiedAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   init.add_return_value<ElementUnaryPerDeviceState>();

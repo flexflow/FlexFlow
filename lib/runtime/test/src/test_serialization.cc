@@ -20,6 +20,7 @@ TEST_CASE("Serialization") {
         CombineAttrs combine_attrs, ConcatAttrs concat_attrs,
         Conv2DAttrs conv2d_attrs, DropoutAttrs dropout_attrs,
         ElementBinaryAttrs elem_bin_attrs, ElementUnaryAttrs elem_unary_attrs,
+        ElementScalarUnaryAttrs elem_scalar_unary_attrs,
         EmbeddingAttrs embedding_attrs, FlatAttrs flat_attrs,
         GatherAttrs gather_attrs, InputAttrs input_attrs,
         LayerNormAttrs layer_norm_attrs, LinearAttrs linear_attrs,
