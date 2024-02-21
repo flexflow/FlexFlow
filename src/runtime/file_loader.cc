@@ -136,12 +136,12 @@ void load_attention_bias_v2(DT *ptr,
                             bool final_bias,
                             std::string layer_name,
                             std::string weights_folder) {
-  std::string q_file = layer_name + "_wq_bias";
-  std::string k_file = layer_name + "_wk_bias";
-  std::string v_file = layer_name + "_wv_bias";
+  std::string q_file = layer_name + ".q_proj.bias";
+  std::string k_file = layer_name + ".k_proj.bias";
+  std::string v_file = layer_name + ".v_proj.bias";
   std::vector<std::string> bias_files = {q_file, k_file, v_file};
   if (final_bias) {
-    std::string o_file = layer_name + "_wo_bias";
+    std::string o_file = layer_name + ".o_proj.bias";
     bias_files.push_back(o_file);
   }
 
@@ -217,8 +217,6 @@ void load_attention_weights_v2(DT *ptr,
                                std::string weights_folder,
                                size_t volume,
                                int tensor_parallelism_degree) {
-  // layers_0_attention_wq_weight
-  // layers_0_self_attn_q_proj_weight
   std::string q_file = layer_name + ".q_proj.weight";
   std::string k_file = layer_name + ".k_proj.weight";
   std::string v_file = layer_name + ".v_proj.weight";
@@ -407,8 +405,6 @@ void load_attention_weights_quantized(char *ptr,
                                       std::string weights_folder,
                                       DataType data_type,
                                       bool use_full_precision) {
-  // layers_0_attention_wq_weight
-  // layers_0_self_attn_q_proj_weight
   std::string q_file = layer_name + ".q_proj.weight";
   std::string k_file = layer_name + ".k_proj.weight";
   std::string v_file = layer_name + ".v_proj.weight";
@@ -754,7 +750,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   } else if (l->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM) {
     assert(weight_idx >= 0 || weight_idx <= 2);
     weight_filename += (weight_idx == 0)
-                           ? "_attn_bias"
+                           ? ".attn_bias"
                            : ((weight_idx == 1) ? ".weight" : ".bias");
     std::cout << "Loading weight file " << weight_filename << std::endl;
     std::string weight_filepath = join_path({weights_folder, weight_filename});

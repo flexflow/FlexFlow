@@ -281,7 +281,8 @@ class FlexFlowOPT(FlexFlowModel):
         return (
             name.replace("decoder.", "")
             .replace("model.", "")
-            .replace("self_attn.wo.bias", "add_bias_residual_layer_norm.attn_bias")
+            .replace("self_attn.out_proj", "self_attn.o_proj")
+            .replace("self_attn.o_proj.bias", "add_bias_residual_layer_norm.attn_bias")
             .replace(
                 ".final_layer_norm", ".add_bias_residual_layer_norm"
             )  # important to use the leading "_" to avoid matching the last LayerNorm
