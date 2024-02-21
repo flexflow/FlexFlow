@@ -728,35 +728,28 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   if (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
       l->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION ||
       l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION) {
-    if (weight_filename.find("attention") != std::string::npos &&
-        weight_filename.rfind("attention") ==
-            weight_filename.length() - strlen("attention")) {
-      if (weight_idx == 0) {
-        load_attention_weights_v2(data,
-                                  num_heads,
-                                  num_kv_heads,
-                                  hidden_dim,
-                                  qkv_inner_dim,
-                                  weight_filename,
-                                  weights_folder,
-                                  volume,
-                                  tensor_parallelism_degree);
-      } else {
-        long long value;
-        l->get_int_property("final_bias", value);
-        bool final_bias = (bool)value;
-        load_attention_bias_v2(data,
-                               num_heads,
-                               num_kv_heads,
-                               hidden_dim,
-                               qkv_inner_dim,
-                               final_bias,
-                               weight_filename,
-                               weights_folder);
-      }
-
+    if (weight_idx == 0) {
+      load_attention_weights_v2(data,
+                                num_heads,
+                                num_kv_heads,
+                                hidden_dim,
+                                qkv_inner_dim,
+                                weight_filename,
+                                weights_folder,
+                                volume,
+                                tensor_parallelism_degree);
     } else {
-      assert(false);
+      long long value;
+      l->get_int_property("final_bias", value);
+      bool final_bias = (bool)value;
+      load_attention_bias_v2(data,
+                             num_heads,
+                             num_kv_heads,
+                             hidden_dim,
+                             qkv_inner_dim,
+                             final_bias,
+                             weight_filename,
+                             weights_folder);
     }
   } else if (l->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM) {
     assert(weight_idx >= 0 || weight_idx <= 2);
