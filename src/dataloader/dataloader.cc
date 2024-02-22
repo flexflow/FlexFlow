@@ -97,7 +97,7 @@ SingleDataLoader::SingleDataLoader(FFModel &ff,
   datatype = datatype_;
   // Currently assume that the leading dim of input is a replica dim of degree 1
   assert(input->dims[input->num_dims - 1].is_replica_dim);
-  assert(input->dims[input->num_dims - 1].size == 1);
+  // assert(input->dims[input->num_dims - 1].size == 1);
 
   batch_input = input;
   ParallelDim dims[MAX_TENSOR_DIM];

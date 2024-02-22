@@ -225,7 +225,6 @@ __host__ void AdamOptimizer::nccl_unified_update_task_gpu(
     GenericTensorAccessorW *accWs,
     GenericTensorAccessorW *accVs,
     GenericTensorAccessorW *accMs) {
-
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // assert(op->reservedWorkSpaceSize < meta->handle.workSpaceSize);

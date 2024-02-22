@@ -173,6 +173,7 @@ void AllReduce::backward(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
+  set_argumentmap_for_backward(ff, argmap);
   IndexLauncher launcher(ALLREDUCE_BWD_TASK_ID,
                          inputs[0]->parallel_is,
                          TaskArgument(NULL, 0),

@@ -2079,11 +2079,11 @@ class FFModel(object):
           layer = self._layers[i]
           if (layer.name + "_weight") in weights_dict:
                 print('weight: ' + layer.name)
-                weight = layer.get_parameter_by_id(0);
+                weight = layer.get_parameter_by_id(0)
                 weight.set_tensor(self, weights_dict[layer.name + "_weight"])
           if (layer.name + "_bias") in weights_dict:
                 print('bias: ' + layer.name)
-                bias = layer.get_parameter_by_id(1);
+                bias = layer.get_parameter_by_id(1)
                 bias.set_tensor(self, weights_dict[layer.name + "_bias"])
   def fit(self, x=None, y=None, batch_size=None, epochs=1):
     """Trains the model for a fixed number of epochs (iterations on a dataset).
@@ -2126,7 +2126,7 @@ class FFModel(object):
         self.forward()
         # self.zero_gradients()
         self.backward()
-        self.unified_update()
+        self.update()
         self._ffconfig.end_trace(self._tracing_id)
           
   def eval(self, x=None, y=None, batch_size=None):

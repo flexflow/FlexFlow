@@ -539,7 +539,6 @@ void AdamOptimizer::unified_update(std::vector<ParallelTensor> const parameters)
       if (reservedWorkSpaceSize + p->get_volume() * sizeof(float) >= workSpaceSize) {
         break;
       }
-      printf("continueee\n");
       reservedWorkSpaceSize += p->get_volume() * sizeof(float);
       parameters_num += 1;
       assert(p->sync_type == ParameterSyncType::NCCL);

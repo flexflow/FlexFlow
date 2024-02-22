@@ -278,6 +278,7 @@ class Split;
 class TopK;
 class Transpose;
 class Combine;
+class AllReduce;
 class Repartition;
 class Reduction;
 class Replicate;
@@ -834,6 +835,8 @@ public:
   Legion::IndexSpace get_task_is(Legion::Domain const &domain) const;
   Legion::IndexSpace get_task_is(ParallelConfig const &pc) const;
   Legion::IndexSpace get_task_is(MachineView const &view) const;
+  bool is_transformer_block(int layer_idx) const;
+  bool is_mlp_block(int layer_idx) const;
   void create_operators_from_layers();
   Op *create_operator_from_layer(Layer *layer,
                                  std::vector<ParallelTensor> const &inputs);
@@ -860,6 +863,7 @@ public:
   int metrics_input;
   ParallelTensor parallel_label_tensor;
   Tensor label_tensor;
+  int num_inputs = 0;
 
   std::vector<Layer *> layers;
   std::vector<Op *> operators;
@@ -929,6 +933,8 @@ public:
                          Replicate *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReductionParams>,
                          Reduction *>,
+      std::unordered_map<std::pair<ParallelTensorShape, AllReduceParams>,
+                         AllReduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, CombineParams>,
                          Combine *>,
       std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,
