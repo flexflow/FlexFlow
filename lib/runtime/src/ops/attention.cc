@@ -316,7 +316,7 @@ OpTaskSignature get_signature<ATTENTION_INIT_TASK_ID>() {
 }
 
 template <>
-void* get_task_impl<ATTENTION_INIT_TASK_ID>() {
+std::function<DeviceSpecific<MHAPerDeviceState>(TaskArgumentAccessor const &)> get_task_impl<ATTENTION_INIT_TASK_ID>() {
   return init_task_impl;
 }
 

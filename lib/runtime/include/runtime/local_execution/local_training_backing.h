@@ -3,6 +3,7 @@
 
 #include "pcg/computation_graph.h"
 #include "kernels/allocation.h"
+#include "kernels/accessor.h"
 #include "op-attrs/operator_attrs.h"
 #include "op_task_signature.h"
 #include "task_argument_accessor.h"
@@ -12,10 +13,19 @@
 
 namespace FlexFlow {
 
-using TaskImplFunction = std::function<optional<float>(TaskArgumentAccessor const &)>;
+struct OperatorSlotBackingId {
+  operator_guid_t op;
+  slot_id_t slot;
+};
+
+// TODO: define device state variant
+
+template <typename DeviceState>
+using TaskImplFunction = variant<std::function<DeviceSpecific<DeviceState>(TaskArgumentAccessor const &)>,
+                                 std::function<optional<float>(TaskArgumentAccessor const &)>>;
 
 struct LocalTrainingBacking {
-  LocalTrainingBacking(ComputationGraph, Allocator, Tensor, Tensor);
+  LocalTrainingBacking(ComputationGraph, Allocator, std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW>);
   ~LocalTrainingBacking() = default;
 
   GenericTensorAccessorR execute_forward();
@@ -29,11 +39,14 @@ private:
   ComputationGraph computation_graph;
   Allocator allocator;
   std::vector<Node> topologically_ordered_graph;
-  GenericTensorAccessorR input_tensor_backing;
-  GenericTensorAccessorR output_tensor_backing;
+
+  // memory
+  std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW> op_slot_tensor_mapping;
 
   // hold mappings
   std::unordered_map<task_id_t, void*> task_id_impl_mapping;
+  // TODO: add init task mapping
+  std::unordered_map<task_id_t, TaskImplFunction> task_id_impl_mapping;
   std::unordered_map<task_id_t, OpTaskSignature> task_id_signature_mapping;
 };
 
