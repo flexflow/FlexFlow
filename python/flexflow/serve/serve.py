@@ -398,6 +398,11 @@ class LLM:
         for file_name in tokenizer_files:
             shutil.copy(os.path.join(self.tokenizer_path, file_name), temp_dir)
             
+        # Delete rev_sha.txt from the temporary directory if it exists
+        rev_sha_path = os.path.join(temp_dir, 'rev_sha.txt')
+        if os.path.exists(rev_sha_path):
+            os.remove(rev_sha_path)
+            
         # Ensure Hugging Face CLI is logged in
         if not HfFolder.get_token():
             print("Hugging Face token not found. Please login using `huggingface-cli login`.")
