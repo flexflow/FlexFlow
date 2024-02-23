@@ -722,7 +722,7 @@ class PEFT(LLM):
             max_tokens_per_batch,
         )
 
-        # TODO: add linear layers
+        # TODO: add peft layers
 
         # Download the weights from huggingface (if needed)
         self.download_hf_weights_if_needed()

@@ -2488,25 +2488,25 @@ std::string find_layer_name_from_guid(FFModel *model, LayerID guid) {
 
 bool is_peft_operator_type(OperatorType type) {
   switch (type) {
-    case OP_LORA_MLP_FIRST:
-    case OP_LORA_MLP_SECOND:
+    case OP_LORA:
       return true;
     default:
       return false;
   }
 }
 
-PEFTModelID FFModel::register_peft_model(LoraLinearConfig const mlp_first,
-                                         LoraLinearConfig const mlp_second) {
-  if (!(mlp_first == LoraLinearConfig::DefaultConfig &&
-        mlp_second == LoraLinearConfig::DefaultConfig)) {
-    if (!config.enable_peft) {
-      fprintf(stderr,
-              "Error: trying to register PEFT model, but peft mode is not "
-              "enabled.\n");
-      assert(false);
-    }
+PEFTModelID FFModel::register_peft_model(LoraLinearConfig const peft_config) {
+  if (peft_config == LoraLinearConfig::EmptyConfig) {
+    fprintf(stderr, "Error: trying to register empty PEFT model\n");
+    assert(false);
   }
+  if (!config.enable_peft) {
+    fprintf(stderr,
+            "Error: trying to register PEFT model, but peft mode is not "
+            "enabled.\n");
+    assert(false);
+  }
+  
   PEFTModelID peft_model_id(peft_model_global_guid++);
   InferenceManager *im = InferenceManager::get_inference_manager();
   std::vector<Op *> peft_operators;
@@ -2526,7 +2526,7 @@ PEFTModelID FFModel::register_peft_model(LoraLinearConfig const mlp_first,
     std::string layer_name =
         find_layer_name_from_guid(this, peft_operators[op]->layer_guid);
     switch (peft_operators[op]->op_type) {
-      case OP_LORA_MLP_FIRST: {
+      case OP_LORA: {
         if (mlp_first == LoraLinearConfig::DefaultConfig) {
           // Do nothing for the default configuration
           continue;

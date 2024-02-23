@@ -12,12 +12,12 @@ namespace FlexFlow {
 
 class LoraLinearConfig {
 public:
-  static const LoraLinearConfig DefaultConfig;
+  static const LoraLinearConfig EmptyConfig;
   LoraLinearConfig();
   LoraLinearConfig(int rank,
                    OptimizerType type = OPTIMIZER_TYPE_SGD,
                    float learning_rate = 1e-4);
-  LoraLinearConfig(std::string const &cache_folder_,
+  LoraLinearConfig(std::string const &config_folder_,
                    std::string const &peft_model_id_);
   friend bool operator==(LoraLinearConfig const &lhs,
                          LoraLinearConfig const &rhs);
@@ -28,11 +28,12 @@ public:
   int rank;
   OptimizerType optimizer_type;
   float learning_rate;
-  std::string cache_folder;
+  std::string config_folder;
   // Huggingface
   std::string peft_model_id;
   int lora_alpha;
   float lora_dropout;
+  std::vector<std::string> target_modules;
   // whether to load weights from file, instead of initializing them randomly
   bool load_weights_from_file;
 };

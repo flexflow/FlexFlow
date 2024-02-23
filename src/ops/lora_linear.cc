@@ -38,14 +38,36 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::LoraLinear;
 
+void FFModel::add_lora_layer(std::string target_module_name,
+                            char const *name) {
+  assert(target_module_name.length() > 0 && "LoRA target module name is empty");
+  
+  // find target layer, and ensure uniqueness.
+  // if the target layer already has a LoRA layer, no need to add it again (keep track of layers with lora)
+  Layer *target_module = nullptr;
+  for (Layer *it : layers) {
+    if (it->op_type == OP_LINEAR && it->name != nullptr && strlen(it->name) > 0) {
+      std::string s(it->name);
+      if (s.find(target_module_name) != string::npos) {
+        // Check that this is the only layer with target name
+        if (target_module != nullptr) {
+          fprintf(stderr, "Error, found two layers containing LoRA target module name '%s'. Layer 1: %s, Layer 2: %s\n",
+          target_module_name.c_str(), target_module->name, it->name);
+        }
+        target_module = it;
+      }
+    }
+  }
+  lora_linear(target_module->inputs[0], target_module->outputs[0], name);
+}
+
 void FFModel::lora_linear(Tensor const input,
                           Tensor const output,
-                          OperatorType op_type,
                           char const *name) {
   assert(input->data_type == output->data_type);
   Layer *lora = nullptr;
   lora = new Layer(this,
-                   op_type,
+                   OP_LORA,
                    output->data_type,
                    name,
                    2 /*inputs*/,

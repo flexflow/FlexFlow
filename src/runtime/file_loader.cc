@@ -787,7 +787,7 @@ void FileDataLoader::load_weights(FFModel *ff) {
         continue;
       }
       // TODO: currently skip Lora layers
-      if (l->op_type == OP_LORA_MLP_FIRST || l->op_type == OP_LORA_MLP_SECOND) {
+      if (l->op_type == OP_LORA) {
         continue;
       }
       switch (weight->data_type) {

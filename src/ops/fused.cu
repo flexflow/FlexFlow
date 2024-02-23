@@ -266,8 +266,7 @@ __host__ void
                                                 batch_size);
         break;
       }
-      case OP_LORA_MLP_FIRST:
-      case OP_LORA_MLP_SECOND: {
+      case OP_LORA: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_outputs[op] == 1);
         Domain input_domain = my_input_accessor[0].domain;
@@ -910,8 +909,7 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
                                                  num_peft_tokens);
         break;
       }
-      case OP_LORA_MLP_FIRST:
-      case OP_LORA_MLP_SECOND: {
+      case OP_LORA: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_outputs[op] == 1);
         Domain input_domain = my_input_grad_accessor[0].domain;
