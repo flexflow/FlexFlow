@@ -42,6 +42,7 @@ class LoraLinearParams {
 public:
   LayerID layer_guid;
   OperatorType type;
+  std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
   char name[MAX_OPNAME];
 
   bool is_valid(std::pair<ParallelTensorShape, ParallelTensorShape> const

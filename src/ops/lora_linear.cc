@@ -38,13 +38,14 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::LoraLinear;
 
-void FFModel::add_lora_layer(std::string target_module_name,
-                            char const *name) {
+PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
+  assert(config.enable_peft && "Cannot add a LoRA layer if PEFT mode is not enabled");
   assert(target_module_name.length() > 0 && "LoRA target module name is empty");
-  
+
   // find target layer, and ensure uniqueness.
   // if the target layer already has a LoRA layer, no need to add it again (keep track of layers with lora)
   Layer *target_module = nullptr;
+  int idx;
   for (Layer *it : layers) {
     if (it->op_type == OP_LINEAR && it->name != nullptr && strlen(it->name) > 0) {
       std::string s(it->name);
@@ -53,50 +54,69 @@ void FFModel::add_lora_layer(std::string target_module_name,
         if (target_module != nullptr) {
           fprintf(stderr, "Error, found two layers containing LoRA target module name '%s'. Layer 1: %s, Layer 2: %s\n",
           target_module_name.c_str(), target_module->name, it->name);
+          assert(false);
         }
         target_module = it;
       }
     }
+    idx++;
   }
-  lora_linear(target_module->inputs[0], target_module->outputs[0], name);
-}
+  PEFTModelID peft_model_id(peft_model_global_guid++);
+  peft_configs[peft_model_id] = peft_config;
 
-void FFModel::lora_linear(Tensor const input,
-                          Tensor const output,
-                          char const *name) {
-  assert(input->data_type == output->data_type);
-  Layer *lora = nullptr;
-  lora = new Layer(this,
-                   OP_LORA,
-                   output->data_type,
-                   name,
-                   2 /*inputs*/,
-                   0 /*weights*/,
-                   1 /*outputs*/,
-                   input,
-                   output);
-  {
-    int numdims = output->num_dims;
-    int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < numdims; i++) {
-      dims[i] = output->dims[i];
+  Layer *peft_layer = nullptr;
+  if (base_layer_to_peft_layer.find(target_module) != base_layer_to_peft_layer.end()) {
+    // lora linear layer already added, no need to add again
+    peft_layer = base_layer_to_peft_layer[target_module];
+    peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
+  } else {
+    Tensor const input = target_module->inputs[0];
+    Tensor const output = target_module->outputs[0];
+    assert(input->data_type == output->data_type);
+    std::string name_ = target_module->name + ".lora";
+    Layer *peft_layer = new Layer(this,
+                        OP_LORA,
+                        output->data_type,
+                        name.c_str(),
+                        2 /*inputs*/,
+                        0 /*weights*/,
+                        1 /*outputs*/,
+                        input,
+                        output);
+    {
+      int numdims = output->num_dims;
+      int dims[MAX_TENSOR_DIM];
+      for (int i = 0; i < numdims; i++) {
+        dims[i] = output->dims[i];
+      }
+      peft_layer->outputs[0] = create_tensor_legion_ordering(
+          numdims, dims, output->data_type, peft_layer, 0, true /*create_grad*/);
     }
-    lora->outputs[0] = create_tensor_legion_ordering(
-        numdims, dims, output->data_type, lora, 0, true /*create_grad*/);
+    layers.insert(layers.begin() + idx + 1, peft_layer);
+    
+    base_layer_to_peft_layer[target_module] = peft_layer;
+    peft_layer_to_peft_id[peft_layer] = std::vector<PEFTModelID>();
+    peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
   }
-  layers.push_back(lora);
+  return peft_model_id;
 }
 
 Op *LoraLinear::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
+  std::unordered_map<PEFTModelID, LoraLinearConfig> _peft_configs,
+  std::vector<PEFTModelID> const &peft_ids = model.peft_layer_to_peft_id[layer];
+  for (int i=0; i<peft_ids.size(); i++) {
+    _peft_configs.emplace(std::make_pair(peft_ids[i], model.peft_configs[peft_ids[i]]));
+  }
   return new LoraLinear(model,
                         layer->layer_guid,
                         layer->op_type,
                         inputs[0],
                         inputs[1],
-                        layer->name);
+                        _peft_configs,
+                        layer->name);;
 }
 
 LoraLinear::LoraLinear(FFModel &model,
@@ -104,7 +124,7 @@ LoraLinear::LoraLinear(FFModel &model,
                        ParallelTensor const input,
                        ParallelTensor const output)
     : LoraLinear(
-          model, other.layer_guid, other.op_type, input, output, other.name) {}
+          model, other.layer_guid, other.op_type, input, output, other.peft_configs, other.name) {}
 
 LoraLinear::LoraLinear(FFModel &model,
                        Params const &params,
@@ -115,6 +135,7 @@ LoraLinear::LoraLinear(FFModel &model,
                  params.type,
                  inputs.first,
                  inputs.second,
+                 params.peft_configs,
                  params.name) {}
 
 LoraLinear::LoraLinear(FFModel &model,
@@ -122,6 +143,7 @@ LoraLinear::LoraLinear(FFModel &model,
                        OperatorType _op_type,
                        ParallelTensor const _input,
                        ParallelTensor const _output,
+                       std::unordered_map<PEFTModelID, LoraLinearConfig> _peft_configs,
                        char const *name)
     : Op(model,
          _op_type,
@@ -150,6 +172,9 @@ LoraLinear::LoraLinear(FFModel &model,
     }
     outputs[0] = model.create_parallel_tensor_legion_ordering(
         numdim, dims, inputs[1]->data_type, this);
+  }
+  for (const auto& kv : _peft_configs) {
+    peft_configs.insert(kv); 
   }
   // assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
@@ -783,7 +808,16 @@ bool LoraLinear::measure_operator_cost(Simulator *sim,
 }
 
 bool operator==(LoraLinearParams const &lhs, LoraLinearParams const &rhs) {
-  return lhs.layer_guid == rhs.layer_guid && lhs.type == rhs.type;
+  if (lhs.layer_guid == rhs.layer_guid && lhs.type == rhs.type && lhs.peft_configs.size() == rhs.peft_configs.size()) {
+    for (const auto& kv : lhs.peft_configs) {
+      auto it = rhs.peft_configs.find(kv.first);
+      if (it == rhs.peft_configs.end() || it->second != kv.second) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
 }
 
 void LoraLinear::serialize(Legion::Serializer &sez) const {
@@ -791,6 +825,11 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->op_type);
+  sez.serialize(this->peft_configs.size());
+  for (const auto& kv : this->peft_configs) {
+    sez.serialize(kv.first);
+    sez.serialize(kv.second);
+  }
   sez.serialize(strlen(this->name));
   sez.serialize(this->name, strlen(this->name));
 }
@@ -804,17 +843,28 @@ Node LoraLinear::deserialize(FFModel &ff,
   assert(num_inputs == 2);
   size_t id, transformer_layer_id, deserialized_model_id;
   OperatorType op_type;
+  size_t num_pefts;
+  PEFTModelID peft_model_id;
+  LoraLinearConfig peft_config;
   size_t name_len;
   char name[MAX_OPNAME] = {0};
+  
+  LoraLinearParams params;
+  
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
   dez.deserialize(deserialized_model_id);
   dez.deserialize(op_type);
+  dez.deserialize(num_pefts);
+  for (int i=0; i<num_pefts; i++) {
+    dez.deserialize(peft_model_id);
+    dez.deserialize(peft_config);
+    params.peft_configs.emplace(std::make_pair(peft_model_id, peft_config));
+  }
   dez.deserialize(name_len);
   dez.deserialize(name, name_len);
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
-  LoraLinearParams params;
   params.layer_guid = layer_guid;
   params.type = op_type;
   strcpy(params.name, name);
@@ -835,6 +885,7 @@ LoraLinearParams LoraLinear::get_params() const {
   if (this->name != nullptr) {
     strcpy(params.name, this->name);
   }
+  params.peft_configs = this->peft_configs;
   return params;
 }
 
@@ -853,6 +904,10 @@ size_t hash<FlexFlow::LoraLinearParams>::operator()(
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.layer_guid.transformer_layer_id);
   hash_combine(key, params.layer_guid.model_id);
+  for (const auto& kv : params.peft_configs) {
+    hash_combine(key, kv.first);
+    hash_combine(key, kv.second);
+  }
   return key;
 }
 }; // namespace std

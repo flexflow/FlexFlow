@@ -279,7 +279,7 @@ void FlexFlow::top_level_task(Task const *task,
   // Add PEFT layer
   PEFTModelID peft_model_id = PEFTModelID::NO_ID;
   if (!peft_model_name.empty()) {
-    peft_model_id = model.register_peft_model(peft_config);
+    peft_model_id = model.add_lora_layer(peft_config);
   }
 
   // Start background server
