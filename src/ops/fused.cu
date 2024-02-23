@@ -613,9 +613,7 @@ __host__ void
   if(metas->graph_collections.count(graph_params) != 0) {
     instance = metas->graph_collections[graph_params];
   } else {
-       {
-
-            
+       {            
             cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
             int ioff = 0, woff = 0, ooff = 0;
             for (int op = 0; op < fused->numOperators; op++) {
