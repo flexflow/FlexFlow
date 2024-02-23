@@ -843,8 +843,6 @@ public:
   // ========================================
   std::vector<GenerationResult> generate(std::vector<Request> const &requests);
 
-  PEFTModelID register_peft_model(LoraLinearConfig const peft_config);
-
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
                                        DataType data_type,

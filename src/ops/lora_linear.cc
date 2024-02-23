@@ -266,6 +266,103 @@ OpMeta *LoraLinear::init_task(Task const *task,
   std::strcpy(m->op_name, lora->name);
   m->layer_guid = lora->layer_guid;
 
+  int shard_id = task->index_point.point_data[0];
+  int num_dims = lora->inputs[0]->num_dims;
+  int in_dim = lora->inputs[0]->dims[0].size / lora->inputs[0]->dims[0].degree;
+  int out_dim = lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree;
+
+  DataType dt = m->input_type[0];
+  assert(dt == m->input_type[1]);
+  assert(dt == m->output_type[0]);
+  assert(dt == lora->inputs[0]->data_type);
+  assert(dt == lora->inputs[1]->data_type);
+  assert(dt == lora->outputs[0]->data_type);
+
+  // get layer name
+  assert(lora->name != nullptr && "Layer name is not set, cannot determine weights location");
+  std::string lora_layername = std::string(lora->name);
+  std::string searchString = "lora";
+  size_t found = lora_layername.find(searchString);
+  if (found == std::string::npos) {
+    std::cout << "LoraLinear layer name not in the right format (does not "
+                "contain word 'lora')"
+              << std::endl;
+    assert(false);
+  }
+  std::string lora_layername_substr =
+      lora_layername.substr(0, found + searchString.length());
+
+  for (const auto& kv : lora->peft_configs) {
+    PEFTModelID &model_id = kv.first;
+    LoraLinearConfig &lora_config = kv.second;
+    
+    int rank = lora_config.rank;
+    
+    int w0_num_elements = rank * in_dim;
+    int w1_num_elements = rank * out_dim;
+
+    LoraLinearWeight weight;
+    weight.in_dim = in_dim;
+    weight.out_dim = out_dim;
+    weight.rank = rank;
+    PEFTWeightAllocator *allocator = m->handle.peft_weight_allocator;
+    weight.w0_ptr = allocator->allocate_local_weights_untyped(model_id, w0_num_elements * data_type_size(dt));
+    weight.w1_ptr = allocator->allocate_local_weights_untyped(model_id, w1_num_elements * data_type_size(dt));
+
+    // load weights from file
+    std::string weights_folder_filepath = join_path({
+        lora_config.cache_folder,
+        "weights",
+        lora_config.peft_model_id,
+        dt == DT_FLOAT ? "full-precision" : "half-precision",
+    });
+    std::string w0_filepath =
+        join_path({weights_folder_filepath, lora_layername_substr + "_A_weight"});
+    std::string w1_filepath =
+        join_path({weights_folder_filepath, lora_layername_substr + "_B_weight"});
+    if (dt == DT_FLOAT) {
+      std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
+                << ", size: " << w0_num_elements << ", shard: " << shard_id
+                << std::endl;
+      load_peft_from_file(
+          (float *)weight.w0_ptr, w0_num_elements, true, shard_id, w0_filepath);
+      std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
+                << ", size: " << w1_num_elements << ", shard: " << shard_id
+                << std::endl;
+      load_peft_from_file(
+          (float *)weight.w1_ptr, w1_num_elements, false, shard_id, w1_filepath);
+    } else if (dt == DT_HALF) {
+      std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
+                << ", size: " << w0_num_elements << ", shard: " << shard_id
+                << std::endl;
+      load_peft_from_file(
+          (half *)weight.w0_ptr, w0_num_elements, true, shard_id, w0_filepath);
+      std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
+                << ", size: " << w1_num_elements << ", shard: " << shard_id
+                << std::endl;
+      load_peft_from_file(
+          (half *)weight.w1_ptr, w1_num_elements, false, shard_id, w1_filepath);
+    } else {
+      assert(false && "Data type not supported");
+    }
+
+    if (lora->inputs[0]->dims[num_dims - 1].degree == 1) {
+      // Input is partitioned (no replication)
+      // w0_grad is local weight gradients
+      weight.w0_grad_ptr = allocator->allocate_local_weights_untyped(model_id, w0_num_elements * data_type_size(dt));
+      // w1_grad is sync weight gradients
+      weight.w1_grad_ptr = allocator->allocate_sync_weights_untyped(model_id, w1_num_elements * data_type_size(dt));
+    } else {
+      // Input is replicated
+      // w0_grad is sync weight gradients
+      weight.w0_grad_ptr = allocator->allocate_sync_weights_untyped(model_id, w0_num_elements * data_type_size(dt));
+      // w1_grad is local weight gradients
+      weight.w1_grad_ptr = allocator->allocate_local_weights_untyped(model_id, w1_num_elements * data_type_size(dt));
+    }
+    assert(m->model_weights.find(model_id) == m->model_weights.end());
+    m->model_weights[model_id] = weight;
+  }
+
   return m;
 }
 
@@ -274,45 +371,6 @@ struct LoraLinearRegisterInfo {
   PEFTModelID model_id;
   LoraLinearConfig lora_config;
 };
-
-void LoraLinear::register_peft_model(
-    FFModel const &ff,
-    std::vector<ParallelTensor> const &batch_inputs,
-    std::vector<ParallelTensor> const &batch_outputs,
-    PEFTModelID const &model_id,
-    LoraLinearConfig const lora_config) {
-  assert(check_output_input_weight_same_parallel_is());
-  assert(batch_inputs.size() == 2);
-  assert(batch_outputs.size() == 1);
-  // Assert that the output and the second input are mapped to the same
-  // region/part
-  assert(batch_outputs[0]->region == batch_inputs[1]->region);
-  assert(batch_outputs[0]->part == batch_inputs[1]->part);
-  // assert(check_output_input_weight_same_machine_view());
-  // output is considered as an input to allow in-place optimization
-  ParallelTensor output_tensor = batch_outputs[0];
-  parallel_is = output_tensor->parallel_is;
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  MachineView const *view = &output_tensor->machine_view;
-  size_t machine_view_hash = view->hash();
-  set_argumentmap_for_inference(ff, argmap, output_tensor);
-  LoraLinearRegisterInfo info;
-  info.lora = this;
-  info.model_id = model_id;
-  info.lora_config = lora_config;
-  IndexLauncher launcher(LORA_LINEAR_REG_TASK_ID,
-                         parallel_is,
-                         TaskArgument(&info, sizeof(LoraLinearRegisterInfo)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         machine_view_hash);
-  FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  fm.wait_all_results();
-}
 
 template <typename DT>
 void load_peft_from_file(
@@ -338,114 +396,6 @@ void load_peft_from_file(
   assert(size == host_array.size());
   copy_tensor_host_to_dev(ptr, host_array.data(), size);
   in.close();
-}
-
-void LoraLinear::register_model_task(Task const *task,
-                                     std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
-  LoraLinearRegisterInfo const *info =
-      static_cast<LoraLinearRegisterInfo const *>(task->args);
-  LoraLinearMeta *m = *((LoraLinearMeta **)task->local_args);
-  LoraLinear const *lora = info->lora;
-
-  int shard_id = task->index_point.point_data[0];
-
-  int rank = info->lora_config.rank;
-  int num_dims = lora->inputs[0]->num_dims;
-  int in_dim = lora->inputs[0]->dims[0].size / lora->inputs[0]->dims[0].degree;
-  int out_dim = lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree;
-  int w0_num_elements = rank * in_dim;
-  int w1_num_elements = rank * out_dim;
-
-  DataType dt = m->input_type[0];
-  assert(dt == m->input_type[1]);
-  assert(dt == m->output_type[0]);
-  assert(dt == lora->inputs[0]->data_type);
-  assert(dt == lora->inputs[1]->data_type);
-  assert(dt == lora->outputs[0]->data_type);
-  assert(m->model_weights.find(info->model_id) == m->model_weights.end());
-
-  LoraLinearWeight weight;
-  weight.in_dim = in_dim;
-  weight.out_dim = out_dim;
-  weight.rank = rank;
-  PEFTWeightAllocator *allocator = m->handle.peft_weight_allocator;
-  weight.w0_ptr = allocator->allocate_local_weights_untyped(
-      info->model_id, w0_num_elements * data_type_size(dt));
-  weight.w1_ptr = allocator->allocate_local_weights_untyped(
-      info->model_id, w1_num_elements * data_type_size(dt));
-
-  // get layer name
-  assert(lora->name != nullptr &&
-         "Layer name is not set, cannot determine weights location");
-  std::string lora_layername = std::string(lora->name);
-  std::string searchString = "lora";
-  size_t found = lora_layername.find(searchString);
-  if (found == std::string::npos) {
-    std::cout << "LoraLinear layer name not in the right format (does not "
-                 "contain word 'lora')"
-              << std::endl;
-    assert(false);
-  }
-  std::string lora_layername_substr =
-      lora_layername.substr(0, found + searchString.length());
-
-  // load weights from file
-  std::string weights_folder_filepath = join_path({
-      info->lora_config.cache_folder,
-      "weights",
-      info->lora_config.peft_model_id,
-      dt == DT_FLOAT ? "full-precision" : "half-precision",
-  });
-  std::string w0_filepath =
-      join_path({weights_folder_filepath, lora_layername_substr + "_A_weight"});
-  std::string w1_filepath =
-      join_path({weights_folder_filepath, lora_layername_substr + "_B_weight"});
-  if (dt == DT_FLOAT) {
-    std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
-              << ", size: " << w0_num_elements << ", shard: " << shard_id
-              << std::endl;
-    load_peft_from_file(
-        (float *)weight.w0_ptr, w0_num_elements, true, shard_id, w0_filepath);
-    std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
-              << ", size: " << w1_num_elements << ", shard: " << shard_id
-              << std::endl;
-    load_peft_from_file(
-        (float *)weight.w1_ptr, w1_num_elements, false, shard_id, w1_filepath);
-  } else if (dt == DT_HALF) {
-    std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
-              << ", size: " << w0_num_elements << ", shard: " << shard_id
-              << std::endl;
-    load_peft_from_file(
-        (half *)weight.w0_ptr, w0_num_elements, true, shard_id, w0_filepath);
-    std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
-              << ", size: " << w1_num_elements << ", shard: " << shard_id
-              << std::endl;
-    load_peft_from_file(
-        (half *)weight.w1_ptr, w1_num_elements, false, shard_id, w1_filepath);
-  } else {
-    assert(false && "Data type not supported");
-  }
-
-  if (lora->inputs[0]->dims[num_dims - 1].degree == 1) {
-    // Input is partitioned (no replication)
-    // w0_grad is local weight gradients
-    weight.w0_grad_ptr = allocator->allocate_local_weights_untyped(
-        info->model_id, w0_num_elements * data_type_size(dt));
-    // w1_grad is sync weight gradients
-    weight.w1_grad_ptr = allocator->allocate_sync_weights_untyped(
-        info->model_id, w1_num_elements * data_type_size(dt));
-  } else {
-    // Input is replicated
-    // w0_grad is sync weight gradients
-    weight.w0_grad_ptr = allocator->allocate_sync_weights_untyped(
-        info->model_id, w0_num_elements * data_type_size(dt));
-    // w1_grad is local weight gradients
-    weight.w1_grad_ptr = allocator->allocate_local_weights_untyped(
-        info->model_id, w1_num_elements * data_type_size(dt));
-  }
-  m->model_weights[info->model_id] = weight;
 }
 
 void LoraLinear::forward(FFModel const &ff) {

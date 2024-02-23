@@ -40,11 +40,6 @@ public:
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void register_peft_model(FFModel const &ff,
-                           std::vector<ParallelTensor> const &batch_inputs,
-                           std::vector<ParallelTensor> const &batch_outputs,
-                           PEFTModelID const &model_id,
-                           LoraLinearConfig const lora_config);
   Legion::FutureMap inference(FFModel const &,
                               BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
@@ -65,11 +60,6 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void
-      register_model_task(Legion::Task const *task,
-                          std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime);
   static void inference_task(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
