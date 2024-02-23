@@ -72,7 +72,7 @@ Tensor ComputationGraphBuilder::element_unary(
 
   Tensor input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
-  Layer layer = {widen<ComputationGraphAttrs>(attrs), name};
+  Layer layer = {attrs, name};
   TensorShape output_shape = get_output_shape(attrs, input);
 
   return this->add_layer(layer, {input}, {}, output_shape);
@@ -86,7 +86,7 @@ Tensor ComputationGraphBuilder::element_scalar_unary(
 
   Tensor input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
-  Layer layer = {widen<ComputationGraphAttrs>(attrs), name};
+  Layer layer = {attrs, name};
   TensorShape output_shape = get_output_shape(attrs, input);
 
   return this->add_layer(layer, {input}, {}, output_shape);

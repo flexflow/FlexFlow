@@ -251,9 +251,10 @@ private:
                        optional<std::string> const &name = nullopt);
   Tensor element_scalar_unary(ElementScalarUnaryAttrs const &attrs,
                               Tensor const &x,
-                              optional<std::string> const &maybe_name)
+                              optional<std::string> const &maybe_name);
 
-      public : ComputationGraph computation_graph;
+public:
+  ComputationGraph computation_graph;
 };
 
 } // namespace FlexFlow
