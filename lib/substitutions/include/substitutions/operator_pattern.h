@@ -11,6 +11,11 @@
 
 namespace FlexFlow {
 
+/**
+ * @brief OperatorAttributeKey is an enum class that represents the keys of the attributes of an Operator.
+ * Each operator has a set of attributes that describe its behavior. OperatorAttributeKey is used to retrieve the value of an attribute or the expression of an attribute stored
+ * in an attribute map.
+ */
 enum class OperatorAttributeKey {
   OP_TYPE, // AnyOp
   USE_BIAS,
@@ -70,6 +75,11 @@ enum class OperatorAttributeKey {
   NUM_INPUTS
 };
 
+/**
+ * @brief OperatorAttributeValue is a variant that represents the concrete value of an attribute of an Operator.
+ * The OperatorAttributeValue is evalutated from AttributeExpr
+ * The datatype of the value corresponds to the datatype of the attributekey listed in OperatorAttributeKey.
+ */
 using OperatorAttributeValue = variant<int,
                                        float,
                                        bool,
@@ -91,12 +101,23 @@ FF_VISITABLE_STRUCT(ListIndexAccess<FlexFlow::OperatorAttributeKey>,
                     index);
 FF_VISITABLE_STRUCT(ListSize<FlexFlow::OperatorAttributeKey>, attribute_key);
 
+/**
+ * @todo: need to better understand what is constraints and pattern
+ * 
+ */
 using OperatorAttributeConstraint =
     AttributeConstraint<OperatorAttributeKey, OperatorAttributeValue>;
 
 using OperatorPattern =
     AttributePattern<OperatorAttributeKey, OperatorAttributeValue>;
 
+
+/**
+ * @brief Given a specific attribute of an Operator, evaluate the expression of the attribute and return the value of the attribute.
+ * @param attrs 
+ * @param expr 
+ * @return optional<OperatorAttributeValue> 
+ */
 optional<OperatorAttributeValue>
     evaluate_attribute_expr(Operator const &attrs,
                             AttributeExpr<OperatorAttributeKey> const &expr);
