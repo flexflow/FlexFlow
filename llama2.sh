@@ -29,7 +29,13 @@
 
 
 
-    ./build/inference/incr_decoding/incr_decoding -ll:gpu 4  -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -cache-folder /home/xiaoxias/weights --fusion -prompt /home/xiaoxias/full_chatgpt.json -tensor-parallelism-degree 4 > 0223-1754-llama2-cuda_graph-fulldataset.log 2>&1 
+    ./build/inference/incr_decoding/incr_decoding -ll:gpu 4  -ll:cpu 4 -ll:fsize 20000 -ll:zsie 30000 -llm-model meta-llama/Llama-2-7b-hf -cache-folder /home/xiaoxias/weights --fusion -prompt /home/xiaoxias/full_chatgpt.json -tensor-parallelism-degree 4 > 0223-1754-llama2-cuda_graph-fulldataset.log 2>&1 
 
 
      nsys profile  -w true -t cuda,nvtx,osrt,cudnn,cublas -s cpu -o  0223-1754-cuda-graph-fulldataset -f true -x true --cuda-graph-trace node  ./build/inference/incr_decoding/incr_decoding -ll:gpu 4  -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -cache-folder /home/xiaoxias/weights --fusion -prompt /home/xiaoxias/full_chatgpt.json -tensor-parallelism-degree 4 > 0223-1754-llama2-cuda_graph-fulldataset-profile.log 2>&1 
+
+
+    ./build/inference/incr_decoding/incr_decoding -ll:gpu 4  -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -cache-folder /home/xiaoxias/weights --fusion -prompt /home/xiaoxias/full_chatgpt.json -tensor-parallelism-degree 4 > 0223-1754-llama2-cuda_graph-2prompt-printbc.log 2>&1 
+
+
+     nsys profile  -w true -t cuda,nvtx,osrt,cudnn,cublas -s cpu -o  0223-1754-cuda-graph-11prompt -f true -x true --cuda-graph-trace node  ./build/inference/incr_decoding/incr_decoding -ll:gpu 4  -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -cache-folder /home/xiaoxias/weights --fusion -prompt /home/xiaoxias/chatgpt.json -tensor-parallelism-degree 4 > 0223-1754-llama2-cuda_graph-11prompt-profile.log 2>&1 

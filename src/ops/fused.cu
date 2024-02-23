@@ -536,7 +536,7 @@ __host__ void
   if (bc->num_tokens == 0) {
     return;
   }
-  bc->print();
+  //bc->print();
 
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
@@ -610,7 +610,7 @@ __host__ void
   GraphParams graph_params = {bc->num_active_requests(),
                       bc->num_active_tokens(),
                       bc->num_generation_tokens > 0};
-  graph_params.Print();
+  //graph_params.Print();
   int shard_id = task->index_point.point_data[0];
   if(metas->graph_collections.count(graph_params) != 0) {
     instance = metas->graph_collections[graph_params];
