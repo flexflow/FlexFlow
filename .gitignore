@@ -6,6 +6,7 @@ python/flexflow/core/flexflow_cffi_header.py
 *.pb.h
 *.o
 *.a
+*.nsys-rep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
