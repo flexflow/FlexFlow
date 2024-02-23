@@ -58,3 +58,6 @@
     ./build/inference/incr_decoding/incr_decoding -ll:gpu 4  -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -cache-folder /home/xiaoxias/weights --fusion -prompt /home/xiaoxias/chatgpt.json -tensor-parallelism-degree 4 > 0223-1754-llama2-cuda_graph-11prompt-zeyu.log 2>&1 
 
 #     ./build/inference/incr_decoding/incr_decoding -ll:gpu 4  -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -cache-folder /home/xiaoxias/weights --fusion -prompt /home/xiaoxias/chatgpt.json -tensor-parallelism-degree 4
+
+
+    ./build/inference/incr_decoding/incr_decoding -ll:gpu 4  -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -cache-folder /home/xiaoxias/weights --fusion -prompt /home/xiaoxias/chatgpt.json -tensor-parallelism-degree 4 > 0223-1754-llama2-cuda_graph-11prompt.log 2>&1 
