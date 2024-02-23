@@ -75,9 +75,9 @@ std::ostream &operator<<(std::ostream &os, LoraLinearConfig const &llc) {
   os << "lora_alpha: " << llc.lora_alpha << ", ";
   os << "lora_dropout: " << llc.lora_dropout << ", ";
   os << "target_modules: [";
-  for (int i=0; i<target_modules.size(); i++) {
-    os << target_modules[i];
-    if (i < target_modules.size() - 1) {
+  for (int i=0; i<llc.target_modules.size(); i++) {
+    os << llc.target_modules[i];
+    if (i < llc.target_modules.size() - 1) {
       os << ", ";
     }
   }

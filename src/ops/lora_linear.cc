@@ -40,64 +40,70 @@ using namespace FlexFlow::Kernels::LoraLinear;
 
 PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
   assert(config.enable_peft && "Cannot add a LoRA layer if PEFT mode is not enabled");
-  assert(target_module_name.length() > 0 && "LoRA target module name is empty");
-
-  // find target layer, and ensure uniqueness.
-  // if the target layer already has a LoRA layer, no need to add it again (keep track of layers with lora)
-  Layer *target_module = nullptr;
-  int idx;
-  for (Layer *it : layers) {
-    if (it->op_type == OP_LINEAR && it->name != nullptr && strlen(it->name) > 0) {
-      std::string s(it->name);
-      if (s.find(target_module_name) != string::npos) {
-        // Check that this is the only layer with target name
-        if (target_module != nullptr) {
-          fprintf(stderr, "Error, found two layers containing LoRA target module name '%s'. Layer 1: %s, Layer 2: %s\n",
-          target_module_name.c_str(), target_module->name, it->name);
-          assert(false);
-        }
-        target_module = it;
-      }
-    }
-    idx++;
+  if (peft_config.target_modules.size() == 0) {
+    printf("PEFT config does not contain any target module\n");
+    return PEFTModelID::NO_ID;
   }
   PEFTModelID peft_model_id(peft_model_global_guid++);
   peft_configs[peft_model_id] = peft_config;
 
-  Layer *peft_layer = nullptr;
-  if (base_layer_to_peft_layer.find(target_module) != base_layer_to_peft_layer.end()) {
-    // lora linear layer already added, no need to add again
-    peft_layer = base_layer_to_peft_layer[target_module];
-    peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
-  } else {
-    Tensor const input = target_module->inputs[0];
-    Tensor const output = target_module->outputs[0];
-    assert(input->data_type == output->data_type);
-    std::string name_ = target_module->name + ".lora";
-    Layer *peft_layer = new Layer(this,
-                        OP_LORA,
-                        output->data_type,
-                        name.c_str(),
-                        2 /*inputs*/,
-                        0 /*weights*/,
-                        1 /*outputs*/,
-                        input,
-                        output);
-    {
-      int numdims = output->num_dims;
-      int dims[MAX_TENSOR_DIM];
-      for (int i = 0; i < numdims; i++) {
-        dims[i] = output->dims[i];
+  for (std::string target_module_name : peft_config.target_modules) {
+    assert(target_module_name.length() > 0 && "LoRA target module name is empty");
+    // find target layer, and ensure uniqueness.
+    // if the target layer already has a LoRA layer, no need to add it again (keep track of layers with lora)
+    Layer *target_module = nullptr;
+    int idx;
+    for (Layer *it : layers) {
+      if (it->op_type == OP_LINEAR && it->name != nullptr && strlen(it->name) > 0) {
+        std::string s(it->name);
+        if (s.find(target_module_name) != std::string::npos) {
+          // Check that this is the only layer with target name
+          if (target_module != nullptr) {
+            fprintf(stderr, "Error, found two layers containing LoRA target module name '%s'. Layer 1: %s, Layer 2: %s\n",
+            target_module_name.c_str(), target_module->name, it->name);
+            assert(false);
+          }
+          target_module = it;
+        }
       }
-      peft_layer->outputs[0] = create_tensor_legion_ordering(
-          numdims, dims, output->data_type, peft_layer, 0, true /*create_grad*/);
+      idx++;
     }
-    layers.insert(layers.begin() + idx + 1, peft_layer);
-    
-    base_layer_to_peft_layer[target_module] = peft_layer;
-    peft_layer_to_peft_id[peft_layer] = std::vector<PEFTModelID>();
-    peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
+    Layer *peft_layer = nullptr;
+    if (base_layer_to_peft_layer.find(target_module) != base_layer_to_peft_layer.end()) {
+      // lora linear layer already added, no need to add again
+      peft_layer = base_layer_to_peft_layer[target_module];
+      peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
+    } else {
+      Tensor const input = target_module->inputs[0];
+      Tensor const output = target_module->outputs[0];
+      assert(input->data_type == output->data_type);
+      std::string name_ = target_module->name ? std::string(target_module->name) : std::string("");
+      name_ += ".lora";
+      Layer *peft_layer = new Layer(this,
+                          OP_LORA,
+                          output->data_type,
+                          name_.c_str(),
+                          2 /*inputs*/,
+                          0 /*weights*/,
+                          1 /*outputs*/,
+                          input,
+                          output);
+      {
+        int numdims = output->num_dims;
+        int dims[MAX_TENSOR_DIM];
+        for (int i = 0; i < numdims; i++) {
+          dims[i] = output->dims[i];
+        }
+        peft_layer->outputs[0] = create_tensor_legion_ordering(
+            numdims, dims, output->data_type, peft_layer, 0, true /*create_grad*/);
+      }
+      layers.insert(layers.begin() + idx + 1, peft_layer);
+      base_layer_to_peft_layer[target_module] = peft_layer;
+      peft_layer_to_peft_id[peft_layer] = std::vector<PEFTModelID>();
+      peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
+    }
   }
+  
   return peft_model_id;
 }
 
@@ -105,8 +111,8 @@ Op *LoraLinear::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
-  std::unordered_map<PEFTModelID, LoraLinearConfig> _peft_configs,
-  std::vector<PEFTModelID> const &peft_ids = model.peft_layer_to_peft_id[layer];
+  std::unordered_map<PEFTModelID, LoraLinearConfig> _peft_configs;
+  std::vector<PEFTModelID> const &peft_ids = model.peft_layer_to_peft_id[(Layer*)layer];
   for (int i=0; i<peft_ids.size(); i++) {
     _peft_configs.emplace(std::make_pair(peft_ids[i], model.peft_configs[peft_ids[i]]));
   }
@@ -143,7 +149,7 @@ LoraLinear::LoraLinear(FFModel &model,
                        OperatorType _op_type,
                        ParallelTensor const _input,
                        ParallelTensor const _output,
-                       std::unordered_map<PEFTModelID, LoraLinearConfig> _peft_configs,
+                       std::unordered_map<PEFTModelID, LoraLinearConfig> const &_peft_configs,
                        char const *name)
     : Op(model,
          _op_type,
@@ -230,6 +236,32 @@ void LoraLinear::init_inference(
   set_opmeta_from_futuremap_inference(ff, fm, output_tensor);
 }
 
+template <typename DT>
+void load_peft_from_file(
+    DT *ptr, size_t size, bool sharded, int shard_id, std::string filepath) {
+  std::ifstream in(filepath, std::ios::in | std::ios::binary);
+  if (!in.good()) {
+    printf("Could not open file: %s\n", filepath.c_str());
+  }
+  assert(in.good() && "incorrect weight file path");
+  std::vector<DT> host_array(size);
+  size_t target_data_size = sizeof(DT) * size;
+  in.seekg(sharded * shard_id * target_data_size, in.beg);
+  in.read((char *)host_array.data(), target_data_size);
+
+  size_t in_get_size = in.gcount();
+  if (in_get_size != target_data_size) {
+    printf("load weight data error: %lu, %lu, %lu\n",
+           in_get_size,
+           target_data_size,
+           sizeof(DT));
+    assert(false);
+  }
+  assert(size == host_array.size());
+  copy_tensor_host_to_dev(ptr, host_array.data(), size);
+  in.close();
+}
+
 /*
   regions[0](O): output
   regions[1](I): kernel
@@ -268,8 +300,8 @@ OpMeta *LoraLinear::init_task(Task const *task,
 
   int shard_id = task->index_point.point_data[0];
   int num_dims = lora->inputs[0]->num_dims;
-  int in_dim = lora->inputs[0]->dims[0].size / lora->inputs[0]->dims[0].degree;
-  int out_dim = lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree;
+  assert(in_dim == lora->inputs[0]->dims[0].size / lora->inputs[0]->dims[0].degree);
+  assert(out_dim == lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree);
 
   DataType dt = m->input_type[0];
   assert(dt == m->input_type[1]);
@@ -293,8 +325,8 @@ OpMeta *LoraLinear::init_task(Task const *task,
       lora_layername.substr(0, found + searchString.length());
 
   for (const auto& kv : lora->peft_configs) {
-    PEFTModelID &model_id = kv.first;
-    LoraLinearConfig &lora_config = kv.second;
+    PEFTModelID const &model_id = kv.first;
+    LoraLinearConfig const &lora_config = kv.second;
     
     int rank = lora_config.rank;
     
@@ -311,8 +343,7 @@ OpMeta *LoraLinear::init_task(Task const *task,
 
     // load weights from file
     std::string weights_folder_filepath = join_path({
-        lora_config.cache_folder,
-        "weights",
+        lora_config.config_folder,
         lora_config.peft_model_id,
         dt == DT_FLOAT ? "full-precision" : "half-precision",
     });
@@ -364,38 +395,6 @@ OpMeta *LoraLinear::init_task(Task const *task,
   }
 
   return m;
-}
-
-struct LoraLinearRegisterInfo {
-  LoraLinear const *lora;
-  PEFTModelID model_id;
-  LoraLinearConfig lora_config;
-};
-
-template <typename DT>
-void load_peft_from_file(
-    DT *ptr, size_t size, bool sharded, int shard_id, std::string filepath) {
-  std::ifstream in(filepath, std::ios::in | std::ios::binary);
-  if (!in.good()) {
-    printf("Could not open file: %s\n", filepath.c_str());
-  }
-  assert(in.good() && "incorrect weight file path");
-  std::vector<DT> host_array(size);
-  size_t target_data_size = sizeof(DT) * size;
-  in.seekg(sharded * shard_id * target_data_size, in.beg);
-  in.read((char *)host_array.data(), target_data_size);
-
-  size_t in_get_size = in.gcount();
-  if (in_get_size != target_data_size) {
-    printf("load weight data error: %lu, %lu, %lu\n",
-           in_get_size,
-           target_data_size,
-           sizeof(DT));
-    assert(false);
-  }
-  assert(size == host_array.size());
-  copy_tensor_host_to_dev(ptr, host_array.data(), size);
-  in.close();
 }
 
 void LoraLinear::forward(FFModel const &ff) {
@@ -761,7 +760,7 @@ bool operator==(LoraLinearParams const &lhs, LoraLinearParams const &rhs) {
   if (lhs.layer_guid == rhs.layer_guid && lhs.type == rhs.type && lhs.peft_configs.size() == rhs.peft_configs.size()) {
     for (const auto& kv : lhs.peft_configs) {
       auto it = rhs.peft_configs.find(kv.first);
-      if (it == rhs.peft_configs.end() || it->second != kv.second) {
+      if (it == rhs.peft_configs.end() || !(it->second == kv.second)) {
         return false;
       }
     }

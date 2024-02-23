@@ -837,7 +837,7 @@ public:
   // ========================================
   // PEFT Layers
   // ========================================
-  PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config);
+  PEFTModelID add_lora_layer(LoraLinearConfig const peft_config);
   // ========================================
   // Inference APIs
   // ========================================
