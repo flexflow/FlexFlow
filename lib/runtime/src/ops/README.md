@@ -5,7 +5,7 @@ This document describes the general outline that an operator developer needs to 
 
 ## Slots
 
-The Operator takes tensor inputs and outputs other tensors. The input tensors’ attributes and type need to be specified in the form of Slots, which has traits distinguished by an enumerator.
+The `Operator` takes tensor inputs and outputs other tensors. The input tensors’ attributes and type need to be specified in the form of Slots, which has traits distinguished by an enumerator.
 
 ex. attention.cc:
 ```cpp
