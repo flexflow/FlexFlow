@@ -286,7 +286,8 @@ class FlexFlowFalcon(FlexFlowModel):
         converted_name = converted_name.replace("mlp_dense_h_to_4h", "mlp.dense_h_to_4h")
         converted_name = converted_name.replace("mlp_dense_4h_to_h", "mlp.dense_4h_to_h")
         converted_name = converted_name.replace("attention_wo", "self_attention.dense")
-        
+        if name.startswith("ln") or name.startswith("word_embeddings"):
+            converted_name = "transformer." + converted_name
         converted_name = re.sub(r"layers_(\d+)_", r"transformer.h.\1.", converted_name)
         converted_name = re.sub(r"_(bias|weight)$", r".\1", converted_name)
 
@@ -303,78 +304,84 @@ class FlexFlowFalcon(FlexFlowModel):
         - config: The configuration object for the model.
         """
         
-        
-        print("Model hidden size:", model.config.hidden_size)
-        print("Model num_attention_heads:", model.config.num_attention_heads)
-        
         hidden_size = model.config.hidden_size
-        num_attention_heads = model.config.num_attention_heads
-        hidden_size_per_head = hidden_size // num_attention_heads
+        n_head = (
+            model.config.n_head
+            if "n_head" in model.config.__dict__
+            else model.config.num_attention_heads
+        )
+        
+        print("Model hidden size:", hidden_size)
+        print("Model num_attention_heads:", n_head)
+        
+        num_attention_heads = n_head
+        hidden_size_per_head = hidden_size // n_head
         intermediate_size = hidden_size * 4
         
         qkv_weights = {}
         
         for file_name in os.listdir(src_folder):
             weight_path = os.path.join(src_folder, file_name)
-            print("converting weight file: ", weight_path)
+            print("\nProcessing weight file:", weight_path)
             original_name = FlexFlowFalcon.convert_ff_weight_name(file_name.replace('.bin', ''))
-            print("weight name after conversion from flexflow: ", original_name)
+            print("Converted weight name:", original_name)
             
             if not os.path.exists(weight_path):
                 raise FileNotFoundError(f"No weight file found for {file_name}")
             
             weight_data = np.fromfile(weight_path, dtype=np.float16).astype(np.float32)
+            print(f"Data type after conversion: {weight_data.dtype}, Size: {weight_data.size}")
             
-            if "attention_w" in original_name:
+            # for q,k,v weights, store in dict
+            if ("attention_wq" in original_name) or ("attention_wk" in original_name) or ("attention_wv" in original_name):
                 qkv_match = re.search("(wq|wk|wv)", file_name)
                 qkv_type = qkv_match.group(0) if qkv_match else None
                 layer_num_match = re.search(r"transformer.h.(\d+)", original_name)
                 layer_num = int(layer_num_match.group(1)) if layer_num_match else None
+                print(f"QKV type: {qkv_type}, Layer number: {layer_num}")
                 
                 if layer_num is not None:
                     if layer_num not in qkv_weights:
-                        # For each layer, initialize space for Q, K, V weights for all heads
-                        # Each head has hidden_size_per_head elements, and there are num_attention_heads heads
-                        # For Q, K, V together, it's 3 * hidden_size_per_head * num_attention_heads
-                        qkv_shape = (3 * hidden_size_per_head * num_attention_heads, hidden_size)
+                        # qkv_shape = (hidden_size_per_head * num_attention_heads, hidden_size)
+                        per_type_space = hidden_size_per_head * n_head
+                        
+                        qkv_name = f"transformer.h.{layer_num}.self_attention.query_key_value.weight"
+                        if qkv_name in model.state_dict():
+                            qkv_param_size = model.state_dict()[qkv_name].shape[0]
+                        qkv_shape = (qkv_param_size, hidden_size)
                         qkv_weights[layer_num] = np.zeros(qkv_shape)
-                    
-                    # Calculate index for Q, K, or V weight segment within the combined QKV weight
+                        print(f"Initialized QKV shape for layer {layer_num}: {qkv_shape}")
+                        
                     type_index = {"wq": 0, "wk": 1, "wv": 2}.get(qkv_type, 0)
-                    offset = type_index * hidden_size_per_head * num_attention_heads
-                    # Reshape the weight data to fit into the combined QKV weight matrix
-                    reshaped_data = weight_data.reshape(-1, hidden_size)
-                    qkv_weights[layer_num][offset:offset+reshaped_data.shape[0], :] = reshaped_data
+                    offset = type_index * per_type_space
+                    print("offset for this weight is: ", offset)
+                    ## dim 0 sizes: 
+                    dim_wq = hidden_size
+                    dim_wk = hidden_size // n_head
+                    dim_wv = hidden_size // n_head
+                    print(dim_wq, dim_wk, dim_wv)
+                    
+                    try:
+                        expected_shape = (weight_data.size // hidden_size, hidden_size)
+                        reshaped_data = weight_data.reshape(expected_shape)
+                        print(f"Reshaped QKV weights for {qkv_type} in layer {layer_num} with shape {expected_shape}.")
+                    except ValueError as e:
+                        print(f"Error reshaping {qkv_type} weights for layer {layer_num}: {e}")
+                        print(f"Attempting to reshape data of size {weight_data.size} into shape (-1, {hidden_size})")
+                        
+                        
+                    try:
+                        if qkv_type == "wq":
+                            qkv_weights[layer_num][0:dim_wq, :] = reshaped_data
+                        elif qkv_type == "wk":
+                            qkv_weights[layer_num][dim_wq:dim_wk+dim_wq, :] = reshaped_data
+                        else:
+                            qkv_weights[layer_num][dim_wq+dim_wk:, :] = reshaped_data
+                    except ValueError as e:
+                        print(f"Error assigning {qkv_type} weights for layer {layer_num}: {e}")
+                continue
             
-            elif "mlp.dense_h_to_4h" in original_name or "mlp.dense_4h_to_h" in original_name:
-                # Handle MLP weights
-                if "mlp.dense_h_to_4h" in original_name:
-                    total_elements = weight_data.size
-                    output_size = total_elements // hidden_size
-                    expected_shape = (output_size, hidden_size)
-                elif "mlp.dense_4h_to_h" in original_name:
-                    input_size = weight_data.size // hidden_size
-                    expected_shape = (hidden_size, input_size)  
-
-                if weight_data.size == np.prod(expected_shape):
-                    reshaped_weight_data = weight_data.reshape(expected_shape)
-                    if original_name in model.state_dict():
-                        param = model.state_dict()[original_name]
-                        param.data.copy_(torch.from_numpy(reshaped_weight_data))
-                else:
-                    raise ValueError(f"Cannot reshape weight {file_name} of size {weight_data.size} into expected shape {expected_shape}.")
-            else:
-                # Handle other weights
-                if original_name in model.state_dict():
-                    param = model.state_dict()[original_name]
-                    print("trying to reshape: ", original_name)
-                    reshaped_data = weight_data.reshape(param.shape)
-                    param.data.copy_(torch.from_numpy(reshaped_data))
-        
-        # Assign the combined QKV weights to the model, if applicable
-        for layer_num, weight in qkv_weights.items():
-            qkv_name = f"transformer.h.{layer_num}.self_attention.query_key_value.weight"
-            if qkv_name in model.state_dict():
-                param = model.state_dict()[qkv_name]
-                # Ensure the combined weight is correctly reshaped to fit the model's expectations
-                param.data.copy_(torch.from_numpy(weight.reshape(param.shape)))
+            # for weights that are not q,k,v, get the param names
+            param = model.state_dict().get(original_name, None)
+            if param is None:
+                print(f"Warning: {original_name} not found i
