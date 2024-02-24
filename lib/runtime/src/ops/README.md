@@ -32,7 +32,7 @@ enum Slots {
 
 ## Register Task
 
-For the backing to use the operator, the operator needs to register its tasks with the backing. Generally, three tasks need to be registered, using register_task. 
+For the backing to use the operator, the operator needs to register its tasks with the backing. Generally, three tasks need to be registered using register_task. 
 
 The three tasks are as follows: 
 
