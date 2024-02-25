@@ -5,6 +5,7 @@ This directory contains the core C++ code that underlies FlexFlow, organized int
 - `compiler`: Contains 
 - `kernels`:
 - `op-attrs`:
+- `execution`:
 - `pcg`: Contains the definitions of computation graphs and parallel computation graphs,
          as well as code for serializing and deserializing both graphs
 - `runtime`:

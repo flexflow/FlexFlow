@@ -28,6 +28,10 @@ public:
 
     return this->future;
   }
+  
+  ArgTypeRuntimeTag get_type_tag() const {
+    return this->type_tag;
+  }
 
   Legion::Future get_unsafe() const {
     return this->future;
@@ -39,17 +43,19 @@ public:
 
   template <typename T>
   static CheckedTypedFuture create(TypedFuture<T> const &f) {
-    return CheckedTypedFuture(type_index<T>(), f.future);
+    return CheckedTypedFuture(type_index<T>(), f.future, ArgTypeRuntimeTag::create<T>());
   }
 
 private:
-  CheckedTypedFuture(std::type_index type_idx, Legion::Future const &future)
-      : type_idx(type_idx), future(future) {}
-
+  CheckedTypedFuture(std::type_index const &type_idx, 
+                     Legion::Future const &future, 
+                     ArgTypeRuntimeTag const &type_tag)
+      : type_idx(type_idx), future(future), type_tag(type_tag) {}
   friend struct TaskReturnAccessor;
 
   std::type_index type_idx;
   Legion::Future future;
+  ArgTypeRuntimeTag type_tag;
 };
 
 } // namespace FlexFlow

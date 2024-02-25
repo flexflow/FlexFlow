@@ -30,20 +30,30 @@ public:
     return {this->future_map};
   }
 
+  ArgTypeRuntimeTag get_type_tag() const {
+    return this->type_tag;
+  }
+
+  std::type_index get_type_idx() const {
+    return this->type;
+  }
+
   template <typename T>
   static CheckedTypedFutureMap create(TypedFutureMap<T> const &fm) {
-    return CheckedTypedFutureMap(type_index<T>(), fm.future_map);
+    return CheckedTypedFutureMap(type_index<T>(), fm.future_map, ArgTypeRuntimeTag::create<T>());
   }
 
 private:
   CheckedTypedFutureMap(std::type_index const &type_idx,
-                        Legion::FutureMap const &future_map)
-      : type(type_idx), future_map(future_map) {}
+                        Legion::FutureMap const &future_map,
+                        ArgTypeRuntimeTag const &type_tag)
+      : type(type_idx), future_map(future_map), type_tag(type_tag) {}
 
   friend struct TaskReturnAccessor;
 
   std::type_index type;
   Legion::FutureMap future_map;
+  ArgTypeRuntimeTag type_tag;
 };
 
 } // namespace FlexFlow
