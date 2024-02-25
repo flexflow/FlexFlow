@@ -13,6 +13,7 @@ struct Conv2DParams {
       padding_w, groups;
   ActiMode activation;
   bool use_bias;
+  char name[MAX_OPNAME];
 
   bool is_valid(ParallelTensorShape const &input) const;
   void solve_dims(ParallelTensorShape const &input,

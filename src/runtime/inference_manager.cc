@@ -28,40 +28,15 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_inf_mgr("InferenceManager");
 LegionRuntime::Logger::Category log_offload("Offloading");
 
-InferenceManager::InferenceManager(FFConfig const &_config)
-    : ff_config(_config) {
-  num_devices = ff_config.workersPerNode * ff_config.numNodes;
-  // Check parallelization degrees
-  assert(ff_config.data_parallelism_degree <= num_devices &&
-         "Data parallelism degree exceeds number of available devices");
-  assert(num_devices % ff_config.data_parallelism_degree == 0 &&
-         "Number of available devices is not divisible by data parallelism "
-         "degree");
-  assert(ff_config.tensor_parallelism_degree <= num_devices &&
-         "Tensor parallelism degree exceeds number of available devices");
-  assert(num_devices % ff_config.tensor_parallelism_degree == 0 &&
-         "Number of available devices is not divisible by tensor parallelism "
-         "degree");
-  assert(ff_config.pipeline_parallelism_degree <= num_devices &&
-         "Pipeline parallelism degree exceeds number of available devices");
-  assert(num_devices % ff_config.pipeline_parallelism_degree == 0 &&
-         "Number of available devices is not divisible by pipeline parallelism "
-         "degree");
-  assert(ff_config.data_parallelism_degree *
-                 ff_config.tensor_parallelism_degree *
-                 ff_config.pipeline_parallelism_degree ==
-             num_devices &&
-         "Product of data, tensor, and pipeline parallelism degrees does not "
-         "match the number of available devices");
-}
+InferenceManager::InferenceManager() {}
 
 InferenceManager *inference_manager_singleton = nullptr;
 
 /*static*/
 InferenceManager *InferenceManager::get_inference_manager() {
   if (inference_manager_singleton == nullptr) {
-    FFConfig ffconfig;
-    inference_manager_singleton = new InferenceManager(ffconfig);
+    // FFConfig ffconfig;
+    inference_manager_singleton = new InferenceManager();
   }
   return inference_manager_singleton;
 }
@@ -172,12 +147,20 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
 
       std::vector<ParallelTensor> list;
       bool found_parallel_tensor = false;
-      if (model->cpu_offload) {
+      // Always enable memory reuse
+      // if (model->cpu_offload) {
+      if (true) {
         for (auto const &pre_pt : tensor_buffer) {
           bool used_by_future_operator = false;
           bool used_by_current_operator = false;
           if (pre_pt.first->get_shape() != pt_base->get_shape()) {
             // Continue if shape mismatches
+            continue;
+          }
+          // Skip if pre_pt and pt_base are in different pipeline stages
+          // we compare their pipeline stages using the machine views
+          // of the first data pipeline
+          if (pre_pt.second[0]->machine_view != machine_views[0]) {
             continue;
           }
           // Check that pt cannot be used as an input to the current operator
@@ -247,13 +230,96 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
     }
     // std::cout << std::endl;
   }
+
+  // Check whether we need to reset input grads
+  // We use a parallel tensor's region as the key
+  std::set<LogicalRegion> reset_inputs;
+  for (int l = model->operators.size() - 1; l >= 0; l--) {
+    Op *op = model->operators[l];
+    for (int i = 0; i < op->numInputs; i++) {
+      assert(op->inputs[i]->region != LogicalRegion::NO_REGION);
+      if (reset_inputs.find(op->inputs[i]->region) != reset_inputs.end()) {
+        // We should not reset input grads since other operators have already
+        // saved gradients into the region
+        op->reset_input_grads[i] = false;
+      } else if (i == 0 && (op->op_type == OP_RESIDUAL_LAYERNORM ||
+                            op->op_type == OP_RESIDUAL_RMS_NORM ||
+                            op->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM)) {
+        if (reset_inputs.find(op->outputs[0]->region) != reset_inputs.end()) {
+          op->reset_input_grads[0] = false;
+        }
+        reset_inputs.insert(op->inputs[i]->region);
+      } else {
+        reset_inputs.insert(op->inputs[i]->region);
+      }
+    }
+  }
+
+  // Perform fusion optimizations
+  if (model->config.perform_fusion) {
+    fprintf(stderr, "Applying fusion optimizations during compilation...\n");
+    fprintf(
+        stderr, "%zu operators before fusion...\n", model->operators.size());
+    std::vector<Op *> new_operators;
+    std::vector<Op *> old_operators = model->operators;
+    while (
+        model->apply_fusion(model->operators, new_operators, &tensor_buffer)) {
+      for (size_t i = 0; i < new_operators.size(); i++) {
+        for (int idx = 0; idx < new_operators[i]->numInputs; idx++) {
+          for (size_t j = i + 1; j < new_operators.size(); j++) {
+            if (new_operators[i]->inputs[idx]->owner_op == new_operators[j]) {
+              assert(false);
+            }
+          }
+        }
+      }
+      model->operators = new_operators;
+    }
+    assert(model->check_operators_integrity(old_operators, &tensor_buffer));
+    fprintf(stderr, "%zu operators after fusion...\n", model->operators.size());
+  }
+
+  // print optimized graph
+  for (size_t i = 0; i < model->operators.size(); i++) {
+    Op *op = model->operators[i];
+    if (op->op_type == OP_INPUT || op->op_type == OP_WEIGHT) {
+      continue;
+    }
+    printf("operator[%zu]: type(%s) guid(%lu)\n",
+           i,
+           get_operator_type_name(model->operators[i]->op_type).c_str(),
+           model->operators[i]->op_guid);
+    for (int j = 0; j < op->numInputs; j++) {
+      assert(tensor_buffer.find(op->inputs[j]) != tensor_buffer.end());
+      LogicalRegion handle = tensor_buffer[op->inputs[j]][0]->region;
+      printf("\tinputs[%d] mapped_region(%d,%d,%d)\n",
+             j,
+             handle.get_index_space().get_id(),
+             handle.get_field_space().get_id(),
+             handle.get_tree_id());
+    }
+    for (int j = 0; j < op->numOutputs; j++) {
+      LogicalRegion handle = tensor_buffer[op->outputs[j]][0]->region;
+      printf("\toutputs[%d] mapped_region(%d,%d,%d)\n",
+             j,
+             handle.get_index_space().get_id(),
+             handle.get_field_space().get_id(),
+             handle.get_tree_id());
+    }
+    for (int j = 0; j < op->numWeights; j++) {
+      LogicalRegion handle = op->weights[j]->region;
+      printf("\tweights[%d] mapped_region(%d,%d,%d)\n",
+             j,
+             handle.get_index_space().get_id(),
+             handle.get_field_space().get_id(),
+             handle.get_tree_id());
+    }
+  }
 }
 
 void InferenceManager::init_operators_inference(FFModel *model) {
   for (int batch_index = 0; batch_index < model->config.data_parallelism_degree;
        batch_index++) {
-    int expert_device_index = 0;
-    int device_index = batch_index % num_devices;
     for (size_t o = 0; o < model->operators.size(); o++) {
       Op *op = model->operators[o];
       if (op->op_type == OP_WEIGHT) {
@@ -340,12 +406,13 @@ FutureMap InferenceManager::inference(FFModel *model,
         // input.
         assert(op->numOutputs == 1);
         ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
-        load_positions(bc, pt, model->position_offset);
+        load_positions(model, bc, pt, model->position_offset);
       } else {
         found_input_operator = true;
         assert(op->numOutputs == 1);
         ParallelTensor pt = tensor_buffer[op->outputs[0]][batch_index];
-        load_input_tokens_from_batch_config(bc, pt);
+        load_input_tokens_from_batch_config(model, bc, pt, model->handlers);
+        load_inference_metadata_batch_config(model, bc, model->handlers);
       }
     }
 
@@ -422,11 +489,35 @@ void InferenceManager::peft_bwd(FFModel *model,
 };
 
 void InferenceManager::load_input_tokens_from_batch_config(
-    BatchConfigFuture const &bc, ParallelTensor const input) {
-  Context ctx = ff_config.lg_ctx;
-  Runtime *runtime = ff_config.lg_hlr;
+    FFModel *model,
+    BatchConfigFuture const &bc,
+    ParallelTensor const input,
+    FFHandler *handlers) {
+  Context ctx = model->config.lg_ctx;
+  Runtime *runtime = model->config.lg_hlr;
   size_t machine_view_hash = input->machine_view.hash();
   ArgumentMap argmap;
+  Domain domain = runtime->get_index_space_domain(ctx, input->parallel_is);
+
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    MachineView view = input->machine_view;                                    \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      argmap.set_point(*it,                                                    \
+                       TaskArgument(&handlers[view.get_device_id(*it)],        \
+                                    sizeof(FFHandler)));                       \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+
   IndexLauncher launcher(RM_LOAD_TOKENS_TASK_ID,
                          input->parallel_is,
                          TaskArgument(nullptr, 0),
@@ -442,11 +533,40 @@ void InferenceManager::load_input_tokens_from_batch_config(
   runtime->execute_index_space(ctx, launcher);
 }
 
-void InferenceManager::load_positions(BatchConfigFuture const &bc,
+void InferenceManager::load_inference_metadata_batch_config(
+    FFModel *model, BatchConfigFuture const &bc, FFHandler *handlers) {
+  Context ctx = model->config.lg_ctx;
+  Runtime *runtime = model->config.lg_hlr;
+  ArgumentMap argmap;
+
+  Domain domain =
+      runtime->get_index_space_domain(ctx, model->config.all_gpu_task_is);
+  Rect<1> task_rect = domain;
+
+  int idx = 0;
+  for (PointInRectIterator<1> it(task_rect); it(); it++) {
+    FFHandler handler = handlers[idx++];
+    argmap.set_point(*it, TaskArgument(&handler, sizeof(FFHandler)));
+  }
+
+  IndexLauncher launcher(RM_LOAD_BATCH_CONFIG_TASK_ID,
+                         model->config.all_gpu_task_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         FFConfig::DataParallelism_GPU);
+  launcher.add_future(bc);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void InferenceManager::load_positions(FFModel *model,
+                                      BatchConfigFuture const &bc,
                                       ParallelTensor position_input,
                                       int offset) {
-  Context ctx = ff_config.lg_ctx;
-  Runtime *runtime = ff_config.lg_hlr;
+  Context ctx = model->config.lg_ctx;
+  Runtime *runtime = model->config.lg_hlr;
   size_t machine_view_hash = position_input->machine_view.hash();
   ArgumentMap argmap;
   IndexLauncher launcher(RM_LOAD_POSITION_TASK_ID,
@@ -467,6 +587,11 @@ void InferenceManager::load_positions(BatchConfigFuture const &bc,
   runtime->execute_index_space(ctx, launcher);
 }
 
+void InferenceManager::register_model_weights_loader(FFModel *model,
+                                                     FileDataLoader *loader) {
+  model_weights_loaders[model] = loader;
+}
+
 void FFModel::set_transformer_layer_id(int id) {
   // We assume that users call this function with
   // monotonically increasing ids
@@ -482,6 +607,12 @@ void FFModel::set_position_offset(int offset) {
 }
 
 void FFModel::compile_inference() {
+  // Request at least four CPU processors for inference runs
+  assert(
+      config.cpusPerNode >= 4 &&
+      "FlexFlow Serve requires at least four CPU cores per node, please add "
+      "`-ll:cpu 4` in the command line if you are using the C++ interface or "
+      "set `num_cpus` in `ff.init` if you are using the Python interface");
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   config.computationMode = COMP_MODE_INFERENCE;
@@ -600,157 +731,6 @@ void FFModel::compile_inference() {
     }
   }
 
-  // Check whether we need to reset input grads
-  // We use a parallel tensor's region as the key
-  std::set<LogicalRegion> reset_inputs;
-  for (int l = operators.size() - 1; l >= 0; l--) {
-    Op *op = operators[l];
-    for (int i = 0; i < op->numInputs; i++) {
-      assert(op->inputs[i]->region != LogicalRegion::NO_REGION);
-      if (reset_inputs.find(op->inputs[i]->region) != reset_inputs.end()) {
-        // We should not reset input grads since other operators have already
-        // saved gradients into the region
-        op->reset_input_grads[i] = false;
-      } else if (i == 0 && (op->op_type == OP_RESIDUAL_LAYERNORM ||
-                            op->op_type == OP_RESIDUAL_RMS_NORM ||
-                            op->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM)) {
-        if (reset_inputs.find(op->outputs[0]->region) != reset_inputs.end()) {
-          reset_inputs.insert(op->inputs[0]->region);
-          op->reset_input_grads[0] = false;
-        }
-      } else {
-        reset_inputs.insert(op->inputs[i]->region);
-      }
-    }
-  }
-  // Perform fusion optimizations
-  if (config.perform_fusion) {
-    fprintf(stderr, "Applying fusion optimizations during compilation...\n");
-    fprintf(stderr, "%zu operators before fusion...\n", operators.size());
-    std::vector<Op *> new_operators;
-    std::vector<Op *> old_operators = operators;
-    while (apply_fusion(operators, new_operators)) {
-      for (size_t i = 0; i < new_operators.size(); i++) {
-        for (int idx = 0; idx < new_operators[i]->numInputs; idx++) {
-          for (size_t j = i + 1; j < new_operators.size(); j++) {
-            if (new_operators[i]->inputs[idx]->owner_op == new_operators[j]) {
-              assert(false);
-            }
-          }
-        }
-      }
-      operators = new_operators;
-    }
-    // Check integrity
-    for (size_t l = 0; l < operators.size(); l++) {
-      if (operators[l]->op_type == OP_FUSED) {
-        FusedOp *fused = (FusedOp *)operators[l];
-        int ioff = 0, woff = 0, ooff = 0;
-        for (int op = 0; op < fused->numOperators; op++) {
-          Op *old_op = fused->operators[op];
-          for (int i = 0; i < fused->op_num_inputs[op]; i++) {
-            int my_off = fused->op_input_idx[i + ioff];
-            if (fused->op_input_source[i + ioff] == FusedOp::SOURCE_INPUT) {
-              assert(fused->inputs[my_off]->region ==
-                     old_op->inputs[i]->region);
-            } else if (fused->op_input_source[i + ioff] ==
-                       FusedOp::SOURCE_OUTPUT) {
-              assert(fused->outputs[my_off]->region ==
-                     old_op->inputs[i]->region);
-            } else {
-              assert(false);
-            }
-          }
-          for (int i = 0; i < fused->op_num_weights[op]; i++) {
-            int my_off = fused->op_weight_idx[i + woff];
-            assert(fused->op_weight_source[i + woff] == FusedOp::SOURCE_WEIGHT);
-            assert(fused->weights[my_off]->region ==
-                   old_op->weights[i]->region);
-          }
-          for (int i = 0; i < fused->op_num_outputs[op]; i++) {
-            int my_off = fused->op_output_idx[i + ooff];
-            assert(
-                fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT ||
-                (fused->op_output_source[i + ooff] == FusedOp::SOURCE_INPUT &&
-                 (old_op->op_type == OP_RESIDUAL_LAYERNORM ||
-                  old_op->op_type == OP_RESIDUAL_RMS_NORM ||
-                  old_op->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM)));
-            if (fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT) {
-              assert(fused->outputs[my_off]->region ==
-                     old_op->outputs[i]->region);
-            } else {
-              assert(fused->inputs[my_off]->region ==
-                     old_op->outputs[i]->region);
-            }
-          }
-          ioff += fused->op_num_inputs[op];
-          woff += fused->op_num_weights[op];
-          ooff += fused->op_num_outputs[op];
-        }
-      } else {
-        bool found = false;
-        for (size_t i = 0; i < old_operators.size(); i++) {
-          if (old_operators[i] == operators[l]) {
-            assert(!found);
-            found = true;
-          }
-        }
-        assert(found);
-      }
-    }
-    fprintf(stderr, "%zu operators after fusion...\n", operators.size());
-    for (size_t i = 0; i < operators.size(); i++) {
-      Op *op = operators[i];
-      printf("operator[%zu]: type(%s) guid(%lu)\n",
-             i,
-             get_operator_type_name(operators[i]->op_type).c_str(),
-             operators[i]->op_guid);
-      for (int j = 0; j < op->numInputs; j++) {
-        LogicalRegion handle = op->inputs[j]->region;
-        printf("\tinputs[%d] region(%d,%d,%d)\n",
-               j,
-               handle.get_index_space().get_id(),
-               handle.get_field_space().get_id(),
-               handle.get_tree_id());
-      }
-      for (int j = 0; j < op->numOutputs; j++) {
-        LogicalRegion handle = op->outputs[j]->region;
-        printf("\toutputs[%d] region(%d,%d,%d)\n",
-               j,
-               handle.get_index_space().get_id(),
-               handle.get_field_space().get_id(),
-               handle.get_tree_id());
-      }
-      for (int j = 0; j < op->numWeights; j++) {
-        LogicalRegion handle = op->weights[j]->region;
-        printf("\tweights[%d] region(%d,%d,%d)\n",
-               j,
-               handle.get_index_space().get_id(),
-               handle.get_field_space().get_id(),
-               handle.get_tree_id());
-      }
-    }
-  }
-  for (size_t i = 0; i < operators.size(); i++) {
-    Op *op = operators[i];
-    printf("operator[%zu]: type(%d)\n", i, operators[i]->op_type);
-    for (int j = 0; j < op->numInputs; j++) {
-      LogicalRegion handle = op->inputs[j]->region;
-      printf("\tinputs[%d] region(%d,%d,%d)\n",
-             j,
-             handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(),
-             handle.get_tree_id());
-    }
-    for (int j = 0; j < op->numOutputs; j++) {
-      LogicalRegion handle = op->outputs[j]->region;
-      printf("\toutputs[%d] region(%d,%d,%d)\n",
-             j,
-             handle.get_index_space().get_id(),
-             handle.get_field_space().get_id(),
-             handle.get_tree_id());
-    }
-  }
 #ifdef FF_USE_NCCL
   for (size_t l = 0; l < operators.size(); l++) {
     // Only create nccl for allreduce and fusedop for inference

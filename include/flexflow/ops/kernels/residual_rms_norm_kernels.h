@@ -66,9 +66,10 @@ void backward_kernel_wrapper(
     GenericTensorAccessorW const &weight_grad);
 void peft_bwd_kernel_wrapper(ResidualRMSNormMeta const *m,
                              BatchConfig const *bc,
-                             GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorW const &residual_input0_grad,
-                             GenericTensorAccessorW const &residual_input1_grad,
+                             GenericTensorAccessorR const &output_grad_0,
+                             GenericTensorAccessorR const &output_grad_1,
+                             GenericTensorAccessorW const &input_grad_0,
+                             GenericTensorAccessorW const &input_grad_1,
                              GenericTensorAccessorR const &weight);
 } // namespace ResidualRMSNorm
 } // namespace Kernels

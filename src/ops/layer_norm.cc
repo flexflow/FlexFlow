@@ -57,6 +57,9 @@ LayerNormParams LayerNorm::get_params() const {
   params.elementwise_affine = this->elementwise_affine;
   params.eps = this->eps;
   params.use_bias = this->use_bias;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -199,7 +202,7 @@ LayerNorm::LayerNorm(FFModel &model,
                 params.use_bias,
                 params.eps,
                 allocate_weights,
-                name) {}
+                params.name) {}
 
 LayerNorm::LayerNorm(FFModel &model,
                      LayerID const &_layer_guid,
@@ -996,6 +999,8 @@ void LayerNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->elementwise_affine);
   sez.serialize(this->eps);
   sez.serialize(this->use_bias);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -1024,6 +1029,10 @@ Node LayerNorm::deserialize(FFModel &ff,
   dez.deserialize(elementwise_affine);
   dez.deserialize(eps);
   dez.deserialize(use_bias);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
 
   LayerNormParams params;
   params.layer_guid = layer_guid;
@@ -1031,6 +1040,7 @@ Node LayerNorm::deserialize(FFModel &ff,
   params.elementwise_affine = elementwise_affine;
   params.eps = eps;
   params.use_bias = use_bias;
+  strcpy(params.name, name);
   return ff.get_or_create_node<LayerNorm>(inputs[0], params);
 }
 

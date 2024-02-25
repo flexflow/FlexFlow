@@ -607,6 +607,15 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
   //     ncclComm, allRanks, myRank, ncclId);
   return ncclComm;
 }
+
+void Op::finish_nccl_comms_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime) {
+  ncclComm_t comm = *((ncclComm_t *)task->local_args);
+  checkNCCL(ncclCommFinalize(comm));
+  checkNCCL(ncclCommDestroy(comm));
+}
 #endif
 
 /**
@@ -1511,10 +1520,8 @@ FFRuntime::FFRuntime(FFConfig &config) {
   Context ctx = config.lg_ctx;
 
   ArgumentMap argmap;
-  Rect<1> task_rect(Point<1>(0),
-                    Point<1>(config.workersPerNode * config.numNodes - 1));
-  IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect);
-
+  Domain domain = runtime->get_index_space_domain(ctx, config.all_gpu_task_is);
+  Rect<1> task_rect = domain;
   // int rank = 0;
   for (PointInRectIterator<1> it(task_rect); it(); it++) {
     FFInitInfo info;
@@ -1534,7 +1541,7 @@ FFRuntime::FFRuntime(FFConfig &config) {
 
   // Init CUDA library on each worker
   IndexLauncher initLauncher(FF_INIT_TASK_ID,
-                             task_is,
+                             config.all_gpu_task_is,
                              TaskArgument(NULL, 0),
                              argmap,
                              Predicate::TRUE_PRED,
@@ -1595,6 +1602,45 @@ FFModel::FFModel(FFConfig &_config, bool cpu_offload)
     handlers[idx] = ffruntime_singleton->handlers[idx];
   }
   model_id = model_counter++;
+}
+
+FFModel::~FFModel() {
+  // Destroy nccl communication groups
+#ifdef FF_USE_NCCL
+  if (config.computationMode == COMP_MODE_TRAINING) {
+    Context ctx = config.lg_ctx;
+    Runtime *runtime = config.lg_hlr;
+    for (auto const &comm : view_hash_to_nccl_comms) {
+      // Find the machine view that has the hash
+      MachineView view;
+      for (size_t l = 0; l < operators.size(); l++) {
+        view = operators[l]->outputs[0]->machine_view;
+        if (view.hash() == comm.first) {
+          break;
+        }
+      }
+      assert(view.hash() == comm.first && "Cannot find the machine view");
+      IndexSpace task_is = get_or_create_task_is(view);
+      Domain domain = runtime->get_index_space_domain(ctx, task_is);
+      ArgumentMap argmap;
+      int idx = 0;
+      for (Domain::DomainPointIterator it(domain); it; it++, idx++) {
+        argmap.set_point(*it,
+                         TaskArgument(&comm.second[idx], sizeof(ncclComm_t)));
+      }
+      IndexLauncher index_launcher(NCCL_FINISH_COMMS_TASK_ID,
+                                   task_is,
+                                   TaskArgument(nullptr, 0),
+                                   argmap,
+                                   Predicate::TRUE_PRED,
+                                   false /*must*/,
+                                   0 /*mapper_id*/,
+                                   comm.first);
+      FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
+      fm.wait_all_results();
+    }
+  }
+#endif
 }
 
 void FFModel::clear_graph_search_cache() {
@@ -2878,8 +2924,11 @@ void FFModel::compile(Optimizer *_optimizer,
   compile(loss_type, metrics, comp_mode);
 }
 
-bool FFModel::apply_fusion(std::vector<Op *> const &operators,
-                           std::vector<Op *> &new_operators) {
+bool FFModel::apply_fusion(
+    std::vector<Op *> const &operators,
+    std::vector<Op *> &new_operators,
+    std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+        *parallel_tensor_mapping) {
   // Context ctx = config.lg_ctx;
   // Runtime* runtime = config.lg_hlr;
   for (size_t l = 1; l < operators.size() - 1; l++) {
@@ -2944,7 +2993,8 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
           fused_op = new FusedOp(*this, operators[i]);
           allocate_new_fused_op = true;
         }
-        if (fused_op->add_operator(*this, operators[l])) {
+        if (fused_op->add_operator(
+                *this, operators[l], parallel_tensor_mapping)) {
           // Construct new operators
           new_operators.clear();
           for (size_t j = 0; j < i; j++) {
@@ -2962,7 +3012,9 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
                   (op->inputs[idx]->owner_op == operators[i])) {
                 int found = -1;
                 for (int k = 0; k < fused_op->numOutputs; k++) {
-                  if (fused_op->outputs[k]->region == op->inputs[idx]->region) {
+                  if (fused_op->use_same_regions(fused_op->outputs[k],
+                                                 op->inputs[idx],
+                                                 parallel_tensor_mapping)) {
                     assert(found == -1);
                     found = k;
                   }
@@ -2989,7 +3041,6 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
           assert(new_operators.size() + 1 == operators.size());
           return true;
         } else {
-          // TODO: delete fused_op to avoid memory leakage
           if (allocate_new_fused_op) {
             delete fused_op;
           }
@@ -3021,6 +3072,12 @@ Op *FFModel::create_operator_from_layer(
       dims[num_dims].degree = 1;
       dims[num_dims].parallel_idx = -1;
       dims[num_dims].is_replica_dim = true;
+      if (config.computationMode == COMP_MODE_INFERENCE &&
+          config.tensor_parallelism_degree > 1) {
+        dims[num_dims].size *= config.tensor_parallelism_degree;
+        dims[num_dims].degree *= config.tensor_parallelism_degree;
+        dims[num_dims].parallel_idx = 0;
+      }
       // create_parallel_tensor adds an NoOp into operators
       ParallelTensor pt =
           create_parallel_tensor_legion_ordering(num_dims + 1,
@@ -3030,6 +3087,7 @@ Op *FFModel::create_operator_from_layer(
                                                  0,
                                                  true /*gradients*/,
                                                  tensor->tensor_guid);
+      assert(pt->get_shape().is_valid());
       // assert that this tensor hasn't been mapped before
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
@@ -3342,12 +3400,12 @@ void FFModel::create_operators_from_layers() {
     if (config.computationMode == COMP_MODE_INFERENCE &&
         config.tensor_parallelism_degree > 1 && l->op_type == OP_EMBEDDING) {
       assert(op->numOutputs == 1);
-      Replicate *repl = new Replicate(*this,
-                                      op->outputs[0],
-                                      op->outputs[0]->num_dims - 1,
-                                      config.tensor_parallelism_degree);
-      operators.push_back(repl);
-      op = repl;
+      // Replicate *repl = new Replicate(*this,
+      //                                 op->outputs[0],
+      //                                 op->outputs[0]->num_dims - 1,
+      //                                 config.tensor_parallelism_degree);
+      // operators.push_back(repl);
+      // op = repl;
     } else if (config.computationMode == COMP_MODE_INFERENCE &&
                config.tensor_parallelism_degree > 1 &&
                (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
@@ -3567,53 +3625,7 @@ void FFModel::compile(LossType loss_type,
       }
       operators = new_operators;
     }
-    // Check integrity
-    for (size_t l = 0; l < operators.size(); l++) {
-      if (operators[l]->op_type == OP_FUSED) {
-        FusedOp *fused = (FusedOp *)operators[l];
-        int ioff = 0, woff = 0, ooff = 0;
-        for (int op = 0; op < fused->numOperators; op++) {
-          Op *old_op = fused->operators[op];
-          for (int i = 0; i < fused->op_num_inputs[op]; i++) {
-            int my_off = fused->op_input_idx[i + ioff];
-            if (fused->op_input_source[i + ioff] == FusedOp::SOURCE_INPUT) {
-              assert(fused->inputs[my_off]->region ==
-                     old_op->inputs[i]->region);
-            } else if (fused->op_input_source[i + ioff] ==
-                       FusedOp::SOURCE_OUTPUT) {
-              assert(fused->outputs[my_off]->region ==
-                     old_op->inputs[i]->region);
-            } else {
-              assert(false);
-            }
-          }
-          for (int i = 0; i < fused->op_num_weights[op]; i++) {
-            int my_off = fused->op_weight_idx[i + woff];
-            assert(fused->op_weight_source[i + woff] == FusedOp::SOURCE_WEIGHT);
-            assert(fused->weights[my_off]->region ==
-                   old_op->weights[i]->region);
-          }
-          for (int i = 0; i < fused->op_num_outputs[op]; i++) {
-            int my_off = fused->op_output_idx[i + ooff];
-            assert(fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT);
-            assert(fused->outputs[my_off]->region ==
-                   old_op->outputs[i]->region);
-          }
-          ioff += fused->op_num_inputs[op];
-          woff += fused->op_num_weights[op];
-          ooff += fused->op_num_outputs[op];
-        }
-      } else {
-        bool found = false;
-        for (size_t i = 0; i < old_operators.size(); i++) {
-          if (old_operators[i] == operators[l]) {
-            assert(!found);
-            found = true;
-          }
-        }
-        assert(found);
-      }
-    }
+    assert(check_operators_integrity(old_operators));
     fprintf(stderr, "%zu operators after fusion...\n", operators.size());
     for (size_t i = 0; i < operators.size(); i++) {
       Op *op = operators[i];
@@ -3753,6 +3765,68 @@ void FFModel::compile(LossType loss_type,
     }
   }
 #endif
+}
+
+bool FFModel::check_operators_integrity(
+    std::vector<Op *> const &old_operators,
+    std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+        *pt_mapping) {
+  // Check integrity
+  for (size_t l = 0; l < operators.size(); l++) {
+    if (operators[l]->op_type == OP_FUSED) {
+      FusedOp *fused = (FusedOp *)operators[l];
+      int ioff = 0, woff = 0, ooff = 0;
+      for (int op = 0; op < fused->numOperators; op++) {
+        Op *old_op = fused->operators[op];
+        for (int i = 0; i < fused->op_num_inputs[op]; i++) {
+          int my_off = fused->op_input_idx[i + ioff];
+          if (fused->op_input_source[i + ioff] == FusedOp::SOURCE_INPUT) {
+            assert(FusedOp::use_same_regions(
+                fused->inputs[my_off], old_op->inputs[i], pt_mapping));
+          } else if (fused->op_input_source[i + ioff] ==
+                     FusedOp::SOURCE_OUTPUT) {
+            assert(FusedOp::use_same_regions(
+                fused->outputs[my_off], old_op->inputs[i], pt_mapping));
+          } else {
+            assert(false);
+          }
+        }
+        for (int i = 0; i < fused->op_num_weights[op]; i++) {
+          int my_off = fused->op_weight_idx[i + woff];
+          assert(fused->op_weight_source[i + woff] == FusedOp::SOURCE_WEIGHT);
+          assert(fused->weights[my_off]->region == old_op->weights[i]->region);
+        }
+        for (int i = 0; i < fused->op_num_outputs[op]; i++) {
+          int my_off = fused->op_output_idx[i + ooff];
+          assert(fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT ||
+                 (fused->op_output_source[i + ooff] == FusedOp::SOURCE_INPUT &&
+                  (old_op->op_type == OP_RESIDUAL_LAYERNORM ||
+                   old_op->op_type == OP_RESIDUAL_RMS_NORM ||
+                   old_op->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM)));
+          if (fused->op_output_source[i + ooff] == FusedOp::SOURCE_OUTPUT) {
+            assert(FusedOp::use_same_regions(
+                fused->outputs[my_off], old_op->outputs[i], pt_mapping));
+          } else {
+            assert(FusedOp::use_same_regions(
+                fused->inputs[my_off], old_op->outputs[i], pt_mapping));
+          }
+        }
+        ioff += fused->op_num_inputs[op];
+        woff += fused->op_num_weights[op];
+        ooff += fused->op_num_outputs[op];
+      }
+    } else {
+      bool found = false;
+      for (size_t i = 0; i < old_operators.size(); i++) {
+        if (old_operators[i] == operators[l]) {
+          assert(!found);
+          found = true;
+        }
+      }
+      assert(found);
+    }
+  }
+  return true;
 }
 
 struct PropagationEdgeInfo {
@@ -4169,6 +4243,10 @@ FFConfig::FFConfig() {
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;
   lg_ctx = Runtime::get_context();
+  Rect<1> task_rect(Point<1>(0), Point<1>(workersPerNode * numNodes - 1));
+  // Create an index space for tasks running on all GPUs
+  all_gpu_task_is = runtime->create_index_space(lg_ctx, task_rect);
+
   // field_space = runtime->create_field_space(lg_ctx);
 }
 
@@ -4442,6 +4520,23 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  // RequestManager load metadata
+  {
+    TaskVariantRegistrar registrar(RM_LOAD_BATCH_CONFIG_TASK_ID,
+                                   "RequestManager Load meta data");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<RequestManager::load_batch_config_task>(
+          registrar, "RequestManager Load metadata Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::load_batch_config_task>(
+          registrar);
+    }
+  }
   // RequestManager prepare_next_batch
   {
     TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_TASK_ID,
@@ -4524,6 +4619,24 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<
           TreeVerifyBatchConfig,
           RequestManager::prepare_next_batch_verify_task>(registrar);
+    }
+  }
+  // RequestManager background serving task
+  {
+    TaskVariantRegistrar registrar(RM_BACKGROUND_SERVING_TASK_ID,
+                                   "RequestManager Background Serving Task");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    // registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          RequestManager::background_serving_task>(
+          registrar, "RequestManager Background Serving Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<RequestManager::background_serving_task>(
+          registrar);
     }
   }
   // ElementUnary task
@@ -4870,6 +4983,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<Embedding::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(EMBED_INF_TASK_ID, "Embedding Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Embedding::inference_task>(
+          registrar, "Embedding Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Embedding::inference_task>(registrar);
     }
   }
   {
@@ -6199,6 +6326,24 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(ARG_TOPK_INF_SPECULATIVE_TASK_ID,
+                                   "ArgTopK Speculative Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<BeamInferenceResult,
+                                        ArgTopK::inference_speculative_task>(
+          registrar, "ArgTopK Speculative Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<BeamInferenceResult,
+                                     ArgTopK::inference_speculative_task>(
+          registrar);
+    }
+  }
   // BeamTopk task
   {
     TaskVariantRegistrar registrar(BEAM_TOPK_INIT_TASK_ID, "BeamTopK Init");
@@ -7194,6 +7339,21 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       }
       runtime->register_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
           registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(NCCL_FINISH_COMMS_TASK_ID,
+                                   "NCCL Finish Communicators");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Op::finish_nccl_comms_task>(
+          registrar, "NCCL Finish Communicators Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Op::finish_nccl_comms_task>(registrar);
     }
   }
 #endif

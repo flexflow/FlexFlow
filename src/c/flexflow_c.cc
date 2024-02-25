@@ -17,7 +17,7 @@
 #include "flexflow/dataloader.h"
 #include "flexflow/mapper.h"
 #include "flexflow/request_manager.h"
-#include "inference/file_loader.h"
+#include "flexflow/utils/file_loader.h"
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -1502,10 +1502,12 @@ flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,
                                                int k,
                                                bool sorted,
+                                               bool speculative_decoding,
                                                char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor tensor = handle->arg_top_k(input, k, sorted, name);
+  Tensor tensor =
+      handle->arg_top_k(input, k, sorted, speculative_decoding, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -1593,34 +1595,45 @@ void flexflow_model_set_transformer_layer_id(flexflow_model_t handle_, int id) {
   handle->set_transformer_layer_id(id);
 }
 
-flexflow_generation_result_t
-    flexflow_model_generate(flexflow_model_t handle_,
-                            char const *input_text,
-                            int max_num_chars,
-                            char *output_text,
-                            int max_seq_length,
-                            int *output_length_and_tokens) {
+void flexflow_model_generate(flexflow_model_t handle_,
+                             int num_requests,
+                             char const **input_texts,
+                             int max_num_chars,
+                             char **output_texts,
+                             int max_seq_length,
+                             int **output_length_and_tokens) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-
-  std::string const text_str(input_text);
-
   std::vector<Request> requests;
-  Request inference_req;
-  inference_req.prompt = text_str;
-  inference_req.max_sequence_length = max_seq_length;
-  requests.push_back(inference_req);
+  for (int i = 0; i < num_requests; i++) {
+    std::string const text_str(input_texts[i]);
+    Request inference_req;
+    inference_req.prompt = text_str;
+    inference_req.max_sequence_length = max_seq_length;
+    requests.push_back(inference_req);
+    DEBUG_PRINT("[Model] generate[%d] %p %s %i",
+                i,
+                handle,
+                text_str.c_str(),
+                max_seq_length);
+  }
 
-  GenerationResult result = handle->generate(requests);
-  DEBUG_PRINT(
-      "[Model] generate %p %s %i", handle, text_str.c_str(), max_seq_length);
-  assert(result.output_tokens.size() <= max_seq_length);
-  output_length_and_tokens[0] = result.output_tokens.size();
-  std::copy(result.output_tokens.begin(),
-            result.output_tokens.end(),
-            output_length_and_tokens + 1);
-  std::memcpy(
-      output_text, result.output_text.c_str(), result.output_text.length());
-  return FFCObjectWrapper::wrap(&result);
+  std::vector<GenerationResult> results = handle->generate(requests);
+
+  // If the prompt exceeds max seq len, check that we return the prompt with no
+  // additional token. Otherwise, check that the output does not exceed the max
+  // sequence length.
+  for (int i = 0; i < num_requests; i++) {
+    assert(results[i].output_tokens.size() <= max_seq_length ||
+           results[i].output_tokens.size() == results[i].input_tokens.size());
+    output_length_and_tokens[i][0] = results[i].output_tokens.size();
+    std::copy(results[i].output_tokens.begin(),
+              results[i].output_tokens.end(),
+              output_length_and_tokens[i] + 1);
+    std::memcpy(output_texts[i],
+                results[i].output_text.c_str(),
+                results[i].output_text.length());
+  }
+  // return FFCObjectWrapper::wrap(&results[0]);
 }
 
 void flexflow_model_set_position_offset(flexflow_model_t handle_,
@@ -2629,6 +2642,22 @@ int flexflow_request_manager_register_ssm_model(
   return handle->register_ssm_model(model_handle);
 }
 
+void flexflow_request_manager_start_background_server(
+    flexflow_request_manager_t handle_, flexflow_model_t model_handle_) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  DEBUG_PRINT(
+      "[RequestManager] start background server %p %p", handle, model_handle);
+  handle->start_background_server(model_handle);
+}
+
+void flexflow_request_manager_terminate_background_server(
+    flexflow_request_manager_t handle_) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[RequestManager] terminate background server %p", handle);
+  handle->terminate_background_server();
+}
+
 // -----------------------------------------------------------------------
 // InferenceManager
 // -----------------------------------------------------------------------
@@ -2657,6 +2686,20 @@ void flexflow_inference_manager_init_operators_inference(
   handle->init_operators_inference(model);
 }
 
+void flexflow_inference_manager_register_model_weights_loader(
+    flexflow_inference_manager_t handle_,
+    flexflow_model_t model_handle,
+    flexflow_file_data_loader_t loader_handle) {
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_handle);
+  FileDataLoader *loader = FFCObjectWrapper::unwrap(loader_handle);
+  DEBUG_PRINT("[InferenceManager] register_model_weights_loader %p %p %p",
+              handle,
+              model,
+              loader);
+  handle->register_model_weights_loader(model, loader);
+}
+
 // -----------------------------------------------------------------------
 // FileDataLoader
 // -----------------------------------------------------------------------
@@ -2667,7 +2710,8 @@ flexflow_file_data_loader_t
                                      int num_kv_heads,
                                      int hidden_dim,
                                      int qkv_inner_dim,
-                                     int tensor_parallelism_degree) {
+                                     int tensor_parallelism_degree,
+                                     bool use_full_precision) {
   assert(weight_file_path != nullptr &&
          "Cannot convert nullptr char * to std::string");
   std::string const weight_file_path_str(weight_file_path);
@@ -2677,7 +2721,8 @@ flexflow_file_data_loader_t
                                               num_kv_heads,
                                               hidden_dim,
                                               qkv_inner_dim,
-                                              tensor_parallelism_degree);
+                                              tensor_parallelism_degree,
+                                              use_full_precision);
   DEBUG_PRINT("[FileDataLoader] new %p", handle);
   return FFCObjectWrapper::wrap(handle);
 }
@@ -2689,9 +2734,8 @@ void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_) {
 }
 
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
-                                            flexflow_model_t model_handle_,
-                                            bool use_full_precision) {
+                                            flexflow_model_t model_handle_) {
   FileDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_handle_);
-  handle->load_weights(model, use_full_precision);
+  handle->load_weights(model);
 }

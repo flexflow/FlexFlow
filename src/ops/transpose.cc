@@ -51,6 +51,9 @@ TransposeParams Transpose::get_params() const {
   for (int i = 0; i < outputs[0]->num_dims; i++) {
     params.perm.push_back(this->perm[i]);
   }
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -98,7 +101,7 @@ Transpose::Transpose(FFModel &model,
                      TransposeParams const &params,
                      const ParallelTensor input,
                      char const *name)
-    : Transpose(model, input, params.perm, name) {}
+    : Transpose(model, input, params.perm, params.name) {}
 
 Transpose::Transpose(FFModel &model,
                      const ParallelTensor input,
@@ -383,6 +386,8 @@ void Transpose::serialize(Legion::Serializer &sez) const {
   for (size_t i = 0; i < params.perm.size(); i++) {
     sez.serialize(params.perm[i]);
   }
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -399,6 +404,10 @@ Node Transpose::deserialize(FFModel &ff,
     dez.deserialize(dim_idx);
     perm.push_back(dim_idx);
   }
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   return ff.get_or_create_node<Transpose>(inputs[0], {perm});
 }
 

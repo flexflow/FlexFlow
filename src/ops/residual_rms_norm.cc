@@ -732,37 +732,47 @@ Legion::FutureMap
                          0 /*mapper_id*/,
                          machine_view_hash);
   launcher.add_future(bc);
-  // regions[0](I): RMS output_grad
-  launcher.add_region_requirement(
-      RegionRequirement(batch_outputs[1]->part_grad,
-                        0 /*projection id*/,
-                        READ_WRITE,
-                        EXCLUSIVE,
-                        batch_outputs[1]->region_grad));
-  launcher.add_field(0, FID_DATA);
-  // regions[2](I/O): residual input grad 0
-  launcher.add_region_requirement(
-      RegionRequirement(batch_inputs[0]->part_grad,
-                        0 /*projection id*/,
-                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
-                        EXCLUSIVE,
-                        batch_inputs[0]->region_grad));
-  launcher.add_field(1, FID_DATA);
-  // regions[3](I/O): residual input grad 1
+  int fid = 0;
+  // residual input grad 0
+  launcher.add_region_requirement(RegionRequirement(
+      batch_inputs[0]->part_grad,
+      0 /*projection id*/,
+      inplace_residual && !reset_input_grads[0] ? READ_WRITE : WRITE_ONLY,
+      EXCLUSIVE,
+      batch_inputs[0]->region_grad));
+  launcher.add_field(fid++, FID_DATA);
+  // residual input grad 1
   launcher.add_region_requirement(
       RegionRequirement(batch_inputs[1]->part_grad,
                         0 /*projection id*/,
                         reset_input_grads[1] ? WRITE_ONLY : READ_WRITE,
                         EXCLUSIVE,
                         batch_inputs[1]->region_grad));
-  launcher.add_field(2, FID_DATA);
-  // regions[4](I): gamma
+  launcher.add_field(fid++, FID_DATA);
+  if (!inplace_residual && !reset_input_grads[0]) {
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part_grad,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region_grad));
+    launcher.add_field(fid++, FID_DATA);
+  }
+  // RMS output_grad
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[1]->part_grad,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_outputs[1]->region_grad));
+  launcher.add_field(fid++, FID_DATA);
+  // gamma
   launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
-  launcher.add_field(3, FID_DATA);
+  launcher.add_field(fid++, FID_DATA);
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -776,45 +786,91 @@ void ResidualRMSNorm::peft_bwd_task(Task const *task,
                                     std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
-  assert(task->regions.size() == 4);
-  assert(regions.size() == 4);
   ResidualRMSNormMeta *m = *((ResidualRMSNormMeta **)task->local_args);
+  int expected_regions =
+      (m->inplace_residual || m->reset_input_grads[0]) ? 4 : 5;
+  assert(task->regions.size() == expected_regions);
+  assert(regions.size() == expected_regions);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_active_peft_tokens() == 0) {
     return;
   }
-  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
-      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW residual_input0_grad =
+
+  int rid = 0, t_rid = 0;
+  GenericTensorAccessorW input_grad_0 =
       helperGetGenericTensorAccessorRW(m->input_type[0],
-                                       regions[1],
-                                       task->regions[1],
+                                       regions[rid++],
+                                       task->regions[t_rid++],
                                        FID_DATA,
                                        ctx,
                                        runtime);
-  GenericTensorAccessorW residual_input1_grad =
+  GenericTensorAccessorW input_grad_1 =
       helperGetGenericTensorAccessorRW(m->input_type[0],
-                                       regions[2],
-                                       task->regions[2],
+                                       regions[rid++],
+                                       task->regions[t_rid++],
                                        FID_DATA,
                                        ctx,
                                        runtime);
-  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
-      m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
+
+  GenericTensorAccessorR output_grad_0;
+  if (!m->reset_input_grads[0]) {
+    if (m->inplace_residual) {
+      // mapped to input 0
+      output_grad_0 = helperGetGenericTensorAccessorRO(m->output_type[0],
+                                                       regions[0],
+                                                       task->regions[0],
+                                                       FID_DATA,
+                                                       ctx,
+                                                       runtime);
+    } else {
+      output_grad_0 = helperGetGenericTensorAccessorRO(m->output_type[0],
+                                                       regions[rid++],
+                                                       task->regions[t_rid++],
+                                                       FID_DATA,
+                                                       ctx,
+                                                       runtime);
+    }
+  }
+  GenericTensorAccessorR output_grad_1 =
+      helperGetGenericTensorAccessorRO(m->output_type[0],
+                                       regions[rid++],
+                                       task->regions[t_rid++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorR weight =
+      helperGetGenericTensorAccessorRO(m->weight_type[0],
+                                       regions[rid++],
+                                       task->regions[t_rid++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+
   peft_bwd_kernel_wrapper(
-      m, bc, output_grad, residual_input0_grad, residual_input1_grad, weight);
+      m, bc, output_grad_0, output_grad_1, input_grad_0, input_grad_1, weight);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
-    ResidualRMSNorm::save_inference_tensors_to_file(
-        m,
-        shard_id,
-        bc,
-        {residual_input0_grad, residual_input1_grad},
-        {weight},
-        {output_grad},
-        false);
+    if (!m->reset_input_grads[0]) {
+      ResidualRMSNorm::save_inference_tensors_to_file(
+          m,
+          shard_id,
+          bc,
+          {input_grad_0, input_grad_1},
+          {weight},
+          {output_grad_0, output_grad_1},
+          false);
+    } else {
+      ResidualRMSNorm::save_inference_tensors_to_file(
+          m,
+          shard_id,
+          bc,
+          {input_grad_0, input_grad_1},
+          {weight},
+          {output_grad_1},
+          false);
+    }
   }
 }
 

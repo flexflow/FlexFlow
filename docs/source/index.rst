@@ -18,6 +18,8 @@ Welcome to FlexFlow's documentation!
    :caption: FlexFlow Serve
    
    serve_overview
+   serve_usecases
+   serve_api
 
 .. toctree::
    :caption: FlexFlow Train

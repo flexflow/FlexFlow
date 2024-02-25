@@ -191,3 +191,4 @@ hf_peft_tensors
 
 Untitled-1.ipynb
 Untitled-2.ipynb
+tests/inference/python_test_configs/*.json

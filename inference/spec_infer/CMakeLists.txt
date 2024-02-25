@@ -7,7 +7,6 @@ set(project_target spec_infer)
 set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
   spec_infer.cc
-  ../file_loader.cc
   ../models/llama.cc
   ../models/opt.cc
   ../models/falcon.cc
@@ -19,6 +18,7 @@ if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
     target_compile_definitions(${project_target} PRIVATE __HIP_PLATFORM_NVIDIA__)
   endif()
 elseif(FF_GPU_BACKEND STREQUAL "hip_rocm")
+  set_source_files_properties(${CPU_SRC} PROPERTIES LANGUAGE HIP)
   hip_add_executable(${project_target} ${CPU_SRC})
   if (FF_HIP_ARCH STREQUAL "")
     message(FATAL_ERROR "FF_HIP_ARCH is empty!")

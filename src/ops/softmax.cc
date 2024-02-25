@@ -17,6 +17,7 @@
 #include "flexflow/model.h"
 #include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -41,7 +42,42 @@ using namespace FlexFlow::Kernels::Softmax;
 
 /* Params */
 bool operator==(SoftmaxParams const &lhs, SoftmaxParams const &rhs) {
-  return lhs.dim == rhs.dim;
+  return lhs.layer_guid == rhs.layer_guid && lhs.dim == rhs.dim;
+}
+
+void Softmax::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
+  sez.serialize(this->dim);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
+}
+
+using PCG::Node;
+/*static*/
+Node Softmax::deserialize(FFModel &ff,
+                          Legion::Deserializer &dez,
+                          ParallelTensor inputs[],
+                          int num_inputs) {
+  assert(num_inputs == 1);
+  size_t id, transformer_layer_id, deserialized_model_id;
+  dez.deserialize(id);
+  dez.deserialize(transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
+  int dim;
+  dez.deserialize(dim);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
+
+  SoftmaxParams params;
+  params.layer_guid = layer_guid;
+  params.dim = dim;
+  strcpy(params.name, name);
+  return ff.get_or_create_node<Softmax>(inputs[0], params);
 }
 
 bool SoftmaxParams::is_valid(ParallelTensorShape const &input) const {
@@ -50,7 +86,11 @@ bool SoftmaxParams::is_valid(ParallelTensorShape const &input) const {
 
 SoftmaxParams Softmax::get_params() const {
   SoftmaxParams params;
+  params.layer_guid = this->layer_guid;
   params.dim = this->dim;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -89,12 +129,14 @@ Op *Softmax::create_operator_from_layer(
   layer->get_int_property("softmax_dim", value);
   int dim = (int)value;
   return new Softmax(model,
+                     layer->layer_guid,
                      inputs[0],
                      (inputs[0]->num_dims - 1 - dim) % inputs[0]->num_dims,
                      layer->name);
 }
 
 Softmax::Softmax(FFModel &model,
+                 LayerID const &_layer_guid,
                  const ParallelTensor _input,
                  int _dim,
                  char const *name)
@@ -109,6 +151,7 @@ Softmax::Softmax(FFModel &model,
       dim(_dim) {
   // Currently assume we always perform softmax along the inner most dim
   assert(dim == 0);
+  layer_guid = _layer_guid;
   ParallelDim dims[MAX_TENSOR_DIM];
   int numdim = _input->num_dims;
   for (int i = 0; i < numdim; i++) {
@@ -121,7 +164,7 @@ Softmax::Softmax(FFModel &model,
                  SoftmaxParams const &params,
                  const ParallelTensor input,
                  char const *name)
-    : Softmax(model, input, params.dim, name) {}
+    : Softmax(model, params.layer_guid, input, params.dim, params.name) {}
 
 void Softmax::init_inference(FFModel const &ff,
                              std::vector<ParallelTensor> const &batch_inputs,
@@ -575,6 +618,7 @@ namespace std {
 size_t hash<FlexFlow::SoftmaxParams>::operator()(
     FlexFlow::SoftmaxParams const &params) const {
   size_t key = 0;
+  hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.dim);
   return key;
 }

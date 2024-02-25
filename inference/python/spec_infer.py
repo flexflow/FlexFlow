@@ -41,14 +41,14 @@ def get_configs():
         # Define sample configs
         ff_init_configs = {
             # required parameters
-            "num_gpus": 4,
+            "num_gpus": 2,
             "memory_per_gpu": 14000,
             "zero_copy_memory_per_node": 40000,
             # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
             "data_parallelism_degree": 1,
-            "tensor_parallelism_degree": 2,
+            "tensor_parallelism_degree": 1,
             "pipeline_parallelism_degree": 2,
             "offload": False,
             "offload_reserve_space_size": 8 * 1024, # 8GB
@@ -76,17 +76,9 @@ def get_configs():
                     "cache_path": "",
                     "refresh_cache": False,
                     "full_precision": False,
-                },
-                {
-                    # required ssm parameter
-                    "ssm_model": "facebook/opt-125m",
-                    # optional ssm parameters
-                    "cache_path": "",
-                    "refresh_cache": False,
-                    "full_precision": False,
-                },
+                }
             ],
-            "prompt": "../prompt/test.json",
+            # "prompt": "",
             "output_file": "",
         }
         # Merge dictionaries
@@ -151,14 +143,16 @@ def main():
         max_tokens_per_batch=64,
         ssms=ssms,
     )
+    
+    llm.start_server()
 
-    # Generation begins!
     if len(configs.prompt) > 0:
         prompts = [s for s in json.load(open(configs.prompt))]
         results = llm.generate(prompts)
     else:
         result = llm.generate("Three tips for staying healthy are: ")
-
+        
+    llm.stop_server()
 
 if __name__ == "__main__":
     print("flexflow inference example (speculative inference)")

@@ -53,7 +53,7 @@ bool SpecIncMultiHeadSelfAttentionParams::is_valid(
 }
 
 Tensor
-    FFModel::spec_inc_multihead_self_attention(const Tensor input,
+    FFModel::spec_inc_multihead_self_attention(Tensor const input,
                                                int embed_dim,
                                                int num_heads,
                                                int kdim,
@@ -91,7 +91,7 @@ Tensor
 }
 
 Tensor
-    FFModel::spec_inc_multiquery_self_attention(const Tensor input,
+    FFModel::spec_inc_multiquery_self_attention(Tensor const input,
                                                 int embed_dim,
                                                 int num_q_heads,
                                                 int num_kv_heads,
@@ -257,7 +257,7 @@ Op *SpecIncMultiHeadSelfAttention::create_operator_from_layer(
 SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     FFModel &model,
     LayerID const &_layer_guid,
-    const ParallelTensor _input,
+    ParallelTensor const _input,
     int _embed_dim,
     int _num_q_heads,
     int _num_kv_heads,
@@ -358,8 +358,8 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
 
 SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     FFModel &model,
-    const ParallelTensor _input,
-    const ParallelTensor _weight,
+    ParallelTensor const _input,
+    ParallelTensor const _weight,
     int _embed_dim,
     int _num_q_heads,
     int _num_kv_heads,
@@ -465,7 +465,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
 SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     FFModel &model,
     SpecIncMultiHeadSelfAttention const &other,
-    const ParallelTensor input,
+    ParallelTensor const input,
     bool allocate_weights)
     : SpecIncMultiHeadSelfAttention(model,
                                     other.layer_guid,

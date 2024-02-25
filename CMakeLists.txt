@@ -14,6 +14,7 @@ endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 set(CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS} -fPIC -UNDEBUG")
+set(CMAKE_HIP_FLAGS "-std=c++17 ${CMAKE_HIP_FLAGS} -fPIC -UNDEBUG")
 
 # set std 17
 #set(CMAKE_CXX_STANDARD 17)
@@ -51,6 +52,7 @@ endif()
 
 # do not disable assertions even if in release mode
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UNDEBUG")
+set(CMAKE_HIP_FLAGS_RELEASE "${CMAKE_HIP_FLAGS_RELEASE} -UNDEBUG")
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(LIBEXT ".so")
@@ -157,6 +159,7 @@ endif()
 
 # HIP
 if (FF_GPU_BACKEND STREQUAL "hip_rocm" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
+  enable_language(HIP)
   include(hip)
 endif()
 
@@ -261,14 +264,14 @@ if(NOT BUILD_LEGION_ONLY)
     LIST_DIRECTORIES False
     ${FLEXFLOW_ROOT}/include/*.h)
   
-  list(APPEND FLEXFLOW_HDR ${FLEXFLOW_ROOT}/inference/file_loader.h)
+  #list(APPEND FLEXFLOW_HDR ${FLEXFLOW_ROOT}/inference/file_loader.h)
 
   file(GLOB_RECURSE FLEXFLOW_SRC
     LIST_DIRECTORIES False
     ${FLEXFLOW_ROOT}/src/*.cc)
   
   list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
-  list(APPEND FLEXFLOW_SRC ${FLEXFLOW_ROOT}/inference/file_loader.cc)
+  #list(APPEND FLEXFLOW_SRC ${FLEXFLOW_ROOT}/inference/file_loader.cc)
 
   set(FLEXFLOW_CPP_DRV_SRC
     ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
@@ -299,7 +302,10 @@ if(NOT BUILD_LEGION_ONLY)
       LIST_DIRECTORIES False
       ${FLEXFLOW_ROOT}/src/*.cpp)
 
-    if(BUILD_SHARED_LIBS)
+      set_source_files_properties(${FLEXFLOW_GPU_SRC} PROPERTIES LANGUAGE HIP)
+      set_source_files_properties(${FLEXFLOW_SRC} PROPERTIES LANGUAGE HIP)
+    
+      if(BUILD_SHARED_LIBS)
       add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
     else()
       add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
@@ -407,6 +413,7 @@ if(NOT BUILD_LEGION_ONLY)
 
   # python related
   if (FF_USE_PYTHON)
+    find_package(Python COMPONENTS Interpreter Development)
     # create flexflow_cffi_header.py
     add_custom_command(TARGET flexflow
       PRE_BUILD	
@@ -418,13 +425,13 @@ if(NOT BUILD_LEGION_ONLY)
       # generate the Legion Python bindings library. When building from pip, we need to do this post-install to prevent Legion from overwriting the path to the Legion shared library
       add_custom_command(TARGET flexflow
         POST_BUILD	
-        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
+        COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
       )
       # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
       add_custom_command(TARGET flexflow
         PRE_BUILD	
-        COMMAND ${PYTHON_EXECUTABLE} ${FLEXFLOW_ROOT}/python/flexflow_python_build.py --build-dir ${CMAKE_BINARY_DIR}
+        COMMAND ${Python_EXECUTABLE} ${FLEXFLOW_ROOT}/python/flexflow_python_build.py --build-dir ${CMAKE_BINARY_DIR}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Creating flexflow_python interpreter..."
       )
@@ -474,9 +481,6 @@ if(NOT BUILD_LEGION_ONLY)
     endif()
 
   if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_TOKENIZER)
-    if (FF_GPU_BACKEND STREQUAL "hip_rocm")
-      SET(SPM_USE_BUILTIN_PROTOBUF OFF CACHE BOOL "Use builtin version of protobuf to compile SentencePiece")
-    endif()
     # Ensure Rust is installed
     execute_process(COMMAND rustc --version
                   RESULT_VARIABLE RUST_COMMAND_RESULT
@@ -564,7 +568,8 @@ if(NOT BUILD_LEGION_ONLY)
   install(TARGETS flexflow DESTINATION ${LIB_DEST})
   # install python
   if (FF_USE_PYTHON)
-    execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import site, os; print([pkg for func in (site.getsitepackages(), site.getusersitepackages()) for pkg in ([func] if isinstance(func, str) else func) if os.access(pkg, os.W_OK)][0])" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
+    find_package(Python COMPONENTS Interpreter Development)
+    execute_process(COMMAND ${Python_EXECUTABLE} -c "import site, os; print([pkg for func in (site.getsitepackages(), site.getusersitepackages()) for pkg in ([func] if isinstance(func, str) else func) if os.access(pkg, os.W_OK)][0])" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
     if (NOT FF_BUILD_FROM_PYPI)
       install(
         DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/

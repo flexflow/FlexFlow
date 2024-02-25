@@ -11,6 +11,8 @@ struct ArgTopKParams {
   LayerID layer_guid;
   int k;
   bool sorted;
+  bool speculative_decoding;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(ArgTopKParams const &, ArgTopKParams const &);

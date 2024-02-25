@@ -2278,6 +2278,8 @@ GraphOptimalViewSerialized
       case OP_CONCAT: {
         Concat *concat = (Concat *)op;
         sez.serialize(concat->legion_axis);
+        sez.serialize(strlen(concat->name));
+        sez.serialize(concat->name, strlen(concat->name));
         break;
       }
       case OP_SPLIT: {
@@ -2287,6 +2289,8 @@ GraphOptimalViewSerialized
         for (int i = 0; i < split->numOutputs; i++) {
           sez.serialize(split->outputs[i]->dims[split->legion_axis].size);
         }
+        sez.serialize(strlen(split->name));
+        sez.serialize(split->name, strlen(split->name));
         break;
       }
       case OP_EMBEDDING: {
@@ -2315,6 +2319,8 @@ GraphOptimalViewSerialized
         sez.serialize(attn->bias);
         sez.serialize(attn->add_bias_kv);
         sez.serialize(attn->add_zero_attn);
+        sez.serialize(strlen(attn->name));
+        sez.serialize(attn->name, strlen(attn->name));
         break;
       }
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -2394,38 +2400,43 @@ GraphOptimalViewSerialized
         sez.serialize(attn->name, strlen(attn->name));
         break;
       }
-      case OP_SOFTMAX: {
-        Softmax *softmax = (Softmax *)op;
-        sez.serialize(softmax->dim);
-        break;
-      }
       case OP_REPARTITION: {
         Repartition *repart = (Repartition *)op;
         sez.serialize(repart->repartition_dim);
         sez.serialize(repart->repartition_degree);
+        sez.serialize(strlen(repart->name));
+        sez.serialize(repart->name, strlen(repart->name));
         break;
       }
       case OP_REPLICATE: {
         Replicate *replicate = (Replicate *)op;
         sez.serialize(replicate->replicate_dim);
         sez.serialize(replicate->replicate_degree);
+        sez.serialize(strlen(replicate->name));
+        sez.serialize(replicate->name, strlen(replicate->name));
         break;
       }
       case OP_REDUCTION: {
         Reduction *reduction = (Reduction *)op;
         sez.serialize(reduction->reduction_dim);
         sez.serialize(reduction->reduction_degree);
+        sez.serialize(strlen(reduction->name));
+        sez.serialize(reduction->name, strlen(reduction->name));
         break;
       }
       case OP_COMBINE: {
         Combine *combine = (Combine *)op;
         sez.serialize(combine->combine_dim);
         sez.serialize(combine->combine_degree);
+        sez.serialize(strlen(combine->name));
+        sez.serialize(combine->name, strlen(combine->name));
         break;
       }
       case OP_ALLREDUCE: {
         AllReduce *allreduce = (AllReduce *)op;
         sez.serialize(allreduce->allreduce_dim);
+        sez.serialize(strlen(allreduce->name));
+        sez.serialize(allreduce->name, strlen(allreduce->name));
         break;
       }
       case OP_FUSED_PARALLEL: {
@@ -2434,6 +2445,8 @@ GraphOptimalViewSerialized
         for (int i = 0; i < fused->num_parallel_ops; i++) {
           sez.serialize(fused->parallel_ops[i]);
         }
+        sez.serialize(strlen(fused->name));
+        sez.serialize(fused->name, strlen(fused->name));
         break;
       }
       default: {
@@ -2631,6 +2644,10 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_CONCAT: {
         int legion_axis;
         dez.deserialize(legion_axis);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Concat>(
             {std::begin(inputs), std::begin(inputs) + num_inputs},
             {legion_axis});
@@ -2647,6 +2664,10 @@ void FFModel::deserialize_graph_optimal_view(
           dez.deserialize(dim_size);
           splits.push_back(dim_size);
         }
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Split>(inputs[0], {splits, legion_axis});
         break;
       }
@@ -2766,6 +2787,10 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(bias);
         dez.deserialize(add_bias_kv);
         dez.deserialize(add_zero_attn);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
 
         MultiHeadAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2777,6 +2802,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.add_bias_kv = add_bias_kv;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
+        strcpy(params.name, name);
         node = get_or_create_node<MultiHeadAttention>(
             {inputs[0], inputs[1], inputs[2]}, params);
         break;
@@ -3002,10 +3028,7 @@ void FFModel::deserialize_graph_optimal_view(
         break;
       }
       case OP_SOFTMAX: {
-        assert(num_inputs == 1);
-        int softmax_dim;
-        dez.deserialize(softmax_dim);
-        node = get_or_create_node<Softmax>(inputs[0], {softmax_dim});
+        node = Softmax::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_TRANSPOSE: {
@@ -3025,6 +3048,10 @@ void FFModel::deserialize_graph_optimal_view(
         int combine_dim, combine_degree;
         dez.deserialize(combine_dim);
         dez.deserialize(combine_degree);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Combine>(inputs[0],
                                            {combine_dim, combine_degree});
         break;
@@ -3034,6 +3061,10 @@ void FFModel::deserialize_graph_optimal_view(
         int repartition_dim, repartition_degree;
         dez.deserialize(repartition_dim);
         dez.deserialize(repartition_degree);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Repartition>(
             inputs[0], {repartition_dim, repartition_degree});
         break;
@@ -3043,6 +3074,10 @@ void FFModel::deserialize_graph_optimal_view(
         int replicate_dim, replicate_degree;
         dez.deserialize(replicate_dim);
         dez.deserialize(replicate_degree);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Replicate>(inputs[0],
                                              {replicate_dim, replicate_degree});
         break;
@@ -3052,6 +3087,10 @@ void FFModel::deserialize_graph_optimal_view(
         int reduction_dim, reduction_degree;
         dez.deserialize(reduction_dim);
         dez.deserialize(reduction_degree);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<Reduction>(inputs[0],
                                              {reduction_dim, reduction_degree});
         break;
@@ -3060,6 +3099,10 @@ void FFModel::deserialize_graph_optimal_view(
         assert(num_inputs == 1);
         int allreduce_dim;
         dez.deserialize(allreduce_dim);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<AllReduce>(inputs[0], {allreduce_dim});
         break;
       }
@@ -3073,6 +3116,10 @@ void FFModel::deserialize_graph_optimal_view(
           dez.deserialize(info);
           parallel_ops.push_back(info);
         }
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
         node = get_or_create_node<FusedParallelOp>(inputs[0], {parallel_ops});
         break;
       }

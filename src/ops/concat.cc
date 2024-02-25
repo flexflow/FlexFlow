@@ -147,7 +147,7 @@ Concat::Concat(FFModel &model,
                ConcatParams const &params,
                std::vector<ParallelTensor> const &inputs,
                char const *name)
-    : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
+    : Concat(model, inputs.size(), inputs.data(), params.axis, params.name) {}
 
 void Concat::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
