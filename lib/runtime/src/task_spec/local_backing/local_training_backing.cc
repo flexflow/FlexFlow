@@ -27,18 +27,18 @@ LocalTrainingBacking::LocalTrainingBacking(ComputationGraph computation_graph,
     //    TODO: this ^^ should definitely be a test
     std::unordered_set<MultiDiEdge> outgoing_edges = get_outgoing_edges(computation_graph, node);
     for (MultiDiEdge edge: outgoing_edges) {
-      OperatorSlotBackingId src_op_slot = {operator_guid_t(edge.src), slot_id_t(edge.src_idx)};
-      OperatorSlotBackingId dst_op_slot = {operator_guid_t(edge.dst), slot_id_t(edge.dst_idx)};
+      OperatorSlotBackingId src_op_slot = {operator_guid_t(edge.src), slot_id(edge.src_idx)};
+      OperatorSlotBackingId dst_op_slot = {operator_guid_t(edge.dst), slot_id(edge.dst_idx)};
       auto it = this->op_slot_tensor_mapping.find(src_op_slot);
       if (it != this->op_slot_tensor_mapping.end()) {
         this->op_slot_tensor_mapping.insert({dst_op_slot, it->second});
-        continue
+        continue;
       } 
 
       auto it = this->op_slot_tensor_mapping.find(dst_op_slot);
       if (it != this->op_slot_tensor_mapping.end()) {
         this->op_slot_tensor_mapping.insert({src_op_slot, it->second});
-        continue
+        continue;
       } 
 
       Tensor tensor = computation_graph.value().at(edge);
@@ -48,8 +48,10 @@ LocalTrainingBacking::LocalTrainingBacking(ComputationGraph computation_graph,
       this->op_slot_tensor_mapping.insert({dst_op_slot, tensor_backing});
     }
 
+
+    // TODO: register update task
+
     this->allocator = allocator;
-    this->computation_graph = computation_graph;
     this->topologically_ordered_graph = layer_nodes;
   }
 }
@@ -81,12 +83,19 @@ void LocalTrainingBacking::execute_update() {
 }
 
 
-LocalTaskArgumentAccessor LocalTrainingBacking::get_fwd_accessor(OpTaskInvocation invocation) {
-  not_implemented();
-}
+LocalTaskArgumentAccessor LocalTrainingBacking::get_local_task_arg_accessor(OpTaskInvocation invocation) {
+  // TODO: initialize LocalTaskArgumentAccessor
+  
+  OpTaskBinding binding = invocation.binding;
+  for (auto tensor_binding: binding.get_tensor_bindings()) {
+    operator_guid_t op_guid = invocation.get_operator_guid_t();
+    slot_id slot_id = tensor_binding->first->first;
+    GenericTensorAccessorW tensor_backing = this->op_slot_tensor_mapping[{op_guid, slot_id}];
+    // add tensor_backing to {slot id, isgrad} -> tensor BACKING map (this should be accessed in ops via get_tensor<Permissions>)
+  }
 
-LocalTaskArgumentAccessor LocalTrainingBacking::get_bwd_accessor(OpTaskInvocation invocation) {
-  not_implemented();
+  // same thing for args but easier
+  binding.get_arg_bindings();
 }
 
 

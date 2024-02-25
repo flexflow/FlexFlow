@@ -15,7 +15,7 @@ namespace FlexFlow {
 
 struct OperatorSlotBackingId {
   operator_guid_t op;
-  slot_id_t slot;
+  slot_id slot;
 };
 
 // TODO: define device state variant
@@ -36,7 +36,6 @@ struct LocalTrainingBacking {
   LocalTaskArgumentAccessor get_bwd_accessor(OpTaskInvocation);
 
 private:
-  ComputationGraph computation_graph;
   Allocator allocator;
   std::vector<Node> topologically_ordered_graph;
 
@@ -46,7 +45,8 @@ private:
   // hold mappings
   std::unordered_map<task_id_t, void*> task_id_impl_mapping;
   // TODO: add init task mapping
-  std::unordered_map<task_id_t, TaskImplFunction> task_id_impl_mapping;
+  template <typename DeviceState>
+  std::unordered_map<task_id_t, TaskImplFunction<DeviceState>> task_id_impl_mapping;
   std::unordered_map<task_id_t, OpTaskSignature> task_id_signature_mapping;
 };
 
