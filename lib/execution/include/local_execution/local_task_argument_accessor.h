@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-struct LocalTaskArgumentAccessor {
+struct LocalTaskArgumentAccessor: public ITaskArgumentAccessor {
 
   LocalTaskArgumentAccessor(Allocator);
 

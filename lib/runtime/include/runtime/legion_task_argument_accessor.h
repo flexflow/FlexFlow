@@ -72,8 +72,8 @@ region_idx_t get_region_idx(TaskArgumentsFormat const &,
                             parallel_tensor_guid_t const &);
 DataType get_datatype(TaskArgumentsFormat const &, region_idx_t const &);
 
-struct TaskArgumentAccessor {
-  TaskArgumentAccessor(Legion::Task const *task,
+struct LegionTaskArgumentAccessor: public ITaskArgumentAccessor {
+  LegionTaskArgumentAccessor(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions,
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
