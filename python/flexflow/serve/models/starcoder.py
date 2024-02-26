@@ -264,3 +264,111 @@ class FlexFlowSTARCODER(FlexFlowModel):
         model.lm_head.weight.detach().cpu().numpy().tofile(
             os.path.join(dst_folder, "lm_head.weight")
         )
+        
+        
+    def convert_ff_weight_name(name):
+        """
+        Convert weight names from FlexFlow format back to Hugging Face format.
+        """
+        # Example conversion logic, adjust as needed
+        if "attention_wq" in name or "attention_wk" in name or "attention_wv" in name:
+            converted_name = converted_name.replace("attention_wq", "attn.c_attn").replace("attention_wk", "attn.c_attn").replace("attention_wv", "attn.c_attn")
+        elif "attention_wo" in name:
+            converted_name = converted_name.replace("attention_wo", "attn.c_proj")
+        
+        converted_name = re.sub(r"layers_(\d+)_", r"transformer.h.\1.", converted_name)
+
+        return converted_name
+    
+    
+    def load_weights_into_hf_model(model, src_folder):
+        """
+        Load weights from a specified folder and apply them to a Hugging Face model.
+
+        Parameters:
+        - model: The instance of the Hugging Face model to load the weights into.
+        - src_folder: The path to the folder containing the weight files.
+        """
+
+        for file_name in os.listdir(src_folder):
+            weight_path = os.path.join(src_folder, file_name)
+            if weight_path.endswith("rev_sha.txt"):
+                print("skipping rev_sha.txt")
+                continue
+            else:
+                original_name = FlexFlowLLAMA.convert_ff_weight_name(file_name.replace('.bin', ''))
+                print(f"Converting weight name: {file_name} to {original_name}")
+            
+            if not os.path.exists(weight_path):
+                raise FileNotFoundError(f"No weight file found for {file_name}")
+
+            weight_data = np.fromfile(weight_path, dtype=np.float32)
+
+            # Find the parameter in the model
+            param = model.state_dict().get(original_name)
+            if param is None:
+                print(f"Warning: {original_name} not found in model parameters.")
+                continue
+
+            # Special handling for q, k, v weights
+            if ("attention_wq" in original_name) or ("attention_wk" in original_name) or ("attention_wv" in original_name):
+                qkv_match = re.search("(wq|wk|wv)", file_name)
+                qkv_type = qkv_match.group(0) if qkv_match else None
+                layer_num_match = re.search(r"transformer.h.(\d+)", original_name)
+                layer_num = int(layer_num_match.group(1)) if layer_num_match else None
+                print(f"QKV type: {qkv_type}, Layer number: {layer_num}")
+                
+                if layer_num is not None:
+                    if layer_num not in qkv_weights:
+                        
+                        qkv_name = f"transformer.h.{layer_num}.self_attention.query_key_value.weight"
+                        if qkv_name in model.state_dict():
+                            qkv_param_size = model.state_dict()[qkv_name].shape[0]
+                        qkv_shape = (qkv_param_size, hidden_size)
+                        qkv_weights[layer_num] = np.zeros(qkv_shape)
+                        print(f"Initialized QKV shape for layer {layer_num}: {qkv_shape}")
+                        
+                    type_index = {"wq": 0, "wk": 1, "wv": 2}.get(qkv_type, 0)
+                    ## dim 0 sizes: 
+                    dim_wq = hidden_size
+                    dim_wk = hidden_size // n_head
+                    dim_wv = hidden_size // n_head
+                    
+                    try:
+                        expected_shape = (weight_data.size // hidden_size, hidden_size)
+                        reshaped_data = weight_data.reshape(expected_shape)
+                        print(f"Reshaped QKV weights for {qkv_type} in layer {layer_num} with shape {expected_shape}.")
+                    except ValueError as e:
+                        print(f"Error reshaping {qkv_type} weights for layer {layer_num}: {e}")
+                        print(f"Attempting to reshape data of size {weight_data.size} into shape (-1, {hidden_size})")
+                        
+                    try:
+                        if qkv_type == "wq":
+                            qkv_weights[layer_num][0:dim_wq, :] = reshaped_data
+                        elif qkv_type == "wk":
+                            qkv_weights[layer_num][dim_wq:dim_wk+dim_wq, :] = reshaped_data
+                        else:
+                            qkv_weights[layer_num][dim_wq+dim_wk:, :] = reshaped_data
+                    except ValueError as e:
+                        print(f"Error assigning {qkv_type} weights for layer {layer_num}: {e}")
+                continue
+
+
+            # Handle other parameters
+            param = model.state_dict().get(original_name)
+            if param is None:
+                print(f"Warning: {original_name} not found in model parameters.")
+                continue
+            reshaped_weight_data = weight_data.reshape(param.shape)
+            param.data.copy_(torch.from_numpy(reshaped_weight_data))
+            
+        
+        # Assign the combined QKV weights to the model
+        for layer_num, weight in qkv_weights.items():
+            qkv_name = f"transformer.h.{layer_num}.self_attention.query_key_value.weight"
+            if qkv_name in model.state_dict():
+                param = model.state_dict()[qkv_name]
+                # Ensure the combined weight is correctly reshaped to fit the model's expectations
+                param.data.copy_(torch.from_numpy(weight.reshape(param.shape)))
+                
+       
