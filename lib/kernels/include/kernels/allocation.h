@@ -3,7 +3,7 @@
 
 #include <cstddef>
 #include <memory>
-#include "runtime/src/tensor.h"
+#include "execution/src/tensor.h"
 
 namespace FlexFlow {
 

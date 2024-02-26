@@ -2,6 +2,7 @@
 #include "op_task_invocation.h"
 #include "op-attrs/get_task_ids.h"
 #include "tasks.h"
+#include "local_task_argument_accessor.h"
 
 namespace FlexFlow {
 
@@ -56,14 +57,14 @@ LocalTrainingBacking::LocalTrainingBacking(ComputationGraph computation_graph,
   }
 }
 
-// execute_init
+// TODO: execute_init
 // variant<all device states>
 
 GenericTensorAccessorR LocalTrainingBacking::execute_forward() {
   for (auto operator_node: this->topologically_ordered_graph) {
     auto attrs = computation_graph.value().at(operator_node).attrs;
     OpTaskInvocation invocation = forward(operator_node.attrs);
-    LocalTaskArgumentAccessor accessor = this->get_fwd_accessor(invocation);
+    LocalTaskArgumentAccessor accessor = this->get_local_task_arg_accessor(invocation);
     task_id_impl_mapping[task_id](accessor);
   }
   return this->output_tensor_ptr;
@@ -73,7 +74,7 @@ void LocalTrainingBacking::execute_backward() {
   for (auto operator_node: std::reverse(this->topologically_ordered_graph.begin(), this->topologically_ordered_graph.end())) {
     auto attrs = computation_graph.value().at(operator_node).attrs;
     OpTaskInvocation invocation = backward(attrs);
-    LocalTaskArgumentAccessor accessor = this->get_bwd_accessor(invocation);
+    LocalTaskArgumentAccessor accessor = this->get_local_task_arg_accessor(invocation);
     task_id_impl_mapping[task_id](accessor);
   }
 }
@@ -84,17 +85,17 @@ void LocalTrainingBacking::execute_update() {
 
 
 LocalTaskArgumentAccessor LocalTrainingBacking::get_local_task_arg_accessor(OpTaskInvocation invocation) {
-  // TODO: initialize LocalTaskArgumentAccessor
+  LocalTaskArgumentAccessor local_task_arg_acc (this->allocator);
   
   OpTaskBinding binding = invocation.binding;
   for (auto tensor_binding: binding.get_tensor_bindings()) {
+    std::pair<slot_id, IsGrad> tensor_id = tensor_binding->first;
     operator_guid_t op_guid = invocation.get_operator_guid_t();
-    slot_id slot_id = tensor_binding->first->first;
-    GenericTensorAccessorW tensor_backing = this->op_slot_tensor_mapping[{op_guid, slot_id}];
-    // add tensor_backing to {slot id, isgrad} -> tensor BACKING map (this should be accessed in ops via get_tensor<Permissions>)
+    GenericTensorAccessorW tensor_backing = this->op_slot_tensor_mapping[{op_guid, tensor_id->first}];
+    local_task_arg_acc.insert_tensor(tensor_id, tensor_backing);
   }
 
-  // same thing for args but easier
+  // TODO: do this for args
   binding.get_arg_bindings();
 }
 
