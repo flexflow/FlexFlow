@@ -323,8 +323,12 @@ class FlexFlowFalcon(FlexFlowModel):
         for file_name in os.listdir(src_folder):
             weight_path = os.path.join(src_folder, file_name)
             print("\nProcessing weight file:", weight_path)
-            original_name = FlexFlowFalcon.convert_ff_weight_name(file_name.replace('.bin', ''))
-            print("Converted weight name:", original_name)
+            if weight_path.endswith("rev_sha.txt"):
+                print("skipping rev_sha.txt")
+                continue
+            else:
+                original_name = FlexFlowFalcon.convert_ff_weight_name(file_name.replace('.bin', ''))
+                print("Converted weight name:", original_name)
             
             if not os.path.exists(weight_path):
                 raise FileNotFoundError(f"No weight file found for {file_name}")
@@ -342,8 +346,6 @@ class FlexFlowFalcon(FlexFlowModel):
                 
                 if layer_num is not None:
                     if layer_num not in qkv_weights:
-                        # qkv_shape = (hidden_size_per_head * num_attention_heads, hidden_size)
-                        per_type_space = hidden_size_per_head * n_head
                         
                         qkv_name = f"transformer.h.{layer_num}.self_attention.query_key_value.weight"
                         if qkv_name in model.state_dict():
@@ -353,13 +355,10 @@ class FlexFlowFalcon(FlexFlowModel):
                         print(f"Initialized QKV shape for layer {layer_num}: {qkv_shape}")
                         
                     type_index = {"wq": 0, "wk": 1, "wv": 2}.get(qkv_type, 0)
-                    offset = type_index * per_type_space
-                    print("offset for this weight is: ", offset)
                     ## dim 0 sizes: 
                     dim_wq = hidden_size
                     dim_wk = hidden_size // n_head
                     dim_wv = hidden_size // n_head
-                    print(dim_wq, dim_wk, dim_wv)
                     
                     try:
                         expected_shape = (weight_data.size // hidden_size, hidden_size)
@@ -368,7 +367,6 @@ class FlexFlowFalcon(FlexFlowModel):
                     except ValueError as e:
                         print(f"Error reshaping {qkv_type} weights for layer {layer_num}: {e}")
                         print(f"Attempting to reshape data of size {weight_data.size} into shape (-1, {hidden_size})")
-                        
                         
                     try:
                         if qkv_type == "wq":
@@ -381,7 +379,20 @@ class FlexFlowFalcon(FlexFlowModel):
                         print(f"Error assigning {qkv_type} weights for layer {layer_num}: {e}")
                 continue
             
-            # for weights that are not q,k,v, get the param names
+            # for weights that are not q,k,v, get the param names and assign weights accordingly
             param = model.state_dict().get(original_name, None)
             if param is None:
-                print(f"Warning: {original_name} not found i
+                print(f"Warning: {original_name} not found in directory")
+            reshaped_data = weight_data.reshape(param.shape)
+            param.data.copy_(torch.from_numpy(reshaped_data))
+            
+        # Assign the combined QKV weights to the model
+        for layer_num, weight in qkv_weights.items():
+            qkv_name = f"transformer.h.{layer_num}.self_attention.query_key_value.weight"
+            if qkv_name in model.state_dict():
+                param = model.state_dict()[qkv_name]
+                # Ensure the combined weight is correctly reshaped to fit the model's expectations
+                param.data.copy_(torch.from_numpy(weight.reshape(param.shape)))
+            
+            
+            
