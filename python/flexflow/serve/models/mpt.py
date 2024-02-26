@@ -14,7 +14,8 @@
 
 from flexflow.core import *
 from .base import FlexFlowModel
-import random, torch, shutil
+import random, torch, shutil, os, re
+import numpy as np
 
 
 class MPTConfig:
@@ -284,3 +285,94 @@ class FlexFlowMPT(FlexFlowModel):
             os.path.join(dst_folder, "wte.weight"),
             os.path.join(dst_folder, "lm_head.weight"),
         )
+
+
+    def convert_ff_weight_name(name):
+        # Reverses the conversion logic for MPT model weights
+        converted_name = name
+        if "norm_f" in converted_name or "wte" in converted_name:
+            converted_name = converted_name.replece("_", ".")
+            
+        converted_name = converted_name.replace("attention_wo", "attn.out_proj")
+        converted_name = converted_name.replace("ffn_", "ffn.")
+        converted_name = re.sub(r"layers_(\d+)_", r"transformer.blocks.\1.", converted_name)
+        converted_name = re.sub(r"_(bias|weight)$", r".\1", converted_name)
+        
+        return converted_name
+
+    def load_weights_into_hf_model(model, src_folder):
+        """
+        Load weights from a specified folder and apply them to a Hugging Face MPT model.
+        
+        Parameters:
+        - model: The instance of the Hugging Face model to load the weights into.
+        - src_folder: The path to the folder containing the weight files.
+        """
+        
+        d_model = model.config.d_model
+        print("dimension of the model is: ", d_model)
+        
+        qkv_weights = {}
+        
+        for file_name in os.listdir(src_folder):
+            weight_path = os.path.join(src_folder, file_name)
+            if weight_path.endswith("rev_sha.txt"):
+                print("skipping rev_sha.txt")
+                continue
+            elif "lm_head" in weight_path:
+                # todo: double check how to handle lm_head in uploading mpt models
+                print("skipping lm_head.weight")
+                continue
+            else:
+                original_name = FlexFlowMPT.convert_ff_weight_name(file_name.replace('.bin', ''))
+                print("\nconverting weights name of: ", file_name, "to ", original_name)
+                
+            if not os.path.exists(weight_path):
+                raise FileNotFoundError(f"No weight file found for {file_name}")
+            
+            weight_data = np.fromfile(weight_path, dtype=np.float32)
+            
+            # Special handling for combined QKV weights
+            if ("wq" in file_name) or ("wk" in file_name) or ("wv" in file_name):
+                layer_num_match = re.search(r"layers\.(\d+)", original_name)
+                layer_num = int(layer_num_match.group(1)) if layer_num_match else None
+                qkv_type = original_name.split("_")[-2]
+                
+                if layer_num is not None:
+                    qkv_key = f"layers.{layer_num}.attn_Wqkv"
+                    # initialize qkv layer in dict
+                    if qkv_key not in qkv_weights:
+                        qkv_weights[qkv_key] = {'wq': None, 'wk': None, 'wv': None}
+                        print(f"Initialized QKV layer {layer_num}")
+                    # assign weights into dict
+                    qkv_weights[qkv_key][qkv_type] = weight_data
+                
+                continue
+            
+            # for weights that are not q,k,v, get the param names and assign weights accordingly
+            param = model.state_dict().get(original_name, None)
+            if weight_data.size != param.numel():
+                raise ValueError(f"Shape mismatch for {original_name}, model expects {param.numel()} elements, got {weight_data.size}")
+            
+            weight_tensor = torch.from_numpy(weight_data).reshape(param.shape)
+            with torch.no_grad():
+                model.state_dict()[original_name].copy_(weight_tensor)
+
+                    
+        for qkv_key, weights_dict in qkv_weights.items():
+            wq, wk, wv = weights_dict['wq'], weights_dict['wk'], weights_dict['wv']
+            if None in (wq, wk, wv):
+                raise ValueError(f"Missing weights for {qkv_key}")
+
+            combined_qkv = np.concatenate([wq, wk, wv], axis=0)
+            qkv_name = qkv_key.replace("layers.", "transformer.blocks.")+".weight"
+            
+            param_shape = model.state_dict()[qkv_name].shape
+            combined_qkv_reshaped = combined_qkv.reshape(param_shape)
+
+            model.state_dict()[qkv_name].copy_(torch.from_numpy(combined_qkv_reshaped))
+
+            print(f"Assigned combined QKV weights to {qkv_key}.")
+                
+                
+                
