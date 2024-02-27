@@ -171,7 +171,6 @@ size_t RequestManager::get_num_ssms() {
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::vector<TokenId> const &prompt,
                                          int max_sequence_length) {
-  log_req_mgr.print("1  RequestManager::register_new_request\n");
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
 
   // Add a new request
@@ -203,7 +202,6 @@ RequestManager::RequestGuid
       request.beam_trees.push_back(beam_tree);
     }
   }
-  log_req_mgr.print("1 finish beamtree");
 
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
@@ -234,7 +232,6 @@ RequestManager::RequestGuid
     RequestManager::register_new_request(std::string const &prompt,
                                          int max_sequence_length) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
-  log_req_mgr.print("2  RequestManager::register_new_request\n");
 
   // Add a new request
   Request request;
@@ -267,13 +264,9 @@ RequestManager::RequestGuid
     std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
     for (int i = 0; i < get_num_ssms(); i++) {
       BeamTree beam_tree = BeamTree{};
-      log_req_mgr.print("****2 BeamTree beam_tree = BeamTree{};****]\n");
       request.beam_trees.push_back(beam_tree);
-      log_req_mgr.print("2 request.beam_trees.push_back(beam_tree);\n");
     }
-    log_req_mgr.print("2 finish push back\n");
   }
-  log_req_mgr.print("2 finish beamtree\n");
 
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
@@ -298,7 +291,6 @@ RequestManager::RequestGuid
   gr.output_text = prompt;
   gr.output_tokens = request.tokens;
   request_generation_results[request.guid] = gr;
-  log_req_mgr.print("2 RequestManager::register_new_request done\n");
   return request.guid;
 }
 
@@ -2295,7 +2287,6 @@ std::vector<GenerationResult>
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
   for (int i = 0; i < prompts.size(); i++) {
-    std::cout<<"i:"<<i<<", prompts.at(i):"<< prompts.at(i)<<std::endl;
     RequestManager::RequestGuid guid =
         rm->register_new_request(prompts.at(i), max_seq_length);
     if (guid != RequestManager::INVALID_GUID) {
