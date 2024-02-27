@@ -14,6 +14,8 @@ struct Strategy {
   req<float> runtime;
 };
 
+FF_VISITABLE_STRUCT(Strategy, pcg, machine_mapping, runtime);
+
 struct StrategyRuntimeCmp {
   bool operator()(Strategy const &, Strategy const &);
 };
@@ -35,16 +37,5 @@ Strategy
                    OptimizerConfig const &opt_config);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(FlexFlow::Strategy, pcg, machine_mapping, runtime);
-
-namespace std {
-
-template <>
-struct hash<FlexFlow::Strategy> {
-  size_t operator()(FlexFlow::Strategy const &) const;
-};
-
-} // namespace std
 
 #endif

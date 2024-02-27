@@ -20,7 +20,7 @@ public:
 
 FF_VISITABLE_STRUCT(Operator, attrs, name);
 
-static_assert(is_well_behaved_value_type<Operator>::value, "");
+static_assert(is_well_behaved_value_type<Operator>::value);
 
 } // namespace FlexFlow
 

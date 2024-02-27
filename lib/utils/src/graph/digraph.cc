@@ -14,7 +14,8 @@ std::unordered_set<DirectedEdge>
 }
 
 IDiGraphView const &DiGraphView::get_ptr() const {
-  return *std::dynamic_pointer_cast<IDiGraphView const>(GraphView::ptr.get());
+  return *std::reinterpret_pointer_cast<IDiGraphView const>(
+      GraphView::ptr.get());
 }
 
 Node DiGraph::add_node() {
@@ -47,11 +48,11 @@ std::unordered_set<DirectedEdge>
 }
 
 IDiGraph &DiGraph::get_ptr() {
-  return *std::dynamic_pointer_cast<IDiGraph>(GraphView::ptr.get_mutable());
+  return *std::reinterpret_pointer_cast<IDiGraph>(GraphView::ptr.get_mutable());
 }
 
 IDiGraph const &DiGraph::get_ptr() const {
-  return *std::dynamic_pointer_cast<IDiGraph const>(
+  return *std::reinterpret_pointer_cast<IDiGraph const>(
       GraphView::ptr.get_mutable());
 }
 } // namespace FlexFlow

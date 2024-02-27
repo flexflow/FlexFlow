@@ -22,7 +22,7 @@ std::unordered_set<OpenMultiDiEdge>
 }
 
 IOpenMultiDiGraphView const &OpenMultiDiGraphView::get_ptr() const {
-  return *std::dynamic_pointer_cast<IOpenMultiDiGraphView const>(
+  return *std::reinterpret_pointer_cast<IOpenMultiDiGraphView const>(
       GraphView::ptr.get());
 }
 
@@ -56,7 +56,7 @@ NodePort OpenMultiDiGraph::add_node_port() {
 }
 
 IOpenMultiDiGraph &OpenMultiDiGraph::get_ptr() {
-  return *std::dynamic_pointer_cast<IOpenMultiDiGraph>(
+  return *std::reinterpret_pointer_cast<IOpenMultiDiGraph>(
       GraphView::ptr.get_mutable());
 }
 
@@ -77,7 +77,7 @@ std::unordered_set<UpwardOpenMultiDiEdge>
 }
 
 IUpwardOpenMultiDiGraphView const &UpwardOpenMultiDiGraphView::get_ptr() const {
-  return *std::dynamic_pointer_cast<IUpwardOpenMultiDiGraphView const>(
+  return *std::reinterpret_pointer_cast<IUpwardOpenMultiDiGraphView const>(
       GraphView::ptr.get());
 }
 
@@ -107,12 +107,12 @@ std::unordered_set<UpwardOpenMultiDiEdge> UpwardOpenMultiDiGraph::query_edges(
 }
 
 IUpwardOpenMultiDiGraph const &UpwardOpenMultiDiGraph::get_ptr() const {
-  return *std::dynamic_pointer_cast<IUpwardOpenMultiDiGraph const>(
+  return *std::reinterpret_pointer_cast<IUpwardOpenMultiDiGraph const>(
       GraphView::ptr.get());
 }
 
 IUpwardOpenMultiDiGraph &UpwardOpenMultiDiGraph::get_ptr() {
-  return *std::dynamic_pointer_cast<IUpwardOpenMultiDiGraph>(
+  return *std::reinterpret_pointer_cast<IUpwardOpenMultiDiGraph>(
       GraphView::ptr.get_mutable());
 }
 
@@ -129,7 +129,7 @@ std::unordered_set<DownwardOpenMultiDiEdge>
 
 IDownwardOpenMultiDiGraphView const &
     DownwardOpenMultiDiGraphView::get_ptr() const {
-  return *std::dynamic_pointer_cast<IDownwardOpenMultiDiGraphView const>(
+  return *std::reinterpret_pointer_cast<IDownwardOpenMultiDiGraphView const>(
       GraphView::ptr.get());
 }
 
@@ -165,7 +165,7 @@ std::unordered_set<DownwardOpenMultiDiEdge>
 }
 
 IDownwardOpenMultiDiGraph &DownwardOpenMultiDiGraph::get_ptr() {
-  return *std::dynamic_pointer_cast<IDownwardOpenMultiDiGraph>(
+  return *std::reinterpret_pointer_cast<IDownwardOpenMultiDiGraph>(
       GraphView::ptr.get_mutable());
 }
 

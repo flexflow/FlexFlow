@@ -4,6 +4,7 @@
 
 using namespace FlexFlow;
 
+// Rapidcheck infrastructures for graphs does not work for now
 /*
 Tests whether optimal_cost can give a valid result given random PCG, trivial
 allowed machine views, trivial cost estimator and random machine specification.

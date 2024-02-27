@@ -7,8 +7,6 @@ using namespace FlexFlow;
 TEST_CASE("get_subgraph(OpenMultiDiGraphView)") {
   auto g = OpenMultiDiGraph::create<AdjacencyOpenMultiDiGraph>();
 
-  int t0 = 100000;
-
   Node n0 = g.add_node();
   Node n1 = g.add_node();
   Node n2 = g.add_node();

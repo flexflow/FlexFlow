@@ -86,17 +86,3 @@ Strategy
 }
 
 } // namespace FlexFlow
-
-namespace std {
-
-size_t hash<FlexFlow::Strategy>::operator()(FlexFlow::Strategy const &s) const {
-  size_t h = 0;
-
-  hash_combine(h, s.pcg);
-  hash_combine(h, s.machine_mapping);
-  hash_combine(h, s.runtime);
-
-  return h;
-}
-
-} // namespace std

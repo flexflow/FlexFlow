@@ -54,7 +54,8 @@ protected:
 
 private:
   Interface const &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());
+    return *std::reinterpret_pointer_cast<Interface const>(
+        GraphView::ptr.get());
   }
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(NodeLabelledMultiDiGraphView<int>);
@@ -116,11 +117,13 @@ protected:
       : NodeLabelledMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
 
   Interface &get_ptr() {
-    return *std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable());
+    return *std::reinterpret_pointer_cast<Interface>(
+        GraphView::ptr.get_mutable());
   }
 
   Interface const &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());
+    return *std::reinterpret_pointer_cast<Interface const>(
+        GraphView::ptr.get());
   }
 
   cow_ptr_t<NodeLabelIf> nl;
