@@ -37,13 +37,8 @@ def upload_processed_model_to_hub(llm, new_model_id, cache_folder, private):
 
 
 def main():
-    model_name = "bigcode/starcoderbase-1b"
-    # model_name = "mosaicml/mpt-7b"
-    
-    # new_model_id = "your_username/new-model-name"
-    new_model_id = "aprilyyt/upload-starcoder"  
-    # new_model_id = "aprilyyt/upload-mpt"  
-    
+    model_name = "meta-llama/Llama-2-7b"
+    new_model_id = "your_username/new-model-name"
     cache_folder = "~/.cache/flexflow"
     private = True 
     refresh_cache = False
