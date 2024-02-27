@@ -2,7 +2,7 @@
 
 namespace FlexFlow {
 
-size_t size_of(DataType data_type) {
+size_t size_of_datatype(DataType data_type) {
   switch (data_type) {
     case DataType::BOOL:
       return sizeof(bool);
@@ -17,7 +17,7 @@ size_t size_of(DataType data_type) {
     case DataType::DOUBLE:
       return sizeof(double);
     default:
-      throw mk_runtime_error("Unknown data type");
+      throw mk_runtime_error("Unknown data type {}", data_type);
   }
 }
 

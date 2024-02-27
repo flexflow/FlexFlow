@@ -101,7 +101,8 @@ struct TaskInvocationSpec {
   template <typename T>
   static TaskInvocationSpec
       create(TypedStandardTaskInvocation<T> const &invocation) {
-    return TaskInvocationSpec(type_index<T>(), invocation.invocation, ArgTypeRuntimeTag::create<T>());
+    return TaskInvocationSpec(
+        type_index<T>(), invocation.invocation, ArgTypeRuntimeTag::create<T>());
   }
 
   friend bool operator==(TaskInvocationSpec const &,
@@ -111,8 +112,8 @@ struct TaskInvocationSpec {
   friend bool operator<(TaskInvocationSpec const &, TaskInvocationSpec const &);
 
 private:
-  TaskInvocationSpec(std::type_index const &, 
-                     TaskInvocation const &, 
+  TaskInvocationSpec(std::type_index const &,
+                     TaskInvocation const &,
                      ArgTypeRuntimeTag const &);
 
   std::type_index type_idx;

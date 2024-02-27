@@ -21,72 +21,72 @@ namespace FlexFlow {
 
 enum Slots { TENSOR, GRADIENT, MOMENTUM_V, OPTIMIZER, HANDLE, ADAM_M, ADAM_W };
 
-using namespace Legion;
+// using namespace Legion;
 
-Optimizer::Optimizer(FFModel const *_model) : model(_model) {}
+// Optimizer::Optimizer(FFModel const *_model) : model(_model) {}
 
-ParallelTensor create_replica_parameter(FFModel const *model,
-                                        const ParallelTensor p) {
-  Context ctx = model->config.lg_ctx;
-  Runtime *runtime = model->config.lg_hlr;
-  ParallelTensor v = new ParallelTensorBase(*p);
-  v->region_grad = LogicalRegion::NO_REGION;
-  v->part_grad = LogicalPartition::NO_PART;
-  v->region = runtime->create_logical_region(
-      ctx, p->region.get_index_space(), p->region.get_field_space());
-  if (v->sync_type == ParameterSyncType::PS) {
-    // Do nothing
-  } else if (v->sync_type == ParameterSyncType::NCCL) {
-    v->part = runtime->get_logical_partition(
-        ctx, v->region, p->part.get_index_partition());
-  } else {
-    assert(false);
-  }
-  return v;
-}
+// ParallelTensor create_replica_parameter(FFModel const *model,
+//                                         const ParallelTensor p) {
+//   Context ctx = model->config.lg_ctx;
+//   Runtime *runtime = model->config.lg_hlr;
+//   ParallelTensor v = new ParallelTensorBase(*p);
+//   v->region_grad = LogicalRegion::NO_REGION;
+//   v->part_grad = LogicalPartition::NO_PART;
+//   v->region = runtime->create_logical_region(
+//       ctx, p->region.get_index_space(), p->region.get_field_space());
+//   if (v->sync_type == ParameterSyncType::PS) {
+//     // Do nothing
+//   } else if (v->sync_type == ParameterSyncType::NCCL) {
+//     v->part = runtime->get_logical_partition(
+//         ctx, v->region, p->part.get_index_partition());
+//   } else {
+//     assert(false);
+//   }
+//   return v;
+// }
 
-SGDOptimizer::SGDOptimizer(FFModel const *_model,
-                           double _lr,
-                           double _momentum,
-                           bool _nesterov,
-                           double _weight_decay)
-    : Optimizer(_model), lr(_lr), momentum(_momentum), nesterov(_nesterov),
-      weight_decay(_weight_decay) {}
+// SGDOptimizer::SGDOptimizer(FFModel const *_model,
+//                            double _lr,
+//                            double _momentum,
+//                            bool _nesterov,
+//                            double _weight_decay)
+//     : Optimizer(_model), lr(_lr), momentum(_momentum), nesterov(_nesterov),
+//       weight_decay(_weight_decay) {}
 
-void SGDOptimizer::init(void) {
-  Context ctx = model->config.lg_ctx;
-  Runtime *runtime = model->config.lg_hlr;
-  Initializer *initializer = new ZeroInitializer();
-  for (size_t i = 0; i < model->parameters.size(); i++) {
-    ParallelTensor p = model->parameters[i];
-    Domain domain =
-        runtime->get_index_space_domain(ctx, p->region.get_index_space());
-    switch (domain.get_dim()) {
-      case 0: {
-        // Do not support 0-dim parameter
-        assert(false);
-        break;
-      }
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-      case 5: {
-        if (momentum > 0.0f) {
-          v_values[p->region] = create_replica_parameter(model, p);
-          initializer->init(model, v_values[p->region]);
-        }
-        break;
-      }
-      default: {
-        // Unsupported dim
-        assert(false);
-        break;
-      }
-    }
-  }
-  delete initializer;
-}
+// void SGDOptimizer::init(void) {
+//   Context ctx = model->config.lg_ctx;
+//   Runtime *runtime = model->config.lg_hlr;
+//   Initializer *initializer = new ZeroInitializer();
+//   for (size_t i = 0; i < model->parameters.size(); i++) {
+//     ParallelTensor p = model->parameters[i];
+//     Domain domain =
+//         runtime->get_index_space_domain(ctx, p->region.get_index_space());
+//     switch (domain.get_dim()) {
+//       case 0: {
+//         // Do not support 0-dim parameter
+//         assert(false);
+//         break;
+//       }
+//       case 1:
+//       case 2:
+//       case 3:
+//       case 4:
+//       case 5: {
+//         if (momentum > 0.0f) {
+//           v_values[p->region] = create_replica_parameter(model, p);
+//           initializer->init(model, v_values[p->region]);
+//         }
+//         break;
+//       }
+//       default: {
+//         // Unsupported dim
+//         assert(false);
+//         break;
+//       }
+//     }
+//   }
+//   delete initializer;
+// }
 
 TaskInvocation ps_prefetch_tensor(parallel_tensor_guid_t const &guid) {
   TaskBinding b(InvocationType::INDEX);
@@ -138,13 +138,13 @@ TaskInvocation update(AdamOptimizer const &adam,
   }
 }
 
-AdamOptimizer next(AdamOptimizer const &old) {
-  AdamOptimizer ret = old;
-  ret.beta1_t *= ret.beta1;
-  ret.beta2_t *= ret.beta2;
-  ret.alpha_t = ret.alpha * sqrt(1 - ret.beta2_t) / (1 - ret.beta1_t);
-  return ret;
-}
+// AdamOptimizer next(AdamOptimizer const &old) {
+//   AdamOptimizer ret = old;
+//   ret.beta1_t *= ret.beta1;
+//   ret.beta2_t *= ret.beta2;
+//   ret.alpha_t = ret.alpha * sqrt(1 - ret.beta2_t) / (1 - ret.beta1_t);
+//   return ret;
+// }
 
 void SGDOptimizer::update(const ParallelTensor p) {
   Context ctx = model->config.lg_ctx;
@@ -377,50 +377,50 @@ static void sgd_nccl_update_task(Task const *task,
 //                        Adam Optimizer
 // ------------------------------------------------------------------
 
-AdamOptimizer::AdamOptimizer(FFModel const *_model,
-                             double _alpha,
-                             double _beta1,
-                             double _beta2,
-                             double _weight_decay,
-                             double _epsilon)
-    : Optimizer(_model), alpha(_alpha), beta1(_beta1), beta2(_beta2),
-      weight_decay(_weight_decay), epsilon(_epsilon), alpha_t(_alpha),
-      beta1_t(1.0f), beta2_t(1.0f) {}
+// AdamOptimizer::AdamOptimizer(FFModel const *_model,
+//                              double _alpha,
+//                              double _beta1,
+//                              double _beta2,
+//                              double _weight_decay,
+//                              double _epsilon)
+//     : Optimizer(_model), alpha(_alpha), beta1(_beta1), beta2(_beta2),
+//       weight_decay(_weight_decay), epsilon(_epsilon), alpha_t(_alpha),
+//       beta1_t(1.0f), beta2_t(1.0f) {}
 
-void AdamOptimizer::init(void) {
-  Context ctx = model->config.lg_ctx;
-  Runtime *runtime = model->config.lg_hlr;
-  Initializer *initializer = new ZeroInitializer();
-  for (size_t i = 0; i < model->parameters.size(); i++) {
-    ParallelTensor p = model->parameters[i];
-    Domain domain =
-        runtime->get_index_space_domain(ctx, p->region.get_index_space());
-    switch (domain.get_dim()) {
-      case 0: {
-        // Do not support 0-dim parameter
-        assert(false);
-        break;
-      }
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-      case 5: {
-        v_values[p->region] = create_replica_parameter(model, p);
-        m_values[p->region] = create_replica_parameter(model, p);
-        initializer->init(model, v_values[p->region]);
-        initializer->init(model, m_values[p->region]);
-        break;
-      }
-      default: {
-        // Unsupported dim
-        assert(false);
-        break;
-      }
-    }
-  }
-  delete initializer;
-}
+// void AdamOptimizer::init(void) {
+//   Context ctx = model->config.lg_ctx;
+//   Runtime *runtime = model->config.lg_hlr;
+//   Initializer *initializer = new ZeroInitializer();
+//   for (size_t i = 0; i < model->parameters.size(); i++) {
+//     ParallelTensor p = model->parameters[i];
+//     Domain domain =
+//         runtime->get_index_space_domain(ctx, p->region.get_index_space());
+//     switch (domain.get_dim()) {
+//       case 0: {
+//         // Do not support 0-dim parameter
+//         assert(false);
+//         break;
+//       }
+//       case 1:
+//       case 2:
+//       case 3:
+//       case 4:
+//       case 5: {
+//         v_values[p->region] = create_replica_parameter(model, p);
+//         m_values[p->region] = create_replica_parameter(model, p);
+//         initializer->init(model, v_values[p->region]);
+//         initializer->init(model, m_values[p->region]);
+//         break;
+//       }
+//       default: {
+//         // Unsupported dim
+//         assert(false);
+//         break;
+//       }
+//     }
+//   }
+//   delete initializer;
+// }
 
 void AdamOptimizer::update(const ParallelTensor p) {
   Context ctx = model->config.lg_ctx;

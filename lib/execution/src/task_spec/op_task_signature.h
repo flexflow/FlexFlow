@@ -67,7 +67,7 @@ struct OpTaskSignature {
     this->task_arg_types.insert({name, type_index<T>()});
   }
 
-  // TODO: should this be a single type index? 
+  // TODO: should this be a single type index?
   template <typename T>
   void add_return_value() {
     this->return_value.push_back(type_index<T>);
@@ -94,7 +94,9 @@ private:
 };
 
 OpTaskSignature get_op_signature(task_id_t const &);
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskSignature, op_tensor_slots, task_arg_types);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskSignature,
+                                             op_tensor_slots,
+                                             task_arg_types);
 
 template <typename F>
 void register_task(task_id_t,

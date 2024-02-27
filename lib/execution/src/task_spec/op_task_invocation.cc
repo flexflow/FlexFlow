@@ -3,15 +3,18 @@
 
 namespace FlexFlow {
 
-OpTensorSpec input_tensor(int idx, OpSlotOptions option = OpSlotOptions::NECESSARY) {
+OpTensorSpec input_tensor(int idx,
+                          OpSlotOptions option = OpSlotOptions::NECESSARY) {
   return {TensorRole::INPUT, option, idx};
 }
 
-OpTensorSpec output_tensor(int idx, OpSlotOptions option = OpSlotOptions::NECESSARY) {
+OpTensorSpec output_tensor(int idx,
+                           OpSlotOptions option = OpSlotOptions::NECESSARY) {
   return {TensorRole::OUTPUT, option, idx};
 }
 
-OpTensorSpec weight_tensor(int idx, OpSlotOptions option = OpSlotOptions::NECESSARY) {
+OpTensorSpec weight_tensor(int idx,
+                           OpSlotOptions option = OpSlotOptions::NECESSARY) {
   return {TensorRole::WEIGHT, option, idx};
 }
 
@@ -42,8 +45,9 @@ OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd) {
   bwd.bind_args_from_fwd(fwd);
   bwd.bind_tensors_from_fwd(fwd);
   for (auto const &[key, spec] : fwd.get_tensor_bindings()) {
-    OpSlotOptions slot_option = spec.slot_option; 
-    if (slot_option != OpSlotOptions::UNTRAINABLE || slot_option != OpSlotOptions::OPTIONAL_UNTRAINABLE) {
+    OpSlotOptions slot_option = spec.slot_option;
+    if (slot_option != OpSlotOptions::UNTRAINABLE ||
+        slot_option != OpSlotOptions::OPTIONAL_UNTRAINABLE) {
       slot_id slot = key.first;
       bwd.bind_grad(slot, spec);
     }

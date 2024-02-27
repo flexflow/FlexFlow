@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_KERNELS_ALLOCATION_H
 #define _FLEXFLOW_KERNELS_ALLOCATION_H
 
+#include "execution/src/task_spec/tensor.h"
 #include <cstddef>
 #include <memory>
-#include "execution/src/tensor.h"
 
 namespace FlexFlow {
 

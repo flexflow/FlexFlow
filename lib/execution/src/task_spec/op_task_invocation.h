@@ -42,25 +42,25 @@ using OpArgSpec = variant<ConcreteArgSpec,
                           TaskInvocationSpec>;
 
 struct OpArgSpecTypeAccessor {
-  std::type_index operator()(ConcreteArgSpec& spec) {
+  std::type_index operator()(ConcreteArgSpec &spec) {
     return spec.get_type_tag().get_type_idx();
   }
-  std::type_index operator()(IndexArgSpec& spec) {
+  std::type_index operator()(IndexArgSpec &spec) {
     return spec.get_type_tag().get_type_idx();
   }
-  std::type_index operator()(OpArgRefSpec& spec) {
+  std::type_index operator()(OpArgRefSpec &spec) {
     return spec.get_type_tag().get_type_idx();
   }
-  std::type_index operator()(CheckedTypedFuture& spec) {
+  std::type_index operator()(CheckedTypedFuture &spec) {
     return spec.get_type_tag().get_type_idx();
   }
-  std::type_index operator()(CheckedTypedFutureMap& spec) {
+  std::type_index operator()(CheckedTypedFutureMap &spec) {
     return spec.get_type_tag().get_type_idx();
   }
-  std::type_index operator()(RuntimeArgRefSpec& spec) {
+  std::type_index operator()(RuntimeArgRefSpec &spec) {
     return spec.get_type_tag().get_type_idx();
   }
-  std::type_index operator()(TaskInvocationSpec& spec) {
+  std::type_index operator()(TaskInvocationSpec &spec) {
     return spec.get_type_tag().get_type_idx();
   }
 };
@@ -156,7 +156,9 @@ public:
   task_id_t task_id;
   OpTaskBinding binding;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskInvocation, task_id, binding);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskInvocation,
+                                             task_id,
+                                             binding);
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);

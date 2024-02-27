@@ -3,8 +3,8 @@
 
 #include "legion.h"
 #include "permissions.h"
-#include "runtime/task_spec/slot_id.h"
 #include "serialization.h"
+#include "slot_id.h"
 #include "slot_type.h"
 #include "tasks.h"
 #include "utils/strong_typedef.h"

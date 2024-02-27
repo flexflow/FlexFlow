@@ -10,8 +10,6 @@ ff_add_library(
   DEPS
     op-attrs
     utils
-    optional
-    compiler
     kernels
     pcg
 )

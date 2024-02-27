@@ -1,13 +1,13 @@
-#ifndef _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_LOCAL_MODEL_TRAINING_INSTANCE_H
-#define _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_LOCAL_MODEL_TRAINING_INSTANCE_H
+#ifndef _FLEXFLOW_EXECUTION_INCLUDE_LOCAL_EXECUTION_LOCAL_MODEL_TRAINING_INSTANCE_H
+#define _FLEXFLOW_EXECUTION_INCLUDE_LOCAL_EXECUTION_LOCAL_MODEL_TRAINING_INSTANCE_H
 
+#include "local_training_backing.h"
+#include "metrics_functions.h"
+#include "op-attrs/ops/loss_functions.h"
 #include "pcg/computation_graph.h"
 #include "pcg/optimizer.h"
 #include "pcg/tensor_guid_t.h"
 #include "profiling.h"
-#include "metrics_functions.h"
-#include "op-attrs/ops/loss_functions.h"
-#include "local_training_backing.h"
 
 namespace FlexFlow {
 
@@ -31,7 +31,10 @@ FF_VISITABLE_STRUCT(LocalModelTrainingInstance,
                     metrics,
                     local_training_backing);
 
-void initialize_backing(LocalModelTrainingInstance &);
+void initialize_backing(LocalModelTrainingInstance &,
+                        std::unordered_map<OperatorSlotBackingId,
+                                           GenericTensorAccessorW> slot_mapping,
+                        size_t gpu_memory_size);
 GenericTensorAccessorR forward(LocalModelTrainingInstance const &);
 void backward(LocalModelTrainingInstance const &);
 void update(LocalModelTrainingInstance const &);

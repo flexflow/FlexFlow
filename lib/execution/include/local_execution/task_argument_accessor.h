@@ -4,29 +4,33 @@
 #include "slot_id.h"
 #include <cstddef>
 #include <memory>
-#include <vector>
 #include <optional>
+#include <variant>
+#include <vector>
 
 namespace FlexFlow {
 
-using PrivilegeType = variant<privilege_mode_to_accessor<Permissions::RW>,
-                              privilege_mode_to_accessor<Permissions::RO>,
-                              privilege_mode_to_accessor<Permissions::WO>>;
-using PrivilegeVariadicType = variant<std::vector<privilege_mode_to_accessor<Permissions::RW>>,
-                                    std::vector<privilege_mode_to_accessor<Permissions::RO>>,
-                                    std::vector<privilege_mode_to_accessor<Permissions::WO>>>;
+using PrivilegeType = std::variant<privilege_mode_to_accessor<Permissions::RW>,
+                                   privilege_mode_to_accessor<Permissions::RO>,
+                                   privilege_mode_to_accessor<Permissions::WO>>;
+using PrivilegeVariadicType =
+    std::variant<std::vector<privilege_mode_to_accessor<Permissions::RW>>,
+                 std::vector<privilege_mode_to_accessor<Permissions::RO>>,
+                 std::vector<privilege_mode_to_accessor<Permissions::WO>>>;
 
 struct ITaskArgumentAccessor {
-  ITaskArgumentAccessor& operator=(const ITaskArgumentAccessor&) = delete;
-  virtual ~ITaskArgumentAccessor() {};
+  ITaskArgumentAccessor &operator=(ITaskArgumentAccessor const &) = delete;
 
   virtual PrivilegeType get_tensor(slot_id slot, Permissions priv) const = 0;
 
-  virtual PrivilegeVariadicType get_variadic_tensor(slot_id slot, Permissions priv) const = 0;
+  virtual PrivilegeVariadicType get_variadic_tensor(slot_id slot,
+                                                    Permissions priv) const = 0;
 
-  virtual PrivilegeType get_tensor_grad(slot_id slot, Permissions priv) const = 0;
+  virtual PrivilegeType get_tensor_grad(slot_id slot,
+                                        Permissions priv) const = 0;
 
-  virtual PrivilegeVariadicType get_variadic_tensor_grad(slot_id slot, Permissions priv) const = 0;
+  virtual PrivilegeVariadicType
+      get_variadic_tensor_grad(slot_id slot, Permissions priv) const = 0;
 
   virtual size_t get_device_idx() const = 0;
 };

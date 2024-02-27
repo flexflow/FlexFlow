@@ -40,7 +40,8 @@ public:
 
   template <typename T>
   static CheckedTypedFutureMap create(TypedFutureMap<T> const &fm) {
-    return CheckedTypedFutureMap(type_index<T>(), fm.future_map, ArgTypeRuntimeTag::create<T>());
+    return CheckedTypedFutureMap(
+        type_index<T>(), fm.future_map, ArgTypeRuntimeTag::create<T>());
   }
 
 private:

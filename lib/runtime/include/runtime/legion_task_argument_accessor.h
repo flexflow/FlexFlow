@@ -72,11 +72,11 @@ region_idx_t get_region_idx(TaskArgumentsFormat const &,
                             parallel_tensor_guid_t const &);
 DataType get_datatype(TaskArgumentsFormat const &, region_idx_t const &);
 
-struct LegionTaskArgumentAccessor: public ITaskArgumentAccessor {
+struct LegionTaskArgumentAccessor : public ITaskArgumentAccessor {
   LegionTaskArgumentAccessor(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
 
   Allocator get_allocator() const {
     return get_gpu_memory_allocator(this->task);

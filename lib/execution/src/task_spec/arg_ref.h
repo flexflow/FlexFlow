@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_ARG_REF_H
 #define _FLEXFLOW_RUNTIME_SRC_ARG_REF_H
 
+#include "arg_type_runtime_tag.h"
 #include "kernels/ff_handle.h"
 #include "runtime/profiling.h"
-#include "runtime/task_spec/arg_type_runtime_tag.h"
 #include "utils/type_index.h"
 #include "utils/visitable.h"
 

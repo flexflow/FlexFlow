@@ -57,7 +57,7 @@ using DataTypeValue = variant<real_type<DataType::FLOAT>,
                               real_type<DataType::HALF>,
                               real_type<DataType::BOOL>>;
 
-size_t size_of(DataType);
+size_t size_of_datatype(DataType);
 
 } // namespace FlexFlow
 

@@ -2,7 +2,7 @@
 #define _FLEXFLOW_RUNTIME_SRC_LOCAL_ALLOCATOR_H
 
 #include "kernels/allocation.h"
-#include "runtime/src/tensor.h"
+#include "tensor.h"
 #include <unordered_map>
 
 namespace FlexFlow {
@@ -20,6 +20,7 @@ private:
   size_t allocated_memory_size;
   std::unordered_map<void *, size_t> ptr_memory_size_mapping;
 };
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalAllocator);
 
 Allocator get_local_memory_allocator(size_t);
 
