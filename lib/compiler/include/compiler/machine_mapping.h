@@ -25,10 +25,13 @@ struct OptimalCostState {
   SerialParallelDecomposition subgraph;
   MachineSpecification resource;
   std::unordered_map<Node, MachineView> given_machine_views;
-  req<std::unordered_map<OpenMultiDiEdge, MachineView>>
-  frontier_machine_views;
+  req<std::unordered_map<OpenMultiDiEdge, MachineView>> frontier_machine_views;
 };
-FF_VISITABLE_STRUCT(OptimalCostState, subgraph, resource, given_machine_views, frontier_machine_views);
+FF_VISITABLE_STRUCT(OptimalCostState,
+                    subgraph,
+                    resource,
+                    given_machine_views,
+                    frontier_machine_views);
 
 struct OptimalCostResult {
   static OptimalCostResult sequential_combine(OptimalCostResult const &s1,

@@ -11,13 +11,9 @@ ParallelComputationGraph cg_to_pcg(ComputationGraph const &g) {
   NOT_IMPLEMENTED();
 }
 
-SubParallelComputationGraph pcg_to_subpcg(ParallelComputationGraph const &pcg) {
-  return materialize_output_labelled_open_multidigraph_view<
-      AdjacencyOpenMultiDiGraph,
-      UnorderedLabelling<Node, Operator>,
-      UnorderedLabelling<InputMultiDiEdge, ParallelTensor>,
-      UnorderedLabelling<MultiDiOutput, ParallelTensor>>(
-      view_output_labelled_as_output_labelled_open(pcg.value()));
+SubParallelComputationGraphView
+    pcg_to_subpcg(ParallelComputationGraph const &pcg) {
+  return view_output_labelled_as_output_labelled_open(pcg.value());
 }
 
 std::vector<MultiDiEdge>

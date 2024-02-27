@@ -6,6 +6,8 @@
 #include "utils/test_types.h"
 #include "utils/type_traits_core.h"
 
+#include <iomanip>
+
 namespace FlexFlow {
 
 template <typename T, typename Enable>
@@ -25,6 +27,12 @@ struct already_has_ostream_operator<char[N]> : std::true_type {};
 
 template <>
 struct already_has_ostream_operator<char const *> : std::true_type {};
+
+template <>
+struct already_has_ostream_operator<std::_Setfill<char>> : std::true_type {};
+
+template <>
+struct already_has_ostream_operator<std::_Setw> : std::true_type {};
 
 // This will create an error
 /*

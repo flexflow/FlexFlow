@@ -13,7 +13,7 @@ bool StrategyRuntimeCmp::operator()(Strategy const &lhs, Strategy const &rhs) {
  * Gets all substitutions applicable to a PCG
  */
 std::unordered_set<Substitution>
-    get_all_substitutions(ParallelComputationGraph const &pcg) {
+    get_all_applicable_substitutions(ParallelComputationGraph const &pcg) {
   NOT_IMPLEMENTED();
 }
 
@@ -37,7 +37,7 @@ Strategy
 
   ParallelComputationGraph pcg = cg_to_pcg(cg);
 
-  std::unordered_set<Substitution> subs = get_all_substitutions(pcg);
+  std::unordered_set<Substitution> subs = get_all_applicable_substitutions(pcg);
 
   OptimalCostCache cached_subgraph_costs;
   DeduplicatedPriorityQueue<Strategy, std::vector<Strategy>, StrategyRuntimeCmp>
@@ -93,7 +93,7 @@ size_t hash<FlexFlow::Strategy>::operator()(FlexFlow::Strategy const &s) const {
   size_t h = 0;
 
   hash_combine(h, s.pcg);
-  // hash_combine(h, s.machine_mapping);
+  hash_combine(h, s.machine_mapping);
   hash_combine(h, s.runtime);
 
   return h;

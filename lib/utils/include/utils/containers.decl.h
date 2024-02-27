@@ -109,7 +109,7 @@ template <typename C>
 std::vector<typename C::mapped_type> values(C const &c);
 
 template <typename C>
-std::unordered_set<std::pair<typename C::key_type, typename C::value_type>>
+std::unordered_set<std::pair<typename C::key_type, typename C::mapped_type>>
     items(C const &c);
 
 template <typename C, typename T = typename C::value_type>
