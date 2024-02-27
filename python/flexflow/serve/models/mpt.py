@@ -291,7 +291,7 @@ class FlexFlowMPT(FlexFlowModel):
         # Reverses the conversion logic for MPT model weights
         converted_name = name
         if "norm_f" in converted_name or "wte" in converted_name:
-            converted_name = converted_name.replece("_", ".")
+            converted_name = converted_name.replace("_", ".").replace("norm.f", "norm_f")
             
         converted_name = converted_name.replace("attention_wo", "attn.out_proj")
         converted_name = converted_name.replace("ffn_", "ffn.")
@@ -373,6 +373,4 @@ class FlexFlowMPT(FlexFlowModel):
             model.state_dict()[qkv_name].copy_(torch.from_numpy(combined_qkv_reshaped))
 
             print(f"Assigned combined QKV weights to {qkv_key}.")
-                
-                
                 
