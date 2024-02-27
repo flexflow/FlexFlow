@@ -12,6 +12,7 @@ struct LayerNormParams {
   bool elementwise_affine;
   float eps;
   bool use_bias;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 

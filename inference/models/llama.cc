@@ -41,7 +41,11 @@ void LLAMA::create_llama_model(FFModel &ff,
 
   Tensor input;
   {
-    int const token_dims[] = {BatchConfig::max_tokens_per_batch(), 1};
+    int const token_dims[] = {
+        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+            ? BatchConfig::max_verify_tokens_per_batch()
+            : BatchConfig::max_tokens_per_batch(),
+        1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 
@@ -256,7 +260,9 @@ void LLAMA::create_llama_model(FFModel &ff,
   if (mode == BEAM_SEARCH_MODE) {
     Tensor softmax = ff.softmax(dense, -1);
     // output = ff.beam_top_k(softmax, llama_config.max_beam_width, false);
-    output = ff.argmax(softmax, /*beam_Search*/ true);
+    // output = ff.argmax(softmax, /*beam_Search*/ true);
+    output = ff.arg_top_k(softmax, llama_config.max_beam_width, false, true);
+    // output = ff.top_k(softmax, )
   } else {
     // Tensor softmax = ff.softmax(dense, -1);
     if (generation_config.do_sample) {
@@ -270,23 +276,28 @@ void LLAMA::create_llama_model(FFModel &ff,
     }
   }
 
+  FileDataLoader *fileloader = new FileDataLoader(
+      "",
+      weight_file_path,
+      llama_config.num_attention_heads,
+      llama_config.num_attention_heads,
+      llama_config.hidden_size,
+      llama_config.hidden_size / llama_config.num_attention_heads,
+      ff.config.tensor_parallelism_degree,
+      use_full_precision);
+
   InferenceManager *im = InferenceManager::get_inference_manager();
+  im->register_model_weights_loader(&ff, fileloader);
+#ifdef DEADCODE
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
   im->compile_model_and_allocate_buffer(&ff);
-  FileDataLoader fileloader("",
-                            weight_file_path,
-                            llama_config.num_attention_heads,
-                            llama_config.num_attention_heads,
-                            llama_config.hidden_size,
-                            llama_config.hidden_size /
-                                llama_config.num_attention_heads,
-                            ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, use_full_precision);
+  fileloader.load_weights(&ff);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators
   im->init_operators_inference(&ff);
+#endif
 }
 
 }; // namespace FlexFlow

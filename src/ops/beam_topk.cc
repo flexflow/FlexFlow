@@ -170,7 +170,7 @@ BeamTopK::BeamTopK(FFModel &model,
                params.layer_guid,
                params.max_beam_width,
                params.sorted,
-               name) {}
+               params.name) {}
 
 void BeamTopK::init_inference(FFModel const &ff,
                               std::vector<ParallelTensor> const &batch_inputs,
@@ -366,7 +366,7 @@ BeamInferenceResult
   GenericTensorAccessorW value = helperGetGenericTensorAccessorWO(
       DT_FLOAT, regions[2], task->regions[2], FID_DATA, ctx, runtime);
   GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
-      DT_FLOAT, regions[3], task->regions[3], FID_DATA, ctx, runtime);
+      DT_INT32, regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -420,6 +420,8 @@ void BeamTopK::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->sorted);
   sez.serialize(this->max_beam_width);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 Node BeamTopK::deserialize(FFModel &ff,
@@ -436,10 +438,16 @@ Node BeamTopK::deserialize(FFModel &ff,
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(sorted);
   dez.deserialize(max_beam_width);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
+
   BeamTopKParams params;
   params.layer_guid = layer_guid;
   params.sorted = sorted;
   params.max_beam_width = max_beam_width;
+  strcpy(params.name, name);
   return ff.get_or_create_node<BeamTopK>(inputs[0], params);
 }
 

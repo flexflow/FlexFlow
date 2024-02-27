@@ -138,8 +138,13 @@ class LLM:
         self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
         self.refresh_cache = refresh_cache
         self.output_file = output_file
-        
-        
+        self.rm = None
+
+    def __del__(self):
+        # Stop the background server before deleting the object
+        if type(self) == LLM and self.rm is not None:
+            self.rm.stop_server()
+
     def download_hf_config(self):
         """Save the HuggingFace model configs to a json file. Useful mainly to run the C++ inference code."""
         self.config_dir = os.path.join(
@@ -365,7 +370,6 @@ class LLM:
         
         print("Upload completed successfully.")
 
-
     def compile(
         self,
         generation_config: GenerationConfig = GenerationConfig(),
@@ -443,12 +447,27 @@ class LLM:
             max_tokens_per_batch,
         )
 
-        # Create inference manager
-        self.im = InferenceManager()
-        self.im.compile_model_and_allocate_buffer(self.model.ffmodel)
+        # Download the weights from huggingface (if needed)
+        self.download_hf_weights_if_needed()
 
-        # Download the weights and tokenizer from huggingface (if needed) and load them
-        self.__load_hf_weights()
+        # Create file data loader, load weights into tensors
+        model_configs = self.config_class(self.hf_config)
+
+        self.fileloader = FileDataLoader(
+            self.weights_path,
+            model_configs.num_attention_heads,
+            model_configs.num_key_value_heads,
+            model_configs.hidden_size,
+            model_configs.hidden_size // model_configs.num_attention_heads,
+            self.ffconfig.tensor_parallelism_degree,
+            self.data_type == DataType.DT_FLOAT,
+        )
+
+        # Register weights file loader
+        self.im = InferenceManager()
+        self.im.register_model_weights_loader(self.model.ffmodel, self.fileloader)
+
+        # Download the tokenizer from huggingface (if needed) and load them
         self.download_hf_tokenizer_if_needed()
 
         # Create tokenizer (this must be done after we have downloaded the tokenizer
@@ -463,10 +482,16 @@ class LLM:
         )
         self.rm.register_output_filepath(self.output_file)
 
-        self.im.init_operators_inference(self.model.ffmodel)
-
         for ssm in self.ssms:
             self.rm.register_ssm_model(ssm.model.ffmodel)
+
+        # start background server
+        if (mode == InferenceMode.TREE_VERIFY_MODE) or (
+            mode == InferenceMode.INC_DECODING_MODE
+        ):
+            import atexit
+
+            atexit.register(self.rm.stop_server)
 
     def generate(self, prompts: Union[str, List[str]], max_length: int = 128):
         """Generate tokens based on the input prompt(s)
@@ -479,15 +504,32 @@ class LLM:
         if type(prompts) == str:
             if len(prompts) == 0:
                 return None
-            return self.model.ffmodel.generate(prompts, max_length)
+            return self.model.ffmodel.generate([prompts], max_length)
         elif type(prompts) == list:
             if len(prompts) == 0:
                 return []
-            return [
-                self.model.ffmodel.generate(prompt, max_length) for prompt in prompts
-            ]
+            return self.model.ffmodel.generate(prompts, max_length)
         else:
             assert False, "Please pass a non-empty string or list of strings"
+
+    def start_server(self):
+        self.rm.start_server(self.model.ffmodel)
+        print("Background server started.")
+
+    def stop_server(self):
+        self.rm.stop_server()
+        print("Background server stopped.")
+
+    def __enter__(self):
+        # Start the server when entering the context
+        # self.rm.start_server(self.model.ffmodel)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # Stop the server when exiting the context
+        # self.rm.stop_server()
+        if exc_type:
+            print(f"Exception occurred: {exc_value}")
 
 
 class SSM(LLM):
@@ -525,9 +567,9 @@ class SSM(LLM):
     def compile(
         self,
         generation_config: GenerationConfig = GenerationConfig(),
-        max_requests_per_batch: int = 1,
+        max_requests_per_batch: int = 16,
         max_seq_length: int = 256,
-        max_tokens_per_batch: int = 64,
+        max_tokens_per_batch: int = 128,
         model_specific_data_parallelism_degree: int = 1,
         model_specific_tensor_parallelism_degree: int = 1,
         model_specific_pipeline_parallelism_degree: int = 1,
@@ -539,11 +581,11 @@ class SSM(LLM):
         :type mode: InferenceMode, optional
         :param generation_config: The GenerationConfig object with the configurations to use for sampling, defaults to GenerationConfig()
         :type generation_config: GenerationConfig, optional
-        :param max_requests_per_batch: The maximum batch size to allow, defaults to 1
+        :param max_requests_per_batch: The maximum batch size to allow, defaults to 16
         :type max_requests_per_batch: int, optional
         :param max_seq_length: The maximum sequence length to allow per batch, defaults to 256
         :type max_seq_length: int, optional
-        :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 64
+        :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 128
         :type max_tokens_per_batch: int, optional
         :param model_specific_data_parallelism_degree: Use this parameter if you want to give the SSM a different data parallelism degree than the default one, defaults to 1
         :type model_specific_data_parallelism_degree: int, optional

@@ -48,7 +48,11 @@ void STARCODER::create_starcoder_model(
   ff.set_position_offset(0);
   {
     // assert(startcoder_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
-    int const token_dims[] = {BatchConfig::max_tokens_per_batch(), 1};
+    int const token_dims[] = {
+        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+            ? BatchConfig::max_verify_tokens_per_batch()
+            : BatchConfig::max_tokens_per_batch(),
+        1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
     position_input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
@@ -221,22 +225,26 @@ void STARCODER::create_starcoder_model(
   }
 
   InferenceManager *im = InferenceManager::get_inference_manager();
+  FileDataLoader *fileloader = new FileDataLoader(
+      "",
+      weight_file_path,
+      startcoder_config.num_attention_heads,
+      1,
+      startcoder_config.hidden_size,
+      startcoder_config.hidden_size / startcoder_config.num_attention_heads,
+      ff.config.tensor_parallelism_degree,
+      use_full_precision);
+  im->register_model_weights_loader(&ff, fileloader);
+#ifdef DEADCODE
   // Compile the model
   std::cout << "------start compile ----------" << std::endl;
   im->compile_model_and_allocate_buffer(&ff);
-  FileDataLoader fileloader("",
-                            weight_file_path,
-                            startcoder_config.num_attention_heads,
-                            1,
-                            startcoder_config.hidden_size,
-                            startcoder_config.hidden_size /
-                                startcoder_config.num_attention_heads,
-                            ff.config.tensor_parallelism_degree);
   fileloader.load_weights(&ff, use_full_precision);
   std::cout << "------load weight finished----------" << std::endl;
 
   // init operators
   im->init_operators_inference(&ff);
+#endif
 }
 
 }; // namespace FlexFlow

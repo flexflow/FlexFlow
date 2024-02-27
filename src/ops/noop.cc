@@ -90,9 +90,10 @@ OpMeta *NoOp::init_task(Task const *task,
                         std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
+  NoOp *no_op = (NoOp *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  // OpMeta *m = new OpMeta(handle);
-  return nullptr;
+  OpMeta *m = new OpMeta(handle, no_op);
+  return m;
 }
 
 void NoOp::init_inference(FFModel const &ff,
@@ -167,7 +168,7 @@ void NoOp::init_inference(FFModel const &ff,
     set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
     IndexLauncher launcher(NOOP_INIT_TASK_ID,
                            parallel_is,
-                           TaskArgument(NULL, 0),
+                           TaskArgument(this, sizeof(NoOp)),
                            argmap,
                            Predicate::TRUE_PRED,
                            false /*must*/,
@@ -244,7 +245,7 @@ void NoOp::init(FFModel const &ff) {
     set_argumentmap_for_init(ff, argmap);
     IndexLauncher launcher(NOOP_INIT_TASK_ID,
                            parallel_is,
-                           TaskArgument(NULL, 0),
+                           TaskArgument(this, sizeof(NoOp)),
                            argmap,
                            Predicate::TRUE_PRED,
                            false /*must*/,

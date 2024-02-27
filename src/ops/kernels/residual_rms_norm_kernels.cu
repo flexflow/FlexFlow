@@ -332,6 +332,7 @@ __global__ void ComputeInternalGradientsCUDAKernel(
 
 template <typename T>
 __global__ void RMSNormBackwardCUDAKernel(int64_t N,
+                                          T const *dX1_residual,
                                           T const *dY,
                                           T const *X,
                                           T const *gamma,
@@ -351,7 +352,7 @@ __global__ void RMSNormBackwardCUDAKernel(int64_t N,
     if (reset_input_grad1) {
       dX1[index] = static_cast<T>(dX_val);
     } else {
-      dX1[index] += static_cast<T>(dX_val);
+      dX1[index] = dX1_residual[index] + static_cast<T>(dX_val);
     }
     if (reset_input_grad2) {
       dX2[index] = static_cast<T>(dX1[index]);
@@ -399,6 +400,7 @@ void backward_kernel(ResidualRMSNormMeta const *m,
 
   RMSNormBackwardCUDAKernel<T><<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
       N,
+      nullptr,
       output_grad_ptr,
       residual_output_rms_input_ptr,
       weight_ptr,
@@ -421,9 +423,10 @@ void backward_kernel(ResidualRMSNormMeta const *m,
 template <typename T>
 void peft_bwd_kernel(ResidualRMSNormMeta const *m,
                      BatchConfig const *bc,
-                     T const *output_grad_ptr,
-                     T *residual_input0_grad_ptr,
-                     T *residual_input1_grad_ptr,
+                     T const *output_grad_0_ptr,
+                     T const *output_grad_1_ptr,
+                     T *input_grad_0_ptr,
+                     T *input_grad_1_ptr,
                      T const *weight_ptr,
                      cudaStream_t stream) {
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -448,7 +451,7 @@ void peft_bwd_kernel(ResidualRMSNormMeta const *m,
     ComputeInternalGradientsCUDAKernel<T>
         <<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
             N,
-            output_grad_ptr,
+            output_grad_1_ptr,
             residual_output_rms_input_ptr,
             weight_ptr,
             static_cast<T *>(m->rms_ptr),
@@ -457,13 +460,14 @@ void peft_bwd_kernel(ResidualRMSNormMeta const *m,
     RMSNormBackwardCUDAKernel<T>
         <<<M, std::min(N, CUDA_NUM_THREADS), 0, stream>>>(
             N,
-            output_grad_ptr,
+            output_grad_0_ptr,
+            output_grad_1_ptr,
             residual_output_rms_input_ptr,
             weight_ptr,
             static_cast<T *>(m->rms_ptr),
             static_cast<T *>(m->norm_ptr),
-            residual_input0_grad_ptr,
-            residual_input1_grad_ptr,
+            input_grad_0_ptr,
+            input_grad_1_ptr,
             m->reset_input_grads[0],
             m->reset_input_grads[1]);
   }
@@ -532,17 +536,12 @@ void backward_kernel_wrapper(
   }
 }
 
-/*
-  regions[0](I): RMS output_grad
-  regions[1](I/O): Residual input 0 grad
-  regions[2](I/O): Residual input 1 grad
-  regions[3](I): weight
-*/
 void peft_bwd_kernel_wrapper(ResidualRMSNormMeta const *m,
                              BatchConfig const *bc,
-                             GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorW const &residual_input0_grad,
-                             GenericTensorAccessorW const &residual_input1_grad,
+                             GenericTensorAccessorR const &output_grad_0,
+                             GenericTensorAccessorR const &output_grad_1,
+                             GenericTensorAccessorW const &input_grad_0,
+                             GenericTensorAccessorW const &input_grad_1,
                              GenericTensorAccessorR const &weight) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -552,24 +551,28 @@ void peft_bwd_kernel_wrapper(ResidualRMSNormMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  assert(output_grad.data_type == residual_input0_grad.data_type);
-  assert(residual_input0_grad.data_type == residual_input1_grad.data_type);
-  assert(residual_input1_grad.data_type == weight.data_type);
+  assert(output_grad_1.data_type == input_grad_0.data_type);
+  assert(input_grad_0.data_type == input_grad_1.data_type);
+  assert(input_grad_1.data_type == weight.data_type);
 
-  if (output_grad.data_type == DT_HALF) {
+  if (output_grad_1.data_type == DT_HALF) {
     peft_bwd_kernel(m,
                     bc,
-                    output_grad.get_half_ptr(),
-                    residual_input0_grad.get_half_ptr(),
-                    residual_input1_grad.get_half_ptr(),
+                    m->reset_input_grads[0] ? nullptr
+                                            : output_grad_0.get_half_ptr(),
+                    output_grad_1.get_half_ptr(),
+                    input_grad_0.get_half_ptr(),
+                    input_grad_1.get_half_ptr(),
                     weight.get_half_ptr(),
                     stream);
-  } else if (output_grad.data_type == DT_FLOAT) {
+  } else if (output_grad_1.data_type == DT_FLOAT) {
     peft_bwd_kernel(m,
                     bc,
-                    output_grad.get_float_ptr(),
-                    residual_input0_grad.get_float_ptr(),
-                    residual_input1_grad.get_float_ptr(),
+                    m->reset_input_grads[0] ? nullptr
+                                            : output_grad_0.get_float_ptr(),
+                    output_grad_1.get_float_ptr(),
+                    input_grad_0.get_float_ptr(),
+                    input_grad_1.get_float_ptr(),
                     weight.get_float_ptr(),
                     stream);
   } else {

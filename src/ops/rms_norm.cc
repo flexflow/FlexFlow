@@ -132,7 +132,7 @@ RMSNorm::RMSNorm(FFModel &model,
               params.eps,
               params.dim,
               allocate_weights,
-              name) {}
+              params.name) {}
 
 RMSNorm::RMSNorm(FFModel &model,
                  RMSNorm const &other,
@@ -630,7 +630,6 @@ Node RMSNorm::deserialize(FFModel &ff,
   params.eps = eps;
   params.dim = dim;
   strcpy(params.name, name);
-
   return ff.get_or_create_node<RMSNorm>(inputs[0], params);
 }
 

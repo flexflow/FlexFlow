@@ -1,8 +1,8 @@
 import os, re, torch
 import numpy as np
 abs_dirname = os.path.dirname(os.path.abspath(__file__))
-hf_path = os.path.join(abs_dirname, "hf_peft_tensors")
-ff_path = os.path.join(os.path.dirname(os.path.dirname(abs_dirname)), "build", "inference_tensors")
+hf_path = os.path.join(os.path.dirname(abs_dirname), "hf_peft_tensors")
+ff_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(abs_dirname))), "build", "inference_tensors")
 def print_unique_files_list(dirname):
     files_list = os.listdir(dirname)
     for f in sorted(files_list):

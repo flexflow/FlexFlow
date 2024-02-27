@@ -56,7 +56,7 @@ def top_level_task():
 
 
 if __name__ == "__main__":
-  print("Sequantial model, cifar10 cnn")
+  print("Sequential model, cifar10 cnn")
   configs = ff.get_configs()
   ff.init_flexflow_runtime(configs)
   top_level_task()

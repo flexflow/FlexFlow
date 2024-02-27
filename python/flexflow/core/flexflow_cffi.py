@@ -56,7 +56,7 @@ def get_c_name(name):
     if name is None:
         return ffi.NULL
     else:
-        return ffi.new("char[]", name.encode("ascii"))
+        return ffi.new("char[]", name.encode("utf-8"))
 
 
 def get_datatype_size(datatype):
@@ -3360,7 +3360,7 @@ class FFModel(object):
             handles_array[1], owner_op_type=OpType.RESIDUAL_RMS_NORM
         )
 
-    def arg_top_k(self, input, k, sorted, name=None):
+    def arg_top_k(self, input, k, sorted, speculative_decoding, name=None):
         """Defines the Arg TopK layer.
 
         :param input: the input Tensor.
@@ -3371,6 +3371,9 @@ class FFModel(object):
 
         :param sorted: Whether the entries should be sorted
         :type sorted: bool
+
+        :param speculative_decoding: Whether you need to perform beam search
+        :type speculative_decoding: bool
 
         :param name: the name of the layer. Default is None.
         :type name: string
@@ -3820,26 +3823,28 @@ class FFModel(object):
         assert ret_val == True
         return np_array
 
-    def generate(self, prompt, max_sequence_length):
-        c_input_text = get_c_name(prompt)
-        max_num_chars = 36000
-        c_output_text = ffi.new("char[]", max_num_chars)
-        c_output_length_and_tokens = ffi.new("int[]", max_sequence_length + 100)
+    def generate(self, prompt_list, max_sequence_length):
+        assert isinstance(prompt_list, list)
+        c_input_texts = [get_c_name(prompt) for prompt in prompt_list]
+        max_num_chars = 5 * (max_sequence_length + 100)
+        c_output_texts = [ffi.new("char[]", max_num_chars) for prompt in prompt_list]
+        c_output_length_and_tokens = [ffi.new("int[]", max_sequence_length + 100) for prompt in prompt_list]
         ffc().flexflow_model_generate(
             self.handle,
-            c_input_text,
+            len(prompt_list),
+            c_input_texts,
             max_num_chars,
-            c_output_text,
+            c_output_texts,
             max_sequence_length,
             c_output_length_and_tokens,
         )
-        output_length = c_output_length_and_tokens[0]
-        output_tokens = []
-        for i in range(output_length):
-            output_tokens.append(c_output_length_and_tokens[i + 1])
+        #output_length = c_output_length_and_tokens[0]
+        #output_tokens = []
+        #for i in range(output_length):
+        #    output_tokens.append(c_output_length_and_tokens[i + 1])
         from flexflow.serve import GenerationResult
 
-        return GenerationResult(ffi.string(c_output_text), output_tokens)
+        return [GenerationResult(ffi.string(c_output_text), []) for c_output_text in c_output_texts]
 
     def set_position_offset(self, offset):
         ffc().flexflow_model_set_position_offset(self.handle, offset)
@@ -4210,6 +4215,14 @@ class RequestManager(object):
         return ffc().flexflow_request_manager_set_max_sequence_length(
             self.handle, max_length)
 
+    def start_server(self, model):
+        return ffc().flexflow_request_manager_start_background_server(
+            self.handle, model.handle
+        )
+
+    def stop_server(self):
+        return ffc().flexflow_request_manager_terminate_background_server(
+            self.handle)
 # -----------------------------------------------------------------------
 # InferenceManager
 # -----------------------------------------------------------------------
@@ -4232,6 +4245,10 @@ class InferenceManager(object):
             self.handle, model.handle
         )
 
+    def register_model_weights_loader(self, model, fileloader):
+        ffc().flexflow_inference_manager_register_model_weights_loader(
+            self.handle, model.handle, fileloader.handle
+        )
 
 # -----------------------------------------------------------------------
 # FileDataLoader
@@ -4249,6 +4266,7 @@ class FileDataLoader(object):
         hidden_dim,
         qkv_inner_dim,
         tensor_parallelism_degree,
+        use_full_precision
     ):
         c_weight_file_path = get_c_name(weight_file_path)
         self.handle = ffc().flexflow_file_data_loader_create(
@@ -4258,13 +4276,14 @@ class FileDataLoader(object):
             hidden_dim,
             qkv_inner_dim,
             tensor_parallelism_degree,
+            use_full_precision
         )
         self._handle = ffi.gc(self.handle, ffc().flexflow_file_data_loader_destroy)
 
-    def load_weights(self, model, data_type):
+    def load_weights(self, model):
         # Check data type and create use_full_precision boolean
-        assert data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF
-        use_full_precision = data_type == DataType.DT_FLOAT
+        #assert data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF
+        #use_full_precision = data_type == DataType.DT_FLOAT
         ffc().flexflow_file_data_loader_load_weights(
-            self.handle, model.handle, use_full_precision
+            self.handle, model.handle
         )
