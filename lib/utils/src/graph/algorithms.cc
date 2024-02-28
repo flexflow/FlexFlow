@@ -334,23 +334,25 @@ std::unordered_map<NodePort, std::unordered_set<MultiDiEdge>>
 
 std::unordered_set<DownwardOpenMultiDiEdge>
     get_outgoing_edges(OpenMultiDiGraphView const &g, Node const &n) {
-  return value_all(narrow<DownwardOpenMultiDiEdge>(g.query_edges(OpenMultiDiEdgeQuery(
-                       InputMultiDiEdgeQuery::none(),
-                       MultiDiEdgeQuery::all().with_src_nodes({n}),
-                       OutputMultiDiEdgeQuery::all().with_src_nodes({n})))));
+  return value_all(
+      narrow<DownwardOpenMultiDiEdge>(g.query_edges(OpenMultiDiEdgeQuery(
+          InputMultiDiEdgeQuery::none(),
+          MultiDiEdgeQuery::all().with_src_nodes({n}),
+          OutputMultiDiEdgeQuery::all().with_src_nodes({n})))));
 }
 
 std::unordered_set<UpwardOpenMultiDiEdge>
     get_incoming_edges(OpenMultiDiGraphView const &g, Node const &n) {
-  return value_all(narrow<UpwardOpenMultiDiEdge>(g.query_edges(OpenMultiDiEdgeQuery(
-                       InputMultiDiEdgeQuery::all().with_dst_nodes({n}),
-                       MultiDiEdgeQuery::all().with_dst_nodes({n}),
-                       OutputMultiDiEdgeQuery::none()))));
+  return value_all(narrow<UpwardOpenMultiDiEdge>(g.query_edges(
+      OpenMultiDiEdgeQuery(InputMultiDiEdgeQuery::all().with_dst_nodes({n}),
+                           MultiDiEdgeQuery::all().with_dst_nodes({n}),
+                           OutputMultiDiEdgeQuery::none()))));
 }
 
 std::unordered_set<OutputMultiDiEdge>
     get_open_outputs(OpenMultiDiGraphView const &g) {
-  return narrow<OutputMultiDiEdge>(g.query_edges(OutputMultiDiEdgeQuery::all()));
+  return narrow<OutputMultiDiEdge>(
+      g.query_edges(OutputMultiDiEdgeQuery::all()));
 }
 std::unordered_set<InputMultiDiEdge>
     get_open_inputs(OpenMultiDiGraphView const &g) {

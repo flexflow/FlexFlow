@@ -446,9 +446,9 @@ std::unordered_set<OutputMultiDiEdge>
 OpenMultiDiSubgraphView::OpenMultiDiSubgraphView(
     OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
     : g(g), nodes(nodes) {
-        this->inputs = transform(get_cut_set(g, nodes), to_inputmultidiedge);
-        this->outputs = transform(get_cut_set(g, nodes), to_outputmultidiedge);
-      }
+  this->inputs = transform(get_cut_set(g, nodes), to_inputmultidiedge);
+  this->outputs = transform(get_cut_set(g, nodes), to_outputmultidiedge);
+}
 
 std::unordered_set<OpenMultiDiEdge>
     OpenMultiDiSubgraphView::query_edges(OpenMultiDiEdgeQuery const &q) const {
