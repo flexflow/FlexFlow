@@ -178,11 +178,11 @@ struct ToFinalAST {
   variant<Serial, Parallel, Node> operator()(SplitASTNode const &node) {
     if (node.type == SplitType::SERIAL) {
       return Serial{transform(node.children, [](SplitAST const &s) {
-        return narrow<Parallel, Node>(to_final_ast(s)).value();
+        return narrow<variant<Parallel, Node>>(to_final_ast(s)).value();
       })};
     } else {
       return Parallel{transform(node.children, [](SplitAST const &s) {
-        return narrow<Serial, Node>(to_final_ast(s)).value();
+        return narrow<variant<Serial, Node>>(to_final_ast(s)).value();
       })};
     }
   }

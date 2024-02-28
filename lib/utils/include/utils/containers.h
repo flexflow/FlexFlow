@@ -676,6 +676,16 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
 }
 
 template <typename T>
+std::unordered_set<T> value_all(std::unordered_set<optional<T>> const &v) {
+  return transform(v, [](optional<T> const &element) {
+    return unwrap(element, [] {
+      throw mk_runtime_error(
+          "Encountered element without value in call to value_all");
+    });
+  });
+}
+
+template <typename T>
 std::vector<T> subvec(std::vector<T> const &v,
                       optional<int> const &maybe_start,
                       optional<int> const &maybe_end) {

@@ -293,6 +293,8 @@ T reversed(T const &t);
 
 template <typename T>
 std::vector<T> value_all(std::vector<optional<T>> const &v);
+template <typename T>
+std::unordered_set<T> value_all(std::unordered_set<optional<T>> const &v);
 
 template <typename T>
 std::vector<T> subvec(std::vector<T> const &v,
