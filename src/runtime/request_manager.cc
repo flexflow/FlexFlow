@@ -2429,7 +2429,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
     // Compile the i-th ssm
     FFModel *ssm = get_ssm_model(i);
     im->compile_model_and_allocate_buffer(ssm);
-    assert(im->model_weights_loaders.find(llm) !=
+    assert(im->model_weights_loaders.find(ssm) !=
            im->model_weights_loaders.end());
     // Load model weights
     im->model_weights_loaders[ssm]->load_weights(ssm);
