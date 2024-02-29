@@ -190,6 +190,23 @@ Linear::Linear(FFModel &model,
   params.construct_mappings(*this->parallel_dims_mapping, input_shape);
   params.solve_dims(input_shape, output_shape, kernel_shape, bias_shape);
 
+  kernel_shape.dims[0].size = this->in_channels;
+  bias_shape.dims[0].degree = _input->dims[_input->num_dims - 1].degree;
+  bias_shape.dims[0].parallel_idx =
+      _input->dims[_input->num_dims - 1].parallel_idx;
+  bias_shape.dims[1].size = bias_shape.dims[1].degree = 1;
+  bias_shape.dims[1].parallel_idx = -1;
+  bias_shape.dims[bias_shape.num_dims - 1].size =
+      bias_shape.dims[bias_shape.num_dims - 1].degree = 1;
+  for (int i = 0; i < input_shape.num_dims - 1; i++) {
+    if (_input->dims[i].degree > 1) {
+      bias_shape.dims[bias_shape.num_dims - 1].size *= _input->dims[i].degree;
+      bias_shape.dims[bias_shape.num_dims - 1].degree *= _input->dims[i].degree;
+      bias_shape.dims[bias_shape.num_dims - 1].parallel_idx =
+          _input->dims[i].parallel_idx;
+    }
+  }
+
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
 
@@ -220,7 +237,6 @@ Linear::Linear(FFModel &model,
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       output_shape.num_dims, output_shape.dims, _data_type, this);
 
-  assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
 void Linear::init(FFModel const &ff) {
@@ -433,7 +449,7 @@ void Linear::forward_task_with_dim(Task const *task,
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
   int batch_size = acc_output.rect.volume() / out_dim;
   assert(acc_output.rect.volume() == static_cast<size_t>(out_dim * batch_size));
-  assert(acc_input.rect.volume() == static_cast<size_t>(in_dim * batch_size));
+  // assert(acc_input.rect.volume() == static_cast<size_t>(in_dim * batch_size));
   assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
   float const *acc_bias_ptr = NULL;
   if (m->use_bias) {

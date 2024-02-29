@@ -129,7 +129,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
   // op->name, op_config));
   // Cannot fuse parallel operators since they have different paralel_is
   // in forward and backward
-  assert(!op->is_parallel_op());
+  assert(!op->is_parallel_op() || op->op_type == OP_ALLREDUCE);
   // Currently don't consider nested fusion
   if (op->op_type == OP_FUSED) {
     return false;

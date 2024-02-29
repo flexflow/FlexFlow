@@ -122,6 +122,7 @@ def top_level_task():
     input_names = ["input_ids", "attention_mask"]
 
     print("Tracing the model...")
+    print(batch_size)
     hf_model = PyTorchModel(
         model, is_hf_model=True, input_names=input_names,
         batch_size=batch_size, seq_length=seq_length,

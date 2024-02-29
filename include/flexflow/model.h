@@ -151,6 +151,7 @@ enum TaskIDs {
   // Optimizer with NCCL
   SGD_UPD_NCCL_TASK_ID,
   ADAM_UPD_NCCL_TASK_ID,
+  ADAM_UNIFY_UPD_NCCL_TASK_ID,
   // Initializer
   GLOROT_INIT_TASK_ID,
   ZERO_INIT_TASK_ID,
@@ -190,6 +191,10 @@ enum TaskIDs {
   PIPELINE_INIT_TASK_ID,
   PIPELINE_FWD_TASK_ID,
   PIPELINE_BWD_TASK_ID,
+  ALLREDUCE_INIT_TASK_ID,
+  ALLREDUCE_INF_TASK_ID,
+  ALLREDUCE_FWD_TASK_ID,
+  ALLREDUCE_BWD_TASK_ID,
   FUSED_PARALLELOP_INIT_TASK_ID,
   FUSED_PARALLELOP_FWD_TASK_ID,
   FUSED_PARALLELOP_BWD_TASK_ID,
@@ -273,6 +278,7 @@ class Split;
 class TopK;
 class Transpose;
 class Combine;
+class AllReduce;
 class Repartition;
 class Reduction;
 class Replicate;
@@ -777,6 +783,7 @@ public:
   void get_metrics();
   void backward(int seq_length = -1);
   void update();
+  void unified_update();
   bool apply_fusion(std::vector<Op *> const &operators,
                     std::vector<Op *> &new_operators);
   Op *get_final_operator() const;
@@ -828,6 +835,8 @@ public:
   Legion::IndexSpace get_task_is(Legion::Domain const &domain) const;
   Legion::IndexSpace get_task_is(ParallelConfig const &pc) const;
   Legion::IndexSpace get_task_is(MachineView const &view) const;
+  bool is_transformer_block(int layer_idx) const;
+  bool is_mlp_block(int layer_idx) const;
   void create_operators_from_layers();
   Op *create_operator_from_layer(Layer *layer,
                                  std::vector<ParallelTensor> const &inputs);
@@ -854,6 +863,7 @@ public:
   int metrics_input;
   ParallelTensor parallel_label_tensor;
   Tensor label_tensor;
+  int num_inputs = 0;
 
   std::vector<Layer *> layers;
   std::vector<Op *> operators;
@@ -923,6 +933,8 @@ public:
                          Replicate *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReductionParams>,
                          Reduction *>,
+      std::unordered_map<std::pair<ParallelTensorShape, AllReduceParams>,
+                         AllReduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, CombineParams>,
                          Combine *>,
       std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,

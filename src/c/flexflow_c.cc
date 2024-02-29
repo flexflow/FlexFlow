@@ -178,6 +178,11 @@ void flexflow_model_update(flexflow_model_t handle_) {
   handle->update();
 }
 
+void flexflow_model_unified_update(flexflow_model_t handle_) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->unified_update();
+}
+
 void flexflow_model_compile(flexflow_model_t handle_,
                             enum LossType loss_type,
                             int *metrics,

@@ -226,10 +226,10 @@ LayerNorm::LayerNorm(FFModel &model,
       dims[i] = inputs[0]->dims[i];
     }
     assert(numInputs == 1);
-    dims[num_dims].degree = inputs[0]->dims[inputs[0]->num_dims - 2].degree;
+    dims[num_dims].degree = inputs[0]->dims[inputs[0]->num_dims - 1].degree;
     dims[num_dims].size = dims[num_dims].degree;
     dims[num_dims].parallel_idx =
-        inputs[0]->dims[inputs[0]->num_dims - 2].parallel_idx;
+        inputs[0]->dims[inputs[0]->num_dims - 1].parallel_idx;
     dims[num_dims].is_replica_dim = true;
     num_dims += 1;
 

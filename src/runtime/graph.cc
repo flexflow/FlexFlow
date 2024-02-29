@@ -39,6 +39,7 @@
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
@@ -1927,9 +1928,37 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
         model->config.numNodes * model->config.workersPerNode;
     data_parallel_view.stride[0] = 1;
     data_parallel_view.start_device_id = 0;
+    // Currently assume a 1D machine view is needed
+    assert(model->config.data_parallelism_degree == 1 ||
+           model->config.tensor_parallelism_degree == 1);
+    int degree = model->config.data_parallelism_degree *
+             model->config.tensor_parallelism_degree;
     for (auto const &node : curr_best_graph->inEdges) {
-      curr_optimal_views[node.first] = data_parallel_view;
+      Op const *op = node.first.ptr;
+      MachineView mv;
+      mv.device_type = MachineView::GPU;
+      mv.ndims = 1;
+      int total_parallel_degree = 1;
+      for (int i = 0; i < op->outputs[0]->num_dims; i++) {
+        total_parallel_degree *= op->outputs[0]->dims[i].degree;
+      }
+      mv.dim[0] = total_parallel_degree;
+      mv.stride[0] = 1;
+      mv.start_device_id = 0;
+      // std::cout << mv.start_device_id + degree - 1 << "\n";
+      // std::cout << model->config.numNodes << "\n";
+      // std::cout << model->config.workersPerNode << "\n";
+      // assert(false);
+      assert(mv.start_device_id + degree - 1 <
+             model->config.numNodes * model->config.workersPerNode);
+      curr_optimal_views[node.first] = mv;
+      for (int i = 0; i < node.first.ptr->numOutputs; i++) {
+        assert(node.first.ptr->outputs[i]->is_valid_machine_view(mv));
+      }
     }
+    // for (auto const &node : curr_best_graph->inEdges) {
+    //   curr_optimal_views[node.first] = data_parallel_view;
+    // }
     return std::make_pair(std::move(curr_best_graph), curr_optimal_views);
   }
 
@@ -2294,6 +2323,13 @@ GraphOptimalViewSerialized
         Reduction *reduction = (Reduction *)op;
         sez.serialize(reduction->reduction_dim);
         sez.serialize(reduction->reduction_degree);
+        break;
+      }
+       case OP_ALLREDUCE: {
+        AllReduce *allreduce = (AllReduce *)op;
+        sez.serialize(allreduce->allreduce_dim);
+        sez.serialize(strlen(allreduce->name));
+        sez.serialize(allreduce->name, strlen(allreduce->name));
         break;
       }
       case OP_COMBINE: {
@@ -2702,6 +2738,17 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(reduction_degree);
         node = get_or_create_node<Reduction>(inputs[0],
                                              {reduction_dim, reduction_degree});
+        break;
+      }
+      case OP_ALLREDUCE: {
+        assert(num_inputs == 1);
+        int allreduce_dim;
+        dez.deserialize(allreduce_dim);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
+        node = get_or_create_node<AllReduce>(inputs[0], {allreduce_dim});
         break;
       }
       case OP_FUSED_PARALLEL: {
