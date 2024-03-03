@@ -231,7 +231,7 @@ void FlexFlow::top_level_task(Task const *task,
   LoraLinearConfig peft_config =
       peft_model_name.empty()
           ? LoraLinearConfig::EmptyConfig
-          : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
+          : LoraLinearConfig(join_path({file_paths.cache_folder_path, "configs"}), peft_model_name);
 
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
