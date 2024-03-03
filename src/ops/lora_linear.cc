@@ -38,6 +38,16 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::LoraLinear;
 
+bool check_lora_layer_match(Layer *potential_target, std::string target_module_name) {
+  if (potential_target->op_type == OP_LINEAR && potential_target->name != nullptr && strlen(potential_target->name) > 0) {
+    std::string s(potential_target->name);
+    if (s.find(target_module_name) != std::string::npos && s.find("lora") == std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
 PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
   assert(config.enable_peft &&
          "Cannot add a LoRA layer if PEFT mode is not enabled");
@@ -51,71 +61,64 @@ PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
   for (std::string target_module_name : peft_config.target_modules) {
     assert(target_module_name.length() > 0 &&
            "LoRA target module name is empty");
-    // find target layer, and ensure uniqueness.
-    // if the target layer already has a LoRA layer, no need to add it again
-    // (keep track of layers with lora)
-    Layer *target_module = nullptr;
-    int idx;
-    for (Layer *it : layers) {
-      if (it->op_type == OP_LINEAR && it->name != nullptr &&
-          strlen(it->name) > 0) {
-        std::string s(it->name);
-        if (s.find(target_module_name) != std::string::npos) {
-          // Check that this is the only layer with target name
-          if (target_module != nullptr) {
-            fprintf(stderr,
-                    "Error, found two layers containing LoRA target module "
-                    "name '%s'. Layer 1: %s, Layer 2: %s\n",
-                    target_module_name.c_str(),
-                    target_module->name,
-                    it->name);
-            assert(false);
+    // find target layer
+    for (auto it = layers.begin(); it != layers.end(); ++it) {
+      Layer *target_module = *it;
+      bool match = check_lora_layer_match(target_module, target_module_name);
+      if (!match) continue;
+
+      if (base_layer_to_peft_layer.find(target_module) !=
+          base_layer_to_peft_layer.end()) {
+        // lora linear layer already added, no need to add again
+        Layer *peft_layer = base_layer_to_peft_layer[target_module];
+        peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
+      } else {
+        Tensor const input = target_module->inputs[0];
+        Tensor const output = target_module->outputs[0];
+        assert(input->data_type == output->data_type);
+        std::string name_ = target_module->name ? std::string(target_module->name)
+                                                : std::string("");
+        size_t last_underscore = name_.length() - 1;
+        for (int i = name_.length() - 1; i > 0; i--) {
+          if (!(std::isdigit(target_module->name[i]) || target_module->name[i] == '_')) {
+            break;
+          } else if (target_module->name[i] == '_') {
+            last_underscore = i;
           }
-          target_module = it;
         }
-      }
-      idx++;
-    }
-    Layer *peft_layer = nullptr;
-    if (base_layer_to_peft_layer.find(target_module) !=
-        base_layer_to_peft_layer.end()) {
-      // lora linear layer already added, no need to add again
-      peft_layer = base_layer_to_peft_layer[target_module];
-      peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
-    } else {
-      Tensor const input = target_module->inputs[0];
-      Tensor const output = target_module->outputs[0];
-      assert(input->data_type == output->data_type);
-      std::string name_ = target_module->name ? std::string(target_module->name)
-                                              : std::string("");
-      name_ += ".lora";
-      Layer *peft_layer = new Layer(this,
-                                    OP_LORA,
-                                    output->data_type,
-                                    name_.c_str(),
-                                    2 /*inputs*/,
-                                    0 /*weights*/,
-                                    1 /*outputs*/,
-                                    input,
-                                    output);
-      {
-        int numdims = output->num_dims;
-        int dims[MAX_TENSOR_DIM];
-        for (int i = 0; i < numdims; i++) {
-          dims[i] = output->dims[i];
+        name_.erase(last_underscore);
+
+        name_ += ".lora";
+        std::cout << "Adding layer " << name_ << std::endl;
+        Layer *peft_layer = new Layer(this,
+                                      OP_LORA,
+                                      output->data_type,
+                                      name_.c_str(),
+                                      2 /*inputs*/,
+                                      0 /*weights*/,
+                                      1 /*outputs*/,
+                                      input,
+                                      output);
+        {
+          int numdims = output->num_dims;
+          int dims[MAX_TENSOR_DIM];
+          for (int i = 0; i < numdims; i++) {
+            dims[i] = output->dims[i];
+          }
+          peft_layer->outputs[0] =
+              create_tensor_legion_ordering(numdims,
+                                            dims,
+                                            output->data_type,
+                                            peft_layer,
+                                            0,
+                                            true /*create_grad*/);
         }
-        peft_layer->outputs[0] =
-            create_tensor_legion_ordering(numdims,
-                                          dims,
-                                          output->data_type,
-                                          peft_layer,
-                                          0,
-                                          true /*create_grad*/);
+        layers.insert(it + 1, peft_layer);
+        ++it;
+        base_layer_to_peft_layer[target_module] = peft_layer;
+        peft_layer_to_peft_id[peft_layer] = std::vector<PEFTModelID>();
+        peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
       }
-      layers.insert(layers.begin() + idx + 1, peft_layer);
-      base_layer_to_peft_layer[target_module] = peft_layer;
-      peft_layer_to_peft_id[peft_layer] = std::vector<PEFTModelID>();
-      peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
     }
   }
 
