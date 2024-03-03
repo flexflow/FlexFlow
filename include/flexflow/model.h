@@ -1168,11 +1168,11 @@ public:
   std::vector<Op *> operators;
   std::vector<ParallelTensor> parameters;
   // PEFT related
-  std::unordered_map<Layer*, Layer*> base_layer_to_peft_layer;
-  std::unordered_map<Layer*, std::vector<PEFTModelID>> peft_layer_to_peft_id;
+  std::unordered_map<Layer *, Layer *> base_layer_to_peft_layer;
+  std::unordered_map<Layer *, std::vector<PEFTModelID>> peft_layer_to_peft_id;
   std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
-//   std::vector<Op *> peft_operators;
-  
+  //   std::vector<Op *> peft_operators;
+
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer

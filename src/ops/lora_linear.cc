@@ -39,7 +39,8 @@ using Legion::TaskLauncher;
 using namespace FlexFlow::Kernels::LoraLinear;
 
 PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
-  assert(config.enable_peft && "Cannot add a LoRA layer if PEFT mode is not enabled");
+  assert(config.enable_peft &&
+         "Cannot add a LoRA layer if PEFT mode is not enabled");
   if (peft_config.target_modules.size() == 0) {
     printf("PEFT config does not contain any target module\n");
     return PEFTModelID::NO_ID;
@@ -48,19 +49,26 @@ PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
   peft_configs[peft_model_id] = peft_config;
 
   for (std::string target_module_name : peft_config.target_modules) {
-    assert(target_module_name.length() > 0 && "LoRA target module name is empty");
+    assert(target_module_name.length() > 0 &&
+           "LoRA target module name is empty");
     // find target layer, and ensure uniqueness.
-    // if the target layer already has a LoRA layer, no need to add it again (keep track of layers with lora)
+    // if the target layer already has a LoRA layer, no need to add it again
+    // (keep track of layers with lora)
     Layer *target_module = nullptr;
     int idx;
     for (Layer *it : layers) {
-      if (it->op_type == OP_LINEAR && it->name != nullptr && strlen(it->name) > 0) {
+      if (it->op_type == OP_LINEAR && it->name != nullptr &&
+          strlen(it->name) > 0) {
         std::string s(it->name);
         if (s.find(target_module_name) != std::string::npos) {
           // Check that this is the only layer with target name
           if (target_module != nullptr) {
-            fprintf(stderr, "Error, found two layers containing LoRA target module name '%s'. Layer 1: %s, Layer 2: %s\n",
-            target_module_name.c_str(), target_module->name, it->name);
+            fprintf(stderr,
+                    "Error, found two layers containing LoRA target module "
+                    "name '%s'. Layer 1: %s, Layer 2: %s\n",
+                    target_module_name.c_str(),
+                    target_module->name,
+                    it->name);
             assert(false);
           }
           target_module = it;
@@ -69,7 +77,8 @@ PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
       idx++;
     }
     Layer *peft_layer = nullptr;
-    if (base_layer_to_peft_layer.find(target_module) != base_layer_to_peft_layer.end()) {
+    if (base_layer_to_peft_layer.find(target_module) !=
+        base_layer_to_peft_layer.end()) {
       // lora linear layer already added, no need to add again
       peft_layer = base_layer_to_peft_layer[target_module];
       peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
@@ -77,25 +86,31 @@ PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
       Tensor const input = target_module->inputs[0];
       Tensor const output = target_module->outputs[0];
       assert(input->data_type == output->data_type);
-      std::string name_ = target_module->name ? std::string(target_module->name) : std::string("");
+      std::string name_ = target_module->name ? std::string(target_module->name)
+                                              : std::string("");
       name_ += ".lora";
       Layer *peft_layer = new Layer(this,
-                          OP_LORA,
-                          output->data_type,
-                          name_.c_str(),
-                          2 /*inputs*/,
-                          0 /*weights*/,
-                          1 /*outputs*/,
-                          input,
-                          output);
+                                    OP_LORA,
+                                    output->data_type,
+                                    name_.c_str(),
+                                    2 /*inputs*/,
+                                    0 /*weights*/,
+                                    1 /*outputs*/,
+                                    input,
+                                    output);
       {
         int numdims = output->num_dims;
         int dims[MAX_TENSOR_DIM];
         for (int i = 0; i < numdims; i++) {
           dims[i] = output->dims[i];
         }
-        peft_layer->outputs[0] = create_tensor_legion_ordering(
-            numdims, dims, output->data_type, peft_layer, 0, true /*create_grad*/);
+        peft_layer->outputs[0] =
+            create_tensor_legion_ordering(numdims,
+                                          dims,
+                                          output->data_type,
+                                          peft_layer,
+                                          0,
+                                          true /*create_grad*/);
       }
       layers.insert(layers.begin() + idx + 1, peft_layer);
       base_layer_to_peft_layer[target_module] = peft_layer;
@@ -103,7 +118,7 @@ PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
       peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
     }
   }
-  
+
   return peft_model_id;
 }
 
@@ -112,9 +127,11 @@ Op *LoraLinear::create_operator_from_layer(
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   std::unordered_map<PEFTModelID, LoraLinearConfig> _peft_configs;
-  std::vector<PEFTModelID> const &peft_ids = model.peft_layer_to_peft_id[(Layer*)layer];
-  for (int i=0; i<peft_ids.size(); i++) {
-    _peft_configs.emplace(std::make_pair(peft_ids[i], model.peft_configs[peft_ids[i]]));
+  std::vector<PEFTModelID> const &peft_ids =
+      model.peft_layer_to_peft_id[(Layer *)layer];
+  for (int i = 0; i < peft_ids.size(); i++) {
+    _peft_configs.emplace(
+        std::make_pair(peft_ids[i], model.peft_configs[peft_ids[i]]));
   }
   return new LoraLinear(model,
                         layer->layer_guid,
@@ -122,15 +139,21 @@ Op *LoraLinear::create_operator_from_layer(
                         inputs[0],
                         inputs[1],
                         _peft_configs,
-                        layer->name);;
+                        layer->name);
+  ;
 }
 
 LoraLinear::LoraLinear(FFModel &model,
                        LoraLinear const &other,
                        ParallelTensor const input,
                        ParallelTensor const output)
-    : LoraLinear(
-          model, other.layer_guid, other.op_type, input, output, other.peft_configs, other.name) {}
+    : LoraLinear(model,
+                 other.layer_guid,
+                 other.op_type,
+                 input,
+                 output,
+                 other.peft_configs,
+                 other.name) {}
 
 LoraLinear::LoraLinear(FFModel &model,
                        Params const &params,
@@ -144,13 +167,14 @@ LoraLinear::LoraLinear(FFModel &model,
                  params.peft_configs,
                  params.name) {}
 
-LoraLinear::LoraLinear(FFModel &model,
-                       LayerID const &_layer_guid,
-                       OperatorType _op_type,
-                       ParallelTensor const _input,
-                       ParallelTensor const _output,
-                       std::unordered_map<PEFTModelID, LoraLinearConfig> const &_peft_configs,
-                       char const *name)
+LoraLinear::LoraLinear(
+    FFModel &model,
+    LayerID const &_layer_guid,
+    OperatorType _op_type,
+    ParallelTensor const _input,
+    ParallelTensor const _output,
+    std::unordered_map<PEFTModelID, LoraLinearConfig> const &_peft_configs,
+    char const *name)
     : Op(model,
          _op_type,
          _output->data_type,
@@ -179,8 +203,8 @@ LoraLinear::LoraLinear(FFModel &model,
     outputs[0] = model.create_parallel_tensor_legion_ordering(
         numdim, dims, inputs[1]->data_type, this);
   }
-  for (const auto& kv : _peft_configs) {
-    peft_configs.insert(kv); 
+  for (auto const &kv : _peft_configs) {
+    peft_configs.insert(kv);
   }
   // assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
@@ -300,8 +324,10 @@ OpMeta *LoraLinear::init_task(Task const *task,
 
   int shard_id = task->index_point.point_data[0];
   int num_dims = lora->inputs[0]->num_dims;
-  assert(in_dim == lora->inputs[0]->dims[0].size / lora->inputs[0]->dims[0].degree);
-  assert(out_dim == lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree);
+  assert(in_dim ==
+         lora->inputs[0]->dims[0].size / lora->inputs[0]->dims[0].degree);
+  assert(out_dim ==
+         lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree);
 
   DataType dt = m->input_type[0];
   assert(dt == m->input_type[1]);
@@ -311,25 +337,26 @@ OpMeta *LoraLinear::init_task(Task const *task,
   assert(dt == lora->outputs[0]->data_type);
 
   // get layer name
-  assert(lora->name != nullptr && "Layer name is not set, cannot determine weights location");
+  assert(lora->name != nullptr &&
+         "Layer name is not set, cannot determine weights location");
   std::string lora_layername = std::string(lora->name);
   std::string searchString = "lora";
   size_t found = lora_layername.find(searchString);
   if (found == std::string::npos) {
     std::cout << "LoraLinear layer name not in the right format (does not "
-                "contain word 'lora')"
+                 "contain word 'lora')"
               << std::endl;
     assert(false);
   }
   std::string lora_layername_substr =
       lora_layername.substr(0, found + searchString.length());
 
-  for (const auto& kv : lora->peft_configs) {
+  for (auto const &kv : lora->peft_configs) {
     PEFTModelID const &model_id = kv.first;
     LoraLinearConfig const &lora_config = kv.second;
-    
+
     int rank = lora_config.rank;
-    
+
     int w0_num_elements = rank * in_dim;
     int w1_num_elements = rank * out_dim;
 
@@ -338,8 +365,10 @@ OpMeta *LoraLinear::init_task(Task const *task,
     weight.out_dim = out_dim;
     weight.rank = rank;
     PEFTWeightAllocator *allocator = m->handle.peft_weight_allocator;
-    weight.w0_ptr = allocator->allocate_local_weights_untyped(model_id, w0_num_elements * data_type_size(dt));
-    weight.w1_ptr = allocator->allocate_local_weights_untyped(model_id, w1_num_elements * data_type_size(dt));
+    weight.w0_ptr = allocator->allocate_local_weights_untyped(
+        model_id, w0_num_elements * data_type_size(dt));
+    weight.w1_ptr = allocator->allocate_local_weights_untyped(
+        model_id, w1_num_elements * data_type_size(dt));
 
     // load weights from file
     std::string weights_folder_filepath = join_path({
@@ -347,10 +376,10 @@ OpMeta *LoraLinear::init_task(Task const *task,
         lora_config.peft_model_id,
         dt == DT_FLOAT ? "full-precision" : "half-precision",
     });
-    std::string w0_filepath =
-        join_path({weights_folder_filepath, lora_layername_substr + "_A_weight"});
-    std::string w1_filepath =
-        join_path({weights_folder_filepath, lora_layername_substr + "_B_weight"});
+    std::string w0_filepath = join_path(
+        {weights_folder_filepath, lora_layername_substr + "_A_weight"});
+    std::string w1_filepath = join_path(
+        {weights_folder_filepath, lora_layername_substr + "_B_weight"});
     if (dt == DT_FLOAT) {
       std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
                 << ", size: " << w0_num_elements << ", shard: " << shard_id
@@ -360,8 +389,11 @@ OpMeta *LoraLinear::init_task(Task const *task,
       std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
                 << ", size: " << w1_num_elements << ", shard: " << shard_id
                 << std::endl;
-      load_peft_from_file(
-          (float *)weight.w1_ptr, w1_num_elements, false, shard_id, w1_filepath);
+      load_peft_from_file((float *)weight.w1_ptr,
+                          w1_num_elements,
+                          false,
+                          shard_id,
+                          w1_filepath);
     } else if (dt == DT_HALF) {
       std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
                 << ", size: " << w0_num_elements << ", shard: " << shard_id
@@ -380,15 +412,19 @@ OpMeta *LoraLinear::init_task(Task const *task,
     if (lora->inputs[0]->dims[num_dims - 1].degree == 1) {
       // Input is partitioned (no replication)
       // w0_grad is local weight gradients
-      weight.w0_grad_ptr = allocator->allocate_local_weights_untyped(model_id, w0_num_elements * data_type_size(dt));
+      weight.w0_grad_ptr = allocator->allocate_local_weights_untyped(
+          model_id, w0_num_elements * data_type_size(dt));
       // w1_grad is sync weight gradients
-      weight.w1_grad_ptr = allocator->allocate_sync_weights_untyped(model_id, w1_num_elements * data_type_size(dt));
+      weight.w1_grad_ptr = allocator->allocate_sync_weights_untyped(
+          model_id, w1_num_elements * data_type_size(dt));
     } else {
       // Input is replicated
       // w0_grad is sync weight gradients
-      weight.w0_grad_ptr = allocator->allocate_sync_weights_untyped(model_id, w0_num_elements * data_type_size(dt));
+      weight.w0_grad_ptr = allocator->allocate_sync_weights_untyped(
+          model_id, w0_num_elements * data_type_size(dt));
       // w1_grad is local weight gradients
-      weight.w1_grad_ptr = allocator->allocate_local_weights_untyped(model_id, w1_num_elements * data_type_size(dt));
+      weight.w1_grad_ptr = allocator->allocate_local_weights_untyped(
+          model_id, w1_num_elements * data_type_size(dt));
     }
     assert(m->model_weights.find(model_id) == m->model_weights.end());
     m->model_weights[model_id] = weight;
@@ -757,8 +793,9 @@ bool LoraLinear::measure_operator_cost(Simulator *sim,
 }
 
 bool operator==(LoraLinearParams const &lhs, LoraLinearParams const &rhs) {
-  if (lhs.layer_guid == rhs.layer_guid && lhs.type == rhs.type && lhs.peft_configs.size() == rhs.peft_configs.size()) {
-    for (const auto& kv : lhs.peft_configs) {
+  if (lhs.layer_guid == rhs.layer_guid && lhs.type == rhs.type &&
+      lhs.peft_configs.size() == rhs.peft_configs.size()) {
+    for (auto const &kv : lhs.peft_configs) {
       auto it = rhs.peft_configs.find(kv.first);
       if (it == rhs.peft_configs.end() || !(it->second == kv.second)) {
         return false;
@@ -775,9 +812,28 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->op_type);
   sez.serialize(this->peft_configs.size());
-  for (const auto& kv : this->peft_configs) {
-    sez.serialize(kv.first);
-    sez.serialize(kv.second);
+  for (auto const &kv : this->peft_configs) {
+    // Serialize PEFTModelID
+    sez.serialize(kv.first.id);
+    // Serialize LoraLinearConfig
+    sez.serialize(kv.second.rank);
+    sez.serialize(kv.second.optimizer_type);
+    sez.serialize(kv.second.learning_rate);
+    sez.serialize(kv.second.config_folder.length());
+    sez.serialize(kv.second.config_folder.c_str(),
+                  kv.second.config_folder.length());
+    sez.serialize(kv.second.peft_model_id.length());
+    sez.serialize(kv.second.peft_model_id.c_str(),
+                  kv.second.peft_model_id.length());
+    sez.serialize(kv.second.lora_alpha);
+    sez.serialize(kv.second.lora_dropout);
+    sez.serialize(kv.second.target_modules.size());
+    sez.serialize(kv.second.load_weights_from_file);
+    for (int i = 0; i < kv.second.target_modules.size(); i++) {
+      sez.serialize(kv.second.target_modules[i].length());
+      sez.serialize(kv.second.target_modules[i].c_str(),
+                    kv.second.target_modules[i].length());
+    }
   }
   sez.serialize(strlen(this->name));
   sez.serialize(this->name, strlen(this->name));
@@ -793,22 +849,61 @@ Node LoraLinear::deserialize(FFModel &ff,
   size_t id, transformer_layer_id, deserialized_model_id;
   OperatorType op_type;
   size_t num_pefts;
-  PEFTModelID peft_model_id;
-  LoraLinearConfig peft_config;
   size_t name_len;
   char name[MAX_OPNAME] = {0};
-  
+
   LoraLinearParams params;
-  
+
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
   dez.deserialize(deserialized_model_id);
   dez.deserialize(op_type);
   dez.deserialize(num_pefts);
-  for (int i=0; i<num_pefts; i++) {
-    dez.deserialize(peft_model_id);
-    dez.deserialize(peft_config);
-    params.peft_configs.emplace(std::make_pair(peft_model_id, peft_config));
+  for (int i = 0; i < num_pefts; i++) {
+    // Deserialize PEFTModelID
+    size_t pid;
+    dez.deserialize(pid);
+    PEFTModelID peft_model_id(pid);
+    // Deserialize LoraLinearConfig
+    int rank;
+    OptimizerType optimizer_type;
+    float learning_rate;
+    dez.deserialize(rank);
+    dez.deserialize(optimizer_type);
+    dez.deserialize(learning_rate);
+    LoraLinearConfig lora_linear_config(rank, optimizer_type, learning_rate);
+    size_t string_size;
+    char buffer[4096] = {0};
+    // deserialize config_folder
+    dez.deserialize(string_size);
+    dez.deserialize(buffer, string_size);
+    lora_linear_config.config_folder = std::string(buffer);
+    string_size = 0;
+    memset(buffer, 0, 4096);
+    // deserialize peft_model_id
+    dez.deserialize(string_size);
+    dez.deserialize(buffer, string_size);
+    lora_linear_config.peft_model_id = std::string(buffer);
+    string_size = 0;
+    memset(buffer, 0, 4096);
+    // deserialize lora_alpha and lora_dropout
+    dez.deserialize(lora_linear_config.lora_alpha);
+    dez.deserialize(lora_linear_config.lora_dropout);
+    // deserialize target_modules
+    size_t num_target_modules = 0;
+    dez.deserialize(num_target_modules);
+    for (int i = 0; i < num_target_modules; i++) {
+      dez.deserialize(string_size);
+      dez.deserialize(buffer, string_size);
+      lora_linear_config.target_modules.push_back(std::string(buffer));
+      string_size = 0;
+      memset(buffer, 0, 4096);
+    }
+    // deserialize load_weights_from_file
+    dez.deserialize(lora_linear_config.load_weights_from_file);
+    // Append entry to list
+    params.peft_configs.emplace(
+        std::make_pair(peft_model_id, lora_linear_config));
   }
   dez.deserialize(name_len);
   dez.deserialize(name, name_len);
@@ -853,9 +948,17 @@ size_t hash<FlexFlow::LoraLinearParams>::operator()(
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.layer_guid.transformer_layer_id);
   hash_combine(key, params.layer_guid.model_id);
-  for (const auto& kv : params.peft_configs) {
-    hash_combine(key, kv.first);
-    hash_combine(key, kv.second);
+  for (auto const &kv : params.peft_configs) {
+    hash_combine(key, kv.first.id);
+    hash_combine(key, kv.second.rank);
+    hash_combine(key, kv.second.optimizer_type);
+    hash_combine(key, kv.second.learning_rate);
+    hash_combine(key, kv.second.config_folder);
+    hash_combine(key, kv.second.peft_model_id);
+    hash_combine(key, kv.second.lora_alpha);
+    hash_combine(key, kv.second.lora_dropout);
+    hash_combine(key, kv.second.target_modules);
+    hash_combine(key, kv.second.load_weights_from_file);
   }
   return key;
 }
