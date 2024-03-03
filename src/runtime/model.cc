@@ -612,7 +612,9 @@ void Op::finish_nccl_comms_task(Task const *task,
                                 Context ctx,
                                 Runtime *runtime) {
   ncclComm_t comm = *((ncclComm_t *)task->local_args);
+#if (NCCL_MAJOR == 2) && (NCCL_MINOR >= 14)
   checkNCCL(ncclCommFinalize(comm));
+#endif
   checkNCCL(ncclCommDestroy(comm));
 }
 #endif
