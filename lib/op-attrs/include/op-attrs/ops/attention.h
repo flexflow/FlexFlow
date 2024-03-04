@@ -43,7 +43,7 @@ public:
   TensorType value;
 };
 
-int  (MultiHeadAttentionAttrs const &);
+int get_qProjSize(MultiHeadAttentionAttrs const &);
 int get_vProjSize(MultiHeadAttentionAttrs const &);
 int get_kProjSize(MultiHeadAttentionAttrs const &);
 int get_oProjSize(MultiHeadAttentionAttrs const &);

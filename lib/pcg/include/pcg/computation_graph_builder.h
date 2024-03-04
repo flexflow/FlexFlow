@@ -2,6 +2,7 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_COMPUTATION_GRAPH_BUILDER_H
 
 #include "computation_graph.h"
+#include "optimizer.h"
 
 namespace FlexFlow {
 
@@ -39,14 +40,25 @@ public:
              optional<std::string> const &name = nullopt);
   // Add a rsqrt layer
   Tensor rsqrt(Tensor const &x,
-               optional<std::string> const &n std::vector<Tensor> const &inputs,
-               t);
+               optional<std::string> const &name);
+// add a pow layer
+    Tensor pow(Tensor const &x,
+                float exp,
+               optional<std::string> const &name);
+    Tensor scalar_add(Tensor const &x,
+                    float scalar,
+                    optional<std::string> const &name = nullopt);
   Tensor scalar_sub(Tensor const &lhs,
                     float rhs,
                     optional<std::string> const &name = nullopt);
+Tensor scalar_multiply(Tensor const &input,
+                    float scalar,
+                    optional<std::string> const &name = nullopt);
   Tensor scalar_truediv(Tensor const &numerator,
-                        float denomin SGDOptimizer optimizer = get_optimizer(0.01, 0.01, false, 1e-5));
+                        float denomin,
+                        optional<std::string> const &name = nullopt);
 
+  Tensor sin(Tensor const &x, optional<std::string> const &name = nullopt);
   Tensor cos(Tensor const &x, optional<std::string> const &name = nullopt);
   // Add an activation layer
   Tensor relu(Tensor const &x, optional<std::string> const &name = nullopt);

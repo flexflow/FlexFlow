@@ -1,4 +1,4 @@
-#include "fused_parallel_op_attrs.h"
+#include "op-attrs/ops/fused_parallel_op.h"
 
 namespace FlexFlow {
 

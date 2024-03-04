@@ -154,31 +154,32 @@ Tensor ComputationGraphBuilder::element_binary(
 Tensor ComputationGraphBuilder::dense(Tensor const &input,
                                       int outDim,
                                       Activation activation,
-                                      bool use_bias = true,
-                                      DataType data_type = DataType::FLOAT,
-                                      optional<Initializer const &> kernel_initializer = nullopt,
-                                      optional<Initializer const &> bias_initializer = nullopt,
-                                      optional<std::string> const &name = nullopt) {
+                                      bool use_bias,
+                                      DataType data_type,
+                                      optional<Initializer const &> kernel_initializer,
+                                      optional<Initializer const &> bias_initializer,
+                                      optional<std::string> const &name) {
   LinearAttrs attrs = {outDim,
                        use_bias,
                        data_type,
-                       activation};
+                       activation,
+                       nullopt};
   std::string unwrapped_name = name.value_or(get_default_name(attrs));
 
-  Tensor input = this->as_type(input, data_type, unwrapped_name + "input_pre_cast");
+  Tensor input_recast = this->as_type(input, data_type, unwrapped_name + "input_recast");
 
   Layer layer = {attrs, name};
-  TensorShape output_shape = get_output_shape(attrs, input);
+  TensorShape output_shape = get_output_shape(attrs, input_recast);
 
   std::vector<std::pair<TensorShape, optional<Initializer>>> weights;
 
-  weights.push_back({get_weights_shape(attrs, input), kernel_initializer});
+  weights.push_back({get_weights_shape(attrs, input_recast), kernel_initializer});
 
   if (use_bias) {
-    weights.push_back({get_bias_shape(attrs, input), bias_initializer});
+    weights.push_back({get_bias_shape(attrs, input_recast), bias_initializer});
   }
 
-  return this->add_layer(layer, {input}, weights, output_shape);
+  return this->add_layer(layer, {input_recast}, weights, output_shape);
 }
 
 Tensor ComputationGraphBuilder::exp(Tensor const &input,

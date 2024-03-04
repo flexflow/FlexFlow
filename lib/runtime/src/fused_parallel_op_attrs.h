@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_FUSED_PARALLEL_OP_ATTRS_H
-#define _FLEXFLOW_FUSED_PARALLEL_OP_ATTRS_H
+#ifndef _FLEXFLOW_FUSED_PARALLEL_OP_H
+#define _FLEXFLOW_FUSED_PARALLEL_OP_H
 
 #include "op-attrs/ops/core.h"
 #include "op-attrs/parallel_tensor_shape.h"
