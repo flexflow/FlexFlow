@@ -21,7 +21,7 @@ Tensor ComputationGraphBuilder::add_layer(
   Node new_node = computation_graph.add_node(layer);
 
   size_t incoming_edge_dst_port = 0;
-  for (Tensor input: inputs) {
+  for (Tensor input : inputs) {
     MultiDiEdge edge = computation_graph.get_edge(input);
     edge.dst = new_node;
     edge.dst_idx = NodePort::construct_port(incoming_edge_dst_port++);
@@ -42,7 +42,7 @@ std::vector<Tensor> ComputationGraphBuilder::add_layer(
   Node new_node = computation_graph.add_node(layer);
 
   size_t incoming_edge_dst_port = 0;
-  for (Tensor input: inputs) {
+  for (Tensor input : inputs) {
     MultiDiEdge edge = computation_graph.get_edge(input);
     edge.dst = new_node;
     edge.dst_idx = NodePort::construct_port(incoming_edge_dst_port++);
@@ -51,9 +51,10 @@ std::vector<Tensor> ComputationGraphBuilder::add_layer(
   size_t outgoing_edge_src_port = 0;
   std::vector<Tensor> output_tensors;
   bool create_grad = true;
-  for (TensorShape output_shape: output_shapes) {
+  for (TensorShape output_shape : output_shapes) {
     Tensor output_tensor = this->create_tensor(output_shape, create_grad);
-    computation_graph.add_edge_with_src(output_tensor, outgoing_edge_src_port++);
+    computation_graph.add_edge_with_src(output_tensor,
+                                        outgoing_edge_src_port++);
     output_tensors.push_back(output_tensor);
   }
 
@@ -151,29 +152,28 @@ Tensor ComputationGraphBuilder::element_binary(
   return this->add_layer(layer, {lhs_input, rhs_input}, {}, output_shape);
 }
 
-Tensor ComputationGraphBuilder::dense(Tensor const &input,
-                                      int outDim,
-                                      Activation activation,
-                                      bool use_bias,
-                                      DataType data_type,
-                                      optional<Initializer const &> kernel_initializer,
-                                      optional<Initializer const &> bias_initializer,
-                                      optional<std::string> const &name) {
-  LinearAttrs attrs = {outDim,
-                       use_bias,
-                       data_type,
-                       activation,
-                       nullopt};
+Tensor ComputationGraphBuilder::dense(
+    Tensor const &input,
+    int outDim,
+    Activation activation,
+    bool use_bias,
+    DataType data_type,
+    optional<Initializer const &> kernel_initializer,
+    optional<Initializer const &> bias_initializer,
+    optional<std::string> const &name) {
+  LinearAttrs attrs = {outDim, use_bias, data_type, activation, nullopt};
   std::string unwrapped_name = name.value_or(get_default_name(attrs));
 
-  Tensor input_recast = this->as_type(input, data_type, unwrapped_name + "input_recast");
+  Tensor input_recast =
+      this->as_type(input, data_type, unwrapped_name + "input_recast");
 
   Layer layer = {attrs, name};
   TensorShape output_shape = get_output_shape(attrs, input_recast);
 
   std::vector<std::pair<TensorShape, optional<Initializer>>> weights;
 
-  weights.push_back({get_weights_shape(attrs, input_recast), kernel_initializer});
+  weights.push_back(
+      {get_weights_shape(attrs, input_recast), kernel_initializer});
 
   if (use_bias) {
     weights.push_back({get_bias_shape(attrs, input_recast), bias_initializer});

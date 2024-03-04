@@ -43,7 +43,11 @@ using OpArgSpec = variant<ConcreteArgSpec,
 
 struct OpArgSpecTypeAccessor {
   std::type_index operator()(OpArgSpec &spec) {
-    return std::visit([](auto&& arg) -> std::type_index {return arg.get_type_tag().get_type_idx()}, spec);
+    return std::visit(
+        [](auto &&arg) -> std::type_index {
+          return arg.get_type_tag().get_type_idx()
+        },
+        spec);
   }
 };
 

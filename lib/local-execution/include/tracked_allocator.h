@@ -15,7 +15,7 @@ struct TrackedAllocator : public IAllocator {
   size_t get_ptr_memory_size(void *);
 
 private:
-  std::unordered_map<void*, size_t> ptr_memory_size_mapping;
+  std::unordered_map<void *, size_t> ptr_memory_size_mapping;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalAllocator);
 

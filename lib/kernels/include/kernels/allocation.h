@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_KERNELS_ALLOCATION_H
 #define _FLEXFLOW_KERNELS_ALLOCATION_H
 
-#include "pcg/tensor.h"
 #include "accessor.h"
+#include "pcg/tensor.h"
 #include <cstddef>
 #include <memory>
 
@@ -19,11 +19,12 @@ struct Allocator {
   Allocator() = delete;
 
   GenericTensorAccessorW allocate(Tensor tensor) {
-    void * ptr = this->i_allocator->allocate(tensor.get_volume());
-    GenericTensorAccessorW tensor_backing = {tensor.data_type, tensor.get_shape(), ptr}; 
+    void *ptr = this->i_allocator->allocate(tensor.get_volume());
+    GenericTensorAccessorW tensor_backing = {
+        tensor.data_type, tensor.get_shape(), ptr};
     return tensor_backing;
   }
-  
+
   void deallocate(GenericTensorAccessorW tensor_backing) {
     this->i_allocator->deallocate(tensor_backing.ptr);
   }

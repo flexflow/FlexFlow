@@ -14,7 +14,7 @@ struct LocalAllocator : public IAllocator {
   void deallocate(void *) override;
 
 private:
-  std::unordered_set<void*> ptrs;
+  std::unordered_set<void *> ptrs;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalAllocator);
 

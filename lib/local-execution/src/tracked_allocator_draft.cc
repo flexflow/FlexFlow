@@ -1,5 +1,5 @@
-#include "tracked_allocator.h"
 #include "kernels/cuda_helper.h"
+#include "tracked_allocator.h"
 
 namespace FlexFlow {
 

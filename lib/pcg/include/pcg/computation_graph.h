@@ -2,9 +2,9 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_COMPUTATION_GRAPH_H
 
 #include "layer.h"
-#include "tensor_guid_t.h"
 #include "operator_guid_t.h"
 #include "tensor.h"
+#include "tensor_guid_t.h"
 #include "utils/graph.h"
 #include "utils/strong_typedef.h"
 #include "visit_struct/visit_struct.hpp"
@@ -24,6 +24,5 @@ struct ComputationGraph
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(ComputationGraph);
 
 } // namespace FlexFlow
-
 
 #endif

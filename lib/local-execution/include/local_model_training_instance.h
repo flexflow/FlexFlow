@@ -22,7 +22,7 @@ FF_VISITABLE_STRUCT(TrainingConfig,
                     enable_profiling);
 
 struct TrainingComputationGraph {
-  ComputationGraph const & computation_graph;
+  ComputationGraph const &computation_graph;
   tensor_guid_t logit_tensor;
   tensor_guid_t label_tensor;
   LossAttrs loss;

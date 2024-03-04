@@ -34,13 +34,10 @@ FF_VISITABLE_STRUCT(
     LinearAttrs, out_channels, use_bias, data_type, activation, regularizer);
 CHECK_VALID_OP_ATTR(LinearAttrs);
 
-TensorShape
-    get_weights_shape(LinearAttrs const &attrs,
-                      TensorShape const &input);
+TensorShape get_weights_shape(LinearAttrs const &attrs,
+                              TensorShape const &input);
 
-TensorShape
-    get_bias_shape(LinearAttrs const &attrs,
-                      TensorShape const &input);
+TensorShape get_bias_shape(LinearAttrs const &attrs, TensorShape const &input);
 
 } // namespace FlexFlow
 

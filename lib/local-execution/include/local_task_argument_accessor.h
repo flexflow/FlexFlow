@@ -9,7 +9,8 @@
 namespace FlexFlow {
 
 using SlotGradId = std::pair<slot_id, IsGrad>;
-using SlotTensorMapping = std::unordered_map<SlotGradId, GenericTensorAccessorW>;
+using SlotTensorMapping =
+    std::unordered_map<SlotGradId, GenericTensorAccessorW>;
 
 struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 

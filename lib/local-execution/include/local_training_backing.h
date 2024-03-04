@@ -32,13 +32,15 @@ struct TaskSignatureImpl {
 };
 
 struct TaskRegistry {
-  TaskRegistry ();
-  void register_task (task_id_t);
-  bool is_tensor_allocated(OperatorSlotBackingId src_op_slot, OperatorSlotBackingId dst_op_slot);
+  TaskRegistry();
+  void register_task(task_id_t);
+  bool is_tensor_allocated(OperatorSlotBackingId src_op_slot,
+                           OperatorSlotBackingId dst_op_slot);
   void get_tensor_backing(OperatorSlotBackingId op_slot_id);
 
   std::unordered_map<task_id_t, TaskSignatureImpl> task_mapping;
-  std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW> tensor_mapping;
+  std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW>
+      tensor_mapping;
   std::unordered_map<OperatorSlotBackingId, std::type_index> arg_mapping;
 };
 
@@ -59,9 +61,9 @@ struct LocalTrainingBacking {
   TaskArgumentAccessor get_task_arg_accessor(OpTaskInvocation);
 
 private:
-  Allocator const & allocator;
-  ComputationGraph const & computation_graph;
-  TaskRegistry const & task_registry;
+  Allocator const &allocator;
+  ComputationGraph const &computation_graph;
+  TaskRegistry const &task_registry;
 };
 
 } // namespace FlexFlow

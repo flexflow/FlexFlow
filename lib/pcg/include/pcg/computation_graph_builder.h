@@ -39,21 +39,18 @@ public:
              Tensor const &y,
              optional<std::string> const &name = nullopt);
   // Add a rsqrt layer
-  Tensor rsqrt(Tensor const &x,
-               optional<std::string> const &name);
-// add a pow layer
-    Tensor pow(Tensor const &x,
-                float exp,
-               optional<std::string> const &name);
-    Tensor scalar_add(Tensor const &x,
+  Tensor rsqrt(Tensor const &x, optional<std::string> const &name);
+  // add a pow layer
+  Tensor pow(Tensor const &x, float exp, optional<std::string> const &name);
+  Tensor scalar_add(Tensor const &x,
                     float scalar,
                     optional<std::string> const &name = nullopt);
   Tensor scalar_sub(Tensor const &lhs,
                     float rhs,
                     optional<std::string> const &name = nullopt);
-Tensor scalar_multiply(Tensor const &input,
-                    float scalar,
-                    optional<std::string> const &name = nullopt);
+  Tensor scalar_multiply(Tensor const &input,
+                         float scalar,
+                         optional<std::string> const &name = nullopt);
   Tensor scalar_truediv(Tensor const &numerator,
                         float denomin,
                         optional<std::string> const &name = nullopt);

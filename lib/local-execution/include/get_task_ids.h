@@ -40,7 +40,9 @@ std::vector<task_id_t> get_task_ids(ReplicateAttrs const &);
 
 template <typename... Ts>
 std::vector<task_id_t> get_task_ids(variant<Ts...> const &attrs) {
-  return std::visit([](auto&& arg) -> std::vector<task_id_t> {return get_task_ids(arg)}, attrs);
+  return std::visit(
+      [](auto &&arg) -> std::vector<task_id_t> { return get_task_ids(arg) },
+      attrs);
 }
 
 } // namespace FlexFlow

@@ -16,8 +16,7 @@ void LocalAllocator::deallocate(void *ptr) {
 }
 
 LocalAllocator::~LocalAllocator() {
-  for (auto it = this->ptrs.begin();
-       it != this->ptrs.end();) {
+  for (auto it = this->ptrs.begin(); it != this->ptrs.end();) {
     void *ptr = *it;
     it++;
     this->deallocate(ptr);
