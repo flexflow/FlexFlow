@@ -9,10 +9,11 @@
 namespace FlexFlow {
 
 using SlotGradId = std::pair<slot_id, IsGrad>;
+using SlotTensorMapping = std::unordered_map<SlotGradId, GenericTensorAccessorW>;
 
 struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
-  LocalTaskArgumentAccessor(Allocator);
+  LocalTaskArgumentAccessor() = default;
 
   template <typename T>
   T const &get_argument(slot_id) const;
@@ -23,8 +24,7 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
   template <typename T>
   std::vector<T> get_variadic_argument(slot_id) const;
 
-  template <Permissions PRIV>
-  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot, bool is_grad) const;
+  PrivilegeType get_tensor(slot_id slot, bool is_grad) const override;
 
   template <Permissions PRIV>
   privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const;
@@ -38,7 +38,7 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
 private:
   Allocator allocator;
-  std::unordered_map<SlotGradId, GenericTensorAccessorW> tensor_backing_map;
+  SlotTensorMapping tensor_backing_map;
 
   template <typename T>
   std::unordered_map<slot_id, T> argument_map;

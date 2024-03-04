@@ -2,6 +2,7 @@
 #define _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_MODEL_TRAINING_INSTANCE_H
 
 #include "legion_backing.h"
+#include "local-execution/local_model_training_instance.h"
 #include "pcg/computation_graph.h"
 #include "pcg/optimizer.h"
 #include "pcg/tensor_mapping.h"
@@ -12,9 +13,7 @@
 namespace FlexFlow {
 
 struct ModelTrainingInstance {
-  ComputationGraph computation_graph;
-  Optimizer optimizer;
-  EnableProfiling enable_profiling;
+  TrainingConfig training_config;
   TrainingPCG training_pcg;
   TensorMapping tensor_map;
   LegionBacking legion_backing;

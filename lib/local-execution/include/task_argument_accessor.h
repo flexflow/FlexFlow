@@ -21,7 +21,7 @@ using PrivilegeVariadicType =
 struct ITaskArgumentAccessor {
   ITaskArgumentAccessor &operator=(ITaskArgumentAccessor const &) = delete;
 
-  virtual PrivilegeType get_tensor(slot_id slot, Permissions priv) const = 0;
+  virtual PrivilegeType get_tensor(slot_id slot, bool is_grad) const = 0;
 
   virtual PrivilegeVariadicType get_variadic_tensor(slot_id slot,
                                                     Permissions priv) const = 0;

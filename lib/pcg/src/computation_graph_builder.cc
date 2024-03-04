@@ -6,27 +6,58 @@
 
 namespace FlexFlow {
 
-void ComputationGraphBuilder::add_layer(Layer const &layer,
-                                        std::vector<Tensor> const &inputs,
-                                        std::vector<Tensor> const &weights,
-                                        std::vector<Tensor> const &outputs) {
-  NOT_IMPLEMENTED();
-}
+// void ComputationGraphBuilder::add_layer(Layer const &layer,
+//                                         std::vector<Tensor> const &inputs,
+//                                         std::vector<Tensor> const &weights,
+//                                         std::vector<Tensor> const &outputs) {
+//   NOT_IMPLEMENTED();
+// }
 Tensor ComputationGraphBuilder::add_layer(
     Layer const &layer,
     std::vector<Tensor> const &inputs,
     std::vector<std::pair<TensorShape, optional<Initializer>>> const
         &weight_shapes,
     TensorShape const &output_shape) {
-  NOT_IMPLEMENTED();
+  Node new_node = computation_graph.add_node(layer);
+
+  size_t incoming_edge_dst_port = 0;
+  for (Tensor input: inputs) {
+    MultiDiEdge edge = computation_graph.get_edge(input);
+    edge.dst = new_node;
+    edge.dst_idx = NodePort::construct_port(incoming_edge_dst_port++);
+  }
+
+  bool create_grad = true;
+  Tensor output_tensor = this->create_tensor(output_shape, create_grad);
+  computation_graph.add_edge_with_src(output_tensor, 0);
+  return output_tensor;
 }
+
 std::vector<Tensor> ComputationGraphBuilder::add_layer(
     Layer const &layer,
     std::vector<Tensor> const &inputs,
     std::vector<std::pair<TensorShape, optional<Initializer>>> const
         &weight_shapes,
     std::vector<TensorShape> const &output_shapes) {
-  NOT_IMPLEMENTED();
+  Node new_node = computation_graph.add_node(layer);
+
+  size_t incoming_edge_dst_port = 0;
+  for (Tensor input: inputs) {
+    MultiDiEdge edge = computation_graph.get_edge(input);
+    edge.dst = new_node;
+    edge.dst_idx = NodePort::construct_port(incoming_edge_dst_port++);
+  }
+
+  size_t outgoing_edge_src_port = 0;
+  std::vector<Tensor> output_tensors;
+  bool create_grad = true;
+  for (TensorShape output_shape: output_shapes) {
+    Tensor output_tensor = this->create_tensor(output_shape, create_grad);
+    computation_graph.add_edge_with_src(output_tensor, outgoing_edge_src_port++);
+    output_tensors.push_back(output_tensor);
+  }
+
+  return output_tensors;
 }
 
 Tensor ComputationGraphBuilder::broadcast(Tensor const &, TensorShape const &) {
@@ -118,6 +149,36 @@ Tensor ComputationGraphBuilder::element_binary(
   TensorShape output_shape = get_output_shape(attrs, lhs_input, rhs_input);
 
   return this->add_layer(layer, {lhs_input, rhs_input}, {}, output_shape);
+}
+
+Tensor ComputationGraphBuilder::dense(Tensor const &input,
+                                      int outDim,
+                                      Activation activation,
+                                      bool use_bias = true,
+                                      DataType data_type = DataType::FLOAT,
+                                      optional<Initializer const &> kernel_initializer = nullopt,
+                                      optional<Initializer const &> bias_initializer = nullopt,
+                                      optional<std::string> const &name = nullopt) {
+  LinearAttrs attrs = {outDim,
+                       use_bias,
+                       data_type,
+                       activation};
+  std::string unwrapped_name = name.value_or(get_default_name(attrs));
+
+  Tensor input = this->as_type(input, data_type, unwrapped_name + "input_pre_cast");
+
+  Layer layer = {attrs, name};
+  TensorShape output_shape = get_output_shape(attrs, input);
+
+  std::vector<std::pair<TensorShape, optional<Initializer>>> weights;
+
+  weights.push_back({get_weights_shape(attrs, input), kernel_initializer});
+
+  if (use_bias) {
+    weights.push_back({get_bias_shape(attrs, input), bias_initializer});
+  }
+
+  return this->add_layer(layer, {input}, weights, output_shape);
 }
 
 Tensor ComputationGraphBuilder::exp(Tensor const &input,

@@ -42,26 +42,8 @@ using OpArgSpec = variant<ConcreteArgSpec,
                           TaskInvocationSpec>;
 
 struct OpArgSpecTypeAccessor {
-  std::type_index operator()(ConcreteArgSpec &spec) {
-    return spec.get_type_tag().get_type_idx();
-  }
-  std::type_index operator()(IndexArgSpec &spec) {
-    return spec.get_type_tag().get_type_idx();
-  }
-  std::type_index operator()(OpArgRefSpec &spec) {
-    return spec.get_type_tag().get_type_idx();
-  }
-  std::type_index operator()(CheckedTypedFuture &spec) {
-    return spec.get_type_tag().get_type_idx();
-  }
-  std::type_index operator()(CheckedTypedFutureMap &spec) {
-    return spec.get_type_tag().get_type_idx();
-  }
-  std::type_index operator()(RuntimeArgRefSpec &spec) {
-    return spec.get_type_tag().get_type_idx();
-  }
-  std::type_index operator()(TaskInvocationSpec &spec) {
-    return spec.get_type_tag().get_type_idx();
+  std::type_index operator()(OpArgSpec &spec) {
+    return std::visit([](auto&& arg) -> std::type_index {return arg.get_type_tag().get_type_idx()}, spec);
   }
 };
 

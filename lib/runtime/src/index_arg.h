@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_INDEX_ARG_H
-#define _FLEXFLOW_RUNTIME_SRC_INDEX_ARG_H
+#ifndef _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_INDEX_ARG_H
+#define _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_INDEX_ARG_H
 
 #include "arg_type_runtime_tag.h"
 #include "legion.h"
@@ -46,7 +46,7 @@ public:
             typename T = decltype(std::declval<F>()(
                 std::declval<Legion::DomainPoint>()))>
   static IndexArgSpec create(F const &ff) {
-    static_assert(is_serializable<T>, "Type must be serializable");
+    static_assert(is_serializable<T>::value, "Type must be serializable");
 
     std::function<std::shared_ptr<void>(Legion::DomainPoint const &)> wrapped =
         [=](Legion::DomainPoint const &p) {

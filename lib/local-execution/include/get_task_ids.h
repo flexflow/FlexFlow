@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_OP_ATTRS_GET_OP_TYPE_H
 #define _FLEXFLOW_OP_ATTRS_GET_OP_TYPE_H
 
-#include "operator_attrs.h"
+#include "op-attrs/operator_attrs.h"
 #include "tasks.h"
 #include "utils/variant.h"
 
@@ -38,16 +38,9 @@ std::vector<task_id_t> get_task_ids(ReductionAttrs const &);
 std::vector<task_id_t> get_task_ids(RepartitionAttrs const &);
 std::vector<task_id_t> get_task_ids(ReplicateAttrs const &);
 
-struct GetTaskIdsFunctor {
-  template <typename T>
-  std::vector<task_id_t> operator()(T const &t) {
-    return get_task_ids(t);
-  }
-};
-
 template <typename... Ts>
 std::vector<task_id_t> get_task_ids(variant<Ts...> const &attrs) {
-  return visit(GetTaskIdsFunctor{}, attrs);
+  return std::visit([](auto&& arg) -> std::vector<task_id_t> {return get_task_ids(arg)}, attrs);
 }
 
 } // namespace FlexFlow

@@ -2,9 +2,6 @@
 
 namespace FlexFlow {
 
-LocalTaskArgumentAccessor::LocalTaskArgumentAccessor(Allocator allocator)
-    : allocator(allocator){};
-
 template <typename T>
 T const &LocalTaskArgumentAccessor::get_argument(slot_id) const {
   not_implemented();

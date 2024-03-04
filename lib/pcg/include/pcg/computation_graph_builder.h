@@ -38,27 +38,15 @@ public:
              Tensor const &y,
              optional<std::string> const &name = nullopt);
   // Add a rsqrt layer
-  Tensor rsqrt(Tensor const &x, optional<std::string> const &name = nullopt);
-  // Add a pow layer
-  Tensor pow(Tensor const &x,
-             float exponent,
-             optional<std::string> const &name = nullopt);
-  // Add a scalar multiply layer
-  Tensor scalar_multiply(Tensor const &x,
-                         float scalar,
-                         optional<std::string> const &name = nullopt);
-  Tensor scalar_add(Tensor const &x,
-                    float scalar,
-                    optional<std::string> const &name = nullopt);
+  Tensor rsqrt(Tensor const &x,
+               optional<std::string> const &n std::vector<Tensor> const &inputs,
+               t);
   Tensor scalar_sub(Tensor const &lhs,
                     float rhs,
                     optional<std::string> const &name = nullopt);
   Tensor scalar_truediv(Tensor const &numerator,
-                        float denominator,
-                        optional<std::string> const &name = nullopt);
-  // Add a sin layer
-  Tensor sin(Tensor const &x, optional<std::string> const &name = nullopt);
-  // Add a cos layer
+                        float denomin SGDOptimizer optimizer = get_optimizer(0.01, 0.01, false, 1e-5));
+
   Tensor cos(Tensor const &x, optional<std::string> const &name = nullopt);
   // Add an activation layer
   Tensor relu(Tensor const &x, optional<std::string> const &name = nullopt);
@@ -133,7 +121,7 @@ public:
                       optional<std::string> const &name = nullopt);
   Tensor dense(Tensor const &input,
                int outDim,
-               optional<Activation> activation = nullopt,
+               Activation activation,
                bool use_bias = true,
                DataType data_type = DataType::FLOAT,
                optional<Initializer const &> kernel_initializer = nullopt,

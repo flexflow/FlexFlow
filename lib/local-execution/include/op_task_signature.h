@@ -67,10 +67,9 @@ struct OpTaskSignature {
     this->task_arg_types.insert({name, type_index<T>()});
   }
 
-  // TODO: should this be a single type index?
   template <typename T>
   void add_return_value() {
-    this->return_value.push_back(type_index<T>);
+    this->return_value = type_index<T>;
   }
 
   // adds arg_slot without checking is_serializable, used for arguments that are
@@ -88,7 +87,7 @@ struct OpTaskSignature {
 
 private:
   OpTaskType type;
-  std::vector<std::type_index> return_value;
+  std::type_index return_value;
   std::unordered_map<slot_id, std::type_index> task_arg_types;
   std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };

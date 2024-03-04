@@ -183,8 +183,14 @@ void register_tasks() {
   register_tasks<ids...>();
 }
 
+using DeviceStates = std::variant<LinearPerDeviceState>;
+
+using TaskImplFunction = std::variant<
+    std::function<DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>,
+    std::function<optional<float>(TaskArgumentAccessor const &)>>;
+
 template <task_id_t>
-void *get_task_impl();
+TaskImplFunction get_task_impl();
 
 } // namespace FlexFlow
 

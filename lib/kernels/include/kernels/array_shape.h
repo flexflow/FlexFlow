@@ -14,6 +14,7 @@ struct ArrayShape {
 public:
   ArrayShape() = delete;
   ArrayShape(size_t *dims, size_t num_dims);
+  ArrayShape(TensorShape const & shape);
   ArrayShape(std::vector<std::size_t> const &);
 
   /**

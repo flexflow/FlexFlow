@@ -174,17 +174,21 @@ struct TaskInvocationSpec {
     return this->invocation;
   }
 
+  ArgTypeRuntimeTag get_type_tag() const {
+    return this->type_tag;
+  }
+
   template <typename T>
   static TaskInvocationSpec create(TypedTaskInvocation<T> const &invocation) {
     return TaskInvocationSpec(type_index<T>(), invocation.invocation);
   }
 
 private:
-  TaskInvocationSpec(std::type_index const &type_idx,
+  TaskInvocationSpec(ArgTypeRuntimeTag const &type_tag,
                      TaskInvocation const &invocation)
-      : type_idx(type_idx), invocation(invocation) {}
+      : type_tag(type_tag), invocation(invocation) {}
 
-  std::type_index type_idx;
+  ArgTypeRuntimeTag type_tag;
   TaskInvocation invocation;
 };
 

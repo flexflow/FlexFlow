@@ -1,14 +1,15 @@
 #ifndef _FLEXFLOW_KERNELS_ALLOCATION_H
 #define _FLEXFLOW_KERNELS_ALLOCATION_H
 
-#include "execution/src/task_spec/tensor.h"
+#include "pcg/tensor.h"
+#include "accessor.h"
 #include <cstddef>
 #include <memory>
 
 namespace FlexFlow {
 
 struct IAllocator {
-  virtual void *allocate(Tensor) = 0;
+  virtual void *allocate(size_t) = 0;
   virtual void deallocate(void *) = 0;
 
   virtual ~IAllocator() = default;
@@ -17,8 +18,15 @@ struct IAllocator {
 struct Allocator {
   Allocator() = delete;
 
-  void *allocate(Tensor);
-  void deallocate(void *);
+  GenericTensorAccessorW allocate(Tensor tensor) {
+    void * ptr = this->i_allocator->allocate(tensor.get_volume());
+    GenericTensorAccessorW tensor_backing = {tensor.data_type, tensor.get_shape(), ptr}; 
+    return tensor_backing;
+  }
+  
+  void deallocate(GenericTensorAccessorW tensor_backing) {
+    this->i_allocator->deallocate(tensor_backing.ptr);
+  }
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IAllocator, T>::value,
