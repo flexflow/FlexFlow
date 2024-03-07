@@ -130,6 +130,8 @@ ParallelTensorShape get_output_shape(ElementBinaryAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ElementUnaryAttrs const &,
                                      ParallelTensorShape const &);
+ParallelTensorShape get_output_shape(ElementScalarUnaryAttrs const &,
+                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(EmbeddingAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(FlatAttrs const &,
@@ -238,6 +240,8 @@ bool is_valid_internal(ElementBinaryAttrs const &,
                        ParallelTensorShape const &,
                        ParallelTensorShape const &);
 bool is_valid_internal(ElementUnaryAttrs const &, ParallelTensorShape const &);
+bool is_valid_internal(ElementScalarUnaryAttrs const &,
+                       ParallelTensorShape const &);
 bool is_valid_internal(EmbeddingAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(FlatAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(GatherAttrs const &,
