@@ -15,7 +15,7 @@ FF_VISITABLE_STRUCT(ElementUnaryAttrs, op_type);
 CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
 
 struct ElementScalarUnaryAttrs {
-Op op_type;
+    Op op_type;
   req<float> scalar;
 };
 FF_VISITABLE_STRUCT(ElementScalarUnaryAttrs, op_type, scalar);
