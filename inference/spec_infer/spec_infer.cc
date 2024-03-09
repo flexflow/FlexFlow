@@ -62,7 +62,8 @@ void parse_input_args(char **argv,
                       bool &verbose,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
-                      int &max_sequence_length) {
+                      int &max_sequence_length,
+                      int &expansion_degree) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -115,6 +116,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--max-sequence-length")) {
       max_sequence_length = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--expansion-degree")) {
+      expansion_degree = std::stoi(argv[++i]);
       continue;
     }
   }
@@ -270,6 +275,7 @@ void FlexFlow::top_level_task(Task const *task,
   int max_requests_per_batch = 16;
   int max_tokens_per_batch = 256;
   int max_sequence_length = 1024;
+  int expansion_degree = 3;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -282,7 +288,8 @@ void FlexFlow::top_level_task(Task const *task,
                    verbose,
                    max_requests_per_batch,
                    max_tokens_per_batch,
-                   max_sequence_length);
+                   max_sequence_length,
+                   expansion_degree);
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
 
@@ -304,7 +311,9 @@ void FlexFlow::top_level_task(Task const *task,
   rm->register_output_filepath(file_paths.output_file_path);
 
   // first decoding step: 3 results
-  rm->push_spec_infer_tree_width(3);
+  if (expansion_degree != -1) {
+    rm->push_spec_infer_tree_width(expansion_degree);
+  }
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
