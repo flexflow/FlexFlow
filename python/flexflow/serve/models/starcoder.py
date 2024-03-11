@@ -19,11 +19,11 @@ import random, torch
 
 class STARCODERConfig:
     def __init__(self, hf_config):
-        #self.max_seq_len = 256
-        #self.max_num_tokens = 64
+        # self.max_seq_len = 256
+        # self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
-        self.max_spec_tree_token_num = 64
+        self.max_spec_tree_token_num = 20
         self.dropout_p = hf_config.attn_pdrop
         self.hidden_size = hf_config.n_embd
         self.layer_norm_epsilon = hf_config.layer_norm_epsilon
@@ -45,8 +45,8 @@ class FlexFlowSTARCODER(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
-        #max_batch_size=1,
-        #max_seq_length=256,
+        # max_batch_size=1,
+        # max_seq_length=256,
         max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
@@ -54,16 +54,17 @@ class FlexFlowSTARCODER(FlexFlowModel):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
-        #self.max_batch_size = max_batch_size
+        # self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.starcoder_config = STARCODERConfig(hf_config)
-        #self.starcoder_config.max_seq_length = max_seq_length
-        #self.starcoder_config.max_num_tokens = max_tokens_per_batch
+        # self.starcoder_config.max_seq_length = max_seq_length
+        # self.starcoder_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
-        max_verify_tokens_per_batch = max_tokens_per_batch + self.starcoder_config.max_spec_tree_token_num
-
+        max_verify_tokens_per_batch = (
+            max_tokens_per_batch + self.starcoder_config.max_spec_tree_token_num
+        )
 
         # Sanity checks
         if (
@@ -87,7 +88,11 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 f"Number of attention heads ({self.starcoder_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
 
-        self.build_model(max_tokens_per_batch if self.mode == InferenceMode.INC_DECODING_MODE else max_verify_tokens_per_batch)
+        self.build_model(
+            max_tokens_per_batch
+            if self.mode == InferenceMode.INC_DECODING_MODE
+            else max_verify_tokens_per_batch
+        )
 
     def build_model(self, max_tokens_per_batch):
         ffmodel = FFModel(self.ffconfig)

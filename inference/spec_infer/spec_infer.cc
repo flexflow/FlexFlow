@@ -275,6 +275,7 @@ void FlexFlow::top_level_task(Task const *task,
   int max_requests_per_batch = 16;
   int max_tokens_per_batch = 256;
   int max_sequence_length = 1024;
+  int max_spec_tree_token_num = 20;
   int expansion_degree = 3;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
@@ -303,6 +304,7 @@ void FlexFlow::top_level_task(Task const *task,
   RequestManager *rm = RequestManager::get_request_manager();
   rm->set_max_requests_per_batch(max_requests_per_batch);
   rm->set_max_tokens_per_batch(max_tokens_per_batch);
+  rm->set_max_spec_tree_token_num(max_spec_tree_token_num);
   rm->set_max_sequence_length(max_sequence_length);
   rm->register_tokenizer(model_metadata.llm_model_type,
                          model_metadata.bos_token_id,
