@@ -10,8 +10,8 @@ using namespace FlexFlow;
 
 // Rapidcheck does not work for now
 // /*
-//   Generates computation graphs with trivial layers and tensors, which are used
-//   for tests focusing on graph structures.
+//   Generates computation graphs with trivial layers and tensors, which are
+//   used for tests focusing on graph structures.
 // */
 // ComputationGraph test_computataion_graph(MultiDiGraphView const &g) {
 //   return materialize_output_labelled_multidigraph_view(
@@ -24,8 +24,8 @@ using namespace FlexFlow;
 // }
 
 // /*
-//   Generates parallel computation graphs with trivial layers and tensors, which
-//   are used for tests focusing on graph structures.
+//   Generates parallel computation graphs with trivial layers and tensors,
+//   which are used for tests focusing on graph structures.
 // */
 // ParallelComputationGraph
 //     test_parallel_computation_graph(MultiDiGraphView const &g) {
@@ -53,7 +53,8 @@ using namespace FlexFlow;
 // template <>
 // struct Arbitrary<ComputationGraph> {
 //   static Gen<ComputationGraph> arbitrary() {
-//     return gen::map(gen::cast<MultiDiGraphView>(serialParallelMultiDiGraph()),
+//     return
+//     gen::map(gen::cast<MultiDiGraphView>(serialParallelMultiDiGraph()),
 //                     test_computataion_graph);
 //   }
 // };
@@ -61,7 +62,8 @@ using namespace FlexFlow;
 // template <>
 // struct Arbitrary<ParallelComputationGraph> {
 //   static Gen<ParallelComputationGraph> arbitrary() {
-//     return gen::map(gen::cast<MultiDiGraphView>(serialParallelMultiDiGraph()),
+//     return
+//     gen::map(gen::cast<MultiDiGraphView>(serialParallelMultiDiGraph()),
 //                     test_parallel_computation_graph);
 //   }
 // };
@@ -72,7 +74,8 @@ using namespace FlexFlow;
 //     return gen::mapcat(gen::arbitrary<bool>(), [](bool is_node) {
 //       return is_node
 //                  ? gen::cast<variant<Serial, Node>>(gen::arbitrary<Node>())
-//                  : gen::cast<variant<Serial, Node>>(gen::arbitrary<Serial>());
+//                  : gen::cast<variant<Serial,
+//                  Node>>(gen::arbitrary<Serial>());
 //     });
 //   }
 // };
@@ -124,8 +127,8 @@ using namespace FlexFlow;
 // template <typename Tag, typename T>
 // struct Arbitrary<Tag> {
 //   static Gen<
-//       std::enable_if<std::is_base_of<strong_typedef<Tag, T>, Tag>::value>::type>
-//       arbitrary() {
+//       std::enable_if<std::is_base_of<strong_typedef<Tag, T>,
+//       Tag>::value>::type> arbitrary() {
 //     return gen::construct<Tag>(gen::arbitrary<T>());
 //   }
 // };
@@ -146,7 +149,8 @@ using namespace FlexFlow;
 //     return gen::build<MachineMapping>(
 //         gen::set(&MachineMapping::machine_views,
 //                  gen::container<std::unordered_map<Node, MachineView>>(
-//                      gen::arbitrary<Node>(), gen::arbitrary<MachineView>())));
+//                      gen::arbitrary<Node>(),
+//                      gen::arbitrary<MachineView>())));
 //   }
 // }
 
@@ -155,8 +159,9 @@ using namespace FlexFlow;
 //   static Gen<MachineSpecification> arbitrary() {
 //     return gen::build<MachineSpecification>(
 //         gen::set(&MachineSpecification::num_nodes, gen::inRange(1, 64)),
-//         gen::set(&MachineSpecification::num_cpus_per_node, gen::inRange(1, 64)),
-//         gen::set(&MachineSpecification::num_gpus_per_node, gen::inRange(1, 16)),
+//         gen::set(&MachineSpecification::num_cpus_per_node, gen::inRange(1,
+//         64)), gen::set(&MachineSpecification::num_gpus_per_node,
+//         gen::inRange(1, 16)),
 //         gen::set(&MachineSpecification::inter_node_bandwidth,
 //                  gen::nonZero<float>()),
 //         gen::set(&MachineSpecification::intra_node_bandwidth,

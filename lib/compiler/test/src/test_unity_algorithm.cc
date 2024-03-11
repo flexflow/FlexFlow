@@ -14,7 +14,8 @@
 //         TestCostEstimator{},
 //         MachineSpecification{1, 1, 4, 0.1, 0.2},
 //         [](Operator const &, MachineSpecification const &) {
-//           return std::unordered_set<MachineView>{make_1d_machine_view(0, 1, 1)};
+//           return std::unordered_set<MachineView>{make_1d_machine_view(0, 1,
+//           1)};
 //         },
 //         OptimizerConfig{alpha, budget, threshold, max_num_ops});
 //     RC_ASSERT(get_nodes(s.pcg).size() > 0);
