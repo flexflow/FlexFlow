@@ -7,7 +7,7 @@ You can build and run the FlexFlow Docker images on any machine, but if you want
 ## Downloading a pre-built package
 The fastest way to run FlexFlow is to use one of the pre-built containers, which we update for each commit to the `inference` branch (the `inference` branch is currently ahead of the `master` branch). The available containers are the following, and can be found [at this link](https://github.com/orgs/flexflow/packages?repo_name=FlexFlow):
 
-* `flexflow`: the pre-built version of FlexFlow. We currently publish four version targeting AMD GPUs (ROCm versions: 5.3, 5.4, 5.5 and 5.6 ), and several versions for CUDA GPUs (CUDA versions: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8 and 12.0). The CUDA images are named `flexflow-<GPU backend>-<GPU software version>`, e.g. [flexflow-hip_rocm-5.6](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm-5.6) or [flexflow-cuda-12.0](https://github.com/orgs/flexflow/packages/container/package/flexflow-cuda-12.0) or 
+* `flexflow`: the pre-built version of FlexFlow. We currently publish four version targeting AMD GPUs (ROCm versions: 5.3, 5.4, 5.5 and 5.6 ), and several versions for CUDA GPUs (CUDA versions: 11.1, 11.6, 11.7, 11.8, 12.0, 12.1, and 12.2). The CUDA images are named `flexflow-<GPU backend>-<GPU software version>`, e.g. [flexflow-hip_rocm-5.6](https://github.com/flexflow/FlexFlow/pkgs/container/flexflow-hip_rocm-5.6) or [flexflow-cuda-12.0](https://github.com/orgs/flexflow/packages/container/package/flexflow-cuda-12.0) or 
 * `flexflow-environment`: this is the base layer for `flexflow`. The packages are used in CI or for internal use, and contain all the dependencies needed to build/run Flexflow. You may find them useful if you want to build FlexFlow yourself. We also publish four version of `flexflow-environment` for AMD GPUs and, for NVIDIA GPUs, one for each CUDA version in the list above. The naming convention is similar, too. For example, the `flexflow-environment` image for CUDA 12.0 is tagged [flexflow-environment-cuda-12.0](https://github.com/orgs/flexflow/packages/container/package/flexflow-environment-cuda-12.0).
 
 The easiest way to download any of the Docker containers above is to call:
@@ -19,7 +19,7 @@ The easiest way to download any of the Docker containers above is to call:
 where `CONTAINER_NAME` is `flexflow` (or `flexflow-environment`). By default, the script will assume a NVIDIA backend and attempt to detect the CUDA version on your machine, to download the relevant container. If your machine has AMD GPUs, or no GPUs, or if you want to specify  the CUDA/ROCM version to download, set the environment variables below:
 
 * `FF_GPU_BACKEND` (supported options: `cuda`, `hip_rocm`) to specify the GPU backend of the Docker container to be downloaded.
-* `cuda_version` (supported options: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8 and 12.0) to specify the CUDA version, when using a `cuda` backend. If `FF_GPU_BACKEND` is set to `hip_rocm`, the `cuda_version` env will be ignored
+* `cuda_version` (supported options: 11.1, 11.6, 11.7, 11.8, 12.0, 12.1 and 12.2) to specify the CUDA version, when using a `cuda` backend. If `FF_GPU_BACKEND` is set to `hip_rocm`, the `cuda_version` env will be ignored
 * `hip_version` (supported options: 5.3, 5.4, 5.5, 5.6) to specify the ROCm version, when using a HIP backend. If `FF_GPU_BACKEND` is set to `cuda`, the `hip_version` env will be ignored.
 
 
@@ -44,7 +44,7 @@ If you only want to build the `flexflow-environment` image (the base layers of t
 After having either built or downloaded a Docker container by following the instructions above, you can run it with the following command (image name argument of the run script can be omitted). Once again, you can set the `FF_GPU_BACKEND`, `cuda_version` and `hip_version` optional environment variables to run the docker image with the desired GPU backend and CUDA/HIP version:
 
 * `FF_GPU_BACKEND` (supported options: `cuda`, `hip_rocm`) to specify the GPU backend of the Docker container to be run.
-* `cuda_version` (supported options: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8 and 12.0) to specify the CUDA version, when using a `cuda` backend. If `FF_GPU_BACKEND` is set to `hip_rocm`, the `cuda_version` env will be ignored
+* `cuda_version` (supported options: 11.1, 11.6, 11.7, 11.8, 12.0, 12.1, 12.2) to specify the CUDA version, when using a `cuda` backend. If `FF_GPU_BACKEND` is set to `hip_rocm`, the `cuda_version` env will be ignored
 * `hip_version` (supported options: 5.3, 5.4, 5.5, 5.6) to specify the ROCm version, when using a HIP backend. If `FF_GPU_BACKEND` is set to `cuda`, the `hip_version` env will be ignored.
 
 Leaving these variables unset will assume a GPU backend, and instruct the script to autodetect the CUDA version installed on the current machine and run the Docker container with it if available.
