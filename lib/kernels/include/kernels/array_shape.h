@@ -2,6 +2,7 @@
 #define _FLEXFLOW_KERNELS_ARRAY_SHAPE_H
 
 #include "legion_dim.h"
+#include "op-attrs/tensor_shape.h"
 #include "utils/optional.h"
 #include "utils/stack_vector.h"
 #include "utils/visitable.h"

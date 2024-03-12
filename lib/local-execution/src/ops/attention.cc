@@ -86,6 +86,10 @@ OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
   return {ATTENTION_BWD_TASK_ID, b};
 }
 
+// OpArgBacking generate_op_arg_backing<ATTENTION_INIT_TASK_ID>(std::vector<ParallelTensorShape> tensor_shape_args) {
+
+// }
+
 static DeviceSpecific<MHAPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);

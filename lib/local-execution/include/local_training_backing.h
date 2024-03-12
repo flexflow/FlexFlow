@@ -11,6 +11,7 @@
 #include <functional>
 #include <unordered_map>
 #include <vector>
+#include "device_specific.h"
 
 namespace FlexFlow {
 

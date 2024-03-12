@@ -3,7 +3,7 @@
 
 #include "arg_type_runtime_tag.h"
 #include "kernels/ff_handle.h"
-#include "runtime/profiling.h"
+#include "profiling.h"
 #include "utils/type_index.h"
 #include "utils/visitable.h"
 

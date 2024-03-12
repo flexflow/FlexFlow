@@ -25,7 +25,6 @@ enum class OpSlotOptions {
 struct OpTensorSlotSpec {
 public:
   OpTensorSlotSpec() = delete;
-  OpTensorSlotSpec(slot_id, SlotType, TensorRole);
 
 public:
   slot_id name;
@@ -79,8 +78,6 @@ struct OpTaskSignature {
     this->task_arg_types.insert({name, type_index<T>()});
   }
 
-  static std::unordered_map<task_id_t, OpTaskSignature> task_sig_map;
-
   std::unordered_set<OpTensorSlotSpec> get_tensor_slots();
   void set_arg_types(std::unordered_map<slot_id, std::type_index> const &);
   std::unordered_map<slot_id, std::type_index> get_arg_types();
@@ -92,7 +89,6 @@ private:
   std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };
 
-OpTaskSignature get_op_signature(task_id_t const &);
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskSignature,
                                              op_tensor_slots,
                                              task_arg_types);
@@ -111,7 +107,13 @@ void register_task(task_id_t,
                    F const &cpu_func);
 
 template <task_id_t>
+OpTaskSignature init_signature();
+
+template <task_id_t>
 OpTaskSignature fwd_signature();
+
+template <task_id_t>
+OpTaskSignature bwd_signature();
 
 } // namespace FlexFlow
 

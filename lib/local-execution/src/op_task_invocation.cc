@@ -18,10 +18,6 @@ OpTensorSpec weight_tensor(int idx,
   return {TensorRole::WEIGHT, option, idx};
 }
 
-// OpTaskBinding::OpTaskBinding() {
-//   this->serializer.reserve_bytes(sizeof(TaskArgumentFormat));
-// }
-
 void OpTaskBinding::bind(slot_id slot, OpTensorSpec const &tensor_spec) {
   this->tensor_bindings.insert({{slot, IsGrad::NO}, tensor_spec});
 }

@@ -78,6 +78,8 @@ LocalTrainingBacking::LocalTrainingBacking(
         task_registry.tensor_mapping.insert({dst_op_slot, tensor_backing});
       }
     }
+
+    // TODO: args
   }
   // TODO: register update task
 

@@ -81,8 +81,4 @@ void OpTaskSignature::add_from_slot_spec(OpTensorSlotSpec const &spec) {
   this->op_tensor_slots.insert(spec);
 }
 
-OpTaskSignature get_op_signature(task_id_t const &task_id) {
-  return OpTaskSignature::task_sig_map.at(task_id);
-}
-
 } // namespace FlexFlow

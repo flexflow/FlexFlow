@@ -16,7 +16,13 @@ struct ComputationGraph
                             OutputLabelledMultiDiGraph<Layer, Tensor>> {
   using strong_typedef::strong_typedef;
 
-  Node add_node(Layer const &);
+  std::vector<operator_guid_t> get_topological() {
+    return get_topological_ordering(this->value()); // transform
+  }
+
+  operator_guid_t add_node(Layer const & layer) {
+    return operator_guid_t{this->value().add_node(layer)};
+  }
   void add_edge(Tensor const &);
   void add_edge_with_src(Tensor const &, size_t src);
   MultiDiEdge get_edge(Tensor const &);

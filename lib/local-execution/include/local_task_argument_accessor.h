@@ -4,13 +4,27 @@
 #include "accessor.h"
 #include "kernels/allocation.h"
 #include "task_argument_accessor.h"
+#include "arg_ref.h"
+#include "device_specific.h"
+#include "concrete_arg.h"
+//#include "runtime/task_invocation.h"
+#include "runtime/config.h"
 #include <unordered_map>
+#include <variant>
 
 namespace FlexFlow {
 
 using SlotGradId = std::pair<slot_id, IsGrad>;
-using SlotTensorMapping =
-    std::unordered_map<SlotGradId, GenericTensorAccessorW>;
+
+// TODO: define device state variant in another file
+using DeviceStates = std::variant<LinearPerDeviceState>;
+
+using OpArgRefType = std::variant<ParallelTensorShape, DeviceSpecific<DeviceStates>>;
+using RuntimeArgRefType = std::variant<ProfilingSettings,
+                                  DeviceSpecific<PerDeviceFFHandle>,
+                                  FFIterationConfig>;
+
+using ArgRefBacking = std::variant<OpArgRefType, RuntimeArgRefType, ConcreteArgSpec>;
 
 struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
@@ -19,11 +33,11 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
   template <typename T>
   T const &get_argument(slot_id) const;
 
-  template <typename T>
-  optional<T> get_optional_argument(slot_id) const;
+  template <typename OpArgRefType>
+  OpArgRefType const &get_argument(slot_id) const;
 
-  template <typename T>
-  std::vector<T> get_variadic_argument(slot_id) const;
+  template <typename RuntimeArgRefType>
+  RuntimeArgRefType const &get_argument(slot_id) const;
 
   PrivilegeType get_tensor(slot_id slot, bool is_grad) const override;
 
@@ -39,10 +53,8 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
 private:
   Allocator allocator;
-  SlotTensorMapping tensor_backing_map;
-
-  template <typename T>
-  std::unordered_map<slot_id, T> argument_map;
+  std::unordered_map<SlotGradId, GenericTensorAccessorW> tensor_backing_map;
+  std::unordered_map<slot_id, ArgRefBacking> argument_map;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalTaskArgumentAccessor);
 
