@@ -6,6 +6,9 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--base_model_name", type=str, help="Name of the model to download"
+    )
+    parser.add_argument(
         "peft_model_ids", type=str, nargs="+", help="Name of the model(s) to download"
     )
     parser.add_argument(
@@ -44,7 +47,14 @@ def main(args):
 
     for peft_model_id in args.peft_model_ids:
         for data_type in data_types:
+            llm = ff.LLM(
+                args.base_model_name,
+                data_type=data_type,
+                cache_path=args.cache_folder,
+                refresh_cache=args.refresh_cache,
+            )
             peft = ff.PEFT(
+                llm,
                 peft_model_id,
                 data_type=data_type,
                 cache_path=args.cache_folder,
