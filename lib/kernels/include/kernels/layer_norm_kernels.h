@@ -7,23 +7,23 @@
 
 namespace FlexFlow {
 
-class LayerNormPerDeviceState : public PerDeviceOpState {
-public:
-  LayerNormPerDeviceState(FFHandler handle,
-                          bool elementwise_affine_,
-                          int64_t effective_batch_size_,
-                          int64_t effective_num_elements_,
-                          bool profiling_,
-                          float eps_);
+// class LayerNormPerDeviceState : public PerDeviceOpState {
+// public:
+//   LayerNormPerDeviceState(FFHandler handle,
+//                           bool elementwise_affine_,
+//                           int64_t effective_batch_size_,
+//                           int64_t effective_num_elements_,
+//                           bool profiling_,
+//                           float eps_);
 
-public:
-  bool elementwise_affine;
-  int64_t effective_batch_size, effective_num_elements;
-  float eps;
-  float *mean, *rstd, *ds, *db, *scale, *bias;
-  char op_name[MAX_OPNAME];
-  DataType data_type;
-};
+// public:
+//   bool elementwise_affine;
+//   int64_t effective_batch_size, effective_num_elements;
+//   float eps;
+//   float *mean, *rstd, *ds, *db, *scale, *bias;
+//   char op_name[MAX_OPNAME];
+//   DataType data_type;
+// };
 
 struct LayerNormPerDeviceState {
   bool elementwise_affine;

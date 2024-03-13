@@ -2,6 +2,8 @@
 #define _FLEXFLOW_EXECUTION_TASK_ARGUMENT_ACCESSOR_H
 
 #include "slot_id.h"
+#include "permissions.h"
+#include "kernels/accessor.h"
 #include <cstddef>
 #include <memory>
 #include <optional>
@@ -9,6 +11,28 @@
 #include <vector>
 
 namespace FlexFlow {
+
+template <Permissions>
+struct privilege_mode_to_accessor_t {};
+
+template <>
+struct privilege_mode_to_accessor_t<Permissions::RW> {
+  using type = GenericTensorAccessorW;
+};
+
+template <>
+struct privilege_mode_to_accessor_t<Permissions::RO> {
+  using type = GenericTensorAccessorR;
+};
+
+template <>
+struct privilege_mode_to_accessor_t<Permissions::WO> {
+  using type = GenericTensorAccessorW;
+};
+
+template <Permissions PRIV>
+using privilege_mode_to_accessor =
+    typename privilege_mode_to_accessor_t<PRIV>::type;
 
 using PrivilegeType = std::variant<privilege_mode_to_accessor<Permissions::RW>,
                                    privilege_mode_to_accessor<Permissions::RO>,
@@ -20,6 +44,8 @@ using PrivilegeVariadicType =
 
 struct ITaskArgumentAccessor {
   ITaskArgumentAccessor &operator=(ITaskArgumentAccessor const &) = delete;
+
+  virtual ~ITaskArgumentAccessor() = 0;
 
   virtual PrivilegeType get_tensor(slot_id slot, bool is_grad) const = 0;
 

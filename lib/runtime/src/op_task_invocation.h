@@ -13,7 +13,7 @@
 #include "utils/bidict.h"
 #include "utils/optional.h"
 #include "utils/stack_map.h"
-#include <typeindex>
+#include "utils/type_index.h"
 #include <unordered_map>
 #include <unordered_set>
 

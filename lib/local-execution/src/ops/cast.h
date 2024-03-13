@@ -17,7 +17,7 @@
 
 #include "op-attrs/ops/cast.h"
 #include "sim_environment.h"
-#include "task_spec/op_task_invocation.h"
+#include "op_task_invocation.h"
 
 namespace FlexFlow {
 

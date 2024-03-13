@@ -1,4 +1,4 @@
-#include "serialization.h"
+#include "legion_serialization.h"
 
 using Legion::Deserializer;
 using Legion::Serializer;

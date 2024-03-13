@@ -16,16 +16,17 @@ struct ComputationGraph
                             OutputLabelledMultiDiGraph<Layer, Tensor>> {
   using strong_typedef::strong_typedef;
 
-  std::vector<operator_guid_t> get_topological() {
-    return get_topological_ordering(this->value()); // transform
-  }
+  // std::vector<operator_guid_t> get_topological() {
+  //   return get_topological_ordering(this->value()); // transform
+  // }
 
-  operator_guid_t add_node(Layer const & layer) {
-    return operator_guid_t{this->value().add_node(layer)};
-  }
-  void add_edge(Tensor const &);
-  void add_edge_with_src(Tensor const &, size_t src);
-  MultiDiEdge get_edge(Tensor const &);
+  // operator_guid_t add_node(Layer const & layer) {
+  //   Node added_node = this->value().add_node(layer);
+  //   return operator_guid_t{added_node};
+  // }
+  // void add_edge(Tensor const &);
+  // void add_edge_with_src(Tensor const &, size_t src);
+  // MultiDiEdge get_edge(Tensor const &);
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(ComputationGraph);
 

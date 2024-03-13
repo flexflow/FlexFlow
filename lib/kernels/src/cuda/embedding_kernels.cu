@@ -24,7 +24,7 @@ namespace Embedding {
 template <DataType TI, DataType TD>
 struct ForwardKernel {
   void operator()(cudaStream_t stream,
-                  AggrMode aggr,
+                  AggregateOp aggr,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output,
                   GenericTensorAccessorR const &weight,
@@ -35,7 +35,7 @@ struct ForwardKernel {
     assert(weight.data_type == DT_HALF || weight.data_type == DT_FLOAT ||
            weight.data_type == DT_DOUBLE);
 
-    if (aggr == AGGR_MODE_NONE) {
+    if (aggr == AggregateOp::NONE) {
       embed_forward_no_aggr<TI, TD><<<GET_BLOCKS(output.shape.get_volume()),
                                       CUDA_NUM_THREADS,
                                       0,
@@ -45,7 +45,7 @@ struct ForwardKernel {
                                                 out_dim,
                                                 batch_size);
     } else {
-      assert(aggr == AGGR_MODE_AVG || aggr == AGGR_MODE_SUM);
+      assert(aggr == AggregateOp::AVG || aggr == AggregateOp::SUM);
       embed_forward_with_aggr<TI, TD><<<GET_BLOCKS(output.shape.get_volume()),
                                         CUDA_NUM_THREADS,
                                         0,
@@ -63,7 +63,7 @@ struct ForwardKernel {
 template <DataType TI, DataType TD>
 struct BackwardKernel {
   void operator()(cudaStream_t stream,
-                  AggrMode aggr,
+                  AggregateOp aggr,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorR const &output,
                   GenericTensorAccessorW const &weight_grad,
@@ -73,7 +73,7 @@ struct BackwardKernel {
     assert(input.data_type == DT_INT32 || input.data_type == DT_INT64);
     assert(output.data_type == DT_HALF || output.data_type == DT_FLOAT,
            || output.data_type == DT_DOUBLE);
-    if (aggr == AGGR_MODE_NONE) {
+    if (aggr == AggregateOp::NONE) {
       embed_backward_no_aggr<TI, TD><<<GET_BLOCKS(output.shape.get_volume()),
                                        CUDA_NUM_THREADS,
                                        0,
@@ -103,7 +103,7 @@ void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &weight,
                     DataType input_data_type,
                     DataType output_data_type,
-                    AggrMode aggr,
+                    AggregateOp aggr,
                     int in_dim,
                     int out_dim,
                     int batch_size) {
@@ -125,7 +125,7 @@ void backward_kernel(cudaStream_t stream,
                      GenericTensorAccessorW const &weight_grad,
                      DataType input_data_type,
                      DataType output_data_type,
-                     AggrMode aggr,
+                     AggregateOp aggr,
                      int in_dim,
                      int out_dim,
                      int batch_size) {
@@ -176,7 +176,7 @@ __global__ void embed_forward_with_aggr(TI const *input,
                                         int out_dim,
                                         int in_dim,
                                         int batch_size,
-                                        AggrMode aggr) {
+                                        AggregateOp aggr) {
   TD scale = 1.0f / in_dim;
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     output[i] = 0;
@@ -185,9 +185,9 @@ __global__ void embed_forward_with_aggr(TI const *input,
     for (int j = 0; j < in_dim; j++) {
       TI wordIdx = input[idx * in_dim + j];
       output[i] = output[i] + embed[wordIdx * out_dim + off];
-      if (aggr == AGGR_MODE_SUM) {
+      if (aggr == AggregateOp::SUM) {
       } else {
-        assert(aggr == AGGR_MODE_AVG);
+        assert(aggr == AggregateOp::AVG);
         output[i] = output[i] * scale;
       }
     }
@@ -256,16 +256,16 @@ __global__ void embed_backward_with_aggr(TI const *input,
                                          int out_dim,
                                          int in_dim,
                                          int batch_size,
-                                         AggrMode aggr) {
+                                         AggregateOp aggr) {
   TD scale = 1.0f / in_dim;
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     int idx = i / out_dim;
     int off = i % out_dim;
     TD gradient;
-    if (aggr == AGGR_MODE_SUM) {
+    if (aggr == AggregateOp::SUM) {
       gradient = output[i];
     } else {
-      assert(aggr == AGGR_MODE_AVG);
+      assert(aggr == AggregateOp::AVG);
       gradient = output[i] * scale;
     }
     for (int j = 0; j < in_dim; j++) {
@@ -284,16 +284,16 @@ __global__ void embed_backward_with_aggr<int, half>(int const *input,
                                                     int out_dim,
                                                     int in_dim,
                                                     int batch_size,
-                                                    AggrMode aggr) {
+                                                    AggregateOp aggr) {
   half scale = 1.0f / in_dim;
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     int idx = i / out_dim;
     int off = i % out_dim;
     half gradient;
-    if (aggr == AGGR_MODE_SUM) {
+    if (aggr == AggregateOp::SUM) {
       gradient = output[i];
     } else {
-      assert(aggr == AGGR_MODE_AVG);
+      assert(aggr == AggregateOp::AVG);
       gradient = output[i] * scale;
     }
     for (int j = 0; j < in_dim; j++) {
@@ -317,16 +317,16 @@ __global__ void embed_backward_with_aggr<int64_t, half>(int64_t const *input,
                                                         int out_dim,
                                                         int in_dim,
                                                         int batch_size,
-                                                        AggrMode aggr) {
+                                                        AggregateOp aggr) {
   half scale = 1.0f / in_dim;
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     int idx = i / out_dim;
     int off = i % out_dim;
     half gradient;
-    if (aggr == AGGR_MODE_SUM) {
+    if (aggr == AggregateOp::SUM) {
       gradient = output[i];
     } else {
-      assert(aggr == AGGR_MODE_AVG);
+      assert(aggr == AggregateOp::AVG);
       gradient = output[i] * scale;
     }
     for (int j = 0; j < in_dim; j++) {

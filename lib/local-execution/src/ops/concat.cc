@@ -17,7 +17,7 @@
 #include "kernels/concat_kernels.h"
 #include "legion/legion_utilities.h"
 #include "op-attrs/get_output_shapes.h"
-#include "task_spec/op_task_signature.h"
+#include "op_task_signature.h"
 #include "task_spec/variadic_tensor_ref.h"
 #include "utils/hash-utils.h"
 

@@ -1,14 +1,16 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_TASK_ARGUMENT_ACCESSOR_H
 #define _FLEXFLOW_RUNTIME_SRC_TASK_ARGUMENT_ACCESSOR_H
 
-#include "accessor.h"
+#include "kernels/accessor.h"
 #include "kernels/allocation.h"
+#include "kernels/linear_kernels.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "task_argument_accessor.h"
+#include "op_task_signature.h"
 #include "arg_ref.h"
 #include "device_specific.h"
 #include "concrete_arg.h"
-//#include "runtime/task_invocation.h"
-#include "runtime/config.h"
+#include "config.h"
 #include <unordered_map>
 #include <variant>
 

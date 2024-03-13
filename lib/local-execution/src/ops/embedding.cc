@@ -15,7 +15,6 @@
 
 #include "embedding.h"
 #include "kernels/embedding_kernels.h"
-#include "legion.h"
 #include "op-attrs/ops/embedding.h"
 
 namespace FlexFlow {

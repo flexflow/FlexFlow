@@ -24,9 +24,9 @@ namespace Linear {
 
 // what's the float * one_ptr
 LinearPerDeviceState
-    init_kernel(PerDeviceFFHandle handle, Allocator allocator, float *one_ptr;
-                ActiMode activation,
-                Regularizer regularizer,
+    init_kernel(PerDeviceFFHandle handle, float *one_ptr,
+                Activation activation,
+                RegularizerAttrs regularizer,
                 bool use_bias,
                 DataType input_type,
                 DataType weight_type,

@@ -2,7 +2,7 @@
 #include "kernels/dropout_kernels.h"
 #include "legion/legion_utilities.h"
 #include "op-attrs/get_output_shapes.h"
-#include "task_spec/op_task_invocation.h"
+#include "op_task_invocation.h"
 #include "task_spec/task_signature.h"
 #include "utils/hash-utils.h"
 

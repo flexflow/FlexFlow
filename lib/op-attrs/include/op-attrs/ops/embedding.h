@@ -13,6 +13,7 @@ namespace FlexFlow {
 enum class AggregateOp {
   SUM,
   AVG,
+  NONE
 };
 
 struct EmbeddingAttrs {

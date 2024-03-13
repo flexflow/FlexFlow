@@ -14,7 +14,7 @@
  */
 
 #include "noop.h"
-#include "task_spec/op_task_invocation.h"
+#include "op_task_invocation.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {

@@ -77,7 +77,6 @@ OpTaskInvocation backward(LinearAttrs const &attrs) {
 static DeviceSpecific<LinearPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
-  Allocator allocator = acc.get_allocator();
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -91,7 +90,6 @@ static DeviceSpecific<LinearPerDeviceState>
   DeviceSpecific<LinearPerDeviceState> state =
       acc.create_device_specific<LinearPerDeviceState>(
           init_kernel(handle,
-                      allocator,
                       one_ptr,
                       attrs.regularizer,
                       attrs.use_bias,

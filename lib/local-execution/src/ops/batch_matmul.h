@@ -3,8 +3,8 @@
 
 #include "op-attrs/ops/batch_matmul.h"
 #include "sim_environment.h"
-#include "task_spec/op_task_invocation.h"
-#include "task_spec/op_task_signature.h"
+#include "op_task_invocation.h"
+#include "op_task_signature.h"
 
 namespace FlexFlow {
 

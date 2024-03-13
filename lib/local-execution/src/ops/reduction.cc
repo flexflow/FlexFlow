@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "parallel_ops/reduction.h"
+#include "reduction.h"
 #include "kernels/reduction_kernels.h"
 #include "op-attrs/get_output_shape.h"
 #include "utils/exceptions.h"

@@ -7,7 +7,7 @@
 #include "pcg/optimizer.h"
 #include "pcg/parallel_computation_graph.h"
 #include "pcg/parallel_tensor.h"
-#include "task_spec/op_task_invocation.h"
+#include "op_task_invocation.h"
 #include "utils/graph.h"
 #include "utils/strong_typedef.h"
 #include <type_traits>

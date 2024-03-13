@@ -3,7 +3,7 @@
 
 #include "op-attrs/ops/dropout.h"
 #include "sim_environment.h"
-#include "task_spec/op_task_invocation.h"
+#include "op_task_invocation.h"
 #include "tasks.h"
 
 namespace FlexFlow {

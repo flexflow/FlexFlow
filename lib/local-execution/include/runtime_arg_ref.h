@@ -3,7 +3,7 @@
 
 #include "arg_ref.h"
 #include "device_specific.h"
-#include "runtime/config.h"
+#include "config.h"
 
 namespace FlexFlow {
 

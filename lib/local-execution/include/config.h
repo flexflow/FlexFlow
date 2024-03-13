@@ -15,7 +15,6 @@
 
 #ifndef _FLEXFLOW_CONFIG_H_
 #define _FLEXFLOW_CONFIG_H_
-#include "legion.h"
 #include "op-attrs/param_sync.h"
 #include "utils/fmt.h"
 #include "utils/optional.h"
@@ -47,6 +46,8 @@ struct FFInitInfo : public use_visitable_cmp<FFInitInfo> {
   bool allowTensorOpMathConversion;
 };
 
+using legion_mapping_tag_id_t = unsigned long;
+
 struct FFConfig : public use_visitable_cmp<FFConfig> {
 public:
   enum PreservedIDs {
@@ -64,7 +65,7 @@ public:
   };
 
   FFConfig() = default;
-  static Legion::MappingTagID get_hash_id(std::string const &pcname);
+  static legion_mapping_tag_id_t get_hash_id(std::string const &pcname);
 
 public:
   int epochs = 1;

@@ -2,7 +2,11 @@
 #define _FLEXFLOW_TASKS_H
 
 #include "utils/optional.h"
+#include "kernels/linear_kernels.h"
+#include "device_specific.h"
+#include "task_argument_accessor.h"
 #include <string>
+#include <variant>
 
 namespace FlexFlow {
 

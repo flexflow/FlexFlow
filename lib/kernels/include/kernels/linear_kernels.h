@@ -1,7 +1,10 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_LINEAR_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_LINEAR_KERNELS_H
 
-#include "kernels/device.h"
+#include "device.h"
+#include "ff_handle.h"
+#include "op-attrs/ops/linear.h"
+#include "op-attrs/datatype.h"
 
 namespace FlexFlow {
 
@@ -11,7 +14,7 @@ struct LinearPerDeviceState {
   ffActivationDescriptor_t actiDesc;
   float const *one_ptr; // how to handle this?
   cudnnActivationMode_t activation;
-  optional<Regularizer> regularizer;
+  optional<RegularizerAttrs> regularizer;
   bool use_bias;
   DataType input_type, weight_type, output_type;
 };
@@ -32,8 +35,8 @@ namespace Kernels {
 namespace Linear {
 
 LinearPerDeviceState
-    init_kernel(PerDeviceFFHandle handle, Allocator allocator, float *one_ptr;
-                optional<Regularizer> regularizer,
+    init_kernel(PerDeviceFFHandle handle, float *one_ptr,
+                optional<RegularizerAttrs> regularizer,
                 bool use_bias,
                 DataType input_type,
                 DataType weight_type,
@@ -41,7 +44,7 @@ LinearPerDeviceState
                 int batch_size,
                 int channel);
 
-bool use_activation(ActiMode mode);
+bool use_activation(Activation mode);
 
 void forward_kernel(ffStream_t stream,
                     LinearPerDeviceState const &m,

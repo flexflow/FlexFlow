@@ -1,9 +1,12 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_OP_TASK_SIGNATURE_H
 #define _FLEXFLOW_RUNTIME_SRC_OP_TASK_SIGNATURE_H
 
-#include "task_invocation.h"
-#include "task_signature.h"
 #include "utils/visitable.h"
+#include "utils/type_index.h"
+#include "slot_type.h"
+#include "slot_id.h"
+#include "tasks.h"
+#include "utils/type_index.h"
 
 namespace FlexFlow {
 
@@ -14,6 +17,7 @@ enum class TensorRole {
 };
 
 enum class OpTaskType { INIT, FWD, BWD };
+enum class IsGrad { YES, NO };
 
 enum class OpSlotOptions {
   OPTIONAL,
@@ -38,7 +42,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
 
 struct OpTaskSignature {
   OpTaskSignature() = delete;
-  explicit OpTaskSignature(OpTaskType);
+  // explicit OpTaskSignature(OpTaskType);
 
   OpTaskType get_task_type() const {
     return this->type;
@@ -82,16 +86,17 @@ struct OpTaskSignature {
   void set_arg_types(std::unordered_map<slot_id, std::type_index> const &);
   std::unordered_map<slot_id, std::type_index> get_arg_types();
 
-private:
   OpTaskType type;
   std::type_index return_value;
   std::unordered_map<slot_id, std::type_index> task_arg_types;
   std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };
 
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskSignature,
-                                             op_tensor_slots,
-                                             task_arg_types);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskSignature, 
+                                            type, 
+                                            return_value, 
+                                            task_arg_types, 
+                                            op_tensor_slots);
 
 template <typename F>
 void register_task(task_id_t,

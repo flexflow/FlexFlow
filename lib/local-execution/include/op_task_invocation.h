@@ -1,7 +1,8 @@
 #ifndef _FLEXFLOW_RUNTIME_OP_TASK_SPEC_H
 #define _FLEXFLOW_RUNTIME_OP_TASK_SPEC_H
 
-#include "accessor.h"
+#include "kernels/accessor.h"
+#include "concrete_arg.h"
 #include "op_arg_ref.h"
 #include "op_task_signature.h"
 #include "profiling.h"
@@ -35,15 +36,15 @@ using OpArgSpec = variant<ConcreteArgSpec,
                           OpArgRefSpec,
                           RuntimeArgRefSpec>;
 
-struct OpArgSpecTypeAccessor {
-  std::type_index operator()(OpArgSpec &spec) {
-    return std::visit(
-        [](auto &&arg) -> std::type_index {
-          return arg.get_type_tag().get_type_idx()
-        },
-        spec);
-  }
-};
+// struct OpArgSpecTypeAccessor {
+//   std::type_index operator()(OpArgSpec &spec) {
+//     return std::visit(
+//         [](auto &&arg) -> std::type_index {
+//           return arg.get_type_index();
+//         },
+//         spec);
+//   }
+// };
 
 struct OpTaskBinding {
   OpTaskBinding() = default;
@@ -88,7 +89,6 @@ struct OpTaskBinding {
       get_tensor_bindings() const;
   std::unordered_map<slot_id, OpArgSpec> const &get_arg_bindings() const;
 
-private:
   void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec) {
     assert(!contains_key(this->arg_bindings, name));
     this->arg_bindings.insert({name, arg_spec});
@@ -97,7 +97,7 @@ private:
   std::unordered_map<slot_id, OpArgSpec> arg_bindings;
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> tensor_bindings;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION_EMPTY(OpTaskBinding);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskBinding, arg_bindings, tensor_bindings);
 
 struct OpTaskInvocation {
 public:

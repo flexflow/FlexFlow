@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "parallel_ops/partition.h"
+#include "repartition.h"
 #include "kernels/partition_kernels.h"
 #include "op-attrs/get_output_shape.h"
 #include "utils/exceptions.h"

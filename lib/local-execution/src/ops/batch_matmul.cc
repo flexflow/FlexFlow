@@ -15,10 +15,9 @@
 
 #include "batch_matmul.h"
 #include "kernels/batch_matmul_kernels.h"
-#include "legion.h"
 #include "op-attrs/get_output_shapes.h"
 #include "op-attrs/ops/batch_matmul.h"
-#include "task_spec/op_task_signature.h"
+#include "op_task_signature.h"
 
 namespace FlexFlow {
 

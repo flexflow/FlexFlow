@@ -18,19 +18,20 @@ Tensor ComputationGraphBuilder::add_layer(
     std::vector<std::pair<TensorShape, optional<Initializer>>> const
         &weight_shapes,
     TensorShape const &output_shape) {
-  Node new_node = computation_graph.add_node(layer);
+  // Node new_node = computation_graph.add_node(layer);
 
-  size_t incoming_edge_dst_port = 0;
-  for (Tensor input : inputs) {
-    MultiDiEdge edge = computation_graph.get_edge(input);
-    edge.dst = new_node;
-    edge.dst_idx = NodePort::construct_port(incoming_edge_dst_port++);
-  }
+  // size_t incoming_edge_dst_port = 0;
+  // for (Tensor input : inputs) {
+  //   MultiDiEdge edge = computation_graph.get_edge(input);
+  //   edge.dst = new_node;
+  //   edge.dst_idx = NodePort::construct_port(incoming_edge_dst_port++);
+  // }
 
-  bool create_grad = true;
-  Tensor output_tensor = this->create_tensor(output_shape, create_grad);
-  computation_graph.add_edge_with_src(output_tensor, 0);
-  return output_tensor;
+  // bool create_grad = true;
+  // Tensor output_tensor = this->create_tensor(output_shape, create_grad);
+  // computation_graph.add_edge_with_src(output_tensor, 0);
+  // return output_tensor;
+  NOT_IMPLEMENTED();
 }
 
 std::vector<Tensor> ComputationGraphBuilder::add_layer(
@@ -39,26 +40,27 @@ std::vector<Tensor> ComputationGraphBuilder::add_layer(
     std::vector<std::pair<TensorShape, optional<Initializer>>> const
         &weight_shapes,
     std::vector<TensorShape> const &output_shapes) {
-  Node new_node = computation_graph.add_node(layer);
+  // Node new_node = computation_graph.add_node(layer);
 
-  size_t incoming_edge_dst_port = 0;
-  for (Tensor input : inputs) {
-    MultiDiEdge edge = computation_graph.get_edge(input);
-    edge.dst = new_node;
-    edge.dst_idx = NodePort::construct_port(incoming_edge_dst_port++);
-  }
+  // size_t incoming_edge_dst_port = 0;
+  // for (Tensor input : inputs) {
+  //   MultiDiEdge edge = computation_graph.get_edge(input);
+  //   edge.dst = new_node;
+  //   edge.dst_idx = NodePort::construct_port(incoming_edge_dst_port++);
+  // }
 
-  size_t outgoing_edge_src_port = 0;
-  std::vector<Tensor> output_tensors;
-  bool create_grad = true;
-  for (TensorShape output_shape : output_shapes) {
-    Tensor output_tensor = this->create_tensor(output_shape, create_grad);
-    computation_graph.add_edge_with_src(output_tensor,
-                                        outgoing_edge_src_port++);
-    output_tensors.push_back(output_tensor);
-  }
+  // size_t outgoing_edge_src_port = 0;
+  // std::vector<Tensor> output_tensors;
+  // bool create_grad = true;
+  // for (TensorShape output_shape : output_shapes) {
+  //   Tensor output_tensor = this->create_tensor(output_shape, create_grad);
+  //   computation_graph.add_edge_with_src(output_tensor,
+  //                                       outgoing_edge_src_port++);
+  //   output_tensors.push_back(output_tensor);
+  // }
 
-  return output_tensors;
+  // return output_tensors;
+  NOT_IMPLEMENTED();
 }
 
 Tensor ComputationGraphBuilder::broadcast(Tensor const &, TensorShape const &) {

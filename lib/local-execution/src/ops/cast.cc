@@ -16,7 +16,7 @@
 #include "cast.h"
 #include "kernels/cast_kernels.h"
 #include "legion/legion_utilities.h"
-#include "task_spec/op_task_signature.h"
+#include "op_task_signature.h"
 #include "utils/hash-utils.h"
 
 using namespace FlexFlow::Kernels::Cast;

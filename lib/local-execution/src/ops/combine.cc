@@ -15,7 +15,7 @@
 
 #include "combine.h"
 #include "kernels/combine_kernels.h"
-#include "task_spec/op_task_invocation.h"
+#include "op_task_invocation.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {

@@ -15,9 +15,8 @@
 
 #include "attention.h"
 #include "kernels/attention_kernels.h"
-#include "legion.h"
 #include "op-attrs/ops/attention.h"
-#include "task_spec/op_task_signature.h"
+#include "op_task_signature.h"
 
 namespace FlexFlow {
 
