@@ -1,6 +1,6 @@
 #include "dropout.h"
 #include "kernels/dropout_kernels.h"
-#include "legion/legion_utilities.h"
+
 #include "op-attrs/get_output_shapes.h"
 #include "op_task_invocation.h"
 #include "task_spec/task_signature.h"
@@ -8,10 +8,10 @@
 
 namespace FlexFlow {
 
-using Legion::Context;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
+
+
+
+
 
 using namespace FlexFlow::Kernels::Dropout;
 
@@ -54,19 +54,10 @@ static DeviceSpecific<DropoutPerDeviceState>
   auto const &attrs = acc.get_argument<DropoutAttrs>(ATTRS);
 
   DeviceSpecific<DropoutPerDeviceState> per_device_state =
-      acc.create_device_specific<DropoutPerDeviceState>(
-          init_kernel(handle, attrs.rate, attrs.seed, output.shape, allocator));
+          init_kernel(handle, attrs.rate, attrs.seed, output.shape, allocator);
   return per_device_state;
 }
 
-static DeviceSpecific<DropoutPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
@@ -83,13 +74,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr());
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<DropoutAttrs>(ATTRS);
@@ -108,13 +93,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  input_grad.get_float_ptr());
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   DropoutAttrs const &attrs,

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
+
 #include "kernels/datatype_dispatch.h"
 #include "kernels/embedding_kernels.h"
 

@@ -1,15 +1,15 @@
 #include "element_unary.h"
 #include "kernels/element_unary_kernels.h"
-#include "legion/legion_utilities.h"
+
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
 // declare Legion names
-using Legion::Context;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
+
+
+
+
 
 using namespace FlexFlow::Kernels::ElementUnary;
 
@@ -64,19 +64,10 @@ static DeviceSpecific<ElementUnaryPerDeviceState>
   ParallelTensorShape output_shape = get_output_shape(attrs, input_shape);
 
   DeviceSpecific<ElementUnaryPerDeviceState> per_device_state =
-      acc.create_device_specific<ElementUnaryPerDeviceState>(
-          init_kernel(input_shape, output_shape, attrs));
+          init_kernel(input_shape, output_shape, attrs);
   return per_device_state;
 }
 
-static DeviceSpecific<ElementUnaryPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -99,13 +90,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -132,13 +117,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  output_grad);
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   ElementUnaryUnifiedAttrs const &attrs,

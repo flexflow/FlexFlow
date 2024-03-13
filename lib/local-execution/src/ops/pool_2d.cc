@@ -1,10 +1,10 @@
 #include "pool_2d.h"
 #include "kernels/pool_2d_kernels.h"
-#include "legion/legion_utilities.h"
+
 #include "op-attrs/get_output_shapes.h"
 #include "op-attrs/ops/pool_2d.h"
 #include "utils/exception.decl.h"
-#include "utils/exceptions.h"
+#include "utils/exception.h"
 #include "utils/hash-utils.h"
 
 using namespace FlexFlow::Kernels::Pool2D;
@@ -23,13 +23,13 @@ OpTaskInvocation init(Pool2DAttrs const &attrs) {
   return {POOL2D_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<Pool2dPerDeviceState>
+static DeviceSpecific<Pool2DPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<Pool2DAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
-  auto input = acc.get_tensor<Permission::RO>(INPUT);
-  auto output = acc.get_tensor<Permission::WO>(OUTPUT);
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
   int input_w = input.shape.at(ff_dim_t(0)) + 1;
   int input_h = input.shape.at(ff_dim_t(1)) + 1;
@@ -64,7 +64,7 @@ static DeviceSpecific<Pool2dPerDeviceState>
     printf("Warning: changing pool_padding_w to satisfy output_w size\n");
   }
 
-  DeviceSpecific<Pool2dPerDeviceState> state = acc.create_device_specific<Pool2dPerDeviceState>(
+  DeviceSpecific<Pool2DPerDeviceState> state = 
               init_kernel(handle,
                           attrs.activation,
                           input_w,
@@ -86,14 +86,6 @@ static DeviceSpecific<Pool2dPerDeviceState>
   return state;
 }
 
-static DeviceSpecific<Pool2dPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 OpTaskInvocation forward(Pool2DAttrs const &attrs) {
   OpTaskBinding binding;
@@ -102,12 +94,12 @@ OpTaskInvocation forward(Pool2DAttrs const &attrs) {
 
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(PER_DEVICE_STATE,
-                   per_device_op_state<Pool2dPerDeviceState>());
+                   per_device_op_state<Pool2DPerDeviceState>());
 
   return {POOL2D_FWD_TASK_ID, binding};
 }
 
-OpTaskInvocation backward(Pool2DAttrs const &) {
+OpTaskInvocation backward(Pool2DAttrs const & attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
   return {POOL2D_BWD_TASK_ID, b};
@@ -115,37 +107,31 @@ OpTaskInvocation backward(Pool2DAttrs const &) {
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  Pool2dPerDeviceState state =
-      acc.get_argument<Pool2dPerDeviceState>(PER_DEVICE_STATE);
+  Pool2DPerDeviceState state =
+      acc.get_argument<Pool2DPerDeviceState>(PER_DEVICE_STATE);
 
-  auto input = acc.get_tensor<Permission::RO>(INPUT);
-  auto output = acc.get_tensor<Permission::WO>(OUTPUT);
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
   return profile(forward_kernel,
-                 profilng,
+                 profiling,
                  "[Pool2D] forward_time = %.2lfms\n",
                  state,
                  input.get_float_ptr(),
                  output.get_float_ptr());
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  Pool2dPerDeviceState state =
-      acc.get_argument<Pool2dPerDeviceState>(PER_DEVICE_STATE);
+  Pool2DPerDeviceState state =
+      acc.get_argument<Pool2DPerDeviceState>(PER_DEVICE_STATE);
 
-  auto input = acc.get_tensor<Permission::RO>(INPUT);
-  auto input_grad = acc.get_tensor<Permission::RW>(INPUT);
-  auto output = acc.get_tensor<Permission::RO>(OUTPUT);
-  auto output_grad = acc.get_tensor<Permission::RO>(OUTPUT);
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto input_grad = acc.get_tensor<Permissions::RW>(INPUT);
+  auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
+  auto output_grad = acc.get_tensor<Permissions::RO>(OUTPUT);
 
   return profile(backward_kernel,
                  profilng,
@@ -157,13 +143,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  output_grad.get_float_ptr());
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   Pool2DAttrs const &attrs,
@@ -181,7 +161,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   auto init_accessor = env.get_init_accessor(POOL2D_INIT_TASK_ID, init_binding);
 
-  DeviceSpecific<Pool2dPerDeviceState> per_device_state =
+  DeviceSpecific<Pool2DPerDeviceState> per_device_state =
       init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;

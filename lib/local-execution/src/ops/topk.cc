@@ -16,27 +16,13 @@
 #include "topk.h"
 #include "kernels/topk_kernels.h"
 #include "op-attrs/get_output_shapes.h"
-#include "utils/exceptions.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::InlineLauncher;
-using Legion::Machine;
-using Legion::Memory;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
+
+
+
 using PCG::Node;
 
 using namespace FlexFlow::Kernels::TopK;
@@ -50,7 +36,7 @@ enum Slots { INPUT, OUTPUT, INDICES, ATTRS, PROFILING, PER_DEVICE_STATE };
 OpTaskInvocation init(TopKAttrs const &attrs) {
   OpTaskBinding binding;
 
-  bind.bind_arg(ATTRS, attrs);
+  binding.bind_arg(ATTRS, attrs);
 
   return {TOPK_INIT_TASK_ID, binding};
 }
@@ -60,7 +46,7 @@ OpTaskInvocation forward(TopKAttrs const &attrs) {
 
   binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<TopKPerDeviceState>());
   binding.bind_arg(PROFILING, profiling_settings());
-  bind.bind_arg(ATTRS, attrs);
+  binding.bind_arg(ATTRS, attrs);
 
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
@@ -80,19 +66,10 @@ static DeviceSpecific<TopKPerDeviceState>
 
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
 
-  DeviceSpecific<TopKPerDeviceState> per_device_state =
-      acc.create_device_specific<TopKPerDeviceState>(init_kernel(attrs.sorted));
+  DeviceSpecific<TopKPerDeviceState> per_device_state =init_kernel(attrs.sorted);
   return per_device_state;
 }
 
-static DeviceSpecific<TopKPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
@@ -120,13 +97,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                    attrs.sorted);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
@@ -154,13 +125,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                    attrs.k);
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   TopKAttrs const &attrs,

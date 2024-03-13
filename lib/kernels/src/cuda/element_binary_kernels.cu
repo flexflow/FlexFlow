@@ -14,7 +14,7 @@
  */
 
 #include "device.h"
-#include "kernels/device.h"
+#include "device.h"
 #include "kernels/element_binary_kernels.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/datatype.h"

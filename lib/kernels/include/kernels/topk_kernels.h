@@ -2,7 +2,7 @@
 #define _FLEXFLOW_OPS_KERNELS_TOPK_KERNELS_H
 
 #include "kernels/allocation.h"
-#include "kernels/device.h"
+#include "device.h"
 
 namespace FlexFlow {
 

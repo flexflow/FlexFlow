@@ -23,10 +23,10 @@ namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::BatchMatmul;
 
-using Legion::Context;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
+
+
+
+
 
 enum Slots {
   A_INPUT, // tensor
@@ -104,13 +104,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  iter_config.seq_length);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   // BatchMatmul* bmm = (BatchMatmul*) task->args;
@@ -164,13 +158,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  batch);
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   BatchMatmulAttrs const &attrs,

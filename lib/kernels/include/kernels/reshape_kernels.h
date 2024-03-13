@@ -2,7 +2,7 @@
 #define _FLEXFLOW_OPS_KERNELS_RESHAPE_KERNELS_H
 
 #include "kernels/accessor.h"
-#include "kernels/device.h"
+#include "device.h"
 #include "utils/required_core.h"
 
 namespace FlexFlow {

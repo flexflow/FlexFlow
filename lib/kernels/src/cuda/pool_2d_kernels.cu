@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
+
 #include "kernels/pool_2d_kernels.h"
 
 namespace FlexFlow {
@@ -107,7 +107,7 @@ void init_kernel(Pool2DPerDeviceState *m,
                  int kernel_w,
                  int stride_h,
                  int stride_w,
-                 PoolType pool_type) {
+                 PoolOp pool_type) {
   checkCUDNN(cudnnSetTensor4dDescriptor(m.inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
@@ -117,10 +117,10 @@ void init_kernel(Pool2DPerDeviceState *m,
                                         input_w));
 
   cudnnPoolingMode_t mode;
-  if (pool_type == POOL_MAX) {
+  if (pool_type == PoolOp::MAX) {
     mode = CUDNN_POOLING_MAX;
   } else {
-    assert(pool_type == POOL_AVG);
+    assert(pool_type == PoolOp::AVG);
     mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
   }
   checkCUDNN(cudnnSetPooling2dDescriptor(m.poolDesc,

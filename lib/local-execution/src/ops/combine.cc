@@ -20,10 +20,10 @@
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::Context;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
+
+
+
+
 
 using namespace FlexFlow::Kernels::Combine;
 
@@ -59,13 +59,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -80,13 +74,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  output_grad);
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   CombineAttrs const &attrs,

@@ -14,7 +14,7 @@
  */
 
 #include "kernels/allocation.h"
-#include "kernels/cuda_helper.h"
+
 #include "kernels/linear_kernels.h"
 
 namespace FlexFlow {

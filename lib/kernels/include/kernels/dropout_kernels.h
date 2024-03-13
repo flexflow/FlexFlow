@@ -3,7 +3,7 @@
 
 #include "kernels/allocation.h"
 #include "kernels/array_shape.h"
-#include "kernels/device.h"
+#include "device.h"
 #include "kernels/ff_handle.h"
 #include <cstddef>
 

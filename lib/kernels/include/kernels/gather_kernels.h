@@ -2,7 +2,7 @@
 #define _FLEXFLOW_OPS_KERNELS_GATHER_KERNELS_H
 
 #include "accessor.h"
-#include "kernels/device.h"
+#include "device.h"
 
 namespace FlexFlow {
 

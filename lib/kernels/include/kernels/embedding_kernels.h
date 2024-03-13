@@ -2,7 +2,7 @@
 #define _FLEXFLOW_OPS_KERNELS_EMBEDDING_KERNELS_H
 
 #include "kernels/accessor.h"
-#include "kernels/device.h"
+#include "device.h"
 #include "op-attrs/ops/embedding.h"
 
 namespace FlexFlow {

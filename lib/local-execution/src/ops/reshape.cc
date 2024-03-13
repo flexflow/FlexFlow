@@ -15,24 +15,15 @@
 
 #include "reshape.h"
 #include "kernels/reshape_kernels.h"
-#include "legion/legion_utilities.h"
+
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
+
+
+
+
+
 
 using namespace FlexFlow::Kernels::Reshape;
 
@@ -69,24 +60,15 @@ static DeviceSpecific<ReshapePerDeviceState>
   auto attrs = acc.get_argument<ReshapeAttrs>(ATTRS);
 
   DeviceSpecific<ReshapePerDeviceState> per_device_state =
-      acc.create_device_specific<ReshapePerDeviceState>(
-          init_kernel(attrs.shape.data_type));
+          init_kernel(attrs.shape.data_type);
   return per_device_state;
 }
 
-static DeviceSpecific<ReshapePerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
       acc.get_argument<ReshapePerDeviceState>(PER_DEVICE_STATE);
-  Profiling profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -99,13 +81,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
@@ -123,13 +99,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  output_grad);
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ReshapeAttrs const &attrs,
@@ -137,6 +107,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
 
+  auto env = sim_factory.new_environment();
   SimTaskBinding init_binding;
   init_binding.bind_arg(ATTRS, attrs);
   auto init_accessor =

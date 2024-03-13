@@ -16,29 +16,15 @@
 #include "repartition.h"
 #include "kernels/partition_kernels.h"
 #include "op-attrs/get_output_shape.h"
-#include "utils/exceptions.h"
+#include "utils/exception.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::LogicalPartition;
-using Legion::LogicalRegion;
-using Legion::Machine;
-using Legion::Memory;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
+
+
+
+
 
 using namespace FlexFlow::Kernels::Repartition;
 
@@ -59,7 +45,7 @@ OpTaskInvocation forward(RepartitionAttrs const &attrs) {
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(PER_DEVICE_STATE,
-                   per_device_state<RepartitionPerDeviceState>());
+                   per_device_op_state<RepartitionPerDeviceState>());
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
@@ -79,19 +65,10 @@ static DeviceSpecific<RepartitionPerDeviceState>
 
   // Note: use the input data type
   DeviceSpecific<RepartitionPerDeviceState> per_device_state =
-      acc.create_device_specific_state<RepartitionPerDeviceState>(
-          init_kernel(handle, input.data_type));
+          init_kernel(handle, input.data_type);
   return per_device_state;
 }
 
-static DeviceSpecific<RepartitionPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -108,13 +85,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                    output);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -131,13 +102,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                    output_grad);
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   RepartitionAttrs const &attrs,

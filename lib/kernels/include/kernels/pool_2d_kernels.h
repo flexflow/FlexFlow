@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_POOL_2D_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_POOL_2D_KERNELS_H
 
-#include "kernels/device.h"
+#include "device.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/activation.h"
 #include "op-attrs/ops/pool_2d.h"
@@ -15,7 +15,7 @@ struct Pool2DPerDeviceState {
   ffActivationDescriptor_t actiDesc;
   ffPoolingDescriptor_t poolDesc;
   bool relu;
-}
+};
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Pool2DPerDeviceState,
                                              handle,
@@ -61,7 +61,7 @@ void init_kernel(Pool2DPerDeviceState *m,
                  int kernel_w,
                  int stride_h,
                  int stride_w,
-                 PoolType pool_type);
+                 PoolOp pool_type);
 
 void forward_kernel(ffStream_t stream,
                     Pool2DPerDeviceState const &m,

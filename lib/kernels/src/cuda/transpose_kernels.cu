@@ -15,14 +15,13 @@
 
 #include "kernel/accessor.h"
 #include "kernels/accessor.h"
-#include "kernels/cuda_helper.h"
+
 #include "kernels/transpose_kernels.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::coord_t;
-using Legion::Domain;
+using legion_coord_t = long long;
 
 struct TransposeStrides {
   int num_dim;
@@ -55,7 +54,7 @@ __global__ void transpose_simple_kernel(std::size_t volume,
     std::size i_idx = 0;
     std::size t = o_idx;
     for (int i = info.num_dim - 1; i >= 0; i--) {
-      coord_t ratio = t / info.out_strides[i];
+      legion_coord_t ratio = t / info.out_strides[i];
       t -= ratio * info.out_strides[i];
       i_idx += ratio * info.in_strides[info.perm[i]];
     }

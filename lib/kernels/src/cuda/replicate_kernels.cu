@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
+
 #include "kernels/replicate_kernels.h"
 
 namespace FlexFlow {

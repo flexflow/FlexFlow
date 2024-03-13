@@ -1,31 +1,12 @@
 #include "linear.h"
 #include "kernels/linear_kernels.h"
-#include "layer.h"
-#include "legion/legion_utilities.h"
 #include "op-attrs/ff_dim.h"
 #include "op-attrs/get_output_shapes.h"
-#include "utils/exceptions.h"
+#include "utils/exception.h"
 #include "utils/graph/views.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-
-// declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::InlineLauncher;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Linear;
 
@@ -43,12 +24,12 @@ enum slots {
 OpTaskInvocation init(LinearAttrs const &attrs) {
   OpTaskBinding binding;
 
-  bind.bind_arg(HANDLE, ff_handle());
-  bind.bind_arg(ATTRS, attrs);
+  binding.bind_arg(HANDLE, ff_handle());
+  binding.bind_arg(ATTRS, attrs);
 
-  bind.bind(INPUT, input_tensor(0));   // input
-  bind.bind(WEIGHT, weight_tensor(0)); // weight
-  bind.bind(OUTPUT, output_tensor(0)); // output
+  binding.bind(INPUT, input_tensor(0));   // input
+  binding.bind(WEIGHT, weight_tensor(0)); // weight
+  binding.bind(OUTPUT, output_tensor(0)); // output
 
   return {LINEAR_INIT_TASK_ID, binding};
 }
@@ -56,14 +37,14 @@ OpTaskInvocation init(LinearAttrs const &attrs) {
 OpTaskInvocation forward(LinearAttrs const &attrs) {
   OpTaskBinding binding;
 
-  bind.bind(INPUT, input_tensor(0));   // input
-  bind.bind(WEIGHT, weight_tensor(0)); // weight
-  bind.bind(OUTPUT, output_tensor(0)); // output
-  bind.bind(BIAS, bias_tensor(0));     // bias
+  binding.bind(INPUT, input_tensor(0));   // input
+  binding.bind(WEIGHT, weight_tensor(0)); // weight
+  binding.bind(OUTPUT, output_tensor(0)); // output
+  binding.bind(BIAS, bias_tensor(0));     // bias
 
   bing.bind_arg(PROFILING, profiling_settings());
-  bind.bind_arg(PER_DEVICE_STATE, per_device_state<LinearPerDeviceState>());
-  bind.bind_arg(ATTRS, attrs);
+  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<LinearPerDeviceState>());
+  binding.bind_arg(ATTRS, attrs);
 
   return {LINEAR_FWD_TASK_ID, binding};
 }
@@ -88,7 +69,6 @@ static DeviceSpecific<LinearPerDeviceState>
   float *one_ptr;
 
   DeviceSpecific<LinearPerDeviceState> state =
-      acc.create_device_specific<LinearPerDeviceState>(
           init_kernel(handle,
                       one_ptr,
                       attrs.regularizer,
@@ -97,18 +77,10 @@ static DeviceSpecific<LinearPerDeviceState>
                       weight.data_type,
                       output.data_type,
                       batch_size,
-                      attrs.out_channels));
+                      attrs.out_channels);
   return state;
 }
 
-static DeviceSpecific<MHAPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -142,13 +114,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  batch_size);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-};
+;
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -188,13 +154,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  batch_size);
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   LinearAttrs const &attrs,
@@ -220,14 +180,14 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   SimTaskBinding fwd_binding;
 
-  fwd_bind.bind(INPUT, input_tensor(0));   // input
-  fwd_bind.bind(WEIGHT, weight_tensor(0)); // weight
-  fwd_bind.bind(OUTPUT, output_tensor(0)); // output
-  fwd_bind.bind(BIAS, bias_tensor(0));     // bias
+  fwd_binding.bind(INPUT, input_tensor(0));   // input
+  fwd_binding.bind(WEIGHT, weight_tensor(0)); // weight
+  fwd_binding.bind(OUTPUT, output_tensor(0)); // output
+  fwd_binding.bind(BIAS, bias_tensor(0));     // bias
 
-  fwd_bid.bind_arg(PROFILING, profiling_settings());
-  fwd_bind.bind_arg(PER_DEVICE_STATE, per_device_state<LinearPerDeviceState>());
-  fwd_bind.bind_arg(ATTRS, attrs);
+  fwd_binding.bind_arg(PROFILING, profiling_settings());
+  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<LinearPerDeviceState>());
+  fwd_binding.bind_arg(ATTRS, attrs);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 

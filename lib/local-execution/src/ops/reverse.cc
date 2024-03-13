@@ -19,23 +19,9 @@
 #include "op-attrs/get_output_shapes.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Reverse;
+using legion_coord_t = long long;
 
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
 
@@ -43,7 +29,7 @@ OpTaskInvocation forward(ReverseAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(PROFILING, profiling_settings());
-  bind.bind_arg(ATTRS, attrs);
+  binding.bind_arg(ATTRS, attrs);
 
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
@@ -62,9 +48,9 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto attrs = acc.get_argument<ReverseAttrs>(ATTRS);
 
-  int output_size = outtput.shape.get_volume();
+  int output_size = output.shape.get_volume();
   auto axis = attrs.axis;
-  coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
+  legion_coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < output.shape.get_dim(); i++) {
     if (i < axis) {
       in_blk_size *= output.shape[i];
@@ -86,13 +72,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output_size);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -101,7 +81,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<ReverseAttrs>(ATTRS);
 
   int axis = input.shape.get_dim() - attrs.axis - 1;
-  coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
+  legion_coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < input_grad.shape.get_dim(); i++) {
     if (i < axis) {
       in_blk_size *= input_grad.shape[i];
@@ -123,13 +103,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  input.shape.get_volume());
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ReverseAttrs const &attrs,

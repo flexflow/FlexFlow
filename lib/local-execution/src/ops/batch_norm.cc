@@ -15,16 +15,16 @@
 
 #include "batch_norm.h"
 #include "kernels/batch_norm_kernels.h"
-#include "legion/legion_utilities.h"
+
 
 namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::BatchNorm;
 
-using Legion::Context;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
+
+
+
+
 
 enum Slots {
   INPUT,  // tensor
@@ -88,7 +88,6 @@ static DeviceSpecific<BatchNormPerDeviceState>
   float *runningMean;
 
   DeviceSpecific<BatchNormPerDeviceState> per_device_state =
-      acc.create_device_specific<BatchNormPerDeviceState>(
           init_kernel(handle,
                       allocator,
                       runningMean,
@@ -96,19 +95,11 @@ static DeviceSpecific<BatchNormPerDeviceState>
                       output_c,
                       output_h,
                       output_w,
-                      attrs.relu));
+                      attrs.relu);
 
   return per_device_state;
 }
 
-static DeviceSpecific<BatchNormPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
@@ -130,13 +121,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  bias.get_float_ptr());
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
@@ -165,13 +150,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  output.shape.get_volume());
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   BatchNormAttrs const &attrs,

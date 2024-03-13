@@ -17,25 +17,16 @@
 #include "kernels/softmax_kernels.h"
 #include "op-attrs/get_output_shapes.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "utils/exceptions.h"
+#include "utils/exception.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
+
+
+
+
+
 
 using namespace FlexFlow::Kernels::Softmax;
 
@@ -75,19 +66,10 @@ static DeviceSpecific<SoftmaxPerDeviceState>
   auto const &attrs = acc.get_argument<SoftmaxAttrs>(ATTRS);
 
   DeviceSpecific<SoftmaxPerDeviceState> per_device_state =
-      acc.create_device_specific<SoftmaxPerDeviceState>(
-          init_kernel(handle, attrs.dim));
+          init_kernel(handle, attrs.dim);
   return per_device_state;
 }
 
-static DeviceSpecific<SoftmaxPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -104,13 +86,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr(), );
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -134,13 +110,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   );
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   SoftmaxAttrs const &attrs,

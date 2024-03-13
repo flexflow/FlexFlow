@@ -6,6 +6,7 @@
 #include "kernels/linear_kernels.h"
 #include "op-attrs/operator_attrs.h"
 #include "op_task_signature.h"
+#include "op_task_invocation.h"
 #include "pcg/computation_graph.h"
 #include "task_argument_accessor.h"
 #include <functional>

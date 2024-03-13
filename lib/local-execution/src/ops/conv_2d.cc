@@ -1,16 +1,16 @@
 #include "conv_2d.h"
 #include "kernels/conv_2d_kernels.h"
-#include "legion/legion_utilities.h"
+
 #include "mpark/variant.hpp"
 #include "op-attrs/get_output_shapes.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
-using Legion::Context;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
+
+
+
+
 
 using namespace FlexFlow::Kernels::Conv2D;
 
@@ -70,7 +70,6 @@ static DeviceSpecific<Conv2DPerDeviceState>
   auto filter_grad = acc.get_tensor_grad<Permissions::RW>(FILTER);
 
   DeviceSpecific<Conv2DPerDeviceState> per_device_state =
-      acc.create_device_specific<Conv2DPerDeviceState>(
           init_kernel(handle,
                       attrs.activation,
                       attrs.kernel_h,
@@ -83,18 +82,10 @@ static DeviceSpecific<Conv2DPerDeviceState>
                       input,
                       output,
                       filter.get_float_ptr(),
-                      filter_grad.get_float_ptr()));
+                      filter_grad.get_float_ptr());
   return per_device_state;
 }
 
-static DeviceSpecific<Conv2DPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -118,13 +109,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  attrs.activation);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -155,13 +140,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  attrs.activation);
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   Conv2DAttrs const &attrs,

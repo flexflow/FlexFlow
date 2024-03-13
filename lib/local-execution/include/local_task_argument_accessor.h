@@ -3,13 +3,7 @@
 
 #include "kernels/accessor.h"
 #include "kernels/allocation.h"
-#include "kernels/linear_kernels.h"
-#include "op-attrs/parallel_tensor_shape.h"
 #include "task_argument_accessor.h"
-#include "op_task_signature.h"
-#include "arg_ref.h"
-#include "device_specific.h"
-#include "concrete_arg.h"
 #include "config.h"
 #include <unordered_map>
 #include <variant>
@@ -17,34 +11,23 @@
 namespace FlexFlow {
 
 using SlotGradId = std::pair<slot_id, IsGrad>;
-
-// TODO: define device state variant in another file
-using DeviceStates = std::variant<LinearPerDeviceState>;
-
-using OpArgRefType = std::variant<ParallelTensorShape, DeviceSpecific<DeviceStates>>;
-using RuntimeArgRefType = std::variant<ProfilingSettings,
-                                  DeviceSpecific<PerDeviceFFHandle>,
-                                  FFIterationConfig>;
-
-using ArgRefBacking = std::variant<OpArgRefType, RuntimeArgRefType, ConcreteArgSpec>;
+using TensorBackingOption = std::variant<GenericTensorAccessorW, std::vector<GenericTensorAccessorW>>;
 
 struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
   LocalTaskArgumentAccessor() = default;
 
-  template <typename T>
-  T const &get_argument(slot_id) const;
+  ConcreteArgSpec const & get_concrete_arg(slot_id) const override;
+  OpArgRefTypeBacking const & get_op_arg_ref(slot_id) const override;
+  RuntimeArgRefTypeBacking const & get_runtime_arg(slot_id) const override;
 
-  template <typename OpArgRefType>
-  OpArgRefType const &get_argument(slot_id) const;
-
-  template <typename RuntimeArgRefType>
-  RuntimeArgRefType const &get_argument(slot_id) const;
-
-  PrivilegeType get_tensor(slot_id slot, bool is_grad) const override;
-
-  template <Permissions PRIV>
-  privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const;
+  PrivilegeType get_tensor(slot_id slot, Permissions priv) const override;
+  PrivilegeVariadicType get_variadic_tensor(slot_id slot,
+                                                    Permissions priv) const override;
+  PrivilegeType get_tensor_grad(slot_id slot,
+                                        Permissions priv) const override;
+  PrivilegeVariadicType
+      get_variadic_tensor_grad(slot_id slot, Permissions priv) const override;
 
   Allocator get_allocator();
 

@@ -13,12 +13,11 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
+
 #include "kernels/softmax_kernels.h"
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::Domain;
 
 SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &handle, int dim) {
   ffTensorDescriptor_t inputTensor;

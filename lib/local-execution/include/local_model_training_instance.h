@@ -2,7 +2,7 @@
 #define _FLEXFLOW_EXECUTION_INCLUDE_LOCAL_EXECUTION_LOCAL_MODEL_TRAINING_INSTANCE_H
 
 #include "local_training_backing.h"
-#include "metrics_functions.h"
+// #include "metrics_functions.h"
 #include "op-attrs/ops/loss_functions.h"
 #include "pcg/computation_graph.h"
 #include "pcg/optimizer.h"
@@ -26,7 +26,7 @@ struct TrainingComputationGraph {
   tensor_guid_t logit_tensor;
   tensor_guid_t label_tensor;
   LossAttrs loss;
-  req<MetricsAttrs> metrics;
+  // req<MetricsAttrs> metrics;
 };
 FF_VISITABLE_STRUCT(TrainingComputationGraph,
                     computation_graph,
@@ -57,7 +57,7 @@ LocalModelTrainingInstance initialize_backing(
     tensor_guid_t logit_tensor,
     tensor_guid_t label_tensor,
     LossAttrs loss,
-    MetricsAttrs metrics,
+    // MetricsAttrs metrics,
     std::unordered_map<tensor_guid_t, GenericTensorAccessorW> const
         &slot_mapping);
 

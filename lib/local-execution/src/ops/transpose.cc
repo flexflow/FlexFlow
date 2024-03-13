@@ -15,26 +15,17 @@
 
 #include "transpose.h"
 #include "kernels/transpose_kernels.h"
-#include "legion/legion_utilities.h"
+
 #include "op-attrs/ops/transpose.h"
 #include "utils/exception.decl.h"
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
+
+
+
+
+
 
 using namespace FlexFlow::Kernels::Transpose;
 
@@ -59,20 +50,11 @@ static DeviceSpecific<TransposePerDeviceState>
   auto const &attrs = acc.get_argument<TransposeAttrs>(ATTRS);
   std::vector<int> perm = attrs.perm; // default convert stack_vector to vector
   DeviceSpecific<TransposePerDeviceState> per_device_state =
-      acc.create_device_specific<TransposePerDeviceState>(
-          init_kernel(perm.size(), perm));
+          init_kernel(perm.size(), perm);
 
   return per_device_state;
 }
 
-static DeviceSpecific<TransposePerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 template <>
 void register_task<TRANSPOSE_INIT_TASK_ID>();
@@ -114,18 +96,12 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                    output);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state =
-      acc.get_per_device_state<TransposePerDeviceState>(PER_DEVICE_STATE);
+      acc.get_per_device_op_state<TransposePerDeviceState>(PER_DEVICE_STATE);
 
   auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
@@ -138,13 +114,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                    output_grad);
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 OpTaskInvocation backward(TransposeAttrs const &) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);

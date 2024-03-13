@@ -1,7 +1,9 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_REDUCE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_REDUCE_KERNELS_H
 
-#include "kernels/device.h"
+#include "device.h"
+#include "ff_handle.h"
+#include "array_shape.h"
 
 namespace FlexFlow {
 
@@ -11,7 +13,7 @@ struct ReducePerDeviceState {
   ffTensorDescriptor_t outputTensor;
   ffReduceTensorDescriptor_t reduceDesc;
   OperatorType op_type;
-  size_t reduction_size;
+  req<size_t> reduction_size;
 };
 
 FF_VISITABLE_STRUCT(ReducePerDeviceState,
@@ -25,7 +27,7 @@ FF_VISITABLE_STRUCT(ReducePerDeviceState,
 namespace Kernels {
 namespace Reduce {
 
-ReducePerDeviceState init_kernel(PerDeviceFFhandle const &,
+ReducePerDeviceState init_kernel(PerDeviceFFHandle const &,
                                  OperatorType const &,
                                  size_t const &,
                                  ArrayShape input_shape,

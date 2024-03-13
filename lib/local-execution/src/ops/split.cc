@@ -16,25 +16,16 @@
 #include "split.h"
 #include "kernels/array_shape.h"
 #include "kernels/split_kernels.h"
-#include "utils/exceptions.h"
+#include "utils/exception.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::ArgumentMap;
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::FutureMap;
-using Legion::IndexLauncher;
-using Legion::PhysicalRegion;
-using Legion::Predicate;
-using Legion::Rect;
-using Legion::RegionRequirement;
-using Legion::Runtime;
-using Legion::Task;
-using Legion::TaskArgument;
-using Legion::TaskLauncher;
+
+
+
+
+
 using PCG::Node;
 
 using namespace FlexFlow::Kernels::Split;
@@ -83,13 +74,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  attrs.splits.size());
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 // maybe we should add assert like the original code
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
@@ -132,13 +117,7 @@ void calc_block_size(coord_t &num_blks,
   }
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   SplitAttrs const &attrs,

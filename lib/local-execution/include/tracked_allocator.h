@@ -7,7 +7,7 @@
 namespace FlexFlow {
 
 struct TrackedAllocator : public IAllocator {
-  TrackedAllocator(size_t) override;
+  TrackedAllocator(size_t);
   ~TrackedAllocator() override;
 
   void *allocate(size_t) override;
@@ -15,6 +15,8 @@ struct TrackedAllocator : public IAllocator {
   size_t get_ptr_memory_size(void *);
 
 private:
+  const size_t total_memory_size;
+  size_t allocated_memory_size;
   std::unordered_map<void *, size_t> ptr_memory_size_mapping;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(TrackedAllocator);

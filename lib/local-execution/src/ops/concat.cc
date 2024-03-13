@@ -15,20 +15,20 @@
 
 #include "concat.h"
 #include "kernels/concat_kernels.h"
-#include "legion/legion_utilities.h"
+
 #include "op-attrs/get_output_shapes.h"
 #include "op_task_signature.h"
-#include "task_spec/variadic_tensor_ref.h"
+#include "variadic_tensor_ref.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::Concat;
 
-using Legion::Context;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
+
+
+
+
 
 enum Slots { INPUTS, OUTPUT, ATTRS, PROFILING, HANDLE, NUM_INPUTS };
 
@@ -65,13 +65,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  attrs.axis);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -90,13 +84,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  attrs.axis);
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics
     measure_operator_cost(SimEnvFactory const &sim,

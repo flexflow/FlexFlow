@@ -1,15 +1,15 @@
 #include "element_binary.h"
 #include "kernels/element_binary_kernels.h"
-#include "legion/legion_utilities.h"
+
 #include "op-attrs/get_output_shapes.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
-using Legion::Context;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
+
+
+
+
 
 using namespace FlexFlow::Kernels::ElementBinary;
 
@@ -66,24 +66,14 @@ static DeviceSpecific<ElementBinaryPerDeviceState>
   auto const &attrs = acc.get_argument<ElementBinaryAttrs>(ATTRS);
 
   DeviceSpecific<ElementBinaryPerDeviceState> per_device_state =
-      acc.create_device_specific<ElementBinaryPerDeviceState>(
           init_kernel(handle,
                       attrs.type,
                       attrs.should_broadcast_lhs,
                       attrs.should_broadcast_rhs,
                       input_lhs.shape,
                       input_rhs.shape,
-                      output.shape));
+                      output.shape);
   return per_device_state;
-}
-
-static DeviceSpecific<ElementBinaryPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -109,13 +99,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  handle);
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
@@ -146,13 +130,7 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  handle);
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 CostMetrics
     measure_operator_cost(SimEnvFactory const &sim,

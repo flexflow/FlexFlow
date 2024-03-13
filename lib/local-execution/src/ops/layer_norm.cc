@@ -15,26 +15,24 @@
 
 #include "layer_norm.h"
 #include "kernels/layer_norm_kernels.h"
-#include "legion/legion_utilities.h"
 #include "op-attrs/ops/layer_norm.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "utils/exceptions.h"
+#include "utils/exception.h"
 #include "utils/hash-utils.h"
 #include <type_traits>
-
-using Legion::Context;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
 
 namespace FlexFlow {
 
 enum Slots {
   PROFILING,
   INPUT,
+  INPUT_GRAD,
   OUTPUT,
+  OUTPUT_GRAD,
   GAMMA,
+  GAMMA_GRAD,
   BETA,
+  BETA_GRAD,
   PER_DEVICE_STATE,
   ATTRS,
   HANDLE
@@ -59,7 +57,7 @@ OpTaskInvocation forward(LayerNormAttrs const &attrs) {
   b.bind(GAMMA, weight_tensor(0)); // todo, this may have some problem
   b.bind(BETA, weight_tensor(1));  // how to get gmmam and beta
   b.bind_arg(PROFILING, profiling_settings());
-  b.bind_arg(PER_DEVICE_STATE, per_device_state<LayerNormPerDeviceState>());
+  b.bind_arg(PER_DEVICE_STATE, per_device_op_state<LayerNormPerDeviceState>());
 
   return {LAYERNORM_FWD_TASK_ID, b};
 }
@@ -71,10 +69,10 @@ OpTaskInvocation backward(LayerNormAttrs const &attrs) {
 }
 
 static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
-  auto input = acc.get_tensor<Permission::RO>(INPUT);
-  auto output = acc.get_tensor<Permission::WO>(OUTPUT);
-  auto gamma = acc.get_tensor<Permission::RW>(GAMMA);
-  auto beta = acc.get_tensor<Permission::RW>(BETA);
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
+  auto gamma = acc.get_tensor<Permissions::RW>(GAMMA);
+  auto beta = acc.get_tensor<Permissions::RW>(BETA);
 
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto &state = acc.get_argument<LayerNormPerDeviceState>(PER_DEVICE_STATE);
@@ -89,22 +87,16 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  beta.get_float_ptr());
 }
 
-static void forward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  forward_task_impl(acc);
-}
+
 
 static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
-  auto input = acc.get_tensor<Permission::RO>(INPUT);
-  auto gamma = acc.get_tensor<Permission::RO>(GAMMA);
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto gamma = acc.get_tensor<Permissions::RO>(GAMMA);
 
-  auto input_grad = acc.get_tensor<Permission::RW>(INPUT_GRAD);
-  auto gamma_grad = acc.get_tensor<Permission::RW>(GAMMA_GRAD);
-  auto beta_grad = acc.get_tensor<Permission::RW>(BETA_GRAD);
-  auto output_grad = acc.get_tensor<Permission::RO>(OUTPUT_GRAD);
+  auto input_grad = acc.get_tensor<Permissions::RW>(INPUT_GRAD);
+  auto gamma_grad = acc.get_tensor<Permissions::RW>(GAMMA_GRAD);
+  auto beta_grad = acc.get_tensor<Permissions::RW>(BETA_GRAD);
+  auto output_grad = acc.get_tensor<Permissions::RO>(OUTPUT_GRAD);
 
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto &state = acc.get_argument<LayerNormPerDeviceState>(PER_DEVICE_STATE);
@@ -121,19 +113,13 @@ static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
                  beta_grad.get_float_ptr());
 }
 
-static void backward_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  backward_task_impl(acc);
-}
+
 
 static DeviceSpecific<LayerNormPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   Allocator allocator = acc.get_allocator();
-  auto input = acc.get_tensor<Permission::RO>(INPUT);
+  auto input = acc.get_tensor<Permissions::RO>(INPUT);
   FFHandler handle = acc.get_argument<FFHandler>(HANDLE);
 
   // question: how to get batch_size and effective_num_elements
@@ -149,24 +135,15 @@ static DeviceSpecific<LayerNormPerDeviceState>
     effective_batch_size = input.shape.get_volume() / M;
 
     DeviceSpecific<LayerNormPerDeviceState> per_device_state =
-        acc.create_device_specific<LayerNormPerDeviceState>(
             init_kernel(handle,
                         allocator,
                         attrs.elementwise_affine,
                         effective_batch_size,
                         effective_num_elements,
-                        attrs.eps));
+                        attrs.eps);
   }
 }
 
-static DeviceSpecific<LayerNormPerDeviceState>
-    init_task(Task const *task,
-              std::vector<PhysicalRegion> const &regions,
-              Context ctx,
-              Runtime *runtime) {
-  TaskArgumentAccessor acc(task, regions, ctx, runtime);
-  return init_task_impl(acc);
-}
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   LayerNormAttrs const &attrs,

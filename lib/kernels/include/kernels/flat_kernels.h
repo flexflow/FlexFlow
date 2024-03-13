@@ -2,7 +2,7 @@
 #define _FLEXFLOW_OPS_KERNELS_FLAT_KERNELS_H
 
 #include "kernels/accessor.h"
-#include "kernels/device.h"
+#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {
