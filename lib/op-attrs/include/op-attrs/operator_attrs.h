@@ -42,8 +42,8 @@ using SharedOperatorAttrs = variant<BatchMatmulAttrs,
                                     Conv2DAttrs,
                                     DropoutAttrs,
                                     ElementBinaryAttrs,
-                                    ElementScalarUnaryAttrs,
                                     ElementUnaryAttrs,
+                                    ElementScalarUnaryAttrs,
                                     EmbeddingAttrs,
                                     FlatAttrs,
                                     GatherAttrs,
@@ -67,8 +67,8 @@ static_assert(is_valid_opattr<ConcatAttrs>::value, "");
 static_assert(is_valid_opattr<Conv2DAttrs>::value, "");
 static_assert(is_valid_opattr<DropoutAttrs>::value, "");
 static_assert(is_valid_opattr<ElementBinaryAttrs>::value, "");
-static_assert(is_valid_opattr<ElementScalarUnaryAttrs>::value, "");
 static_assert(is_valid_opattr<ElementUnaryAttrs>::value, "");
+static_assert(is_valid_opattr<ElementScalarUnaryAttrs>::value, "");
 static_assert(is_valid_opattr<EmbeddingAttrs>::value, "");
 static_assert(is_valid_opattr<FlatAttrs>::value, "");
 static_assert(is_valid_opattr<GatherAttrs>::value, "");

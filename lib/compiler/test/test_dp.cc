@@ -22,8 +22,8 @@ TEST_CASE("optimal_cost") {
 
   Node n0 = g.add_node(InputAttrs());
   Node n1 = g.add_node(RepartitionAttrs(ff_dim_t(0), 2));
-  Node n2 = g.add_node(ElementScalarUnaryAttrs(OP_SCALAR_ADD, 0));
-  Node n3 = g.add_node(ElementScalarUnaryAttrs(OP_SCALAR_ADD, 1));
+  Node n2 = g.add_node(ElementUnaryAttrs(OP_SCALAR_ADD, 0));
+  Node n3 = g.add_node(ElementUnaryAttrs(OP_SCALAR_ADD, 1));
   Node n4 = g.add_node(ConcatAttrs(ff_dim_t(1)));
   Node n5 = g.add_node(CombineAttrs(ff_dim_t(0), 2));
 

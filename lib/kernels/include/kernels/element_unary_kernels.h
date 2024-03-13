@@ -3,42 +3,47 @@
 
 #include "kernels/accessor.h"
 #include "kernels/device.h"
-#include "legion.h"
+#include "kernels/ff_handle.h"
+#include "op-attrs/ops/element_unary.h"
 #include <cstddef>
 
 namespace FlexFlow {
 
-class ElementUnaryPerDeviceState : public PerDeviceOpState {
-public:
-  ElementUnaryPerDeviceState(FFHandler handle);
+using ElementUnaryUnifiedAttrs =
+    variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
+
+struct ElementUnaryPerDeviceState {
   ffTensorDescriptor_t inputTensor, outputTensor;
   ffActivationDescriptor_t actiDesc;
-
-  OperatorType op_type;
-  DataType data_type;
-  bool inplace;
-  float scalar;
-  char op_name[MAX_OPNAME];
 };
+
+FF_VISITABLE_STRUCT_NO_EQ(ElementUnaryPerDeviceState,
+                          inputTensor,
+                          outputTensor,
+                          actiDesc);
 
 namespace Kernels {
 namespace ElementUnary {
 
-void init_kernel(ElementUnaryPerDeviceState *m,
-                 Legion::Domain const &input_domain,
-                 Legion::Domain const &output_domain);
+ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
+                                       ArrayShape const &output_shape,
+                                       ElementUnaryUnifiedAttrs const &attrs);
 
 void forward_kernel(ffStream_t stream,
-                    ElementUnaryPerDeviceState const *m,
+                    ElementUnaryPerDeviceState const &device_state,
+                    ElementUnaryUnifiedAttrs const &attrs,
+                    PerDeviceFFHandle &handle,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
 void backward_kernel(ffStream_t stream,
-                     ElementUnaryPerDeviceState const *m,
+                     ElementUnaryPerDeviceState const &device_state,
+                     ElementUnaryUnifiedAttrs const &attrs,
+                     PerDeviceFFHandle &handle,
                      GenericTensorAccessorR const &input,
-                     GenericTensorAccessorR const &input_grad,
-                     GenericTensorAccessorW const &output,
-                     GenericTensorAccessorW const &output_grad);
+                     GenericTensorAccessorW const &input_grad,
+                     GenericTensorAccessorR const &output,
+                     GenericTensorAccessorR const &output_grad);
 
 } // namespace ElementUnary
 } // namespace Kernels
