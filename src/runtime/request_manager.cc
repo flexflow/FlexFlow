@@ -1577,9 +1577,11 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         }
 
         if (new_bc.num_tokens > get_max_verify_tokens_per_batch()) {
-          assert(false &&
-                 "Exceeding the space available in the TreeVerify batch");
-          break;
+          printf("Exceeding (%i) the space available (%i) in the TreeVerify "
+                 "batch\n",
+                 new_bc.num_tokens,
+                 get_max_verify_tokens_per_batch());
+          assert(false);
         }
 
         if (new_bc.requestsInfo[i].num_tokens_in_batch +

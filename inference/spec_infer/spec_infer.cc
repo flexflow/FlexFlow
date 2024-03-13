@@ -275,7 +275,7 @@ void FlexFlow::top_level_task(Task const *task,
   int max_requests_per_batch = 16;
   int max_tokens_per_batch = 256;
   int max_sequence_length = 1024;
-  int max_spec_tree_token_num = 20;
+  int max_spec_tree_token_num = 23;
   int expansion_degree = 3;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
