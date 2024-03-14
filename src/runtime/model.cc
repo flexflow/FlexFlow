@@ -1518,6 +1518,7 @@ FFRuntime::FFRuntime(FFConfig &config) {
     // info.myRank = rank++;
     // info.allRanks = config.workersPerNode * config.numNodes;
     info.workSpaceSize = config.workSpaceSize;
+    info.cublasWorkSpaceSize = config.cublasWorkSpaceSize;
     info.offload_reserve_space_size =
         config.cpu_offload ? config.offload_reserve_space_size : 0;
     info.quantization_type = config.quantization_type;
@@ -4069,6 +4070,7 @@ struct DefaultConfig {
   constexpr static float learningRate = 0.01f;
   constexpr static float weightDecay = 0.0001f;
   const static size_t workSpaceSize = (size_t)128 * 1024 * 1024; // 128 MB
+  const static size_t cublasWorkSpaceSize = (size_t)4096 * 8 * 1024;
   const static int numNodes = 1;
   const static int workersPerNode = 0;
   const static int cpusPerNode = 0;
@@ -4104,6 +4106,7 @@ FFConfig::FFConfig() {
   learningRate = DefaultConfig::learningRate;
   weightDecay = DefaultConfig::weightDecay;
   workSpaceSize = DefaultConfig::workSpaceSize;
+  cublasWorkSpaceSize = DefaultConfig::cublasWorkSpaceSize;
   numNodes = DefaultConfig::numNodes;
   cpusPerNode = DefaultConfig::cpusPerNode;
   workersPerNode = DefaultConfig::workersPerNode;

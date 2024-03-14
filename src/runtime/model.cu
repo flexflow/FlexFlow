@@ -86,6 +86,7 @@ FFHandler
   printf("workSpaceSize (%zu MB)\n", info->workSpaceSize / 1024 / 1024);
   FFHandler handle;
   handle.workSpaceSize = info->workSpaceSize;
+  handle.cublasWorkSpaceSize = info->cublasWorkSpaceSize;
   handle.offload_reserve_space_size = info->offload_reserve_space_size;
   handle.quantization_type = info->quantization_type;
   handle.allowTensorOpMathConversion = info->allowTensorOpMathConversion;
@@ -126,6 +127,28 @@ FFHandler
                                            Realm::ProfilingRequestSet())
         .wait();
     handle.workSpace = workspaceInst.pointer_untyped(0, sizeof(char));
+  }
+  {
+    // allocate memory for cublas workspace
+    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                         .only_kind(Memory::GPU_FB_MEM)
+                         .best_affinity_to(task->target_proc)
+                         .first();
+    Realm::Rect<1, coord_t> bounds(
+        Realm::Point<1, coord_t>(0),
+        Realm::Point<1, coord_t>(handle.cublasWorkSpaceSize - 1));
+    std::vector<size_t> field_sizes;
+    field_sizes.push_back(sizeof(char));
+    Realm::RegionInstance cublasWorkspaceInst;
+    Realm::RegionInstance::create_instance(cublasWorkspaceInst,
+                                           gpu_mem,
+                                           bounds,
+                                           field_sizes,
+                                           0,
+                                           Realm::ProfilingRequestSet())
+        .wait();
+    handle.cublasWorkSpace =
+        cublasWorkspaceInst.pointer_untyped(0, sizeof(char));
   }
   if (handle.offload_reserve_space_size > 0) {
     // allocate memory for offload reserve space

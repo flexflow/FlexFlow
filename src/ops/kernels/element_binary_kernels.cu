@@ -315,6 +315,9 @@ void forward_kernel(ElementBinaryMeta const *m,
                     DT *out_ptr,
                     cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(m->handle.blas,
+                               m->handle.cublasWorkSpace,
+                               m->handle.cublasWorkSpaceSize));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
   switch (m->op_type) {
@@ -419,6 +422,9 @@ void backward_kernel(ElementBinaryMeta const *m,
                      float *in2_grad_ptr,
                      cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(m->handle.blas,
+                               m->handle.cublasWorkSpace,
+                               m->handle.cublasWorkSpaceSize));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   if (m->op_type == OP_EW_ADD || m->op_type == OP_EW_SUB) {

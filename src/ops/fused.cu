@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "cuda.h"
 #include "flexflow/accessor.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/add_bias_residual_layer_norm.h"
@@ -608,6 +609,14 @@ __host__ void
     }
   }
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  // create new cuda graph
+  cudaGraph_t graph;
+  cudaGraphExec_t instance;
+  cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
+
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
     // Domain my_id[MAX_NUM_INPUTS];
@@ -1132,6 +1141,37 @@ __host__ void
   // for (int i = 0; i < fused->numOutputs; i++)
   //   print_tensor<float>(output_ptr[i], output_domain[i].get_volume(),
   //   "[Fused:forward:output]");
+
+  cudaStreamEndCapture(stream, &graph);
+  std::tuple<int, int, bool> graph_params =
+      std::make_tuple(bc->num_active_requests(),
+                      bc->num_active_tokens(),
+                      bc->num_generation_tokens > 0);
+  // check if graph exists
+  if (metas->graph_collections.find(graph_params) !=
+      metas->graph_collections.end()) {
+    instance = metas->graph_collections[graph_params];
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 12000)
+    cudaGraphExecUpdateResult updateResult;
+    cudaGraphNode_t errorNode;
+    cudaGraphExecUpdate(instance, graph, &errorNode, &updateResult);
+    bool update_failed = (updateResult != cudaGraphExecUpdateSuccess);
+#else
+    cudaError_t update_result = cudaGraphExecUpdate(instance, graph, NULL);
+    bool update_failed = (update_result != cudaSuccess);
+#endif
+    if (update_failed) {
+      cudaGraphExecDestroy(instance);
+      cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+    }
+  } else {
+    cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+  }
+  metas->graph_collections[graph_params] = instance;
+  assert(metas->graph_collections.find(graph_params) !=
+         metas->graph_collections.end());
+  cudaGraphDestroy(graph);
+  cudaGraphLaunch(instance, stream);
 }
 
 /*
