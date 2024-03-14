@@ -245,6 +245,7 @@ RequestManager::RequestGuid
     RequestManager::register_new_request(std::string const &prompt,
                                          int max_sequence_length) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
+
   // Add a new request
   Request request;
   request.status = Request::PENDING;
@@ -366,7 +367,7 @@ BatchConfig RequestManager::prepare_next_batch_task(
 BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                                                InferenceResult const &result) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
-
+  log_req_mgr.print("batch time:");
   // Step 1: append result from previous iteration to request's tokens
   for (int i = 0; i < old_bc.num_tokens; i++) {
     size_t guid =
