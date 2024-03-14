@@ -19,15 +19,15 @@ struct V1ZeroInitializer {};
 FF_VISITABLE_STRUCT(V1ZeroInitializer);
 
 struct V1UniformInitializer {
-  req<int> seed;
-  req<float> min_val;
+  int seed;
+  float min_val;
   req<float> max_val;
 };
 FF_VISITABLE_STRUCT(V1UniformInitializer, seed, min_val, max_val);
 
 struct V1NormInitializer {
-  req<int> seed;
-  req<float> mean;
+  int seed;
+  float mean;
   req<float> stddev;
 };
 FF_VISITABLE_STRUCT(V1NormInitializer, seed, mean, stddev);
@@ -37,7 +37,7 @@ struct V1ConstantInitializer {
 };
 FF_VISITABLE_STRUCT(V1ConstantInitializer, value);
 
-using V1Initializer = variant<V1GlorotInitializer,
+using V1Initializer = std::variant<V1GlorotInitializer,
                               V1ZeroInitializer,
                               V1UniformInitializer,
                               V1NormInitializer,

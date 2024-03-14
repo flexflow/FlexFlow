@@ -4,8 +4,8 @@
 #include "utils/bidict.h"
 #include "utils/containers.decl.h"
 #include "utils/exception.h"
-#include "utils/optional.h"
 #include <unordered_set>
+#include <optional>
 
 namespace FlexFlow {
 
@@ -16,7 +16,7 @@ struct query_set {
 
   query_set(std::unordered_set<T> const &query) : query(query) {}
 
-  query_set(optional<std::unordered_set<T>> const &query) : query(query) {}
+  query_set(std::optional<std::unordered_set<T>> const &query) : query(query) {}
 
   query_set(std::initializer_list<T> const &l)
       : query_set(std::unordered_set<T>{l}) {}
@@ -43,11 +43,11 @@ struct query_set {
   }
 
   static query_set<T> matchall() {
-    return {nullopt};
+    return {std::nullopt};
   }
 
 private:
-  optional<std::unordered_set<T>> query;
+  std::optional<std::unordered_set<T>> query;
 };
 
 template <typename T>

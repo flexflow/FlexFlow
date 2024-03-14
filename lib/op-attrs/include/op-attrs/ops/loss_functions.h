@@ -3,7 +3,7 @@
 
 #include "core.h"
 #include "utils/exception.h"
-#include "utils/variant.h"
+#include <variant>
 #include "utils/visitable.h"
 
 namespace FlexFlow {
@@ -31,7 +31,7 @@ FF_VISITABLE_STRUCT(OtherLossAttrs, loss_type);
 CHECK_VALID_OP_ATTR(OtherLossAttrs);
 
 using LossAttrs =
-    variant<SparseCategoricalCrossEntropyLossAttrs, OtherLossAttrs>;
+    std::variant<SparseCategoricalCrossEntropyLossAttrs, OtherLossAttrs>;
 
 LossFunction get_loss_function(OtherLossAttrs const &);
 LossFunction get_loss_function(SparseCategoricalCrossEntropyLossAttrs const &);

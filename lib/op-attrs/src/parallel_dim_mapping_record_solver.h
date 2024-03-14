@@ -29,7 +29,7 @@ ParallelDimMappingRecord construct_weight_parallel_dims(
     int weight_dim,
     int input_idx = 0,
     int weight_idx = 0,
-    tl::optional<MappingOperation> operation = tl::nullopt);
+    std::optional<MappingOperation> operation = std::nullopt);
 
 std::vector<ParallelDimMappingRecord>
     construct_output_parallel_dims(std::vector<std::pair<int, int>> mappings,
@@ -44,7 +44,7 @@ ParallelDimMappingRecord construct_output_parallel_dims(
     int output_dim,
     int input_idx = 0,
     int output_idx = 0,
-    tl::optional<MappingOperation> operation = tl::nullopt);
+    std::optional<MappingOperation> operation = std::nullopt);
 
 struct ParallelDimMappingSolution {
   std::vector<ParallelTensorShape> weight_shapes;
@@ -85,7 +85,7 @@ ParallelDimMappingSolution solve_parallel_dim_mappings(
 /*       int weight_dim, */
 /*       int input_idx = 0, */
 /*       int weight_idx = 0, */
-/*       tl::optional<MappingOperation> operation = tl::nullopt); */
+/*       std::optional<MappingOperation> operation = std::nullopt); */
 /*   void register_output_parallel_dims( */
 /*       std::vector<std::tuple<int, MappingOperation, int>> mappings, */
 /*       int input_idx = 0, */
@@ -95,7 +95,7 @@ ParallelDimMappingSolution solve_parallel_dim_mappings(
 /*       int output_dim, */
 /*       int input_idx = 0, */
 /*       int output_idx = 0, */
-/*       tl::optional<MappingOperation> operation = tl::nullopt); */
+/*       std::optional<MappingOperation> operation = std::nullopt); */
 
 /* private: */
 /*   std::vector<ParallelDimMappingRecord> *parallel_dims_mapping; */

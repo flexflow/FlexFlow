@@ -40,15 +40,15 @@ operator<<(std::ostream &s, T const &t) {
                 #__VA_ARGS__ " must be fmtable");
 
 // This will not
-template <typename T>
-typename std::enable_if<!already_has_ostream_operator<T>::value,
-                        std::ostream &>::type
-    operator<<(std::ostream &s, T const &t) {
-  // CHECK_FMTABLE(T);
+/* template <typename T> */
+/* typename std::enable_if<!already_has_ostream_operator<T>::value, */
+/*                         std::ostream &>::type */
+/*     operator<<(std::ostream &s, T const &t) { */
+/*   // CHECK_FMTABLE(T); */
 
-  std::string result = fmt::to_string(t);
-  return s << result;
-}
+/*   std::string result = fmt::to_string(t); */
+/*   return s << result; */
+/* } */
 
 // template <typename T>
 // typename std::enable_if<is_fmtable<T>::value, std::ostream &>::type

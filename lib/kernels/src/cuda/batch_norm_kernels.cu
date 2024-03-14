@@ -13,8 +13,11 @@
  * limitations under the License.
  */
 
+#include "kernels/allocation.h"
+#include "kernels/device.h"
+#include "kernels/ff_handle.h"
 #include "kernels/batch_norm_kernels.h"
-#include "kernels/cuda_helper.h"
+#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -86,7 +89,7 @@ void backward_kernel(cudaStream_t stream,
                                              m->saveVar));
 }
 
-BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handler,
+BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                     Allocator allocator,
                                     float *runningMean,
                                     int output_n,
@@ -125,19 +128,18 @@ BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handler,
   checkCUDNN(cudnnSetTensor4dDescriptor(
       biasTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, output_c, 1, 1));
   // allocate memory for runningMean, runningVar, saveMean, saveVar
-  {
-    size_t totalSize = sizeof(float) * output_c * 4;
-    runningMean = (float *)allocator.allocate(totalSize);
-    float *runningVar = (float *)runningMean + output_c;
-    float *saveMean = (float *)runningVar + output_c;
-    float *saveVar = (float *)saveMean + output_c;
-    cudaStream_t stream;
+  size_t totalSize = sizeof(float) * output_c * 4;
+  runningMean = (float *)allocator.allocate(totalSize);
+  float *runningVar = (float *)runningMean + output_c;
+  float *saveMean = (float *)runningVar + output_c;
+  float *saveVar = (float *)saveMean + output_c;
+  cudaStream_t stream;
 
-    assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
-        runningMean, output_c, 0.0f);
-    assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
-        runningVar, output_c, 0.0f);
-  }
+  assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
+      runningMean, output_c, 0.0f);
+  assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
+      runningVar, output_c, 0.0f);
+
   if (relu) {
     checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
     checkCUDNN(cudnnSetActivationDescriptor(

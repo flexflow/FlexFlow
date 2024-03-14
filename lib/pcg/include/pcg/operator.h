@@ -11,7 +11,7 @@ namespace FlexFlow {
 struct Operator : public use_visitable_cmp<Operator> {
 public:
   Operator() = delete;
-  Operator(PCGOperatorAttrs const &attrs, optional<std::string> const &name);
+  Operator(PCGOperatorAttrs const &attrs, std::optional<std::string> const &name);
 
   operator PCGOperatorAttrs() const;
 

@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_SEQUENCE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_SEQUENCE_H
 
-#include "optional.h"
 #include "utils/tuple.h"
 #include "utils/visitable_core.h"
 #include <utility>
+#include <optional>
 
 namespace FlexFlow {
 
@@ -119,7 +119,7 @@ auto seq_select(F const &f, int i, seq<X, S...> const &s)
 template <typename F>
 auto seq_select(F const &f, int i, seq<> const &)
     -> decltype(f(std::declval<std::integral_constant<int, 0>>())) {
-  return nullopt;
+  return std::nullopt;
 }
 
 template <typename F, int X, int... S>

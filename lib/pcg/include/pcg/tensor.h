@@ -24,9 +24,9 @@ struct Tensor {
 public:
   TensorDims dims;
   DataType data_type;
-  req<optional<Initializer>> initializer;
-  req<bool> create_gradients;
-  req<optional<ParamSync>> sync_type;
+  std::optional<Initializer> initializer;
+  bool create_gradients;
+  req<std::optional<ParamSync>> sync_type;
 };
 FF_VISITABLE_STRUCT(
     Tensor, dims, data_type, initializer, create_gradients, sync_type);

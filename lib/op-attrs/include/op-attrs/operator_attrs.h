@@ -35,7 +35,7 @@
 
 namespace FlexFlow {
 
-using SharedOperatorAttrs = variant<BatchMatmulAttrs,
+using SharedOperatorAttrs = std::variant<BatchMatmulAttrs,
                                     BatchNormAttrs,
                                     CastAttrs,
                                     ConcatAttrs,
@@ -86,10 +86,10 @@ static_assert(is_valid_opattr<TopKAttrs>::value, "");
 static_assert(is_valid_opattr<TransposeAttrs>::value, "");
 
 using ParallelOperatorAttrs =
-    variant<CombineAttrs, ReductionAttrs, RepartitionAttrs, ReplicateAttrs>;
+    std::variant<CombineAttrs, ReductionAttrs, RepartitionAttrs, ReplicateAttrs>;
 
 using ComputationGraphAttrs =
-    variant_join<SharedOperatorAttrs, variant<BroadcastAttrs>>;
+    variant_join<SharedOperatorAttrs, std::variant<BroadcastAttrs>>;
 using CompGraphOperatorAttrs = ComputationGraphAttrs;
 
 using PCGOperatorAttrs =

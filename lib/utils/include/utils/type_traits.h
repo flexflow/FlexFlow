@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_TYPE_TRAITS_H
 #define _FLEXFLOW_UTILS_INCLUDE_TYPE_TRAITS_H
 
-#include "utils/invoke.h"
 #include "utils/metafunction.h"
 #include "utils/type_traits_core.h"
 #include "utils/visitable_core.h"
