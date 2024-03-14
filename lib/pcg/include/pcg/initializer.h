@@ -39,10 +39,10 @@ struct ConstantInitializer {
 FF_VISITABLE_STRUCT(ConstantInitializer, value);
 
 using Initializer = std::variant<GlorotUniform,
-                            ZeroInitializer,
-                            UniformInitializer,
-                            NormInitializer,
-                            ConstantInitializer>;
+                                 ZeroInitializer,
+                                 UniformInitializer,
+                                 NormInitializer,
+                                 ConstantInitializer>;
 CHECK_WELL_BEHAVED_VALUE_TYPE(Initializer);
 
 } // namespace FlexFlow

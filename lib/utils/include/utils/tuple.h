@@ -2,12 +2,12 @@
 #define _FLEXFLOW_UTILS_TUPLE_H
 
 #include "utils/exception.decl.h"
+#include "utils/type_traits_core.h"
+#include <any>
 #include <cstddef>
 #include <tuple>
 #include <type_traits>
 #include <utility>
-#include "utils/type_traits_core.h"
-#include <any>
 
 // Adapted from
 // https://github.com/bitwizeshift/BackportCpp/blob/4f33a7f9b219f169e60d8ed2fd5731a3a23288e4/include/bpstd/tuple.hpp

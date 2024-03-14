@@ -2,8 +2,8 @@
 #define _FLEXFLOW_UTILS_VARIANT_H
 
 #include "utils/type_traits.h"
-#include <variant>
 #include <optional>
+#include <variant>
 
 namespace FlexFlow {
 
@@ -65,8 +65,8 @@ struct index_of_type : variant_idx_helper<T, 0, Variant> {
   static_assert(is_in_variant<T, Variant>::value, "");
 };
 
-static_assert(index_of_type<int, std::variant<float, double, int, bool>>::value == 2,
-              "");
+static_assert(
+    index_of_type<int, std::variant<float, double, int, bool>>::value == 2, "");
 
 template <typename Variant1, typename Variant2>
 struct is_subeq_variant;
@@ -96,8 +96,8 @@ struct variant_join_helper<
     std::variant<Args2...>,
     typename std::enable_if<
         is_in_variant<Head, std::variant<Args2...>>::value>::type> {
-  using type =
-      typename variant_join_helper<std::variant<Args1...>, std::variant<Args2...>>::type;
+  using type = typename variant_join_helper<std::variant<Args1...>,
+                                            std::variant<Args2...>>::type;
 };
 
 template <typename... Args2>
@@ -111,16 +111,17 @@ using variant_join = typename variant_join_helper<Variant1, Variant2>::type;
 template <class Variant1, typename... T>
 using variant_add = variant_join<Variant1, std::variant<T...>>;
 
-static_assert(
-    std::is_same<variant_join<std::variant<int, float>, std::variant<float, double>>,
-                 std::variant<int, float, double>>::value,
-    "");
-static_assert(std::is_same<variant_join<std::variant<int>, std::variant<float, double>>,
+static_assert(std::is_same<variant_join<std::variant<int, float>,
+                                        std::variant<float, double>>,
                            std::variant<int, float, double>>::value,
               "");
 static_assert(
-    std::is_same<variant_join<std::variant<int>, std::variant<int>>, std::variant<int>>::value,
+    std::is_same<variant_join<std::variant<int>, std::variant<float, double>>,
+                 std::variant<int, float, double>>::value,
     "");
+static_assert(std::is_same<variant_join<std::variant<int>, std::variant<int>>,
+                           std::variant<int>>::value,
+              "");
 
 template <typename Out>
 struct VariantWidenFunctor {
@@ -133,13 +134,15 @@ struct VariantWidenFunctor {
 template <typename Out>
 struct VariantNarrowFunctor {
   template <typename T>
-  typename std::enable_if<is_in_variant<T, Out>::value, std::optional<Out>>::type
+  typename std::enable_if<is_in_variant<T, Out>::value,
+                          std::optional<Out>>::type
       operator()(T const &t) const {
     return Out(t);
   }
 
   template <typename T>
-  typename std::enable_if<!is_in_variant<T, Out>::value, std::optional<Out>>::type
+  typename std::enable_if<!is_in_variant<T, Out>::value,
+                          std::optional<Out>>::type
       operator()(T const &t) const {
     return std::nullopt;
   }
@@ -178,16 +181,18 @@ template <
     typename = std::enable_if<is_subeq_variant<VariantIn, VariantOut>::value>>
 auto narrow(Container const &c) -> decltype(transform(
     c,
-    std::declval<std::function<std::optional<VariantOut>(VariantIn const &)>>())) {
+    std::declval<
+        std::function<std::optional<VariantOut>(VariantIn const &)>>())) {
   return transform(c, [](VariantIn const &i) { return narrow<VariantOut>(i); });
 }
 
-template <typename T1,
-          typename T2,
-          typename... Trest,
-          typename VariantIn,
-          typename = std::enable_if<
-              !is_subeq_variant<std::variant<T1, T2, Trest...>, VariantIn>::value>>
+template <
+    typename T1,
+    typename T2,
+    typename... Trest,
+    typename VariantIn,
+    typename = std::enable_if<
+        !is_subeq_variant<std::variant<T1, T2, Trest...>, VariantIn>::value>>
 std::optional<std::variant<T1, T2, Trest...>> narrow(VariantIn const &v) {
   return visit(VariantNarrowFunctor<std::variant<T1, T2, Trest...>>{}, v);
 }

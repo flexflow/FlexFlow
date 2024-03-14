@@ -3,8 +3,8 @@
 
 #include "core.h"
 #include "utils/exception.h"
-#include <variant>
 #include "utils/visitable.h"
+#include <variant>
 
 namespace FlexFlow {
 

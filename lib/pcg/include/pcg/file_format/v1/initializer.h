@@ -38,10 +38,10 @@ struct V1ConstantInitializer {
 FF_VISITABLE_STRUCT(V1ConstantInitializer, value);
 
 using V1Initializer = std::variant<V1GlorotInitializer,
-                              V1ZeroInitializer,
-                              V1UniformInitializer,
-                              V1NormInitializer,
-                              V1ConstantInitializer>;
+                                   V1ZeroInitializer,
+                                   V1UniformInitializer,
+                                   V1NormInitializer,
+                                   V1ConstantInitializer>;
 
 } // namespace FlexFlow
 

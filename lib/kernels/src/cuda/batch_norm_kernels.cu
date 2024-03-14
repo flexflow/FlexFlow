@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/allocation.h"
+#include "kernels/batch_norm_kernels.h"
 #include "kernels/device.h"
 #include "kernels/ff_handle.h"
-#include "kernels/batch_norm_kernels.h"
-#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {

@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_SERIALPARALLEL_INTERNAL_H
 #define _FLEXFLOW_UTILS_GRAPH_SERIALPARALLEL_INTERNAL_H
 
-#include <variant>
 #include "utils/graph/digraph.h"
 #include "utils/graph/node.h"
 #include "utils/graph/serialparallel.h"
 #include "utils/visitable.h"
+#include <variant>
 #include <vector>
 
 namespace FlexFlow {

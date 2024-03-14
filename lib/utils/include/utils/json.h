@@ -160,7 +160,8 @@ struct VariantFromJsonFunctor {
   json const &j;
 
   template <int Idx>
-  std::optional<Variant> operator()(std::integral_constant<int, Idx> const &) const {
+  std::optional<Variant>
+      operator()(std::integral_constant<int, Idx> const &) const {
     using Type = typename std::variant_alternative<Idx, Variant>::type;
 
     if (visit_struct::get_name<Type>()) {

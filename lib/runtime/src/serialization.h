@@ -110,7 +110,8 @@ struct is_trivially_serializable<std::variant<Ts...>>
     : elements_satisfy<is_trivially_serializable, std::variant<Ts...>> {};
 
 template <typename T>
-struct is_trivially_serializable<std::optional<T>> : is_trivially_serializable<T> {};
+struct is_trivially_serializable<std::optional<T>>
+    : is_trivially_serializable<T> {};
 
 template <typename T>
 struct std_array_size_helper;
@@ -146,7 +147,8 @@ static_assert(is_trivially_serializable<int32_t>::value, "");
 static_assert(is_trivially_serializable<int64_t>::value, "");
 static_assert(is_trivially_serializable<half>::value, "");
 static_assert(is_trivially_serializable<bool>::value, "");
-static_assert(is_trivially_serializable<std::variant<float, double>>::value, "");
+static_assert(is_trivially_serializable<std::variant<float, double>>::value,
+              "");
 static_assert(std::is_same<visit_as_tuple_t<InternalTestType>,
                            std::tuple<int, float>>::value,
               "");

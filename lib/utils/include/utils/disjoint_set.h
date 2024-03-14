@@ -44,7 +44,8 @@ private:
 // Custom comparator for optional
 template <typename T>
 struct OptionalComparator {
-  bool operator()(std::optional<T> const &lhs, std::optional<T> const &rhs) const {
+  bool operator()(std::optional<T> const &lhs,
+                  std::optional<T> const &rhs) const {
     if (!lhs.has_value() || !rhs.has_value()) {
       return false;
     }

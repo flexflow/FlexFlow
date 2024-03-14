@@ -22,9 +22,9 @@
 #endif
 
 #include <cassert>
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
-#include <cstdlib>
 
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 typedef cudaStream_t ffStream_t;

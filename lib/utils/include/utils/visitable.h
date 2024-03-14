@@ -347,8 +347,7 @@ struct visitable_formatter : public ::fmt::formatter<std::string> {
                 " should be list-initialializable by the visit field types");
 
 #ifdef __CUDACC__
-#define CHECK_CONSTRUCTION_NONEMPTY(TYPENAME) \
-  ;
+#define CHECK_CONSTRUCTION_NONEMPTY(TYPENAME) ;
 #else
 #define CHECK_CONSTRUCTION_NONEMPTY(TYPENAME)                                  \
   static_assert(is_only_visit_list_initializable<TYPENAME>::value,             \

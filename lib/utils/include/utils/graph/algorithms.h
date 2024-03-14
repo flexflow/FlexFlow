@@ -246,9 +246,9 @@ std::unordered_map<Node, std::optional<Node>>
     get_imm_post_dominators(DiGraphView const &);
 std::optional<Node> get_imm_post_dominator(DiGraphView const &, Node const &);
 std::optional<Node> get_imm_post_dominator(MultiDiGraphView const &,
-                                          Node const &);
+                                           Node const &);
 std::optional<Node> get_imm_post_dominator(DiGraphView const &,
-                                          std::unordered_set<Node> const &);
+                                           std::unordered_set<Node> const &);
 
 std::vector<Node>
     get_dfs_ordering(DiGraphView const &,

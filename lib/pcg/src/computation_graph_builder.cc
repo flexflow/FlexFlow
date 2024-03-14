@@ -92,10 +92,10 @@ Tensor ComputationGraphBuilder::element_scalar_unary(
   return this->add_layer(layer, {input}, {}, output_shape);
 }
 
-Tensor
-    ComputationGraphBuilder::element_unary(OperatorType op_type,
-                                           Tensor const &input,
-                                           std::optional<std::string> const &name) {
+Tensor ComputationGraphBuilder::element_unary(
+    OperatorType op_type,
+    Tensor const &input,
+    std::optional<std::string> const &name) {
   ElementUnaryAttrs attrs = {op_type};
   return this->element_unary(attrs, input, name);
 }
@@ -145,15 +145,17 @@ Tensor ComputationGraphBuilder::add(Tensor const &lhs,
   return this->element_binary(Op::EW_ADD, lhs, rhs, name);
 }
 
-Tensor ComputationGraphBuilder::subtract(Tensor const &lhs,
-                                         Tensor const &rhs,
-                                         std::optional<std::string> const &name) {
+Tensor
+    ComputationGraphBuilder::subtract(Tensor const &lhs,
+                                      Tensor const &rhs,
+                                      std::optional<std::string> const &name) {
   return this->element_binary(Op::EW_SUB, lhs, rhs, name);
 }
 
-Tensor ComputationGraphBuilder::multiply(Tensor const &lhs,
-                                         Tensor const &rhs,
-                                         std::optional<std::string> const &name) {
+Tensor
+    ComputationGraphBuilder::multiply(Tensor const &lhs,
+                                      Tensor const &rhs,
+                                      std::optional<std::string> const &name) {
   return this->element_binary(Op::EW_MUL, lhs, rhs, name);
 }
 
@@ -191,22 +193,20 @@ Tensor ComputationGraphBuilder::scalar_multiply(
   return this->element_scalar_unary(Op::SCALAR_MULTIPLY, input, scalar, name);
 }
 
-Tensor ComputationGraphBuilder::scalar_add(Tensor const &input,
-                                           float scalar,
-                                           std::optional<std::string> const &name) {
+Tensor ComputationGraphBuilder::scalar_add(
+    Tensor const &input, float scalar, std::optional<std::string> const &name) {
   return this->element_scalar_unary(Op::SCALAR_ADD, input, scalar, name);
 }
 
-Tensor ComputationGraphBuilder::scalar_sub(Tensor const &lhs,
-                                           float rhs,
-                                           std::optional<std::string> const &name) {
+Tensor ComputationGraphBuilder::scalar_sub(
+    Tensor const &lhs, float rhs, std::optional<std::string> const &name) {
   return this->element_scalar_unary(Op::SCALAR_SUB, lhs, rhs, name);
 }
 
-Tensor
-    ComputationGraphBuilder::scalar_truediv(Tensor const &numerator,
-                                            float denominator,
-                                            std::optional<std::string> const &name) {
+Tensor ComputationGraphBuilder::scalar_truediv(
+    Tensor const &numerator,
+    float denominator,
+    std::optional<std::string> const &name) {
   return this->element_scalar_unary(
       Op::SCALAR_TRUE_DIV, numerator, denominator, name);
 }
@@ -226,8 +226,9 @@ Tensor ComputationGraphBuilder::relu(Tensor const &input,
   return this->element_unary(Op::RELU, input, name);
 }
 
-Tensor ComputationGraphBuilder::identity(Tensor const &input,
-                                         std::optional<std::string> const &name) {
+Tensor
+    ComputationGraphBuilder::identity(Tensor const &input,
+                                      std::optional<std::string> const &name) {
   return this->element_unary(Op::IDENTITY, input, name);
 }
 
@@ -236,8 +237,9 @@ Tensor ComputationGraphBuilder::gelu(Tensor const &input,
   return this->element_unary(Op::GELU, input, name);
 }
 
-Tensor ComputationGraphBuilder::sigmoid(Tensor const &input,
-                                        std::optional<std::string> const &name) {
+Tensor
+    ComputationGraphBuilder::sigmoid(Tensor const &input,
+                                     std::optional<std::string> const &name) {
   return this->element_unary(Op::SIGMOID, input, name);
 }
 
@@ -295,11 +297,11 @@ Tensor ComputationGraphBuilder::conv2d(
   return this->add_layer(layer, {input}, weights, output_shape);
 }
 
-Tensor
-    ComputationGraphBuilder::dropout(Tensor const &x,
-                                     float rate,
-                                     unsigned long long seed,
-                                     std::optional<std::string> const &maybe_name) {
+Tensor ComputationGraphBuilder::dropout(
+    Tensor const &x,
+    float rate,
+    unsigned long long seed,
+    std::optional<std::string> const &maybe_name) {
   DropoutAttrs attrs = {rate, seed};
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
@@ -332,11 +334,11 @@ Tensor ComputationGraphBuilder::embedding(
       layer, {input}, {{weights_shape, kernel_initializer}}, output_shape);
 }
 
-std::vector<Tensor>
-    ComputationGraphBuilder::gather(Tensor const &input,
-                                    Tensor const &index,
-                                    ff_dim_t dim,
-                                    std::optional<std::string> const &maybe_name) {
+std::vector<Tensor> ComputationGraphBuilder::gather(
+    Tensor const &input,
+    Tensor const &index,
+    ff_dim_t dim,
+    std::optional<std::string> const &maybe_name) {
   GatherAttrs attrs = {dim};
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
@@ -389,7 +391,9 @@ std::vector<TensorShape> get_shape(std::vector<Tensor> const &) {
 // }
 
 Tensor ComputationGraphBuilder::batch_norm(
-    Tensor const &input, bool relu, std::optional<std::string> const &maybe_name) {
+    Tensor const &input,
+    bool relu,
+    std::optional<std::string> const &maybe_name) {
   BatchNormAttrs attrs = BatchNormAttrs{relu};
   std::string name = maybe_name.value_or(get_default_name(attrs));
 

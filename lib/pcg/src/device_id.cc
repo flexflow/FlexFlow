@@ -1,6 +1,6 @@
 #include "pcg/device_id.h"
-#include <cassert>
 #include "utils/exception.h"
+#include <cassert>
 
 namespace FlexFlow {
 

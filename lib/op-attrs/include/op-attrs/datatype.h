@@ -51,11 +51,11 @@ template <DataType DT>
 using real_type = typename data_type_enum_to_class<DT>::type;
 
 using DataTypeValue = std::variant<real_type<DataType::FLOAT>,
-                              real_type<DataType::DOUBLE>,
-                              real_type<DataType::INT32>,
-                              real_type<DataType::INT64>,
-                              real_type<DataType::HALF>,
-                              real_type<DataType::BOOL>>;
+                                   real_type<DataType::DOUBLE>,
+                                   real_type<DataType::INT32>,
+                                   real_type<DataType::INT64>,
+                                   real_type<DataType::HALF>,
+                                   real_type<DataType::BOOL>>;
 
 size_t size_of(DataType);
 

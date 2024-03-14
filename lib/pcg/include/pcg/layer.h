@@ -10,7 +10,8 @@ namespace FlexFlow {
 struct Layer {
 public:
   Layer() = delete;
-  Layer(CompGraphOperatorAttrs const &attrs, std::optional<std::string> const &name);
+  Layer(CompGraphOperatorAttrs const &attrs,
+        std::optional<std::string> const &name);
 
 public:
   std::optional<stack_string<MAX_OPNAME>> name;
