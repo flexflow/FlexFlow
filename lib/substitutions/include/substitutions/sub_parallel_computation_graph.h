@@ -9,6 +9,13 @@
 
 namespace FlexFlow {
 
+/**
+ * @brief SubParallelComputationGraph is defined as an open graph, which allows nodes and edges 
+ * that are not from the same graph to be added to it.
+ * This definition is useful when we want to split and merge graphs when doing pattern matching.
+ * In contrast, the ParallelComputationGraph is defined as a closed graph and all the edges and 
+ * nodes are within that graph.
+ */
 using SubParallelComputationGraph =
     OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>;
 

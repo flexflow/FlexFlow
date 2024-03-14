@@ -12,9 +12,16 @@
 namespace FlexFlow {
 
 /**
- * @brief OperatorAttributeKey is an enum class that represents the keys of the attributes of an Operator.
- * Each operator has a set of attributes that describe its behavior. OperatorAttributeKey is used to retrieve the value of an attribute or the expression of an attribute stored
- * in an attribute map.
+ * @enum OperatorAttributeKey
+ * @brief OperatorAttributeKey represents the keys of the attributes of an Operator.
+ * Specifically, each operator have a set of attributes, and each attribute will have 
+ * a key as its name and a concrete value representation.
+ * The OP_TYPE is a OperatorAttributeKey is a special attribute key that represents the 
+ * type of the Operator and will exist in every Operator. Given the OP_TYPE, the other 
+ * attributes will be determined accordingly.
+ * 
+ * For example, a batch matrix multiplication Operator will have OP_TYPE BATCH_MATMUL and 
+ * dimensions as A_SEQ_LENGTH_DIM and B_SEQ_LENGTH_DIM
  */
 enum class OperatorAttributeKey {
   OP_TYPE, // AnyOp
@@ -76,9 +83,9 @@ enum class OperatorAttributeKey {
 };
 
 /**
- * @brief OperatorAttributeValue is a variant that represents the concrete value of an attribute of an Operator.
- * The OperatorAttributeValue is evalutated from AttributeExpr
- * The datatype of the value corresponds to the datatype of the attributekey listed in OperatorAttributeKey.
+ * @brief OperatorAttributeValue is a representation of the concrete value of an attribute of an Operator.
+ * The OperatorAttributeValue is evaluated from AttributeExpr. The datatype of the value corresponds to the 
+ * datatype of the attributekey listed in OperatorAttributeKey.
  */
 using OperatorAttributeValue = variant<int,
                                        float,
@@ -102,21 +109,22 @@ FF_VISITABLE_STRUCT(ListIndexAccess<FlexFlow::OperatorAttributeKey>,
 FF_VISITABLE_STRUCT(ListSize<FlexFlow::OperatorAttributeKey>, attribute_key);
 
 /**
- * @todo: need to better understand what is constraints and pattern
- * 
+ * @brief OperatorAttributeConstraint is an instance of template struct AttributeConstraint.
  */
 using OperatorAttributeConstraint =
     AttributeConstraint<OperatorAttributeKey, OperatorAttributeValue>;
 
+/**
+ * @brief OperatorPattern is an instance of template struct AttributePattern.
+ */
 using OperatorPattern =
     AttributePattern<OperatorAttributeKey, OperatorAttributeValue>;
 
 
 /**
- * @brief Given a specific attribute of an Operator, evaluate the expression of the attribute and return the value of the attribute.
- * @param attrs 
- * @param expr 
- * @return optional<OperatorAttributeValue> 
+ * @brief Given a specific attribute of an Operator, evaluate the expression of the attribute 
+ * using one of the three methods: direct value, list index access, or list size and return the
+ * value of the attribute.
  */
 optional<OperatorAttributeValue>
     evaluate_attribute_expr(Operator const &attrs,
