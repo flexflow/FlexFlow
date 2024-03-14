@@ -85,6 +85,9 @@ AggregateParams Aggregate::get_params() const {
   AggregateParams params;
   params.n = this->n;
   params.lambda_bal = this->lambda_bal;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -164,7 +167,54 @@ Aggregate::Aggregate(FFModel &model,
                      AggregateParams const &params,
                      std::vector<ParallelTensor> const &inputs,
                      char const *name)
-    : Aggregate(model, inputs.data(), params.n, params.lambda_bal, name) {}
+    : Aggregate(
+          model, inputs.data(), params.n, params.lambda_bal, params.name) {}
+
+using PCG::Node;
+Node Aggregate::deserialize(FFModel &ff,
+                            Legion::Deserializer &dez,
+                            std::vector<ParallelTensor> const &inputs,
+                            int num_inputs) {
+  int n;
+  float lambda_bal;
+  dez.deserialize(n);
+  dez.deserialize(lambda_bal);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
+  assert(num_inputs == n + 4);
+  AggregateParams params;
+  params.n = n;
+  params.lambda_bal = lambda_bal;
+  strcpy(params.name, name);
+  return ff.get_or_create_node<Aggregate>(inputs, params);
+}
+
+void Aggregate::init_inference(FFModel const &ff,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(AGGREGATE_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Aggregate)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
+}
 
 void Aggregate::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -194,6 +244,9 @@ OpMeta *Aggregate::init_task(Task const *task,
   FFHandler handle = *((FFHandler *)task->local_args);
   AggregateMeta *m = new AggregateMeta(handle, agg->n);
   m->profiling = agg->profiling;
+  m->inference_debugging = agg->inference_debugging;
+  std::strcpy(m->op_name, agg->name);
+  m->layer_guid = agg->layer_guid;
   return m;
 }
 
@@ -204,7 +257,7 @@ void Aggregate::forward(FFModel const &ff) {
   set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(AGGREGATE_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(Aggregate)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -243,14 +296,68 @@ void Aggregate::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+FutureMap Aggregate::inference(FFModel const &ff,
+                               BatchConfigFuture const &bc,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "Aggregate op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
+  IndexLauncher launcher(AGGREGATE_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  // gate_preds
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  // gate_assign
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[1]->region));
+  launcher.add_field(1, FID_DATA);
+  // exp_preds
+  for (int i = 0; i < n; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[i + 4]->part,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          batch_inputs[i + 4]->region));
+    launcher.add_field(i + 2, FID_DATA);
+  }
+  // output
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(n + 2, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
+}
+
 void Aggregate::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
-  int n = ((Aggregate *)task->args)->n;
-
-  assert((int)regions.size() == n + 3);
-  assert((int)task->regions.size() == n + 3);
+  assert(regions.size() == task->regions.size());
+  int n = regions.size() - 3;
 
   AggregateMeta const *m = *((AggregateMeta **)task->local_args);
 
@@ -469,6 +576,8 @@ void Aggregate::backward_task(Task const *task,
 void Aggregate::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->n);
   sez.serialize(this->lambda_bal);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 bool Aggregate::measure_operator_cost(Simulator *sim,

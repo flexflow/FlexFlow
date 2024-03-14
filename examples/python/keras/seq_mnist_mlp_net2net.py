@@ -91,6 +91,9 @@ def top_level_task():
 
   create_student_model_mlp(teacher_model, num_classes, x_train, y_train)
 
+
 if __name__ == "__main__":
   print("Sequential model, mnist mlp teacher student")
+  configs = ff.get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()

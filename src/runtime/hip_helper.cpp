@@ -247,9 +247,212 @@ __host__ void
   checkCUDA(hipHostFree(host_ptr));
 }
 
+template <>
+__host__ void
+    save_tensor(float const *ptr, size_t num_elements, char const *file_name) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  float *host_ptr;
+  checkCUDA(hipHostMalloc(&host_ptr,
+                          sizeof(float) * num_elements,
+                          hipHostMallocPortable | hipHostMallocMapped));
+  checkCUDA(hipMemcpyAsync(host_ptr,
+                           ptr,
+                           sizeof(float) * num_elements,
+                           hipMemcpyDeviceToHost,
+                           stream));
+  checkCUDA(hipDeviceSynchronize());
+  FILE *tensor_file;
+  tensor_file = fopen(file_name, "w");
+  assert(tensor_file != NULL);
+  for (unsigned i = 0; i < num_elements; i++) {
+    if (i < num_elements - 1) {
+      fprintf(tensor_file, "%.9f, ", host_ptr[i]);
+    } else {
+      fprintf(tensor_file, "%.9f", host_ptr[i]);
+    }
+  }
+
+  fclose(tensor_file);
+  checkCUDA(hipHostFree(host_ptr));
+}
+
+template <>
+__host__ void
+    save_tensor(half const *ptr, size_t num_elements, char const *file_name) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  half *host_ptr;
+  checkCUDA(hipHostMalloc(&host_ptr,
+                          sizeof(half) * num_elements,
+                          hipHostMallocPortable | hipHostMallocMapped));
+  checkCUDA(hipMemcpyAsync(host_ptr,
+                           ptr,
+                           sizeof(half) * num_elements,
+                           hipMemcpyDeviceToHost,
+                           stream));
+  checkCUDA(hipDeviceSynchronize());
+  FILE *tensor_file;
+  tensor_file = fopen(file_name, "w");
+  assert(tensor_file != NULL);
+  for (unsigned i = 0; i < num_elements; i++) {
+    if (i < num_elements - 1) {
+      fprintf(tensor_file, "%.9f, ", (float)host_ptr[i]);
+    } else {
+      fprintf(tensor_file, "%.9f", (float)host_ptr[i]);
+    }
+  }
+
+  fclose(tensor_file);
+  checkCUDA(hipHostFree(host_ptr));
+}
+
+template <>
+__host__ void save_tensor(int32_t const *ptr,
+                          size_t num_elements,
+                          char const *file_name) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  int32_t *host_ptr;
+  checkCUDA(hipHostMalloc(&host_ptr,
+                          sizeof(int32_t) * num_elements,
+                          hipHostMallocPortable | hipHostMallocMapped));
+  checkCUDA(hipMemcpyAsync(host_ptr,
+                           ptr,
+                           sizeof(int32_t) * num_elements,
+                           hipMemcpyDeviceToHost,
+                           stream));
+  checkCUDA(hipDeviceSynchronize());
+  FILE *tensor_file;
+  tensor_file = fopen(file_name, "w");
+  assert(tensor_file != NULL);
+  for (unsigned i = 0; i < num_elements; i++) {
+    if (i < num_elements - 1) {
+      fprintf(tensor_file, "%d, ", host_ptr[i]);
+    } else {
+      fprintf(tensor_file, "%d", host_ptr[i]);
+    }
+  }
+
+  fclose(tensor_file);
+  checkCUDA(hipHostFree(host_ptr));
+}
+
+template <>
+__host__ void save_tensor(int64_t const *ptr,
+                          size_t num_elements,
+                          char const *file_name) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  int64_t *host_ptr;
+  checkCUDA(hipHostMalloc(&host_ptr,
+                          sizeof(int64_t) * num_elements,
+                          hipHostMallocPortable | hipHostMallocMapped));
+  checkCUDA(hipMemcpyAsync(host_ptr,
+                           ptr,
+                           sizeof(int64_t) * num_elements,
+                           hipMemcpyDeviceToHost,
+                           stream));
+  checkCUDA(hipDeviceSynchronize());
+  FILE *tensor_file;
+  tensor_file = fopen(file_name, "w");
+  assert(tensor_file != NULL);
+  for (unsigned i = 0; i < num_elements; i++) {
+    if (i < num_elements - 1) {
+      fprintf(tensor_file, "%ld, ", host_ptr[i]);
+    } else {
+      fprintf(tensor_file, "%ld", host_ptr[i]);
+    }
+  }
+
+  fclose(tensor_file);
+  checkCUDA(hipHostFree(host_ptr));
+}
+
+template <typename T>
+__host__ T *download_tensor(T const *ptr, size_t num_elements) {
+  // device synchronize to make sure the data are ready
+  // checkCUDA(hipDeviceSynchronize());
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  T *host_ptr;
+  checkCUDA(hipHostMalloc(&host_ptr,
+                          sizeof(T) * num_elements,
+                          hipHostMallocPortable | hipHostMallocMapped));
+  checkCUDA(hipMemcpyAsync(
+      host_ptr, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost, stream));
+  // checkCUDA(hipDeviceSynchronize());
+  return host_ptr;
+}
+
+template <typename T>
+__host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
+  // device synchronize to make sure the data are ready
+  // checkCUDA(hipDeviceSynchronize());
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  assert(dst != nullptr);
+  checkCUDA(hipMemcpyAsync(
+      dst, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost, stream));
+  // checkCUDA(hipDeviceSynchronize());
+  return true;
+}
+
+miopenStatus_t cudnnSetTensorDescriptorFromDomain(
+    miopenTensorDescriptor_t tensor, Domain domain, DataType data_type) {
+  int dims[MAX_TENSOR_DIM];
+  miopenDataType_t cudnn_data_type = ff_to_cudnn_datatype(data_type);
+  switch (domain.get_dim()) {
+    case 1: {
+      Rect<1> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, cudnn_data_type, dims[0], 1, 1, 1);
+    }
+    case 2: {
+      Rect<2> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, cudnn_data_type, dims[1], dims[0], 1, 1);
+    }
+    case 3: {
+      Rect<3> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, cudnn_data_type, dims[2], dims[1], dims[0], 1);
+    }
+    case 4: {
+      Rect<4> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, cudnn_data_type, dims[3], dims[2], dims[1], dims[0]);
+    }
+    case 5: {
+      Rect<5> rect = domain;
+      int leading_dim_size = rect.hi[4] - rect.lo[4] + 1;
+      assert(leading_dim_size == 1);
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, cudnn_data_type, dims[3], dims[2], dims[1], dims[0]);
+    }
+    default:
+      assert(false && "Unsupported dim number");
+  }
+  return miopenStatusBadParm;
+}
+
 miopenStatus_t
-    cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
-                                       Domain domain) {
+    cudnnSetTensorDescriptorFromDomain4SoftMax(miopenTensorDescriptor_t tensor,
+                                               Domain domain) {
   int dims[MAX_TENSOR_DIM];
   switch (domain.get_dim()) {
     case 1: {
@@ -270,7 +473,7 @@ miopenStatus_t
       dims[1] = rect.hi[1] - rect.lo[1] + 1;
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
       return miopenSet4dTensorDescriptor(
-          tensor, miopenFloat, dims[2], dims[1], dims[0], 1);
+          tensor, miopenFloat, dims[2] * dims[1], dims[0], 1, 1);
     }
     case 4: {
       Rect<4> rect = domain;
@@ -279,7 +482,7 @@ miopenStatus_t
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
       dims[3] = rect.hi[3] - rect.lo[3] + 1;
       return miopenSet4dTensorDescriptor(
-          tensor, miopenFloat, dims[3], dims[2], dims[1], dims[0]);
+          tensor, miopenFloat, dims[3] * dims[2] * dims[1], dims[0], 1, 1);
     }
     case 5: {
       Rect<5> rect = domain;
@@ -300,6 +503,8 @@ miopenStatus_t
 
 miopenDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
+    case DT_HALF:
+      return miopenHalf;
     case DT_FLOAT:
       return miopenFloat;
     case DT_DOUBLE:
@@ -326,6 +531,23 @@ hipblasDatatype_t ff_to_cuda_datatype(DataType type) {
   }
   return HIPBLAS_R_32F;
 }
+#ifdef FF_USE_NCCL
+ncclDataType_t ff_to_nccl_datatype(DataType type) {
+  switch (type) {
+    case DT_HALF:
+      return ncclHalf;
+    case DT_FLOAT:
+      return ncclFloat;
+    case DT_DOUBLE:
+      return ncclDouble;
+    case DT_INT32:
+      return ncclInt;
+    default:
+      assert(false && "Unspoorted nccl data type");
+  }
+  return ncclFloat;
+}
+#endif
 
 void handle_unimplemented_hip_kernel(OperatorType op_type) {
   throw std::runtime_error("Unimplemented hip kernel for Operator: " +
@@ -344,15 +566,22 @@ template __global__ void
     assign_kernel<int64_t>(int64_t *ptr, coord_t size, int64_t value);
 
 template __global__ void
+    add_kernel<half>(half *dst, half const *src, size_t size);
+template __global__ void
     add_kernel<float>(float *dst, float const *src, size_t size);
 template __global__ void
     add_kernel<double>(double *dst, double const *src, size_t size);
-template __global__ void add_kernel<int>(int *dst, int const *src, size_t size);
 template __global__ void
-    add_kernel<long>(long *dst, long const *src, size_t size);
+    add_kernel<int32_t>(int32_t *dst, int32_t const *src, size_t size);
+template __global__ void
+    add_kernel<int64_t>(int64_t *dst, int64_t const *src, size_t size);
 
 template __global__ void
+    copy_kernel<half>(half *dst, half const *src, coord_t size);
+template __global__ void
     copy_kernel<float>(float *dst, float const *src, coord_t size);
+template __global__ void
+    copy_kernel<double>(double *dst, double const *src, coord_t size);
 template __global__ void
     copy_kernel<int32_t>(int32_t *dst, int32_t const *src, coord_t size);
 template __global__ void
@@ -378,6 +607,43 @@ template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
 template __host__ void
     print_tensor<float>(float const *ptr, size_t rect, char const *prefix);
 template __host__ void
+    print_tensor<double>(double const *ptr, size_t rect, char const *prefix);
+template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+template __host__ void
+    print_tensor<half>(half const *ptr, size_t rect, char const *prefix);
+
+template __host__ void
+    save_tensor<float>(float const *ptr, size_t rect, char const *file_name);
+template __host__ void save_tensor<int32_t>(int32_t const *ptr,
+                                            size_t rect,
+                                            char const *file_name);
+template __host__ void save_tensor<int64_t>(int64_t const *ptr,
+                                            size_t rect,
+                                            char const *file_name);
+template __host__ void
+    save_tensor<half>(half const *ptr, size_t rect, char const *file_name);
+
+template __host__ float *download_tensor<float>(float const *ptr,
+                                                size_t num_elements);
+template __host__ half *download_tensor<half>(half const *ptr,
+                                              size_t num_elements);
+template __host__ double *download_tensor<double>(double const *ptr,
+                                                  size_t num_elements);
+template __host__ int32_t *download_tensor<int32_t>(int32_t const *ptr,
+                                                    size_t num_elements);
+template __host__ int64_t *download_tensor<int64_t>(int64_t const *ptr,
+                                                    size_t num_elements);
+template __host__ bool
+    download_tensor<float>(float const *ptr, float *dst, size_t num_elements);
+template __host__ bool download_tensor<double>(double const *ptr,
+                                               double *dst,
+                                               size_t num_elements);
+template __host__ bool download_tensor<int32_t>(int32_t const *ptr,
+                                                int32_t *dst,
+                                                size_t num_elements);
+template __host__ bool download_tensor<int64_t>(int64_t const *ptr,
+                                                int64_t *dst,
+                                                size_t num_elements);

@@ -54,6 +54,9 @@ def top_level_task():
 
   model.fit(x_train, y_train, epochs=80, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN), EpochVerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
+
 if __name__ == "__main__":
-  print("Sequantial model, cifar10 cnn")
+  print("Sequential model, cifar10 cnn")
+  configs = ff.get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()

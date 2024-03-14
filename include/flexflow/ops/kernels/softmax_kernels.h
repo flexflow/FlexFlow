@@ -15,33 +15,39 @@ public:
               Legion::Domain const &input_domain);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor;
+  cudnnTensorDescriptor_t outputTensor;
 #else
   miopenTensorDescriptor_t inputTensor;
+  miopenTensorDescriptor_t outputTensor;
 #endif
   bool profiling;
+  bool inference_debugging;
   int dim;
-  char op_name[MAX_OPNAME];
+  DataType input_type, output_type;
 };
 
 namespace Kernels {
 namespace Softmax {
-
+template <typename DT>
 void forward_kernel_wrapper(SoftmaxMeta const *m,
-                            float const *input_ptr,
-                            float *output_ptr);
-
+                            DT const *input_ptr,
+                            DT *output_ptr);
+template <typename DT>
 void backward_kernel_wrapper(SoftmaxMeta const *m,
-                             float *input_grad_ptr,
-                             float const *output_grad_ptr,
+                             DT *input_grad_ptr,
+                             DT const *output_grad_ptr,
                              size_t num_elements);
 
 namespace Internal {
+template <typename DT>
 void forward_kernel(SoftmaxMeta const *m,
-                    float const *input_ptr,
-                    float *output_ptr,
+                    DT const *input_ptr,
+                    DT *output_ptr,
                     ffStream_t stream);
-void backward_kernel(float *input_grad_ptr,
-                     float const *output_grad_ptr,
+
+template <typename DT>
+void backward_kernel(DT *input_grad_ptr,
+                     DT const *output_grad_ptr,
                      size_t num_elements,
                      ffStream_t stream);
 } // namespace Internal

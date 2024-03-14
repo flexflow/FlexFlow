@@ -18,6 +18,7 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
+#include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/concat.h"
@@ -26,12 +27,20 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
+#include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/residual_layer_norm.h"
+#include "flexflow/ops/residual_rms_norm.h"
+#include "flexflow/ops/rms_norm.h"
+#include "flexflow/ops/sigmoid_silu_multi.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
+#include "flexflow/ops/tree_inc_multihead_self_attention.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -893,8 +902,11 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     case OP_EW_MUL:
     case OP_EW_MAX:
     case OP_EW_MIN: {
+      ElementBinaryParams params;
+      params.type = opx->type;
+      params.inplace_a = false;
       op = model->get_or_create_node<ElementBinary>({inputs[0], inputs[1]},
-                                                    {opx->type});
+                                                    params);
       break;
     }
     case OP_RELU: {
@@ -946,8 +958,12 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     }
     case OP_SOFTMAX: {
       int softmax_dim;
+      assert(opx->matchOpX != NULL);
+      assert(opx->matchOpX->mapOp.ptr != NULL);
+      Softmax *softmax = (Softmax *)opx->matchOpX->mapOp.ptr;
       assert(opx->get_pm_constraint(PM_SOFTMAX_DIM, softmax_dim));
-      op = model->get_or_create_node<Softmax>(inputs[0], {softmax_dim});
+      SoftmaxParams params = softmax->get_params();
+      op = model->get_or_create_node<Softmax>(inputs[0], params);
       break;
     }
     case OP_REPARTITION: {
@@ -1480,6 +1496,8 @@ OpX *create_opx(sl::Operator const &op,
         case OP_REPLICATE:
           degree_key = PM_REPLICATE_DEGREE;
           break;
+        default:
+          break;
       }
 
       if (degree_key.has_value()) {
@@ -1501,6 +1519,8 @@ OpX *create_opx(sl::Operator const &op,
           break;
         case OP_REPLICATE:
           dim_key = PM_REPLICATE_DIM;
+          break;
+        default:
           break;
       }
 
@@ -3651,6 +3671,13 @@ bool FFModel::convert_graph_to_operators(
         new_op = new Aggregate(*this, inputs, aggr->n, aggr->lambda_bal, NULL);
         break;
       }
+      case OP_EXPERTS: {
+        Experts *exp = (Experts *)node.ptr;
+        ExpertsParams params = exp->get_params();
+        new_op = new Experts(
+            *this, params, {std::begin(inputs), std::end(inputs)}, true);
+        break;
+      }
       case OP_SPLIT: {
         Split *split = (Split *)node.ptr;
         std::vector<int> splits;
@@ -3671,8 +3698,13 @@ bool FFModel::convert_graph_to_operators(
       case OP_EW_MIN: {
         assert(inList.size() == 2);
         ElementBinary *eb = (ElementBinary *)node.ptr;
-        new_op = new ElementBinary(
-            *this, eb->op_type, inputs[0], inputs[1], eb->inplace_a, NULL);
+        new_op = new ElementBinary(*this,
+                                   eb->layer_guid,
+                                   eb->op_type,
+                                   inputs[0],
+                                   inputs[1],
+                                   eb->inplace_a,
+                                   NULL);
         break;
       }
       case OP_POOL2D: {
@@ -3697,12 +3729,32 @@ bool FFModel::convert_graph_to_operators(
         new_op = new MultiHeadAttention(
             *this, *attn, inputs[0], inputs[1], inputs[2], true);
         break;
+      }
+      case OP_INC_MULTIHEAD_SELF_ATTENTION: {
+        assert(inList.size() == 1);
+        IncMultiHeadSelfAttention *attn = (IncMultiHeadSelfAttention *)node.ptr;
+        new_op = new IncMultiHeadSelfAttention(*this, *attn, inputs[0], true);
+        break;
+      }
+      case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
+        assert(inList.size() == 1);
+        TreeIncMultiHeadSelfAttention *attn =
+            (TreeIncMultiHeadSelfAttention *)node.ptr;
+        new_op =
+            new TreeIncMultiHeadSelfAttention(*this, *attn, inputs[0], true);
+        break;
+      }
+      case OP_RMS_NORM: {
+        assert(inList.size() == 1);
+        RMSNorm *rms = (RMSNorm *)node.ptr;
+        new_op = new RMSNorm(*this, *rms, inputs[0], true);
         break;
       }
       case OP_SOFTMAX: {
         assert(inList.size() == 1);
         Softmax *softmax = (Softmax *)node.ptr;
-        new_op = new Softmax(*this, inputs[0], softmax->dim, NULL);
+        new_op = new Softmax(
+            *this, softmax->layer_guid, inputs[0], softmax->dim, NULL);
         break;
       }
       case OP_COMBINE: {
@@ -3739,6 +3791,12 @@ bool FFModel::convert_graph_to_operators(
                                reduction->reduction_degree);
         break;
       }
+      case OP_ALLREDUCE: {
+        assert(inList.size() == 1);
+        AllReduce *allreduce = (AllReduce *)node.ptr;
+        new_op = new AllReduce(*this, inputs[0], allreduce->allreduce_dim);
+        break;
+      }
       case OP_FUSED_PARALLEL: {
         assert(inList.size() == 1);
         FusedParallelOp *fused = (FusedParallelOp *)node.ptr;
@@ -3747,6 +3805,30 @@ bool FFModel::convert_graph_to_operators(
           parallel_ops.push_back(fused->parallel_ops[i]);
         }
         new_op = new FusedParallelOp(*this, inputs[0], parallel_ops);
+        break;
+      }
+      case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
+        assert(inList.size() == 2);
+        AddBiasResidualLayerNorm *abr_ln = (AddBiasResidualLayerNorm *)node.ptr;
+        AddBiasResidualLayerNormParams params = abr_ln->get_params();
+        new_op = new AddBiasResidualLayerNorm(*this,
+                                              abr_ln->layer_guid,
+                                              inputs[0],
+                                              inputs[1],
+                                              abr_ln->axes,
+                                              abr_ln->elementwise_affine,
+                                              abr_ln->use_bias,
+                                              abr_ln->eps,
+                                              true,
+                                              NULL);
+        break;
+      }
+      case OP_SIGMOID_SILU_MULTI: {
+        assert(inList.size() == 2);
+        SigmoidSiluMulti *ssm = (SigmoidSiluMulti *)node.ptr;
+        SigmoidSiluMultiParams params = ssm->get_params();
+        new_op = new SigmoidSiluMulti(
+            *this, ssm->layer_guid, inputs[0], inputs[1], NULL);
         break;
       }
       default: {

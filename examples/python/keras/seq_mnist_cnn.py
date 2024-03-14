@@ -55,6 +55,9 @@ def top_level_task():
 
   model.fit(x_train, y_train, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_CNN), EpochVerifyMetrics(ModelAccuracy.MNIST_CNN)])
 
+
 if __name__ == "__main__":
   print("Sequential model, mnist cnn")
+  configs = ff.get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()

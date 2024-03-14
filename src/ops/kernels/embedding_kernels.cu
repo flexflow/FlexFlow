@@ -60,7 +60,7 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
                                m->aggr,
                                output.domain.get_volume(),
                                stream);
-    } else if (weight.data_type == DT_HALF) {
+    } else if (weight.data_type == DT_DOUBLE) {
       Internal::forward_kernel(input.get_int32_ptr(),
                                output.get_double_ptr(),
                                weight.get_double_ptr(),

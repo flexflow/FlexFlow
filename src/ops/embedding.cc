@@ -155,11 +155,8 @@ int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
     output_dims[OUT_CHANNELS].size = this->out_channels;
     output_dims[OUT_CHANNELS].degree = 1;
     output_dims[OUT_CHANNELS].parallel_idx = -1;
-    // Currently do not support parallelizing over the replica dim
-    output_dims[num_dims - 1].size = 1;
-    output_dims[num_dims - 1].degree = 1;
-    output_dims[num_dims - 1].parallel_idx = -1;
-    output_dims[num_dims - 1].is_replica_dim = true;
+    // Copy replica dim
+    output_dims[num_dims - 1] = input->dims[input->num_dims - 1];
     return num_dims;
   } else {
     int num_dims = input->num_dims;
@@ -170,11 +167,8 @@ int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
     output_dims[OUT_CHANNELS].size = this->out_channels;
     output_dims[OUT_CHANNELS].degree = 1;
     output_dims[OUT_CHANNELS].parallel_idx = -1;
-    // Currently do not support parallelizing over the replica dim
-    output_dims[num_dims - 1].size = 1;
-    output_dims[num_dims - 1].degree = 1;
-    output_dims[num_dims - 1].parallel_idx = -1;
-    output_dims[num_dims - 1].is_replica_dim = true;
+    // Copy replica dim
+    output_dims[num_dims - 1] = input->dims[input->num_dims - 1];
     return num_dims;
   }
   // const int REPLICA = this->output_vocab_size_replica_dim();
@@ -189,13 +183,13 @@ int Embedding::weight_size(ParallelDim weight_dims[MAX_TENSOR_DIM]) {
   weight_dims[Weight::VOCAB_SIZE].size = this->num_entries;
   weight_dims[Weight::VOCAB_SIZE].degree = 1;
   weight_dims[Weight::VOCAB_SIZE].parallel_idx = -1;
-  for (int i = 2; i < input->num_dims; i++) {
+  for (int i = 2; i < input->num_dims + 1; i++) {
     weight_dims[i].size = input->dims[i - 1].degree;
     weight_dims[i].degree = weight_dims[i].size;
     weight_dims[i].parallel_idx = input->dims[i - 1].parallel_idx;
     weight_dims[i].is_replica_dim = true;
   }
-  return input->num_dims;
+  return input->num_dims + 1;
 }
 
 void Embedding::register_output_mappings() {
@@ -249,7 +243,7 @@ Embedding::Embedding(FFModel &model,
                 params.aggr,
                 allocate_weights,
                 params.data_type,
-                name) {}
+                params.name) {}
 
 Embedding::Embedding(FFModel &model,
                      Embedding const &other,
@@ -369,6 +363,45 @@ void Embedding::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
+void Embedding::init_inference(FFModel const &ff,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(EMBED_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Embedding)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  // regions[2]: weight
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(1, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
+}
+
 OpMeta *Embedding::init_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
@@ -377,7 +410,10 @@ OpMeta *Embedding::init_task(Task const *task,
   FFHandler handle = *((FFHandler const *)task->local_args);
   EmbeddingMeta *m = new EmbeddingMeta(handle, embed);
   m->profiling = embed->profiling;
+  m->inference_debugging = embed->inference_debugging;
   m->aggr = embed->aggr;
+  std::strcpy(m->op_name, embed->name);
+  m->layer_guid = embed->layer_guid;
   return m;
 }
 
@@ -419,6 +455,54 @@ void Embedding::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+FutureMap Embedding::inference(FFModel const &ff,
+                               BatchConfigFuture const &bc,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+
+  IndexLauncher launcher(EMBED_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  // regions[0]: input
+  launcher.add_future(bc);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  // regions[1]: output
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region,
+                                                    MAP_TO_ZC_MEMORY));
+  launcher.add_field(1, FID_DATA);
+  // regions[2]: weight
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(2, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
+}
+
 /*
   regions[0](I): input
   regions[1](O): output
@@ -428,7 +512,7 @@ void Embedding::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
-  EmbeddingMeta const *m = *((EmbeddingMeta **)task->local_args);
+  EmbeddingMeta *m = *((EmbeddingMeta **)task->local_args);
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // Assert that weight and output must have the same data type
@@ -475,75 +559,81 @@ void Embedding::forward_task(Task const *task,
   }
   forward_kernel_wrapper(
       m, input, output, kernel, in_dim, out_dim, effective_batch_size);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Embedding::save_inference_tensors_to_file(
+        m, shard_id, nullptr, {input}, {kernel}, {output});
+  }
 }
 
-#ifdef DEADCODE
-template <typename TI>
-void Embedding::forward_task_with_type(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
-    Runtime *runtime) {
+/*
+  regions[0](I): input
+  regions[1](O): output
+  regions[2](I): kernel
+*/
+void Embedding::inference_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
+  EmbeddingMeta *m = *((EmbeddingMeta **)task->local_args);
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  // const Embedding* embed = (Embedding*) task->args;
-  EmbeddingMeta const *m = *((EmbeddingMeta **)task->local_args);
-  Domain input_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Domain output_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  Domain kernel_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
+  // Assert that weight and output must have the same data type
+  // otherwise, a cast operator should be inserted
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_tokens() == 0) {
+    return;
+  }
+  assert(m->weight_type[0] == m->output_type[0]);
+  assert(m->input_type[0] == DT_INT32 || m->input_type[0] == DT_INT64);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR kernel = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   if (m->aggr == AGGR_MODE_NONE) {
     // assert(kernel_domain.get_dim() == 2);
-    assert(input_domain.get_dim() + 1 == output_domain.get_dim());
-    for (size_t i = 0; i < input_domain.get_dim(); i++) {
-      assert(input_domain.hi()[i] == output_domain.hi()[i + 1]);
-      assert(input_domain.lo()[i] == output_domain.lo()[i + 1]);
+    assert(input.domain.get_dim() + 1 == output.domain.get_dim());
+    for (size_t i = 0; i < input.domain.get_dim(); i++) {
+      assert(input.domain.hi()[i] == output.domain.hi()[i + 1]);
+      assert(input.domain.lo()[i] == output.domain.lo()[i + 1]);
     }
-    assert(kernel_domain.hi()[0] - kernel_domain.lo()[0] ==
-           output_domain.hi()[0] - output_domain.lo()[0]);
+    assert(kernel.domain.hi()[0] - kernel.domain.lo()[0] ==
+           output.domain.hi()[0] - output.domain.lo()[0]);
   } else {
     // assert(kernel_domain.get_dim() == 2);
-    assert(input_domain.get_dim() == output_domain.get_dim());
-    for (size_t i = 1; i < input_domain.get_dim(); i++) {
-      assert(input_domain.hi()[i] == output_domain.hi()[i]);
-      assert(input_domain.lo()[i] == output_domain.lo()[i]);
+    assert(input.domain.get_dim() == output.domain.get_dim());
+    for (size_t i = 1; i < input.domain.get_dim(); i++) {
+      assert(input.domain.hi()[i] == output.domain.hi()[i]);
+      assert(input.domain.lo()[i] == output.domain.lo()[i]);
     }
-    assert(kernel_domain.hi()[0] - kernel_domain.lo()[0] ==
-           output_domain.hi()[0] - output_domain.lo()[0]);
+    assert(kernel.domain.hi()[0] - kernel.domain.lo()[0] ==
+           output.domain.hi()[0] - output.domain.lo()[0]);
   }
-  const TI *input_ptr = helperGetTensorPointerRO<TI>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float *output_ptr = helperGetTensorPointerWO<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  float const *kernel_ptr = helperGetTensorPointerRO<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
   int in_dim, out_dim, effective_batch_size;
   if (m->aggr == AGGR_MODE_NONE) {
     in_dim = 1;
-    out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
-    effective_batch_size = output_domain.get_volume() / out_dim;
-    assert(effective_batch_size * in_dim == input_domain.get_volume());
+    out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+    effective_batch_size = output.domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input.domain.get_volume());
   } else {
-    in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
-    out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
-    effective_batch_size = output_domain.get_volume() / out_dim;
-    assert(effective_batch_size * in_dim == input_domain.get_volume());
+    in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+    out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+    effective_batch_size = output.domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input.domain.get_volume());
   }
-
-  forward_kernel_wrapper<TI>(m,
-                             input_ptr,
-                             output_ptr,
-                             kernel_ptr,
-                             in_dim,
-                             out_dim,
-                             effective_batch_size,
-                             m->aggr,
-                             output_domain.get_volume());
+  forward_kernel_wrapper(
+      m, input, output, kernel, in_dim, out_dim, effective_batch_size);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Embedding::save_inference_tensors_to_file(
+        m, shard_id, nullptr, {input}, {kernel}, {output});
+  }
 }
-#endif
 
 void Embedding::backward(FFModel const &ff) {
   ArgumentMap argmap;

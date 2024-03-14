@@ -86,6 +86,8 @@ FFHandler
   printf("workSpaceSize (%zu MB)\n", info->workSpaceSize / 1024 / 1024);
   FFHandler handle;
   handle.workSpaceSize = info->workSpaceSize;
+  handle.offload_reserve_space_size = info->offload_reserve_space_size;
+  handle.quantization_type = info->quantization_type;
   handle.allowTensorOpMathConversion = info->allowTensorOpMathConversion;
   checkCUDA(cublasCreate(&handle.blas));
   if (handle.allowTensorOpMathConversion) {
@@ -125,6 +127,55 @@ FFHandler
         .wait();
     handle.workSpace = workspaceInst.pointer_untyped(0, sizeof(char));
   }
+  if (handle.offload_reserve_space_size > 0) {
+    // allocate memory for offload reserve space
+    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                         .only_kind(Memory::GPU_FB_MEM)
+                         .best_affinity_to(task->target_proc)
+                         .first();
+    Realm::Rect<1, coord_t> bounds(
+        Realm::Point<1, coord_t>(0),
+        Realm::Point<1, coord_t>(handle.offload_reserve_space_size - 1));
+    std::vector<size_t> field_sizes;
+    field_sizes.push_back(sizeof(char));
+    Realm::RegionInstance workspaceInst;
+    Realm::RegionInstance::create_instance(workspaceInst,
+                                           gpu_mem,
+                                           bounds,
+                                           field_sizes,
+                                           0,
+                                           Realm::ProfilingRequestSet())
+        .wait();
+    handle.offload_reserve_space =
+        workspaceInst.pointer_untyped(0, sizeof(char));
+  } else {
+    handle.offload_reserve_space = nullptr;
+  }
+  if (handle.batch_config_metadata_size > 0) {
+    // allocate memory for offload reserve space
+    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                         .only_kind(Memory::GPU_FB_MEM)
+                         .best_affinity_to(task->target_proc)
+                         .first();
+    Realm::Rect<1, coord_t> bounds(
+        Realm::Point<1, coord_t>(0),
+        Realm::Point<1, coord_t>(handle.batch_config_metadata_size - 1));
+    std::vector<size_t> field_sizes;
+    field_sizes.push_back(sizeof(char));
+    Realm::RegionInstance workspaceInst;
+    Realm::RegionInstance::create_instance(workspaceInst,
+                                           gpu_mem,
+                                           bounds,
+                                           field_sizes,
+                                           0,
+                                           Realm::ProfilingRequestSet())
+        .wait();
+    handle.batch_config_metadata =
+        workspaceInst.pointer_untyped(0, sizeof(char));
+  } else {
+    handle.batch_config_metadata = nullptr;
+  }
+
   // checkCUDA(cudaMalloc(&handle.workSpace, handle.workSpaceSize));
 #ifdef FF_USE_NCCL
   handle.ncclComm = NULL;

@@ -13,27 +13,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docker-build:
-    name: Build and Install FlexFlow in a Docker Container
-    runs-on: ubuntu-20.04
+  docker-build-rocm:
+    name: Build and Install FlexFlow in a Docker Container (ROCm backend)
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        gpu_backend: ["cuda", "hip_rocm"]
-        cuda_version: ["11.1", "11.2", "11.3", "11.5", "11.6", "11.7", "11.8"]
-        # The CUDA version doesn't matter when building for hip_rocm, so we just pick one arbitrarily (11.8) to avoid building for hip_rocm once per number of CUDA version supported
-        exclude:
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.1"
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.2"
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.3"
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.5"
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.6"
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.7"
+        hip_version: ["5.3", "5.4", "5.5", "5.6"]
+      fail-fast: false
+    steps:
+      - run: 'echo "No docker-build required"'
+  
+  docker-build-cuda:
+    name: Build and Install FlexFlow in a Docker Container (CUDA backend)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cuda_version: ["11.1", "11.6", "11.7", "11.8", "12.0", "12.1", "12.2"]
       fail-fast: false
     steps:
       - run: 'echo "No docker-build required"'

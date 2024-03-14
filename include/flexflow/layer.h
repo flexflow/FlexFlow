@@ -52,6 +52,7 @@ public:
   bool trainableInputs[MAX_NUM_INPUTS];
   int numInputs, numWeights, numOutputs;
   bool profiling;
+  bool inference_debugging;
 
 private:
   std::unordered_map<std::string, long long> int_properties;

@@ -76,7 +76,10 @@ def top_level_task():
 
   model.fit(x_train, y_train, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP), EpochVerifyMetrics(ModelAccuracy.MNIST_MLP)])
 
+
 if __name__ == "__main__":
   print("Functional API, mnist mlp concat")
+  configs = ff.get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()
   gc.collect()

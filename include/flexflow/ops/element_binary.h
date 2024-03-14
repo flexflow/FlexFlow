@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_ELEMENT_BINARY_H
 #define _FLEXFLOW_ELEMENT_BINARY_H
 
+#include "flexflow/inference.h"
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
 #include "flexflow/operator.h"
@@ -14,6 +15,7 @@ public:
   using Input = std::pair<ParallelTensor, ParallelTensor>;
 
   ElementBinary(FFModel &model,
+                LayerID const &layer_guid,
                 OperatorType type,
                 const ParallelTensor x,
                 const ParallelTensor y,
@@ -22,11 +24,19 @@ public:
   ElementBinary(FFModel &model,
                 Params const &params,
                 Input const &inputs,
-                char const *name = nullptr,
-                bool inplace_a = false);
+                char const *name = nullptr);
   void init(FFModel const &) override;
+  void init_inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &,
+                      MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfigFuture const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }
@@ -46,6 +56,10 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void inference_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static void backward_task(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
@@ -53,6 +67,12 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
+
+  void serialize(Legion::Serializer &) const override;
+  static PCG::Node deserialize(FFModel &ff,
+                               Legion::Deserializer &d,
+                               ParallelTensor inputs[],
+                               int num_inputs);
   Params get_params() const;
 
 public:

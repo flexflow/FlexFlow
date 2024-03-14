@@ -3,6 +3,7 @@ on:
   pull_request:
     paths-ignore:
       - "include/**"
+      - "inference/**"
       - "cmake/**"
       - "config/**"
       - "deps/**"

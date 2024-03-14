@@ -16,8 +16,10 @@ Layer::Layer(FFModel *model,
              const Tensor _input3,
              const Tensor _input4)
     : op_type(_otype), data_type(_dtype),
-      layer_guid(model->layer_global_guid++), numInputs(_numInputs),
-      numWeights(_numWeights), numOutputs(_numOutputs) {
+      layer_guid(model->layer_global_guid++,
+                 model->current_transformer_layer_id,
+                 model->model_id),
+      numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs) {
   std::string pcname;
   if (_name == nullptr) {
     pcname = get_operator_type_name(op_type);
@@ -50,8 +52,10 @@ Layer::Layer(FFModel *model,
              int _numOutputs,
              Tensor const *_tensors)
     : op_type(_otype), data_type(_dtype),
-      layer_guid(model->layer_global_guid++), numInputs(_numInputs),
-      numWeights(_numWeights), numOutputs(_numOutputs) {
+      layer_guid(model->layer_global_guid++,
+                 model->current_transformer_layer_id,
+                 model->model_id),
+      numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs) {
   std::string pcname;
   if (_name == nullptr) {
     pcname = get_operator_type_name(op_type);

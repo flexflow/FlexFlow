@@ -7,47 +7,40 @@ Welcome to FlexFlow's documentation!
 ====================================
 
 .. toctree::
-   :maxdepth: 2
    :caption: Getting Started
    
    welcome
    installation
    docker
-   jupyter
+   multinode
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Interoperability
+   :caption: FlexFlow Serve
    
-   keras
-   pytorch
-   onnx
+   serve_overview
+   serve_usecases
+   serve_api
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Examples
-
-   mt5
+   :caption: FlexFlow Train
    
+   train_overview
+   train_interface
+   train_examples
+   
+   train_python_api
+
+.. toctree::
+   :caption: FlexFlow Backend
+
+   cpp_api
+
 .. toctree::
    :maxdepth: 3
-   :caption: Python API
-   
-   python/models
-   python/layers
-   python/dataloader
-
-.. toctree::
-   :maxdepth: 2
-   :caption: C++ API
-
-   c++_api/c++_api_root
-
-.. toctree::
-   :maxdepth: 2
    :caption: Developers Guide
 
-   developers_guide
+   developers_guide/developers_guide.rst
+..   developers_guide/ff_internals.rst
 
 
 .. Indices and tables

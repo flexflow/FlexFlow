@@ -23,14 +23,32 @@ public:
     SOURCE_OUTPUT,
   };
   FusedOp(FFModel &model, Op *op);
-  bool add_operator(FFModel &model, Op *op);
+  static bool use_same_regions(
+      ParallelTensor const source_tensor,
+      ParallelTensor const target_tensor,
+      std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+          *pt_mapping = nullptr);
+  bool add_operator(
+      FFModel &model,
+      Op *op,
+      std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+          *parallel_tensor_mapping = nullptr);
   ParallelTensor init_inout(FFModel &model, const ParallelTensor input) {
     assert(0);
     return ParallelTensor();
   }
   void init(FFModel const &) override;
+  void init_inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &,
+                      MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfigFuture const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }
@@ -38,6 +56,10 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void inference_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static void forward_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,

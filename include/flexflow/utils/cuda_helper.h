@@ -1,9 +1,13 @@
 #ifndef _FLEXFLOW_CUDA_HELPER_H_
 #define _FLEXFLOW_CUDA_HELPER_H_
+#include "flexflow/accessor.h"
 #include "flexflow/ffconst.h"
 #include "legion.h"
 #include <cublas_v2.h>
 #include <cudnn.h>
+#ifdef FF_USE_NCCL
+#include <nccl.h>
+#endif
 
 #define FatalError(s)                                                          \
   do {                                                                         \
@@ -82,6 +86,12 @@ __global__ void assign_kernel(DT *ptr, Legion::coord_t size, DT value);
 template <typename DT>
 __global__ void copy_kernel(DT *dst, const DT *src, Legion::coord_t size);
 
+template <typename DT>
+__global__ void copy_kernel_discrete(DT *dst,
+                                     const DT *src,
+                                     Legion::coord_t size,
+                                     size_t *index);
+
 template <typename T>
 __global__ void add_kernel(T *data_ptr, T const *grad_ptr, size_t size);
 
@@ -131,12 +141,41 @@ __host__ void updateGAS(float *para_ptr,
                         float learning_rate);
 
 template <typename T>
-void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
+void print_tensor(T const *ptr,
+                  size_t num_elements,
+                  char const *prefix,
+                  int shard_id = 0);
+template <typename T>
+void print_beam_tensor(T const *ptr,
+                       size_t num_elements,
+                       int skip,
+                       int channel,
+                       char const *prefix);
+
+template <typename T>
+void save_tensor(T const *ptr, size_t num_elements, char const *file_name);
+
+template <typename T>
+T *download_tensor(T const *ptr, size_t num_elements);
+
+template <typename T>
+bool download_tensor(T const *ptr, T *dst, size_t num_elements);
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
-                                                 Legion::Domain domain);
+                                                 Legion::Domain domain,
+                                                 DataType data_type = DT_FLOAT);
+
+cudnnStatus_t
+    cudnnSetTensorDescriptorFromDomain4SoftMax(cudnnTensorDescriptor_t tensor,
+                                               Legion::Domain domain,
+                                               DataType data_type = DT_FLOAT);
 
 cudaDataType_t ff_to_cuda_datatype(DataType type);
-
 cudnnDataType_t ff_to_cudnn_datatype(DataType type);
+#ifdef FF_USE_NCCL
+ncclDataType_t ff_to_nccl_datatype(DataType type);
+#endif
+
+cudaDataType_t cudnn_to_cuda_datatype(cudnnDataType_t type);
+cudnnDataType_t cuda_to_cudnn_datatype(cudaDataType_t type);
 #endif

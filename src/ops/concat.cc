@@ -147,7 +147,7 @@ Concat::Concat(FFModel &model,
                ConcatParams const &params,
                std::vector<ParallelTensor> const &inputs,
                char const *name)
-    : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
+    : Concat(model, inputs.size(), inputs.data(), params.axis, params.name) {}
 
 void Concat::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -201,7 +201,9 @@ OpMeta *Concat::init_task(Task const *task,
   // Note that our internal axis index ordering is opposite to other frameworks
   init_meta(m, cc->legion_axis);
   m->profiling = cc->profiling;
+  m->inference_debugging = cc->inference_debugging;
   std::strcpy(m->op_name, cc->name);
+  m->layer_guid = cc->layer_guid;
   return m;
 }
 

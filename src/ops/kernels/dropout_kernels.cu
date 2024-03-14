@@ -29,6 +29,7 @@ DropoutMeta::DropoutMeta(FFHandler handler,
                          Domain const &output_domain)
     : OpMeta(handler) {
   profiling = dropout->profiling;
+  inference_debugging = dropout->inference_debugging;
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateDropoutDescriptor(&dropoutDesc));

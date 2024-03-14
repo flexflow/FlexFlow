@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # set the CC and CXX, usually it is not needed as cmake can detect it
 # set CC and CXX to mpicc and mpic++ when enable gasnet
 # CC=mpicc
@@ -11,16 +10,31 @@
 #LD_FLAGS=${LD_FLAGS+=""}
 
 #set install dir
-#INSTALL_DIR=
+INSTALL_DIR=${INSTALL_DIR:-}
 
 # set build type
 BUILD_TYPE=${BUILD_TYPE:-Release}
+
+INFERENCE_TESTS=${INFERENCE_TESTS:-OFF}
+LIBTORCH_PATH=${LIBTORCH_PATH:-"$(realpath ../..)/libtorch"}
+if [[ "$INFERENCE_TESTS" == "ON" && ! -d "$LIBTORCH_PATH" ]]; then
+    cwd="$(pwd)"
+    cd ../..
+    wget https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip
+    unzip libtorch-shared-with-deps-latest.zip
+    rm libtorch-shared-with-deps-latest.zip
+    LIBTORCH_PATH="$(pwd)/libtorch"
+    cd "$cwd"
+fi
 
 # set CUDA Arch to the desired GPU architecture(s) to target (e.g. pass "FF_CUDA_ARCH=60" for Pascal). 
 # To pass more than one value, separate architecture numbers with a comma (e.g. FF_CUDA_ARCH=70,75).
 # Alternatively, set "FF_CUDA_ARCH=autodetect" to build FlexFlow for all architectures detected on the machine,
 # or set "FF_CUDA_ARCH=all" to build FlexFlow for all supported GPU architectures
 FF_CUDA_ARCH=${FF_CUDA_ARCH:-"autodetect"}
+# FF_HIP_ARCH only supports building for a specific AMD architecture, a list of architectures separated by a comma
+# or all available architectures. TODO: support autodetect
+FF_HIP_ARCH=${FF_HIP_ARCH:-"all"}
 
 # set CUDNN dir in case cmake cannot autodetect a path
 CUDNN_DIR=${CUDNN_DIR:-"/usr/local/cuda"}
@@ -28,7 +42,8 @@ CUDNN_DIR=${CUDNN_DIR:-"/usr/local/cuda"}
 # set CUDA dir in case cmake cannot autodetect a path
 CUDA_DIR=${CUDA_DIR:-"/usr/local/cuda"}
 
-#set NCCL dir
+# if not use PREBUILD_NCCL, you can set NCCL_DIR to use external nccl lib,
+# otherwise, we will build nccl from source
 NCCL_DIR=${NCCL_DIR:-"/usr/local/cuda"}
 
 # enable Python
@@ -40,11 +55,12 @@ FF_LEGION_NETWORKS=${FF_LEGION_NETWORKS:-}
 # select GASNET conduit
 FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT:-ibv}
 
-# set UCX URL
-FF_UCX_URL=${FF_UCX_URL:-""}
+# set UCX dir if Legion networks is set to ucx
+UCX_DIR=${UCX_DIR:-""}
 
 # build C++ examples
 FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES:-OFF}
+FF_BUILD_ALL_INFERENCE_EXAMPLES=${FF_BUILD_ALL_INFERENCE_EXAMPLES:-ON}
 
 # build C++ unit tests
 FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS:-OFF}
@@ -52,6 +68,7 @@ FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS:-OFF}
 # use precompiled NCCL and Legion libraries, where available
 FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL:-OFF}
 FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION:-OFF}
+
 # use the flag below to use both the NCCL and Legion pre-built libraries.
 # when the flag below is set to ON, the two flags above are ignored.
 FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES:-OFF}
@@ -62,6 +79,12 @@ FF_USE_AVX2=${FF_USE_AVX2:-OFF}
 # set MAX_DIM
 FF_MAX_DIM=${FF_MAX_DIM:-5}
 
+# set BUILD_LEGION_ONLY
+BUILD_LEGION_ONLY=${BUILD_LEGION_ONLY:-OFF}
+
+# set LEGION_MAX_RETURN_SIZE
+LEGION_MAX_RETURN_SIZE=${LEGION_MAX_RETURN_SIZE:-262144}
+
 # set ROCM path
 ROCM_PATH=${ROCM_PATH:-"/opt/rocm"}
 
@@ -70,7 +93,7 @@ FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
 if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
   echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid."
   exit 1
-elif [[ "$FF_GPU_BACKEND" == "cuda" || "$FF_GPU_BACKEND" = "hip_cuda" ]]; then
+elif [[ "$FF_GPU_BACKEND" == "cuda" || "$FF_GPU_BACKEND" = "hip_cuda" || "$FF_GPU_BACKEND" == "hip_rocm" ]]; then
     # enable NCCL
     FF_USE_NCCL=${FF_USE_NCCL:-ON}
 else
@@ -79,7 +102,7 @@ fi
 
 function get_build_configs() {
     # Create a string with the values of the variables set in this script
-    BUILD_CONFIGS="FF_CUDA_ARCH=${FF_CUDA_ARCH} CUDNN_DIR=${CUDNN_DIR} CUDA_DIR=${CUDA_DIR} NCCL_DIR=${NCCL_DIR} FF_USE_PYTHON=${FF_USE_PYTHON} FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT} FF_UCX_URL=${FF_UCX_URL} FF_LEGION_NETWORKS=${FF_LEGION_NETWORKS} FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES} FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS} FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL} FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION} FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES} FF_USE_AVX2=${FF_USE_AVX2} FF_MAX_DIM=${FF_MAX_DIM} ROCM_PATH=${ROCM_PATH} FF_GPU_BACKEND=${FF_GPU_BACKEND}"
+    BUILD_CONFIGS="FF_CUDA_ARCH=${FF_CUDA_ARCH} FF_HIP_ARCH=${FF_HIP_ARCH} CUDNN_DIR=${CUDNN_DIR} CUDA_DIR=${CUDA_DIR} NCCL_DIR=${NCCL_DIR} FF_USE_PYTHON=${FF_USE_PYTHON} BUILD_LEGION_ONLY=${BUILD_LEGION_ONLY} FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT} UCX_DIR=${UCX_DIR} FF_LEGION_NETWORKS=${FF_LEGION_NETWORKS} FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES} FF_BUILD_ALL_INFERENCE_EXAMPLES=${FF_BUILD_ALL_INFERENCE_EXAMPLES} FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS} FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL} FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION} FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES} FF_USE_AVX2=${FF_USE_AVX2} FF_MAX_DIM=${FF_MAX_DIM} ROCM_PATH=${ROCM_PATH} FF_GPU_BACKEND=${FF_GPU_BACKEND} INSTALL_DIR=${INSTALL_DIR}"
 }
 
 if [[ -n "$1" && ( "$1" == "CMAKE_FLAGS" || "$1" == "CUDA_PATH" ) ]]; then

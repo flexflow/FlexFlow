@@ -133,9 +133,9 @@ __host__ void
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   forward_kernel(m,
                  acc_input.ptr,
@@ -143,12 +143,12 @@ __host__ void
                  acc_scale.ptr,
                  acc_bias.ptr /*, stream*/);
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("BatchNorm forward time (BF) = %.2fms\n", elapsed);
   }
 }
@@ -256,9 +256,9 @@ __host__ void
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   backward_kernel(m,
                   acc_input.ptr,
@@ -270,12 +270,12 @@ __host__ void
                   acc_bias_grad.ptr,
                   acc_output.rect.volume() /*, stream*/);
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("BatchNorm backward time = %.2fms\n", elapsed);
   }
 }
@@ -293,6 +293,7 @@ BatchNormMeta::BatchNormMeta(FFHandler handler,
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   relu = bn->relu;
   profiling = bn->profiling;
+  inference_debugging = bn->inference_debugging;
   mode = miopenBNSpatial;
   // #if HIPDNN_VERSION >= 7000
   //   mode = HIPDNN_BATCHNORM_SPATIAL_PERSISTENT;

@@ -33,6 +33,8 @@ enum DataType {
   DT_HALF = 43,
   DT_FLOAT = 44,
   DT_DOUBLE = 45,
+  DT_INT4 = 46,
+  DT_INT8 = 47,
   DT_NONE = 49,
 };
 
@@ -62,6 +64,12 @@ enum MetricsType {
   METRICS_MEAN_SQUARED_ERROR = 1008,
   METRICS_ROOT_MEAN_SQUARED_ERROR = 1016,
   METRICS_MEAN_ABSOLUTE_ERROR = 1032,
+};
+
+enum InferenceMode {
+  INC_DECODING_MODE = 2001,
+  BEAM_SEARCH_MODE = 2002,
+  TREE_VERIFY_MODE = 2003,
 };
 
 // This is consistent with TASO's OpType
@@ -129,6 +137,7 @@ enum OperatorType {
   OP_SHAPE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Shape
   OP_SIZE,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Size
   OP_TOPK,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#TopK
+  OP_ARG_TOPK,
   OP_WHERE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Where
   OP_CEIL,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Ceil
   OP_CAST,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cast
@@ -150,15 +159,37 @@ enum OperatorType {
   OP_POW,   // https://pytorch.org/docs/stable/generated/torch.pow.html
   OP_MEAN,  // https://pytorch.org/docs/stable/generated/torch.mean.html
   OP_LAYERNORM,
+  OP_RESIDUAL_LAYERNORM,
+  OP_ADD_BIAS_RESIDUAL_LAYERNORM,
+  OP_SIGMOID_SILU_MULTI,
+  OP_EXPERTS,
   OP_GATHER, // https://pytorch.org/docs/stable/generated/torch.gather.html
+  OP_RMS_NORM,
+  OP_RESIDUAL_RMS_NORM,
+  OP_BEAM_TOPK,
+  OP_ARGMAX,
+  OP_INC_MULTIHEAD_SELF_ATTENTION,
+  OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION,
+  OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
+  OP_SAMPLING,
   // Parallel Ops
   OP_REPARTITION,
   OP_COMBINE,
   OP_REPLICATE,
   OP_REDUCTION,
   OP_PIPELINE,
+  OP_ALLREDUCE,
   OP_FUSED_PARALLEL,
   OP_INVALID,
+};
+
+enum ModelType {
+  UNKNOWN = 3001,
+  LLAMA = 3002,
+  OPT = 3003,
+  FALCON = 3004,
+  STARCODER = 3005,
+  MPT = 3006
 };
 
 enum PMParameter {
@@ -189,6 +220,7 @@ enum PMParameter {
   PM_COMBINE_DEGREE,     // Combine
   PM_REDUCTION_DIM,      // Reduction
   PM_REDUCTION_DEGREE,   // Reduction
+  PM_ALLREDUCE_DIM,      // AllReduce
   PM_SOFTMAX_DIM,        // Softmax
   PM_NUM_HEADS,          // MultiHeadAttention
   PM_INVALID,

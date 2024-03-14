@@ -61,6 +61,7 @@ public:
   float *get_float_ptr() const;
   double *get_double_ptr() const;
   half *get_half_ptr() const;
+  char *get_byte_ptr() const;
   DataType data_type;
   Legion::Domain domain;
   void *ptr;
@@ -79,6 +80,7 @@ public:
   float const *get_float_ptr() const;
   double const *get_double_ptr() const;
   half const *get_half_ptr() const;
+  char const *get_byte_ptr() const;
   DataType data_type;
   Legion::Domain domain;
   void const *ptr;

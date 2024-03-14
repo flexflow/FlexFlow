@@ -60,6 +60,9 @@ RepartitionParams Repartition::get_params() const {
   RepartitionParams params;
   params.repartition_legion_dim = this->repartition_dim;
   params.repartition_degree = this->repartition_degree;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -92,13 +95,53 @@ Repartition::Repartition(FFModel &model,
                   input,
                   params.repartition_legion_dim,
                   params.repartition_degree,
-                  name) {}
+                  params.name) {}
 
 OpMeta *Repartition::init_task(Task const *task,
                                std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
   return nullptr;
+}
+
+void Repartition::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
+  ArgumentMap argmap;
+  parallel_is = batch_outputs[0]->parallel_is;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  IndexLauncher launcher(REPARTITION_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  assert(inference_input_lps.find(batch_inputs[0]) !=
+         inference_input_lps.end());
+  launcher.add_region_requirement(
+      RegionRequirement(inference_input_lps[batch_inputs[0]],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
 }
 
 void Repartition::init(FFModel const &ff) {
@@ -130,6 +173,7 @@ void Repartition::init(FFModel const &ff) {
 }
 
 void Repartition::create_input_partition(FFModel &ff) {
+  assert(ff.config.computationMode == COMP_MODE_TRAINING);
   assert(outputs[0]->part != LogicalPartition::NO_PART);
   assert(inputs[0]->part != LogicalPartition::NO_PART);
   ff.create_disjoint_partition(outputs[0]->num_dims,
@@ -142,6 +186,61 @@ void Repartition::create_input_partition(FFModel &ff) {
                                inputs[0]->parallel_is,
                                outputs[0]->region_grad,
                                output_grad_lp);
+}
+
+void Repartition::create_input_partition_inference(
+    FFModel &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
+  assert(batch_outputs[0]->part != LogicalPartition::NO_PART);
+  assert(batch_inputs[0]->part != LogicalPartition::NO_PART);
+  ff.create_disjoint_partition(batch_outputs[0]->num_dims,
+                               batch_outputs[0]->dims,
+                               batch_outputs[0]->parallel_is,
+                               batch_inputs[0]->region,
+                               inference_input_lps[batch_inputs[0]]);
+}
+
+FutureMap
+    Repartition::inference(FFModel const &ff,
+                           BatchConfigFuture const &bc,
+                           std::vector<ParallelTensor> const &batch_inputs,
+                           std::vector<ParallelTensor> const &batch_outputs,
+                           MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  assert(batch_inputs[0]->data_type == batch_outputs[0]->data_type);
+  DataType data_type = batch_inputs[0]->data_type;
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  /* std::cout << "Partition op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
+  IndexLauncher launcher(REPARTITION_FWD_TASK_ID,
+                         batch_outputs[0]->parallel_is,
+                         TaskArgument(&data_type, sizeof(DataType)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(
+      RegionRequirement(inference_input_lps[batch_inputs[0]],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Repartition::forward(FFModel const &ff) {

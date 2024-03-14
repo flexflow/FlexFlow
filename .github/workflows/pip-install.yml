@@ -7,6 +7,7 @@ on:
       - "deps/**"
       - "python/**"
       - "setup.py"
+      - "requirements.txt"
       - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/pip-install.yml"
   push:
@@ -18,6 +19,7 @@ on:
       - "deps/**"
       - "python/**"
       - "setup.py"
+      - "requirements.txt"
       - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/pip-install.yml"
   workflow_dispatch:
@@ -64,10 +66,11 @@ jobs:
           export FF_HOME=$(pwd)
           export FF_CUDA_ARCH=70
           pip install . --verbose
+          # Remove build folder to check that the installed version can run independently of the build files
+          rm -rf build
 
-      - name: Check availability of Python flexflow.core module
+      - name: Check availability of flexflow modules in Python
         run: |
           export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
           sudo ln -s "$CUDA_PATH/lib64/stubs/libcuda.so" "$CUDA_PATH/lib64/stubs/libcuda.so.1"
-          export CPU_ONLY_TEST=1
-          python -c "import flexflow.core; exit()"
+          python -c 'import flexflow.core; import flexflow.serve as ff; exit()'

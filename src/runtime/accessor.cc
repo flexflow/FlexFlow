@@ -77,6 +77,15 @@ half const *GenericTensorAccessorR::get_half_ptr() const {
   }
 }
 
+char const *GenericTensorAccessorR::get_byte_ptr() const {
+  if (data_type == DT_INT4 || data_type == DT_INT8) {
+    return static_cast<char const *>(ptr);
+  } else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<char const *>(nullptr);
+  }
+}
+
 template <typename DT, int dim>
 TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
                                           RegionRequirement req,
@@ -153,6 +162,15 @@ half *GenericTensorAccessorW::get_half_ptr() const {
   } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<half *>(nullptr);
+  }
+}
+
+char *GenericTensorAccessorW::get_byte_ptr() const {
+  if (data_type == DT_INT4 || data_type == DT_INT8) {
+    return static_cast<char *>(ptr);
+  } else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<char *>(nullptr);
   }
 }
 
@@ -261,6 +279,14 @@ GenericTensorAccessorR
       ptr = helperGetTensorPointerRO<double>(region, req, fid, ctx, runtime);
       break;
     }
+    case DT_INT4: {
+      ptr = helperGetTensorPointerRO<char>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_INT8: {
+      ptr = helperGetTensorPointerRO<char>(region, req, fid, ctx, runtime);
+      break;
+    }
     default: {
       assert(false);
     }
@@ -297,6 +323,14 @@ GenericTensorAccessorW
     }
     case DT_DOUBLE: {
       ptr = helperGetTensorPointerWO<double>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_INT4: {
+      ptr = helperGetTensorPointerWO<char>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_INT8: {
+      ptr = helperGetTensorPointerWO<char>(region, req, fid, ctx, runtime);
       break;
     }
     default: {
@@ -337,6 +371,14 @@ GenericTensorAccessorW
       ptr = helperGetTensorPointerRW<double>(region, req, fid, ctx, runtime);
       break;
     }
+    case DT_INT4: {
+      ptr = helperGetTensorPointerRW<char>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_INT8: {
+      ptr = helperGetTensorPointerRW<char>(region, req, fid, ctx, runtime);
+      break;
+    }
     default: {
       assert(false);
     }
@@ -345,10 +387,14 @@ GenericTensorAccessorW
 }
 
 #define DIMFUNC(DIM)                                                           \
+  template class TensorAccessorR<char, DIM>;                                   \
+  template class TensorAccessorR<half, DIM>;                                   \
   template class TensorAccessorR<float, DIM>;                                  \
   template class TensorAccessorR<double, DIM>;                                 \
   template class TensorAccessorR<int32_t, DIM>;                                \
   template class TensorAccessorR<int64_t, DIM>;                                \
+  template class TensorAccessorW<char, DIM>;                                   \
+  template class TensorAccessorW<half, DIM>;                                   \
   template class TensorAccessorW<float, DIM>;                                  \
   template class TensorAccessorW<double, DIM>;                                 \
   template class TensorAccessorW<int32_t, DIM>;                                \
@@ -366,6 +412,22 @@ template half *helperGetTensorPointerRW(PhysicalRegion region,
                                         Context ctx,
                                         Runtime *runtime);
 template half *helperGetTensorPointerWO(PhysicalRegion region,
+                                        RegionRequirement req,
+                                        FieldID fid,
+                                        Context ctx,
+                                        Runtime *runtime);
+
+template char const *helperGetTensorPointerRO(PhysicalRegion region,
+                                              RegionRequirement req,
+                                              FieldID fid,
+                                              Context ctx,
+                                              Runtime *runtime);
+template char *helperGetTensorPointerRW(PhysicalRegion region,
+                                        RegionRequirement req,
+                                        FieldID fid,
+                                        Context ctx,
+                                        Runtime *runtime);
+template char *helperGetTensorPointerWO(PhysicalRegion region,
                                         RegionRequirement req,
                                         FieldID fid,
                                         Context ctx,

@@ -18,6 +18,10 @@
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
+
+ReplicateMeta::ReplicateMeta(FFHandler handle, Replicate const *repl)
+    : OpMeta(handle) {}
+
 namespace Kernels {
 namespace Replicate {
 
@@ -66,6 +70,9 @@ void backward_kernel(T const *output_grad_ptr,
 template void forward_kernel<float>(float const *input_ptr,
                                     float *output_ptr,
                                     size_t num_elements);
+template void forward_kernel<half>(half const *input_ptr,
+                                   half *output_ptr,
+                                   size_t num_elements);
 template __global__ void
     replicate_backward_kernel<float>(float const *input_ptr,
                                      float *output_ptr,

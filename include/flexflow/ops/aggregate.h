@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_AGGREGATE_H_
 #define _FLEXFLOW_AGGREGATE_H_
 
+#include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/aggregate_params.h"
 
@@ -8,7 +9,7 @@ namespace FlexFlow {
 
 #define AGGREGATE_MAX_K 4
 #define AGGREGATE_MAX_BATCH_SIZE 64
-#define AGGREGATE_MAX_N 12
+#define AGGREGATE_MAX_N 128
 
 class AggregateMeta : public OpMeta {
 public:
@@ -26,7 +27,7 @@ public:
             ParallelTensor const *inputs,
             int _n,
             float _lambda_bal,
-            char const *name);
+            char const *name = nullptr);
   Aggregate(FFModel &model,
             Aggregate const &other,
             std::vector<ParallelTensor> const &inputs);
@@ -35,7 +36,16 @@ public:
             Input const &inputs,
             char const *name = nullptr);
   void init(FFModel const &) override;
+  void init_inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &,
+                      MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfigFuture const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void backward(FFModel const &) override;
   void print_layer(FFModel const &model) override {
     assert(0);
@@ -81,6 +91,10 @@ public:
                                       int const batch_size,
                                       int out_dim);
   void serialize(Legion::Serializer &s) const override;
+  static PCG::Node deserialize(FFModel &ff,
+                               Legion::Deserializer &d,
+                               Input const &inputs,
+                               int num_inputs);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;

@@ -151,6 +151,7 @@ enum OperatorType {
   OP_PRELU,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#PRelu
   OP_GELU,
   OP_MULTIHEAD_ATTENTION,
+  OP_INC_MULTIHEAD_SELF_ATTENTION,
   OP_FUSED,  // Fused operator type for internal fusion optimizations
   // Parallel Ops
   OP_REPARTITION,

@@ -7,6 +7,7 @@ namespace FlexFlow {
 
 struct FusedParallelOpParams {
   std::vector<ParallelOpInfo> parallel_ops;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(FusedParallelOpParams const &, FusedParallelOpParams const &);

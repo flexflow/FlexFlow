@@ -10,7 +10,7 @@ jobs:
           - check: "src"
             exclude: '\.proto$'
           - check: "include"
-          - check: "nmt"
+          - check: "inference"
           - check: "python"
           - check: "scripts"
           - check: "tests"

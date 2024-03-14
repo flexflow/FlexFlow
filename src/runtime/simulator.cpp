@@ -80,13 +80,13 @@ Simulator::Simulator(FFModel const *model,
 
   size_t max_num_tasks = 1024 * 1024;
 
-  hipEventCreate(&start_event);
-  hipEventCreate(&end_event);
+  checkCUDA(hipEventCreate(&start_event));
+  checkCUDA(hipEventCreate(&end_event));
   conv2d_meta = new Conv2DMeta(handler);
-  linear_meta = new LinearMeta(handler, 4096);
+  // linear_meta = new LinearMeta(handler, 4096);
   pool2d_meta = new Pool2DMeta(handler);
   ele_unary_meta = new ElementUnaryMeta(handler);
-  ele_binary_meta = new ElementBinaryMeta(handler);
+  // ele_binary_meta = new ElementBinaryMeta(handler);
   // embedding_meta = new EmbeddingMeta(handler);
   //  softmax_meta = new SoftmaxMeta(handler);
   batch_matmul_meta = new BatchMatmulMeta(handler);

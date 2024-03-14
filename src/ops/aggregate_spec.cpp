@@ -226,10 +226,10 @@ void AggregateSpec::forward_kernel_wrapper(AggregateSpecMeta const *m,
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   // call forward kernel
-  hipMemcpy(m->dev_region_ptrs,
-            exp_preds,
-            n * sizeof(float *),
-            hipMemcpyHostToDevice);
+  checkCUDA(hipMemcpy(m->dev_region_ptrs,
+                      exp_preds,
+                      n * sizeof(float *),
+                      hipMemcpyHostToDevice));
 
   hipLaunchKernelGGL(aggspec_forward_kernel,
                      GET_BLOCKS(batch_size * k * out_dim),
@@ -266,10 +266,10 @@ void AggregateSpec::backward_kernel_wrapper(AggregateSpecMeta const *m,
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   // call backward kernel
-  hipMemcpy(m->dev_region_ptrs,
-            exp_grads,
-            n * sizeof(float *),
-            hipMemcpyHostToDevice);
+  checkCUDA(hipMemcpy(m->dev_region_ptrs,
+                      exp_grads,
+                      n * sizeof(float *),
+                      hipMemcpyHostToDevice));
 
   hipLaunchKernelGGL(aggspec_backward_kernel,
                      GET_BLOCKS(batch_size * k * out_dim),

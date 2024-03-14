@@ -9,6 +9,7 @@ namespace FlexFlow {
 struct DropoutParams {
   float rate;
   unsigned long long seed;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(DropoutParams const &, DropoutParams const &);

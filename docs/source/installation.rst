@@ -1,5 +1,6 @@
+:tocdepth: 1
 *************
-Installing FlexFlow
+Building from source
 *************
 
 .. mdinclude:: ../../INSTALL.md
