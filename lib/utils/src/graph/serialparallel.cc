@@ -19,7 +19,7 @@ Node find_sink_node(DiGraphView const &g) {
 
 optional<Node> find_bottleneck_node(DiGraphView const &g) {
   std::unordered_set<Node> sources = get_sources(g);
-  std::unordered_set<Node> sinks = get_sources(g);
+  std::unordered_set<Node> sinks = get_sinks(g);
 
   optional<Node> maybe_bottleneck = get_imm_post_dominator(g, sources);
   if (maybe_bottleneck.has_value()) {

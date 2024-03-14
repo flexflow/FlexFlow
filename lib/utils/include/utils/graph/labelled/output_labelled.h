@@ -31,20 +31,19 @@ public:
   OutputLabelledMultiDiGraphView &
       operator=(OutputLabelledMultiDiGraphView const &) = default;
 
-  virtual NodeLabel const &at(Node const &n) const {
+  NodeLabel const &at(Node const &n) const {
     return get_ptr().at(n);
   }
 
-  virtual OutputLabel const &at(MultiDiOutput const &o) const {
+  OutputLabel const &at(MultiDiOutput const &o) const {
     return get_ptr().at(o);
   }
 
-  virtual std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return get_ptr().query_nodes(q);
   }
 
-  virtual std::unordered_set<MultiDiEdge>
-      query_edges(MultiDiEdgeQuery const &q) const {
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
     return get_ptr().query_edges(q);
   }
 
@@ -93,7 +92,7 @@ public:
     return nl.get_mutable()->get_label(n);
   }
 
-  NodeLabel const &at(Node const &n) const override {
+  NodeLabel const &at(Node const &n) const {
     return nl->get_label(n);
   }
 
@@ -113,16 +112,15 @@ public:
     return ol.get_mutable()->get_label(o);
   }
 
-  OutputLabel const &at(MultiDiOutput const &o) const override {
+  OutputLabel const &at(MultiDiOutput const &o) const {
     return ol->get_label(o);
   }
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
     return get_ptr().query_nodes(q);
   }
 
-  std::unordered_set<MultiDiEdge>
-      query_edges(MultiDiEdgeQuery const &q) const override {
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &q) const {
     return get_ptr().query_edges(q);
   }
 

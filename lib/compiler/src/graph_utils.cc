@@ -54,7 +54,7 @@ std::unordered_map<MultiDiEdge, ParallelTensorShape>
     }
   }
 
-  assert(result.size() == get_edges(pcg).size());
+  assert(result.size() == get_edges(pcg.value()).size());
 
   return result;
 }

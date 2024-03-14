@@ -22,7 +22,7 @@ std::unordered_set<OpenMultiDiEdge>
 }
 
 IOpenMultiDiGraphView const &OpenMultiDiGraphView::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IOpenMultiDiGraphView const>(
+  return *std::dynamic_pointer_cast<IOpenMultiDiGraphView const>(
       GraphView::ptr.get());
 }
 

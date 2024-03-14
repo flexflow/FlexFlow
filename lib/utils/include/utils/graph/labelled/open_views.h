@@ -48,8 +48,8 @@ struct OutputLabelledOpenMultiDiSubgraphView
   }
 
 private:
-  OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> const &g;
-  std::unordered_set<Node> const &nodes;
+  OutputLabelledOpenMultiDiGraphView<NodeLabel, EdgeLabel> g;
+  std::unordered_set<Node> nodes;
 };
 
 template <typename NodeLabel, typename EdgeLabel>
@@ -86,7 +86,7 @@ struct ViewOutputLabelledAsOutputLabelledOpen
   }
 
 private:
-  OutputLabelledMultiDiGraphView<NodeLabel, EdgeLabel> const &g;
+  OutputLabelledMultiDiGraphView<NodeLabel, EdgeLabel> g;
 };
 
 template <typename NodeLabel, typename EdgeLabel>
