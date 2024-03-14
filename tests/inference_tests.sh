@@ -10,9 +10,9 @@ cleanup() {
 cd "${BASH_SOURCE[0]%/*}"
 
 # Enable Python tests (on by default)
-PYTHON_INFERENCE_TESTS=${PYTHON_INFERENCE_TESTS:-ON}
+PYTHON_INFERENCE_TESTS=${PYTHON_INFERENCE_TESTS:-OFF}
 # Enable C++ tests, (off by default)
-CPP_INFERENCE_TESTS=${CPP_INFERENCE_TESTS:-OFF}
+CPP_INFERENCE_TESTS=${CPP_INFERENCE_TESTS:-ON}
 # Enable model parallelism tests in C++, if desired
 TENSOR_PARALLELISM_TESTS=${TENSOR_PARALLELISM_TESTS:-OFF}
 

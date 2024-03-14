@@ -145,7 +145,7 @@ public:
   void print() const;
   void save_to_file(std::string const &filename) const;
   bool done() const;
-  int max_beam_depth_all_requests() const;
+  int max_beam_depth_all_requests() const; // Need to remove
   int current_depth_all_requests() const;
   int get_speculative_request_num() const;
 
@@ -154,11 +154,11 @@ public:
 
   // how many requests is in speculative phase
   int speculative_request_num = 0;
-  inline static int const MAX_BEAM_WIDTH = 3;
-  inline static int const MAX_BEAM_DEPTH = 8;
+  inline static int const MAX_BEAM_WIDTH = 3; // Need to remove
+  inline static int const MAX_BEAM_DEPTH = 8; // Need to remove
 
   // maximum tree branches for a request
-  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3;
+  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3; // Need to remove
 
   int model_id;
 

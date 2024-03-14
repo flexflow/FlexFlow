@@ -73,9 +73,11 @@ struct Request {
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
-  std::vector<struct BeamTree> beam_trees;
+  std::vector<struct BeamTree> beam_trees; // Old version, delete after refactor
+  std::vector<struct TokenTree> token_trees; // New version
 };
 
+// The old version of beam tree
 // store the result of beam search
 struct BeamTree {
   struct treeLayer {
@@ -88,11 +90,36 @@ struct BeamTree {
   treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1];
 };
 
-// struct BeamTree_v2 {
-//   std::vector<BatchConfig::TokenId> tokens;
-//   std::vector<int> parent_ids;
-//   std::vector<float> probs;
-// };
+// The new version of BeamTree
+// Named as TokenTree, supports general tree structure.
+class TokenTree {
+  class Node {
+  public:
+    BatchConfig::TokenId id;
+    float unconditional_prob;
+    std::vector<std::shared_ptr<Node>> children;
+    std::shared_ptr<Node> parent;
+    Node(BatchConfig::TokenId id, float prob, std::shared_ptr<Node> parent)
+        : id(id), unconditional_prob(prob), parent(parent) {}
+  };
+
+  class TreeLayer {
+  public:
+    std::vector<std::shared_ptr<Node>> nodes;
+  };
+
+private:
+  std::vector<TreeLayer> layers;
+  // Do we need the root?
+  std::shared_ptr<Node> root;
+
+public:
+  TokenTree(BatchConfig::TokenId root_id, float root_prob)
+      : root(std::make_shared<Node>(root_id, root_prob, nullptr)) {
+    layers.push_back(TreeLayer());
+    layers[0].nodes.push_back(root);
+  }
+};
 
 class RequestManager {
 public:
@@ -104,7 +131,7 @@ public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
 
-  static const RequestGuid INVALID_GUID = 0;
+  static RequestGuid const INVALID_GUID = 0;
   RequestManager();
   static RequestManager *get_request_manager();
   size_t get_num_processed_requests();
@@ -140,6 +167,7 @@ public:
 
   void serve_incr_decoding(FFModel *model);
   void serve_spec_infer(FFModel *model);
+  void serve_spec_infer_v2(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
   RequestGuid register_new_request(std::string const &prompt,
                                    int max_sequence_length);
@@ -263,7 +291,7 @@ private:
   Status request_manager_status;
 
   // tree width in each speculative step, if not specified 1
-  std::vector<int> spec_infer_tree_width;
+  std::vector<int> spec_infer_tree_width; // Old version, delete after refactor
 
   // private fields
   std::unique_ptr<Tokenizer> tokenizer_;
