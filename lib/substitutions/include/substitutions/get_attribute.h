@@ -25,9 +25,7 @@ optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p,
                                                OperatorAttributeKey);
 optional<OperatorAttributeValue> get_attribute(DropoutAttrs const &p,
                                                OperatorAttributeKey);
-optional<OperatorAttributeValue> get_attribute(ElementBinaryAttrs const &p,
-                                               OperatorAttributeKey);
-optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p,
+optional<OperatorAttributeValue> get_attribute(ElementScalarUnaryAttrs const &p,
                                                OperatorAttributeKey);
 optional<OperatorAttributeValue> get_attribute(EmbeddingAttrs const &p,
                                                OperatorAttributeKey);
