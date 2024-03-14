@@ -314,6 +314,8 @@ void FlexFlow::top_level_task(Task const *task,
 
   // first decoding step: 3 results
   if (expansion_degree != -1) {
+    rm->push_spec_infer_tree_width(1);
+    rm->push_spec_infer_tree_width(1);
     rm->push_spec_infer_tree_width(expansion_degree);
   }
 
