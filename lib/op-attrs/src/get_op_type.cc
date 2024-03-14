@@ -27,7 +27,10 @@ OperatorType get_op_type(ElementBinaryAttrs const &attrs) {
   return attrs.type;
 }
 OperatorType get_op_type(ElementUnaryAttrs const &attrs) {
-  return attrs.op;
+  return attrs.op_type;
+}
+OperatorType get_op_type(ElementScalarUnaryAttrs const &attrs) {
+  return attrs.op_type;
 }
 OperatorType get_op_type(EmbeddingAttrs const &) {
   return Op::EMBEDDING;
@@ -85,9 +88,6 @@ OperatorType get_op_type(RepartitionAttrs const &) {
 }
 OperatorType get_op_type(ReplicateAttrs const &) {
   return Op::REPLICATE;
-}
-OperatorType get_op_type(ElementScalarUnaryAttrs const &attrs) {
-  return attrs.op;
 }
 OperatorType get_op_type(ReverseAttrs const &attrs) {
   return Op::REVERSE;
