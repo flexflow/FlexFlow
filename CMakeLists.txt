@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 3.10)
 project(FlexFlow)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
+set(
+  CMAKE_MODULE_PATH 
+  ${CMAKE_MODULE_PATH} 
+  ${CMAKE_CURRENT_LIST_DIR}/cmake 
+  ${CMAKE_CURRENT_LIST_DIR}/cmake/Modules
+)
 
 # Detect OS type and Linux version (if it applies)
 set(LINUX_VERSION "")
