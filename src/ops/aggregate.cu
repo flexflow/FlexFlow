@@ -212,6 +212,9 @@ void Aggregate::forward_kernel_wrapper(AggregateMeta const *m,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(m->handle.blas,
+                               m->handle.cublasWorkSpace,
+                               m->handle.cublasWorkSpaceSize));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   cudaEvent_t t_start, t_end;
@@ -266,6 +269,9 @@ void Aggregate::backward_kernel_wrapper(AggregateMeta const *m,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(m->handle.blas,
+                               m->handle.cublasWorkSpace,
+                               m->handle.cublasWorkSpaceSize));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   cudaEvent_t t_start, t_end;

@@ -40,6 +40,9 @@ void Cache::cache_forward(Task const *task,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDA(cublasSetWorkspace(m->handle.blas,
+                               m->handle.cublasWorkSpace,
+                               m->handle.cublasWorkSpaceSize));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   cudaMemcpy(output_ptr,
