@@ -8,9 +8,7 @@ jobs:
   cmake-build:
     name: Library CMake Build
     runs-on: ubuntu-20.04
-    defaults:
-      run:
-        shell: bash -l {0} # required to use an activated conda environment
+
     strategy:
       max-parallel: 1
       matrix:
@@ -22,23 +20,25 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Free additional space on runner
-        run: .github/workflows/helpers/free_space_on_runner.sh
-
-      - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.11
-        id: cuda-toolkit
+      - name: Install nix
+        uses: cachix/install-nix-action@v25
         with:
-          cuda: "12.1.0"
-          # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
-          use-github-cache: "false"
-          linux-local-args: '["--toolkit"]'
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: cachix/cachix-action@v14
+        with:
+          name: ff
+          skipPush: true
+          extraPullNames: cuda-maintainers
 
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
 
-      - name: Install system dependencies
-        run: FF_GPU_BACKEND=${{ matrix.gpu_backend }} .github/workflows/helpers/install_dependencies.sh
+      - name: setup nix develop shell
+        uses: nicknovitski/nix-develop@1
+
+      # - name: Install system dependencies
+      #   run: FF_GPU_BACKEND=${{ matrix.gpu_backend }} .github/workflows/helpers/install_dependencies.sh
 
       # - name: Install conda and FlexFlow dependencies
       #   uses: conda-incubator/setup-miniconda@v2
