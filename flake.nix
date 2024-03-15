@@ -38,7 +38,7 @@
         # packages = {
         #   libclangPythonBindings = libclangPythonBindings;
         # };
-        devShell = pkgs.mkShell.override {
+        devShells.default = pkgs.mkShell.override {
           stdenv = pkgs.llvmPackages.libcxxStdenv;
         } {
           buildInputs = (with pkgs; [
