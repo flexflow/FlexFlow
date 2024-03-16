@@ -40,10 +40,16 @@ struct TaskRegistry {
                            OperatorSlotBackingId dst_op_slot);
   void get_tensor_backing(OperatorSlotBackingId op_slot_id);
 
-  std::unordered_map<task_id_t, TaskSignatureImpl> task_mapping;
-  std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW>
+  OpTaskSignature get_init_signature(operator_guid_t);
+  OpTaskSignature get_fwd_signature(operator_guid_t);
+  OpTaskSignature get_bwd_signature(operator_guid_t);
+
+  std::unordered_map<operator_guid_t, task_id_t> init_task_ids;
+  std::unordered_map<operator_guid_t, task_id_t> forward_task_ids;
+  std::unordered_map<operator_guid_t, task_id_t> backward_task_ids;
+  std::unordered_map<task_id_t, TaskSignatureImpl &> task_mapping;
+  std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW &>
       tensor_mapping;
-  std::unordered_map<OperatorSlotBackingId, std::type_index> arg_mapping;
 };
 
 struct LocalTrainingBacking {
@@ -66,6 +72,7 @@ private:
   Allocator const &allocator;
   ComputationGraph const &computation_graph;
   TaskRegistry const &task_registry;
+  ArgBackingMapping arg_backing_mapping;
 };
 
 } // namespace FlexFlow

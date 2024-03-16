@@ -38,7 +38,7 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
 private:
   Allocator allocator;
-  std::unordered_map<SlotGradId, GenericTensorAccessorW> tensor_backing_map;
+  std::unordered_map<SlotGradId, TensorBackingOption> tensor_backing_map;
   std::unordered_map<slot_id, ArgRefBacking> argument_map;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalTaskArgumentAccessor);

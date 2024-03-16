@@ -36,15 +36,15 @@ using OpArgSpec = variant<ConcreteArgSpec,
                           OpArgRefSpec,
                           RuntimeArgRefSpec>;
 
-// struct OpArgSpecTypeAccessor {
-//   std::type_index operator()(OpArgSpec &spec) {
-//     return std::visit(
-//         [](auto &&arg) -> std::type_index {
-//           return arg.get_type_index();
-//         },
-//         spec);
-//   }
-// };
+struct OpArgSpecTypeAccessor {
+  std::type_index operator()(OpArgSpec &spec) {
+    return std::visit(
+        [](auto &&arg) -> std::type_index {
+          return arg.get_type_index();
+        },
+        spec);
+  }
+};
 
 struct OpTaskBinding {
   OpTaskBinding() = default;
@@ -115,6 +115,32 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskInvocation,
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
+
+bool validate_invocation(OpTaskSignature sig, OpTaskInvocation inv) {
+  // tensors
+  auto tensor_bindings = inv.binding.get_tensor_bindings();
+  for (OpTensorSlotSpec const & op_tensor_slot_spec: sig.get_tensor_slots()) {
+    slot_id name = op_tensor_slot_spec.name;
+    IsGrad is_grad = op_tensor_slot_spec.is_grad;
+    OpTensorSpec const & op_tensor_spec = tensor_bindings[std::make_pair<name, is_grad>()];
+    if (op_tensor_spec.role != op_tensor_slot_spec.tensor_role || op_tensor_spec.slot_option != op_tensor_slot_spec.slot_option) {
+      return false;
+    }
+  }
+
+  // args
+  auto sig_arg_types = sig.get_arg_types();
+  for (auto arg_binding: inv.binding.get_arg_bindings()) {
+    slot_id name = arg_binding.first;
+    OpArgSpec op_arg_spec = arg_binding.second;
+    std::type_index arg_type = sig_arg_types[name];
+    if (OpArgSpecTypeAccessor(op_arg_spec) != arg_type) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 } // namespace FlexFlow
 
