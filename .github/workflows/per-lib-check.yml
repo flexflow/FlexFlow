@@ -23,18 +23,18 @@ jobs:
       - name: Install nix
         uses: cachix/install-nix-action@v25
         with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          github_access_token: '${{ secrets.GITHUB_TOKEN }}'
 
       - uses: cachix/cachix-action@v14
         with:
           name: ff
           skipPush: true
-          extraPullNames: cuda-maintainers
+          # authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       - name: setup nix develop shell
         uses: nicknovitski/nix-develop@v1.1.0
         with:
-          arguments: ./#ci
+          arguments: "--accept-flake-config .#ci"
 
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
