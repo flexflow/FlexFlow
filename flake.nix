@@ -26,77 +26,74 @@
         config.allowUnfree = true;
       };
 
-
-      
-      # libclangPythonBindings = pkgs.python3Packages.callPackage ./pkgs/libclang.nix { };
+      mkShell = pkgs.mkShell.override {
+        stdenv = pkgs.llvmPackages.libcxxStdenv;
+      };
     in 
       {
         packages = {
           legion = pkgs.callPackage ./.flake/pkgs/legion.nix { };
-          #tokenizers-cpp = pkgs.callPackage ./pkgs/tokenizers-cpp.nix { };
         };
-        # packages = {
-        #   libclangPythonBindings = libclangPythonBindings;
-        # };
-        devShells.default = pkgs.mkShell.override {
-          stdenv = pkgs.llvmPackages.libcxxStdenv;
-        } {
-          buildInputs = (with pkgs; [
-            clang-tools_17
-            llvmPackages_17.clang
-            #clang-tools_17
-            # llvmPackages_17.clang-tools
-            cmakeCurses
-            gcc10Stdenv
-            gcc10
-            # llvmPackages_14.stdenv
-            ccache
-            cudatoolkit
-            cudaPackages.cuda_nvcc
-            cudaPackages.cudnn
-            cudaPackages.nccl
-            cudaPackages.libcublas
-            cudaPackages.cuda_cudart
-            # cudaPackages.nvidia_driver
-            gdb
-            rustc
-            cargo
-            zlib
-            pkg-config
-            bashInteractive
-            python3
-            gh-markdown-preview
-            plantuml
-            # libclang
-            self.packages.${system}.legion
-            ruff
-            gh
-            jq
-            compdb
-            # self.packages.${system}.libclangPythonBindings
 
-            # flexflow dependencies
-            nlohmann_json
-            spdlog
-            range-v3
-            rapidcheck
-            doctest
-            fmt
-          ]) ++ (with pkgs.python3Packages; [
-            gitpython
-            ipython
-            mypy
-            python-lsp-server
-            pylsp-mypy
-            python-lsp-ruff
-            pygithub
-            sqlitedict
-            frozendict
-            black
-            toml
-          ]);
+        devShells = rec {
+          ci = mkShell {
+            buildInputs = (with pkgs; [
+              clang-tools_17
+              llvmPackages_17.clang
+              cmakeCurses
+              gcc10Stdenv
+              gcc10
+              ccache
+              cudatoolkit
+              zlib
+              pkg-config
+              python3
+              self.packages.${system}.legion
+              nlohmann_json
+              spdlog
+              range-v3
+              rapidcheck
+              doctest
+              fmt
+              cudaPackages.cuda_nvcc
+              cudaPackages.cudnn
+              cudaPackages.nccl
+              cudaPackages.libcublas
+              cudaPackages.cuda_cudart
+            ]) ++ (with pkgs.python3Packages; [
+            ]);
         };
-      }
+
+        default = mkShell {
+          inputsFrom = [ ci ];
+  
+          buildInputs = builtins.concatLists [
+            (with pkgs; [
+              gh-markdown-preview
+              plantuml
+              gdb
+              ruff
+              compdb
+              jq
+              gh
+            ])
+            (with pkgs.python3Packages; [
+              gitpython
+              ipython
+              mypy
+              python-lsp-server
+              pylsp-mypy
+              python-lsp-ruff
+              pygithub
+              sqlitedict
+              frozendict
+              black
+              toml
+            ])
+          ];
+        };
+      };
+    }
   );
 }
 # vim: set tabstop=2 shiftwidth=2 expandtab:
