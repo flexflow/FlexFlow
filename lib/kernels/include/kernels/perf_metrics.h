@@ -19,11 +19,12 @@ struct PerfMetrics : public use_visitable_cmp<PerfMetrics> {
               double start_time_micro,
               double current_time_micro);
 
-  int train_all = 0;                  // measure_accuracy_denominator
-  std::optional<int> train_correct = 0;    // measure_accuracy numerator
-  std::optional<float> cce_loss = std::nullopt; // measure_categorical_crossentropy
+  int train_all = 0;                    // measure_accuracy_denominator
+  std::optional<int> train_correct = 0; // measure_accuracy numerator
+  std::optional<float> cce_loss =
+      std::nullopt; // measure_categorical_crossentropy
   std::optional<float> sparse_cce_loss =
-      0.0f;                         // measure_sparse_categorical_crossentropy
+      0.0f; // measure_sparse_categorical_crossentropy
   std::optional<float> mse_loss = 0.0f;  // measure_mean_squared_error
   std::optional<float> rmse_loss = 0.0f; // measure_root_mean_squared_error
   std::optional<float> mae_loss = 0.0f;  // measure_mean_absolute_error
