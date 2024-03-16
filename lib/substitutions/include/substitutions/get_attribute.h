@@ -9,10 +9,6 @@ namespace FlexFlow {
 
 optional<OperatorAttributeValue> get_attribute(PCGOperatorAttrs const &,
                                                OperatorAttributeKey);
-optional<OperatorAttributeValue> get_attribute(AggregateAttrs const &p,
-                                               OperatorAttributeKey);
-optional<OperatorAttributeValue> get_attribute(AggregateSpecAttrs const &p,
-                                               OperatorAttributeKey);
 optional<OperatorAttributeValue> get_attribute(BatchMatmulAttrs const &p,
                                                OperatorAttributeKey);
 optional<OperatorAttributeValue> get_attribute(CastAttrs const &p,
@@ -29,17 +25,13 @@ optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p,
                                                OperatorAttributeKey);
 optional<OperatorAttributeValue> get_attribute(DropoutAttrs const &p,
                                                OperatorAttributeKey);
-optional<OperatorAttributeValue> get_attribute(ElementBinaryAttrs const &p,
-                                               OperatorAttributeKey);
-optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p,
+optional<OperatorAttributeValue> get_attribute(ElementScalarUnaryAttrs const &p,
                                                OperatorAttributeKey);
 optional<OperatorAttributeValue> get_attribute(EmbeddingAttrs const &p,
                                                OperatorAttributeKey);
 optional<OperatorAttributeValue> get_attribute(FlatAttrs const &p,
                                                OperatorAttributeKey);
 optional<OperatorAttributeValue> get_attribute(GatherAttrs const &p,
-                                               OperatorAttributeKey);
-optional<OperatorAttributeValue> get_attribute(Group_byAttrs const &p,
                                                OperatorAttributeKey);
 optional<OperatorAttributeValue> get_attribute(LayerNormAttrs const &p,
                                                OperatorAttributeKey);

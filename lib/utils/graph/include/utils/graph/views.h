@@ -6,7 +6,6 @@
 #include "labelled_graphs.h"
 #include "multidigraph.h"
 #include "open_graphs.h"
-#include "tl/optional.hpp"
 #include "undirected.h"
 #include "utils/bidict.h"
 #include "utils/graph/digraph_interfaces.h"
@@ -25,6 +24,8 @@ public:
       query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
+  FlippedView *clone() const override;
+
 private:
   DiGraphView g;
 };
@@ -38,6 +39,8 @@ public:
   std::unordered_set<UndirectedEdge>
       query_edges(UndirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  UndirectedSubgraphView *clone() const override;
 
 private:
   UndirectedGraphView g;
@@ -53,6 +56,8 @@ public:
       query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
+  DiSubgraphView *clone() const override;
+
 private:
   DiGraphView g;
   std::unordered_set<Node> subgraph_nodes;
@@ -67,6 +72,8 @@ public:
   std::unordered_set<MultiDiEdge>
       query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  MultiDiSubgraphView *clone() const override;
 
 private:
   MultiDiGraphView g;
@@ -118,6 +125,8 @@ public:
       query_edges(UndirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
+  JoinedUndirectedGraphView *clone() const override;
+
 private:
   UndirectedEdge fix_lhs_edge(UndirectedEdge const &) const;
   UndirectedEdge fix_rhs_edge(UndirectedEdge const &) const;
@@ -128,7 +137,7 @@ private:
   JoinedNodeView joined_nodes;
 };
 
-struct JoinedDigraphView : public IDiGraphView {
+struct JoinedDigraphView : virtual public IDiGraphView {
 public:
   JoinedDigraphView() = delete;
   explicit JoinedDigraphView(DiGraphView const &lhs, DiGraphView const &rhs);
@@ -138,6 +147,8 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
   JoinedNodeView const &joined_nodes_view() const;
+
+  JoinedDigraphView *clone() const override;
 
 private:
   DirectedEdge fix_lhs_edge(DirectedEdge const &) const;
@@ -161,6 +172,8 @@ public:
 
   JoinedNodeView const &joined_nodes_view() const;
 
+  JoinedMultiDigraphView *clone() const override;
+
 private:
   MultiDiEdge fix_lhs_edge(MultiDiEdge const &) const;
   MultiDiEdge fix_rhs_edge(MultiDiEdge const &) const;
@@ -182,6 +195,8 @@ public:
       query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
+  AddDirectedEdgesView *clone() const override;
+
 private:
   DiGraphView g;
   std::unordered_set<DirectedEdge> edges;
@@ -197,10 +212,12 @@ public:
       query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
+  SingleSourceNodeView *clone() const override;
+
 private:
   DiGraphView g;
-  optional<AdjacencyDiGraph> singleton_src;
-  optional<JoinedDigraphView> joined_view;
+  std::optional<AdjacencyDiGraph> singleton_src;
+  std::optional<JoinedDigraphView> joined_view;
   std::unique_ptr<AddDirectedEdgesView> added_edges_view;
 };
 
@@ -214,6 +231,8 @@ struct ContractNodeView : public IDiGraphView {
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  ContractNodeView *clone() const override;
 
 private:
   DirectedEdge fix_edge(DirectedEdge const &) const;
@@ -233,8 +252,63 @@ public:
       query_edges(OpenMultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
+  OpenMultiDiSubgraphView *clone() const override;
+
 private:
-  OpenMultiDiGraphView g;
+  OpenMultiDiGraphView const &g;
+  std::unordered_set<Node> const &nodes;
+  std::unordered_set<InputMultiDiEdge> inputs;
+  std::unordered_set<OutputMultiDiEdge> outputs;
+};
+
+struct UpwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
+  UpwardOpenMultiDiSubgraphView() = delete;
+  UpwardOpenMultiDiSubgraphView(OpenMultiDiGraphView const &,
+                                std::unordered_set<Node> const &);
+
+  std::unordered_set<OpenMultiDiEdge>
+      query_edges(OpenMultiDiEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  UpwardOpenMultiDiSubgraphView *clone() const override;
+
+private:
+  OpenMultiDiGraphView const &g;
+  std::unordered_set<Node> const &nodes;
+  std::unordered_set<InputMultiDiEdge> inputs;
+};
+
+struct DownwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
+  DownwardOpenMultiDiSubgraphView() = delete;
+  DownwardOpenMultiDiSubgraphView(OpenMultiDiGraphView const &,
+                                  std::unordered_set<Node> const &);
+
+  std::unordered_set<OpenMultiDiEdge>
+      query_edges(OpenMultiDiEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  DownwardOpenMultiDiSubgraphView *clone() const override;
+
+private:
+  OpenMultiDiGraphView const &g;
+  std::unordered_set<Node> const &nodes;
+  std::unordered_set<OutputMultiDiEdge> outputs;
+};
+
+struct ClosedMultiDiSubgraphView : public IOpenMultiDiGraphView {
+  ClosedMultiDiSubgraphView() = delete;
+  ClosedMultiDiSubgraphView(OpenMultiDiGraphView const &,
+                            std::unordered_set<Node> const &);
+
+  std::unordered_set<OpenMultiDiEdge>
+      query_edges(OpenMultiDiEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  ClosedMultiDiSubgraphView *clone() const override;
+
+private:
+  OpenMultiDiGraphView const &g;
+  std::unordered_set<Node> const &nodes;
 };
 
 UndirectedEdge to_undirected_edge(DirectedEdge const &);
@@ -259,6 +333,8 @@ public:
       query_edges(UndirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
+  ViewDiGraphAsUndirectedGraph *clone() const override;
+
 private:
   DiGraphView g;
 };
@@ -270,6 +346,8 @@ public:
   std::unordered_set<DirectedEdge>
       query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  ViewUndirectedGraphAsDiGraph *clone() const override;
 
 private:
   UndirectedGraphView g;
@@ -283,35 +361,24 @@ public:
       query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
+  ViewDiGraphAsMultiDiGraph *clone() const override;
+
 private:
   DiGraphView g;
 };
 
-struct ViewMultiDiGraphAsDiGraph : public IDiGraphView {
+struct ViewMultiDiGraphAsOpenMultiDiGraph : public IOpenMultiDiGraphView {
 public:
-  ViewMultiDiGraphAsDiGraph() = delete;
-  explicit ViewMultiDiGraphAsDiGraph(MultiDiGraphView const &);
+  explicit ViewMultiDiGraphAsOpenMultiDiGraph(MultiDiGraphView const &);
 
-  std::unordered_set<DirectedEdge>
-      query_edges(DirectedEdgeQuery const &) const override;
+  std::unordered_set<OpenMultiDiEdge>
+      query_edges(OpenMultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  ViewMultiDiGraphAsOpenMultiDiGraph *clone() const override;
 
 private:
   MultiDiGraphView g;
-};
-
-struct ViewOpenMultiDiGraphAsMultiDiGraph : public IMultiDiGraphView {
-public:
-  ViewOpenMultiDiGraphAsMultiDiGraph() = delete;
-  explicit ViewOpenMultiDiGraphAsMultiDiGraph(OpenMultiDiGraphView const &g)
-      : g(g) {}
-
-  std::unordered_set<MultiDiEdge>
-      query_edges(MultiDiEdgeQuery const &) const override;
-  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
-
-private:
-  OpenMultiDiGraphView const &g;
 };
 
 DirectedEdge flipped(DirectedEdge const &);

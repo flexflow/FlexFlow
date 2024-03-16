@@ -166,8 +166,8 @@ struct AsDot {
 };
 
 template <typename... Args>
-RecordFormatter as_dot(variant<Args...> const &o) {
-  return mpark::visit(AsDot{}, o);
+RecordFormatter as_dot(std::variant<Args...> const &o) {
+  return std::visit(AsDot{}, o);
 }
 
 struct IsValidFunctor {
@@ -176,14 +176,14 @@ struct IsValidFunctor {
 
   std::vector<ParallelTensorShape> const &input_shapes;
 
-  bool operator()(AggregateAttrs const &attrs) {
-    return is_valid(attrs,
-                    input_shapes.at(0),
-                    input_shapes.at(1),
-                    input_shapes.at(2),
-                    input_shapes.at(3),
-                    subvec(input_shapes, 4, nullopt));
-  }
+  // bool operator()(AggregateAttrs const &attrs) {
+  //   return is_valid(attrs,
+  //                   input_shapes.at(0),
+  //                   input_shapes.at(1),
+  //                   input_shapes.at(2),
+  //                   input_shapes.at(3),
+  //                   subvec(input_shapes, 4, nullopt));
+  // }
 
   template <typename T>
   bool operator()(T const &) {
@@ -274,14 +274,8 @@ bool is_valid(PCGOperatorAttrs const &attrs,
 //       //   return ((TopK *)op)->get_params();
 //       // case OP_MEAN:
 //       //   return ((Mean *)op)->get_params();
-//       // case OP_GROUP_BY:
-//       //   return ((Group_by *)op)->get_params();
 //       // case OP_CACHE:
 //       //   return ((Cache *)op)->get_params();
-//       // case OP_AGGREGATE:
-//       //   return ((Aggregate *)op)->get_params();
-//       // case OP_AGG_SPEC:
-//       //   return ((AggregateSpec *)op)->get_params();
 //       // case OP_REVERSE:
 //       //   return ((Reverse *)op)->get_params();
 //       // case OP_BATCHNORM:

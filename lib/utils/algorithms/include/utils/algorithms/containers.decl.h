@@ -2,7 +2,6 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_DECL_H
 
 #include "utils/bidict.h"
-#include "utils/invoke.h"
 #include "utils/optional.decl.h"
 #include "utils/required_core.h"
 #include "utils/sequence.decl.h"
@@ -125,14 +124,14 @@ template <typename C, typename T = typename C::value_type>
 std::unordered_set<T> without_order(C const &c);
 
 template <typename Container, typename Element>
-optional<std::size_t> index_of(Container const &c, Element const &e);
+std::optional<std::size_t> index_of(Container const &c, Element const &e);
 
 template <typename T>
 std::unordered_set<T> intersection(std::unordered_set<T> const &l,
                                    std::unordered_set<T> const &r);
 
 template <typename C, typename T = typename C::value_type>
-optional<T> intersection(C const &c);
+std::optional<T> intersection(C const &c);
 
 template <typename T>
 bool are_disjoint(std::unordered_set<T> const &l,
@@ -152,13 +151,13 @@ bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs);
 template <typename F,
           typename C,
           typename K = get_element_type_t<C>,
-          typename V = invoke_result_t<F, K>>
+          typename V = std::invoke_result_t<F, K>>
 std::unordered_map<K, V> generate_map(C const &c, F const &f);
 
 template <typename F,
           typename C,
           typename K = get_element_type_t<C>,
-          typename V = invoke_result_t<F, K>>
+          typename V = std::invoke_result_t<F, K>>
 bidict<K, V> generate_bidict(C const &c, F const &f);
 
 template <typename K, typename V>
@@ -195,7 +194,7 @@ std::unordered_set<D>
                            std::unordered_set<S> const &input);
 
 template <typename C>
-optional<typename C::value_type> maybe_get_only(C const &c);
+std::optional<typename C::value_type> maybe_get_only(C const &c);
 
 template <typename C>
 typename C::value_type get_only(C const &c);
@@ -210,7 +209,7 @@ template <typename T, typename C>
 void extend(std::unordered_set<T> &lhs, C const &rhs);
 
 template <typename C, typename E = typename C::value_type>
-void extend(C &lhs, optional<E> const &e);
+void extend(C &lhs, std::optional<E> const &e);
 
 template <typename C, typename F>
 bool all_of(C const &c, F const &f);
@@ -256,7 +255,7 @@ std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f);
 template <typename F>
 std::string transform(std::string const &s, F const &f);
 
-template <typename F, typename Out = invoke_result_t<F>>
+template <typename F, typename Out = std::invoke_result_t<F>>
 std::vector<Out> repeat(int n, F const &f);
 
 template <typename T>
@@ -277,7 +276,7 @@ std::string flatmap(std::string const &v, F const &f);
 
 template <typename In,
           typename F,
-          typename Out = get_element_type_t<invoke_result_t<F, In>>>
+          typename Out = get_element_type_t<std::invoke_result_t<F, In>>>
 std::unordered_set<Out> flatmap(std::unordered_set<In> const &v, F const &f);
 
 template <typename Out, typename In>
@@ -316,12 +315,12 @@ template <typename T>
 T reversed(T const &t);
 
 template <typename T>
-std::vector<T> value_all(std::vector<optional<T>> const &v);
+std::vector<T> value_all(std::vector<std::optional<T>> const &v);
 
 template <typename T>
 std::vector<T> subvec(std::vector<T> const &v,
-                      optional<int> const &maybe_start,
-                      optional<int> const &maybe_end);
+                      std::optional<int> const &maybe_start,
+                      std::optional<int> const &maybe_end);
 
 template <typename C>
 struct reversed_container_t;

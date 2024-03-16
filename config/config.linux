@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /usr/bin/env bash
 
 # set the CC and CXX, usually it is not needed as cmake can detect it
 # set CC and CXX to mpicc and mpic++ when enable gasnet
@@ -79,14 +79,5 @@ function get_build_configs() {
     BUILD_CONFIGS="FF_CUDA_ARCH=${FF_CUDA_ARCH} CUDNN_DIR=${CUDNN_DIR} CUDA_DIR=${CUDA_DIR} FF_USE_PYTHON=${FF_USE_PYTHON} FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT} FF_UCX_URL=${FF_UCX_URL} FF_LEGION_NETWORKS=${FF_LEGION_NETWORKS} FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES} FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS} FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL} FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION} FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES} FF_USE_AVX2=${FF_USE_AVX2} FF_MAX_DIM=${FF_MAX_DIM} ROCM_PATH=${ROCM_PATH} FF_GPU_BACKEND=${FF_GPU_BACKEND}"
 }
 
-if [ -n "$1" ]; then
-    if [ "$1" != "get-docker-configs" ]; then
-        . $(dirname $0)/config.inc
-        # You can pass the name of the variable you want to print out as $1. This
-        # is used in the python setup script to get the cmake config
-        echo "${!1}"
-    fi
-else
-    . $(dirname $0)/config.inc
-    run_cmake $*
-fi
+. $(dirname $0)/config.inc
+run_cmake $*

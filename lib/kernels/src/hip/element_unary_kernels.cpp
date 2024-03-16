@@ -14,50 +14,55 @@
  */
 
 #include "kernels/element_unary_kernels.h"
+#include "kernels/datatype_dispatch.h"
 #include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-
-// declare Legion names
-using Legion::coord_t;
-using Legion::Domain;
-
-ElementUnaryPerDeviceState::ElementUnaryPerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {
-  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
-}
-
 namespace Kernels {
 namespace ElementUnary {
 
-void init_kernel(ElementUnaryPerDeviceState *m,
-                 Domain const &input_domain,
-                 Domain const &output_domain) {
+ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
+                                       ArrayShape const &output_shape,
+                                       ElementUnaryAttrs const &attrs) {
+  miopenTensorDescriptor_t inputTensor;
+  miopenTensorDescriptor_t outputTensor;
+  miopenActivationDescriptor_t actiDesc;
   miopenActivationMode_t mode;
-  switch (m->op_type) {
-    case OP_SIGMOID:
-      mode = miopenActivationLOGISTIC;
-      break;
-    case OP_RELU:
-      mode = miopenActivationRELU;
-      break;
-    case OP_TANH:
-      mode = miopenActivationTANH;
-      break;
-    case OP_ELU:
-      mode = miopenActivationELU;
-      break;
-    default:
-      assert(false);
+
+  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
+
+  if (use_cudnn(attrs.op_type)) {
+    switch (attrs.op_type) {
+      case OP_SIGMOID:
+        mode = miopenActivationLOGISTIC;
+        break;
+      case OP_RELU:
+        mode = miopenActivationRELU;
+        break;
+      case OP_TANH:
+        mode = miopenActivationTANH;
+        break;
+      case OP_ELU:
+        mode = miopenActivationELU;
+        break;
+      default:
+        assert(false);
+    }
+    checkCUDNN(miopenSetActivationDescriptor(actiDesc, mode, 0.0, 0.0, 0.0));
+    checkCUDNN(
+        cudnnSetTensorDescriptorFromArrayShape(inputTensor, input_shape));
+    // input_domain == output_domain
+    checkCUDNN(
+        cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
   }
-  checkCUDNN(miopenSetActivationDescriptor(m->actiDesc, mode, 0.0, 0.0, 0.0));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
-  // input_domain == output_domain
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
+
+  ElementUnaryPerDeviceState per_device_state = {
+      inputTensor, outputTensor, actiDesc};
+
+  return per_device_state;
 }
 
 bool use_cudnn(OperatorType type) {
@@ -79,19 +84,21 @@ bool use_cudnn(OperatorType type) {
 template <DataType T>
 struct ForwardKernel {
   void operator()(ffStream_t stream,
-                  ElementUnaryPerDeviceState const *m,
+                  ElementUnaryPerDeviceState const &m,
+                  ElementUnaryAttrs const &attrs,
+                  PerDeviceFFHandle const &handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
-    checkCUDNN(miopenSetStream(m->handle.dnn, stream));
-    if (use_cudnn(m->op_type)) {
+    checkCUDNN(miopenSetStream(handle.dnn, stream));
+    if (use_cudnn(attrs.op_type)) {
       float alpha = 1.0f, beta = 0.0f;
-      checkCUDNN(miopenActivationForward(m->handle.dnn,
-                                         m->actiDesc,
+      checkCUDNN(miopenActivationForward(handle.dnn,
+                                         m.actiDesc,
                                          &alpha,
-                                         m->inputTensor,
+                                         m.inputTensor,
                                          input.get<T>(),
                                          &beta,
-                                         m->outputTensor,
+                                         m.outputTensor,
                                          output.get<T>()));
     } else {
       size_t num_elements = input.shape.num_elements();
@@ -101,8 +108,8 @@ struct ForwardKernel {
                          0,
                          stream,
                          num_elements,
-                         (T)m->scalar,
-                         m->op_type,
+                         (T)attrs.scalar,
+                         attrs.op_type,
                          input.get<T>(),
                          output.get<T>());
     }
@@ -112,27 +119,29 @@ struct ForwardKernel {
 template <DataType T>
 struct BackwardKernel {
   void operator()(ffStream_t stream,
-                  ElementUnaryPerDeviceState const *m,
+                  ElementUnaryPerDeviceState const &m,
+                  ElementUnaryAttrs const &attrs,
+                  PerDeviceFFHandle const &handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorR const &input_grad,
                   GenericTensorAccessorW const &output,
                   GenericTensorAccessorW const &output_grad) {
-    checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+    checkCUDNN(miopenSetStream(handle.dnn, stream));
 
-    if (use_cudnn(m->op_type)) {
+    if (use_cudnn(attrs.op_type)) {
       float alpha = 1.0f;
       float beta = 0.0f;
-      checkCUDNN(miopenActivationBackward(m->handle.dnn,
-                                          m->actiDesc,
+      checkCUDNN(miopenActivationBackward(handle.dnn,
+                                          m.actiDesc,
                                           &alpha,
-                                          m->outputTensor,
+                                          m.outputTensor,
                                           output.get<T>(),
-                                          m->outputTensor,
+                                          m.outputTensor,
                                           output_grad.get<T>()),
-                 m->inputTensor,
+                 m.inputTensor,
                  input.get<T>(),
                  &beta,
-                 m->inputTensor,
+                 m.inputTensor,
                  input_grad.get<T>());
     } else {
       size_t num_elements = input.shape.num_elements();
@@ -142,8 +151,8 @@ struct BackwardKernel {
                          0,
                          stream,
                          num_elements,
-                         m->scalar,
-                         m->op_type,
+                         attrs.scalar,
+                         attrs.op_type,
                          output.get<T>(),
                          output_grad.get<T>(),
                          input.get<T>(),
@@ -151,21 +160,32 @@ struct BackwardKernel {
     }
   }
 } void forward_kernel(ffStream_t stream,
-                      ElementUnaryPerDeviceState const *m,
+                      ElementUnaryPerDeviceState const &device_state,
+                      ElementUnaryAttrs const &attrs,
+                      PerDeviceFFHandle const &handle,
                       GenericTensorAccessorR const &input,
                       GenericTensorAccessorW const &output) {
-  {
-    DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output);
-  }
+  DataTypeDispatch1<ForwardKernel>{}(
+      input.data_type, stream, m, attrs, handle, input, output);
+}
 
-  void backward_kernel(ffStream_t stream,
-                       ElementUnaryPerDeviceState const *m,
-                       GenericTensorAccessorR const &input,
-                       GenericTensorAccessorR const &input_grad,
-                       GenericTensorAccessorW const &output,
-                       GenericTensorAccessorW const &output_grad)
-      DataTypeDispatch1<BackwardKernel>{}(
-          m->data_type, stream, m, input, input_grad, output, output_grad);
+void backward_kernel(ffStream_t stream,
+                     ElementUnaryPerDeviceState const &device_state,
+                     ElementUnaryAttrs const &attrs,
+                     PerDeviceFFHandle const &handle,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorW const &input_grad,
+                     GenericTensorAccessorR const &output,
+                     GenericTensorAccessorR const &output_grad) {
+  DataTypeDispatch1<BackwardKernel>{}(input.data_type,
+                                      stream,
+                                      m,
+                                      attrs,
+                                      handle,
+                                      input,
+                                      input_grad,
+                                      output,
+                                      output_grad);
 }
 
 template <typename T>

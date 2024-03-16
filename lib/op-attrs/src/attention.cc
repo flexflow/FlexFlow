@@ -38,6 +38,18 @@ int get_vSize(TensorShape const &value_shape) {
   return value_shape.at(ff_dim_t(0));
 }
 
+int get_qSize(MultiHeadAttentionInputs<ParallelTensorShape> const &) {
+  NOT_IMPLEMENTED();
+}
+
+int get_kSize(MultiHeadAttentionInputs<ParallelTensorShape> const &) {
+  NOT_IMPLEMENTED();
+}
+
+int get_vSize(MultiHeadAttentionInputs<ParallelTensorShape> const &) {
+  NOT_IMPLEMENTED();
+}
+
 TensorShape
     get_weights_shape(MultiHeadAttentionAttrs const &attrs,
                       MultiHeadAttentionInputs<TensorShape> const &inputs) {

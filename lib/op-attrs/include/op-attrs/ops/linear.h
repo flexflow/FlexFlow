@@ -23,14 +23,14 @@ FF_VISITABLE_STRUCT(L2RegularizerAttrs, lambda);
 FF_VISIT_FMTABLE(L2RegularizerAttrs);
 CHECK_VALID_OP_ATTR(L2RegularizerAttrs);
 
-using RegularizerAttrs = variant<L1RegularizerAttrs, L2RegularizerAttrs>;
+using RegularizerAttrs = std::variant<L1RegularizerAttrs, L2RegularizerAttrs>;
 
 struct LinearAttrs {
   int out_channels;
   bool use_bias;
   DataType data_type;
   Activation activation;
-  req<optional<RegularizerAttrs>> regularizer;
+  req<std::optional<RegularizerAttrs>> regularizer;
 };
 FF_VISITABLE_STRUCT(
     LinearAttrs, out_channels, use_bias, data_type, activation, regularizer);

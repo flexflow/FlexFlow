@@ -10,9 +10,9 @@
 namespace FlexFlow {
 
 struct Conv2DAttrs {
-  req<int> out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h,
+  int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h,
       padding_w, groups;
-  req<optional<Activation>> activation;
+  std::optional<Activation> activation;
   req<bool> use_bias;
 };
 

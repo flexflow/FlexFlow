@@ -25,6 +25,37 @@ std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
   return output;
 }
 
+std::vector<ParallelDimMappingRecord> construct_output_parallel_dims(
+    std::vector<std::tuple<int, MappingOperation, int>> mappings,
+    int input_idx,
+    int output_idx) {
+  NOT_IMPLEMENTED();
+}
+
+std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
+    std::vector<std::tuple<int, MappingOperation, int>> mappings,
+    int input_idx,
+    int weight_idx) {
+  NOT_IMPLEMENTED();
+}
+
+ParallelDimMappingRecord
+    construct_output_parallel_dims(int input_dim,
+                                   int output_dim,
+                                   int input_idx,
+                                   int output_idx,
+                                   std::optional<MappingOperation> operation) {
+  NOT_IMPLEMENTED();
+}
+
+ParallelDimMappingRecord
+    construct_weight_parallel_dims(int input_dim,
+                                   int weight_dim,
+                                   int input_idx,
+                                   int weight_idx,
+                                   std::optional<MappingOperation> operation) {
+  NOT_IMPLEMENTED();
+}
 /* int get_output_to_input_dim_mapping(ParallelTensorShape const &output, */
 /*                                     int output_dim, */
 /*                                     ParallelTensorShape const &input) { */
@@ -178,7 +209,7 @@ void construct_weight_parallel_dims(
     int weight_dim,
     int input_idx,
     int weight_idx,
-    tl::optional<MappingOperation> operation) {
+    std::optional<MappingOperation> operation) {
   records.push_back(ParallelDimMappingRecord::input_weight_record(
       input_idx, input_dim, weight_idx, weight_dim, operation));
 }
@@ -243,7 +274,7 @@ void construct_output_parallel_dims(
     int output_dim,
     int input_idx,
     int output_idx,
-    tl::optional<MappingOperation> operation) {
+    std::optional<MappingOperation> operation) {
   records.push_back(ParallelDimMappingRecord::input_output_record(
       input_idx, input_dim, output_idx, output_dim, operation));
 }

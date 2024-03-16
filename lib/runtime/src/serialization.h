@@ -7,9 +7,10 @@
 #include "legion/legion_utilities.h"
 #include "op-attrs/dim_ordered.h"
 #include "utils/optional.h"
+#include "utils/required.h"
+#include "utils/type_traits.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"
-#include <type_traits>
 
 namespace FlexFlow {
 
@@ -77,6 +78,13 @@ struct is_trivially_serializable<
     typename std::enable_if<std::is_integral<T>::value>::type>
     : std::true_type {};
 
+template <typename T>
+struct is_trivially_serializable<T, void_t<underlying_type_t<T>>>
+    : is_trivially_serializable<underlying_type_t<T>> {};
+
+template <typename T>
+struct is_trivially_serializable<req<T>> : is_trivially_serializable<T> {};
+
 template <>
 struct is_trivially_serializable<half> : std::true_type {};
 template <>
@@ -98,11 +106,12 @@ struct is_trivially_serializable<DimOrdered<Idx, T>>
     : is_trivially_serializable<T> {};
 
 template <typename... Ts>
-struct is_trivially_serializable<variant<Ts...>>
-    : elements_satisfy<is_trivially_serializable, variant<Ts...>> {};
+struct is_trivially_serializable<std::variant<Ts...>>
+    : elements_satisfy<is_trivially_serializable, std::variant<Ts...>> {};
 
 template <typename T>
-struct is_trivially_serializable<optional<T>> : is_trivially_serializable<T> {};
+struct is_trivially_serializable<std::optional<T>>
+    : is_trivially_serializable<T> {};
 
 template <typename T>
 struct std_array_size_helper;
@@ -138,7 +147,8 @@ static_assert(is_trivially_serializable<int32_t>::value, "");
 static_assert(is_trivially_serializable<int64_t>::value, "");
 static_assert(is_trivially_serializable<half>::value, "");
 static_assert(is_trivially_serializable<bool>::value, "");
-static_assert(is_trivially_serializable<variant<float, double>>::value, "");
+static_assert(is_trivially_serializable<std::variant<float, double>>::value,
+              "");
 static_assert(std::is_same<visit_as_tuple_t<InternalTestType>,
                            std::tuple<int, float>>::value,
               "");

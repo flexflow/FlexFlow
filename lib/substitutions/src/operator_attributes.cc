@@ -1,22 +1,7 @@
+#include "op-attrs/get_op_type.h"
 #include "substitutions/get_attribute.h"
 
 namespace FlexFlow {
-
-optional<OperatorAttributeValue> get_attribute(AggregateAttrs const &p,
-                                               OperatorAttributeKey key) {
-  switch (key) {
-    default:
-      return nullopt;
-  }
-}
-
-optional<OperatorAttributeValue> get_attribute(AggregateSpecAttrs const &p,
-                                               OperatorAttributeKey key) {
-  switch (key) {
-    default:
-      return nullopt;
-  }
-}
 
 optional<OperatorAttributeValue> get_attribute(BatchMatmulAttrs const &p,
                                                OperatorAttributeKey key) {
@@ -100,6 +85,14 @@ optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p,
   }
 }
 
+optional<OperatorAttributeValue> get_attribute(ElementScalarUnaryAttrs const &p,
+                                               OperatorAttributeKey key) {
+  switch (key) {
+    default:
+      return nullopt;
+  }
+}
+
 optional<OperatorAttributeValue> get_attribute(DropoutAttrs const &p,
                                                OperatorAttributeKey key) {
   switch (key) {
@@ -142,14 +135,6 @@ optional<OperatorAttributeValue> get_attribute(GatherAttrs const &p,
   }
 }
 
-optional<OperatorAttributeValue> get_attribute(Group_byAttrs const &p,
-                                               OperatorAttributeKey key) {
-  switch (key) {
-    default:
-      return nullopt;
-  }
-}
-
 optional<OperatorAttributeValue> get_attribute(LayerNormAttrs const &p,
                                                OperatorAttributeKey key) {
   switch (key) {
@@ -164,11 +149,15 @@ optional<OperatorAttributeValue> get_attribute(LinearAttrs const &p,
     case OperatorAttributeKey::OUT_CHANNELS:
       return p.out_channels;
     case OperatorAttributeKey::USE_BIAS:
-      return p.use_bias;
+      return bool(p.use_bias); // NOTE(@wmd): Without casting to bool, it will
+                               // return an OperatorAttributeValue with
+                               // underlying type int. Might be a req issue.
     case OperatorAttributeKey::DATA_TYPE:
       return p.data_type;
     case OperatorAttributeKey::ACTIVATION:
       return p.activation;
+    case OperatorAttributeKey::REGULARIZER:
+      return p.regularizer;
     default:
       return nullopt;
   }
@@ -312,8 +301,18 @@ private:
   OperatorAttributeKey key;
 };
 
+struct GetOpType {
+  template <typename T>
+  optional<OperatorAttributeValue> operator()(T const &t) {
+    return get_op_type(t);
+  }
+};
+
 optional<OperatorAttributeValue> get_attribute(PCGOperatorAttrs const &p,
                                                OperatorAttributeKey key) {
+  if (key == OperatorAttributeKey::OP_TYPE) {
+    return visit(GetOpType{}, p);
+  }
   return visit(GetAttribute(key), p);
 }
 

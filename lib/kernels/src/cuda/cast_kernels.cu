@@ -13,15 +13,12 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/cast_kernels.h"
-#include "kernels/cuda_helper.h"
 #include "kernels/datatype_dispatch.h"
+#include "kernels/device.h"
 
 namespace FlexFlow {
-
-CastPerDeviceState::CastPerDeviceState(FFHandler handle)
-    : PerDeviceOpState(handle) {}
-
 namespace Kernels {
 namespace Cast {
 
@@ -43,7 +40,6 @@ __global__ void
 template <DataType IDT, DataType ODT>
 struct ForwardKernel {
   void operator()(ffStream_t stream,
-                  CastPerDeviceState const *m,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
     size_t volume = input.shape.get_volume();
@@ -55,7 +51,6 @@ struct ForwardKernel {
 template <DataType IDT, DataType ODT>
 struct BackwardKernel {
   void operator()(ffStream_t stream,
-                  CastPerDeviceState const *m,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
     size_t volume = input.shape.get_volume();
@@ -64,20 +59,24 @@ struct BackwardKernel {
   }
 };
 
-void forward_kernel(ffStream_t stream,
-                    CastPerDeviceState const *m,
+void forward_kernel(PerDeviceFFHandle handle,
+                    ffStream_t stream,
                     GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output) {
+                    GenericTensorAccessorW const &output,
+                    DataType input_type,
+                    DataType output_type) {
   DataTypeDispatch2<ForwardKernel>{}(
-      m->input_data_type, m->output_data_type, stream, m, input, output);
+      input_type, output_type, stream, handle, input, output);
 }
 
-void backward_kernel(ffStream_t stream,
-                     CastPerDeviceState const *m,
+void backward_kernel(PerDeviceFFHandle handle,
+                     ffStream_t stream,
                      GenericTensorAccessorR const &input,
-                     GenericTensorAccessorW const &output) {
+                     GenericTensorAccessorW const &output,
+                     DataType input_type,
+                     DataType output_type) {
   DataTypeDispatch2<BackwardKernel>{}(
-      m->input_data_type, m->output_data_type, stream, m, input, output);
+      input_type, output_type, stream, handle, input, output);
 }
 
 } // namespace Cast

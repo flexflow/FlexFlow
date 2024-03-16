@@ -3,11 +3,11 @@
 
 #include "utils/fp16.h"
 #include "utils/json.h"
-#include "utils/variant.h"
 
 namespace FlexFlow {
 
-using V1DataTypeValue = variant<bool, int32_t, int64_t, half, float, double>;
+using V1DataTypeValue =
+    std::variant<bool, int32_t, int64_t, half, float, double>;
 
 enum class V1DataType {
   BOOL,

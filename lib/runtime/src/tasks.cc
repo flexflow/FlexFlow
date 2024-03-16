@@ -1,7 +1,5 @@
 #include "tasks.h";
 #include "legion.h"
-#include "ops/aggregate.h"
-#include "ops/aggregate_spec.h"
 #include "ops/attention.h"
 #include "ops/batch_matmul.h"
 #include "ops/batch_norm.h"
@@ -15,10 +13,8 @@
 #include "ops/flat.h"
 #include "ops/fused.h"
 #include "ops/gather.h"
-#include "ops/groupby.h"
 #include "ops/layer_norm.h"
 #include "ops/linear.h"
-#include "ops/mean.h"
 #include "ops/noop.h"
 #include "ops/pool_2d.h"
 #include "ops/reduce.h"
@@ -226,79 +222,6 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<Gather::backward_task>(
         registrar, "Gather Backward Task");
-  }
-
-  // Group by task CPU
-  {
-    TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "Group_by Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<PerDeviceOpState *, Group_by::init_task>(
-        registrar, "Group_by Init Task");
-  }
-  {
-    TaskVariantRegistrar registrar(GROUP_BY_FWD_TASK_ID, "Group_by Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Group_by::forward_task>(
-        registrar, "Group_by Forward Task");
-  }
-  {
-    TaskVariantRegistrar registrar(GROUP_BY_BWD_TASK_ID, "Group_by Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Group_by::backward_task>(
-        registrar, "Group_by Backward Task");
-  }
-
-  // Aggregate task CPU
-  {
-    TaskVariantRegistrar registrar(AGGREGATE_INIT_TASK_ID, "Aggregate Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<PerDeviceOpState *, Aggregate::init_task>(
-        registrar, "Aggregate Init Task");
-  }
-  {
-    TaskVariantRegistrar registrar(AGGREGATE_FWD_TASK_ID, "Aggregate Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Aggregate::forward_task>(
-        registrar, "Aggregate Forward Task");
-  }
-  {
-    TaskVariantRegistrar registrar(AGGREGATE_BWD_TASK_ID, "Aggregate Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Aggregate::backward_task>(
-        registrar, "Aggregate Backward Task");
-  }
-
-  // AggregateSpec task CPU
-  {
-    TaskVariantRegistrar registrar(AGG_SPEC_INIT_TASK_ID,
-                                   "Aggregate specification Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<PerDeviceOpState *,
-                                      AggregateSpec::init_task>(
-        registrar, "Aggregate specification Init Task");
-  }
-  {
-    TaskVariantRegistrar registrar(AGG_SPEC_FWD_TASK_ID,
-                                   "Aggregate specification Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<AggregateSpec::forward_task>(
-        registrar, "Aggregate specification Forward Task");
-  }
-  {
-    TaskVariantRegistrar registrar(AGG_SPEC_BWD_TASK_ID,
-                                   "Aggregate specification Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<AggregateSpec::backward_task>(
-        registrar, "Aggregate specification Backward Task");
   }
 
   // Pool2D task
@@ -840,13 +763,7 @@ void register_flexflow_internal_tasks() {
                  NORMAL_INIT_TASK_ID,
                  CONSTANT_INIT_TASK_ID,
                  METRICS_COMP_TASK_ID,
-                 UPDATE_METRICS_TASK_ID,
-                 AGGREGATE_INIT_TASK_ID,
-                 AGGREGATE_FWD_TASK_ID,
-                 AGGREGATE_BWD_TASK_ID,
-                 AGG_SPEC_INIT_TASK_ID,
-                 AGG_SPEC_FWD_TASK_ID,
-                 AGG_SPEC_BWD_TASK_ID>();
+                 UPDATE_METRICS_TASK_ID>();
 
   {
     TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID, "Zero Init");

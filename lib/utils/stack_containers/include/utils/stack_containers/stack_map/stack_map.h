@@ -2,7 +2,6 @@
 #define _FLEXFLOW_UTILS_STACK_MAP_H
 
 #include "containers.h"
-#include "optional.h"
 #include "stack_vector.h"
 
 namespace FlexFlow {
@@ -12,7 +11,7 @@ struct stack_map {
   stack_map() = default;
 
   V &operator[](K const &k) {
-    optional<size_t> idx = get_idx(k);
+    std::optional<size_t> idx = get_idx(k);
     if (!idx.has_value()) {
       this->contents.push_back({k, {}});
       idx = this->contents.size() - 1;
@@ -25,7 +24,7 @@ struct stack_map {
   }
 
   void insert(K const &k, V const &v) {
-    optional<size_t> idx = get_idx(k);
+    std::optional<size_t> idx = get_idx(k);
     if (!idx.has_value()) {
       this->contents.push_back({k, v});
     } else {
@@ -106,14 +105,14 @@ private:
     return sorted_by(this->contents, comparator);
   }
 
-  optional<size_t> get_idx(K const &k) const {
+  std::optional<size_t> get_idx(K const &k) const {
     for (std::size_t idx = 0; idx < contents.size(); idx++) {
       if (contents.at(idx).first == k) {
         return idx;
       }
     }
 
-    return nullopt;
+    return std::nullopt;
   }
 
   stack_vector<std::pair<K, V>, MAXSIZE> contents;

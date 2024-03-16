@@ -9,34 +9,27 @@
 
 namespace FlexFlow {
 
-/* using mp = mpark; */
+template <typename Pack, typename... Args>
+struct pack_contains_all_of;
 
-/* template <typename ...Ts> */
-/* using variant = ::mpark::variant<Ts...>; */
+template <typename HeadNeedle, typename... NeedleRest, typename... Haystack>
+struct pack_contains_all_of<pack<Haystack...>, HeadNeedle, NeedleRest...>
+    : conjunction<pack_contains_type<pack<Haystack...>, HeadNeedle>,
+                  pack_contains_all_of<pack<Haystack...>, NeedleRest...>> {};
 
-/* template <typename T> */
-/* using std::optional = ::tl::std::optional<T>; */
+template <typename... Haystack>
+struct pack_contains_all_of<pack<Haystack...>> : std::false_type {};
 
-/* template <typename T> */
-/* using get = ::mpark::get; */
+template <typename... Needles, typename... Haystack>
+struct pack_contains_all_of<std::variant<Haystack...>, Needles...>
+    : pack_contains_all_of<pack<Haystack...>, Needles...> {};
 
-/* template <typename T> */
-/* using holds_alternative = ::mpark::holds_alternative<T>; */
+template <typename T, typename... TRest, typename... Args>
+bool is(std::variant<Args...> const &v) {
+  static_assert(pack_contains_all_of<pack<Args...>, T, TRest...>::value, "");
 
-/* template <typename Pack, typename... Args> */
-/* struct pack_contains_all_of; */
-
-/* template <typename HeadNeedle, typename... NeedleRest, typename... Haystack> */
-/* struct pack_contains_all_of<pack<Haystack...>, HeadNeedle, NeedleRest...> */
-/*     : conjunction<pack_contains_type<pack<Haystack...>, HeadNeedle>, */
-/*                   pack_contains_all_of<pack<Haystack...>, NeedleRest...>> {}; */
-
-/* template <typename... Haystack> */
-/* struct pack_contains_all_of<pack<Haystack...>> : std::false_type {}; */
-
-/* template <typename... Needles, typename... Haystack> */
-/* struct pack_contains_all_of<variant<Haystack...>, Needles...> */
-/*     : pack_contains_all_of<pack<Haystack...>, Needles...> {}; */
+  return std::holds_alternative<T>(v) || is<TRest...>(v);
+}
 
 /* template <typename T> */
 /* using visit = mpark::visit<T>; */
@@ -46,6 +39,19 @@ namespace FlexFlow {
  * mpark::variant<Args2...>> { */
 /*     using type = mpark::variant<Args1..., Args2...>; */
 /* }; */
+template <template <typename...> class Cond, typename... Ts>
+struct elements_satisfy<Cond, std::variant<Ts...>>
+    : elements_satisfy_impl<Cond, Ts...> {};
+
+template <typename T, typename Variant>
+struct is_in_variant;
+template <typename T, typename... Rest>
+struct is_in_variant<T, std::variant<T, Rest...>> : std::true_type {};
+template <typename T, typename Head, typename... Rest>
+struct is_in_variant<T, std::variant<Head, Rest...>>
+    : is_in_variant<T, std::variant<Rest...>> {};
+template <typename T>
+struct is_in_variant<T, std::variant<>> : std::false_type {};
 
 template <typename T, size_t Idx, typename Variant>
 struct variant_idx_helper;
@@ -107,16 +113,17 @@ using variant_join = typename variant_join_helper<Variant1, Variant2>::type;
 template <class Variant1, typename... T>
 using variant_add = variant_join<Variant1, std::variant<T...>>;
 
-static_assert(
-    std::is_same<variant_join<std::variant<int, float>, std::variant<float, double>>,
-                 std::variant<int, float, double>>::value,
-    "");
-static_assert(std::is_same<variant_join<std::variant<int>, std::variant<float, double>>,
+static_assert(std::is_same<variant_join<std::variant<int, float>,
+                                        std::variant<float, double>>,
                            std::variant<int, float, double>>::value,
               "");
 static_assert(
-    std::is_same<variant_join<std::variant<int>, std::variant<int>>, std::variant<int>>::value,
+    std::is_same<variant_join<std::variant<int>, std::variant<float, double>>,
+                 std::variant<int, float, double>>::value,
     "");
+static_assert(std::is_same<variant_join<std::variant<int>, std::variant<int>>,
+                           std::variant<int>>::value,
+              "");
 
 template <typename Out>
 struct VariantWidenFunctor {

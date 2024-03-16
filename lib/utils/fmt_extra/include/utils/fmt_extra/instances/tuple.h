@@ -19,7 +19,8 @@ struct formatter<::std::tuple<Ts...>,
     -> decltype(ctx.out()) {
     using namespace ::FlexFlow;
 
-    std::vector<std::string> v = m | ranges::views::transform([](auto const &t) { return element_to_string(t); });
+    std::vector<std::string> v = to_vector(
+        transform(m, [](auto const &t) { return element_to_string(t); }));
     std::string result = surrounded(
         '<', '>', join_strings(v, ", ", [](std::string const &s) { return s; }));
     return formatter<std::string>::format(result, ctx);

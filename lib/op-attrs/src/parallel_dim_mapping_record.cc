@@ -13,7 +13,7 @@ ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
     int input_dim,
     int output_idx,
     int output_dim,
-    tl::optional<MappingOperation> operation) {
+    std::optional<MappingOperation> operation) {
   ParallelDimMappingRecord r(MappingRecordType::INPUT_OUTPUT);
   r.operation = operation;
 
@@ -36,7 +36,7 @@ ParallelDimMappingRecord ParallelDimMappingRecord::input_weight_record(
     int input_dim,
     int weight_idx,
     int weight_dim,
-    tl::optional<MappingOperation> operation) {
+    std::optional<MappingOperation> operation) {
   ParallelDimMappingRecord r(MappingRecordType::INPUT_WEIGHT);
   r.operation = operation;
 

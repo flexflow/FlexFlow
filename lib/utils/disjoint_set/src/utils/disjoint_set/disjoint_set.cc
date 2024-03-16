@@ -3,7 +3,6 @@
 
 namespace FlexFlow {
 
-
 template <typename T>
 class m_disjoint_set {
 public:
@@ -30,7 +29,7 @@ public:
 private:
   void add_node_if_missing(std::optional<T> const &t) const {
     if (mapping.find(t) == mapping.end()) {
-      mapping[t] = nullopt;
+      mapping[t] = std::nullopt;
     }
   }
   mutable std::unordered_map<std::optional<T>, std::optional<T>> mapping;
@@ -39,7 +38,8 @@ private:
 // Custom comparator for std::optional
 template <typename T>
 struct OptionalComparator {
-  bool operator()(std::optional<T> const &lhs, std::optional<T> const &rhs) const {
+  bool operator()(std::optional<T> const &lhs,
+                  std::optional<T> const &rhs) const {
     if (!lhs.has_value() || !rhs.has_value()) {
       return false;
     }

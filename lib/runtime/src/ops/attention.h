@@ -20,9 +20,9 @@ OpTaskInvocation backward(MultiHeadAttentionAttrs const &);
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   MultiHeadAttentionAttrs const &attrs,
-                                  ParallelTensorShape const &query_shape,
-                                  ParallelTensorShape const &key_shape,
-                                  ParallelTensorShape const &value_shape,
+                                  InputParallelTensorDesc const &query_shape,
+                                  InputParallelTensorDesc const &key_shape,
+                                  InputParallelTensorDesc const &value_shape,
                                   ProfilingSettings const &settings,
                                   MachineView const &mv);
 } // namespace FlexFlow

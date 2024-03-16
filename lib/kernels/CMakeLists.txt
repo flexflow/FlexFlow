@@ -14,7 +14,7 @@ ff_add_library(
     nccl
 )      
 set_target_properties(
-  kernels
+  ${project_target} 
   PROPERTIES 
-  CUDA_STANDARD 11
+  CUDA_STANDARD 17
 )
