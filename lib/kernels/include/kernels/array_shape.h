@@ -3,7 +3,6 @@
 
 #include "legion_dim.h"
 #include "op-attrs/tensor_shape.h"
-#include "utils/optional.h"
 #include "utils/stack_vector.h"
 #include "utils/visitable.h"
 #include <cstddef>
@@ -38,11 +37,11 @@ public:
   legion_dim_t last_idx() const;
   legion_dim_t neg_idx(int) const;
 
-  optional<std::size_t> at_maybe(std::size_t) const;
+  std::optional<std::size_t> at_maybe(std::size_t) const;
 
   ArrayShape reversed_dim_order() const;
-  ArrayShape sub_shape(optional<legion_dim_t> start,
-                       optional<legion_dim_t> end);
+  ArrayShape sub_shape(std::optional<legion_dim_t> start,
+                       std::optional<legion_dim_t> end);
 
 public:
   LegionTensorDims dims;

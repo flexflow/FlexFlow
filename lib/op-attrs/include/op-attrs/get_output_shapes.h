@@ -179,19 +179,19 @@ struct GetOutputShapesFunctor {
 
 template <typename... Ts>
 std::vector<ParallelTensorShape>
-    get_output_shapes(variant<Ts...> const &t,
+    get_output_shapes(std::variant<Ts...> const &t,
                       std::vector<ParallelTensorShape> const &s) {
   return get_output_shape(GetOutputShapesFunctor{s}, t);
 }
 
 template <typename T>
-typename std::enable_if<!has_unary_output_t<T>::value, optional<int>>::type
+typename std::enable_if<!has_unary_output_t<T>::value, std::optional<int>>::type
     get_num_outputs(T const &) {
-  return nullopt;
+  return std::nullopt;
 }
 
 template <typename T>
-typename std::enable_if<has_unary_output_t<T>::value, optional<int>>::type
+typename std::enable_if<has_unary_output_t<T>::value, std::optional<int>>::type
     get_num_outputs(T const &) {
   return 1;
 }
