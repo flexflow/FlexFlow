@@ -38,12 +38,11 @@
         devShells = rec {
           ci = mkShell {
             buildInputs = (with pkgs; [
-              clang-tools_17
               llvmPackages_17.clang
               cmakeCurses
               gcc10Stdenv
               gcc10
-              ccache
+              # ccache
               cudatoolkit
               zlib
               pkg-config
@@ -69,6 +68,7 @@
   
           buildInputs = builtins.concatLists [
             (with pkgs; [
+              clang-tools_17
               gh-markdown-preview
               plantuml
               gdb
