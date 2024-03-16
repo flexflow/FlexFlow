@@ -68,7 +68,7 @@ OpTaskInvocation backward(LayerNormAttrs const &attrs) {
   return {LAYERNORM_BWD_TASK_ID, b};
 }
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto gamma = acc.get_tensor<Permissions::RW>(GAMMA);
@@ -89,7 +89,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto gamma = acc.get_tensor<Permissions::RO>(GAMMA);
 

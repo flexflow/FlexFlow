@@ -10,7 +10,7 @@
 namespace FlexFlow {
 
 using ElementUnaryUnifiedAttrs =
-    variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
+    std::variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
 
 struct ElementUnaryPerDeviceState {
   ffTensorDescriptor_t inputTensor, outputTensor;

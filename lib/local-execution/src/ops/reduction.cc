@@ -15,7 +15,7 @@
 
 #include "reduction.h"
 #include "kernels/reduction_kernels.h"
-#include "op-attrs/get_output_shape.h"
+#include "op-attrs/get_output_shapes.h"
 #include "utils/exception.h"
 #include "utils/hash-utils.h"
 
@@ -46,7 +46,7 @@ OpTaskInvocation backward(ReductionAttrs const &attrs) {
   return {REDUCTION_BWD_TASK_ID, binding};
 }
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling_settings =
       acc.get_argument<ProfilingSettings>(PROFILING);
 
@@ -66,7 +66,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);

@@ -34,7 +34,7 @@ FF_VISITABLE_STRUCT(AdamOptimizer,
                     beta_t,
                     beta2_t);
 
-using Optimizer = variant<SGDOptimizer, AdamOptimizer>;
+using Optimizer = std::variant<SGDOptimizer, AdamOptimizer>;
 
 } // namespace FlexFlow
 

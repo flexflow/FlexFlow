@@ -87,7 +87,7 @@ static DeviceSpecific<Conv2DPerDeviceState>
 }
 
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state =
       acc.get_argument<Conv2DPerDeviceState>(PER_DEVICE_STATE);
@@ -111,7 +111,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state =
       acc.get_argument<Conv2DPerDeviceState>(PER_DEVICE_STATE);

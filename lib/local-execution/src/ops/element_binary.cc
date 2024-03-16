@@ -76,7 +76,7 @@ static DeviceSpecific<ElementBinaryPerDeviceState>
   return per_device_state;
 }
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state =
       acc.get_argument<ElementBinaryPerDeviceState>(PER_DEVICE_STATE);
@@ -101,7 +101,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
       acc.get_argument<ElementBinaryPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);

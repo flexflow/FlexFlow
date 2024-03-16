@@ -101,7 +101,7 @@ static DeviceSpecific<BatchNormPerDeviceState>
 }
 
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
       acc.get_argument<BatchNormPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -123,7 +123,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
       acc.get_argument<BatchNormPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);

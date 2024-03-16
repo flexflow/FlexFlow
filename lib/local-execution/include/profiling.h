@@ -10,7 +10,7 @@ enum class EnableProfiling { YES, NO };
 template <typename F, typename... Ts, typename Str>
 optional<float>
     profile(F const &f, ProfilingSettings profiling, Str s, Ts &&...ts) {
-  optional<float> elapsed =
+  std::optional<float> elapsed =
       profiling_wrapper<F, Ts...>(f, profiling, std::forward<Ts>(ts)...);
   // TODO -- local logger?
   // if (elapsed.has_value()) {

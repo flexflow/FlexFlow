@@ -168,16 +168,15 @@ Tensor ComputationGraphBuilder::element_binary(
   return this->add_layer(layer, {lhs_input, rhs_input}, {}, output_shape);
 }
 
-Tensor ComputationGraphBuilder::dense(
-    Tensor const &input,
-    int outDim,
-    Activation activation,
-    bool use_bias,
-    DataType data_type,
-    optional<Initializer const &> kernel_initializer,
-    optional<Initializer const &> bias_initializer,
-    optional<std::string> const &name) {
-  LinearAttrs attrs = {outDim, use_bias, data_type, activation, nullopt};
+Tensor ComputationGraphBuilder::dense(Tensor const &input,
+            int outDim,
+            std::optional<Activation> activation,
+            bool use_bias,
+            DataType data_type,
+            std::optional<Initializer> const &kernel_initializer,
+            std::optional<Initializer> const &bias_initializer,
+            std::optional<std::string> const &name) {
+  LinearAttrs attrs = {outDim, use_bias, data_type, activation.value(), std::nullopt};
   std::string unwrapped_name = name.value_or(get_default_name(attrs));
 
   Tensor input_recast =
@@ -186,7 +185,7 @@ Tensor ComputationGraphBuilder::dense(
   Layer layer = {attrs, name};
   TensorShape output_shape = get_output_shape(attrs, input_recast);
 
-  std::vector<std::pair<TensorShape, optional<Initializer>>> weights;
+  std::vector<std::pair<TensorShape, std::optional<Initializer>>> weights;
 
   weights.push_back(
       {get_weights_shape(attrs, input_recast), kernel_initializer});

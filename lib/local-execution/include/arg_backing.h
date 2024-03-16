@@ -17,7 +17,7 @@ template <typename DeviceState>
 struct OpArgBacking {
 
   std::unordered_map<slot_id, ParallelTensorShape> tensor_shapes;
-  std::pair<slot_id, optional<DeviceSpecific<DeviceState>>> per_device_op_state;
+  std::pair<slot_id, std::optional<DeviceSpecific<DeviceState>>> per_device_op_state;
   std::pair<slot_id, ProfilingSettings> profiling_settings;
   std::pair<slot_id, DeviceSpecific<PerDeviceFFHandle>> profiling_settings;
   std::pair<slot_id, FFIterationConfig> profiling_settings;

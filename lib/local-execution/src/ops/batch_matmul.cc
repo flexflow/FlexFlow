@@ -59,7 +59,7 @@ OpTaskInvocation backward(BatchMatmulAttrs const &attrs) {
   return {BATCHMATMUL_BWD_TASK_ID, bwd};
 }
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto a_input = acc.get_tensor<Permissions::RO>(A_INPUT);
   auto b_input = acc.get_tensor<Permissions::RO>(B_INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -106,7 +106,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   // BatchMatmul* bmm = (BatchMatmul*) task->args;
   FFIterationConfig iter_config =
       acc.get_argument<FFIterationConfig>(ITERATION_CONFIG);

@@ -69,7 +69,7 @@ static DeviceSpecific<ElementUnaryPerDeviceState>
 }
 
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto const &attrs = acc.get_argument<ElementUnaryUnifiedAttrs>(ATTRS);
@@ -92,7 +92,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
   auto output = acc.get_tensor<Permissions::RO>(OUTPUT);

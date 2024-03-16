@@ -22,7 +22,7 @@ namespace Kernels {
 namespace Pool2D {
 
 Pool2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                                 optional<Activation> activation,
+                                 std::optional<Activation> activation,
                                  int input_w,
                                  int input_h,
                                  int input_c,

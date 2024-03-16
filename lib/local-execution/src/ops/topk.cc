@@ -71,7 +71,7 @@ static DeviceSpecific<TopKPerDeviceState>
 }
 
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
   auto per_device_state =
       acc.get_device_specific<TopKPerDeviceState>(PER_DEVICE_STATE);
@@ -99,7 +99,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
   auto per_device_state =
       acc.get_device_specific<TopKPerDeviceState>(PER_DEVICE_STATE);

@@ -48,7 +48,7 @@ OpTaskInvocation backward(EmbeddingAttrs const &attrs) {
   return {EMBED_BWD_TASK_ID, b};
 }
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto weight = acc.get_tensor<Permissions::RO>(WEIGHT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -72,7 +72,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
   auto weight_grad = acc.get_tensor_grad<Permissions::RW>(WEIGHT);

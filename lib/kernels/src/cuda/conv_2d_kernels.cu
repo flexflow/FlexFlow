@@ -115,7 +115,7 @@ cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
 }
 
 Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                                 optional<Activation> activation,
+                                 std::optional<Activation> activation,
                                  int kernel_h,
                                  int kernel_w,
                                  int groups,
@@ -272,7 +272,7 @@ void forward_kernel(cudaStream_t stream,
                     float *output_ptr,
                     float const *filter_ptr,
                     float const *bias_ptr,
-                    optional<Activation> activation) {
+                    std::optional<Activation> activation) {
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
@@ -320,7 +320,7 @@ void backward_kernel(cudaStream_t stream,
                      float const *filter_ptr,
                      float *filter_grad_ptr,
                      float *bias_grad_ptr,
-                     optional<Activation> activation) {
+                     std::optional<Activation> activation) {
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f;

@@ -59,7 +59,7 @@ static DeviceSpecific<DropoutPerDeviceState>
 }
 
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
       acc.get_argument<DropoutPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -76,7 +76,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<DropoutAttrs>(ATTRS);
   auto per_device_state =
       acc.get_argument<DropoutPerDeviceState>(PER_DEVICE_STATE);

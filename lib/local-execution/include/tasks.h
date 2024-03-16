@@ -174,7 +174,7 @@ template <typename F>
 void register_task(task_id_t,
                    std::string const &name,
                    F const &func,
-                   optional<F const &> cpu_func = nullopt);
+                   std::optional<F const &> cpu_func = std::nullopt);
 
 template <task_id_t>
 void register_task();

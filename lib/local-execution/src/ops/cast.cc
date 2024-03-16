@@ -48,7 +48,7 @@ OpTaskInvocation backward(CastAttrs const &attrs) {
   return {CAST_BWD_TASK_ID, binding};
 }
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<CastAttrs>(ATTRS);
 
@@ -66,7 +66,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<CastAttrs>(ATTRS);
 

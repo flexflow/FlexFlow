@@ -14,7 +14,7 @@ struct LinearPerDeviceState {
   ffActivationDescriptor_t actiDesc;
   float const *one_ptr; // how to handle this?
   cudnnActivationMode_t activation;
-  optional<RegularizerAttrs> regularizer;
+  std::optional<RegularizerAttrs> regularizer;
   bool use_bias;
   DataType input_type, weight_type, output_type;
 };
@@ -36,7 +36,7 @@ namespace Linear {
 
 LinearPerDeviceState
     init_kernel(PerDeviceFFHandle handle, float *one_ptr,
-                optional<RegularizerAttrs> regularizer,
+                std::optional<RegularizerAttrs> regularizer,
                 bool use_bias,
                 DataType input_type,
                 DataType weight_type,

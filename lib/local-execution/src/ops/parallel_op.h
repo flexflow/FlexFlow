@@ -7,7 +7,7 @@
 namespace FlexFlow {
 
 struct ParallelOpJoinResult {
-  optional<ParallelOpInfo> op = nullopt;
+  std::optional<ParallelOpInfo> op = std::nullopt;
   bool join_did_succeed = false;
 };
 

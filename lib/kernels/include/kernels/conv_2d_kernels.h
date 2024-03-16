@@ -38,7 +38,7 @@ namespace Kernels {
 namespace Conv2D {
 
 Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                                 optional<Activation> activation,
+                                 std::optional<Activation> activation,
                                  int kernel_h,
                                  int kernel_w,
                                  int groups,
@@ -57,7 +57,7 @@ void forward_kernel(ffStream_t stream,
                     float *output_ptr,
                     float const *filter_ptr,
                     float const *bias_ptr,
-                    optional<Activation> activation);
+                    std::optional<Activation> activation);
 
 void backward_kernel(ffStream_t stream,
                      Conv2DPerDeviceState const &m,
@@ -68,7 +68,7 @@ void backward_kernel(ffStream_t stream,
                      float const *filter_ptr,
                      float *filter_grad_ptr,
                      float *bias_grad_ptr,
-                     optional<Activation> activation);
+                     std::optional<Activation> activation);
 
 } // namespace Conv2D
 } // namespace Kernels

@@ -73,7 +73,7 @@ OpTaskInvocation forward(ReduceAttrs const &attrs) {
   return {REDUCE_FWD_TASK_ID, binding};
 }
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
       acc.get_argument<ReducePerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -110,7 +110,7 @@ OpTaskInvocation backward(ReduceAttrs const &attrs) {
   return {REDUCE_BWD_TASK_ID, binding};
 }
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
       acc.get_argument<ReducePerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);

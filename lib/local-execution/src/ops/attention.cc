@@ -143,7 +143,7 @@ static DeviceSpecific<MHAPerDeviceState>
   return per_device_state;
 }
 
-static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto query = acc.get_tensor<Permissions::RO>(QUERY);
   auto key = acc.get_tensor<Permissions::RO>(KEY);
   auto value = acc.get_tensor<Permissions::RO>(VALUE);
@@ -166,7 +166,7 @@ static optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 
 
-static optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto query = acc.get_tensor<Permissions::RO>(QUERY);
   auto key = acc.get_tensor<Permissions::RO>(KEY);
   auto value = acc.get_tensor<Permissions::RO>(VALUE);

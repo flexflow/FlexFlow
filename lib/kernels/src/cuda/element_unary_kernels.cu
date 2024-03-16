@@ -108,7 +108,7 @@ struct ForwardKernel {
                                         m.outputTensor,
                                         output.get<T>()));
     } else {
-      optional<T> scalar =
+      std::optional<T> scalar =
           std::visit([](auto &&arg) { get_scalar<T>(arg); }, attrs);
       size_t num_elements = input.shape.num_elements();
       elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements),
@@ -148,7 +148,7 @@ struct BackwardKernel {
                                         m.inputTensor,
                                         input_grad.get<T>()));
     } else {
-      optional<T> scalar =
+      std::optional<T> scalar =
           std::visit([](auto &&arg) { get_scalar<T>(arg); }, attrs);
       size_t num_elements = input.shape.num_elements();
       elewise_unary_backward_kernel<T>
@@ -195,7 +195,7 @@ void backward_kernel(ffStream_t stream,
 
 template <typename T>
 __global__ void elewise_unary_forward_kernel(coord_t volume,
-                                             optional<T> const scalar,
+                                             std::optional<T> const scalar,
                                              OperatorType type,
                                              T const *in,
                                              T *out) {
@@ -253,7 +253,7 @@ __global__ void elewise_unary_forward_kernel(coord_t volume,
 
 template <typename T>
 __global__ void elewise_unary_backward_kernel(coord_t volume,
-                                              optional<T> const scalar,
+                                              std::optional<T> const scalar,
                                               OperatorType type,
                                               T const *output,
                                               T const *output_grad,
