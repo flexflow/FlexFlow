@@ -6,7 +6,6 @@
 #include "labelled_graphs.h"
 #include "multidigraph.h"
 #include "open_graphs.h"
-#include "tl/optional.hpp"
 #include "undirected.h"
 #include "utils/bidict.h"
 #include "utils/graph/digraph_interfaces.h"
@@ -217,8 +216,8 @@ public:
 
 private:
   DiGraphView g;
-  optional<AdjacencyDiGraph> singleton_src;
-  optional<JoinedDigraphView> joined_view;
+  std::optional<AdjacencyDiGraph> singleton_src;
+  std::optional<JoinedDigraphView> joined_view;
   std::unique_ptr<AddDirectedEdgesView> added_edges_view;
 };
 
