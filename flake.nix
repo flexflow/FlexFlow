@@ -42,7 +42,7 @@
               cmakeCurses
               gcc10Stdenv
               gcc10
-              # ccache
+              ccache
               cudatoolkit
               zlib
               pkg-config

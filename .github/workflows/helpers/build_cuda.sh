@@ -8,10 +8,6 @@ REPO="$(realpath -- "$DIR/../../../")"
 
 export FF_GPU_BACKEND="cuda"
 export FF_CUDA_ARCH=70
-n_build_cores=$(($(nproc) - 1))
-if (( n_build_cores < 1 )); then 
-  n_build_cores=1
-fi
 cd "$REPO"
 mkdir build
 cd build
