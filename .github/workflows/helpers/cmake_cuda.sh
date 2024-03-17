@@ -19,13 +19,6 @@ cd build
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache \
-        -DFF_USE_EXTERNAL_LEGION=ON \
-        -DFF_USE_EXTERNAL_JSON=ON \
-        -DFF_USE_EXTERNAL_FMT=ON \
-        -DFF_USE_EXTERNAL_SPDLOG=ON \
-        -DFF_USE_EXTERNAL_DOCTEST=ON \
-        -DFF_USE_EXTERNAL_RAPIDCHECK=ON \
-        -DFF_USE_EXTERNAL_RANGEV3=ON
-  
+        $FF_CMAKE_FLAGS
 
 # vim: set tabstop=2 shiftwidth=2 expandtab:

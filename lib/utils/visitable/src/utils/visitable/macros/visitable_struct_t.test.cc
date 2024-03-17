@@ -20,10 +20,19 @@ VISITABLE_STRUCT_T(example_t_0, 0, my_first_field, my_second_field);
 
 TEST_CASE("VISITABLE_STRUCT_T<>") {
   CHECK(get_name<example_t_0>() == "example_t_0");
-  CHECK_SAME_TYPE(type_at_t<0, example_t_0>, int);
-  CHECK_SAME_TYPE(type_at_t<1, example_t_0>, float);
+  CHECK_TYPE_EQ(
+    WRAP_ARG(type_at_t<0, example_t_0>), 
+    int
+  );
+  CHECK_TYPE_EQ(
+    WRAP_ARG(type_at_t<1, example_t_0>), 
+    float
+  );
   CHECK(field_count_v<example_t_0> == 2);
-  CHECK_SAME_TYPE(visit_as_tuple_t<example_t_0>, std::tuple<int, float>);
+  CHECK_TYPE_EQ(
+    WRAP_ARG(visit_as_tuple_t<example_t_0>), 
+    WRAP_ARG(std::tuple<int, float>)
+  );
   CHECK(is_equal_comparable_v<example_t_0>);
 
   example_t_0 v1 { 1, 1.0f };

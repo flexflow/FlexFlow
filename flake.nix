@@ -40,9 +40,24 @@
 
       devShells = rec {
         ci = mkShell {
+          shellHook = ''
+            export FF_CMAKE_FLAGS="$(cat <<EOF
+            -DFF_USE_EXTERNAL_LEGION=ON
+            -DFF_USE_EXTERNAL_JSON=ON
+            -DFF_USE_EXTERNAL_FMT=ON
+            -DFF_USE_EXTERNAL_SPDLOG=ON
+            -DFF_USE_EXTERNAL_DOCTEST=ON
+            -DFF_USE_EXTERNAL_RAPIDCHECK=ON
+            -DFF_USE_EXTERNAL_RANGEV3=ON
+            -DFF_USE_EXTERNAL_BOOST_PREPROCESSOR=ON
+            -DFF_USE_EXTERNAL_TYPE_INDEX=ON
+            EOF
+            )"
+          '';
           buildInputs = builtins.concatLists [
             (with pkgs; [
               zlib
+              boost
               nlohmann_json
               spdlog
               range-v3
@@ -67,6 +82,7 @@
 
         default = mkShell {
           inputsFrom = [ ci ];
+          # inherit (ci) shellHook;
 
           buildInputs = builtins.concatLists [
             (with pkgs; [

@@ -54,12 +54,13 @@ jobs:
 
       - name: Run cmake
         run: |
-          build_${{ matrix.gpu_backend }}.sh
+          cmake_${{ matrix.gpu_backend }}.sh
 
       - name: Build utils
         run: |
           build_libs.sh \
             utils-bidict \
+            utils-compile_time_sequence \
             utils-ff_exceptions \
             utils-fmt_extra \
             utils-hash_extra \
@@ -84,6 +85,7 @@ jobs:
         run: |
           test_libs.sh \
             utils-bidict \
+            utils-compile_time_sequence \
             utils-ff_exceptions \
             utils-fmt_extra \
             utils-hash_extra \

@@ -1,0 +1,17 @@
+include(aliasing)
+
+if(FF_USE_EXTERNAL_BOOST_TYPEINDEX)
+  find_package(Boost REQUIRED)
+
+  alias_library(boost_type_index Boost::boost) 
+else()
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/boost/mp11)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/boost/static_assert)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/boost/assert)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/boost/describe)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/boost/config)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/boost/container_hash)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/boost/core)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/boost/throw_exception)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/boost/type_index)
+endif()

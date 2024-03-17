@@ -1,6 +1,7 @@
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/deps)
 
 include(boost_preprocessor)
+include(boost_type_index)
 include(cuda)
 include(cudnn)
 include(doctestlib)

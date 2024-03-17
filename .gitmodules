@@ -28,9 +28,36 @@
 [submodule "deps/nameof"]
 	path = deps/nameof
 	url = git@github.com:Neargye/nameof.git
-[submodule "deps/boost_preprocessor"]
-	path = deps/boost_preprocessor
-	url = https://github.com/boostorg/preprocessor.git
 [submodule "deps/range-v3"]
 	path = deps/range-v3
 	url = git@github.com:ericniebler/range-v3.git
+[submodule "deps/boost/config"]
+	path = deps/boost/config
+	url = https://github.com/boostorg/config.git
+[submodule "deps/boost/container_hash"]
+	path = deps/boost/container_hash
+	url = https://github.com/boostorg/container_hash.git
+[submodule "deps/boost/core"]
+	path = deps/boost/core
+	url = https://github.com/boostorg/core.git
+[submodule "deps/boost/throw_exception"]
+	path = deps/boost/throw_exception
+	url = https://github.com/boostorg/throw_exception.git
+[submodule "deps/boost/type_index"]
+	path = deps/boost/type_index
+	url = https://github.com/boostorg/type_index.git
+[submodule "deps/boost/preprocessor"]
+	path = deps/boost/preprocessor
+	url = https://github.com/boostorg/preprocessor.git
+[submodule "deps/boost/assert"]
+	path = deps/boost/assert
+	url = https://github.com/boostorg/assert.git
+[submodule "deps/boost/describe"]
+	path = deps/boost/describe
+	url = https://github.com/boostorg/describe.git
+[submodule "deps/boost/static_assert"]
+	path = deps/boost/static_assert
+	url = https://github.com/boostorg/static_assert.git
+[submodule "deps/boost/mp11"]
+	path = deps/boost/mp11
+	url = https://github.com/boostorg/mp11.git
