@@ -25,6 +25,8 @@ private:
       inline typename std::enable_if < Idx<sizeof...(TupleTypes), void>::type
       hash_combine_tup(size_t &seed,
                        std::tuple<TupleTypes...> const &tup) const {
+    using ::FlexFlow::hash_combine;
+
     hash_combine(seed, std::get<Idx>(tup));
 
     //  on to next element

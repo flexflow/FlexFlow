@@ -10,7 +10,9 @@ namespace std {
 template <typename L, typename R>
 struct hash<std::pair<L, R>> {
   size_t operator()(std::pair<L, R> const &p) const {
-    size_t seed = 283746;
+    using ::FlexFlow::hash_combine;
+
+    size_t seed = 0;
 
     hash_combine(seed, p.first);
     hash_combine(seed, p.second);

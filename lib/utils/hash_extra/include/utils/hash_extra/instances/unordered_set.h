@@ -11,9 +11,11 @@ namespace std {
 template <typename T>
 struct hash<std::unordered_set<T>> {
   size_t operator()(std::unordered_set<T> const &s) const {
+    using ::FlexFlow::get_std_hash;
+
     std::vector<T> sorted = {s.begin(), s.end()};
     std::sort(sorted.begin(), sorted.end(), [](T const &lhs, T const &rhs) {
-      return ::FlexFlow::get_std_hash(lhs) < ::FlexFlow::get_std_hash(rhs);
+      return get_std_hash(lhs) < get_std_hash(rhs);
     });
     return get_std_hash(sorted);
   }
