@@ -43,6 +43,7 @@
         ci = mkShell {
           FF_CMAKE_FLAGS = lib.strings.concatStringsSep " " [
             "-DFF_USE_EXTERNAL_LEGION=ON"
+            "-DFF_USE_EXTERNAL_NCCL=ON"
             "-DFF_USE_EXTERNAL_JSON=ON"
             "-DFF_USE_EXTERNAL_FMT=ON"
             "-DFF_USE_EXTERNAL_SPDLOG=ON"
@@ -87,6 +88,7 @@
             (with pkgs; [
               ccls
               gh-markdown-preview
+              shellcheck
               plantuml
               gdb
               ruff

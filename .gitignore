@@ -2,6 +2,7 @@
 .envrc
 /.tools/
 /.state/
+/build-ci/
 
 # lsp cache
 .ccls-cache/
