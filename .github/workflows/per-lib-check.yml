@@ -68,6 +68,7 @@ jobs:
             utils-fp16 \
             utils-fmt_extra \
             utils-hash_extra \
+            utils-optional_extra \
             utils-overload \
             utils-string_extra \
             utils-tuple_extra \
@@ -97,6 +98,7 @@ jobs:
             utils-fp16 \
             utils-fmt_extra \
             utils-hash_extra \
+            utils-optional_extra \
             utils-overload \
             utils-string_extra \
             utils-tuple_extra \
