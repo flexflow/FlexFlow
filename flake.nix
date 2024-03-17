@@ -24,6 +24,7 @@
         inherit system;
         config.allowUnfree = true;
       };
+      lib = pkgs.lib;
 
       mkShell = pkgs.mkShell.override {
         stdenv = pkgs.cudaPackages.backendStdenv;
@@ -40,20 +41,18 @@
 
       devShells = rec {
         ci = mkShell {
-          shellHook = ''
-            export FF_CMAKE_FLAGS="$(cat <<EOF
-            -DFF_USE_EXTERNAL_LEGION=ON
-            -DFF_USE_EXTERNAL_JSON=ON
-            -DFF_USE_EXTERNAL_FMT=ON
-            -DFF_USE_EXTERNAL_SPDLOG=ON
-            -DFF_USE_EXTERNAL_DOCTEST=ON
-            -DFF_USE_EXTERNAL_RAPIDCHECK=ON
-            -DFF_USE_EXTERNAL_RANGEV3=ON
-            -DFF_USE_EXTERNAL_BOOST_PREPROCESSOR=ON
-            -DFF_USE_EXTERNAL_TYPE_INDEX=ON
-            EOF
-            )"
-          '';
+          FF_CMAKE_FLAGS = lib.strings.concatStringsSep " " [
+            "-DFF_USE_EXTERNAL_LEGION=ON"
+            "-DFF_USE_EXTERNAL_JSON=ON"
+            "-DFF_USE_EXTERNAL_FMT=ON"
+            "-DFF_USE_EXTERNAL_SPDLOG=ON"
+            "-DFF_USE_EXTERNAL_DOCTEST=ON"
+            "-DFF_USE_EXTERNAL_RAPIDCHECK=ON"
+            "-DFF_USE_EXTERNAL_RANGEV3=ON"
+            "-DFF_USE_EXTERNAL_BOOST_PREPROCESSOR=ON"
+            "-DFF_USE_EXTERNAL_TYPE_INDEX=ON"
+          ];
+
           buildInputs = builtins.concatLists [
             (with pkgs; [
               zlib
@@ -82,7 +81,7 @@
 
         default = mkShell {
           inputsFrom = [ ci ];
-          # inherit (ci) shellHook;
+          inherit (ci) FF_CMAKE_FLAGS;
 
           buildInputs = builtins.concatLists [
             (with pkgs; [
