@@ -1,4 +1,6 @@
-#include "utils/record_formatter.h"
+#include "utils/dot_format/record_formatter.h"
+
+namespace FlexFlow {
 
 RecordFormatter &operator<<(RecordFormatter &r, std::string const &tok) {
   r.pieces.push_back(tok);
@@ -50,4 +52,6 @@ std::ostream &operator<<(std::ostream &s, RecordFormatter const &r) {
   s << " }";
 
   return s;
+}
+
 }

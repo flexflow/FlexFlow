@@ -4,6 +4,8 @@
 #include <sstream>
 #include <vector>
 
+namespace FlexFlow {
+
 class RecordFormatter {
   friend RecordFormatter &operator<<(RecordFormatter &r,
                                      std::string const &tok);
@@ -18,5 +20,7 @@ class RecordFormatter {
 private:
   std::vector<std::string> pieces;
 };
+
+}
 
 #endif // _RECORD_FORMATTER_H

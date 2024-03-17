@@ -63,6 +63,7 @@ jobs:
             utils-bidict \
             utils-compile_time_sequence \
             utils-deduplicated_priority_queue \
+            utils-dot_format \
             utils-ff_exceptions \
             utils-fmt_extra \
             utils-hash_extra \
@@ -90,6 +91,7 @@ jobs:
             utils-bidict \
             utils-compile_time_sequence \
             utils-deduplicated_priority_queue \
+            utils-dot_format \
             utils-ff_exceptions \
             utils-fmt_extra \
             utils-hash_extra \

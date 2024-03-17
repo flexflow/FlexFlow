@@ -1,1 +1,4 @@
-ff_add_library(NAME utils::dot_format)
+ff_add_library(
+  NAME 
+    utils-dot_format
+)
