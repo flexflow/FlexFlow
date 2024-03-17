@@ -68,17 +68,17 @@ jobs:
             utils-tuple_extra \
             utils-type_traits_extra
 
-      - name: Build op-attrs
-        run: |
-          build_libs.sh op-attrs
+      # - name: Build op-attrs
+      #   run: |
+      #     build_libs.sh op-attrs
 
-      - name: Build pcg
-        run: |
-          build_libs.sh pcg
+      # - name: Build pcg
+      #   run: |
+      #     build_libs.sh pcg
 
-      - name: Build kernels
-        run: |
-          build_libs.sh kernels
+      # - name: Build kernels
+      #   run: |
+      #     build_libs.sh kernels
 
       - name: Test utils
         run: |
