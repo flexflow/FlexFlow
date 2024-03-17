@@ -54,4 +54,4 @@ std::ostream &operator<<(std::ostream &s, RecordFormatter const &r) {
   return s;
 }
 
-}
+} // namespace FlexFlow

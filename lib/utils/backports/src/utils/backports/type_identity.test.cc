@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/backports/type_identity.h"
+#include "utils/testing.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE_TEMPLATE("type_identity<T>", T, int, char) {

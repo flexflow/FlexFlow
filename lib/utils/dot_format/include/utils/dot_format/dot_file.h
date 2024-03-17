@@ -5,12 +5,12 @@
 #include <cassert>
 #include <fstream>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <optional>
 
 namespace FlexFlow {
 
@@ -143,6 +143,6 @@ public:
   }
 };
 
-}
+} // namespace FlexFlow
 
 #endif // _DOT_FILE_H

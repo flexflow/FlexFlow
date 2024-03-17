@@ -21,6 +21,6 @@ private:
   std::vector<std::string> pieces;
 };
 
-}
+} // namespace FlexFlow
 
 #endif // _RECORD_FORMATTER_H
