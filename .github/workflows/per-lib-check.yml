@@ -59,6 +59,7 @@ jobs:
       - name: Build utils
         run: |
           build_libs.sh \
+            utils-backports \
             utils-bidict \
             utils-compile_time_sequence \
             utils-ff_exceptions \
@@ -84,6 +85,7 @@ jobs:
       - name: Test utils
         run: |
           test_libs.sh \
+            utils-backports \
             utils-bidict \
             utils-compile_time_sequence \
             utils-ff_exceptions \

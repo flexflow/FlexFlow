@@ -1,7 +1,9 @@
+#include "utils/testing.h"
 #include "utils/backports/type_identity.h"
-#include "testing.h"
 
-TEMPLATE_TEST_CASE("type_identity", T, int, char) {
-  CHECK_IS_SAME(typename type_identity<T>::type, type_identity_t<T>);
-  CHECK_IS_SAME(type_identity_t<T>, T);
+TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE_TEMPLATE("type_identity<T>", T, int, char) {
+    CHECK_TYPE_EQ(typename type_identity<T>::type, type_identity_t<T>);
+    CHECK_TYPE_EQ(type_identity_t<T>, T);
+  }
 }
