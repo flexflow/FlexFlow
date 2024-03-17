@@ -62,6 +62,7 @@ jobs:
             utils-backports \
             utils-bidict \
             utils-compile_time_sequence \
+            utils-deduplicated_priority_queue \
             utils-ff_exceptions \
             utils-fmt_extra \
             utils-hash_extra \
@@ -88,6 +89,7 @@ jobs:
             utils-backports \
             utils-bidict \
             utils-compile_time_sequence \
+            utils-deduplicated_priority_queue \
             utils-ff_exceptions \
             utils-fmt_extra \
             utils-hash_extra \

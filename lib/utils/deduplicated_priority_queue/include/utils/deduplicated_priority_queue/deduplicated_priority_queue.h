@@ -27,7 +27,7 @@ public:
   }
 
   void push(Elem const &e) {
-    if (!contains(hashmap, e)) {
+    if (hashmap.find(e) == hashmap.end()) {
       impl.push(e);
       hashmap.insert(e);
     }
