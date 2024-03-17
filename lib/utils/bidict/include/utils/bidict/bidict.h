@@ -112,19 +112,18 @@ struct bidict {
     return this->fwd_map;
   }
 
-  friend bool operator==(bidict<L, R> const &lhs, 
-                         bidict<L, R> const &rhs) {
+  friend bool operator==(bidict<L, R> const &lhs, bidict<L, R> const &rhs) {
     lhs.check_invariants();
     rhs.check_invariants();
     return lhs.fwd_map == rhs.fwd_map;
   }
 
-  friend bool operator!=(bidict<L, R> const &lhs,
-                         bidict<L, R> const &rhs) {
+  friend bool operator!=(bidict<L, R> const &lhs, bidict<L, R> const &rhs) {
     lhs.check_invariants();
     rhs.check_invariants();
     return lhs.fwd_map != rhs.fwd_map;
   }
+
 private:
   void check_invariants() const {
     assert(fwd_map.size() == bwd_map.size());
@@ -139,4 +138,3 @@ private:
 } // namespace FlexFlow
 
 #endif
-

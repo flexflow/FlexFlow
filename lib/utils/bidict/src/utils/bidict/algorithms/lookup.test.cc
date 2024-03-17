@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/bidict/algorithms/lookup.h"
+#include "utils/testing.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("lookup_in_l(bidict<L, R> const &)") {

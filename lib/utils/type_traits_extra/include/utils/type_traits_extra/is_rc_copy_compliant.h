@@ -28,17 +28,17 @@ namespace FlexFlow {
 
 template <typename T>
 struct is_rc_copy_virtual_compliant
-    : std::conjunction<std::negation<std::disjunction<std::is_copy_constructible<T>,
-                                       std::is_copy_assignable<T>,
-                                       std::is_move_constructible<T>,
-                                       std::is_move_assignable<T>>>,
-                  std::has_virtual_destructor<T>> {};
-
+    : std::conjunction<
+          std::negation<std::disjunction<std::is_copy_constructible<T>,
+                                         std::is_copy_assignable<T>,
+                                         std::is_move_constructible<T>,
+                                         std::is_move_assignable<T>>>,
+          std::has_virtual_destructor<T>> {};
 
 template <typename T>
 inline constexpr bool is_rc_copy_virtual_compliant_v =
     is_rc_copy_virtual_compliant<T>::value;
 
-}
+} // namespace FlexFlow
 
 #endif

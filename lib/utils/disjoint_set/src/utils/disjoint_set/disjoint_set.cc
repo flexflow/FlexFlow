@@ -82,5 +82,4 @@ private:
              // because while the result is invariant to path compression, etc.
 };
 
-
-}
+} // namespace FlexFlow

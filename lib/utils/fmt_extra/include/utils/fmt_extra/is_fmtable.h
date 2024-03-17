@@ -15,6 +15,6 @@ inline constexpr bool is_fmtable_v = is_fmtable<T>::value;
   static_assert(::FlexFlow::is_fmtable<__VA_ARGS__>::value,                    \
                 #__VA_ARGS__ " must be fmtable");
 
-}
+} // namespace FlexFlow
 
 #endif

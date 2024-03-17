@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_STRONG_TYPEDEF_INCLUDE_UTILS_STRONG_TYPEDEF_MACROS_H
 #define _FLEXFLOW_LIB_UTILS_STRONG_TYPEDEF_INCLUDE_UTILS_STRONG_TYPEDEF_MACROS_H
 
-#include <string>
 #include "utils/fmt_extra/is_fmtable.h"
-#include "utils/type_traits_extra/is_streamable.h" 
+#include "utils/type_traits_extra/is_streamable.h"
 #include <ostream>
+#include <string>
 
 #define MAKE_TYPEDEF_PRINTABLE(TYPEDEF_NAME, TYPEDEF_SHORTNAME)                \
   namespace fmt {                                                              \

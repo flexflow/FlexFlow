@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/string_extra/quoted.h"
+#include "utils/testing.h"
 
 TEST_CASE("quoted") {
   CHECK_EQ(quoted("\"hello\" there \"my", '\\', '"'),

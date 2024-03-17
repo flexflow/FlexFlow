@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/string_extra/surrounded.h"
+#include "utils/testing.h"
 
 TEST_CASE("surrounded") {
   CHECK_EQ(surrounded('"', "hello there"), "\"hello there\"");

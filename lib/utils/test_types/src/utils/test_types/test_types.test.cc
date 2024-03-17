@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/test_types/test_types.h"
+#include "utils/testing.h"
 
 using namespace FlexFlow::test_types;
 

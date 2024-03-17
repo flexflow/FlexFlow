@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/bidict/bidict.h"
+#include "utils/testing.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("bidict::bidict()") {
@@ -128,4 +128,3 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 }
-

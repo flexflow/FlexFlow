@@ -6,25 +6,25 @@ namespace FlexFlow {
 // naming conventions following http://s3.amazonaws.com/lyah/listmonster.png
 
 template <typename T>
-struct get_head { };
+struct get_head {};
 
 template <typename T>
 using get_head_t = typename get_head<T>::type;
 
 template <typename T>
-struct get_tail { };
+struct get_tail {};
 
 template <typename T>
 using get_tail_t = typename get_tail<T>::type;
 
 template <typename T>
-struct get_last { };
+struct get_last {};
 
 template <typename T>
 using get_last_t = typename get_last<T>::type;
 
 template <typename T>
-struct get_init { };
+struct get_init {};
 
 template <typename T>
 using get_init_t = typename get_init<T>::type;

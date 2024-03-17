@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/type_traits_extra/is_equal_comparable.h"
+#include "utils/testing.h"
 
 struct equal_comparable {
   bool operator==(equal_comparable const &other) const;
@@ -15,7 +15,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK_FALSE(is_equal_comparable_v<not_equal_comparable>);
   }
 
-  TEST_CASE_TEMPLATE("is_equal_comparable", T, equal_comparable, not_equal_comparable) {
+  TEST_CASE_TEMPLATE(
+      "is_equal_comparable", T, equal_comparable, not_equal_comparable) {
     CHECK(is_equal_comparable<T>::value == is_equal_comparable_v<T>);
   }
 }

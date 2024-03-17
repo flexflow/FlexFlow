@@ -3,9 +3,9 @@
 
 #include "sequence.decl.h"
 #include "utils/ff_exceptions/ff_exceptions.h"
-#include <fmt/format.h>
 #include "utils/tuple.h"
 #include "utils/visitable_core.h"
+#include <fmt/format.h>
 #include <optional>
 #include <utility>
 

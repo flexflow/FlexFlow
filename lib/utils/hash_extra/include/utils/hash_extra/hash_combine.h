@@ -19,6 +19,6 @@ inline void hash_combine(std::size_t &seed, T const &v, Ts... rest) {
   hash_combine(seed, rest...);
 }
 
-}
+} // namespace FlexFlow
 
 #endif

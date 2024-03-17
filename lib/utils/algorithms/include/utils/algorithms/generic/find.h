@@ -11,7 +11,6 @@ typename Container::const_iterator
   return std::find(c.cbegin(), c.cend(), e);
 }
 
-
 } // namespace FlexFlow
 
 #endif

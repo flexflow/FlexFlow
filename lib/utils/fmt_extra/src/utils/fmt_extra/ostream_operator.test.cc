@@ -1,15 +1,15 @@
-#include "utils/testing.h"
 #include "utils/fmt_extra/ostream_operator.h"
-#include <string>
+#include "utils/testing.h"
 #include <sstream>
+#include <string>
 
-struct my_example_type { };
+struct my_example_type {};
 
 std::string format_as(my_example_type const &) {
   return "my_example_type{}";
 }
 
-struct my_example_undelegated_type { };
+struct my_example_undelegated_type {};
 
 std::string format_as(my_example_undelegated_type const &) {
   return "used fmt";

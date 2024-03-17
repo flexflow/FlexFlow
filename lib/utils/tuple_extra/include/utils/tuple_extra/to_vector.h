@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_TUPLE_EXTRA_INCLUDE_UTILS_TUPLE_EXTRA_TO_VECTOR_H
 #define _FLEXFLOW_LIB_UTILS_TUPLE_EXTRA_INCLUDE_UTILS_TUPLE_EXTRA_TO_VECTOR_H
 
-#include "utils/type_traits_extra/types_are_all_same.h"
 #include "utils/tuple_extra/for_each.h"
-#include <vector>
+#include "utils/type_traits_extra/types_are_all_same.h"
 #include <type_traits>
+#include <vector>
 
 namespace FlexFlow {
 

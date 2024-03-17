@@ -11,11 +11,11 @@ struct has_capability;
 template <capability_t NEEDLE, capability_t HEAD, capability_t... HAYSTACK>
 struct has_capability<NEEDLE, HEAD, HAYSTACK...>
     : std::disjunction<capability_implies<HEAD, NEEDLE>,
-                  has_capability<NEEDLE, HAYSTACK...>> {};
+                       has_capability<NEEDLE, HAYSTACK...>> {};
 
 template <capability_t NEEDLE>
 struct has_capability<NEEDLE> : std::false_type {};
 
-} // namespace FlexFlow
+} // namespace FlexFlow::test_types
 
 #endif

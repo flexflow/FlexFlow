@@ -2,6 +2,6 @@
 
 namespace FlexFlow {
 
-not_implemented::not_implemented() : std::logic_error("not implemented") { }
+not_implemented::not_implemented() : std::logic_error("not implemented") {}
 
-}
+} // namespace FlexFlow

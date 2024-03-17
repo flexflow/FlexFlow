@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/bidict/algorithms/merge.h"
+#include "utils/testing.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("merge_maps(bidict<L, R> const &, bidict<L, R> const &)") {

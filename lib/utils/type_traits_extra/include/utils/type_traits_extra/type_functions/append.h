@@ -4,7 +4,7 @@
 namespace FlexFlow {
 
 template <typename List, typename Element>
-struct append { };
+struct append {};
 
 template <typename List, typename Element>
 using append_t = typename append<List, Element>::type;

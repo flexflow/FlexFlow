@@ -1,12 +1,12 @@
-#include "utils/testing.h"
 #include "utils/type_traits_extra/type_list/concat.h"
+#include "utils/testing.h"
 #include "utils/type_traits_extra/debug_print_type.h"
 
 struct t1 {};
 struct t2 {};
 struct t3 {};
 
-template <typename... Ts> 
+template <typename... Ts>
 using args = std::tuple<Ts...>;
 
 TEST_SUITE(FF_TEST_SUITE) {

@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_FMT_EXTRA_INCLUDE_UTILS_FMT_EXTRA_INSTANCES_OPTIONAL_H
 #define _FLEXFLOW_LIB_UTILS_FMT_EXTRA_INCLUDE_UTILS_FMT_EXTRA_INSTANCES_OPTIONAL_H
 
-#include <optional>
-#include <fmt/format.h>
 #include "utils/fmt_extra/is_fmtable.h"
+#include <fmt/format.h>
+#include <optional>
 
 namespace fmt {
 
@@ -24,14 +24,13 @@ struct formatter<::std::optional<T>,
 };
 
 template <>
-struct formatter<::std::nullopt_t, char>
-    : formatter<::std::string> {
+struct formatter<::std::nullopt_t, char> : formatter<::std::string> {
   auto format(::std::nullopt_t const &q, format_context &ctx) const
       -> decltype(ctx.out()) {
     return formatter<std::string>::format("nullopt", ctx);
   }
 };
 
-} // namespace FlexFlow
+} // namespace fmt
 
 #endif

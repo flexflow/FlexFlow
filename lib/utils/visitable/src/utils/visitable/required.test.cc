@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/visitable/required.h"
+#include "utils/testing.h"
 
 /* namespace FlexFlow { */
 
@@ -18,13 +18,13 @@
 /* CHECK_FMTABLE(req<std::vector<std::string>>); */
 
 /* static_assert( */
-/*     is_equal_comparable<required_inheritance_impl<std::vector<int>>>::value, */
+/*     is_equal_comparable<required_inheritance_impl<std::vector<int>>>::value,
+ */
 /*     ""); */
 
 /* static_assert(std::is_copy_constructible<req<int>>::value, ""); */
 
 /* static_assert(std::is_convertible<req<int>, int>::value, ""); */
 /* static_assert(is_static_castable<req<void *>, int *>::value, ""); */
-
 
 /* } // namespace FlexFlow */

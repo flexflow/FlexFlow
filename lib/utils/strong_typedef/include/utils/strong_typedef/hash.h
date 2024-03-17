@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_STRONG_TYPEDEF_INCLUDE_UTILS_STRONG_TYPEDEF_HASH_H
 #define _FLEXFLOW_LIB_UTILS_STRONG_TYPEDEF_INCLUDE_UTILS_STRONG_TYPEDEF_HASH_H
 
-#include "utils/type_traits_extra/is_hashable.h"
 #include "underlying_type.h"
+#include "utils/type_traits_extra/is_hashable.h"
 #include <functional>
 
 namespace FlexFlow {

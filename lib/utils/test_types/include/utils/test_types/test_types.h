@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_TEST_TYPES_INCLUDE_UTILS_TEST_TYPES_TEST_TYPES_H
 #define _FLEXFLOW_LIB_UTILS_TEST_TYPES_INCLUDE_UTILS_TEST_TYPES_TEST_TYPES_H
 
-#include <type_traits>
-#include <string>
-#include "utils/backports/type_identity.h" 
 #include "has_capability.h"
+#include "utils/backports/type_identity.h"
+#include <string>
+#include <type_traits>
 
 namespace FlexFlow::test_types {
 
@@ -121,9 +121,7 @@ using wb_fmt = both_t<fmtable, well_behaved_value_type>;
 
 namespace std {
 
-template <
-    ::FlexFlow::test_types::
-        capability_t... CAPABILITIES>
+template <::FlexFlow::test_types::capability_t... CAPABILITIES>
 struct hash<::FlexFlow::test_types::test_type_t<CAPABILITIES...>> {
   template <
       ::FlexFlow::test_types::capability_t C = ::FlexFlow::test_types::HASHABLE>

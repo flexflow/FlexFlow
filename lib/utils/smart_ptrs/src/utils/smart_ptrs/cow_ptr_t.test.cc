@@ -1,8 +1,10 @@
-#include "utils/testing.h"
 #include "utils/smart_ptrs/cow_ptr_t.h"
+#include "utils/testing.h"
 
 struct clonable_t {
-  clonable_t *clone() const { return new clonable_t{}; }
+  clonable_t *clone() const {
+    return new clonable_t{};
+  }
 };
 
 TEST_CASE("cow_ptr_t") {

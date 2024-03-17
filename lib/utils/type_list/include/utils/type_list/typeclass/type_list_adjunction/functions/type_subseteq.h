@@ -5,17 +5,24 @@
 
 namespace FlexFlow {
 
-template <typename L, typename R, typename Instance = default_type_list_adjunction_t<L>, typename Enable = void>
-struct type_subseteq { };
+template <typename L,
+          typename R,
+          typename Instance = default_type_list_adjunction_t<L>,
+          typename Enable = void>
+struct type_subseteq {};
 
 template <typename L, typename R, typename Instance>
-struct type_subseteq<L, R, 
-  std::enable_if_t<is_valid_type_list_adjunction_v<L, Instance> && is_valid_type_list_adjunction_v<R, Instance>>
-  : type_list_subseteq<to_type_list_t<L, Instance>, to_type_list_t<R, Instance>> { };
+    struct type_subseteq < L,
+    R,
+    std::enable_if_t<is_valid_type_list_adjunction_v<L, Instance> &&
+                     is_valid_type_list_adjunction_v<R, Instance>>
+    : type_list_subseteq<to_type_list_t<L, Instance>,
+                         to_type_list_t<R, Instance>> {};
 
-template <typename L, typename R, typename Instance = default_type_list_adjunction_t<L>>
+template <typename L,
+          typename R,
+          typename Instance = default_type_list_adjunction_t<L>>
 inline constexpr bool type_subseteq_v = type_subseteq<L, R, Instance>::value;
-
 
 } // namespace FlexFlow
 

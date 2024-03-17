@@ -16,7 +16,6 @@ std::vector<Out> repeat(int n, F const &f) {
   return result;
 }
 
-
 } // namespace FlexFlow
 
 #endif

@@ -1,7 +1,7 @@
-#include "utils/testing.h"
 #include "utils/variant_extra/type/is_variant.h"
-#include <variant>
+#include "utils/testing.h"
 #include <string>
+#include <variant>
 
 struct opaque_t {};
 

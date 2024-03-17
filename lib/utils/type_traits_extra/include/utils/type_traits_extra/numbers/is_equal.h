@@ -7,10 +7,10 @@
 namespace FlexFlow {
 
 template <size_t L, size_t R>
-struct is_equal : std::false_type { };
+struct is_equal : std::false_type {};
 
 template <size_t N>
-struct is_equal<N, N> : std::true_type { };
+struct is_equal<N, N> : std::true_type {};
 
 template <typename T>
 inline constexpr bool is_equal_v = is_equal<T>::value;

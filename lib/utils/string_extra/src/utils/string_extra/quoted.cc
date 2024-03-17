@@ -1,8 +1,8 @@
 #include "utils/string_extra/quoted.h"
+#include "utils/algorithms/flatmap.h"
 #include "utils/algorithms/generic/contains.h"
 #include <string>
 #include <unordered_set>
-#include "utils/algorithms/flatmap.h"
 
 namespace FlexFlow {
 
@@ -26,5 +26,4 @@ std::string quoted(std::string const &s,
   });
 }
 
-
-}
+} // namespace FlexFlow

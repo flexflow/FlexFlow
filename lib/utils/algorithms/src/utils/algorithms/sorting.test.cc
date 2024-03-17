@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/algorithms/sorting.h"
+#include "utils/testing.h"
 
 TEST_CASE("Testing sorted_by function") {
   std::unordered_set<int> s = {5, 2, 3, 4, 1};

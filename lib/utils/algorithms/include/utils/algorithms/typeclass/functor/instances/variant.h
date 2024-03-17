@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_LIB_UTILS_ALGORITHMS_INCLUDE_UTILS_ALGORITHMS_TYPECLASS_FUNCTOR_INSTANCES_VARIANT_H
 #define _FLEXFLOW_LIB_UTILS_ALGORITHMS_INCLUDE_UTILS_ALGORITHMS_TYPECLASS_FUNCTOR_INSTANCES_VARIANT_H
 
-#include <variant>
 #include "utils/algorithms/typeclass/functor/functor.h"
 #include "utils/backports/type_identity.h"
 #include "utils/type_traits_extra/type_list/replace.h"
 #include "utils/variant_extra/variant.h"
+#include <variant>
 
 namespace FlexFlow {
 
@@ -29,10 +29,8 @@ struct variant_idx_functor {
 
 /* template <typename ToReplace..., typename... Ts> */
 /* struct variant_functor { */
-/*   using A = variant_from_type_list<type_list_subtract_t<type_list<Ts...>, type_list<ToReplace...>>>; */
-
-  
-
+/*   using A = variant_from_type_list<type_list_subtract_t<type_list<Ts...>,
+ * type_list<ToReplace...>>>; */
 
 } // namespace FlexFlow
 

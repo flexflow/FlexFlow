@@ -5,17 +5,19 @@
 
 namespace FlexFlow {
 
-template <template <typename...> typename Metafunction, typename ArgList> struct type_list_apply { };
+template <template <typename...> typename Metafunction, typename ArgList>
+struct type_list_apply {};
 
-template <template <typename...> typename Metafunction, typename... Args> 
+template <template <typename...> typename Metafunction, typename... Args>
 struct type_list_apply<Metafunction, type_list<Args...>>
-  : Metafunction<Args...> { };
+    : Metafunction<Args...> {};
 
-template <template <typename...> typename Metafunction, typename ArgList> 
+template <template <typename...> typename Metafunction, typename ArgList>
 using type_list_apply_t = typename type_list_apply<Metafunction, ArgList>::type;
 
 template <template <typename...> typename Metafunction, typename ArgList>
-inline constexpr auto type_list_apply_v = type_list_apply<Metafunction, ArgList>::value;
+inline constexpr auto type_list_apply_v =
+    type_list_apply<Metafunction, ArgList>::value;
 
 } // namespace FlexFlow
 

@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_UTILS_VISITABLE_OPERATIONS_FMT_H
 #define _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_UTILS_VISITABLE_OPERATIONS_FMT_H
 
-#include <sstream>
-#include "utils/visitable/type/traits/is_visitable.h"
 #include "utils/fmt_extra/is_fmtable.h"
 #include "utils/type_traits_extra/metafunction/elements_satisfy.h"
+#include "utils/visitable/type/traits/is_visitable.h"
+#include <sstream>
 
 namespace FlexFlow {
 

@@ -5,8 +5,9 @@
 
 namespace FlexFlow {
 
-template <typename Head, typename... Tail> 
-std::tuple<Head, Tail...> tuple_prepend(Head const &h, std::tuple<Tail...> const &tail) {
+template <typename Head, typename... Tail>
+std::tuple<Head, Tail...> tuple_prepend(Head const &h,
+                                        std::tuple<Tail...> const &tail) {
   return std::tuple_cat(std::tuple<Head>{h}, tail);
 }
 

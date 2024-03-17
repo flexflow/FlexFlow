@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/hash_extra/hash_combine.h"
+#include "utils/testing.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("hash_combine(std::size_t &, T const &)") {
@@ -22,7 +22,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     hash_combine(h4, y);
     hash_combine(h4, y);
 
-    std::unordered_set<size_t> hashes = { h1, h2, h3, h4 };
+    std::unordered_set<size_t> hashes = {h1, h2, h3, h4};
     CHECK(hashes.size() == 4); // all hashes should be unique
   }
 

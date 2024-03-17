@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_FMT_EXTRA_INCLUDE_UTILS_FMT_EXTRA_ELEMENT_TO_STRING_H
 #define _FLEXFLOW_LIB_UTILS_FMT_EXTRA_INCLUDE_UTILS_FMT_EXTRA_ELEMENT_TO_STRING_H
 
-#include <string>
 #include <fmt/format.h>
+#include <string>
 
 namespace FlexFlow {
 

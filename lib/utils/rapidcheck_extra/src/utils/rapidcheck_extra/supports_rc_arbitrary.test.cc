@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/rapidcheck_extra/supports_rc_arbitrary.h"
+#include "utils/testing.h"
 
 using namespace rc;
 
@@ -10,6 +10,9 @@ TEST_CASE("supports_rc_arbitrary_v") {
   CHECK_FALSE(supports_rc_arbitrary_v<does_not_support_arbitrary>);
 }
 
-TEST_CASE_TEMPLATE("supports_rc_arbitrary", T, int, does_not_support_arbitrary) {
+TEST_CASE_TEMPLATE("supports_rc_arbitrary",
+                   T,
+                   int,
+                   does_not_support_arbitrary) {
   CHECK(supports_rc_arbitrary<T>::value == supports_rc_arbitrary_v<T>);
 }

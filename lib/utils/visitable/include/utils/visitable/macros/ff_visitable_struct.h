@@ -3,10 +3,6 @@
 
 #include "dispatch_visitable.h"
 
-namespace FlexFlow {
-
-
-
-} // namespace FlexFlow
+namespace FlexFlow {} // namespace FlexFlow
 
 #endif

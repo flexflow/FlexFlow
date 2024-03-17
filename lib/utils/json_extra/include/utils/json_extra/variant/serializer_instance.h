@@ -17,6 +17,6 @@ struct adl_serializer<std::variant<Args...>,
   }
 };
 
-} // namespace FlexFlow
+} // namespace nlohmann
 
 #endif

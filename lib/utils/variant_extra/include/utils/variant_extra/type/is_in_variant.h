@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_VARIANT_EXTRA_INCLUDE_UTILS_VARIANT_EXTRA_TYPE_IS_IN_VARIANT_H
 #define _FLEXFLOW_LIB_UTILS_VARIANT_EXTRA_INCLUDE_UTILS_VARIANT_EXTRA_TYPE_IS_IN_VARIANT_H
 
-#include "utils/type_traits_extra/type_list/as_type_list.h" 
+#include "utils/type_traits_extra/type_list/as_type_list.h"
 #include "utils/type_traits_extra/type_list/contains.h"
 
 namespace FlexFlow {

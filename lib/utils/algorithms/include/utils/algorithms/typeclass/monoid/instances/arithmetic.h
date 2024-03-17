@@ -6,28 +6,37 @@
 
 namespace FlexFlow {
 
-template <typename T, typename Enable = void> struct addition_monoid { };
+template <typename T, typename Enable = void>
+struct addition_monoid {};
 
 template <typename T>
 struct addition_monoid<T, std::enable_if_t<std::is_arithmetic_v<T>>> {
-  static T mempty() { return static_cast<T>(0); }
-  static void mappend_inplace(T &lhs, T const &rhs) { lhs += rhs; }
+  static T mempty() {
+    return static_cast<T>(0);
+  }
+  static void mappend_inplace(T &lhs, T const &rhs) {
+    lhs += rhs;
+  }
 };
 
 template <typename T>
-struct is_commutative_monoid<addition_monoid<T>> : std::true_type { };
+struct is_commutative_monoid<addition_monoid<T>> : std::true_type {};
 
-template <typename T, typename Enable = void> struct product_monoid { };
+template <typename T, typename Enable = void>
+struct product_monoid {};
 
 template <typename T>
 struct product_monoid<T, std::enable_if_t<std::is_arithmetic_v<T>>> {
-  static T mempty() { return static_cast<T>(1); }
-  static void mappend_inplace(T &lhs, T const &rhs) { lhs *= rhs; }
+  static T mempty() {
+    return static_cast<T>(1);
+  }
+  static void mappend_inplace(T &lhs, T const &rhs) {
+    lhs *= rhs;
+  }
 };
 
 template <typename T>
-struct is_commutative_monoid<product_monoid<T>> : std::true_type { };
-
+struct is_commutative_monoid<product_monoid<T>> : std::true_type {};
 
 } // namespace FlexFlow
 

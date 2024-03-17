@@ -2,8 +2,8 @@
 #define _FLEXFLOW_LIB_UTILS_ALGORITHMS_INCLUDE_UTILS_ALGORITHMS_FLATMAP_H
 
 #include <sstream>
-#include <vector>
 #include <type_traits>
+#include <vector>
 
 namespace FlexFlow {
 

@@ -12,11 +12,12 @@ template <template <typename...> class Func, int N>
 struct is_nary_metafunction<
     Func,
     N,
-    std::enable_if_t<(metafunction_num_args<Func>::value == N)>> : std::true_type {};
+    std::enable_if_t<(metafunction_num_args<Func>::value == N)>>
+    : std::true_type {};
 
 template <template <typename...> class Func, int N>
-inline constexpr bool is_nary_metafunction_v = is_nary_metafunction<Func, N>::value;
-
+inline constexpr bool is_nary_metafunction_v =
+    is_nary_metafunction<Func, N>::value;
 
 } // namespace FlexFlow
 

@@ -13,7 +13,6 @@ std::unordered_set<T> set_union(std::unordered_set<T> const &l,
   return result;
 }
 
-
 } // namespace FlexFlow
 
 #endif

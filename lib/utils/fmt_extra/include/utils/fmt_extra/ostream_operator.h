@@ -1,15 +1,15 @@
 #ifndef _FLEXFLOW_LIB_UTILS_FMT_EXTRA_INCLUDE_UTILS_FMT_EXTRA_OSTREAM_OPERATOR_H
 #define _FLEXFLOW_LIB_UTILS_FMT_EXTRA_INCLUDE_UTILS_FMT_EXTRA_OSTREAM_OPERATOR_H
 
-#include <type_traits>
-#include <string>
-#include <fmt/format.h>
 #include "utils/fmt_extra/is_fmtable.h"
+#include <fmt/format.h>
+#include <string>
+#include <type_traits>
 
 namespace FlexFlow {
 
 template <typename T>
-struct ostream_operator_delegate_is_expected : std::false_type { };
+struct ostream_operator_delegate_is_expected : std::false_type {};
 
 template <typename T>
 inline constexpr bool ostream_operator_delegate_is_expected_v =
@@ -19,7 +19,8 @@ template <typename T, typename Enable = void>
 struct do_not_delegate_ostream_operator : std::false_type {};
 
 template <typename T>
-inline constexpr bool do_not_delegate_ostream_operator_v = do_not_delegate_ostream_operator<T>::value;
+inline constexpr bool do_not_delegate_ostream_operator_v =
+    do_not_delegate_ostream_operator<T>::value;
 
 template <>
 struct do_not_delegate_ostream_operator<int> : std::true_type {};
@@ -38,8 +39,8 @@ struct do_not_delegate_ostream_operator<char const *> : std::true_type {};
 
 template <typename T>
 std::enable_if_t<is_fmtable_v<T> && !do_not_delegate_ostream_operator_v<T> &&
-                !ostream_operator_delegate_is_expected_v<T>,
-            std::ostream &>
+                     !ostream_operator_delegate_is_expected_v<T>,
+                 std::ostream &>
     operator<<(std::ostream &s, T const &t) {
 
   std::string result = fmt::to_string(t);
@@ -55,7 +56,6 @@ std::enable_if_t<ostream_operator_delegate_is_expected_v<T>, std::ostream &>
   return s << result;
 }
 
-
-}
+} // namespace FlexFlow
 
 #endif

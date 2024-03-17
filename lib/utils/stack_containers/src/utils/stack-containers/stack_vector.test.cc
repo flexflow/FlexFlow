@@ -1,5 +1,5 @@
-#include "testing.h"
 #include "utils/stack-containers/stack_vector.h"
+#include "testing.h"
 #include <iterator>
 
 using namespace FlexFlow;

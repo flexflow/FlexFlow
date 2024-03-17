@@ -2,6 +2,4 @@
 #include "utils/containers.h"
 #include "utils/string.h"
 
-namespace FlexFlow {
-
-} // namespace FlexFlow
+namespace FlexFlow {} // namespace FlexFlow

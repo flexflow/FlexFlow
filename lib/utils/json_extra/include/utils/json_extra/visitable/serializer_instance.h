@@ -19,6 +19,6 @@ struct adl_serializer<
   }
 };
 
-}
+} // namespace nlohmann
 
 #endif

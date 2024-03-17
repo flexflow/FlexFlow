@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_STD_PAIR_H
 #define _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_STD_PAIR_H
 
-#include <utility>
-#include <functional>
 #include "utils/hash_extra/hash_combine.h"
+#include <functional>
+#include <utility>
 
 namespace std {
 
@@ -19,6 +19,6 @@ struct hash<std::pair<L, R>> {
   }
 };
 
-} // namespace FlexFlow
+} // namespace std
 
 #endif

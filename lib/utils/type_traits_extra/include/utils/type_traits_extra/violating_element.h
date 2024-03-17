@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_TYPE_TRAITS_EXTRA_INCLUDE_UTILS_TYPE_TRAITS_EXTRA_VIOLATING_ELEMENT_H
 #define _FLEXFLOW_LIB_UTILS_TYPE_TRAITS_EXTRA_INCLUDE_UTILS_TYPE_TRAITS_EXTRA_VIOLATING_ELEMENT_H
 
-#include <type_traits>
 #include "utils/backports/type_identity.h"
+#include <type_traits>
 
 namespace FlexFlow {
 
@@ -23,7 +23,7 @@ struct violating_element_impl<Cond, Head, Ts...>
                              Head>> {};
 
 template <template <typename...> class Cond>
-struct violating_element_impl<Cond> : type_identity<void> { };
+struct violating_element_impl<Cond> : type_identity<void> {};
 
 template <template <typename...> class Cond, typename T>
 struct violating_element<Cond,
@@ -43,7 +43,6 @@ struct violating_element<Cond,
                          std::tuple<Ts...>,
                          enable_if_t<is_nary_metafunction<Cond, 1>::value>>
     : violating_element_impl<Cond, Ts...> {};
-
 
 } // namespace FlexFlow
 

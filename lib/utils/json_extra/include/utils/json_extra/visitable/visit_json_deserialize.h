@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_JSON_EXTRA_INCLUDE_UTILS_JSON_EXTRA_VISITABLE_JSON_DESERIALIZATION_VISITOR_H
 #define _FLEXFLOW_LIB_UTILS_JSON_EXTRA_INCLUDE_UTILS_JSON_EXTRA_VISITABLE_JSON_DESERIALIZATION_VISITOR_H
 
-#include "visit_struct/visit_struct.hpp"
 #include "nlohmann/json.hpp"
-#include "utils/visitable/type/traits/is_visitable.h"
 #include "utils/type_traits_extra/metafunction/elements_satisfy.h"
+#include "utils/visitable/type/traits/is_visitable.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
 

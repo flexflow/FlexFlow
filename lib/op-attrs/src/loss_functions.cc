@@ -18,7 +18,8 @@ std::string format_as(LossFunction const &d) {
     case LossFunction::IDENTITY:
       return "Identity";
     default:
-      throw mk_runtime_error("Unknown LossFunction with value {}", static_cast<int>(d));
+      throw mk_runtime_error("Unknown LossFunction with value {}",
+                             static_cast<int>(d));
   }
 }
 
@@ -58,7 +59,5 @@ LossFunction parse_loss_name(std::string const &raw_name) {
         "Unknown loss type {}. Please report this as an issue.", name);
   }
 }
-
-
 
 } // namespace FlexFlow

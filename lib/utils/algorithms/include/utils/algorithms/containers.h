@@ -22,7 +22,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "utils/type_traits.h"
 
 namespace FlexFlow {
 
@@ -225,7 +224,6 @@ std::unordered_set<T> set_union(C const &sets) {
   return result;
 }
 
-
 template <typename T>
 bool is_supserseteq_of(std::unordered_set<T> const &l,
                        std::unordered_set<T> const &r) {
@@ -372,7 +370,6 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
   return result;
 }
 
-
 template <typename C, typename F>
 C filter(C const &v, F const &f) {
   C result(v);
@@ -408,7 +405,6 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
     });
   });
 }
-
 
 } // namespace FlexFlow
 

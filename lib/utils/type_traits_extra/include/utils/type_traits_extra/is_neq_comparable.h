@@ -17,7 +17,6 @@ struct is_neq_comparable<
 template <typename T>
 inline constexpr bool is_neq_comparable_v = is_neq_comparable<T>::value;
 
-
 } // namespace FlexFlow
 
 #endif

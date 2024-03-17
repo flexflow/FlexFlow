@@ -5,11 +5,11 @@
 
 namespace FlexFlow {
 
-template <typename T> struct type_list_length { };
+template <typename T>
+struct type_list_length {};
 
 template <typename T>
 inline constexpr int type_list_length_v = type_list_length<T>::value;
-
 
 } // namespace FlexFlow
 

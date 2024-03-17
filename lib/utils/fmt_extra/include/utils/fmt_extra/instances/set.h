@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_LIB_UTILS_FMT_EXTRA_INCLUDE_UTILS_FMT_EXTRA_INSTANCES_SET_H
 #define _FLEXFLOW_LIB_UTILS_FMT_EXTRA_INCLUDE_UTILS_FMT_EXTRA_INSTANCES_SET_H
 
-#include <set>
-#include <fmt/format.h>
-#include "utils/string_extra/surrounded.h"
-#include "utils/string_extra/join_strings.h"
 #include "utils/fmt_extra/is_fmtable.h"
+#include "utils/string_extra/join_strings.h"
+#include "utils/string_extra/surrounded.h"
+#include <fmt/format.h>
+#include <set>
 
 namespace fmt {
 
@@ -25,6 +25,6 @@ struct formatter<::std::set<T>,
   }
 };
 
-} // namespace FlexFlow
+} // namespace fmt
 
 #endif

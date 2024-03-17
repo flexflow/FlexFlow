@@ -1,10 +1,9 @@
-#include "utils/testing.h"
 #include "utils/hash_extra/iter_hash.h"
+#include "utils/testing.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("iter_hash") {
-    std::vector<int> 
-      v = { 1, 2, 3 };
+    std::vector<int> v = {1, 2, 3};
 
     std::size_t result1 = 0;
     iter_hash(result1, v.begin(), v.end());

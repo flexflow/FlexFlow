@@ -6,14 +6,16 @@
 
 namespace FlexFlow {
 
-template <typename T, typename ArgList> struct is_list_initializable_from_type_list;
+template <typename T, typename ArgList>
+struct is_list_initializable_from_type_list;
 
-template <typename T, typename ...Args>
-struct is_list_initializable_from_type_list<T, type_list<Args...>> : is_list_initializable<T, Args...> { };
+template <typename T, typename... Args>
+struct is_list_initializable_from_type_list<T, type_list<Args...>>
+    : is_list_initializable<T, Args...> {};
 
 template <typename T, typename ArgList>
-inline constexpr bool is_list_initializable_from_type_list_v = is_list_initializable_from_type_list<T, ArgList>::value;
-
+inline constexpr bool is_list_initializable_from_type_list_v =
+    is_list_initializable_from_type_list<T, ArgList>::value;
 
 } // namespace FlexFlow
 

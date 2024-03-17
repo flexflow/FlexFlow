@@ -30,7 +30,6 @@ std::vector<T> slice(std::vector<T> const &v,
   return output;
 }
 
-
 } // namespace FlexFlow
 
 #endif

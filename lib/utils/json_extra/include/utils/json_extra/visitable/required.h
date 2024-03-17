@@ -14,6 +14,6 @@ struct adl_serializer<::FlexFlow::req<T>> {
   }
 };
 
-} // namespace FlexFlow
+} // namespace nlohmann
 
 #endif

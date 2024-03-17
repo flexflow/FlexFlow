@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_LIB_UTILS_TUPLE_EXTRA_INCLUDE_UTILS_TUPLE_EXTRA_TRANSFORM_H
 #define _FLEXFLOW_LIB_UTILS_TUPLE_EXTRA_INCLUDE_UTILS_TUPLE_EXTRA_TRANSFORM_H
 
-#include <tuple>
 #include "utils/compile_time_sequence/enumerate_args.h"
-#include "utils/tuple_extra/prepend.h"
-#include "utils/type_list/functions/tuple_from_type_list.h"
 #include "utils/compile_time_sequence/sequence.h"
 #include "utils/compile_time_sequence/transform_type.h"
+#include "utils/tuple_extra/prepend.h"
+#include "utils/type_list/functions/tuple_from_type_list.h"
+#include <tuple>
 
 namespace FlexFlow {
 

@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_STRONG_TYPEDEF_INCLUDE_UTILS_STRONG_TYPEDEF_STRONG_TYPEDEF_H
 #define _FLEXFLOW_LIB_UTILS_STRONG_TYPEDEF_INCLUDE_UTILS_STRONG_TYPEDEF_STRONG_TYPEDEF_H
 
+#include "utils/type_traits_extra/is_static_castable.h"
 #include <functional>
 #include <string>
 #include <type_traits>
-#include "utils/type_traits_extra/is_static_castable.h"
 
 namespace FlexFlow {
 

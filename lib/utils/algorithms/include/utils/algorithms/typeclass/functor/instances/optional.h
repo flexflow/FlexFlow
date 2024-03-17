@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_ALGORITHMS_INCLUDE_UTILS_ALGORITHMS_TYPE_FUNCTOR_INSTANCES_OPTIONAL_H
 #define _FLEXFLOW_LIB_UTILS_ALGORITHMS_INCLUDE_UTILS_ALGORITHMS_TYPE_FUNCTOR_INSTANCES_OPTIONAL_H
 
-#include <optional>
 #include "utils/algorithms/typeclass/functor/functor.h"
 #include "utils/backports/type_identity.h"
+#include <optional>
 
 namespace FlexFlow {
 
@@ -20,13 +20,14 @@ struct optional_functor {
     if (v.has_value()) {
       return f(v.value());
     } else {
-      return std::nullopt; 
+      return std::nullopt;
     }
   }
 };
 
 template <typename T>
-struct default_functor<std::optional<T>> : type_identity<optional_functor<T>> {};
+struct default_functor<std::optional<T>> : type_identity<optional_functor<T>> {
+};
 
 } // namespace FlexFlow
 

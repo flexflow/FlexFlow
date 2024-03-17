@@ -6,16 +6,26 @@ namespace FlexFlow::test_types {
 
 std::string format_as(capability_t c) {
   switch (c) {
-    case HASHABLE: return "HASHABLE";
-    case EQ: return "EQ";
-    case CMP: return "CMP";
-    case DEFAULT_CONSTRUCTIBLE: return "DEFAULT_CONSTRUCTIBLE";
-    case MOVE_CONSTRUCTIBLE: return "MOVE_CONSTRUCTIBLE";
-    case COPY_CONSTRUCTIBLE: return "COPY_CONSTRUCTIBLE";
-    case COPY_ASSIGNABLE: return "COPY_ASSIGNABLE";
-    case PLUS: return "PLUS";
-    case PLUSEQ: return "PLUSEQ";
-    case FMT: return "FMT";
+    case HASHABLE:
+      return "HASHABLE";
+    case EQ:
+      return "EQ";
+    case CMP:
+      return "CMP";
+    case DEFAULT_CONSTRUCTIBLE:
+      return "DEFAULT_CONSTRUCTIBLE";
+    case MOVE_CONSTRUCTIBLE:
+      return "MOVE_CONSTRUCTIBLE";
+    case COPY_CONSTRUCTIBLE:
+      return "COPY_CONSTRUCTIBLE";
+    case COPY_ASSIGNABLE:
+      return "COPY_ASSIGNABLE";
+    case PLUS:
+      return "PLUS";
+    case PLUSEQ:
+      return "PLUSEQ";
+    case FMT:
+      return "FMT";
     default:
       std::ostringstream oss;
       oss << "Unknown capability {}" << static_cast<int>(c);
@@ -23,4 +33,4 @@ std::string format_as(capability_t c) {
   }
 }
 
-}
+} // namespace FlexFlow::test_types

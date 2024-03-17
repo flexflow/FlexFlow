@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_STD_UNORDERED_MAP_H
 #define _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_STD_UNORDERED_MAP_H
 
+#include "utils/hash_extra/get_std_hash.h"
+#include "utils/hash_extra/instances/pair.h"
+#include "utils/hash_extra/instances/unordered_set.h"
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
-#include <functional>
-#include "utils/hash_extra/get_std_hash.h"
-#include "utils/hash_extra/instances/unordered_set.h"
-#include "utils/hash_extra/instances/pair.h"
 
 namespace std {
 
@@ -18,7 +18,6 @@ struct hash<std::unordered_map<K, V>> {
   }
 };
 
-
-} // namespace FlexFlow
+} // namespace std
 
 #endif

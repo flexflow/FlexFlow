@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_VARIANT_EXTRA_INCLUDE_UTILS_VARIANT_EXTRA_IS_H
 #define _FLEXFLOW_LIB_UTILS_VARIANT_EXTRA_INCLUDE_UTILS_VARIANT_EXTRA_IS_H
 
-#include <variant>
 #include "type/is_in_variant.h"
+#include <variant>
 
 namespace FlexFlow {
 

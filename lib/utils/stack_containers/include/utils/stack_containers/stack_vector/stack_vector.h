@@ -4,8 +4,8 @@
 #include "utils/fmt_extra/is_fmtable.h"
 #include <array>
 #include <cassert>
-#include <type_traits>
 #include <optional>
+#include <type_traits>
 #include <vector>
 
 namespace FlexFlow {
@@ -14,7 +14,9 @@ template <typename T, std::size_t MAXSIZE>
 struct stack_vector {
 private:
   using element_type =
-      std::conditional_t<std::is_default_constructible<T>::value, T, std::optional<T>>;
+      std::conditional_t<std::is_default_constructible<T>::value,
+                         T,
+                         std::optional<T>>;
 
   static T const &get_value(T const &t) {
     return t;
@@ -297,19 +299,14 @@ private:
   std::array<element_type, MAXSIZE> contents;
 
   static_assert(
-      implies_v<is_equal_comparable<T>, is_equal_comparable<stack_vector>>,
-      );
+      implies_v<is_equal_comparable<T>, is_equal_comparable<stack_vector>>, );
   static_assert(
-      implies_v<is_neq_comparable<T>, is_neq_comparable<stack_vector>>,
-      );
-  static_assert(
-      implies_v<is_lt_comparable<T>, is_lt_comparable<stack_vector>>
-      );
+      implies_v<is_neq_comparable<T>, is_neq_comparable<stack_vector>>, );
+  static_assert(implies_v<is_lt_comparable<T>, is_lt_comparable<stack_vector>>);
 };
 
 CHECK_FMTABLE(stack_vector<test_types::fmtable, 5>);
 
 } // namespace FlexFlow
-
 
 #endif

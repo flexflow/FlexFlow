@@ -17,7 +17,7 @@
   CHECK_WELL_BEHAVED_VISIT_TYPE(TYPENAME);                                     \
   CHECK_CONSTRUCTION_NONEMPTY(TYPENAME);
 
-#define FF_VISITABLE_STRUCT(...) \
+#define FF_VISITABLE_STRUCT(...)                                               \
   _DISPATCH_VISITABLE(FF_VISITABLE_STRUCT, __VA_ARGS__)
 
 #endif

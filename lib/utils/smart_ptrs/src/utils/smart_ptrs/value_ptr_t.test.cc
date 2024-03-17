@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/smart_ptrs/value_ptr_t.h"
+#include "utils/testing.h"
 
 struct example_t {
   example_t *clone() {
@@ -11,13 +11,15 @@ struct example_t {
 };
 
 TEST_CASE("value_ptr") {
-  value_ptr<example_t> v = make_value_ptr<example_t>(3, static_cast<float>(5.0)); 
+  value_ptr<example_t> v =
+      make_value_ptr<example_t>(3, static_cast<float>(5.0));
   CHECK(v->x == 3);
   CHECK(v->y == 5.0);
 }
 
 TEST_CASE("value_ptr copy semantics") {
-  value_ptr<example_t> v = make_value_ptr<example_t>(3, static_cast<float>(5.0)); 
+  value_ptr<example_t> v =
+      make_value_ptr<example_t>(3, static_cast<float>(5.0));
   auto v2 = v;
   v2->x = 4;
 

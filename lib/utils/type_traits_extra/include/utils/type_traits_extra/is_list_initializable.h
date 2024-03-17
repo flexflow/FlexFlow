@@ -9,16 +9,18 @@ template <typename T, typename Enable = void, typename... Args>
 struct is_list_initializable_impl : std::false_type {};
 
 template <typename T, typename... Args>
-struct is_list_initializable_impl<T,
-                                  std::void_t<decltype(T{std::declval<Args>()...})>,
-                                  Args...> : std::true_type {};
+struct is_list_initializable_impl<
+    T,
+    std::void_t<decltype(T{std::declval<Args>()...})>,
+    Args...> : std::true_type {};
 
 template <typename T, typename... Args>
 using is_list_initializable = is_list_initializable_impl<T, void, Args...>;
 
 template <typename T, typename... Args>
-inline constexpr bool is_list_initializable_v = is_list_initializable<T, Args...>::value;
+inline constexpr bool is_list_initializable_v =
+    is_list_initializable<T, Args...>::value;
 
-}
+} // namespace FlexFlow
 
 #endif

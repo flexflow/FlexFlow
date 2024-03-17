@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_UTILS_VISITABLE_OPERATIONS_HASH_H
 #define _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_UTILS_VISITABLE_OPERATIONS_HASH_H
 
-#include <functional>
-#include "visit_struct/visit_struct.hpp"
-#include "utils/visitable/type/traits/is_visitable.h"
 #include "utils/type_traits_extra/is_hashable.h"
 #include "utils/type_traits_extra/metafunction/elements_satisfy.h"
+#include "utils/visitable/type/traits/is_visitable.h"
+#include "visit_struct/visit_struct.hpp"
+#include <functional>
 
 namespace FlexFlow {
 
@@ -42,7 +42,6 @@ struct use_visitable_hash {
   struct hash<TYPENAME> : ::FlexFlow::use_visitable_hash<TYPENAME> {};         \
   }                                                                            \
   static_assert(true, "")
-
 
 } // namespace FlexFlow
 

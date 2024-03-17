@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_ALGORITHMS_LOOKUP_H
 #define _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_ALGORITHMS_LOOKUP_H
 
-#include <functional>
 #include "utils/bidict/bidict.h"
+#include <functional>
 
 namespace FlexFlow {
 
@@ -15,7 +15,6 @@ template <typename L, typename R>
 std::function<L(R const &)> lookup_in_r(bidict<L, R> const &m) {
   return [&m](R const &r) -> L { return m.at_r(r); };
 }
-
 
 } // namespace FlexFlow
 

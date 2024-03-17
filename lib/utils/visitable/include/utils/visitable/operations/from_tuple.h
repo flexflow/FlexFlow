@@ -32,7 +32,6 @@ T visitable_from_tuple(std::tuple<Args...> const &t) {
   return visitable_from_tuple_impl<T>(seq_enumerate_args_t<Args...>{}, t);
 };
 
-
 } // namespace FlexFlow
 
 #endif

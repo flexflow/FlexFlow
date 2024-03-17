@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_VISITABLE_OPERATORS_EQ_H
 #define _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_VISITABLE_OPERATORS_EQ_H
 
-#include "utils/visitable/type/traits/is_visitable.h"
 #include "utils/type_traits_extra/is_equal_comparable.h"
 #include "utils/visitable/type/traits/elements_satisfy.h"
+#include "utils/visitable/type/traits/is_visitable.h"
 
 namespace FlexFlow {
 
@@ -14,17 +14,17 @@ bool visit_eq(T const &lhs, T const &rhs) {
   /*               "Values must be comparable via operator=="); */
 
   bool result = true;
-  visit_struct::for_each(lhs, rhs, [&](char const *, auto const &t1, auto const &t2) {
-    result &= (t1 == t2);
-  });
+  visit_struct::for_each(
+      lhs, rhs, [&](char const *, auto const &t1, auto const &t2) {
+        result &= (t1 == t2);
+      });
   return result;
 }
-
 
 template <typename T>
 auto operator==(T const &lhs, T const &rhs)
     -> std::enable_if_t<is_visitable_v<T>, bool> {
-                               /* elements_satisfy<is_equal_comparable, T>>, */
+  /* elements_satisfy<is_equal_comparable, T>>, */
   return visit_eq(lhs, rhs);
 }
 

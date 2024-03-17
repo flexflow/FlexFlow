@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_ALGORITHMS_SORTING_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_ALGORITHMS_SORTING_H
 
-#include "utils/type_traits_extra/iterator.h"
-#include <unordered_map>
 #include "utils/backports/type_identity.h"
+#include "utils/type_traits_extra/iterator.h"
 #include <algorithm>
-#include <map>
-#include <vector>
 #include <functional>
+#include <map>
+#include <unordered_map>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -18,7 +18,8 @@ template <typename K, typename V>
 struct sorted_elem_type<std::map<K, V>> : type_identity<std::pair<K, V>> {};
 
 template <typename K, typename V>
-struct sorted_elem_type<std::unordered_map<K, V>> : type_identity<std::pair<K, V>> {};
+struct sorted_elem_type<std::unordered_map<K, V>>
+    : type_identity<std::pair<K, V>> {};
 
 template <typename T>
 using sorted_elem_type_t = typename sorted_elem_type<T>::type;
@@ -57,6 +58,6 @@ std::function<bool(T const &, T const &)> compare_by(F const &f) {
   return [=](T const &lhs, T const &rhs) { return f(lhs) < f(rhs); };
 }
 
-}
+} // namespace FlexFlow
 
 #endif

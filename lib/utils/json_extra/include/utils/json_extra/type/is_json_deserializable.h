@@ -7,13 +7,13 @@ template <typename T, typename Enable = void>
 struct is_json_deserializable : std::false_type {};
 
 template <typename T>
-struct is_json_deserializable<T,
-                              std::void_t<decltype(std::declval<json>().get<T>())>>
-    : std::true_type {};
+struct is_json_deserializable<
+    T,
+    std::void_t<decltype(std::declval<json>().get<T>())>> : std::true_type {};
 
 template <typename T>
-inline constexpr bool is_json_deserializable_v = is_json_deserializable<T>::value;
-
+inline constexpr bool is_json_deserializable_v =
+    is_json_deserializable<T>::value;
 
 } // namespace FlexFlow
 

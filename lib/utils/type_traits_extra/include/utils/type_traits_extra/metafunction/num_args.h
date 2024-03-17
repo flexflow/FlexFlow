@@ -14,13 +14,14 @@ struct metafunction_num_args {
 };
 
 template <template <typename...> class Cond, typename... Args>
-struct metafunction_num_args<Cond,
-                             std::void_t<decltype(std::declval<Cond<Args...>>())>,
-                             Args...>
-    : std::integral_constant<int, (sizeof...(Args))> {};
+struct metafunction_num_args<
+    Cond,
+    std::void_t<decltype(std::declval<Cond<Args...>>())>,
+    Args...> : std::integral_constant<int, (sizeof...(Args))> {};
 
 template <template <typename...> class Cond, typename... Args>
-inline constexpr int metafunction_num_args_v = metafunction_num_args<Cond, Args...>::value;
+inline constexpr int metafunction_num_args_v =
+    metafunction_num_args<Cond, Args...>::value;
 
 } // namespace FlexFlow
 

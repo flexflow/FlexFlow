@@ -22,9 +22,8 @@ struct types_are_all_same<T> : std::true_type {};
 
 template <typename Head, typename Next, typename... Rest>
 struct types_are_all_same<Head, Next, Rest...>
-    : std::conjunction<std::is_same<Head, Next>, types_are_all_same<Head, Rest...>> {
-};
-
+    : std::conjunction<std::is_same<Head, Next>,
+                       types_are_all_same<Head, Rest...>> {};
 
 } // namespace FlexFlow
 

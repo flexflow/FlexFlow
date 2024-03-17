@@ -49,7 +49,6 @@ T moveonly_visit_json_deserialize(json const &j) {
   return visitable_from_tuple<T>(tuple_from_json<T>(j));
 }
 
-
 } // namespace FlexFlow
 
 #endif

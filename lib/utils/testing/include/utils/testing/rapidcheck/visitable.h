@@ -13,8 +13,7 @@ using namespace FlexFlow;
 namespace rc {
 
 template <typename Tag>
-struct Arbitrary<Tag,
-                 std::enable_if_t<is_strong_typedef<Tag>::value>> {
+struct Arbitrary<Tag, std::enable_if_t<is_strong_typedef<Tag>::value>> {
   static Gen<Tag> arbitrary() {
     return gen::construct<Tag>(
         gen::arbitrary<::FlexFlow::underlying_type_t<Tag>>());

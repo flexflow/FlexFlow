@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_GET_STD_HASH_H
 #define _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_GET_STD_HASH_H
 
-#include <functional>
 #include <cstddef>
+#include <functional>
 
 namespace FlexFlow {
 

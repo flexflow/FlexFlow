@@ -1,6 +1,6 @@
-#include "utils/testing.h"
 #include "utils/fmt_extra/instances/pair.h"
 #include "utils/fmt_extra/instances/tuple.h"
+#include "utils/testing.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("fmt instance for std::pair") {

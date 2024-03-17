@@ -23,5 +23,4 @@ std::string surrounded(std::string const &prefix,
   return oss.str();
 }
 
-
-}
+} // namespace FlexFlow

@@ -9,8 +9,9 @@ template <typename T, typename Enable = void>
 struct is_plusable : std::false_type {};
 
 template <typename T>
-struct is_plusable<T,
-                   std::void_t<decltype((T)(std::declval<T>() + std::declval<T>()))>>
+struct is_plusable<
+    T,
+    std::void_t<decltype((T)(std::declval<T>() + std::declval<T>()))>>
     : std::true_type {};
 
 template <typename T>
@@ -40,6 +41,6 @@ struct is_timesable<
 template <typename T>
 inline constexpr bool is_timesable_v = is_timesable<T>::value;
 
-}
+} // namespace FlexFlow
 
 #endif

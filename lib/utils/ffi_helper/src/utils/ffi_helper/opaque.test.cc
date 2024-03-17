@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/ffi_helper/opaque.h"
+#include "utils/testing.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("opaque") {

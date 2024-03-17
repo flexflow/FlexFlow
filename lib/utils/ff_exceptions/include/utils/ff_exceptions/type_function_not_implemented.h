@@ -3,9 +3,9 @@
 
 namespace FlexFlow {
 
-struct type_function_not_implemented { 
+struct type_function_not_implemented {
 #ifdef FF_REQUIRE_IMPLEMENTEED
-  static_assert(false,  "Type not yet implemented");
+  static_assert(false, "Type not yet implemented");
 #else
 #endif
 };

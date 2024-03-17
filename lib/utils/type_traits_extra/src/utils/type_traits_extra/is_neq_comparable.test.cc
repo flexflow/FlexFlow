@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/type_traits_extra/is_neq_comparable.h"
+#include "utils/testing.h"
 
 struct neq_comparable {
   bool operator!=(neq_comparable const &other) const;
@@ -15,7 +15,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK_FALSE(is_neq_comparable_v<not_neq_comparable>);
   }
 
-  TEST_CASE_TEMPLATE("is_neq_comparable", T, neq_comparable, not_neq_comparable) {
+  TEST_CASE_TEMPLATE(
+      "is_neq_comparable", T, neq_comparable, not_neq_comparable) {
     CHECK(is_neq_comparable<T>::value == is_neq_comparable_v<T>);
   }
 }

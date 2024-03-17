@@ -1,17 +1,20 @@
-#include "utils/testing.h"
 #include "utils/smart_ptrs/is_clonable.h"
+#include "utils/testing.h"
 
 struct should_be_clonable {
   should_be_clonable *clone() const;
 };
 
-struct should_not_be_clonable { };
+struct should_not_be_clonable {};
 
 TEST_CASE("is_clonable") {
   CHECK(is_clonable<should_be_clonable>::value);
   CHECK_FALSE(is_clonable<should_not_be_clonable>::value);
 }
 
-TEST_CASE_TEMPLATE("is_clonable_v", T, should_be_clonable, should_not_be_clonable) {
+TEST_CASE_TEMPLATE("is_clonable_v",
+                   T,
+                   should_be_clonable,
+                   should_not_be_clonable) {
   CHECK(is_clonable<T>::value == is_clonable_v<T>);
 }

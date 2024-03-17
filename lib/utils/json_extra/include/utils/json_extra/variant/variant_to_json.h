@@ -22,7 +22,6 @@ void variant_to_json(json &j, variant<Args...> const &v) {
   visit(::FlexFlow::VariantToJsonFunctor{j}, v.value);
 }
 
-
 } // namespace FlexFlow
 
 #endif

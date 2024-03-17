@@ -8,7 +8,8 @@
 namespace FlexFlow {
 
 template <typename T>
-struct as_type_list<T, std::enable_if_t<is_visitable_v<T>>> : as_type_list<visit_as_tuple_t<T>> { };
+struct as_type_list<T, std::enable_if_t<is_visitable_v<T>>>
+    : as_type_list<visit_as_tuple_t<T>> {};
 
 } // namespace FlexFlow
 

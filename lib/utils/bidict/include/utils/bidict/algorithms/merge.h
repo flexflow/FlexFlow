@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_ALGORITHMS_MERGE_H
 #define _FLEXFLOW_LIB_UTILS_BIDICT_INCLUDE_UTILS_BIDICT_ALGORITHMS_MERGE_H
 
+#include "fmt/format.h"
 #include "utils/bidict/bidict.h"
 #include "utils/ff_exceptions/ff_exceptions.h"
-#include "fmt/format.h"
 
 namespace FlexFlow {
 
@@ -15,10 +15,14 @@ bidict<L, R> merge_maps(bidict<L, R> const &lhs, bidict<L, R> const &rhs) {
   }
   for (auto const &[k, v] : rhs) {
     if (result.find_l(k) != result.end()) {
-      throw mk_runtime_error(fmt::format("Refusing to merge non-disjoint maps! Found overlapping key/left {}", k));
+      throw mk_runtime_error(fmt::format(
+          "Refusing to merge non-disjoint maps! Found overlapping key/left {}",
+          k));
     }
     if (result.find_r(v) != result.end()) {
-      throw mk_runtime_error(fmt::format("Refusing to merge non-disjoint maps! Found overlapping value/right {}", v));
+      throw mk_runtime_error(fmt::format("Refusing to merge non-disjoint maps! "
+                                         "Found overlapping value/right {}",
+                                         v));
     }
     result.equate(k, v);
   }

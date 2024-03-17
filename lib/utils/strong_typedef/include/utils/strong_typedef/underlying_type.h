@@ -2,7 +2,7 @@
 #define _FLEXFLOW_LIB_UTILS_STRONG_TYPEDEF_INCLUDE_UTILS_STRONG_TYPEDEF_UNDERLYING_TYPE_H
 
 #include "strong_typedef.h"
-#include "utils/backports/type_identity.h" 
+#include "utils/backports/type_identity.h"
 
 namespace FlexFlow {
 

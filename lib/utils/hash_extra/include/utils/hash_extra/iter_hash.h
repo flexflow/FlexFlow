@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_ITER_HASH_H
 #define _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_ITER_HASH_H
 
+#include "utils/hash_extra/hash_combine.h"
 #include <cstddef>
 #include <iterator>
-#include "utils/hash_extra/hash_combine.h"
 
 namespace FlexFlow {
 

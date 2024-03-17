@@ -11,10 +11,8 @@ struct field_count : std::integral_constant<
                          size_t,
                          ::visit_struct::traits::visitable<T>::field_count> {};
 
-
 template <typename T>
 inline constexpr size_t field_count_v = field_count<T>::value;
-
 
 } // namespace FlexFlow
 

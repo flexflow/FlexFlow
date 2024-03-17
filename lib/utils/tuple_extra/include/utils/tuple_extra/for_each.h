@@ -7,7 +7,10 @@ namespace FlexFlow {
 
 template <typename F, typename... Ts>
 void for_each(std::tuple<Ts...> const &tup, F f) {
-  transform(tup, [&f](auto const &x) { f(x); return std::tuple{}; });
+  transform(tup, [&f](auto const &x) {
+    f(x);
+    return std::tuple{};
+  });
 }
 
 } // namespace FlexFlow

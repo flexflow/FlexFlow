@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_STRING_EXTRA_INCLUDE_UTILS_STRING_EXTRA_JOIN_STRINGS_H
 #define _FLEXFLOW_LIB_UTILS_STRING_EXTRA_INCLUDE_UTILS_STRING_EXTRA_JOIN_STRINGS_H
 
-#include <string>
 #include <sstream>
+#include <string>
 
 namespace FlexFlow {
 
@@ -39,7 +39,8 @@ std::string join_strings(Container const &c, std::string const &delimiter) {
 }
 
 template <typename Container, typename F>
-std::string join_strings(Container const &c, std::string const &delimiter, F f) {
+std::string
+    join_strings(Container const &c, std::string const &delimiter, F f) {
   return join_strings(c.cbegin(), c.cend(), delimiter, f);
 }
 

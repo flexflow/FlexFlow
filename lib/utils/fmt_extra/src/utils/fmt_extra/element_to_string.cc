@@ -18,4 +18,4 @@ std::string element_to_string(char const &c) {
   return surrounded('\'', quoted(std::string{c}, '\\', '\''));
 }
 
-}
+} // namespace FlexFlow

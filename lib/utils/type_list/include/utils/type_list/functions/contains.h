@@ -13,13 +13,17 @@ template <typename T>
 struct type_list_contains_impl<T, type_list<>> : std::false_type {};
 
 template <typename T, typename Head, typename... Tail>
-struct type_list_contains_impl<T, type_list<Head, Tail...>> : std::disjunction<std::is_same<T, Head>, type_list_contains_impl<T, type_list<Tail...>>> { };
+struct type_list_contains_impl<T, type_list<Head, Tail...>>
+    : std::disjunction<std::is_same<T, Head>,
+                       type_list_contains_impl<T, type_list<Tail...>>> {};
 
 template <typename T, typename TypeList>
-struct type_list_contains : type_list_contains_impl<T, std::decay_t<TypeList>> {};
+struct type_list_contains : type_list_contains_impl<T, std::decay_t<TypeList>> {
+};
 
 template <typename T, typename TypeList>
-inline constexpr bool type_list_contains_v = type_list_contains<T, TypeList>::value;
+inline constexpr bool type_list_contains_v =
+    type_list_contains<T, TypeList>::value;
 
 } // namespace FlexFlow
 

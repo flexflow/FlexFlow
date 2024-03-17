@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_H
 
-#include <type_traits>
 #include "utils/backports/type_identity.h"
-#include <vector>
-#include "utils/type_traits_extra/is_static_castable.h"
 #include "utils/type_traits_extra/is_equal_comparable.h"
 #include "utils/type_traits_extra/is_neq_comparable.h"
+#include "utils/type_traits_extra/is_static_castable.h"
+#include <type_traits>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -18,9 +18,8 @@ public:
   required_wrapper_impl(T &&t) : m_value(t) {}
 
   template <typename TT>
-  required_wrapper_impl(
-      TT const &tt,
-      std::enable_if_t<std::is_convertible_v<TT, T>> * = 0)
+  required_wrapper_impl(TT const &tt,
+                        std::enable_if_t<std::is_convertible_v<TT, T>> * = 0)
       : m_value(static_cast<T>(tt)) {}
 
   using value_type = T;
@@ -30,7 +29,9 @@ public:
   }
 
   template <typename TT,
-            typename std::enable_if_t<(is_static_castable_v<T, TT> && !std::is_same_v<T, TT>), bool> = true>
+            typename std::enable_if_t<(is_static_castable_v<T, TT> &&
+                                       !std::is_same_v<T, TT>),
+                                      bool> = true>
   explicit operator TT() const {
     return static_cast<TT>(this->m_value);
   }
@@ -62,15 +63,15 @@ struct required_inheritance_impl : public T {
       operator=(required_inheritance_impl<T> &&) = default;
 
   template <typename TT>
-  required_inheritance_impl(
-      TT const &tt,
-      std::enable_if_t<std::is_convertible_v<TT, T> && !std::is_same_v<TT, T>> * = 0)
+  required_inheritance_impl(TT const &tt,
+                            std::enable_if_t<std::is_convertible_v<TT, T> &&
+                                             !std::is_same_v<TT, T>> * = 0)
       : required_inheritance_impl(static_cast<T>(tt)) {}
 
   template <typename TTT,
             std::enable_if_t<(is_static_castable_v<T, TTT> &&
-                                     !std::is_same_v<T, TTT>),
-                                    bool> = true>
+                              !std::is_same_v<T, TTT>),
+                             bool> = true>
   explicit operator TTT() const {
     return static_cast<TTT>(static_cast<T>(*this));
   }

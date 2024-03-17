@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_SMART_PTRS_INCLUDE_UTILS_SMART_PTRS_COW_PTR_T_H
 #define _FLEXFLOW_LIB_UTILS_SMART_PTRS_INCLUDE_UTILS_SMART_PTRS_COW_PTR_T_H
 
-#include "is_clonable.h" 
+#include "is_clonable.h"
 #include <memory>
 #include <type_traits>
 

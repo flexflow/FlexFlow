@@ -7,8 +7,7 @@ namespace FlexFlow {
 
 template <typename C, typename Instance = default_monoid_t<element_type_t<C>>>
 auto mjoin(C const &c, element_type_t<C> const &delimiter)
-  -> std::enable_if_t<is_ordered_v<C>, element_type_t<C>>
-{
+    -> std::enable_if_t<is_ordered_v<C>, element_type_t<C>> {
   using T = element_type_t<C>;
   static_assert(is_valid_monoid_instance_v<T, Instance>);
 

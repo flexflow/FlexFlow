@@ -32,7 +32,6 @@ variant<Args...> variant_from_json(json const &j) {
   return result.value();
 }
 
-
 } // namespace FlexFlow
 
 #endif

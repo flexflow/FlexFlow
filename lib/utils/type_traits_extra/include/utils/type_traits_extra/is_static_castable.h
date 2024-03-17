@@ -12,13 +12,13 @@ template <typename From, typename To>
 struct is_static_castable<
     From,
     To,
-    std::void_t<decltype(static_cast<To>(std::declval<From>()))>> : std::true_type {
-};
+    std::void_t<decltype(static_cast<To>(std::declval<From>()))>>
+    : std::true_type {};
 
 template <typename From, typename To>
 inline constexpr bool is_static_castable_v =
     is_static_castable<From, To>::value;
 
-}
+} // namespace FlexFlow
 
 #endif

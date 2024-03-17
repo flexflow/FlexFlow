@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_STD_TUPLE_H
 #define _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_STD_TUPLE_H
 
-#include <tuple>
-#include <functional>
 #include "utils/hash_extra/hash_combine.h"
+#include <functional>
+#include <tuple>
 
 namespace std {
 
@@ -40,6 +40,6 @@ public:
   }
 };
 
-} // namespace FlexFlow
+} // namespace std
 
 #endif

@@ -11,7 +11,8 @@ template <typename T, typename Enable = void>
 struct supports_rc_arbitrary : std::false_type {};
 
 template <typename T>
-struct supports_rc_arbitrary<T, std::void_t<decltype(Arbitrary<T>::arbitrary())>>
+struct supports_rc_arbitrary<T,
+                             std::void_t<decltype(Arbitrary<T>::arbitrary())>>
     : std::true_type {};
 
 template <typename T>

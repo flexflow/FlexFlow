@@ -3,9 +3,9 @@
 
 namespace FlexFlow {
 
-#include <array>
 #include "utils/algorithms/typeclass/functor/functor.h"
-#include "utils/backports/type_identity.h" 
+#include "utils/backports/type_identity.h"
+#include <array>
 
 namespace FlexFlow {
 
@@ -24,14 +24,16 @@ struct array_functor {
     return result;
   }
 
-  template <typename Func, typename = std::enable_if_t<std::is_invocable_r_v<A, Func, A>>>
+  template <typename Func,
+            typename = std::enable_if_t<std::is_invocable_r_v<A, Func, A>>>
   static void fmap_inplace(F<A> &v, Func const &f) {
     std::transform(v.cbegin(), v.cend(), v.begin(), f);
   }
 };
 
 template <typename T, size_t N>
-struct default_functor<std::array<T, N>> : type_identity<vector_functor<T, N>> {};
+struct default_functor<std::array<T, N>> : type_identity<vector_functor<T, N>> {
+};
 
 } // namespace FlexFlow
 

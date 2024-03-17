@@ -1,7 +1,7 @@
-#include "utils/testing.h"
 #include "utils/type_traits_extra/operators.h"
+#include "utils/testing.h"
 
-struct no_operations_t { };
+struct no_operations_t {};
 
 struct plusable {
   plusable operator+(plusable const &other) const;

@@ -24,6 +24,6 @@ struct adl_serializer<
   }
 };
 
-} // namespace FlexFlow
+} // namespace nlohmann
 
 #endif

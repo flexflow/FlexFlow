@@ -6,17 +6,13 @@
 
 namespace FlexFlow {
 
-template <
-  typename F, 
-  typename C, 
-  typename K = typename C::value_type, 
-  typename V = std::invoke_result_t<F, K>
->
+template <typename F,
+          typename C,
+          typename K = typename C::value_type,
+          typename V = std::invoke_result_t<F, K>>
 bidict<K, V> generate_bidict(C const &c, F const &f) {
-  static_assert(is_hashable_v<K>,
-                "Key type should be hashable (but is not)");
-  static_assert(is_hashable_v<V>,
-                "Value type should be hashable (but is not)");
+  static_assert(is_hashable_v<K>, "Key type should be hashable (but is not)");
+  static_assert(is_hashable_v<V>, "Value type should be hashable (but is not)");
 
   bidict<K, V> result;
   for (K const &k : c) {

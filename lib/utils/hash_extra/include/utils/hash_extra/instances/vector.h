@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_STD_VECTOR_H
 #define _FLEXFLOW_LIB_UTILS_HASH_EXTRA_INCLUDE_UTILS_HASH_EXTRA_STD_VECTOR_H
 
-#include <vector>
-#include <functional>
 #include "utils/hash_extra/iter_hash.h"
+#include <functional>
+#include <vector>
 
 namespace std {
 
@@ -17,7 +17,6 @@ struct hash<std::vector<T>> {
     return seed;
   }
 };
-
 
 } // namespace std
 

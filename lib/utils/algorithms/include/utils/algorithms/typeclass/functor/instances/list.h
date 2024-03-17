@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_ALGORITHMS_INCLUDE_UTILS_ALGORITHMS_TYPE_FUNCTOR_INSTANCES_LIST_H
 #define _FLEXFLOW_LIB_UTILS_ALGORITHMS_INCLUDE_UTILS_ALGORITHMS_TYPE_FUNCTOR_INSTANCES_LIST_H
 
-#include <list>
 #include "utils/algorithms/typeclass/functor/functor.h"
-#include "utils/backports/type_identity.h" 
+#include "utils/backports/type_identity.h"
+#include <list>
 
 namespace FlexFlow {
 
@@ -22,7 +22,8 @@ struct list_functor {
     return result;
   }
 
-  template <typename Func, typename = std::enable_if_t<std::is_invocable_r_v<A, Func, A>>>
+  template <typename Func,
+            typename = std::enable_if_t<std::is_invocable_r_v<A, Func, A>>>
   static void fmap_inplace(F<A> &v, Func const &f) {
     std::transform(v.cbegin(), v.cend(), v.begin(), f);
   }

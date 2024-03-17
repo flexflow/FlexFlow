@@ -15,7 +15,6 @@ bool contains_key(C const &m, typename C::key_type const &k) {
   return m.find(k) != m.end();
 }
 
-
 } // namespace FlexFlow
 
 #endif

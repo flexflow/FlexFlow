@@ -16,7 +16,6 @@ std::unordered_set<T> filter(std::unordered_set<T> const &v, F const &f) {
   return result;
 }
 
-
 } // namespace FlexFlow
 
 #endif

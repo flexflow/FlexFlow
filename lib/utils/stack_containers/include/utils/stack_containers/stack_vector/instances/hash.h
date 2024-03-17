@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_STACK_CONTAINERS_INCLUDE_UTILS_STACK_CONTAINERS_STACK_VECTOR_HASH_H
 #define _FLEXFLOW_LIB_UTILS_STACK_CONTAINERS_INCLUDE_UTILS_STACK_CONTAINERS_STACK_VECTOR_HASH_H
 
-#include <functional>
 #include "stack_vector.h"
+#include <functional>
 
 namespace std {
 

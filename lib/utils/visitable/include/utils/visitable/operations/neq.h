@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_UTILS_VISITABLE_OPERATORS_NEQ_H
 #define _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_UTILS_VISITABLE_OPERATORS_NEQ_H
 
-#include "utils/visitable/type/traits/is_visitable.h"
 #include "utils/type_traits_extra/is_neq_comparable.h"
 #include "utils/visitable/type/traits/elements_satisfy.h"
+#include "utils/visitable/type/traits/is_visitable.h"
 
 namespace FlexFlow {
 
@@ -27,14 +27,12 @@ bool visit_neq(T const &lhs, T const &rhs) {
   return vis.result;
 }
 
-
 template <typename T>
 auto operator!=(T const &lhs, T const &rhs) -> std::enable_if_t<
     std::conjunction_v<is_visitable<T>, elements_satisfy<is_neq_comparable, T>>,
     bool> {
   return visit_neq(lhs, rhs);
 }
-
 
 } // namespace FlexFlow
 

@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_COMPILE_TIME_SEQUENCE_INCLUDE_UTILS_COMPILE_TIME_SEQUENCE_COUNT_H
 #define _FLEXFLOW_LIB_UTILS_COMPILE_TIME_SEQUENCE_INCLUDE_UTILS_COMPILE_TIME_SEQUENCE_COUNT_H
 
-#include "utils/compile_time_sequence/sequence.h"
 #include "utils/compile_time_sequence/append.h"
+#include "utils/compile_time_sequence/sequence.h"
 
 namespace FlexFlow {
 

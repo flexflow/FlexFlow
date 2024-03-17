@@ -9,7 +9,6 @@ struct has_type_member : std::false_type {};
 template <typename T>
 struct has_type_member<T, std::void_t<typename T::type>> : std::true_type {};
 
-
 } // namespace FlexFlow
 
 #endif

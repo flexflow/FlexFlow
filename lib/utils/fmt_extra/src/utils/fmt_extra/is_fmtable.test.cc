@@ -1,5 +1,5 @@
-#include "utils/testing.h"
 #include "utils/fmt_extra/is_fmtable.h"
+#include "utils/testing.h"
 
 using namespace FlexFlow;
 
