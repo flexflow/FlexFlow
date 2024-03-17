@@ -3,6 +3,8 @@
 
 #include "utils/fmt_extra/element_to_string.h"
 #include "utils/fmt_extra/is_fmtable.h"
+#include "utils/string_extra/join_strings.h"
+#include "utils/string_extra/surrounded.h"
 #include <algorithm>
 #include <fmt/format.h>
 #include <unordered_set>

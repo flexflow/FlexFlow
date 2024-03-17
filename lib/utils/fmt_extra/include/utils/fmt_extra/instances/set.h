@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_FMT_EXTRA_INCLUDE_UTILS_FMT_EXTRA_INSTANCES_SET_H
 #define _FLEXFLOW_LIB_UTILS_FMT_EXTRA_INCLUDE_UTILS_FMT_EXTRA_INSTANCES_SET_H
 
+#include "utils/fmt_extra/element_to_string.h"
 #include "utils/fmt_extra/is_fmtable.h"
 #include "utils/string_extra/join_strings.h"
 #include "utils/string_extra/surrounded.h"
