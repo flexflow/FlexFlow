@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_FP16
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_FP16
 
-#include "hash-utils.h"
+#include <functional>
 
 #if defined(FF_USE_CUDA)
 #include <cuda_fp16.h>

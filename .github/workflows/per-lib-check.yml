@@ -65,6 +65,7 @@ jobs:
             utils-deduplicated_priority_queue \
             utils-dot_format \
             utils-ff_exceptions \
+            utils-fp16 \
             utils-fmt_extra \
             utils-hash_extra \
             utils-overload \
@@ -93,6 +94,7 @@ jobs:
             utils-deduplicated_priority_queue \
             utils-dot_format \
             utils-ff_exceptions \
+            utils-fp16 \
             utils-fmt_extra \
             utils-hash_extra \
             utils-overload \
