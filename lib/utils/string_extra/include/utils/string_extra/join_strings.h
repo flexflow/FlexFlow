@@ -10,7 +10,7 @@ template <typename InputIt, typename F>
 std::string join_strings(InputIt first,
                          InputIt last,
                          std::string const &delimiter,
-                         F const &f) {
+                         F f) {
   std::ostringstream oss;
   bool first_iter = true;
   /* int i = 0; */
@@ -39,7 +39,7 @@ std::string join_strings(Container const &c, std::string const &delimiter) {
 }
 
 template <typename Container, typename F>
-std::string join_strings(Container const &c, std::string const &delimiter, F const &f) {
+std::string join_strings(Container const &c, std::string const &delimiter, F f) {
   return join_strings(c.cbegin(), c.cend(), delimiter, f);
 }
 

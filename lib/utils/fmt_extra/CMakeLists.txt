@@ -4,5 +4,7 @@ ff_add_library(
   DEPS
     fmt
     utils-string_extra
+    utils-tuple_extra
     utils-algorithms
+    range-v3
 )

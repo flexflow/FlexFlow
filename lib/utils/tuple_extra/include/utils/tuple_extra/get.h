@@ -6,6 +6,7 @@
 #include "visit.h"
 #include <cstddef>
 #include <sstream>
+#include "utils/ff_exceptions/ff_exceptions.h"
 
 namespace FlexFlow {
 

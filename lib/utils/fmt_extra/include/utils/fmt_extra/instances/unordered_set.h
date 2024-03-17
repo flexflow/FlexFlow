@@ -4,6 +4,8 @@
 #include <unordered_set>
 #include <fmt/format.h>
 #include "utils/fmt_extra/is_fmtable.h"
+#include "utils/fmt_extra/element_to_string.h"
+#include <algorithm>
 
 namespace fmt {
 
@@ -15,8 +17,10 @@ struct formatter<::std::unordered_set<T>,
     -> decltype(ctx.out()) {
     using namespace ::FlexFlow;
 
+    std::vector<T> sorted {m.begin(), m.end()};
+    std::sort(sorted.begin(), sorted.end());
     std::string result =
-        surrounded('{', '}', join_strings(sorted(m), ", ", [](T const &t) {
+        surrounded('{', '}', join_strings(sorted, ", ", [](T const &t) {
                      return element_to_string(t);
                    }));
     return formatter<std::string>::format(result, ctx);

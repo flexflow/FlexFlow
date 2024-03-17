@@ -1,5 +1,8 @@
 ff_add_library(
   NAME
-    tuple-extra
+    utils-tuple_extra
   DEPS
+    utils-compile_time_sequence
+    utils-ff_exceptions
+    utils-type_traits_extra
 )

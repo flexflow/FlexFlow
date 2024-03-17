@@ -2,8 +2,14 @@ include(aliasing)
 
 if (FF_USE_EXTERNAL_FMT)
   find_package(fmt REQUIRED)
+  # alias_library(fmt fmt::fmt)
+  # find_package(PkgConfig REQUIRED)
+  # pkg_search_module(FMT REQUIRED fmt)
+
+  # add_library(fmt INTERFACE)
+  # target_include_directories(fmt SYSTEM INTERFACE ${FMT_INCLUDE_DIRS})
+  # target_link_libraries(fmt INTERFACE ${FMT_LIBRARIES})
 else()
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt)
-
-  alias_library(fmt fmt::fmt)
 endif()
+alias_library(fmt fmt::fmt-header-only)

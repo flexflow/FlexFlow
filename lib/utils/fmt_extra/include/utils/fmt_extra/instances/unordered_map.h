@@ -7,6 +7,7 @@
 #include "utils/string_extra/surrounded.h"
 #include "utils/string_extra/join_strings.h"
 #include "utils/algorithms/sorting.h"
+#include "utils/fmt_extra/element_to_string.h"
 
 namespace fmt {
 

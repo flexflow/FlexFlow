@@ -1,1 +1,5 @@
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/range-v3)
+if (FF_USE_EXTERNAL_RANGEV3)
+  find_package(range-v3 REQUIRED)
+else()
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/range-v3)
+endif()

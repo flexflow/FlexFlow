@@ -13,7 +13,6 @@
     ];
   };
 
-  # Nixpkgs / NixOS version to use.
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-23.11";
     flake-utils.url = "github:numtide/flake-utils";
@@ -27,48 +26,51 @@
       };
 
       mkShell = pkgs.mkShell.override {
-        stdenv = pkgs.llvmPackages.libcxxStdenv;
+        stdenv = pkgs.cudaPackages.backendStdenv;
       };
     in 
-      {
-        packages = {
-          legion = pkgs.callPackage ./.flake/pkgs/legion.nix { };
+    {
+      packages = {
+        legion = pkgs.callPackage ./.flake/pkgs/legion.nix { };
+        rapidcheckFull = pkgs.symlinkJoin {
+          name = "rapidcheckFull";
+          paths = (with pkgs; [ rapidcheck.out rapidcheck.dev ]);
         };
+      };
 
-        devShells = rec {
-          ci = mkShell {
-            buildInputs = (with pkgs; [
-              llvmPackages_17.clang
-              cmakeCurses
-              gcc10Stdenv
-              gcc10
-              ccache
-              cudatoolkit
+      devShells = rec {
+        ci = mkShell {
+          buildInputs = builtins.concatLists [
+            (with pkgs; [
               zlib
-              pkg-config
-              python3
-              self.packages.${system}.legion
               nlohmann_json
               spdlog
               range-v3
-              rapidcheck
               doctest
-              fmt
+              cmakeCurses
+              ccache
+              pkg-config
+              python3
+              cudatoolkit
               cudaPackages.cuda_nvcc
               cudaPackages.cudnn
               cudaPackages.nccl
               cudaPackages.libcublas
               cudaPackages.cuda_cudart
-            ]) ++ (with pkgs.python3Packages; [
-            ]);
+            ])
+            (with self.packages.${system}; [
+              legion
+              rapidcheckFull
+            ])
+          ];
         };
 
         default = mkShell {
           inputsFrom = [ ci ];
-  
+
           buildInputs = builtins.concatLists [
             (with pkgs; [
-              clang-tools_17
+              ccls
               gh-markdown-preview
               plantuml
               gdb
@@ -96,4 +98,3 @@
     }
   );
 }
-# vim: set tabstop=2 shiftwidth=2 expandtab:

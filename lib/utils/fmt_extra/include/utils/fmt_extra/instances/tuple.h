@@ -7,7 +7,9 @@
 #include "utils/string_extra/join_strings.h"
 #include "utils/fmt_extra/all_are_fmtable.h"
 #include "utils/fmt_extra/element_to_string.h"
-#include "range/v3/view/transform.hpp"
+#include <vector>
+#include "utils/tuple_extra/transform.h"
+#include "utils/tuple_extra/to_vector.h"
 
 namespace fmt {
 

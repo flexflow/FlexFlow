@@ -18,7 +18,7 @@ struct formatter<::std::set<T>,
     using namespace ::FlexFlow;
 
     std::string result =
-        surrounded('{', '}', join_strings(sorted(m), ", ", [](T const &t) {
+        surrounded('{', '}', join_strings(m, ", ", [](T const &t) {
                      return element_to_string(t);
                    }));
     return formatter<std::string>::format(result, ctx);

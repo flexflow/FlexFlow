@@ -27,6 +27,13 @@ set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
 set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 option(FF_USE_EXTERNAL_LEGION "Use pre-installed Legion" OFF)
+option(FF_USE_EXTERNAL_JSON "Use pre-installed json" OFF)
+option(FF_USE_EXTERNAL_FMT "Use pre-installed fmt" OFF)
+option(FF_USE_EXTERNAL_NCCL "Use pre-installed nccl" OFF)
+option(FF_USE_EXTERNAL_SPDLOG "Use pre-installed spdlog" OFF)
+option(FF_USE_EXTERNAL_RAPIDCHECK "Use pre-installed rapidcheck" OFF)
+option(FF_USE_EXTERNAL_DOCTEST "Use pre-installed doctest" OFF)
+
 option(FF_BUILD_RESNET "build resnet example" OFF)
 option(FF_BUILD_RESNEXT "build resnext example" OFF)
 option(FF_BUILD_ALEXNET "build alexnet example" OFF)

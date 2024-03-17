@@ -3,6 +3,9 @@
 /.tools/
 /.state/
 
+# lsp cache
+.ccls-cache/
+
 # ctest-created files
 Testing/
 

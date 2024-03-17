@@ -77,7 +77,9 @@ function(ff_add_intree_test_executable)
     ${FF_TEST_EXEC_DEPS}
     utils-testing
     utils-rapidcheck_extra
-    utils-test_types)
+    utils-test_types
+    utils-backports
+    utils-overload)
 
   target_compile_definitions(${FF_TEST_EXEC_NAME} PRIVATE FF_TEST_SUITE="${FF_TEST_EXEC_NAME}")
 

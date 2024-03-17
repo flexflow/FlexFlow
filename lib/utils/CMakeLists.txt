@@ -1,7 +1,7 @@
 add_subdirectory(algorithms)
 add_subdirectory(backports)
 add_subdirectory(bidict)
-# add_subdirectory(compile_time_sequence)
+add_subdirectory(compile_time_sequence)
 add_subdirectory(deduplicated_priority_queue)
 add_subdirectory(disjoint_set)
 # add_subdirectory(dot_format)
