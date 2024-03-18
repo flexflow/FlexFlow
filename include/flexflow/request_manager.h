@@ -181,6 +181,7 @@ public:
   // Methods to check and mark request completion
   bool is_request_completed(RequestGuid const &guid);
   void trigger_request_completion_future(RequestGuid const &guid);
+
   // Methods for preparing next batches
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
@@ -189,14 +190,6 @@ public:
                                        Legion::Context ctx,
                                        Legion::Runtime *runtime);
   BeamSearchBatchConfig
-      prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
-                              BeamInferenceResult const &result);
-  BeamSearchBatchConfigFuture
-      prepare_next_batch_beam(BeamSearchBatchConfigFuture const &old_bc,
-                              BeamInferenceResultFuture const &result,
-                              Legion::Context ctx,
-                              Legion::Runtime *runtime);
-  BeamSearchBatchConfig
       prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
                               InferenceResult const &result,
                               int model_id);
@@ -204,6 +197,16 @@ public:
       prepare_next_batch_init(TreeVerifyBatchConfigFuture const &old_bc,
                               InferenceResultFuture const &result,
                               int model_id,
+                              Legion::Context ctx,
+                              Legion::Runtime *runtime);
+
+  /* The APIs that need to be changed. */
+  BeamSearchBatchConfig
+      prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
+                              BeamInferenceResult const &result);
+  BeamSearchBatchConfigFuture
+      prepare_next_batch_beam(BeamSearchBatchConfigFuture const &old_bc,
+                              BeamInferenceResultFuture const &result,
                               Legion::Context ctx,
                               Legion::Runtime *runtime);
   TreeVerifyBatchConfig prepare_next_batch_verify(
@@ -224,6 +227,36 @@ public:
       traverse_beam_tree(BeamSearchBatchConfig const &old_bc,
                          int request_index,
                          int first_token_depth_in_request);
+  /* The APIs that need to be changed. */
+
+  /* New APIs */
+  TreeSearchBatchConfig
+      prepare_next_batch_spec(TreeSearchBatchConfig const &old_bc,
+                              BeamInferenceResult const &result);
+  TreeSearchBatchConfigFuture
+      prepare_next_batch_spec(TreeSearchBatchConfigFuture const &old_bc,
+                              BeamInferenceResultFuture const &result,
+                              Legion::Context ctx,
+                              Legion::Runtime *runtime);
+  TreeSearchBatchConfig TreeVerifyBatchConfig prepare_next_batch_verify(
+      std::vector<TreeSearchBatchConfig> const &old_batches);
+  TreeVerifyBatchConfigFuture prepare_next_batch_verify(
+      std::vector<TreeSearchBatchConfigFuture> const &old_batches,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+
+  void store_beam_metadata(TreeSearchBatchConfig const &old_bc,
+                           BeamInferenceResult const &result);
+  void update_beam_metadata(TreeSearchBatchConfig &new_bc,
+                            TreeSearchBatchConfig const &old_bc,
+                            Token &tree,
+                            int request_index);
+
+  std::vector<std::pair<BatchConfig::TokenId, int>>
+      traverse_beam_tree(TreeSearchBatchConfig const &old_bc,
+                         int request_index,
+                         int first_token_depth_in_request);
+  /* New APIs */
 
   // remove guid after put the cached tree in request
   std::vector<std::pair<BatchConfig::TokenId, int>> merge_dfs_trees(
