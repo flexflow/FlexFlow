@@ -30,9 +30,7 @@ allowed machine views, trivial cost estimator and random machine specification.
 TEST_CASE("optimal_cost_0") {
   auto pcg =
       OutputLabelledMultiDiGraph<Operator, ParallelTensor>::template create<
-          AdjacencyMultiDiGraph,
-          UnorderedLabelling<Node, Operator>,
-          UnorderedLabelling<MultiDiOutput, ParallelTensor>>();
+          UnorderedOutputLabelledMultiDiGraph<Operator, ParallelTensor>>();
 
   Node n0 = pcg.add_node(Operator{InputAttrs{}, "input"});
   Node n1 = pcg.add_node(Operator{

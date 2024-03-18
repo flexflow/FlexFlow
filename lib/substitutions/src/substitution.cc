@@ -413,11 +413,8 @@ SubParallelComputationGraph
                        Substitution const &substitution,
                        MultiDiGraphPatternMatch const &match) {
   SubParallelComputationGraph new_pcg =
-      OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>::create<
-          AdjacencyOpenMultiDiGraph,
-          UnorderedLabelling<Node, Operator>,
-          UnorderedLabelling<InputMultiDiEdge, ParallelTensor>,
-          UnorderedLabelling<MultiDiOutput, ParallelTensor>>();
+      OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>::template create<
+          UnorderedOutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>>();
   bidict<Node, Node> node_mapping; // Refactor it with global nodes
   for (Node const &node : get_nodes(pcg)) {
     if (!contains_r(match.node_assignment, node)) {

@@ -19,12 +19,10 @@ TEST_CASE("apply_substitution") {
   ParallelTensorPattern tensor_pattern_empty{
       std::vector<TensorAttributeConstraint>{}};
 
-  auto ig =
-      OutputLabelledOpenMultiDiGraph<OperatorPattern, ParallelTensorPattern>::
-          create<AdjacencyOpenMultiDiGraph,
-                 UnorderedLabelling<Node, OperatorPattern>,
-                 UnorderedLabelling<InputMultiDiEdge, ParallelTensorPattern>,
-                 UnorderedLabelling<MultiDiOutput, ParallelTensorPattern>>();
+  auto ig = OutputLabelledOpenMultiDiGraph<OperatorPattern,
+                                           ParallelTensorPattern>::
+      create<UnorderedOutputLabelledOpenMultiDiGraph<OperatorPattern,
+                                                     ParallelTensorPattern>>();
   Node n0 = ig.add_node(operator_pattern_n0);
   NodePort p0 = ig.add_node_port();
   InputMultiDiEdge e0{n0, p0, std::make_pair(p0.value(), p0.value())};
@@ -60,8 +58,7 @@ TEST_CASE("apply_substitution") {
        {OperatorAttributeKey::PARALLEL_DEGREE, AttrConstant{2}}}};
 
   auto og = NodeLabelledOpenMultiDiGraph<OperatorAttrAssignment>::create<
-      AdjacencyOpenMultiDiGraph,
-      UnorderedLabelling<Node, OperatorAttrAssignment>>();
+      UnorderedNodeLabelledOpenMultiDiGraph<OperatorAttrAssignment>>();
   Node n1 = og.add_node(op_ass_n1);
   Node n2 = og.add_node(op_ass_n2);
   Node n3 = og.add_node(op_ass_n3);
@@ -88,10 +85,7 @@ TEST_CASE("apply_substitution") {
 
   SubParallelComputationGraph pcg =
       OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>::create<
-          AdjacencyOpenMultiDiGraph,
-          UnorderedLabelling<Node, Operator>,
-          UnorderedLabelling<InputMultiDiEdge, ParallelTensor>,
-          UnorderedLabelling<MultiDiOutput, ParallelTensor>>();
+          UnorderedOutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>>();
 
   Node n4 = pcg.add_node(Operator{InputAttrs{}, "input"});
   Node n5 = pcg.add_node(Operator{

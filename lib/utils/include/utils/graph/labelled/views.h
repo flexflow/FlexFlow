@@ -90,13 +90,13 @@ Impl materialize_output_labelled_multidigraph_view(
 }
 
 template <typename Impl,
+          typename NodeLabel,
+          typename OutputLabel,
           typename NodeLabelImpl,
           typename InputLabelImpl,
-          typename OutputLabelImpl,
-          typename NodeLabel,
-          typename OutputLabel>
+          typename OutputLabelImpl>
 OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel>
-    materialize_output_labelled_open_multidigraph_view(
+    materialize_output_labelled_multidigraph_view(
         OutputLabelledOpenMultiDiGraphView<NodeLabel, OutputLabel> const &g) {
   OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel> result =
       OutputLabelledOpenMultiDiGraph<NodeLabel, OutputLabel>::template create<
