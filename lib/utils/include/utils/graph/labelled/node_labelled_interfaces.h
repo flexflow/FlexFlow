@@ -20,7 +20,7 @@ CHECK_RC_COPY_VIRTUAL_COMPLIANT(INodeLabelledMultiDiGraphView<int>);
 
 template <typename NodeLabel>
 struct INodeLabelledMultiDiGraph
-  : virtual INodeLabelledMultiDiGraphView<NodeLabel> {
+    : virtual INodeLabelledMultiDiGraphView<NodeLabel> {
   virtual NodeLabel &at(Node const &) = 0;
   virtual Node add_node(NodeLabel const &l) = 0;
   virtual NodePort add_node_port() = 0;

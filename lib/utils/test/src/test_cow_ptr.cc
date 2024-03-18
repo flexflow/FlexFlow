@@ -16,7 +16,7 @@ struct TestObject {
 
 struct TestObjectDerived : public TestObject {
   TestObjectDerived(int x, int y) : TestObject(x), y(y) {}
-  int y;  
+  int y;
   TestObjectDerived *clone() const override {
     return new TestObjectDerived(x, y);
   }
