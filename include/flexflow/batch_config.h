@@ -35,6 +35,7 @@ using InferenceResultFuture = Legion::Future;
 using BeamSearchBatchConfigFuture = Legion::Future;
 using TreeVerifyBatchConfigFuture = Legion::Future;
 using BeamInferenceResultFuture = Legion::Future;
+using TreeSearchBatchConfigFuture = Legion::Future;
 
 class BatchConfig {
 public:
@@ -187,6 +188,37 @@ public:
 
 private:
   size_t current_iteration;
+};
+
+class TreeSearchBatchConfig : public BatchConfig {
+public:
+  TreeSearchBatchConfig();
+  TreeSearchBatchConfig(int model_id);
+  TreeSearchBatchConfig(TreeSearchBatchConfig const &other, int model_id);
+  InferenceMode get_mode() const;
+
+  ~TreeSearchBatchConfig();
+
+  friend std::ostream &operator<<(std::ostream &os,
+                                  TreeSearchBatchConfig const &bc);
+  void print() const;
+  void save_to_file(std::string const &filename) const;
+  int current_depth_all_requests() const;
+  int get_speculative_request_num() const;
+
+  // how many requests is in speculative phase
+  int speculative_request_num = 0;
+  int model_id;
+
+  struct TreeSearchPerRequestInfo {
+    int current_depth = -1;
+
+    BatchConfig::TokenId tokens_arr[BatchConfig::MAX_NUM_TOKENS];
+    float probs_arr[BatchConfig::MAX_NUM_TOKENS];
+    int parent_id_arr[BatchConfig::MAX_NUM_TOKENS];
+  };
+
+  TreeSearchPerRequestInfo tree_requests_info[MAX_NUM_REQUESTS];
 };
 
 struct BeamInferenceResult {
