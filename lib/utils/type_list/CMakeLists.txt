@@ -1,5 +1,6 @@
 ff_add_library(
-  NAME utils-type_list
+  NAME 
+    utils-type_list
   DEPS
     utils-backports
 )

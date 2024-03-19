@@ -72,6 +72,7 @@ jobs:
             utils-overload \
             utils-string_extra \
             utils-tuple_extra \
+            utils-type_list \
             utils-type_traits_extra
 
       # - name: Build op-attrs
@@ -102,4 +103,5 @@ jobs:
             utils-overload \
             utils-string_extra \
             utils-tuple_extra \
+            utils-type_list \
             utils-type_traits_extra

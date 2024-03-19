@@ -37,6 +37,18 @@
           name = "rapidcheckFull";
           paths = (with pkgs; [ rapidcheck.out rapidcheck.dev ]);
         };
+        doctest = pkgs.doctest.overrideAttrs ( old: rec {
+          version = "2.4.9";
+          src = pkgs.fetchFromGitHub {
+            owner = "doctest";
+            repo = "doctest";
+            rev = "v${version}";
+            sha256 = "sha256-ugmkeX2PN4xzxAZpWgswl4zd2u125Q/ADSKzqTfnd94=";
+          };
+          patches = [
+            ./.flake/patches/doctest-template-test.patch
+          ];
+        });
       };
 
       devShells = rec {
@@ -61,7 +73,6 @@
               nlohmann_json
               spdlog
               range-v3
-              doctest
               cmakeCurses
               ccache
               pkg-config
@@ -76,6 +87,7 @@
             (with self.packages.${system}; [
               legion
               rapidcheckFull
+              doctest
             ])
           ];
         };

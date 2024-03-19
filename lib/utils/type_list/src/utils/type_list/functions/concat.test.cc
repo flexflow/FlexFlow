@@ -1,6 +1,5 @@
-#include "utils/type_traits_extra/type_list/concat.h"
+#include "utils/type_list/functions/concat.h"
 #include "utils/testing.h"
-#include "utils/type_traits_extra/debug_print_type.h"
 
 struct t1 {};
 struct t2 {};
@@ -20,7 +19,9 @@ TEST_SUITE(FF_TEST_SUITE) {
                        args< type_list<t2> , type_list<t2>         , type_list<t2, t2>         >,
                        args< type_list<t2> , type_list<t1, t2, t3> , type_list<t2, t1, t2, t3> >
                        ) {
-    CHECK_SAME_TYPE(type_list_concat_t<L_IN, R_IN>, OUT);
+    using result = type_list_concat_t<L_IN, R_IN>;
+    using correct = OUT;
+    CHECK_TYPE_EQ(result, correct);
   }
   // clang-format on
 }
