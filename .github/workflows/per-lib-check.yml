@@ -70,6 +70,7 @@ jobs:
             utils-hash_extra \
             utils-optional_extra \
             utils-overload \
+            utils-smart_ptrs \
             utils-string_extra \
             utils-tuple_extra \
             utils-type_list \
@@ -101,6 +102,7 @@ jobs:
             utils-hash_extra \
             utils-optional_extra \
             utils-overload \
+            utils-smart_ptrs \
             utils-string_extra \
             utils-tuple_extra \
             utils-type_list \

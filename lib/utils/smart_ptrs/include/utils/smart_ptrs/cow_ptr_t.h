@@ -37,6 +37,10 @@ struct cow_ptr_t {
     return this->get();
   }
 
+  T const *get_raw_unsafe() const {
+    return this->ptr.get();
+  }
+
   std::shared_ptr<T const> get() const {
     return this->ptr;
   }
@@ -61,7 +65,6 @@ struct cow_ptr_t {
 
     swap(lhs.ptr, rhs.ptr);
   }
-
 private:
   bool has_unique_access() const {
     return this->ptr.use_count() == 1;
@@ -73,6 +76,24 @@ private:
 template <typename T, typename... Args>
 cow_ptr_t<T> make_cow_ptr(Args &&...args) {
   return {std::make_shared<T>(std::forward<Args>(args)...)};
+}
+
+template <class To, class From>
+cow_ptr_t<To> static_pointer_cast(cow_ptr_t<From> const &x) {
+  std::shared_ptr<From> inner = std::const_pointer_cast<From>(x.get());
+  return cow_ptr_t{std::static_pointer_cast<To>(inner)};
+}
+
+template <class To, class From>
+cow_ptr_t<To> dynamic_pointer_cast(cow_ptr_t<From> const &x) {
+  std::shared_ptr<From> inner = std::const_pointer_cast<From>(x.get());
+  return cow_ptr_t{std::dynamic_pointer_cast<To>(inner)};
+}
+
+template <class To, class From>
+cow_ptr_t<To> reinterpret_pointer_cast(cow_ptr_t<From> const &x) {
+  std::shared_ptr<From> inner = std::const_pointer_cast<From>(x.get());
+  return cow_ptr_t{std::reinterpret_pointer_cast<To>(inner)};
 }
 
 } // namespace FlexFlow
