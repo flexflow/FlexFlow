@@ -10,8 +10,8 @@ template <typename T, typename Enable = void>
 struct is_strong_typedef : std::false_type {};
 
 template <typename T>
-    struct is_strong_typedef < T,
-    std::void_t<underlying_type_t<T>> : std::true_type {};
+struct is_strong_typedef<T, std::void_t<underlying_type_t<T>>> 
+  : std::true_type {};
 
 template <typename T>
 inline constexpr bool is_strong_typedef_v = is_strong_typedef<T>::value;

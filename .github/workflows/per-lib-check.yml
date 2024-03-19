@@ -72,6 +72,7 @@ jobs:
             utils-overload \
             utils-smart_ptrs \
             utils-string_extra \
+            utils-strong_typedef \
             utils-tuple_extra \
             utils-type_list \
             utils-type_traits_extra
@@ -104,6 +105,7 @@ jobs:
             utils-overload \
             utils-smart_ptrs \
             utils-string_extra \
+            utils-strong_typedef \
             utils-tuple_extra \
             utils-type_list \
             utils-type_traits_extra
