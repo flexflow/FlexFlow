@@ -37,8 +37,6 @@ public:
 
   std::optional<std::size_t> at_maybe(std::size_t) const;
 
-  bool operator==(ArrayShape const &other) const; // for test case
-
   ArrayShape reversed_dim_order() const;
   ArrayShape sub_shape(std::optional<legion_dim_t> start,
                        std::optional<legion_dim_t> end);

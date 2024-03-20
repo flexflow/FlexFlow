@@ -29,3 +29,17 @@ TEST_CASE("Testing DataTypeDispatch1") {
   int result = dispatcher(DataType::FLOAT, value);
   CHECK(result == 11);
 }
+
+TEST_CASE("Testing dispatch function double") {
+  int value = 10;
+  int result = dispatch<Function1>(DataType::DOUBLE, value);
+  CHECK(result == 11);
+}
+
+
+TEST_CASE("Testing DataTypeDispatch1 Double") {
+  DataTypeDispatch1<Function1> dispatcher;
+  int value = 10;
+  int result = dispatcher(DataType::DOUBLE, value);
+  CHECK(result == 11);
+}

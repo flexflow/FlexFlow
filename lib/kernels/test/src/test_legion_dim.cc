@@ -17,6 +17,9 @@ TEST_CASE("Testing DimOrdered") {
     CHECK(dimOrder[legion_dim_t(0)] == 1);
     CHECK(dimOrder[legion_dim_t(1)] == 2);
     CHECK(dimOrder[legion_dim_t(2)] == 3);
+    CHECK(dimOrder[ff_dim_t(0)] == 1);
+    CHECK(dimOrder[ff_dim_t(1)] == 2);
+    CHECK(dimOrder[ff_dim_t(2)] == 3);
   }
 
   SUBCASE("comparsion") {

@@ -14,7 +14,7 @@ public:
 
 public:
   int warmup_iters;
-  int measure_iters;
+  req<int> measure_iters;
 };
 
 FF_VISITABLE_STRUCT(ProfilingSettings, warmup_iters, measure_iters);

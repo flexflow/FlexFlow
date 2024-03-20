@@ -13,6 +13,7 @@ TEST_CASE("ArrayShape Initialization and Basic Functions") {
   CHECK(shape.num_dims() == 3);
   CHECK(shape[legion_dim_t(1)] == 3);
   CHECK(shape.at(legion_dim_t(2)) == 4);
+  CHECK(shape.at(ff_dim_t(2)) == 4);
 }
 
 TEST_CASE("Negative Indices and Optional Indexing") {
