@@ -2450,6 +2450,16 @@ void RequestManager::background_serving_task(
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
+
+
+  auto print_timestamped_message = [](const std::string& message) {
+    auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::cout << std::put_time(std::localtime(&now), "%Y-%m-%d %X") << " - " << message << std::endl;
+  };
+
+  // Print at the start of the task
+  print_timestamped_message("###PEFT DEBUGGING### Starting background serving task.");
+
   RequestManager *rm = RequestManager::get_request_manager();
   FFModel *llm = *(FFModel **)task->args;
   {
@@ -2466,6 +2476,11 @@ void RequestManager::background_serving_task(
       ssm->config.lg_ctx = ctx;
     }
   }
+
+  // Checkpoint print
+  print_timestamped_message("###PEFT DEBUGGING### Updated models' configuration.");
+
+
   if (rm->get_num_ssms() == 0) {
     // No SSMs: perform incremental decoding
     rm->serve_incr_decoding(llm);
@@ -2473,6 +2488,10 @@ void RequestManager::background_serving_task(
     // Registered SSMs: perform speculative inference
     rm->serve_spec_infer(llm);
   }
+
+  // Print at the end of the task
+  print_timestamped_message("###PEFT DEBUGGING### Background serving task completed.");
+
 }
 
 std::string find_layer_name_from_guid(FFModel *model, LayerID guid) {
@@ -2497,6 +2516,15 @@ bool is_peft_operator_type(OperatorType type) {
 
 /*static*/
 void RequestManager::serve_incr_decoding(FFModel *llm) {
+
+  // Check if the model object exists
+  if (llm == nullptr) {
+    std::cout << "###PEFT DEBUGGING### LLM Model object does not exist." << std::endl;
+    return; // Early return to prevent further operations on a nullptr
+  } else {
+    std::cout << "###PEFT DEBUGGING### LLM Model object exists." << std::endl;
+  }
+
   Context ctx = llm->config.lg_ctx;
   Runtime *runtime = llm->config.lg_hlr;
   // Compile the llm
