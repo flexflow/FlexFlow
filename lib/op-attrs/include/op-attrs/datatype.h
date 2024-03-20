@@ -3,7 +3,7 @@
 
 #include "utils/fmt.h"
 #include "utils/fp16.h"
-#include "utils/variant.h"
+#include <variant>
 
 namespace FlexFlow {
 
@@ -50,12 +50,12 @@ typename data_type_enum_to_class<DT>::type cast_to(T t) {
 template <DataType DT>
 using real_type = typename data_type_enum_to_class<DT>::type;
 
-using DataTypeValue = variant<real_type<DataType::FLOAT>,
-                              real_type<DataType::DOUBLE>,
-                              real_type<DataType::INT32>,
-                              real_type<DataType::INT64>,
-                              real_type<DataType::HALF>,
-                              real_type<DataType::BOOL>>;
+using DataTypeValue = std::variant<real_type<DataType::FLOAT>,
+                                   real_type<DataType::DOUBLE>,
+                                   real_type<DataType::INT32>,
+                                   real_type<DataType::INT64>,
+                                   real_type<DataType::HALF>,
+                                   real_type<DataType::BOOL>>;
 
 size_t size_of(DataType);
 

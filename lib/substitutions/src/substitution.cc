@@ -186,6 +186,14 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
               op_type,
               get<float>(assignments.at(OperatorAttributeKey::SCALAR))},
           nullopt);
+    case Op::EXP:
+    case Op::IDENTITY:
+    case Op::GELU:
+    case Op::RSQRT:
+    case Op::POW:
+    case Op::SIN:
+    case Op::COS:
+      return Operator(ElementUnaryAttrs{op_type}, nullopt);
     case Op::EMBEDDING:
       return Operator(
           EmbeddingAttrs{
@@ -218,7 +226,7 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
               get<bool>(assignments.at(OperatorAttributeKey::USE_BIAS)),
               get<DataType>(assignments.at(OperatorAttributeKey::DATA_TYPE)),
               get<Activation>(assignments.at(OperatorAttributeKey::ACTIVATION)),
-              get<optional<RegularizerAttrs>>(
+              get<std::optional<RegularizerAttrs>>(
                   assignments.at(OperatorAttributeKey::REGULARIZER))},
           nullopt);
     case Op::MULTIHEAD_ATTENTION:

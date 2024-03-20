@@ -14,8 +14,8 @@ OperatorType get_op_type(ConcatAttrs const &);
 OperatorType get_op_type(Conv2DAttrs const &);
 OperatorType get_op_type(DropoutAttrs const &);
 OperatorType get_op_type(ElementBinaryAttrs const &);
-OperatorType get_op_type(ElementScalarUnaryAttrs const &);
 OperatorType get_op_type(ElementUnaryAttrs const &);
+OperatorType get_op_type(ElementScalarUnaryAttrs const &);
 OperatorType get_op_type(EmbeddingAttrs const &);
 OperatorType get_op_type(FlatAttrs const &);
 OperatorType get_op_type(GatherAttrs const &);
@@ -45,7 +45,7 @@ struct GetOpTypeFunctor {
 };
 
 template <typename... Ts>
-OperatorType get_op_type(variant<Ts...> const &attrs) {
+OperatorType get_op_type(std::variant<Ts...> const &attrs) {
   return visit(GetOpTypeFunctor{}, attrs);
 }
 

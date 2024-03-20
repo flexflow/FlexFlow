@@ -6,12 +6,12 @@ PerfMetrics::PerfMetrics(double _start_time)
     : start_time(_start_time), current_time(_start_time) {}
 
 PerfMetrics::PerfMetrics(int _train_all,
-                         optional<int> _train_correct,
-                         optional<float> _cce_loss,
-                         optional<float> _sparse_cce_loss,
-                         optional<float> _mse_loss,
-                         optional<float> _rmse_loss,
-                         optional<float> _mae_loss,
+                         std::optional<int> _train_correct,
+                         std::optional<float> _cce_loss,
+                         std::optional<float> _sparse_cce_loss,
+                         std::optional<float> _mse_loss,
+                         std::optional<float> _rmse_loss,
+                         std::optional<float> _mae_loss,
                          double _start_time_micro,
                          double _current_time_micro)
     : train_all(_train_all), train_correct(_train_correct), cce_loss(_cce_loss),
@@ -30,7 +30,7 @@ float get_accuracy(PerfMetrics const &m) {
 PerfMetrics update(PerfMetrics const &lhs, PerfMetrics const &rhs) {
   PerfMetrics out(lhs);
 
-  auto update_val = [](optional<float> &l, optional<float> const &r) {
+  auto update_val = [](std::optional<float> &l, std::optional<float> const &r) {
     if (l.has_value()) {
       l.value() += r.value();
     }
@@ -53,7 +53,7 @@ PerfMetrics update(PerfMetrics const &lhs, PerfMetrics const &rhs) {
 PerfMetrics apply_scale(PerfMetrics const &pm, float scale) {
   PerfMetrics out(pm);
 
-  auto scale_val = [&](optional<float> &l) {
+  auto scale_val = [&](std::optional<float> &l) {
     if (l.has_value()) {
       l.value() *= scale;
     }

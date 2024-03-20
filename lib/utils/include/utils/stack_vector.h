@@ -3,12 +3,12 @@
 
 #include "containers.h"
 #include "hash-utils.h"
-#include "optional.h"
 #include "utils/fmt.h"
 #include "utils/test_types.h"
 #include "utils/type_traits.h"
 #include <array>
 #include <cassert>
+#include <optional>
 #include <type_traits>
 
 namespace FlexFlow {
@@ -16,19 +16,20 @@ namespace FlexFlow {
 template <typename T, std::size_t MAXSIZE>
 struct stack_vector {
 private:
-  using element_type =
-      conditional_t<std::is_default_constructible<T>::value, T, optional<T>>;
+  using element_type = conditional_t<std::is_default_constructible<T>::value,
+                                     T,
+                                     std::optional<T>>;
 
   static T const &get_value(T const &t) {
     return t;
   }
-  static T const &get_value(optional<T> const &t) {
+  static T const &get_value(std::optional<T> const &t) {
     return t.value();
   }
   static T &get_value(T &t) {
     return t;
   }
-  static T &get_value(optional<T> &t) {
+  static T &get_value(std::optional<T> &t) {
     return t.value();
   }
 

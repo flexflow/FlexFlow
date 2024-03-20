@@ -129,12 +129,12 @@ public:
   }
 
   template <typename... Ts>
-  EdgeLabel const &at(variant<Ts...> const &e) const {
+  EdgeLabel const &at(std::variant<Ts...> const &e) const {
     return visit([&](auto const &e) -> auto const & { return this->at(e); }, e);
   }
 
   template <typename... Ts>
-  EdgeLabel &at(variant<Ts...> const &e) {
+  EdgeLabel &at(std::variant<Ts...> const &e) {
     return visit([&](auto const &e) -> auto & { return this->at(e); }, e);
   }
 

@@ -11,22 +11,22 @@
 namespace FlexFlow {
 
 struct V1ParallelDim {
-  req<size_t> size;
-  req<int> degree;
+  size_t size;
+  int degree;
   req<bool> is_replica_dim;
 };
 FF_VISITABLE_STRUCT(V1ParallelDim, size, degree, is_replica_dim);
 
 struct V1ParallelTensorShape {
-  req<std::vector<V1ParallelDim>> dims;
+  std::vector<V1ParallelDim> dims;
   req<V1DataType> data_type;
 };
 FF_VISITABLE_STRUCT(V1ParallelTensorShape, dims, data_type);
 
 struct V1ParallelTensor {
   V1ParallelTensorShape shape;
-  req<optional<V1ParamSync>> sync_type;
-  req<optional<V1Initializer>> initializer;
+  std::optional<V1ParamSync> sync_type;
+  std::optional<V1Initializer> initializer;
   req<bool> create_grad;
 };
 FF_VISITABLE_STRUCT(

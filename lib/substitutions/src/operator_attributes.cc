@@ -85,6 +85,14 @@ optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p,
   }
 }
 
+optional<OperatorAttributeValue> get_attribute(ElementScalarUnaryAttrs const &p,
+                                               OperatorAttributeKey key) {
+  switch (key) {
+    default:
+      return nullopt;
+  }
+}
+
 optional<OperatorAttributeValue> get_attribute(DropoutAttrs const &p,
                                                OperatorAttributeKey key) {
   switch (key) {

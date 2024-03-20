@@ -53,7 +53,7 @@ struct V1JsonableGraph {
 
 struct V1Layer {
   V1CompGraphOperatorAttrs attrs;
-  req<optional<std::string>> name;
+  req<std::optional<std::string>> name;
 };
 FF_VISITABLE_STRUCT(V1Layer, attrs, name);
 V1Layer to_v1(Layer const &);

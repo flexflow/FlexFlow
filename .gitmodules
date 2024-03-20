@@ -4,18 +4,6 @@
 [submodule "deps/nccl"]
 	path = deps/nccl
 	url = https://github.com/NVIDIA/nccl.git
-[submodule "deps/pybind11"]
-	path = deps/pybind11
-	url = https://github.com/pybind/pybind11.git
-[submodule "deps/googletest"]
-	path = deps/googletest
-	url = https://github.com/google/googletest.git
-[submodule "deps/variant"]
-	path = deps/variant
-	url = https://github.com/mpark/variant
-[submodule "deps/optional"]
-	path = deps/optional
-	url = https://github.com/TartanLlama/optional.git
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/nlohmann/json.git
@@ -37,9 +25,3 @@
 [submodule "deps/fmt"]
 	path = deps/fmt
 	url = https://github.com/fmtlib/fmt.git
-[submodule "deps/invoke"]
-	path = deps/invoke
-	url = https://github.com/BlackMATov/invoke.hpp.git
-[submodule "deps/any"]
-	path = deps/any
-	url = https://github.com/thelink2012/any.git
