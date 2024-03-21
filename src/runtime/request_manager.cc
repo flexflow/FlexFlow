@@ -54,6 +54,7 @@ RequestManager::RequestManager()
   // ffmodel.compile()
   max_requests_per_batch = -1;
   max_tokens_per_batch = -1;
+  max_spec_tree_token_num = -1;
   max_sequence_length = -1;
 }
 
@@ -75,15 +76,27 @@ void RequestManager::set_max_tokens_per_batch(int max_num_tokens) {
   assert(max_tokens_per_batch <= BatchConfig::MAX_NUM_TOKENS);
 }
 
+void RequestManager::set_max_spec_tree_token_num(int max_num_tokens) {
+  assert(max_spec_tree_token_num == -1 ||
+         max_spec_tree_token_num == max_num_tokens);
+  max_spec_tree_token_num = max_num_tokens;
+  assert(max_spec_tree_token_num <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+}
+
 int RequestManager::get_max_tokens_per_batch() {
   assert(max_tokens_per_batch > 0);
   return max_tokens_per_batch;
 }
 
+int RequestManager::get_max_spec_tree_token_num() {
+  assert(max_spec_tree_token_num > 0);
+  return max_spec_tree_token_num;
+}
+
 int RequestManager::get_max_verify_tokens_per_batch() {
   assert(max_tokens_per_batch > 0);
   return max_tokens_per_batch +
-         BatchConfig::MAX_SPEC_TREE_TOKEN_NUM * max_requests_per_batch;
+         max_spec_tree_token_num * max_requests_per_batch;
 }
 
 void RequestManager::set_max_sequence_length(int max_seq_length) {
@@ -1564,9 +1577,11 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         }
 
         if (new_bc.num_tokens > get_max_verify_tokens_per_batch()) {
-          assert(false &&
-                 "Exceeding the space available in the TreeVerify batch");
-          break;
+          printf("Exceeding (%i) the space available (%i) in the TreeVerify "
+                 "batch\n",
+                 new_bc.num_tokens,
+                 get_max_verify_tokens_per_batch());
+          assert(false);
         }
 
         if (new_bc.requestsInfo[i].num_tokens_in_batch +

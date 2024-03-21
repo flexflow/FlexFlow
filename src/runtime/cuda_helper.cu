@@ -287,7 +287,11 @@ __host__ void
   tensor_file = fopen(file_name, "w");
   assert(tensor_file != NULL);
   for (unsigned i = 0; i < num_elements; i++) {
-    fprintf(tensor_file, "%.9f, ", host_ptr[i]);
+    if (i < num_elements - 1) {
+      fprintf(tensor_file, "%.9f, ", host_ptr[i]);
+    } else {
+      fprintf(tensor_file, "%.9f", host_ptr[i]);
+    }
   }
 
   fclose(tensor_file);
@@ -313,7 +317,11 @@ __host__ void
   tensor_file = fopen(file_name, "w");
   assert(tensor_file != NULL);
   for (unsigned i = 0; i < num_elements; i++) {
-    fprintf(tensor_file, "%.9f, ", (float)host_ptr[i]);
+    if (i < num_elements - 1) {
+      fprintf(tensor_file, "%.9f, ", (float)host_ptr[i]);
+    } else {
+      fprintf(tensor_file, "%.9f", (float)host_ptr[i]);
+    }
   }
 
   fclose(tensor_file);
@@ -340,7 +348,11 @@ __host__ void save_tensor(int32_t const *ptr,
   tensor_file = fopen(file_name, "w");
   assert(tensor_file != NULL);
   for (unsigned i = 0; i < num_elements; i++) {
-    fprintf(tensor_file, "%d, ", host_ptr[i]);
+    if (i < num_elements - 1) {
+      fprintf(tensor_file, "%d, ", host_ptr[i]);
+    } else {
+      fprintf(tensor_file, "%d", host_ptr[i]);
+    }
   }
 
   fclose(tensor_file);
@@ -367,7 +379,11 @@ __host__ void save_tensor(int64_t const *ptr,
   tensor_file = fopen(file_name, "w");
   assert(tensor_file != NULL);
   for (unsigned i = 0; i < num_elements; i++) {
-    fprintf(tensor_file, "%ld, ", host_ptr[i]);
+    if (i < num_elements - 1) {
+      fprintf(tensor_file, "%ld, ", host_ptr[i]);
+    } else {
+      fprintf(tensor_file, "%ld", host_ptr[i]);
+    }
   }
 
   fclose(tensor_file);

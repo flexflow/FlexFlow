@@ -9,6 +9,7 @@ namespace FlexFlow {
 struct Group_byParams {
   int n;
   float alpha;
+  char name[MAX_OPNAME];
   bool is_valid(
       std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;
 };

@@ -382,7 +382,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
         m->vProjSize,
         num_tokens,
         BatchConfig::max_sequence_length() +
-            BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,
+            BatchConfig::max_spec_tree_token_num(),
         /*root*/ curr_depth == 0,
         m->hidden_size);
   }
@@ -392,7 +392,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
     DT, Dh, Dh_MAX, THDS_PER_KEY, THREADS_PER_VALUE, THDS_PER_BLOCK, stream)   \
   smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                               \
                                    BatchConfig::max_sequence_length() +        \
-                                       BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,   \
+                                       BatchConfig::max_spec_tree_token_num(), \
                                    THREADS_PER_VALUE,                          \
                                    THDS_PER_BLOCK);                            \
   compute_spec_inc_attention_kernel_generation_kernel<DT,                      \
@@ -408,7 +408,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
           output_ptr,                                                          \
           scale,                                                               \
           BatchConfig::max_sequence_length() +                                 \
-              BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,                            \
+              BatchConfig::max_spec_tree_token_num(),                          \
           m->qProjSize,                                                        \
           m->hidden_size,                                                      \
           m->request_infos,                                                    \
@@ -493,11 +493,11 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
   int kt_block_size = m->kProjSize;
   int kt_req_block_size = kt_block_size * m->num_q_heads *
                           (BatchConfig::max_sequence_length() +
-                           BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+                           BatchConfig::max_spec_tree_token_num());
   int vt_block_size = m->vProjSize;
   int vt_req_block_size = vt_block_size * m->num_q_heads *
                           (BatchConfig::max_sequence_length() +
-                           BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+                           BatchConfig::max_spec_tree_token_num());
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -695,6 +695,12 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
     tokens_prev_requests_squares += num_new_tokens * total_tokens;
   }
 
+  if (tokens_previous_requests != (num_tokens - bc->num_generation_tokens)) {
+    bc->print();
+    printf("tokens_previous_requests: %i\n", tokens_previous_requests);
+    printf("num_tokens: %i\n", num_tokens);
+    printf("bc->num_generation_tokens: %i\n", bc->num_generation_tokens);
+  }
   assert(tokens_previous_requests == (num_tokens - bc->num_generation_tokens));
 }
 

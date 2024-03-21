@@ -2643,6 +2643,14 @@ void flexflow_request_manager_set_max_tokens_per_batch(
   DEBUG_PRINT("[RequestManager] set max_tokens_per_batch %d", max_num_tokens);
 }
 
+void flexflow_request_manager_set_max_spec_tree_token_num(
+    flexflow_request_manager_t handle_, int max_num_tokens) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_spec_tree_token_num(max_num_tokens);
+  DEBUG_PRINT("[RequestManager] set max_spec_tree_token_num %d",
+              max_num_tokens);
+}
+
 void flexflow_request_manager_set_max_sequence_length(
     flexflow_request_manager_t handle_, int max_seq_length) {
   RequestManager *handle = FFCObjectWrapper::unwrap(handle_);

@@ -11,6 +11,7 @@ struct MultiHeadAttentionParams {
   int embed_dim, num_heads, kdim, vdim;
   float dropout;
   bool bias, add_bias_kv, add_zero_attn;
+  char name[MAX_OPNAME];
 
   bool is_valid(std::tuple<ParallelTensorShape,
                            ParallelTensorShape,

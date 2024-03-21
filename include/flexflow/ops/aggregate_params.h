@@ -9,6 +9,7 @@ namespace FlexFlow {
 struct AggregateParams {
   int n;
   float lambda_bal;
+  char name[MAX_OPNAME];
   bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };
 bool operator==(AggregateParams const &, AggregateParams const &);

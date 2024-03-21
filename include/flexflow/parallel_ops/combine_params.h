@@ -6,6 +6,7 @@ namespace FlexFlow {
 struct CombineParams {
   int combine_legion_dim;
   int combine_degree;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(CombineParams const &, CombineParams const &);

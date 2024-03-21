@@ -120,10 +120,11 @@ class LLM:
         self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
         self.refresh_cache = refresh_cache
         self.output_file = output_file
+        self.rm = None
 
     def __del__(self):
         # Stop the background server before deleting the object
-        if type(self) == LLM:
+        if type(self) == LLM and self.rm is not None:
             self.rm.stop_server()
 
     def __get_ff_model_type(self):
@@ -188,9 +189,11 @@ class LLM:
             os.path.expanduser(self.cache_path),
             "weights",
             self.model_name.lower(),
-            "full-precision"
-            if self.data_type == DataType.DT_FLOAT
-            else "half-precision",
+            (
+                "full-precision"
+                if self.data_type == DataType.DT_FLOAT
+                else "half-precision"
+            ),
         )
         if self.refresh_cache:
             print(
@@ -304,8 +307,6 @@ class LLM:
     ):
         """Compile the LLM for inference and load the weights into memory
 
-        :param mode: The LLM inference mode (InferenceMode.INC_DECODING_MODE for incremental decoding, InferenceMode.BEAM_SEARCH_MODE for beam search, or InferenceMode.TREE_VERIFY_MODE for token tree verification), defaults to InferenceMode.INC_DECODING_MODE
-        :type mode: InferenceMode, optional
         :param generation_config: The GenerationConfig object with the configurations to use for sampling, defaults to GenerationConfig()
         :type generation_config: GenerationConfig, optional
         :param max_requests_per_batch: The maximum batch size to allow, defaults to 1
@@ -323,9 +324,9 @@ class LLM:
         :param ssms: The SSMs to use when operating in speculative inference mode, defaults to []
         :type ssms: list, optional
         """
-        #self.max_requests_per_batch = max_requests_per_batch
-        #self.max_seq_length = max_seq_length
-        #self.max_tokens_per_batch = max_tokens_per_batch
+        # self.max_requests_per_batch = max_requests_per_batch
+        # self.max_seq_length = max_seq_length
+        # self.max_tokens_per_batch = max_tokens_per_batch
         self.ssms = ssms
         self.generation_config = GenerationConfig()
         self.ffconfig = FFConfig()
@@ -365,7 +366,7 @@ class LLM:
             self.ffconfig,
             self.hf_config,
             self.data_type,
-            max_tokens_per_batch
+            max_tokens_per_batch,
         )
 
         # Download the weights from huggingface (if needed)
@@ -374,6 +375,13 @@ class LLM:
         # Create file data loader, load weights into tensors
         model_configs = self.config_class(self.hf_config)
 
+        self.rm.set_max_spec_tree_token_num(
+            self.model_configs.max_spec_tree_token_num
+            if "max_spec_tree_token_num"
+            in self.model_configs.max_spec_tree_token_num.__dict__
+            else 20
+        )
+
         self.fileloader = FileDataLoader(
             self.weights_path,
             model_configs.num_attention_heads,
@@ -381,7 +389,7 @@ class LLM:
             model_configs.hidden_size,
             model_configs.hidden_size // model_configs.num_attention_heads,
             self.ffconfig.tensor_parallelism_degree,
-            self.data_type == DataType.DT_FLOAT
+            self.data_type == DataType.DT_FLOAT,
         )
 
         # Register weights file loader
@@ -407,8 +415,11 @@ class LLM:
             self.rm.register_ssm_model(ssm.model.ffmodel)
 
         # start background server
-        if (mode == InferenceMode.TREE_VERIFY_MODE) or (mode == InferenceMode.INC_DECODING_MODE):
+        if (mode == InferenceMode.TREE_VERIFY_MODE) or (
+            mode == InferenceMode.INC_DECODING_MODE
+        ):
             import atexit
+
             atexit.register(self.rm.stop_server)
 
     def generate(self, prompts: Union[str, List[str]], max_length: int = 128):
@@ -429,25 +440,26 @@ class LLM:
             return self.model.ffmodel.generate(prompts, max_length)
         else:
             assert False, "Please pass a non-empty string or list of strings"
-    
+
     def start_server(self):
         self.rm.start_server(self.model.ffmodel)
         print("Background server started.")
-        
+
     def stop_server(self):
         self.rm.stop_server()
-        print("Background server stoped.")
-        
+        print("Background server stopped.")
+
     def __enter__(self):
         # Start the server when entering the context
-        #self.rm.start_server(self.model.ffmodel)
+        # self.rm.start_server(self.model.ffmodel)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         # Stop the server when exiting the context
-        #self.rm.stop_server()
+        # self.rm.stop_server()
         if exc_type:
             print(f"Exception occurred: {exc_value}")
+
 
 class SSM(LLM):
     """This class creates a SSM (Small-Speculative Model) object based on a model from HuggingFace"""

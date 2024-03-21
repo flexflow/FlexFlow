@@ -260,7 +260,7 @@ Experts::Experts(FFModel &model,
               params.use_bias,
               params.activation,
               allocate_weights,
-              name) {}
+              params.name) {}
 
 Experts::Experts(FFModel &model,
                  LayerID const &_layer_guid,
@@ -407,6 +407,8 @@ void Experts::serialize(Legion::Serializer &sez) const {
   sez.serialize(params.experts_internal_dim_size);
   sez.serialize(params.use_bias);
   sez.serialize(params.activation);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -432,6 +434,10 @@ Node Experts::deserialize(FFModel &ff,
   dez.deserialize(experts_internal_dim_size);
   dez.deserialize(use_bias);
   dez.deserialize(activation);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
 
   assert(num_inputs == 3);
 
@@ -445,6 +451,7 @@ Node Experts::deserialize(FFModel &ff,
   params.experts_internal_dim_size = experts_internal_dim_size;
   params.use_bias = use_bias;
   params.activation = activation;
+  strcpy(params.name, name);
 
   return ff.get_or_create_node<Experts>(inputs, params);
 }
