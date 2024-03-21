@@ -1539,6 +1539,11 @@ flexflow_tensor_t
   Tensor aggregate_inputs[num_experts + 4] = {nullptr};
   aggregate_inputs[0] = topk_coefficients;
   aggregate_inputs[1] = topk_indices;
+  aggregate_inputs[2] = topk_indices;
+  // Note: we need to set the tensor below to a non-null value, but it is
+  // ignored (as it is not used in inference/finetuning)
+  aggregate_inputs[3] = topk_coefficients; // TODO: set this to full gate preds
+                                           // (to support training)
   for (int i = 0; i < num_experts; i++) {
     aggregate_inputs[i + 4] = FFCObjectWrapper::unwrap(expert_predictions_[i]);
   }
