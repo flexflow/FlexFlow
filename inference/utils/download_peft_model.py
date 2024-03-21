@@ -62,6 +62,7 @@ def main(args):
             )
             peft.download_hf_weights_if_needed()
             peft.download_hf_config()
+            peft.download_hf_tokenizer_if_needed()
 
 
 if __name__ == "__main__":

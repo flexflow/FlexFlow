@@ -154,7 +154,7 @@ class LLM:
         print(f"Saving {self.model_name} configs to file {self.config_path}...")
         self.hf_config.to_json_file(self.config_path)
 
-    def _get_revision_hashes(self, model_name: str, weights: bool):
+    def __get_revision_hashes(self, model_name: str, weights: bool):
         ff_revision = None
         ff_revision_file = (
             os.path.join(self.weights_path, "rev_sha.txt")
@@ -201,7 +201,7 @@ class LLM:
         os.makedirs(self.weights_path, exist_ok=True)
         #print(f"Creating directory {self.weights_path} (if it doesn't exist)...")
 
-        ff_revision, ff_revision_file, latest_revision = self._get_revision_hashes(
+        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
             self.model_name, weights=True
         )
 
@@ -582,9 +582,9 @@ class PEFT(LLM):
         
         self.base_model.download_hf_config()
 
-    def _get_revision_hashes(self, peft_model_id: str, weights: bool):
+    def __get_revision_hashes(self, peft_model_id: str, weights: bool):
         model_name = self.peft_model_id
-        return super()._get_revision_hashes(model_name, weights)
+        return self._LLM__get_revision_hashes(model_name, weights)
 
     def convert_peft_model(self, hf_peft_model, weights_path):
         for name, params in hf_peft_model.named_parameters():
@@ -621,7 +621,7 @@ class PEFT(LLM):
         os.makedirs(self.weights_path, exist_ok=True)
         #print(f"Creating directory {self.weights_path} (if it doesn't exist)...")
 
-        ff_revision, ff_revision_file, latest_revision = self._get_revision_hashes(
+        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
             self.peft_model_id,
             True
         )
