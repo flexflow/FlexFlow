@@ -91,8 +91,8 @@ class FlexFlowMixtral(FlexFlowModel):
         embed_init = UniformInitializer(random.randint(0, self.maxint), 0, 0)
         token = ffmodel.embedding(
             input_tensor,
-            self.llama_config.vocab_size,
-            self.llama_config.hidden_size,
+            self.mixtral_config.vocab_size,
+            self.mixtral_config.hidden_size,
             AggrMode.AGGR_MODE_NONE,
             self.data_type,
             None,
@@ -100,35 +100,35 @@ class FlexFlowMixtral(FlexFlowModel):
             name="embed_tokens",
         )
 
-        for i in range(self.llama_config.num_hidden_layers):
+        for i in range(self.mixtral_config.num_hidden_layers):
             ffmodel.set_transformer_layer_id(i)
 
             if i == 0:
                 attn_norm = ffmodel.rms_norm(
                     token,
-                    self.llama_config.rms_norm_eps,
-                    self.llama_config.hidden_size,
+                    self.mixtral_config.rms_norm_eps,
+                    self.mixtral_config.hidden_size,
                     name=f"layers_{i}_input_layernorm",
                 )
             else:
                 token, attn_norm = ffmodel.residual_rms_norm(
                     token,
                     mlp_out,
-                    self.llama_config.rms_norm_eps,
-                    self.llama_config.hidden_size,
+                    self.mixtral_config.rms_norm_eps,
+                    self.mixtral_config.hidden_size,
                     name=f"layers_{i}_input_layernorm",
                 )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
                 mha = ffmodel.spec_inc_multiquery_self_attention(
                     attn_norm,
-                    self.llama_config.hidden_size,
-                    self.llama_config.num_attention_heads,
-                    self.llama_config.num_key_value_heads,
-                    self.llama_config.hidden_size
-                    // self.llama_config.num_attention_heads,
-                    self.llama_config.hidden_size
-                    // self.llama_config.num_attention_heads,
+                    self.mixtral_config.hidden_size,
+                    self.mixtral_config.num_attention_heads,
+                    self.mixtral_config.num_key_value_heads,
+                    self.mixtral_config.hidden_size
+                    // self.mixtral_config.num_attention_heads,
+                    self.mixtral_config.hidden_size
+                    // self.mixtral_config.num_attention_heads,
                     0.0,  # dropout
                     False,  # qkv_bias
                     False,  # final_bias
@@ -141,13 +141,13 @@ class FlexFlowMixtral(FlexFlowModel):
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 mha = ffmodel.inc_multiquery_self_attention_verify(
                     attn_norm,
-                    self.llama_config.hidden_size,
-                    self.llama_config.num_attention_heads,
-                    self.llama_config.num_key_value_heads,
-                    self.llama_config.hidden_size
-                    // self.llama_config.num_attention_heads,
-                    self.llama_config.hidden_size
-                    // self.llama_config.num_attention_heads,
+                    self.mixtral_config.hidden_size,
+                    self.mixtral_config.num_attention_heads,
+                    self.mixtral_config.num_key_value_heads,
+                    self.mixtral_config.hidden_size
+                    // self.mixtral_config.num_attention_heads,
+                    self.mixtral_config.hidden_size
+                    // self.mixtral_config.num_attention_heads,
                     0.0,  # dropout
                     False,  # qkv_bias
                     False,  # final_bias
@@ -160,13 +160,13 @@ class FlexFlowMixtral(FlexFlowModel):
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 mha = ffmodel.inc_multiquery_self_attention(
                     attn_norm,
-                    self.llama_config.hidden_size,
-                    self.llama_config.num_attention_heads,
-                    self.llama_config.num_key_value_heads,
-                    self.llama_config.hidden_size
-                    // self.llama_config.num_attention_heads,
-                    self.llama_config.hidden_size
-                    // self.llama_config.num_attention_heads,
+                    self.mixtral_config.hidden_size,
+                    self.mixtral_config.num_attention_heads,
+                    self.mixtral_config.num_key_value_heads,
+                    self.mixtral_config.hidden_size
+                    // self.mixtral_config.num_attention_heads,
+                    self.mixtral_config.hidden_size
+                    // self.mixtral_config.num_attention_heads,
                     0.0,  # dropout
                     False,  # qkv_bias
                     False,  # final_bias
@@ -182,8 +182,8 @@ class FlexFlowMixtral(FlexFlowModel):
             token, ff_norm = ffmodel.residual_rms_norm(
                 token,
                 mha,
-                self.llama_config.rms_norm_eps,
-                self.llama_config.hidden_size,
+                self.mixtral_config.rms_norm_eps,
+                self.mixtral_config.hidden_size,
                 name=f"layers_{i}_post_attention_layernorm",
             )
             ## Start of MoE block ##
@@ -201,24 +201,24 @@ class FlexFlowMixtral(FlexFlowModel):
                 False,
                 name=f"layers_{i}_block_sparse_moe_topk",
             )
-            grouped_tokens = ffmodel.groupby(
+            grouped_tokens = ffmodel.group_by(
                 ff_norm,
                 topk_indices,
                 self.mixtral_config.num_local_experts,
                 name=f"layers_{i}_block_sparse_moe_groupby",
             )
             expert_predictions = []
-            for expert_idx in self.mixtral_config.num_local_experts:
+            for expert_idx in range(self.mixtral_config.num_local_experts):
                 w1 = ffmodel.dense(
                     grouped_tokens[expert_idx],
-                    self.llama_config.intermediate_size,
+                    self.mixtral_config.intermediate_size,
                     ActiMode.AC_MODE_NONE,
                     False,
                     name=f"layers_{i}_block_sparse_moe_experts_{expert_idx}_w1",
                 )
                 w3 = ffmodel.dense(
                     grouped_tokens[expert_idx],
-                    self.llama_config.intermediate_size,
+                    self.mixtral_config.intermediate_size,
                     ActiMode.AC_MODE_NONE,
                     False,
                     name=f"layers_{i}_block_sparse_moe_experts_{expert_idx}_w3",
@@ -230,7 +230,7 @@ class FlexFlowMixtral(FlexFlowModel):
                 )
                 w2 = ffmodel.dense(
                     multi,
-                    self.llama_config.hidden_size,
+                    self.mixtral_config.hidden_size,
                     ActiMode.AC_MODE_NONE,
                     False,
                     name=f"layers_{i}_block_sparse_moe_experts_{expert_idx}_w2",
@@ -250,13 +250,13 @@ class FlexFlowMixtral(FlexFlowModel):
         _, token = ffmodel.residual_rms_norm(
             token,
             mlp_out,
-            self.llama_config.rms_norm_eps,
-            self.llama_config.hidden_size,
+            self.mixtral_config.rms_norm_eps,
+            self.mixtral_config.hidden_size,
             name="norm",
         )
         dense = ffmodel.dense(
             token,
-            self.llama_config.vocab_size,
+            self.mixtral_config.vocab_size,
             ActiMode.AC_MODE_NONE,
             False,
             name="lm_head",
@@ -264,7 +264,7 @@ class FlexFlowMixtral(FlexFlowModel):
 
         if self.mode == InferenceMode.BEAM_SEARCH_MODE:
             softmax = ffmodel.softmax(dense, -1)
-            # output = ffmodel.beam_top_k(softmax, self.llama_config.max_beam_width, False)
+            # output = ffmodel.beam_top_k(softmax, self.mixtral_config.max_beam_width, False)
             output = ffmodel.argmax(softmax, True)
         else:
             if self.generation_config.do_sample:

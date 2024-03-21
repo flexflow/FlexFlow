@@ -613,6 +613,20 @@ class ArgMax(Op):
     def __init__(self, handle, idx=None, name=None):
         super(ArgMax, self).__init__(handle, idx, name)
 
+# -----------------------------------------------------------------------
+# GroupBy
+# -----------------------------------------------------------------------
+class GroupBy(Op):
+    def __init__(self, handle, idx=None, name=None):
+        super(GroupBy, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Aggregate
+# -----------------------------------------------------------------------
+class Aggregate(Op):
+    def __init__(self, handle, idx=None, name=None):
+        super(Aggregate, self).__init__(handle, idx, name)
+
 
 # -----------------------------------------------------------------------
 # flexflow_op_t handle to Op
@@ -728,6 +742,10 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
         return Mean(handle, idx, name)
     elif op_type == OpType.GATHER:
         return Gather(handle, idx, name)
+    elif op_type == OpType.GROUP_BY:
+        return GroupBy(handle, idx, name)
+    elif op_type == OpType.AGGREGATE:
+        return Aggregate(handle, idx, name)
     else:
         assert 0, "unknown layer type {}".format(op_type)
         return None
