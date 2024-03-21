@@ -79,6 +79,7 @@ class ModelType(Enum):
     FALCON = 3004
     STARCODER = 3005
     MPT = 3006
+    MIXTRAL = 3007
 
 
 class OpType(Enum):
@@ -151,6 +152,9 @@ class OpType(Enum):
     SIGMOID_SILU_MULTI = 2304
     RESIDUAL_RMS_NORM = 2305
     RESIDUAL_LAYERNORM = 2306
+    TOPK = 2307
+    GROUP_BY = 2308
+    AGGREGATE = 2309
 
 
 def enum_to_int(enum, enum_item):
