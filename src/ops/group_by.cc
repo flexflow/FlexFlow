@@ -354,12 +354,16 @@ void Group_by::forward_task(Task const *task,
   // Create a vector of n outputs, where n is the number of experts.
   // Each entry in the "outputs" vector points to the Legion tensor that will
   // contain the tockens dispatched to the corresponding expert
-  std::vector<GenericTensorAccessorR> output_accessors;
+  std::vector<GenericTensorAccessorW> output_accessors;
+  std::vector<GenericTensorAccessorR> output_accessors_inf_deb;
   float *outputs[n];
   for (int i = 0; i < n; i++) {
     GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
         DT_FLOAT, regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
     output_accessors.push_back(output);
+    GenericTensorAccessorR output_inf_deb = helperGetGenericTensorAccessorRO(
+        DT_FLOAT, regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
+    output_accessors_inf_deb.push_back(output_inf_deb);
     Domain out_domain = runtime->get_index_space_domain(
         ctx, task->regions[i + 2].region.get_index_space());
     outputs[i] = output.get_float_ptr();
@@ -381,7 +385,7 @@ void Group_by::forward_task(Task const *task,
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     Group_by::save_inference_tensors_to_file(
-        m, shard_id, nullptr, {input, assign}, {}, output_accessors);
+        m, shard_id, nullptr, {input, assign}, {}, output_accessors_inf_deb);
   }
 }
 
@@ -468,11 +472,15 @@ void Group_by::inference_task(Task const *task,
   // Each entry in the "outputs" vector points to the Legion tensor that will
   // contain the tockens dispatched to the corresponding expert
   std::vector<GenericTensorAccessorW> output_accessors;
+  std::vector<GenericTensorAccessorR> output_accessors_inf_deb;
   float *outputs[n];
   for (int i = 0; i < n; i++) {
     GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
         DT_FLOAT, regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
     output_accessors.push_back(output);
+    GenericTensorAccessorR output_inf_deb = helperGetGenericTensorAccessorRO(
+        DT_FLOAT, regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
+    output_accessors_inf_deb.push_back(output_inf_deb);
     Domain out_domain = runtime->get_index_space_domain(
         ctx, task->regions[i + 2].region.get_index_space());
     outputs[i] = output.get_float_ptr();
@@ -494,7 +502,7 @@ void Group_by::inference_task(Task const *task,
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     Group_by::save_inference_tensors_to_file(
-        m, shard_id, nullptr, {input, assign}, {}, output_accessors);
+        m, shard_id, nullptr, {input, assign}, {}, output_accessors_inf_deb);
   }
 }
 
