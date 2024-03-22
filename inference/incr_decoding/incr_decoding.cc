@@ -260,10 +260,16 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   // Register PEFT layer
+  LoraSGDOptimizerConfig *optim_config = nullptr;
+  if (!peft_model_name.empty()) {
+    optim_config = new LoraSGDOptimizerConfig();
+  }
   LoraLinearConfig mlp_second =
-      peft_model_name.empty()
-          ? LoraLinearConfig::DefaultConfig
-          : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
+      peft_model_name.empty() ? LoraLinearConfig::DefaultConfig
+                              : LoraLinearConfig(file_paths.cache_folder_path,
+                                                 peft_model_name,
+                                                 true /*trainable*/,
+                                                 optim_config);
   PEFTModelID peft_model_id =
       peft_model_name.empty()
           ? PEFTModelID::NO_ID
@@ -318,6 +324,8 @@ void FlexFlow::top_level_task(Task const *task,
 
   // float* data
   std::cout << "----------inference finished--------------" << std::endl;
+
+  free(optim_config);
 
   // free tokenizer space in memory
 }
