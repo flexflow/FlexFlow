@@ -38,10 +38,13 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::LoraLinear;
 
-bool check_lora_layer_match(Layer *potential_target, std::string target_module_name) {
-  if (potential_target->op_type == OP_LINEAR && potential_target->name != nullptr && strlen(potential_target->name) > 0) {
+bool check_lora_layer_match(Layer *potential_target,
+                            std::string target_module_name) {
+  if (potential_target->op_type == OP_LINEAR &&
+      potential_target->name != nullptr && strlen(potential_target->name) > 0) {
     std::string s(potential_target->name);
-    if (s.find(target_module_name) != std::string::npos && s.find("lora") == std::string::npos) {
+    if (s.find(target_module_name) != std::string::npos &&
+        s.find("lora") == std::string::npos) {
       return true;
     }
   }
@@ -65,7 +68,9 @@ PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
     for (auto it = layers.begin(); it != layers.end(); ++it) {
       Layer *target_module = *it;
       bool match = check_lora_layer_match(target_module, target_module_name);
-      if (!match) continue;
+      if (!match) {
+        continue;
+      }
 
       if (base_layer_to_peft_layer.find(target_module) !=
           base_layer_to_peft_layer.end()) {
@@ -76,11 +81,13 @@ PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
         Tensor const input = target_module->inputs[0];
         Tensor const output = target_module->outputs[0];
         assert(input->data_type == output->data_type);
-        std::string name_ = target_module->name ? std::string(target_module->name)
-                                                : std::string("");
+        std::string name_ = target_module->name
+                                ? std::string(target_module->name)
+                                : std::string("");
         size_t last_underscore = name_.length() - 1;
         for (int i = name_.length() - 1; i > 0; i--) {
-          if (!(std::isdigit(target_module->name[i]) || target_module->name[i] == '_')) {
+          if (!(std::isdigit(target_module->name[i]) ||
+                target_module->name[i] == '_')) {
             break;
           } else if (target_module->name[i] == '_') {
             last_underscore = i;
@@ -375,21 +382,22 @@ OpMeta *LoraLinear::init_task(Task const *task,
 
     // load weights from file
     std::string weights_folder_filepath = join_path({
-        lora_config.config_folder,
+        lora_config.cache_folder,
+        "weights",
         lora_config.peft_model_id,
         dt == DT_FLOAT ? "full-precision" : "half-precision",
     });
     std::string w0_filepath = join_path(
-        {weights_folder_filepath, lora_layername_substr + "_A_weight"});
+        {weights_folder_filepath, lora_layername_substr + "_A.weight"});
     std::string w1_filepath = join_path(
-        {weights_folder_filepath, lora_layername_substr + "_B_weight"});
+        {weights_folder_filepath, lora_layername_substr + "_B.weight"});
     if (dt == DT_FLOAT) {
-      std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
+      std::cout << "Loading LORA weight " << lora_layername_substr + "_A.weight"
                 << ", size: " << w0_num_elements << ", shard: " << shard_id
                 << std::endl;
       load_peft_from_file(
           (float *)weight.w0_ptr, w0_num_elements, true, shard_id, w0_filepath);
-      std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
+      std::cout << "Loading LORA weight " << lora_layername_substr + "_B.weight"
                 << ", size: " << w1_num_elements << ", shard: " << shard_id
                 << std::endl;
       load_peft_from_file((float *)weight.w1_ptr,
@@ -398,12 +406,12 @@ OpMeta *LoraLinear::init_task(Task const *task,
                           shard_id,
                           w1_filepath);
     } else if (dt == DT_HALF) {
-      std::cout << "Loading LORA weight " << lora_layername_substr + "_A_weight"
+      std::cout << "Loading LORA weight " << lora_layername_substr + "_A.weight"
                 << ", size: " << w0_num_elements << ", shard: " << shard_id
                 << std::endl;
       load_peft_from_file(
           (half *)weight.w0_ptr, w0_num_elements, true, shard_id, w0_filepath);
-      std::cout << "Loading LORA weight " << lora_layername_substr + "_B_weight"
+      std::cout << "Loading LORA weight " << lora_layername_substr + "_B.weight"
                 << ", size: " << w1_num_elements << ", shard: " << shard_id
                 << std::endl;
       load_peft_from_file(
@@ -818,25 +826,14 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
   for (auto const &kv : this->peft_configs) {
     // Serialize PEFTModelID
     sez.serialize(kv.first.id);
-    // Serialize LoraLinearConfig
-    sez.serialize(kv.second.rank);
-    sez.serialize(kv.second.optimizer_type);
-    sez.serialize(kv.second.learning_rate);
-    sez.serialize(kv.second.config_folder.length());
-    sez.serialize(kv.second.config_folder.c_str(),
-                  kv.second.config_folder.length());
+    // Serialize LoraConfig's cache folder
+    sez.serialize(kv.second.cache_folder.length());
+    sez.serialize(kv.second.cache_folder.c_str(),
+                  kv.second.cache_folder.length());
+    // Serialize LoraConfig's peft model id
     sez.serialize(kv.second.peft_model_id.length());
     sez.serialize(kv.second.peft_model_id.c_str(),
                   kv.second.peft_model_id.length());
-    sez.serialize(kv.second.lora_alpha);
-    sez.serialize(kv.second.lora_dropout);
-    sez.serialize(kv.second.target_modules.size());
-    sez.serialize(kv.second.load_weights_from_file);
-    for (int i = 0; i < kv.second.target_modules.size(); i++) {
-      sez.serialize(kv.second.target_modules[i].length());
-      sez.serialize(kv.second.target_modules[i].c_str(),
-                    kv.second.target_modules[i].length());
-    }
   }
   sez.serialize(strlen(this->name));
   sez.serialize(this->name, strlen(this->name));
@@ -867,44 +864,22 @@ Node LoraLinear::deserialize(FFModel &ff,
     size_t pid;
     dez.deserialize(pid);
     PEFTModelID peft_model_id(pid);
-    // Deserialize LoraLinearConfig
-    int rank;
-    OptimizerType optimizer_type;
-    float learning_rate;
-    dez.deserialize(rank);
-    dez.deserialize(optimizer_type);
-    dez.deserialize(learning_rate);
-    LoraLinearConfig lora_linear_config(rank, optimizer_type, learning_rate);
+
+    // Deserialize LoraConfig's cache folder
     size_t string_size;
     char buffer[4096] = {0};
-    // deserialize config_folder
     dez.deserialize(string_size);
     dez.deserialize(buffer, string_size);
-    lora_linear_config.config_folder = std::string(buffer);
+    std::string cache_folder = std::string(buffer);
+
+    // Deserialize LoraConfig's peft model id
     string_size = 0;
     memset(buffer, 0, 4096);
-    // deserialize peft_model_id
     dez.deserialize(string_size);
     dez.deserialize(buffer, string_size);
-    lora_linear_config.peft_model_id = std::string(buffer);
-    string_size = 0;
-    memset(buffer, 0, 4096);
-    // deserialize lora_alpha and lora_dropout
-    dez.deserialize(lora_linear_config.lora_alpha);
-    dez.deserialize(lora_linear_config.lora_dropout);
-    // deserialize target_modules
-    size_t num_target_modules = 0;
-    dez.deserialize(num_target_modules);
-    for (int i = 0; i < num_target_modules; i++) {
-      dez.deserialize(string_size);
-      dez.deserialize(buffer, string_size);
-      lora_linear_config.target_modules.push_back(std::string(buffer));
-      string_size = 0;
-      memset(buffer, 0, 4096);
-    }
-    // deserialize load_weights_from_file
-    dez.deserialize(lora_linear_config.load_weights_from_file);
-    // Append entry to list
+    std::string peft_model_name = std::string(buffer);
+
+    LoraLinearConfig lora_linear_config(cache_folder, peft_model_name);
     params.peft_configs.emplace(
         std::make_pair(peft_model_id, lora_linear_config));
   }
@@ -956,7 +931,7 @@ size_t hash<FlexFlow::LoraLinearParams>::operator()(
     hash_combine(key, kv.second.rank);
     hash_combine(key, kv.second.optimizer_type);
     hash_combine(key, kv.second.learning_rate);
-    hash_combine(key, kv.second.config_folder);
+    hash_combine(key, kv.second.cache_folder);
     hash_combine(key, kv.second.peft_model_id);
     hash_combine(key, kv.second.lora_alpha);
     hash_combine(key, kv.second.lora_dropout);

@@ -57,7 +57,8 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
 
   // Check if the model object exists
   if (model == nullptr) {
-    std::cout << "###PEFT DEBUGGING### Model object does not exist." << std::endl;
+    std::cout << "###PEFT DEBUGGING### Model object does not exist."
+              << std::endl;
     return; // Early return to prevent further operations on a nullptr
   } else {
     std::cout << "###PEFT DEBUGGING### Model object exists." << std::endl;
@@ -70,12 +71,14 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
 
   // Check if the model object exists after importing config
   if (model == nullptr) {
-    std::cout << "###PEFT DEBUGGING### Model object does not exist after setting config and batch size." << std::endl;
+    std::cout << "###PEFT DEBUGGING### Model object does not exist after "
+                 "setting config and batch size."
+              << std::endl;
     return; // Early return to prevent further operations on a nullptr
   } else {
     std::cout << "###PEFT DEBUGGING### Model object still exists." << std::endl;
   }
-  
+
   model->compile_inference();
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;
@@ -628,7 +631,7 @@ void FFModel::set_position_offset(int offset) {
 
 void FFModel::compile_inference() {
   std::cout << "###PEFT DEBUGGING### Entering compile_inference." << std::endl;
-  
+
   // Request at least four CPU processors for inference runs
   assert(
       config.cpusPerNode >= 4 &&
@@ -636,14 +639,17 @@ void FFModel::compile_inference() {
       "`-ll:cpu 4` in the command line if you are using the C++ interface or "
       "set `num_cpus` in `ff.init` if you are using the Python interface");
 
-  std::cout << "###PEFT DEBUGGING### Configuration check passed: At least four CPU cores per node." << std::endl;
+  std::cout << "###PEFT DEBUGGING### Configuration check passed: At least four "
+               "CPU cores per node."
+            << std::endl;
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   config.computationMode = COMP_MODE_INFERENCE;
   create_operators_from_layers();
 
   // Launch the graph optimize task
-  std::cout << "###PEFT DEBUGGING### Launching graph optimization task." << std::endl;
+  std::cout << "###PEFT DEBUGGING### Launching graph optimization task."
+            << std::endl;
   {
     FFModel *model = this;
     TaskLauncher launcher(GRAPH_OPTIMIZE_TASK_ID,
@@ -695,9 +701,12 @@ void FFModel::compile_inference() {
     }
   }
 
-  std::cout << "###PEFT DEBUGGING### Operators reconstructed from optimized graph." << std::endl;
+  std::cout
+      << "###PEFT DEBUGGING### Operators reconstructed from optimized graph."
+      << std::endl;
   // Perform inplace optimizations
-  std::cout << "###PEFT DEBUGGING### Starting inplace optimizations." << std::endl;
+  std::cout << "###PEFT DEBUGGING### Starting inplace optimizations."
+            << std::endl;
 
   loss_op = nullptr;
   metrics_op = nullptr;
@@ -765,7 +774,8 @@ void FFModel::compile_inference() {
   }
 
 #ifdef FF_USE_NCCL
-  std::cout << "###PEFT DEBUGGING### Setting up NCCL communications." << std::endl;
+  std::cout << "###PEFT DEBUGGING### Setting up NCCL communications."
+            << std::endl;
   for (size_t l = 0; l < operators.size(); l++) {
     // Only create nccl for allreduce and fusedop for inference
     // (fusedop may include allreduces)
@@ -802,7 +812,8 @@ void FFModel::compile_inference() {
     }
   }
 #endif
-  std::cout << "###PEFT DEBUGGING### compile_inference completed successfully." << std::endl;
+  std::cout << "###PEFT DEBUGGING### compile_inference completed successfully."
+            << std::endl;
 }
 
 std::string join_path(std::vector<std::string> const &paths) {

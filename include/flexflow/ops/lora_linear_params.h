@@ -17,7 +17,7 @@ public:
   LoraLinearConfig(int rank,
                    OptimizerType type = OPTIMIZER_TYPE_SGD,
                    float learning_rate = 1e-4);
-  LoraLinearConfig(std::string const &config_folder_,
+  LoraLinearConfig(std::string const &cache_folder_,
                    std::string const &peft_model_id_);
   friend bool operator==(LoraLinearConfig const &lhs,
                          LoraLinearConfig const &rhs);
@@ -28,7 +28,7 @@ public:
   int rank;
   OptimizerType optimizer_type;
   float learning_rate;
-  std::string config_folder;
+  std::string cache_folder;
   // Huggingface
   std::string peft_model_id;
   int lora_alpha;

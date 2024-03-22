@@ -2451,14 +2451,16 @@ void RequestManager::background_serving_task(
     Context ctx,
     Runtime *runtime) {
 
-
-  auto print_timestamped_message = [](const std::string& message) {
-    auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    std::cout << std::put_time(std::localtime(&now), "%Y-%m-%d %X") << " - " << message << std::endl;
+  auto print_timestamped_message = [](std::string const &message) {
+    auto now =
+        std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::cout << std::put_time(std::localtime(&now), "%Y-%m-%d %X") << " - "
+              << message << std::endl;
   };
 
   // Print at the start of the task
-  print_timestamped_message("###PEFT DEBUGGING### Starting background serving task.");
+  print_timestamped_message(
+      "###PEFT DEBUGGING### Starting background serving task.");
 
   RequestManager *rm = RequestManager::get_request_manager();
   FFModel *llm = *(FFModel **)task->args;
@@ -2478,8 +2480,8 @@ void RequestManager::background_serving_task(
   }
 
   // Checkpoint print
-  print_timestamped_message("###PEFT DEBUGGING### Updated models' configuration.");
-
+  print_timestamped_message(
+      "###PEFT DEBUGGING### Updated models' configuration.");
 
   if (rm->get_num_ssms() == 0) {
     // No SSMs: perform incremental decoding
@@ -2490,8 +2492,8 @@ void RequestManager::background_serving_task(
   }
 
   // Print at the end of the task
-  print_timestamped_message("###PEFT DEBUGGING### Background serving task completed.");
-
+  print_timestamped_message(
+      "###PEFT DEBUGGING### Background serving task completed.");
 }
 
 std::string find_layer_name_from_guid(FFModel *model, LayerID guid) {
@@ -2519,7 +2521,8 @@ void RequestManager::serve_incr_decoding(FFModel *llm) {
 
   // Check if the model object exists
   if (llm == nullptr) {
-    std::cout << "###PEFT DEBUGGING### LLM Model object does not exist." << std::endl;
+    std::cout << "###PEFT DEBUGGING### LLM Model object does not exist."
+              << std::endl;
     return; // Early return to prevent further operations on a nullptr
   } else {
     std::cout << "###PEFT DEBUGGING### LLM Model object exists." << std::endl;

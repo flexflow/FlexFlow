@@ -9,20 +9,20 @@ const LoraLinearConfig LoraLinearConfig::EmptyConfig = LoraLinearConfig();
 
 LoraLinearConfig::LoraLinearConfig()
     : rank(0), optimizer_type(OPTIMIZER_TYPE_NONE), learning_rate(0.0f),
-      config_folder(""), peft_model_id(""), lora_alpha(0), lora_dropout(0.0f),
+      cache_folder(""), peft_model_id(""), lora_alpha(0), lora_dropout(0.0f),
       load_weights_from_file(false) {}
 
 LoraLinearConfig::LoraLinearConfig(int _rank, OptimizerType _type, float _lr)
-    : rank(_rank), optimizer_type(_type), learning_rate(_lr), config_folder(""),
+    : rank(_rank), optimizer_type(_type), learning_rate(_lr), cache_folder(""),
       peft_model_id(""), lora_alpha(0), lora_dropout(0.0f),
       load_weights_from_file(false) {}
 
-LoraLinearConfig::LoraLinearConfig(std::string const &config_folder_,
+LoraLinearConfig::LoraLinearConfig(std::string const &cache_folder_,
                                    std::string const &peft_model_id_) {
-  config_folder = config_folder_;
+  cache_folder = cache_folder_;
   peft_model_id = peft_model_id_;
   std::string peft_inference_config_file_path =
-      join_path({config_folder, peft_model_id, "config.json"});
+      join_path({cache_folder, "configs", peft_model_id, "config.json"});
   std::ifstream config_file(peft_inference_config_file_path);
   if (config_file.is_open()) {
     try {
@@ -52,7 +52,7 @@ LoraLinearConfig::LoraLinearConfig(std::string const &config_folder_,
 bool operator==(LoraLinearConfig const &lhs, LoraLinearConfig const &rhs) {
   if (lhs.rank == rhs.rank && lhs.optimizer_type == rhs.optimizer_type &&
       lhs.learning_rate == rhs.learning_rate &&
-      lhs.config_folder == rhs.config_folder &&
+      lhs.cache_folder == rhs.cache_folder &&
       lhs.peft_model_id == rhs.peft_model_id &&
       lhs.lora_alpha == rhs.lora_alpha &&
       lhs.lora_dropout == rhs.lora_dropout &&
@@ -73,7 +73,7 @@ std::ostream &operator<<(std::ostream &os, LoraLinearConfig const &llc) {
   os << "rank: " << llc.rank << ", ";
   os << "optimizer_type: " << llc.optimizer_type << ", ";
   os << "learning_rate: " << llc.learning_rate << ", ";
-  os << "config_folder: " << llc.config_folder << ", ";
+  os << "cache_folder: " << llc.cache_folder << ", ";
   os << "peft_model_id: " << llc.peft_model_id << ", ";
   os << "lora_alpha: " << llc.lora_alpha << ", ";
   os << "lora_dropout: " << llc.lora_dropout << ", ";
