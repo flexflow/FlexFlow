@@ -11,7 +11,6 @@ ff_add_library(
     op-attrs
     utils
     json
-    optional
     pcg
     spdlog
     substitutions

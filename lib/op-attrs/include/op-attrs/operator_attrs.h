@@ -32,6 +32,7 @@
 #include "ops/topk.h"
 #include "ops/transpose.h"
 #include "utils/variant.h"
+#include <variant>
 
 namespace FlexFlow {
 
@@ -85,8 +86,8 @@ static_assert(is_valid_opattr<SoftmaxAttrs>::value, "");
 static_assert(is_valid_opattr<TopKAttrs>::value, "");
 static_assert(is_valid_opattr<TransposeAttrs>::value, "");
 
-using ParallelOperatorAttrs = std::
-    variant<CombineAttrs, ReductionAttrs, RepartitionAttrs, ReplicateAttrs>;
+using ParallelOperatorAttrs = 
+    std::variant<CombineAttrs, ReductionAttrs, RepartitionAttrs, ReplicateAttrs>;
 
 using ComputationGraphAttrs =
     variant_join<SharedOperatorAttrs, std::variant<BroadcastAttrs>>;

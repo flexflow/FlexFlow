@@ -43,13 +43,13 @@ bool OptimalCostRuntimeCmp::operator()(OptimalCostResult const &lhs,
   return lhs.runtime < rhs.runtime;
 }
 
-optional<OptimalCostResult>
+std::optional<OptimalCostResult>
     OptimalCostCache::load(OptimalCostState const &state) const {
   if (contains_key(cache, state)) {
     OptimalCostResult result = cache.at(state);
-    return make_optional(result);
+    return std::make_optional(result);
   }
-  return nullopt;
+  return std::nullopt;
 }
 
 void OptimalCostCache::save(OptimalCostState const &state,
@@ -152,7 +152,7 @@ struct MachineMappingSearcher {
     OptimalCostResult operator()(T const &t) {
       OptimalCostState state{
           t, resource, given_machine_views, frontier_machine_views};
-      optional<OptimalCostResult> cached_result =
+      std::optional<OptimalCostResult> cached_result =
           searcher->cached_subgraph_costs.load(state);
 
       if (cached_result) {

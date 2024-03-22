@@ -118,7 +118,9 @@ function(ff_add_test_executable)
     ${FF_TEST_EXEC_NAME}
     ${FF_TEST_EXEC_DEPS})
 
+  target_compile_definitions(${FF_TEST_EXEC_NAME} PRIVATE FF_TEST_SUITE="${FF_TEST_EXEC_NAME}")
+
   define_ff_vars(${FF_TEST_EXEC_NAME})
   ff_set_cxx_properties(${FF_TEST_EXEC_NAME})
-  doctest_discover_tests(${FF_TEST_EXEC_NAME})
+  doctest_discover_tests(${FF_TEST_EXEC_NAME} ADD_LABELS 1)
 endfunction()

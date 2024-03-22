@@ -8,22 +8,21 @@ REPO="$(realpath -- "$DIR/../../../")"
 
 export FF_GPU_BACKEND="cuda"
 export FF_CUDA_ARCH=70
-cd "$REPO"
-mkdir build
-cd build
+
+if [[ -d "$REPO/build-ci" ]]; then 
+  rm -rf "$REPO/build-ci"
+fi
+mkdir "$REPO/build-ci"
+cd "$REPO/build-ci"
 #if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
 #  export FF_BUILD_ALL_EXAMPLES=ON
 #  export FF_BUILD_UNIT_TESTS=ON
 #fi
+IFS=" " read -r -a FLAGS <<< "$CMAKE_FLAGS"
 ../config/config.linux \
-        -DCMAKE_CXX_COMPILER="clang++" \
-        -DCMAKE_C_COMPILER="clang" \
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache \
-        -DFF_USE_EXTERNAL_LEGION=ON \
-        -DFF_USE_EXTERNAL_JSON=ON \
-        -DFF_USE_EXTERNAL_FMT=ON \
-        -DFF_USE_EXTERNAL_SPDLOG=ON
+        "${FLAGS[@]}"
 
 # vim: set tabstop=2 shiftwidth=2 expandtab:

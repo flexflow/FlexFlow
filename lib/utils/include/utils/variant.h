@@ -42,7 +42,7 @@ struct elements_satisfy<Cond, std::variant<Ts...>>
     : elements_satisfy_impl<Cond, Ts...> {};
 
 template <typename T, typename Variant>
-struct is_in_variant;
+struct is_in_variant : std::false_type {};
 template <typename T, typename... Rest>
 struct is_in_variant<T, std::variant<T, Rest...>> : std::true_type {};
 template <typename T, typename Head, typename... Rest>

@@ -142,7 +142,7 @@ SplitASTNode::SplitASTNode(SplitType type,
 struct FlattenAST {
   void add_flattened_child_to_parent(SplitASTNode &parent,
                                      SplitAST const &child) {
-    if (holds_alternative<Node>(child)) {
+    if (std::holds_alternative<Node>(child)) {
       parent.children.push_back(child);
       return;
     }
@@ -178,11 +178,11 @@ struct ToFinalAST {
   std::variant<Serial, Parallel, Node> operator()(SplitASTNode const &node) {
     if (node.type == SplitType::SERIAL) {
       return Serial{transform(node.children, [](SplitAST const &s) {
-        return narrow<variant<Parallel, Node>>(to_final_ast(s)).value();
+        return narrow<std::variant<Parallel, Node>>(to_final_ast(s)).value();
       })};
     } else {
       return Parallel{transform(node.children, [](SplitAST const &s) {
-        return narrow<variant<Serial, Node>>(to_final_ast(s)).value();
+        return narrow<std::variant<Serial, Node>>(to_final_ast(s)).value();
       })};
     }
   }

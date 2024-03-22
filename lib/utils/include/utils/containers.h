@@ -674,8 +674,8 @@ std::vector<T> value_all(std::vector<std::optional<T>> const &v) {
 }
 
 template <typename T>
-std::unordered_set<T> value_all(std::unordered_set<optional<T>> const &v) {
-  return transform(v, [](optional<T> const &element) {
+std::unordered_set<T> value_all(std::unordered_set<std::optional<T>> const &v) {
+  return transform(v, [](std::optional<T> const &element) {
     return unwrap(element, [] {
       throw mk_runtime_error(
           "Encountered element without value in call to value_all");

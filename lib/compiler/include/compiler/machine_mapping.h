@@ -53,7 +53,7 @@ class OptimalCostCache {
 public:
   OptimalCostCache() = default;
 
-  optional<OptimalCostResult> load(OptimalCostState const &) const;
+  std::optional<OptimalCostResult> load(OptimalCostState const &) const;
   void save(OptimalCostState const &, OptimalCostResult const &);
 
 private:

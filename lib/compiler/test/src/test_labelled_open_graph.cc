@@ -4,6 +4,7 @@
 
 using namespace FlexFlow;
 
+TEST_SUITE(FF_TEST_SUITE) {
 // TEST_CASE("get_subgraph(OpenMultiDiGraphView)") {
 //   auto g = OpenMultiDiGraph::create<AdjacencyOpenMultiDiGraph>();
 
@@ -142,3 +143,4 @@ TEST_CASE("OutputLabelledOpenMultiDiGraph") {
 
 //   CHECK(get_edges(g).size() == 1);
 // }
+}
