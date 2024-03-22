@@ -94,6 +94,7 @@ void OPT::create_opt_model(FFModel &ff,
         opt_config.layer_norm_elementwise_affine,
         1e-05,
         true,
+        false,
         DT_NONE,
         std::string("layers_" + std::to_string(i) + "_attention_layer_norm")
             .c_str());
@@ -186,6 +187,7 @@ void OPT::create_opt_model(FFModel &ff,
                                     opt_config.layer_norm_elementwise_affine,
                                     1e-05,
                                     true,
+                                    false,
                                     DT_NONE,
                                     std::string("layers_" + std::to_string(i) +
                                                 "_add_bias_residual_layer_norm")
@@ -217,6 +219,12 @@ void OPT::create_opt_model(FFModel &ff,
                    REG_MODE_NONE,
                    0.0f,
                    std::string("layers_" + std::to_string(i) + "_fc2").c_str());
+    // Low-Rank Adapter (LoRA) for the second linear layer
+    ff.lora_linear(
+        fc1,
+        fc2,
+        OP_LORA_MLP_SECOND,
+        std::string("layers_" + std::to_string(i) + "_fc2_lora").c_str());
   }
 
   // final
@@ -229,6 +237,7 @@ void OPT::create_opt_model(FFModel &ff,
                          opt_config.layer_norm_elementwise_affine,
                          1e-05,
                          true,
+                         false,
                          DT_NONE,
                          "final_layer_norm");
   Tensor all_final_norm = res_ln_outputs[1];
@@ -252,7 +261,8 @@ void OPT::create_opt_model(FFModel &ff,
     output = ff.argmax(softmax, /*beam_Search*/ true);
   } else {
     // output = ff.arg_top_k(lm_head, /*k=*/1, false);
-    output = ff.argmax(lm_head, /*beam_Search*/ false);
+    Tensor softmax = ff.softmax(lm_head, -1);
+    output = ff.argmax(softmax, /*beam_Search*/ false);
   }
 
   FileDataLoader *fileloader = new FileDataLoader(

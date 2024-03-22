@@ -351,15 +351,16 @@ BeamInferenceResult
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  int batch_size = bc->num_active_tokens();
+  int batch_size = bc->num_active_infr_tokens();
   GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[2], task->regions[2], FID_DATA, ctx, runtime);
   ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
   BeamInferenceResult ir;
-  download_tensor<BatchConfig::TokenId>(
+  copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
-  download_tensor(m->probs, ir.probs, batch_size);
-  download_tensor<int>(parent.get_int32_ptr(), ir.parent_id, batch_size);
+  copy_tensor_dev_to_host(m->probs, ir.probs, batch_size);
+  copy_tensor_dev_to_host<int>(
+      parent.get_int32_ptr(), ir.parent_id, batch_size);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
@@ -391,7 +392,7 @@ InferenceResult
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW parent;
-  int batch_size = bc->num_active_tokens();
+  int batch_size = bc->num_active_infr_tokens();
   ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
   InferenceResult ir;
   if (m->inference_debugging) {
@@ -400,8 +401,7 @@ InferenceResult
     ArgMax::save_inference_tensors_to_file(
         m, shard_id, bc, {}, {}, {input, indices});
   }
-
-  download_tensor<BatchConfig::TokenId>(
+  copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   return ir;
 }

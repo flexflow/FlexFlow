@@ -117,7 +117,28 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
     for (int i = 0; i < op->numOutputs; i++) {
       ParallelTensor pt_base = op->outputs[i];
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
-
+      // no need to map inplace tensor
+      // A tensor is inplace if it shares the same region as another tensor
+      {
+        bool inplace = false;
+        for (int j = 0; j < op->numInputs; j++) {
+          if (op->inputs[j]->region == op->outputs[i]->region) {
+            assert(tensor_buffer.find(op->inputs[j]) != tensor_buffer.end());
+            tensor_buffer[pt_base] = tensor_buffer[op->inputs[j]];
+            inplace = true;
+          }
+        }
+        for (int j = 0; j < i; j++) {
+          if (op->outputs[j]->region == op->outputs[i]->region) {
+            assert(tensor_buffer.find(op->outputs[j]) != tensor_buffer.end());
+            tensor_buffer[pt_base] = tensor_buffer[op->outputs[j]];
+            inplace = true;
+          }
+        }
+        if (inplace) {
+          continue;
+        }
+      }
       if (op->op_type == OP_REPLICATE) {
         assert(op->numInputs == 1 && op->numOutputs == 1);
       }
@@ -191,6 +212,13 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
                                              pt_base->region.get_field_space());
           pt->part = runtime->get_logical_partition(
               ctx, pt->region, pt_base->part.get_index_partition());
+
+          pt->region_grad =
+              runtime->create_logical_region(ctx,
+                                             pt_base->region.get_index_space(),
+                                             pt_base->region.get_field_space());
+          pt->part_grad = runtime->get_logical_partition(
+              ctx, pt->region_grad, pt_base->part.get_index_partition());
           pt->machine_view = machine_views[j];
           // std::cout << "output mv: " << pt->machine_view << std::endl;
           Domain part_domain =
@@ -203,6 +231,30 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
       tensor_buffer[pt_base] = list;
     }
     // std::cout << std::endl;
+  }
+
+  // Check whether we need to reset input grads
+  // We use a parallel tensor's region as the key
+  std::set<LogicalRegion> reset_inputs;
+  for (int l = model->operators.size() - 1; l >= 0; l--) {
+    Op *op = model->operators[l];
+    for (int i = 0; i < op->numInputs; i++) {
+      assert(op->inputs[i]->region != LogicalRegion::NO_REGION);
+      if (reset_inputs.find(op->inputs[i]->region) != reset_inputs.end()) {
+        // We should not reset input grads since other operators have already
+        // saved gradients into the region
+        op->reset_input_grads[i] = false;
+      } else if (i == 0 && (op->op_type == OP_RESIDUAL_LAYERNORM ||
+                            op->op_type == OP_RESIDUAL_RMS_NORM ||
+                            op->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM)) {
+        if (reset_inputs.find(op->outputs[0]->region) != reset_inputs.end()) {
+          op->reset_input_grads[0] = false;
+        }
+        reset_inputs.insert(op->inputs[i]->region);
+      } else {
+        reset_inputs.insert(op->inputs[i]->region);
+      }
+    }
   }
 
   // Perform fusion optimizations
@@ -290,9 +342,9 @@ void InferenceManager::init_operators_inference(FFModel *model) {
         assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
         assert(tensor_buffer[op->outputs[i]].size() > batch_index);
         outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
-        if (i > 0) {
-          assert(outputs[0]->machine_view == outputs[i]->machine_view);
-        }
+        // if (i > 0) {
+        //   assert(outputs[0]->machine_view == outputs[i]->machine_view);
+        // }
         assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
       }
       if (op->is_parallel_op()) {
@@ -332,11 +384,12 @@ FutureMap InferenceManager::inference(FFModel *model,
 FutureMap InferenceManager::inference(FFModel *model,
                                       int index,
                                       BatchConfigFuture const &bc) {
-  // log_inf_mgr.print("mode(%d) num_active_tokens(%d) num_active_requests(%d)",
+  // log_inf_mgr.print("mode(%d) num_active_infr_tokens(%d)
+  // num_active_requests(%d)",
   //                   bc.get_mode(),
-  //                   bc.num_active_tokens(),
+  //                   bc.num_active_infr_tokens(),
   //                   bc.num_active_requests());
-  //  assert(bc.num_active_tokens() > 0 && bc.num_active_requests() > 0);
+  //  assert(bc.num_active_infr_tokens() > 0 && bc.num_active_requests() > 0);
   //  We currently assume that the index-th batch will be placed
   //  on the device_index-th device (except for the experts layers)
   int batch_index = index % model->config.data_parallelism_degree;
@@ -388,6 +441,53 @@ FutureMap InferenceManager::inference(FFModel *model,
     fm = op->inference(*model, bc, inputs, outputs);
   }
   return fm;
+};
+
+void InferenceManager::peft_bwd(FFModel *model,
+                                int index,
+                                BatchConfigFuture const &bc) {
+  int batch_index = index % model->config.data_parallelism_degree;
+  FutureMap fm;
+  bool found_input_operator = false;
+  int last_op = model->operators.size() - 1;
+  // Assert that the last operator must be argmax or sampling
+  assert(model->operators[last_op]->op_type == OP_ARGMAX ||
+         model->operators[last_op]->op_type == OP_ARG_TOPK ||
+         model->operators[last_op]->op_type == OP_SAMPLING);
+  last_op -= 1;
+  while (model->operators[last_op]->op_type == OP_WEIGHT && last_op > 0) {
+    last_op -= 1;
+  }
+  for (int o = last_op; o >= 0; o--) {
+    Op *op = model->operators[o];
+    if (op->op_type == OP_WEIGHT) {
+      continue;
+    }
+    if (op->op_type == OP_INPUT) {
+      continue;
+    }
+    std::vector<ParallelTensor> inputs(op->numInputs);
+    std::vector<ParallelTensor> outputs(op->numOutputs);
+    for (int i = 0; i < op->numInputs; i++) {
+      assert(op->inputs[i] != nullptr);
+      assert(op->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      assert(tensor_buffer[op->inputs[i]].size() > batch_index);
+      inputs[i] = tensor_buffer[op->inputs[i]][batch_index];
+      assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+    }
+    for (int i = 0; i < op->numOutputs; i++) {
+      assert(op->outputs[i] != nullptr);
+      assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      if (op->op_type == OP_INPUT &&
+          tensor_buffer[op->outputs[i]].size() == 0) {
+        continue;
+      }
+      assert(tensor_buffer[op->outputs[i]].size() > batch_index);
+      outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
+      assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+    }
+    op->peft_bwd(*model, bc, inputs, outputs);
+  }
 };
 
 void InferenceManager::load_input_tokens_from_batch_config(

@@ -13,10 +13,14 @@
  * limitations under the License.
  */
 
+#include "flexflow/ops/flat.h"
 #include "flexflow/ops/kernels/flat_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
+
+FlatMeta::FlatMeta(FFHandler handler, Flat const *flat)
+    : OpMeta(handler, flat) {}
 
 namespace Kernels {
 namespace Flat {

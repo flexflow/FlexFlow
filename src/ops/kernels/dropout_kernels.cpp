@@ -28,7 +28,7 @@ DropoutMeta::DropoutMeta(FFHandler handler,
                          Dropout const *dropout,
                          Memory gpu_mem,
                          Domain const &output_domain)
-    : OpMeta(handler) {
+    : OpMeta(handler, dropout) {
   profiling = dropout->profiling;
   inference_debugging = dropout->inference_debugging;
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));

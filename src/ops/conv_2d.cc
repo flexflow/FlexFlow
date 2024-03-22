@@ -588,12 +588,13 @@ OpMeta *Conv2D::init_task(Task const *task,
   //     regions[4], task->regions[4], FID_DATA, ctx, runtime,
   //     false/*readOutput*/);
 
-  Conv2DMeta *m = new Conv2DMeta(handle);
+  Conv2DMeta *m = new Conv2DMeta(handle, conv);
   m->relu = conv->activation == AC_MODE_RELU;
   m->use_bias = conv->use_bias;
   m->profiling = conv->profiling;
   m->inference_debugging = conv->inference_debugging;
-  m->trainableInputs[0] = conv->trainableInputs[0];
+  m->trainable_inputs[0] = conv->trainable_inputs[0];
+  m->reset_input_grads[0] = conv->trainable_inputs[0];
   std::strcpy(m->op_name, conv->name);
   m->layer_guid = conv->layer_guid;
 
@@ -753,7 +754,7 @@ void Conv2D::backward(FFModel const &ff) {
                                                     inputs[0]->region));
   launcher.add_field(rid++, FID_DATA);
   // regions[1](I/O): input_grad
-  if (trainableInputs[0]) {
+  if (trainable_inputs[0]) {
     launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
                                                       0 /*projection id*/,
                                                       READ_WRITE,
@@ -803,7 +804,7 @@ void Conv2D::backward(FFModel const &ff) {
 
 /*
   region(I): input
-  region(I/O): input_grad (if trainableInputs[0])
+  region(I/O): input_grad (if trainable_inputs[0])
   region(I): output
   region(I/O): output_grad
   region(I): filter
@@ -816,17 +817,17 @@ void Conv2D::backward_task(Task const *task,
                            Runtime *runtime) {
   // Conv2D* conv = (Conv2D*) task->args;
   Conv2DMeta const *m = *((Conv2DMeta **)task->local_args);
-  assert(regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) +
+  assert(regions.size() == (5 + static_cast<size_t>(m->trainable_inputs[0]) +
                             static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() ==
-         (5 + static_cast<size_t>(m->trainableInputs[0]) +
+         (5 + static_cast<size_t>(m->trainable_inputs[0]) +
           static_cast<size_t>(m->use_bias)));
   size_t rid = 0;
   TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid++;
   float *acc_input_grad_ptr = NULL;
-  if (m->trainableInputs[0]) {
+  if (m->trainable_inputs[0]) {
     TensorAccessorW<float, Conv2DInput::NUMDIM> acc_input_grad(
         regions[rid],
         task->regions[rid],
@@ -1119,7 +1120,7 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
   int pad_h = ((output_h - 1) * stride_h + kernel_h - input_h + 1) / 2;
   int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
 
-  Conv2DMeta *m = sim->conv2d_meta;
+  Conv2DMeta *m = new Conv2DMeta(sim->handler, this);
   m->relu = activation == AC_MODE_RELU;
   // require input_c is divisible by groups
 

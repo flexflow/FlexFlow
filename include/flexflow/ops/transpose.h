@@ -6,6 +6,8 @@
 
 namespace FlexFlow {
 
+class TransposeMeta;
+
 class Transpose : public Op {
 public:
   using Params = TransposeParams;

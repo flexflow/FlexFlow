@@ -283,23 +283,26 @@ class FlexFlowOPT(FlexFlowModel):
 
         self.ffmodel = ffmodel
 
+    def convert_hf_weight_name(name):
+        return (
+            name.replace(".", "_")
+            .replace("decoder_", "")
+            .replace("model_", "")
+            .replace("self_attn", "attention")
+            .replace("q_proj", "wq")
+            .replace("k_proj", "wk")
+            .replace("v_proj", "wv")
+            .replace("out_proj", "wo")
+            .replace("attention_wo_bias", "add_bias_residual_layer_norm_attn_bias")
+            .replace(
+                "_final_layer_norm", "_add_bias_residual_layer_norm"
+            )  # important to use the leading "_" to avoid matching the last LayerNorm
+        )
+
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
-            name = (
-                name.replace(".", "_")
-                .replace("decoder_", "")
-                .replace("model_", "")
-                .replace("self_attn", "attention")
-                .replace("q_proj", "wq")
-                .replace("k_proj", "wk")
-                .replace("v_proj", "wv")
-                .replace("out_proj", "wo")
-                .replace("attention_wo_bias", "add_bias_residual_layer_norm_attn_bias")
-                .replace(
-                    "_final_layer_norm", "_add_bias_residual_layer_norm"
-                )  # important to use the leading "_" to avoid matching the last LayerNorm
-            )
+            name = FlexFlowOPT.convert_hf_weight_name(name)
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
         # copy embedding weights
         shutil.copy(

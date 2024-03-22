@@ -14,12 +14,13 @@
  */
 
 #include "flexflow/ops/kernels/cast_kernels.h"
+#include "flexflow/ops/cast.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
-CastMeta::CastMeta(FFHandler handle) : OpMeta(handle) {}
+CastMeta::CastMeta(FFHandler handle, Cast const *cast) : OpMeta(handle, cast) {}
 
 namespace Kernels {
 namespace Cast {

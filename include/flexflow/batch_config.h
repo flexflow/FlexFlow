@@ -16,6 +16,7 @@
 #pragma once
 
 #include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "legion.h"
 #include <cstddef>
 #include <cstdlib>
@@ -43,6 +44,8 @@ public:
   BatchConfig();
   int num_active_requests() const;
   int num_active_tokens() const;
+  int num_active_infr_tokens() const;
+  int num_active_peft_tokens() const;
   static int max_requests_per_batch();
   static int max_tokens_per_batch();
   static int max_verify_tokens_per_batch();
@@ -61,12 +64,22 @@ public:
   static int const MAX_SPEC_TREE_TOKEN_NUM = 64;
 
   //  Set by update
-  int num_tokens;
+
+  int num_tokens = 0, num_peft_tokens = 0, num_peft_label_tokens = 0;
   // number of tokens in prompt phase, start offset of tokens in inc_decoding
   // phase. num_tokens - num_prompt_tokens = num_generation_tokens;
-  int num_generation_tokens;
+  int num_generation_tokens = 0;
 
   struct PerRequestInfo {
+    PerRequestInfo() {
+      first_token_depth_in_request = 0;
+      first_token_offset_in_batch = 0;
+      num_tokens_in_batch = 0;
+      max_sequence_length = 0;
+      request_guid = 0;
+      peft_model_id = PEFTModelID::NO_ID;
+      peft_bwd = false;
+    }
     int first_token_depth_in_request;
     int first_token_offset_in_batch;
     int num_tokens_in_batch;
@@ -76,6 +89,9 @@ public:
     int batch_config_request_id;
     bool prompt_phase = false;
     RequestGuid request_guid;
+    // PEFT fields
+    PEFTModelID peft_model_id;
+    bool peft_bwd;
   };
   struct PerTokenInfo {
     int abs_depth_in_request;
@@ -102,6 +118,7 @@ public:
   BitMask causalMask[MAX_NUM_REQUESTS];
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
+  PerTokenInfo labelsInfo[MAX_NUM_TOKENS];
 
   bool request_completed[MAX_NUM_REQUESTS];
   bool request_running[MAX_NUM_REQUESTS];

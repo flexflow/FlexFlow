@@ -39,6 +39,7 @@ public:
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   Legion::FutureMap
       inference(FFModel *model, int index, BatchConfigFuture const &bc);
+  void peft_bwd(FFModel *model, int index, BatchConfigFuture const &bc);
   void load_input_tokens_from_batch_config(FFModel *model,
                                            BatchConfigFuture const &bc,
                                            ParallelTensor const input,
@@ -64,16 +65,26 @@ struct Request {
     COMPLETED = 103, // finished and verified
     FINISHING = 104, // finishing request, but not yet verified
   };
+  enum RequestType { REQ_INFERENCE = 201, REQ_FINETUNING = 202 };
   BatchConfig::RequestGuid guid;
-  int max_sequence_length;
+  PEFTModelID peft_model_id = PEFTModelID::NO_ID;
+  int max_sequence_length = 128;
   int initial_len;
   int ssm_cache_size = 0;
   int llm_cache_size = 0;
 
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
-
+  std::string prompt;
   std::vector<struct BeamTree> beam_trees;
+  // PEFT field
+  RequestType req_type = REQ_INFERENCE;
+  int completed_training_steps = 0;
+  int max_training_steps = 1;
+  std::vector<std::pair<std::string, std::string>> dataset_text;
+  std::vector<std::pair<std::vector<BatchConfig::TokenId>,
+                        std::vector<BatchConfig::TokenId>>>
+      dataset;
 };
 
 // store the result of beam search
@@ -143,10 +154,9 @@ public:
   void serve_incr_decoding(FFModel *model);
   void serve_spec_infer(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
-  RequestGuid register_new_request(std::string const &prompt,
-                                   int max_sequence_length);
-  RequestGuid register_new_request(std::vector<TokenId> const &prompt,
-                                   int max_sequence_length);
+  RequestGuid register_new_request(Request const &request_);
+  RequestGuid register_new_peft_request(Request const &request_);
+
   // Methods to start and terminate request manager's background task
   void start_background_server(FFModel *model);
   bool is_background_server_terminated();
@@ -275,7 +285,8 @@ private:
   int bos_token_id;
   int eos_token_id;
   std::string output_filepath;
-  std::queue<Request> pending_request_queue;
+  std::queue<Request> pending_infr_request_queue;
+  std::queue<Request> pending_peft_request_queue;
   std::unordered_map<RequestGuid, Request> all_requests;
   std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;

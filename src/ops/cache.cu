@@ -74,7 +74,7 @@ float Cache::cache_update(Task const *task,
   return cache_score;
 }
 
-CacheMeta::CacheMeta(FFHandler handler) : OpMeta(handler) {}
+CacheMeta::CacheMeta(FFHandler handler, Cache const *c) : OpMeta(handler, c) {}
 
 template void
     Cache::cache_forward<float>(Task const *task,

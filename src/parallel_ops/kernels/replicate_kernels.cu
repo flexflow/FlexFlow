@@ -19,7 +19,7 @@
 namespace FlexFlow {
 
 ReplicateMeta::ReplicateMeta(FFHandler handle, Replicate const *repl)
-    : OpMeta(handle) {}
+    : OpMeta(handle, repl) {}
 
 namespace Kernels {
 namespace Replicate {

@@ -253,10 +253,18 @@ class FlexFlowMPT(FlexFlowModel):
 
         self.ffmodel = ffmodel
 
+    # TODO: finish this
+    def convert_hf_weight_name(name):
+        return (
+            name.replace("transformer.blocks.", "layers.")
+            .replace(".", "_")
+            .replace("attn_out_proj", "attention_wo")
+        )
+
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
-            name = name.replace("transformer.blocks.", "layers.").replace(".", "_")
+            name = FlexFlowMPT.convert_hf_weight_name(name)
             if "Wqkv" in name:
                 name_q = name.replace("attn_Wqkv", "attention_wq")
                 name_k = name.replace("attn_Wqkv", "attention_wk")
@@ -273,9 +281,6 @@ class FlexFlowMPT(FlexFlowModel):
                 q.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_q))
                 k.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_k))
                 v.detach().cpu().numpy().tofile(os.path.join(dst_folder, name_v))
-            elif "out_proj" in name:
-                name = name.replace("attn_out_proj", "attention_wo")
-                params.detach().cpu().numpy().tofile(os.path.join(dst_folder, name))
             else:
                 params.detach().cpu().numpy().tofile(os.path.join(dst_folder, name))
 

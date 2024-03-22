@@ -515,7 +515,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      float *output,
                                      float const *weights,
                                      float const *biases,
-                                     int num_active_tokens,
+                                     int num_active_infr_tokens,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim) {
@@ -529,8 +529,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     cudaEventRecord(t_start, stream);
   }
 
-  assert(num_active_tokens > 0);
-  assert(num_active_tokens <= m->effective_batch_size);
+  assert(num_active_infr_tokens > 0);
+  assert(num_active_infr_tokens <= m->effective_batch_size);
   assert(m->effective_batch_size == batch_size);
 
   int num_experts_per_block = m->num_experts;
@@ -540,7 +540,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   int data_dim = m->data_dim;
   int num_chosen_experts = m->num_chosen_experts;
   // int num_tokens = m->effective_batch_size;
-  int num_tokens = num_active_tokens;
+  int num_tokens = num_active_infr_tokens;
   int expert_capacity = m->expert_capacity;
 
   assert(chosen_experts == num_chosen_experts);
@@ -579,14 +579,14 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 #ifdef INFERENCE_TESTS
   // Checking
   // 1. check that m->sorted_indices contains indices sorted
-  int *indices_cpu = download_tensor<int>(indices, num_indices);
+  int *indices_cpu = copy_tensor_dev_to_host<int>(indices, num_indices);
   // assert(indices_cpu != nullptr);
   std::vector<int> indices_vec(indices_cpu, indices_cpu + num_indices);
   std::vector<int> indices_vec_sorted(indices_vec.size());
   std::copy(indices_vec.begin(), indices_vec.end(), indices_vec_sorted.begin());
   std::stable_sort(indices_vec_sorted.begin(), indices_vec_sorted.end());
 
-  int *thrust_sorted_indices_cpu = download_tensor<int>(
+  int *thrust_sorted_indices_cpu = copy_tensor_dev_to_host<int>(
       m->sorted_indices, m->num_chosen_experts * m->effective_batch_size);
   // assert(thrust_sorted_indices_cpu != nullptr);
   std::vector<int> thrust_sorted_indices_vec(
@@ -613,7 +613,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     assert(indices_vec_sorted[i] == thrust_sorted_indices_vec[i]);
   }
   // 2. check that indices[m->original_indices[i]] = i
-  int *thrust_original_indices_cpu = download_tensor<int>(
+  int *thrust_original_indices_cpu = copy_tensor_dev_to_host<int>(
       m->original_indices, m->num_chosen_experts * m->effective_batch_size);
   // assert(thrust_original_indices_cpu != nullptr);
   std::vector<int> thrust_original_indices_vec(
@@ -668,8 +668,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   }
   assert(non_zero_experts_count == non_zero_experts_check.size());
   // 7. check exp_local_label_to_index
-  int *non_zero_expert_labels_cpu =
-      download_tensor<int>(m->non_zero_expert_labels, non_zero_experts_count);
+  int *non_zero_expert_labels_cpu = copy_tensor_dev_to_host<int>(
+      m->non_zero_expert_labels, non_zero_experts_count);
   // assert(non_zero_expert_labels_cpu != nullptr);
   std::vector<int> non_zero_expert_labels_vec(non_zero_expert_labels_cpu,
                                               non_zero_expert_labels_cpu +
@@ -684,8 +684,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                         non_zero_experts_check_vec.end()));
   assert(non_zero_expert_labels_vec == non_zero_experts_check_vec);
 
-  int *exp_local_label_to_index =
-      download_tensor<int>(m->exp_local_label_to_index, non_zero_experts_count);
+  int *exp_local_label_to_index = copy_tensor_dev_to_host<int>(
+      m->exp_local_label_to_index, non_zero_experts_count);
   // assert(exp_local_label_to_index != nullptr);
   std::vector<int> exp_local_label_to_index_vec(exp_local_label_to_index,
                                                 exp_local_label_to_index +
@@ -699,8 +699,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   }
 
   // 8. Check expert_start_indexes
-  int *expert_start_indices_thrust =
-      download_tensor<int>(m->expert_start_indexes, non_zero_experts_count + 1);
+  int *expert_start_indices_thrust = copy_tensor_dev_to_host<int>(
+      m->expert_start_indexes, non_zero_experts_count + 1);
   // assert(expert_start_indices_thrust != nullptr);
   std::vector<int> expert_start_indices_thrust_vec(
       expert_start_indices_thrust,
@@ -746,9 +746,9 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   int *num_assignments_per_expert_thrust =
       (int *)calloc(non_zero_experts_count, sizeof(int));
   assert(num_assignments_per_expert_thrust != nullptr);
-  assert(download_tensor<int>(m->num_assignments_per_expert,
-                              num_assignments_per_expert_thrust,
-                              non_zero_experts_count));
+  assert(copy_tensor_dev_to_host<int>(m->num_assignments_per_expert,
+                                      num_assignments_per_expert_thrust,
+                                      non_zero_experts_count));
   assert(num_assignments_per_expert_thrust != nullptr);
   std::vector<int> num_assignments_per_expert_thrust_vec(
       num_assignments_per_expert_thrust,
@@ -759,9 +759,9 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   int *destination_start_indices_thrust =
       (int *)calloc(non_zero_experts_count, sizeof(int));
   assert(destination_start_indices_thrust != nullptr);
-  assert(download_tensor<int>(m->destination_start_indices,
-                              destination_start_indices_thrust,
-                              non_zero_experts_count));
+  assert(copy_tensor_dev_to_host<int>(m->destination_start_indices,
+                                      destination_start_indices_thrust,
+                                      non_zero_experts_count));
   assert(destination_start_indices_thrust != nullptr);
   std::vector<int> destination_start_indices_thrust_vec(
       destination_start_indices_thrust,
@@ -1233,25 +1233,14 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   }
 }
 
-ExpertsMeta::ExpertsMeta(FFHandler handler,
-                         int _num_experts,
-                         int _experts_start_idx,
-                         int _data_dim,
-                         int _out_dim,
-                         int _experts_num_layers,
-                         int _experts_internal_dim_size,
-                         int _effective_batch_size,
-                         int _num_chosen_experts,
-                         float _alpha,
-                         bool _use_bias,
-                         ActiMode _activation)
-    : OpMeta(handler), num_experts(_num_experts),
-      experts_start_idx(_experts_start_idx), data_dim(_data_dim),
-      out_dim(_out_dim), experts_num_layers(_experts_num_layers),
-      experts_internal_dim_size(_experts_internal_dim_size),
-      effective_batch_size(_effective_batch_size),
-      num_chosen_experts(_num_chosen_experts), alpha(_alpha),
-      use_bias(_use_bias), activation(_activation) {
+ExpertsMeta::ExpertsMeta(FFHandler handler, Experts const *e)
+    : OpMeta(handler, e), num_experts(e->num_experts),
+      experts_start_idx(e->experts_start_idx), data_dim(e->data_dim),
+      out_dim(e->out_dim), experts_num_layers(e->experts_num_layers),
+      experts_internal_dim_size(e->experts_internal_dim_size),
+      effective_batch_size(e->effective_batch_size),
+      num_chosen_experts(e->num_chosen_experts), alpha(e->alpha),
+      use_bias(e->use_bias), activation(e->activation) {
   expert_capacity =
       ceil(alpha * num_chosen_experts / num_experts * effective_batch_size);
 

@@ -354,7 +354,7 @@ OpMeta *ElementUnary::init_task(Task const *task,
                                 Runtime *runtime) {
   ElementUnary *eu = (ElementUnary *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  ElementUnaryMeta *m = new ElementUnaryMeta(handle);
+  ElementUnaryMeta *m = new ElementUnaryMeta(handle, eu);
   m->op_type = eu->op_type;
   m->data_type = eu->outputs[0]->data_type;
   // Input and output should have the same data type
@@ -737,7 +737,7 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
   if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
   }
-  ElementUnaryMeta *m = sim->ele_unary_meta;
+  ElementUnaryMeta *m = new ElementUnaryMeta(sim->handler, this);
   m->op_type = op_type;
   if (use_cudnn(m->op_type)) {
     Domain input_domain, output_domain;

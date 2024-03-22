@@ -156,7 +156,7 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
                                                Memory gpu_mem,
                                                int num_samples,
                                                int num_heads)
-    : OpMeta(handler) {
+    : OpMeta(handler, attn) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(handler.dnn, stream));

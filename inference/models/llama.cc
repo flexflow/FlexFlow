@@ -84,6 +84,7 @@ void LLAMA::create_llama_model(FFModel &ff,
           token_att_norm,
           llama_config.rms_norm_eps,
           llama_config.hidden_size,
+          false, // inplace_residual
           DT_NONE,
           std::string("layers_" + std::to_string(i) + "_attention_norm")
               .c_str());
@@ -175,6 +176,7 @@ void LLAMA::create_llama_model(FFModel &ff,
         token_ff_norm,
         llama_config.rms_norm_eps,
         llama_config.hidden_size,
+        false, // inplace_residual
         DT_NONE,
         std::string("layers_" + std::to_string(i) + "_ffn_norm").c_str());
     token = token_ff_norm[0];
@@ -223,6 +225,13 @@ void LLAMA::create_llama_model(FFModel &ff,
                  0.0f,
                  std::string("layers_" + std::to_string(i) + "_feed_forward_w2")
                      .c_str());
+    // Low-Rank Adapter (LoRA) for the second linear layer
+    ff.lora_linear(
+        multi,
+        w2,
+        OP_LORA_MLP_SECOND,
+        std::string("layers_" + std::to_string(i) + "_feed_forward_w2_lora")
+            .c_str());
   }
   // final normalization and linear
   Tensor final_rms_norm_output[2] = {nullptr, nullptr};
@@ -231,6 +240,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                        final_rms_norm_output,
                        llama_config.rms_norm_eps,
                        llama_config.hidden_size,
+                       false, // inplace_residual
                        DT_NONE,
                        "norm");
 
@@ -261,7 +271,8 @@ void LLAMA::create_llama_model(FFModel &ff,
       output = ff.sampling(softmax, generation_config.topp);
     } else {
       // output = ff.arg_top_k(dense, /*k=*/1, false);
-      output = ff.argmax(dense, /*beam_Search*/ false);
+      Tensor softmax = ff.softmax(dense, -1);
+      output = ff.argmax(softmax, /*beam_Search*/ false);
     }
   }
 

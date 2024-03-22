@@ -13,12 +13,14 @@
  * limitations under the License.
  */
 
+#include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/kernels/combine_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
-CombineMeta::CombineMeta(FFHandler handler) : OpMeta(handler) {}
+CombineMeta::CombineMeta(FFHandler handler, Combine const *comb)
+    : OpMeta(handler, comb) {}
 
 namespace Kernels {
 namespace Combine {

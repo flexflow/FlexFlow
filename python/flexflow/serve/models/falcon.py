@@ -243,6 +243,15 @@ class FlexFlowFalcon(FlexFlowModel):
 
         self.ffmodel = ffmodel
 
+    # TODO: finish this
+    def convert_hf_weight_name(name):
+        return (
+            name.replace(".", "_")
+            .replace("transformer_h_", "layers_")
+            .replace("transformer_", "")
+            .replace("self_attention_dense", "attention_wo")
+        )
+
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         n_head = (
@@ -251,12 +260,7 @@ class FlexFlowFalcon(FlexFlowModel):
             else model.config.num_attention_heads
         )
         for name, params in model.named_parameters():
-            name = (
-                name.replace(".", "_")
-                .replace("transformer_h_", "layers_")
-                .replace("transformer_", "")
-                .replace("self_attention_dense", "attention_wo")
-            )
+            name = FlexFlowFalcon.convert_hf_weight_name(name)
             # Split Q,K,V attention weights
             if "self_attention_query_key_value" in name:
                 name_q = name.replace("self_attention_query_key_value", "attention_wq")

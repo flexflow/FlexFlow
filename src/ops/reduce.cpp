@@ -25,7 +25,7 @@ using Legion::Domain;
 ReduceMeta::ReduceMeta(FFHandler handler,
                        Reduce const *rd,
                        Domain const &input_domain)
-    : OpMeta(handler) {
+    : OpMeta(handler, rd) {
   checkCUDNN(miopenCreateReduceTensorDescriptor(&reduceDesc));
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));

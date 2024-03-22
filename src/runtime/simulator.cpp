@@ -82,17 +82,17 @@ Simulator::Simulator(FFModel const *model,
 
   checkCUDA(hipEventCreate(&start_event));
   checkCUDA(hipEventCreate(&end_event));
-  conv2d_meta = new Conv2DMeta(handler);
-  // linear_meta = new LinearMeta(handler, 4096);
-  pool2d_meta = new Pool2DMeta(handler);
-  ele_unary_meta = new ElementUnaryMeta(handler);
-  // ele_binary_meta = new ElementBinaryMeta(handler);
-  // embedding_meta = new EmbeddingMeta(handler);
-  //  softmax_meta = new SoftmaxMeta(handler);
-  batch_matmul_meta = new BatchMatmulMeta(handler);
-  concat_meta = new ConcatMeta(handler);
-  // dropout_meta = new DropoutMeta(handler);
-  transpose_meta = new TransposeMeta(handler);
+  // conv2d_meta = new Conv2DMeta(handler);
+  //  linear_meta = new LinearMeta(handler, 4096);
+  // pool2d_meta = new Pool2DMeta(handler);
+  // ele_unary_meta = new ElementUnaryMeta(handler);
+  //  ele_binary_meta = new ElementBinaryMeta(handler);
+  //  embedding_meta = new EmbeddingMeta(handler);
+  //   softmax_meta = new SoftmaxMeta(handler);
+  // batch_matmul_meta = new BatchMatmulMeta(handler);
+  // concat_meta = new ConcatMeta(handler);
+  //  dropout_meta = new DropoutMeta(handler);
+  // transpose_meta = new TransposeMeta(handler);
   this->machine = machine;
   segment_size = model->config.simulator_segment_size;
   max_num_segments = model->config.simulator_max_num_segments;
