@@ -226,7 +226,7 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
               get<bool>(assignments.at(OperatorAttributeKey::USE_BIAS)),
               get<DataType>(assignments.at(OperatorAttributeKey::DATA_TYPE)),
               get<Activation>(assignments.at(OperatorAttributeKey::ACTIVATION)),
-              get<optional<RegularizerAttrs>>(
+              get<std::optional<RegularizerAttrs>>(
                   assignments.at(OperatorAttributeKey::REGULARIZER))},
           std::nullopt};
     case Op::MULTIHEAD_ATTENTION:

@@ -2,7 +2,6 @@
 #define _DOT_FILE_H
 
 #include "record_formatter.h"
-#include "tl/optional.hpp"
 #include <cassert>
 #include <fstream>
 #include <map>
@@ -20,9 +19,9 @@ private:
   std::map<T, size_t> node_ids;
   std::unordered_map<size_t, std::unordered_set<size_t>> subgraphs;
   std::unordered_map<size_t, std::unordered_set<size_t>> subgraph_children;
-  std::unordered_map<size_t, tl::optional<size_t>> subgraph_parents;
-  tl::optional<std::ofstream> owned_fstream = tl::nullopt;
-  tl::optional<std::ostream &> out = tl::nullopt;
+  std::unordered_map<size_t, std::optional<size_t>> subgraph_parents;
+  std::optional<std::ofstream> owned_fstream = std::nullopt;
+  std::ostream *out = nullptr;
   std::string get_node_name(size_t node_id) const {
     std::ostringstream s;
     s << "node" << node_id;
@@ -52,7 +51,7 @@ public:
   DotFile(std::string const &filename) : owned_fstream(filename) {
     this->start_output();
   }
-  DotFile(std::ostream &s) : node_id(0), out(s) {
+  DotFile(std::ostream &s) : node_id(0), out(&s) {
     this->start_output();
   }
 
@@ -113,7 +112,7 @@ public:
     this->get_ostream().flush();
   }
 
-  size_t add_subgraph(tl::optional<size_t> parent_id = tl::nullopt) {
+  size_t add_subgraph(std::optional<size_t> parent_id = std::nullopt) {
     size_t subgraph = this->subgraph_id;
     subgraph_id++;
     this->subgraph_children[subgraph];
@@ -134,7 +133,7 @@ public:
       throw std::runtime_error(oss.str());
     }
     this->subgraphs[subgraph].insert(this->node_ids.at(node));
-    tl::optional<size_t> parent = this->subgraph_parents.at(subgraph);
+    std::optional<size_t> parent = this->subgraph_parents.at(subgraph);
     if (parent.has_value()) {
       this->add_node_to_subgraph(node, parent.value());
     }

@@ -8,14 +8,10 @@ ff_add_library(
   PRIVATE_INCLUDE
     src/
   DEPS
-    optional
     expected
-    variant
     visit_struct
     fmt
-    invoke
     json
-    any
     cuda
 )      
 

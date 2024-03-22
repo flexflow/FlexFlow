@@ -45,7 +45,7 @@ struct GetOpTypeFunctor {
 };
 
 template <typename... Ts>
-OperatorType get_op_type(variant<Ts...> const &attrs) {
+OperatorType get_op_type(std::variant<Ts...> const &attrs) {
   return visit(GetOpTypeFunctor{}, attrs);
 }
 
