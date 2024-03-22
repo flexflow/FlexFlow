@@ -106,7 +106,7 @@ __global__ void ResidualLayerNormKernel(int64_t N,
                                         T *Y) {
   __shared__ float m_shared[C10_WARP_SIZE];
   __shared__ float v_shared[C10_WARP_SIZE];
-  const int64_t i = blockIdx.x;
+  int64_t const i = blockIdx.x;
   float sum1 = 0.0f;
   float sum2 = 0.0f;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
@@ -252,7 +252,7 @@ void ResidualLayerNorm::inference_kernel_wrapper(
   }
 
   // save input activation if needed for PEFT
-  if (bc->num_active_peft_tokens() > 0) {
+  if (bc->num_active_peft_bwd_tokens_() > 0) {
     // Check that we have at most one request that requires peft_bwd
     int num_peft_requests = 0;
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -332,11 +332,11 @@ __global__ void ComputeInternalGradientsCUDAKernel(
   using T_ACC = T;
   __shared__ T_ACC ds_shared[C10_WARP_SIZE];
   __shared__ T_ACC db_shared[C10_WARP_SIZE];
-  const int64_t i = blockIdx.x;
+  int64_t const i = blockIdx.x;
   T_ACC sum1 = 0;
   T_ACC sum2 = 0;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
+    int64_t const index = i * N + j;
     const T_ACC gamma_v =
         gamma == nullptr ? T_ACC(1) : static_cast<T_ACC>(gamma[j]);
     sum1 +=
@@ -361,7 +361,7 @@ __global__ void ComputeGradientFusedParamsCUDAKernel(int64_t M,
                                                      T *c1,
                                                      T *c2) {
   using T_ACC = T;
-  const int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t const index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < M) {
     const T_ACC s = T_ACC(1) / static_cast<T_ACC>((int)N);
     const T_ACC a = (db[index] * static_cast<T_ACC>(mean[index]) - ds[index]) *
@@ -384,12 +384,12 @@ __global__ void GammaBetaBackwardSimpleCUDAKernel(int64_t M,
                                                   T *dg,
                                                   T *db) {
   using T_ACC = T;
-  const int64_t j = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t const j = blockIdx.x * blockDim.x + threadIdx.x;
   if (j < N) {
     T_ACC sum1 = 0;
     T_ACC sum2 = 0;
     for (int64_t i = 0; i < M; ++i) {
-      const int64_t index = i * N + j;
+      int64_t const index = i * N + j;
       sum1 += dg == nullptr ? T_ACC(0)
                             : static_cast<T_ACC>(dY[index]) *
                                   (static_cast<T_ACC>(X[index]) -
@@ -418,17 +418,17 @@ __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
   using T_ACC = T;
   __shared__ T_ACC g_shared[kColwiseReduceTileSize][kColwiseReduceTileSize + 1];
   __shared__ T_ACC b_shared[kColwiseReduceTileSize][kColwiseReduceTileSize + 1];
-  const int64_t j = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t const j = blockIdx.x * blockDim.x + threadIdx.x;
   T_ACC dg_sum1 = 0;
   T_ACC dg_sum2 = 0;
   T_ACC db_sum1 = 0;
   T_ACC db_sum2 = 0;
   if (j < N) {
     for (int64_t i = threadIdx.y; i < M; i += blockDim.y * 2) {
-      const int64_t i1 = i;
-      const int64_t i2 = i + blockDim.y;
-      const int64_t index1 = i1 * N + j;
-      const int64_t index2 = i2 * N + j;
+      int64_t const i1 = i;
+      int64_t const i2 = i + blockDim.y;
+      int64_t const index1 = i1 * N + j;
+      int64_t const index2 = i2 * N + j;
       dg_sum1 += dg == nullptr ? T_ACC(0)
                                : static_cast<T_ACC>(dY[index1]) *
                                      (static_cast<T_ACC>(X[index1]) -
@@ -455,7 +455,7 @@ __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
   sum1 = WarpReduceSum(sum1);
   sum2 = WarpReduceSum(sum2);
   if (threadIdx.x == 0) {
-    const int64_t j = blockIdx.x * blockDim.x + threadIdx.y;
+    int64_t const j = blockIdx.x * blockDim.x + threadIdx.y;
     if (j < N) {
       if (dg != nullptr) {
         dg[j] = sum1;
@@ -470,7 +470,7 @@ __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
   sum1 = WarpReduceSum(sum1);
   sum2 = WarpReduceSum(sum2);
   if (threadIdx.x == 0) {
-    const int64_t j = blockIdx.x * blockDim.x + threadIdx.y + blockDim.y;
+    int64_t const j = blockIdx.x * blockDim.x + threadIdx.y + blockDim.y;
     if (j < N) {
       if (dg != nullptr) {
         dg[j] = sum1;
@@ -497,8 +497,8 @@ __device__ __inline__ void compute_gI(T const *__restrict__ dY,
                                       int const N,
                                       T *buf) {
   auto const i1 = blockIdx.x;
-  const T mean_val = mean[i1];
-  const T rstd_val = rstd[i1];
+  T const mean_val = mean[i1];
+  T const rstd_val = rstd[i1];
   T stats_x1{0}, stats_x2{0};
   constexpr int unroll = 4;
   auto l = unroll * threadIdx.x;
@@ -514,16 +514,16 @@ __device__ __inline__ void compute_gI(T const *__restrict__ dY,
 #pragma unroll
     for (int k = 0; k < unroll; k++) {
       T gamma_val = (gamma != nullptr) ? static_cast<T>(gamma[l + k]) : T(1);
-      const T c_h = static_cast<T>(X_i[l + k]);
-      const T c_loss = static_cast<T>(dY_i[l + k]);
+      T const c_h = static_cast<T>(X_i[l + k]);
+      T const c_loss = static_cast<T>(dY_i[l + k]);
       stats_x1 += c_loss * gamma_val;
       stats_x2 += c_loss * gamma_val * (c_h - mean_val) * rstd_val;
     }
   }
   for (; l < N; l++) {
     T gamma_val = (gamma != nullptr) ? static_cast<T>(gamma[l]) : T(1);
-    const T c_h = static_cast<T>(X_i[l]);
-    const T c_loss = static_cast<T>(dY_i[l]);
+    T const c_h = static_cast<T>(X_i[l]);
+    T const c_loss = static_cast<T>(dY_i[l]);
     stats_x1 += c_loss * gamma_val;
     stats_x2 += c_loss * gamma_val * (c_h - mean_val) * rstd_val;
   }
@@ -541,8 +541,8 @@ __device__ __inline__ void compute_gI(T const *__restrict__ dY,
   T term1 = (T(1) / fH) * rstd_val;
 
   for (int l = threadIdx.x; l < N; l += blockDim.x) {
-    const T x = X_i[l];
-    const T dy = dY_i[l];
+    T const x = X_i[l];
+    T const dy = dY_i[l];
     T gamma_val = (gamma != nullptr) ? static_cast<T>(gamma[l]) : T(1);
     T f_grad_input = fH * gamma_val * dy;
     f_grad_input -= (x - mean_val) * rstd_val * stats_x2;
@@ -610,8 +610,8 @@ void backward_kernel(ResidualLayerNormMeta const *m,
                      T *gamma_grad_ptr,
                      T *beta_grad_ptr,
                      cudaStream_t stream) {
-  const int64_t M = m->effective_batch_size;
-  const int64_t N = m->effective_num_elements;
+  int64_t const M = m->effective_batch_size;
+  int64_t const N = m->effective_num_elements;
   ComputeInternalGradientsCUDAKernel<T>
       <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
           N,
@@ -620,7 +620,7 @@ void backward_kernel(ResidualLayerNormMeta const *m,
           gamma_ptr,
           static_cast<T *>(m->ds_ptr),
           static_cast<T *>(m->db_ptr));
-  const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
+  int64_t const B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
   ComputeGradientFusedParamsCUDAKernel<T>
       <<<B, kCUDANumThreads, 0, stream>>>(M,
                                           N,
@@ -632,7 +632,7 @@ void backward_kernel(ResidualLayerNormMeta const *m,
                                           static_cast<T *>(m->bias_ptr));
   int const warp_size = C10_WARP_SIZE;
   int const num_threads = 128;
-  const dim3 blocks(M);
+  dim3 const blocks(M);
   int nshared = (num_threads / warp_size) * sizeof(T);
   layer_norm_grad_input_kernel<<<blocks, num_threads, nshared, stream>>>(
       output_grad_ptr,
@@ -651,7 +651,7 @@ void backward_kernel(ResidualLayerNormMeta const *m,
   if (gamma_grad_ptr != NULL || beta_grad_ptr != NULL) {
     if (M < 512) {
       // For small batch size, do colwise reduce directly
-      const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
+      int64_t const B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
       GammaBetaBackwardSimpleCUDAKernel<T>
           <<<B, kCUDANumThreads, 0, stream>>>(M,
                                               N,
@@ -662,7 +662,7 @@ void backward_kernel(ResidualLayerNormMeta const *m,
                                               gamma_grad_ptr,
                                               beta_grad_ptr);
     } else {
-      const int64_t B =
+      int64_t const B =
           (N + kColwiseReduceTileSize - 1) / kColwiseReduceTileSize;
       constexpr int kThreadX = kColwiseReduceTileSize;
       constexpr int kThreadY = kColwiseReduceTileSize / 2;
@@ -780,10 +780,9 @@ void peft_bwd_kernel(ResidualLayerNormMeta const *m,
                 m->effective_batch_size * m->effective_num_elements,
                 filename3.c_str());
   }
-
   int const warp_size = C10_WARP_SIZE;
   int const num_threads = 128;
-  const dim3 blocks(M);
+  dim3 const blocks(M);
   int nshared = (num_threads / warp_size) * sizeof(T);
 
   layer_norm_grad_input_kernel<<<blocks, num_threads, nshared, stream>>>(
@@ -799,6 +798,7 @@ void peft_bwd_kernel(ResidualLayerNormMeta const *m,
       m->reset_input_grads[1],
       m->reset_input_grads[2],
       N);
+
 }
 
 /*static*/

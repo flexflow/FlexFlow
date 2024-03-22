@@ -25,6 +25,12 @@ SigmoidSiluMultiMeta::SigmoidSiluMultiMeta(FFHandler handle,
     : OpMeta(handle, ssm) {
   profiling = ssm->profiling;
   inference_debugging = ssm->inference_debugging;
+  size_t in_dim = ssm->data_dim;
+
+  size_t totalSize = 2 * BatchConfig::max_sequence_length() * in_dim *
+                     data_type_size(ssm->data_type);
+  gpu_mem_allocator.create_legion_instance(reserveInst, totalSize);
+  input_activation = gpu_mem_allocator.allocate_instance_untyped(totalSize);
 }
 
 SigmoidSiluMultiMeta::~SigmoidSiluMultiMeta(void) {
@@ -101,7 +107,7 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
   }
 
   // save input activation if needed for PEFT
-  if (bc->num_active_peft_tokens() > 0) {
+  if (bc->num_active_peft_fwd_tokens_() > 0) {
     // Check that we have at most one request that requires peft_bwd
     int num_peft_requests = 0;
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -130,22 +136,28 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
       }
       int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
       int in_dim = input1.domain.hi()[0] - input1.domain.lo()[0] + 1;
+      int num_processed_tokens =
+          bc->requestsInfo[i].peft_fwd_tokens - num_peft_tokens;
+
       if (bc->requestsInfo[i].peft_bwd) {
-        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+        // MemoryAllocator *allocator = m->handle.peft_activation_allocator;
         size_t input_tensor_size =
             data_type_size(m->input_type[0]) * num_peft_tokens * in_dim;
-        m->input_activation =
-            allocator->allocate_instance_untyped(2 * input_tensor_size);
+        // m->input_activation =
+        //     allocator->allocate_instance_untyped(2 * input_tensor_size);
         // copy input activation
         if (m->input_type[0] == DT_FLOAT) {
-          checkCUDA(cudaMemcpyAsync(m->input_activation,
-                                    input1.get_float_ptr() +
-                                        tokens_previous_requests * in_dim,
-                                    input_tensor_size,
-                                    cudaMemcpyDeviceToDevice,
-                                    stream));
           checkCUDA(cudaMemcpyAsync(
-              (void *)((char *)m->input_activation + input_tensor_size),
+              m->input_activation + num_processed_tokens *in_dim *
+                                        data_type_size(m->input_type[0]),
+              input1.get_float_ptr() + tokens_previous_requests * in_dim,
+              input_tensor_size,
+              cudaMemcpyDeviceToDevice,
+              stream));
+          checkCUDA(cudaMemcpyAsync(
+              m->input_activation +
+                  (BatchConfig::max_sequence_length() + num_processed_tokens) *
+                      in_dim * data_type_size(m->input_type[0]),
               input2.get_float_ptr() + tokens_previous_requests * in_dim,
               input_tensor_size,
               cudaMemcpyDeviceToDevice,
@@ -158,7 +170,9 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
                                     cudaMemcpyDeviceToDevice,
                                     stream));
           checkCUDA(cudaMemcpyAsync(
-              (void *)((char *)m->input_activation + input_tensor_size),
+              m->input_activation + BatchConfig::max_sequence_length() *
+                                        in_dim *
+                                        data_type_size(m->input_type[0]),
               input2.get_half_ptr() + tokens_previous_requests * in_dim,
               input_tensor_size,
               cudaMemcpyDeviceToDevice,
@@ -288,12 +302,66 @@ void SigmoidSiluMulti::peft_bwd_kernel_wrapper(
     if (bc->request_completed[i]) {
       continue;
     }
-    if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+    if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID ||
+        (!bc->requestsInfo[i].peft_bwd)) {
       continue;
     }
-    if (bc->requestsInfo[i].peft_bwd) {
-      num_peft_requests++;
-      num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    num_peft_requests++;
+    num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    int in_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
+    int num_elements = in_dim * num_peft_tokens;
+
+    printf("silu: %d\n", num_peft_tokens);
+    save_tensor<float>((float*)output_grad.get_float_ptr() + 1 * in_dim, in_dim * num_peft_tokens, "/home/xinhaoc/FlexFlow/inference/output/silu.txt");
+
+    
+    int num_total_tokens = bc->requestsInfo[i].peft_fwd_tokens;
+    int token_start_offset =
+        num_total_tokens - bc->requestsInfo[i].peft_bwd_tokens;
+
+    if (m->input_type[0] == DT_FLOAT) {
+      SigmoidSiluMultiBackwardKernel<<<GET_BLOCKS(num_elements),
+                                       min(CUDA_NUM_THREADS, num_elements),
+                                       0,
+                                       stream>>>(
+          num_elements,
+          output_grad.get_float_ptr(),
+          static_cast<float const *>(m->input_activation) +
+              token_start_offset * in_dim,
+          static_cast<float const *>(m->input_activation) +
+              (BatchConfig::max_sequence_length() + token_start_offset) *
+                  in_dim,
+          input1_grad.get_float_ptr(),
+          input2_grad.get_float_ptr(),
+          m->reset_input_grads[0],
+          m->reset_input_grads[1]);
+    } else if (m->input_type[0] == DT_HALF) {
+      SigmoidSiluMultiBackwardKernel<<<GET_BLOCKS(num_elements),
+                                       min(CUDA_NUM_THREADS, num_elements),
+                                       0,
+                                       stream>>>(
+          num_elements,
+          output_grad.get_half_ptr(),
+          static_cast<half const *>(m->input_activation) +
+              token_start_offset * in_dim,
+          static_cast<half const *>(m->input_activation) +
+              (BatchConfig::max_sequence_length() + token_start_offset) *
+                  in_dim,
+          input1_grad.get_half_ptr(),
+          input2_grad.get_half_ptr(),
+          m->reset_input_grads[0],
+          m->reset_input_grads[1]);
+    } else {
+      assert(false && "unsupport datatype in SigmoidSiluMulti");
+    }
+    if (m->profiling) {
+      cudaEventRecord(t_end, stream);
+      checkCUDA(cudaEventSynchronize(t_end));
+      float elapsed = 0;
+      checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+      cudaEventDestroy(t_start);
+      cudaEventDestroy(t_end);
+      printf("[SigmoidSiluMulti] peft_bwd time (CF) = %.9fms\n", elapsed);
     }
   }
   if (num_peft_requests == 0) {
@@ -304,49 +372,7 @@ void SigmoidSiluMulti::peft_bwd_kernel_wrapper(
     assert(num_peft_requests == 1);
     assert(num_peft_tokens >= 1);
   }
-  int in_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
-  int num_elements = in_dim * num_peft_tokens;
-
-  if (m->input_type[0] == DT_FLOAT) {
-    SigmoidSiluMultiBackwardKernel<<<GET_BLOCKS(num_elements),
-                                     min(CUDA_NUM_THREADS, num_elements),
-                                     0,
-                                     stream>>>(
-        num_elements,
-        output_grad.get_float_ptr(),
-        static_cast<float const *>(m->input_activation),
-        static_cast<float const *>(m->input_activation) +
-            num_peft_tokens * in_dim,
-        input1_grad.get_float_ptr(),
-        input2_grad.get_float_ptr(),
-        m->reset_input_grads[0],
-        m->reset_input_grads[1]);
-  } else if (m->input_type[0] == DT_HALF) {
-    SigmoidSiluMultiBackwardKernel<<<GET_BLOCKS(num_elements),
-                                     min(CUDA_NUM_THREADS, num_elements),
-                                     0,
-                                     stream>>>(
-        num_elements,
-        output_grad.get_half_ptr(),
-        static_cast<half const *>(m->input_activation),
-        static_cast<half const *>(m->input_activation) +
-            num_peft_tokens * in_dim,
-        input1_grad.get_half_ptr(),
-        input2_grad.get_half_ptr(),
-        m->reset_input_grads[0],
-        m->reset_input_grads[1]);
-  } else {
-    assert(false && "unsupport datatype in SigmoidSiluMulti");
-  }
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("[SigmoidSiluMulti] peft_bwd time (CF) = %.9fms\n", elapsed);
-  }
+  assert(false);
 }
 
 }; // namespace FlexFlow

@@ -25,7 +25,7 @@ LegionRuntime::Logger::Category log_bc("BatchConfig");
 using Legion::Future;
 using Legion::Memory;
 
-BatchConfig::BatchConfig() : num_tokens(0), num_peft_tokens(0) {
+BatchConfig::BatchConfig() : num_tokens(0) {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     requestsInfo[i].first_token_depth_in_request = 0;
     requestsInfo[i].first_token_offset_in_batch = 0;
@@ -79,7 +79,15 @@ int BatchConfig::num_active_infr_tokens() const {
 }
 
 int BatchConfig::num_active_peft_tokens() const {
-  return num_peft_tokens;
+  return num_peft_bwd_tokens;
+}
+
+int BatchConfig::num_active_peft_fwd_tokens_() const {
+  return num_peft_fwd_tokens;
+}
+
+int BatchConfig::num_active_peft_bwd_tokens_() const {
+  return num_peft_bwd_tokens;
 }
 
 /*static*/

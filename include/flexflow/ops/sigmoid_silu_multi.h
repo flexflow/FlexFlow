@@ -97,6 +97,8 @@ public:
                               GenericTensorAccessorR const &output_grad,
                               GenericTensorAccessorW const &input1_grad,
                               GenericTensorAccessorW const &input2_grad);
+  public:
+  size_t data_dim;
 };
 
 class SigmoidSiluMultiMeta : public OpMeta {

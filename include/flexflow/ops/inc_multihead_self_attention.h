@@ -222,6 +222,7 @@ public:
   // PEFT specific fields
   void *softmax_activation_buffer;
   void *query_activation_buffer;
+  void *keyGradCache, *valueGradCache;
 };
 
 }; // namespace FlexFlow

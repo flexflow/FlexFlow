@@ -62,7 +62,7 @@ void LLAMA::create_llama_model(FFModel &ff,
 
   Tensor w2 = nullptr;
 
-  for (int i = 0; i < llama_config.num_hidden_layers; i++) {
+  for (int i = 0; i < 1; i++) {
     // set transformer layer id
     ff.set_transformer_layer_id(i);
 

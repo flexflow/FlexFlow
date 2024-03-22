@@ -131,6 +131,7 @@ SigmoidSiluMulti::SigmoidSiluMulti(FFModel &model,
          _input2) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
+  data_dim = _input1->dims[0].size;
   outputs[0] = model.create_parallel_tensor_legion_ordering(_input1->num_dims,
                                                             _input1->dims,
                                                             _input1->data_type,
@@ -414,7 +415,7 @@ void SigmoidSiluMulti::peft_bwd_task(Task const *task,
 
   SigmoidSiluMultiMeta *m = *((SigmoidSiluMultiMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
-  if (bc->num_active_peft_tokens() == 0) {
+  if (bc->num_active_peft_bwd_tokens_() == 0) {
     return;
   }
 
