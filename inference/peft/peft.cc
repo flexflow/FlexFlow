@@ -40,10 +40,10 @@ void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
                       std::string &llm_model_name,
+                      std::string &peft_model_name,
                       bool &use_full_precision,
                       bool &verbose,
                       bool &do_sample,
-                      bool &enable_peft,
                       float &temperature,
                       float &topp,
                       int &max_requests_per_batch,
@@ -54,6 +54,13 @@ void parse_input_args(char **argv,
     if (!strcmp(argv[i], "-llm-model")) {
       llm_model_name = std::string(argv[++i]);
       for (char &c : llm_model_name) {
+        c = std::tolower(c);
+      }
+      continue;
+    }
+    if (!strcmp(argv[i], "-peft-model")) {
+      peft_model_name = std::string(argv[++i]);
+      for (char &c : peft_model_name) {
         c = std::tolower(c);
       }
       continue;
@@ -126,11 +133,10 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false && "Doesn't support quantization in non-offload mode");
   }
   FilePaths file_paths;
-  std::string llm_model_name;
+  std::string llm_model_name, peft_model_name;
   bool use_full_precision = false;
   bool verbose = false;
   bool do_sample = false;
-  bool enable_peft = false;
   float temperature = 0.0f;
   float topp = 0.0f;
   int max_requests_per_batch = 8;
@@ -144,16 +150,15 @@ void FlexFlow::top_level_task(Task const *task,
                    argc,
                    file_paths,
                    llm_model_name,
+                   peft_model_name,
                    use_full_precision,
                    verbose,
                    do_sample,
-                   enable_peft,
                    temperature,
                    topp,
                    max_requests_per_batch,
                    max_tokens_per_batch,
                    max_sequence_length);
-
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
@@ -173,14 +178,6 @@ void FlexFlow::top_level_task(Task const *task,
               << std::endl;
     assert(false);
   }
-  if (enable_peft && peft_model_name.empty()) {
-    std::cout << "PEFT enabled, but no PEFT model id passed" << std::endl;
-    assert(false);
-  } else if (!enable_peft && !peft_model_name.empty()) {
-    std::cout << "PEFT model id passed, but PEFT is not enabled" << std::endl;
-    assert(false);
-  }
-
   json model_config = json::parse(config_file_handle,
                                   /*parser_callback_t */ nullptr,
                                   /*allow_exceptions */ true,
@@ -214,12 +211,6 @@ void FlexFlow::top_level_task(Task const *task,
 
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
-
-  // load PEFT config
-  LoraLinearConfig peft_config =
-      peft_model_name.empty()
-          ? LoraLinearConfig::EmptyConfig
-          : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
 
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
@@ -268,6 +259,19 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false && "unknow model type");
   }
 
+  // Register PEFT layer
+  LoraLinearConfig mlp_second =
+      peft_model_name.empty()
+          ? LoraLinearConfig::DefaultConfig
+          : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
+  PEFTModelID peft_model_id =
+      peft_model_name.empty()
+          ? PEFTModelID::NO_ID
+          : model.register_peft_model(
+                LoraLinearConfig::DefaultConfig /*mlp_first*/,
+                mlp_second /*mlp_second*/);
+
+  // Start background server
   rm->start_background_server(&model);
 
   int total_num_requests = 0;
@@ -284,10 +288,20 @@ void FlexFlow::top_level_task(Task const *task,
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-      Request inference_req;
-      inference_req.prompt = text;
-      inference_req.max_sequence_length = 128;
-      requests.push_back(inference_req);
+      // Add inference request
+      // Request inference_req;
+      // inference_req.prompt = text;
+      // inference_req.max_sequence_length = 128;
+      // inference_req.peft_model_id = peft_model_id;
+      // requests.push_back(inference_req);
+      // total_num_requests++;
+      // Add fine-tuning request
+      Request fine_tuning_req;
+      fine_tuning_req.req_type = Request::RequestType::REQ_FINETUNING;
+      fine_tuning_req.max_sequence_length = 128;
+      fine_tuning_req.peft_model_id = peft_model_id;
+      fine_tuning_req.dataset_text.push_back(std::make_pair(text, ""));
+      requests.push_back(fine_tuning_req);
       total_num_requests++;
     }
     std::vector<GenerationResult> result = model.generate(requests);
