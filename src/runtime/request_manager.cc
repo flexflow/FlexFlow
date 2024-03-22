@@ -2410,7 +2410,12 @@ std::vector<GenerationResult>
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
   for (int i = 0; i < requests.size(); i++) {
-    RequestManager::RequestGuid guid = rm->register_new_request(requests.at(i));
+    RequestManager::RequestGuid guid;
+    if (requests.at(i).req_type == Request::REQ_INFERENCE) {
+      guid = rm->register_new_request(requests.at(i));
+    } else {
+      guid = rm->register_new_peft_request(requests.at(i));
+    }
     if (guid != RequestManager::INVALID_GUID) {
       guids.push_back(guid);
     }

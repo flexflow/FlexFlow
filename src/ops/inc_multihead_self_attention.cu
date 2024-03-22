@@ -1488,7 +1488,8 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (bc->request_completed[i] || (!bc->requestsInfo[i].prompt_phase)) {
+    if (bc->request_completed[i] ||
+        (!bc->requestsInfo[i].prompt_phase && !bc->requestsInfo[i].peft_bwd)) {
       continue;
     }
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
