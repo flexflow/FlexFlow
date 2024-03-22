@@ -44,6 +44,7 @@ void parse_input_args(char **argv,
                       bool &use_full_precision,
                       bool &verbose,
                       bool &do_sample,
+                      bool &enable_peft,
                       float &temperature,
                       float &topp,
                       int &max_requests_per_batch,
@@ -56,6 +57,10 @@ void parse_input_args(char **argv,
       for (char &c : llm_model_name) {
         c = std::tolower(c);
       }
+      continue;
+    }
+    if (!strcmp(argv[i], "-enable-peft")) {
+      enable_peft = true;
       continue;
     }
     if (!strcmp(argv[i], "-peft-model")) {
@@ -137,6 +142,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool use_full_precision = false;
   bool verbose = false;
   bool do_sample = false;
+  bool enable_peft = false;
   float temperature = 0.0f;
   float topp = 0.0f;
   int max_requests_per_batch = 8;
@@ -154,6 +160,7 @@ void FlexFlow::top_level_task(Task const *task,
                    use_full_precision,
                    verbose,
                    do_sample,
+                   enable_peft,
                    temperature,
                    topp,
                    max_requests_per_batch,
@@ -178,6 +185,14 @@ void FlexFlow::top_level_task(Task const *task,
               << std::endl;
     assert(false);
   }
+  if (enable_peft && peft_model_name.empty()) {
+    std::cout << "PEFT enabled, but no PEFT model id passed" << std::endl;
+    assert(false);
+  } else if (!enable_peft && !peft_model_name.empty()) {
+    std::cout << "PEFT model id passed, but PEFT is not enabled" << std::endl;
+    assert(false);
+  }
+
   json model_config = json::parse(config_file_handle,
                                   /*parser_callback_t */ nullptr,
                                   /*allow_exceptions */ true,
@@ -211,6 +226,12 @@ void FlexFlow::top_level_task(Task const *task,
 
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
+
+  // load PEFT config
+  LoraLinearConfig peft_config =
+      peft_model_name.empty()
+          ? LoraLinearConfig::EmptyConfig
+          : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
 
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
@@ -259,17 +280,11 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false && "unknow model type");
   }
 
-  // Register PEFT layer
-  LoraLinearConfig mlp_second =
-      peft_model_name.empty()
-          ? LoraLinearConfig::DefaultConfig
-          : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
-  PEFTModelID peft_model_id =
-      peft_model_name.empty()
-          ? PEFTModelID::NO_ID
-          : model.register_peft_model(
-                LoraLinearConfig::DefaultConfig /*mlp_first*/,
-                mlp_second /*mlp_second*/);
+  // Add PEFT layer
+  PEFTModelID peft_model_id = PEFTModelID::NO_ID;
+  if (!peft_model_name.empty()) {
+    peft_model_id = model.add_lora_layer(peft_config);
+  }
 
   // Start background server
   rm->start_background_server(&model);
