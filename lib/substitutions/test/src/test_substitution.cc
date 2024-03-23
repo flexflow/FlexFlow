@@ -89,7 +89,7 @@ TEST_CASE("apply_substitution") {
 
   Node n4 = pcg.add_node(Operator{InputAttrs{}, "input"});
   Node n5 = pcg.add_node(Operator{
-      LinearAttrs{1, false, DataType::FLOAT, Activation::RELU, nullopt},
+      LinearAttrs{1, false, DataType::FLOAT, Activation::RELU, std::nullopt},
       "linear"});
   NodePort p4 = pcg.add_node_port();
   NodePort p5 = pcg.add_node_port();
