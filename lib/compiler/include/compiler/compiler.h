@@ -12,8 +12,8 @@ enum class SearchAlgorithm {
   DATA_PARALLEL,
 };
 
-using SearchAlgorithmConfig = variant<>;
-using SearchSolution = variant<>;
+using SearchAlgorithmConfig = std::variant<>;
+using SearchSolution = std::variant<>;
 
 struct SearchResult {
   ParallelComputationGraph pcg;

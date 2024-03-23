@@ -412,9 +412,9 @@ std::unordered_set<Node> get_sources(DiGraphView const &g) {
   });
 }
 
-optional<bool> is_acyclic(DiGraphView const &g) {
+std::optional<bool> is_acyclic(DiGraphView const &g) {
   if (num_nodes(g) == 0) {
-    return nullopt;
+    return std::nullopt;
   }
   std::unordered_set<Node> sources = get_sources(g);
   if (sources.size() == 0) {
@@ -436,7 +436,7 @@ optional<bool> is_acyclic(DiGraphView const &g) {
   return true;
 }
 
-optional<bool> is_acyclic(MultiDiGraph const &g) {
+std::optional<bool> is_acyclic(MultiDiGraph const &g) {
   return is_acyclic(g);
 }
 
@@ -577,7 +577,7 @@ std::unordered_set<Node> get_dominators(DiGraphView const &g,
   if (n.empty()) {
     throw mk_runtime_error("Cannot find dominators of no nodes");
   }
-  optional<std::unordered_set<Node>> result =
+  std::optional<std::unordered_set<Node>> result =
       intersection(values(restrict_keys(get_dominators(g), n)));
   assert(result.has_value());
 
@@ -589,10 +589,10 @@ std::unordered_map<Node, std::unordered_set<Node>>
   return get_dominators(flipped(g));
 }
 
-std::unordered_map<Node, optional<Node>>
+std::unordered_map<Node, std::optional<Node>>
     get_imm_dominators(DiGraphView const &g) {
 
-  std::unordered_map<Node, optional<Node>> result;
+  std::unordered_map<Node, std::optional<Node>> result;
   for (auto const &kv : get_dominators(g)) {
     Node node = kv.first;
     std::unordered_set<Node> node_dominators = kv.second;
@@ -602,7 +602,7 @@ std::unordered_map<Node, optional<Node>>
     // a node cannot immediately dominate itself
     if (node_dominators.size() == 1) {
       assert(get_only(node_dominators) == node);
-      result[node] = nullopt;
+      result[node] = std::nullopt;
     } else {
       node_dominators.erase(node);
       result[node] = get_node_with_greatest_topo_rank(node_dominators, g);
@@ -611,12 +611,12 @@ std::unordered_map<Node, optional<Node>>
   return result;
 }
 
-std::unordered_map<Node, optional<Node>>
+std::unordered_map<Node, std::optional<Node>>
     get_imm_post_dominators(DiGraphView const &g) {
   return get_imm_dominators(flipped(g));
 }
 
-optional<Node> imm_post_dominator(DiGraphView const &g, Node const &n) {
+std::optional<Node> imm_post_dominator(DiGraphView const &g, Node const &n) {
   return get_imm_post_dominators(g).at(n);
 }
 
@@ -639,8 +639,9 @@ Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &nodes,
                            });
 }
 
-optional<Node> get_imm_post_dominator(DiGraphView const &g,
-                                      std::unordered_set<Node> const &nodes) {
+std::optional<Node>
+    get_imm_post_dominator(DiGraphView const &g,
+                           std::unordered_set<Node> const &nodes) {
 
   if (nodes.empty()) {
     throw mk_runtime_error("Cannot get imm_post_dominator of no nodes");
@@ -651,7 +652,7 @@ optional<Node> get_imm_post_dominator(DiGraphView const &g,
   if (!commonDoms.empty()) {
     return get_node_with_greatest_topo_rank(commonDoms, g);
   } else {
-    return nullopt;
+    return std::nullopt;
   }
 }
 

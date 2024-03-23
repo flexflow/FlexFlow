@@ -102,7 +102,7 @@ struct construct_visitor {
 
   template <typename T>
   void operator()(char const *, T C::*ptr_to_member) {
-    c.*ptr_to_member = any_cast<T const &>(get(args, idx));
+    c.*ptr_to_member = std::any_cast<T const &>(get(args, idx));
     this->idx++;
   };
 };
@@ -346,6 +346,9 @@ struct visitable_formatter : public ::fmt::formatter<std::string> {
                 #TYPENAME                                                      \
                 " should be list-initialializable by the visit field types");
 
+#ifdef __CUDACC__
+#define CHECK_CONSTRUCTION_NONEMPTY(TYPENAME) ;
+#else
 #define CHECK_CONSTRUCTION_NONEMPTY(TYPENAME)                                  \
   static_assert(is_only_visit_list_initializable<TYPENAME>::value,             \
                 #TYPENAME                                                      \
@@ -357,6 +360,7 @@ struct visitable_formatter : public ::fmt::formatter<std::string> {
   static_assert(is_visit_list_initializable<TYPENAME>::value,                  \
                 #TYPENAME                                                      \
                 " should be list-initialializable by the visit field types");
+#endif
 
 #define CHECK_CONSTRUCTION_EMPTY(TYPENAME)                                     \
   static_assert(std::is_default_constructible<TYPENAME>::value,                \

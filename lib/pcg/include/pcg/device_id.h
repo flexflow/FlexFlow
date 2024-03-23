@@ -3,7 +3,7 @@
 
 #include "device_type.h"
 #include "utils/strong_typedef.h"
-#include "utils/variant.h"
+#include <variant>
 
 namespace FlexFlow {
 
@@ -15,7 +15,7 @@ struct cpu_id_t : strong_typedef<cpu_id_t, int> {
   using strong_typedef::strong_typedef;
 };
 
-using device_id_t = variant<gpu_id_t, cpu_id_t>;
+using device_id_t = std::variant<gpu_id_t, cpu_id_t>;
 device_id_t operator+(device_id_t, size_t);
 
 DeviceType get_device_type(device_id_t);

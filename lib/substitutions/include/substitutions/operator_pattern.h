@@ -70,7 +70,7 @@ enum class OperatorAttributeKey {
   NUM_INPUTS
 };
 
-using OperatorAttributeValue = variant<int,
+using OperatorAttributeValue = std::variant<int,
                                        float,
                                        bool,
                                        stack_vector<int, MAX_TENSOR_DIM>,
@@ -81,7 +81,7 @@ using OperatorAttributeValue = variant<int,
                                        unsigned long long,
                                        AggregateOp,
                                        stack_vector<ff_dim_t, MAX_TENSOR_DIM>,
-                                       optional<RegularizerAttrs>,
+                                       std::optional<RegularizerAttrs>,
                                        PoolOp,
                                        TensorShape,
                                        DataType>;
@@ -97,7 +97,7 @@ using OperatorAttributeConstraint =
 using OperatorPattern =
     AttributePattern<OperatorAttributeKey, OperatorAttributeValue>;
 
-optional<OperatorAttributeValue>
+std::optional<OperatorAttributeValue>
     evaluate_attribute_expr(Operator const &attrs,
                             AttributeExpr<OperatorAttributeKey> const &expr);
 

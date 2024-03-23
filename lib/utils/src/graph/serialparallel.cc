@@ -17,11 +17,11 @@ Node find_sink_node(DiGraphView const &g) {
   return get_only(sinks);
 }
 
-optional<Node> find_bottleneck_node(DiGraphView const &g) {
+std::optional<Node> find_bottleneck_node(DiGraphView const &g) {
   std::unordered_set<Node> sources = get_sources(g);
   std::unordered_set<Node> sinks = get_sinks(g);
 
-  optional<Node> maybe_bottleneck = get_imm_post_dominator(g, sources);
+  std::optional<Node> maybe_bottleneck = get_imm_post_dominator(g, sources);
   if (maybe_bottleneck.has_value()) {
     assert(contains(get_dominators(g, sinks), maybe_bottleneck.value()));
   }
@@ -95,7 +95,7 @@ SplitAST sp_decomposition(DiGraphView const &g) {
   std::unordered_set<Node> sources = get_sources(g);
   std::unordered_set<Node> sinks = get_sinks(g);
 
-  optional<Node> bottleneck = find_bottleneck_node(g);
+  std::optional<Node> bottleneck = find_bottleneck_node(g);
   if (bottleneck.has_value()) {
     return SplitASTNode(SplitType::SERIAL,
                         sp_decomposition(source_to_sink_subgraph(
@@ -142,7 +142,7 @@ SplitASTNode::SplitASTNode(SplitType type,
 struct FlattenAST {
   void add_flattened_child_to_parent(SplitASTNode &parent,
                                      SplitAST const &child) {
-    if (holds_alternative<Node>(child)) {
+    if (std::holds_alternative<Node>(child)) {
       parent.children.push_back(child);
       return;
     }
@@ -175,24 +175,24 @@ SplitAST flatten_ast(SplitAST const &ast) {
 }
 
 struct ToFinalAST {
-  variant<Serial, Parallel, Node> operator()(SplitASTNode const &node) {
+  std::variant<Serial, Parallel, Node> operator()(SplitASTNode const &node) {
     if (node.type == SplitType::SERIAL) {
       return Serial{transform(node.children, [](SplitAST const &s) {
-        return narrow<variant<Parallel, Node>>(to_final_ast(s)).value();
+        return narrow<std::variant<Parallel, Node>>(to_final_ast(s)).value();
       })};
     } else {
       return Parallel{transform(node.children, [](SplitAST const &s) {
-        return narrow<variant<Serial, Node>>(to_final_ast(s)).value();
+        return narrow<std::variant<Serial, Node>>(to_final_ast(s)).value();
       })};
     }
   }
 
-  variant<Serial, Parallel, Node> operator()(Node const &node) {
+  std::variant<Serial, Parallel, Node> operator()(Node const &node) {
     return node;
   }
 };
 
-variant<Serial, Parallel, Node> to_final_ast(SplitAST const &ast) {
+std::variant<Serial, Parallel, Node> to_final_ast(SplitAST const &ast) {
   return visit(ToFinalAST{}, ast);
 }
 
@@ -216,14 +216,14 @@ std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
 std::unordered_set<Node> get_nodes(Serial const &serial) {
   return set_union(transform(
       serial.children,
-      [](variant<Parallel, Node> const child) -> std::unordered_set<Node> {
+      [](std::variant<Parallel, Node> const child) -> std::unordered_set<Node> {
         return visit(GetNodes{}, child);
       }));
 }
 
 std::unordered_set<Node> get_nodes(Parallel const &parallel) {
   return set_union(
-      transform(parallel.children, [](variant<Serial, Node> const &child) {
+      transform(parallel.children, [](std::variant<Serial, Node> const &child) {
         return visit(GetNodes{}, child);
       }));
 }
@@ -291,18 +291,18 @@ MultiDiGraph multidigraph_from_sp_decomposition(
 }
 
 MultiDiGraph multidigraph_from_sp_decomposition(
-    variant<Parallel, Node> const &sp_decomposition) {
+    std::variant<Parallel, Node> const &sp_decomposition) {
   return visit(MultiDiGraphFromSPDecompositionFunctor{}, sp_decomposition);
 }
 
 MultiDiGraph multidigraph_from_sp_decomposition(
-    variant<Serial, Node> const &sp_decomposition) {
+    std::variant<Serial, Node> const &sp_decomposition) {
   return visit(MultiDiGraphFromSPDecompositionFunctor{}, sp_decomposition);
 }
 
 MultiDiGraph multidigraph_from_sp_decomposition(Serial const &serial) {
   MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
-  for (variant<Parallel, Node> const &child : serial.children) {
+  for (std::variant<Parallel, Node> const &child : serial.children) {
     serial_extend(g, multidigraph_from_sp_decomposition(child));
   }
   return g;
@@ -310,7 +310,7 @@ MultiDiGraph multidigraph_from_sp_decomposition(Serial const &serial) {
 
 MultiDiGraph multidigraph_from_sp_decomposition(Parallel const &parallel) {
   MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
-  for (variant<Serial, Node> const &child : parallel.children) {
+  for (std::variant<Serial, Node> const &child : parallel.children) {
     parallel_extend(g, multidigraph_from_sp_decomposition(child));
   }
   return g;

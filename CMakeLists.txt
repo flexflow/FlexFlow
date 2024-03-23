@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 3.10)
 project(FlexFlow)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
+set(
+  CMAKE_MODULE_PATH 
+  ${CMAKE_MODULE_PATH} 
+  ${CMAKE_CURRENT_LIST_DIR}/cmake 
+  ${CMAKE_CURRENT_LIST_DIR}/cmake/Modules
+)
 
 # Detect OS type and Linux version (if it applies)
 set(LINUX_VERSION "")
@@ -28,7 +33,7 @@ set(FF_MAX_NUM_TASK_REGIONS "20" CACHE STRING
 set(FF_MAX_NUM_TASK_ARGUMENTS "5" CACHE STRING
   "Maximum number of arguments that can be declared in a TaskSignature")
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
-option(FF_USE_PREBUILT_NCCL "Enable use of NCCL pre-compiled library, if available" ON)
+option(FF_USE_EXTERNAL_NCCL "Enable use of NCCL pre-compiled library, if available" ON)
 option(FF_USE_PREBUILT_LEGION "Enable use of Legion pre-compiled library, if available" ON)
 option(FF_USE_ALL_PREBUILT_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
 option(FF_USE_PYTHON "Enable Python" ON)
@@ -77,20 +82,15 @@ include(nccl)
 # set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 include(json)
-include(optional)
 include(expected)
 include(spdlog)
-include(variant)
-include(doctest)
+include(doctestlib) # named doctestlib to avoid a name collision with doctest.cmake in rapidcheck
 include(visit_struct)
 include(CTest)
 include(fmt)
 include(legion)
 include(rapidcheck)
-include(invoke)
-include(any)
 #include(gtest)
-#include(fmt)
 
 include(flexflow-utils)
 

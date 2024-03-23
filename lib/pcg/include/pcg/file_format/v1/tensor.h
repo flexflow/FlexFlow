@@ -12,7 +12,7 @@
 namespace FlexFlow {
 
 struct V1TensorShape {
-  req<std::vector<size_t>> dims;
+  std::vector<size_t> dims;
   req<V1DataType> data_type;
 };
 FF_VISITABLE_STRUCT(V1TensorShape, dims, data_type);
@@ -21,10 +21,10 @@ V1TensorShape to_v1(TensorShape const &);
 
 struct V1Tensor {
   V1TensorShape shape;
-  req<optional<V1Initializer>> initializer;
-  req<bool> create_gradients;
-  req<optional<V1ParamSync>> sync_type;
-  req<optional<std::string>> name;
+  std::optional<V1Initializer> initializer;
+  bool create_gradients;
+  std::optional<V1ParamSync> sync_type;
+  req<std::optional<std::string>> name;
 };
 FF_VISITABLE_STRUCT(
     V1Tensor, shape, initializer, create_gradients, sync_type, name);

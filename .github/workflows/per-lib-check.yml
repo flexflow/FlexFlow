@@ -8,9 +8,7 @@ jobs:
   cmake-build:
     name: Library CMake Build
     runs-on: ubuntu-20.04
-    defaults:
-      run:
-        shell: bash -l {0} # required to use an activated conda environment
+
     strategy:
       max-parallel: 1
       matrix:
@@ -22,23 +20,30 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Free additional space on runner
-        run: .github/workflows/helpers/free_space_on_runner.sh
+      - name: Add helpers directory to path
+        run: echo "${PWD}/.github/workflows/helpers" >> $GITHUB_PATH
 
-      - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.11
-        id: cuda-toolkit
+      - name: Install nix
+        uses: cachix/install-nix-action@v25
         with:
-          cuda: "12.1.0"
-          # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
-          use-github-cache: "false"
-          linux-local-args: '["--toolkit"]'
+          github_access_token: '${{ secrets.GITHUB_TOKEN }}'
+
+      - uses: cachix/cachix-action@v14
+        with:
+          name: ff
+          skipPush: true
+          # authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: setup nix develop shell
+        uses: nicknovitski/nix-develop@v1.1.0
+        with:
+          arguments: "--accept-flake-config .#ci"
 
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
 
-      - name: Install system dependencies
-        run: FF_GPU_BACKEND=${{ matrix.gpu_backend }} .github/workflows/helpers/install_dependencies.sh
+      # - name: Install system dependencies
+      #   run: FF_GPU_BACKEND=${{ matrix.gpu_backend }} .github/workflows/helpers/install_dependencies.sh
 
       # - name: Install conda and FlexFlow dependencies
       #   uses: conda-incubator/setup-miniconda@v2
@@ -49,62 +54,36 @@ jobs:
 
       - name: Run cmake
         run: |
-          export CUDNN_DIR=/usr/local/cuda
-          export CUDA_DIR=/usr/local/cuda
-          export FF_HOME=$(pwd)
-          export FF_GPU_BACKEND=${{ matrix.gpu_backend }}
-          export FF_CUDA_ARCH=70
-          n_build_cores=$(( $(nproc) cores_available -1 ))
-          if (( $n_build_cores < 1 )) ; then n_build_cores=1 ; fi
-          mkdir build
-          cd build
-          #if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
-          #  export FF_BUILD_ALL_EXAMPLES=ON 
-          #  export FF_BUILD_UNIT_TESTS=ON
-          #fi
-          ../config/config.linux -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
+          cmake_${{ matrix.gpu_backend }}.sh
 
       - name: Build utils
         run: |
-          cd build 
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
+          build_libs.sh utils
 
       - name: Build op-attrs
         run: |
-          cd build 
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) op-attrs
+          build_libs.sh op-attrs
 
       - name: Build pcg
         run: |
-          cd build
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) pcg
+          build_libs.sh pcg
 
       - name: Build kernels
         run: |
-          cd build
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) kernels
+          build_libs.sh kernels
 
       - name: Build substitutions
         run: |
-          cd build
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) substitutions
+          build_libs.sh substitutions
 
       - name: Build compiler
         run: |
-          cd build
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) compiler
+          build_libs.sh compiler
 
-      - name: Build substitutions-test
+      - name: Test substitutions
         run: |
-          cd build
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) substitutions-test
+          test_libs.sh substitutions
 
-      - name: Build compiler-test
+      - name: Test compiler
         run: |
-          cd build
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) compiler-test
-
-      - name: Unit tests
-        run: |
-          cd build
-          ctest
+          test_libs.sh compiler

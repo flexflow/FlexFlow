@@ -125,14 +125,14 @@ std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
 
 std::unordered_set<Node> get_nodes(Serial const &serial) {
   return set_union(
-      transform(serial.children, [](variant<Parallel, Node> const child) {
+      transform(serial.children, [](std::variant<Parallel, Node> const child) {
         return visit(GetNodes{}, child);
       }));
 }
 
 std::unordered_set<Node> get_nodes(Parallel const &parallel) {
   return set_union(
-      transform(parallel.children, [](variant<Serial, Node> const child) {
+      transform(parallel.children, [](std::variant<Serial, Node> const child) {
         return visit(GetNodes{}, child);
       }));
 }

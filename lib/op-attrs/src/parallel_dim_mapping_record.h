@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_OP_META_SRC_PARELLEL_DIM_MAPPING_RECORD_H
 #define _FLEXFLOW_OP_META_SRC_PARELLEL_DIM_MAPPING_RECORD_H
 
-#include "tl/optional.hpp"
 #include "utils/visitable.h"
 #include <vector>
 
@@ -23,18 +22,18 @@ public:
       int input_dim,
       int output_idx,
       int output_dim,
-      tl::optional<MappingOperation> operation = tl::nullopt);
+      std::optional<MappingOperation> operation = std::nullopt);
   static ParallelDimMappingRecord input_weight_record(
       int input_idx,
       int input_dim,
       int weight_idx,
       int weight_dim,
-      tl::optional<MappingOperation> operation = tl::nullopt);
+      std::optional<MappingOperation> operation = std::nullopt);
   MappingRecordType get_type() const;
 
 public:
   MappingRecordType type;
-  tl::optional<MappingOperation> operation;
+  std::optional<MappingOperation> operation;
 
   int output_dim, input_dim, weight_dim;
   int output_idx, input_idx, weight_idx;
