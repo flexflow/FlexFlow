@@ -412,6 +412,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         if (request.completed_training_steps == request.max_training_steps) {
           // check if the fine tuning request has completed
           request.status = Request::COMPLETED;
+          trigger_request_completion_future(request.guid);
           log_req_mgr.print("[Done] guid(%zu) completed_training_steps(%d)",
                             old_bc.requestsInfo[i].request_guid,
                             request.completed_training_steps);
