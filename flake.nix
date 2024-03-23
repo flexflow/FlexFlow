@@ -53,6 +53,10 @@
 
       devShells = rec {
         ci = mkShell {
+          shellHook = ''
+            export PATH="$HOME/ff/.scripts/:$HOME/ff/.modules/proj/bin/:$PATH"
+          '';
+          
           CMAKE_FLAGS = lib.strings.concatStringsSep " " [
             "-DFF_USE_EXTERNAL_LEGION=ON"
             "-DFF_USE_EXTERNAL_NCCL=ON"
