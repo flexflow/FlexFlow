@@ -51,15 +51,15 @@ bool check_lora_layer_match(Layer *potential_target,
   return false;
 }
 
-PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
+PEFTModelID *FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
   assert(config.enable_peft &&
          "Cannot add a LoRA layer if PEFT mode is not enabled");
   if (peft_config.target_modules.size() == 0) {
     printf("PEFT config does not contain any target module\n");
-    return PEFTModelID::NO_ID;
+    return nullptr;
   }
-  PEFTModelID peft_model_id(peft_model_global_guid++);
-  peft_configs[peft_model_id] = peft_config;
+  PEFTModelID *peft_model_id = new PEFTModelID(peft_model_global_guid++);
+  peft_configs[*peft_model_id] = peft_config;
 
   for (std::string target_module_name : peft_config.target_modules) {
     assert(target_module_name.length() > 0 &&
@@ -76,7 +76,7 @@ PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
           base_layer_to_peft_layer.end()) {
         // lora linear layer already added, no need to add again
         Layer *peft_layer = base_layer_to_peft_layer[target_module];
-        peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
+        peft_layer_to_peft_id[peft_layer].push_back(*peft_model_id);
       } else {
         Tensor const input = target_module->inputs[0];
         Tensor const output = target_module->outputs[0];
@@ -124,7 +124,7 @@ PEFTModelID FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
         ++it;
         base_layer_to_peft_layer[target_module] = peft_layer;
         peft_layer_to_peft_id[peft_layer] = std::vector<PEFTModelID>();
-        peft_layer_to_peft_id[peft_layer].push_back(peft_model_id);
+        peft_layer_to_peft_id[peft_layer].push_back(*peft_model_id);
       }
     }
   }

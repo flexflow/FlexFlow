@@ -9,7 +9,7 @@ def parse_args():
         "--base_model_name", type=str, help="Name of the model to download"
     )
     parser.add_argument(
-        "peft_model_ids", type=str, nargs="+", help="Name of the model(s) to download"
+        "peft_model_ids", type=str, nargs="+", help="Name of the PEFT model(s) to download"
     )
     parser.add_argument(
         "--cache-folder",
@@ -45,24 +45,19 @@ def main(args):
     else:
         data_types = (ff.DataType.DT_FLOAT, ff.DataType.DT_HALF)
 
-    for peft_model_id in args.peft_model_ids:
-        for data_type in data_types:
-            llm = ff.LLM(
-                args.base_model_name,
-                data_type=data_type,
-                cache_path=args.cache_folder,
-                refresh_cache=args.refresh_cache,
-            )
-            peft = ff.PEFT(
-                llm,
-                peft_model_id,
-                data_type=data_type,
-                cache_path=args.cache_folder,
-                refresh_cache=args.refresh_cache,
-            )
-            peft.download_hf_weights_if_needed()
-            peft.download_hf_config()
-            peft.download_hf_tokenizer_if_needed()
+    
+    for data_type in data_types:
+        llm = ff.LLM(
+            args.base_model_name,
+            data_type=data_type,
+            cache_path=args.cache_folder,
+            refresh_cache=args.refresh_cache,
+        )
+        for peft_model_id in args.peft_model_ids:
+            llm.add_peft(peft_model_id)
+        llm.download_hf_weights_if_needed()
+        llm.download_hf_config()
+        llm.download_hf_tokenizer_if_needed()
 
 
 if __name__ == "__main__":

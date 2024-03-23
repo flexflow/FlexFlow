@@ -4287,3 +4287,37 @@ class FileDataLoader(object):
         ffc().flexflow_file_data_loader_load_weights(
             self.handle, model.handle
         )
+
+# -----------------------------------------------------------------------
+# LoraLinearConfig
+# -----------------------------------------------------------------------
+        
+class LoraLinearConfig(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(
+        self,
+        cache_folder,
+        peft_model_id,
+    ):
+        c_cache_folder = get_c_name(cache_folder)
+        peft_model_id = get_c_name(peft_model_id)
+        self.handle = ffc().flexflow_lora_linear_config_create(
+            c_cache_folder,
+            peft_model_id,
+        )
+        self._handle = ffi.gc(self.handle, ffc().flexflow_lora_linear_config_destroy)
+
+# -----------------------------------------------------------------------
+# PEFTModelID
+# -----------------------------------------------------------------------
+        
+class PEFTModelID(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(self, id=None):
+        if id is None:
+            self.handle = ffc().flexflow_peft_model_id_create()
+        else:
+            self.handle = ffc().flexflow_peft_model_id_create_id(id)
+        self._handle = ffi.gc(self.handle, ffc().flexflow_peft_model_id_destroy)

@@ -67,6 +67,8 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_request_manager_t, RequestManager *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_file_data_loader_t, FileDataLoader *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_generation_result_t, GenerationResult *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_lora_linear_config_t, LoraLinearConfig *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_peft_model_id_t, PEFTModelID *);
 };
 
 Logger ffc_log("flexflow_c");
@@ -1542,6 +1544,21 @@ flexflow_tensor_t flexflow_model_add_argmax(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_peft_model_id_t flexflow_model_add_lora_layer(
+    flexflow_model_t handle_,
+    const flexflow_lora_linear_config_t peft_config_) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  LoraLinearConfig const *peft_config = FFCObjectWrapper::unwrap(peft_config_);
+  PEFTModelID *peft_model_id = handle->add_lora_layer(*peft_config);
+
+  DEBUG_PRINT("[Add Lora Layer] model handle: %p, peft_config handle %p, "
+              "peft_model_id: %p",
+              handle,
+              peft_config,
+              peft_model_id);
+  return FFCObjectWrapper::wrap(peft_model_id);
+}
+
 void flexflow_model_set_sgd_optimizer(flexflow_model_t handle_,
                                       flexflow_sgd_optimizer_t optimizer_) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
@@ -2738,4 +2755,51 @@ void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
   FileDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_handle_);
   handle->load_weights(model);
+}
+
+// -----------------------------------------------------------------------
+// LoraLinearConfig
+// -----------------------------------------------------------------------
+
+flexflow_lora_linear_config_t
+    flexflow_lora_linear_config_create(char const *cache_folder_,
+                                       char const *peft_model_id_) {
+  assert(cache_folder_ != nullptr &&
+         "Cannot convert nullptr char * to std::string");
+  assert(peft_model_id_ != nullptr &&
+         "Cannot convert nullptr char * to std::string");
+  std::string const cache_folder(cache_folder_);
+  std::string const peft_model_id(peft_model_id_);
+  LoraLinearConfig *handle = new LoraLinearConfig(cache_folder, peft_model_id);
+  DEBUG_PRINT("[LoraLinearConfig] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+void flexflow_lora_linear_config_destroy(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *peft_config = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[LoraLinearConfig] delete %p", peft_config);
+  delete peft_config;
+}
+
+// -----------------------------------------------------------------------
+// PEFTModelID
+// -----------------------------------------------------------------------
+
+flexflow_peft_model_id_t flexflow_peft_model_id_create() {
+  PEFTModelID *handle = new PEFTModelID();
+  DEBUG_PRINT("[PEFTModelID] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+flexflow_peft_model_id_t flexflow_peft_model_id_create_id(size_t id) {
+  PEFTModelID *handle = new PEFTModelID(id);
+  DEBUG_PRINT("[PEFTModelID] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+void flexflow_peft_model_id_destroy(flexflow_peft_model_id_t handle_) {
+  PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[PEFTModelID] delete %p", peft_model_id);
+  delete peft_model_id;
 }

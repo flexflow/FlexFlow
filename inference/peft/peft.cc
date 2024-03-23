@@ -281,7 +281,7 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   // Add PEFT layer
-  PEFTModelID peft_model_id = PEFTModelID::NO_ID;
+  PEFTModelID *peft_model_id = nullptr;
   if (!peft_model_name.empty()) {
     peft_model_id = model.add_lora_layer(peft_config);
   }
@@ -314,7 +314,8 @@ void FlexFlow::top_level_task(Task const *task,
       Request fine_tuning_req;
       fine_tuning_req.req_type = Request::RequestType::REQ_FINETUNING;
       fine_tuning_req.max_sequence_length = 128;
-      fine_tuning_req.peft_model_id = peft_model_id;
+      fine_tuning_req.peft_model_id =
+          (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
       fine_tuning_req.dataset_text.push_back(std::make_pair(text, ""));
       requests.push_back(fine_tuning_req);
       total_num_requests++;
@@ -329,6 +330,10 @@ void FlexFlow::top_level_task(Task const *task,
   {
     Future future = runtime->issue_execution_fence(ctx);
     future.get_void_result();
+  }
+
+  if (peft_model_id != nullptr) {
+    free(peft_model_id);
   }
 
   // float* data

@@ -55,6 +55,8 @@ FF_NEW_OPAQUE_TYPE(flexflow_inference_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_request_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_file_data_loader_t);
 FF_NEW_OPAQUE_TYPE(flexflow_generation_result_t);
+FF_NEW_OPAQUE_TYPE(flexflow_lora_linear_config_t);
+FF_NEW_OPAQUE_TYPE(flexflow_peft_model_id_t);
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -1035,6 +1037,26 @@ void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_);
 
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
                                             flexflow_model_t model_handle_);
+
+// -----------------------------------------------------------------------
+// LoraLinearConfig
+// -----------------------------------------------------------------------
+
+flexflow_lora_linear_config_t
+    flexflow_lora_linear_config_create(char const *cache_folder_,
+                                       char const *peft_model_id_);
+
+void flexflow_lora_linear_config_destroy(flexflow_lora_linear_config_t handle_);
+
+// -----------------------------------------------------------------------
+// PEFTModelID
+// -----------------------------------------------------------------------
+
+flexflow_peft_model_id_t flexflow_peft_model_id_create();
+
+flexflow_peft_model_id_t flexflow_peft_model_id_create_id(unsigned long id);
+
+void flexflow_peft_model_id_destroy(flexflow_peft_model_id_t handle_);
 
 #ifdef __cplusplus
 }

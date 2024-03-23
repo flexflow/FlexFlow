@@ -137,30 +137,61 @@ class LLM:
         self.refresh_cache = refresh_cache
         self.output_file = output_file
         self.rm = None
+        self.pefts = []
 
     def __del__(self):
         # Stop the background server before deleting the object
         if type(self) == LLM and self.rm is not None:
             self.rm.stop_server()
 
+    def add_peft(self, peft_model_id: str):
+        """Add a previously created PEFT adapter to the LLM. The PEFT model should already exist locally or be available on HuggingFace"""
+        peft_config = PeftConfig.from_pretrained(peft_model_id)
+        peft_type = peft_config.peft_type
+        if peft_type != "LORA":
+            raise RuntimeError(f"PEFT type {peft_type} not yet supported in FlexFlow")
+        if "base_model_name_or_path" not in peft_config.to_dict():
+            raise ValueError(
+                f"PEFT model {peft_model_id} does not have an associated base model"
+            )
+        if peft_config.base_model_name_or_path != self.model_name:
+            raise RuntimeError(f"Attempting to add PEFT with base model name {peft_config.base_model_name_or_path} to LLM {self.model_name}")
+        ff_peft_config = LoraLinearConfig(self.cache_path, peft_model_id)
+        peft_dict = {
+            "peft_config": peft_config,
+            "peft_type": peft_type,
+            "ff_peft_config": ff_peft_config,
+        }
+        self.pefts[peft_model_id] = peft_dict
+
     def download_hf_config(self):
         """Save the HuggingFace model configs to a json file. Useful mainly to run the C++ inference code."""
-        self.config_dir = os.path.join(
+        config_dir = os.path.join(
             os.path.expanduser(self.cache_path), "configs", self.model_name.lower()
         )
-        self.config_path = os.path.join(self.config_dir, "config.json")
-        os.makedirs(self.config_dir, exist_ok=True)
-        print(f"Creating directory {self.config_dir} (if it doesn't exist)...")
-        print(f"Saving {self.model_name} configs to file {self.config_path}...")
-        self.hf_config.to_json_file(self.config_path)
+        config_path = os.path.join(config_dir, "config.json")
+        os.makedirs(config_dir, exist_ok=True)
+        print(f"Creating directory {config_dir} (if it doesn't exist)...")
+        print(f"Saving {self.model_name} configs to file {config_path}...")
+        self.hf_config.to_json_file(config_path)
+        
+        # Save PEFT configs if the LLM has any registered PEFTs
+        for peft_model_id, peft_dict in self.pefts.items():
+            peft_config = peft_dict["hf_config"]
+            peft_config_path = os.path.join(os.path.expanduser(self.cache_path), "configs", self.peft_model_id.lower())
+            print(f"Saving {peft_model_id} configs to file {peft_config_path}...")
+            with open(peft_config_path, "w") as json_file:
+                class SetEncoder(json.JSONEncoder):
+                    def default(self, obj):
+                        if isinstance(obj, set):
+                            return list(obj)
+                        return super().default(obj)
+                json.dump(peft_config.to_dict(), json_file, indent=2, cls=SetEncoder)
 
-    def __get_revision_hashes(self, model_name: str, weights: bool):
+    def __get_revision_hashes(self, model_name: str, folder: str):
         ff_revision = None
-        ff_revision_file = (
-            os.path.join(self.weights_path, "rev_sha.txt")
-            if weights
-            else os.path.join(self.tokenizer_path, "rev_sha.txt")
-        )
+        ff_revision_file = os.path.join(folder, "rev_sha.txt")
+            
         if os.path.exists(ff_revision_file):
             ff_revision = "".join(open(ff_revision_file).read().split())
 
@@ -180,46 +211,31 @@ class LLM:
     def download_hf_weights_if_needed(self):
         """Check in the folder specified by the cache_path whether the LLM's model weights are available and up to date.
         If not, or if the refresh_cache parameter is set to True, download new weights.
+
+        If any PEFT adapter is registered, perform the same operation for PEFT.
         """
-        # Use local cache, or download new version
-        self.weights_path = os.path.join(
-            os.path.expanduser(self.cache_path),
-            "weights",
-            self.model_name.lower(),
-            (
-                "full-precision"
-                if self.data_type == DataType.DT_FLOAT
-                else "half-precision"
-            ),
-        )
-        if self.refresh_cache:
-            print(
-                f"Refreshing weights in cache for model {self.model_name} at path {self.weights_path} ..."
+        def get_weights_path(model_name):
+            return os.path.join(os.path.expanduser(self.cache_path), "weights", model_name.lower(),
+                (
+                    "full-precision"
+                    if self.data_type == DataType.DT_FLOAT
+                    else "half-precision"
+                ),
             )
-            if os.path.exists(self.weights_path):
-                shutil.rmtree(self.weights_path)
-        os.makedirs(self.weights_path, exist_ok=True)
-        #print(f"Creating directory {self.weights_path} (if it doesn't exist)...")
 
-        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
-            self.model_name, weights=True
-        )
-
-        # Download if needed
-        if ff_revision != latest_revision:
-            if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
-                # Local model
+        def refresh_cache_if_needed(model_name):
+            weights_path = get_weights_path(model_name)
+            if self.refresh_cache:
                 print(
-                    f"'{self.model_name}' model weights not found in cache or outdated. Downloading from huggingface.co ..."
+                    f"Refreshing weights in cache for model {model_name} at path {weights_path} ..."
                 )
-            else:
-                # Remote model
-                print(
-                    f"'{self.model_name}' local model weights were updated! Converting new weights now..."
-                )
-            # Download model from HuggingFace, or load it from the local folder
-            hf_model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
+                if os.path.exists(weights_path):
+                    shutil.rmtree(weights_path)
+            os.makedirs(weights_path, exist_ok=True)
+        
+        def get_hf_llm(model_name):
+            return AutoModelForCausalLM.from_pretrained(
+                model_name,
                 trust_remote_code=True,
                 torch_dtype=(
                     torch.float32
@@ -227,21 +243,61 @@ class LLM:
                     else torch.float16
                 ),
             )
-            # Print log message to notify user download of model has finished
-            if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
-                print("Done downloading HF weights. Converting them now...")
-            # Convert the model to FlexFlow format
-            self.model_class.convert_hf_model(hf_model, self.weights_path)
-            # Save new revision hash to file
-            with open(ff_revision_file, "w+") as f:
-                f.write(latest_revision)
-            print("Done converting the weights...")
-            # Deallocate hf model
-            del hf_model
-            gc.collect()
-            torch.cuda.empty_cache()
-        else:
-            print(f"Loading '{self.model_name}' model weights from the cache...")
+        
+        def download_llm_weights():
+            weights_path = get_weights_path(self.model_name)
+            refresh_cache_if_needed(self.model_name)
+            ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(self.model_name, weights_path)
+            if ff_revision != latest_revision:
+                print(f"'{self.model_name}' local model weights need updating! Downloading/converting new weights now...")
+                hf_model = get_hf_llm(self.model_name)
+                # Convert the model to FlexFlow format
+                self.model_class.convert_hf_model(hf_model, weights_path)
+                # Save new revision hash to file
+                with open(ff_revision_file, "w+") as f:
+                    f.write(latest_revision)
+                print(f"Done converting the weights for model {self.model_name}")
+                # Deallocate hf model
+                del hf_model
+                gc.collect()
+                torch.cuda.empty_cache()
+        
+        def convert_peft_model(hf_peft_model, peft_type, weights_path):
+            for name, params in hf_peft_model.named_parameters():
+                if peft_type.lower() in name:
+                    name = name.replace("base_model.model.model.", "").replace(
+                        ".default", ""
+                    )
+                    name = self.model_class.convert_hf_weight_name(name)
+                    params.detach().cpu().numpy().tofile(f"{weights_path}/{name}")
+        
+        def download_peft_weights():
+            for peft_model_id, peft_dict in self.pefts.items():
+                peft_config = peft_dict["peft_config"]
+                peft_type = peft_config["peft_type"]
+                
+                weights_path = get_weights_path(peft_model_id)
+                refresh_cache_if_needed(peft_model_id)
+                ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(peft_model_id, weights_path)
+                
+                if ff_revision != latest_revision:
+                    print(f"'{peft_model_id}' local model weights need updating! Downloading/converting new weights now...")
+                    hf_model = get_hf_llm(peft_model_id)
+                    hf_peft_model = PeftModel.from_pretrained(hf_model, peft_model_id, config=peft_config)
+                    # Convert the model to FlexFlow format
+                    convert_peft_model(hf_peft_model, peft_type, weights_path)
+                    # Save new revision hash to file
+                    with open(ff_revision_file, "w+") as f:
+                        f.write(latest_revision)
+                    print(f"Done converting the weights for model {peft_model_id}")
+                    # Deallocate hf model
+                    del hf_peft_model
+                    del hf_model
+                    gc.collect()
+                    torch.cuda.empty_cache()
+        
+        download_llm_weights()
+        download_peft_weights()
 
     def download_hf_tokenizer_if_needed(self):
         """Check in the folder specified by the cache_path whether the LLM's tokenizer files are available and up to date.
@@ -250,37 +306,24 @@ class LLM:
         print("Loading tokenizer...")
 
         # Use local cache, or download new version
-        self.tokenizer_path = os.path.join(
+        tokenizer_path = os.path.join(
             os.path.expanduser(self.cache_path),
             "tokenizers",
             self.model_name.lower(),
         )
         if self.refresh_cache:
-            print(
-                f"Discarding cached tokenizer files (if they exist) for model {self.model_name}..."
-            )
-            if os.path.exists(self.tokenizer_path):
-                shutil.rmtree(self.tokenizer_path)
-        if not os.path.exists(self.tokenizer_path):
-            print(f"Creating directory {self.tokenizer_path} (if it doesn't exist)...")
-            os.makedirs(self.tokenizer_path, exist_ok=True)
+            print(f"Refreshing cached tokenizer for model {self.model_name} at path {tokenizer_path} ...")
+            if os.path.exists(tokenizer_path):
+                shutil.rmtree(tokenizer_path)
+        if not os.path.exists(tokenizer_path):
+            print(f"Creating directory {tokenizer_path} (if it doesn't exist)...")
+            os.makedirs(tokenizer_path, exist_ok=True)
 
         # Get local revision SHA, check if it matches latest one on huggingface
-        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
-            self.model_name, weights=False
-        )
+        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(self.model_name, tokenizer_path)
 
         if ff_revision != latest_revision:
-            if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
-                # Local model
-                print(
-                    f"'{self.model_name}' tokenizer not found in cache or outdated. Downloading from huggingface.co ..."
-                )
-            else:
-                # Remote model
-                print(
-                    f"'{self.model_name}' local tokenizer was updated! Saving new tokenizer now..."
-                )
+            print(f"'{self.model_name}' tokenizer needs updating! Downloading tokenizer now...")
             # Download tokenizer from HuggingFace, or load it from the local folder
             if self.model_type == ModelType.LLAMA:
                 hf_tokenizer = LlamaTokenizer.from_pretrained(
@@ -288,18 +331,12 @@ class LLM:
                 )
             else:
                 hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-            # Print log message to notify user download of tokenizer has finished
-            if not os.path.exists(self.model_name) or os.path.isdir(self.model_name):
-                print("Done downloading tokenizer. Saving it now...")
             # Save tokenizer
-            hf_tokenizer.save_pretrained(self.tokenizer_path)
-            print("Done saving HF tokenizer.")
+            hf_tokenizer.save_pretrained(tokenizer_path)
+            print("Done updating HF tokenizer.")
             # Save new revision hash to file
             with open(ff_revision_file, "w+") as f:
                 f.write(latest_revision)
-
-        else:
-            print(f"Loading '{self.model_name}' tokenizer from the cache...")
 
     def compile(
         self,
@@ -377,6 +414,12 @@ class LLM:
             self.data_type,
             max_tokens_per_batch,
         )
+
+        # Add PEFT layer if registered
+        for _, peft_dict in self.pefts.items():
+            ff_peft_config = peft_dict["ff_peft_config"]
+            ff_peft_model_id = self.model.add_lora_layer(ff_peft_config)
+            peft_dict["ff_peft_model_id"] = ff_peft_model_id
 
         # Download the weights from huggingface (if needed)
         self.download_hf_weights_if_needed()
@@ -526,258 +569,3 @@ class SSM(LLM):
             model_specific_pipeline_parallelism_degree,
             ssms,
         )
-
-
-class PEFT(LLM):
-    """This class creates a PEFT (parameter-efficient transformer) object to be used in concert with a LLM or SSM"""
-
-    def __init__(
-        self,
-        base_model: LLM,
-        peft_model_id: str,
-        config: PeftConfig = None,
-        data_type: DataType = DataType.DT_HALF,
-        cache_path: str = "",
-        refresh_cache: bool = False,
-    ):
-        self.peft_model_id = peft_model_id
-        self.model_name = peft_model_id
-        self.hf_config = config if config is not None else PeftConfig.from_pretrained(peft_model_id)
-        self.peft_type = self.hf_config.peft_type
-        if self.peft_type != "LORA":
-            raise RuntimeError(
-                f"PEFT type {self.peft_type} not yet supported in FlexFlow"
-            )
-        self.data_type = data_type
-        assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT
-        self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
-        self.refresh_cache = refresh_cache
-        # Base model related
-        if "base_model_name_or_path" not in self.hf_config.to_dict():
-            raise ValueError(
-                f"PEFT model {peft_model_id} does not have an associated based model"
-            )
-        self.base_model = base_model
-        if refresh_cache:
-            self.base_model.refresh_cache = True
-
-    def download_hf_config(self):
-        """Save the HuggingFace model configs to a json file. Useful mainly to run the C++ inference code."""
-        self.config_dir = os.path.join(
-            os.path.expanduser(self.cache_path), "configs", self.peft_model_id.lower()
-        )
-        self.config_path = os.path.join(self.config_dir, "config.json")
-        os.makedirs(self.config_dir, exist_ok=True)
-        print(f"Creating directory {self.config_dir} (if it doesn't exist)...")
-        print(f"Saving {self.peft_model_id} configs to file {self.config_path}...")
-        with open(self.config_path, "w") as json_file:
-
-            class SetEncoder(json.JSONEncoder):
-                def default(self, obj):
-                    if isinstance(obj, set):
-                        return list(obj)
-                    return super().default(obj)
-
-            json.dump(self.hf_config.to_dict(), json_file, indent=2, cls=SetEncoder)
-        
-        self.base_model.download_hf_config()
-
-    def __get_revision_hashes(self, peft_model_id: str, weights: bool):
-        model_name = self.peft_model_id
-        return self._LLM__get_revision_hashes(model_name, weights)
-
-    def convert_peft_model(self, hf_peft_model, weights_path):
-        for name, params in hf_peft_model.named_parameters():
-            if self.peft_type.lower() in name:
-                name = name.replace("base_model.model.model.", "").replace(
-                    ".default", ""
-                )
-                name = self.base_model.model_class.convert_hf_weight_name(name)
-                params.detach().cpu().numpy().tofile(f"{weights_path}/{name}")
-
-    def download_hf_weights_if_needed(self):
-        """Check in the folder specified by the cache_path whether the PEFT's model weights are available and up to date.
-        If not, or if the refresh_cache parameter is set to True, download new weights.
-        """
-        self.base_model.download_hf_weights_if_needed()
-        
-        # Use local cache, or download new version
-        self.weights_path = os.path.join(
-            os.path.expanduser(self.cache_path),
-            "weights",
-            self.peft_model_id.lower(),
-            (
-                "full-precision"
-                if self.data_type == DataType.DT_FLOAT
-                else "half-precision"
-            ),
-        )
-        if self.refresh_cache:
-            print(
-                f"Refreshing weights in cache for model {self.peft_model_id} at path {self.weights_path} ..."
-            )
-            if os.path.exists(self.weights_path):
-                shutil.rmtree(self.weights_path)
-        os.makedirs(self.weights_path, exist_ok=True)
-        #print(f"Creating directory {self.weights_path} (if it doesn't exist)...")
-
-        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
-            self.peft_model_id,
-            True
-        )
-
-        # Download if needed
-        if ff_revision != latest_revision:
-            if not os.path.exists(self.peft_model_id) or os.path.isdir(
-                self.peft_model_id
-            ):
-                print(
-                    f"'{self.peft_model_id}' model weights not found in cache or outdated. Downloading from huggingface.co ..."
-                )
-            else:
-                print(
-                    f"'{self.peft_model_id}' local model weights were updated! Converting new weights now..."
-                )
-            hf_base_model = AutoModelForCausalLM.from_pretrained(
-                self.base_model.model_name,
-                return_dict=True,
-                trust_remote_code=True,
-                torch_dtype=(
-                    torch.float32
-                    if self.data_type == DataType.DT_FLOAT
-                    else torch.float16
-                ),
-                # device_map="auto",
-            )
-            hf_peft_model = PeftModel.from_pretrained(hf_base_model, self.peft_model_id, config=self.hf_config)
-            # Print log message to notify user download of model has finished
-            if not os.path.exists(self.peft_model_id) or os.path.isdir(
-                self.peft_model_id
-            ):
-                print("Done downloading HF weights. Converting them now...")
-            # Convert the model to FlexFlow format
-            self.convert_peft_model(hf_peft_model, self.weights_path)
-            # Save new revision hash to file
-            with open(ff_revision_file, "w+") as f:
-                f.write(latest_revision)
-            print("Done converting the weights...")
-            # Deallocate hf model
-            del hf_peft_model
-            del hf_base_model
-            gc.collect()
-            torch.cuda.empty_cache()
-        else:
-            print(f"Loading '{self.peft_model_id}' model weights from the cache...")
-
-    def download_hf_tokenizer_if_needed(self):
-        self.base_model.download_hf_tokenizer_if_needed()
-
-    def compile(
-        self,
-        generation_config: GenerationConfig = GenerationConfig(),
-        max_requests_per_batch: int = 1,
-        max_seq_length: int = 256,
-        max_tokens_per_batch: int = 64,
-        model_specific_data_parallelism_degree: int = None,
-        model_specific_tensor_parallelism_degree: int = None,
-        model_specific_pipeline_parallelism_degree: int = None,
-        ssms: list = [],
-    ):
-        self.base_model.ssms = ssms
-        self.base_model.generation_config = GenerationConfig()
-        self.base_model.ffconfig = FFConfig()
-        if len(ssms) > 0:
-            assert type(self.base_model) == LLM
-            mode = InferenceMode.TREE_VERIFY_MODE
-        elif type(self.base_model) == SSM:
-            mode = InferenceMode.BEAM_SEARCH_MODE
-        else:
-            assert type(self.base_model) == LLM
-            mode = InferenceMode.INC_DECODING_MODE
-
-        # Apply model-specific parallelism degrees, if needed
-        if model_specific_data_parallelism_degree:
-            self.base_model.ffconfig.data_parallelism_degree = (
-                model_specific_data_parallelism_degree
-            )
-        if model_specific_tensor_parallelism_degree:
-            self.base_model.ffconfig.tensor_parallelism_degree = (
-                model_specific_tensor_parallelism_degree
-            )
-        if model_specific_pipeline_parallelism_degree:
-            self.base_model.ffconfig.pipeline_parallelism_degree = (
-                model_specific_pipeline_parallelism_degree
-            )
-
-        # Create request manager and set serving configuration
-        self.base_model.rm = RequestManager()
-        self.base_model.rm.set_max_requests_per_batch(max_requests_per_batch)
-        self.base_model.rm.set_max_tokens_per_batch(max_tokens_per_batch)
-        self.base_model.rm.set_max_sequence_length(max_seq_length)
-
-        # Instantiate the relevant model
-        self.base_model.model = self.model_class(
-            mode,
-            generation_config,
-            self.base_model.ffconfig,
-            self.base_model.hf_config,
-            self.base_model.data_type,
-            max_tokens_per_batch,
-        )
-
-        # TODO: add peft layers
-
-        # Download the weights from huggingface (if needed)
-        self.download_hf_weights_if_needed()
-
-        # Create file data loader, load weights into tensors
-        model_configs = self.base_model.config_class(self.base_model.hf_config)
-
-        self.fileloader = FileDataLoader(
-            self.weights_path,
-            model_configs.num_attention_heads,
-            model_configs.num_key_value_heads,
-            model_configs.hidden_size,
-            model_configs.hidden_size // model_configs.num_attention_heads,
-            self.ffconfig.tensor_parallelism_degree,
-            self.data_type == DataType.DT_FLOAT,
-        )
-
-        # Register weights file loader
-        self.im = InferenceManager()
-        self.im.register_model_weights_loader(self.model.ffmodel, self.fileloader)
-
-        # Download the tokenizer from huggingface (if needed) and load them
-        self.download_hf_tokenizer_if_needed()
-
-        # Create tokenizer (this must be done after we have downloaded the tokenizer
-        bos_token_id = (
-            -1 if self.hf_config.bos_token_id is None else self.hf_config.bos_token_id
-        )
-        eos_token_id = (
-            -1 if self.hf_config.eos_token_id is None else self.hf_config.eos_token_id
-        )
-        self.rm.register_tokenizer(
-            self.model_type, bos_token_id, eos_token_id, self.tokenizer_path
-        )
-        self.rm.register_output_filepath(self.output_file)
-
-        for ssm in self.ssms:
-            self.rm.register_ssm_model(ssm.model.ffmodel)
-
-        # start background server
-        if (mode == InferenceMode.TREE_VERIFY_MODE) or (
-            mode == InferenceMode.INC_DECODING_MODE
-        ):
-            import atexit
-
-            atexit.register(self.rm.stop_server)
-
-    def generate(self, prompts: Union[str, List[str]], max_length: int = 128):
-        super().generate(prompts, max_length)
-
-    def start_server(self):
-        self.base_model.start_server()
-    
-    def stop_server(self):
-        self.base_model.stop_server()
