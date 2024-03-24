@@ -103,7 +103,7 @@
 
           buildInputs = builtins.concatLists [
             (with pkgs; [
-              ccls
+              clang-tools
               gh-markdown-preview
               shellcheck
               plantuml
