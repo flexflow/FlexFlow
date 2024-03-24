@@ -194,12 +194,13 @@ auto narrow(Container const &c) {
   return transform(c, [](VariantIn const &e) { return get<TypeOut>(e); });
 }
 
-template <typename T1,
-          typename T2,
-          typename... Trest,
-          typename VariantIn,
-          typename = std::enable_if_t<
-              !is_subeq_variant<std::variant<T1, T2, Trest...>, VariantIn>::value>>
+template <
+    typename T1,
+    typename T2,
+    typename... Trest,
+    typename VariantIn,
+    typename = std::enable_if_t<
+        !is_subeq_variant<std::variant<T1, T2, Trest...>, VariantIn>::value>>
 std::optional<std::variant<T1, T2, Trest...>> narrow(VariantIn const &v) {
   return visit(VariantNarrowFunctor<std::variant<T1, T2, Trest...>>{}, v);
 }

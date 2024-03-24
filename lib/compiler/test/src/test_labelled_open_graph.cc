@@ -1,6 +1,6 @@
 #include "compiler/unity_algorithm.h"
 #include "doctest/doctest.h"
-#include "rapidcheck.h"
+// #include "rapidcheck.h"
 
 using namespace FlexFlow;
 
@@ -42,14 +42,13 @@ TEST_CASE("get_subgraph(OpenMultiDiGraphView)") {
 
   auto subgraph0 = get_subgraph<OpenMultiDiSubgraphView>(g, node_set0);
   auto subgraph1 = get_subgraph<UpwardOpenMultiDiSubgraphView>(g, node_set0);
-  auto subgraph2 = get_subgraph<DownwardOpenMultiDiSubgraphView>(g,
-  node_set0); auto subgraph3 = get_subgraph<ClosedMultiDiSubgraphView>(g,
-  node_set0);
+  auto subgraph2 = get_subgraph<DownwardOpenMultiDiSubgraphView>(g, node_set0);
+  auto subgraph3 = get_subgraph<ClosedMultiDiSubgraphView>(g, node_set0);
 
-  CHECK(get_nodes(subgraph0) == node_set0);
-  CHECK(get_nodes(subgraph1) == node_set0);
-  CHECK(get_nodes(subgraph2) == node_set0);
-  CHECK(get_nodes(subgraph3) == node_set0);
+  CHECK(bool(get_nodes(subgraph0) == node_set0));
+  CHECK(bool(get_nodes(subgraph1) == node_set0));
+  CHECK(bool(get_nodes(subgraph2) == node_set0));
+  CHECK(bool(get_nodes(subgraph3) == node_set0));
 
   std::unordered_set<InputMultiDiEdge> input_set{split_edge(e2).second,
                                                  split_edge(e3).second};
@@ -73,16 +72,15 @@ TEST_CASE("get_subgraph(OpenMultiDiGraphView)") {
                  split_edge(e2).second, split_edge(e3).second, e4}));
   CHECK(bool(get_edges(subgraph2) ==
              std::unordered_set<OpenMultiDiEdge>{e4, e5}));
-  CHECK(bool(get_edges(subgraph3) ==
-  std::unordered_set<OpenMultiDiEdge>{e4}));
+  CHECK(bool(get_edges(subgraph3) == std::unordered_set<OpenMultiDiEdge>{e4}));
 
-  CHECK(get_closed_sources(subgraph2) == std::unordered_set<Node>{n3});
+  CHECK(bool(get_closed_sources(subgraph2) == std::unordered_set<Node>{n3}));
 }
 
 TEST_CASE("view OutputLabelledMultiDiGraph as open") {
   OutputLabelledMultiDiGraph<int, int> g =
-      OutputLabelledMultiDiGraph<int,
-      int>::create<UnorderedOutputLabelledMultiDiGraph<int, int>>();
+      OutputLabelledMultiDiGraph<int, int>::create<
+          UnorderedOutputLabelledMultiDiGraph<int, int>>();
 
   Node n0 = g.add_node(0);
   Node n1 = g.add_node(1);
@@ -95,14 +93,14 @@ TEST_CASE("view OutputLabelledMultiDiGraph as open") {
   g.add_edge(e0);
   g.add_output(e0, 2);
 
-  CHECK(get_edges(g).size() == 1);
+  CHECK(bool(get_edges(g).size() == 1));
 
   OutputLabelledOpenMultiDiGraphView<int, int> open_graph =
       view_output_labelled_as_output_labelled_open(g);
 
-  CHECK(open_graph.at(n0) == 0);
-  CHECK(open_graph.at(n1) == 1);
-  CHECK(open_graph.at(e0) == 2);
+  CHECK(bool(open_graph.at(n0) == 0));
+  CHECK(bool(open_graph.at(n1) == 1));
+  CHECK(bool(open_graph.at(e0) == 2));
 
   CHECK(get_edges(open_graph).size() == 1);
 }
@@ -123,6 +121,6 @@ TEST_CASE("OutputLabelledOpenMultiDiGraph") {
   g.add_edge(e0);
   g.add_label(e0, 2);
 
-  CHECK(g.query_edges(OpenMultiDiEdgeQuery::all()).size() == 1);
-  CHECK(get_edges(g).size() == 1);
+  CHECK(bool(g.query_edges(OpenMultiDiEdgeQuery::all()).size() == 1));
+  CHECK(bool(get_edges(g).size() == 1));
 }

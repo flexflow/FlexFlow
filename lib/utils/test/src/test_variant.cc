@@ -4,7 +4,8 @@
 TEST_CASE("widen and narrow functions") {
   SUBCASE("widen function") {
     std::variant<int, float> v1 = 42;
-    std::variant<int, float, double> result = widen<std::variant<int, float, double>>(v1);
+    std::variant<int, float, double> result =
+        widen<std::variant<int, float, double>>(v1);
     std::variant<int, float, double> expected = 42;
     CHECK(result == expected);
   }
@@ -12,7 +13,8 @@ TEST_CASE("widen and narrow functions") {
   SUBCASE("narrow function  fail") {
     std::variant<int, float, double> v2 =
         3.14; // this is a doule, because 3.14 default to double
-    std::optional<std::variant<int, float>> result = narrow<std::variant<int, float>>(v2);
+    std::optional<std::variant<int, float>> result =
+        narrow<std::variant<int, float>>(v2);
     std::optional<std::variant<int, float>> expected = float(3.14);
     CHECK(!result.has_value()); // result should be empty due to narrowing
   }
@@ -20,14 +22,16 @@ TEST_CASE("widen and narrow functions") {
   SUBCASE("narrow function  success") {
     std::variant<int, float, double> v2 =
         3.14; // this is a doule, because 3.14 default to double
-    std::optional<std::variant<int, double>> result = narrow<std::variant<int, double>>(v2);
+    std::optional<std::variant<int, double>> result =
+        narrow<std::variant<int, double>>(v2);
     std::optional<std::variant<int, double>> expected = 3.14;
     CHECK(result == expected); //
   }
 
   SUBCASE("cast function") {
     std::variant<int, float> v3 = 42;
-    std::optional<std::variant<int, double>> result = cast<std::variant<int, double>>(v3);
+    std::optional<std::variant<int, double>> result =
+        cast<std::variant<int, double>>(v3);
     std::optional<std::variant<int, double>> expected = 42;
     CHECK(result == expected);
   }
@@ -53,7 +57,8 @@ TEST_CASE("casting and widening a variant") {
   std::variant<int, float, double> wider_variant;
 
   // Perform the cast operation
-  std::optional<std::variant<int>> cast_result = cast<std::variant<int>>(smaller_variant);
+  std::optional<std::variant<int>> cast_result =
+      cast<std::variant<int>>(smaller_variant);
   REQUIRE(cast_result); // Ensure the cast was successful
 
   // Perform the widening operation

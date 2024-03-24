@@ -14,7 +14,8 @@ std::optional<OperatorAttributeValue>
                                std::optional<OperatorAttributeValue> const &v) {
   if (!v.has_value() ||
       !std::holds_alternative<stack_vector<int, MAX_TENSOR_DIM>>(v.value()) ||
-      !std::holds_alternative<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(v.value())) {
+      !std::holds_alternative<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(
+          v.value())) {
     return std::nullopt;
   }
 
@@ -62,7 +63,8 @@ std::optional<TensorAttributeValue>
 struct EvaluateOperatorAttributeExpr {
   EvaluateOperatorAttributeExpr(Operator const &attrs) : attrs(attrs) {}
 
-  std::optional<OperatorAttributeValue> operator()(OperatorAttributeKey const &key) {
+  std::optional<OperatorAttributeValue>
+      operator()(OperatorAttributeKey const &key) {
     return get_attribute(this->attrs.attrs, key);
   }
 
@@ -148,8 +150,8 @@ std::optional<OperatorAttributeValue>
 
 template <typename V>
 std::optional<bool> satisfies(ConstraintType constraint_type,
-                         V const &constraint_value,
-                         std::optional<V> const &maybe_attribute_value) {
+                              V const &constraint_value,
+                              std::optional<V> const &maybe_attribute_value) {
   if (!maybe_attribute_value.has_value()) {
     return std::nullopt;
   }
@@ -167,14 +169,14 @@ std::optional<bool> satisfies(ConstraintType constraint_type,
 }
 
 std::optional<bool> satisfies(ParallelTensor const &tensor_shape,
-                         TensorAttributeConstraint const &constraint) {
+                              TensorAttributeConstraint const &constraint) {
   auto value = evaluate_attribute_expr(tensor_shape, constraint.attribute_expr);
   return satisfies(
       constraint.constraint_type, constraint.attribute_value, value);
 }
 
 std::optional<bool> satisfies(Operator const &params,
-                         OperatorAttributeConstraint const &constraint) {
+                              OperatorAttributeConstraint const &constraint) {
   auto value = evaluate_attribute_expr(params, constraint.attribute_expr);
   OperatorAttributeValue v = value.value();
   return satisfies(
@@ -183,7 +185,7 @@ std::optional<bool> satisfies(Operator const &params,
 
 template <typename Container, typename Function>
 std::optional<bool> optional_all_of(Container const &container,
-                               Function const &func) {
+                                    Function const &func) {
   for (auto const &element : container) {
     std::optional<bool> condition = func(element);
     if (!condition.has_value()) {
@@ -198,7 +200,7 @@ std::optional<bool> optional_all_of(Container const &container,
 }
 
 std::optional<bool> satisfies(Operator const &params,
-                         OperatorPattern const &pattern) {
+                              OperatorPattern const &pattern) {
   return optional_all_of(pattern.attribute_constraints,
                          [&](OperatorAttributeConstraint const &c) {
                            return satisfies(params, c);
@@ -206,7 +208,7 @@ std::optional<bool> satisfies(Operator const &params,
 }
 
 std::optional<bool> satisfies(ParallelTensor const &params,
-                         ParallelTensorPattern const &pattern) {
+                              ParallelTensorPattern const &pattern) {
   return optional_all_of(
       pattern.attribute_constraints,
       [&](TensorAttributeConstraint const &c) { return satisfies(params, c); });

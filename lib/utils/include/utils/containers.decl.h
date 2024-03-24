@@ -4,9 +4,9 @@
 #include "utils/bidict.h"
 #include "utils/required_core.h"
 #include "utils/type_traits_core.h"
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
 
 namespace FlexFlow {
 

@@ -64,8 +64,7 @@ protected:
 
 private:
   Interface const &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface const>(
-        GraphView::ptr.get());
+    return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());
   }
 };
 
@@ -145,13 +144,11 @@ private:
   OutputLabelledOpenMultiDiGraph(cow_ptr_t<Interface> ptr) : GraphView(ptr) {}
 
   Interface &get_ptr() {
-    return *std::dynamic_pointer_cast<Interface>(
-        GraphView::ptr.get_mutable());
+    return *std::dynamic_pointer_cast<Interface>(GraphView::ptr.get_mutable());
   }
 
   Interface const &get_ptr() const {
-    return *std::dynamic_pointer_cast<Interface const>(
-        GraphView::ptr.get());
+    return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());
   }
 };
 

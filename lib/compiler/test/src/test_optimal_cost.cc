@@ -34,7 +34,7 @@ TEST_CASE("optimal_cost_0") {
 
   Node n0 = pcg.add_node(Operator{InputAttrs{}, "input"});
   Node n1 = pcg.add_node(Operator{
-      LinearAttrs{1, false, DataType::FLOAT, Activation::RELU, nullopt},
+      LinearAttrs{1, false, DataType::FLOAT, Activation::RELU, std::nullopt},
       "linear"});
 
   MultiDiEdge e{n1, pcg.add_node_port(), n0, pcg.add_node_port()};
