@@ -78,6 +78,11 @@ enum InferenceMode {
   TREE_VERIFY_MODE = 2003,
 };
 
+enum RequestType { 
+  REQ_INFERENCE = 4001,
+  REQ_FINETUNING = 4002,
+};
+
 // This is consistent with TASO's OpType
 // https://github.com/jiazhihao/TASO/blob/master/include/taso/ops.h#L75-L138
 enum OperatorType {

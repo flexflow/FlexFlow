@@ -1614,43 +1614,75 @@ void flexflow_model_set_transformer_layer_id(flexflow_model_t handle_, int id) {
 
 void flexflow_model_generate(flexflow_model_t handle_,
                              int num_requests,
+                             enum RequestType *request_types,
                              char const **input_texts,
                              int max_num_chars,
                              char **output_texts,
-                             int max_seq_length,
+                             int *max_seq_lengths,
+                             flexflow_peft_model_id_t *peft_model_ids,
+                             char const **dataset_filepaths,
+                             int *training_steps;
                              int **output_length_and_tokens) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::vector<Request> requests;
+
+  int finetuning_req_idx = 0; 
   for (int i = 0; i < num_requests; i++) {
-    std::string const text_str(input_texts[i]);
-    Request inference_req;
-    inference_req.prompt = text_str;
-    inference_req.max_sequence_length = max_seq_length;
-    requests.push_back(inference_req);
-    DEBUG_PRINT("[Model] generate[%d] %p %s %i",
-                i,
-                handle,
-                text_str.c_str(),
-                max_seq_length);
+    if (request_types[i] == RequestType::REQ_INFERENCE) {
+      std::string const text_str(input_texts[i]);
+      Request inference_req;
+      inference_req.prompt = text_str;
+      inference_req.max_sequence_length = max_seq_lengths[i];
+      if (peft_model_ids[i] != nullptr) {
+        PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(peft_model_ids[i]);
+        inference_req.peft_model_id = *peft_model_id;
+      }
+      requests.push_back(inference_req);
+      DEBUG_PRINT("[Model] generate[%d] %p %s %i",
+                  i,
+                  handle,
+                  text_str.c_str(),
+                  max_seq_lengths[i]);
+    } else {
+      Request fine_tuning_req;
+      fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
+      fine_tuning_req.max_sequence_length = max_seq_lengths[i];
+      if (peft_model_ids[i] != nullptr) {
+        PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(peft_model_ids[i]);
+        fine_tuning_req.peft_model_id = *peft_model_id;
+      }
+      std::string const dataset_fp(dataset_filepaths[finetuning_req_idx]);
+      fine_tuning_req.dataset_filepath = dataset_fp;
+      fine_tuning_req.max_training_steps = training_steps[finetuning_req_idx];
+      requests.push_back(finetuning_req_idx);
+      DEBUG_PRINT("[Model] generate[%d] %p %s %i %i",
+                  i,
+                  handle,
+                  dataset_fp.c_str(),
+                  max_seq_lengths[i],
+                  training_steps[finetuning_req_idx]);
+      finetuning_req_idx++;
+    }
   }
 
   std::vector<GenerationResult> results = handle->generate(requests);
 
-  // If the prompt exceeds max seq len, check that we return the prompt with no
-  // additional token. Otherwise, check that the output does not exceed the max
-  // sequence length.
   for (int i = 0; i < num_requests; i++) {
-    assert(results[i].output_tokens.size() <= max_seq_length ||
-           results[i].output_tokens.size() == results[i].input_tokens.size());
-    output_length_and_tokens[i][0] = results[i].output_tokens.size();
-    std::copy(results[i].output_tokens.begin(),
-              results[i].output_tokens.end(),
-              output_length_and_tokens[i] + 1);
-    std::memcpy(output_texts[i],
-                results[i].output_text.c_str(),
-                results[i].output_text.length());
+    if (request_types[i] == RequestType::REQ_INFERENCE) {
+      // If the prompt exceeds max seq len, check that we return the prompt with no
+      // additional token. Otherwise, check that the output does not exceed the max
+      // sequence length.
+      assert(results[i].output_tokens.size() <= max_seq_length ||
+            results[i].output_tokens.size() == results[i].input_tokens.size());
+      output_length_and_tokens[i][0] = results[i].output_tokens.size();
+      std::copy(results[i].output_tokens.begin(),
+                results[i].output_tokens.end(),
+                output_length_and_tokens[i] + 1);
+      std::memcpy(output_texts[i],
+                  results[i].output_text.c_str(),
+                  results[i].output_text.length());
+    }
   }
-  // return FFCObjectWrapper::wrap(&results[0]);
 }
 
 void flexflow_model_set_position_offset(flexflow_model_t handle_,

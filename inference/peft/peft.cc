@@ -291,6 +291,9 @@ void FlexFlow::top_level_task(Task const *task,
 
   int total_num_requests = 0;
   {
+    std::vector<Request> requests;
+    
+    // Add inference requests
     using json = nlohmann::json;
     std::ifstream file_handle(file_paths.prompt_file_path);
     assert(file_handle.good() && "Prompt file does not exist.");
@@ -298,28 +301,28 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
-
-    std::vector<Request> requests;
-    for (auto &prompt : prompt_json) {
-      std::string text = prompt.get<std::string>();
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-      // Add inference request
-      // Request inference_req;
-      // inference_req.prompt = text;
-      // inference_req.max_sequence_length = 128;
-      // inference_req.peft_model_id = peft_model_id;
-      // requests.push_back(inference_req);
-      // total_num_requests++;
-      // Add fine-tuning request
-      Request fine_tuning_req;
-      fine_tuning_req.req_type = Request::RequestType::REQ_FINETUNING;
-      fine_tuning_req.max_sequence_length = 128;
-      fine_tuning_req.peft_model_id =
-          (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
-      fine_tuning_req.dataset_text.push_back(std::make_pair(text, ""));
-      requests.push_back(fine_tuning_req);
-      total_num_requests++;
-    }
+    // for (auto &prompt : prompt_json) {
+    //   std::string text = prompt.get<std::string>();
+    //   printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+    //   Request inference_req;
+    //   inference_req.prompt = text;
+    //   inference_req.max_sequence_length = 128;
+    //   inference_req.peft_model_id = peft_model_id;
+    //   requests.push_back(inference_req);
+    //   total_num_requests++;
+    // }
+    
+    // Add fine-tuning request
+    Request fine_tuning_req;
+    fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
+    fine_tuning_req.max_sequence_length = 128;
+    fine_tuning_req.peft_model_id =
+        (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
+    fine_tuning_req.dataset_filepath = file_paths.prompt_file_path;
+    fine_tuning_req.max_training_steps = 1;
+    requests.push_back(fine_tuning_req);
+    total_num_requests++;
+    
     std::vector<GenerationResult> result = model.generate(requests);
   }
 

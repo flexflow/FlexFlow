@@ -244,15 +244,27 @@ RequestManager::RequestGuid
   request.peft_model_id = request_.peft_model_id;
   request.req_type = Request::REQ_FINETUNING;
   request.completed_training_steps = 0;
-  request.max_training_steps = 1; // TODO: let user set this
-  for (auto const &sample : request_.dataset_text) {
+  request.max_training_steps = request_.max_training_steps;
+  request.dataset_filepath = request_.dataset_filepath;
+
+  // Load dataset
+  using json = nlohmann::json;
+  std::ifstream file_handle(request.dataset_filepath);
+  assert(file_handle.good() && "Dataset file does not exist.");
+  json dataset_json = json::parse(file_handle,
+                                  /*parser_callback_t */ nullptr,
+                                  /*allow_exceptions */ true,
+                                  /*ignore_comments */ true);
+
+  for (auto &prompt : dataset_json) {
+    std::string text = prompt.get<std::string>();
+    std::string output_text("");
     std::vector<int32_t> input_tokens;
-    input_tokens = this->tokenizer_->Encode(sample.first);
+    input_tokens = this->tokenizer_->Encode(text);
     if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
       input_tokens.insert(input_tokens.begin(), bos_token_id);
     }
-    std::vector<int32_t> output_tokens =
-        this->tokenizer_->Encode(sample.second);
+    std::vector<int32_t> output_tokens = this->tokenizer_->Encode(output_text);
     if (input_tokens.size() + output_tokens.size() >
         get_max_sequence_length()) {
       std::cout << "Warning: too many tokens in sample, only load up to "

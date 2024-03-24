@@ -28,6 +28,7 @@ from flexflow.type import (
     CompMode,
     MetricsType,
     InferenceMode,
+    RequestType,
     ModelType,
     OpType,
     ParameterSyncType,
@@ -36,7 +37,7 @@ from flexflow.type import (
 )
 from flexflow.config import *
 from .flexflowlib import ffi, flexflow_library
-
+from typing import Union, List
 
 def ffc():
     if not flexflow_already_initialized():
@@ -3823,27 +3824,57 @@ class FFModel(object):
         assert ret_val == True
         return np_array
 
-    def generate(self, prompt_list, max_sequence_length):
+    def generate_inf_only(self, prompt_list: List[str], max_sequence_length: int = 128):
         assert isinstance(prompt_list, list)
         c_input_texts = [get_c_name(prompt) for prompt in prompt_list]
         max_num_chars = 5 * (max_sequence_length + 100)
         c_output_texts = [ffi.new("char[]", max_num_chars) for prompt in prompt_list]
         c_output_length_and_tokens = [ffi.new("int[]", max_sequence_length + 100) for prompt in prompt_list]
+        c_request_types = [enum_to_int(RequestType, RequestType.REQ_INFERENCE) for prompt in prompt_list]
+        max_sequence_lengths = [max_sequence_length for prompt in prompt_list]
+        peft_model_ids = [None for prompt in prompt_list]
+        dataset_filepaths = [None for prompt in prompt_list]
+        training_steps = [0 for prompt in prompt_list]
         ffc().flexflow_model_generate(
             self.handle,
             len(prompt_list),
+            c_request_types,
             c_input_texts,
             max_num_chars,
             c_output_texts,
-            max_sequence_length,
+            max_sequence_lengths,
+            peft_model_ids,
+            dataset_filepaths,
+            training_steps,
             c_output_length_and_tokens,
         )
-        #output_length = c_output_length_and_tokens[0]
-        #output_tokens = []
-        #for i in range(output_length):
-        #    output_tokens.append(c_output_length_and_tokens[i + 1])
         from flexflow.serve import GenerationResult
-
+        return [GenerationResult(ffi.string(c_output_text), []) for c_output_text in c_output_texts]
+    
+    def generate(self, requests_list: List[Request]):
+        assert isinstance(requests_list, list)
+        c_input_texts = [get_c_name(request.prompt) for request in requests_list]
+        max_num_chars = 5 * (max_sequence_length + 100)
+        c_output_texts = [ffi.new("char[]", max_num_chars) for prompt in prompt_list]
+        c_output_length_and_tokens = [ffi.new("int[]", max_sequence_length + 100) for prompt in prompt_list]
+        c_request_types = [enum_to_int(RequestType, RequestType.REQ_INFERENCE) for prompt in prompt_list]
+        max_sequence_lengths = [max_sequence_length for prompt in prompt_list]
+        peft_model_ids = [None for prompt in prompt_list]
+        dataset_filepaths = [None for prompt in prompt_list]
+        training_steps = [0 for prompt in prompt_list]
+        ffc().flexflow_model_generate(
+            self.handle,
+            len(prompt_list),
+            c_request_types,
+            c_input_texts,
+            max_num_chars,
+            c_output_texts,
+            max_sequence_lengths,
+            peft_model_ids,
+            dataset_filepaths,
+            training_steps,
+            c_output_length_and_tokens,
+        )
         return [GenerationResult(ffi.string(c_output_text), []) for c_output_text in c_output_texts]
 
     def set_position_offset(self, offset):
@@ -4289,6 +4320,47 @@ class FileDataLoader(object):
         )
 
 # -----------------------------------------------------------------------
+# GenerationConfig
+# -----------------------------------------------------------------------
+        
+class GenerationConfig(object):
+    """A class to store the sampling configs."""
+
+    def __init__(
+        self,
+        do_sample: bool = False,
+        temperature: float = 0.9,
+        topp: float = 0.8,
+        topk: int = 1,
+    ):
+        """Initialize the sampling configs
+
+        :param do_sample: Whether to perform sampling, or use greedy decoding, defaults to False
+        :type do_sample: bool, optional
+        :param temperature: The temperature setting, defaults to 0.9
+        :type temperature: float, optional
+        :param topp: The top probabilities (top-p) setting, defaults to 0.8
+        :type topp: float, optional
+        :param topk: The top-k setting, defaults to 1
+        :type topk: int, optional
+        """
+        self.do_sample = do_sample
+        self.temperature = temperature
+        self.topp = topp
+        self.topk = topk
+
+# -----------------------------------------------------------------------
+# GenerationResult
+# -----------------------------------------------------------------------
+
+class GenerationResult(object):
+    """A class to store the output of a generation request."""
+
+    def __init__(self, text: str = None, tokens: list = None):
+        self.output_text = text
+        self.output_tokens = tokens
+
+# -----------------------------------------------------------------------
 # LoraLinearConfig
 # -----------------------------------------------------------------------
         
@@ -4321,3 +4393,18 @@ class PEFTModelID(object):
         else:
             self.handle = ffc().flexflow_peft_model_id_create_id(id)
         self._handle = ffi.gc(self.handle, ffc().flexflow_peft_model_id_destroy)
+
+# -----------------------------------------------------------------------
+# Request
+# -----------------------------------------------------------------------
+        
+class Request:
+    """A class to record the metadata of an inference or finetuning request."""
+
+    def __init__(self, req_type: RequestType, prompt: str = None, max_sequence_length: int = None, peft_model_id: PEFTModelID = None, dataset_filepath: str = None, max_training_steps: int = None):
+        self.req_type = req_type
+        self.prompt = prompt
+        self.max_sequence_length = max_sequence_length
+        self.peft_model_id = peft_model_id
+        self.dataset_filepath = dataset_filepath
+        self.max_training_steps = max_training_steps

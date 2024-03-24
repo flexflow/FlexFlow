@@ -34,41 +34,6 @@ import torch, shutil, hashlib, json, gc
 from typing import Union, List
 
 
-class GenerationConfig:
-    """A class to store the sampling configs."""
-
-    def __init__(
-        self,
-        do_sample: bool = False,
-        temperature: float = 0.9,
-        topp: float = 0.8,
-        topk: int = 1,
-    ):
-        """Initialize the sampling configs
-
-        :param do_sample: Whether to perform sampling, or use greedy decoding, defaults to False
-        :type do_sample: bool, optional
-        :param temperature: The temperature setting, defaults to 0.9
-        :type temperature: float, optional
-        :param topp: The top probabilities (top-p) setting, defaults to 0.8
-        :type topp: float, optional
-        :param topk: The top-k setting, defaults to 1
-        :type topk: int, optional
-        """
-        self.do_sample = do_sample
-        self.temperature = temperature
-        self.topp = topp
-        self.topk = topk
-
-
-class GenerationResult:
-    """A class to store the output of a generation request."""
-
-    def __init__(self, text: str = None, tokens: list = None):
-        self.output_text = text
-        self.output_tokens = tokens
-
-
 class _SupportedModels:
     def __init__(
         self,
@@ -467,22 +432,22 @@ class LLM:
 
             atexit.register(self.rm.stop_server)
 
-    def generate(self, prompts: Union[str, List[str]], max_length: int = 128):
+    def generate(self, prompts: Union[str, List[str], Request, List[Request]], max_length: int = 128):
         """Generate tokens based on the input prompt(s)
 
-        :param prompts: The generation prompt(s) in the form of a string, or list of strings
-        :type prompts: Union[str, List[str]]
+        :param prompts: The generation prompt(s) in the form of a string, a list of strings, a Request, or list of Requests
+        :type prompts: Union[str, List[str], Request, List[Request]]
         :return: the generation results
         :rtype: GenerationResult
         """
         if type(prompts) == str:
             if len(prompts) == 0:
                 return None
-            return self.model.ffmodel.generate([prompts], max_length)
+            return self.model.ffmodel.generate_inf_only([prompts], max_length)
         elif type(prompts) == list:
             if len(prompts) == 0:
                 return []
-            return self.model.ffmodel.generate(prompts, max_length)
+            return self.model.ffmodel.generate_inf_only(prompts, max_length)
         else:
             assert False, "Please pass a non-empty string or list of strings"
 
