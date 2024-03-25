@@ -25,4 +25,8 @@ export LEGION_BACKTRACE=1
 python ../inference/utils/download_peft_model.py goliaro/llama-160m-lora-full --base_model_name JackFram/llama-160m 
 # if first time, add: --refresh-cache
 
+# CPP test
 ../build/inference/peft/peft -ll:gpu 1 -ll:cpu 4 -ll:fsize 8192 -ll:zsize 12000 -ll:util 4 -llm-model JackFram/llama-160m -prompt ../inference/prompt/peft.json -peft-model goliaro/llama-160m-lora-full --use-full-precision --inference-debugging --fusion -enable-peft
+
+# Python test
+python ../inference/python/ff_peft.py

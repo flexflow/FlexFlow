@@ -78,7 +78,7 @@ enum InferenceMode {
   TREE_VERIFY_MODE = 2003,
 };
 
-enum RequestType { 
+enum RequestType {
   REQ_INFERENCE = 4001,
   REQ_FINETUNING = 4002,
 };

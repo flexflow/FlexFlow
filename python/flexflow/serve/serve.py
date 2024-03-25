@@ -102,7 +102,7 @@ class LLM:
         self.refresh_cache = refresh_cache
         self.output_file = output_file
         self.rm = None
-        self.pefts = []
+        self.pefts = {}
 
     def __del__(self):
         # Stop the background server before deleting the object
@@ -123,7 +123,9 @@ class LLM:
             raise RuntimeError(
                 f"Attempting to add PEFT with base model name {peft_config.base_model_name_or_path} to LLM {self.model_name}"
             )
-        ff_peft_config = LoraLinearConfig(self.cache_path, peft_model_id)
+        ff_peft_config = LoraLinearConfig(
+            os.path.expanduser(self.cache_path), peft_model_id
+        )
         peft_dict = {
             "peft_config": peft_config,
             "peft_type": peft_type,

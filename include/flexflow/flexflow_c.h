@@ -618,10 +618,13 @@ void flexflow_model_set_transformer_layer_id(flexflow_model_t handle, int id);
 
 void flexflow_model_generate(flexflow_model_t handle_,
                              int num_requests,
-                             char const **input_text,
-                             int max_num_chars,
-                             char **output_text,
-                             int max_seq_length,
+                             enum RequestType *request_types,
+                             char const **input_texts,
+                             char **output_texts,
+                             int *max_seq_lengths,
+                             flexflow_peft_model_id_t *peft_model_ids,
+                             char const **dataset_filepaths,
+                             int *training_steps,
                              int **output_length_and_tokens);
 
 void flexflow_model_set_position_offset(flexflow_model_t handle, int offset);

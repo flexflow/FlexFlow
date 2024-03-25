@@ -292,7 +292,7 @@ void FlexFlow::top_level_task(Task const *task,
   int total_num_requests = 0;
   {
     std::vector<Request> requests;
-    
+
     // Add inference requests
     using json = nlohmann::json;
     std::ifstream file_handle(file_paths.prompt_file_path);
@@ -311,7 +311,7 @@ void FlexFlow::top_level_task(Task const *task,
     //   requests.push_back(inference_req);
     //   total_num_requests++;
     // }
-    
+
     // Add fine-tuning request
     Request fine_tuning_req;
     fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
@@ -322,7 +322,7 @@ void FlexFlow::top_level_task(Task const *task,
     fine_tuning_req.max_training_steps = 1;
     requests.push_back(fine_tuning_req);
     total_num_requests++;
-    
+
     std::vector<GenerationResult> result = model.generate(requests);
   }
 

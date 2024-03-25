@@ -23,6 +23,7 @@
 #include <future>
 #include <iomanip>
 #include <new>
+#include <nlohmann/json.hpp>
 #include <stack>
 #include <stdexcept>
 
@@ -30,6 +31,7 @@ namespace FlexFlow {
 
 using namespace Legion;
 using tokenizers::Tokenizer;
+using json = nlohmann::json;
 
 LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
@@ -242,7 +244,7 @@ RequestManager::RequestGuid
   request.guid = next_available_guid++;
   request.max_sequence_length = request_.max_sequence_length;
   request.peft_model_id = request_.peft_model_id;
-  request.req_type = Request::REQ_FINETUNING;
+  request.req_type = RequestType::REQ_FINETUNING;
   request.completed_training_steps = 0;
   request.max_training_steps = request_.max_training_steps;
   request.dataset_filepath = request_.dataset_filepath;
@@ -385,7 +387,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     size_t guid =
         old_bc.requestsInfo[old_bc.tokensInfo[i].request_index].request_guid;
     Request &request = all_requests[guid];
-    if (request.req_type == Request::REQ_FINETUNING) {
+    if (request.req_type == RequestType::REQ_FINETUNING) {
       // No new tokens generated when in fine-tuning mode
       continue;
     } else if (old_bc.tokensInfo[i].abs_depth_in_request + 1 <
@@ -415,7 +417,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
       Request &request = all_requests[old_bc.requestsInfo[i].request_guid];
 
-      if (request.req_type == Request::REQ_FINETUNING) {
+      if (request.req_type == RequestType::REQ_FINETUNING) {
         // fine-tuning requests don't automatically carry over to the next
         // batch, we only do so if there is space left after adding new
         // inference requests
@@ -575,7 +577,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       if (!pending_infr_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
         Request new_request = pending_infr_request_queue.front();
-        assert(new_request.req_type == Request::REQ_INFERENCE);
+        assert(new_request.req_type == RequestType::REQ_INFERENCE);
         pending_infr_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
 
@@ -617,9 +619,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   // Step 4: add PEFT bwd requests, if there is additional space
   while (pending_peft_request_queue.size() > 0) {
     Request &request = pending_peft_request_queue.front();
-    assert(request.req_type = Request::REQ_FINETUNING);
+    assert(request.req_type = RequestType::REQ_FINETUNING);
     Request &all_req_handle = all_requests[request.guid];
-    assert(all_req_handle.req_type = Request::REQ_FINETUNING);
+    assert(all_req_handle.req_type = RequestType::REQ_FINETUNING);
     if (all_req_handle.status == Request::COMPLETED) {
       pending_peft_request_queue.pop();
     } else {
@@ -628,11 +630,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   }
   if (pending_peft_request_queue.size() > 0) {
     Request &request = pending_peft_request_queue.front();
-    assert(request.req_type = Request::REQ_FINETUNING);
+    assert(request.req_type = RequestType::REQ_FINETUNING);
     assert(request.dataset.size() > 0);
     // update status and training steps
     Request &all_req_handle = all_requests[request.guid];
-    assert(all_req_handle.req_type = Request::REQ_FINETUNING);
+    assert(all_req_handle.req_type = RequestType::REQ_FINETUNING);
     request.completed_training_steps = all_req_handle.completed_training_steps;
     request.status = all_req_handle.status;
     assert(request.status != Request::COMPLETED);
@@ -2424,7 +2426,7 @@ std::vector<GenerationResult>
   std::vector<RequestManager::RequestGuid> guids;
   for (int i = 0; i < requests.size(); i++) {
     RequestManager::RequestGuid guid;
-    if (requests.at(i).req_type == Request::REQ_INFERENCE) {
+    if (requests.at(i).req_type == RequestType::REQ_INFERENCE) {
       guid = rm->register_new_request(requests.at(i));
     } else {
       guid = rm->register_new_peft_request(requests.at(i));
