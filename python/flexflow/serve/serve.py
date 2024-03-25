@@ -413,7 +413,7 @@ class LLM:
         # Add PEFT layer if registered
         for _, peft_dict in self.pefts.items():
             ff_peft_config = peft_dict["ff_peft_config"]
-            ff_peft_model_id = self.model.add_lora_layer(ff_peft_config)
+            ff_peft_model_id = self.model.ffmodel.add_lora_layer(ff_peft_config)
             peft_dict["ff_peft_model_id"] = ff_peft_model_id
 
         # Download the weights from huggingface (if needed)
