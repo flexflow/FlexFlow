@@ -3840,7 +3840,6 @@ class FFModel(object):
             len(prompt_list),
             c_request_types,
             c_input_texts,
-            max_num_chars,
             c_output_texts,
             max_sequence_lengths,
             peft_model_ids,
@@ -3853,21 +3852,19 @@ class FFModel(object):
     
     def generate(self, requests_list: List[Request]):
         assert isinstance(requests_list, list)
-        c_input_texts = [get_c_name(request.prompt) for request in requests_list]
-        max_num_chars = 5 * (max_sequence_length + 100)
-        c_output_texts = [ffi.new("char[]", max_num_chars) for prompt in prompt_list]
-        c_output_length_and_tokens = [ffi.new("int[]", max_sequence_length + 100) for prompt in prompt_list]
-        c_request_types = [enum_to_int(RequestType, RequestType.REQ_INFERENCE) for prompt in prompt_list]
-        max_sequence_lengths = [max_sequence_length for prompt in prompt_list]
-        peft_model_ids = [None for prompt in prompt_list]
-        dataset_filepaths = [None for prompt in prompt_list]
-        training_steps = [0 for prompt in prompt_list]
+        c_input_texts = [get_c_name(request.prompt) for request in requests_list] # entry will be None for finetuning requests
+        c_output_texts = [ffi.new("char[]", 5 * (request.max_sequence_length + 100)) if request.req_type == RequestType.REQ_INFERENCE else ffi.NULL for request in requests_list]
+        c_output_length_and_tokens = [ffi.new("int[]", request.max_sequence_length + 100) for request in requests_list]
+        c_request_types = [enum_to_int(RequestType, request.req_type) for request in requests_list]
+        max_sequence_lengths = [request.max_sequence_length for request in requests_list]
+        peft_model_ids = [request.peft_model_id for request in requests_list]
+        dataset_filepaths = [request.dataset_filepath for request in requests_list]
+        training_steps = [request.max_training_steps for request in requests_list]
         ffc().flexflow_model_generate(
             self.handle,
-            len(prompt_list),
+            len(requests_list),
             c_request_types,
             c_input_texts,
-            max_num_chars,
             c_output_texts,
             max_sequence_lengths,
             peft_model_ids,
@@ -3875,7 +3872,7 @@ class FFModel(object):
             training_steps,
             c_output_length_and_tokens,
         )
-        return [GenerationResult(ffi.string(c_output_text), []) for c_output_text in c_output_texts]
+        return [GenerationResult(ffi.string(c_output_text), []) if c_output_text != ffi.NULL else None for c_output_text in c_output_texts]
 
     def set_position_offset(self, offset):
         ffc().flexflow_model_set_position_offset(self.handle, offset)
