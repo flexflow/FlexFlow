@@ -47,6 +47,7 @@ public:
   static int max_requests_per_batch();
   static int max_tokens_per_batch();
   static int max_verify_tokens_per_batch();
+  static int max_spec_tree_token_num();
   static int max_sequence_length();
   friend std::ostream &operator<<(std::ostream &os, BatchConfig const &bc);
   void print() const;
