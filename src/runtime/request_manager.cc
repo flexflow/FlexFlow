@@ -1017,15 +1017,15 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_beam_task(
   RequestManager *rm = *((RequestManager **)task->args);
   TreeSearchBatchConfig const &bc =
       Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
-  BeamInferenceResult const &result =
-      Future(task->futures[1]).get_result<BeamInferenceResult>();
+  SsmInferenceResult const &result =
+      Future(task->futures[1]).get_result<SsmInferenceResult>();
   return rm->prepare_next_batch_beam(bc, result);
 }
 
 // update beam search metadata
 TreeSearchBatchConfig
     RequestManager::prepare_next_batch_beam(TreeSearchBatchConfig const &old_bc,
-                                            BeamInferenceResult const &result) {
+                                            SsmInferenceResult const &result) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout << "\n############### prepare_next_batch_beam ###############\n";
@@ -1633,7 +1633,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 }
 
 void RequestManager::store_beam_metadata(TreeSearchBatchConfig const &old_bc,
-                                         BeamInferenceResult const &result) {
+                                         SsmInferenceResult const &result) {
   // step1 store the outputs
   if (old_bc.num_tokens <= 0) {
     return;

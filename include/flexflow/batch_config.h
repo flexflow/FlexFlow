@@ -28,7 +28,7 @@
 namespace FlexFlow {
 
 class InferenceResult;
-class BeamInferenceResult;
+class SsmInferenceResult;
 
 using BatchConfigFuture = Legion::Future;
 using InferenceResultFuture = Legion::Future;
@@ -163,7 +163,7 @@ public:
   TreeSearchPerRequestInfo tree_requests_info[MAX_NUM_REQUESTS];
 };
 
-struct BeamInferenceResult {
+struct SsmInferenceResult {
   static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId
       token_ids[MAX_NUM_TOKENS *

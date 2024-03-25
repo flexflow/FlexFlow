@@ -6038,14 +6038,14 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
-      Runtime::preregister_task_variant<BeamInferenceResult,
+      Runtime::preregister_task_variant<SsmInferenceResult,
                                         ArgTopK::inference_speculative_task>(
           registrar, "ArgTopK Speculative Inference Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<BeamInferenceResult,
+      runtime->register_task_variant<SsmInferenceResult,
                                      ArgTopK::inference_speculative_task>(
           registrar);
     }
@@ -6070,15 +6070,16 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
-      Runtime::preregister_task_variant<BeamInferenceResult,
+      Runtime::preregister_task_variant<SsmInferenceResult,
                                         BeamTopK::inference_task>(
           registrar, "BeamTopK Inference Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<BeamInferenceResult,
-                                     BeamTopK::inference_task>(registrar);
+      runtime
+          ->register_task_variant<SsmInferenceResult, BeamTopK::inference_task>(
+              registrar);
     }
   }
   // Sampling task
@@ -6133,14 +6134,14 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
-      Runtime::preregister_task_variant<BeamInferenceResult,
+      Runtime::preregister_task_variant<SsmInferenceResult,
                                         ArgMax::inference_task_beam>(
           registrar, "ArgMax Inference Task Beam");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<BeamInferenceResult,
+      runtime->register_task_variant<SsmInferenceResult,
                                      ArgMax::inference_task_beam>(registrar);
     }
   }

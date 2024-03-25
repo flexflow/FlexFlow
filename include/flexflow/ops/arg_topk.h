@@ -64,7 +64,7 @@ public:
                      std::vector<Legion::PhysicalRegion> const &regions,
                      Legion::Context ctx,
                      Legion::Runtime *runtime);
-  static BeamInferenceResult inference_speculative_task(
+  static SsmInferenceResult inference_speculative_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,

@@ -34,10 +34,10 @@ public:
   using Params = ArgMaxParams;
   using Input = ParallelTensor;
   ArgMax(FFModel &model,
-         const ParallelTensor input,
+         ParallelTensor const input,
          bool beam_search,
          char const *name);
-  ArgMax(FFModel &model, ArgMax const &other, const ParallelTensor input);
+  ArgMax(FFModel &model, ArgMax const &other, ParallelTensor const input);
   ArgMax(FFModel &model,
          Params const &params,
          Input const input,
@@ -66,7 +66,7 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static BeamInferenceResult
+  static SsmInferenceResult
       inference_task_beam(Legion::Task const *task,
                           std::vector<Legion::PhysicalRegion> const &regions,
                           Legion::Context ctx,

@@ -341,7 +341,7 @@ FutureMap BeamTopK::inference(FFModel const &ff,
   return runtime->execute_index_space(ctx, launcher);
 }
 
-BeamInferenceResult
+SsmInferenceResult
     BeamTopK::inference_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
@@ -355,7 +355,7 @@ BeamInferenceResult
       Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
 
   if (bc.num_tokens == 0) {
-    BeamInferenceResult ir;
+    SsmInferenceResult ir;
     return ir;
   }
 
@@ -391,7 +391,7 @@ BeamInferenceResult
                                    length,
                                    m->sorted);
 
-  BeamInferenceResult ir;
+  SsmInferenceResult ir;
 
   download_tensor<int>(index_ptr, ir.token_ids, batch_size * m->max_beam_width);
   download_tensor<float>(value_ptr, ir.probs, batch_size * m->max_beam_width);

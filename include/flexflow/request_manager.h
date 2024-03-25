@@ -194,7 +194,7 @@ public:
   /* Old APIs for reference */
   TreeSearchBatchConfig
       prepare_next_batch_beam(TreeSearchBatchConfig const &old_bc,
-                              BeamInferenceResult const &result);
+                              SsmInferenceResult const &result);
   BeamSearchBatchConfigFuture
       prepare_next_batch_beam(BeamSearchBatchConfigFuture const &old_bc,
                               BeamInferenceResultFuture const &result,
@@ -219,7 +219,7 @@ public:
       Legion::Runtime *runtime);
 
   void store_beam_metadata(TreeSearchBatchConfig const &old_bc,
-                           BeamInferenceResult const &result);
+                           SsmInferenceResult const &result);
   void update_beam_metadata(TreeSearchBatchConfig &new_bc,
                             TreeSearchBatchConfig const &old_bc,
                             BeamTree &tree,
@@ -235,7 +235,7 @@ public:
   // Given the last speculation result, prepare the next speculation batch.
   TreeSearchBatchConfig
       prepare_next_batch_spec(TreeSearchBatchConfig const &old_bc,
-                              BeamInferenceResult const &result);
+                              SsmInferenceResult const &result);
   // A wrapper function.
   TreeSearchBatchConfigFuture
       prepare_next_batch_spec(TreeSearchBatchConfigFuture const &old_bc,
@@ -267,7 +267,7 @@ public:
   // speculation batch config and use the information to update the token tree
   // stored in RequestManager::all_requests.
   void store_spec_metadata(TreeSearchBatchConfig const &old_bc,
-                           BeamInferenceResult const &result);
+                           SsmInferenceResult const &result);
   // Put the last layer of the token tree stored in RequestManager::all_requests
   // into new_bc::beamRequestsInfo .
   void update_spec_metadata(TreeSearchBatchConfig &new_bc,

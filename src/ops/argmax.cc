@@ -44,7 +44,7 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
-Tensor FFModel::argmax(const Tensor input, bool beam_search, char const *name) {
+Tensor FFModel::argmax(Tensor const input, bool beam_search, char const *name) {
   Layer *li = new Layer(this,
                         OP_ARGMAX,
                         input->data_type,
@@ -106,7 +106,7 @@ bool operator==(ArgMaxParams const &lhs, ArgMaxParams const &rhs) {
 }
 
 ArgMax::ArgMax(FFModel &model,
-               const ParallelTensor _input,
+               ParallelTensor const _input,
                bool _beam_search,
                char const *name)
     : Op(model,
@@ -136,12 +136,12 @@ ArgMax::ArgMax(FFModel &model,
   }
 }
 
-ArgMax::ArgMax(FFModel &model, ArgMax const &other, const ParallelTensor input)
+ArgMax::ArgMax(FFModel &model, ArgMax const &other, ParallelTensor const input)
     : ArgMax(model, input, other.beam_search, other.name) {}
 
 ArgMax::ArgMax(FFModel &model,
                ArgMaxParams const &params,
-               const ParallelTensor input,
+               ParallelTensor const input,
                char const *name)
     : ArgMax(model, input, params.beam_search, params.name) {}
 
@@ -332,7 +332,7 @@ FutureMap ArgMax::inference(FFModel const &ff,
   }
 }
 
-BeamInferenceResult
+SsmInferenceResult
     ArgMax::inference_task_beam(Task const *task,
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
@@ -342,7 +342,7 @@ BeamInferenceResult
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     // Directly return for empty batch config
-    BeamInferenceResult ir;
+    SsmInferenceResult ir;
     return ir;
   }
   ArgMaxMeta *m = *((ArgMaxMeta **)task->local_args);
@@ -355,7 +355,7 @@ BeamInferenceResult
   GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[2], task->regions[2], FID_DATA, ctx, runtime);
   ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
-  BeamInferenceResult ir;
+  SsmInferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   download_tensor(m->probs, ir.probs, batch_size);
