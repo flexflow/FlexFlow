@@ -120,7 +120,9 @@ class LLM:
                 f"PEFT model {peft_model_id} does not have an associated base model"
             )
         if peft_config.base_model_name_or_path != self.model_name:
-            raise RuntimeError(f"Attempting to add PEFT with base model name {peft_config.base_model_name_or_path} to LLM {self.model_name}")
+            raise RuntimeError(
+                f"Attempting to add PEFT with base model name {peft_config.base_model_name_or_path} to LLM {self.model_name}"
+            )
         ff_peft_config = LoraLinearConfig(self.cache_path, peft_model_id)
         peft_dict = {
             "peft_config": peft_config,
@@ -139,24 +141,30 @@ class LLM:
         print(f"Creating directory {config_dir} (if it doesn't exist)...")
         print(f"Saving {self.model_name} configs to file {config_path}...")
         self.hf_config.to_json_file(config_path)
-        
+
         # Save PEFT configs if the LLM has any registered PEFTs
         for peft_model_id, peft_dict in self.pefts.items():
             peft_config = peft_dict["hf_config"]
-            peft_config_path = os.path.join(os.path.expanduser(self.cache_path), "configs", self.peft_model_id.lower())
+            peft_config_path = os.path.join(
+                os.path.expanduser(self.cache_path),
+                "configs",
+                self.peft_model_id.lower(),
+            )
             print(f"Saving {peft_model_id} configs to file {peft_config_path}...")
             with open(peft_config_path, "w") as json_file:
+
                 class SetEncoder(json.JSONEncoder):
                     def default(self, obj):
                         if isinstance(obj, set):
                             return list(obj)
                         return super().default(obj)
+
                 json.dump(peft_config.to_dict(), json_file, indent=2, cls=SetEncoder)
 
     def __get_revision_hashes(self, model_name: str, folder: str):
         ff_revision = None
         ff_revision_file = os.path.join(folder, "rev_sha.txt")
-            
+
         if os.path.exists(ff_revision_file):
             ff_revision = "".join(open(ff_revision_file).read().split())
 
@@ -179,8 +187,12 @@ class LLM:
 
         If any PEFT adapter is registered, perform the same operation for PEFT.
         """
+
         def get_weights_path(model_name):
-            return os.path.join(os.path.expanduser(self.cache_path), "weights", model_name.lower(),
+            return os.path.join(
+                os.path.expanduser(self.cache_path),
+                "weights",
+                model_name.lower(),
                 (
                     "full-precision"
                     if self.data_type == DataType.DT_FLOAT
@@ -197,7 +209,7 @@ class LLM:
                 if os.path.exists(weights_path):
                     shutil.rmtree(weights_path)
             os.makedirs(weights_path, exist_ok=True)
-        
+
         def get_hf_llm(model_name):
             return AutoModelForCausalLM.from_pretrained(
                 model_name,
@@ -208,13 +220,17 @@ class LLM:
                     else torch.float16
                 ),
             )
-        
+
         def download_llm_weights():
             weights_path = get_weights_path(self.model_name)
             refresh_cache_if_needed(self.model_name)
-            ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(self.model_name, weights_path)
+            ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
+                self.model_name, weights_path
+            )
             if ff_revision != latest_revision:
-                print(f"'{self.model_name}' local model weights need updating! Downloading/converting new weights now...")
+                print(
+                    f"'{self.model_name}' local model weights need updating! Downloading/converting new weights now..."
+                )
                 hf_model = get_hf_llm(self.model_name)
                 # Convert the model to FlexFlow format
                 self.model_class.convert_hf_model(hf_model, weights_path)
@@ -226,7 +242,7 @@ class LLM:
                 del hf_model
                 gc.collect()
                 torch.cuda.empty_cache()
-        
+
         def convert_peft_model(hf_peft_model, peft_type, weights_path):
             for name, params in hf_peft_model.named_parameters():
                 if peft_type.lower() in name:
@@ -235,20 +251,26 @@ class LLM:
                     )
                     name = self.model_class.convert_hf_weight_name(name)
                     params.detach().cpu().numpy().tofile(f"{weights_path}/{name}")
-        
+
         def download_peft_weights():
             for peft_model_id, peft_dict in self.pefts.items():
                 peft_config = peft_dict["peft_config"]
                 peft_type = peft_config["peft_type"]
-                
+
                 weights_path = get_weights_path(peft_model_id)
                 refresh_cache_if_needed(peft_model_id)
-                ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(peft_model_id, weights_path)
-                
+                ff_revision, ff_revision_file, latest_revision = (
+                    self.__get_revision_hashes(peft_model_id, weights_path)
+                )
+
                 if ff_revision != latest_revision:
-                    print(f"'{peft_model_id}' local model weights need updating! Downloading/converting new weights now...")
+                    print(
+                        f"'{peft_model_id}' local model weights need updating! Downloading/converting new weights now..."
+                    )
                     hf_model = get_hf_llm(peft_model_id)
-                    hf_peft_model = PeftModel.from_pretrained(hf_model, peft_model_id, config=peft_config)
+                    hf_peft_model = PeftModel.from_pretrained(
+                        hf_model, peft_model_id, config=peft_config
+                    )
                     # Convert the model to FlexFlow format
                     convert_peft_model(hf_peft_model, peft_type, weights_path)
                     # Save new revision hash to file
@@ -260,7 +282,7 @@ class LLM:
                     del hf_model
                     gc.collect()
                     torch.cuda.empty_cache()
-        
+
         download_llm_weights()
         download_peft_weights()
 
@@ -277,7 +299,9 @@ class LLM:
             self.model_name.lower(),
         )
         if self.refresh_cache:
-            print(f"Refreshing cached tokenizer for model {self.model_name} at path {tokenizer_path} ...")
+            print(
+                f"Refreshing cached tokenizer for model {self.model_name} at path {tokenizer_path} ..."
+            )
             if os.path.exists(tokenizer_path):
                 shutil.rmtree(tokenizer_path)
         if not os.path.exists(tokenizer_path):
@@ -285,10 +309,14 @@ class LLM:
             os.makedirs(tokenizer_path, exist_ok=True)
 
         # Get local revision SHA, check if it matches latest one on huggingface
-        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(self.model_name, tokenizer_path)
+        ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
+            self.model_name, tokenizer_path
+        )
 
         if ff_revision != latest_revision:
-            print(f"'{self.model_name}' tokenizer needs updating! Downloading tokenizer now...")
+            print(
+                f"'{self.model_name}' tokenizer needs updating! Downloading tokenizer now..."
+            )
             # Download tokenizer from HuggingFace, or load it from the local folder
             if self.model_type == ModelType.LLAMA:
                 hf_tokenizer = LlamaTokenizer.from_pretrained(
@@ -432,22 +460,35 @@ class LLM:
 
             atexit.register(self.rm.stop_server)
 
-    def generate(self, prompts: Union[str, List[str], Request, List[Request]], max_length: int = 128):
+    def generate(
+        self,
+        requests_or_prompts: Union[str, List[str], Request, List[Request]],
+        max_length: int = 128,
+    ):
         """Generate tokens based on the input prompt(s)
 
-        :param prompts: The generation prompt(s) in the form of a string, a list of strings, a Request, or list of Requests
-        :type prompts: Union[str, List[str], Request, List[Request]]
+        :param requests_or_prompts: The generation prompt(s) in the form of a string, a list of strings, a Request, or list of Requests
+        :type requests_or_prompts: Union[str, List[str], Request, List[Request]]
         :return: the generation results
         :rtype: GenerationResult
         """
-        if type(prompts) == str:
-            if len(prompts) == 0:
+        if type(requests_or_prompts) == str:
+            if len(requests_or_prompts) == 0:
                 return None
-            return self.model.ffmodel.generate_inf_only([prompts], max_length)
-        elif type(prompts) == list:
-            if len(prompts) == 0:
+            return self.model.ffmodel.generate_inf_only(
+                [requests_or_prompts], max_length
+            )
+        elif type(requests_or_prompts) == Request:
+            return self.model.ffmodel.generate(requests_or_prompts)
+        elif type(requests_or_prompts) == list:
+            if len(requests_or_prompts) == 0:
                 return []
-            return self.model.ffmodel.generate_inf_only(prompts, max_length)
+            if type(requests_or_prompts[0]) == str:
+                return self.model.ffmodel.generate_inf_only(
+                    requests_or_prompts, max_length
+                )
+            else:
+                return self.model.ffmodel.generate(requests_or_prompts)
         else:
             assert False, "Please pass a non-empty string or list of strings"
 
