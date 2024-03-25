@@ -26,13 +26,13 @@ namespace FlexFlow {
 
 LegionRuntime::Logger::Category log_beam_bc("BeamSearchBatchConfig");
 
-BeamSearchBatchConfig::BeamSearchBatchConfig() : BatchConfig() {
+TreeSearchBatchConfig::TreeSearchBatchConfig() : BatchConfig() {
   this->beam_width = DEFAULT_BEAM_WIDTH;
   this->target_iterations = DEFAULT_TARGET_ITERATIONS;
   current_iteration = 0;
 }
 
-BeamSearchBatchConfig::BeamSearchBatchConfig(int model_id) : BatchConfig() {
+TreeSearchBatchConfig::TreeSearchBatchConfig(int model_id) : BatchConfig() {
   this->model_id = model_id;
   std::cout << "==================\n"
             << "Register Batch Config with Model " << this->model_id
@@ -40,7 +40,7 @@ BeamSearchBatchConfig::BeamSearchBatchConfig(int model_id) : BatchConfig() {
   current_iteration = 0;
 }
 
-BeamSearchBatchConfig::BeamSearchBatchConfig(size_t beam_width,
+TreeSearchBatchConfig::TreeSearchBatchConfig(size_t beam_width,
                                              size_t target_iterations)
     : BatchConfig() {
   this->beam_width = beam_width;
@@ -48,7 +48,7 @@ BeamSearchBatchConfig::BeamSearchBatchConfig(size_t beam_width,
   current_iteration = 0;
 }
 
-BeamSearchBatchConfig::BeamSearchBatchConfig(BeamSearchBatchConfig const &other,
+TreeSearchBatchConfig::TreeSearchBatchConfig(TreeSearchBatchConfig const &other,
                                              int model_id)
     : BatchConfig() {
   this->beam_width = other.beam_width;
@@ -57,20 +57,20 @@ BeamSearchBatchConfig::BeamSearchBatchConfig(BeamSearchBatchConfig const &other,
   current_iteration = 0;
 }
 
-BeamSearchBatchConfig::~BeamSearchBatchConfig() {}
+TreeSearchBatchConfig::~TreeSearchBatchConfig() {}
 
-InferenceMode BeamSearchBatchConfig::get_mode() const {
+InferenceMode TreeSearchBatchConfig::get_mode() const {
   return BEAM_SEARCH_MODE;
 }
 
-bool BeamSearchBatchConfig::done() const {
+bool TreeSearchBatchConfig::done() const {
   assert(current_iteration <= target_iterations);
   return current_iteration == target_iterations;
 }
 
-int BeamSearchBatchConfig::max_beam_depth_all_requests() const {
+int TreeSearchBatchConfig::max_beam_depth_all_requests() const {
   int max_depth_all_requests = 0;
-  for (int i = 0; i < BeamSearchBatchConfig::max_requests_per_batch(); i++) {
+  for (int i = 0; i < TreeSearchBatchConfig::max_requests_per_batch(); i++) {
     if (!request_completed[i] &&
         beamRequestsInfo[i].max_depth > max_depth_all_requests) {
       /* printf("\treq %i has max_depth=%i. Increasing max_depth_all_requests "
@@ -81,17 +81,17 @@ int BeamSearchBatchConfig::max_beam_depth_all_requests() const {
       max_depth_all_requests = beamRequestsInfo[i].max_depth;
     }
   }
-  assert(max_depth_all_requests <= BeamSearchBatchConfig::MAX_BEAM_DEPTH);
+  assert(max_depth_all_requests <= TreeSearchBatchConfig::MAX_BEAM_DEPTH);
   return max_depth_all_requests;
 }
 
-int BeamSearchBatchConfig::get_speculative_request_num() const {
+int TreeSearchBatchConfig::get_speculative_request_num() const {
   return speculative_request_num;
 }
 
-int BeamSearchBatchConfig::current_depth_all_requests() const {
+int TreeSearchBatchConfig::current_depth_all_requests() const {
   int current_depth = 0;
-  for (int i = 0; i < BeamSearchBatchConfig::max_requests_per_batch(); i++) {
+  for (int i = 0; i < TreeSearchBatchConfig::max_requests_per_batch(); i++) {
     if (!request_completed[i] &&
         beamRequestsInfo[i].current_depth > current_depth) {
       /* printf("\treq %i has current_depth=%i. Increasing "
@@ -102,11 +102,11 @@ int BeamSearchBatchConfig::current_depth_all_requests() const {
       current_depth = beamRequestsInfo[i].current_depth;
     }
   }
-  assert(current_depth <= BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1);
+  assert(current_depth <= TreeSearchBatchConfig::MAX_BEAM_DEPTH + 1);
   return current_depth;
 }
 
-std::ostream &operator<<(std::ostream &os, BeamSearchBatchConfig const &bc) {
+std::ostream &operator<<(std::ostream &os, TreeSearchBatchConfig const &bc) {
   os << "@@@@@@@@@@@@@@ BeamSearchBatchConfig (mode " << bc.get_mode()
      << ") @@@@@@@@@@@@@@" << std::endl;
   // Max values
@@ -181,11 +181,11 @@ std::ostream &operator<<(std::ostream &os, BeamSearchBatchConfig const &bc) {
   return os;
 }
 
-void BeamSearchBatchConfig::print() const {
+void TreeSearchBatchConfig::print() const {
   std::cout << *this << std::endl;
 }
 
-void BeamSearchBatchConfig::save_to_file(std::string const &filename) const {
+void TreeSearchBatchConfig::save_to_file(std::string const &filename) const {
   std::ofstream outputFile(filename);
   if (outputFile.is_open()) {
     outputFile << *this << std::endl;

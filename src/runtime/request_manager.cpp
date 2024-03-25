@@ -91,25 +91,25 @@ void RequestManager::load_batch_config_task(
 
   // load speculative metadata
   if (batch_config->get_mode() == BEAM_SEARCH_MODE) {
-    BeamSearchBatchConfig const *beam_batch_config =
-        static_cast<BeamSearchBatchConfig const *>(batch_config);
+    TreeSearchBatchConfig const *beam_batch_config =
+        static_cast<TreeSearchBatchConfig const *>(batch_config);
 
     checkCUDA(hipMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
                                  total_copy_size,
                              &(beam_batch_config->beamTokenInfo),
-                             sizeof(BeamSearchBatchConfig::beamTokenInfo),
+                             sizeof(TreeSearchBatchConfig::beamTokenInfo),
                              hipMemcpyHostToDevice,
                              stream));
 
-    total_copy_size += sizeof(BeamSearchBatchConfig::beamTokenInfo);
+    total_copy_size += sizeof(TreeSearchBatchConfig::beamTokenInfo);
 
     checkCUDA(hipMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
                                  total_copy_size,
                              &(beam_batch_config->beamRequestsInfo),
-                             sizeof(BeamSearchBatchConfig::beamRequestsInfo),
+                             sizeof(TreeSearchBatchConfig::beamRequestsInfo),
                              hipMemcpyHostToDevice,
                              stream));
-    total_copy_size += sizeof(BeamSearchBatchConfig::beamRequestsInfo);
+    total_copy_size += sizeof(TreeSearchBatchConfig::beamRequestsInfo);
 
     checkCUDA(hipMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
                                  total_copy_size,

@@ -22,7 +22,7 @@ public:
   using Input = ParallelTensor;
   ArgTopK(FFModel &model,
           LayerID const &layer_guid,
-          const ParallelTensor input,
+          ParallelTensor const input,
           int k,
           bool sorted,
           bool speculative_decoding,
@@ -30,7 +30,7 @@ public:
   ArgTopK(FFModel &model,
           LayerID const &layer_guid,
           ArgTopK const &other,
-          const ParallelTensor input);
+          ParallelTensor const input);
   ArgTopK(FFModel &model,
           Params const &params,
           Input const input,
@@ -89,14 +89,14 @@ public:
                              int length,
                              int k,
                              bool sorted,
-                             BeamSearchBatchConfig const *bc,
+                             TreeSearchBatchConfig const *bc,
                              ffStream_t stream);
   static void forward_kernel_wrapper(ArgTopKMeta const *m,
                                      GenericTensorAccessorR const &input,
                                      GenericTensorAccessorW const &prob,
                                      GenericTensorAccessorW const &indices,
                                      int batch_size,
-                                     BeamSearchBatchConfig const *bc);
+                                     TreeSearchBatchConfig const *bc);
   Params get_params() const;
 
 public:

@@ -26,7 +26,7 @@ public:
 
   SpecIncMultiHeadSelfAttention(FFModel &model,
                                 LayerID const &layer_guid,
-                                const ParallelTensor _input,
+                                ParallelTensor const _input,
                                 int _embed_dim,
                                 int _num_q_heads,
                                 int _num_kv_heads,
@@ -44,8 +44,8 @@ public:
                                 bool allocate_weights,
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
-                                const ParallelTensor _input,
-                                const ParallelTensor _weight,
+                                ParallelTensor const _input,
+                                ParallelTensor const _weight,
                                 int _embed_dim,
                                 int _num_q_heads,
                                 int _num_kv_heads,
@@ -64,7 +64,7 @@ public:
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
                                 SpecIncMultiHeadSelfAttention const &other,
-                                const ParallelTensor input,
+                                ParallelTensor const input,
                                 bool allocate_weights);
   SpecIncMultiHeadSelfAttention(FFModel &model,
                                 Params const &params,
@@ -109,7 +109,7 @@ public:
 
   static void
       inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta const *m,
-                               BeamSearchBatchConfig const *bc,
+                               TreeSearchBatchConfig const *bc,
                                int shard_id,
                                GenericTensorAccessorR const &input,
                                GenericTensorAccessorR const &weight,
@@ -140,8 +140,8 @@ public:
 
 public:
   Realm::RegionInstance beam_search_reserve_inst;
-  BeamSearchBatchConfig::BeamSearchPerTokenInfo *beam_token_infos;
-  BeamSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos;
+  TreeSearchBatchConfig::BeamSearchPerTokenInfo *beam_token_infos;
+  TreeSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos;
   bool *request_completed;
   BatchConfig::BitMask *causalMask;
 };

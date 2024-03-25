@@ -48,7 +48,7 @@ using PCG::Node;
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
-Tensor FFModel::arg_top_k(const Tensor input,
+Tensor FFModel::arg_top_k(Tensor const input,
                           int k,
                           bool sorted,
                           bool speculative_decoding,
@@ -130,7 +130,7 @@ bool operator==(ArgTopKParams const &lhs, ArgTopKParams const &rhs) {
 
 ArgTopK::ArgTopK(FFModel &model,
                  LayerID const &_layer_guid,
-                 const ParallelTensor _input,
+                 ParallelTensor const _input,
                  int _k,
                  bool _sorted,
                  bool _speculative_decoding,
@@ -167,7 +167,7 @@ ArgTopK::ArgTopK(FFModel &model,
 ArgTopK::ArgTopK(FFModel &model,
                  LayerID const &layer_guid,
                  ArgTopK const &other,
-                 const ParallelTensor input)
+                 ParallelTensor const input)
     : ArgTopK(model,
               layer_guid,
               input,
@@ -411,8 +411,8 @@ BeamInferenceResult ArgTopK::inference_speculative_task(
     Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  BeamSearchBatchConfig const &bc =
-      Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
+  TreeSearchBatchConfig const &bc =
+      Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
   if (bc.num_active_tokens() == 0) {
     // Directly return for empty batch config
     BeamInferenceResult ir;

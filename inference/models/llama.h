@@ -51,8 +51,8 @@ public:
       }
       // max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
       // max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
-      max_beam_width = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-      max_beam_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
+      max_beam_width = TreeSearchBatchConfig::MAX_BEAM_WIDTH;
+      max_beam_depth = TreeSearchBatchConfig::MAX_BEAM_DEPTH;
     }
 
     void print() const {

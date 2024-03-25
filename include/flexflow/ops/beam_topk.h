@@ -30,12 +30,12 @@ public:
   using Params = BeamTopKParams;
   using Input = ParallelTensor;
   BeamTopK(FFModel &model,
-           const ParallelTensor input,
+           ParallelTensor const input,
            LayerID const &_layer_guid,
            int max_beam_width,
            bool sorted,
            char const *name);
-  BeamTopK(FFModel &model, BeamTopK const &other, const ParallelTensor input);
+  BeamTopK(FFModel &model, BeamTopK const &other, ParallelTensor const input);
   BeamTopK(FFModel &model,
            Params const &params,
            Input const input,
@@ -82,7 +82,7 @@ public:
                              CostMetrics &cost_metrics) const override;
   template <typename DT>
   static void forward_kernel(BeamTopKMeta const *m,
-                             BeamSearchBatchConfig const *bc,
+                             TreeSearchBatchConfig const *bc,
                              DT const *input_ptr,
                              float *output_ptr,
                              int *indices_ptr,
@@ -92,7 +92,7 @@ public:
                              bool sorted,
                              ffStream_t stream);
   static void forward_kernel_wrapper(BeamTopKMeta const *m,
-                                     BeamSearchBatchConfig const *bc,
+                                     TreeSearchBatchConfig const *bc,
                                      GenericTensorAccessorR const &input,
                                      float *output_ptr,
                                      int *indices_ptr,

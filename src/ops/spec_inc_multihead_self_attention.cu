@@ -49,7 +49,7 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
     int per_head_size,
     int hidden_size,
     BatchConfig::PerRequestInfo *request_infos,
-    BeamSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos,
+    TreeSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos,
     BatchConfig::BitMask *causalMask,
     bool *request_completed) {
 
@@ -315,8 +315,8 @@ __global__ void spec_inc_store_kv_cache(
     DT *vCache_ptr,
     BatchConfig::PerTokenInfo *tokenInfos,
     BatchConfig::PerRequestInfo *requestInfo,
-    BeamSearchBatchConfig::BeamSearchPerTokenInfo *beamTokenInfos,
-    BeamSearchBatchConfig::BeamSearchPerRequestInfo *beamRequestInfos,
+    TreeSearchBatchConfig::BeamSearchPerTokenInfo *beamTokenInfos,
+    TreeSearchBatchConfig::BeamSearchPerRequestInfo *beamRequestInfos,
     BatchConfig::BitMask *causalMask,
     int qProjSize,
     int kProjSize,
@@ -700,7 +700,7 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
 
 template <typename DT>
 void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
-                      BeamSearchBatchConfig const *bc,
+                      TreeSearchBatchConfig const *bc,
                       int shard_id,
                       DT const *input_ptr,
                       DT const *weight_ptr,
@@ -742,7 +742,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 /*static*/
 void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     SpecIncMultiHeadSelfAttentionMeta const *m,
-    BeamSearchBatchConfig const *bc,
+    TreeSearchBatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,

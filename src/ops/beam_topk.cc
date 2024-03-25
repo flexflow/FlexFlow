@@ -48,7 +48,7 @@ using PCG::Node;
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
-Tensor FFModel::beam_top_k(const Tensor input,
+Tensor FFModel::beam_top_k(Tensor const input,
                            int max_beam_width,
                            bool sorted,
                            char const *name) {
@@ -122,7 +122,7 @@ bool operator==(BeamTopKParams const &lhs, BeamTopKParams const &rhs) {
 }
 
 BeamTopK::BeamTopK(FFModel &model,
-                   const ParallelTensor _input,
+                   ParallelTensor const _input,
                    LayerID const &_layer_guid,
                    int _max_beam_width,
                    bool _sorted,
@@ -153,7 +153,7 @@ BeamTopK::BeamTopK(FFModel &model,
 
 BeamTopK::BeamTopK(FFModel &model,
                    BeamTopK const &other,
-                   const ParallelTensor input)
+                   ParallelTensor const input)
     : BeamTopK(model,
                input,
                other.layer_guid,
@@ -163,7 +163,7 @@ BeamTopK::BeamTopK(FFModel &model,
 
 BeamTopK::BeamTopK(FFModel &model,
                    BeamTopKParams const &params,
-                   const ParallelTensor input,
+                   ParallelTensor const input,
                    char const *name)
     : BeamTopK(model,
                input,
@@ -351,8 +351,8 @@ BeamInferenceResult
   assert(task->regions.size() == 4);
 
   BeamTopKMeta *m = *((BeamTopKMeta **)task->local_args);
-  BeamSearchBatchConfig const &bc =
-      Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
+  TreeSearchBatchConfig const &bc =
+      Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
 
   if (bc.num_tokens == 0) {
     BeamInferenceResult ir;

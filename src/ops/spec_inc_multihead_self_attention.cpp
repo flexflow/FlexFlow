@@ -38,8 +38,8 @@ __global__ void spec_store_kv_cache(
     DT *vCache_ptr,
     BatchConfig::PerTokenInfo *tokenInfos,
     BatchConfig::PerRequestInfo *requestInfo,
-    BeamSearchBatchConfig::BeamSearchPerTokenInfo *beamTokenInfos,
-    BeamSearchBatchConfig::BeamSearchPerRequestInfo *beamRequestInfos,
+    TreeSearchBatchConfig::BeamSearchPerTokenInfo *beamTokenInfos,
+    TreeSearchBatchConfig::BeamSearchPerRequestInfo *beamRequestInfos,
     int qProjSize,
     int kProjSize,
     int vProjSize,
@@ -139,7 +139,7 @@ __global__ void spec_store_kv_cache(
 
 template <typename DT>
 void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
-                            BeamSearchBatchConfig const *bc,
+                            TreeSearchBatchConfig const *bc,
                             hipStream_t stream) {
   int num_tokens = bc->num_active_tokens();
   int curr_depth = bc->beamRequestsInfo[0].current_depth;
@@ -164,7 +164,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                        m->vProjSize,
                        num_tokens,
                        BatchConfig::max_sequence_length(),
-                       BeamSearchBatchConfig::MAX_BEAM_WIDTH,
+                       TreeSearchBatchConfig::MAX_BEAM_WIDTH,
                        /*root*/ curr_depth == 0,
                        m->hidden_size);
   }
@@ -189,7 +189,7 @@ __global__ void spec_fill_entries_above_diagonal(DT *matrix,
 
 template <typename DT>
 void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
-                              BeamSearchBatchConfig const *bc,
+                              TreeSearchBatchConfig const *bc,
                               int shard_id,
                               DT *output_ptr,
                               DT const *bias_ptr,
@@ -458,7 +458,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 
 template <typename DT>
 void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
-                      BeamSearchBatchConfig const *bc,
+                      TreeSearchBatchConfig const *bc,
                       int shard_id,
                       DT const *input_ptr,
                       DT const *weight_ptr,
@@ -483,14 +483,14 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       hipMemcpyAsync(m->beam_token_infos,
                      &(bc->beamTokenInfo),
                      max_tokens_per_batch * bc->MAX_BEAM_WIDTH *
-                         sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo),
+                         sizeof(TreeSearchBatchConfig::BeamSearchPerTokenInfo),
                      hipMemcpyHostToDevice,
                      stream));
   checkCUDA(hipMemcpyAsync(
       m->beam_request_infos,
       &(bc->beamRequestsInfo),
       bc->max_requests_per_batch() *
-          sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo),
+          sizeof(TreeSearchBatchConfig::BeamSearchPerRequestInfo),
       hipMemcpyHostToDevice,
       stream));
   // phase 1: Implement kernel to compute KQV for input tokens
@@ -517,7 +517,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 /*static*/
 void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     SpecIncMultiHeadSelfAttentionMeta const *m,
-    BeamSearchBatchConfig const *bc,
+    TreeSearchBatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,
@@ -619,16 +619,16 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
   {
     int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
     size_t beam_tokeninfo_size =
-        max_tokens_per_batch * BeamSearchBatchConfig::MAX_BEAM_WIDTH;
-    size_t requestinfo_size = BeamSearchBatchConfig::max_requests_per_batch();
+        max_tokens_per_batch * TreeSearchBatchConfig::MAX_BEAM_WIDTH;
+    size_t requestinfo_size = TreeSearchBatchConfig::max_requests_per_batch();
     size_t beam_requestinfo_size =
-        BeamSearchBatchConfig::max_requests_per_batch();
+        TreeSearchBatchConfig::max_requests_per_batch();
     size_t total_size =
         requestinfo_size * sizeof(BatchConfig::PerRequestInfo) +
         beam_tokeninfo_size *
-            sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo) +
+            sizeof(TreeSearchBatchConfig::BeamSearchPerTokenInfo) +
         beam_requestinfo_size *
-            sizeof(BeamSearchBatchConfig::
+            sizeof(TreeSearchBatchConfig::
                        BeamSearchPerRequestInfo); // more components will
                                                   // be added here later
 
@@ -637,7 +637,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                              total_size);
     beam_token_infos =
         gpu_mem_allocator
-            .allocate_instance<BeamSearchBatchConfig::BeamSearchPerTokenInfo>(
+            .allocate_instance<TreeSearchBatchConfig::BeamSearchPerTokenInfo>(
                 beam_tokeninfo_size);
     // offset += beam_tokeninfo_size *
     //           sizeof(BeamSearchBatchConfig::BeamSearchPerTokenInfo);
@@ -647,7 +647,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     // offset += requestinfo_size * sizeof(BatchConfig::PerRequestInfo);
     beam_request_infos =
         gpu_mem_allocator
-            .allocate_instance<BeamSearchBatchConfig::BeamSearchPerRequestInfo>(
+            .allocate_instance<TreeSearchBatchConfig::BeamSearchPerRequestInfo>(
                 beam_requestinfo_size);
     // offset += beam_requestinfo_size *
     //           sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo);

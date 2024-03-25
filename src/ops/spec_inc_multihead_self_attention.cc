@@ -736,8 +736,8 @@ void SpecIncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(task->regions.size() == regions.size());
 
-  BeamSearchBatchConfig const &bc =
-      Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
+  TreeSearchBatchConfig const &bc =
+      Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
   if (bc.num_tokens == 0) {
     return;
   }

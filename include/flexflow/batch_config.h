@@ -131,65 +131,6 @@ struct InferenceResult {
   BatchConfig::TokenId token_ids[MAX_NUM_TOKENS];
 };
 
-class BeamSearchBatchConfig : public BatchConfig {
-public:
-  BeamSearchBatchConfig();
-  BeamSearchBatchConfig(int model_id);
-  BeamSearchBatchConfig(size_t beam_width, size_t target_iterations);
-  BeamSearchBatchConfig(BeamSearchBatchConfig const &other, int model_id);
-  InferenceMode get_mode() const;
-
-  ~BeamSearchBatchConfig();
-
-  friend std::ostream &operator<<(std::ostream &os,
-                                  BeamSearchBatchConfig const &bc);
-  void print() const;
-  void save_to_file(std::string const &filename) const;
-  bool done() const;
-  int max_beam_depth_all_requests() const; // Need to remove
-  int current_depth_all_requests() const;
-  int get_speculative_request_num() const;
-
-  size_t beam_width;
-  size_t target_iterations;
-
-  // how many requests is in speculative phase
-  int speculative_request_num = 0;
-  inline static int const MAX_BEAM_WIDTH = 3; // Need to remove
-  inline static int const MAX_BEAM_DEPTH = 8; // Need to remove
-
-  // maximum tree branches for a request
-  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3; // Need to remove
-
-  int model_id;
-
-  struct BeamSearchPerRequestInfo {
-    int beam_size;
-    int current_depth = -1;
-    int max_depth = MAX_BEAM_DEPTH;
-
-    BatchConfig::TokenId
-        tokens[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-    float probs[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-    int parent_id[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-    int sub_request_num;
-  };
-
-  struct BeamSearchPerTokenInfo {
-    int sub_request_index;
-  };
-
-  BeamSearchPerRequestInfo beamRequestsInfo[MAX_NUM_REQUESTS];
-  BeamSearchPerTokenInfo
-      beamTokenInfo[MAX_NUM_TOKENS +
-                    MAX_SPEC_TREE_TOKEN_NUM * MAX_NUM_REQUESTS];
-
-  int sub_requests[MAX_NUM_REQUESTS];
-
-private:
-  size_t current_iteration;
-};
-
 class TreeSearchBatchConfig : public BatchConfig {
 public:
   TreeSearchBatchConfig();
@@ -206,16 +147,15 @@ public:
   int current_depth_all_requests() const;
   int get_speculative_request_num() const;
 
+  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3;
+
   // how many requests is in speculative phase
   int speculative_request_num = 0;
   int model_id;
 
   struct TreeSearchPerRequestInfo {
     int current_depth = -1;
-
-    BatchConfig::TokenId tokens_arr[BatchConfig::MAX_NUM_TOKENS];
-    float probs_arr[BatchConfig::MAX_NUM_TOKENS];
-    int parent_id_arr[BatchConfig::MAX_NUM_TOKENS];
+    int num_tokens_in_layer;
   };
 
   TreeSearchPerRequestInfo tree_requests_info[MAX_NUM_REQUESTS];
@@ -225,11 +165,11 @@ struct BeamInferenceResult {
   static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId
       token_ids[MAX_NUM_TOKENS *
-                BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+                TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
   float probs[MAX_NUM_TOKENS *
-              BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+              TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
   int parent_id[MAX_NUM_TOKENS *
-                BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+                TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
 };
 
 }; // namespace FlexFlow

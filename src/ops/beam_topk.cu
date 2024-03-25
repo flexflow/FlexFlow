@@ -290,7 +290,7 @@ __device__ void mergeBeamShards(int num_shards,
     // Initialize the heap as a min-heap.
     for (int slot = 0; slot < heap_size; slot++) {
       // int beam = (slot % max_heap_size) / k;
-      T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+      T prob = probs[request_id * TreeSearchBatchConfig::MAX_BEAM_WIDTH +
                      ((slot % max_heap_size) / k)];
       min_heap.assign(slot, {slot, (entries[slot].value * prob)});
       if (verbose && batch_index == 0) {
@@ -307,7 +307,7 @@ __device__ void mergeBeamShards(int num_shards,
       auto const entry = entries[shard];
       auto const root = min_heap.root();
 
-      T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+      T prob = probs[request_id * TreeSearchBatchConfig::MAX_BEAM_WIDTH +
                      ((shard % max_heap_size) / k)];
       if (verbose && batch_index == 0) {
         printf("shard %d, index %d, value %.15f, prob %.15f\n",
@@ -347,11 +347,11 @@ __device__ void mergeBeamShards(int num_shards,
       int shard_index = max_element.index;
       top_k_indices[rank] = entries[shard_index].index;
       top_k_parents[rank] =
-          parent_id[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+          parent_id[request_id * TreeSearchBatchConfig::MAX_BEAM_WIDTH +
                     ((shard_index % max_heap_size) / k)];
       int next_shard_index = shard_index + num_shards;
 
-      T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+      T prob = probs[request_id * TreeSearchBatchConfig::MAX_BEAM_WIDTH +
                      ((next_shard_index % max_heap_size) / k)];
       // if (batch_index == 0) {
       //   printf("next_shard_index %d, value %.15f, prob %.15f\n",
@@ -370,7 +370,7 @@ __device__ void mergeBeamShards(int num_shards,
     int shard_index = max_element.index;
     top_k_indices[last_k] = entries[shard_index].index;
     top_k_parents[last_k] =
-        parent_id[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+        parent_id[request_id * TreeSearchBatchConfig::MAX_BEAM_WIDTH +
                   ((shard_index % max_heap_size) / k)];
   }
 }
@@ -379,9 +379,9 @@ template <typename T>
 __global__ void
     mergeSubRequestsKernel(int64_t N, T const *X, T const *rstd, T *Y) {
   using T_ACC = T;
-  const int64_t i = blockIdx.x;
+  int64_t const i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
-    const int64_t index = i * N + j;
+    int64_t const index = i * N + j;
     Y[index] = static_cast<T_ACC>(X[index]) * static_cast<T_ACC>(rstd[i]);
   }
 }
@@ -434,9 +434,9 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
            gpu_block_start_index[batch_index] +
                (sub_request_id * token_nums * length),
            batch_input,
-           request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH + sub_request_id,
+           request_id * TreeSearchBatchConfig::MAX_BEAM_WIDTH + sub_request_id,
            static_cast<float>(
-               acc_probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+               acc_probs[request_id * TreeSearchBatchConfig::MAX_BEAM_WIDTH +
                          sub_request_id]),
            thread_count,
            request_id);
@@ -539,7 +539,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
 
   // a data structure for prob, parent_id,
   int max_total_requests =
-      BeamSearchBatchConfig::MAX_BEAM_WIDTH * bc->num_active_requests();
+      TreeSearchBatchConfig::MAX_BEAM_WIDTH * bc->num_active_requests();
   int parent_ids[max_total_requests];
   DT acc_probs[max_total_requests];
 
@@ -559,9 +559,9 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     assert(sub_requests[i] > 0);
     // process sub requests
     for (int j = 0; j < sub_requests[i]; j++) {
-      parent_ids[req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j] = j;
+      parent_ids[req_index * TreeSearchBatchConfig::MAX_BEAM_WIDTH + j] = j;
       // beam_slots[i].parent_id[j];
-      acc_probs[req_index * BeamSearchBatchConfig::MAX_BEAM_WIDTH + j] =
+      acc_probs[req_index * TreeSearchBatchConfig::MAX_BEAM_WIDTH + j] =
           bc->beamRequestsInfo[i].probs[j];
       // std::cout << "probbbb req: " << i << ", sub req probability : "
       //           << bc->beamRequestsInfo[i].probs[j] << ", sub request id " <<
@@ -667,7 +667,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
 
 /*static*/
 void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
-                                      BeamSearchBatchConfig const *bc,
+                                      TreeSearchBatchConfig const *bc,
                                       GenericTensorAccessorR const &input,
                                       float *output_ptr,
                                       int *indices_ptr,
@@ -728,9 +728,9 @@ BeamTopKMeta::BeamTopKMeta(FFHandler handler,
   int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
   int max_requests_per_batch = BatchConfig::max_requests_per_batch();
   size_t parent_id_size =
-      BeamSearchBatchConfig::MAX_BEAM_WIDTH * max_requests_per_batch;
+      TreeSearchBatchConfig::MAX_BEAM_WIDTH * max_requests_per_batch;
   size_t acc_probs_size =
-      BeamSearchBatchConfig::MAX_BEAM_WIDTH * max_requests_per_batch;
+      TreeSearchBatchConfig::MAX_BEAM_WIDTH * max_requests_per_batch;
   size_t block_start_index_size = max_tokens_per_batch * max_requests_per_batch;
   size_t request_id_size = max_tokens_per_batch * max_requests_per_batch;
   size_t tokens_per_request_size =

@@ -81,13 +81,13 @@ struct Request {
 // store the result of beam search
 struct BeamTree {
   struct treeLayer {
-    BeamSearchBatchConfig::TokenId
-        tokens[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-    int parent_ids[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-    float probs[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    TreeSearchBatchConfig::TokenId
+        tokens[TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    int parent_ids[TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    float probs[TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
     int nodes_num_this_layer = 0;
   };
-  treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1];
+  treeLayer treeLayers[TreeSearchBatchConfig::MAX_BEAM_DEPTH + 1];
 };
 
 // The new version of BeamTree
@@ -189,7 +189,16 @@ public:
                                        InferenceResultFuture const &result,
                                        Legion::Context ctx,
                                        Legion::Runtime *runtime);
-  BeamSearchBatchConfig
+  /* The APIs that need to be changed. */
+  TreeSearchBatchConfig
+      prepare_next_batch_beam(TreeSearchBatchConfig const &old_bc,
+                              BeamInferenceResult const &result);
+  BeamSearchBatchConfigFuture
+      prepare_next_batch_beam(BeamSearchBatchConfigFuture const &old_bc,
+                              BeamInferenceResultFuture const &result,
+                              Legion::Context ctx,
+                              Legion::Runtime *runtime);
+  TreeSearchBatchConfig
       prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
                               InferenceResult const &result,
                               int model_id);
@@ -200,31 +209,22 @@ public:
                               Legion::Context ctx,
                               Legion::Runtime *runtime);
 
-  /* The APIs that need to be changed. */
-  BeamSearchBatchConfig
-      prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
-                              BeamInferenceResult const &result);
-  BeamSearchBatchConfigFuture
-      prepare_next_batch_beam(BeamSearchBatchConfigFuture const &old_bc,
-                              BeamInferenceResultFuture const &result,
-                              Legion::Context ctx,
-                              Legion::Runtime *runtime);
   TreeVerifyBatchConfig prepare_next_batch_verify(
-      std::vector<BeamSearchBatchConfig> const &old_batches);
+      std::vector<TreeSearchBatchConfig> const &old_batches);
   TreeVerifyBatchConfigFuture prepare_next_batch_verify(
       std::vector<BeamSearchBatchConfigFuture> const &old_batches,
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
+  void store_beam_metadata(TreeSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
-  void update_beam_metadata(BeamSearchBatchConfig &new_bc,
-                            BeamSearchBatchConfig const &old_bc,
+  void update_beam_metadata(TreeSearchBatchConfig &new_bc,
+                            TreeSearchBatchConfig const &old_bc,
                             BeamTree &tree,
                             int request_index);
 
   std::vector<std::pair<BatchConfig::TokenId, int>>
-      traverse_beam_tree(BeamSearchBatchConfig const &old_bc,
+      traverse_beam_tree(TreeSearchBatchConfig const &old_bc,
                          int request_index,
                          int first_token_depth_in_request);
   /* The APIs that need to be changed. */
@@ -238,22 +238,32 @@ public:
                               BeamInferenceResultFuture const &result,
                               Legion::Context ctx,
                               Legion::Runtime *runtime);
-  TreeSearchBatchConfig TreeVerifyBatchConfig prepare_next_batch_verify(
+  TreeSearchBatchConfig
+      prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
+                              InferenceResult const &result,
+                              int model_id);
+  TreeSearchBatchConfigFuture
+      prepare_next_batch_init(TreeVerifyBatchConfigFuture const &old_bc,
+                              InferenceResultFuture const &result,
+                              int model_id,
+                              Legion::Context ctx,
+                              Legion::Runtime *runtime);
+  TreeSearchBatchConfig prepare_next_batch_verify(
       std::vector<TreeSearchBatchConfig> const &old_batches);
   TreeVerifyBatchConfigFuture prepare_next_batch_verify(
       std::vector<TreeSearchBatchConfigFuture> const &old_batches,
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  void store_beam_metadata(TreeSearchBatchConfig const &old_bc,
+  void store_spec_metadata(TreeSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
-  void update_beam_metadata(TreeSearchBatchConfig &new_bc,
+  void update_spec_metadata(TreeSearchBatchConfig &new_bc,
                             TreeSearchBatchConfig const &old_bc,
                             Token &tree,
                             int request_index);
 
   std::vector<std::pair<BatchConfig::TokenId, int>>
-      traverse_beam_tree(TreeSearchBatchConfig const &old_bc,
+      traverse_spec_tree(TreeSearchBatchConfig const &old_bc,
                          int request_index,
                          int first_token_depth_in_request);
   /* New APIs */
@@ -298,17 +308,33 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  static BeamSearchBatchConfig prepare_next_batch_beam_task(
+  /* APIs to modify */
+  static TreeSearchBatchConfig prepare_next_batch_beam_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  static BeamSearchBatchConfig prepare_next_batch_init_task(
+  static TreeSearchBatchConfig prepare_next_batch_init_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
+  /* APIs to modify */
+
+  /* New APIs */
+  static TreeSearchBatchConfig prepare_next_batch_spec_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+
+  static TreeSearchBatchConfig prepare_next_batch_init_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+  /* New APIs */
 
   static TreeVerifyBatchConfig prepare_next_batch_verify_task(
       Legion::Task const *task,

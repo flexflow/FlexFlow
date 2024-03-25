@@ -967,13 +967,13 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       }
       case BEAM_SEARCH_MODE: {
         key_cache_size = num_q_heads * kProjSize *
-                         BeamSearchBatchConfig::max_requests_per_batch() *
+                         TreeSearchBatchConfig::max_requests_per_batch() *
                          BatchConfig::max_sequence_length() *
-                         BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+                         TreeSearchBatchConfig::MAX_BEAM_WIDTH;
         value_cache_size = num_q_heads * vProjSize *
-                           BeamSearchBatchConfig::max_requests_per_batch() *
+                           TreeSearchBatchConfig::max_requests_per_batch() *
                            BatchConfig::max_sequence_length() *
-                           BeamSearchBatchConfig::MAX_BEAM_WIDTH;
+                           TreeSearchBatchConfig::MAX_BEAM_WIDTH;
         break;
       }
       default:

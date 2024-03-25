@@ -312,10 +312,10 @@ FutureMap InferenceManager::inference(FFModel *model,
     return inference(model, index, bcf);
   } else if (bc.get_mode() == BEAM_SEARCH_MODE) {
     BatchConfig const *bc_ptr = &bc;
-    BeamSearchBatchConfig const *bsbc_ptr =
-        static_cast<BeamSearchBatchConfig const *>(bc_ptr);
+    TreeSearchBatchConfig const *bsbc_ptr =
+        static_cast<TreeSearchBatchConfig const *>(bc_ptr);
     BeamSearchBatchConfigFuture bcf =
-        Future::from_value<BeamSearchBatchConfig>(*bsbc_ptr);
+        Future::from_value<TreeSearchBatchConfig>(*bsbc_ptr);
     return inference(model, index, bcf);
   } else if (bc.get_mode() == TREE_VERIFY_MODE) {
     BatchConfig const *bc_ptr = &bc;

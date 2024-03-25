@@ -97,7 +97,7 @@ int RequestManager::get_max_sequence_length() {
 }
 
 void RequestManager::push_spec_infer_tree_width(int tree_width) {
-  assert(tree_width <= BeamSearchBatchConfig::MAX_BEAM_WIDTH);
+  assert(tree_width <= TreeSearchBatchConfig::MAX_BEAM_WIDTH);
   spec_infer_tree_width.emplace_back(tree_width);
 }
 
@@ -171,7 +171,7 @@ size_t RequestManager::get_num_ssms() {
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::vector<TokenId> const &prompt,
                                          int max_sequence_length) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   // Add a new request
   Request request;
@@ -206,7 +206,7 @@ RequestManager::RequestGuid
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
   {
-    const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
+    std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
     request_to_promise[request.guid] = new std::promise<void>();
   }
 
@@ -231,7 +231,7 @@ RequestManager::RequestGuid
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::string const &prompt,
                                          int max_sequence_length) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   // Add a new request
   Request request;
   request.status = Request::PENDING;
@@ -270,7 +270,7 @@ RequestManager::RequestGuid
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
   {
-    const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
+    std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
     request_to_promise[request.guid] = new std::promise<void>();
   }
 
@@ -294,7 +294,7 @@ RequestManager::RequestGuid
 }
 
 bool RequestManager::is_request_completed(RequestGuid const &guid) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   assert(all_requests.find(guid) != all_requests.end());
   Request const &request = all_requests[guid];
   // return request.tokens.size() >= request.max_sequence_length;
@@ -306,7 +306,7 @@ GenerationResult
   // First get the future of the request
   std::future<void> future;
   {
-    const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
+    std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
     assert(request_to_promise.find(guid) != request_to_promise.end());
     future = request_to_promise[guid]->get_future();
   }
@@ -314,7 +314,7 @@ GenerationResult
   future.get();
   // Get the generation result
   {
-    const std::lock_guard<std::mutex> lock(request_queue_mutex);
+    std::lock_guard<std::mutex> const lock(request_queue_mutex);
     assert(request_generation_results.find(guid) !=
            request_generation_results.end());
     return request_generation_results[guid];
@@ -352,7 +352,7 @@ BatchConfig RequestManager::prepare_next_batch_task(
 
 BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                                                InferenceResult const &result) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   // Step 1: append result from previous iteration to request's tokens
   for (int i = 0; i < old_bc.num_tokens; i++) {
@@ -560,7 +560,7 @@ BeamSearchBatchConfigFuture RequestManager::prepare_next_batch_init(
   return runtime->execute_task(ctx, launcher);
 }
 
-BeamSearchBatchConfig RequestManager::prepare_next_batch_init_task(
+TreeSearchBatchConfig RequestManager::prepare_next_batch_init_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
@@ -574,17 +574,17 @@ BeamSearchBatchConfig RequestManager::prepare_next_batch_init_task(
   return rm->prepare_next_batch_init(bc, result, model_id);
 }
 
-BeamSearchBatchConfig
+TreeSearchBatchConfig
     RequestManager::prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
                                             InferenceResult const &result,
                                             int model_id) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout << "\n############### prepare_next_batch_init ###############\n";
   }
 
   // Step 1: use result to update requests
-  BeamSearchBatchConfig new_bc;
+  TreeSearchBatchConfig new_bc;
   new_bc.num_tokens = 0;
   new_bc.model_id = model_id;
   int result_index = 0;
@@ -768,9 +768,9 @@ BeamSearchBatchConfig
                 ? spec_infer_tree_width[ssm_decoding_steps]
                 : 1;
         new_bc.beamRequestsInfo[i].max_depth =
-            std::min(new_max_depth, BeamSearchBatchConfig::MAX_BEAM_DEPTH);
+            std::min(new_max_depth, TreeSearchBatchConfig::MAX_BEAM_DEPTH);
         for (int j = 0;
-             j < BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+             j < TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
              j++) {
           new_bc.beamRequestsInfo[i].parent_id[j] = 0;
           new_bc.beamRequestsInfo[i].probs[j] = 1;
@@ -844,7 +844,7 @@ BeamSearchBatchConfig
               ? spec_infer_tree_width[ssm_decoding_steps]
               : 1;
       new_bc.beamRequestsInfo[i].max_depth = 0;
-      for (int j = 0; j < BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+      for (int j = 0; j < TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
            j++) {
         new_bc.beamRequestsInfo[i].parent_id[j] = 0;
         new_bc.beamRequestsInfo[i].probs[j] = 1;
@@ -869,7 +869,7 @@ BeamSearchBatchConfig
   }
 
   // Step 2: Initialize new request
-  for (int i = 0; i < BeamSearchBatchConfig::max_requests_per_batch(); i++) {
+  for (int i = 0; i < TreeSearchBatchConfig::max_requests_per_batch(); i++) {
     if (new_bc.request_completed[i]) {
       if (!pending_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
@@ -902,11 +902,11 @@ BeamSearchBatchConfig
                 : 1;
         new_bc.beamRequestsInfo[i].current_depth = 1;
         new_bc.beamRequestsInfo[i].max_depth =
-            std::min(BeamSearchBatchConfig::MAX_BEAM_DEPTH,
+            std::min(TreeSearchBatchConfig::MAX_BEAM_DEPTH,
                      get_max_tokens_per_batch() -
                          new_bc.requestsInfo[i].num_tokens_in_batch - 1);
         for (int j = 0;
-             j < BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+             j < TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
              j++) {
           new_bc.beamRequestsInfo[i].parent_id[j] = 0;
           new_bc.beamRequestsInfo[i].probs[j] = 1;
@@ -996,30 +996,29 @@ BeamSearchBatchConfigFuture RequestManager::prepare_next_batch_beam(
   return runtime->execute_task(ctx, launcher);
 }
 
-BeamSearchBatchConfig RequestManager::prepare_next_batch_beam_task(
+TreeSearchBatchConfig RequestManager::prepare_next_batch_beam_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   RequestManager *rm = *((RequestManager **)task->args);
-  BeamSearchBatchConfig const &bc =
-      Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
+  TreeSearchBatchConfig const &bc =
+      Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
   BeamInferenceResult const &result =
       Future(task->futures[1]).get_result<BeamInferenceResult>();
   return rm->prepare_next_batch_beam(bc, result);
 }
 
 // update beam search metadata
-BeamSearchBatchConfig
-    RequestManager::prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
+TreeSearchBatchConfig
+    RequestManager::prepare_next_batch_beam(TreeSearchBatchConfig const &old_bc,
                                             BeamInferenceResult const &result) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout << "\n############### prepare_next_batch_beam ###############\n";
   }
   if (verbose) {
-    std::cout << "print all results"
-              << "\n";
+    std::cout << "print all results" << "\n";
     for (int i = 0; i < 40; i++) {
       std::cout << result.token_ids[i] << ", ";
     }
@@ -1032,7 +1031,7 @@ BeamSearchBatchConfig
   store_beam_metadata(old_bc, result);
 
   // Step 2: preparing the next batch for existing requests
-  BeamSearchBatchConfig new_bc;
+  TreeSearchBatchConfig new_bc;
   new_bc.model_id = old_bc.model_id;
   // std::cout << "old_bc.model_id: " << old_bc.model_id << "\n";
   int num_generation_tokens = 0;
@@ -1087,7 +1086,7 @@ BeamSearchBatchConfig
           old_bc.beamRequestsInfo[i].beam_size;
 
       assert(new_bc.beamRequestsInfo[i].sub_request_num <=
-                 BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES &&
+                 TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES &&
              "exceed maximum nodes per layer");
 
       if (request.status == Request::RUNNING) {
@@ -1213,7 +1212,7 @@ BeamSearchBatchConfig
           old_bc.beamRequestsInfo[i].sub_request_num;
 
       assert(new_bc.beamRequestsInfo[i].sub_request_num <=
-                 BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES &&
+                 TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES &&
              "exceed maximum nodes per layer");
 
       // update the parentid, accumalated_probs, depth, and token_ids
@@ -1318,16 +1317,16 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify_task(
     Context ctx,
     Runtime *runtime) {
   RequestManager *rm = *((RequestManager **)task->args);
-  std::vector<BeamSearchBatchConfig> old_batches;
+  std::vector<TreeSearchBatchConfig> old_batches;
   for (auto const &bcf : task->futures) {
-    old_batches.push_back(Future(bcf).get_result<BeamSearchBatchConfig>());
+    old_batches.push_back(Future(bcf).get_result<TreeSearchBatchConfig>());
   }
   return rm->prepare_next_batch_verify(old_batches);
 }
 
 TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
-    std::vector<BeamSearchBatchConfig> const &old_batches) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+    std::vector<TreeSearchBatchConfig> const &old_batches) {
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   if (verbose) {
     std::cout
@@ -1345,7 +1344,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
     if (old_batches.at(0).request_completed[i]) {
       continue;
     } else if (old_batches.at(0).request_running[i]) {
-      max_prompt_load_size -= (BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1);
+      max_prompt_load_size -= (TreeSearchBatchConfig::MAX_BEAM_DEPTH + 1);
     } else {
       max_prompt_load_size -= 1;
     }
@@ -1618,7 +1617,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
   return new_bc;
 }
 
-void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
+void RequestManager::store_beam_metadata(TreeSearchBatchConfig const &old_bc,
                                          BeamInferenceResult const &result) {
   // step1 store the outputs
   if (old_bc.num_tokens <= 0) {
@@ -1677,8 +1676,7 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
       if (depth == 1) {
         // store the last input into the tree;
         if (verbose) {
-          std::cout << "try to store the input"
-                    << "\n";
+          std::cout << "try to store the input" << "\n";
         }
 
         request.beam_trees.at(old_bc.model_id).treeLayers[0].tokens[0] =
@@ -1729,8 +1727,8 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
 }
 
 // for updating the beam search metadata in requests in incremental phase
-void RequestManager::update_beam_metadata(BeamSearchBatchConfig &new_bc,
-                                          BeamSearchBatchConfig const &old_bc,
+void RequestManager::update_beam_metadata(TreeSearchBatchConfig &new_bc,
+                                          TreeSearchBatchConfig const &old_bc,
                                           BeamTree &tree,
                                           int request_index) {
 
@@ -1926,7 +1924,7 @@ bool PreOrder(
     int current_depth,
     int beam_width,
     int id,
-    std::vector<std::pair<BeamSearchBatchConfig::TokenId, int>> &serializedTree,
+    std::vector<std::pair<TreeSearchBatchConfig::TokenId, int>> &serializedTree,
     bool verbose) {
   // terminate
   if (current_depth >= max_depth) {
@@ -1935,8 +1933,7 @@ bool PreOrder(
     if (verbose) {
       std::cout << "last tokens: " << tree.treeLayers[current_depth].tokens[id]
                 << "\n";
-      std::cout << "return true"
-                << "\n";
+      std::cout << "return true" << "\n";
     }
     return true;
   }
@@ -1991,7 +1988,7 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
             &inputSerializedTree,
         std::vector<std::pair<BatchConfig::TokenId, int>> const
             &outputSerializedTree) {
-  std::vector<std::pair<BeamSearchBatchConfig::TokenId, int>> verifiedTree;
+  std::vector<std::pair<TreeSearchBatchConfig::TokenId, int>> verifiedTree;
   // verifiedTree.push_back(inputSerializedTree.at(0));
   std::vector<std::pair<int, int>> new_committed_tokens =
       std::vector<std::pair<int, int>>();
@@ -2145,7 +2142,7 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 }
 
 std::vector<std::pair<BatchConfig::TokenId, int>>
-    RequestManager::traverse_beam_tree(BeamSearchBatchConfig const &old_bc,
+    RequestManager::traverse_beam_tree(TreeSearchBatchConfig const &old_bc,
                                        int request_index,
                                        int first_token_depth_in_request) {
   if (verbose) {
@@ -2477,7 +2474,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
     runtime->begin_trace(ctx, 12345 /*trace_id*/);
 
     for (size_t i = 0; i < get_num_ssms(); i++) {
-      for (int depth = 0; depth < BeamSearchBatchConfig::MAX_BEAM_DEPTH;
+      for (int depth = 0; depth < TreeSearchBatchConfig::MAX_BEAM_DEPTH;
            depth++) {
         beam_bcf = beam_bcf_vec[i];
 
@@ -2570,7 +2567,7 @@ void RequestManager::serve_spec_infer_v2(FFModel *llm) {
     runtime->begin_trace(ctx, 12345 /*trace_id*/);
 
     for (size_t i = 0; i < get_num_ssms(); i++) {
-      for (int depth = 0; depth < BeamSearchBatchConfig::MAX_BEAM_DEPTH;
+      for (int depth = 0; depth < TreeSearchBatchConfig::MAX_BEAM_DEPTH;
            depth++) {
         beam_bcf = beam_bcf_vec[i];
 
@@ -2598,7 +2595,7 @@ void RequestManager::serve_spec_infer_v2(FFModel *llm) {
 
 void RequestManager::trigger_request_completion_future(
     RequestGuid const &guid) {
-  const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
+  std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
   assert(request_to_promise.find(guid) != request_to_promise.end());
   // Set the completion promise in case other threads are waiting
   request_to_promise[guid]->set_value();
