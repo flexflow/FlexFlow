@@ -232,38 +232,52 @@ public:
   /* Old APIs for reference */
 
   /* New APIs */
+  // Given the last speculation result, prepare the next speculation batch.
   TreeSearchBatchConfig
       prepare_next_batch_spec(TreeSearchBatchConfig const &old_bc,
                               BeamInferenceResult const &result);
+  // A wrapper function.
   TreeSearchBatchConfigFuture
       prepare_next_batch_spec(TreeSearchBatchConfigFuture const &old_bc,
                               BeamInferenceResultFuture const &result,
                               Legion::Context ctx,
                               Legion::Runtime *runtime);
+  // Given the verification result, prepare the first speculation batch.
   TreeSearchBatchConfig
       prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
                               InferenceResult const &result,
                               int model_id);
+  // A wrapper function.
   TreeSearchBatchConfigFuture
       prepare_next_batch_init(TreeVerifyBatchConfigFuture const &old_bc,
                               InferenceResultFuture const &result,
                               int model_id,
                               Legion::Context ctx,
                               Legion::Runtime *runtime);
+  // Given the speculation result, prepare the verification batch.
   TreeSearchBatchConfig prepare_next_batch_verify(
       std::vector<TreeSearchBatchConfig> const &old_batches);
+  // A wrapper function.
   TreeVerifyBatchConfigFuture prepare_next_batch_verify(
       std::vector<TreeSearchBatchConfigFuture> const &old_batches,
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
+  // This function takes the small model inference results and the last
+  // speculation batch config and use the information to update the token tree
+  // stored in RequestManager::all_requests.
   void store_spec_metadata(TreeSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
+  // Put the last layer of the token tree stored in RequestManager::all_requests
+  // into new_bc::beamRequestsInfo .
   void update_spec_metadata(TreeSearchBatchConfig &new_bc,
                             TreeSearchBatchConfig const &old_bc,
                             Token &tree,
                             int request_index);
 
+  // This function takes the tree stored in the token trees in
+  // RequestManager::all_requests, and convert them into serialized version.
+  // Called by prepare_next_batch_verify().
   std::vector<std::pair<BatchConfig::TokenId, int>>
       traverse_spec_tree(TreeSearchBatchConfig const &old_bc,
                          int request_index,
@@ -310,19 +324,21 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  /* APIs to modify */
+  /* Old APIs for reference */
+  // A wrapper function.
   static TreeSearchBatchConfig prepare_next_batch_beam_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
+  // A wrapper function.
   static TreeSearchBatchConfig prepare_next_batch_init_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
-  /* APIs to modify */
+  /* Old APIs for reference */
 
   /* New APIs */
   static TreeSearchBatchConfig prepare_next_batch_spec_task(
