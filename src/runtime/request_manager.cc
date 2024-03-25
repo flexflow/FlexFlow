@@ -557,7 +557,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
 /* ----- Speculative Inference Specific functions ----- */
 
 /***** Request Init Phase *****/
-BeamSearchBatchConfigFuture RequestManager::prepare_next_batch_init(
+TreeSearchBatchConfigFuture RequestManager::prepare_next_batch_init(
     TreeVerifyBatchConfigFuture const &old_bc,
     InferenceResultFuture const &result,
     int model_id,
@@ -995,9 +995,9 @@ TreeSearchBatchConfig
 }
 
 /***** Beam Search Phase *****/
-BeamSearchBatchConfigFuture RequestManager::prepare_next_batch_beam(
-    BeamSearchBatchConfigFuture const &old_bc,
-    BeamInferenceResultFuture const &result,
+TreeSearchBatchConfigFuture RequestManager::prepare_next_batch_beam(
+    TreeSearchBatchConfigFuture const &old_bc,
+    SsmInferenceResultFuture const &result,
     Context ctx,
     Runtime *runtime) {
 
@@ -1311,7 +1311,7 @@ TreeSearchBatchConfig
 /***** Verify Phase *****/
 
 TreeVerifyBatchConfigFuture RequestManager::prepare_next_batch_verify(
-    std::vector<BeamSearchBatchConfigFuture> const &old_batches,
+    std::vector<TreeSearchBatchConfigFuture> const &old_batches,
     Context ctx,
     Runtime *runtime) {
 
@@ -2480,9 +2480,9 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
       }
     }
     auto const &next_batch = batch_pipeline.back();
-    BeamSearchBatchConfigFuture beam_bcf = prepare_next_batch_init(
+    TreeSearchBatchConfigFuture beam_bcf = prepare_next_batch_init(
         next_batch.first, next_batch.second, 0, ctx, runtime);
-    std::vector<BeamSearchBatchConfigFuture> beam_bcf_vec(get_num_ssms());
+    std::vector<TreeSearchBatchConfigFuture> beam_bcf_vec(get_num_ssms());
     for (size_t ssm_id = 0; ssm_id < get_num_ssms(); ssm_id++) {
       beam_bcf_vec[ssm_id] = beam_bcf;
     }
@@ -2495,7 +2495,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
 
         FutureMap fm = im->inference(get_ssm_model(i), 0, beam_bcf_vec[i]);
         assert(fm.get_future_map_domain().get_volume() == 1);
-        BeamInferenceResultFuture beam_irf = fm.get_future(0);
+        SsmInferenceResultFuture beam_irf = fm.get_future(0);
         beam_bcf_vec[i] =
             prepare_next_batch_beam(beam_bcf_vec[i], beam_irf, ctx, runtime);
       }
@@ -2573,9 +2573,9 @@ void RequestManager::serve_spec_infer_v2(FFModel *llm) {
       }
     }
     auto const &next_batch = batch_pipeline.back();
-    BeamSearchBatchConfigFuture beam_bcf = prepare_next_batch_init(
+    TreeSearchBatchConfigFuture beam_bcf = prepare_next_batch_init(
         next_batch.first, next_batch.second, 0, ctx, runtime);
-    std::vector<BeamSearchBatchConfigFuture> beam_bcf_vec(get_num_ssms());
+    std::vector<TreeSearchBatchConfigFuture> beam_bcf_vec(get_num_ssms());
     for (size_t ssm_id = 0; ssm_id < get_num_ssms(); ssm_id++) {
       beam_bcf_vec[ssm_id] = beam_bcf;
     }
@@ -2588,7 +2588,7 @@ void RequestManager::serve_spec_infer_v2(FFModel *llm) {
 
         FutureMap fm = im->inference(get_ssm_model(i), 0, beam_bcf_vec[i]);
         assert(fm.get_future_map_domain().get_volume() == 1);
-        BeamInferenceResultFuture beam_irf = fm.get_future(0);
+        SsmInferenceResultFuture beam_irf = fm.get_future(0);
         beam_bcf_vec[i] =
             prepare_next_batch_beam(beam_bcf_vec[i], beam_irf, ctx, runtime);
       }

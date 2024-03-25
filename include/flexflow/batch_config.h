@@ -32,10 +32,9 @@ class SsmInferenceResult;
 
 using BatchConfigFuture = Legion::Future;
 using InferenceResultFuture = Legion::Future;
-using BeamSearchBatchConfigFuture = Legion::Future;
-using TreeVerifyBatchConfigFuture = Legion::Future;
-using BeamInferenceResultFuture = Legion::Future;
 using TreeSearchBatchConfigFuture = Legion::Future;
+using TreeVerifyBatchConfigFuture = Legion::Future;
+using SsmInferenceResultFuture = Legion::Future;
 
 class BatchConfig {
 public:

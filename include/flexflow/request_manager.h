@@ -195,16 +195,16 @@ public:
   TreeSearchBatchConfig
       prepare_next_batch_beam(TreeSearchBatchConfig const &old_bc,
                               SsmInferenceResult const &result);
-  BeamSearchBatchConfigFuture
-      prepare_next_batch_beam(BeamSearchBatchConfigFuture const &old_bc,
-                              BeamInferenceResultFuture const &result,
+  TreeSearchBatchConfigFuture
+      prepare_next_batch_beam(TreeSearchBatchConfigFuture const &old_bc,
+                              SsmInferenceResultFuture const &result,
                               Legion::Context ctx,
                               Legion::Runtime *runtime);
   TreeSearchBatchConfig
       prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
                               InferenceResult const &result,
                               int model_id);
-  BeamSearchBatchConfigFuture
+  TreeSearchBatchConfigFuture
       prepare_next_batch_init(TreeVerifyBatchConfigFuture const &old_bc,
                               InferenceResultFuture const &result,
                               int model_id,
@@ -214,7 +214,7 @@ public:
   TreeVerifyBatchConfig prepare_next_batch_verify(
       std::vector<TreeSearchBatchConfig> const &old_batches);
   TreeVerifyBatchConfigFuture prepare_next_batch_verify(
-      std::vector<BeamSearchBatchConfigFuture> const &old_batches,
+      std::vector<TreeSearchBatchConfigFuture> const &old_batches,
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
@@ -239,7 +239,7 @@ public:
   // A wrapper function.
   TreeSearchBatchConfigFuture
       prepare_next_batch_spec(TreeSearchBatchConfigFuture const &old_bc,
-                              BeamInferenceResultFuture const &result,
+                              SsmInferenceResultFuture const &result,
                               Legion::Context ctx,
                               Legion::Runtime *runtime);
   // Given the verification result, prepare the first speculation batch.
