@@ -191,7 +191,7 @@ public:
                                        InferenceResultFuture const &result,
                                        Legion::Context ctx,
                                        Legion::Runtime *runtime);
-  /* The APIs that need to be changed. */
+  /* Old APIs for reference */
   TreeSearchBatchConfig
       prepare_next_batch_beam(TreeSearchBatchConfig const &old_bc,
                               BeamInferenceResult const &result);
@@ -229,7 +229,7 @@ public:
       traverse_beam_tree(TreeSearchBatchConfig const &old_bc,
                          int request_index,
                          int first_token_depth_in_request);
-  /* The APIs that need to be changed. */
+  /* Old APIs for reference */
 
   /* New APIs */
   TreeSearchBatchConfig

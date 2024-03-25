@@ -145,18 +145,19 @@ public:
                                   TreeSearchBatchConfig const &bc);
   void print() const;
   void save_to_file(std::string const &filename) const;
-  int current_depth_all_requests() const;
+  int current_depth() const;
   int get_speculative_request_num() const;
 
   inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3;
+  inline static int const MAX_TREE_DEPTH = 16;
 
   // how many requests is in speculative phase
   int speculative_request_num = 0;
+  int current_depth = 0;
   int model_id;
 
   struct TreeSearchPerRequestInfo {
-    int current_depth = -1;
-    int num_tokens_in_layer;
+    int num_tokens_in_layer = 0;
   };
 
   TreeSearchPerRequestInfo tree_requests_info[MAX_NUM_REQUESTS];
