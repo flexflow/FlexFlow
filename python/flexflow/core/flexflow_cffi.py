@@ -1781,10 +1781,10 @@ class Request:
         self,
         req_type: RequestType,
         prompt: str = None,
-        max_sequence_length: int = None,
+        max_sequence_length: int = 128,
         peft_model_id: PEFTModelID = None,
         dataset_filepath: str = None,
-        max_training_steps: int = None,
+        max_training_steps: int = 1,
     ):
         self.req_type = req_type
         self.prompt = prompt
@@ -4013,6 +4013,11 @@ class FFModel(object):
         self.add_layer(OpType.ARGMAX, name)
         return Tensor(handle, owner_op_type=OpType.ARGMAX)
 
+    def add_lora_layer(self, peft_config):
+        handle = ffc().flexflow_model_add_lora_layer(self.handle, peft_config.handle)
+        return handle
+        # self.add_layer(OpType.LORA, name)
+
     def reset_metrics(self):
         """Reset performance metrics.
 
@@ -4442,7 +4447,9 @@ class FFModel(object):
             request.max_sequence_length for request in requests_list
         ]
         peft_model_ids = [request.peft_model_id for request in requests_list]
-        dataset_filepaths = [request.dataset_filepath for request in requests_list]
+        dataset_filepaths = [
+            get_c_name(request.dataset_filepath) for request in requests_list
+        ]
         training_steps = [request.max_training_steps for request in requests_list]
         ffc().flexflow_model_generate(
             self.handle,

@@ -133,6 +133,18 @@ class LLM:
         }
         self.pefts[peft_model_id] = peft_dict
 
+    def get_ff_peft_id(self, peft_model_id: str) -> PEFTModelID:
+        if peft_model_id not in self.pefts:
+            raise ValueError(
+                f"PEFT {peft_model_id} not registered with LLM {self.model_name}"
+            )
+        peft_dict = self.pefts[peft_model_id]
+        if "ff_peft_model_id" not in peft_dict:
+            raise RuntimeError(
+                f"Attempting to run PEFT {peft_model_id} before compiling LLM {self.model_name}"
+            )
+        return peft_dict["ff_peft_model_id"]
+
     def download_hf_config(self):
         """Save the HuggingFace model configs to a json file. Useful mainly to run the C++ inference code."""
         config_dir = os.path.join(
@@ -224,10 +236,9 @@ class LLM:
             )
 
         def download_llm_weights():
-            weights_path = get_weights_path(self.model_name)
             refresh_cache_if_needed(self.model_name)
             ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
-                self.model_name, weights_path
+                self.model_name, self.weights_path
             )
             if ff_revision != latest_revision:
                 print(
@@ -235,7 +246,7 @@ class LLM:
                 )
                 hf_model = get_hf_llm(self.model_name)
                 # Convert the model to FlexFlow format
-                self.model_class.convert_hf_model(hf_model, weights_path)
+                self.model_class.convert_hf_model(hf_model, self.weights_path)
                 # Save new revision hash to file
                 with open(ff_revision_file, "w+") as f:
                     f.write(latest_revision)
@@ -257,7 +268,7 @@ class LLM:
         def download_peft_weights():
             for peft_model_id, peft_dict in self.pefts.items():
                 peft_config = peft_dict["peft_config"]
-                peft_type = peft_config["peft_type"]
+                peft_type = peft_dict["peft_type"]
 
                 weights_path = get_weights_path(peft_model_id)
                 refresh_cache_if_needed(peft_model_id)
@@ -285,6 +296,7 @@ class LLM:
                     gc.collect()
                     torch.cuda.empty_cache()
 
+        self.weights_path = get_weights_path(self.model_name)
         download_llm_weights()
         download_peft_weights()
 
@@ -295,24 +307,24 @@ class LLM:
         print("Loading tokenizer...")
 
         # Use local cache, or download new version
-        tokenizer_path = os.path.join(
+        self.tokenizer_path = os.path.join(
             os.path.expanduser(self.cache_path),
             "tokenizers",
             self.model_name.lower(),
         )
         if self.refresh_cache:
             print(
-                f"Refreshing cached tokenizer for model {self.model_name} at path {tokenizer_path} ..."
+                f"Refreshing cached tokenizer for model {self.model_name} at path {self.tokenizer_path} ..."
             )
-            if os.path.exists(tokenizer_path):
-                shutil.rmtree(tokenizer_path)
-        if not os.path.exists(tokenizer_path):
-            print(f"Creating directory {tokenizer_path} (if it doesn't exist)...")
-            os.makedirs(tokenizer_path, exist_ok=True)
+            if os.path.exists(self.tokenizer_path):
+                shutil.rmtree(self.tokenizer_path)
+        if not os.path.exists(self.tokenizer_path):
+            print(f"Creating directory {self.tokenizer_path} (if it doesn't exist)...")
+            os.makedirs(self.tokenizer_path, exist_ok=True)
 
         # Get local revision SHA, check if it matches latest one on huggingface
         ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
-            self.model_name, tokenizer_path
+            self.model_name, self.tokenizer_path
         )
 
         if ff_revision != latest_revision:
@@ -327,7 +339,7 @@ class LLM:
             else:
                 hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             # Save tokenizer
-            hf_tokenizer.save_pretrained(tokenizer_path)
+            hf_tokenizer.save_pretrained(self.tokenizer_path)
             print("Done updating HF tokenizer.")
             # Save new revision hash to file
             with open(ff_revision_file, "w+") as f:
@@ -490,6 +502,7 @@ class LLM:
                     requests_or_prompts, max_length
                 )
             else:
+                print(requests_or_prompts)
                 return self.model.ffmodel.generate(requests_or_prompts)
         else:
             assert False, "Please pass a non-empty string or list of strings"

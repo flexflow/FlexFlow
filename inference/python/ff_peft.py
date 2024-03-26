@@ -54,7 +54,7 @@ def get_configs():
             "offload_reserve_space_size": 8 * 1024,  # 8GB
             "use_4bit_quantization": False,
             "use_8bit_quantization": False,
-            "enable_peft": False,
+            "enable_peft": True,
             "peft_activation_reserve_space_size": 1024,  # 1GB
             "peft_weight_reserve_space_size": 1024,  # 1GB
             "profiling": False,
@@ -121,17 +121,19 @@ def main():
     if len(configs.prompt) > 0:
         prompts = [s for s in json.load(open(configs.prompt))]
         inference_requests = [
-            Request(RequestType.REQ_INFERENCE, prompt=prompt, max_sequence_length=128)
+            ff.Request(
+                ff.RequestType.REQ_INFERENCE, prompt=prompt, max_sequence_length=128
+            )
             for prompt in prompts
         ]
         requests += inference_requests
     # Finetuning
     if len(configs.finetuning_dataset) > 0:
         for peft_model_id in configs.peft_model_ids:
-            finetuning_request = Request(
-                RequestType.REQ_FINETUNING,
+            finetuning_request = ff.Request(
+                ff.RequestType.REQ_FINETUNING,
                 max_sequence_length=128,
-                peft_model_id=peft_model_id,
+                peft_model_id=llm.get_ff_peft_id(peft_model_id),
                 dataset_filepath=configs.finetuning_dataset,
             )
             requests.append(finetuning_request)
