@@ -7,9 +7,6 @@
 
 namespace FlexFlow {
 
-using ElementUnaryUnifiedAttrs =
-    std::variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
-
 template <>
 void register_task<ELEMENTUNARY_INIT_TASK_ID>();
 template <>

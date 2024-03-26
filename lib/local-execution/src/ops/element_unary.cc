@@ -124,7 +124,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   MachineView const &mv) {
   auto env = sim.new_environment();
 
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shape);
+  ParallelTensorShape output_shape = get_output_shape(attrs, input_shape.shape);
 
   SimTaskBinding init_binding;
   init_binding.bind_arg(HANDLE, ff_handle());

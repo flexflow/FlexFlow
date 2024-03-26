@@ -82,6 +82,10 @@ struct is_trivially_serializable<
     typename std::enable_if<std::is_floating_point<T>::value>::type>
     : std::true_type {};
 
+template <typename T, std::size_t MAXSIZE>
+struct is_trivially_serializable<stack_vector<T, MAXSIZE>> 
+    : is_trivially_serializable<T> {};
+
 template <typename Idx, typename T>
 struct is_trivially_serializable<DimOrdered<Idx, T>>
     : is_trivially_serializable<T> {};

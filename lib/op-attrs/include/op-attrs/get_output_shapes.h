@@ -128,9 +128,7 @@ ParallelTensorShape get_output_shape(DropoutAttrs const &,
 ParallelTensorShape get_output_shape(ElementBinaryAttrs const &,
                                      ParallelTensorShape const &,
                                      ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(ElementUnaryAttrs const &,
-                                     ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(ElementScalarUnaryAttrs const &,
+ParallelTensorShape get_output_shape(ElementUnaryUnifiedAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(EmbeddingAttrs const &,
                                      ParallelTensorShape const &);

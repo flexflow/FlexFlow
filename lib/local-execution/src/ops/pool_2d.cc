@@ -208,7 +208,7 @@ void register_task<POOL2D_FWD_TASK_ID>() {
   fwd.add_output_slot(OUTPUT);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 
-  fwd.add_arg_slot<Pool2DPerDeviceState>(PER_DEVICE_STATE);
+  fwd.add_unchecked_arg_slot<Pool2DPerDeviceState>(PER_DEVICE_STATE);
 
   register_task(POOL2D_FWD_TASK_ID, "Pool2D::forward", fwd, forward_task_impl);
 }
