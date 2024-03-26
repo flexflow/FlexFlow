@@ -123,13 +123,9 @@ class LLM:
             raise RuntimeError(
                 f"Attempting to add PEFT with base model name {peft_config.base_model_name_or_path} to LLM {self.model_name}"
             )
-        ff_peft_config = LoraLinearConfig(
-            os.path.expanduser(self.cache_path), peft_model_id
-        )
         peft_dict = {
             "peft_config": peft_config,
             "peft_type": peft_type,
-            "ff_peft_config": ff_peft_config,
         }
         self.pefts[peft_model_id] = peft_dict
 
@@ -158,12 +154,14 @@ class LLM:
 
         # Save PEFT configs if the LLM has any registered PEFTs
         for peft_model_id, peft_dict in self.pefts.items():
-            peft_config = peft_dict["hf_config"]
-            peft_config_path = os.path.join(
+            peft_config = peft_dict["peft_config"]
+            peft_config_dir = os.path.join(
                 os.path.expanduser(self.cache_path),
                 "configs",
-                self.peft_model_id.lower(),
+                peft_model_id.lower(),
             )
+            os.makedirs(peft_config_dir, exist_ok=True)
+            peft_config_path = os.path.join(peft_config_dir, "config.json")
             print(f"Saving {peft_model_id} configs to file {peft_config_path}...")
             with open(peft_config_path, "w") as json_file:
 
@@ -423,8 +421,11 @@ class LLM:
         )
 
         # Add PEFT layer if registered
-        for _, peft_dict in self.pefts.items():
-            ff_peft_config = peft_dict["ff_peft_config"]
+        for peft_model_id, peft_dict in self.pefts.items():
+            # ff_peft_config = peft_dict["ff_peft_config"]
+            ff_peft_config = LoraLinearConfig(
+                os.path.expanduser(self.cache_path), peft_model_id
+            )
             ff_peft_model_id = self.model.ffmodel.add_lora_layer(ff_peft_config)
             peft_dict["ff_peft_model_id"] = ff_peft_model_id
 
