@@ -3,6 +3,7 @@
 
 #include "device_type.h"
 #include "utils/strong_typedef.h"
+#include <variant>
 
 namespace FlexFlow {
 

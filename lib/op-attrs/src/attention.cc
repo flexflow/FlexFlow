@@ -91,7 +91,14 @@ TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
                        static_cast<ParallelTensorShape>(value_shape));
   return get_tensor_shape_unsafe(parallel_shape);
 }
+TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
+                             MultiHeadAttentionInputs<TensorShape> const &) {
+  NOT_IMPLEMENTED();
+}
 
+int get_oSize(ParallelTensorShape const &) {
+  NOT_IMPLEMENTED();
+}
 } // namespace FlexFlow
 
 // Tensor FFModel::multihead_attention(const Tensor query,

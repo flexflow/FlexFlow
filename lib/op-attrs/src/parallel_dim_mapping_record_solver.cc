@@ -351,4 +351,12 @@ void construct_output_parallel_dims(
 /*   return solution; */
 /* } */
 
+ParallelDimMappingSolution solve_parallel_dim_mappings(
+    std::vector<ParallelDimMappingRecord> const &mappings,
+    std::vector<ParallelTensorShape> const &input,
+    int numWeights,
+    int numOutputs) {
+  NOT_IMPLEMENTED();
+}
+
 } // namespace FlexFlow

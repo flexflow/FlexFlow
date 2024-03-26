@@ -23,6 +23,7 @@ std::vector<Node> add_nodes(Graph &, int);
 std::vector<Node> add_nodes(UndirectedGraph &, int);
 std::vector<Node> add_nodes(DiGraph &, int);
 std::vector<Node> add_nodes(MultiDiGraph &, int);
+std::vector<Node> add_nodes(OpenMultiDiGraph &g, int num_nodes);
 
 std::vector<NodePort> add_node_ports(MultiDiGraph &, int);
 
@@ -105,6 +106,11 @@ std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &,
 
 std::unordered_set<MultiDiOutput> get_outputs(MultiDiGraphView const &);
 std::unordered_set<MultiDiInput> get_inputs(MultiDiGraphView const &);
+
+std::unordered_set<OutputMultiDiEdge>
+    get_open_outputs(OpenMultiDiGraphView const &);
+std::unordered_set<InputMultiDiEdge>
+    get_open_inputs(OpenMultiDiGraphView const &);
 
 std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
                                                    Node const &);

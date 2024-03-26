@@ -2,9 +2,9 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_DECL_H
 
 #include "utils/bidict.h"
-#include "utils/optional.decl"
 #include "utils/required_core.h"
 #include "utils/type_traits_core.h"
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -108,7 +108,7 @@ template <typename C>
 std::vector<typename C::mapped_type> values(C const &c);
 
 template <typename C>
-std::unordered_set<std::pair<typename C::key_type, typename C::value_type>>
+std::unordered_set<std::pair<typename C::key_type, typename C::mapped_type>>
     items(C const &c);
 
 template <typename C, typename T = typename C::value_type>
@@ -292,6 +292,9 @@ T reversed(T const &t);
 
 template <typename T>
 std::vector<T> value_all(std::vector<std::optional<T>> const &v);
+
+template <typename T>
+std::unordered_set<T> value_all(std::unordered_set<std::optional<T>> const &v);
 
 template <typename T>
 std::vector<T> subvec(std::vector<T> const &v,

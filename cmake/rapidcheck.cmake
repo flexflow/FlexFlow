@@ -1,1 +1,5 @@
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidcheck)
+if (FF_USE_EXTERNAL_RAPIDCHECK)
+  find_package(rapidcheck REQUIRED)
+else()
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidcheck)
+endif()

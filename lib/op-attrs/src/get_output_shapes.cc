@@ -5,6 +5,12 @@ namespace FlexFlow {
 ParallelTensorShape as_parallel(TensorShape const &);
 std::vector<ParallelTensorShape> as_parallel(std::vector<TensorShape> const &);
 
+std::vector<ParallelTensorShape> get_output_shapes(
+    PCGOperatorAttrs const &op_params,
+    std::vector<ParallelTensorShape> const &input_tensor_shapes) {
+  NOT_IMPLEMENTED();
+}
+
 // TensorShape get_output_shape(AggregateAttrs const &attrs,
 //                              TensorShape const &gate_preds,
 //                              TensorShape const &gate_assign,

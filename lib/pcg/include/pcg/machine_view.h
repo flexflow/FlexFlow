@@ -12,10 +12,7 @@
 
 namespace FlexFlow {
 
-struct MachineView : public use_visitable_cmp<MachineView> {
-  MachineView() = delete;
-  MachineView(device_id_t const &, StridedRectangle const &);
-
+struct MachineView {
   std::vector<int> device_ids() const;
 
   device_id_t at(FFOrdered<num_points_t> const &coord) const;
@@ -25,6 +22,8 @@ public:
   device_id_t start;
   StridedRectangle rect;
 };
+
+FF_VISITABLE_STRUCT(MachineView, start, rect);
 
 std::size_t num_dims(MachineView const &);
 std::size_t num_devices(MachineView const &);
@@ -42,8 +41,5 @@ MachineView make_1d_machine_view(device_id_t start,
 MachineView make_1d_machine_view(device_id_t start, size_t interval_size);
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::MachineView, start, rect);
-MAKE_VISIT_HASHABLE(::FlexFlow::MachineView);
 
 #endif

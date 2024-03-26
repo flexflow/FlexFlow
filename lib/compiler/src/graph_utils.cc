@@ -4,7 +4,16 @@ namespace FlexFlow {
 
 SerialParallelDecomposition
     get_serial_parallel_decomposition(ParallelComputationGraph const &pcg) {
-  return get_serial_parallel_decomposition(as_digraph(pcg));
+  return get_serial_parallel_decomposition(pcg.value());
+}
+
+ParallelComputationGraph cg_to_pcg(ComputationGraph const &g) {
+  NOT_IMPLEMENTED();
+}
+
+SubParallelComputationGraphView
+    pcg_to_subpcg(ParallelComputationGraph const &pcg) {
+  return view_output_labelled_as_output_labelled_open(pcg.value());
 }
 
 std::vector<MultiDiEdge>
@@ -45,7 +54,7 @@ std::unordered_map<MultiDiEdge, ParallelTensorShape>
     }
   }
 
-  assert(result.size() == get_edges(pcg).size());
+  assert(result.size() == get_edges(pcg.value()).size());
 
   return result;
 }
@@ -116,14 +125,14 @@ std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
 
 std::unordered_set<Node> get_nodes(Serial const &serial) {
   return set_union(
-      transform(serial.children, [](variant<Parallel, Node> const child) {
+      transform(serial.children, [](std::variant<Parallel, Node> const child) {
         return visit(GetNodes{}, child);
       }));
 }
 
 std::unordered_set<Node> get_nodes(Parallel const &parallel) {
   return set_union(
-      transform(parallel.children, [](variant<Serial, Node> const child) {
+      transform(parallel.children, [](std::variant<Serial, Node> const child) {
         return visit(GetNodes{}, child);
       }));
 }

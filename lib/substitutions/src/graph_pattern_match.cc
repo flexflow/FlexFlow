@@ -56,7 +56,7 @@ MatchSplit apply_split(OpenMultiDiGraphView const &pattern,
     } else {
       assert(is_standard_edge(pattern_edge));
       assert(is_standard_edge(graph_edge));
-      auto standard_edge = mpark::get<MultiDiEdge>(pattern_edge);
+      auto standard_edge = std::get<MultiDiEdge>(pattern_edge);
       auto divided = edge_splits.at_l(standard_edge);
       auto divided_graph_edge = split_edge(get<MultiDiEdge>(graph_edge));
       handle_edge(divided.first, divided_graph_edge.first);
@@ -98,7 +98,7 @@ bool pattern_matches(OpenMultiDiGraphView const &pattern,
         }
         UpwardOpenMultiDiEdge matched_edge =
             narrow<UpwardOpenMultiDiEdge>(graph_matched_edge).value();
-        InputMultiDiEdge input_edge = mpark::get<InputMultiDiEdge>(e);
+        InputMultiDiEdge input_edge = std::get<InputMultiDiEdge>(e);
         if (match.node_assignment.at_l(input_edge.dst) !=
             get_dst_node(matched_edge)) {
           return false;
@@ -109,7 +109,7 @@ bool pattern_matches(OpenMultiDiGraphView const &pattern,
         }
         DownwardOpenMultiDiEdge matched_edge =
             narrow<DownwardOpenMultiDiEdge>(graph_matched_edge).value();
-        OutputMultiDiEdge output_edge = mpark::get<OutputMultiDiEdge>(e);
+        OutputMultiDiEdge output_edge = std::get<OutputMultiDiEdge>(e);
         if (match.node_assignment.at_l(output_edge.src) !=
             get_src_node(matched_edge)) {
           return false;
@@ -148,7 +148,7 @@ bool src_compare(T const &lhs, T const &rhs) {
   return get_src_idx(lhs) < get_src_idx(rhs);
 }
 
-optional<MultiDiGraphPatternMatch>
+std::optional<MultiDiGraphPatternMatch>
     get_candidate_singleton_match(OpenMultiDiGraphView const &pattern,
                                   OpenMultiDiGraphView const &graph,
                                   Node const &graph_node) {
@@ -170,11 +170,11 @@ optional<MultiDiGraphPatternMatch>
       get_outgoing_edges(pattern, pattern_node);
 
   if (!pattern_incoming.empty() && pattern_incoming.size() != incoming.size()) {
-    return nullopt;
+    return std::nullopt;
   }
 
   if (!pattern_outgoing.empty() && pattern_outgoing.size() != outgoing.size()) {
-    return nullopt;
+    return std::nullopt;
   }
 
   std::vector<UpwardOpenMultiDiEdge> incoming_ordered =
@@ -198,7 +198,7 @@ optional<MultiDiGraphPatternMatch>
         node_port_mapping.emplace(graph_port, pattern_port);
       } else {
         if (pattern_port != node_port_mapping.at(graph_port)) {
-          return nullopt;
+          return std::nullopt;
         }
       }
       match.edge_assignment.equate(widen<OpenMultiDiEdge>(pattern_edge),
@@ -217,7 +217,7 @@ optional<MultiDiGraphPatternMatch>
         node_port_mapping.insert({graph_port, pattern_port});
       } else {
         if (pattern_port != node_port_mapping.at(graph_port)) {
-          return nullopt;
+          return std::nullopt;
         }
       }
       match.edge_assignment.equate(widen<OpenMultiDiEdge>(pattern_edge),
@@ -228,7 +228,7 @@ optional<MultiDiGraphPatternMatch>
   return match;
 }
 
-optional<MultiDiGraphPatternMatch> unsplit_matches(
+std::optional<MultiDiGraphPatternMatch> unsplit_matches(
     MultiDiGraphPatternMatch const &prefix,
     MultiDiGraphPatternMatch const &postfix,
     bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>> const
@@ -248,7 +248,7 @@ optional<MultiDiGraphPatternMatch> unsplit_matches(
     if (output_graph_edge == input_graph_edge) {
       result.edge_assignment.equate(standard_edge, output_graph_edge);
     } else {
-      return nullopt;
+      return std::nullopt;
     }
   }
 
@@ -272,7 +272,7 @@ std::vector<MultiDiGraphPatternMatch>
   std::vector<MultiDiGraphPatternMatch> matches;
   if (is_singleton_pattern(pattern)) {
     for (Node const &graph_node : get_nodes(graph)) {
-      optional<MultiDiGraphPatternMatch> candidate =
+      std::optional<MultiDiGraphPatternMatch> candidate =
           get_candidate_singleton_match(pattern, graph, graph_node);
       if (candidate.has_value() &&
           pattern_matches(
@@ -290,7 +290,7 @@ std::vector<MultiDiGraphPatternMatch>
     auto edge_splits = get_edge_splits(pattern, split);
     for (MultiDiGraphPatternMatch const &prefix_match : prefix_matches) {
       for (MultiDiGraphPatternMatch const &postfix_match : postfix_matches) {
-        optional<MultiDiGraphPatternMatch> unsplit =
+        std::optional<MultiDiGraphPatternMatch> unsplit =
             unsplit_matches(prefix_match, postfix_match, edge_splits);
         if (unsplit.has_value()) {
           matches.push_back(unsplit.value());
