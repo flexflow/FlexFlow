@@ -15,16 +15,11 @@
 
 #include "repartition.h"
 #include "kernels/partition_kernels.h"
-#include "op-attrs/get_output_shape.h"
+#include "op-attrs/get_output_shapes.h"
 #include "utils/exception.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-// declare Legion names
-
-
-
-
 
 using namespace FlexFlow::Kernels::Repartition;
 
@@ -77,7 +72,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
-  return profiling(forward,
+  return profile(forward_kernel,
                    profiling,
                    "[Reparition/Partition] forward_time = %.2lfms\n",
                    per_device_state,
@@ -94,12 +89,12 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
   auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
 
-  return profiling(backward,
+  return profile(backward_kernel,
                    profiling,
                    "[Reparition/Partition] backward_time = %.2lfms\n",
                    per_device_state,
-                   input_grad,
-                   output_grad);
+                   output_grad,
+                   input_grad);
 }
 
 
@@ -109,7 +104,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
-  auto env = sim.new_environment();
+  auto env = sim_factory.new_environment();
 
   ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
 
@@ -130,8 +125,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
-  auto fwd_accessor = env.get_accessor(REPARTITION_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_accessor(REPARTITION_BWD_TASK_ID, bwd_binding);
+  auto fwd_accessor = env.get_fwd_accessor(REPARTITION_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(REPARTITION_BWD_TASK_ID, bwd_binding);
 
   float forward_time = forward_task_impl(fwd_accessor).value();
   float backward_time = backward_task_impl(bwd_accessor).value();
@@ -142,7 +137,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<REPARTITION_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
@@ -150,27 +145,29 @@ void register_task<REPARTITION_INIT_TASK_ID>() {
 
   init.add_return_value<RepartitionPerDeviceState>();
 
-  register_task(REPARTITION_INIT_TASK_ID, "Repartition Init", init, init_task);
+  register_task(REPARTITION_INIT_TASK_ID, "Repartition Init", init, init_task_impl);
 }
 
 template <>
 void register_task<REPARTITION_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<RepartitionPerDeviceState>(PER_DEVICE_STATE);
 
-  register_task(REPARTITION_FWD_TASK_ID, "Repartition Fwd", fwd, forward_task);
+  register_task(REPARTITION_FWD_TASK_ID, "Repartition Fwd", fwd, forward_task_impl);
 }
 
-template <>
-void register_task<REPARTITION_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(REPARTITION_FWD_TASK_ID));
+// TODO: OpTaskSignature
 
-  register_task(REPARTITION_BWD_TASK_ID, "Repartition Bwd", bwd, backward_task);
-}
+// template <>
+// void register_task<REPARTITION_BWD_TASK_ID>() {
+//   OpTaskSignature bwd =
+//       infer_bwd_signature(get_op_signature(REPARTITION_FWD_TASK_ID));
+
+//   register_task(REPARTITION_BWD_TASK_ID, "Repartition Bwd", bwd, backward_task_impl);
+// }
 
 }; // namespace FlexFlow

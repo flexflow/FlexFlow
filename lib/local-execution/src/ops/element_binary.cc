@@ -181,7 +181,7 @@ CostMetrics
 
 template <>
 OpTaskSignature init_signature<ELEMENTBINARY_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
 
   init.add_input_slot(LHS_INPUT);
   init.add_input_slot(RHS_INPUT);
@@ -199,12 +199,12 @@ void register_task<ELEMENTBINARY_INIT_TASK_ID>() {
   register_task(ELEMENTBINARY_INIT_TASK_ID,
                 "ElementBinary Init",
                 init_signature<ELEMENTBINARY_INIT_TASK_ID>(),
-                init_task);
+                init_task_impl);
 }
 
 template <>
 OpTaskSignature fwd_signature<ELEMENTBINARY_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<ElementBinaryPerDeviceState>(PER_DEVICE_STATE);
@@ -223,7 +223,7 @@ void register_task<ELEMENTBINARY_FWD_TASK_ID>() {
   register_task(ELEMENTBINARY_FWD_TASK_ID,
                 "ElementBinary Fwd",
                 fwd_signature<ELEMENTBINARY_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
@@ -239,7 +239,7 @@ void register_task<ELEMENTBINARY_BWD_TASK_ID>() {
   register_task(ELEMENTBINARY_BWD_TASK_ID,
                 "ElementBinary Bwd",
                 bwd_signature<ELEMENTBINARY_BWD_TASK_ID>(),
-                backward_task);
+                backward_task_impl);
 }
 
 }; // namespace FlexFlow

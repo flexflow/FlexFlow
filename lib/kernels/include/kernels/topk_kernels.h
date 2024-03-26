@@ -7,7 +7,7 @@
 namespace FlexFlow {
 
 struct TopKPerDeviceState {
-  bool sorted; // Note: Does TopK needs a PerDeviceFFHandle handle?
+  req<bool> sorted; // Note: Does TopK needs a PerDeviceFFHandle handle?
 };
 
 FF_VISITABLE_STRUCT(TopKPerDeviceState, sorted);

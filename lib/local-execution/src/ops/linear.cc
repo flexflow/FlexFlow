@@ -1,6 +1,7 @@
 #include "linear.h"
 #include "kernels/linear_kernels.h"
 #include "op-attrs/ff_dim.h"
+#include "task_argument_accessor.h"
 #include "op-attrs/get_output_shapes.h"
 #include "utils/exception.h"
 #include "utils/graph/views.h"
@@ -40,9 +41,11 @@ OpTaskInvocation forward(LinearAttrs const &attrs) {
   binding.bind(INPUT, input_tensor(0));   // input
   binding.bind(WEIGHT, weight_tensor(0)); // weight
   binding.bind(OUTPUT, output_tensor(0)); // output
-  binding.bind(BIAS, bias_tensor(0));     // bias
+  if (attrs.use_bias) {
+    binding.bind(BIAS, weight_tensor(1));     // bias
+  }
 
-  bing.bind_arg(PROFILING, profiling_settings());
+  binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<LinearPerDeviceState>());
   binding.bind_arg(ATTRS, attrs);
 
@@ -55,20 +58,20 @@ OpTaskInvocation backward(LinearAttrs const &attrs) {
   return {LINEAR_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<LinearPerDeviceState>
+static LinearPerDeviceState
     init_task_impl(TaskArgumentAccessor const &acc) {
-  auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
+  auto const &attrs = acc.get_argument<LinearAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto weight = acc.get_tensor<Permissions::RO>(WEIGHT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   int out_dim = output.shape.at(ff_dim_t{0});
-  int batch_size = output.shape.at.(ff_dim_t{1});
+  int batch_size = output.shape.at(ff_dim_t{1});
 
   float *one_ptr;
 
-  DeviceSpecific<LinearPerDeviceState> state =
+  LinearPerDeviceState state =
           init_kernel(handle,
                       one_ptr,
                       attrs.regularizer,
@@ -88,7 +91,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto bias = acc.get_tensor<Permissions::RO>(BIAS);
 
-  auto state = acc.get_device_specific<LinearPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state = acc.get_argument<LinearPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto attrs = acc.get_argument<LinearAttrs>(ATTRS);
 
@@ -125,7 +128,7 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
   auto weight_grad = acc.get_tensor_grad<Permissions::RW>(WEIGHT);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
-  auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state = acc.get_argument<LinearPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto attrs = acc.get_argument<LinearAttrs>(ATTRS);
 
@@ -142,13 +145,13 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  profiling,
                  "[Linear] backward_time = %.2lfms\n",
                  per_device_state,
-                 input.get_float_ptr(),
-                 input_grad.get_float_ptr(),
-                 output.get_float_ptr(),
-                 output_grad.get_float_ptr(),
-                 weight.get_float_ptr(),
-                 weight_grad.get_float_ptr(),
-                 bias_ptr,
+                 (void *)input.get_float_ptr(),
+                 (void *)input_grad.get_float_ptr(),
+                 (void *)output.get_float_ptr(),
+                 (void *)output_grad.get_float_ptr(),
+                 (void *)weight.get_float_ptr(),
+                 (void *)weight_grad.get_float_ptr(),
+                 (void *)bias_ptr,
                  in_dim,
                  out_dim,
                  batch_size);
@@ -161,29 +164,35 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
-  auto env = sim.new_environment();
+  auto env = sim_factory.new_environment();
 
-  ParallelTensorShape output_shape = get_output_shape(input.shape, attrs);
+  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
+  ParallelTensorShape weight_shape = get_weights_shape(attrs, input.shape);
+  ParallelTensorShape bias_shape = get_bias_shape(attrs, input.shape);
 
   SimTaskBinding init_binding;
-  init_binding.bind(INPUT, input_tensor(0));
-  init_binding.bind(WEIGHT, weight_tensor(0));
-  init_binding.bind(BIAS, bias_tensor(0));
-  init_binding.bind(OUTPUT, output_tensor(0));
+  init_binding.bind(INPUT, input.shape);
+  init_binding.bind(WEIGHT, weight_shape);
+  if (attrs.use_bias) {
+    init_binding.bind(BIAS, bias_shape);
+  }
+  init_binding.bind(OUTPUT, output_shape);
   init_binding.bind_arg(ATTRS, attrs);
   init_binding.bind_arg(HANDLE, ff_handle());
 
   auto init_accessor = env.get_init_accessor(LINEAR_INIT_TASK_ID, init_binding);
 
-  DeviceSpecific<LinearPerDeviceState> per_device_state =
+  LinearPerDeviceState per_device_state =
       init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
 
-  fwd_binding.bind(INPUT, input_tensor(0));   // input
-  fwd_binding.bind(WEIGHT, weight_tensor(0)); // weight
-  fwd_binding.bind(OUTPUT, output_tensor(0)); // output
-  fwd_binding.bind(BIAS, bias_tensor(0));     // bias
+  fwd_binding.bind(INPUT, input.shape);   // input
+  fwd_binding.bind(WEIGHT, weight_shape); // weight
+  fwd_binding.bind(OUTPUT, output_shape); // output
+  if (attrs.use_bias) {
+    fwd_binding.bind(BIAS, bias_shape);     // bias
+  }
 
   fwd_binding.bind_arg(PROFILING, profiling_settings());
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<LinearPerDeviceState>());
@@ -191,8 +200,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
-  auto fwd_accessor = env.get_accessor(LINEAR_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_accessor(LINEAR_BWD_TASK_ID, bwd_binding);
+  auto fwd_accessor = env.get_fwd_accessor(LINEAR_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor = env.get_bwd_accessor(LINEAR_BWD_TASK_ID, bwd_binding);
 
   float forward_time = forward_task_impl(fwd_accessor).value();
   float backward_time = backward_task_impl(bwd_accessor).value();
@@ -203,27 +212,26 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 OpTaskSignature init_signature<LINEAR_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
 
   init.add_input_slot(INPUT);
-  init.add_input_slot(WEIGHT);
-  init.add_input_slot(BIAS);
+  init.add_weight_slot(WEIGHT);
   init.add_output_slot(OUTPUT);
 
   init.add_arg_slot<LinearAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   init.add_return_value<LinearPerDeviceState>();
-  return init,
+  return init;
 }
 
 template <>
 OpTaskSignature fwd_signature<LINEAR_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
-  fwd.add_input_slot(WEIGHT);
-  fwd.add_input_slot(BIAS);
+  fwd.add_weight_slot(WEIGHT);
+  fwd.add_optional_weight_slot(BIAS);
   fwd.add_output_slot(OUTPUT);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -239,13 +247,29 @@ OpTaskSignature bwd_signature<LINEAR_BWD_TASK_ID>() {
   return bwd;
 }
 
+
+template <>
+TaskImplFunction get_task_impl<LINEAR_INIT_TASK_ID>() {
+  return init_task_impl;
+}
+
+template <>
+TaskImplFunction get_task_impl<LINEAR_FWD_TASK_ID>() {
+  return forward_task_impl;
+}
+
+template <>
+TaskImplFunction get_task_impl<LINEAR_BWD_TASK_ID>() {
+  return backward_task_impl;
+}
+
 template <>
 void register_task<LINEAR_INIT_TASK_ID>() {
 
   register_task(LINEAR_INIT_TASK_ID,
                 "Linear::init_task",
                 init_signature<LINEAR_INIT_TASK_ID>(),
-                init_task);
+                init_task_impl);
 }
 
 template <>
@@ -253,7 +277,7 @@ void register_task<LINEAR_FWD_TASK_ID>() {
   register_task(LINEAR_FWD_TASK_ID,
                 "Linear::fwd_task",
                 fwd_signature<LINEAR_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
@@ -261,7 +285,7 @@ void register_task<LINEAR_BWD_TASK_ID>() {
   register_task(LINEAR_BWD_TASK_ID,
                 "Linear::bwd_task",
                 bwd_signature<LINEAR_BWD_TASK_ID>(),
-                backward_task);
+                backward_task_impl);
 }
 
 }; // namespace FlexFlow

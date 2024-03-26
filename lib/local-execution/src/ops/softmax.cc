@@ -21,13 +21,6 @@
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-// declare Legion names
-
-
-
-
-
-
 using namespace FlexFlow::Kernels::Softmax;
 
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING, PER_DEVICE_STATE, HANDLE };
@@ -66,7 +59,7 @@ static DeviceSpecific<SoftmaxPerDeviceState>
   auto const &attrs = acc.get_argument<SoftmaxAttrs>(ATTRS);
 
   DeviceSpecific<SoftmaxPerDeviceState> per_device_state =
-          init_kernel(handle, attrs.dim);
+          init_kernel(handle, attrs.dim.value());
   return per_device_state;
 }
 
@@ -83,7 +76,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  "[SoftMax] forward_time = %.2lfms\n",
                  per_device_state,
                  input.get_float_ptr(),
-                 output.get_float_ptr(), );
+                 output.get_float_ptr());
 }
 
 
@@ -106,7 +99,7 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
       "[SoftMax] backward_time = %.2lfms\n",
       input_grad.get_float_ptr(),
       output_grad.get_float_ptr(),
-      output_grad.shape.volume(), // Note(lambda): get num_elements, maybe wrong
+      output_grad.shape.get_volume()
   );
 }
 
@@ -117,7 +110,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
-  auto env = sim.new_environment();
+  auto env = sim_factory.new_environment();
 
   ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
 
@@ -132,7 +125,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
       init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
   fwd_binding.bind(INPUT, input.shape);
   fwd_binding.bind(OUTPUT, output_shape);
   fwd_binding.bind_arg(PROFILING, settings);
@@ -152,18 +144,18 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<SOFTMAX_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_arg_slot<SoftmaxAttrs>(ATTRS);
-  init.add_return_value_slot<SoftmaxPerDeviceState>();
+  init.add_return_value<SoftmaxPerDeviceState>();
 
-  register_task(SOFTMAX_INIT_TASK_ID, "SoftMax Init", init, init_task);
+  register_task(SOFTMAX_INIT_TASK_ID, "SoftMax Init", init, init_task_impl);
 }
 
 template <>
 void register_task<SOFTMAX_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<SoftmaxPerDeviceState>(PER_DEVICE_STATE);
@@ -171,15 +163,17 @@ void register_task<SOFTMAX_FWD_TASK_ID>() {
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(SOFTMAX_FWD_TASK_ID, "SoftMax Fwd", fwd, forward_task);
+  register_task(SOFTMAX_FWD_TASK_ID, "SoftMax Fwd", fwd, forward_task_impl);
 }
 
-template <>
-void register_task<SOFTMAX_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(SOFTMAX_FWD_TASK_ID));
+// TODO: OpTaskSignature
 
-  register_task(SOFTMAX_BWD_TASK_ID, "SoftMax Bwd", bwd, backward_task);
-}
+// template <>
+// void register_task<SOFTMAX_BWD_TASK_ID>() {
+//   OpTaskSignature bwd =
+//       infer_bwd_signature(get_op_signature(SOFTMAX_FWD_TASK_ID));
+
+//   register_task(SOFTMAX_BWD_TASK_ID, "SoftMax Bwd", bwd, backward_task_impl);
+// }
 
 }; // namespace FlexFlow

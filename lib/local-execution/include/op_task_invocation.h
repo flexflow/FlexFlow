@@ -5,12 +5,13 @@
 #include "concrete_arg.h"
 #include "op_arg_ref.h"
 #include "op_task_signature.h"
+#include "op_tensor_spec.h"
 #include "profiling.h"
 #include "runtime_arg_ref.h"
 #include "serialization.h"
 #include "tasks.h"
 #include "utils/bidict.h"
-#include "utils/optional.h"
+#include "variadic_tensor_ref.h"
 #include "utils/stack_map.h"
 #include <variant>
 #include <typeindex>
@@ -21,18 +22,7 @@ namespace FlexFlow {
 
 enum class IsTrainable { YES, NO };
 
-struct OpTensorSpec {
-  TensorRole role;
-  OpSlotOptions slot_option;
-  req<int> idx;
-};
-FF_VISITABLE_STRUCT(OpTensorSpec, role, slot_option, idx);
-
-OpTensorSpec input_tensor(int);
-OpTensorSpec output_tensor(int);
-OpTensorSpec weight_tensor(int);
-
-using OpArgSpec = variant<ConcreteArgSpec,
+using OpArgSpec = std::variant<ConcreteArgSpec,
                           OpArgRefSpec,
                           RuntimeArgRefSpec>;
 
@@ -49,6 +39,9 @@ struct OpArgSpecTypeAccessor {
 struct OpTaskBinding {
   OpTaskBinding() = default;
 
+  void bind(slot_id, VariadicTensorRef<OpTensorSpec> const &) {
+    NOT_IMPLEMENTED();
+  }
   void bind(slot_id, OpTensorSpec const &);
   void bind_grad(slot_id, OpTensorSpec const &);
 
@@ -122,7 +115,8 @@ bool validate_invocation(OpTaskSignature sig, OpTaskInvocation inv) {
   for (OpTensorSlotSpec const & op_tensor_slot_spec: sig.get_tensor_slots()) {
     slot_id name = op_tensor_slot_spec.name;
     IsGrad is_grad = op_tensor_slot_spec.is_grad;
-    OpTensorSpec const & op_tensor_spec = tensor_bindings[std::make_pair<name, is_grad>()];
+    std::pair<slot_id, IsGrad> tensor_key = std::make_pair(name, is_grad);
+    OpTensorSpec const & op_tensor_spec = tensor_bindings.at(tensor_key);
     if (op_tensor_spec.role != op_tensor_slot_spec.tensor_role || op_tensor_spec.slot_option != op_tensor_slot_spec.slot_option) {
       return false;
     }
@@ -130,11 +124,12 @@ bool validate_invocation(OpTaskSignature sig, OpTaskInvocation inv) {
 
   // args
   auto sig_arg_types = sig.get_arg_types();
+  OpArgSpecTypeAccessor type_accessor;
   for (auto arg_binding: inv.binding.get_arg_bindings()) {
     slot_id name = arg_binding.first;
     OpArgSpec op_arg_spec = arg_binding.second;
-    std::type_index arg_type = sig_arg_types[name];
-    if (OpArgSpecTypeAccessor(op_arg_spec) != arg_type) {
+    std::type_index arg_type = sig_arg_types.at(name);
+    if (type_accessor(op_arg_spec) != arg_type) {
       return false;
     }
   }

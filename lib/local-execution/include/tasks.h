@@ -1,10 +1,6 @@
 #ifndef _FLEXFLOW_TASKS_H
 #define _FLEXFLOW_TASKS_H
 
-#include "utils/optional.h"
-#include "kernels/linear_kernels.h"
-#include "device_specific.h"
-#include "task_argument_accessor.h"
 #include <string>
 #include <variant>
 
@@ -176,7 +172,7 @@ void register_task(task_id_t,
                    F const &func,
                    std::optional<F const &> cpu_func = std::nullopt);
 
-template <task_id_t>
+template <task_id_t id>
 void register_task();
 
 void register_tasks();
@@ -187,14 +183,6 @@ void register_tasks() {
   register_tasks<ids...>();
 }
 
-using DeviceStates = std::variant<LinearPerDeviceState>;
-
-using TaskImplFunction = std::variant<
-    std::function<DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>,
-    std::function<optional<float>(TaskArgumentAccessor const &)>>;
-
-template <task_id_t>
-TaskImplFunction get_task_impl();
 
 } // namespace FlexFlow
 

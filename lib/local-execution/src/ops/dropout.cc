@@ -1,17 +1,11 @@
 #include "dropout.h"
 #include "kernels/dropout_kernels.h"
-
 #include "op-attrs/get_output_shapes.h"
+#include "op_task_signature.h"
 #include "op_task_invocation.h"
-#include "task_spec/task_signature.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-
-
-
-
-
 
 using namespace FlexFlow::Kernels::Dropout;
 
@@ -134,7 +128,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<DROPOUT_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
   init.add_arg_slot<DropoutAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(FF_HANDLE);
   init.add_output_slot(OUTPUT);
@@ -149,12 +143,12 @@ void register_task<DROPOUT_INIT_TASK_ID>() {
   register_task(DROPOUT_INIT_TASK_ID,
                 "Dropout Init",
                 init_signature<DROPOUT_INIT_TASK_ID>(),
-                init_task);
+                init_task_impl);
 }
 
 template <>
 OpTaskSignature fwd_signature<DROPOUT_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_unchecked_arg_slot<DropoutPerDeviceState>(PER_DEVICE_STATE);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -170,7 +164,7 @@ void register_task<DROPOUT_FWD_TASK_ID>() {
   register_task(DROPOUT_FWD_TASK_ID,
                 "Dropout Fwd",
                 fwd_signature<DROPOUT_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
@@ -186,7 +180,7 @@ void register_task<DROPOUT_BWD_TASK_ID>() {
   register_task(DROPOUT_BWD_TASK_ID,
                 "Dropout Bwd",
                 bwd_signature<DROPOUT_BWD_TASK_ID>(),
-                backward_task);
+                backward_task_impl);
 }
 
 }; // namespace FlexFlow

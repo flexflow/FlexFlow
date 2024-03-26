@@ -17,7 +17,7 @@
 #define _FLEXFLOW_CONFIG_H_
 #include "op-attrs/param_sync.h"
 #include "utils/fmt.h"
-#include "utils/optional.h"
+
 #include "utils/visitable.h"
 #include <cstring>
 

@@ -8,6 +8,8 @@ namespace FlexFlow {
 
 struct TrackedAllocator : public IAllocator {
   TrackedAllocator(size_t);
+  TrackedAllocator(TrackedAllocator const &) = delete;
+  TrackedAllocator(TrackedAllocator &&) = delete;
   ~TrackedAllocator() override;
 
   void *allocate(size_t) override;

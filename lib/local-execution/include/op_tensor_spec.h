@@ -7,9 +7,10 @@ namespace FlexFlow {
 
 struct OpTensorSpec {
   TensorRole role;
+  OpSlotOptions slot_option;
   req<int> idx;
 };
-FF_VISITABLE_STRUCT(OpTensorSpec, role, idx);
+FF_VISITABLE_STRUCT(OpTensorSpec, role, slot_option, idx);
 
 OpTensorSpec input_tensor(int);
 OpTensorSpec output_tensor(int);

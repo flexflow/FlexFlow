@@ -14,7 +14,7 @@ using ElementUnaryUnifiedAttrs =
 
 struct ElementUnaryPerDeviceState {
   ffTensorDescriptor_t inputTensor, outputTensor;
-  ffActivationDescriptor_t actiDesc;
+  req<ffActivationDescriptor_t> actiDesc;
 };
 
 FF_VISITABLE_STRUCT_NO_EQ(ElementUnaryPerDeviceState,

@@ -17,7 +17,10 @@
 #include "kernels/softmax_kernels.h"
 
 namespace FlexFlow {
-// declare Legion names
+
+namespace Kernels {
+namespace Softmax {
+
 
 SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &handle, int dim) {
   ffTensorDescriptor_t inputTensor;
@@ -28,8 +31,6 @@ SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &handle, int dim) {
   return per_device_state;
 }
 
-namespace Kernels {
-namespace Softmax {
 
 void forward_kernel(cudaStream_t stream,
                     SoftmaxPerDeviceState const &m,

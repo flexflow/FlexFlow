@@ -1,16 +1,9 @@
 #include "conv_2d.h"
 #include "kernels/conv_2d_kernels.h"
-
-#include "mpark/variant.hpp"
 #include "op-attrs/get_output_shapes.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-
-
-
-
-
 
 using namespace FlexFlow::Kernels::Conv2D;
 
@@ -189,7 +182,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<CONV2D_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
 
   init.add_input_slot(INPUT);
   init.add_output_slot(OUTPUT);
@@ -207,12 +200,12 @@ void register_task<CONV2D_INIT_TASK_ID>() {
   register_task(CONV2D_INIT_TASK_ID,
                 "Conv2d Init",
                 init_signature<CONV2D_INIT_TASK_ID>(),
-                init_task);
+                init_task_impl);
 }
 
 template <>
 OpTaskSignature fwd_signature<CONV2D_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_unchecked_arg_slot<Conv2DPerDeviceState>(PER_DEVICE_STATE);
@@ -231,7 +224,7 @@ void register_task<CONV2D_FWD_TASK_ID>() {
   register_task(CONV2D_FWD_TASK_ID,
                 "Conv2d Fwd",
                 fwd_signature<CONV2D_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
@@ -247,7 +240,7 @@ void register_task<CONV2D_BWD_TASK_ID>() {
   register_task(CONV2D_BWD_TASK_ID,
                 "Conv2d Bwd",
                 bwd_signature<CONV2D_BWD_TASK_ID>(),
-                backward_task);
+                backward_task_impl);
 }
 
 } // namespace FlexFlow

@@ -115,7 +115,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature fwd_signature<CAST_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<CastAttrs>(ATTRS);
   fwd.add_arg_slot<bool>(PROFILING);
@@ -131,7 +131,7 @@ void register_task<CAST_FWD_TASK_ID>() {
   register_task(CAST_FWD_TASK_ID,
                 "Cast Fwd",
                 fwd_signature<CAST_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
@@ -146,7 +146,7 @@ void register_task<CAST_BWD_TASK_ID>() {
   register_task(CAST_BWD_TASK_ID,
                 "Cast Bwd",
                 bwd_signature<CAST_BWD_TASK_ID>(),
-                backward_task);
+                backward_task_impl);
 }
 
 }; // namespace FlexFlow

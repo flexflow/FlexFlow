@@ -1,6 +1,6 @@
 #include "local_training_backing.h"
 #include "local_task_argument_accessor.h"
-#include "op-attrs/get_task_ids.h"
+#include "get_task_ids.h"
 #include "op_task_invocation.h"
 #include "tasks.h"
 
@@ -16,9 +16,9 @@ void TaskRegistry::register_args(operator_guid_t op, OpArgBacking op_arg_backing
 }
 
 void TaskRegistry::register_task(task_id_t task_id, operator_guid_t op_id) {
-  TaskSignatureImpl task_signature_impl = {get_task_impl<task_id>,
-                                           get_signature<task_id>};
-  switch (OpTaskSignature.type) {
+  TaskSignatureImpl task_signature_impl = {get_task_impl<task_id>(),
+                                           get_signature<task_id>()};
+  switch (task_signature_impl.task_signature.type) {
     case OpTaskType::INIT:
       this->init_task_ids[op_id] = task_id;
       break;

@@ -21,11 +21,6 @@ namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::BatchNorm;
 
-
-
-
-
-
 enum Slots {
   INPUT,  // tensor
   SCALE,  // tensor
@@ -114,7 +109,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   return profile(forward_kernel,
                  profiling,
                  "[BatchNorm] forward_time = %.2lfms\n",
-                 &per_device_state,
+                 per_device_state,
                  input.get_float_ptr(),
                  output.get_float_ptr(),
                  scale.get_float_ptr(),
@@ -139,7 +134,7 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
   return profile(backward_kernel,
                  profiling,
                  "[BatchNorm] backward_time = %.2lfms\n",
-                 &per_device_state,
+                 per_device_state,
                  input.get_float_ptr(),
                  output_grad.get_float_ptr(),
                  output.get_float_ptr(),
@@ -199,7 +194,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<BATCHNORM_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
   init.add_input_slot(INPUT);
   init.add_input_slot(BIAS);
   init.add_output_slot(OUTPUT);
@@ -215,12 +210,12 @@ void register_task<BATCHNORM_INIT_TASK_ID>() {
   register_task(BATCHNORM_INIT_TASK_ID,
                 "BatchNorm Init",
                 init_signature<BATCHNORM_INIT_TASK_ID>(),
-                init_task);
+                init_task_impl);
 }
 
 template <>
 OpTaskSignature fwd_signature<BATCHNORM_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_input_slot(SCALE);
@@ -237,7 +232,7 @@ void register_task<BATCHNORM_FWD_TASK_ID>() {
   register_task(BATCHNORM_FWD_TASK_ID,
                 "BatchNorm Fwd",
                 fwd_signature<BATCHNORM_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
@@ -253,7 +248,7 @@ void register_task<BATCHNORM_BWD_TASK_ID>() {
   register_task(BATCHNORM_BWD_TASK_ID,
                 "BatchNorm Bwd",
                 bwd_signature<BATCHNORM_BWD_TASK_ID>(),
-                backward_task);
+                backward_task_impl);
 }
 
 }; // namespace FlexFlow

@@ -33,6 +33,7 @@ public:
 
   std::size_t operator[](legion_dim_t) const;
   std::size_t at(legion_dim_t) const;
+  std::size_t at(ff_dim_t) const;
 
   legion_dim_t last_idx() const;
   legion_dim_t neg_idx(int) const;

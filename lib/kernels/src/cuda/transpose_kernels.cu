@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-#include "kernel/accessor.h"
 #include "kernels/accessor.h"
-
 #include "kernels/transpose_kernels.h"
 #include "utils/exception.h"
 
@@ -32,14 +30,14 @@ struct TransposeStrides {
 namespace Kernels {
 namespace Transpose {
 
-TransposePerDeviceState init_kernel(int num_dim, std::vector<int> const &perm) {
+TransposePerDeviceState init_kernel(int num_dim, std::vector<ff_dim_t> const &perm) {
 
   TransposePerDeviceState state;
   state.num_dim = num_dim;
   int const length = perm.size();
 
   for (int i = 0; i < std::min(length, MAX_TENSOR_DIM); ++i) {
-    state.perm[i] = perm[i];
+    state.perm[i] = perm[i].value();
   }
 
   return state;
@@ -92,7 +90,8 @@ void forward_kernel(cudaStream_t stream,
                                       0.0f /*beta*/);
 }
 
-void backward_kernel(TransposePerDeviceState const &m,
+void backward_kernel(cudaStream_t stream,
+                     TransposePerDeviceState const &m,
                      GenericTensorAccessorW const &in_grad,
                      GenericTensorAccessorR const &out_grad) {
 

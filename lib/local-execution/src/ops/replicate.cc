@@ -29,7 +29,7 @@ namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::Replicate;
 
-enum Slots { INPUT, OUTPUT, PROFILING };
+enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
 
 OpTaskInvocation forward(ReplicateAttrs const &attrs) {
   OpTaskBinding binding;
@@ -38,6 +38,7 @@ OpTaskInvocation forward(ReplicateAttrs const &attrs) {
 
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
+  binding.bind_arg(ATTRS, attrs);
 
   return {REPLICATE_FWD_TASK_ID, binding};
 }
@@ -65,14 +66,16 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
-  auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
-  auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
+  auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
+  auto const & attrs = acc.get_argument<ReplicateAttrs>(ATTRS);
 
   return profile(backward_kernel,
                  profiling,
                  "[replicate] backward_time = %.2lfms\n",
                  input_grad,
-                 output_grad);
+                 output_grad,
+                 attrs.replicate_degree); // is this `num_replicas`?
 }
 
 
@@ -82,7 +85,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
-  auto env = sim.new_environment();
+  auto env = sim_factory.new_environment();
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PROFILING, settings);
   ParallelTensorShape output = get_output_shape(attrs, input.shape);
@@ -102,20 +105,23 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<REPLICATE_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(REPLICATE_FWD_TASK_ID, "Replicate fwd", fwd, forward_task);
+  register_task(REPLICATE_FWD_TASK_ID, "Replicate fwd", fwd, forward_task_impl);
 }
 
-template <>
-void register_task<REPLICATE_BWD_TASK_ID>() {
-  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(CAST_FWD_TASK_ID));
+// TODO: OpTaskSignature
 
-  register_task(REPLICATE_BWD_TASK_ID, "Replicate bwd", bwd, backward_task);
-}
+
+// template <>
+// void register_task<REPLICATE_BWD_TASK_ID>() {
+//   OpTaskSignature bwd = infer_bwd_signature(get_op_signature(CAST_FWD_TASK_ID));
+
+//   register_task(REPLICATE_BWD_TASK_ID, "Replicate bwd", bwd, backward_task_impl);
+// }
 
 }; // namespace FlexFlow

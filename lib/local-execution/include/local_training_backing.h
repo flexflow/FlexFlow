@@ -8,6 +8,7 @@
 #include "op_task_signature.h"
 #include "op_task_invocation.h"
 #include "pcg/computation_graph.h"
+#include "arg_backing.h"
 #include "task_argument_accessor.h"
 #include <functional>
 #include <unordered_map>
@@ -26,7 +27,7 @@ using DeviceStates = std::variant<LinearPerDeviceState>;
 
 using TaskImplFunction = std::variant<
     std::function<DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>,
-    std::function<optional<float>(TaskArgumentAccessor const &)>>;
+    std::function<std::optional<float>(TaskArgumentAccessor const &)>>;
 
 struct TaskSignatureImpl {
   TaskImplFunction impl_function;

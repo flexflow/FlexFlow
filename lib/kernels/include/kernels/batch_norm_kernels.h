@@ -10,7 +10,6 @@ namespace FlexFlow {
 
 struct BatchNormPerDeviceState {
   PerDeviceFFHandle handle;
-  Allocator allocator;
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
   ffTensorDescriptor_t biasTensor;
@@ -29,7 +28,6 @@ struct BatchNormPerDeviceState {
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(BatchNormPerDeviceState,
                                              handle,
-                                             allocator,
                                              inputTensor,
                                              outputTensor,
                                              biasTensor,

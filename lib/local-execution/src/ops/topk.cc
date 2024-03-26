@@ -19,11 +19,6 @@
 #include "utils/exception.h"
 
 namespace FlexFlow {
-// declare Legion names
-
-
-
-using PCG::Node;
 
 using namespace FlexFlow::Kernels::TopK;
 
@@ -74,7 +69,7 @@ static DeviceSpecific<TopKPerDeviceState>
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
   auto per_device_state =
-      acc.get_device_specific<TopKPerDeviceState>(PER_DEVICE_STATE);
+      acc.get_argument<TopKPerDeviceState>(PER_DEVICE_STATE);
   auto profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -84,7 +79,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   size_t batch_size = input.shape.get_volume() / length;
   auto indices = acc.get_tensor<Permissions::WO>(INDICES);
 
-  return profiling(forward_kernel,
+  return profile(forward_kernel,
                    profiling,
                    "[TopK] forward_time = %.2lfms\n",
                    per_device_state,
@@ -102,7 +97,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
   auto per_device_state =
-      acc.get_device_specific<TopKPerDeviceState>(PER_DEVICE_STATE);
+      acc.get_argument<TopKPerDeviceState>(PER_DEVICE_STATE);
   auto profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
@@ -110,10 +105,10 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
 
   auto indices = acc.get_tensor<Permissions::RO>(INDICES);
 
-  int length = input.shape.at(legion_dim_t(0)) + 1;
-  size_t batch_size = input.shape.get_volume() / length;
+  int length = input_grad.shape.at(legion_dim_t(0)) + 1;
+  size_t batch_size = input_grad.shape.get_volume() / length;
 
-  return profiling(backward_kernel,
+  return profile(backward_kernel,
                    profiling,
                    "[TopK] backward_time = %.2lfms\n",
                    per_device_state,
@@ -132,9 +127,9 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
-  auto env = sim.new_environment();
+  auto env = sim_factory.new_environment();
 
-  ParallelTensorShape output_shape = get_output_shapes(attrs, input.shape);
+  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
 
   SimTaskBinding init_binding;
   init_binding.bind_arg(ATTRS, attrs);
@@ -165,16 +160,16 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<TOPK_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
 
   init.add_arg_slot<TopKAttrs>(ATTRS); // Note: this may have some question
   init.add_return_value<TopKPerDeviceState>();
-  register_task(TOPK_INIT_TASK_ID, "Topk Init", init, init_task);
+  register_task(TOPK_INIT_TASK_ID, "Topk Init", init, init_task_impl);
 }
 
 template <>
 void register_task<TOPK_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_arg_slot<TopKAttrs>(ATTRS);
@@ -184,14 +179,16 @@ void register_task<TOPK_FWD_TASK_ID>() {
   fwd.add_output_slot(OUTPUT);
   fwd.add_output_slot(INDICES);
 
-  register_task(TOPK_FWD_TASK_ID, "TopK Forward", fwd, forward_task);
+  register_task(TOPK_FWD_TASK_ID, "TopK Forward", fwd, forward_task_impl);
 }
 
-template <>
-void register_task<TOPK_BWD_TASK_ID>() {
-  OpTaskSignature bwd = infer_bwd_signature(get_op_signature(TOPK_FWD_TASK_ID));
+// TODO: OpTaskSignature
 
-  register_task(TOPK_BWD_TASK_ID, "TopK Backward", bwd, backward_task);
-}
+// template <>
+// void register_task<TOPK_BWD_TASK_ID>() {
+//   OpTaskSignature bwd = infer_bwd_signature(get_op_signature(TOPK_FWD_TASK_ID));
+
+//   register_task(TOPK_BWD_TASK_ID, "TopK Backward", bwd, backward_task_impl);
+// }
 
 }; // namespace FlexFlow

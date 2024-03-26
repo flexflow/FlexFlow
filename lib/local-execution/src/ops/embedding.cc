@@ -16,14 +16,9 @@
 #include "embedding.h"
 #include "kernels/embedding_kernels.h"
 #include "op-attrs/ops/embedding.h"
+#include "op-attrs/get_output_shapes.h"
 
 namespace FlexFlow {
-
-// declare Legion names
-
-
-
-
 
 using namespace FlexFlow::Kernels::Embedding;
 
@@ -91,7 +86,7 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  attrs.aggr,
                  input.shape.get_dim(),
                  output.shape.get_dim(),
-                 input.shape[ff_dim_t(0)]);
+                 input.shape.at(ff_dim_t(0)));
 }
 
 
@@ -128,7 +123,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature fwd_signature<EMBED_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_input_slot(OUTPUT);
@@ -145,7 +140,7 @@ void register_task<EMBED_FWD_TASK_ID>() {
   register_task(EMBED_FWD_TASK_ID,
                 "Embed Fwd",
                 fwd_signature<EMBED_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
@@ -159,7 +154,7 @@ void register_task<EMBED_BWD_TASK_ID>() {
   register_task(EMBED_BWD_TASK_ID,
                 "Embed Bwd",
                 bwd_signature<EMBED_BWD_TASK_ID>(),
-                backward_task);
+                backward_task_impl);
 }
 
 } // namespace FlexFlow

@@ -12,7 +12,7 @@ public:
   ConcreteArgSpec() = delete;
 
   template <typename T>
-  T const &get() {
+  T const &get() const {
     assert(matches<T>(this->type_idx));
 
     return *(T const *)ptr.get();
@@ -31,19 +31,22 @@ public:
   static ConcreteArgSpec create(T const &t) {
     static_assert(is_serializable<T>::value, "Type must be serializable");
 
-    return ConcreteArgSpec(type_index<T>(),
-                           std::make_shared<T>(t));
+    std::type_index type_idx = init_type_index<T>();
+    std::shared_ptr<void const> ptr = std::static_pointer_cast<void const>(std::make_shared<T>(t));
+
+    return ConcreteArgSpec(type_idx,
+                           ptr);
                            //ArgTypeRuntimeTag::create<T>());
   }
 
 private:
   ConcreteArgSpec(std::type_index const & type_index,
-                  std::shared_ptr<void const *> ptr) : type_idx(type_index), ptr(ptr) {}
+                  std::shared_ptr<void const> ptr) : type_idx(type_index), ptr(ptr) {}
                   //ArgTypeRuntimeTag const &);
 
   //ArgTypeRuntimeTag type_tag;
   std::type_index type_idx;
-  std::shared_ptr<void const *> ptr;
+  std::shared_ptr<void const> ptr;
 };
 
 } // namespace FlexFlow

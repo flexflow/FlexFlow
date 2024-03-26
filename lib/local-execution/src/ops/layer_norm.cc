@@ -16,12 +16,16 @@
 #include "layer_norm.h"
 #include "kernels/layer_norm_kernels.h"
 #include "op-attrs/ops/layer_norm.h"
+#include "op-attrs/get_output_shapes.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/exception.h"
 #include "utils/hash-utils.h"
 #include <type_traits>
 
+
 namespace FlexFlow {
+
+using namespace FlexFlow::Kernels::LayerNorm;
 
 enum Slots {
   PROFILING,
@@ -81,10 +85,10 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  profiling,
                  "[LayerNorm] forward time = %.2lfms\n",
                  state,
-                 input.get_float_ptr(),
-                 output.get_float_ptr(),
-                 gamma.get_float_ptr(),
-                 beta.get_float_ptr());
+                 input,
+                 output,
+                 gamma,
+                 beta);
 }
 
 
@@ -105,22 +109,22 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  profiling,
                  "[LayerNorm] backward time = %.2lfms\n",
                  state,
-                 output_grad.get_float_ptr(),
-                 input.get_float_ptr(),
-                 input_grad.get_float_ptr(),
-                 gamma.get_float_ptr(),
-                 gamma_grad.get_float_ptr(),
-                 beta_grad.get_float_ptr());
+                 output_grad,
+                 input,
+                 input_grad,
+                 gamma,
+                 gamma_grad,
+                 beta_grad);
 }
 
 
 
 static DeviceSpecific<LayerNormPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
-  auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
+  auto const &attrs = acc.get_argument<LayerNormAttrs>(ATTRS);
   Allocator allocator = acc.get_allocator();
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
-  FFHandler handle = acc.get_argument<FFHandler>(HANDLE);
+  auto handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   // question: how to get batch_size and effective_num_elements
   int64_t effective_batch_size, effective_num_elements;
@@ -129,7 +133,7 @@ static DeviceSpecific<LayerNormPerDeviceState>
     M *= input.shape.at(legion_dim_t(attrs.axes[i]));
   }
   int num_replicas = 1;
-  for (int i = 0; i < intput.shape.num_dims(); i++) {
+  for (int i = 0; i < input.shape.num_dims(); i++) {
     num_replicas *= input.shape.at(legion_dim_t(i));
     effective_num_elements = M;
     effective_batch_size = input.shape.get_volume() / M;
@@ -150,18 +154,18 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
-  auto env = sim.new_environment();
+  auto env = sim_factory.new_environment();
   ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
 
   SimTaskBinding init_binding;
   init_binding.bind_arg(HANDLE, ff_handle());
   init_binding.bind_arg(ATTRS, attrs);
-  init.binding.bind(INPUT, input.shape);
+  init_binding.bind(INPUT, input.shape);
 
   auto init_accessor =
       env.get_init_accessor(LAYERNORM_INIT_TASK_ID, init_binding);
 
-  DeviceSpecific<LayerNormPerDeviceState> = init_task_impl(init_accessor);
+  DeviceSpecific<LayerNormPerDeviceState> per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind(INPUT, input.shape);
@@ -170,8 +174,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
 
   // TODO how to handle gamma and beta, where are they from
-  fwd_binding.bind(GAMMA, input_shape);
-  fwd_binding.bind(BETA, input_shape);
+  fwd_binding.bind(GAMMA, input.shape);
+  fwd_binding.bind(BETA, input.shape);
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
   auto fwd_accessor = env.get_fwd_accessor(LAYERNORM_FWD_TASK_ID, fwd_binding);
@@ -186,7 +190,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 OpTaskSignature fwd_signature<LAYERNORM_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
@@ -199,7 +203,7 @@ OpTaskSignature fwd_signature<LAYERNORM_FWD_TASK_ID>() {
 }
 
 template <>
-OpTaskSignature bwd_signature<AYERNORM_BWD_TASK_ID>() {
+OpTaskSignature bwd_signature<LAYERNORM_BWD_TASK_ID>() {
   OpTaskSignature bwd =
       infer_bwd_signature(fwd_signature<LAYERNORM_FWD_TASK_ID>());
   return bwd;
@@ -207,7 +211,7 @@ OpTaskSignature bwd_signature<AYERNORM_BWD_TASK_ID>() {
 
 template <>
 OpTaskSignature init_signature<LAYERNORM_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
   init.add_input_slot(INPUT);
   init.add_arg_slot<LayerNormAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
@@ -222,7 +226,7 @@ void register_task<LAYERNORM_INIT_TASK_ID>() {
   register_task(LAYERNORM_INIT_TASK_ID,
                 "LayerNorm init",
                 init_signature<LAYERNORM_INIT_TASK_ID>(),
-                init_task);
+                init_task_impl);
 }
 
 template <>
@@ -230,15 +234,15 @@ void register_task<LAYERNORM_FWD_TASK_ID>() {
   register_task(LAYERNORM_FWD_TASK_ID,
                 "LayerNorm forward",
                 fwd_signature<LAYERNORM_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
 void register_task<LAYERNORM_BWD_TASK_ID>() {
   register_task(LAYERNORM_BWD_TASK_ID,
                 "LayerNorm backward",
-                bwd_signature<AYERNORM_BWD_TASK_ID>(),
-                backward_task);
+                bwd_signature<LAYERNORM_BWD_TASK_ID>(),
+                backward_task_impl);
 }
 
 } // namespace FlexFlow

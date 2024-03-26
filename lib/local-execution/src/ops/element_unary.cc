@@ -1,6 +1,6 @@
 #include "element_unary.h"
 #include "kernels/element_unary_kernels.h"
-
+#include "op-attrs/get_output_shapes.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -27,7 +27,6 @@ enum Slots {
 OpTaskInvocation init(ElementUnaryUnifiedAttrs const &attrs) {
   OpTaskBinding b;
 
-  b.bind_arg(HANDLE, ff_handle());
   b.bind_arg(ATTRS, attrs);
   b.bind_arg(INPUT_SHAPE, input_parallel_tensor_shape(0));
 
@@ -58,13 +57,12 @@ static DeviceSpecific<ElementUnaryPerDeviceState>
 
   auto const &attrs = acc.get_argument<ElementUnaryUnifiedAttrs>(ATTRS);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   ParallelTensorShape input_shape =
       acc.get_argument<ParallelTensorShape>(INPUT_SHAPE);
   ParallelTensorShape output_shape = get_output_shape(attrs, input_shape);
 
   DeviceSpecific<ElementUnaryPerDeviceState> per_device_state =
-          init_kernel(input_shape, output_shape, attrs);
+          init_kernel(get_piece_shape(input_shape), get_piece_shape(output_shape), attrs);
   return per_device_state;
 }
 
@@ -74,7 +72,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto const &attrs = acc.get_argument<ElementUnaryUnifiedAttrs>(ATTRS);
 
-  auto &handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
+  auto handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state =
@@ -99,7 +97,7 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
   auto const &attrs = acc.get_argument<ElementUnaryUnifiedAttrs>(ATTRS);
-  auto &handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
+  auto handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto per_device_state =
       acc.get_argument<ElementUnaryPerDeviceState>(PER_DEVICE_STATE);
@@ -160,7 +158,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<ELEMENTUNARY_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
   init.add_arg_slot<ParallelTensorShape>(INPUT_SHAPE);
   init.add_arg_slot<ElementUnaryUnifiedAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
@@ -175,12 +173,12 @@ void register_task<ELEMENTUNARY_INIT_TASK_ID>() {
   register_task(ELEMENTUNARY_INIT_TASK_ID,
                 "ElementUnary Init",
                 init_signature<ELEMENTUNARY_INIT_TASK_ID>(),
-                init_task);
+                init_task_impl);
 }
 
 template <>
 OpTaskSignature fwd_signature<ELEMENTUNARY_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
@@ -196,7 +194,7 @@ void register_task<ELEMENTUNARY_FWD_TASK_ID>() {
   register_task(ELEMENTUNARY_FWD_TASK_ID,
                 "ElementUnary Fwd",
                 fwd_signature<ELEMENTUNARY_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
@@ -212,7 +210,7 @@ void register_task<ELEMENTUNARY_BWD_TASK_ID>() {
   register_task(ELEMENTUNARY_BWD_TASK_ID,
                 "ElementUnary Bwd",
                 bwd_signature<ELEMENTUNARY_BWD_TASK_ID>(),
-                backward_task);
+                backward_task_impl);
 }
 
 } // namespace FlexFlow

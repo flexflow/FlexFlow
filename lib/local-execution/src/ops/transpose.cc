@@ -15,17 +15,9 @@
 
 #include "transpose.h"
 #include "kernels/transpose_kernels.h"
-
 #include "op-attrs/ops/transpose.h"
+#include "op-attrs/get_output_shapes.h"
 #include "utils/exception.decl.h"
-
-namespace FlexFlow {
-// declare Legion names
-
-
-
-
-
 
 using namespace FlexFlow::Kernels::Transpose;
 
@@ -48,24 +40,26 @@ OpTaskInvocation init(TransposeAttrs const &attrs) {
 static DeviceSpecific<TransposePerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<TransposeAttrs>(ATTRS);
-  std::vector<int> perm = attrs.perm; // default convert stack_vector to vector
+  std::vector<ff_dim_t> perm = static_cast<std::vector<ff_dim_t>>(attrs.perm);
   DeviceSpecific<TransposePerDeviceState> per_device_state =
           init_kernel(perm.size(), perm);
 
   return per_device_state;
 }
 
+// TODO: OpTaskSignature
 
-template <>
-void register_task<TRANSPOSE_INIT_TASK_ID>();
-OpTaskSignature init(OpTaskType::INIT)
 
-    init.add_arg_slot<TransposeAttrs>(ATTRS);
+// template <>
+// void register_task<TRANSPOSE_INIT_TASK_ID>() {
+// OpTaskSignature init(OpTaskType::INIT);
 
-init.add_return_value<TransposePerDeviceState>();
+//     init.add_arg_slot<TransposeAttrs>(ATTRS);
 
-register_task(TRANSPOSE_INIT_TASK_ID, "Transpose::init", init, init_task);
-} // namespace FlexFlow
+// init.add_return_value<TransposePerDeviceState>();
+
+// register_task(TRANSPOSE_INIT_TASK_ID, "Transpose::init", init, init_task_impl);
+// }
 
 OpTaskInvocation forward(TransposeAttrs const &attrs) {
   OpTaskBinding binding;
@@ -74,8 +68,8 @@ OpTaskInvocation forward(TransposeAttrs const &attrs) {
                    per_device_op_state<TransposePerDeviceState>());
   binding.bind_arg(PROFILING, profiling_settings());
 
-  bind.bind(INPUT, input_tensor(0));
-  bind.bind(OUTPUT, output_tensor(0));
+  binding.bind(INPUT, input_tensor(0));
+  binding.bind(OUTPUT, output_tensor(0));
 
   return {TRANSPOSE_FWD_TASK_ID, binding};
 }
@@ -88,7 +82,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
-  return profiling(forward_kernel,
+  return profile(forward_kernel,
                    profiling,
                    "[Transpose] Forward_time = %.2lf [ms]",
                    per_device_state,
@@ -100,23 +94,22 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  auto per_device_state =
-      acc.get_per_device_op_state<TransposePerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state = acc.get_argument<TransposePerDeviceState>(PER_DEVICE_STATE);
 
-  auto input_grad = acc.get_tensor_grad<Permissions::RO>(INPUT);
-  auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
+  auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
-  return profiling(backward_kernel,
-                   profiling,
-                   "[Transpose] Backward_time = %.2lf [ms]",
-                   per_device_state,
-                   input_grad,
-                   output_grad);
+  return profile(backward_kernel,
+                  profiling,
+                  "[Transpose] Backward_time = %.2lf [ms]",
+                  per_device_state,
+                  input_grad,
+                  output_grad);
 }
 
 
 
-OpTaskInvocation backward(TransposeAttrs const &) {
+OpTaskInvocation backward(TransposeAttrs const & attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
   return {TRANSPOSE_BWD_TASK_ID, binding};
@@ -129,7 +122,7 @@ CostMetrics
                               &input_descs, // Note:this may have some problem
                           ProfilingSettings const &settings,
                           MachineView const &machine_view) {
-  auto env = sim.new_environment();
+  auto env = sim_factory.new_environment();
 
   SimTaskBinding init_binding;
   init_binding.bind_arg(ATTRS, attrs);
@@ -139,12 +132,12 @@ CostMetrics
   DeviceSpecific<TransposePerDeviceState> per_device_state =
       init_task_impl(init_accessor);
 
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_descs.shape);
+  ParallelTensorShape output_shape = get_output_shape(attrs, input_descs.shapes);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
   fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind(INPUT, input_descs.shape);
+  fwd_binding.bind(INPUT, input_descs.shapes);
   fwd_binding.bind(OUTPUT, output_shape);
 
   auto fwd_accessor = env.get_fwd_accessor(TRANSPOSE_FWD_TASK_ID, fwd_binding);
@@ -159,4 +152,4 @@ CostMetrics
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-}; // namespace FlexFlow
+} // namespace FlexFlow

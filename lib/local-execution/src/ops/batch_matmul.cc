@@ -195,7 +195,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature fwd_signature<BATCHMATMUL_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(A_INPUT);
   fwd.add_input_slot(B_INPUT);
@@ -212,7 +212,7 @@ void register_task<BATCHMATMUL_FWD_TASK_ID>() {
   register_task(BATCHMATMUL_FWD_TASK_ID,
                 "BatchMatmul Fwd",
                 fwd_signature<BATCHMATMUL_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
@@ -228,7 +228,7 @@ void register_task<BATCHMATMUL_BWD_TASK_ID>() {
   register_task(BATCHMATMUL_BWD_TASK_ID,
                 "BatchMatmul Bwd",
                 bwd_signature<BATCHMATMUL_BWD_TASK_ID>(),
-                backward_task);
+                backward_task_impl);
 }
 
 }; // namespace FlexFlow

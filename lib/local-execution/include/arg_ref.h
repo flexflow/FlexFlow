@@ -42,13 +42,13 @@ public:
   static ArgRefSpec create(ArgRef<LABEL_TYPE, T> const &r) {
     static_assert(is_serializable<T>::value, "Type must be serializeable");
 
-    return ArgRefSpec(type_index<T>(), r.ref_type);
+    return ArgRefSpec(init_type_index<T>(), r.ref_type);
   }
 
   template <typename T>
   static ArgRefSpec create_device_specific(ArgRef<LABEL_TYPE, T> const &r,
                                            size_t device_idx) {
-    return ArgRefSpec(type_index<T>(), r.ref_type, device_idx);
+    return ArgRefSpec(init_type_index<T>(), r.ref_type, device_idx);
   }
 
 private:

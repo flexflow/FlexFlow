@@ -53,11 +53,11 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   legion_coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < output.shape.get_dim(); i++) {
     if (i < axis) {
-      in_blk_size *= output.shape[i];
+      in_blk_size *= output.shape.at(ff_dim_t(i));
     } else if (i == axis) {
-      reverse_dim_size = output.shape[i];
+      reverse_dim_size = output.shape.at(ff_dim_t(i));
     } else {
-      num_out_blks *= output.shape[i];
+      num_out_blks *= output.shape.at(ff_dim_t(i));
     }
   }
 
@@ -80,15 +80,15 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
   auto attrs = acc.get_argument<ReverseAttrs>(ATTRS);
 
-  int axis = input.shape.get_dim() - attrs.axis - 1;
+  int axis = input_grad.shape.get_dim() - attrs.axis.value() - 1;
   legion_coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < input_grad.shape.get_dim(); i++) {
     if (i < axis) {
-      in_blk_size *= input_grad.shape[i];
+      in_blk_size *= input_grad.shape.at(ff_dim_t(i));
     } else if (i == axis) {
-      reverse_dim_size = input_grad.shape[i];
+      reverse_dim_size = input_grad.shape.at(ff_dim_t(i));
     } else {
-      num_out_blks *= input_grad.shape[i];
+      num_out_blks *= input_grad.shape.at(ff_dim_t(i));
     }
   }
 
@@ -100,7 +100,7 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  num_out_blks,
                  reverse_dim_size,
                  in_blk_size,
-                 input.shape.get_volume());
+                 input_grad.shape.get_volume());
 }
 
 
@@ -110,7 +110,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   InputParallelTensorDesc const &input,
                                   ProfilingSettings const &settings,
                                   MachineView const &machine_view) {
-  auto env = sim.new_environment();
+  auto env = sim_factory.new_environment();
 
   SimTaskBinding fwd_binding;
 
@@ -135,21 +135,22 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 }
 
 template <>
-void register_task<REVERSE_FWD_TASK_ID>()) {
-  OpTaskSignature fwd(OpTaskType::FWD);
+void register_task<REVERSE_FWD_TASK_ID>() {
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(REVERSE_FWD_TASK_ID, "Reverse forward", fwd, forward_task);
+  register_task(REVERSE_FWD_TASK_ID, "Reverse forward", fwd, forward_task_impl);
 }
 
-template <>
-void register_task<REVERSE_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(REVERSE_BWD_TASK_ID));
-  register_task(REVERSE_BWD_TASK_ID, "Reverse backward", bwd, backward_task);
-}
+// TODO: OpTaskSignature
+// template <>
+// void register_task<REVERSE_BWD_TASK_ID>() {
+//   OpTaskSignature bwd =
+//       infer_bwd_signature(get_op_signature(REVERSE_BWD_TASK_ID));
+//   register_task(REVERSE_BWD_TASK_ID, "Reverse backward", bwd, backward_task_impl);
+// }
 
 }; // namespace FlexFlow

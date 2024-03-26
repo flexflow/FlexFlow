@@ -119,7 +119,7 @@ CostMetrics
 
 template <>
 OpTaskSignature fwd_signature<CONCAT_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
   fwd.add_arg_slot<ConcatAttrs>(ATTRS);
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_input_slot(INPUTS, SlotType::VARIADIC);
@@ -133,13 +133,13 @@ void register_task<CONCAT_FWD_TASK_ID>() {
   register_task(CONCAT_FWD_TASK_ID,
                 "Concat Fwd",
                 fwd_signature<CONCAT_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
 OpTaskSignature bwd_signature<CONCAT_BWD_TASK_ID>() {
   OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(CONCAT_FWD_TASK_ID));
+      infer_bwd_signature(fwd_signature<CONCAT_FWD_TASK_ID>());
 
   return bwd;
 }
@@ -149,7 +149,7 @@ void register_task<CONCAT_BWD_TASK_ID>() {
   register_task(CONCAT_BWD_TASK_ID,
                 "Concat Bwd",
                 bwd_signature<CONCAT_BWD_TASK_ID>(),
-                backward_task);
+                backward_task_impl);
 }
 
 }; // namespace FlexFlow

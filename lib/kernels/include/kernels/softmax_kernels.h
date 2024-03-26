@@ -10,7 +10,7 @@ namespace FlexFlow {
 struct SoftmaxPerDeviceState {
   PerDeviceFFHandle handle;
   ffTensorDescriptor_t inputTensor;
-  int dim;
+  req<int> dim;
 };
 
 FF_VISITABLE_STRUCT(SoftmaxPerDeviceState, handle, inputTensor, dim);

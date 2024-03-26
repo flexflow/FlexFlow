@@ -14,7 +14,6 @@
  */
 
 #include "device.h"
-#include "device.h"
 #include "kernels/dropout_kernels.h"
 #include "kernels/ff_handle.h"
 
@@ -52,7 +51,6 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(cudnnSetDropoutDescriptor(
       dropoutDesc, handle.dnn, rate, dropoutStates, dropoutStateSize, seed));
   DropoutPerDeviceState per_device_state = {handle,
-                                            allocator,
                                             inputTensor,
                                             outputTensor,
                                             dropoutDesc,

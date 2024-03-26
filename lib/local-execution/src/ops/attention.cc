@@ -15,17 +15,11 @@
 
 #include "attention.h"
 #include "kernels/attention_kernels.h"
-#include "op-attrs/ops/attention.h"
 #include "op_task_signature.h"
 
 namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::MultiHeadAttention;
-
-
-
-
-
 
 enum Slots {
   QUERY_PARALLEL_TENSOR_SHAPE,
@@ -124,6 +118,23 @@ static DeviceSpecific<MHAPerDeviceState>
   int qoSeqLength = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(1)];
   int num_samples = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(2)];
   int num_heads = get_piece_shape(weight_parallel_tensor_shape)[ff_dim_t(1)];
+
+  // MHAPerDeviceState per_device_state =
+  //         init_kernel(handle,
+  //                     allocator,
+  //                     num_samples,
+  //                     num_heads,
+  //                     qSize,
+  //                     kSize,
+  //                     vSize,
+  //                     qProjSize,
+  //                     kProjSize,
+  //                     vProjSize,
+  //                     oProjSize,
+  //                     qoSeqLength,
+  //                     kvSeqLength,
+  //                     attrs.add_bias_kv);
+  // return acc.create_device_specific<MHAPerDeviceState>(per_device_state);
 
   DeviceSpecific<MHAPerDeviceState> per_device_state =
           init_kernel(handle,
@@ -267,7 +278,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<ATTENTION_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
   init.add_arg_slot<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);
   init.add_arg_slot<ParallelTensorShape>(KEY_PARALLEL_TENSOR_SHAPE);
   init.add_arg_slot<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
@@ -288,7 +299,7 @@ void register_task<ATTENTION_INIT_TASK_ID>() {
   register_task(ATTENTION_INIT_TASK_ID,
                 "Attention Init",
                 init_signature<ATTENTION_INIT_TASK_ID>(),
-                init_task);
+                init_task_impl);
 }
 
 template <>
@@ -297,14 +308,8 @@ OpTaskSignature get_signature<ATTENTION_INIT_TASK_ID>() {
 }
 
 template <>
-std::function<DeviceSpecific<MHAPerDeviceState>(TaskArgumentAccessor const &)>
-    get_task_impl<ATTENTION_INIT_TASK_ID>() {
-  return init_task_impl;
-}
-
-template <>
 OpTaskSignature fwd_signature<ATTENTION_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(QUERY);
   fwd.add_input_slot(KEY);
@@ -323,13 +328,13 @@ void register_task<ATTENTION_FWD_TASK_ID>() {
   register_task(ATTENTION_FWD_TASK_ID,
                 "Attention Fwd",
                 fwd_signature<ATTENTION_FWD_TASK_ID>(),
-                forward_task);
+                forward_task_impl);
 }
 
 template <>
 OpTaskSignature bwd_signature<ATTENTION_BWD_TASK_ID>() {
   OpTaskSignature bwd =
-      infer_bwd_signature(get_op_signature(ATTENTION_FWD_TASK_ID));
+      infer_bwd_signature(fwd_signature<ATTENTION_FWD_TASK_ID>());
 
   return bwd;
 }
@@ -339,7 +344,7 @@ void register_task<ATTENTION_BWD_TASK_ID>() {
   register_task(ATTENTION_BWD_TASK_ID,
                 "Attention Bwd",
                 bwd_signature<ATTENTION_BWD_TASK_ID>(),
-                backward_task);
+                backward_task_impl);
 }
 
 } // namespace FlexFlow

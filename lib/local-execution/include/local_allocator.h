@@ -8,6 +8,8 @@ namespace FlexFlow {
 
 struct LocalAllocator : public IAllocator {
   LocalAllocator() = default;
+  LocalAllocator(LocalAllocator const &) = delete;
+  LocalAllocator(LocalAllocator &&) = delete;
   ~LocalAllocator() override;
 
   void *allocate(size_t) override;

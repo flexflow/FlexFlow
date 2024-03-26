@@ -8,7 +8,7 @@ namespace FlexFlow {
 enum class EnableProfiling { YES, NO };
 
 template <typename F, typename... Ts, typename Str>
-optional<float>
+std::optional<float>
     profile(F const &f, ProfilingSettings profiling, Str s, Ts &&...ts) {
   std::optional<float> elapsed =
       profiling_wrapper<F, Ts...>(f, profiling, std::forward<Ts>(ts)...);

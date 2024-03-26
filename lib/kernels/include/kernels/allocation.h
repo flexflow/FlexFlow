@@ -29,6 +29,14 @@ struct Allocator {
     this->i_allocator->deallocate(tensor_backing.ptr);
   }
 
+  void* allocate(size_t mem_size) {
+    return this->i_allocator->allocate(mem_size);
+  }
+
+  void deallocate(void* ptr) {
+    this->i_allocator->deallocate(ptr);
+  }
+
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IAllocator, T>::value,
                                  Allocator>::type
@@ -37,6 +45,7 @@ struct Allocator {
   }
 
 private:
+  Allocator(std::shared_ptr<IAllocator> ptr) : i_allocator(ptr) {};
   std::shared_ptr<IAllocator> i_allocator;
 };
 

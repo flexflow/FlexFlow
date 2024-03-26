@@ -14,6 +14,7 @@
  */
 
 #include "reshape.h"
+#include "op-attrs/get_output_shapes.h"
 #include "kernels/reshape_kernels.h"
 
 
@@ -86,7 +87,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
       acc.get_argument<ReshapePerDeviceState>(PER_DEVICE_STATE);
-  Profiling profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
@@ -135,18 +136,18 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<RESHAPE_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+  OpTaskSignature init; init.type = OpTaskType::INIT;
 
   init.add_arg_slot<ReshapeAttrs>(ATTRS);
 
-  init.add_return_value<ReshapePerDeviceState>(PER_DEVICE_STATE);
+  init.add_return_value<ReshapePerDeviceState>();
 
-  register_task(RESHAPE_INIT_TASK_ID, "Reshape Init", init, init_task);
+  register_task(RESHAPE_INIT_TASK_ID, "Reshape Init", init, init_task_impl);
 }
 
 template <>
 void register_task<RESHAPE_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<ReshapePerDeviceState>(PER_DEVICE_STATE);
@@ -154,15 +155,17 @@ void register_task<RESHAPE_FWD_TASK_ID>() {
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
 
-  register_task(RESHAPE_FWD_TASK_ID, "Reshape Fwd", fwd, forward_task);
+  register_task(RESHAPE_FWD_TASK_ID, "Reshape Fwd", fwd, forward_task_impl);
 }
 
-template <>
-void register_task<RESHAPE_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_binding(get_op_signature(RESHAPE_FWD_TASK_ID));
+// TODO: OpTaskSignature
 
-  register_task(RESHAPE_BWD_TASK_ID, "Reshape Bwd", bwd, backward_task);
-}
+// template <>
+// void register_task<RESHAPE_BWD_TASK_ID>() {
+//   OpTaskSignature bwd =
+//       infer_bwd_binding(get_op_signature(RESHAPE_FWD_TASK_ID));
+
+//   register_task(RESHAPE_BWD_TASK_ID, "Reshape Bwd", bwd, backward_task_impl);
+// }
 
 }; // namespace FlexFlow

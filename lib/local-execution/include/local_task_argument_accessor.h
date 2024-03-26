@@ -21,15 +21,11 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
   OpArgRefTypeBacking const & get_op_arg_ref(slot_id) const override;
   RuntimeArgRefTypeBacking const & get_runtime_arg(slot_id) const override;
 
-  PrivilegeType get_tensor(slot_id slot, Permissions priv) const override;
+  PrivilegeType get_tensor(slot_id slot, Permissions priv, IsGrad is_grad) const override;
   PrivilegeVariadicType get_variadic_tensor(slot_id slot,
-                                                    Permissions priv) const override;
-  PrivilegeType get_tensor_grad(slot_id slot,
-                                        Permissions priv) const override;
-  PrivilegeVariadicType
-      get_variadic_tensor_grad(slot_id slot, Permissions priv) const override;
+                                                    Permissions priv, IsGrad is_grad) const override;
 
-  Allocator get_allocator();
+  Allocator get_allocator() const override;
 
   void insert_tensor(SlotGradId tensor_id,
                      GenericTensorAccessorW tensor_backing) {
