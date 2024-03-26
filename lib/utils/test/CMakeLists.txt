@@ -1,6 +1,6 @@
 ff_add_test_executable(
   NAME
-    utils-test
+    utils-tests
   SRC_PATTERNS
     src/test_cow_ptr.cc
   PRIVATE_INCLUDE

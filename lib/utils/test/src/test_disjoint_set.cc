@@ -62,9 +62,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         ds.get_mapping();
 
     for (auto const &kv : mapping) {
-      CHECK(
-          *kv.second ==
-          *expectedMapping[kv.first]); // Compare the values inside the optionals
+      CHECK(*kv.second == *expectedMapping[kv.first]); // Compare the values
+                                                       // inside the optionals
     }
   }
 }

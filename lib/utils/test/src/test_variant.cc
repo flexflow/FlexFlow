@@ -63,7 +63,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     REQUIRE(cast_result); // Ensure the cast was successful
 
     // Perform the widening operation
-    wider_variant = widen<std::variant<int, float, double>>(cast_result.value());
+    wider_variant =
+        widen<std::variant<int, float, double>>(cast_result.value());
 
     // Check the result
     CHECK(get<int>(wider_variant) == 42);

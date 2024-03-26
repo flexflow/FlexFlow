@@ -41,10 +41,12 @@ TEST_SUITE(FF_TEST_SUITE) {
               {n[1], n[2]}))) == std::unordered_set<MultiDiEdge>{e[2], e[3]});
     CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes(query_set<Node>(
               {n[0], n[2]}))) == std::unordered_set<MultiDiEdge>{e[1], e[2]});
-    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs(query_set<NodePort>(
-              {p[1], p[2]}))) == std::unordered_set<MultiDiEdge>{e[2], e[3]});
-    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_idxs(query_set<NodePort>(
-              {p[0], p[2]}))) == std::unordered_set<MultiDiEdge>{e[1], e[2]});
+    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs(
+              query_set<NodePort>({p[1], p[2]}))) ==
+          std::unordered_set<MultiDiEdge>{e[2], e[3]});
+    CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_idxs(
+              query_set<NodePort>({p[0], p[2]}))) ==
+          std::unordered_set<MultiDiEdge>{e[1], e[2]});
     CHECK(g.query_edges(MultiDiEdgeQuery::all()
                             .with_src_nodes({n[1]})
                             .with_dst_nodes({n[2]})

@@ -32,9 +32,8 @@ using namespace rc;
 /* static_assert(is_fmtable<UndirectedEdgeQuery>::value, ""); */
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE_TEMPLATE("UndirectedGraph implementations",
-                     T,
-                     HashmapUndirectedGraph) {
+  TEST_CASE_TEMPLATE(
+      "UndirectedGraph implementations", T, HashmapUndirectedGraph) {
 
     rc::dc_check("Full", [&]() {
       UndirectedGraph g = UndirectedGraph::create<T>();
@@ -45,7 +44,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       if (num_nodes > 0) {
         e = *gen::unique<std::vector<UndirectedEdge>>(
             num_edges,
-            gen::construct<UndirectedEdge>(gen::elementOf(n), gen::elementOf(n)));
+            gen::construct<UndirectedEdge>(gen::elementOf(n),
+                                           gen::elementOf(n)));
       }
       for (UndirectedEdge const &edge : e) {
         g.add_edge(edge);

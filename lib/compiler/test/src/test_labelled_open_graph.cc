@@ -43,7 +43,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     auto subgraph0 = get_subgraph<OpenMultiDiSubgraphView>(g, node_set0);
     auto subgraph1 = get_subgraph<UpwardOpenMultiDiSubgraphView>(g, node_set0);
-    auto subgraph2 = get_subgraph<DownwardOpenMultiDiSubgraphView>(g, node_set0);
+    auto subgraph2 =
+        get_subgraph<DownwardOpenMultiDiSubgraphView>(g, node_set0);
     auto subgraph3 = get_subgraph<ClosedMultiDiSubgraphView>(g, node_set0);
 
     CHECK(bool(get_nodes(subgraph0) == node_set0));
@@ -73,7 +74,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                    split_edge(e2).second, split_edge(e3).second, e4}));
     CHECK(bool(get_edges(subgraph2) ==
                std::unordered_set<OpenMultiDiEdge>{e4, e5}));
-    CHECK(bool(get_edges(subgraph3) == std::unordered_set<OpenMultiDiEdge>{e4}));
+    CHECK(
+        bool(get_edges(subgraph3) == std::unordered_set<OpenMultiDiEdge>{e4}));
 
     CHECK(bool(get_closed_sources(subgraph2) == std::unordered_set<Node>{n3}));
   }

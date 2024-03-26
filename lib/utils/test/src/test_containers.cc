@@ -30,7 +30,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("sum with condition") {
     std::vector<int> v = {1, 2, 3, 4, 5};
-    auto condition = [](int x) { return x % 2 == 0; }; // Sum of even numbers only
+    auto condition = [](int x) {
+      return x % 2 == 0;
+    }; // Sum of even numbers only
     CHECK(sum_where(v, condition) == 6);
   }
 

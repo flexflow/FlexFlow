@@ -102,8 +102,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     RC_ASSERT(matches.size() == 3);
 
     for (MultiDiGraphPatternMatch const &match : matches) {
-      RC_ASSERT(pattern_matches(
-          as_openmultidigraph(sg0), as_openmultidigraph(g), match, always_true));
+      RC_ASSERT(pattern_matches(as_openmultidigraph(sg0),
+                                as_openmultidigraph(g),
+                                match,
+                                always_true));
     }
   }
 }

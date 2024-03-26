@@ -109,7 +109,8 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("traversal") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
     std::vector<Node> const n = add_nodes(g, 5);
-    std::vector<DirectedEdge> edges = {{n[0], n[1]}, {n[1], n[2]}, {n[2], n[3]}};
+    std::vector<DirectedEdge> edges = {
+        {n[0], n[1]}, {n[1], n[2]}, {n[2], n[3]}};
     add_edges(g, edges);
 
     CHECK(get_sources(g) == std::unordered_set<Node>{n[0], n[4]});
@@ -138,7 +139,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
     SUBCASE("nonlinear") {
       g.add_edge({n[1], n[3]});
-      CHECK(is_acyclic(g) == true); // TODO, maybe a bug about the  unchecked_dfs
+      CHECK(is_acyclic(g) == true); // TODO, maybe a bug about the unchecked_dfs
     }
 
     SUBCASE("not connected") {
@@ -168,7 +169,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     auto CHECK_BEFORE = [&](int l, int r) {
       CHECK(index_of(ordering, n[l]).has_value());
       CHECK(index_of(ordering, n[r]).has_value());
-      CHECK(index_of(ordering, n[l]).value() < index_of(ordering, n[r]).value());
+      CHECK(index_of(ordering, n[l]).value() <
+            index_of(ordering, n[r]).value());
     };
 
     CHECK(ordering.size() == n.size());

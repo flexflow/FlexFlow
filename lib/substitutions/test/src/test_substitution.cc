@@ -12,18 +12,20 @@ TEST_SUITE(FF_TEST_SUITE) {
             ConstraintType::EQUAL, OperatorAttributeKey::OP_TYPE, Op::LINEAR}}};
 
     ParallelTensorPattern tensor_pattern_e0{
-        std::vector<TensorAttributeConstraint>{TensorAttributeConstraint{
-            ConstraintType::EQUAL,
-            ListIndexAccess<TensorAttributeKey>{TensorAttributeKey::DIM_SIZES, 0},
-            2}}};
+        std::vector<TensorAttributeConstraint>{
+            TensorAttributeConstraint{ConstraintType::EQUAL,
+                                      ListIndexAccess<TensorAttributeKey>{
+                                          TensorAttributeKey::DIM_SIZES, 0},
+                                      2}}};
 
     ParallelTensorPattern tensor_pattern_empty{
         std::vector<TensorAttributeConstraint>{}};
 
-    auto ig = OutputLabelledOpenMultiDiGraph<OperatorPattern,
-                                             ParallelTensorPattern>::
-        create<UnorderedOutputLabelledOpenMultiDiGraph<OperatorPattern,
-                                                       ParallelTensorPattern>>();
+    auto ig =
+        OutputLabelledOpenMultiDiGraph<OperatorPattern, ParallelTensorPattern>::
+            create<UnorderedOutputLabelledOpenMultiDiGraph<
+                OperatorPattern,
+                ParallelTensorPattern>>();
     Node n0 = ig.add_node(operator_pattern_n0);
     NodePort p0 = ig.add_node_port();
     InputMultiDiEdge e0{n0, p0, std::make_pair(p0.value(), p0.value())};
@@ -86,7 +88,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SubParallelComputationGraph pcg =
         OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>::create<
-            UnorderedOutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>>();
+            UnorderedOutputLabelledOpenMultiDiGraph<Operator,
+                                                    ParallelTensor>>();
 
     Node n4 = pcg.add_node(Operator{InputAttrs{}, "input"});
     Node n5 = pcg.add_node(Operator{
@@ -109,8 +112,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         },
         [&](OpenMultiDiEdge const &pattern_edge,
             OpenMultiDiEdge const &graph_edge) {
-          return parallel_tensor_satisfies(pcg.at(graph_edge),
-                                           input_graph.value().at(pattern_edge));
+          return parallel_tensor_satisfies(
+              pcg.at(graph_edge), input_graph.value().at(pattern_edge));
         }};
 
     RC_ASSERT(criterion.node_criterion(n0, n5));

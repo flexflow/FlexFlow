@@ -8,7 +8,8 @@ TEST_SUITE(FF_TEST_SUITE) {
   // Rapidcheck infrastructures for graphs does not work for now
   /*
   Tests whether optimal_cost can give a valid result given random PCG, trivial
-  allowed machine views, trivial cost estimator and random machine specification.
+  allowed machine views, trivial cost estimator and random machine
+  specification.
   */
   // TEST_CASE("optimal_cost") {
   //   auto test_allowed_machine_views = [](Operator const &,
