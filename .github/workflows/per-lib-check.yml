@@ -80,6 +80,10 @@ jobs:
         run: |
           build_libs.sh compiler
 
+      - name: Test utils
+        run: |
+          test_libs.sh utils
+
       - name: Test substitutions
         run: |
           test_libs.sh substitutions
