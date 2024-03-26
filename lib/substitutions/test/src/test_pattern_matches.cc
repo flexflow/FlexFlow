@@ -62,46 +62,48 @@ struct Arbitrary<MultiDiGraph> {
 //   });
 // }
 
-TEST_CASE("find_pattern_matches_small") {
-  MultiDiGraph g = MultiDiGraph::template create<AdjacencyMultiDiGraph>();
+TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE("find_pattern_matches_small") {
+    MultiDiGraph g = MultiDiGraph::template create<AdjacencyMultiDiGraph>();
 
-  {
-    Node n0 = g.add_node();
-    Node n1 = g.add_node();
-    Node n2 = g.add_node();
-    Node n3 = g.add_node();
+    {
+      Node n0 = g.add_node();
+      Node n1 = g.add_node();
+      Node n2 = g.add_node();
+      Node n3 = g.add_node();
 
-    MultiDiEdge e0{n1, g.add_node_port(), n0, g.add_node_port()};
-    MultiDiEdge e1{n2, g.add_node_port(), n1, g.add_node_port()};
-    MultiDiEdge e2{n3, g.add_node_port(), n2, g.add_node_port()};
+      MultiDiEdge e0{n1, g.add_node_port(), n0, g.add_node_port()};
+      MultiDiEdge e1{n2, g.add_node_port(), n1, g.add_node_port()};
+      MultiDiEdge e2{n3, g.add_node_port(), n2, g.add_node_port()};
 
-    g.add_edge(e0);
-    g.add_edge(e1);
-    g.add_edge(e2);
-  }
+      g.add_edge(e0);
+      g.add_edge(e1);
+      g.add_edge(e2);
+    }
 
-  MultiDiGraph sg0 = MultiDiGraph::template create<AdjacencyMultiDiGraph>();
+    MultiDiGraph sg0 = MultiDiGraph::template create<AdjacencyMultiDiGraph>();
 
-  {
-    Node n0 = sg0.add_node();
-    Node n1 = sg0.add_node();
+    {
+      Node n0 = sg0.add_node();
+      Node n1 = sg0.add_node();
 
-    MultiDiEdge e0{n1, sg0.add_node_port(), n0, sg0.add_node_port()};
+      MultiDiEdge e0{n1, sg0.add_node_port(), n0, sg0.add_node_port()};
 
-    sg0.add_edge(e0);
-  }
+      sg0.add_edge(e0);
+    }
 
-  MatchAdditionalCriterion always_true{
-      [](Node const &, Node const &) { return true; },
-      [](OpenMultiDiEdge const &, OpenMultiDiEdge const &) { return true; }};
+    MatchAdditionalCriterion always_true{
+        [](Node const &, Node const &) { return true; },
+        [](OpenMultiDiEdge const &, OpenMultiDiEdge const &) { return true; }};
 
-  std::vector<MultiDiGraphPatternMatch> matches = find_pattern_matches(
-      as_openmultidigraph(sg0), as_openmultidigraph(g), always_true);
+    std::vector<MultiDiGraphPatternMatch> matches = find_pattern_matches(
+        as_openmultidigraph(sg0), as_openmultidigraph(g), always_true);
 
-  RC_ASSERT(matches.size() == 3);
+    RC_ASSERT(matches.size() == 3);
 
-  for (MultiDiGraphPatternMatch const &match : matches) {
-    RC_ASSERT(pattern_matches(
-        as_openmultidigraph(sg0), as_openmultidigraph(g), match, always_true));
+    for (MultiDiGraphPatternMatch const &match : matches) {
+      RC_ASSERT(pattern_matches(
+          as_openmultidigraph(sg0), as_openmultidigraph(g), match, always_true));
+    }
   }
 }
