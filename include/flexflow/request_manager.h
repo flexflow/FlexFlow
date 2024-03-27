@@ -80,6 +80,7 @@ struct TokenTreeNode {
   BatchConfig::TokenId id;
   float joint_prob;
   int parent_pos;
+  bool pruned = false;
 };
 
 struct TreeLayer {
