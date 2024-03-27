@@ -1042,8 +1042,8 @@ TreeSearchBatchConfig
                 << std::endl;
     }
   }
-  // Step 1: Store result to the beam tree struct
-  store_beam_metadata(old_bc, result);
+  // Step 1: Store small model's inference result to the token tree struct
+  store_ssm_inference_results(old_bc, result);
 
   // Step 2: preparing the next batch for existing requests
   TreeSearchBatchConfig new_bc;
@@ -1634,8 +1634,8 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
   return new_bc;
 }
 
-void RequestManager::store_beam_metadata(TreeSearchBatchConfig const &old_bc,
-                                         SsmInferenceResult const &result) {
+void RequestManager::store_ssm_inference_results(
+    TreeSearchBatchConfig const &old_bc, SsmInferenceResult const &result) {
   // step1 store the outputs
   if (old_bc.num_tokens <= 0) {
     return;

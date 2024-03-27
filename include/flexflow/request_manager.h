@@ -188,8 +188,8 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  void store_beam_metadata(TreeSearchBatchConfig const &old_bc,
-                           SsmInferenceResult const &result);
+  void store_ssm_inference_results(TreeSearchBatchConfig const &old_bc,
+                                   SsmInferenceResult const &result);
   void update_beam_metadata(TreeSearchBatchConfig &new_bc,
                             TreeSearchBatchConfig const &old_bc,
                             BeamTree &tree,
