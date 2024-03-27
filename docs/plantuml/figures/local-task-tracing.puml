@@ -1,0 +1,433 @@
+@startuml local-task-tracing
+
+title __**Potential Local Task Backend Interface**__
+
+!$user = "User"
+!$python = "./bindings/python"
+!$torch = "torch"
+!$ffi = "./lib/ffi"
+!$pcg = "./lib/pcg"
+!$runtime = "./lib/runtime"
+!$compiler = "./lib/compiler"
+!$localBacking = "LocalBacking"
+!$localAllocator = "LocalAllocator"
+!$participantBGColor = "#FFFFFF"
+!$codeColor = "#F0F6FF"
+
+skinparam defaultFontName Courier
+skinparam defaultFontStyle bold
+skinparam arrowFontStyle bold
+skinparam responseMessageBelowArrow true
+skinparam sequenceMessageAlign left
+skinparam sequenceReferenceAlign left
+skinparam sequenceReferenceFontStyle bold
+skinparam participantBackgroundColor #F0F0F0
+
+participant U as "$user"
+participant P as "$python"
+participant T as "$torch"
+participant F as "$ffi"
+participant G as "$pcg"
+participant R as "$runtime"
+participant C as "$compiler"
+participant B as "$localBacking"
+participant L as "$localAllocator"
+
+!function $get_idx($participant)
+  !if ($participant == "$user")
+    !return 0
+  !elseif ($participant == "$python")
+    !return 1
+  !elseif ($participant == "$torch")
+    !return 2
+  !elseif ($participant == "$ffi")
+    !return 3
+  !elseif ($participant == "$pcg")
+    !return 4
+  !elseif ($participant == "$runtime")
+    !return 5
+  !elseif ($participant == "$compiler")
+    !return 6
+  !elseif ($participant == "$localBacking")
+    !return 7
+  !elseif ($participant == "$localAllocator")
+    !return 8
+  !endif
+!endfunction
+
+!procedure $remind_participants($start="$user", $end="$localAllocator")
+  |||
+  !$start_idx = $get_idx($start)
+  !$end_idx = $get_idx($end) + 1
+  !if ($start_idx <= 0 && $end_idx > 0)
+    rnote over U $participantBGColor: $user
+  !endif
+  !if ($start_idx <= 1 && $end_idx > 1)
+    /rnote over P $participantBGColor: $python
+  !endif
+  !if ($start_idx <= 2 && $end_idx > 2)
+    /rnote over T $participantBGColor: $torch
+  !endif
+  !if ($start_idx <= 3 && $end_idx > 3)
+    /rnote over F $participantBGColor: $ffi
+  !endif
+  !if ($start_idx <= 4 && $end_idx > 4)
+    /rnote over G $participantBGColor: $pcg
+  !endif
+  !if ($start_idx <= 5 && $end_idx > 5)
+    /rnote over R $participantBGColor: $runtime
+  !endif
+  !if ($start_idx <= 6 && $end_idx > 6)
+    /rnote over C $participantBGColor: $compiler
+  !endif
+  !if ($start_idx <= 7 && $end_idx > 7)
+    /rnote over B $participantBGColor: $localBacking
+  !endif
+  !if ($start_idx <= 8 && $end_idx > 8)
+    /rnote over L $participantBGColor: $localAllocator
+  !endif
+  |||
+!endprocedure
+
+
+$remind_participants()
+
+group compilation [def compilation(g: torch.fx.GraphModule) -> CompiledModel]
+
+    ?-->P: g: torch.fx.GraphModule
+
+    P->>P:\
+  ff_model = flexflow.torch.from_fx(symbolic_traced)
+
+    group flexflow.torch.from_fx [def from_fx(g: torch.fx.GraphModule) -> ComputationGraph]
+      $remind_participants("$python", "$pcg")
+
+      ?-->P: g: torch.fx.GraphModule
+
+      P->>F: flexflow_computation_graph_create(...)
+    
+      |||
+
+      F->>P:\
+    typedef struct {\l\
+      ComputationGraphBuilder *ptr;\l\
+    } flexflow_computation_graph_builder_t;
+
+      |||
+
+      P->>F: flexflow_computation_graph_add_op_flat(...)
+
+      F->>G:\
+    ComputationGraphBuilder::flat(...);
+
+      |||
+
+      G->>F:\
+    struct Tensor { ... };
+
+      F->>P:\
+    typedef struct {\l\
+      Tensor *ptr;\l\
+    } flexflow_tensor_t;
+
+      rnote over P, G
+        ..., etc.
+      end note
+
+      ?<--P: comp_graph\l : ComputationGraph
+    end
+
+    |||
+
+?<--P: compiled_model : CompiledModel
+
+end
+
+group backend_initialization [def initialize_backend(comp_graph: ComputationGraph) -> LocalBacking]
+  $remind_participants("$python", "$localAllocator")
+
+  ?-->P: comp_graph: ComputationGraph
+
+  P->>R: flexflow_local_backing_init(comp_graph)
+
+  R->>L: LocalAllocator::init(size_t mem);
+
+  |||
+
+  L->>R: LocalAllocator local_allocator; 
+
+  |||
+
+  R->>B: LocalBacking::init(comp_graph, local_allocator);
+
+  |||
+
+  B->>R:\
+struct LocalBacking {\l\
+  ComputationGraph comp_graph;\l\
+  LocalAllocator local_allocator;\l\
+};
+
+  R->>P:\
+  flexflow_runtime_backing
+  
+  ?<--P: flexflow_runtime_backing\l : LocalBacking
+end
+
+
+$remind_participants()
+
+group serialization
+  U->>P:\
+  model_json = compiled_model.as_json()
+
+  U->>P:\
+with open('compiled.json', 'w') as f:\l\
+  compiled_model.dump(f)
+
+  P->>F:\
+end
+
+group deserialization
+
+end
+
+$remind_participants()
+
+== Training Starts ==
+
+rnote across $codeColor
+
+...
+41   for batch_id, (X, y) in enumerate(dataloader):
+42     pred = compiled_model(X)
+43     loss = loss_fn(pred, y)
+44     loss.backward()
+45     optimizer.step()
+46     optimizer.zero_grad()
+47     
+48     if batch_id % 100 == 0:
+49       loss, current = loss.item(), (batch_num + 1) * len(X)
+50       print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
+...
+
+end note
+
+loop training loop
+
+  $remind_participants()
+
+  opt writing to tensor elements
+      U->>P: set_tensor
+      P->>F:
+      F->>R:
+      R->>B:
+      B->>L:
+      L->>B:
+      B->>R:
+      R->>F:
+      F->>P:
+      P->>U:
+  end
+
+  $remind_participants()
+
+  opt reading tensor elements
+      U->>P: get_tensor
+      P->>F:
+      F->>R: 
+      R->>B:
+      B->>R:
+      R->>F:
+      F->>P:
+      P->>U:
+  end
+
+  $remind_participants()
+
+  group fwd
+
+rnote across $codeColor
+
+...
+42     pred = compiled_model(X)
+43     loss = loss_fn(pred, y)
+...
+
+end note
+
+    U->>P:\
+pred = compiled_model(batch)
+
+    opt if first iteration
+      P->>F:\
+flexflow_error_t\l\
+flexflow_start_training(\l\
+  flexflow_model_compilation_result_t,\l\
+  flexflow_local_backing,\l\
+  flexflow_model_compilation_result_t *out\l\
+);
+
+      |||
+
+      F->>P:\
+typedef struct {\l\
+  LocalModelTrainingInstance *ptr;\l\
+} flexflow_model_training_instance_t;
+
+      |||
+
+      P->>P: model.training_instance = ...
+    end
+
+    P->>U:\
+pred: TensorFuture
+
+    |||
+
+    U->>P:\
+loss = loss_fn(pred, label)
+
+    P->>F:\
+flexflow_error_t\l\
+flexflow_model_training_instance_forward(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+    F->>R:\
+forward(LocalModelTrainingInstance const &);
+
+    R->>B:\
+TensorBacking LocalBacking::forward() {\l\
+  for (op in top_sort(comp_graph)) {\l\
+    output_tensor_backing = backend.execute_forward(op);\l\
+  }\l\
+}
+
+    |||
+
+    B->>R:
+
+    R->>F:\
+    output_tensor_backing;
+
+    F->>P:\
+flexflow_tensor_t
+
+    P->>U:\
+loss: LossTensor
+
+  end
+
+  $remind_participants()
+
+  ref over U, L
+    [optional] reading tensor elements
+  end
+
+  ref over U, L
+    [optional] writing to tensor elements
+  end
+
+  $remind_participants()
+
+  group bwd
+
+rnote across $codeColor
+
+...
+44     loss.backward()
+...
+
+end note
+
+  U->>P:\
+loss.backward()
+
+  P->>F:\
+flexflow_error_t\l\
+flexflow_model_training_instance_backward(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+  F->>R:\
+backward(LocalModelTrainingInstance const &);
+
+    R->>B:\
+LocalBacking::backward() {\l\
+  for (op in reverse_top_sort(comp_graph)) {\l\
+    backend.execute_backward(op);\l\
+  }\l\
+}
+
+  $remind_participants()
+
+  ref over U, L
+    [optional] reading tensor elements
+  end
+
+  ref over U, L
+    [optional] writing to tensor elements
+  end
+
+  $remind_participants()
+
+  group update
+
+rnote across $codeColor
+
+...
+45     optimizer.step()
+46     optimizer.zero_grad()
+...
+
+end note
+
+  $remind_participants()
+
+  U->>P:\
+optimizer.step()
+
+  U->>P:\
+optimizer.zero_grad()
+
+  P->>F:\
+flexflow_error_t\l\
+flexflow_model_training_instance_update(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+  F->>R:\
+update(LocalModelTrainingInstance const &);
+
+    R->>B:\
+TensorBacking LocalBacking::update() {\l\
+  for (op in top_sort(comp_graph)) {\l\
+    backend.execute_update(op);\l\
+  }\l\
+}
+
+end
+
+$remind_participants()
+
+== Training Stops ==
+
+U->>P:\
+<compiled_model goes out of scope>
+
+P->>F:\
+flexflow_error_t\l\
+flexflow_stop_training(\l\
+  flexflow_model_training_instance_t\l\
+);
+
+F->>R:\
+deallocate(LocalModelTrainingInstance)
+
+R->>L:\
+~Allocator()
+
+
+@enduml
+

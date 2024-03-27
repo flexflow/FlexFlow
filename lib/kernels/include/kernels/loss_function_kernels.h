@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_KERNELS_INCLUDE_KERNELS_LOSS_FUNCTION_KERNELS_H
 #define _FLEXFLOW_KERNELS_INCLUDE_KERNELS_LOSS_FUNCTION_KERNELS_H
 
-#include "kernels/device.h"
+#include "device.h"
 
 namespace FlexFlow {
 

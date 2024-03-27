@@ -17,7 +17,7 @@
 #include "kernels/accessor.h"
 #include "kernels/combine_kernels.h"
 #include "kernels/datatype_dispatch.h"
-#include "kernels/device.h"
+#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -30,7 +30,7 @@ struct ForwardKernel {
                   GenericTensorAccessorW const &output) {
     checkCUDA(cudaMemcpyAsync(output.get<DT>(),
                               input.get<DT>(),
-                              input.shape.get_volume() * size_of(DT),
+                              input.shape.get_volume() * size_of_datatype(DT),
                               cudaMemcpyDeviceToDevice,
                               stream));
   }

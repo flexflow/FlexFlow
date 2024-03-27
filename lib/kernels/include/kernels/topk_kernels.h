@@ -2,12 +2,12 @@
 #define _FLEXFLOW_OPS_KERNELS_TOPK_KERNELS_H
 
 #include "kernels/allocation.h"
-#include "kernels/device.h"
+#include "device.h"
 
 namespace FlexFlow {
 
 struct TopKPerDeviceState {
-  bool sorted; // Note: Does TopK needs a PerDeviceFFHandle handle?
+  req<bool> sorted; // Note: Does TopK needs a PerDeviceFFHandle handle?
 };
 
 FF_VISITABLE_STRUCT(TopKPerDeviceState, sorted);

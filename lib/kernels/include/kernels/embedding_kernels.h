@@ -2,7 +2,8 @@
 #define _FLEXFLOW_OPS_KERNELS_EMBEDDING_KERNELS_H
 
 #include "kernels/accessor.h"
-#include "kernels/device.h"
+#include "device.h"
+#include "op-attrs/ops/embedding.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -13,7 +14,7 @@ void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &weight,
                     DataType input_data_type,
                     DataType output_data_type,
-                    AggrMode aggr,
+                    AggregateOp aggr,
                     int in_dim,
                     int out_dim,
                     int batch_size);
@@ -23,7 +24,7 @@ void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorW const &weight_grad,
                      DataType input_data_type,
                      DataType output_data_type,
-                     AggrMode aggr,
+                     AggregateOp aggr,
                      int in_dim,
                      int out_dim,
                      int batch_size);

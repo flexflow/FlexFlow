@@ -27,7 +27,6 @@ target_link_libraries(
   op-attrs
   cuda
   cudnn
-  nccl
 )
 
 define_ff_vars(${project_target})

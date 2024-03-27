@@ -227,7 +227,7 @@ cudnnStatus_t
 
   if (flipped.get_dim() == 5) {
     assert(flipped[0] == 1);
-    flipped = flipped.sub_shape(1, nullopt);
+    flipped = flipped.sub_shape(1, std::nullopt);
   }
 
   assert(flipped.get_dim() > 0);

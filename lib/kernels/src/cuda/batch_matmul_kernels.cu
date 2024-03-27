@@ -15,7 +15,7 @@
 
 #include "device.h"
 #include "kernels/batch_matmul_kernels.h"
-#include "kernels/device.h"
+#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {

@@ -3,7 +3,7 @@
 
 #include "kernels/allocation.h"
 #include "kernels/array_shape.h"
-#include "kernels/device.h"
+#include "device.h"
 #include "kernels/ff_handle.h"
 #include <cstddef>
 
@@ -12,7 +12,6 @@ namespace FlexFlow {
 struct DropoutPerDeviceState {
 public:
   PerDeviceFFHandle handle;
-  Allocator allocator;
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
   ffDropoutDescriptor_t dropoutDesc;
@@ -24,7 +23,6 @@ public:
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(DropoutPerDeviceState,
                                              handle,
-                                             allocator,
                                              inputTensor,
                                              outputTensor,
                                              dropoutDesc,

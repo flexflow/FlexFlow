@@ -2,6 +2,7 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_COMPUTATION_GRAPH_BUILDER_H
 
 #include "computation_graph.h"
+#include "optimizer.h"
 
 namespace FlexFlow {
 

@@ -2,6 +2,7 @@
 #define _FLEXFLOW_KERNELS_ARRAY_SHAPE_H
 
 #include "legion_dim.h"
+#include "op-attrs/tensor_shape.h"
 #include "utils/stack_vector.h"
 #include "utils/visitable.h"
 #include <cstddef>
@@ -13,6 +14,7 @@ struct ArrayShape {
 public:
   ArrayShape() = delete;
   ArrayShape(size_t *dims, size_t num_dims);
+  ArrayShape(TensorShape const &shape);
   ArrayShape(std::vector<std::size_t> const &);
 
   /**
@@ -31,6 +33,7 @@ public:
 
   std::size_t operator[](legion_dim_t) const;
   std::size_t at(legion_dim_t) const;
+  std::size_t at(ff_dim_t) const;
 
   legion_dim_t last_idx() const;
   legion_dim_t neg_idx(int) const;

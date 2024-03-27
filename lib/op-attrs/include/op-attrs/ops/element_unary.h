@@ -21,6 +21,9 @@ struct ElementScalarUnaryAttrs {
 FF_VISITABLE_STRUCT(ElementScalarUnaryAttrs, op_type, scalar);
 CHECK_VALID_OP_ATTR(ElementScalarUnaryAttrs);
 
+using ElementUnaryUnifiedAttrs =
+    std::variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
+
 } // namespace FlexFlow
 
 #endif
