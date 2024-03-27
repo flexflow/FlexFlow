@@ -47,6 +47,48 @@ std::string LoadBytesFromFile(std::string const &path) {
   return data;
 }
 
+std::ostream &operator<<(std::ostream &os, Request const &req) {
+  os << "Request {\n";
+  os << "  guid: " << req.guid << "\n";
+  os << "  peft_model_id: " << req.peft_model_id << "\n";
+  os << "  max_sequence_length: " << req.max_sequence_length << "\n";
+  os << "  initial_len: " << req.initial_len << "\n";
+  os << "  ssm_cache_size: " << req.ssm_cache_size << "\n";
+  os << "  llm_cache_size: " << req.llm_cache_size << "\n";
+  os << "  status: " << static_cast<int>(req.status) << "\n";
+  os << "  tokens: [";
+  for (auto const &token : req.tokens) {
+    os << token << " ";
+  }
+  os << "]\n";
+  os << "  prompt: " << req.prompt << "\n";
+  // os << "  beam_trees: [";
+  // for (const auto& tree : req.beam_trees) {
+  //     // Assuming BeamTree has its own << operator defined
+  //     os << tree << " ";
+  // }
+  // os << "]\n";
+  os << "  req_type: " << static_cast<int>(req.req_type) << "\n";
+  os << "  completed_training_steps: " << req.completed_training_steps << "\n";
+  os << "  max_training_steps: " << req.max_training_steps << "\n";
+  os << "  dataset_filepath: " << req.dataset_filepath << "\n";
+  os << "  dataset: [";
+  for (auto const &pair : req.dataset) {
+    os << "[";
+    for (auto const &token : pair.first) {
+      os << token << " ";
+    }
+    os << "], [";
+    for (auto const &token : pair.second) {
+      os << token << " ";
+    }
+    os << "] ";
+  }
+  os << "]\n";
+  os << "}\n";
+  return os;
+}
+
 RequestManager::RequestManager()
     : request_manager_status(INITIALIZED), verbose(false),
       next_available_guid(1000000), num_processed_requests(0),
@@ -242,6 +284,7 @@ RequestManager::RequestGuid
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
+  request.initial_len = 0;
   request.max_sequence_length = request_.max_sequence_length;
   request.peft_model_id = request_.peft_model_id;
   request.req_type = RequestType::REQ_FINETUNING;

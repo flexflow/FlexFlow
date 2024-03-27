@@ -233,7 +233,8 @@ class FlexFlowFalcon(FlexFlowModel):
                 output = ffmodel.sampling(softmax, self.generation_config.topp)
             else:
                 # output = ffmodel.arg_top_k(lm_head, 1, False)
-                output = ffmodel.argmax(lm_head, False)
+                softmax = ffmodel.softmax(lm_head, -1)
+                output = ffmodel.argmax(softmax, False)
 
         self.ffmodel = ffmodel
 

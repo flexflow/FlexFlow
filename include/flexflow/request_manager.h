@@ -84,6 +84,7 @@ struct Request {
   std::vector<std::pair<std::vector<BatchConfig::TokenId>,
                         std::vector<BatchConfig::TokenId>>>
       dataset;
+  friend std::ostream &operator<<(std::ostream &os, Request const &req);
 };
 
 // store the result of beam search

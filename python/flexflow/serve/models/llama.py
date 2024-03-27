@@ -241,7 +241,8 @@ class FlexFlowLLAMA(FlexFlowModel):
                 output = ffmodel.sampling(softmax, self.generation_config.topp)
             else:
                 # output = ffmodel.arg_top_k(dense, 1, False)
-                output = ffmodel.argmax(dense, False)
+                softmax = ffmodel.softmax(dense, -1)
+                output = ffmodel.argmax(softmax, False)
 
         self.ffmodel = ffmodel
 

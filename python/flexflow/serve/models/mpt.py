@@ -244,7 +244,8 @@ class FlexFlowMPT(FlexFlowModel):
             softmax = ffmodel.softmax(dense, -1)
             output = ffmodel.sampling(softmax, self.generation_config.topp)
         else:
-            output = ffmodel.argmax(lm_head, False)
+            softmax = ffmodel.softmax(lm_head, -1)
+            output = ffmodel.argmax(softmax, False)
 
         self.ffmodel = ffmodel
 

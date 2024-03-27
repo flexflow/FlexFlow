@@ -41,15 +41,15 @@ def get_configs():
         # Define sample configs
         ff_init_configs = {
             # required parameters
-            "num_gpus": 2,
-            "memory_per_gpu": 14000,
-            "zero_copy_memory_per_node": 40000,
+            "num_gpus": 1,
+            "memory_per_gpu": 8192,
+            "zero_copy_memory_per_node": 12000,
             # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
             "data_parallelism_degree": 1,
             "tensor_parallelism_degree": 1,
-            "pipeline_parallelism_degree": 2,
+            "pipeline_parallelism_degree": 1,
             "offload": False,
             "offload_reserve_space_size": 8 * 1024,  # 8GB
             "use_4bit_quantization": False,
@@ -58,7 +58,7 @@ def get_configs():
             "peft_activation_reserve_space_size": 1024,  # 1GB
             "peft_weight_reserve_space_size": 1024,  # 1GB
             "profiling": False,
-            "inference_debugging": False,
+            "inference_debugging": True,
             "fusion": True,
         }
         model_configs = {
