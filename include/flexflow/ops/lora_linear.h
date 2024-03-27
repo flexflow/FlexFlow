@@ -17,12 +17,14 @@ public:
   using Params = LoraLinearParams;
   using Input = std::pair<ParallelTensor, ParallelTensor>;
 
-  LoraLinear(FFModel &model,
-             LayerID const &layer_guid,
-             OperatorType type,
-             ParallelTensor const input,
-             ParallelTensor const output,
-             char const *name = nullptr);
+  LoraLinear(
+      FFModel &model,
+      LayerID const &layer_guid,
+      OperatorType type,
+      ParallelTensor const input,
+      ParallelTensor const output,
+      std::unordered_map<PEFTModelID, LoraLinearConfig> const &_peft_configs,
+      char const *name = nullptr);
   LoraLinear(FFModel &model,
              LoraLinear const &other,
              ParallelTensor const input,
@@ -39,11 +41,6 @@ public:
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void register_peft_model(FFModel const &ff,
-                           std::vector<ParallelTensor> const &batch_inputs,
-                           std::vector<ParallelTensor> const &batch_outputs,
-                           PEFTModelID const &model_id,
-                           LoraLinearConfig const lora_config);
   Legion::FutureMap inference(FFModel const &,
                               BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
@@ -64,11 +61,6 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void
-      register_model_task(Legion::Task const *task,
-                          std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime);
   static void inference_task(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
@@ -98,6 +90,8 @@ public:
                   int num_inputs) const override;
   // size_t get_params_hash() const override;
   LoraLinearParams get_params() const;
+
+  std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
 };
 
 }; // namespace FlexFlow

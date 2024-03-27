@@ -3308,8 +3308,7 @@ Op *FFModel::create_operator_from_layer(
       return op;
     }
     // PEFT layers
-    case OP_LORA_MLP_FIRST:
-    case OP_LORA_MLP_SECOND: {
+    case OP_LORA: {
       Op *op = LoraLinear::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
@@ -6694,22 +6693,6 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<OpMeta *, LoraLinear::init_task>(
-          registrar);
-    }
-  }
-  {
-    TaskVariantRegistrar registrar(LORA_LINEAR_REG_TASK_ID,
-                                   "LoraLinear Model Registration");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    if (pre_register) {
-      Runtime::preregister_task_variant<LoraLinear::register_model_task>(
-          registrar, "LoraLinear Model Registration Task");
-    } else {
-      if (enable_control_replication) {
-        registrar.global_registration = false;
-      }
-      runtime->register_task_variant<LoraLinear::register_model_task>(
           registrar);
     }
   }

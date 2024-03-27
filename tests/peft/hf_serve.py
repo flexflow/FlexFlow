@@ -1,6 +1,6 @@
 import argparse
 import torch
-import os, sys, shutil
+import os, sys, shutil, json
 from peft import PeftModel, PeftConfig
 from transformers import (
     AutoModelForCausalLM,
@@ -40,11 +40,12 @@ def peft_post_forward_hook(module, input, output):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--peft-model-id", type=str, default="./finetuned-llama")
+    parser.add_argument("--peft-model-id", type=str, required=True)
     parser.add_argument(
         "--use-full-precision", action="store_true", help="Use full precision"
     )
-    parser.add_argument("--max-new-tokens", type=int, default=50)
+    parser.add_argument("--max-length", type=int, default=50)
+    parser.add_argument("--prompt-file", type=str, required=True)
     parser.add_argument("--do-sample", action="store_true", help="Use sampling")
     parser.add_argument(
         "--save-peft-tensors",
@@ -52,24 +53,28 @@ def main():
         help="Save PEFT hidden states and weights to file",
     )
     args = parser.parse_args()
-    peft_model_id = args.peft_model_id
-    use_full_precision = args.use_full_precision
-    max_new_tokens = args.max_new_tokens
-    save_peft_tensors = args.save_peft_tensors
 
-    # Change working dir to folder storing this script
-    abspath = os.path.abspath(__file__)
-    dname = os.path.dirname(abspath)
-    os.chdir(dname)
+    # Check if prompt-file exists
+    if not os.path.isfile(args.prompt_file):
+        print(f"Error: {args.prompt_file} does not exist.")
+        return
 
-    config = PeftConfig.from_pretrained(peft_model_id)
+    # Get peft model config
+    config = PeftConfig.from_pretrained(args.peft_model_id)
+    
+    # Load the base model
     model = AutoModelForCausalLM.from_pretrained(
         config.base_model_name_or_path,
         return_dict=True,
         # load_in_8bit=True,
-        torch_dtype=torch.float32 if use_full_precision else torch.float16,
+        torch_dtype=torch.float32 if args.use_full_precision else torch.float16,
         device_map="auto",
     )
+    # Load the Lora model
+    model = PeftModel.from_pretrained(model, args.peft_model_id)
+    print(model)
+    
+    # Get tokenizer
     hf_config = AutoConfig.from_pretrained(
         config.base_model_name_or_path, trust_remote_code=True
     )
@@ -78,25 +83,26 @@ def main():
         tokenizer = LlamaTokenizer.from_pretrained(
             config.base_model_name_or_path,
             use_fast=True,
-            torch_dtype=torch.float32 if use_full_precision else torch.float16,
+            torch_dtype=torch.float32 if args.use_full_precision else torch.float16,
         )
     else:
         tokenizer = AutoTokenizer.from_pretrained(
             config.base_model_name_or_path,
-            torch_dtype=torch.float32 if use_full_precision else torch.float16,
+            torch_dtype=torch.float32 if args.use_full_precision else torch.float16,
         )
+    
     # Generation config
     generation_config = GenerationConfig.from_pretrained(config.base_model_name_or_path)
     generation_config.do_sample = args.do_sample
-    # Load the Lora model
-    model = PeftModel.from_pretrained(model, peft_model_id)
-
-    print(model)
 
     # Register hooks to save tensors, if needed
-    if save_peft_tensors:
+    if args.save_peft_tensors:
+        # Change working dir to folder storing this script
+        abspath = os.path.abspath(__file__)
+        dname = os.path.dirname(abspath)
+        os.chdir(dname)
+        # Create output dir
         shutil.rmtree("./hf_peft_tensors")
-        # Check that the output folder exists
         os.makedirs("./hf_peft_tensors", exist_ok=True)
         # Save weights
         for name, params in model.named_parameters():
@@ -112,12 +118,22 @@ def main():
                 layer.register_forward_pre_hook(peft_pre_forward_hook)
                 layer.register_forward_hook(peft_post_forward_hook)
 
-    batch = tokenizer("Two things are infinite: ", return_tensors="pt")
-    with torch.cuda.amp.autocast():
-        output_tokens = model.generate(
-            **batch, max_new_tokens=max_new_tokens, generation_config=generation_config
-        )
-    print("\n\n", tokenizer.decode(output_tokens[0], skip_special_tokens=False))
+    # Run inference
+    # Read prompt-file into a list of strings
+    with open(args.prompt_file, "r") as f:
+        try:
+            prompt_list = json.load(f)
+        except json.JSONDecodeError:
+            print(f"Error: Unable to parse {args.prompt_file} as JSON.")
+            sys.exit(1)
+    
+    for i, prompt in enumerate(prompt_list):
+        batch = tokenizer(prompt, return_tensors="pt", add_special_tokens=True)
+        with torch.cuda.amp.autocast():
+            output_tokens = model.generate(
+                **batch, max_new_tokens=args.max_length, generation_config=generation_config
+            )
+        print("\n\n", tokenizer.decode(output_tokens[0], skip_special_tokens=False))
 
 
 if __name__ == "__main__":

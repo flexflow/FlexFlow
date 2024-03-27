@@ -23,6 +23,7 @@
 #include <future>
 #include <iomanip>
 #include <new>
+#include <nlohmann/json.hpp>
 #include <stack>
 #include <stdexcept>
 
@@ -30,6 +31,7 @@ namespace FlexFlow {
 
 using namespace Legion;
 using tokenizers::Tokenizer;
+using json = nlohmann::json;
 
 LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
@@ -43,6 +45,48 @@ std::string LoadBytesFromFile(std::string const &path) {
   data.resize(size);
   fs.read(data.data(), size);
   return data;
+}
+
+std::ostream &operator<<(std::ostream &os, Request const &req) {
+  os << "Request {\n";
+  os << "  guid: " << req.guid << "\n";
+  os << "  peft_model_id: " << req.peft_model_id << "\n";
+  os << "  max_sequence_length: " << req.max_sequence_length << "\n";
+  os << "  initial_len: " << req.initial_len << "\n";
+  os << "  ssm_cache_size: " << req.ssm_cache_size << "\n";
+  os << "  llm_cache_size: " << req.llm_cache_size << "\n";
+  os << "  status: " << static_cast<int>(req.status) << "\n";
+  os << "  tokens: [";
+  for (auto const &token : req.tokens) {
+    os << token << " ";
+  }
+  os << "]\n";
+  os << "  prompt: " << req.prompt << "\n";
+  // os << "  beam_trees: [";
+  // for (const auto& tree : req.beam_trees) {
+  //     // Assuming BeamTree has its own << operator defined
+  //     os << tree << " ";
+  // }
+  // os << "]\n";
+  os << "  req_type: " << static_cast<int>(req.req_type) << "\n";
+  os << "  completed_training_steps: " << req.completed_training_steps << "\n";
+  os << "  max_training_steps: " << req.max_training_steps << "\n";
+  os << "  dataset_filepath: " << req.dataset_filepath << "\n";
+  os << "  dataset: [";
+  for (auto const &pair : req.dataset) {
+    os << "[";
+    for (auto const &token : pair.first) {
+      os << token << " ";
+    }
+    os << "], [";
+    for (auto const &token : pair.second) {
+      os << token << " ";
+    }
+    os << "] ";
+  }
+  os << "]\n";
+  os << "}\n";
+  return os;
 }
 
 RequestManager::RequestManager()
@@ -240,19 +284,32 @@ RequestManager::RequestGuid
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
+  request.initial_len = 0;
   request.max_sequence_length = request_.max_sequence_length;
   request.peft_model_id = request_.peft_model_id;
-  request.req_type = Request::REQ_FINETUNING;
+  request.req_type = RequestType::REQ_FINETUNING;
   request.completed_training_steps = 0;
-  request.max_training_steps = 1; // TODO: let user set this
-  for (auto const &sample : request_.dataset_text) {
+  request.max_training_steps = request_.max_training_steps;
+  request.dataset_filepath = request_.dataset_filepath;
+
+  // Load dataset
+  using json = nlohmann::json;
+  std::ifstream file_handle(request.dataset_filepath);
+  assert(file_handle.good() && "Dataset file does not exist.");
+  json dataset_json = json::parse(file_handle,
+                                  /*parser_callback_t */ nullptr,
+                                  /*allow_exceptions */ true,
+                                  /*ignore_comments */ true);
+
+  for (auto &prompt : dataset_json) {
+    std::string text = prompt.get<std::string>();
+    std::string output_text("");
     std::vector<int32_t> input_tokens;
-    input_tokens = this->tokenizer_->Encode(sample.first);
+    input_tokens = this->tokenizer_->Encode(text);
     if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
       input_tokens.insert(input_tokens.begin(), bos_token_id);
     }
-    std::vector<int32_t> output_tokens =
-        this->tokenizer_->Encode(sample.second);
+    std::vector<int32_t> output_tokens = this->tokenizer_->Encode(output_text);
     if (input_tokens.size() + output_tokens.size() >
         get_max_sequence_length()) {
       std::cout << "Warning: too many tokens in sample, only load up to "
@@ -373,7 +430,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     size_t guid =
         old_bc.requestsInfo[old_bc.tokensInfo[i].request_index].request_guid;
     Request &request = all_requests[guid];
-    if (request.req_type == Request::REQ_FINETUNING) {
+    if (request.req_type == RequestType::REQ_FINETUNING) {
       // No new tokens generated when in fine-tuning mode
       continue;
     } else if (old_bc.tokensInfo[i].abs_depth_in_request + 1 <
@@ -403,7 +460,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
       Request &request = all_requests[old_bc.requestsInfo[i].request_guid];
 
-      if (request.req_type == Request::REQ_FINETUNING) {
+      if (request.req_type == RequestType::REQ_FINETUNING) {
         // fine-tuning requests don't automatically carry over to the next
         // batch, we only do so if there is space left after adding new
         // inference requests
@@ -412,6 +469,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         if (request.completed_training_steps == request.max_training_steps) {
           // check if the fine tuning request has completed
           request.status = Request::COMPLETED;
+          trigger_request_completion_future(request.guid);
           log_req_mgr.print("[Done] guid(%zu) completed_training_steps(%d)",
                             old_bc.requestsInfo[i].request_guid,
                             request.completed_training_steps);
@@ -562,7 +620,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       if (!pending_infr_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
         Request new_request = pending_infr_request_queue.front();
-        assert(new_request.req_type == Request::REQ_INFERENCE);
+        assert(new_request.req_type == RequestType::REQ_INFERENCE);
         pending_infr_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
 
@@ -604,9 +662,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   // Step 4: add PEFT bwd requests, if there is additional space
   while (pending_peft_request_queue.size() > 0) {
     Request &request = pending_peft_request_queue.front();
-    assert(request.req_type = Request::REQ_FINETUNING);
+    assert(request.req_type = RequestType::REQ_FINETUNING);
     Request &all_req_handle = all_requests[request.guid];
-    assert(all_req_handle.req_type = Request::REQ_FINETUNING);
+    assert(all_req_handle.req_type = RequestType::REQ_FINETUNING);
     if (all_req_handle.status == Request::COMPLETED) {
       pending_peft_request_queue.pop();
     } else {
@@ -615,11 +673,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   }
   if (pending_peft_request_queue.size() > 0) {
     Request &request = pending_peft_request_queue.front();
-    assert(request.req_type = Request::REQ_FINETUNING);
+    assert(request.req_type = RequestType::REQ_FINETUNING);
     assert(request.dataset.size() > 0);
     // update status and training steps
     Request &all_req_handle = all_requests[request.guid];
-    assert(all_req_handle.req_type = Request::REQ_FINETUNING);
+    assert(all_req_handle.req_type = RequestType::REQ_FINETUNING);
     request.completed_training_steps = all_req_handle.completed_training_steps;
     request.status = all_req_handle.status;
     assert(request.status != Request::COMPLETED);
@@ -2410,7 +2468,12 @@ std::vector<GenerationResult>
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
   for (int i = 0; i < requests.size(); i++) {
-    RequestManager::RequestGuid guid = rm->register_new_request(requests.at(i));
+    RequestManager::RequestGuid guid;
+    if (requests.at(i).req_type == RequestType::REQ_INFERENCE) {
+      guid = rm->register_new_request(requests.at(i));
+    } else {
+      guid = rm->register_new_peft_request(requests.at(i));
+    }
     if (guid != RequestManager::INVALID_GUID) {
       guids.push_back(guid);
     }
@@ -2450,6 +2513,18 @@ void RequestManager::background_serving_task(
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
+
+  auto print_timestamped_message = [](std::string const &message) {
+    auto now =
+        std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::cout << std::put_time(std::localtime(&now), "%Y-%m-%d %X") << " - "
+              << message << std::endl;
+  };
+
+  // Print at the start of the task
+  print_timestamped_message(
+      "###PEFT DEBUGGING### Starting background serving task.");
+
   RequestManager *rm = RequestManager::get_request_manager();
   FFModel *llm = *(FFModel **)task->args;
   {
@@ -2466,6 +2541,11 @@ void RequestManager::background_serving_task(
       ssm->config.lg_ctx = ctx;
     }
   }
+
+  // Checkpoint print
+  print_timestamped_message(
+      "###PEFT DEBUGGING### Updated models' configuration.");
+
   if (rm->get_num_ssms() == 0) {
     // No SSMs: perform incremental decoding
     rm->serve_incr_decoding(llm);
@@ -2473,6 +2553,10 @@ void RequestManager::background_serving_task(
     // Registered SSMs: perform speculative inference
     rm->serve_spec_infer(llm);
   }
+
+  // Print at the end of the task
+  print_timestamped_message(
+      "###PEFT DEBUGGING### Background serving task completed.");
 }
 
 std::string find_layer_name_from_guid(FFModel *model, LayerID guid) {
@@ -2488,106 +2572,25 @@ std::string find_layer_name_from_guid(FFModel *model, LayerID guid) {
 
 bool is_peft_operator_type(OperatorType type) {
   switch (type) {
-    case OP_LORA_MLP_FIRST:
-    case OP_LORA_MLP_SECOND:
+    case OP_LORA:
       return true;
     default:
       return false;
   }
 }
 
-PEFTModelID FFModel::register_peft_model(LoraLinearConfig const mlp_first,
-                                         LoraLinearConfig const mlp_second) {
-  if (!(mlp_first == LoraLinearConfig::DefaultConfig &&
-        mlp_second == LoraLinearConfig::DefaultConfig)) {
-    if (!config.enable_peft) {
-      fprintf(stderr,
-              "Error: trying to register PEFT model, but peft mode is not "
-              "enabled.\n");
-      assert(false);
-    }
-  }
-  PEFTModelID peft_model_id(peft_model_global_guid++);
-  InferenceManager *im = InferenceManager::get_inference_manager();
-  std::vector<Op *> peft_operators;
-  for (size_t op = 0; op < operators.size(); op++) {
-    if (is_peft_operator_type(operators[op]->op_type)) {
-      peft_operators.push_back(operators[op]);
-    } else if (operators[op]->op_type == OP_FUSED) {
-      FusedOp *fused = static_cast<FusedOp *>(operators[op]);
-      for (size_t op2 = 0; op2 < fused->numOperators; op2++) {
-        if (is_peft_operator_type(fused->operators[op2]->op_type)) {
-          peft_operators.push_back(fused->operators[op2]);
-        }
-      }
-    }
-  }
-  for (size_t op = 0; op < peft_operators.size(); op++) {
-    std::string layer_name =
-        find_layer_name_from_guid(this, peft_operators[op]->layer_guid);
-    switch (peft_operators[op]->op_type) {
-      case OP_LORA_MLP_FIRST: {
-        if (mlp_first == LoraLinearConfig::DefaultConfig) {
-          // Do nothing for the default configuration
-          continue;
-        }
-        LoraLinear *lora = static_cast<LoraLinear *>(peft_operators[op]);
-        // Currently assume only a single data pipeline
-        assert(config.data_parallelism_degree == 1);
-        std::vector<ParallelTensor> inputs(lora->numInputs);
-        std::vector<ParallelTensor> outputs(lora->numOutputs);
-
-        for (int i = 0; i < lora->numInputs; i++) {
-          assert(im->tensor_buffer.find(lora->inputs[i]) !=
-                 im->tensor_buffer.end());
-          assert(lora->inputs[i] != nullptr);
-          assert(lora->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
-          assert(im->tensor_buffer[lora->inputs[i]].size() == 1);
-          inputs[i] = im->tensor_buffer[lora->inputs[i]][0];
-          assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
-        }
-        assert(lora->numOutputs == 1);
-        outputs[0] = inputs[1];
-        lora->register_peft_model(
-            *this, inputs, outputs, peft_model_id, mlp_first);
-        break;
-      }
-      case OP_LORA_MLP_SECOND: {
-        if (mlp_second == LoraLinearConfig::DefaultConfig) {
-          // Do nothing for the default configuration
-          continue;
-        }
-        LoraLinear *lora = static_cast<LoraLinear *>(peft_operators[op]);
-        // Currently assume only a single data pipeline
-        assert(config.data_parallelism_degree == 1);
-        std::vector<ParallelTensor> inputs(lora->numInputs);
-        std::vector<ParallelTensor> outputs(lora->numOutputs);
-
-        for (int i = 0; i < lora->numInputs; i++) {
-          assert(im->tensor_buffer.find(lora->inputs[i]) !=
-                 im->tensor_buffer.end());
-          assert(lora->inputs[i] != nullptr);
-          assert(lora->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
-          assert(im->tensor_buffer[lora->inputs[i]].size() == 1);
-          inputs[i] = im->tensor_buffer[lora->inputs[i]][0];
-          assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
-        }
-        assert(lora->numOutputs == 1);
-        outputs[0] = inputs[1];
-        lora->register_peft_model(
-            *this, inputs, outputs, peft_model_id, mlp_second);
-        break;
-      }
-      default: {
-        assert(false && "Unsupported PEFT Operator type");
-      }
-    }
-  }
-  return peft_model_id;
-}
-
 /*static*/
 void RequestManager::serve_incr_decoding(FFModel *llm) {
+
+  // Check if the model object exists
+  if (llm == nullptr) {
+    std::cout << "###PEFT DEBUGGING### LLM Model object does not exist."
+              << std::endl;
+    return; // Early return to prevent further operations on a nullptr
+  } else {
+    std::cout << "###PEFT DEBUGGING### LLM Model object exists." << std::endl;
+  }
+
   Context ctx = llm->config.lg_ctx;
   Runtime *runtime = llm->config.lg_hlr;
   // Compile the llm
