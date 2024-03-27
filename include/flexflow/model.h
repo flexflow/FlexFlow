@@ -246,7 +246,7 @@ enum TaskIDs {
   RM_LOAD_BATCH_CONFIG_TASK_ID,
   RM_PREPARE_NEXT_BATCH_TASK_ID,
   RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
-  RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
+  RM_PREPARE_NEXT_BATCH_SPEC_TASK_ID,
   RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
   RM_BACKGROUND_SERVING_TASK_ID,
   // Custom tasks
@@ -407,74 +407,74 @@ public:
   bool cpu_offload;
   // C++ APIs for constructing models
   // Add an exp layer
-  Tensor exp(const Tensor x, char const *name = NULL);
+  Tensor exp(Tensor const x, char const *name = NULL);
   // Add an add layer
-  Tensor add(const Tensor x,
-             const Tensor y,
+  Tensor add(Tensor const x,
+             Tensor const y,
              bool inplace_a = false,
              char const *name = NULL);
   // Add a subtract layer
-  Tensor subtract(const Tensor x,
-                  const Tensor y,
+  Tensor subtract(Tensor const x,
+                  Tensor const y,
                   bool inplace_a = false,
                   char const *name = NULL);
   // Add a multiply layer
-  Tensor multiply(const Tensor x,
-                  const Tensor y,
+  Tensor multiply(Tensor const x,
+                  Tensor const y,
                   bool inplace_a = false,
                   char const *name = NULL);
   // Add a divide layer
-  Tensor divide(const Tensor x,
-                const Tensor y,
+  Tensor divide(Tensor const x,
+                Tensor const y,
                 bool inplace_a = false,
                 char const *name = NULL);
   // Add a max layer
-  Tensor max(const Tensor x,
-             const Tensor y,
+  Tensor max(Tensor const x,
+             Tensor const y,
              bool inplace_a = false,
              char const *name = NULL);
   // Add a min layer
-  Tensor min(const Tensor x,
-             const Tensor y,
+  Tensor min(Tensor const x,
+             Tensor const y,
              bool inplace_a = false,
              char const *name = NULL);
   // Add a rsqrt layer
-  Tensor rsqrt(const Tensor x, bool inplace = true, char const *name = NULL);
+  Tensor rsqrt(Tensor const x, bool inplace = true, char const *name = NULL);
   // Add a pow layer
-  Tensor pow(const Tensor x,
+  Tensor pow(Tensor const x,
              float const exponent,
              bool inplace = true,
              char const *name = NULL);
   // Add a scalar multiply layer
-  Tensor scalar_multiply(const Tensor x,
+  Tensor scalar_multiply(Tensor const x,
                          float const scalar,
                          bool inplace = true,
                          char const *name = NULL);
-  Tensor scalar_add(const Tensor x,
+  Tensor scalar_add(Tensor const x,
                     float const scalar,
                     bool inplace = true,
                     char const *name = NULL);
-  Tensor scalar_sub(const Tensor x,
+  Tensor scalar_sub(Tensor const x,
                     float const scalar,
                     bool inplace = true,
                     char const *name = NULL);
-  Tensor scalar_truediv(const Tensor x,
+  Tensor scalar_truediv(Tensor const x,
                         float const scalar,
                         bool inplace = true,
                         char const *name = NULL);
   // Add a sin layer
-  Tensor sin(const Tensor x, char const *name = NULL);
+  Tensor sin(Tensor const x, char const *name = NULL);
   // Add a cos layer
-  Tensor cos(const Tensor x, char const *name = NULL);
+  Tensor cos(Tensor const x, char const *name = NULL);
   // Add an activation layer
-  Tensor relu(const Tensor x, bool inplace = true, char const *name = NULL);
-  Tensor identity(const Tensor x, char const *name = NULL);
-  Tensor gelu(const Tensor x, char const *name = NULL);
-  Tensor sigmoid(const Tensor x, char const *name = NULL);
-  Tensor tanh(const Tensor x, char const *name = NULL);
-  Tensor elu(const Tensor x, bool inplace = true, char const *name = NULL);
+  Tensor relu(Tensor const x, bool inplace = true, char const *name = NULL);
+  Tensor identity(Tensor const x, char const *name = NULL);
+  Tensor gelu(Tensor const x, char const *name = NULL);
+  Tensor sigmoid(Tensor const x, char const *name = NULL);
+  Tensor tanh(Tensor const x, char const *name = NULL);
+  Tensor elu(Tensor const x, bool inplace = true, char const *name = NULL);
   // Add a 2D convolutional layer
-  Tensor conv2d(const Tensor input,
+  Tensor conv2d(Tensor const input,
                 int outChannels,
                 int kernelH,
                 int kernelW,
@@ -490,12 +490,12 @@ public:
                 Initializer *bias_initializer = NULL,
                 char const *name = NULL);
   // Add a dropout layer
-  Tensor dropout(const Tensor input,
+  Tensor dropout(Tensor const input,
                  float rate,
                  unsigned long long seed = 0,
                  char const *name = NULL);
   // Add an embedding layer
-  Tensor embedding(const Tensor input,
+  Tensor embedding(Tensor const input,
                    int num_entries,
                    int outDim,
                    AggrMode aggr,
@@ -504,13 +504,13 @@ public:
                    Initializer *kernel_initializer = NULL,
                    char const *name = NULL);
   // Add a gather layer
-  Tensor gather(const Tensor input,
-                const Tensor index,
+  Tensor gather(Tensor const input,
+                Tensor const index,
                 int dim,
                 char const *name = NULL);
   // Add a group_by layer
-  void group_by(const Tensor data,
-                const Tensor assign,
+  void group_by(Tensor const data,
+                Tensor const assign,
                 Tensor *outputs,
                 int n,
                 float alpha,
@@ -532,7 +532,7 @@ public:
                         float lambda_bal,
                         char const *name = NULL);
   // Add a 2D pooling layer
-  Tensor pool2d(const Tensor input,
+  Tensor pool2d(Tensor const input,
                 int kernelH,
                 int kernelW,
                 int strideH,
@@ -543,7 +543,7 @@ public:
                 ActiMode activation = AC_MODE_NONE,
                 char const *name = NULL);
   // Add a layer_norm layer
-  Tensor layer_norm(const Tensor input,
+  Tensor layer_norm(Tensor const input,
                     std::vector<int> const &axes,
                     bool elementwise_affine,
                     float eps,
@@ -551,9 +551,9 @@ public:
                     DataType data_type = DT_NONE,
                     char const *name = NULL);
   // Add a layer_norm layer with residual(s)
-  void residual_layer_norm(const Tensor input,
-                           const Tensor residual1,
-                           const Tensor residual2,
+  void residual_layer_norm(Tensor const input,
+                           Tensor const residual1,
+                           Tensor const residual2,
                            Tensor *outputs,
                            bool use_two_residuals,
                            std::vector<int> const &axes,
@@ -563,8 +563,8 @@ public:
                            DataType data_type = DT_NONE,
                            char const *name = NULL);
   // Add a add_bias_residual_layer_norm layer
-  void add_bias_residual_layer_norm(const Tensor input,
-                                    const Tensor residual,
+  void add_bias_residual_layer_norm(Tensor const input,
+                                    Tensor const residual,
                                     Tensor *outputs,
                                     std::vector<int> const &axes,
                                     bool elementwise_affine,
@@ -573,41 +573,41 @@ public:
                                     DataType data_type = DT_NONE,
                                     char const *name = NULL);
   // Add a sigmoid_silu_multi layer
-  Tensor sigmoid_silu_multi(const Tensor input1,
-                            const Tensor input2,
+  Tensor sigmoid_silu_multi(Tensor const input1,
+                            Tensor const input2,
                             DataType data_type = DT_NONE,
                             char const *name = NULL);
   // Add a batch_norm layer
   Tensor
-      batch_norm(const Tensor input, bool relu = true, char const *name = NULL);
+      batch_norm(Tensor const input, bool relu = true, char const *name = NULL);
   // Add a batch_matmul layer
-  Tensor batch_matmul(const Tensor A,
-                      const Tensor B,
+  Tensor batch_matmul(Tensor const A,
+                      Tensor const B,
                       int a_seq_length_dim = -1,
                       int b_seq_length_dim = -1,
                       char const *name = nullptr);
   // Add a root mean square layer
-  Tensor rms_norm(const Tensor input,
+  Tensor rms_norm(Tensor const input,
                   float eps,
                   int dim,
                   DataType data_type = DT_NONE,
                   char const *name = NULL);
   // Add a residual root mean square layer
-  void residual_rms_norm(const Tensor input1,
-                         const Tensor input2,
+  void residual_rms_norm(Tensor const input1,
+                         Tensor const input2,
                          Tensor *outputs,
                          float eps,
                          int dim,
                          DataType data_type = DT_NONE,
                          char const *name = NULL);
   // Add a beam search top k layer
-  Tensor beam_top_k(const Tensor input,
+  Tensor beam_top_k(Tensor const input,
                     int max_beam_size,
                     bool sorted,
                     char const *name = NULL);
 
   // Add a dense layer
-  Tensor dense(const Tensor input,
+  Tensor dense(Tensor const input,
                int outDim,
                ActiMode activation = AC_MODE_NONE,
                bool use_bias = true,
@@ -619,7 +619,7 @@ public:
                float regularizer_lambda = 0.0,
                char const *name = NULL);
   // Add a cast layer
-  Tensor cast(const Tensor input, DataType dtype, char const *name = nullptr);
+  Tensor cast(Tensor const input, DataType dtype, char const *name = nullptr);
   // Add a concat layer
   Tensor
       concat(int n, Tensor const *tensors, int axis, char const *name = NULL);
@@ -634,58 +634,58 @@ public:
       int experts_internal_dim_size = 0, // hidden dimension for internal layers
       char const *name = NULL);
   // Add a mean layer
-  Tensor mean(const Tensor input,
+  Tensor mean(Tensor const input,
               std::vector<int> const &dims,
               bool keepdims,
               char const *name);
   // Add a moe layer (wrapping topk, group_by and aggregate operators)
-  Tensor moe(const Tensor input,
+  Tensor moe(Tensor const input,
              int num_exp,
              int num_select,
              int expert_hidden_size,
              float alpha,
              float lambda);
   // Add a split layer
-  void split(const Tensor input,
+  void split(Tensor const input,
              Tensor *outputs,
              std::vector<int> const &split,
              int axis,
              char const *name = NULL);
   // Add a flat layer
-  Tensor flat(const Tensor input, char const *name = NULL);
+  Tensor flat(Tensor const input, char const *name = NULL);
   // Add a softmax layer
-  Tensor softmax(const Tensor input,
+  Tensor softmax(Tensor const input,
                  int dim = -1,
                  DataType data_type = DT_NONE,
                  char const *name = NULL);
   // Create input tensors and constants
-  Tensor transpose(const Tensor input,
+  Tensor transpose(Tensor const input,
                    std::vector<int> const &perm,
                    char const *name = NULL);
-  Tensor reduce_sum(const Tensor input,
+  Tensor reduce_sum(Tensor const input,
                     std::vector<int> const &axes,
                     bool keepdims = false,
                     char const *name = nullptr);
-  Tensor reshape(const Tensor input,
+  Tensor reshape(Tensor const input,
                  std::vector<int> const &shape,
                  char const *name = NULL);
-  Tensor reverse(const Tensor input, int axis, char const *name = NULL);
-  void top_k(const Tensor input,
+  Tensor reverse(Tensor const input, int axis, char const *name = NULL);
+  void top_k(Tensor const input,
              Tensor *outputs,
              int k,
              bool sorted,
              char const *name = NULL);
-  Tensor arg_top_k(const Tensor input,
+  Tensor arg_top_k(Tensor const input,
                    // Tensor *outputs,
                    int k,
                    bool sorted,
                    bool speculative_decoding,
                    char const *name = NULL);
-  Tensor argmax(const Tensor input, bool beam_search, char const *name = NULL);
-  Tensor sampling(const Tensor input, float top_p, char const *name = NULL);
-  Tensor multihead_attention(const Tensor query,
-                             const Tensor key,
-                             const Tensor value,
+  Tensor argmax(Tensor const input, bool beam_search, char const *name = NULL);
+  Tensor sampling(Tensor const input, float top_p, char const *name = NULL);
+  Tensor multihead_attention(Tensor const query,
+                             Tensor const key,
+                             Tensor const value,
                              int embed_dim,
                              int num_heads,
                              int kdim = 0,
@@ -697,7 +697,7 @@ public:
                              DataType data_type = DT_NONE,
                              Initializer *kernel_initializer = NULL,
                              char const *name = NULL);
-  Tensor inc_multihead_self_attention(const Tensor input,
+  Tensor inc_multihead_self_attention(Tensor const input,
                                       int embed_dim,
                                       int num_heads,
                                       int kdim = 0,
@@ -715,7 +715,7 @@ public:
                                       bool position_bias = false,
                                       char const *name = NULL);
   Tensor
-      spec_inc_multihead_self_attention(const Tensor input,
+      spec_inc_multihead_self_attention(Tensor const input,
                                         int embed_dim,
                                         int num_heads,
                                         int kdim = 0,
@@ -733,7 +733,7 @@ public:
                                         bool position_bias = false,
                                         char const *name = NULL);
   Tensor inc_multihead_self_attention_verify(
-      const Tensor input,
+      Tensor const input,
       int embed_dim,
       int num_heads,
       int kdim = 0,
@@ -750,7 +750,7 @@ public:
       bool qk_prod_scaling = true,
       bool position_bias = false,
       char const *name = NULL);
-  Tensor inc_multiquery_self_attention(const Tensor input,
+  Tensor inc_multiquery_self_attention(Tensor const input,
                                        int embed_dim,
                                        int num_q_heads,
                                        int num_kv_heads,
@@ -769,7 +769,7 @@ public:
                                        bool position_bias = false,
                                        char const *name = NULL);
   Tensor
-      spec_inc_multiquery_self_attention(const Tensor input,
+      spec_inc_multiquery_self_attention(Tensor const input,
                                          int embed_dim,
                                          int num_q_heads,
                                          int num_kv_heads,
@@ -788,7 +788,7 @@ public:
                                          bool position_bias = false,
                                          char const *name = NULL);
   Tensor inc_multiquery_self_attention_verify(
-      const Tensor input,
+      Tensor const input,
       int embed_dim,
       int num_q_heads,
       int num_kv_heads,
@@ -820,7 +820,7 @@ public:
                                        bool create_grad = true);
   ParallelTensor
       create_parallel_tensor_legion_ordering(int num_dim,
-                                             const ParallelDim dims[],
+                                             ParallelDim const dims[],
                                              DataType data_type,
                                              Op const *owner_op = NULL,
                                              int owner_idx = 0,
@@ -833,7 +833,7 @@ public:
                        int owner_idx = 0,
                        bool create_grad = true);
   ParallelTensor create_parallel_tensor(int num_dim,
-                                        const ParallelDim dims[],
+                                        ParallelDim const dims[],
                                         DataType data_type,
                                         Op const *owner_op = NULL,
                                         int owner_idx = 0,
@@ -846,7 +846,7 @@ public:
                        int owner_idx = 0,
                        bool create_grad = true);
   template <int NDIM>
-  ParallelTensor create_parallel_tensor(const ParallelDim dims[],
+  ParallelTensor create_parallel_tensor(ParallelDim const dims[],
                                         DataType data_type,
                                         Op const *owner_op = NULL,
                                         int owner_idx = 0,
@@ -870,7 +870,7 @@ public:
       ParameterSyncType sync_type = ParameterSyncType::NONE);
   template <int NDIM>
   ParallelParameter create_parallel_weight(
-      const ParallelDim dims[],
+      ParallelDim const dims[],
       DataType data_type,
       Op const *owner_op = NULL,
       bool create_grad = true,
@@ -878,7 +878,7 @@ public:
       ParameterSyncType sync_type = ParameterSyncType::NONE);
   ParallelParameter create_parallel_weight(
       int numdim,
-      const ParallelDim dims[],
+      ParallelDim const dims[],
       DataType data_type,
       Op const *owner_op = NULL,
       bool create_grad = true,
@@ -886,7 +886,7 @@ public:
       ParameterSyncType sync_type = ParameterSyncType::NONE);
   ParallelParameter create_parallel_weight_legion_ordering(
       int numdim,
-      const ParallelDim dims[],
+      ParallelDim const dims[],
       DataType data_type,
       Op const *owner_op = NULL,
       bool create_grad = true,
@@ -895,7 +895,7 @@ public:
 
   void map_tensor(ParallelTensor tensor, Op const *parallel_op);
   void map_weight(ParallelTensor tensor, Op const *parallel_op);
-  bool get_parallel_tensor_from_tensor(const Tensor tensor,
+  bool get_parallel_tensor_from_tensor(Tensor const tensor,
                                        ParallelTensor &parallel_tensor) const;
 
   template <int NDIM>
@@ -936,7 +936,7 @@ public:
   // Internal PCG::Node creation APIs
   // ========================================
   template <typename T>
-  PCG::Node get_or_create_node(const typename T::Input &input,
+  PCG::Node get_or_create_node(typename T::Input const &input,
                                typename T::Params const &params) {
     using Params = typename T::Params;
 
@@ -966,50 +966,50 @@ public:
     return this->new_node(op);
   }
 
-  PCG::Node get_or_create_noop_node(const ParallelTensor input);
+  PCG::Node get_or_create_noop_node(ParallelTensor const input);
   PCG::Node get_or_create_input_node(ParallelTensorShape const &);
   PCG::Node get_or_create_fused_parallel_node(
-      const ParallelTensor input,
+      ParallelTensor const input,
       std::vector<ParallelOpInfo> const &parallel_ops);
-  PCG::Node get_or_create_parallel_op_node(const ParallelTensor input,
+  PCG::Node get_or_create_parallel_op_node(ParallelTensor const input,
                                            ParallelOpInfo const &);
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
   void create_disjoint_partition(int num_dims,
-                                 const ParallelDim dims[],
+                                 ParallelDim const dims[],
                                  Legion::IndexSpace const &part_is,
                                  Legion::LogicalRegion const &region,
                                  Legion::LogicalPartition &part);
   template <int NDIM, int TDIM>
   void create_disjoint_partition_with_dim2(
-      const ParallelDim dims[],
+      ParallelDim const dims[],
       Legion::IndexSpaceT<TDIM> const &part_is,
       Legion::LogicalRegion const &region,
       Legion::LogicalPartition &part);
   void create_aliased_partition(int num_dims,
-                                const ParallelDim dims[],
+                                ParallelDim const dims[],
                                 int aliased_dim,
                                 Legion::IndexSpace const &part_is,
                                 Legion::LogicalRegion const &region,
                                 Legion::LogicalPartition &part);
   template <int NDIM, int TDIM>
   void create_aliased_partition_with_dim2(
-      const ParallelDim dims[],
+      ParallelDim const dims[],
       int aliased_dim,
       Legion::IndexSpaceT<TDIM> const &part_is,
       Legion::LogicalRegion const &region,
       Legion::LogicalPartition &part);
 
   template <int NDIM>
-  void create_disjoint_partition(const ParallelTensor tensor,
+  void create_disjoint_partition(ParallelTensor const tensor,
                                  Legion::IndexSpaceT<NDIM> const &part_is,
                                  Legion::LogicalPartition &part_fwd,
                                  Legion::LogicalPartition &part_bwd);
 
   template <int NDIM, int TDIM>
   void create_data_parallel_partition_with_diff_dims(
-      const ParallelTensor tensor,
+      ParallelTensor const tensor,
       Legion::IndexSpaceT<TDIM> const &task_is,
       Legion::LogicalPartition &part_fwd,
       Legion::LogicalPartition &part_bwd);
@@ -1097,7 +1097,7 @@ public:
   Legion::IndexSpace get_or_create_task_is(ParallelConfig const &pc);
   Legion::IndexSpace get_or_create_task_is(MachineView const &view);
   Legion::IndexSpace get_or_create_task_is(Legion::Domain const &domain);
-  Legion::IndexSpace get_or_create_task_is(const ParallelTensor);
+  Legion::IndexSpace get_or_create_task_is(ParallelTensor const);
   Legion::IndexSpace get_task_is(Legion::Domain const &domain) const;
   Legion::IndexSpace get_task_is(ParallelConfig const &pc) const;
   Legion::IndexSpace get_task_is(MachineView const &view) const;

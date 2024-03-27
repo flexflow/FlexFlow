@@ -33,7 +33,7 @@ FFShardingFunctor::~FFShardingFunctor(void) {}
 
 ShardID FFShardingFunctor::shard(DomainPoint const &point,
                                  Domain const &full_space,
-                                 const size_t total_shards) {
+                                 size_t const total_shards) {
   assert(point.get_dim() == full_space.get_dim());
   int device_id = machine_view.start_device_id;
   for (int i = 0; i < point.get_dim(); i++) {
@@ -259,7 +259,7 @@ Mapper::MapperSyncModel FFMapper::get_mapper_sync_model(void) const {
   return SERIALIZED_REENTRANT_MAPPER_MODEL;
 }
 
-void FFMapper::select_task_options(const MapperContext ctx,
+void FFMapper::select_task_options(MapperContext const ctx,
                                    Task const &task,
                                    TaskOptions &output) {
   unsigned long long task_hash = compute_task_hash(task);
@@ -285,7 +285,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
   }
   if ((task.task_id == RM_PREPARE_NEXT_BATCH_TASK_ID) ||
       (task.task_id == RM_PREPARE_NEXT_BATCH_INIT_TASK_ID) ||
-      (task.task_id == RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID) ||
+      (task.task_id == RM_PREPARE_NEXT_BATCH_SPEC_TASK_ID) ||
       (task.task_id == RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID) ||
       (task.task_id == RM_BACKGROUND_SERVING_TASK_ID)) {
     output.initial_proc = all_cpus[0];
@@ -374,7 +374,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
   assert(task.is_index_space);
 }
 
-void FFMapper::slice_task(const MapperContext ctx,
+void FFMapper::slice_task(MapperContext const ctx,
                           Task const &task,
                           SliceTaskInput const &input,
                           SliceTaskOutput &output) {
@@ -480,14 +480,14 @@ void FFMapper::slice_task(const MapperContext ctx,
   }
 }
 
-void FFMapper::premap_task(const MapperContext ctx,
+void FFMapper::premap_task(MapperContext const ctx,
                            Task const &task,
                            PremapTaskInput const &input,
                            PremapTaskOutput &output) {
   assert(false);
 }
 
-void FFMapper::map_task(const MapperContext ctx,
+void FFMapper::map_task(MapperContext const ctx,
                         Task const &task,
                         MapTaskInput const &input,
                         MapTaskOutput &output) {
@@ -663,13 +663,13 @@ void FFMapper::map_task(const MapperContext ctx,
   } // for idx
 }
 
-void FFMapper::replicate_task(const MapperContext ctx,
+void FFMapper::replicate_task(MapperContext const ctx,
                               Task const &task,
                               ReplicateTaskInput const &input,
                               ReplicateTaskOutput &output) {
   // Should only be replicated for the top-level task
   assert((task.get_depth() == 0) && (task.regions.size() == 0));
-  const Processor::Kind target_kind = task.target_proc.kind();
+  Processor::Kind const target_kind = task.target_proc.kind();
   VariantID vid;
   {
     std::vector<VariantID> variant_ids;
@@ -685,7 +685,7 @@ void FFMapper::replicate_task(const MapperContext ctx,
   procs.only_kind(target_kind);
   for (Machine::ProcessorQuery::iterator it = procs.begin(); it != procs.end();
        it++) {
-    const AddressSpace space = it->address_space();
+    AddressSpace const space = it->address_space();
     if (handled[space]) {
       continue;
     }
@@ -696,21 +696,21 @@ void FFMapper::replicate_task(const MapperContext ctx,
   assert(count == total_nodes);
 }
 
-void FFMapper::select_task_variant(const MapperContext ctx,
+void FFMapper::select_task_variant(MapperContext const ctx,
                                    Task const &task,
                                    SelectVariantInput const &input,
                                    SelectVariantOutput &output) {
   assert(false);
 }
 
-void FFMapper::postmap_task(const MapperContext ctx,
+void FFMapper::postmap_task(MapperContext const ctx,
                             Task const &task,
                             PostMapInput const &input,
                             PostMapOutput &output) {
   assert(false);
 }
 
-void FFMapper::select_task_sources(const MapperContext ctx,
+void FFMapper::select_task_sources(MapperContext const ctx,
                                    Task const &task,
                                    SelectTaskSrcInput const &input,
                                    SelectTaskSrcOutput &output) {
@@ -795,26 +795,26 @@ void FFMapper::default_policy_select_sources(
 }
 
 void FFMapper::create_task_temporary_instance(
-    const MapperContext ctx,
+    MapperContext const ctx,
     Task const &task,
     CreateTaskTemporaryInput const &input,
     CreateTaskTemporaryOutput &output) {
   assert(false);
 }
 
-void FFMapper::speculate(const MapperContext ctx,
+void FFMapper::speculate(MapperContext const ctx,
                          Task const &task,
                          SpeculativeOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx,
+void FFMapper::report_profiling(MapperContext const ctx,
                                 Task const &task,
                                 TaskProfilingInfo const &input) {
   assert(false);
 }
 
-void FFMapper::select_sharding_functor(const MapperContext ctx,
+void FFMapper::select_sharding_functor(MapperContext const ctx,
                                        Task const &task,
                                        SelectShardingFunctorInput const &input,
                                        SelectShardingFunctorOutput &output) {
@@ -843,7 +843,7 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
   }
 }
 
-void FFMapper::map_inline(const MapperContext ctx,
+void FFMapper::map_inline(MapperContext const ctx,
                           InlineMapping const &inline_op,
                           MapInlineInput const &input,
                           MapInlineOutput &output) {
@@ -944,7 +944,7 @@ void FFMapper::map_inline(const MapperContext ctx,
   }
 }
 
-void FFMapper::select_inline_sources(const MapperContext ctx,
+void FFMapper::select_inline_sources(MapperContext const ctx,
                                      InlineMapping const &inline_op,
                                      SelectInlineSrcInput const &input,
                                      SelectInlineSrcOutput &output) {
@@ -954,27 +954,27 @@ void FFMapper::select_inline_sources(const MapperContext ctx,
 }
 
 void FFMapper::create_inline_temporary_instance(
-    const MapperContext ctx,
+    MapperContext const ctx,
     InlineMapping const &inline_op,
     CreateInlineTemporaryInput const &input,
     CreateInlineTemporaryOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx,
+void FFMapper::report_profiling(MapperContext const ctx,
                                 InlineMapping const &inline_op,
                                 InlineProfilingInfo const &input) {
   assert(false);
 }
 
-void FFMapper::map_copy(const MapperContext ctx,
+void FFMapper::map_copy(MapperContext const ctx,
                         Copy const &copy,
                         MapCopyInput const &input,
                         MapCopyOutput &output) {
   assert(false);
 }
 
-void FFMapper::select_copy_sources(const MapperContext ctx,
+void FFMapper::select_copy_sources(MapperContext const ctx,
                                    Copy const &copy,
                                    SelectCopySrcInput const &input,
                                    SelectCopySrcOutput &output) {
@@ -982,26 +982,26 @@ void FFMapper::select_copy_sources(const MapperContext ctx,
 }
 
 void FFMapper::create_copy_temporary_instance(
-    const MapperContext ctx,
+    MapperContext const ctx,
     Copy const &copy,
     CreateCopyTemporaryInput const &input,
     CreateCopyTemporaryOutput &output) {
   assert(false);
 }
 
-void FFMapper::speculate(const MapperContext ctx,
+void FFMapper::speculate(MapperContext const ctx,
                          Copy const &copy,
                          SpeculativeOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx,
+void FFMapper::report_profiling(MapperContext const ctx,
                                 Copy const &copy,
                                 CopyProfilingInfo const &input) {
   assert(false);
 }
 
-void FFMapper::select_sharding_functor(const MapperContext ctx,
+void FFMapper::select_sharding_functor(MapperContext const ctx,
                                        Copy const &copy,
                                        SelectShardingFunctorInput const &input,
                                        SelectShardingFunctorOutput &output) {
@@ -1009,14 +1009,14 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
   assert(false);
 }
 
-void FFMapper::map_close(const MapperContext ctx,
+void FFMapper::map_close(MapperContext const ctx,
                          Close const &close,
                          MapCloseInput const &input,
                          MapCloseOutput &output) {
   assert(false);
 }
 
-void FFMapper::select_close_sources(const MapperContext ctx,
+void FFMapper::select_close_sources(MapperContext const ctx,
                                     Close const &close,
                                     SelectCloseSrcInput const &input,
                                     SelectCloseSrcOutput &output) {
@@ -1024,20 +1024,20 @@ void FFMapper::select_close_sources(const MapperContext ctx,
 }
 
 void FFMapper::create_close_temporary_instance(
-    const MapperContext ctx,
+    MapperContext const ctx,
     Close const &close,
     CreateCloseTemporaryInput const &input,
     CreateCloseTemporaryOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx,
+void FFMapper::report_profiling(MapperContext const ctx,
                                 Close const &close,
                                 CloseProfilingInfo const &input) {
   assert(false);
 }
 
-void FFMapper::select_sharding_functor(const MapperContext ctx,
+void FFMapper::select_sharding_functor(MapperContext const ctx,
                                        Close const &close,
                                        SelectShardingFunctorInput const &input,
                                        SelectShardingFunctorOutput &output) {
@@ -1045,26 +1045,26 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
   assert(false);
 }
 
-void FFMapper::map_acquire(const MapperContext ctx,
+void FFMapper::map_acquire(MapperContext const ctx,
                            Acquire const &acquire,
                            MapAcquireInput const &input,
                            MapAcquireOutput &output) {
   assert(false);
 }
 
-void FFMapper::speculate(const MapperContext ctx,
+void FFMapper::speculate(MapperContext const ctx,
                          Acquire const &acquire,
                          SpeculativeOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx,
+void FFMapper::report_profiling(MapperContext const ctx,
                                 Acquire const &acquire,
                                 AcquireProfilingInfo const &input) {
   assert(false);
 }
 
-void FFMapper::select_sharding_functor(const MapperContext ctx,
+void FFMapper::select_sharding_functor(MapperContext const ctx,
                                        Acquire const &acquire,
                                        SelectShardingFunctorInput const &input,
                                        SelectShardingFunctorOutput &output) {
@@ -1072,14 +1072,14 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
   assert(false);
 }
 
-void FFMapper::map_release(const MapperContext ctx,
+void FFMapper::map_release(MapperContext const ctx,
                            Release const &release,
                            MapReleaseInput const &input,
                            MapReleaseOutput &output) {
   assert(false);
 }
 
-void FFMapper::select_release_sources(const MapperContext ctx,
+void FFMapper::select_release_sources(MapperContext const ctx,
                                       Release const &release,
                                       SelectReleaseSrcInput const &input,
                                       SelectReleaseSrcOutput &output) {
@@ -1087,26 +1087,26 @@ void FFMapper::select_release_sources(const MapperContext ctx,
 }
 
 void FFMapper::create_release_temporary_instance(
-    const MapperContext ctx,
+    MapperContext const ctx,
     Release const &release,
     CreateReleaseTemporaryInput const &input,
     CreateReleaseTemporaryOutput &output) {
   assert(false);
 }
 
-void FFMapper::speculate(const MapperContext ctx,
+void FFMapper::speculate(MapperContext const ctx,
                          Release const &release,
                          SpeculativeOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx,
+void FFMapper::report_profiling(MapperContext const ctx,
                                 Release const &release,
                                 ReleaseProfilingInfo const &input) {
   assert(false);
 }
 
-void FFMapper::select_sharding_functor(const MapperContext ctx,
+void FFMapper::select_sharding_functor(MapperContext const ctx,
                                        Release const &release,
                                        SelectShardingFunctorInput const &input,
                                        SelectShardingFunctorOutput &output) {
@@ -1114,21 +1114,21 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
 }
 
 void FFMapper::select_partition_projection(
-    const MapperContext ctx,
+    MapperContext const ctx,
     Partition const &partition,
     SelectPartitionProjectionInput const &input,
     SelectPartitionProjectionOutput &output) {
   assert(false);
 }
 
-void FFMapper::map_partition(const MapperContext ctx,
+void FFMapper::map_partition(MapperContext const ctx,
                              Partition const &partition,
                              MapPartitionInput const &input,
                              MapPartitionOutput &output) {
   assert(false);
 }
 
-void FFMapper::select_partition_sources(const MapperContext ctx,
+void FFMapper::select_partition_sources(MapperContext const ctx,
                                         Partition const &partition,
                                         SelectPartitionSrcInput const &input,
                                         SelectPartitionSrcOutput &output) {
@@ -1136,34 +1136,34 @@ void FFMapper::select_partition_sources(const MapperContext ctx,
 }
 
 void FFMapper::create_partition_temporary_instance(
-    const MapperContext ctx,
+    MapperContext const ctx,
     Partition const &partition,
     CreatePartitionTemporaryInput const &input,
     CreatePartitionTemporaryOutput &output) {
   assert(false);
 }
 
-void FFMapper::report_profiling(const MapperContext ctx,
+void FFMapper::report_profiling(MapperContext const ctx,
                                 Partition const &partition,
                                 PartitionProfilingInfo const &input) {
   assert(false);
 }
 
-void FFMapper::select_sharding_functor(const MapperContext ctx,
+void FFMapper::select_sharding_functor(MapperContext const ctx,
                                        Partition const &partition,
                                        SelectShardingFunctorInput const &input,
                                        SelectShardingFunctorOutput &output) {
   assert(false);
 }
 
-void FFMapper::select_sharding_functor(const MapperContext ctx,
+void FFMapper::select_sharding_functor(MapperContext const ctx,
                                        Fill const &fill,
                                        SelectShardingFunctorInput const &input,
                                        SelectShardingFunctorOutput &output) {
   assert(false);
 }
 
-void FFMapper::configure_context(const MapperContext ctx,
+void FFMapper::configure_context(MapperContext const ctx,
                                  Task const &task,
                                  ContextConfigOutput &output) {
   // Increase max_window_size to allow Legion tracing to capture larger traces
@@ -1171,21 +1171,21 @@ void FFMapper::configure_context(const MapperContext ctx,
   // Use the default values and do nothing else
 }
 
-void FFMapper::select_tunable_value(const MapperContext ctx,
+void FFMapper::select_tunable_value(MapperContext const ctx,
                                     Task const &task,
                                     SelectTunableInput const &input,
                                     SelectTunableOutput &output) {
   assert(false);
 }
 
-void FFMapper::select_sharding_functor(const MapperContext ctx,
+void FFMapper::select_sharding_functor(MapperContext const ctx,
                                        MustEpoch const &epoch,
                                        SelectShardingFunctorInput const &input,
                                        MustEpochShardingFunctorOutput &output) {
   assert(false);
 }
 
-void FFMapper::map_must_epoch(const MapperContext ctx,
+void FFMapper::map_must_epoch(MapperContext const ctx,
                               MapMustEpochInput const &input,
                               MapMustEpochOutput &output) {
   // Directly assign each task to its target_proc
@@ -1196,13 +1196,13 @@ void FFMapper::map_must_epoch(const MapperContext ctx,
   assert(input.constraints.size() == 0);
 }
 
-void FFMapper::map_dataflow_graph(const MapperContext ctx,
+void FFMapper::map_dataflow_graph(MapperContext const ctx,
                                   MapDataflowGraphInput const &input,
                                   MapDataflowGraphOutput &output) {
   assert(false);
 }
 
-void FFMapper::memoize_operation(const MapperContext ctx,
+void FFMapper::memoize_operation(MapperContext const ctx,
                                  Mappable const &mappable,
                                  MemoizeInput const &input,
                                  MemoizeOutput &output) {
@@ -1216,7 +1216,7 @@ void FFMapper::memoize_operation(const MapperContext ctx,
 }
 
 // Mapping control and stealing
-void FFMapper::select_tasks_to_map(const MapperContext ctx,
+void FFMapper::select_tasks_to_map(MapperContext const ctx,
                                    SelectMappingInput const &input,
                                    SelectMappingOutput &output) {
   // Just map all the ready tasks
@@ -1227,13 +1227,13 @@ void FFMapper::select_tasks_to_map(const MapperContext ctx,
   }
 }
 
-void FFMapper::select_steal_targets(const MapperContext ctx,
+void FFMapper::select_steal_targets(MapperContext const ctx,
                                     SelectStealingInput const &input,
                                     SelectStealingOutput &output) {
   // Nothing to do, no stealing in FFMapper
 }
 
-void FFMapper::permit_steal_request(const MapperContext ctx,
+void FFMapper::permit_steal_request(MapperContext const ctx,
                                     StealRequestInput const &intput,
                                     StealRequestOutput &output) {
   // Nothing to do, no stealing in FFMapper

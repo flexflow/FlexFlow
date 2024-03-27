@@ -1002,7 +1002,7 @@ TreeSearchBatchConfigFuture RequestManager::prepare_next_batch_beam(
     Runtime *runtime) {
 
   RequestManager *rm = this;
-  TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
+  TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_SPEC_TASK_ID,
                         TaskArgument(&rm, sizeof(RequestManager *)));
   launcher.add_future(old_bc);
   launcher.add_future(result);

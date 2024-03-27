@@ -4468,7 +4468,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
   }
   // RequestManager prepare_next_batch_beam
   {
-    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
+    TaskVariantRegistrar registrar(RM_PREPARE_NEXT_BATCH_SPEC_TASK_ID,
                                    "RequestManager Prepare Next Batch (Beam)");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
