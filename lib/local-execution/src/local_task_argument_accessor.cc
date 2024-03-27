@@ -14,7 +14,8 @@ RuntimeArgRefTypeBacking const & LocalTaskArgumentAccessor::get_runtime_arg(slot
 
 PrivilegeType LocalTaskArgumentAccessor::get_tensor(slot_id slot, Permissions priv, IsGrad is_grad) const { 
   std::pair<slot_id, IsGrad> slot_grad_pair = std::make_pair(slot, is_grad);
-  GenericTensorAccessorW tensor_backing = std::get<GenericTensorAccessorW>(this->tensor_backing_map.at(slot_grad_pair));
+  auto generic_tensor_backing_map = std::get<std::unordered_map<SlotGradId, GenericTensorAccessorW>>(this->tensor_backing_map);
+  GenericTensorAccessorW tensor_backing = generic_tensor_backing_map.at(slot_grad_pair);
   if (priv == Permissions::RO) {
     GenericTensorAccessorR readonly_tensor_backing = {
         tensor_backing.data_type,
@@ -30,7 +31,8 @@ PrivilegeType LocalTaskArgumentAccessor::get_tensor(slot_id slot, Permissions pr
 PrivilegeVariadicType LocalTaskArgumentAccessor::get_variadic_tensor(slot_id slot,
                                                   Permissions priv, IsGrad is_grad) const { 
   std::pair<slot_id, IsGrad> slot_grad_pair = std::make_pair(slot, is_grad);
-  std::vector<GenericTensorAccessorW> variadic_tensor_backing = std::get<std::vector<GenericTensorAccessorW>>(this->tensor_backing_map.at(slot_grad_pair));
+  auto variadic_tensor_backing_map = std::get<std::unordered_map<SlotGradId, std::vector<GenericTensorAccessorW>>>(this->tensor_backing_map);
+  std::vector<GenericTensorAccessorW> variadic_tensor_backing = variadic_tensor_backing_map.at(slot_grad_pair);
   if (priv == Permissions::RO) {
     std::vector<GenericTensorAccessorR> readonly_variadic_tensor_backing = {};
     for (auto tensor_backing: variadic_tensor_backing) {

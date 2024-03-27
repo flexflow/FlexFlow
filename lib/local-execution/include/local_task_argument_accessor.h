@@ -11,11 +11,18 @@
 namespace FlexFlow {
 
 using SlotGradId = std::pair<slot_id, IsGrad>;
-using TensorBackingOption = std::variant<GenericTensorAccessorW, std::vector<GenericTensorAccessorW>>;
+using TensorBackingOption = std::variant<std::unordered_map<SlotGradId, GenericTensorAccessorW>,
+                                         std::unordered_map<SlotGradId, std::vector<GenericTensorAccessorW>>>;
 
 struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
-  LocalTaskArgumentAccessor() = default;
+  LocalTaskArgumentAccessor(
+    Allocator allocator, 
+    TensorBackingOption tensor_backing_map,
+    std::unordered_map<slot_id, ArgRefBacking> argument_map)
+      : allocator(allocator), tensor_backing_map(tensor_backing_map), argument_map(argument_map) {};
+  LocalTaskArgumentAccessor(LocalTaskArgumentAccessor const &) = delete;
+  LocalTaskArgumentAccessor(LocalTaskArgumentAccessor &&) = delete;
 
   ConcreteArgSpec const & get_concrete_arg(slot_id) const override;
   OpArgRefTypeBacking const & get_op_arg_ref(slot_id) const override;
@@ -27,14 +34,11 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
   Allocator get_allocator() const override;
 
-  void insert_tensor(SlotGradId tensor_id,
-                     GenericTensorAccessorW tensor_backing) {
-    this->tensor_backing_map.insert({tensor_id, tensor_backing});
-  }
+  size_t get_device_idx() const override { return 0; }
 
 private:
   Allocator allocator;
-  std::unordered_map<SlotGradId, TensorBackingOption> tensor_backing_map;
+  TensorBackingOption tensor_backing_map;
   std::unordered_map<slot_id, ArgRefBacking> argument_map;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalTaskArgumentAccessor);

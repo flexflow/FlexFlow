@@ -21,13 +21,16 @@ struct OperatorSlotBackingId {
   operator_guid_t op;
   slot_id slot;
 };
+FF_VISITABLE_STRUCT(OperatorSlotBackingId,
+                    op,
+                    slot);
 
 // TODO: define device state variant in another file
-using DeviceStates = std::variant<LinearPerDeviceState>;
+// using DeviceStates = std::variant<LinearPerDeviceState>;
 
-using TaskImplFunction = std::variant<
-    std::function<DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>,
-    std::function<std::optional<float>(TaskArgumentAccessor const &)>>;
+// using TaskImplFunction = std::variant<
+//     std::function<DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>,
+//     std::function<std::optional<float>(TaskArgumentAccessor const &)>>;
 
 struct TaskSignatureImpl {
   TaskImplFunction impl_function;
@@ -35,11 +38,13 @@ struct TaskSignatureImpl {
 };
 
 struct TaskRegistry {
-  TaskRegistry();
-  void register_task(task_id_t);
+  TaskRegistry(std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW &>);
+  void register_task(task_id_t, operator_guid_t);
+  void register_args(operator_guid_t, OpArgBacking);
   bool is_tensor_allocated(OperatorSlotBackingId src_op_slot,
                            OperatorSlotBackingId dst_op_slot);
-  void get_tensor_backing(OperatorSlotBackingId op_slot_id);
+  GenericTensorAccessorW & get_tensor_backing(OperatorSlotBackingId op_slot_id);
+  OpArgBacking get_arg_backing(operator_guid_t op_slot_id);
 
   OpTaskSignature get_init_signature(operator_guid_t);
   OpTaskSignature get_fwd_signature(operator_guid_t);
@@ -48,16 +53,18 @@ struct TaskRegistry {
   std::unordered_map<operator_guid_t, task_id_t> init_task_ids;
   std::unordered_map<operator_guid_t, task_id_t> forward_task_ids;
   std::unordered_map<operator_guid_t, task_id_t> backward_task_ids;
+  std::unordered_map<operator_guid_t, OpArgBacking> arg_mapping;
   std::unordered_map<task_id_t, TaskSignatureImpl &> task_mapping;
   std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW &>
       tensor_mapping;
 };
 
 struct LocalTrainingBacking {
-  LocalTrainingBacking(ComputationGraph const &,
-                       Allocator const &,
+  LocalTrainingBacking(ComputationGraph,
+                       Allocator,
                        std::unordered_map<OperatorSlotBackingId,
-                                          GenericTensorAccessorW> const &);
+                                          GenericTensorAccessorW &>,
+                       ArgBackingMapping);
   ~LocalTrainingBacking() = default;
 
   void execute_init();
@@ -65,14 +72,15 @@ struct LocalTrainingBacking {
   void execute_backward();
   void execute_update();
 
+  DeviceSpecific<DeviceStates> call_init_task_impl(task_id_t, TaskArgumentAccessor);
   void call_task_impl(task_id_t, TaskArgumentAccessor);
 
   TaskArgumentAccessor get_task_arg_accessor(OpTaskInvocation);
 
 private:
-  Allocator const &allocator;
-  ComputationGraph const &computation_graph;
-  TaskRegistry const &task_registry;
+  Allocator allocator;
+  ComputationGraph computation_graph;
+  TaskRegistry task_registry;
   ArgBackingMapping arg_backing_mapping;
 };
 

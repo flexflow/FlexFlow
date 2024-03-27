@@ -27,6 +27,9 @@ struct ComputationGraph
   // void add_edge(Tensor const &);
   // void add_edge_with_src(Tensor const &, size_t src);
   // MultiDiEdge get_edge(Tensor const &);
+  tensor_guid_t get_tensor_guid_t(Tensor edge) {
+    NOT_IMPLEMENTED();
+  }
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(ComputationGraph);
 

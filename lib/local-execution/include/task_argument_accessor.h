@@ -12,6 +12,7 @@
 #include "arg_ref.h"
 #include "op_task_signature.h"
 #include "utils/variant.h"
+#include "tasks.h"
 #include <cstddef>
 #include <memory>
 #include <optional>
