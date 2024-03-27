@@ -1655,18 +1655,16 @@ void RequestManager::store_ssm_inference_results(
         old_bc.requestsInfo[old_bc.tokensInfo[i].request_index].request_guid !=
             guid) {
 
-      // std::cout << "i is: " << i << "old guid" << guid << " new guid"
-      //           << old_bc.requestsInfo[old_bc.tokensInfo[i].request_index]
-      //                  .request_guid
-      //           << "\n";
+      int request_index = old_bc.tokensInfo[i - 1].request_index;
+      int num_branches = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
 
-      int index = old_bc.tokensInfo[i - 1].request_index;
-      int beam_size = old_bc.beamRequestsInfo[index].beam_size;
-
-      // int leaf_node_num = old_bc.sub_requests[index];
       int leaf_node_num =
-          old_bc.beamRequestsInfo[index].sub_request_num * beam_size;
-      int depth = old_bc.beamRequestsInfo[index].current_depth;
+          old_bc.tree_requests_info[request_index].num_tokens_at_depth *
+          num_branches;
+      //   int leaf_node_num =
+      //       old_bc.beamRequestsInfo[request_index].sub_request_num *
+      //       num_branches;
+      int depth = old_bc.current_depth;
 
       // Each token yields (beam_width) results
       // int beam_width = old_bc.beamRequestsInfo[index].beam_size;
@@ -1675,18 +1673,19 @@ void RequestManager::store_ssm_inference_results(
       // index
       result_index +=
           (old_bc.tokensInfo[i - 1].abs_depth_in_request - start_depth) *
-          beam_size;
+          num_branches;
 
       if (verbose) {
         std::cout << "i = " << i << ", result index = " << result_index
                   << ", value: " << result.token_ids[result_index]
                   << ", leaf node num: " << leaf_node_num << ", depth" << depth
-                  << ", beam size: " << beam_size << "\n";
+                  << ", beam size: " << num_branches << "\n";
       }
 
-      Request &request = all_requests[old_bc.requestsInfo[index].request_guid];
+      Request &request =
+          all_requests[old_bc.requestsInfo[request_index].request_guid];
 
-      if (old_bc.requestsInfo[index].num_tokens_in_batch == 0) {
+      if (old_bc.requestsInfo[request_index].num_tokens_in_batch == 0) {
         continue;
       }
 
