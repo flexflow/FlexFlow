@@ -355,6 +355,9 @@ private:
   std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
+  // This is a helper data structure to store help the pruning of the token
+  // trees across different requests.
+  std::priority_queue<std::shared_ptr<TokenTreeNode>> token_tree_node_pool;
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,
