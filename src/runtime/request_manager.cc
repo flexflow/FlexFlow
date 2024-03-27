@@ -1024,21 +1024,23 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_beam_task(
 
 // update beam search metadata
 TreeSearchBatchConfig
-    RequestManager::prepare_next_batch_beam(TreeSearchBatchConfig const &old_bc,
+    RequestManager::prepare_next_batch_spec(TreeSearchBatchConfig const &old_bc,
                                             SsmInferenceResult const &result) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
-    std::cout << "\n############### prepare_next_batch_beam ###############\n";
+    std::cout << "\n############### prepare_next_batch_spec ###############\n";
   }
   if (verbose) {
     std::cout << "print all results" << "\n";
     for (int i = 0; i < 40; i++) {
       std::cout << result.token_ids[i] << ", ";
     }
-    std::cout << "Current Beam Depth: "
-              << old_bc.beamRequestsInfo[0].current_depth << "\n";
-    std::cout << "Current sub request num: "
-              << old_bc.beamRequestsInfo[0].sub_request_num << "\n";
+    std::cout << "Current tree depth: " << old_bc.current_depth << "\n";
+    std::cout << "Number of tokens in each requests: " << std::endl;
+    for (int i = 0; i < TreeSearchBatchConfig::max_requests_per_batch(); i++) {
+      std::cout << i << "\t" << old_bc.tree_requests_info[i].num_tokens_at_depth
+                << std::endl;
+    }
   }
   // Step 1: Store result to the beam tree struct
   store_beam_metadata(old_bc, result);

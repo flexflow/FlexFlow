@@ -156,7 +156,7 @@ public:
   int model_id;
 
   struct TreeSearchPerRequestInfo {
-    int num_tokens_in_layer = 0;
+    int num_tokens_at_depth = 0;
   };
 
   TreeSearchPerRequestInfo tree_requests_info[MAX_NUM_REQUESTS];

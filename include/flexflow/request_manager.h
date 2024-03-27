@@ -73,52 +73,21 @@ struct Request {
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
-  std::vector<struct BeamTree> beam_trees; // Old version, delete after refactor
   std::vector<struct TokenTree> token_trees; // New version
 };
 
-// The old version of beam tree
-// store the result of beam search
-struct BeamTree {
-  struct treeLayer {
-    TreeSearchBatchConfig::TokenId
-        tokens[TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-    int parent_ids[TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-    float probs[TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-    int nodes_num_this_layer = 0;
-  };
-  treeLayer treeLayers[TreeSearchBatchConfig::MAX_BEAM_DEPTH + 1];
+struct TokenTreeNode {
+  BatchConfig::TokenId id;
+  float joint_prob;
+  int parent_pos;
 };
 
-// The new version of BeamTree
-// Named as TokenTree, supports general tree structure.
+struct TreeLayer {
+  std::vector<TokenTreeNode> nodes;
+};
+
 class TokenTree {
-  class Node {
-  public:
-    BatchConfig::TokenId id;
-    float unconditional_prob;
-    std::vector<std::shared_ptr<Node>> children;
-    std::shared_ptr<Node> parent;
-    Node(BatchConfig::TokenId id, float prob, std::shared_ptr<Node> parent)
-        : id(id), unconditional_prob(prob), parent(parent) {}
-  };
-
-  class TreeLayer {
-  public:
-    std::vector<std::shared_ptr<Node>> nodes;
-  };
-
-private:
-  std::vector<TreeLayer> layers;
-  // Do we need the root?
-  std::shared_ptr<Node> root;
-
-public:
-  TokenTree(BatchConfig::TokenId root_id, float root_prob)
-      : root(std::make_shared<Node>(root_id, root_prob, nullptr)) {
-    layers.push_back(TreeLayer());
-    layers[0].nodes.push_back(root);
-  }
+  std::vector<TreeLayer> tree_layers;
 };
 
 class RequestManager {
