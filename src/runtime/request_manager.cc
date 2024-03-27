@@ -995,7 +995,7 @@ TreeSearchBatchConfig
 }
 
 /***** Beam Search Phase *****/
-TreeSearchBatchConfigFuture RequestManager::prepare_next_batch_beam(
+TreeSearchBatchConfigFuture RequestManager::prepare_next_batch_spec(
     TreeSearchBatchConfigFuture const &old_bc,
     SsmInferenceResultFuture const &result,
     Context ctx,
@@ -1009,7 +1009,7 @@ TreeSearchBatchConfigFuture RequestManager::prepare_next_batch_beam(
   return runtime->execute_task(ctx, launcher);
 }
 
-TreeSearchBatchConfig RequestManager::prepare_next_batch_beam_task(
+TreeSearchBatchConfig RequestManager::prepare_next_batch_spec_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
