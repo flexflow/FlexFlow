@@ -39,19 +39,21 @@ struct ParallelTensor : public use_visitable_cmp<ParallelTensor> {
 
   ParallelTensor(ParallelTensorShape const &,
                  CreateGrad create_gradients,
-                 optional<ParamSync> sync_type = nullopt,
-                 optional<Initializer> initializer = nullopt);
+                 std::optional<ParamSync> sync_type = std::nullopt,
+                 std::optional<Initializer> initializer = std::nullopt);
   ParallelTensor(ParallelTensorDims const &,
                  DataType,
                  CreateGrad create_gradients,
-                 optional<ParamSync> sync_type = nullopt,
-                 optional<Initializer> initializer = nullopt);
+                 std::optional<ParamSync> sync_type = std::nullopt,
+                 std::optional<Initializer> initializer = std::nullopt);
+
+  ParallelTensorShape get_shape() const;
 
 public:
   ParallelTensorDims dims;
   DataType data_type;
-  optional<ParamSync> sync_type = nullopt;
-  optional<Initializer> initializer = nullopt;
+  std::optional<ParamSync> sync_type = std::nullopt;
+  std::optional<Initializer> initializer = std::nullopt;
   CreateGrad create_gradients;
 };
 

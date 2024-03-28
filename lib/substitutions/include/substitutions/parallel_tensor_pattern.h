@@ -18,7 +18,7 @@ enum class TensorAttributeKey { DIM_SIZES, DIM_DEGREES };
  * @brief DIM_SIZES and DIM_DEGREES are represented by 
  * a vector of ints that is listed as corresponding dimension
  */
-using TensorAttributeValue = variant<int, std::vector<int>>;
+using TensorAttributeValue = std::variant<int, std::vector<int>>;
 
 /**
  * @brief TensorAttributeConstraint is an instance of AttributeConstraint that
@@ -39,7 +39,7 @@ using ParallelTensorPattern =
  * the ParallelTensor parameter is named tensor_shape because the numerical value will only be used
  * in runtime. For the substitution phase, all that matters is the shape of the tensor.
  */
-optional<TensorAttributeValue>
+std::optional<TensorAttributeValue>
     evaluate_attribute_expr(ParallelTensor const &tensor_shape,
                             AttributeExpr<TensorAttributeKey> const &expr);
 

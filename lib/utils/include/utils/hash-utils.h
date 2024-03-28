@@ -4,6 +4,8 @@
 #include "containers.h"
 #include "hash-utils-core.h"
 
+using namespace FlexFlow;
+
 namespace std {
 template <typename T>
 struct hash<std::unordered_set<T>> {
@@ -18,7 +20,7 @@ struct hash<std::unordered_set<T>> {
 template <typename K, typename V>
 struct hash<std::unordered_map<K, V>> {
   size_t operator()(std::unordered_map<K, V> const &m) const {
-    return get_std_hash(items(m));
+    return get_std_hash(::FlexFlow::items(m));
   }
 };
 

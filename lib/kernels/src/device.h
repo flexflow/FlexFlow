@@ -5,6 +5,7 @@
 #include "kernels/device.h"
 #include "op-attrs/datatype.h"
 #include "op-attrs/op.h"
+#include <cstddef>
 
 #if defined(FF_USE_CUDA)
 #include <cuda_fp16.h>

@@ -113,51 +113,53 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
     assignments.emplace(key, value);
   }
   assert(contains_key(assignments, OperatorAttributeKey::OP_TYPE));
-  assert(holds_alternative<OperatorType>(
+  assert(std::holds_alternative<OperatorType>(
       assignments.at(OperatorAttributeKey::OP_TYPE)));
   OperatorType op_type =
-      get<OperatorType>(assignments.at(OperatorAttributeKey::OP_TYPE));
+      std::get<OperatorType>(assignments.at(OperatorAttributeKey::OP_TYPE));
   switch (op_type) {
     case Op::BATCHMATMUL:
-      return Operator(
-          BatchMatmulAttrs{
-              get<int>(assignments.at(OperatorAttributeKey::A_SEQ_LENGTH_DIM)),
-              get<int>(assignments.at(OperatorAttributeKey::B_SEQ_LENGTH_DIM))},
-          nullopt);
+      return Operator{
+          BatchMatmulAttrs{std::get<int>(assignments.at(
+                               OperatorAttributeKey::A_SEQ_LENGTH_DIM)),
+                           std::get<int>(assignments.at(
+                               OperatorAttributeKey::B_SEQ_LENGTH_DIM))},
+          std::nullopt};
     case Op::BATCHNORM:
-      return Operator(
-          BatchNormAttrs{get<bool>(assignments.at(OperatorAttributeKey::RELU))},
-          nullopt);
+      return Operator{BatchNormAttrs{std::get<bool>(
+                          assignments.at(OperatorAttributeKey::RELU))},
+                      std::nullopt};
     case Op::CAST:
-      return Operator(CastAttrs{get<DataType>(
+      return Operator{CastAttrs{std::get<DataType>(
                           assignments.at(OperatorAttributeKey::DATA_TYPE))},
-                      nullopt);
+                      std::nullopt};
     case Op::CONCAT:
-      return Operator(
+      return Operator{
           ConcatAttrs{
-              get<ff_dim_t>(assignments.at(OperatorAttributeKey::AXIS)),
-              get<int>(assignments.at(OperatorAttributeKey::NUM_INPUTS))},
-          nullopt);
+              std::get<ff_dim_t>(assignments.at(OperatorAttributeKey::AXIS)),
+              std::get<int>(assignments.at(OperatorAttributeKey::NUM_INPUTS))},
+          std::nullopt};
     case Op::CONV2D:
-      return Operator(
+      return Operator{
           Conv2DAttrs{
-              get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)),
-              get<int>(assignments.at(OperatorAttributeKey::KERNEL_H)),
-              get<int>(assignments.at(OperatorAttributeKey::KERNEL_W)),
-              get<int>(assignments.at(OperatorAttributeKey::STRIDE_H)),
-              get<int>(assignments.at(OperatorAttributeKey::STRIDE_W)),
-              get<int>(assignments.at(OperatorAttributeKey::PADDING_H)),
-              get<int>(assignments.at(OperatorAttributeKey::PADDING_W)),
-              get<int>(assignments.at(OperatorAttributeKey::GROUPS)),
-              get<Activation>(assignments.at(OperatorAttributeKey::ACTIVATION)),
-              get<bool>(assignments.at(OperatorAttributeKey::USE_BIAS))},
-          nullopt);
+              std::get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)),
+              std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_H)),
+              std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_W)),
+              std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_H)),
+              std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_W)),
+              std::get<int>(assignments.at(OperatorAttributeKey::PADDING_H)),
+              std::get<int>(assignments.at(OperatorAttributeKey::PADDING_W)),
+              std::get<int>(assignments.at(OperatorAttributeKey::GROUPS)),
+              std::get<Activation>(
+                  assignments.at(OperatorAttributeKey::ACTIVATION)),
+              std::get<bool>(assignments.at(OperatorAttributeKey::USE_BIAS))},
+          std::nullopt};
     case Op::DROPOUT:
-      return Operator(
-          DropoutAttrs{get<float>(assignments.at(OperatorAttributeKey::RATE)),
-                       get<unsigned long long>(
-                           assignments.at(OperatorAttributeKey::SEED))},
-          nullopt);
+      return Operator{DropoutAttrs{std::get<float>(assignments.at(
+                                       OperatorAttributeKey::RATE)),
+                                   std::get<unsigned long long>(assignments.at(
+                                       OperatorAttributeKey::SEED))},
+                      std::nullopt};
     case Op::EW_ADD:
     case Op::EW_DIV:
     case Op::EW_EQUAL:
@@ -167,25 +169,25 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
     case Op::EW_MIN:
     case Op::EW_MUL:
     case Op::EW_SUB:
-      return Operator(
-          ElementBinaryAttrs{
-              op_type,
-              get<DataType>(assignments.at(OperatorAttributeKey::DATA_TYPE)),
-              get<bool>(
-                  assignments.at(OperatorAttributeKey::SHOULD_BROADCAST_LHS)),
-              get<bool>(
-                  assignments.at(OperatorAttributeKey::SHOULD_BROADCAST_RHS))},
-          nullopt);
+      return Operator{
+          ElementBinaryAttrs{op_type,
+                             std::get<DataType>(assignments.at(
+                                 OperatorAttributeKey::DATA_TYPE)),
+                             std::get<bool>(assignments.at(
+                                 OperatorAttributeKey::SHOULD_BROADCAST_LHS)),
+                             std::get<bool>(assignments.at(
+                                 OperatorAttributeKey::SHOULD_BROADCAST_RHS))},
+          std::nullopt};
     case Op::SCALAR_ADD:
     case Op::SCALAR_FLOOR_DIV:
     case Op::SCALAR_MULTIPLY:
     case Op::SCALAR_SUB:
     case Op::SCALAR_TRUE_DIV:
-      return Operator(
+      return Operator{
           ElementScalarUnaryAttrs{
               op_type,
-              get<float>(assignments.at(OperatorAttributeKey::SCALAR))},
-          nullopt);
+              std::get<float>(assignments.at(OperatorAttributeKey::SCALAR))},
+          std::nullopt};
     case Op::EXP:
     case Op::IDENTITY:
     case Op::GELU:
@@ -193,69 +195,73 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
     case Op::POW:
     case Op::SIN:
     case Op::COS:
-      return Operator(ElementUnaryAttrs{op_type}, nullopt);
+      return Operator{ElementUnaryAttrs{op_type}, std::nullopt};
     case Op::EMBEDDING:
-      return Operator(
+      return Operator{
           EmbeddingAttrs{
-              get<int>(assignments.at(OperatorAttributeKey::NUM_ENTRIES)),
-              get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)),
-              get<AggregateOp>(assignments.at(OperatorAttributeKey::AGGR)),
-              get<DataType>(assignments.at(OperatorAttributeKey::OP_TYPE))},
-          nullopt);
+              std::get<int>(assignments.at(OperatorAttributeKey::NUM_ENTRIES)),
+              std::get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)),
+              std::get<AggregateOp>(assignments.at(OperatorAttributeKey::AGGR)),
+              std::get<DataType>(
+                  assignments.at(OperatorAttributeKey::OP_TYPE))},
+          std::nullopt};
     case Op::FLAT:
-      return Operator(FlatAttrs{}, nullopt);
+      return Operator{FlatAttrs{}, std::nullopt};
     case Op::GATHER:
-      return Operator(
-          GatherAttrs{get<ff_dim_t>(assignments.at(OperatorAttributeKey::DIM))},
-          nullopt);
+      return Operator{GatherAttrs{std::get<ff_dim_t>(
+                          assignments.at(OperatorAttributeKey::DIM))},
+                      std::nullopt};
     case Op::INPUT:
-      return Operator(InputAttrs{}, nullopt);
+      return Operator{InputAttrs{}, std::nullopt};
     case Op::LAYERNORM:
-      return Operator(
+      return Operator{
           LayerNormAttrs{
-              get<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(
+              std::get<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(
                   assignments.at(OperatorAttributeKey::AXES)),
-              get<bool>(
+              std::get<bool>(
                   assignments.at(OperatorAttributeKey::ELEMENTWISE_AFFINE)),
-              get<float>(assignments.at(OperatorAttributeKey::EPSILON))},
-          nullopt);
+              std::get<float>(assignments.at(OperatorAttributeKey::EPSILON))},
+          std::nullopt};
     case Op::LINEAR:
-      return Operator(
+      return Operator{
           LinearAttrs{
-              get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)),
-              get<bool>(assignments.at(OperatorAttributeKey::USE_BIAS)),
-              get<DataType>(assignments.at(OperatorAttributeKey::DATA_TYPE)),
-              get<Activation>(assignments.at(OperatorAttributeKey::ACTIVATION)),
-              get<optional<RegularizerAttrs>>(
+              std::get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)),
+              std::get<bool>(assignments.at(OperatorAttributeKey::USE_BIAS)),
+              std::get<DataType>(
+                  assignments.at(OperatorAttributeKey::DATA_TYPE)),
+              std::get<Activation>(
+                  assignments.at(OperatorAttributeKey::ACTIVATION)),
+              std::get<std::optional<RegularizerAttrs>>(
                   assignments.at(OperatorAttributeKey::REGULARIZER))},
-          nullopt);
+          std::nullopt};
     case Op::MULTIHEAD_ATTENTION:
-      return Operator(
+      return Operator{
           MultiHeadAttentionAttrs{
-              get<int>(assignments.at(OperatorAttributeKey::EMBED_DIM)),
-              get<int>(assignments.at(OperatorAttributeKey::NUM_HEADS)),
-              get<int>(assignments.at(OperatorAttributeKey::NUM_HEADS)),
-              get<int>(assignments.at(OperatorAttributeKey::VDIM)),
-              get<float>(assignments.at(OperatorAttributeKey::DROPOUT)),
-              get<bool>(assignments.at(OperatorAttributeKey::BIAS)),
-              get<bool>(assignments.at(OperatorAttributeKey::ADD_BIAS_KV)),
-              get<bool>(assignments.at(OperatorAttributeKey::ADD_ZERO_ATTN))},
-          nullopt);
+              std::get<int>(assignments.at(OperatorAttributeKey::EMBED_DIM)),
+              std::get<int>(assignments.at(OperatorAttributeKey::NUM_HEADS)),
+              std::get<int>(assignments.at(OperatorAttributeKey::NUM_HEADS)),
+              std::get<int>(assignments.at(OperatorAttributeKey::VDIM)),
+              std::get<float>(assignments.at(OperatorAttributeKey::DROPOUT)),
+              std::get<bool>(assignments.at(OperatorAttributeKey::BIAS)),
+              std::get<bool>(assignments.at(OperatorAttributeKey::ADD_BIAS_KV)),
+              std::get<bool>(
+                  assignments.at(OperatorAttributeKey::ADD_ZERO_ATTN))},
+          std::nullopt};
     case Op::NOOP:
-      return Operator(NoopAttrs{}, nullopt);
+      return Operator{NoopAttrs{}, std::nullopt};
     case Op::POOL2D:
-      return Operator(
+      return Operator{
           Pool2DAttrs{
-              get<int>(assignments.at(OperatorAttributeKey::KERNEL_H)),
-              get<int>(assignments.at(OperatorAttributeKey::KERNEL_W)),
-              get<int>(assignments.at(OperatorAttributeKey::STRIDE_H)),
-              get<int>(assignments.at(OperatorAttributeKey::STRIDE_W)),
-              get<int>(assignments.at(OperatorAttributeKey::PADDING_H)),
-              get<int>(assignments.at(OperatorAttributeKey::PADDING_W)),
-              get<PoolOp>(assignments.at(OperatorAttributeKey::POOL_TYPE)),
-              get<Activation>(
+              std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_H)),
+              std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_W)),
+              std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_H)),
+              std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_W)),
+              std::get<int>(assignments.at(OperatorAttributeKey::PADDING_H)),
+              std::get<int>(assignments.at(OperatorAttributeKey::PADDING_W)),
+              std::get<PoolOp>(assignments.at(OperatorAttributeKey::POOL_TYPE)),
+              std::get<Activation>(
                   assignments.at(OperatorAttributeKey::ACTIVATION))},
-          nullopt);
+          std::nullopt};
     case Op::REDUCE_ARGMAX:
     case Op::REDUCE_ARGMIN:
     case Op::REDUCE_MAX:
@@ -263,67 +269,72 @@ Operator get_operator_attrs(SubParallelComputationGraph const &graph,
     case Op::REDUCE_MIN:
     case Op::REDUCE_PROD:
     case Op::REDUCE_SUM:
-      return Operator(
+      return Operator{
           ReduceAttrs{
-              get<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(
+              std::get<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(
                   assignments.at(OperatorAttributeKey::AXES)),
               op_type,
-              get<bool>(assignments.at(OperatorAttributeKey::KEEP_DIMS))},
-          nullopt);
+              std::get<bool>(assignments.at(OperatorAttributeKey::KEEP_DIMS))},
+          std::nullopt};
     case Op::REVERSE:
-      return Operator(ReverseAttrs{get<ff_dim_t>(
+      return Operator{ReverseAttrs{std::get<ff_dim_t>(
                           assignments.at(OperatorAttributeKey::AXIS))},
-                      nullopt);
+                      std::nullopt};
     case Op::RESHAPE:
-      return Operator(ReshapeAttrs{get<TensorShape>(
+      return Operator{ReshapeAttrs{std::get<TensorShape>(
                           assignments.at(OperatorAttributeKey::SHAPE))},
-                      nullopt);
+                      std::nullopt};
     case Op::SPLIT:
-      return Operator(
-          SplitAttrs{get<stack_vector<int, MAX_NUM_OUTPUTS>>(
-                         assignments.at(OperatorAttributeKey::SPLITS)),
-                     get<ff_dim_t>(assignments.at(OperatorAttributeKey::AXIS))},
-          nullopt);
+      return Operator{
+          SplitAttrs{
+              std::get<stack_vector<int, MAX_NUM_OUTPUTS>>(
+                  assignments.at(OperatorAttributeKey::SPLITS)),
+              std::get<ff_dim_t>(assignments.at(OperatorAttributeKey::AXIS))},
+          std::nullopt};
     case Op::SOFTMAX:
-      return Operator(SoftmaxAttrs{get<ff_dim_t>(
+      return Operator{SoftmaxAttrs{std::get<ff_dim_t>(
                           assignments.at(OperatorAttributeKey::DIM))},
-                      nullopt);
+                      std::nullopt};
     case Op::TOPK:
-      return Operator(
-          TopKAttrs{get<int>(assignments.at(OperatorAttributeKey::K)),
-                    get<bool>(assignments.at(OperatorAttributeKey::SORTED))},
-          nullopt);
+      return Operator{
+          TopKAttrs{
+              std::get<int>(assignments.at(OperatorAttributeKey::K)),
+              std::get<bool>(assignments.at(OperatorAttributeKey::SORTED))},
+          std::nullopt};
     case Op::TRANSPOSE:
-      return Operator(
-          TransposeAttrs{get<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(
+      return Operator{
+          TransposeAttrs{std::get<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>(
               assignments.at(OperatorAttributeKey::PERMUTATION))},
-          nullopt);
+          std::nullopt};
     case Op::COMBINE:
-      return Operator(
-          CombineAttrs{
-              get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
-              get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))},
-          nullopt);
+      return Operator{CombineAttrs{std::get<ff_dim_t>(assignments.at(
+                                       OperatorAttributeKey::PARALLEL_DIM)),
+                                   std::get<int>(assignments.at(
+                                       OperatorAttributeKey::PARALLEL_DEGREE))},
+                      std::nullopt};
     case Op::REDUCTION:
-      return Operator(
-          ReductionAttrs{
-              get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
-              get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))},
-          nullopt);
+      return Operator{
+          ReductionAttrs{std::get<ff_dim_t>(assignments.at(
+                             OperatorAttributeKey::PARALLEL_DIM)),
+                         std::get<int>(assignments.at(
+                             OperatorAttributeKey::PARALLEL_DEGREE))},
+          std::nullopt};
     case Op::REPARTITION:
-      return Operator(
-          RepartitionAttrs{
-              get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
-              get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))},
-          nullopt);
+      return Operator{
+          RepartitionAttrs{std::get<ff_dim_t>(assignments.at(
+                               OperatorAttributeKey::PARALLEL_DIM)),
+                           std::get<int>(assignments.at(
+                               OperatorAttributeKey::PARALLEL_DEGREE))},
+          std::nullopt};
     case Op::REPLICATE:
-      return Operator(
-          ReplicateAttrs{
-              get<ff_dim_t>(assignments.at(OperatorAttributeKey::PARALLEL_DIM)),
-              get<int>(assignments.at(OperatorAttributeKey::PARALLEL_DEGREE))},
-          nullopt);
+      return Operator{
+          ReplicateAttrs{std::get<ff_dim_t>(assignments.at(
+                             OperatorAttributeKey::PARALLEL_DIM)),
+                         std::get<int>(assignments.at(
+                             OperatorAttributeKey::PARALLEL_DEGREE))},
+          std::nullopt};
     default:
-      mk_runtime_error("Unknown Operator");
+      throw mk_runtime_error("Unknown Operator");
   }
 }
 
@@ -413,11 +424,8 @@ SubParallelComputationGraph
                        Substitution const &substitution,
                        MultiDiGraphPatternMatch const &match) {
   SubParallelComputationGraph new_pcg =
-      OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>::create<
-          AdjacencyOpenMultiDiGraph,
-          UnorderedLabelling<Node, Operator>,
-          UnorderedLabelling<InputMultiDiEdge, ParallelTensor>,
-          UnorderedLabelling<MultiDiOutput, ParallelTensor>>();
+      OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>::template create<
+          UnorderedOutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>>();
   bidict<Node, Node> node_mapping; // Refactor it with global nodes
   for (Node const &node : get_nodes(pcg)) {
     if (!contains_r(match.node_assignment, node)) {
@@ -438,23 +446,23 @@ SubParallelComputationGraph
   }
   for (OpenMultiDiEdge const &output_edge :
        get_edges(substitution.output_graph_expr.value())) {
-    if (holds_alternative<InputMultiDiEdge>(output_edge)) {
-      InputMultiDiEdge e = get<InputMultiDiEdge>(output_edge);
+    if (std::holds_alternative<InputMultiDiEdge>(output_edge)) {
+      InputMultiDiEdge e = std::get<InputMultiDiEdge>(output_edge);
       OpenMultiDiEdge original_edge =
           match.edge_assignment.at_l(substitution.input_mapping.at_r(e));
       visit(AddNewEdgeFunctor{pcg, new_pcg, match, node_mapping},
             original_edge,
             output_edge);
-    } else if (holds_alternative<OutputMultiDiEdge>(output_edge)) {
-      OutputMultiDiEdge e = get<OutputMultiDiEdge>(output_edge);
+    } else if (std::holds_alternative<OutputMultiDiEdge>(output_edge)) {
+      OutputMultiDiEdge e = std::get<OutputMultiDiEdge>(output_edge);
       OpenMultiDiEdge original_edge =
           match.edge_assignment.at_l(substitution.output_mapping.at_r(e));
       visit(AddNewEdgeFunctor{pcg, new_pcg, match, node_mapping},
             original_edge,
             output_edge);
     } else {
-      assert(holds_alternative<MultiDiEdge>(output_edge));
-      MultiDiEdge e = get<MultiDiEdge>(output_edge);
+      assert(std::holds_alternative<MultiDiEdge>(output_edge));
+      MultiDiEdge e = std::get<MultiDiEdge>(output_edge);
       new_pcg.add_edge(MultiDiEdge{node_mapping.at_l(e.dst),
                                    new_pcg.add_node_port(),
                                    node_mapping.at_l(e.src),

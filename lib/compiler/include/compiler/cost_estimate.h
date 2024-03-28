@@ -16,10 +16,11 @@ struct ICostEstimator {
                               MachineView const &src,
                               MachineView const &dst) const = 0;
 
+  ICostEstimator() = default;
   ICostEstimator(ICostEstimator const &) = delete;
   ICostEstimator &operator=(ICostEstimator const &) = delete;
 
-  virtual ~ICostEstimator();
+  virtual ~ICostEstimator() = default;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(ICostEstimator);
 
@@ -44,6 +45,8 @@ struct CostEstimator {
   }
 
 private:
+  CostEstimator(std::shared_ptr<ICostEstimator> implementation_ptr)
+      : implementation_ptr(implementation_ptr) {}
   std::shared_ptr<ICostEstimator> implementation_ptr;
 };
 

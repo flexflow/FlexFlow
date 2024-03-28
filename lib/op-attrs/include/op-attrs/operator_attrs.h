@@ -32,34 +32,35 @@
 #include "ops/topk.h"
 #include "ops/transpose.h"
 #include "utils/variant.h"
+#include <variant>
 
 namespace FlexFlow {
 
-using SharedOperatorAttrs = variant<BatchMatmulAttrs,
-                                    BatchNormAttrs,
-                                    CastAttrs,
-                                    ConcatAttrs,
-                                    Conv2DAttrs,
-                                    DropoutAttrs,
-                                    ElementBinaryAttrs,
-                                    ElementUnaryAttrs,
-                                    ElementScalarUnaryAttrs,
-                                    EmbeddingAttrs,
-                                    FlatAttrs,
-                                    GatherAttrs,
-                                    InputAttrs,
-                                    LayerNormAttrs,
-                                    LinearAttrs,
-                                    MultiHeadAttentionAttrs,
-                                    NoopAttrs,
-                                    Pool2DAttrs,
-                                    ReduceAttrs,
-                                    ReverseAttrs,
-                                    ReshapeAttrs,
-                                    SplitAttrs,
-                                    SoftmaxAttrs,
-                                    TopKAttrs,
-                                    TransposeAttrs>;
+using SharedOperatorAttrs = std::variant<BatchMatmulAttrs,
+                                         BatchNormAttrs,
+                                         CastAttrs,
+                                         ConcatAttrs,
+                                         Conv2DAttrs,
+                                         DropoutAttrs,
+                                         ElementBinaryAttrs,
+                                         ElementUnaryAttrs,
+                                         ElementScalarUnaryAttrs,
+                                         EmbeddingAttrs,
+                                         FlatAttrs,
+                                         GatherAttrs,
+                                         InputAttrs,
+                                         LayerNormAttrs,
+                                         LinearAttrs,
+                                         MultiHeadAttentionAttrs,
+                                         NoopAttrs,
+                                         Pool2DAttrs,
+                                         ReduceAttrs,
+                                         ReverseAttrs,
+                                         ReshapeAttrs,
+                                         SplitAttrs,
+                                         SoftmaxAttrs,
+                                         TopKAttrs,
+                                         TransposeAttrs>;
 
 static_assert(is_valid_opattr<BatchMatmulAttrs>::value, "");
 static_assert(is_valid_opattr<CastAttrs>::value, "");
@@ -85,11 +86,11 @@ static_assert(is_valid_opattr<SoftmaxAttrs>::value, "");
 static_assert(is_valid_opattr<TopKAttrs>::value, "");
 static_assert(is_valid_opattr<TransposeAttrs>::value, "");
 
-using ParallelOperatorAttrs =
+using ParallelOperatorAttrs = std::
     variant<CombineAttrs, ReductionAttrs, RepartitionAttrs, ReplicateAttrs>;
 
 using ComputationGraphAttrs =
-    variant_join<SharedOperatorAttrs, variant<BroadcastAttrs>>;
+    variant_join<SharedOperatorAttrs, std::variant<BroadcastAttrs>>;
 using CompGraphOperatorAttrs = ComputationGraphAttrs;
 
 using PCGOperatorAttrs =

@@ -41,7 +41,7 @@ struct ListSize {
  * with ListIndexAccess
  */
 template <typename T>
-using AttributeExpr = variant<T, ListIndexAccess<T>, ListSize<T>>;
+using AttributeExpr = std::variant<T, ListIndexAccess<T>, ListSize<T>>;
 
 
 /**

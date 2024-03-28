@@ -87,21 +87,22 @@ enum class OperatorAttributeKey {
  * The OperatorAttributeValue is evaluated from AttributeExpr. The datatype of the value corresponds to the 
  * datatype of the attributekey listed in OperatorAttributeKey.
  */
-using OperatorAttributeValue = variant<int,
-                                       float,
-                                       bool,
-                                       stack_vector<int, MAX_TENSOR_DIM>,
-                                       stack_vector<int, MAX_NUM_OUTPUTS>,
-                                       OperatorType,
-                                       Activation,
-                                       ff_dim_t,
-                                       unsigned long long,
-                                       AggregateOp,
-                                       stack_vector<ff_dim_t, MAX_TENSOR_DIM>,
-                                       optional<RegularizerAttrs>,
-                                       PoolOp,
-                                       TensorShape,
-                                       DataType>;
+using OperatorAttributeValue =
+    std::variant<int,
+                 float,
+                 bool,
+                 stack_vector<int, MAX_TENSOR_DIM>,
+                 stack_vector<int, MAX_NUM_OUTPUTS>,
+                 OperatorType,
+                 Activation,
+                 ff_dim_t,
+                 unsigned long long,
+                 AggregateOp,
+                 stack_vector<ff_dim_t, MAX_TENSOR_DIM>,
+                 std::optional<RegularizerAttrs>,
+                 PoolOp,
+                 TensorShape,
+                 DataType>;
 
 FF_VISITABLE_STRUCT(ListIndexAccess<FlexFlow::OperatorAttributeKey>,
                     attribute_key,
@@ -126,7 +127,7 @@ using OperatorPattern =
  * using one of the three methods: direct value, list index access, or list size and return the
  * value of the attribute.
  */
-optional<OperatorAttributeValue>
+std::optional<OperatorAttributeValue>
     evaluate_attribute_expr(Operator const &attrs,
                             AttributeExpr<OperatorAttributeKey> const &expr);
 

@@ -1,8 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_TUPLE_H
 #define _FLEXFLOW_UTILS_TUPLE_H
 
-#include "utils/any.h"
 #include "utils/exception.decl.h"
+#include "utils/type_traits_core.h"
+#include <any>
 #include <cstddef>
 #include <tuple>
 #include <type_traits>
@@ -48,11 +49,11 @@ void visit_tuple(Visitor &v, std::tuple<Types...> const &tup) {
 
 struct tuple_get_visitor {
   tuple_get_visitor() = delete;
-  tuple_get_visitor(int requested_idx, any &result)
+  tuple_get_visitor(int requested_idx, std::any &result)
       : requested_idx(requested_idx), result(result) {}
 
   int requested_idx;
-  any &result;
+  std::any &result;
 
   template <typename T>
   void operator()(int idx, T const &t) {
@@ -63,13 +64,13 @@ struct tuple_get_visitor {
 };
 
 template <typename... Types>
-any get(std::tuple<Types...> const &t, int idx) {
+std::any get(std::tuple<Types...> const &t, int idx) {
   size_t tuple_size = std::tuple_size<decltype(t)>::value;
   if (idx < 0 || idx >= tuple_size) {
     throw mk_runtime_error(
         "Error: idx {} out of bounds for tuple of size {}", idx, tuple_size);
   }
-  any result;
+  std::any result;
   visit_tuple(t, tuple_get_visitor{idx, result});
   return result;
 }

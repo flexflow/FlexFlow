@@ -32,7 +32,7 @@ struct AttrConstant {
  * evaluated to a concrete value. OperatorAttributeExpr is used at substitution phase. 
  * It will be evaluated and used to create new operator with the evaluated value.
  */
-using OperatorAttributeExpr = variant<OperatorAttrAccess, AttrConstant>;
+using OperatorAttributeExpr = std::variant<OperatorAttrAccess, AttrConstant>;
 
 /**
  * @brief OperatorAttrAssignment is a collection of OperatorAttributeKey and 

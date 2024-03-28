@@ -166,8 +166,8 @@ struct AsDot {
 };
 
 template <typename... Args>
-RecordFormatter as_dot(variant<Args...> const &o) {
-  return mpark::visit(AsDot{}, o);
+RecordFormatter as_dot(std::variant<Args...> const &o) {
+  return std::visit(AsDot{}, o);
 }
 
 struct IsValidFunctor {

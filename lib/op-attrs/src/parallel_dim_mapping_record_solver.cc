@@ -44,7 +44,7 @@ ParallelDimMappingRecord
                                    int output_dim,
                                    int input_idx,
                                    int output_idx,
-                                   tl::optional<MappingOperation> operation) {
+                                   std::optional<MappingOperation> operation) {
   NOT_IMPLEMENTED();
 }
 
@@ -53,7 +53,7 @@ ParallelDimMappingRecord
                                    int weight_dim,
                                    int input_idx,
                                    int weight_idx,
-                                   tl::optional<MappingOperation> operation) {
+                                   std::optional<MappingOperation> operation) {
   NOT_IMPLEMENTED();
 }
 /* int get_output_to_input_dim_mapping(ParallelTensorShape const &output, */
@@ -209,7 +209,7 @@ void construct_weight_parallel_dims(
     int weight_dim,
     int input_idx,
     int weight_idx,
-    tl::optional<MappingOperation> operation) {
+    std::optional<MappingOperation> operation) {
   records.push_back(ParallelDimMappingRecord::input_weight_record(
       input_idx, input_dim, weight_idx, weight_dim, operation));
 }
@@ -274,7 +274,7 @@ void construct_output_parallel_dims(
     int output_dim,
     int input_idx,
     int output_idx,
-    tl::optional<MappingOperation> operation) {
+    std::optional<MappingOperation> operation) {
   records.push_back(ParallelDimMappingRecord::input_output_record(
       input_idx, input_dim, output_idx, output_dim, operation));
 }
@@ -350,5 +350,13 @@ void construct_output_parallel_dims(
 
 /*   return solution; */
 /* } */
+
+ParallelDimMappingSolution solve_parallel_dim_mappings(
+    std::vector<ParallelDimMappingRecord> const &mappings,
+    std::vector<ParallelTensorShape> const &input,
+    int numWeights,
+    int numOutputs) {
+  NOT_IMPLEMENTED();
+}
 
 } // namespace FlexFlow

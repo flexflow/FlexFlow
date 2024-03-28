@@ -3,11 +3,9 @@
 
 #include "bidict.h"
 #include "containers.decl.h"
-#include "invoke.h"
 #include "required_core.h"
 #include "type_traits_core.h"
 #include "utils/exception.h"
-#include "utils/optional.h"
 #include "utils/type_traits.h"
 #include <algorithm>
 #include <cassert>
@@ -228,7 +226,7 @@ std::vector<typename C::mapped_type> values(C const &c) {
 }
 
 template <typename C>
-std::unordered_set<std::pair<typename C::key_type, typename C::value_type>>
+std::unordered_set<std::pair<typename C::key_type, typename C::mapped_type>>
     items(C const &c) {
   return {c.begin(), c.end()};
 }
@@ -244,10 +242,10 @@ std::unordered_set<T> without_order(C const &c) {
 }
 
 template <typename Container, typename Element>
-tl::optional<std::size_t> index_of(Container const &c, Element const &e) {
+std::optional<std::size_t> index_of(Container const &c, Element const &e) {
   auto it = std::find(c.cbegin(), c.cend(), e);
   if (it == c.cend()) {
-    return tl::nullopt;
+    return std::nullopt;
   } else {
     return std::distance(c.cbegin(), it);
   }
@@ -266,8 +264,8 @@ std::unordered_set<T> intersection(std::unordered_set<T> const &l,
 }
 
 template <typename C, typename T>
-optional<T> intersection(C const &c) {
-  optional<T> result;
+std::optional<T> intersection(C const &c) {
+  std::optional<T> result;
   for (T const &t : c) {
     result = intersection(result.value_or(t), t);
   }
@@ -420,11 +418,11 @@ std::unordered_set<D>
 }
 
 template <typename C>
-optional<typename C::value_type> maybe_get_only(C const &c) {
+std::optional<typename C::value_type> maybe_get_only(C const &c) {
   if (c.size() == 1) {
     return *c.cbegin();
   } else {
-    return nullopt;
+    return std::nullopt;
   }
 }
 
@@ -454,7 +452,7 @@ void extend(std::unordered_set<T> &lhs, C const &rhs) {
 }
 
 template <typename C, typename E>
-void extend(C &lhs, optional<E> const &e) {
+void extend(C &lhs, std::optional<E> const &e) {
   if (e.has_value()) {
     return extend(lhs, e.value());
   }
@@ -570,7 +568,7 @@ struct get_element_type {
 };
 
 template <typename T>
-struct get_element_type<optional<T>> {
+struct get_element_type<std::optional<T>> {
   using type = T;
 };
 
@@ -666,8 +664,18 @@ T reversed(T const &t) {
 }
 
 template <typename T>
-std::vector<T> value_all(std::vector<optional<T>> const &v) {
-  return transform(v, [](optional<T> const &element) {
+std::vector<T> value_all(std::vector<std::optional<T>> const &v) {
+  return transform(v, [](std::optional<T> const &element) {
+    return unwrap(element, [] {
+      throw mk_runtime_error(
+          "Encountered element without value in call to value_all");
+    });
+  });
+}
+
+template <typename T>
+std::unordered_set<T> value_all(std::unordered_set<std::optional<T>> const &v) {
+  return transform(v, [](std::optional<T> const &element) {
     return unwrap(element, [] {
       throw mk_runtime_error(
           "Encountered element without value in call to value_all");
@@ -677,8 +685,8 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
 
 template <typename T>
 std::vector<T> subvec(std::vector<T> const &v,
-                      optional<int> const &maybe_start,
-                      optional<int> const &maybe_end) {
+                      std::optional<int> const &maybe_start,
+                      std::optional<int> const &maybe_end) {
   auto begin_iter = v.cbegin();
   auto end_iter = v.cend();
 
