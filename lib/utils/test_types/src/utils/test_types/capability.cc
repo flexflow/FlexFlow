@@ -1,5 +1,5 @@
 #include "utils/test_types/capability.h"
-#include "utils/ff_exceptions/ff_exceptions.h"
+#include "utils/ff_exceptions/mk_runtime_error.h"
 #include <sstream>
 
 namespace FlexFlow::test_types {

@@ -1,11 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 
-#include "utils/bidict.h"
-#include "utils/containers.decl.h"
-#include "utils/exception.h"
-#include <optional>
+#include "utils/bidict/bidict.h"
 #include <unordered_set>
+#include <optional>
 
 namespace FlexFlow {
 
@@ -43,7 +41,7 @@ struct query_set {
   }
 
   static query_set<T> matchall() {
-    return {std::nullopt};
+    return {nullopt};
   }
 
 private:

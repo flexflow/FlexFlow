@@ -105,7 +105,7 @@ bool cdi::operator!=(cdi const &other) const {
 
 bfi::bfs_iterator(DiGraphView const &g,
                   std::queue<Node> const &q,
-                  std::optional<std::unordered_set<Node>> const &seen)
+                  optional<std::unordered_set<Node>> const &seen)
     : graph(g), q(q), seen(seen) {}
 
 bfi::bfs_iterator(DiGraphView const &g,
@@ -225,7 +225,7 @@ bfs_iterator BFSView::cbegin() const {
 }
 
 bfs_iterator BFSView::cend() const {
-  return bfs_iterator(this->graph, std::queue<Node>{}, std::nullopt);
+  return bfs_iterator(this->graph, std::queue<Node>{}, nullopt);
 }
 
 bfs_iterator BFSView::begin() const {

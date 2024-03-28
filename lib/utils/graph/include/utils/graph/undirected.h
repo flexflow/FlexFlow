@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_UNDIRECTED_H
 #define _FLEXFLOW_UTILS_GRAPH_UNDIRECTED_H
 
-#include "cow_ptr_t.h"
+#include "utils/smart_ptrs/cow_ptr_t.h"
 #include "node.h"
 #include "undirected_edge.h"
 #include "utils/exception.h"

@@ -3,7 +3,7 @@
 
 #include "fmt/format.h"
 #include "utils/bidict/bidict.h"
-#include "utils/ff_exceptions/ff_exceptions.h"
+#include "utils/ff_exceptions/mk_runtime_error.h"
 
 namespace FlexFlow {
 

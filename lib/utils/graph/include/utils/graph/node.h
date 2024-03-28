@@ -1,13 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_NODE_H
 #define _FLEXFLOW_UTILS_GRAPH_NODE_H
 
-#include "cow_ptr_t.h"
-#include "query_set.h"
-#include "utils/fmt.h"
-#include "utils/optional.h"
-#include "utils/strong_typedef.h"
-#include "utils/type_traits.h"
-#include "utils/unique.h"
+#include "utils/smart_ptrs/cow_ptr_t.h"
 #include "utils/visitable.h"
 #include <cstddef>
 #include <functional>

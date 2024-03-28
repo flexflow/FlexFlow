@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_TUPLE_EXTRA_INCLUDE_UTILS_GET_H
 #define _FLEXFLOW_LIB_UTILS_TUPLE_EXTRA_INCLUDE_UTILS_GET_H
 
-#include "utils/ff_exceptions/ff_exceptions.h"
+#include "utils/ff_exceptions/mk_runtime_error.h"
 #include "visit.h"
 #include <cstddef>
 #include <sstream>

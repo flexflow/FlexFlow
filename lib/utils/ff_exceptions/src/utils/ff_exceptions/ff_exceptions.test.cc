@@ -1,4 +1,4 @@
-#include "utils/ff_exceptions/ff_exceptions.h"
+#include "utils/ff_exceptions/mk_runtime_error.h"
 #include "utils/testing.h"
 
 TEST_SUITE(FF_TEST_SUITE) {

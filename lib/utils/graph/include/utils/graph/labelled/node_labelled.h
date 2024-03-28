@@ -1,22 +1,10 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_NODE_LABELLED_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_NODE_LABELLED_H
 
-#include "label_interfaces.h"
+#include "node_labelled_interfaces.h"
 #include "utils/graph/multidigraph.h"
 
 namespace FlexFlow {
-
-template <typename NodeLabel>
-struct INodeLabelledMultiDiGraphView : virtual public IMultiDiGraphView {
-  INodeLabelledMultiDiGraphView(INodeLabelledMultiDiGraphView const &) = delete;
-  INodeLabelledMultiDiGraphView &
-      operator=(INodeLabelledMultiDiGraphView const &) = delete;
-
-  virtual ~INodeLabelledMultiDiGraphView() {}
-
-  virtual NodeLabel const &at(Node const &n) const = 0;
-};
-CHECK_RC_COPY_VIRTUAL_COMPLIANT(INodeLabelledMultiDiGraphView<int>);
 
 template <typename NodeLabel>
 struct NodeLabelledMultiDiGraphView : virtual public MultiDiGraphView {
@@ -64,7 +52,6 @@ struct NodeLabelledMultiDiGraph
     : virtual NodeLabelledMultiDiGraphView<NodeLabel> {
 private:
   using Interface = IMultiDiGraph;
-  using NodeLabelIf = ILabelling<Node, NodeLabel>;
 
 public:
   NodeLabelledMultiDiGraph(NodeLabelledMultiDiGraph const &) = default;
@@ -72,48 +59,42 @@ public:
       operator=(NodeLabelledMultiDiGraph const &) = default;
 
   NodeLabel const &at(Node const &n) const {
-    return nl->get_label(n);
+    return this->get_ptr().at(n);
   }
 
   NodeLabel &at(Node const &n) {
-    return nl.get_mutable()->get_label(n);
+    return this->get_ptr().at(n);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const {
-    return get_ptr().query_nodes();
+    return this->get_ptr().query_nodes();
   }
 
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdge const &q) const {
-    return get_ptr().query_edges();
+    return this->get_ptr().query_edges();
   }
 
   Node add_node(NodeLabel const &l) {
-    Node n = get_ptr().add_node();
-    nl->add_label(n, l);
-    return n;
+    return this->get_ptr().add_node(l);
   }
 
   NodePort add_node_port() {
-    return get_ptr().add_node_port();
+    return this->get_ptr().add_node_port();
   }
 
   void add_edge(MultiDiEdge const &e) {
-    return get_ptr().add_edge(e);
+    return this->get_ptr().add_edge(e);
   }
 
-  template <typename GraphImpl, typename NLImpl>
-  static typename std::enable_if<
-      std::conjunction<std::is_base_of<Interface, GraphImpl>,
-                       std::is_base_of<NodeLabelIf, NLImpl>>::value,
-      NodeLabelledMultiDiGraph>::type
+  template <typename GraphImpl>
+  static typename std::enable_if<std::is_base_of<Interface, GraphImpl>::value,
+                                 NodeLabelledMultiDiGraph>::type
       create() {
-    return NodeLabelledMultiDiGraph(make_cow_ptr<GraphImpl>(),
-                                    make_cow_ptr<NLImpl>());
+    return NodeLabelledMultiDiGraph(make_cow_ptr<GraphImpl>());
   }
 
 protected:
-  NodeLabelledMultiDiGraph(cow_ptr_t<Interface> ptr, cow_ptr_t<NodeLabelIf> nl)
-      : NodeLabelledMultiDiGraphView<NodeLabel>(ptr), nl(nl) {}
+  NodeLabelledMultiDiGraph(cow_ptr_t<Interface> ptr) : GraphView(ptr) {}
 
   Interface &get_ptr() {
     return *std::reinterpret_pointer_cast<Interface>(
@@ -124,8 +105,6 @@ protected:
     return *std::reinterpret_pointer_cast<Interface const>(
         GraphView::ptr.get());
   }
-
-  cow_ptr_t<NodeLabelIf> nl;
 };
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(NodeLabelledMultiDiGraph<int>);
 

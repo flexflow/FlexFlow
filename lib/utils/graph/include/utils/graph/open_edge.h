@@ -6,11 +6,11 @@
 namespace FlexFlow {
 
 using OpenMultiDiEdge =
-    std::variant<InputMultiDiEdge, OutputMultiDiEdge, MultiDiEdge>;
+    variant<InputMultiDiEdge, OutputMultiDiEdge, MultiDiEdge>;
 
-using DownwardOpenMultiDiEdge = std::variant<OutputMultiDiEdge, MultiDiEdge>;
+using DownwardOpenMultiDiEdge = variant<OutputMultiDiEdge, MultiDiEdge>;
 
-using UpwardOpenMultiDiEdge = std::variant<InputMultiDiEdge, MultiDiEdge>;
+using UpwardOpenMultiDiEdge = variant<InputMultiDiEdge, MultiDiEdge>;
 
 bool is_input_edge(OpenMultiDiEdge const &);
 bool is_output_edge(OpenMultiDiEdge const &);

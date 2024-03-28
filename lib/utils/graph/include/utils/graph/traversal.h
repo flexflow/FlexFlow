@@ -76,7 +76,7 @@ struct bfs_iterator {
 
   bfs_iterator(DiGraphView const &,
                std::queue<Node> const &,
-               std::optional<std::unordered_set<Node>> const &);
+               optional<std::unordered_set<Node>> const &);
   bfs_iterator(DiGraphView const &,
                std::unordered_set<Node> const &starting_points);
 
@@ -91,7 +91,7 @@ struct bfs_iterator {
 private:
   DiGraphView graph;
   std::queue<Node> q;
-  std::optional<std::unordered_set<Node>> seen;
+  optional<std::unordered_set<Node>> seen;
 };
 
 struct CheckedDFSView {

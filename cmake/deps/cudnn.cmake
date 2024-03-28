@@ -4,7 +4,6 @@ if(CUDNN_PATH)
 else()
 	# if CUDNN_PATH is not set, let's try to find it in the CUDA root
 	set(CUDNN_ROOT ${CUDA_TOOLKIT_ROOT_DIR})
-	message( "CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH}" )
 endif()
 find_library(CUDNN_LIBRARY 
   NAMES cudnn

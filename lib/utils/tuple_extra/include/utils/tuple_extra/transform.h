@@ -5,7 +5,7 @@
 #include "utils/compile_time_sequence/sequence.h"
 #include "utils/compile_time_sequence/transform_type.h"
 #include "utils/tuple_extra/prepend.h"
-#include "utils/type_list/functions/tuple_from_type_list.h"
+#include "utils/type_list/tuple_from_type_list.h"
 #include <tuple>
 
 namespace FlexFlow {

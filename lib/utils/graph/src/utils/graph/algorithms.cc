@@ -9,6 +9,7 @@
 #include "utils/graph/traversal.h"
 #include "utils/graph/undirected.h"
 #include "utils/graph/views.h"
+#include "utils/variant.h"
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -40,6 +41,10 @@ std::vector<Node> add_nodes(DiGraph &g, int num_nodes) {
 
 std::vector<Node> add_nodes(MultiDiGraph &g, int num_nodes) {
   return add_nodes_impl<MultiDiGraph>(g, num_nodes);
+}
+
+std::vector<Node> add_nodes(OpenMultiDiGraph &g, int num_nodes) {
+  return add_nodes_impl<OpenMultiDiGraph>(g, num_nodes);
 }
 
 std::vector<NodePort> add_node_ports(MultiDiGraph &g, int num_node_ports) {
@@ -164,7 +169,9 @@ DiGraphView apply_contraction(DiGraphView const &g,
   for (auto const &kv : nodes) {
     Node from = kv.first;
     Node into = kv.second;
-    contractedView = contract_node(contractedView, from, into);
+    if (from != into) {
+      contractedView = contract_node(contractedView, from, into);
+    }
   }
   return contractedView;
 }
@@ -250,7 +257,7 @@ std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &g,
 
 std::unordered_set<MultiDiOutput> get_outputs(MultiDiGraphView const &g) {
   return transform(get_edges(g), [&](MultiDiEdge const &e) -> MultiDiOutput {
-    return MultiDiOutput(e);
+    return static_cast<MultiDiOutput>(e);
   });
 }
 
@@ -327,24 +334,29 @@ std::unordered_map<NodePort, std::unordered_set<MultiDiEdge>>
 
 std::unordered_set<DownwardOpenMultiDiEdge>
     get_outgoing_edges(OpenMultiDiGraphView const &g, Node const &n) {
-  return transform(g.query_edges(OpenMultiDiEdgeQuery(
-                       InputMultiDiEdgeQuery::none(),
-                       MultiDiEdgeQuery::all().with_src_nodes({n}),
-                       OutputMultiDiEdgeQuery::all().with_src_nodes({n}))),
-                   [](OpenMultiDiEdge const &e) {
-                     return narrow<DownwardOpenMultiDiEdge>(e).value();
-                   });
+  return value_all(
+      narrow<DownwardOpenMultiDiEdge>(g.query_edges(OpenMultiDiEdgeQuery(
+          InputMultiDiEdgeQuery::none(),
+          MultiDiEdgeQuery::all().with_src_nodes({n}),
+          OutputMultiDiEdgeQuery::all().with_src_nodes({n})))));
 }
 
 std::unordered_set<UpwardOpenMultiDiEdge>
     get_incoming_edges(OpenMultiDiGraphView const &g, Node const &n) {
-  return transform(g.query_edges(OpenMultiDiEdgeQuery(
-                       InputMultiDiEdgeQuery::all().with_dst_nodes({n}),
-                       MultiDiEdgeQuery::all().with_dst_nodes({n}),
-                       OutputMultiDiEdgeQuery::none())),
-                   [](OpenMultiDiEdge const &e) {
-                     return narrow<UpwardOpenMultiDiEdge>(e).value();
-                   });
+  return value_all(narrow<UpwardOpenMultiDiEdge>(g.query_edges(
+      OpenMultiDiEdgeQuery(InputMultiDiEdgeQuery::all().with_dst_nodes({n}),
+                           MultiDiEdgeQuery::all().with_dst_nodes({n}),
+                           OutputMultiDiEdgeQuery::none()))));
+}
+
+std::unordered_set<OutputMultiDiEdge>
+    get_open_outputs(OpenMultiDiGraphView const &g) {
+  return narrow<OutputMultiDiEdge>(
+      g.query_edges(OutputMultiDiEdgeQuery::all()));
+}
+std::unordered_set<InputMultiDiEdge>
+    get_open_inputs(OpenMultiDiGraphView const &g) {
+  return narrow<InputMultiDiEdge>(g.query_edges(InputMultiDiEdgeQuery::all()));
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
@@ -400,9 +412,9 @@ std::unordered_set<Node> get_sources(DiGraphView const &g) {
   });
 }
 
-std::optional<bool> is_acyclic(DiGraphView const &g) {
+optional<bool> is_acyclic(DiGraphView const &g) {
   if (num_nodes(g) == 0) {
-    return std::nullopt;
+    return nullopt;
   }
   std::unordered_set<Node> sources = get_sources(g);
   if (sources.size() == 0) {
@@ -424,7 +436,7 @@ std::optional<bool> is_acyclic(DiGraphView const &g) {
   return true;
 }
 
-std::optional<bool> is_acyclic(MultiDiGraph const &g) {
+optional<bool> is_acyclic(MultiDiGraph const &g) {
   return is_acyclic(g);
 }
 
@@ -565,7 +577,7 @@ std::unordered_set<Node> get_dominators(DiGraphView const &g,
   if (n.empty()) {
     throw mk_runtime_error("Cannot find dominators of no nodes");
   }
-  std::optional<std::unordered_set<Node>> result =
+  optional<std::unordered_set<Node>> result =
       intersection(values(restrict_keys(get_dominators(g), n)));
   assert(result.has_value());
 
@@ -577,10 +589,10 @@ std::unordered_map<Node, std::unordered_set<Node>>
   return get_dominators(flipped(g));
 }
 
-std::unordered_map<Node, std::optional<Node>>
+std::unordered_map<Node, optional<Node>>
     get_imm_dominators(DiGraphView const &g) {
 
-  std::unordered_map<Node, std::optional<Node>> result;
+  std::unordered_map<Node, optional<Node>> result;
   for (auto const &kv : get_dominators(g)) {
     Node node = kv.first;
     std::unordered_set<Node> node_dominators = kv.second;
@@ -590,7 +602,7 @@ std::unordered_map<Node, std::optional<Node>>
     // a node cannot immediately dominate itself
     if (node_dominators.size() == 1) {
       assert(get_only(node_dominators) == node);
-      result[node] = std::nullopt;
+      result[node] = nullopt;
     } else {
       node_dominators.erase(node);
       result[node] = get_node_with_greatest_topo_rank(node_dominators, g);
@@ -599,12 +611,12 @@ std::unordered_map<Node, std::optional<Node>>
   return result;
 }
 
-std::unordered_map<Node, std::optional<Node>>
+std::unordered_map<Node, optional<Node>>
     get_imm_post_dominators(DiGraphView const &g) {
   return get_imm_dominators(flipped(g));
 }
 
-std::optional<Node> imm_post_dominator(DiGraphView const &g, Node const &n) {
+optional<Node> imm_post_dominator(DiGraphView const &g, Node const &n) {
   return get_imm_post_dominators(g).at(n);
 }
 
@@ -627,9 +639,8 @@ Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &nodes,
                            });
 }
 
-std::optional<Node>
-    get_imm_post_dominator(DiGraphView const &g,
-                           std::unordered_set<Node> const &nodes) {
+optional<Node> get_imm_post_dominator(DiGraphView const &g,
+                                      std::unordered_set<Node> const &nodes) {
 
   if (nodes.empty()) {
     throw mk_runtime_error("Cannot get imm_post_dominator of no nodes");
@@ -640,7 +651,7 @@ std::optional<Node>
   if (!commonDoms.empty()) {
     return get_node_with_greatest_topo_rank(commonDoms, g);
   } else {
-    return std::nullopt;
+    return nullopt;
   }
 }
 
@@ -756,6 +767,30 @@ std::unordered_set<std::unordered_set<Node>>
     visited = set_union(visited, component);
   }
   return components;
+}
+
+std::unordered_set<Node> get_closed_sources(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return get_incoming_edges(g, n).size() == 0;
+  });
+}
+
+std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return get_outgoing_edges(g, n).size() == 0;
+  });
+}
+
+std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return !get_incoming_edges(g, n).empty();
+  });
+}
+
+std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return !get_outgoing_edges(g, n).empty();
+  });
 }
 
 } // namespace FlexFlow

@@ -3,7 +3,7 @@
 
 #include "nlohmann/json.hpp"
 #include "utils/type_traits_extra/metafunction/elements_satisfy.h"
-#include "utils/visitable/type/traits/is_visitable.h"
+#include "utils/visitable/is_visitable.h"
 #include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {

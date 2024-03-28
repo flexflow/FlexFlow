@@ -1,8 +1,0 @@
-#ifndef _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_VISITABLE_MACROS_FF_VISITABLE_STRUCT_H
-#define _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_VISITABLE_MACROS_FF_VISITABLE_STRUCT_H
-
-#include "dispatch_visitable.h"
-
-namespace FlexFlow {} // namespace FlexFlow
-
-#endif

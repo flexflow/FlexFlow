@@ -51,6 +51,10 @@ std::unordered_set<OpenMultiDiEdge>
   return this->get_ptr().query_edges(q);
 }
 
+NodePort OpenMultiDiGraph::add_node_port() {
+  return this->get_ptr().add_node_port();
+}
+
 IOpenMultiDiGraph &OpenMultiDiGraph::get_ptr() {
   return *std::reinterpret_pointer_cast<IOpenMultiDiGraph>(
       GraphView::ptr.get_mutable());

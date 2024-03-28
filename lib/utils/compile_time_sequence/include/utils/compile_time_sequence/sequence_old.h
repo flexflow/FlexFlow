@@ -2,7 +2,7 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_SEQUENCE_H
 
 #include "sequence.decl.h"
-#include "utils/ff_exceptions/ff_exceptions.h"
+#include "utils/ff_exceptions/mk_runtime_error.h"
 #include "utils/tuple.h"
 #include "utils/visitable_core.h"
 #include <fmt/format.h>

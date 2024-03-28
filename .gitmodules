@@ -61,3 +61,6 @@
 [submodule "deps/boost/mp11"]
 	path = deps/boost/mp11
 	url = https://github.com/boostorg/mp11.git
+[submodule "deps/bilke-cmake-modules"]
+	path = deps/bilke-cmake-modules
+	url = git@github.com:bilke/cmake-modules.git

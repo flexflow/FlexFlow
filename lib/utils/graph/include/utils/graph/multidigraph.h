@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_MULTIDIGRAPH_H
 #define _FLEXFLOW_UTILS_GRAPH_MULTIDIGRAPH_H
 
-#include "cow_ptr_t.h"
+#include "utils/smart_ptrs/cow_ptr_t.h"
 #include "digraph.h"
 #include "multidiedge.h"
 #include "multidigraph_interfaces.h"

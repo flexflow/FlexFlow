@@ -23,6 +23,7 @@ std::vector<Node> add_nodes(Graph &, int);
 std::vector<Node> add_nodes(UndirectedGraph &, int);
 std::vector<Node> add_nodes(DiGraph &, int);
 std::vector<Node> add_nodes(MultiDiGraph &, int);
+std::vector<Node> add_nodes(OpenMultiDiGraph &g, int num_nodes);
 
 std::vector<NodePort> add_node_ports(MultiDiGraph &, int);
 
@@ -106,6 +107,11 @@ std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &,
 std::unordered_set<MultiDiOutput> get_outputs(MultiDiGraphView const &);
 std::unordered_set<MultiDiInput> get_inputs(MultiDiGraphView const &);
 
+std::unordered_set<OutputMultiDiEdge>
+    get_open_outputs(OpenMultiDiGraphView const &);
+std::unordered_set<InputMultiDiEdge>
+    get_open_inputs(OpenMultiDiGraphView const &);
+
 std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
                                                    Node const &);
 std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &,
@@ -174,12 +180,12 @@ struct GetDstNodeFunctor {
 };
 
 template <typename... Args>
-Node get_src_node(std::variant<Args...> const &t) {
+Node get_src_node(variant<Args...> const &t) {
   return visit(GetSrcNodeFunctor{}, t);
 }
 
 template <typename... Args>
-Node get_dst_node(std::variant<Args...> const &t) {
+Node get_dst_node(variant<Args...> const &t) {
   return visit(GetDstNodeFunctor{}, t);
 }
 
@@ -203,12 +209,12 @@ struct GetDstIdxFunctor {
 };
 
 template <typename... Args>
-NodePort get_src_idx(std::variant<Args...> const &t) {
+NodePort get_src_idx(variant<Args...> const &t) {
   return visit(GetSrcIdxFunctor{}, t);
 }
 
 template <typename... Args>
-NodePort get_dst_idx(std::variant<Args...> const &t) {
+NodePort get_dst_idx(variant<Args...> const &t) {
   return visit(GetDstIdxFunctor{}, t);
 }
 
@@ -229,8 +235,8 @@ std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g);
 std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g);
 
 bool is_acyclic(MultiDiGraphView const &, std::unordered_set<Node> const &);
-std::optional<bool> is_acyclic(DiGraphView const &);
-std::optional<bool> is_acyclic(MultiDiGraphView const &);
+tl::optional<bool> is_acyclic(DiGraphView const &);
+tl::optional<bool> is_acyclic(MultiDiGraphView const &);
 
 std::unordered_map<Node, std::unordered_set<Node>>
     get_dominators(DiGraphView const &);
@@ -240,15 +246,15 @@ std::unordered_set<Node> get_dominators(DiGraphView const &,
 
 std::unordered_map<Node, std::unordered_set<Node>>
     get_post_dominators(DiGraphView const &);
-std::unordered_map<Node, std::optional<Node>>
+std::unordered_map<Node, optional<Node>>
     get_imm_dominators(DiGraphView const &);
-std::unordered_map<Node, std::optional<Node>>
+std::unordered_map<Node, optional<Node>>
     get_imm_post_dominators(DiGraphView const &);
-std::optional<Node> get_imm_post_dominator(DiGraphView const &, Node const &);
-std::optional<Node> get_imm_post_dominator(MultiDiGraphView const &,
-                                           Node const &);
-std::optional<Node> get_imm_post_dominator(DiGraphView const &,
-                                           std::unordered_set<Node> const &);
+tl::optional<Node> get_imm_post_dominator(DiGraphView const &, Node const &);
+tl::optional<Node> get_imm_post_dominator(MultiDiGraphView const &,
+                                          Node const &);
+tl::optional<Node> get_imm_post_dominator(DiGraphView const &,
+                                          std::unordered_set<Node> const &);
 
 std::vector<Node>
     get_dfs_ordering(DiGraphView const &,
@@ -328,8 +334,8 @@ void export_as_dot(
     DotFile<Node> &,
     DiGraphView const &,
     std::function<RecordFormatter(Node const &)> const &,
-    std::optional<std::function<std::string(DirectedEdge const &)>> =
-        std::nullopt);
+    tl::optional<std::function<std::string(DirectedEdge const &)> const &> =
+        tl::nullopt);
 
 } // namespace FlexFlow
 

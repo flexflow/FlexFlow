@@ -1,7 +1,7 @@
 #ifndef UTILS_GRAPH_INCLUDE_UTILS_GRAPH_DIGRAPH
 #define UTILS_GRAPH_INCLUDE_UTILS_GRAPH_DIGRAPH
 
-#include "cow_ptr_t.h"
+#include "utils/smart_ptrs/cow_ptr_t.h"
 #include "digraph_interfaces.h"
 #include "node.h"
 #include "utils/optional.h"
