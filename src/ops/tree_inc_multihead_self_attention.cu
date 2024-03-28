@@ -392,7 +392,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
         num_tokens_to_commit,
         m->num_active_tokens, // number of active tokens in previous batch
         BatchConfig::max_sequence_length() +
-            BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,
+            BatchConfig::max_spec_tree_token_num(),
         m->hidden_size);
   }
 }
@@ -528,11 +528,11 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   int kt_block_size = m->kProjSize;
   int kt_req_block_size =
       kt_block_size * m->num_q_heads * BatchConfig::max_sequence_length() +
-      BatchConfig::MAX_SPEC_TREE_TOKEN_NUM;
+      BatchConfig::max_spec_tree_token_num();
   int vt_block_size = m->vProjSize;
   int vt_req_block_size =
       vt_block_size * m->num_q_heads * BatchConfig::max_sequence_length() +
-      BatchConfig::MAX_SPEC_TREE_TOKEN_NUM;
+      BatchConfig::max_spec_tree_token_num();
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -795,7 +795,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
     DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)      \
   smem_size_in_bytes_tree<DT>(m->qProjSize,                                    \
                               BatchConfig::max_sequence_length() +             \
-                                  BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,        \
+                                  BatchConfig::max_spec_tree_token_num(),      \
                               THDS_PER_VALUE,                                  \
                               THDS_PER_BLOCK,                                  \
                               bc,                                              \
@@ -813,7 +813,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
           output_ptr,                                                          \
           scale,                                                               \
           BatchConfig::max_sequence_length() +                                 \
-              BatchConfig::BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,               \
+              BatchConfig::BatchConfig::max_spec_tree_token_num(),             \
           BatchConfig::max_tokens_per_batch(),                                 \
           m->qProjSize,                                                        \
           m->hidden_size,                                                      \
@@ -847,7 +847,8 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
       m->kProjSize,
       m->vProjSize,
       num_new_tokens,
-      BatchConfig::max_sequence_length() + BatchConfig::MAX_SPEC_TREE_TOKEN_NUM,
+      BatchConfig::max_sequence_length() +
+          BatchConfig::max_spec_tree_token_num(),
       m->hidden_size);
 
   dim3 grid(m->num_q_heads, bc->num_active_requests());

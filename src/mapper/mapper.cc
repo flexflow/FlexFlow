@@ -501,7 +501,9 @@ void FFMapper::map_task(const MapperContext ctx,
   output.task_priority = 0;
   output.postmap_task = false;
   if (task.target_proc.address_space() != node_id) {
-    assert(false);
+    if (enable_control_replication) {
+      assert(false);
+    }
     output.target_procs.push_back(task.target_proc);
   } else if (task.target_proc.kind() == Processor::TOC_PROC) {
     output.target_procs.push_back(task.target_proc);
