@@ -5,6 +5,10 @@
 #include "operator_pattern.h"
 #include "utils/optional.h"
 
+
+/**
+ * @brief overloading get_attribute functions for different operator attributes.
+ */
 namespace FlexFlow {
 
 std::optional<OperatorAttributeValue> get_attribute(PCGOperatorAttrs const &,
