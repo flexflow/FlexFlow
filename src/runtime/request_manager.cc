@@ -567,6 +567,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             new_bc.num_tokens < get_max_tokens_per_batch()) {
           buffer_bc = &new_bc;
           new_bc = prepare_prefilling_batch(i);
+          break;
         }
       }
     }
