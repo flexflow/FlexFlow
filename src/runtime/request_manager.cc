@@ -351,8 +351,6 @@ BatchConfig RequestManager::prepare_next_batch_task(
 }
 
 BatchConfig RequestManager::prepare_prefilling_batch(int i) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
-
   BatchConfig new_bc;
 
   // mark empty requests as completed
