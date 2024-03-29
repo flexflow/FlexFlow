@@ -63,6 +63,7 @@ struct Request {
     RUNNING = 102,   // running inference
     COMPLETED = 103, // finished and verified
     FINISHING = 104, // finishing request, but not yet verified
+    PREFILLING = 105 // prefilling the tree
   };
   BatchConfig::RequestGuid guid;
   int max_sequence_length;
@@ -307,6 +308,7 @@ private:
   };
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;
+  BatchConfig buffer_bc = nullptr;
 };
 
 }; // namespace FlexFlow
