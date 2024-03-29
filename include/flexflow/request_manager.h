@@ -63,6 +63,7 @@ struct Request {
     RUNNING = 102,   // running inference
     COMPLETED = 103, // finished and verified
     FINISHING = 104, // finishing request, but not yet verified
+    PREFILLING = 105 // prefilling the prompt
   };
   BatchConfig::RequestGuid guid;
   int max_sequence_length;
@@ -162,6 +163,7 @@ public:
                                        InferenceResultFuture const &result,
                                        Legion::Context ctx,
                                        Legion::Runtime *runtime);
+  BatchConfig prepare_prefilling_batch(int i);
   BeamSearchBatchConfig
       prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
                               BeamInferenceResult const &result);
@@ -306,6 +308,7 @@ private:
     double start_time, finish_time;
   };
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
+  BatchConfig buffer_bc = nullptr;
   double total_request_run_time;
 };
 
