@@ -106,7 +106,7 @@ void parse_input_args(char **argv,
     }
   }
   if (paths.cache_folder_path.empty()) {
-    paths.cache_folder_path = "~/.cache/flexflow";
+    paths.cache_folder_path = "/pscratch/sd/z/zjia/.cache/flexflow/";
   }
   // Expand ~ to the home directory if needed
   wordexp_t p;
@@ -130,9 +130,9 @@ void FlexFlow::top_level_task(Task const *task,
   bool do_sample = false;
   float temperature = 0.0f;
   float topp = 0.0f;
-  int max_requests_per_batch = 8;
-  int max_tokens_per_batch = 128;
-  int max_sequence_length = 256;
+  int max_requests_per_batch = 128;
+  int max_tokens_per_batch = 512;
+  int max_sequence_length = 512;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -252,6 +252,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   int total_num_requests = 0;
   {
+#ifdef DEADCODE
     using json = nlohmann::json;
     std::ifstream file_handle(file_paths.prompt_file_path);
     assert(file_handle.good() && "Prompt file does not exist.");
@@ -265,6 +266,11 @@ void FlexFlow::top_level_task(Task const *task,
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
       prompts.push_back(text);
+    }
+#endif
+    std::vector<std::string> prompts;
+    for (int i = 0; i < max_requests_per_batch - 1; i++) {
+      prompts.push_back("b");
     }
     GenerationResult result =
         model.generate(prompts, 128 /*max_sequence_length*/);

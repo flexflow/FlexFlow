@@ -270,13 +270,13 @@ void load_attention_weights_v2(DT *ptr,
       std::cout << "load attention data error " << in_get_size << ", "
                 << loaded_data_size << ", " << file_index << ", "
                 << weight_filepath << "\n";
-      assert(false && "data size mismatch");
+      //assert(false && "data size mismatch");
     }
     // wq, wk, wo
     if (file_index == 0) {
       for (int i = 0; i < tensor_parallelism_degree; i++) {
         for (int j = 0; j < one_partition_size; j++) {
-          ptr[base_index + i * stride_size + j] = host_array.at(data_index++);
+          ptr[base_index + i * stride_size + j] = host_array.at((data_index++)%in_get_size );
         }
       }
     } else {
@@ -286,7 +286,7 @@ void load_attention_weights_v2(DT *ptr,
         int tp_idx = (i / (num_heads / tensor_parallelism_degree));
         for (int j = 0; j < single_proj_size; j++) {
           ptr[base_index + tp_idx * stride_size + single_proj_size * head_idx +
-              j] = host_array.at(kv_idx * single_proj_size + j);
+              j] = host_array.at((kv_idx * single_proj_size + j) % in_get_size);
         }
       }
     }

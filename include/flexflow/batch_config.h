@@ -54,7 +54,7 @@ public:
   // Maximum possible values for different parameters
   // These maximum values are used for copying BatchConfig
   // across workers
-  static int const MAX_NUM_REQUESTS = 64;
+  static int const MAX_NUM_REQUESTS = 128;
   static int const MAX_NUM_TOKENS = 1024;
 
   //  Set by update

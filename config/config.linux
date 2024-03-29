@@ -37,14 +37,14 @@ FF_CUDA_ARCH=${FF_CUDA_ARCH:-"autodetect"}
 FF_HIP_ARCH=${FF_HIP_ARCH:-"all"}
 
 # set CUDNN dir in case cmake cannot autodetect a path
-CUDNN_DIR=${CUDNN_DIR:-"/usr/local/cuda"}
+CUDNN_DIR=${CUDNN_DIR:-"/global/common/software/nersc/pm-2023q2/sw/cudnn-8.9.3.28_cuda12"}
 
 # set CUDA dir in case cmake cannot autodetect a path
-CUDA_DIR=${CUDA_DIR:-"/usr/local/cuda"}
+CUDA_DIR=${CUDA_DIR:-"/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/cuda/12.0"}
 
 # if not use PREBUILD_NCCL, you can set NCCL_DIR to use external nccl lib,
 # otherwise, we will build nccl from source
-NCCL_DIR=${NCCL_DIR:-"/usr/local/cuda"}
+NCCL_DIR=${NCCL_DIR:-"/global/common/software/nersc/pm-stable/sw/nccl/2.18-cu12"}
 
 # enable Python
 FF_USE_PYTHON=${FF_USE_PYTHON:-ON}

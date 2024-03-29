@@ -13,8 +13,9 @@ if(CUDA_FOUND)
   # set cuda runtime and driver lib
   # override cublas and curand because the FindCUDA module may not find the correct libs  
   set(CUDADRV_LIBRARIES ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/libcuda${LIBEXT})
-  set(CUDA_CUBLAS_LIBRARIES ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublas${LIBEXT})
-  set(CUDA_curand_LIBRARY ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcurand${LIBEXT})
+  set(CUDA_CUBLAS_LIBRARIES /opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0/lib64/libcublas${LIBEXT})
+  set(CUDA_curand_LIBRARY /opt/nvidia/hpc_sdk/Linux_x86_64/23.1/math_libs/12.0/lib64/libcurand${LIBEXT})
+
   list(APPEND FLEXFLOW_EXT_LIBRARIES
     ${CUDADRV_LIBRARIES}
     ${CUDA_CUBLAS_LIBRARIES}

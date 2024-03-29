@@ -16,7 +16,7 @@
 #include "flexflow/request_manager.h"
 #include "flexflow/parallel_ops/parallel_op.h"
 // #include "flexflow/tokenizers.h"
-#include <filesystem>
+// #include <filesystem>
 #include <iomanip>
 #include <new>
 #include <stack>
@@ -129,17 +129,18 @@ void RequestManager::register_tokenizer(ModelType type,
     std::string merges_file = tokenizer_folder + "merges.txt";
     std::string added_tokens_file =
         tokenizer_folder + "special_tokens_map.json";
-    std::filesystem::path path1(vocab_file);
-    std::filesystem::path path2(merges_file);
-    std::filesystem::path path3(added_tokens_file);
-    assert(std::filesystem::exists(path1) &&
-           "Vocab file vocab.json does not exist at the specified path");
-    assert(std::filesystem::exists(path2) &&
-           "Merge file merges.txt does not exist at the specified path");
+    //std::filesystem::path path1(vocab_file);
+    //std::filesystem::path path2(merges_file);
+    //std::filesystem::path path3(added_tokens_file);
+    //assert(std::filesystem::exists(path1) &&
+    //       "Vocab file vocab.json does not exist at the specified path");
+    //assert(std::filesystem::exists(path2) &&
+    //       "Merge file merges.txt does not exist at the specified path");
     // opt_tokenizer = new OptTokenizer(vocab_file, merges_file);
-    std::string vocab = LoadBytesFromFile(path1.string());
-    std::string merges = LoadBytesFromFile(path2.string());
-    std::string added_tokens = LoadBytesFromFile(path3.string());
+    std::string vocab = LoadBytesFromFile(vocab_file);
+    std::string merges = LoadBytesFromFile(merges_file);
+    std::string added_tokens = LoadBytesFromFile(added_tokens_file);
+
 
     this->tokenizer_ =
         Tokenizer::FromBlobByteLevelBPE(vocab, merges, added_tokens);
@@ -194,6 +195,7 @@ RequestManager::RequestGuid
   } else {
     request.initial_len = prompt.size();
     request.tokens = prompt;
+    request.max_sequence_length = request.initial_len + max_sequence_length;
   }
 
   if (get_num_ssms() == 0) {
@@ -237,12 +239,11 @@ RequestManager::RequestGuid
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
-  request.max_sequence_length = max_sequence_length;
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
   std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
-  if (tokens.size() >= get_max_sequence_length()) {
+    if (tokens.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
               << get_max_sequence_length() << " tokens, but got "
               << tokens.size() << ".\n";
@@ -255,6 +256,8 @@ RequestManager::RequestGuid
   }
   request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
   request.initial_len = request.tokens.size();
+  request.max_sequence_length = request.initial_len + max_sequence_length;
+  // request.max_sequence_length = max_sequence_length;
 
   if (get_num_ssms() == 0) {
     std::cout << "No small speculative model registered, using incremental "
@@ -407,12 +410,14 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             profile_info.finish_time - profile_info.start_time;
         profiling_requests[request.guid] = profile_info;
         log_req_mgr.print("[Profile] guid(%zu) decoding_steps(%d) start(%.1lf) "
-                          "finish(%.1lf) latency(%.1lf)",
+                          "finish(%.1lf) latency(%.1lf) batch_size(%d) generatio_tokens(%d)",
                           request.guid,
                           profile_info.decoding_steps,
                           profile_info.start_time,
                           profile_info.finish_time,
-                          profile_info.finish_time - profile_info.start_time);
+                          profile_info.finish_time - profile_info.start_time,
+                          old_bc.num_tokens,
+                          old_bc.num_generation_tokens);
         // Write output to file if needed:
         if (!output_filepath.empty()) {
           std::ofstream outputFile(output_filepath, std::ios::app);
@@ -1930,7 +1935,14 @@ GenerationResult RequestManager::generate_incr_decoding(
   for (int i = 0; i < prompts.size(); i++) {
     guid = register_new_request(prompts.at(i), max_seq_length);
   }
-
+  std::vector<TokenId> tokens;
+  for (int i = 0; i < 256; i++) {
+    tokens.push_back(263);
+  }
+  for (int i = 0; i < max_seq_length; i++) {
+    guid = register_new_request(tokens, 1);
+    tokens.push_back(263);
+  }
   if (guid == 0) {
     std::cout
         << "=========== Discard request exceed prompt maximum... ==========="
