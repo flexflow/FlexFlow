@@ -375,7 +375,7 @@ class LLM:
         self.rm.set_max_spec_tree_token_num(
             self.model_configs.max_spec_tree_token_num
             if "max_spec_tree_token_num"
-            in self.model_configs.max_spec_tree_token_num.__dict__
+            in self.model_configs.__dict__
             else 20
         )
 
