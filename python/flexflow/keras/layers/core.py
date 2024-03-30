@@ -109,22 +109,26 @@ class Dense(Layer):
     return self._connect_layer_1_input_1_output(input_tensor)
     
   def _calculate_inout_shape(self, input_tensor):
-    assert input_tensor.num_dims == 2, "[Dense]: shape of input tensor is wrong"
-    input_b = input_tensor.batch_shape[0]
-    in_dim = input_tensor.batch_shape[1]
-    assert in_dim != 0, "wrong in_dim"
-    if (self.in_channels != 0): # check if user input is correct
-      assert self.in_channels == in_dim, "wrong input_w"
-    self.output_shape = (input_b, self.out_channels)
-    self.input_shape = (input_b, in_dim)
-    self.in_channels = in_dim
-    fflogger.debug("dense input %s, output %s" %( str(self.input_shape), str(self.output_shape)))
+    self.input_shape = input_tensor.shape
+    self.output_shape = input_tensor.shape
+    self.output_shape[-1] = self.out_channels
+    # assert input_tensor.num_dims == 2, "[Dense]: shape of input tensor is wrong"
+    # input_b = input_tensor.batch_shape[0]
+    # in_dim = input_tensor.batch_shape[1]
+    # assert in_dim != 0, "wrong in_dim"
+    # if (self.in_channels != 0): # check if user input is correct
+    #   assert self.in_channels == in_dim, "wrong input_w"
+    # self.output_shape = (input_b, self.out_channels)
+    # self.input_shape = (input_b, in_dim)
+    # self.in_channels = in_dim
+    # fflogger.debug("dense input %s, output %s" %( str(self.input_shape), str(self.output_shape)))
     
   def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
-    assert input_tensor.num_dims == 2, "[Dense]: check input tensor dims"
-    assert input_tensor.batch_shape[1] == self.input_shape[1]
-    assert output_tensor.num_dims == 2, "[Dense]: check output tensor dims"
-    assert output_tensor.batch_shape[1] == self.output_shape[1]
+    pass
+    # assert input_tensor.num_dims == 2, "[Dense]: check input tensor dims"
+    # assert input_tensor.batch_shape[1] == self.input_shape[1]
+    # assert output_tensor.num_dims == 2, "[Dense]: check output tensor dims"
+    # assert output_tensor.batch_shape[1] == self.output_shape[1]
     
   def _reset_layer(self):
     self.in_channels = 0
@@ -277,10 +281,13 @@ class Dropout(Layer):
     pass
     
 class Reshape(Layer):
-  def __init__(self, target_shape, input_shape=None, **kwargs):
+  def __init__(self, target_shape, input_shape=None, full_target_shape=False, **kwargs):
     #TODO: target shape does not support -1
     # self.target_shape = (0,) + target_shape
-    self.target_shape = (0,) + target_shape
+    if full_target_shape:
+      self.target_shape = target_shape
+    else:
+      self.target_shape = (0,) + target_shape
     # TODO: input shape should not contain batch size for now
     if input_shape != None:
       self.input_shape = (0,) + input_shape
