@@ -445,9 +445,10 @@ std::unordered_set<OutputMultiDiEdge>
 
 OpenMultiDiSubgraphView::OpenMultiDiSubgraphView(
     OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
-    : g(g), nodes(nodes),
-      inputs(transform(get_cut_set(g, nodes), to_inputmultidiedge)),
-      outputs(transform(get_cut_set(g, nodes), to_outputmultidiedge)) {}
+    : g(g), nodes(nodes) {
+  this->inputs = transform(get_cut_set(g, nodes), to_inputmultidiedge);
+  this->outputs = transform(get_cut_set(g, nodes), to_outputmultidiedge);
+}
 
 std::unordered_set<OpenMultiDiEdge>
     OpenMultiDiSubgraphView::query_edges(OpenMultiDiEdgeQuery const &q) const {
@@ -469,7 +470,9 @@ std::unordered_set<Node>
 
 UpwardOpenMultiDiSubgraphView::UpwardOpenMultiDiSubgraphView(
     OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
-    : g(g), nodes(nodes), inputs(inputs) {}
+    : g(g), nodes(nodes) {
+  this->inputs = transform(get_cut_set(g, nodes), to_inputmultidiedge);
+}
 
 UpwardOpenMultiDiSubgraphView *UpwardOpenMultiDiSubgraphView::clone() const {
   return new UpwardOpenMultiDiSubgraphView(g, nodes);
@@ -477,11 +480,11 @@ UpwardOpenMultiDiSubgraphView *UpwardOpenMultiDiSubgraphView::clone() const {
 
 std::unordered_set<OpenMultiDiEdge> UpwardOpenMultiDiSubgraphView::query_edges(
     OpenMultiDiEdgeQuery const &q) const {
-  std::unordered_set<OpenMultiDiEdge> result =
-      g.query_edges(OpenMultiDiEdgeQuery(
-          q.input_edge_query.with_dst_nodes(nodes),
-          q.standard_edge_query.with_src_nodes(nodes).with_dst_nodes(nodes),
-          OutputMultiDiEdgeQuery::none()));
+  OpenMultiDiEdgeQuery subgraph_query(
+      q.input_edge_query.with_dst_nodes(nodes),
+      q.standard_edge_query.with_src_nodes(nodes).with_dst_nodes(nodes),
+      OutputMultiDiEdgeQuery::none());
+  std::unordered_set<OpenMultiDiEdge> result = g.query_edges(subgraph_query);
   extend(result, query_edge(inputs, q.input_edge_query.with_dst_nodes(nodes)));
   return result;
 }
@@ -493,16 +496,18 @@ std::unordered_set<Node>
 
 DownwardOpenMultiDiSubgraphView::DownwardOpenMultiDiSubgraphView(
     OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
-    : g(g), nodes(nodes) {}
+    : g(g), nodes(nodes) {
+  this->outputs = transform(get_cut_set(g, nodes), to_outputmultidiedge);
+}
 
 std::unordered_set<OpenMultiDiEdge>
     DownwardOpenMultiDiSubgraphView::query_edges(
         OpenMultiDiEdgeQuery const &q) const {
-  std::unordered_set<OpenMultiDiEdge> result =
-      g.query_edges(OpenMultiDiEdgeQuery(
-          InputMultiDiEdgeQuery::none(),
-          q.standard_edge_query.with_src_nodes(nodes).with_dst_nodes(nodes),
-          q.output_edge_query.with_src_nodes(nodes)));
+  OpenMultiDiEdgeQuery subgraph_query(
+      InputMultiDiEdgeQuery::none(),
+      q.standard_edge_query.with_src_nodes(nodes).with_dst_nodes(nodes),
+      q.output_edge_query.with_src_nodes(nodes));
+  std::unordered_set<OpenMultiDiEdge> result = g.query_edges(subgraph_query);
   extend(result,
          query_edge(outputs, q.output_edge_query.with_src_nodes(nodes)));
   return result;

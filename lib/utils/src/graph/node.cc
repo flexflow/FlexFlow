@@ -53,11 +53,11 @@ std::unordered_set<Node> Graph::query_nodes(NodeQuery const &q) const {
 }
 
 IGraph const &Graph::get_ptr() const {
-  return *std::reinterpret_pointer_cast<IGraph const>(GraphView::ptr.get());
+  return *std::dynamic_pointer_cast<IGraph const>(GraphView::ptr.get());
 }
 
 IGraph &Graph::get_ptr() {
-  return *std::reinterpret_pointer_cast<IGraph>(GraphView::ptr.get_mutable());
+  return *std::dynamic_pointer_cast<IGraph>(GraphView::ptr.get_mutable());
 }
 
 } // namespace FlexFlow

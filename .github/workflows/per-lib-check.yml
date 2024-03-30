@@ -20,6 +20,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Add helpers directory to path
+        run: echo "${PWD}/.github/workflows/helpers" >> $GITHUB_PATH
+
       - name: Install nix
         uses: cachix/install-nix-action@v25
         with:
@@ -51,24 +54,40 @@ jobs:
 
       - name: Run cmake
         run: |
-          .github/workflows/helpers/build_${{ matrix.gpu_backend }}.sh
+          cmake_${{ matrix.gpu_backend }}.sh
 
       - name: Build utils
         run: |
-          cd build 
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) utils
+          build_libs.sh utils
 
       - name: Build op-attrs
         run: |
-          cd build 
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) op-attrs
+          build_libs.sh op-attrs
 
       - name: Build pcg
         run: |
-          cd build
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) pcg
+          build_libs.sh pcg
 
       - name: Build kernels
         run: |
-          cd build
-          make -j $(( $(nproc) < 2 ? 1 : $(nproc)-1 )) kernels
+          build_libs.sh kernels
+
+      - name: Build substitutions
+        run: |
+          build_libs.sh substitutions
+
+      - name: Build compiler
+        run: |
+          build_libs.sh compiler
+
+      - name: Test utils
+        run: |
+          test_libs.sh utils
+
+      - name: Test substitutions
+        run: |
+          test_libs.sh substitutions
+
+      - name: Test compiler
+        run: |
+          test_libs.sh compiler

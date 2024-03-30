@@ -255,8 +255,8 @@ public:
   OpenMultiDiSubgraphView *clone() const override;
 
 private:
-  OpenMultiDiGraphView const &g;
-  std::unordered_set<Node> const &nodes;
+  OpenMultiDiGraphView g;
+  std::unordered_set<Node> nodes;
   std::unordered_set<InputMultiDiEdge> inputs;
   std::unordered_set<OutputMultiDiEdge> outputs;
 };
@@ -273,8 +273,8 @@ struct UpwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
   UpwardOpenMultiDiSubgraphView *clone() const override;
 
 private:
-  OpenMultiDiGraphView const &g;
-  std::unordered_set<Node> const &nodes;
+  OpenMultiDiGraphView g;
+  std::unordered_set<Node> nodes;
   std::unordered_set<InputMultiDiEdge> inputs;
 };
 
@@ -290,8 +290,8 @@ struct DownwardOpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
   DownwardOpenMultiDiSubgraphView *clone() const override;
 
 private:
-  OpenMultiDiGraphView const &g;
-  std::unordered_set<Node> const &nodes;
+  OpenMultiDiGraphView g;
+  std::unordered_set<Node> nodes;
   std::unordered_set<OutputMultiDiEdge> outputs;
 };
 
@@ -307,8 +307,8 @@ struct ClosedMultiDiSubgraphView : public IOpenMultiDiGraphView {
   ClosedMultiDiSubgraphView *clone() const override;
 
 private:
-  OpenMultiDiGraphView const &g;
-  std::unordered_set<Node> const &nodes;
+  OpenMultiDiGraphView g;
+  std::unordered_set<Node> nodes;
 };
 
 UndirectedEdge to_undirected_edge(DirectedEdge const &);

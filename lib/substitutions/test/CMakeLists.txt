@@ -1,6 +1,6 @@
 ff_add_test_executable(
   NAME
-    substitutions-test
+    substitutions-tests
   SRC_PATTERNS
     src/*.cc
   PRIVATE_INCLUDE

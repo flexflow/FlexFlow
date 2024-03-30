@@ -32,6 +32,7 @@
 #include "ops/topk.h"
 #include "ops/transpose.h"
 #include "utils/variant.h"
+#include <variant>
 
 namespace FlexFlow {
 
