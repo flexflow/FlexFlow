@@ -2,7 +2,7 @@
 #define _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_UTILS_VISITABLE_IS_LIST_INITIALIZABLE_FROM_TUPLE_H
 
 #include "utils/type_traits_extra/is_list_initializable.h"
-#include "utils/type_traits_extra/type_list/type_list.h"
+#include "utils/type_list/type_list.h"
 
 namespace FlexFlow {
 

@@ -3,15 +3,12 @@
 
 #include "is_list_initializable_from_type_list.h"
 #include "is_visitable.h"
-#include "utils/visitable/as_type_list.h"
+#include "utils/visitable/type_list_from_visitable.h"
 
 namespace FlexFlow {
 
-template <typename T, typename Enable = void>
-struct is_visit_list_initializable
-    : std::conjunction<
-          is_visitable<T>,
-          is_list_initializable_from_type_list<T, as_type_list_t<T>>> {};
+template <typename T>
+concept visit_list_initializable = is_visitable_v<T> && is_list_initializable_from_type_list_v<T, type_list_from_visitable_t<T>>;
 
 } // namespace FlexFlow
 

@@ -5,4 +5,5 @@ ff_add_library(
     utils-backports
     utils-type_traits_extra
     utils-fmt_extra
+    boost_preprocessor
 )      

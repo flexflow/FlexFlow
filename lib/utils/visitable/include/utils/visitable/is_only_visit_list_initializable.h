@@ -1,18 +1,15 @@
 #ifndef _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_UTILS_VISITABLE_TYPE_TRAITS_IS_ONLY_VISIT_LIST_INITIALIZABLE_H
 #define _FLEXFLOW_LIB_UTILS_VISITABLE_INCLUDE_UTILS_VISITABLE_TYPE_TRAITS_IS_ONLY_VISIT_LIST_INITIALIZABLE_H
 
-#include "is_visit_list_initializable.h"
-#include "utils/type_traits_extra/type_list/indexing.h"
-#include "utils/visitable/as_type_list.h"
+#include "utils/visitable/is_visit_list_initializable.h"
+#include "utils/visitable/type_list_from_visitable.h"
+#include "utils/type_list/get_init.h"
 
 namespace FlexFlow {
 
-template <typename T, typename Enable = void>
-struct is_only_visit_list_initializable
-    : std::conjunction<is_visit_list_initializable<T>,
-                       std::negation<is_list_initializable_from_type_list<
-                           T,
-                           get_init_t<as_type_list<T>>>>> {};
+template <typename T>
+concept is_only_visit_list_initializable = visit_list_initializable<T>
+  && !is_list_initializable_from_type_list_v<T, type_list_get_init_t<type_list_from_visitable_t<T>>>;
 
 } // namespace FlexFlow
 

@@ -9,13 +9,11 @@
 #define _DISPATCH_MAYBE_EMPTY_CASE0(MACRO) BOOST_PP_CAT(MACRO, _EMPTY)
 #define _DISPATCH_MAYBE_EMPTY_CASE1(MACRO) BOOST_PP_CAT(MACRO, _NONEMPTY)
 
-#define _DISPATCH_FUNC_NAME(MACRO, ...)                                        \
-  BOOST_PP_EXPAND(                                                             \
+#define _DISPATCH_FUNC_NAME(...)                                        \
       BOOST_PP_CAT(_DISPATCH_MAYBE_EMPTY_CASE,                                 \
-                   BOOST_PP_MIN(BOOST_PP_VARIADIC_SIZE(__ARGS__), 1)))
+                   BOOST_PP_MIN(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), 1))
 
 #define _DISPATCH_VISITABLE(MACRO, TYPENAME, ...)                              \
-  BOOST_PP_EXPAND(                                                             \
-      _DISPATCH_FUNC_NAME(MACRO, __VA_ARGS__)(TYPENAME, __VA_ARGS__))
+      _DISPATCH_FUNC_NAME(__VA_ARGS__)(MACRO)(TYPENAME, __VA_ARGS__)
 
 #endif

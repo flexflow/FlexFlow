@@ -3,7 +3,7 @@
 
 #include "utils/strong_typedef/strong_typedef.h"
 #include "utils/type_traits_extra/is_rc_copy_compliant.h"
-#include "utils/visitable.h"
+#include "utils/visitable/ff_visitable_struct.h"
 #include <optional>
 #include <unordered_map>
 
