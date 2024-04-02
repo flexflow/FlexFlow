@@ -40,9 +40,9 @@ def main():
     model_name = "meta-llama/Llama-2-7b"
     new_model_id = "your_username/new-model-name"
     cache_folder = "~/.cache/flexflow"
-    private = True 
+    private = True
     refresh_cache = False
-    full_precision = True 
+    full_precision = True
 
     data_type = ff.DataType.DT_FLOAT if full_precision else ff.DataType.DT_HALF
     print(f"Downloading and processing model: {model_name}")
@@ -62,4 +62,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

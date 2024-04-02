@@ -403,67 +403,57 @@ class LLM:
         )
 
         self.fileloader.load_weights(self.model.ffmodel, self.data_type)
-        
+
     def upload_hf_model(self, new_model_id: str, model_path:str, private: bool = False):
         """
-<<<<<<< HEAD
         Uploads the model to the Hugging Face Hub, with reverse conversion of weights.
-=======
-        Uploads the model weights to the Hugging Face Hub, with reverse conversion of weights.
->>>>>>> cdf24eb0 (modify upload logic and add reconvert functions for opt models)
-        
+
         :param new_model_id: The new model ID for the Hugging Face Hub.
         :param model_path: The path where the FlexFlow weights are stored.
         :param private: Whether to upload the model as a private model.
         """
         print(f"Preparing model for upload to Hugging Face Hub: {new_model_id}")
-<<<<<<< HEAD
         print("tokenizer path is: ", self.tokenizer_path)
-=======
->>>>>>> cdf24eb0 (modify upload logic and add reconvert functions for opt models)
-        
+
         # Initialize a new Hugging Face model instance
         hf_model = AutoModelForCausalLM.from_config(self.hf_config)
         weights_path = self.weights_path
-        
+
         # Load FlexFlow weights into the Hugging Face model instance
         try:
             self.model_class.load_weights_into_hf_model(hf_model, weights_path)
         except Exception as e:
             print(f"Error loading weights into model: {e}")
             return
-        
+
         # Save the model with converted weights to a temporary directory
         temp_dir = tempfile.mkdtemp()
         hf_model.save_pretrained(temp_dir)
-        
-<<<<<<< HEAD
+
         # Copy the tokenizer files to the temporary directory
         tokenizer_files = [f for f in os.listdir(self.tokenizer_path)]
         for file_name in tokenizer_files:
             shutil.copy(os.path.join(self.tokenizer_path, file_name), temp_dir)
-            
+
         # Delete rev_sha.txt from the temporary directory if it exists
         rev_sha_path = os.path.join(temp_dir, 'rev_sha.txt')
         if os.path.exists(rev_sha_path):
             os.remove(rev_sha_path)
-            
-=======
->>>>>>> cdf24eb0 (modify upload logic and add reconvert functions for opt models)
+
         # Ensure Hugging Face CLI is logged in
         if not HfFolder.get_token():
             print("Hugging Face token not found. Please login using `huggingface-cli login`.")
             return
-        
+
         # Upload the model
         api = HfApi()
         print(f"Uploading processed model to Hugging Face Hub: {new_model_id}")
         api.create_repo(repo_id=new_model_id, private=private, exist_ok=True)
         api.upload_folder(folder_path=temp_dir, repo_id=new_model_id)
-        
+
         # Cleanup temporary directory
         shutil.rmtree(temp_dir)
-        
+
         print("Upload completed successfully.")
 
     def compile(
@@ -872,113 +862,34 @@ class PEFT:
         :param private: Whether to upload the model as a private model.
         """
         print(f"Preparing model for upload to Hugging Face Hub: {new_model_id}")
-        
+
         # Initialize a new Hugging Face model instance
         hf_model = AutoModelForCausalLM.from_config(self.hf_config)
         weights_path = self.weights_path
-        
+
         # Load FlexFlow weights into the Hugging Face model instance
         try:
             self.model_class.load_weights_into_hf_model(hf_model, weights_path)
         except Exception as e:
             print(f"Error loading weights into model: {e}")
             return
-        
+
         # Save the model with converted weights to a temporary directory
         temp_dir = tempfile.mkdtemp()
         hf_model.save_pretrained(temp_dir)
-        
+
         # Ensure Hugging Face CLI is logged in
         if not HfFolder.get_token():
             print("Hugging Face token not found. Please login using `huggingface-cli login`.")
             return
-        
+
         # Upload the model
         api = HfApi()
         print(f"Uploading processed model to Hugging Face Hub: {new_model_id}")
         api.create_repo(repo_id=new_model_id, private=private, exist_ok=True)
         api.upload_folder(folder_path=temp_dir, repo_id=new_model_id)
-        
+
         # Cleanup temporary directory
         shutil.rmtree(temp_dir)
-        
+
         print("Upload completed successfully.")
-
-    def process_and_upload_hf_model(self, model_id: str, private: bool = False):
-        """
-        Processes the PEFT model and uploads it to the Hugging Face Hub.
-
-        Args:
-        - model_id (str): The desired model ID on the Hugging Face Hub (e.g., "username/model_name").
-        - private (bool): If True, the model will be uploaded as a private model.
-        """
-<<<<<<< HEAD
-        try:
-            # Check for Hugging Face CLI authentication
-            if not HfFolder.get_token():
-                raise ValueError("Hugging Face token not found. Please log in using `huggingface-cli login`.")
-            
-            # Ensure the specified directory contains model files
-            if not os.listdir(model_directory):
-                raise FileNotFoundError(f"No files found in {model_directory}. Please check the path and try again.")
-
-            # Create or get the repository
-            repo_url = HfApi().create_repo(name=model_id, private=private, exist_ok=True, use_auth_token=True)
-            print(f"Repository URL: {repo_url}")
-
-            # Initialize the repository, add files, commit, and push
-            repo = Repository(local_dir=model_directory, clone_from=repo_url, use_auth_token=True)
-            repo.git_add()
-            repo.git_commit("Upload model to Hugging Face Hub")
-            repo.git_push()
-
-            print(f"Model '{model_id}' successfully uploaded to the Hugging Face Hub.")
-        except Exception as e:
-            print(f"Failed to upload the model: {e}")
-        
-=======
-        self.download_hf_weights_if_needed()
-        model_directory = self.weights_path 
-        self.upload_model_to_hf(model_directory, model_id, private)
-
-    def upload_hf_model(self, new_model_id: str, model_path:str, private: bool = False):
-        """
-        Uploads the PEFT model to the Hugging Face Hub, with reverse conversion of weights.
-        
-        :param new_model_id: The new model ID for the Hugging Face Hub.
-        :param model_path: The path where the FlexFlow weights are stored.
-        :param private: Whether to upload the model as a private model.
-        """
-        print(f"Preparing model for upload to Hugging Face Hub: {new_model_id}")
-        
-        # Initialize a new Hugging Face model instance
-        hf_model = AutoModelForCausalLM.from_config(self.hf_config)
-        weights_path = self.weights_path
-        
-        # Load FlexFlow weights into the Hugging Face model instance
-        try:
-            self.model_class.load_weights_into_hf_model(hf_model, weights_path)
-        except Exception as e:
-            print(f"Error loading weights into model: {e}")
-            return
-        
-        # Save the model with converted weights to a temporary directory
-        temp_dir = tempfile.mkdtemp()
-        hf_model.save_pretrained(temp_dir)
-        
-        # Ensure Hugging Face CLI is logged in
-        if not HfFolder.get_token():
-            print("Hugging Face token not found. Please login using `huggingface-cli login`.")
-            return
-        
-        # Upload the model
-        api = HfApi()
-        print(f"Uploading processed model to Hugging Face Hub: {new_model_id}")
-        api.create_repo(repo_id=new_model_id, private=private, exist_ok=True)
-        api.upload_folder(folder_path=temp_dir, repo_id=new_model_id)
-        
-        # Cleanup temporary directory
-        shutil.rmtree(temp_dir)
-        
-        print("Upload completed successfully.")
->>>>>>> 4b760ac8 (refactor uploading peft)
