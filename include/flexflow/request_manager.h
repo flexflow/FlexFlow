@@ -228,7 +228,7 @@ public:
   TreeSearchBatchConfig prepare_next_batch_verify(
       std::vector<TreeSearchBatchConfig> const &old_batches);
   // A wrapper function.
-  TreeVerifyBatchConfigFuture prepare_next_batch_verify(
+  TreeSearchBatchConfigFuture prepare_next_batch_verify(
       std::vector<TreeSearchBatchConfigFuture> const &old_batches,
       Legion::Context ctx,
       Legion::Runtime *runtime);
@@ -324,11 +324,21 @@ public:
       Legion::Runtime *runtime);
   /* New APIs */
 
+  /* Old APIs for reference */
   static TreeVerifyBatchConfig prepare_next_batch_verify_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
+  /* Old APIs for reference */
+
+  /* New APIs */
+  static TreeSearchBatchConfig prepare_next_batch_verify_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+  /* New APIs */
 
 private:
   // configuration parameters

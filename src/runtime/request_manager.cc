@@ -1339,6 +1339,21 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify_task(
   return rm->prepare_next_batch_verify(old_batches);
 }
 
+/* New APIs */
+TreeSearchBatchConfig RequestManager::prepare_next_batch_verify_task(
+    Legion::Task const *task,
+    std::vector<Legion::PhysicalRegion> const &regions,
+    Legion::Context ctx,
+    Legion::Runtime *runtime) {
+  RequestManager *rm = *((RequestManager **)task->args);
+  std::vector<TreeSearchBatchConfig> old_batches;
+  for (auto const &bcf : task->futures) {
+    old_batches.push_back(Future(bcf).get_result<TreeSearchBatchConfig>());
+  }
+  return rm->prepare_next_batch_verify(old_batches);
+}
+/* New APIs */
+
 TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
     std::vector<TreeSearchBatchConfig> const &old_batches) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
@@ -1633,6 +1648,24 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 
   return new_bc;
 }
+
+/* New APIs */
+TreeSearchBatchConfig RequestManager::prepare_next_batch_verify(
+    std::vector<TreeSearchBatchConfig> const &old_batches) {
+  if (verbose) {
+    std::cout
+        << "\n############### prepare_next_batch_verify ###############\n";
+  }
+
+  assert(old_batches.size() > 0);
+
+  TreeVerifyBatchConfig new_bc;
+  new_bc.num_tokens_to_commit = 0;
+  new_bc.num_tokens = 0;
+
+  return new_bc;
+}
+/* New APIs */
 
 void RequestManager::store_ssm_inference_results(
     TreeSearchBatchConfig const &old_bc, SsmInferenceResult const &result) {
