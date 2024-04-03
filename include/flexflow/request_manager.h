@@ -76,11 +76,15 @@ struct Request {
   std::vector<struct TokenTree> token_trees; // New version
 };
 
-struct TokenTreeNode {
+class TokenTreeNode {
   BatchConfig::TokenId id;
   float joint_prob;
   int parent_pos;
   bool pruned = false;
+
+public:
+  TokenTreeNode(BatchConfig::TokenId id, float joint_prob, int parent_pos)
+      : id(id), joint_prob(joint_prob), parent_pos(parent_pos) {}
 };
 
 struct TreeLayer {

@@ -1640,15 +1640,50 @@ void RequestManager::store_ssm_inference_results(
   if (old_bc.num_tokens <= 0) {
     return;
   }
-  auto guid =
+  int depth = old_bc.current_depth;
+  int num_branches = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+  int num_old_bc_tokens_processed = 0;
+
+  FlexFlow::RequestManager::RequestGuid guid =
       old_bc.requestsInfo[old_bc.tokensInfo[0].request_index].request_guid;
-  auto start_depth = old_bc.tokensInfo[0].abs_depth_in_request;
+  Request &request = all_requests[guid];
+  int request_index = old_bc.tokensInfo[0].request_index;
+  int start_depth = old_bc.tokensInfo[0].abs_depth_in_request;
+
+  //   int result_index_begin = 0;
+  //   int result_index_end =
+  //       old_bc.tree_requests_info[request_index].num_tokens_at_depth *
+  //       num_branches; // Number of leaf tokens of the current request
   int result_index = 0;
 
   if (verbose) {
-    std::cout << "Store total of " << old_bc.num_tokens
+    std::cout << "Store total of " << old_bc.num_tokens * num_branches
               << " tokens in the current batch.\n";
   }
+
+  //   while (num_old_bc_tokens_processed < old_bc.num_tokens) {
+  //     // Process the tokens for the current request
+  //     for (int token_idx = 0;
+  //          token_idx < old_bc.tree_requests_info[request_index];
+  //          token_idx++) {
+  //       for (int token_result_idx = 0; token_result_idx < num_branches;
+  //            token_result_idx++) {
+  //         // Find parent joint probability
+  //         float parent_prob = request.token_trees.at(old_bc.model_id)
+  //                                 .tree_layers[depth - 1]
+  //                                 .nodes[result.parent_id[result_index]]
+  //                                 .joint_prob;
+  //         TokenTreeNode token_tree_node(result.token_ids[result_index],
+  //                                       result.probs[result_index] *
+  //                                       parent_prob,
+  //                                       result.parent_id[result_index]);
+  //         // Try to insert this
+  //         result_index++;
+  //       }
+  //     }
+
+  //     // Update request
+  //   }
 
   for (int i = 0; i <= old_bc.num_tokens; i++) {
     if (i == old_bc.num_tokens ||
