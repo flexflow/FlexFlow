@@ -306,12 +306,13 @@ class FlexFlowOPT(FlexFlowModel):
         # Reverse the previous conversion rules
         converted_name = (
             name
-            .replace("add_bias_residual_layer_norm_attn_bias", "attention_wo_bias")
-            .replace("_add_bias_residual_layer_norm", "_final_layer_norm")
+            .replace("add_bias_residual_layer_norm.attn_bias", "attention_wo_bias")
+            .replace(".add_bias_residual_layer_norm", ".final_layer_norm")
             .replace("wq", "q_proj")
             .replace("wk", "k_proj")
             .replace("wv", "v_proj")
             .replace("wo", "out_proj")
+            .replace("self_attn.o_proj", "self_attn.out_proj")
             .replace("attention", "self_attn")
         )
         
@@ -321,7 +322,8 @@ class FlexFlowOPT(FlexFlowModel):
         converted_name = converted_name.replace("embed_tokens_weight_lm_head", "embed_tokens.weight")
         
         # Prepend "model.decoder." to the weight name
-        converted_name = "model.decoder." + converted_name
+        if not converted_name.startswith("model.decoder.") and "lm_head" not in converted_name:
+            converted_name = "model.decoder." + converted_name
         
         return converted_name
 
@@ -330,33 +332,51 @@ class FlexFlowOPT(FlexFlowModel):
         """
         Load weights from a specified folder and apply them to a Hugging Face model.
         
+        This function iterates through the weight files in the specified folder, 
+        converts the FlexFlow weight names to Hugging Face format, and loads the 
+        weights into the Hugging Face model. It handles special cases like shape 
+        mismatches by adjusting the weights accordingly.
+        
         Parameters:
         - model: The instance of the Hugging Face model to load the weights into.
         - src_folder: The path to the folder containing the weight files.
         """
+        
         for file_name in os.listdir(src_folder):
             weight_path = os.path.join(src_folder, file_name)
-            print("converting weight name: ", weight_path)
-            if weight_path.endswith("rev_sha.txt"):
-                print("skipping rev_sha.txt")
-                continue
-            else:
-                original_name = FlexFlowOPT.convert_ff_weight_name(file_name.replace('.bin', ''))
-                print("original name of the weights is: ", original_name)
+            print("Converting weight name:", weight_path)
             
+            if weight_path.endswith("rev_sha.txt"):
+                print("Skipping rev_sha.txt")
+                continue
+
+            original_name = FlexFlowOPT.convert_ff_weight_name(file_name.replace('.bin', ''))
+            print("Original name of the weights is:", original_name)
             if not os.path.exists(weight_path):
                 raise FileNotFoundError(f"No weight file found for {file_name}")
             
-            # weight_data = np.fromfile(weight_path, dtype=np.float32)
             weight_data = np.fromfile(weight_path, dtype=np.float16).astype(np.float32)
             if original_name not in model.state_dict():
                 raise KeyError(f"Parameter {original_name} not found in model.")
             param = model.state_dict()[original_name]
             
-            if weight_data.size != param.numel():
-                raise ValueError(f"Shape mismatch for {original_name}, model expects {param.numel()} elements, got {weight_data.size}")
+            # Calculate the reshape size automatically based on expected parameter size
+            expected_numel = param.numel()
+            if weight_data.size != expected_numel:
+                print(f"Adjusting shape for {original_name} from {weight_data.size} to {expected_numel}")
+                # Check if weight_data can be evenly divided by expected_numel
+                if weight_data.size % expected_numel == 0:
+                    # Determine the reshape size
+                    factor = weight_data.size // expected_numel
+                    # Assume the extra dimension is at the first dimension (e.g., for embedding matrices)
+                    new_shape = (factor, ) + tuple(param.shape)
+                    weight_data_reshaped = weight_data.reshape(new_shape)
+                    # Use only the first part of the reshaped data if it matches the expected size
+                    weight_tensor = torch.from_numpy(weight_data_reshaped[0])
+                else:
+                    raise ValueError(f"Cannot adjust shape for {original_name} due to incompatible size.")
+            else:
+                weight_tensor = torch.from_numpy(weight_data).reshape(param.shape)
             
-            weight_tensor = torch.from_numpy(weight_data).reshape(param.shape)
             with torch.no_grad():
-                # Update the model's state dict directly since param.copy_ doesn't work on tensor slices or elements not in place
                 model.state_dict()[original_name].copy_(weight_tensor)
