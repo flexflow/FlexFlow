@@ -62,7 +62,7 @@ def get_configs():
             # required llm arguments
             "llm_model": "meta-llama/Llama-2-7b-hf",
             # optional llm parameters
-            "cache_path": "",
+            "cache_path": os.environ.get("FF_CACHE_PATH", ""),
             "refresh_cache": False,
             "full_precision": False,
             "ssms": [

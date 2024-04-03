@@ -62,7 +62,7 @@ def get_configs():
             # required parameters
             "llm_model": "tiiuae/falcon-7b",
             # optional parameters
-            "cache_path": "",
+            "cache_path": os.environ.get("FF_CACHE_PATH", ""),
             "refresh_cache": False,
             "full_precision": False,
             "prompt": "",
