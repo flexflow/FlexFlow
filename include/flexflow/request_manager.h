@@ -89,7 +89,7 @@ public:
 };
 
 struct TreeLayer {
-  std::vector<TokenTreeNode> nodes;
+  std::list<TokenTreeNode> nodes;
 };
 
 class TokenTree {
@@ -357,7 +357,6 @@ private:
   [[deprecated("This field will be removed")]]
   std::vector<int> spec_infer_tree_width; // Old version, delete after refactor
 
-  // private fields
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
   ModelType model_type;
