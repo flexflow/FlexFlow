@@ -295,7 +295,7 @@ class FlexFlowMPT(FlexFlowModel):
             
         converted_name = converted_name.replace("attention_wo", "attn.out_proj")
         converted_name = converted_name.replace("ffn_", "ffn.")
-        converted_name = re.sub(r"layers_(\d+)_", r"transformer.blocks.\1.", converted_name)
+        converted_name = re.sub(r"layers.(\d+).", r"transformer.blocks.\1.", converted_name)
         converted_name = re.sub(r"_(bias|weight)$", r".\1", converted_name)
         
         return converted_name

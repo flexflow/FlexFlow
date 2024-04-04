@@ -368,10 +368,8 @@ class FlexFlowOPT(FlexFlowModel):
                 if weight_data.size % expected_numel == 0:
                     # Determine the reshape size
                     factor = weight_data.size // expected_numel
-                    # Assume the extra dimension is at the first dimension (e.g., for embedding matrices)
                     new_shape = (factor, ) + tuple(param.shape)
                     weight_data_reshaped = weight_data.reshape(new_shape)
-                    # Use only the first part of the reshaped data if it matches the expected size
                     weight_tensor = torch.from_numpy(weight_data_reshaped[0])
                 else:
                     raise ValueError(f"Cannot adjust shape for {original_name} due to incompatible size.")

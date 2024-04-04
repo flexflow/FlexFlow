@@ -272,13 +272,12 @@ class FlexFlowSTARCODER(FlexFlowModel):
         Convert weight names from FlexFlow format back to Hugging Face format.
         """
         converted_name = name
-        # Example conversion logic, adjust as needed
-        if "attention_wo" in name:
-            converted_name = converted_name.replace("attention_wo", "attn.c_proj")
-            
-        converted_name = converted_name.replace("mlp_", "mlp.").replace("_ln_f", ".ln_f").replace("_wpe", ".wpe").replace("_wte", ".wte")
+        converted_name = converted_name.replace("attn.c_attn.o_proj", "attn.c_proj")
         
-        converted_name = re.sub(r"layers_(\d+)_", r"transformer.h.\1.", converted_name)
+        converted_name = converted_name.replace("mlp_", "mlp.").replace("_ln_f", ".ln_f").replace("_wpe", ".wpe").replace("_wte", ".wte")
+        if ("ln_f" in converted_name) or ("wpe" in converted_name) or ("wte" in converted_name):
+            converted_name = "transformer"+converted_name
+        converted_name = re.sub(r"layers.(\d+).", r"transformer.h.\1.", converted_name)
         converted_name = re.sub(r"_(bias|weight)$", r".\1", converted_name)
         
 
@@ -326,38 +325,42 @@ class FlexFlowSTARCODER(FlexFlowModel):
             print(f"Data type after conversion: {weight_data.dtype}, Size: {weight_data.size}")
             
             # Special handling for combined QKV weights
-            if ("attention_wq" in original_name) or ("attention_wk" in original_name) or ("attention_wv" in original_name):
+            if ("q_proj" in original_name) or ("k_proj" in original_name) or ("v_proj" in original_name):
                 weight_bias = ".weight" if ".weight" in original_name else ".bias"
-                layer_num_match = re.search(r"layers\_(\d+)", file_name)
+                layer_num_match = re.search(r"layers.(\d+)", file_name)
                 layer_num = int(layer_num_match.group(1)) if layer_num_match else None
+                print(f"layer_num is {layer_num}")
                 qkv_type = file_name.split("_")[-2]
                 qkv_name = f"transformer.h.{layer_num}.attn.c_attn" + weight_bias
                 
                 if layer_num is not None:
                     # initialize qkv layer in dict
                     if qkv_name not in qkv_weights:
-                        qkv_weights[qkv_name] = {'wq': None, 'wk': None, 'wv': None}
+                        qkv_weights[qkv_name] = {'attn.q': None, 'attn.k': None, 'attn.v': None}
                         print(f"Initialized QKV layer {layer_num}")
                     # assign weights into dict
                     qkv_weights[qkv_name][qkv_type] = weight_data
-                    print(f"attached qkv weight {qkv_name}")
+                    print(f"attached qkv weight {qkv_name} for type {qkv_type}, weight data dimension is {weight_data.shape}")
                 
                 continue
-
-
+            
+            # Handling for other parameters
             # for weights that are not q,k,v, get the param names and assign weights accordingly
             param = model.state_dict().get(original_name, None)
+            print(f"Param name: {original_name}")
             if weight_data.size != param.numel():
                 raise ValueError(f"Shape mismatch for {original_name}, model expects {param.numel()} elements, got {weight_data.size}")
             
             weight_tensor = torch.from_numpy(weight_data).reshape(param.shape)
+            print(f"shape of the weight tensor is: {weight_tensor.shape}")
             with torch.no_grad():
                 model.state_dict()[original_name].copy_(weight_tensor)
-                print(f"Assigned weight {original_name} successfully!")
+                print(f"Assigned weight {original_name} successfully!\n")
                 
                 
         for qkv_name, weights_dict in qkv_weights.items():
-            combined_qkv = np.concatenate([qkv_weights[qkv_name]['wq'], qkv_weights[qkv_name]['wk'], qkv_weights[qkv_name]['wv']], axis=0)
+            print(f"qkv name is {qkv_name}, with weight {weights_dict}")
+            combined_qkv = np.concatenate([qkv_weights[qkv_name]['attn.q'], qkv_weights[qkv_name]['attn.k'], qkv_weights[qkv_name]['attn.v']], axis=0)
             param_shape = model.state_dict()[qkv_name].shape
             combined_qkv_reshaped = combined_qkv.reshape(param_shape)
             print(f"reshaped qkv weights shape is: {combined_qkv_reshaped.shape}")

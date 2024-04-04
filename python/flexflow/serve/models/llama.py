@@ -318,12 +318,9 @@ class FlexFlowLLAMA(FlexFlowModel):
             if weight_data.size != expected_numel:
                 print(f"Adjusting shape for {original_name} from {weight_data.size} to {expected_numel}.")
                 if weight_data.size % expected_numel == 0:
-                    # If the weight data is an exact multiple of the expected size,
-                    # it's likely that the data includes redundant dimensions.
-                    # We'll reshape it by keeping only the first segment that matches the expected shape.
                     factor = weight_data.size // expected_numel
                     new_shape = (factor,) + tuple(param.shape)
-                    weight_data_reshaped = weight_data.reshape(new_shape)[0]  # Keep only the first segment
+                    weight_data_reshaped = weight_data.reshape(new_shape)[0] 
                     weight_tensor = torch.from_numpy(weight_data_reshaped)
                 else:
                     raise ValueError(f"Cannot adjust shape for {original_name} due to incompatible size.")

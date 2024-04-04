@@ -418,6 +418,7 @@ class LLM:
         # Initialize a new Hugging Face model instance
         hf_model = AutoModelForCausalLM.from_config(self.hf_config)
         weights_path = self.weights_path
+        print(f"model class is: {self.model_class}")
 
         # Load FlexFlow weights into the Hugging Face model instance
         try:
