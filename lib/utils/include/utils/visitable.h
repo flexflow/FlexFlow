@@ -333,6 +333,7 @@ struct visitable_formatter : public ::fmt::formatter<std::string> {
       : ::FlexFlow::visitable_formatter<::FlexFlow::TYPENAME> {};              \
   }                                                                            \
   namespace FlexFlow {                                                         \
+  DELEGATE_OSTREAM(::FlexFlow::TYPENAME); \
   static_assert(is_fmtable<TYPENAME>::value,                                   \
                 #TYPENAME                                                      \
                 " failed sanity check on is_fmtable and FF_VISIT_FMTABLE");    \
