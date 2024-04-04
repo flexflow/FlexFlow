@@ -2715,4 +2715,21 @@ RequestManager *RequestManager::get_request_manager() {
   return request_manager_singleton;
 }
 
+void RequestManager::add_token_to_speculation_tree(
+    RequestGuid guid,
+    BatchConfig::TokenId token_id,
+    int parent_pos,
+    float joint_prob) {}
+
+void RequestManager::prune_last_layer_of_speculation_tree(RequestGuid guid) {
+  // Assume we only use a single small model for now
+  Request &request = all_requests[guid];
+  TreeLayer &last_layer = request.token_trees[0].tree_layers.back();
+  for (auto it = last_layer.nodes.begin(); it != last_layer.nodes.end(); ++it) {
+    if (it->pruned) {
+      last_layer.nodes.erase(it);
+    }
+  }
+}
+
 }; // namespace FlexFlow

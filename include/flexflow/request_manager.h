@@ -86,6 +86,17 @@ class TokenTreeNode {
 public:
   TokenTreeNode(BatchConfig::TokenId id, float joint_prob, int parent_pos)
       : id(id), joint_prob(joint_prob), parent_pos(parent_pos) {}
+  bool operator>(TokenTreeNode const &other) const {
+    return joint_prob > other.joint_prob;
+  }
+};
+
+// A comparator for shared_ptr<TokenTreeNode>
+struct CompareSharedTokenTreeNodePtr {
+  bool operator()(std::shared_ptr<TokenTreeNode> const &lhs,
+                  std::shared_ptr<TokenTreeNode> const &rhs) const {
+    return *lhs > *rhs;
+  }
 };
 
 struct TreeLayer {
@@ -373,7 +384,10 @@ private:
 
   // This is a helper data structure to store help the pruning of the token
   // trees across different requests.
-  std::priority_queue<std::shared_ptr<TokenTreeNode>> token_tree_node_pool;
+  std::priority_queue<std::shared_ptr<TokenTreeNode>,
+                      std::vector<std::shared_ptr<TokenTreeNode>>,
+                      CompareSharedTokenTreeNodePtr>
+      token_tree_node_pool;
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,
@@ -399,6 +413,12 @@ private:
   };
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;
+
+  void add_token_to_speculation_tree(RequestGuid guid,
+                                     BatchConfig::TokenId token_id,
+                                     int parent_pos,
+                                     float joint_prob);
+  void prune_last_layer_of_speculation_tree(RequestGuid guid);
 };
 
 }; // namespace FlexFlow
