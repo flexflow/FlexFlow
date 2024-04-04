@@ -74,7 +74,7 @@ struct Request {
   std::vector<BatchConfig::TokenId> tokens;
 
   // In the current version, we only use one speculator
-  std::vector<struct TokenTree> speculative_token_trees; // New version
+  TokenTree speculative_token_tree; // New version
 };
 
 class TokenTreeNode {
