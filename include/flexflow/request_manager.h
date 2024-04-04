@@ -78,12 +78,12 @@ struct Request {
 };
 
 class TokenTreeNode {
+public:
   BatchConfig::TokenId id;
   float joint_prob;
   int parent_pos;
   bool pruned = false;
 
-public:
   TokenTreeNode(BatchConfig::TokenId id, float joint_prob, int parent_pos)
       : id(id), joint_prob(joint_prob), parent_pos(parent_pos) {}
   bool operator>(TokenTreeNode const &other) const {
@@ -99,12 +99,12 @@ struct CompareSharedTokenTreeNodePtr {
   }
 };
 
-struct TreeLayer {
-  std::list<TokenTreeNode> nodes;
+struct TokenTreeLayer {
+  std::list<shared_ptr<TokenTreeNode>> nodes;
 };
 
-class TokenTree {
-  std::vector<TreeLayer> tree_layers;
+struct TokenTree {
+  std::vector<TokenTreeLayer> tree_layers;
 };
 
 class RequestManager {

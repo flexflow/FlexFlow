@@ -2719,14 +2719,53 @@ void RequestManager::add_token_to_speculation_tree(
     RequestGuid guid,
     BatchConfig::TokenId token_id,
     int parent_pos,
-    float joint_prob) {}
+    float joint_prob) {
+  // This function assumes that there are only one small model
+
+  // We maintain the size of the token tree node pool to not exceed
+  // BatchConfig::MAX_NUM_TOKENS
+  if (token_tree_node_pool.size() < BatchConfig::MAX_NUM_TOKENS) {
+    Request &request = all_requests[guid];
+    TokenTreeLayer &last_layer =
+        request.speculative_token_trees[0].tree_layers.back();
+    // Add to the last layer of the speculation tree
+    auto node_ptr =
+        std::make_shared<TokenTreeNode>(token_id, parent_pos, joint_prob);
+    last_layer.nodes.push_back(node_ptr);
+    token_tree_node_pool.push(node_ptr);
+    return;
+  }
+
+  // The pool is full, check if the new node has a higher joint probability
+  // than the minimum node in the pool.
+  std::shared_ptr<TokenTreeNode> min_node_in_pool = token_tree_node_pool.top();
+  if (joint_prob < min_node_in_pool->joint_prob) {
+    // Insertion failed
+    return;
+  }
+
+  // Remove the minimum node from the pool, and set its pruned field to true
+  min_node_in_pool->pruned = true;
+  token_tree_node_pool.pop();
+  // Add the new node to the pool and the last layer of the speculation tree
+  auto node_ptr =
+      std::make_shared<TokenTreeNode>(token_id, parent_pos, joint_prob);
+  token_tree_node_pool.push(node_ptr);
+  Request &request = all_requests[guid];
+  TokenTreeLayer &last_layer =
+      request.speculative_token_trees[0].tree_layers.back();
+  last_layer.nodes.push_back(node_ptr);
+  return;
+}
 
 void RequestManager::prune_last_layer_of_speculation_tree(RequestGuid guid) {
   // Assume we only use a single small model for now
+
   Request &request = all_requests[guid];
-  TreeLayer &last_layer = request.token_trees[0].tree_layers.back();
+  TokenTreeLayer &last_layer =
+      request.speculative_token_trees[0].tree_layers.back();
   for (auto it = last_layer.nodes.begin(); it != last_layer.nodes.end(); ++it) {
-    if (it->pruned) {
+    if ((*it)->pruned) {
       last_layer.nodes.erase(it);
     }
   }
