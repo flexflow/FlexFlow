@@ -73,7 +73,8 @@ struct Request {
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
-  std::vector<struct TokenTree> token_trees; // New version
+  // In the current version, we only use one speculator
+  std::vector<struct TokenTree> speculative_token_trees; // New version
 };
 
 class TokenTreeNode {
@@ -353,6 +354,7 @@ private:
   Status request_manager_status;
 
   // tree width in each speculative step, if not specified 1
+  [[deprecated("This field will be removed")]]
   std::vector<int> spec_infer_tree_width; // Old version, delete after refactor
 
   // private fields
@@ -369,6 +371,7 @@ private:
   std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
+
   // This is a helper data structure to store help the pruning of the token
   // trees across different requests.
   std::priority_queue<std::shared_ptr<TokenTreeNode>> token_tree_node_pool;
@@ -381,15 +384,15 @@ private:
       committed_tokens;
 
   // Multi-model support
+  [[deprecated("Multiple SSMs is no longer supported")]]
   std::vector<FFModel *> ssm_models;
-
-  // Performance profiling
-  size_t num_processed_requests;
 
   // Background server handler
   Legion::Future background_server_handler;
 
-private:
+  // Performance profiling
+  size_t num_processed_requests;
+
   struct ProfileInfo {
     int llm_decoding_steps;
     int ssm_decoding_steps;
