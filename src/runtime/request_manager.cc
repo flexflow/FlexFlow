@@ -172,9 +172,8 @@ int RequestManager::register_ssm_model(FFModel *model) {
   return model_id;
 }
 
-FFModel *RequestManager::get_ssm_model(int model_id) {
-  assert(model_id < ssm_models.size());
-  return ssm_models[model_id];
+FFModel *RequestManager::get_ssm_model() {
+  return ssm_model;
 }
 
 size_t RequestManager::get_num_ssms() {

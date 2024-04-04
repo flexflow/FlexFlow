@@ -151,7 +151,7 @@ public:
                      int initLength,
                      int non_tree_size);
 
-  FFModel *get_ssm_model(int model_id);
+  FFModel *get_ssm_model();
 
   void serve_incr_decoding(FFModel *model);
   void serve_spec_infer(FFModel *model);
@@ -399,6 +399,8 @@ private:
   // Multi-model support
   [[deprecated("Multiple SSMs is no longer supported")]]
   std::vector<FFModel *> ssm_models;
+  // New version
+  FFModel *ssm_model;
 
   // Background server handler
   Legion::Future background_server_handler;
