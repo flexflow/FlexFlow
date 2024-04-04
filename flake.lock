@@ -33,10 +33,34 @@
         "type": "indirect"
       }
     },
+    "proj-repo": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1711832134,
+        "narHash": "sha256-2KceZmXOOELnFiVH/wjndH2QtKro+B0W2SEkjkzuDD0=",
+        "owner": "lockshaw",
+        "repo": "proj",
+        "rev": "1c7c809a6cab8360620bb27470a615a1a0b03a17",
+        "type": "github"
+      },
+      "original": {
+        "owner": "lockshaw",
+        "repo": "proj",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "proj-repo": "proj-repo"
       }
     },
     "systems": {
