@@ -14,6 +14,7 @@ namespace FlexFlow {
  */
 enum class TensorAttributeKey { DIM_SIZES, DIM_DEGREES };
 
+
 /**
  * @brief DIM_SIZES and DIM_DEGREES are represented by 
  * a vector of ints that is listed as corresponding dimension
@@ -33,6 +34,7 @@ using TensorAttributeConstraint =
  */
 using ParallelTensorPattern =
     AttributePattern<TensorAttributeKey, TensorAttributeValue>;
+
 
 /**
  * @brief evaluate_attribute_expr evaluates the attribute expression for a given ParallelTensor

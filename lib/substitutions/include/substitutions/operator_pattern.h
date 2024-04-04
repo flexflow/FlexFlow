@@ -82,6 +82,7 @@ enum class OperatorAttributeKey {
   NUM_INPUTS
 };
 
+
 /**
  * @brief OperatorAttributeValue is a representation of the concrete value of an attribute of an Operator.
  * The OperatorAttributeValue is evaluated from AttributeExpr. The datatype of the value corresponds to the 
@@ -120,7 +121,6 @@ using OperatorAttributeConstraint =
  */
 using OperatorPattern =
     AttributePattern<OperatorAttributeKey, OperatorAttributeValue>;
-
 
 /**
  * @brief Given a specific attribute of an Operator, evaluate the expression of the attribute 

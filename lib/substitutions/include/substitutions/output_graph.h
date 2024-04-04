@@ -27,6 +27,7 @@ struct AttrConstant {
   OperatorAttributeValue value;
 };
 
+
 /**
  * @brief OperatorAttributeExpr is a access to the attribute of an operator and can be
  * evaluated to a concrete value. OperatorAttributeExpr is used at substitution phase. 
