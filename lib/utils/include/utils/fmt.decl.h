@@ -9,8 +9,8 @@
   static_assert(::FlexFlow::is_fmtable<__VA_ARGS__>::value,                    \
                 #__VA_ARGS__ " must be fmtable");
 
-#define DELEGATE_OSTREAM(...)                                                     \
-  template <> \
+#define DELEGATE_OSTREAM(...)                                                  \
+  template <>                                                                  \
   struct delegate_ostream_operator<__VA_ARGS__> : std::true_type {}
 
 namespace FlexFlow {

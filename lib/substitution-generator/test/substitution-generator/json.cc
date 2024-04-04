@@ -1,5 +1,5 @@
-#include "doctest/doctest.h"
 #include "substitution-generator/json.h"
+#include "doctest/doctest.h"
 
 using namespace FlexFlow;
 using nlohmann::json;

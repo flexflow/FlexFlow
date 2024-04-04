@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_SUBSTITUTION_LOADER_H
 #define _FLEXFLOW_SUBSTITUTION_LOADER_H
 
+#include "op-attrs/op.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include "op-attrs/op.h"
 
 namespace FlexFlow {
 
