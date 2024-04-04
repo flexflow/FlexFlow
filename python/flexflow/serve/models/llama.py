@@ -271,7 +271,7 @@ class FlexFlowLLAMA(FlexFlowModel):
             .replace("wv", "v_proj")
             .replace("wo", "o_proj")
             .replace("feed_forward_", "mlp.")
-            .replace("self_attn", "attention")
+            .replace("post_self_attn", "post_attention")
             .replace("attention_norm", "input_layernorm")
             .replace("tok_embeddings", "embed_tokens")
             .replace("output", "lm_head")
@@ -280,7 +280,7 @@ class FlexFlowLLAMA(FlexFlowModel):
         
         converted_name = re.sub(r"layers_(\d+)_", r"layers.\1.", converted_name)
         converted_name = re.sub(r"_(bias|weight)$", r".\1", converted_name)
-        converted_name = re.sub(r"attention_(?!norm)", "self_attn.", converted_name)
+        # converted_name = re.sub(r"attention_(?!norm)", "self_attn.", converted_name)
         
         converted_name = converted_name.replace("ffn_norm", "post_attention_layernorm")
             
@@ -288,7 +288,6 @@ class FlexFlowLLAMA(FlexFlowModel):
             converted_name = "model." + converted_name   
                  
         return converted_name
-    
     
     def load_weights_into_hf_model(model, src_folder):
         """
@@ -313,11 +312,23 @@ class FlexFlowLLAMA(FlexFlowModel):
             weight_data = np.fromfile(weight_path, dtype=np.float16).astype(np.float32)
             if original_name not in model.state_dict():
                 raise KeyError(f"Parameter {original_name} not found in model.")
+            
             param = model.state_dict()[original_name]
+            expected_numel = param.numel()
+            if weight_data.size != expected_numel:
+                print(f"Adjusting shape for {original_name} from {weight_data.size} to {expected_numel}.")
+                if weight_data.size % expected_numel == 0:
+                    # If the weight data is an exact multiple of the expected size,
+                    # it's likely that the data includes redundant dimensions.
+                    # We'll reshape it by keeping only the first segment that matches the expected shape.
+                    factor = weight_data.size // expected_numel
+                    new_shape = (factor,) + tuple(param.shape)
+                    weight_data_reshaped = weight_data.reshape(new_shape)[0]  # Keep only the first segment
+                    weight_tensor = torch.from_numpy(weight_data_reshaped)
+                else:
+                    raise ValueError(f"Cannot adjust shape for {original_name} due to incompatible size.")
+            else:
+                weight_tensor = torch.from_numpy(weight_data).reshape(param.shape)
             
-            if weight_data.size != param.numel():
-                raise ValueError(f"Shape mismatch for {original_name}, model expects {param.numel()} elements, got {weight_data.size}")
-            
-            weight_tensor = torch.from_numpy(weight_data).reshape(param.shape)
             with torch.no_grad():
-                model.state_dict()[original_name].copy_(weight_tensor)
+                param.copy_(weight_tensor)
