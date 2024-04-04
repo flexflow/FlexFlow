@@ -73,12 +73,12 @@ private:
 
 template <typename T>
 T optimal_cost(ParallelComputationGraph const &g,
-                 std::function<std::unordered_set<MachineView>(
-                     Operator const &, MachineSpecification const &)> const
-                     &allowed_machine_views,
-                 CostEstimator const &cost_estimator,
-                 MachineSpecification const &resources,
-                 OptimalCostCache<T> &cached_subgraph_costs);
+               std::function<std::unordered_set<MachineView>(
+                   Operator const &, MachineSpecification const &)> const
+                   &allowed_machine_views,
+               CostEstimator const &cost_estimator,
+               MachineSpecification const &resources,
+               OptimalCostCache<T> &cached_subgraph_costs);
 
 struct MemoryConfig {
   static MemoryConfig combine(MemoryConfig const &, MemoryConfig const &);

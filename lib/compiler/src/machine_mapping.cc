@@ -134,8 +134,7 @@ std::optional<T>
 }
 
 template <typename T>
-void OptimalCostCache<T>::save(OptimalCostState const &state,
-                            T const &result) {
+void OptimalCostCache<T>::save(OptimalCostState const &state, T const &result) {
   assert(!contains_key(cache, state));
   cache.emplace(state, result);
 }
@@ -252,10 +251,9 @@ struct MachineMappingSearcher {
     }
   };
 
-  ResultType
-      optimal_cost(SubParallelComputationGraphView const &g,
-                   MachineSpecification resource,
-                   SerialParallelDecomposition const &sp_decomposition) {
+  ResultType optimal_cost(SubParallelComputationGraphView const &g,
+                          MachineSpecification resource,
+                          SerialParallelDecomposition const &sp_decomposition) {
     return visit(OptimalCostFunctor(this, g, resource, {}, {}),
                  sp_decomposition);
   }
@@ -395,12 +393,12 @@ struct MachineMappingSearcher {
 
 template <typename T>
 T optimal_cost(ParallelComputationGraph const &g,
-                 std::function<std::unordered_set<MachineView>(
-                     Operator const &, MachineSpecification const &)> const
-                     &allowed_machine_views,
-                 CostEstimator const &cost_estimator,
-                 MachineSpecification const &resources,
-                 OptimalCostCache<T> &cached_subgraph_costs) {
+               std::function<std::unordered_set<MachineView>(
+                   Operator const &, MachineSpecification const &)> const
+                   &allowed_machine_views,
+               CostEstimator const &cost_estimator,
+               MachineSpecification const &resources,
+               OptimalCostCache<T> &cached_subgraph_costs) {
   SerialParallelDecomposition sp_decomposition =
       get_serial_parallel_decomposition(g);
   SubParallelComputationGraphView subpcg = pcg_to_subpcg(g);
