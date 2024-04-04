@@ -12,14 +12,24 @@ namespace FlexFlow {
 using SubParallelComputationGraphView =
     OutputLabelledOpenMultiDiGraphView<Operator, ParallelTensor>;
 
-struct MachineMapping {
-  static MachineMapping combine(MachineMapping const &, MachineMapping const &);
-  static bool nodes_are_disjoint(MachineMapping const &m1,
-                                 MachineMapping const &m2);
-
-  req<std::unordered_map<Node, MachineView>> machine_views;
+enum class OpMemoryDecision {
+  None,
+  Remat,
 };
-FF_VISITABLE_STRUCT(MachineMapping, machine_views);
+
+template <typename T>
+struct NodeMapping {
+  static NodeMapping combine(NodeMapping const &, NodeMapping const &);
+  static bool nodes_are_disjoint(NodeMapping const &m1, NodeMapping const &m2);
+
+  req<std::unordered_map<Node, T>> mapping;
+};
+
+using MachineMapping = NodeMapping<MachineView>;
+using MemoryDecision = NodeMapping<OpMemoryDecision>;
+
+FF_VISITABLE_STRUCT(MachineMapping, mapping);
+FF_VISITABLE_STRUCT(MemoryDecision, mapping);
 
 struct OptimalCostState {
   SerialParallelDecomposition subgraph;
@@ -49,25 +59,59 @@ struct OptimalCostRuntimeCmp {
   bool operator()(OptimalCostResult const &, OptimalCostResult const &);
 };
 
+template <typename T>
 class OptimalCostCache {
 public:
   OptimalCostCache() = default;
 
-  std::optional<OptimalCostResult> load(OptimalCostState const &) const;
-  void save(OptimalCostState const &, OptimalCostResult const &);
+  std::optional<T> load(OptimalCostState const &) const;
+  void save(OptimalCostState const &, T const &);
 
 private:
-  std::unordered_map<OptimalCostState, OptimalCostResult> cache;
+  std::unordered_map<OptimalCostState, T> cache;
 };
 
-OptimalCostResult
-    optimal_cost(ParallelComputationGraph const &g,
+template <typename T>
+T optimal_cost(ParallelComputationGraph const &g,
                  std::function<std::unordered_set<MachineView>(
                      Operator const &, MachineSpecification const &)> const
                      &allowed_machine_views,
                  CostEstimator const &cost_estimator,
                  MachineSpecification const &resources,
-                 OptimalCostCache &cached_subgraph_costs);
+                 OptimalCostCache<T> &cached_subgraph_costs);
+
+struct MemoryConfig {
+  static MemoryConfig combine(MemoryConfig const &, MemoryConfig const &);
+
+  float residual_memory;
+  req<float> temporary_memory;
+};
+FF_VISITABLE_STRUCT(MemoryConfig, residual_memory, temporary_memory);
+
+struct MemoryResult {
+  static MemoryResult sequential_combine(MemoryResult const &,
+                                         MemoryResult const &);
+  static MemoryResult parallel_combine(MemoryResult const &,
+                                       MemoryResult const &);
+
+  float runtime;
+  MachineMapping machine_mapping;
+  MemoryDecision memory_decision;
+};
+FF_VISITABLE_STRUCT(MemoryResult, runtime, machine_mapping, memory_decision);
+
+struct OptimalCostResultWithMemory {
+  static OptimalCostResultWithMemory
+      sequential_combine(OptimalCostResultWithMemory const &s1,
+                         OptimalCostResultWithMemory const &s2);
+  static OptimalCostResultWithMemory
+      parallel_combine(OptimalCostResultWithMemory const &s1,
+                       OptimalCostResultWithMemory const &s2);
+  static OptimalCostResultWithMemory infinity();
+
+  req<std::unordered_map<MemoryConfig, MemoryResult>> results;
+};
+FF_VISITABLE_STRUCT(OptimalCostResultWithMemory, results);
 
 } // namespace FlexFlow
 

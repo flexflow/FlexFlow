@@ -7,14 +7,16 @@
 
 namespace FlexFlow {
 
-MachineMapping MachineMapping::combine(MachineMapping const &s1,
-                                       MachineMapping const &s2) {
-  return MachineMapping{merge_maps(s1.machine_views, s2.machine_views)};
+template <typename T>
+NodeMapping<T> NodeMapping<T>::combine(NodeMapping<T> const &s1,
+                                       NodeMapping<T> const &s2) {
+  return NodeMapping<T>{merge_maps(s1.mapping, s2.mapping)};
 }
 
-bool MachineMapping::nodes_are_disjoint(MachineMapping const &m1,
-                                        MachineMapping const &m2) {
-  return are_disjoint(keys(m1.machine_views), keys(m2.machine_views));
+template <typename T>
+bool NodeMapping<T>::nodes_are_disjoint(NodeMapping<T> const &m1,
+                                        NodeMapping<T> const &m2) {
+  return are_disjoint(keys(m1.mapping), keys(m2.mapping));
 }
 
 OptimalCostResult
@@ -43,17 +45,97 @@ bool OptimalCostRuntimeCmp::operator()(OptimalCostResult const &lhs,
   return lhs.runtime < rhs.runtime;
 }
 
-std::optional<OptimalCostResult>
-    OptimalCostCache::load(OptimalCostState const &state) const {
+MemoryConfig MemoryConfig::combine(MemoryConfig const &s1,
+                                   MemoryConfig const &s2) {
+  return MemoryConfig{s1.residual_memory + s2.residual_memory,
+                      std::max(s1.temporary_memory, s2.temporary_memory)};
+}
+
+MemoryResult MemoryResult::sequential_combine(MemoryResult const &s1,
+                                              MemoryResult const &s2) {
+  return MemoryResult{
+      s1.runtime + s2.runtime,
+      MachineMapping::combine(s1.machine_mapping, s2.machine_mapping),
+      MemoryDecision::combine(s1.memory_decision, s2.memory_decision)};
+}
+
+MemoryResult MemoryResult::parallel_combine(MemoryResult const &s1,
+                                            MemoryResult const &s2) {
+  return MemoryResult{
+      std::max(s1.runtime, s2.runtime),
+      MachineMapping::combine(s1.machine_mapping, s2.machine_mapping),
+      MemoryDecision::combine(s1.memory_decision, s2.memory_decision)};
+}
+
+OptimalCostResultWithMemory OptimalCostResultWithMemory::sequential_combine(
+    OptimalCostResultWithMemory const &s1,
+    OptimalCostResultWithMemory const &s2) {
+  std::unordered_map<MemoryConfig, MemoryResult> results;
+
+  auto temporary_memory_exists = [&](float t) {
+    for (auto const &[config, result] : results) {
+      if (config.temporary_memory == t) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (auto const &[config1, result1] : s1.results) {
+    for (auto const &[config2, result2] : s2.results) {
+      MemoryConfig config = MemoryConfig::combine(config1, config2);
+      MemoryResult result = MemoryResult::sequential_combine(result1, result2);
+      if (!contains_key(results, config) ||
+          results.at(config).runtime > result.runtime) {
+        results[config] = result;
+      }
+    }
+  }
+
+  return OptimalCostResultWithMemory{results};
+}
+
+OptimalCostResultWithMemory OptimalCostResultWithMemory::parallel_combine(
+    OptimalCostResultWithMemory const &s1,
+    OptimalCostResultWithMemory const &s2) {
+  std::unordered_map<MemoryConfig, MemoryResult> results;
+
+  auto temporary_memory_exists = [&](float t) {
+    for (auto const &[config, result] : results) {
+      if (config.temporary_memory == t) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (auto const &[config1, result1] : s1.results) {
+    for (auto const &[config2, result2] : s2.results) {
+      MemoryConfig config = MemoryConfig::combine(config1, config2);
+      MemoryResult result = MemoryResult::parallel_combine(result1, result2);
+      if (!contains_key(results, config) ||
+          results.at(config).runtime > result.runtime) {
+        results[config] = result;
+      }
+    }
+  }
+
+  return OptimalCostResultWithMemory{results};
+}
+
+template <typename T>
+std::optional<T>
+    OptimalCostCache<T>::load(OptimalCostState const &state) const {
   if (contains_key(cache, state)) {
-    OptimalCostResult result = cache.at(state);
+    T result = cache.at(state);
     return std::make_optional(result);
   }
   return std::nullopt;
 }
 
-void OptimalCostCache::save(OptimalCostState const &state,
-                            OptimalCostResult const &result) {
+template <typename T>
+void OptimalCostCache<T>::save(OptimalCostState const &state,
+                            T const &result) {
   assert(!contains_key(cache, state));
   cache.emplace(state, result);
 }
@@ -105,22 +187,26 @@ float estimate_cost(SubParallelComputationGraphView const &g,
                     return g.at(input_edge).get_shape();
                   });
     cost += estimator.estimate_cost(
-        g.at(node).attrs, inputs, device_mapping.machine_views.at(node));
+        g.at(node).attrs, inputs, device_mapping.mapping.at(node));
   }
   return cost;
 }
 
-void minimize_runtime(OptimalCostResult &m1, OptimalCostResult const &m2) {
-  minimize(m1, m2, OptimalCostRuntimeCmp{});
+template <typename T>
+void minimize_runtime(T &m1, T const &m2) {
+  if (m1.runtime > m2.runtime) {
+    m1 = m2;
+  }
 }
 
+template <typename ResultType>
 struct MachineMappingSearcher {
   MachineMappingSearcher(
       CostEstimator cost_estimator,
       std::function<std::unordered_set<MachineView>(
           Operator const &, MachineSpecification const &)> const
           &allowed_machine_views,
-      OptimalCostCache &cached_subgraph_costs)
+      OptimalCostCache<ResultType> &cached_subgraph_costs)
       : cost_estimator(cost_estimator),
         allowed_machine_views(allowed_machine_views),
         cached_subgraph_costs(cached_subgraph_costs) {}
@@ -129,11 +215,11 @@ struct MachineMappingSearcher {
   std::function<std::unordered_set<MachineView>(Operator const &,
                                                 MachineSpecification const &)>
       allowed_machine_views;
-  OptimalCostCache &cached_subgraph_costs;
+  OptimalCostCache<ResultType> &cached_subgraph_costs;
 
   struct OptimalCostFunctor {
     OptimalCostFunctor(
-        MachineMappingSearcher *searcher,
+        MachineMappingSearcher<ResultType> *searcher,
         SubParallelComputationGraphView const &g,
         MachineSpecification resource,
         std::unordered_map<Node, MachineView> given_machine_views,
@@ -142,23 +228,23 @@ struct MachineMappingSearcher {
           given_machine_views(given_machine_views),
           frontier_machine_views(frontier_machine_views) {}
 
-    MachineMappingSearcher *searcher;
+    MachineMappingSearcher<ResultType> *searcher;
     SubParallelComputationGraphView const &g;
     MachineSpecification resource;
     std::unordered_map<Node, MachineView> given_machine_views;
     std::unordered_map<OpenMultiDiEdge, MachineView> frontier_machine_views;
 
     template <typename T>
-    OptimalCostResult operator()(T const &t) {
+    ResultType operator()(T const &t) {
       OptimalCostState state{
           t, resource, given_machine_views, frontier_machine_views};
-      std::optional<OptimalCostResult> cached_result =
+      std::optional<ResultType> cached_result =
           searcher->cached_subgraph_costs.load(state);
 
       if (cached_result) {
         return cached_result.value();
       }
-      OptimalCostResult result = searcher->optimal_cost(
+      ResultType result = searcher->optimal_cost(
           t, g, resource, given_machine_views, frontier_machine_views);
 
       searcher->cached_subgraph_costs.save(state, result);
@@ -166,7 +252,7 @@ struct MachineMappingSearcher {
     }
   };
 
-  OptimalCostResult
+  ResultType
       optimal_cost(SubParallelComputationGraphView const &g,
                    MachineSpecification resource,
                    SerialParallelDecomposition const &sp_decomposition) {
@@ -174,7 +260,7 @@ struct MachineMappingSearcher {
                  sp_decomposition);
   }
 
-  OptimalCostResult optimal_cost(
+  ResultType optimal_cost(
       Serial const &serial,
       SubParallelComputationGraphView const &g,
       MachineSpecification const &resource,
@@ -200,7 +286,7 @@ struct MachineMappingSearcher {
     Node split_point = get_only(post_graph_sources);
     OutputMultiDiEdge split_edge = get_only(get_open_outputs(pre_graph));
 
-    OptimalCostResult optimal_result = OptimalCostResult::infinity();
+    ResultType optimal_result = ResultType::infinity();
 
     for (MachineView const &mv :
          allowed_machine_views(g.at(split_point), resource)) {
@@ -211,7 +297,7 @@ struct MachineMappingSearcher {
           new_frontier_machine_views = frontier_machine_views;
       new_frontier_machine_views.emplace(split_edge, mv);
       minimize_runtime(optimal_result,
-                       OptimalCostResult::sequential_combine(
+                       ResultType::sequential_combine(
                            visit(OptimalCostFunctor(this,
                                                     pre_graph,
                                                     resource,
@@ -229,7 +315,7 @@ struct MachineMappingSearcher {
     return optimal_result;
   }
 
-  OptimalCostResult optimal_cost(
+  ResultType optimal_cost(
       Parallel const &parallel,
       SubParallelComputationGraphView const &g,
       MachineSpecification const &resource,
@@ -246,7 +332,7 @@ struct MachineMappingSearcher {
                                     g2 = get_subgraph<OpenMultiDiSubgraphView>(
                                         g, graph_split.second);
 
-    OptimalCostResult optimal_result = OptimalCostResult::sequential_combine(
+    ResultType optimal_result = ResultType::sequential_combine(
         visit(OptimalCostFunctor(this,
                                  g1,
                                  resource,
@@ -262,7 +348,7 @@ struct MachineMappingSearcher {
 
     for (auto const &resource_split : get_resource_split(resource)) {
       minimize_runtime(optimal_result,
-                       OptimalCostResult::parallel_combine(
+                       ResultType::parallel_combine(
                            visit(OptimalCostFunctor(this,
                                                     g1,
                                                     resource_split.first,
@@ -280,7 +366,7 @@ struct MachineMappingSearcher {
     return optimal_result;
   }
 
-  OptimalCostResult optimal_cost(
+  ResultType optimal_cost(
       Node const &node,
       SubParallelComputationGraphView const &g,
       MachineSpecification const &resource,
@@ -294,7 +380,7 @@ struct MachineMappingSearcher {
       return {estimate_cost(g, cost_estimator, mv_map, frontier_machine_views),
               mv_map};
     } else {
-      OptimalCostResult optimal_result = OptimalCostResult::infinity();
+      ResultType optimal_result = ResultType::infinity();
       for (auto mv : allowed_machine_views(g.at(node), resource)) {
         MachineMapping mv_map{{{node, mv}}};
         minimize_runtime(
@@ -307,18 +393,18 @@ struct MachineMappingSearcher {
   }
 };
 
-OptimalCostResult
-    optimal_cost(ParallelComputationGraph const &g,
+template <typename T>
+T optimal_cost(ParallelComputationGraph const &g,
                  std::function<std::unordered_set<MachineView>(
                      Operator const &, MachineSpecification const &)> const
                      &allowed_machine_views,
                  CostEstimator const &cost_estimator,
                  MachineSpecification const &resources,
-                 OptimalCostCache &cached_subgraph_costs) {
+                 OptimalCostCache<T> &cached_subgraph_costs) {
   SerialParallelDecomposition sp_decomposition =
       get_serial_parallel_decomposition(g);
   SubParallelComputationGraphView subpcg = pcg_to_subpcg(g);
-  MachineMappingSearcher searcher(
+  MachineMappingSearcher<T> searcher(
       cost_estimator, allowed_machine_views, cached_subgraph_costs);
   return searcher.optimal_cost(subpcg, resources, sp_decomposition);
 }
