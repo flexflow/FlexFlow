@@ -1042,13 +1042,15 @@ TreeSearchBatchConfig
                 << std::endl;
     }
   }
-  // Step 1: Store small model's inference result to the token tree struct
+
+  // Store small model's inference result to the token tree struct
   store_ssm_inference_results(old_bc, result);
 
-  // Step 2: preparing the next batch for existing requests
+  // Prepare the next batch for existing requests
   TreeSearchBatchConfig new_bc;
   new_bc.model_id = old_bc.model_id;
-  // std::cout << "old_bc.model_id: " << old_bc.model_id << "\n";
+  // We only support single small model
+  assert(old_bc.num_tokens > 0);
   int num_generation_tokens = 0;
 
   // Add incremental tokens to the batch
@@ -1749,6 +1751,7 @@ void RequestManager::store_ssm_inference_results(
 }
 
 // for updating the beam search metadata in requests in incremental phase
+[[deprecated("I don't think this function is used anymore")]]
 void RequestManager::update_beam_metadata(TreeSearchBatchConfig &new_bc,
                                           TreeSearchBatchConfig const &old_bc,
                                           BeamTree &tree,
