@@ -250,7 +250,6 @@ class FlexFlowMPT(FlexFlowModel):
 
         self.ffmodel = ffmodel
 
-    # TODO: finish this
     def convert_hf_weight_name(name):
         return (
             name.replace("transformer.blocks.", "layers.")
@@ -293,10 +292,13 @@ class FlexFlowMPT(FlexFlowModel):
         if "norm_f" in converted_name or "wte" in converted_name:
             converted_name = converted_name.replace("_", ".").replace("norm.f", "norm_f")
             
-        converted_name = converted_name.replace("attention_wo", "attn.out_proj")
+        converted_name = converted_name.replace("attn.o_proj", "attn.out_proj")
         converted_name = converted_name.replace("ffn_", "ffn.")
         converted_name = re.sub(r"layers.(\d+).", r"transformer.blocks.\1.", converted_name)
         converted_name = re.sub(r"_(bias|weight)$", r".\1", converted_name)
+        
+        if ("wte" in converted_name) or ("norm_f" in converted_name):
+            converted_name = "transformer." + converted_name
         
         return converted_name
 
@@ -320,7 +322,6 @@ class FlexFlowMPT(FlexFlowModel):
                 print("skipping rev_sha.txt")
                 continue
             elif "lm_head" in weight_path:
-                # todo: double check how to handle lm_head in uploading mpt models
                 print("skipping lm_head.weight")
                 continue
             else:
@@ -331,9 +332,10 @@ class FlexFlowMPT(FlexFlowModel):
                 raise FileNotFoundError(f"No weight file found for {file_name}")
             
             weight_data = np.fromfile(weight_path, dtype=np.float32)
+            print(f"Data type after conversion: {weight_data.dtype}, Size: {weight_data.size}")
             
             # Special handling for combined QKV weights
-            if ("wq" in file_name) or ("wk" in file_name) or ("wv" in file_name):
+            if ("q_proj" in file_name) or ("k_proj" in file_name) or ("v_proj" in file_name):
                 layer_num_match = re.search(r"layers\.(\d+)", original_name)
                 layer_num = int(layer_num_match.group(1)) if layer_num_match else None
                 qkv_type = original_name.split("_")[-2]
