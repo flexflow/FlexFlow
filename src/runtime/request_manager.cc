@@ -793,9 +793,9 @@ TreeSearchBatchConfig
 
         new_bc.sub_requests[i] = 1;
 
-        updateBitMask(new_bc.causalMask[i],
-                      verified_tokens.size(),
-                      request.tokens.size());
+        update_bitmask(new_bc.causalMask[i],
+                       verified_tokens.size(),
+                       request.tokens.size());
 
         // Token Info
         for (int j = 0; j < verified_tokens.size(); j++) {
@@ -1154,12 +1154,12 @@ TreeSearchBatchConfig
              &old_bc.causalMask[i],
              sizeof(BatchConfig::BitMask));
       BeamTree tree = request.beam_trees[old_bc.model_id];
-      appendBitMask(new_bc.causalMask[i],
-                    new_bc.beamRequestsInfo[i].sub_request_num,
-                    old_bc.beamRequestsInfo[i].beam_size,
-                    old_bc.beamRequestsInfo[i].sub_request_num,
-                    tree,
-                    old_bc.beamRequestsInfo[i].current_depth);
+      append_bitmask(new_bc.causalMask[i],
+                     new_bc.beamRequestsInfo[i].sub_request_num,
+                     old_bc.beamRequestsInfo[i].beam_size,
+                     old_bc.beamRequestsInfo[i].sub_request_num,
+                     tree,
+                     old_bc.beamRequestsInfo[i].current_depth);
       for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
         int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
         for (int k = 0; k < new_bc.beamRequestsInfo[i].sub_request_num; k++) {
@@ -1823,9 +1823,9 @@ void RequestManager::initBitMask(BatchConfig::BitMask &bitmask,
 }
 
 // prepare next init
-void RequestManager::updateBitMask(BatchConfig::BitMask &bitmask,
-                                   int initLength,
-                                   int non_tree_size) {
+void RequestManager::update_bitmask(BatchConfig::BitMask &bitmask,
+                                    int initLength,
+                                    int non_tree_size) {
   // assert(initLength == 1);
   // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100, t4:
   // 0000000..1000

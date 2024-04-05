@@ -142,15 +142,15 @@ public:
   void register_output_filepath(std::string const &);
   void initBitMask(BatchConfig::BitMask &bitmask, int initLength);
   void appendPendingRequest(BatchConfig::BitMask &bitmask, int initLength);
-  void appendBitMask(BatchConfig::BitMask &bitmask,
-                     int newNodes,
-                     int preBeamSize,
-                     int old_sub_num,
-                     BeamTree const tree,
-                     int currentDepth);
-  void updateBitMask(BatchConfig::BitMask &bitmask,
-                     int initLength,
-                     int non_tree_size);
+  void append_bitmask(BatchConfig::BitMask &bitmask,
+                      int newNodes,
+                      int preBeamSize,
+                      int old_sub_num,
+                      BeamTree const tree,
+                      int currentDepth);
+  void update_bitmask(BatchConfig::BitMask &bitmask,
+                      int initLength,
+                      int non_tree_size);
 
   FFModel *get_ssm_model(int model_id);
 
