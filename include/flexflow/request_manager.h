@@ -74,7 +74,8 @@ struct Request {
   std::vector<BatchConfig::TokenId> tokens;
 
   // In the current version, we only use one speculator
-  TokenTree speculative_token_tree; // New version
+  //   TokenTree speculative_token_tree;
+  std::vector<TokenTree> speculative_token_trees;
 };
 
 class TokenTreeNode {
@@ -151,7 +152,7 @@ public:
                      int initLength,
                      int non_tree_size);
 
-  FFModel *get_ssm_model();
+  FFModel *get_ssm_model(int model_id);
 
   void serve_incr_decoding(FFModel *model);
   void serve_spec_infer(FFModel *model);
@@ -397,10 +398,7 @@ private:
       committed_tokens;
 
   // Multi-model support
-  [[deprecated("Multiple SSMs is no longer supported")]]
   std::vector<FFModel *> ssm_models;
-  // New version
-  FFModel *ssm_model;
 
   // Background server handler
   Legion::Future background_server_handler;

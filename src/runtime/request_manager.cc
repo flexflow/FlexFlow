@@ -172,8 +172,9 @@ int RequestManager::register_ssm_model(FFModel *model) {
   return model_id;
 }
 
-FFModel *RequestManager::get_ssm_model() {
-  return ssm_model;
+FFModel *RequestManager::get_ssm_model(int model_id) {
+  assert(model_id >= 0 && model_id < ssm_models.size());
+  return ssm_models[model_id];
 }
 
 size_t RequestManager::get_num_ssms() {
@@ -2719,12 +2720,14 @@ void RequestManager::add_token_to_speculation_tree(
     BatchConfig::TokenId token_id,
     int parent_pos,
     float joint_prob) {
+  // This method assumes only one small model is used for speculation
+
   // We maintain the size of the token tree node pool to not exceed
   // BatchConfig::MAX_NUM_TOKENS
   if (token_tree_node_pool.size() < BatchConfig::MAX_NUM_TOKENS) {
     Request &request = all_requests[guid];
     TokenTreeLayer &last_layer =
-        request.speculative_token_tree.tree_layers.back();
+        request.speculative_token_trees[0].tree_layers.back();
     // Add to the last layer of the speculation tree
     auto node_ptr =
         std::make_shared<TokenTreeNode>(token_id, parent_pos, joint_prob);
@@ -2750,15 +2753,16 @@ void RequestManager::add_token_to_speculation_tree(
   token_tree_node_pool.push(node_ptr);
   Request &request = all_requests[guid];
   TokenTreeLayer &last_layer =
-      request.speculative_token_tree.tree_layers.back();
+      request.speculative_token_trees[0].tree_layers.back();
   last_layer.nodes.push_back(node_ptr);
   return;
 }
 
 void RequestManager::prune_last_layer_of_speculation_tree(RequestGuid guid) {
+  // This method assumes only one small model is used for speculation
   Request &request = all_requests[guid];
   TokenTreeLayer &last_layer =
-      request.speculative_token_tree.tree_layers.back();
+      request.speculative_token_trees[0].tree_layers.back();
   for (auto it = last_layer.nodes.begin(); it != last_layer.nodes.end(); ++it) {
     if ((*it)->pruned) {
       last_layer.nodes.erase(it);
