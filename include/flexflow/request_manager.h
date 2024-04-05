@@ -414,12 +414,13 @@ private:
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;
 
-  void add_token_to_speculation_tree(RequestGuid guid,
-                                     BatchConfig::TokenId token_id,
-                                     int parent_pos,
-                                     float joint_prob,
-                                     int depth);
-  void prune_last_layer_of_speculation_tree(RequestGuid guid);
+  void RequestManager::initialize_root_of_spec_token_trees();
+  void add_token_to_spec_token_tree(RequestGuid guid,
+                                    BatchConfig::TokenId token_id,
+                                    int parent_pos,
+                                    float joint_prob,
+                                    int depth);
+  void prune_last_layer_of_spec_token_tree(RequestGuid guid);
 };
 
 }; // namespace FlexFlow
