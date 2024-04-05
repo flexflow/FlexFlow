@@ -100,12 +100,12 @@ struct CompareSharedTokenTreeNodePtr {
   }
 };
 
-struct TokenTreeLayer {
-  std::list<shared_ptr<TokenTreeNode>> nodes;
-};
-
-struct TokenTree {
-  std::vector<TokenTreeLayer> tree_layers;
+class TokenTree {
+public:
+  std::vector<std::list<shared_ptr<TokenTreeNode>>> tree_layers = {};
+  void add_layer() {
+    tree_layers.emplace_back();
+  }
 };
 
 class RequestManager {
@@ -417,7 +417,8 @@ private:
   void add_token_to_speculation_tree(RequestGuid guid,
                                      BatchConfig::TokenId token_id,
                                      int parent_pos,
-                                     float joint_prob);
+                                     float joint_prob,
+                                     int depth);
   void prune_last_layer_of_speculation_tree(RequestGuid guid);
 };
 

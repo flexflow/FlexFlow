@@ -1673,6 +1673,7 @@ void RequestManager::store_ssm_inference_results(
   if (old_bc.num_tokens <= 0) {
     return;
   }
+
   int depth = old_bc.current_depth;
   int num_branches = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
   int num_old_bc_tokens_processed = 0;
@@ -1694,29 +1695,30 @@ void RequestManager::store_ssm_inference_results(
               << " tokens in the current batch.\n";
   }
 
-  //   while (num_old_bc_tokens_processed < old_bc.num_tokens) {
-  //     // Process the tokens for the current request
-  //     for (int token_idx = 0;
-  //          token_idx < old_bc.tree_requests_info[request_index];
-  //          token_idx++) {
-  //       for (int token_result_idx = 0; token_result_idx < num_branches;
-  //            token_result_idx++) {
-  //         // Find parent joint probability
-  //         float parent_prob = request.token_trees.at(old_bc.model_id)
-  //                                 .tree_layers[depth - 1]
-  //                                 .nodes[result.parent_id[result_index]]
-  //                                 .joint_prob;
-  //         TokenTreeNode token_tree_node(result.token_ids[result_index],
-  //                                       result.probs[result_index] *
-  //                                       parent_prob,
-  //                                       result.parent_id[result_index]);
-  //         // Try to insert this
-  //         result_index++;
-  //       }
-  //     }
+  while (num_old_bc_tokens_processed < old_bc.num_tokens) {
+    // Process the tokens for the current request
+    TokenTree &token_tree = request.speculative_token_trees[0];
+    for (auto parent_it = token_tree.tree_layers[depth - 1].nodes.begin();
+         parent_it != token_tree.tree_layers[depth - 1].nodes.end();
+         parent_it++) {
+      if ((*parent_it)->pruned) {
+        continue;
+      } else {
+        for (int child_idx = 0; child_idx < num_branches; child_idx++) {
+          // Find parent joint probability
+          float parent_prob = (*parent_it)->joint_prob;
+          TokenTreeNode token_tree_node(result.token_ids[result_index],
+                                        result.probs[result_index] *
+                                            parent_prob,
+                                        result.parent_id[result_index]);
+          // Try to insert this
+          result_index++;
+        }
+      }
+    }
 
-  //     // Update request
-  //   }
+    // Update request
+  }
 
   for (int i = 0; i <= old_bc.num_tokens; i++) {
     if (i == old_bc.num_tokens ||
@@ -2719,19 +2721,25 @@ void RequestManager::add_token_to_speculation_tree(
     RequestGuid guid,
     BatchConfig::TokenId token_id,
     int parent_pos,
-    float joint_prob) {
+    float joint_prob,
+    int depth // depth starts from 0
+) {
   // This method assumes only one small model is used for speculation
+
+  // First make sure there are enough layers in the speculation tree
+  Request &request = all_requests[guid];
+  TokenTree &speculative_token_tree = request.speculative_token_trees[0];
+  while (speculative_token_tree.tree_layers.size() <= depth) {
+    speculative_token_tree.add_layer();
+  }
 
   // We maintain the size of the token tree node pool to not exceed
   // BatchConfig::MAX_NUM_TOKENS
   if (token_tree_node_pool.size() < BatchConfig::MAX_NUM_TOKENS) {
-    Request &request = all_requests[guid];
-    TokenTreeLayer &last_layer =
-        request.speculative_token_trees[0].tree_layers.back();
     // Add to the last layer of the speculation tree
     auto node_ptr =
         std::make_shared<TokenTreeNode>(token_id, parent_pos, joint_prob);
-    last_layer.nodes.push_back(node_ptr);
+    request.speculative_token_trees[0].tree_layers[depth].push_back(node_ptr);
     token_tree_node_pool.push(node_ptr);
     return;
   }
@@ -2751,23 +2759,18 @@ void RequestManager::add_token_to_speculation_tree(
   auto node_ptr =
       std::make_shared<TokenTreeNode>(token_id, parent_pos, joint_prob);
   token_tree_node_pool.push(node_ptr);
-  Request &request = all_requests[guid];
-  TokenTreeLayer &last_layer =
-      request.speculative_token_trees[0].tree_layers.back();
-  last_layer.nodes.push_back(node_ptr);
+  request.speculative_token_trees[0].tree_layers[depth].push_back(node_ptr);
   return;
 }
 
 void RequestManager::prune_last_layer_of_speculation_tree(RequestGuid guid) {
   // This method assumes only one small model is used for speculation
   Request &request = all_requests[guid];
-  TokenTreeLayer &last_layer =
-      request.speculative_token_trees[0].tree_layers.back();
-  for (auto it = last_layer.nodes.begin(); it != last_layer.nodes.end(); ++it) {
+  auto &last_layer = request.speculative_token_trees[0].tree_layers.back();
+  for (auto it = last_layer.begin(); it != last_layer.end(); ++it) {
     if ((*it)->pruned) {
-      last_layer.nodes.erase(it);
+      last_layer.erase(it);
     }
   }
 }
-
 }; // namespace FlexFlow
