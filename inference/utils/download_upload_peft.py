@@ -13,35 +13,6 @@ def parse_args():
     parser.add_argument("--full-precision", action="store_true", help="Download the full precision version of the weights for the PEFT model.")
     return parser.parse_args()
 
-def download_and_process_peft_model(peft_model_id, cache_folder, refresh_cache, full_precision):
-    data_type = ff.DataType.DT_FLOAT if full_precision else ff.DataType.DT_HALF
-    print(f"Downloading and processing PEFT model: {peft_model_id}")
-    peft = ff.PEFT(
-        peft_model_id=peft_model_id,
-        data_type=data_type,
-        cache_path=cache_folder,
-        refresh_cache=refresh_cache,
-    )
-    peft.download_hf_weights_if_needed()
-    peft.download_hf_config()
-    # any necessary conversion or processing by FlexFlow happens here
-    return peft
-
-
-def upload_peft_model_to_hub(peft, new_model_id, cache_folder, private):
-    print(f"Uploading peft model to HuggingFace Hub: {new_model_id}")
-    peft.upload_hf_model(new_model_id, cache_folder, private=private)
-    print("Upload completed successfully.")
-
-
-# def main():
-#     args = parse_args()
-#     peft = download_and_process_peft_model(args.peft_model_id, args.cache_folder, args.refresh_cache, args.full_precision)
-#     upload_peft_model_to_hub(peft, args.new_model_id, args.cache_folder, args.private)
-
-# if __name__ == "__main__":
-#     main()
-
 
 def main():
     model_name = "meta-llama/Llama-2-7b"

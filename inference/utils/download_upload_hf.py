@@ -2,7 +2,9 @@
 import argparse
 from huggingface_hub import HfApi, HfFolder
 import flexflow.serve as ff
+import warnings
 
+warnings.filterwarnings("ignore")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Download a model with FlexFlow, process it, and upload it to the Hugging Face Hub.")
@@ -15,30 +17,9 @@ def parse_args():
     return parser.parse_args()
 
 
-def download_and_process_model(model_name, cache_folder, refresh_cache, full_precision):
-    data_type = ff.DataType.DT_FLOAT if full_precision else ff.DataType.DT_HALF
-    print(f"Downloading and processing model: {model_name}")
-    llm = ff.LLM(
-        model_name=model_name,
-        data_type=data_type,
-        cache_path=cache_folder,
-        refresh_cache=refresh_cache,
-    )
-    llm.download_hf_weights_if_needed()
-    llm.download_hf_tokenizer_if_needed()
-    llm.download_hf_config()
-    return llm
-
-
-def upload_processed_model_to_hub(llm, new_model_id, cache_folder, private):
-    print(f"Uploading processed model to Hugging Face Hub: {new_model_id}")
-    llm.upload_hf_model(new_model_id, cache_folder, private=private)
-    print("Upload completed successfully.")
-
-
 def main():
-    model_name = "meta-llama/Llama-2-7b"
-    new_model_id = "your_username/new-model-name"
+    model_name = "tiiuae/falcon-7b"
+    new_model_id = "aprilyyt/falcon-upload-test-new"
     cache_folder = "~/.cache/flexflow"
     private = True
     refresh_cache = False

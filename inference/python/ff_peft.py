@@ -137,8 +137,13 @@ def main():
                 dataset_filepath=configs.finetuning_dataset,
             )
             requests.append(finetuning_request)
-
+            
+    # use the (finetuned) llm to generate some responses
     llm.generate(requests)
+    
+    # upload the model back to huggingface after finetuning
+    # the model format would be converted from flexflow format back to huggingface format
+    llm.upload_hf_model(peft_model_id, cache_folder, private=private)
 
     llm.stop_server()
 
