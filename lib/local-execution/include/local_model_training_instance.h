@@ -11,53 +11,15 @@
 
 namespace FlexFlow {
 
-// struct TrainingConfig {
-//   // TrainingConfig(ComputationGraph graph, Optimizer opt, EnableProfiling enable_profiling)
-//   //   : computation_graph(graph), optimizer(opt), enable_profiling(enable_profiling) {};
-
-//   ComputationGraph computation_graph;
-//   Optimizer optimizer;
-//   EnableProfiling enable_profiling;
-// };
-// FF_VISITABLE_STRUCT(TrainingConfig,
-//                     computation_graph,
-//                     optimizer,
-//                     enable_profiling);
-
-// struct TrainingComputationGraph {
-//   ComputationGraph computation_graph;
-//   tensor_guid_t logit_tensor;
-//   tensor_guid_t label_tensor;
-//   req<LossAttrs> loss;
-//   // req<MetricsAttrs> metrics;
-// };
-// FF_VISITABLE_STRUCT(TrainingComputationGraph,
-//                     computation_graph,
-//                     logit_tensor,
-//                     label_tensor,
-//                     loss);
-
 struct LocalModelTrainingInstance {
-  LocalModelTrainingInstance() = delete;
   LocalModelTrainingInstance(
     ComputationGraph,
     Allocator,
-    Optimizer,
+    std::unordered_map<tensor_guid_t, GenericTensorAccessorW &> slot_mapping,
+    PerDeviceFFHandle,
     EnableProfiling,
-    tensor_guid_t logit_tensor,
-    tensor_guid_t label_tensor,
-    LossAttrs,
-    std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW &> slot_mapping,
-    ArgBackingMapping);
+    ProfilingSettings);
 
-  // TrainingConfig training_config;
-  // TrainingComputationGraph training_computation_graph;
-  ComputationGraph computation_graph;
-  Optimizer optimizer;
-  EnableProfiling enable_profiling;
-  tensor_guid_t logit_tensor;
-  tensor_guid_t label_tensor;
-  LossAttrs loss;
   LocalTrainingBacking local_training_backing;
 
   void forward();

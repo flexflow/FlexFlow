@@ -101,11 +101,11 @@ public:
   };
 
   void add_edge(MultiDiOutput const &o, MultiDiInput const &i) {
-    return get_ptr().add_edge(o, i);
+    get_ptr().add_edge(o, i);
   };
 
   void add_edge(MultiDiEdge const &e) {
-    return get_ptr().add_edge(e);
+    get_ptr().add_edge(e);
   }
 
   OutputLabel &at(MultiDiOutput const &o) {

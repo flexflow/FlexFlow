@@ -19,10 +19,9 @@ using DeviceStates = std::variant<LinearPerDeviceState>;
 struct OpArgBacking {
 
   std::unordered_map<slot_id, ParallelTensorShape> tensor_shapes;
-  std::pair<slot_id, std::optional<DeviceSpecific<DeviceStates>>> per_device_op_state = std::nullopt;
+  std::optional<std::pair<slot_id, DeviceSpecific<DeviceStates>>> per_device_op_state = std::nullopt;
   std::pair<slot_id, ProfilingSettings> profiling_settings;
   std::pair<slot_id, DeviceSpecific<PerDeviceFFHandle>> per_device_ff_handle;
-  std::pair<slot_id, FFIterationConfig> iteration_config;
 
 };
 

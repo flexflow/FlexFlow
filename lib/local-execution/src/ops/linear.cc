@@ -288,4 +288,8 @@ void register_task<LINEAR_BWD_TASK_ID>() {
                 backward_task_impl);
 }
 
+std::vector<task_id_t> get_task_ids(LinearAttrs const &) {
+  return {LINEAR_INIT_TASK_ID, LINEAR_FWD_TASK_ID, LINEAR_BWD_TASK_ID};
+}
+
 }; // namespace FlexFlow

@@ -8,13 +8,13 @@
 namespace FlexFlow {
 
 TaskRegistry::TaskRegistry(
-    std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW &> 
+    std::unordered_map<tensor_guid_t, GenericTensorAccessorW &> 
         allocated_tensors)
     : tensor_mapping(allocated_tensors){};
 
-void TaskRegistry::register_args(operator_guid_t op, OpArgBacking op_arg_backing) {
-  this->arg_mapping.insert({op, op_arg_backing});
-}
+// void TaskRegistry::register_args(operator_guid_t op, OpArgBacking op_arg_backing) {
+//   this->arg_mapping.insert({op, op_arg_backing});
+// }
 
 void TaskRegistry::register_task(task_id_t task_id, operator_guid_t op_id) {
   TaskSignatureImpl task_signature_impl = {get_task_impl<task_id>(),
@@ -35,71 +35,46 @@ void TaskRegistry::register_task(task_id_t task_id, operator_guid_t op_id) {
   this->task_mapping.insert({task_id, task_signature_impl});
 }
 
-bool TaskRegistry::is_tensor_allocated(OperatorSlotBackingId src_op_slot,
-                                       OperatorSlotBackingId dst_op_slot) {
-  bool is_allocated = false;
-
-  // if tensor backing exists, then have the dest node point to the same backing
-  auto it = this->tensor_mapping.find(src_op_slot);
-  if (it != this->tensor_mapping.end()) {
-    this->tensor_mapping.insert({dst_op_slot, it->second});
-    is_allocated |= true;
-  }
-
-  // if tensor backing exists, then have the src node point to the same backing
-  it = this->tensor_mapping.find(dst_op_slot);
-  if (it != this->tensor_mapping.end()) {
-    this->tensor_mapping.insert({src_op_slot, it->second});
-    is_allocated |= true;
-  }
-
-  return is_allocated;
+bool TaskRegistry::is_tensor_allocated(tensor_guid_t tensor_id) {
+  return this->tensor_mapping.find(tensor_id) != this->tensor_mapping.end();
 }
 
-GenericTensorAccessorW & TaskRegistry::get_tensor_backing(OperatorSlotBackingId op_slot_id) {
-  return this->tensor_mapping.at(op_slot_id);
+GenericTensorAccessorW & TaskRegistry::get_tensor_backing(tensor_guid_t tensor_id) {
+  return this->tensor_mapping.at(tensor_id);
 }
 
-OpArgBacking TaskRegistry::get_arg_backing(operator_guid_t op_id) {
-  return this->arg_mapping.at(op_id);
-}
+// OpArgBacking TaskRegistry::get_arg_backing(operator_guid_t op_id) {
+//   return this->arg_mapping.at(op_id);
+// }
 
-// TODO: switch everything to `operator_guid_t`
 LocalTrainingBacking::LocalTrainingBacking(
     ComputationGraph computation_graph,
     Allocator allocator,
-    std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW &> 
-        allocated_tensors,
-    ArgBackingMapping arg_backing_mapping
+    std::unordered_map<tensor_guid_t, GenericTensorAccessorW &> slot_mapping,
+    PerDeviceFFHandle handle,
+    EnableProfiling enable_profiling,
+    ProfilingSettings profiling_settings,
     )
-    : computation_graph(computation_graph), allocator(allocator), arg_backing_mapping(arg_backing_mapping) {
+    : computation_graph(computation_graph), allocator(allocator), ff_handle(handle), enable_profiling(enable_profiling), profiling_settings(profiling_settings) {
   this->task_registry = TaskRegistry(allocated_tensors);
-  std::vector<Node> layer_nodes = get_topological_ordering(computation_graph);
-  for (Node const &node : layer_nodes) {
-    Layer layer = computation_graph.value().at(node);
-    std::vector<task_id_t> task_ids = get_task_ids(layer.attrs);
+  std::vector<operator_guid_t> layers = computation_graph.traverse();
+  for (operator_guid_t const &node : layers) {
+    CompGraphOperatorAttrs attrs = computation_graph.get_layer_attrs(node);
+    std::vector<task_id_t> task_ids = get_task_ids(attrs);
     for (task_id_t task_id : task_ids) {
-      this->task_registry.register_task(task_id, layer);
+      this->task_registry.register_task(task_id, node);
     }
 
     // insert tensors
-    // incoming edges should already be allocated (either via previously visited
-    // nodes or the input map)
-    //    TODO: this ^^ should definitely be a test
-    std::unordered_set<MultiDiEdge> outgoing_edges =
-        get_outgoing_edges(computation_graph, node);
+    this->task_registry.input_tensor_slots.insert({node, computation_graph.get_incoming_tensors(node)});
+    this->task_registry.output_tensor_slots.insert({node, computation_graph.get_outgoing_tensors(node)});
 
-    for (MultiDiEdge const &edge : outgoing_edges) {
-      OperatorSlotBackingId src_op_slot = {operator_guid_t(edge.src),
-                                           slot_id(edge.src_idx.value())};
-      OperatorSlotBackingId dst_op_slot = {operator_guid_t(edge.dst),
-                                           slot_id(edge.dst_idx.value())};
-      if (!this->task_registry.is_tensor_allocated(src_op_slot, dst_op_slot)) {
-        const Tensor tensor = computation_graph.value().at(edge);
+    for (tensor_guid_t const &edge : outgoing_tensors) {
+      if (!this->task_registry.is_tensor_allocated(edge)) {
+        const Tensor tensor = computation_graph.at(edge);
         GenericTensorAccessorW tensor_backing =
             this->allocator.allocate(tensor);
-        this->task_registry.tensor_mapping.insert({src_op_slot, tensor_backing});
-        this->task_registry.tensor_mapping.insert({dst_op_slot, tensor_backing});
+        this->task_registry.tensor_mapping.insert({edge, tensor_backing});
       }
     }
 
@@ -108,8 +83,6 @@ LocalTrainingBacking::LocalTrainingBacking(
 
 }
 
-// TODO: execute_init
-// variant<all device states>
 void LocalTrainingBacking::execute_init() {
   for (operator_guid_t operator_node :
        get_topological_ordering(this->computation_graph)) {
@@ -120,9 +93,10 @@ void LocalTrainingBacking::execute_init() {
     TaskArgumentAccessor accessor =
         this->get_task_arg_accessor(invocation);
     DeviceSpecific<DeviceStates> device_state = this->call_init_task_impl(invocation.task_id, accessor);
-    this->arg_backing_mapping.at(operator_node).per_device_op_state.second = device_state;
+    // this->arg_backing_mapping.at(operator_node).per_device_op_state.second = device_state;
   }
 }
+
 DeviceSpecific<DeviceStates> LocalTrainingBacking::call_init_task_impl(task_id_t task_id,
                                           TaskArgumentAccessor acc) {
   TaskSignatureImpl task_sig_impl = this->task_registry.task_mapping.at(task_id);
@@ -137,11 +111,9 @@ void LocalTrainingBacking::call_task_impl(task_id_t task_id,
   fn(acc);
 }
 
-// TODO: don't return GTAR here
 void LocalTrainingBacking::execute_forward() {
-  for (operator_guid_t operator_node :
-       get_topological_ordering(this->computation_graph)) {
-    auto attrs = computation_graph.value().at(operator_node).attrs;
+  for (operator_guid_t operator_node : this->computation_graph.traverse()) {
+    auto attrs = computation_graph.get_layer_attrs(operator_node);
     OpTaskInvocation invocation = forward(attrs);
     
     assert (validate_invocation(this->task_registry.get_fwd_signature(operator_node), invocation));
@@ -152,15 +124,13 @@ void LocalTrainingBacking::execute_forward() {
 }
 
 void LocalTrainingBacking::execute_backward() {
-  // containers.h for reversal
-  for (operator_guid_t operator_node :
-       get_reverse_topological_ordering(this->computation_graph)) {
-    auto attrs = computation_graph.value().at(operator_node).attrs;
+  for (operator_guid_t operator_node : this->computation_graph.traverse_reverse_order()) {
+    auto attrs = computation_graph.get_layer_attrs(operator_node);
     OpTaskInvocation invocation = backward(attrs);
 
     assert (validate_invocation(this->task_registry.get_bwd_signature(operator_node), invocation));
     TaskArgumentAccessor accessor =
-        this->get_task_arg_accessor(invocation);
+        this->get_task_arg_accessor(invocation, operator_guid_t);
     this->call_task_impl(invocation.task_id, accessor);
   }
 }
@@ -169,24 +139,39 @@ void LocalTrainingBacking::execute_update() {
   not_implemented();
 }
 
+using SlotGradId = std::pair<slot_id, IsGrad>;
+
 TaskArgumentAccessor
-    LocalTrainingBacking::get_task_arg_accessor(OpTaskInvocation invocation) {
-  std::unordered_map<SlotGradId, GenericTensorAccessorW> tensor_backing_map;
+    LocalTrainingBacking::get_task_arg_accessor(OpTaskInvocation invocation, operator_guid_t op_guid) {
+  std::unordered_map<SlotGradId, GenericTensorAccessorW &> tensor_backing_map;
   std::unordered_map<slot_id, ArgRefBacking> argument_map;
 
   OpTaskBinding binding = invocation.binding;
-  operator_guid_t op_guid = invocation.get_operator_guid_t();
   for (auto tensor_binding : binding.get_tensor_bindings()) {
-    std::pair<slot_id, IsGrad> tensor_id = tensor_binding.first;
-    OperatorSlotBackingId op_slot_id = {op_guid, tensor_id.first};
+    SlotGradId slot_grad_id = tensor_binding.first;
+    OpTensorSpec tensor_spec = tensor_binding.second;
+    std::vector<tensor_guid_t> tensor_slots;
+    switch (tensor_spec.role) {
+      case TensorRole::INPUT:
+        tensor_slots = this->task_registry.input_tensor_slots;
+        break;
+      case TensorRole::WEIGHT:
+        tensor_slots = this->task_registry.weight_tensor_slots;
+        break;
+      case TensorRole::OUTPUT:
+        tensor_slots = this->task_registry.output_tensor_slots;
+        break;
+      default:
+        throw mk_runtime_error("Invalid TensorRole");
+    }
     GenericTensorAccessorW tensor_backing =
-        this->task_registry.get_tensor_backing(op_slot_id);
-    tensor_backing_map.insert({tensor_id, tensor_backing});
+        this->task_registry.get_tensor_backing(tensor_slots[tensor_spec.idx]);
+    tensor_backing_map.insert({slot_grad_id, tensor_backing});
   }
 
-  OpArgBacking arg_backing = this->arg_backing_mapping.at(op_guid);
-  // TODO: merge maps here
-  // TODO: do this for args
+  // OpArgBacking arg_backing = this->arg_backing_mapping.at(op_guid);
+  // // TODO: merge maps here
+  // // TODO: do this for args
   binding.get_arg_bindings();
   
   return TaskArgumentAccessor::create<LocalTaskArgumentAccessor>(

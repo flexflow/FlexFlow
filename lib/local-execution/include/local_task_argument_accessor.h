@@ -11,8 +11,8 @@
 namespace FlexFlow {
 
 using SlotGradId = std::pair<slot_id, IsGrad>;
-using TensorBackingOption = std::variant<std::unordered_map<SlotGradId, GenericTensorAccessorW>,
-                                         std::unordered_map<SlotGradId, std::vector<GenericTensorAccessorW>>>;
+using TensorBackingOption = std::variant<std::unordered_map<SlotGradId, GenericTensorAccessorW &>,
+                                         std::unordered_map<SlotGradId, std::vector<GenericTensorAccessorW &>>>;
 
 struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 

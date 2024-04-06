@@ -4,19 +4,18 @@
 namespace FlexFlow {
 
 LocalModelTrainingInstance::LocalModelTrainingInstance(
-    ComputationGraph graph,
+    ComputationGraph computation_graph,
     Allocator allocator,
-    Optimizer opt,
+    std::unordered_map<tensor_guid_t, GenericTensorAccessorW &> slot_mapping,
+    PerDeviceFFHandle handle,
     EnableProfiling enable_profiling,
-    tensor_guid_t logit_tensor,
-    tensor_guid_t label_tensor,
-    LossAttrs loss,
-    std::unordered_map<OperatorSlotBackingId, GenericTensorAccessorW &> slot_mapping,
-    ArgBackingMapping arg_backing_mapping)
-  : computation_graph(graph), optimizer(opt), enable_profiling(enable_profiling), logit_tensor(logit_tensor), label_tensor(label_tensor), loss(loss) {
-  // this->training_config = TrainingConfig(graph, logit_tensor, label_tensor, loss);
-  // this->training_computation_graph = TrainingComputationGraph{graph, opt, enable_profiling};
-  this->local_training_backing = LocalTrainingBacking(graph, allocator, slot_mapping, arg_backing_mapping);
+    ProfilingSettings profiling_settings) {
+  this->local_training_backing = LocalTrainingBacking(computation_graph,
+                                                      allocator,
+                                                      slot_mapping,
+                                                      handle,
+                                                      enable_profiling,
+                                                      profiling_settings);
 }
 
 void LocalModelTrainingInstance::forward() {
