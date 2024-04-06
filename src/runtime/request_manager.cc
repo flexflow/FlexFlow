@@ -948,8 +948,8 @@ TreeSearchBatchConfig
           new_bc.num_tokens++;
         }
 
-        initBitMask(new_bc.causalMask[i],
-                    new_bc.requestsInfo[i].num_tokens_in_batch);
+        init_bitmask(new_bc.causalMask[i],
+                     new_bc.requestsInfo[i].num_tokens_in_batch);
 
         // if (new_bc.requestsInfo[i].num_tokens_in_batch <
         // new_request.initial_len) {
@@ -1806,8 +1806,8 @@ void RequestManager::update_beam_metadata(TreeSearchBatchConfig &new_bc,
 // bit mask related function
 
 // prompt phase, init task
-void RequestManager::initBitMask(BatchConfig::BitMask &bitmask,
-                                 int initLength) {
+void RequestManager::init_bitmask(BatchConfig::BitMask &bitmask,
+                                  int initLength) {
   assert(initLength > 0);
   // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100, t4:
   // 0000000..1000
@@ -1852,32 +1852,11 @@ void RequestManager::update_bitmask(BatchConfig::BitMask &bitmask,
   //           << "\n";
 }
 
-// prompt phase, init task
-void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
-                                          int initLength) {
-  assert(initLength > 0);
-  // std::cout << "append pending bit mask: " << initLength << "\n";
-  // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100, t4:
-  // 0000000..1000
-  bitmask.non_tree_cache_size = 0;
-  bitmask.tree_size = 1;
-  bitmask.prompt_size += initLength;
-  bitmask.this_layer_size = initLength;
-
-  // for (int i = 0; i < bitmask.prompt_size; i++) {
-  //   for (int j = i; j < bitmask.prompt_size; j++) {
-  //     bitmask.mask[i] |= (1 << j);
-  //   }
-  // }
-}
-
 // prepare next beam, append layers to the tree
-void RequestManager::appendBitMask(BatchConfig::BitMask &bitmask,
-                                   int newNodes,
-                                   int preBeamSize,
-                                   int old_sub_num,
-                                   BeamTree const tree,
-                                   int currentDepth) {
+void RequestManager::append_bitmask(BatchConfig::BitMask &bitmask,
+                                    int newNodes,
+                                    BeamTree const tree,
+                                    int currentDepth) {
   int pre_tree_size = bitmask.tree_size;
   bitmask.tree_size += newNodes;
   bitmask.this_layer_size = newNodes;
@@ -1941,6 +1920,25 @@ void RequestManager::appendBitMask(BatchConfig::BitMask &bitmask,
   // std::cout << "see bit mask append" << bitmask.non_tree_cache_size << "\n";
   // std::cout << "see bit mask append" << std::bitset<64>(bitmask.mask[0])
   //           << "\n";
+}
+
+// prompt phase, init task
+void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
+                                          int initLength) {
+  assert(initLength > 0);
+  // std::cout << "append pending bit mask: " << initLength << "\n";
+  // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100, t4:
+  // 0000000..1000
+  bitmask.non_tree_cache_size = 0;
+  bitmask.tree_size = 1;
+  bitmask.prompt_size += initLength;
+  bitmask.this_layer_size = initLength;
+
+  // for (int i = 0; i < bitmask.prompt_size; i++) {
+  //   for (int j = i; j < bitmask.prompt_size; j++) {
+  //     bitmask.mask[i] |= (1 << j);
+  //   }
+  // }
 }
 
 bool PreOrder(

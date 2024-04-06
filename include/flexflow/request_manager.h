@@ -140,12 +140,10 @@ public:
                           int eos_token_id,
                           std::string const &path);
   void register_output_filepath(std::string const &);
-  void initBitMask(BatchConfig::BitMask &bitmask, int initLength);
   void appendPendingRequest(BatchConfig::BitMask &bitmask, int initLength);
+  void init_bitmask(BatchConfig::BitMask &bitmask, int initLength);
   void append_bitmask(BatchConfig::BitMask &bitmask,
                       int newNodes,
-                      int preBeamSize,
-                      int old_sub_num,
                       BeamTree const tree,
                       int currentDepth);
   void update_bitmask(BatchConfig::BitMask &bitmask,
