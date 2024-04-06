@@ -55,7 +55,6 @@ public:
 public:
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
   std::unordered_map<FFModel *, FileDataLoader *> model_weights_loaders;
-  int num_devices;
 };
 
 struct Request {
@@ -115,6 +114,8 @@ public:
   int get_max_requests_per_batch();
   void set_max_tokens_per_batch(int max_num_tokens);
   int get_max_tokens_per_batch();
+  void set_max_spec_tree_token_num(int max_num_tokens);
+  int get_max_spec_tree_token_num();
   int get_max_verify_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
   void push_spec_infer_tree_width(int tree_width);
@@ -260,6 +261,7 @@ private:
   // configuration parameters
   int max_requests_per_batch;
   int max_tokens_per_batch;
+  int max_spec_tree_token_num;
   int max_sequence_length;
   Status request_manager_status;
 

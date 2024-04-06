@@ -190,7 +190,7 @@ Linear::Linear(FFModel &model,
              params.quantization_type,
              params.offload,
              allocate_weights,
-             name) {}
+             params.name) {}
 
 Linear::Linear(FFModel &model,
                LayerID const &_layer_guid,
@@ -467,12 +467,8 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
                                        ctx,
                                        runtime,
                                        false /*readOutput*/);
-  // TensorAccessorW<WT, NDIM> acc_kernel(regions[2],
-  //                                      task->regions[2],
-  //                                      FID_DATA,
-  //                                      ctx,
-  //                                      runtime,
-  //                                      false /*readOutput*/);
+  TensorAccessorR<WT, NDIM> acc_kernel(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
   // TensorAccessorR<float, 1> acc_bias(
   //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
@@ -1258,6 +1254,8 @@ void Linear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->data_type);
   sez.serialize(this->quantization_type);
   sez.serialize(this->offload);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 /* static */
@@ -1288,6 +1286,10 @@ Node Linear::deserialize(FFModel &ff,
   dez.deserialize(data_type);
   dez.deserialize(quantization_type);
   dez.deserialize(offload);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
 
   LinearParams params;
   params.activation = activation;
@@ -1299,6 +1301,7 @@ Node Linear::deserialize(FFModel &ff,
   params.layer_guid = layer_guid;
   params.quantization_type = quantization_type;
   params.offload = offload;
+  strcpy(params.name, name);
   return ff.get_or_create_node<Linear>(inputs[0], params);
 }
 
@@ -1313,6 +1316,9 @@ LinearParams Linear::get_params() const {
   params.kernel_reg_lambda = this->kernel_reg_lambda;
   params.quantization_type = this->quantization_type;
   params.offload = this->offload;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
 
   return params;
 }

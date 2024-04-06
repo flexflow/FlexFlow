@@ -83,11 +83,10 @@ public:
                         Task const &task,
                         MapTaskInput const &input,
                         MapTaskOutput &output);
-  virtual void map_replicate_task(const MapperContext ctx,
-                                  Task const &task,
-                                  MapTaskInput const &input,
-                                  MapTaskOutput const &default_output,
-                                  MapReplicateTaskOutput &output);
+  virtual void replicate_task(const MapperContext ctx,
+                              Task const &task,
+                              ReplicateTaskInput const &input,
+                              ReplicateTaskOutput &output);
   virtual void select_task_variant(const MapperContext ctx,
                                    Task const &task,
                                    SelectVariantInput const &input,

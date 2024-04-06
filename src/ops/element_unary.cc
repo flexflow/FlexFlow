@@ -212,7 +212,7 @@ ElementUnary::ElementUnary(FFModel &model,
                    params.op_type,
                    input,
                    params.inplace,
-                   name,
+                   params.name,
                    params.scalar) {}
 
 void ElementUnary::map_output_tensors(FFModel &ff) {
@@ -557,7 +557,7 @@ void ElementUnary::forward_task_with_type(
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     std::vector<GenericTensorAccessorR> input_accessors;
-    std::vector<GenericTensorAccessorW> output_accessors;
+    std::vector<GenericTensorAccessorR> output_accessors;
     if (m->inplace) {
       GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
           m->data_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -723,6 +723,8 @@ void ElementUnary::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->layer_guid.model_id);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 bool ElementUnary::measure_operator_cost(Simulator *sim,
@@ -837,6 +839,10 @@ Node ElementUnary::deserialize(FFModel &ff,
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
   dez.deserialize(deserialized_model_id);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
   ElementUnaryParams params;
@@ -844,6 +850,7 @@ Node ElementUnary::deserialize(FFModel &ff,
   params.inplace = inplace;
   params.scalar = scalar;
   params.layer_guid = layer_guid;
+  strcpy(params.name, name);
   return ff.get_or_create_node<ElementUnary>(inputs[0], params);
 }
 

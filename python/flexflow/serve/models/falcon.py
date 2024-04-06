@@ -19,10 +19,11 @@ import random, torch
 
 class FalconConfig:
     def __init__(self, hf_config):
+        # self.max_seq_len = 256
+        # self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
-        self.max_spec_tree_token_num = 64
-
+        self.max_spec_tree_token_num = 20
         self.bias = hf_config.bias
         self.hidden_dropout = hf_config.hidden_dropout
         self.hidden_size = hf_config.hidden_size
@@ -57,6 +58,8 @@ class FlexFlowFalcon(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
+        # max_batch_size=1,
+        # max_seq_length=256,
         max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
@@ -64,8 +67,11 @@ class FlexFlowFalcon(FlexFlowModel):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
+        # self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.falcon_config = FalconConfig(hf_config)
+        # self.falcon_config.max_seq_length = max_seq_length
+        # self.falcon_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
