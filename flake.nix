@@ -16,9 +16,15 @@
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-23.11";
     flake-utils.url = "github:numtide/flake-utils";
+
+    proj-repo = {
+      url = "github:lockshaw/proj";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, ... }: flake-utils.lib.eachSystem [ "x86_64-linux" ] (system: 
+  outputs = { self, nixpkgs, flake-utils, proj-repo, ... }: flake-utils.lib.eachSystem [ "x86_64-linux" ] (system: 
     let 
       pkgs = import nixpkgs {
         inherit system;
@@ -54,7 +60,7 @@
       devShells = rec {
         ci = mkShell {
           shellHook = ''
-            export PATH="$HOME/ff/.scripts/:$HOME/ff/.modules/proj/bin/:$PATH"
+            export PATH="$HOME/ff/.scripts/:$PATH"
           '';
           
           CMAKE_FLAGS = lib.strings.concatStringsSep " " [
@@ -65,6 +71,7 @@
             "-DFF_USE_EXTERNAL_SPDLOG=ON"
             "-DFF_USE_EXTERNAL_DOCTEST=ON"
             "-DFF_USE_EXTERNAL_RAPIDCHECK=ON"
+            "-DFF_USE_EXTERNAL_EXPECTED=ON"
             "-DFF_USE_EXTERNAL_RANGEV3=ON"
             "-DFF_USE_EXTERNAL_BOOST_PREPROCESSOR=ON"
             "-DFF_USE_EXTERNAL_TYPE_INDEX=ON"
@@ -88,6 +95,7 @@
               cudaPackages.nccl
               cudaPackages.libcublas
               cudaPackages.cuda_cudart
+              tl-expected
             ])
             (with self.packages.${system}; [
               legion
@@ -112,6 +120,9 @@
               compdb
               jq
               gh
+            ])
+            (with proj-repo.packages.${system}; [
+              proj
             ])
             (with pkgs.python3Packages; [
               gitpython
