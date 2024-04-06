@@ -19,65 +19,71 @@
 
 namespace FlexFlow {
 
-LinearPerDeviceState::LinearPerDeviceState(FFHandler handler, int batch_size)
-    : PerDeviceOpState(handler) {
-  // Allocate an all-one's vector
-  float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
-  for (int i = 0; i < batch_size; i++) {
-    dram_one_ptr[i] = 1.0f;
-  }
-  float *fb_one_ptr;
-  checkCUDA(hipMalloc(&fb_one_ptr, sizeof(float) * batch_size));
-  checkCUDA(hipMemcpy(fb_one_ptr,
-                      dram_one_ptr,
-                      sizeof(float) * batch_size,
-                      hipMemcpyHostToDevice));
-  one_ptr = (float const *)fb_one_ptr;
-  // Allocate descriptors
-  checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
-  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
-}
-
 namespace Kernels {
 namespace Linear {
 
-bool use_activation(ActiMode mode) {
-  switch (mode) {
-    case AC_MODE_RELU:
-    case AC_MODE_SIGMOID:
-    case AC_MODE_TANH:
-      return true;
-    case AC_MODE_NONE:
-      return false;
-    default:
-      assert(0);
-      break;
-  }
-  return false;
-}
-
-void init_kernel(LinearPerDeviceState *m, int batch_size, int channel) {
-  if (use_activation(m->activation)) {
-    miopenActivationMode_t mode;
-    switch (m->activation) {
-      case AC_MODE_RELU:
-        mode = miopenActivationRELU;
-        break;
-      case AC_MODE_SIGMOID:
-        mode = miopenActivationLOGISTIC;
-        break;
-      default:
-        // Unsupported activation mode
-        assert(false);
-    }
-    checkCUDNN(miopenSetActivationDescriptor(m->actiDesc, mode, 0.0, 0.0, 0.0));
-    checkCUDNN(miopenSet4dTensorDescriptor(m->outputTensor,
-                                           ff_to_cudnn_datatype(m->output_type),
+// what's the float * one_ptr
+LinearPerDeviceState
+    init_kernel(PerDeviceFFHandle handle, Allocator allocator, float *one_ptr;
+                ActiMode activation,
+                Regularizer regularizer,
+                bool use_bias,
+                DataType input_type,
+                DataType weight_type,
+                DataType output_type,
+                int batch_size,
+                int channel) {
+  ffTensorDescriptor_t outputTensor;
+  ffActivationDescriptor_t actiDesc;
+  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(miopenSetActivationDescriptor(actiDesc, mode, 0.0, 0.0, 0.0));
+  checkCUDNN(miopenSet4dTensorDescriptor(outputTensor,
+                                           ff_to_cudnn_datatype(output_type),
                                            batch_size,
                                            channel,
                                            1,
                                            1));
+
+  miopenActivationMode_t mode;
+  switch (activation) {
+    case RELU:
+      mode = MIOPEN_ACTIVATION_RELU;
+      break;
+    case SIGMOID:
+      mode = MIOPEN_ACTIVATION_SIGMOID;
+      break;
+    case TANH:
+      mode = MIOPEN_ACTIVATION_TANH;
+      break;
+    case GELU:
+      mode = MIOPEN_ACTIVATION_GELU;
+      break;
+    default:
+      // Unsupported activation mode
+      assert(false);
   }
+  checkCUDNN(miopenSetActivationDescriptor(actiDesc, mode, 0.0, 0.0, 0.0));
+  checkCUDNN(miopenSet4dTensorDescriptor(outputTensor,
+                                          ff_to_cudnn_datatype(m->output_type),
+                                          batch_size,
+                                          channel,
+                                          1,
+                                          1));
+
+  // todo: how to use allocator to allocate memory for float * one_ptr, how many
+  // bytes to allocate?
+  checkCUDA(hipMalloc(&one_ptr, sizeof(float) * batch_size));
+  LinearPerDeviceState per_device_state = {handle,
+                                           outputTensor,
+                                           actiDesc,
+                                           one_ptr,
+                                           activation,
+                                           regularizer,
+                                           use_bias,
+                                           input_type,
+                                           weight_type,
+                                           output_type};
+  return per_device_state;
 }
 
 void forward_kernel(hipStream_t stream,
@@ -230,7 +236,27 @@ void backward_kernel(hipStream_t stream,
                           in_dim,
                           compute_type,
                           HIPBLAS_GEMM_DEFAULT));
-  // Compute bias gradiant
+
+  if (m.kernel_reg_type == REG_MODE_NONE){
+    //do nothing
+  } else if (m.kernel_reg_type == REG_MODE_L2){
+    checkCUDA(hipblasSgeam(m->handle.blas,
+                          HIPBLAS_OP_N,
+                          HIPBLAS_OP_N,
+                          in_dim,
+                          out_dim,
+                          &alpha,
+                          (float *)kernel_grad_ptr,
+                          in_dim,
+                          &(m->kernel_reg_lambda),
+                          (float *)kernel_ptr,
+                          in_dim,
+                          (float *)kernel_grad_ptr,
+                          in_dim));
+  }else{
+    assert(false && "Only L2 regularization is supported");
+  }
+  // compute bias gradient
   // NOTE: we use alpha=1 for bias_grad to accumulate gradients
   // use_bias = True
   if (bias_grad_ptr != NULL) {
