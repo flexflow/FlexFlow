@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #include "kernels/reverse_kernels.h"
 
 namespace FlexFlow {
@@ -63,8 +62,9 @@ __global__ void reverse_forward_kernel(float const *in_ptr,
     i = i - blk_idx * (reverse_dim_size * in_blk_size);
     legion_coord_t reverse_dim_idx = i / in_blk_size;
     i = i - reverse_dim_idx * in_blk_size;
-    legion_coord_t in_idx = blk_idx * (reverse_dim_size * in_blk_size) +
-                     (reverse_dim_size - 1 - reverse_dim_idx) * in_blk_size + i;
+    legion_coord_t in_idx =
+        blk_idx * (reverse_dim_size * in_blk_size) +
+        (reverse_dim_size - 1 - reverse_dim_idx) * in_blk_size + i;
     out_ptr[i] = in_ptr[in_idx];
   }
 }

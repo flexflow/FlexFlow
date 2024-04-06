@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_CONCRETE_ARG_H
 #define _FLEXFLOW_RUNTIME_INCLUDE_RUNTIME_TASK_SPEC_CONCRETE_ARG_H
 
-#include "utils/type_index.h"
 #include "serialization.h"
+#include "utils/type_index.h"
 #include <memory>
 
 namespace FlexFlow {
@@ -32,19 +32,20 @@ public:
     static_assert(is_serializable<T>::value, "Type must be serializable");
 
     std::type_index type_idx = init_type_index<T>();
-    std::shared_ptr<void const> ptr = std::static_pointer_cast<void const>(std::make_shared<T>(t));
+    std::shared_ptr<void const> ptr =
+        std::static_pointer_cast<void const>(std::make_shared<T>(t));
 
-    return ConcreteArgSpec(type_idx,
-                           ptr);
-                           //ArgTypeRuntimeTag::create<T>());
+    return ConcreteArgSpec(type_idx, ptr);
+    // ArgTypeRuntimeTag::create<T>());
   }
 
 private:
-  ConcreteArgSpec(std::type_index const & type_index,
-                  std::shared_ptr<void const> ptr) : type_idx(type_index), ptr(ptr) {}
-                  //ArgTypeRuntimeTag const &);
+  ConcreteArgSpec(std::type_index const &type_index,
+                  std::shared_ptr<void const> ptr)
+      : type_idx(type_index), ptr(ptr) {}
+  // ArgTypeRuntimeTag const &);
 
-  //ArgTypeRuntimeTag type_tag;
+  // ArgTypeRuntimeTag type_tag;
   std::type_index type_idx;
   std::shared_ptr<void const> ptr;
 };

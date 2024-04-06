@@ -15,13 +15,12 @@
 
 #include "layer_norm.h"
 #include "kernels/layer_norm_kernels.h"
-#include "op-attrs/ops/layer_norm.h"
 #include "op-attrs/get_output_shapes.h"
+#include "op-attrs/ops/layer_norm.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/exception.h"
 #include "utils/hash-utils.h"
 #include <type_traits>
-
 
 namespace FlexFlow {
 
@@ -91,9 +90,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  beta);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto gamma = acc.get_tensor<Permissions::RO>(GAMMA);
 
@@ -117,8 +115,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  beta_grad);
 }
 
-
-
 static DeviceSpecific<LayerNormPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<LayerNormAttrs>(ATTRS);
@@ -139,15 +135,14 @@ static DeviceSpecific<LayerNormPerDeviceState>
     effective_batch_size = input.shape.get_volume() / M;
 
     DeviceSpecific<LayerNormPerDeviceState> per_device_state =
-            init_kernel(handle,
-                        allocator,
-                        attrs.elementwise_affine,
-                        effective_batch_size,
-                        effective_num_elements,
-                        attrs.eps);
+        init_kernel(handle,
+                    allocator,
+                    attrs.elementwise_affine,
+                    effective_batch_size,
+                    effective_num_elements,
+                    attrs.eps);
   }
 }
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   LayerNormAttrs const &attrs,
@@ -165,7 +160,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   auto init_accessor =
       env.get_init_accessor(LAYERNORM_INIT_TASK_ID, init_binding);
 
-  DeviceSpecific<LayerNormPerDeviceState> per_device_state = init_task_impl(init_accessor);
+  DeviceSpecific<LayerNormPerDeviceState> per_device_state =
+      init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind(INPUT, input.shape);
@@ -190,7 +186,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 OpTaskSignature fwd_signature<LAYERNORM_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
@@ -211,7 +208,8 @@ OpTaskSignature bwd_signature<LAYERNORM_BWD_TASK_ID>() {
 
 template <>
 OpTaskSignature init_signature<LAYERNORM_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
   init.add_input_slot(INPUT);
   init.add_arg_slot<LayerNormAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);

@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "repartition.h"
 #include "kernels/partition_kernels.h"
 #include "op-attrs/get_output_shapes.h"
+#include "repartition.h"
 #include "utils/exception.h"
 #include "utils/hash-utils.h"
 
@@ -60,10 +60,9 @@ static DeviceSpecific<RepartitionPerDeviceState>
 
   // Note: use the input data type
   DeviceSpecific<RepartitionPerDeviceState> per_device_state =
-          init_kernel(handle, input.data_type);
+      init_kernel(handle, input.data_type);
   return per_device_state;
 }
-
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -73,16 +72,15 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
   return profile(forward_kernel,
-                   profiling,
-                   "[Reparition/Partition] forward_time = %.2lfms\n",
-                   per_device_state,
-                   input,
-                   output);
+                 profiling,
+                 "[Reparition/Partition] forward_time = %.2lfms\n",
+                 per_device_state,
+                 input,
+                 output);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state =
       acc.get_argument<RepartitionPerDeviceState>(PER_DEVICE_STATE);
@@ -90,14 +88,12 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
   auto output_grad = acc.get_tensor_grad<Permissions::WO>(OUTPUT);
 
   return profile(backward_kernel,
-                   profiling,
-                   "[Reparition/Partition] backward_time = %.2lfms\n",
-                   per_device_state,
-                   output_grad,
-                   input_grad);
+                 profiling,
+                 "[Reparition/Partition] backward_time = %.2lfms\n",
+                 per_device_state,
+                 output_grad,
+                 input_grad);
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   RepartitionAttrs const &attrs,
@@ -125,8 +121,10 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
 
-  auto fwd_accessor = env.get_fwd_accessor(REPARTITION_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(REPARTITION_BWD_TASK_ID, bwd_binding);
+  auto fwd_accessor =
+      env.get_fwd_accessor(REPARTITION_FWD_TASK_ID, fwd_binding);
+  auto bwd_accessor =
+      env.get_bwd_accessor(REPARTITION_BWD_TASK_ID, bwd_binding);
 
   float forward_time = forward_task_impl(fwd_accessor).value();
   float backward_time = backward_task_impl(bwd_accessor).value();
@@ -137,7 +135,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<REPARTITION_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
@@ -145,19 +144,22 @@ void register_task<REPARTITION_INIT_TASK_ID>() {
 
   init.add_return_value<RepartitionPerDeviceState>();
 
-  register_task(REPARTITION_INIT_TASK_ID, "Repartition Init", init, init_task_impl);
+  register_task(
+      REPARTITION_INIT_TASK_ID, "Repartition Init", init, init_task_impl);
 }
 
 template <>
 void register_task<REPARTITION_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<RepartitionPerDeviceState>(PER_DEVICE_STATE);
 
-  register_task(REPARTITION_FWD_TASK_ID, "Repartition Fwd", fwd, forward_task_impl);
+  register_task(
+      REPARTITION_FWD_TASK_ID, "Repartition Fwd", fwd, forward_task_impl);
 }
 
 // TODO: OpTaskSignature
@@ -167,7 +169,8 @@ void register_task<REPARTITION_FWD_TASK_ID>() {
 //   OpTaskSignature bwd =
 //       infer_bwd_signature(get_op_signature(REPARTITION_FWD_TASK_ID));
 
-//   register_task(REPARTITION_BWD_TASK_ID, "Repartition Bwd", bwd, backward_task_impl);
+//   register_task(REPARTITION_BWD_TASK_ID, "Repartition Bwd", bwd,
+//   backward_task_impl);
 // }
 
 }; // namespace FlexFlow

@@ -1,13 +1,12 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_OP_TASK_SIGNATURE_H
 #define _FLEXFLOW_RUNTIME_SRC_OP_TASK_SIGNATURE_H
 
-#include "utils/visitable.h"
-#include "utils/type_index.h"
-#include "slot_type.h"
-#include "slot_id.h"
 #include "serialization.h"
+#include "slot_id.h"
+#include "slot_type.h"
 #include "tasks.h"
 #include "utils/type_index.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -73,7 +72,7 @@ struct OpTaskSignature {
 
   template <typename T>
   void add_return_value() {
-    //std::type_index return_value = init_type_index<T>();
+    // std::type_index return_value = init_type_index<T>();
     this->return_value = init_type_index<T>();
   }
 
@@ -93,10 +92,10 @@ struct OpTaskSignature {
   std::unordered_map<slot_id, std::type_index> task_arg_types;
   std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };
-// FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskSignature, 
-//                                             type,  
+// FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskSignature,
+//                                             type,
 //                                             return_value,
-//                                             task_arg_types, 
+//                                             task_arg_types,
 //                                             op_tensor_slots);
 
 template <typename F>

@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_EMBEDDING_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_EMBEDDING_KERNELS_H
 
-#include "kernels/accessor.h"
 #include "device.h"
+#include "kernels/accessor.h"
 #include "op-attrs/ops/embedding.h"
 
 namespace FlexFlow {

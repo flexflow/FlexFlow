@@ -79,7 +79,9 @@ OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
   return {ATTENTION_BWD_TASK_ID, b};
 }
 
-// OpArgBacking generate_op_arg_backing<ATTENTION_INIT_TASK_ID>(std::vector<ParallelTensorShape> tensor_shape_args) {
+// OpArgBacking
+// generate_op_arg_backing<ATTENTION_INIT_TASK_ID>(std::vector<ParallelTensorShape>
+// tensor_shape_args) {
 
 // }
 
@@ -137,20 +139,20 @@ static DeviceSpecific<MHAPerDeviceState>
   // return acc.create_device_specific<MHAPerDeviceState>(per_device_state);
 
   DeviceSpecific<MHAPerDeviceState> per_device_state =
-          init_kernel(handle,
-                      allocator,
-                      num_samples,
-                      num_heads,
-                      qSize,
-                      kSize,
-                      vSize,
-                      qProjSize,
-                      kProjSize,
-                      vProjSize,
-                      oProjSize,
-                      qoSeqLength,
-                      kvSeqLength,
-                      attrs.add_bias_kv);
+      init_kernel(handle,
+                  allocator,
+                  num_samples,
+                  num_heads,
+                  qSize,
+                  kSize,
+                  vSize,
+                  qProjSize,
+                  kProjSize,
+                  vProjSize,
+                  oProjSize,
+                  qoSeqLength,
+                  kvSeqLength,
+                  attrs.add_bias_kv);
   return per_device_state;
 }
 
@@ -175,9 +177,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr());
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   auto query = acc.get_tensor<Permissions::RO>(QUERY);
   auto key = acc.get_tensor<Permissions::RO>(KEY);
   auto value = acc.get_tensor<Permissions::RO>(VALUE);
@@ -218,8 +219,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  weight_grad.get_float_ptr(),
                  output_grad.get_float_ptr());
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   MultiHeadAttentionAttrs const &attrs,
@@ -278,7 +277,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<ATTENTION_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
   init.add_arg_slot<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);
   init.add_arg_slot<ParallelTensorShape>(KEY_PARALLEL_TENSOR_SHAPE);
   init.add_arg_slot<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
@@ -309,7 +309,8 @@ OpTaskSignature get_signature<ATTENTION_INIT_TASK_ID>() {
 
 template <>
 OpTaskSignature fwd_signature<ATTENTION_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(QUERY);
   fwd.add_input_slot(KEY);

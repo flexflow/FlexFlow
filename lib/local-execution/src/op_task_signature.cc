@@ -4,22 +4,21 @@ namespace FlexFlow {
 
 // OpTaskSignature::OpTaskSignature(OpTaskType t) : type(t){};
 
-void OpTaskSignature::add_input_slot(slot_id name,
-                                     SlotType slot_type) {
+void OpTaskSignature::add_input_slot(slot_id name, SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {
       name, slot_type, TensorRole::INPUT, IsGrad::NO, OpSlotOptions::NECESSARY};
   this->op_tensor_slots.insert(op_tensor_slot_spec);
 }
 
-void OpTaskSignature::add_optional_input_slot(
-    slot_id name, SlotType slot_type) {
+void OpTaskSignature::add_optional_input_slot(slot_id name,
+                                              SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {
       name, slot_type, TensorRole::INPUT, IsGrad::NO, OpSlotOptions::OPTIONAL};
   this->op_tensor_slots.insert(op_tensor_slot_spec);
 }
 
-void OpTaskSignature::add_untrainable_input_slot(
-    slot_id name, SlotType slot_type) {
+void OpTaskSignature::add_untrainable_input_slot(slot_id name,
+                                                 SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {name,
                                           slot_type,
                                           TensorRole::INPUT,
@@ -28,8 +27,8 @@ void OpTaskSignature::add_untrainable_input_slot(
   this->op_tensor_slots.insert(op_tensor_slot_spec);
 }
 
-void OpTaskSignature::add_optional_untrainable_input_slot(
-    slot_id name, SlotType slot_type) {
+void OpTaskSignature::add_optional_untrainable_input_slot(slot_id name,
+                                                          SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {name,
                                           slot_type,
                                           TensorRole::INPUT,
@@ -38,15 +37,14 @@ void OpTaskSignature::add_optional_untrainable_input_slot(
   this->op_tensor_slots.insert(op_tensor_slot_spec);
 }
 
-void OpTaskSignature::add_output_slot(slot_id name,
-                                      SlotType slot_type) {
+void OpTaskSignature::add_output_slot(slot_id name, SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {
       name, slot_type, TensorRole::OUTPUT, IsGrad::NO, OpSlotOptions::OPTIONAL};
   this->op_tensor_slots.insert(op_tensor_slot_spec);
 }
 
-void OpTaskSignature::add_bwd_necessary_output_slot(
-    slot_id name, SlotType slot_type) {
+void OpTaskSignature::add_bwd_necessary_output_slot(slot_id name,
+                                                    SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {name,
                                           slot_type,
                                           TensorRole::OUTPUT,
@@ -55,8 +53,7 @@ void OpTaskSignature::add_bwd_necessary_output_slot(
   this->op_tensor_slots.insert(op_tensor_slot_spec);
 }
 
-void OpTaskSignature::add_weight_slot(slot_id name,
-                                      SlotType slot_type) {
+void OpTaskSignature::add_weight_slot(slot_id name, SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {name,
                                           slot_type,
                                           TensorRole::WEIGHT,
@@ -65,8 +62,8 @@ void OpTaskSignature::add_weight_slot(slot_id name,
   this->op_tensor_slots.insert(op_tensor_slot_spec);
 }
 
-void OpTaskSignature::add_optional_weight_slot(
-    slot_id name, SlotType slot_type) {
+void OpTaskSignature::add_optional_weight_slot(slot_id name,
+                                               SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {
       name, slot_type, TensorRole::WEIGHT, IsGrad::NO, OpSlotOptions::OPTIONAL};
   this->op_tensor_slots.insert(op_tensor_slot_spec);

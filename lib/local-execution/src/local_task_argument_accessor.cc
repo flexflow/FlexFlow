@@ -2,25 +2,31 @@
 
 namespace FlexFlow {
 
-ConcreteArgSpec const & LocalTaskArgumentAccessor::get_concrete_arg(slot_id name) const { 
+ConcreteArgSpec const &
+    LocalTaskArgumentAccessor::get_concrete_arg(slot_id name) const {
   return std::get<ConcreteArgSpec>(this->argument_map.at(name));
 }
-OpArgRefTypeBacking const & LocalTaskArgumentAccessor::get_op_arg_ref(slot_id name) const { 
+OpArgRefTypeBacking const &
+    LocalTaskArgumentAccessor::get_op_arg_ref(slot_id name) const {
   return std::get<OpArgRefTypeBacking>(this->argument_map.at(name));
 }
-RuntimeArgRefTypeBacking const & LocalTaskArgumentAccessor::get_runtime_arg(slot_id name) const { 
+RuntimeArgRefTypeBacking const &
+    LocalTaskArgumentAccessor::get_runtime_arg(slot_id name) const {
   return std::get<RuntimeArgRefTypeBacking>(this->argument_map.at(name));
 }
 
-PrivilegeType LocalTaskArgumentAccessor::get_tensor(slot_id slot, Permissions priv, IsGrad is_grad) const { 
+PrivilegeType LocalTaskArgumentAccessor::get_tensor(slot_id slot,
+                                                    Permissions priv,
+                                                    IsGrad is_grad) const {
   std::pair<slot_id, IsGrad> slot_grad_pair = std::make_pair(slot, is_grad);
-  auto generic_tensor_backing_map = std::get<std::unordered_map<SlotGradId, GenericTensorAccessorW>>(this->tensor_backing_map);
-  GenericTensorAccessorW tensor_backing = generic_tensor_backing_map.at(slot_grad_pair);
+  auto generic_tensor_backing_map =
+      std::get<std::unordered_map<SlotGradId, GenericTensorAccessorW>>(
+          this->tensor_backing_map);
+  GenericTensorAccessorW tensor_backing =
+      generic_tensor_backing_map.at(slot_grad_pair);
   if (priv == Permissions::RO) {
     GenericTensorAccessorR readonly_tensor_backing = {
-        tensor_backing.data_type,
-        tensor_backing.shape,
-        tensor_backing.ptr};
+        tensor_backing.data_type, tensor_backing.shape, tensor_backing.ptr};
     return readonly_tensor_backing;
   } else if (priv == Permissions::RW || priv == Permissions::WO) {
     return tensor_backing;
@@ -28,26 +34,26 @@ PrivilegeType LocalTaskArgumentAccessor::get_tensor(slot_id slot, Permissions pr
     throw mk_runtime_error("Unhandled privilege mode {}", priv);
   }
 }
-PrivilegeVariadicType LocalTaskArgumentAccessor::get_variadic_tensor(slot_id slot,
-                                                  Permissions priv, IsGrad is_grad) const { 
+PrivilegeVariadicType LocalTaskArgumentAccessor::get_variadic_tensor(
+    slot_id slot, Permissions priv, IsGrad is_grad) const {
   std::pair<slot_id, IsGrad> slot_grad_pair = std::make_pair(slot, is_grad);
-  auto variadic_tensor_backing_map = std::get<std::unordered_map<SlotGradId, std::vector<GenericTensorAccessorW>>>(this->tensor_backing_map);
-  std::vector<GenericTensorAccessorW> variadic_tensor_backing = variadic_tensor_backing_map.at(slot_grad_pair);
+  auto variadic_tensor_backing_map = std::get<
+      std::unordered_map<SlotGradId, std::vector<GenericTensorAccessorW>>>(
+      this->tensor_backing_map);
+  std::vector<GenericTensorAccessorW> variadic_tensor_backing =
+      variadic_tensor_backing_map.at(slot_grad_pair);
   if (priv == Permissions::RO) {
     std::vector<GenericTensorAccessorR> readonly_variadic_tensor_backing = {};
-    for (auto tensor_backing: variadic_tensor_backing) {
-      readonly_variadic_tensor_backing.push_back({
-        tensor_backing.data_type,
-        tensor_backing.shape,
-        tensor_backing.ptr}
-      );
+    for (auto tensor_backing : variadic_tensor_backing) {
+      readonly_variadic_tensor_backing.push_back(
+          {tensor_backing.data_type, tensor_backing.shape, tensor_backing.ptr});
     }
     return readonly_variadic_tensor_backing;
   } else if (priv == Permissions::RW || priv == Permissions::WO) {
     return variadic_tensor_backing;
   } else {
     throw mk_runtime_error("Unhandled privilege mode {}", priv);
-  }    
+  }
 }
 
 Allocator LocalTaskArgumentAccessor::get_allocator() const {

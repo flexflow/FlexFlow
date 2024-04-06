@@ -64,28 +64,26 @@ static DeviceSpecific<Pool2DPerDeviceState>
     printf("Warning: changing pool_padding_w to satisfy output_w size\n");
   }
 
-  DeviceSpecific<Pool2DPerDeviceState> state = 
-              init_kernel(handle,
-                          attrs.activation,
-                          input_w,
-                          input_h,
-                          input_c,
-                          input_n,
-                          output_w,
-                          output_h,
-                          output_c,
-                          output_n,
-                          pad_h,
-                          pad_w,
-                          attrs.kernel_h,
-                          attrs.kernel_w,
-                          attrs.stride_h,
-                          attrs.stride_w,
-                          attrs.pool_type);
+  DeviceSpecific<Pool2DPerDeviceState> state = init_kernel(handle,
+                                                           attrs.activation,
+                                                           input_w,
+                                                           input_h,
+                                                           input_c,
+                                                           input_n,
+                                                           output_w,
+                                                           output_h,
+                                                           output_c,
+                                                           output_n,
+                                                           pad_h,
+                                                           pad_w,
+                                                           attrs.kernel_h,
+                                                           attrs.kernel_w,
+                                                           attrs.stride_h,
+                                                           attrs.stride_w,
+                                                           attrs.pool_type);
 
   return state;
 }
-
 
 OpTaskInvocation forward(Pool2DAttrs const &attrs) {
   OpTaskBinding binding;
@@ -99,7 +97,7 @@ OpTaskInvocation forward(Pool2DAttrs const &attrs) {
   return {POOL2D_FWD_TASK_ID, binding};
 }
 
-OpTaskInvocation backward(Pool2DAttrs const & attrs) {
+OpTaskInvocation backward(Pool2DAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
   return {POOL2D_BWD_TASK_ID, b};
@@ -121,9 +119,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr());
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   Pool2DPerDeviceState state =
       acc.get_argument<Pool2DPerDeviceState>(PER_DEVICE_STATE);
@@ -142,8 +139,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  output.get_float_ptr(),
                  output_grad.get_float_ptr());
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   Pool2DAttrs const &attrs,
@@ -187,7 +182,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<POOL2D_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
 
   init.add_input_slot(INPUT);
   init.add_output_slot(OUTPUT);
@@ -202,7 +198,8 @@ void register_task<POOL2D_INIT_TASK_ID>() {
 
 template <>
 void register_task<POOL2D_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
@@ -220,7 +217,8 @@ void register_task<POOL2D_FWD_TASK_ID>() {
 //   OpTaskSignature bwd =
 //       infer_bwd_signature(get_op_signature(POOL2D_FWD_TASK_ID));
 
-//   register_task(POOL2D_BWD_TASK_ID, "Pool2D::backward", bwd, backward_task_impl);
+//   register_task(POOL2D_BWD_TASK_ID, "Pool2D::backward", bwd,
+//   backward_task_impl);
 // }
 
 }; // namespace FlexFlow

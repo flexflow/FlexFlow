@@ -61,10 +61,10 @@ static DeviceSpecific<TopKPerDeviceState>
 
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
 
-  DeviceSpecific<TopKPerDeviceState> per_device_state =init_kernel(attrs.sorted);
+  DeviceSpecific<TopKPerDeviceState> per_device_state =
+      init_kernel(attrs.sorted);
   return per_device_state;
 }
-
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
@@ -80,21 +80,20 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto indices = acc.get_tensor<Permissions::WO>(INDICES);
 
   return profile(forward_kernel,
-                   profiling,
-                   "[TopK] forward_time = %.2lfms\n",
-                   per_device_state,
-                   input.get_float_ptr(),
-                   output.get_float_ptr(),
-                   indices.get_int32_ptr(),
-                   batch_size,
-                   length,
-                   attrs.k,
-                   attrs.sorted);
+                 profiling,
+                 "[TopK] forward_time = %.2lfms\n",
+                 per_device_state,
+                 input.get_float_ptr(),
+                 output.get_float_ptr(),
+                 indices.get_int32_ptr(),
+                 batch_size,
+                 length,
+                 attrs.k,
+                 attrs.sorted);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
   auto per_device_state =
       acc.get_argument<TopKPerDeviceState>(PER_DEVICE_STATE);
@@ -109,18 +108,16 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
   size_t batch_size = input_grad.shape.get_volume() / length;
 
   return profile(backward_kernel,
-                   profiling,
-                   "[TopK] backward_time = %.2lfms\n",
-                   per_device_state,
-                   output_grad.get_float_ptr(),
-                   indices.get_int32_ptr(),
-                   input_grad.get_float_ptr(),
-                   batch_size,
-                   length,
-                   attrs.k);
+                 profiling,
+                 "[TopK] backward_time = %.2lfms\n",
+                 per_device_state,
+                 output_grad.get_float_ptr(),
+                 indices.get_int32_ptr(),
+                 input_grad.get_float_ptr(),
+                 batch_size,
+                 length,
+                 attrs.k);
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   TopKAttrs const &attrs,
@@ -160,7 +157,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<TOPK_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
 
   init.add_arg_slot<TopKAttrs>(ATTRS); // Note: this may have some question
   init.add_return_value<TopKPerDeviceState>();
@@ -169,7 +167,8 @@ void register_task<TOPK_INIT_TASK_ID>() {
 
 template <>
 void register_task<TOPK_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_arg_slot<TopKAttrs>(ATTRS);
@@ -186,7 +185,8 @@ void register_task<TOPK_FWD_TASK_ID>() {
 
 // template <>
 // void register_task<TOPK_BWD_TASK_ID>() {
-//   OpTaskSignature bwd = infer_bwd_signature(get_op_signature(TOPK_FWD_TASK_ID));
+//   OpTaskSignature bwd =
+//   infer_bwd_signature(get_op_signature(TOPK_FWD_TASK_ID));
 
 //   register_task(TOPK_BWD_TASK_ID, "TopK Backward", bwd, backward_task_impl);
 // }

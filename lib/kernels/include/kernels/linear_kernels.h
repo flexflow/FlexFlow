@@ -3,8 +3,8 @@
 
 #include "device.h"
 #include "ff_handle.h"
-#include "op-attrs/ops/linear.h"
 #include "op-attrs/datatype.h"
+#include "op-attrs/ops/linear.h"
 
 namespace FlexFlow {
 
@@ -34,15 +34,15 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(LinearPerDeviceState,
 namespace Kernels {
 namespace Linear {
 
-LinearPerDeviceState
-    init_kernel(PerDeviceFFHandle handle, float *one_ptr,
-                std::optional<RegularizerAttrs> regularizer,
-                bool use_bias,
-                DataType input_type,
-                DataType weight_type,
-                DataType output_type,
-                int batch_size,
-                int channel);
+LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
+                                 float *one_ptr,
+                                 std::optional<RegularizerAttrs> regularizer,
+                                 bool use_bias,
+                                 DataType input_type,
+                                 DataType weight_type,
+                                 DataType output_type,
+                                 int batch_size,
+                                 int channel);
 
 bool use_activation(Activation mode);
 

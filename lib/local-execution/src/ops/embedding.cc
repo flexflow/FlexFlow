@@ -15,8 +15,8 @@
 
 #include "embedding.h"
 #include "kernels/embedding_kernels.h"
-#include "op-attrs/ops/embedding.h"
 #include "op-attrs/get_output_shapes.h"
+#include "op-attrs/ops/embedding.h"
 
 namespace FlexFlow {
 
@@ -65,9 +65,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  input.shape[legion_dim_t(1)]);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
   auto weight_grad = acc.get_tensor_grad<Permissions::RW>(WEIGHT);
@@ -88,8 +87,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  output.shape.get_dim(),
                  input.shape.at(ff_dim_t(0)));
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   EmbeddingAttrs const &attrs,
@@ -123,7 +120,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature fwd_signature<EMBED_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_input_slot(OUTPUT);

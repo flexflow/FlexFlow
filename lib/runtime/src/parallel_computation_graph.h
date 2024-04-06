@@ -3,11 +3,11 @@
 
 #include "legion_parallel_tensor_shape.h"
 #include "op-attrs/operator_attrs.h"
+#include "op_task_invocation.h"
 #include "pcg/operator_guid_t.h"
 #include "pcg/optimizer.h"
 #include "pcg/parallel_computation_graph.h"
 #include "pcg/parallel_tensor.h"
-#include "op_task_invocation.h"
 #include "utils/graph.h"
 #include "utils/strong_typedef.h"
 #include <type_traits>

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #include "reduce_kernels.h"
 
 namespace FlexFlow {
@@ -32,7 +31,7 @@ ReducePerDeviceState init_kernel(PerDeviceFFHandle const &handle,
 
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
-  
+
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
 
   checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(inputTensor, input_shape));

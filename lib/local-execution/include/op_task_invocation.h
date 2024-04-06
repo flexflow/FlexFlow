@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_RUNTIME_OP_TASK_SPEC_H
 #define _FLEXFLOW_RUNTIME_OP_TASK_SPEC_H
 
-#include "kernels/accessor.h"
 #include "concrete_arg.h"
+#include "kernels/accessor.h"
 #include "op_arg_ref.h"
 #include "op_task_signature.h"
 #include "op_tensor_spec.h"
@@ -11,27 +11,24 @@
 #include "serialization.h"
 #include "tasks.h"
 #include "utils/bidict.h"
-#include "variadic_tensor_ref.h"
 #include "utils/stack_map.h"
-#include <variant>
+#include "variadic_tensor_ref.h"
 #include <typeindex>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 
 namespace FlexFlow {
 
 enum class IsTrainable { YES, NO };
 
-using OpArgSpec = std::variant<ConcreteArgSpec,
-                          OpArgRefSpec,
-                          RuntimeArgRefSpec>;
+using OpArgSpec =
+    std::variant<ConcreteArgSpec, OpArgRefSpec, RuntimeArgRefSpec>;
 
 struct OpArgSpecTypeAccessor {
   std::type_index operator()(OpArgSpec &spec) {
     return std::visit(
-        [](auto &&arg) -> std::type_index {
-          return arg.get_type_index();
-        },
+        [](auto &&arg) -> std::type_index { return arg.get_type_index(); },
         spec);
   }
 };
@@ -90,7 +87,9 @@ struct OpTaskBinding {
   std::unordered_map<slot_id, OpArgSpec> arg_bindings;
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> tensor_bindings;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskBinding, arg_bindings, tensor_bindings);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskBinding,
+                                             arg_bindings,
+                                             tensor_bindings);
 
 struct OpTaskInvocation {
 public:
@@ -112,12 +111,13 @@ OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
 bool validate_invocation(OpTaskSignature sig, OpTaskInvocation inv) {
   // tensors
   auto tensor_bindings = inv.binding.get_tensor_bindings();
-  for (OpTensorSlotSpec const & op_tensor_slot_spec: sig.get_tensor_slots()) {
+  for (OpTensorSlotSpec const &op_tensor_slot_spec : sig.get_tensor_slots()) {
     slot_id name = op_tensor_slot_spec.name;
     IsGrad is_grad = op_tensor_slot_spec.is_grad;
     std::pair<slot_id, IsGrad> tensor_key = std::make_pair(name, is_grad);
-    OpTensorSpec const & op_tensor_spec = tensor_bindings.at(tensor_key);
-    if (op_tensor_spec.role != op_tensor_slot_spec.tensor_role || op_tensor_spec.slot_option != op_tensor_slot_spec.slot_option) {
+    OpTensorSpec const &op_tensor_spec = tensor_bindings.at(tensor_key);
+    if (op_tensor_spec.role != op_tensor_slot_spec.tensor_role ||
+        op_tensor_spec.slot_option != op_tensor_slot_spec.slot_option) {
       return false;
     }
   }
@@ -125,7 +125,7 @@ bool validate_invocation(OpTaskSignature sig, OpTaskInvocation inv) {
   // args
   auto sig_arg_types = sig.get_arg_types();
   OpArgSpecTypeAccessor type_accessor;
-  for (auto arg_binding: inv.binding.get_arg_bindings()) {
+  for (auto arg_binding : inv.binding.get_arg_bindings()) {
     slot_id name = arg_binding.first;
     OpArgSpec op_arg_spec = arg_binding.second;
     std::type_index arg_type = sig_arg_types.at(name);

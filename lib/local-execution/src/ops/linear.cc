@@ -1,8 +1,8 @@
 #include "linear.h"
 #include "kernels/linear_kernels.h"
 #include "op-attrs/ff_dim.h"
-#include "task_argument_accessor.h"
 #include "op-attrs/get_output_shapes.h"
+#include "task_argument_accessor.h"
 #include "utils/exception.h"
 #include "utils/graph/views.h"
 #include "utils/hash-utils.h"
@@ -42,11 +42,12 @@ OpTaskInvocation forward(LinearAttrs const &attrs) {
   binding.bind(WEIGHT, weight_tensor(0)); // weight
   binding.bind(OUTPUT, output_tensor(0)); // output
   if (attrs.use_bias) {
-    binding.bind(BIAS, weight_tensor(1));     // bias
+    binding.bind(BIAS, weight_tensor(1)); // bias
   }
 
   binding.bind_arg(PROFILING, profiling_settings());
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<LinearPerDeviceState>());
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<LinearPerDeviceState>());
   binding.bind_arg(ATTRS, attrs);
 
   return {LINEAR_FWD_TASK_ID, binding};
@@ -58,8 +59,7 @@ OpTaskInvocation backward(LinearAttrs const &attrs) {
   return {LINEAR_BWD_TASK_ID, b};
 }
 
-static LinearPerDeviceState
-    init_task_impl(TaskArgumentAccessor const &acc) {
+static LinearPerDeviceState init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<LinearAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
@@ -71,19 +71,17 @@ static LinearPerDeviceState
 
   float *one_ptr;
 
-  LinearPerDeviceState state =
-          init_kernel(handle,
-                      one_ptr,
-                      attrs.regularizer,
-                      attrs.use_bias,
-                      input.data_type,
-                      weight.data_type,
-                      output.data_type,
-                      batch_size,
-                      attrs.out_channels);
+  LinearPerDeviceState state = init_kernel(handle,
+                                           one_ptr,
+                                           attrs.regularizer,
+                                           attrs.use_bias,
+                                           input.data_type,
+                                           weight.data_type,
+                                           output.data_type,
+                                           batch_size,
+                                           attrs.out_channels);
   return state;
 }
-
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -91,7 +89,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto bias = acc.get_tensor<Permissions::RO>(BIAS);
 
-  auto per_device_state = acc.get_argument<LinearPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<LinearPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto attrs = acc.get_argument<LinearAttrs>(ATTRS);
 
@@ -119,7 +118,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 ;
 
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto weight = acc.get_tensor<Permissions::RO>(WEIGHT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -128,7 +128,8 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
   auto weight_grad = acc.get_tensor_grad<Permissions::RW>(WEIGHT);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
-  auto per_device_state = acc.get_argument<LinearPerDeviceState>(PER_DEVICE_STATE);
+  auto per_device_state =
+      acc.get_argument<LinearPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto attrs = acc.get_argument<LinearAttrs>(ATTRS);
 
@@ -157,8 +158,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  batch_size);
 }
 
-
-
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   LinearAttrs const &attrs,
                                   InputParallelTensorDesc const &input,
@@ -182,8 +181,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   auto init_accessor = env.get_init_accessor(LINEAR_INIT_TASK_ID, init_binding);
 
-  LinearPerDeviceState per_device_state =
-      init_task_impl(init_accessor);
+  LinearPerDeviceState per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
 
@@ -191,11 +189,12 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   fwd_binding.bind(WEIGHT, weight_shape); // weight
   fwd_binding.bind(OUTPUT, output_shape); // output
   if (attrs.use_bias) {
-    fwd_binding.bind(BIAS, bias_shape);     // bias
+    fwd_binding.bind(BIAS, bias_shape); // bias
   }
 
   fwd_binding.bind_arg(PROFILING, profiling_settings());
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<LinearPerDeviceState>());
+  fwd_binding.bind_arg(PER_DEVICE_STATE,
+                       per_device_op_state<LinearPerDeviceState>());
   fwd_binding.bind_arg(ATTRS, attrs);
 
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
@@ -212,7 +211,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 OpTaskSignature init_signature<LINEAR_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
 
   init.add_input_slot(INPUT);
   init.add_weight_slot(WEIGHT);
@@ -227,7 +227,8 @@ OpTaskSignature init_signature<LINEAR_INIT_TASK_ID>() {
 
 template <>
 OpTaskSignature fwd_signature<LINEAR_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_weight_slot(WEIGHT);
@@ -246,7 +247,6 @@ OpTaskSignature bwd_signature<LINEAR_BWD_TASK_ID>() {
       infer_bwd_signature(fwd_signature<LINEAR_BWD_TASK_ID>());
   return bwd;
 }
-
 
 template <>
 TaskImplFunction get_task_impl<LINEAR_INIT_TASK_ID>() {

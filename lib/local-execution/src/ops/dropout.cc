@@ -1,8 +1,8 @@
 #include "dropout.h"
 #include "kernels/dropout_kernels.h"
 #include "op-attrs/get_output_shapes.h"
-#include "op_task_signature.h"
 #include "op_task_invocation.h"
+#include "op_task_signature.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -48,10 +48,9 @@ static DeviceSpecific<DropoutPerDeviceState>
   auto const &attrs = acc.get_argument<DropoutAttrs>(ATTRS);
 
   DeviceSpecific<DropoutPerDeviceState> per_device_state =
-          init_kernel(handle, attrs.rate, attrs.seed, output.shape, allocator);
+      init_kernel(handle, attrs.rate, attrs.seed, output.shape, allocator);
   return per_device_state;
 }
-
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
@@ -68,9 +67,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr());
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<DropoutAttrs>(ATTRS);
   auto per_device_state =
       acc.get_argument<DropoutPerDeviceState>(PER_DEVICE_STATE);
@@ -86,8 +84,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  output_grad.get_float_ptr(),
                  input_grad.get_float_ptr());
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   DropoutAttrs const &attrs,
@@ -128,7 +124,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<DROPOUT_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
   init.add_arg_slot<DropoutAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(FF_HANDLE);
   init.add_output_slot(OUTPUT);
@@ -148,7 +145,8 @@ void register_task<DROPOUT_INIT_TASK_ID>() {
 
 template <>
 OpTaskSignature fwd_signature<DROPOUT_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_unchecked_arg_slot<DropoutPerDeviceState>(PER_DEVICE_STATE);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);

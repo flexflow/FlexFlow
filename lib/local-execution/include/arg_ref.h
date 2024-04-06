@@ -21,7 +21,7 @@ public:
 
   template <typename T>
   bool holds() const {
-    //return this->type_tag.template matches<T>();
+    // return this->type_tag.template matches<T>();
 
     return matches<T>(this->type_idx);
   }
@@ -30,7 +30,7 @@ public:
     return this->ref_type;
   }
 
-  // TODO - how to extend this for legion runtime? 
+  // TODO - how to extend this for legion runtime?
   // ArgTypeRuntimeTag get_type_tag() const {
   //   return this->type_tag;
   // }

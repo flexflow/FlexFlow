@@ -90,7 +90,8 @@ public:
   // Control Tensor Op Math Conversion
   bool allow_tensor_op_math_conversion = false;
   std::optional<std::string> dataset_path = std::nullopt;
-  std::optional<std::string> export_strategy_computation_graph_file = std::nullopt;
+  std::optional<std::string> export_strategy_computation_graph_file =
+      std::nullopt;
   bool include_costs_dot_graph = false;
   std::optional<std::string> substitution_json_path = std::nullopt;
   int machine_model_version = 0;

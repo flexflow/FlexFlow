@@ -21,11 +21,6 @@
 
 using namespace FlexFlow::Kernels::Cast;
 
-
-
-
-
-
 namespace FlexFlow {
 
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
@@ -64,9 +59,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  attrs.dtype);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<CastAttrs>(ATTRS);
 
@@ -83,8 +77,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  input.data_type,
                  attrs.dtype);
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   CastAttrs const &attrs,
@@ -115,7 +107,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature fwd_signature<CAST_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<CastAttrs>(ATTRS);
   fwd.add_arg_slot<bool>(PROFILING);

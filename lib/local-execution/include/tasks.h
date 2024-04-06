@@ -183,7 +183,6 @@ void register_tasks() {
   register_tasks<ids...>();
 }
 
-
 } // namespace FlexFlow
 
 #endif

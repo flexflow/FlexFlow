@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_REDUCE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_REDUCE_KERNELS_H
 
+#include "array_shape.h"
 #include "device.h"
 #include "ff_handle.h"
-#include "array_shape.h"
 #include "op-attrs/op.h"
 
 namespace FlexFlow {
@@ -45,12 +45,12 @@ ReducePerDeviceState init_kernel(PerDeviceFFHandle const &,
 // namespace Internal {
 
 void forward_kernel(ffStream_t stream,
-                    ReducePerDeviceState const & m,
+                    ReducePerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr);
 
 void backward_kernel(ffStream_t stream,
-                     ReducePerDeviceState const & m,
+                     ReducePerDeviceState const &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr);
 //} // namespace Internal

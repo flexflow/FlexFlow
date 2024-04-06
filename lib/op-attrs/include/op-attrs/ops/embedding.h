@@ -10,11 +10,7 @@
 
 namespace FlexFlow {
 
-enum class AggregateOp {
-  SUM,
-  AVG,
-  NONE
-};
+enum class AggregateOp { SUM, AVG, NONE };
 
 struct EmbeddingAttrs {
   req<int> num_entries, out_channels;

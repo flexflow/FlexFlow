@@ -11,12 +11,15 @@ struct TransposePerDeviceState {
   req<int> perm[MAX_TENSOR_DIM];
 };
 
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(TransposePerDeviceState, num_dim, perm);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(TransposePerDeviceState,
+                                             num_dim,
+                                             perm);
 
 namespace Kernels {
 namespace Transpose {
 
-TransposePerDeviceState init_kernel(int num_dim, std::vector<ff_dim_t> const &perm);
+TransposePerDeviceState init_kernel(int num_dim,
+                                    std::vector<ff_dim_t> const &perm);
 
 void forward_kernel(cudaStream_t stream,
                     TransposePerDeviceState const &m,

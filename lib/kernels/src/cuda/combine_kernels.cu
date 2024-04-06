@@ -17,7 +17,6 @@
 #include "kernels/accessor.h"
 #include "kernels/combine_kernels.h"
 #include "kernels/datatype_dispatch.h"
-#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {

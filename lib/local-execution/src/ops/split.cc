@@ -15,8 +15,8 @@
 
 #include "split.h"
 #include "kernels/array_shape.h"
-#include "op-attrs/get_output_shapes.h"
 #include "kernels/split_kernels.h"
+#include "op-attrs/get_output_shapes.h"
 #include "utils/exception.h"
 #include "utils/hash-utils.h"
 
@@ -43,7 +43,6 @@ OpTaskInvocation backward(SplitAttrs const &attrs) {
 
   return {SPLIT_BWD_TASK_ID, binding};
 }
-
 
 void calc_block_size(legion_coord_t &num_blks,
                      legion_coord_t &blk_size,
@@ -74,7 +73,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
     calc_block_size(
         out_num_blks, out_blk_size[i], output.shape, attrs.axis.value());
   }
-  float * output_float_ptr = output.get_float_ptr();
+  float *output_float_ptr = output.get_float_ptr();
   return profile(forward_kernel,
                  profiling,
                  "Split forward_time = %.2lfms\n",
@@ -86,10 +85,9 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  attrs.splits.size());
 }
 
-
-
 // maybe we should add assert like the original code
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
@@ -102,7 +100,7 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
     calc_block_size(
         out_num_blks, out_blk_size[i], output_grad.shape, attrs.axis.value());
   }
-  const float * output_grad_ptr = output_grad.get_float_ptr();
+  float const *output_grad_ptr = output_grad.get_float_ptr();
   return profile(backward_kernel,
                  profiling,
                  "Split backward_time = %.2lfms\n",
@@ -114,8 +112,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  attrs.splits.size());
 }
 
-
-
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   SplitAttrs const &attrs,
                                   InputParallelTensorDesc const &input,
@@ -123,7 +119,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   MachineView const &machine_view) {
   auto env = sim_factory.new_environment();
 
-  std::vector<ParallelTensorShape> output_shape = get_output_shapes(attrs, input.shape);
+  std::vector<ParallelTensorShape> output_shape =
+      get_output_shapes(attrs, input.shape);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind(INPUT, input.shape);
@@ -146,7 +143,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<SPLIT_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 

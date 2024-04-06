@@ -14,17 +14,11 @@
  */
 
 #include "reshape.h"
-#include "op-attrs/get_output_shapes.h"
 #include "kernels/reshape_kernels.h"
-
+#include "op-attrs/get_output_shapes.h"
 
 namespace FlexFlow {
 // declare Legion names
-
-
-
-
-
 
 using namespace FlexFlow::Kernels::Reshape;
 
@@ -61,10 +55,9 @@ static DeviceSpecific<ReshapePerDeviceState>
   auto attrs = acc.get_argument<ReshapeAttrs>(ATTRS);
 
   DeviceSpecific<ReshapePerDeviceState> per_device_state =
-          init_kernel(attrs.shape.data_type);
+      init_kernel(attrs.shape.data_type);
   return per_device_state;
 }
-
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
@@ -82,9 +75,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
       acc.get_argument<ReshapePerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -99,8 +91,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  input_grad,
                  output_grad);
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ReshapeAttrs const &attrs,
@@ -136,7 +126,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<RESHAPE_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
 
   init.add_arg_slot<ReshapeAttrs>(ATTRS);
 
@@ -147,7 +138,8 @@ void register_task<RESHAPE_INIT_TASK_ID>() {
 
 template <>
 void register_task<RESHAPE_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<ReshapePerDeviceState>(PER_DEVICE_STATE);

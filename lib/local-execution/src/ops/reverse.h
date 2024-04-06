@@ -2,8 +2,8 @@
 #define _FLEXFLOW_REVERSE_H_
 
 #include "op-attrs/ops/reverse.h"
-#include "sim_environment.h"
 #include "op_task_invocation.h"
+#include "sim_environment.h"
 
 namespace FlexFlow {
 

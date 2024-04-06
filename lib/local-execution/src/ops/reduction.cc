@@ -22,9 +22,6 @@
 namespace FlexFlow {
 // declare Legion names
 
-
-
-
 using namespace FlexFlow::Kernels::Reduction;
 
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
@@ -57,28 +54,25 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   size_t num_replicas = attrs.reduction_degree;
 
   return profile(forward_kernel,
-                   profiling_settings,
-                   "[Reduction] forward_time = %.2lfms\n",
-                   input,
-                   output,
-                   num_replicas);
+                 profiling_settings,
+                 "[Reduction] forward_time = %.2lfms\n",
+                 input,
+                 output,
+                 num_replicas);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
   return profile(backward_kernel,
-                   profiling,
-                   "[Reduction] backward_time = %.2lfms\n",
-                   input_grad,
-                   output_grad);
+                 profiling,
+                 "[Reduction] backward_time = %.2lfms\n",
+                 input_grad,
+                 output_grad);
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ReductionAttrs const &attrs,
@@ -110,7 +104,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<REDUCTION_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_arg_slot<ReductionAttrs>(ATTRS);
@@ -128,7 +123,8 @@ void register_task<REDUCTION_FWD_TASK_ID>() {
 //   OpTaskSignature bwd =
 //       infer_bwd_signature(get_op_signature(REDUCTION_FWD_TASK_ID));
 
-//   register_task(REDUCTION_BWD_TASK_ID, "Reduction Bwd", bwd, backward_task_impl);
+//   register_task(REDUCTION_BWD_TASK_ID, "Reduction Bwd", bwd,
+//   backward_task_impl);
 // }
 
 }; // namespace FlexFlow

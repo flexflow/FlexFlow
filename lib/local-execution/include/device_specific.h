@@ -11,8 +11,9 @@ struct DeviceSpecific {
 
   DeviceSpecific() = delete;
   DeviceSpecific(T ptr_type) { // accessor
-    size_t device_idx = 0; 
-    DeviceSpecific<T> device_specific = DeviceSpecific::create(device_idx, ptr_type);
+    size_t device_idx = 0;
+    DeviceSpecific<T> device_specific =
+        DeviceSpecific::create(device_idx, ptr_type);
     this->ptr = device_specific.ptr;
     this->device_idx = device_specific.device_idx;
   }
@@ -32,7 +33,7 @@ struct DeviceSpecific {
     return this->ptr;
   }
 
-  // TODO: can modify ptr 
+  // TODO: can modify ptr
 
 private:
   T *ptr;

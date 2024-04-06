@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 
-#include "ff_handle.h"
 #include "device.h"
+#include "ff_handle.h"
 
 namespace FlexFlow {
 

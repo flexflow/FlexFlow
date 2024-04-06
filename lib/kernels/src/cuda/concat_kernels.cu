@@ -15,7 +15,6 @@
 
 #include "device.h"
 #include "kernels/concat_kernels.h"
-#include "device.h"
 #include <cassert>
 
 namespace FlexFlow {

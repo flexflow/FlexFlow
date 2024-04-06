@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #include "kernels/topk_kernels.h"
 
 namespace FlexFlow {

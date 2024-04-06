@@ -32,8 +32,8 @@ std::optional<float>
 
 template <typename F, typename... Ts>
 std::optional<float> profiling_wrapper(F const &f,
-                                  ProfilingSettings const &settings,
-                                  Ts &&...ts) {
+                                       ProfilingSettings const &settings,
+                                       Ts &&...ts) {
   ffStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 

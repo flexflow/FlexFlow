@@ -4,9 +4,9 @@
 #include "cost_metrics.h"
 #include "kernels/accessor.h"
 #include "kernels/allocation.h"
-#include "pcg/machine_view.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op_task_invocation.h"
+#include "pcg/machine_view.h"
 #include "task_argument_accessor.h"
 #include <vector>
 

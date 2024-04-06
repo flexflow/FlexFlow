@@ -23,16 +23,16 @@ namespace Kernels {
 namespace Linear {
 
 // what's the float * one_ptr
-LinearPerDeviceState
-    init_kernel(PerDeviceFFHandle handle, float *one_ptr,
-                Activation activation,
-                RegularizerAttrs regularizer,
-                bool use_bias,
-                DataType input_type,
-                DataType weight_type,
-                DataType output_type,
-                int batch_size,
-                int channel) {
+LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
+                                 float *one_ptr,
+                                 Activation activation,
+                                 RegularizerAttrs regularizer,
+                                 bool use_bias,
+                                 DataType input_type,
+                                 DataType weight_type,
+                                 DataType output_type,
+                                 int batch_size,
+                                 int channel) {
   ffTensorDescriptor_t outputTensor;
   ffActivationDescriptor_t actiDesc;
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));

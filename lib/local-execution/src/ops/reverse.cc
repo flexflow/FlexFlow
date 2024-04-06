@@ -72,9 +72,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output_size);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
@@ -102,8 +101,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  in_blk_size,
                  input_grad.shape.get_volume());
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ReverseAttrs const &attrs,
@@ -136,7 +133,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<REVERSE_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_input_slot(INPUT);
@@ -150,7 +148,8 @@ void register_task<REVERSE_FWD_TASK_ID>() {
 // void register_task<REVERSE_BWD_TASK_ID>() {
 //   OpTaskSignature bwd =
 //       infer_bwd_signature(get_op_signature(REVERSE_BWD_TASK_ID));
-//   register_task(REVERSE_BWD_TASK_ID, "Reverse backward", bwd, backward_task_impl);
+//   register_task(REVERSE_BWD_TASK_ID, "Reverse backward", bwd,
+//   backward_task_impl);
 // }
 
 }; // namespace FlexFlow

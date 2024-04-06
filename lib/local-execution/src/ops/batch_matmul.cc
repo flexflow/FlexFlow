@@ -23,11 +23,6 @@ namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::BatchMatmul;
 
-
-
-
-
-
 enum Slots {
   A_INPUT, // tensor
   B_INPUT, // tensor
@@ -104,9 +99,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  iter_config.seq_length);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   // BatchMatmul* bmm = (BatchMatmul*) task->args;
   FFIterationConfig iter_config =
       acc.get_argument<FFIterationConfig>(ITERATION_CONFIG);
@@ -158,8 +152,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  batch);
 }
 
-
-
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   BatchMatmulAttrs const &attrs,
                                   InputParallelTensorDesc const &a_input,
@@ -195,7 +187,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature fwd_signature<BATCHMATMUL_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(A_INPUT);
   fwd.add_input_slot(B_INPUT);

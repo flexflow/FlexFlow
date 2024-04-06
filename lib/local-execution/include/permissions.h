@@ -4,7 +4,6 @@
 #include "utils/exception.h"
 #include "utils/fmt.h"
 
-
 namespace FlexFlow {
 
 enum class Permissions { NONE, RO, WO, RW };

@@ -2,8 +2,8 @@
 #define _FLEXFLOW_TOPK_H_
 
 #include "op-attrs/ops/topk.h"
-#include "sim_environment.h"
 #include "op_task_invocation.h"
+#include "sim_environment.h"
 
 namespace FlexFlow {
 

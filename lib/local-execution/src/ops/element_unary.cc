@@ -7,10 +7,6 @@ namespace FlexFlow {
 
 // declare Legion names
 
-
-
-
-
 using namespace FlexFlow::Kernels::ElementUnary;
 
 enum Slots {
@@ -61,11 +57,10 @@ static DeviceSpecific<ElementUnaryPerDeviceState>
       acc.get_argument<ParallelTensorShape>(INPUT_SHAPE);
   ParallelTensorShape output_shape = get_output_shape(attrs, input_shape);
 
-  DeviceSpecific<ElementUnaryPerDeviceState> per_device_state =
-          init_kernel(get_piece_shape(input_shape), get_piece_shape(output_shape), attrs);
+  DeviceSpecific<ElementUnaryPerDeviceState> per_device_state = init_kernel(
+      get_piece_shape(input_shape), get_piece_shape(output_shape), attrs);
   return per_device_state;
 }
-
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -88,9 +83,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
   auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
@@ -114,8 +108,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  output,
                  output_grad);
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   ElementUnaryUnifiedAttrs const &attrs,
@@ -158,7 +150,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<ELEMENTUNARY_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
   init.add_arg_slot<ParallelTensorShape>(INPUT_SHAPE);
   init.add_arg_slot<ElementUnaryUnifiedAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
@@ -178,7 +171,8 @@ void register_task<ELEMENTUNARY_INIT_TASK_ID>() {
 
 template <>
 OpTaskSignature fwd_signature<ELEMENTUNARY_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);

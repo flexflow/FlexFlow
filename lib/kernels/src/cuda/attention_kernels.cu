@@ -15,7 +15,6 @@
 
 #include "device.h"
 #include "kernels/attention_kernels.h"
-#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {

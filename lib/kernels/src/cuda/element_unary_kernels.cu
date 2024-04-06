@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #include "kernels/datatype_dispatch.h"
 #include "kernels/element_unary_kernels.h"
 

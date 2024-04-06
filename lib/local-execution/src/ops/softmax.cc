@@ -59,10 +59,9 @@ static DeviceSpecific<SoftmaxPerDeviceState>
   auto const &attrs = acc.get_argument<SoftmaxAttrs>(ATTRS);
 
   DeviceSpecific<SoftmaxPerDeviceState> per_device_state =
-          init_kernel(handle, attrs.dim.value());
+      init_kernel(handle, attrs.dim.value());
   return per_device_state;
 }
-
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -79,9 +78,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr());
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
@@ -93,17 +91,13 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
 
   assert(output_grad.shape == output.shape);
 
-  return profile(
-      backward_kernel,
-      profiling,
-      "[SoftMax] backward_time = %.2lfms\n",
-      input_grad.get_float_ptr(),
-      output_grad.get_float_ptr(),
-      output_grad.shape.get_volume()
-  );
+  return profile(backward_kernel,
+                 profiling,
+                 "[SoftMax] backward_time = %.2lfms\n",
+                 input_grad.get_float_ptr(),
+                 output_grad.get_float_ptr(),
+                 output_grad.shape.get_volume());
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   SoftmaxAttrs const &attrs,
@@ -144,7 +138,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<SOFTMAX_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_arg_slot<SoftmaxAttrs>(ATTRS);
@@ -155,7 +150,8 @@ void register_task<SOFTMAX_INIT_TASK_ID>() {
 
 template <>
 void register_task<SOFTMAX_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<SoftmaxPerDeviceState>(PER_DEVICE_STATE);

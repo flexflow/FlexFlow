@@ -7,9 +7,11 @@
 namespace FlexFlow {
 
 // void ComputationGraphBuilder::add_layer(Layer const &layer,
-//                                         std::vector<tensor_guid_t> const &inputs,
-//                                         std::vector<tensor_guid_t> const &weights,
-//                                         std::vector<tensor_guid_t> const &outputs) {
+//                                         std::vector<tensor_guid_t> const
+//                                         &inputs, std::vector<tensor_guid_t>
+//                                         const &weights,
+//                                         std::vector<tensor_guid_t> const
+//                                         &outputs) {
 //   NOT_IMPLEMENTED();
 // }
 tensor_guid_t ComputationGraphBuilder::add_layer(
@@ -20,7 +22,8 @@ tensor_guid_t ComputationGraphBuilder::add_layer(
     Tensor const &output) {
   operator_guid_t node = computation_graph.add_node(layer);
   this->computation_graph.add_incoming_edges(inputs, node);
-  return this->computation_graph.create_outgoing_edge_with_label(node, 0, output);
+  return this->computation_graph.create_outgoing_edge_with_label(
+      node, 0, output);
 }
 
 std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
@@ -32,23 +35,27 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
   operator_guid_t node = computation_graph.add_node(layer);
   this->computation_graph.add_incoming_edges(inputs, node);
   std::vector<tensor_guid_t> output_tensor_guids;
-  for (int i=0; i<outputs.size(); ++i) {
-    output_tensor_guids.push_back(this->computation_graph.create_outgoing_edge_with_label(node, i, outputs[i]));
+  for (int i = 0; i < outputs.size(); ++i) {
+    output_tensor_guids.push_back(
+        this->computation_graph.create_outgoing_edge_with_label(
+            node, i, outputs[i]));
   }
   return output_tensor_guids;
 }
 
-tensor_guid_t ComputationGraphBuilder::broadcast(tensor_guid_t const &, TensorShape const &) {
+tensor_guid_t ComputationGraphBuilder::broadcast(tensor_guid_t const &,
+                                                 TensorShape const &) {
   NOT_IMPLEMENTED();
 }
-tensor_guid_t ComputationGraphBuilder::cast(tensor_guid_t const &input,
-                                     DataType dtype,
-                                     std::optional<std::string> const &name){
-    NOT_IMPLEMENTED()}
+tensor_guid_t
+    ComputationGraphBuilder::cast(tensor_guid_t const &input,
+                                  DataType dtype,
+                                  std::optional<std::string> const &name){
+        NOT_IMPLEMENTED()}
 
 tensor_guid_t ComputationGraphBuilder::as_type(tensor_guid_t const &x,
-                                        DataType data_type,
-                                        std::string const &name) {
+                                               DataType data_type,
+                                               std::string const &name) {
   if (x.data_type < data_type) {
     return this->cast(x, data_type, name);
   } else if (x.data_type > data_type) {
@@ -79,7 +86,8 @@ tensor_guid_t ComputationGraphBuilder::element_unary(
     std::optional<std::string> const &maybe_name) {
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  tensor_guid_t input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
+  tensor_guid_t input =
+      this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
   Layer layer = {attrs, name};
   TensorShape output_shape = get_output_shape(attrs, input);
@@ -93,7 +101,8 @@ tensor_guid_t ComputationGraphBuilder::element_scalar_unary(
     std::optional<std::string> const &maybe_name) {
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  tensor_guid_t input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
+  tensor_guid_t input =
+      this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
   Layer layer = {attrs, name};
   TensorShape output_shape = get_output_shape(attrs, input);
@@ -128,12 +137,14 @@ tensor_guid_t ComputationGraphBuilder::element_binary(
   TensorShape compute_shape = this->get_broadcast_target_shape({lhs, rhs});
   DataType compute_type = std::max(lhs.data_type, rhs.data_type);
 
-  tensor_guid_t const lhs_input = this->as_type(this->broadcast(lhs, compute_shape),
-                                         compute_type,
-                                         name + "_inputl_pre_cast");
-  tensor_guid_t const rhs_input = this->as_type(this->broadcast(rhs, compute_shape),
-                                         compute_type,
-                                         name + "_inputr_pre_cast");
+  tensor_guid_t const lhs_input =
+      this->as_type(this->broadcast(lhs, compute_shape),
+                    compute_type,
+                    name + "_inputl_pre_cast");
+  tensor_guid_t const rhs_input =
+      this->as_type(this->broadcast(rhs, compute_shape),
+                    compute_type,
+                    name + "_inputr_pre_cast");
 
   ElementBinaryAttrs attrs = {op_type, compute_type, false, false};
 
@@ -143,15 +154,17 @@ tensor_guid_t ComputationGraphBuilder::element_binary(
   return this->add_layer(layer, {lhs_input, rhs_input}, {}, output_shape);
 }
 
-tensor_guid_t ComputationGraphBuilder::dense(tensor_guid_t const &input,
-            int outDim,
-            std::optional<Activation> activation,
-            bool use_bias,
-            DataType data_type,
-            std::optional<Initializer> const &kernel_initializer,
-            std::optional<Initializer> const &bias_initializer,
-            std::optional<std::string> const &name) {
-  LinearAttrs attrs = {outDim, use_bias, data_type, activation.value(), std::nullopt};
+tensor_guid_t ComputationGraphBuilder::dense(
+    tensor_guid_t const &input,
+    int outDim,
+    std::optional<Activation> activation,
+    bool use_bias,
+    DataType data_type,
+    std::optional<Initializer> const &kernel_initializer,
+    std::optional<Initializer> const &bias_initializer,
+    std::optional<std::string> const &name) {
+  LinearAttrs attrs = {
+      outDim, use_bias, data_type, activation.value(), std::nullopt};
   std::string unwrapped_name = name.value_or(get_default_name(attrs));
 
   tensor_guid_t input_recast =
@@ -159,7 +172,8 @@ tensor_guid_t ComputationGraphBuilder::dense(tensor_guid_t const &input,
 
   Layer layer = {attrs, name};
   TensorShape output_shape = get_output_shape(attrs, input_recast);
-  Tensor output = {output_shape.dims, data_type, std::nullopt, false, std::nullopt};
+  Tensor output = {
+      output_shape.dims, data_type, std::nullopt, false, std::nullopt};
 
   std::vector<std::pair<TensorShape, std::optional<Initializer>>> weights;
 
@@ -173,14 +187,16 @@ tensor_guid_t ComputationGraphBuilder::dense(tensor_guid_t const &input,
   return this->add_layer(layer, {input_recast}, weights, output);
 }
 
-tensor_guid_t ComputationGraphBuilder::exp(tensor_guid_t const &input,
-                                    std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::exp(tensor_guid_t const &input,
+                                 std::optional<std::string> const &name) {
   return this->element_unary(Op::EXP, input, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::add(tensor_guid_t const &lhs,
-                                    tensor_guid_t const &rhs,
-                                    std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::add(tensor_guid_t const &lhs,
+                                 tensor_guid_t const &rhs,
+                                 std::optional<std::string> const &name) {
   return this->element_binary(Op::EW_ADD, lhs, rhs, name);
 }
 
@@ -198,47 +214,58 @@ tensor_guid_t
   return this->element_binary(Op::EW_MUL, lhs, rhs, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::divide(tensor_guid_t const &lhs,
-                                       tensor_guid_t const &rhs,
-                                       std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::divide(tensor_guid_t const &lhs,
+                                    tensor_guid_t const &rhs,
+                                    std::optional<std::string> const &name) {
   return this->element_binary(Op::EW_DIV, lhs, rhs, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::max(tensor_guid_t const &lhs,
-                                    tensor_guid_t const &rhs,
-                                    std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::max(tensor_guid_t const &lhs,
+                                 tensor_guid_t const &rhs,
+                                 std::optional<std::string> const &name) {
   return this->element_binary(Op::EW_MAX, lhs, rhs, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::min(tensor_guid_t const &lhs,
-                                    tensor_guid_t const &rhs,
-                                    std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::min(tensor_guid_t const &lhs,
+                                 tensor_guid_t const &rhs,
+                                 std::optional<std::string> const &name) {
   return this->element_binary(Op::EW_MIN, lhs, rhs, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::rsqrt(tensor_guid_t const &input,
-                                      std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::rsqrt(tensor_guid_t const &input,
+                                   std::optional<std::string> const &name) {
   return this->element_unary(Op::RSQRT, input, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::pow(tensor_guid_t const &input,
-                                    float exponent,
-                                    std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::pow(tensor_guid_t const &input,
+                                 float exponent,
+                                 std::optional<std::string> const &name) {
   return this->element_scalar_unary(Op::POW, input, exponent, name);
 }
 
 tensor_guid_t ComputationGraphBuilder::scalar_multiply(
-    tensor_guid_t const &input, float scalar, std::optional<std::string> const &name) {
+    tensor_guid_t const &input,
+    float scalar,
+    std::optional<std::string> const &name) {
   return this->element_scalar_unary(Op::SCALAR_MULTIPLY, input, scalar, name);
 }
 
 tensor_guid_t ComputationGraphBuilder::scalar_add(
-    tensor_guid_t const &input, float scalar, std::optional<std::string> const &name) {
+    tensor_guid_t const &input,
+    float scalar,
+    std::optional<std::string> const &name) {
   return this->element_scalar_unary(Op::SCALAR_ADD, input, scalar, name);
 }
 
 tensor_guid_t ComputationGraphBuilder::scalar_sub(
-    tensor_guid_t const &lhs, float rhs, std::optional<std::string> const &name) {
+    tensor_guid_t const &lhs,
+    float rhs,
+    std::optional<std::string> const &name) {
   return this->element_scalar_unary(Op::SCALAR_SUB, lhs, rhs, name);
 }
 
@@ -250,18 +277,21 @@ tensor_guid_t ComputationGraphBuilder::scalar_truediv(
       Op::SCALAR_TRUE_DIV, numerator, denominator, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::sin(tensor_guid_t const &input,
-                                    std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::sin(tensor_guid_t const &input,
+                                 std::optional<std::string> const &name) {
   return this->element_unary(Op::SIN, input, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::cos(tensor_guid_t const &input,
-                                    std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::cos(tensor_guid_t const &input,
+                                 std::optional<std::string> const &name) {
   return this->element_unary(Op::COS, input, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::relu(tensor_guid_t const &input,
-                                     std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::relu(tensor_guid_t const &input,
+                                  std::optional<std::string> const &name) {
   return this->element_unary(Op::RELU, input, name);
 }
 
@@ -271,8 +301,9 @@ tensor_guid_t
   return this->element_unary(Op::IDENTITY, input, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::gelu(tensor_guid_t const &input,
-                                     std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::gelu(tensor_guid_t const &input,
+                                  std::optional<std::string> const &name) {
   return this->element_unary(Op::GELU, input, name);
 }
 
@@ -282,13 +313,15 @@ tensor_guid_t
   return this->element_unary(Op::SIGMOID, input, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::tanh(tensor_guid_t const &input,
-                                     std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::tanh(tensor_guid_t const &input,
+                                  std::optional<std::string> const &name) {
   return this->element_unary(Op::TANH, input, name);
 }
 
-tensor_guid_t ComputationGraphBuilder::elu(tensor_guid_t const &input,
-                                    std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::elu(tensor_guid_t const &input,
+                                 std::optional<std::string> const &name) {
   return this->element_unary(Op::ELU, input, name);
 }
 
@@ -320,7 +353,8 @@ tensor_guid_t ComputationGraphBuilder::conv2d(
                        use_bias};
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  tensor_guid_t input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
+  tensor_guid_t input =
+      this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
   Layer layer = {attrs, name};
   TensorShape output_shape = get_output_shape(attrs, input);
@@ -345,7 +379,8 @@ tensor_guid_t ComputationGraphBuilder::dropout(
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
   Layer layer = {attrs, name};
-  tensor_guid_t input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
+  tensor_guid_t input =
+      this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
   TensorShape output_shape = get_output_shape(attrs, input);
 
@@ -364,7 +399,8 @@ tensor_guid_t ComputationGraphBuilder::embedding(
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
   Layer layer = {attrs, name};
-  tensor_guid_t input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
+  tensor_guid_t input =
+      this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
   TensorShape output_shape = get_output_shape(attrs, input);
   TensorShape weights_shape = get_weights_shape(attrs, input);
@@ -396,8 +432,9 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::gather(
   return this->add_layer(layer, {input}, {}, output_shapes);
 }
 
-tensor_guid_t ComputationGraphBuilder::input(Tensor const & input_tensor,
-                      std::optional<std::string> const &name) {
+tensor_guid_t
+    ComputationGraphBuilder::input(Tensor const &input_tensor,
+                                   std::optional<std::string> const &name) {
   InputAttrs input_attrs = {};
   std::string name = name.value_or(get_default_name(input_attrs));
 

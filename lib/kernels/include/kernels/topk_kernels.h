@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_TOPK_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_TOPK_KERNELS_H
 
-#include "kernels/allocation.h"
 #include "device.h"
+#include "kernels/allocation.h"
 
 namespace FlexFlow {
 

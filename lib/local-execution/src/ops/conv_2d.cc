@@ -63,22 +63,21 @@ static DeviceSpecific<Conv2DPerDeviceState>
   auto filter_grad = acc.get_tensor_grad<Permissions::RW>(FILTER);
 
   DeviceSpecific<Conv2DPerDeviceState> per_device_state =
-          init_kernel(handle,
-                      attrs.activation,
-                      attrs.kernel_h,
-                      attrs.kernel_w,
-                      attrs.groups,
-                      attrs.padding_h,
-                      attrs.padding_w,
-                      attrs.stride_h,
-                      attrs.stride_w,
-                      input,
-                      output,
-                      filter.get_float_ptr(),
-                      filter_grad.get_float_ptr());
+      init_kernel(handle,
+                  attrs.activation,
+                  attrs.kernel_h,
+                  attrs.kernel_w,
+                  attrs.groups,
+                  attrs.padding_h,
+                  attrs.padding_w,
+                  attrs.stride_h,
+                  attrs.stride_w,
+                  input,
+                  output,
+                  filter.get_float_ptr(),
+                  filter_grad.get_float_ptr());
   return per_device_state;
 }
-
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -102,9 +101,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  attrs.activation);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto per_device_state =
       acc.get_argument<Conv2DPerDeviceState>(PER_DEVICE_STATE);
@@ -132,8 +130,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  bias_grad.get_float_ptr(),
                  attrs.activation);
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   Conv2DAttrs const &attrs,
@@ -182,7 +178,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<CONV2D_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
 
   init.add_input_slot(INPUT);
   init.add_output_slot(OUTPUT);
@@ -205,7 +202,8 @@ void register_task<CONV2D_INIT_TASK_ID>() {
 
 template <>
 OpTaskSignature fwd_signature<CONV2D_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_unchecked_arg_slot<Conv2DPerDeviceState>(PER_DEVICE_STATE);

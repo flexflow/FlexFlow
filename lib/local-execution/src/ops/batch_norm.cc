@@ -16,7 +16,6 @@
 #include "batch_norm.h"
 #include "kernels/batch_norm_kernels.h"
 
-
 namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::BatchNorm;
@@ -83,18 +82,17 @@ static DeviceSpecific<BatchNormPerDeviceState>
   float *runningMean;
 
   DeviceSpecific<BatchNormPerDeviceState> per_device_state =
-          init_kernel(handle,
-                      allocator,
-                      runningMean,
-                      output_n,
-                      output_c,
-                      output_h,
-                      output_w,
-                      attrs.relu);
+      init_kernel(handle,
+                  allocator,
+                  runningMean,
+                  output_n,
+                  output_c,
+                  output_h,
+                  output_w,
+                  attrs.relu);
 
   return per_device_state;
 }
-
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
@@ -116,9 +114,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  bias.get_float_ptr());
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
       acc.get_argument<BatchNormPerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -144,8 +141,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  bias_grad.get_float_ptr(),
                  output.shape.get_volume());
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   BatchNormAttrs const &attrs,
@@ -194,7 +189,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<BATCHNORM_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
   init.add_input_slot(INPUT);
   init.add_input_slot(BIAS);
   init.add_output_slot(OUTPUT);
@@ -215,7 +211,8 @@ void register_task<BATCHNORM_INIT_TASK_ID>() {
 
 template <>
 OpTaskSignature fwd_signature<BATCHNORM_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_input_slot(INPUT);
   fwd.add_input_slot(SCALE);

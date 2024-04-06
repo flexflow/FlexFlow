@@ -42,15 +42,15 @@ static DeviceSpecific<ReducePerDeviceState>
   OperatorType op_type = attrs.op_type;
   // Note: How to set the reduction size?
   size_t reduction_size = input.shape.get_volume() / output.shape.get_volume();
-  DeviceSpecific<ReducePerDeviceState> per_device_state = init_kernel(
-          handle, op_type, reduction_size, input.shape, output.shape);
+  DeviceSpecific<ReducePerDeviceState> per_device_state =
+      init_kernel(handle, op_type, reduction_size, input.shape, output.shape);
   return per_device_state;
 }
 
-
 template <>
 void register_task<TRANSPOSE_INIT_TASK_ID>() {
-  OpTaskSignature init; init.type = OpTaskType::INIT;
+  OpTaskSignature init;
+  init.type = OpTaskType::INIT;
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_arg_slot<ReduceAttrs>(ATTRS);
@@ -64,7 +64,8 @@ void register_task<TRANSPOSE_INIT_TASK_ID>() {
 OpTaskInvocation forward(ReduceAttrs const &attrs) {
   OpTaskBinding binding;
 
-  binding.bind_arg(PER_DEVICE_STATE, per_device_op_state<ReducePerDeviceState>());
+  binding.bind_arg(PER_DEVICE_STATE,
+                   per_device_op_state<ReducePerDeviceState>());
   binding.bind_arg(PROFILING, profiling_settings());
 
   binding.bind(INPUT, input_tensor(0));
@@ -89,11 +90,10 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr());
 }
 
-
-
 template <>
 void register_task<REDUCE_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_unchecked_arg_slot<ReducePerDeviceState>(PER_DEVICE_STATE);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -110,7 +110,8 @@ OpTaskInvocation backward(ReduceAttrs const &attrs) {
   return {REDUCE_BWD_TASK_ID, binding};
 }
 
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   auto per_device_state =
       acc.get_argument<ReducePerDeviceState>(PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
@@ -133,7 +134,8 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
 //   OpTaskSignature bwd =
 //       infer_bwd_signature(get_op_signature(REDUCE_FWD_TASK_ID));
 
-//   register_task(REDUCE_BWD_TASK_ID, "Reduce::backward", bwd, backward_task_impl);
+//   register_task(REDUCE_BWD_TASK_ID, "Reduce::backward", bwd,
+//   backward_task_impl);
 // }
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,

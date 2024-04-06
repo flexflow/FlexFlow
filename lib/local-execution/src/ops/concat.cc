@@ -18,17 +18,12 @@
 
 #include "op-attrs/get_output_shapes.h"
 #include "op_task_signature.h"
-#include "variadic_tensor_ref.h"
 #include "utils/hash-utils.h"
+#include "variadic_tensor_ref.h"
 
 namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::Concat;
-
-
-
-
-
 
 enum Slots { INPUTS, OUTPUT, ATTRS, PROFILING, HANDLE, NUM_INPUTS };
 
@@ -65,9 +60,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  attrs.axis);
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto const &attrs = acc.get_argument<ConcatAttrs>(ATTRS);
 
@@ -83,8 +77,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  input_grads,
                  attrs.axis);
 }
-
-
 
 CostMetrics
     measure_operator_cost(SimEnvFactory const &sim,
@@ -119,7 +111,8 @@ CostMetrics
 
 template <>
 OpTaskSignature fwd_signature<CONCAT_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
   fwd.add_arg_slot<ConcatAttrs>(ATTRS);
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_input_slot(INPUTS, SlotType::VARIADIC);

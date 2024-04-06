@@ -1,3 +1,4 @@
+#include "kernels/device.h"
 #include "local_allocator.h"
 #include "local_model_training_instance.h"
 #include "local_training_backing.h"
@@ -5,7 +6,6 @@
 #include "pcg/computation_graph_builder.h"
 #include "pcg/optimizer.h"
 #include "pcg/tensor.h"
-#include "kernels/device.h"
 
 int const BATCH_ITERS = 100;
 int const BATCH_SIZE = 64;
@@ -20,16 +20,20 @@ using namespace FlexFlow;
 LocalModelTrainingInstance init_model_training_instance() {
   // construct computation graph
   ComputationGraphBuilder builder;
-  Tensor input = {{BATCH_SIZE, HIDDEN_SIZE}, DataType::FLOAT, std::nullopt, false, std::nullopt};
+  Tensor input = {{BATCH_SIZE, HIDDEN_SIZE},
+                  DataType::FLOAT,
+                  std::nullopt,
+                  false,
+                  std::nullopt};
   tensor_guid_t input_tensor = builder.input(input);
-  tensor_guid_t dense_1 = builder.dense(input_tensor, HIDDEN_SIZE, Activation::RELU);
+  tensor_guid_t dense_1 =
+      builder.dense(input_tensor, HIDDEN_SIZE, Activation::RELU);
   tensor_guid_t dense_2 = builder.dense(dense_1, OUTPUT_SIZE, Activation::RELU);
   tensor_guid_t softmax = builder.softmax(dense_2);
 
   // pre-allocated tensors
   Allocator allocator = get_local_memory_allocator();
-  GenericTensorAccessorW input_tensor_backing =
-      allocator.allocate(input);
+  GenericTensorAccessorW input_tensor_backing = allocator.allocate(input);
   std::unordered_map<tensor_guid_t, GenericTensorAccessorW &>
       pre_allocated_tensors;
   pre_allocated_tensors.insert({input_tensor, input_tensor_backing});

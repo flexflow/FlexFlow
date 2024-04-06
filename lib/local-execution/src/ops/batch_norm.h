@@ -2,8 +2,8 @@
 #define _FLEXFLOW_BATCH_NORM_H
 
 #include "op-attrs/ops/batch_norm.h"
-#include "sim_environment.h"
 #include "op_task_invocation.h"
+#include "sim_environment.h"
 
 namespace FlexFlow {
 

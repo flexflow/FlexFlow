@@ -13,14 +13,12 @@
  * limitations under the License.
  */
 
-
 #include "kernels/softmax_kernels.h"
 
 namespace FlexFlow {
 
 namespace Kernels {
 namespace Softmax {
-
 
 SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &handle, int dim) {
   ffTensorDescriptor_t inputTensor;
@@ -30,7 +28,6 @@ SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &handle, int dim) {
   SoftmaxPerDeviceState per_device_state = {handle, inputTensor, dim};
   return per_device_state;
 }
-
 
 void forward_kernel(cudaStream_t stream,
                     SoftmaxPerDeviceState const &m,

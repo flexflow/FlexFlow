@@ -6,10 +6,6 @@ namespace FlexFlow {
 
 // declare Legion names
 
-
-
-
-
 using namespace FlexFlow::Kernels::Flat;
 
 enum SLOTS { INPUT, OUTPUT, HANDLE, PROFILING };
@@ -42,9 +38,8 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr());
 }
 
-
-
-static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) {
+static std::optional<float>
+    backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
@@ -58,8 +53,6 @@ static std::optional<float> backward_task_impl(TaskArgumentAccessor const &acc) 
                  input_grad.get_float_ptr(),
                  output_grad.get_float_ptr());
 }
-
-
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim,
                                   FlatAttrs const &attrs,
@@ -89,7 +82,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature fwd_signature<FLAT_FWD_TASK_ID>() {
-  OpTaskSignature fwd; fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd;
+  fwd.type = OpTaskType::FWD;
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_input_slot(INPUT);

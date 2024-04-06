@@ -1,5 +1,5 @@
-#include "kernels/device.h"
 #include "tracked_allocator.h"
+#include "kernels/device.h"
 
 namespace FlexFlow {
 

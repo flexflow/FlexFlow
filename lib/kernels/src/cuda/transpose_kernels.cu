@@ -30,7 +30,8 @@ struct TransposeStrides {
 namespace Kernels {
 namespace Transpose {
 
-TransposePerDeviceState init_kernel(int num_dim, std::vector<ff_dim_t> const &perm) {
+TransposePerDeviceState init_kernel(int num_dim,
+                                    std::vector<ff_dim_t> const &perm) {
 
   TransposePerDeviceState state;
   state.num_dim = num_dim;

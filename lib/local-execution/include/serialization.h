@@ -83,7 +83,7 @@ struct is_trivially_serializable<
     : std::true_type {};
 
 template <typename T, std::size_t MAXSIZE>
-struct is_trivially_serializable<stack_vector<T, MAXSIZE>> 
+struct is_trivially_serializable<stack_vector<T, MAXSIZE>>
     : is_trivially_serializable<T> {};
 
 template <typename Idx, typename T>

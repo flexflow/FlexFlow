@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_ARG_BACKING_H
 #define _FLEXFLOW_LOCAL_EXECUTION_ARG_BACKING_H
 
+#include "config.h"
+#include "device_specific.h"
 #include "kernels/linear_kernels.h"
 #include "kernels/profiling.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/operator_guid_t.h"
-#include "config.h"
 #include "slot_id.h"
-#include "device_specific.h"
 #include <unordered_map>
 #include <variant>
 
@@ -19,10 +19,10 @@ using DeviceStates = std::variant<LinearPerDeviceState>;
 struct OpArgBacking {
 
   std::unordered_map<slot_id, ParallelTensorShape> tensor_shapes;
-  std::optional<std::pair<slot_id, DeviceSpecific<DeviceStates>>> per_device_op_state = std::nullopt;
+  std::optional<std::pair<slot_id, DeviceSpecific<DeviceStates>>>
+      per_device_op_state = std::nullopt;
   std::pair<slot_id, ProfilingSettings> profiling_settings;
   std::pair<slot_id, DeviceSpecific<PerDeviceFFHandle>> per_device_ff_handle;
-
 };
 
 using ArgBackingMapping = std::unordered_map<operator_guid_t, OpArgBacking>;

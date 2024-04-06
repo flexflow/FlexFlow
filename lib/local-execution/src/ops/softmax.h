@@ -2,8 +2,8 @@
 #define _FLEXFLOW_SOFTMAX_H
 
 #include "op-attrs/ops/softmax.h"
-#include "sim_environment.h"
 #include "op_task_invocation.h"
+#include "sim_environment.h"
 
 namespace FlexFlow {
 

@@ -40,9 +40,10 @@ TensorShape get_weights_shape(LinearAttrs const &attrs,
 TensorShape get_bias_shape(LinearAttrs const &attrs, TensorShape const &input);
 
 ParallelTensorShape get_weights_shape(LinearAttrs const &attrs,
-                              ParallelTensorShape const &input);
+                                      ParallelTensorShape const &input);
 
-ParallelTensorShape get_bias_shape(LinearAttrs const &attrs, ParallelTensorShape const &input);
+ParallelTensorShape get_bias_shape(LinearAttrs const &attrs,
+                                   ParallelTensorShape const &input);
 
 } // namespace FlexFlow
 
