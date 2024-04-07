@@ -1088,35 +1088,37 @@ TreeSearchBatchConfig
       int ssm_decoding_steps =
           profiling_requests[request.guid].ssm_decoding_steps;
 
-      new_bc.beamRequestsInfo[i].beam_size =
-          spec_infer_tree_width.size() > ssm_decoding_steps
-              ? spec_infer_tree_width[ssm_decoding_steps]
-              : 1;
+      // We don't need the following logic
+      //   new_bc.beamRequestsInfo[i].beam_size =
+      //       spec_infer_tree_width.size() > ssm_decoding_steps
+      //           ? spec_infer_tree_width[ssm_decoding_steps]
+      //           : 1;
 
-      new_bc.beamRequestsInfo[i].max_depth =
-          old_bc.beamRequestsInfo[i].max_depth;
+      //   new_bc.beamRequestsInfo[i].max_depth =
+      //       old_bc.beamRequestsInfo[i].max_depth;
 
-      new_bc.sub_requests[i] =
-          old_bc.sub_requests[i] * new_bc.beamRequestsInfo[i].beam_size;
-      new_bc.beamRequestsInfo[i].sub_request_num =
-          old_bc.beamRequestsInfo[i].sub_request_num *
-          old_bc.beamRequestsInfo[i].beam_size;
+      //   new_bc.sub_requests[i] =
+      //       old_bc.sub_requests[i] * new_bc.beamRequestsInfo[i].beam_size;
+      //   new_bc.beamRequestsInfo[i].sub_request_num =
+      //       old_bc.beamRequestsInfo[i].sub_request_num *
+      //       old_bc.beamRequestsInfo[i].beam_size;
 
-      assert(new_bc.beamRequestsInfo[i].sub_request_num <=
-                 TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES &&
-             "exceed maximum nodes per layer");
+      //   assert(new_bc.beamRequestsInfo[i].sub_request_num <=
+      //              TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES &&
+      //          "exceed maximum nodes per layer");
 
-      if (request.status == Request::RUNNING) {
-        new_bc.beamRequestsInfo[i].current_depth =
-            old_bc.beamRequestsInfo[i].current_depth + 1;
-        new_bc.request_running[i] = true;
-        // do the slot exchange to minimize the cache exchange in kernel.
-        update_beam_metadata(
-            new_bc, old_bc, request.beam_trees.at(old_bc.model_id), i);
+      //   if (request.status == Request::RUNNING) {
+      //     new_bc.beamRequestsInfo[i].current_depth =
+      //         old_bc.beamRequestsInfo[i].current_depth + 1;
+      //     new_bc.request_running[i] = true;
+      //     // do the slot exchange to minimize the cache exchange in kernel.
+      //     update_beam_metadata(
+      //         new_bc, old_bc, request.beam_trees.at(old_bc.model_id), i);
 
-      } else {
-        assert(false && "Request should not be pending in beam search phase");
-      }
+      //   } else {
+      //     assert(false && "Request should not be pending in beam search
+      //     phase");
+      //   }
 
       // do the slot exchange to minimize the cache exchange in kernel.
       // update_beam_metadata(new_bc, request.beam_trees.at(old_bc.model_id),
@@ -1253,7 +1255,7 @@ TreeSearchBatchConfig
           request.tokens.size()) {
         // request is done
         new_bc.requestsInfo[i].num_tokens_in_batch = 0;
-        new_bc.causalMask[i].this_layer_size = 0;
+        new_bc.causalMask[i].layer_size = 0;
         new_bc.beamRequestsInfo[i].sub_request_num = 0;
         new_bc.beamRequestsInfo[i].beam_size = 1;
       } else {
@@ -1815,7 +1817,7 @@ void RequestManager::init_bitmask(BatchConfig::BitMask &bitmask,
   bitmask.tree_size = 1;
 
   bitmask.prompt_size = initLength;
-  bitmask.this_layer_size = initLength;
+  bitmask.layer_size = initLength;
   // std::cout << "see bit mask" << bitmask.prompt_size << "\n";
   // std::cout << "see bit mask" << std::bitset<64>(bitmask.mask[0]) << "\n";
   // std::cout << "see bit mask" << std::bitset<64>(bitmask.mask[1]) << "\n";
@@ -1838,7 +1840,7 @@ void RequestManager::update_bitmask(BatchConfig::BitMask &bitmask,
 
   bitmask.non_tree_cache_size = non_tree_size + initLength - 1;
   bitmask.tree_size = 1;
-  bitmask.this_layer_size = initLength;
+  bitmask.layer_size = initLength;
   // std::cout << "non_tree_size: " << non_tree_size << "\n";
   bitmask.prompt_size = 1;
   for (int i = 0; i < bitmask.prompt_size; i++) {
@@ -1859,7 +1861,7 @@ void RequestManager::append_bitmask(BatchConfig::BitMask &bitmask,
                                     int currentDepth) {
   int pre_tree_size = bitmask.tree_size;
   bitmask.tree_size += newNodes;
-  bitmask.this_layer_size = newNodes;
+  bitmask.layer_size = newNodes;
   assert(bitmask.tree_size <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM &&
          "do not support tree size > 64");
   // preBeamSize: replicate num
@@ -1922,6 +1924,40 @@ void RequestManager::append_bitmask(BatchConfig::BitMask &bitmask,
   //           << "\n";
 }
 
+void RequestManager::append_bitmask(RequestGuid guid,
+                                    BatchConfig::BitMask &bitmask) {
+  // This function changes the bitmask in place
+  Request &request = all_requests[guid];
+  std::list<std::shared_ptr<TokenTreeNode>> &tree_layer =
+      request.speculative_token_trees[0].tree_layers.back();
+  int new_layer_size = tree_layer.size();
+  int last_layer_size = bitmask.current_layer_size;
+  int previous_tree_size = bitmask.tree_size;
+  bitmask.current_layer_size = new_layer_size;
+  bitmask.tree_size += new_layer_size;
+
+  assert(bitmask.tree_size <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+
+  int parent_offset = previous_tree_size - last_layer_size;
+  int child_offset = previous_tree_size;
+
+  int child_idx = 0;
+  for (auto const &child_ptr : tree_layer) {
+    // Each child copy its parent's mask
+    // Here we assume child_ptr->parent_pos denotes the position of the parent
+    // in its corresponding layer
+    bitmask.bit_mask[child_offset + child_idx] =
+        bitmask.bit_mask[parent_offset + child_ptr->parent_pos];
+    // Each child attend to its parent
+    bitmask.bit_mask[child_offset + child_idx].set_bit(parent_offset +
+                                                       child_ptr->parent_pos);
+    // Each child attend to itself
+    bitmask.bit_mask[child_offset + child_idx].set_bit(child_offset +
+                                                       child_idx);
+    child_idx++;
+  }
+}
+
 // prompt phase, init task
 void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
                                           int initLength) {
@@ -1932,7 +1968,7 @@ void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
   bitmask.non_tree_cache_size = 0;
   bitmask.tree_size = 1;
   bitmask.prompt_size += initLength;
-  bitmask.this_layer_size = initLength;
+  bitmask.layer_size = initLength;
 
   // for (int i = 0; i < bitmask.prompt_size; i++) {
   //   for (int j = i; j < bitmask.prompt_size; j++) {

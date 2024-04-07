@@ -92,7 +92,8 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
 
   int first_token_idx = 0;
   for (int r = 0; r < batch_config_request_id; r++) {
-    first_token_idx += request_completed[r] ? 0 : causalMask[r].this_layer_size;
+    first_token_idx +=
+        request_completed[r] ? 0 : causalMask[r].current_layer_size;
   }
 
   int const tree_branch_num =
@@ -347,7 +348,7 @@ __global__ void spec_inc_store_kv_cache(
     // if tree token:
 
     int const cache_idx = bitmask.prompt_size + bitmask.non_tree_cache_size +
-                          bitmask.tree_size - 1 - bitmask.this_layer_size +
+                          bitmask.tree_size - 1 - bitmask.current_layer_size +
                           token_idx - request_token_offset;
 
     kCache_ptr[req_id * (hidden_size * max_seq_len) + (cache_idx)*hidden_size +

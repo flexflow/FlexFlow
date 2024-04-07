@@ -84,17 +84,43 @@ public:
   };
 
   struct BitMask {
-    unsigned long long mask[MAX_SPEC_TREE_TOKEN_NUM] = {0};
+    class Bitset {
+    public:
+      Bitset() : bits{0} {}
 
-    // how many tokens before the tree, every sub requests need this part of
-    // cache
+      Bitset(Bitset const &other) {
+        // Copy the entire array of bits from 'other' to this object
+        std::memcpy(bits, other.bits, sizeof(bits));
+      }
+
+      void set_bit(size_t pos) {
+        size_t idx = pos / 64; // Find the index in the array
+        size_t bit = pos % 64; // Find the bit position within the uint64_t
+        bits[idx] |= (1ULL << bit);
+      }
+
+      void reset_bit(size_t pos) {
+        size_t idx = pos / 64;
+        size_t bit = pos % 64;
+        bits[idx] &= ~(1ULL << bit);
+      }
+
+      bool test_bit(size_t pos) const {
+        size_t idx = pos / 64;
+        size_t bit = pos % 64;
+        return (bits[idx] & (1ULL << bit)) != 0;
+      }
+
+    private:
+      uint64_t bits[MAX_SPEC_TREE_TOKEN_NUM / 8]; // Array to hold 256 bits
+    };
+
+    Bitset bit_mask[MAX_SPEC_TREE_TOKEN_NUM];
+    // the number of tokens before the tree
     int non_tree_cache_size = 0;
-
     // current tree size
     int tree_size = 0;
-
-    int this_layer_size = 0;
-
+    int current_layer_size = 0;
     // input length-> prompt/root
     int prompt_size = 0;
   };

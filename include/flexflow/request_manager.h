@@ -146,6 +146,7 @@ public:
                       int newNodes,
                       BeamTree const tree,
                       int currentDepth);
+  void append_bitmask(RequestGuid guid, BatchConfig::BitMask &bitmask);
   void update_bitmask(BatchConfig::BitMask &bitmask,
                       int initLength,
                       int non_tree_size);
