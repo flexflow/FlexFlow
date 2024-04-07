@@ -94,10 +94,12 @@ public:
 };
 
 // A comparator for shared_ptr<TokenTreeNode>
-struct CompareSharedTokenTreeNodePtr {
-  bool operator()(std::shared_ptr<TokenTreeNode> const &lhs,
-                  std::shared_ptr<TokenTreeNode> const &rhs) const {
-    return *lhs > *rhs;
+struct CompareSharedTokenTreeNodePtrRequestGuidPair {
+  bool operator()(std::pair<std::shared_ptr<TokenTreeNode>,
+                            BatchConfig::RequestGuid> const &lhs,
+                  std::pair<std::shared_ptr<TokenTreeNode>,
+                            BatchConfig::RequestGuid> const &rhs) const {
+    return lhs.first->joint_prob > rhs.first->joint_prob;
   }
 };
 
@@ -390,9 +392,10 @@ private:
 
   // This is a helper data structure to store help the pruning of the token
   // trees across different requests.
-  std::priority_queue<std::shared_ptr<TokenTreeNode>,
-                      std::vector<std::shared_ptr<TokenTreeNode>>,
-                      CompareSharedTokenTreeNodePtr>
+  std::priority_queue<
+      std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>,
+      std::vector<std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>>,
+      CompareSharedTokenTreeNodePtrRequestGuidPair>
       token_tree_node_pool;
 
   // TODO: Move this two vector to request struct

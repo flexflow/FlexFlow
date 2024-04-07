@@ -2619,21 +2619,30 @@ void RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
            "the token being added");
   }
 
+  bool remove_min_node = false;
+  bool add_new_node = true;
+
+  std::shared_ptr<TokenTreeNode> min_node_ptr = nullptr;
+  RequestGuid min_node_guid = -1;
+  if (token_tree_node_pool.size() > 0) {
+    std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>
+        min_node_pair_in_pool = token_tree_node_pool.top();
+    min_node_ptr = min_node_pair_in_pool.first;
+    min_node_guid = min_node_pair_in_pool.second;
+  }
+
   // We maintain the size of the token tree node pool to not exceed
-  // BatchConfig::MAX_NUM_TOKENS
+  //  BatchConfig::MAX_NUM_TOKENS
   if (token_tree_node_pool.size() == BatchConfig::MAX_NUM_TOKENS) {
     // The pool is full, check if the new node has a higher joint probability
     // than the minimum node in the pool.
-    std::shared_ptr<TokenTreeNode> min_node_in_pool =
-        token_tree_node_pool.top();
-    if (joint_prob < min_node_in_pool->joint_prob) {
+
+    if (joint_prob < min_node_ptr->joint_prob) {
       // Insertion failed
-      return;
+      add_new_node = false;
     } else {
       // Remove the minimum node from the pool, and set its pruned field to true
-      min_node_in_pool->pruned = true;
-      token_tree_node_pool.pop();
-      speculative_token_tree.tree_size--;
+      remove_min_node = true;
     }
   } else if (token_tree_node_pool.size() > BatchConfig::MAX_NUM_TOKENS) {
     assert(false && "The size of the token tree node pool should not exceed "
@@ -2647,23 +2656,44 @@ void RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
   // node is pruned.
   if (speculative_token_tree.tree_size ==
       BatchConfig::MAX_SPEC_TREE_TOKEN_NUM) {
-    // Insertion failed
-    return;
+    if (remove_min_node && guid == min_node_guid) {
+      // The minimum node in the pool is pruned, and it's in the same request
+      // with the new node. Only in this case we can add the new node.
+      // Because remove_min_node is true means that the new node has a higher
+      // joint probability than the minimum node in the pool.
+      add_new_node = true;
+    } else {
+      // Otherwise, we cannot add the new node, and we don't need to expel the
+      // minimum node from the pool.
+      add_new_node = false;
+      remove_min_node = false;
+    }
   } else if (speculative_token_tree.tree_size >
              BatchConfig::MAX_SPEC_TREE_TOKEN_NUM) {
     assert(false && "The size of the token tree should not exceed "
                     "BatchConfig::MAX_SPEC_TREE_TOKEN_NUM");
   }
 
-  // Add the new node to the pool and the last layer of the speculation tree
-  auto node_ptr =
-      std::make_shared<TokenTreeNode>(token_id, parent_pos, joint_prob);
-  token_tree_node_pool.push(node_ptr);
-  request.speculative_token_trees[0]
-      .tree_layers[current_speculation_step]
-      .push_back(node_ptr);
-  speculative_token_tree.tree_size++;
-  return;
+  assert(!(remove_min_node && !add_new_node) &&
+         "The minimum node should be removed only when the new node is added");
+
+  if (remove_min_node) {
+    // Remove the minimum node from the pool, and set its pruned field to true
+    min_node_ptr->pruned = true;
+    token_tree_node_pool.pop();
+    all_requests[min_node_guid].speculative_token_trees[0].tree_size--;
+  }
+
+  if (add_new_node) {
+    // Add the new node to the pool and the last layer of the speculation tree
+    auto node_ptr =
+        std::make_shared<TokenTreeNode>(token_id, parent_pos, joint_prob);
+    token_tree_node_pool.push(std::make_pair(node_ptr, guid));
+    request.speculative_token_trees[0]
+        .tree_layers[current_speculation_step]
+        .push_back(node_ptr);
+    speculative_token_tree.tree_size++;
+  }
 }
 
 void RequestManager::prune_last_layer_of_spec_token_tree(RequestGuid guid) {
