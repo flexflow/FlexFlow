@@ -1945,7 +1945,7 @@ void RequestManager::append_bitmask(RequestGuid guid,
   for (auto const &child_ptr : tree_layer) {
     // Each child copy its parent's mask
     // Here we assume child_ptr->parent_pos denotes the position of the parent
-    // in its corresponding layer
+    // in its corresponding layer, check this
     bitmask.bit_mask[child_offset + child_idx] =
         bitmask.bit_mask[parent_offset + child_ptr->parent_pos];
     // Each child attend to its parent
@@ -2597,49 +2597,72 @@ RequestManager *RequestManager::get_request_manager() {
   return request_manager_singleton;
 }
 
-void RequestManager::add_token_to_spec_token_tree(
-    RequestGuid guid,
-    BatchConfig::TokenId token_id,
-    int parent_pos,
-    float joint_prob,
-    int depth // depth starts from 0
-) {
+void RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
+                                                  BatchConfig::TokenId token_id,
+                                                  int parent_pos,
+                                                  float joint_prob) {
   // This method assumes only one small model is used for speculation
 
   // First make sure there are enough layers in the speculation tree
   Request &request = all_requests[guid];
   TokenTree &speculative_token_tree = request.speculative_token_trees[0];
-  while (speculative_token_tree.tree_layers.size() <= depth) {
+
+  if (speculative_token_tree.tree_layers.size() == current_speculation_step) {
+    // When adding the first token, we need to add a new layer
     speculative_token_tree.add_layer();
+  } else {
+    // To add a token, the tree depth is either the same as the current
+    // speculation step or one more than the current speculation step.
+    assert(speculative_token_tree.tree_layers.size() ==
+               current_speculation_step + 1 &&
+           "The depth of the token tree should be consistent with the depth of "
+           "the token being added");
   }
 
   // We maintain the size of the token tree node pool to not exceed
   // BatchConfig::MAX_NUM_TOKENS
-  if (token_tree_node_pool.size() < BatchConfig::MAX_NUM_TOKENS) {
-    // Add to the last layer of the speculation tree
-    auto node_ptr =
-        std::make_shared<TokenTreeNode>(token_id, parent_pos, joint_prob);
-    request.speculative_token_trees[0].tree_layers[depth].push_back(node_ptr);
-    token_tree_node_pool.push(node_ptr);
-    return;
+  if (token_tree_node_pool.size() == BatchConfig::MAX_NUM_TOKENS) {
+    // The pool is full, check if the new node has a higher joint probability
+    // than the minimum node in the pool.
+    std::shared_ptr<TokenTreeNode> min_node_in_pool =
+        token_tree_node_pool.top();
+    if (joint_prob < min_node_in_pool->joint_prob) {
+      // Insertion failed
+      return;
+    } else {
+      // Remove the minimum node from the pool, and set its pruned field to true
+      min_node_in_pool->pruned = true;
+      token_tree_node_pool.pop();
+      speculative_token_tree.tree_size--;
+    }
+  } else if (token_tree_node_pool.size() > BatchConfig::MAX_NUM_TOKENS) {
+    assert(false && "The size of the token tree node pool should not exceed "
+                    "BatchConfig::MAX_NUM_TOKENS");
   }
+  // Do nothing if the pool is not full
 
-  // The pool is full, check if the new node has a higher joint probability
-  // than the minimum node in the pool.
-  std::shared_ptr<TokenTreeNode> min_node_in_pool = token_tree_node_pool.top();
-  if (joint_prob < min_node_in_pool->joint_prob) {
+  // The request's token tree size should not exceed
+  // BatchConfig::MAX_SPEC_TREE_TOKEN_NUM
+  // The judgement is done here to avoid the case where the tree is full but a
+  // node is pruned.
+  if (speculative_token_tree.tree_size ==
+      BatchConfig::MAX_SPEC_TREE_TOKEN_NUM) {
     // Insertion failed
     return;
+  } else if (speculative_token_tree.tree_size >
+             BatchConfig::MAX_SPEC_TREE_TOKEN_NUM) {
+    assert(false && "The size of the token tree should not exceed "
+                    "BatchConfig::MAX_SPEC_TREE_TOKEN_NUM");
   }
 
-  // Remove the minimum node from the pool, and set its pruned field to true
-  min_node_in_pool->pruned = true;
-  token_tree_node_pool.pop();
   // Add the new node to the pool and the last layer of the speculation tree
   auto node_ptr =
       std::make_shared<TokenTreeNode>(token_id, parent_pos, joint_prob);
   token_tree_node_pool.push(node_ptr);
-  request.speculative_token_trees[0].tree_layers[depth].push_back(node_ptr);
+  request.speculative_token_trees[0]
+      .tree_layers[current_speculation_step]
+      .push_back(node_ptr);
+  speculative_token_tree.tree_size++;
   return;
 }
 

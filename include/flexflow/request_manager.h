@@ -73,9 +73,10 @@ struct Request {
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
-  // In the current version, we only use one speculator
-  //   TokenTree speculative_token_tree;
+  // TokenTree speculative_token_tree;
   std::vector<TokenTree> speculative_token_trees;
+  // To make request manager stateful, we need to store the causal mask here
+  BatchConfig::BitMask causal_mask;
 };
 
 class TokenTreeNode {
@@ -103,6 +104,7 @@ struct CompareSharedTokenTreeNodePtr {
 class TokenTree {
 public:
   std::vector<std::list<shared_ptr<TokenTreeNode>>> tree_layers = {};
+  int tree_size = 0;
   void add_layer() {
     tree_layers.emplace_back();
   }
@@ -381,6 +383,11 @@ private:
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
 
+  // Added to make the request manager stateful. During the processing of the
+  // first small model inference results, the step equals to 1. That is, every
+  // time a small model inference task is launched, the step is increased by 1.
+  int current_speculation_step = 0;
+
   // This is a helper data structure to store help the pruning of the token
   // trees across different requests.
   std::priority_queue<std::shared_ptr<TokenTreeNode>,
@@ -416,8 +423,7 @@ private:
   void add_token_to_spec_token_tree(RequestGuid guid,
                                     BatchConfig::TokenId token_id,
                                     int parent_pos,
-                                    float joint_prob,
-                                    int depth);
+                                    float joint_prob);
   void prune_last_layer_of_spec_token_tree(RequestGuid guid);
 };
 
