@@ -2669,6 +2669,12 @@ void RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
 void RequestManager::prune_last_layer_of_spec_token_tree(RequestGuid guid) {
   // This method assumes only one small model is used for speculation
   Request &request = all_requests[guid];
+
+  if (request.speculative_token_trees[0].tree_layers.size() <=
+      current_speculation_step) {
+    // There are no tokens in the last layer
+    return;
+  }
   auto &last_layer = request.speculative_token_trees[0].tree_layers.back();
   for (auto it = last_layer.begin(); it != last_layer.end(); ++it) {
     if ((*it)->pruned) {
