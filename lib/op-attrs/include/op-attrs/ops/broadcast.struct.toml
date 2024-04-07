@@ -1,0 +1,17 @@
+namespace = "FlexFlow"
+name = "BroadcastAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+]
+
+includes = [
+  "core.h",
+  "utils/stack_vector.h",
+]
+
+[[fields]]
+name = "target_dims"
+type = "stack_vector<int, MAX_TENSOR_DIM>"
