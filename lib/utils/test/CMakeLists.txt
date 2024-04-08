@@ -2,12 +2,12 @@ ff_add_test_executable(
   NAME
     utils-tests
   SRC_PATTERNS
-    src/test_cow_ptr.cc
+    src/*
   PRIVATE_INCLUDE
     src/
   DEPS
     utils
-    doctest
+    # doctest
     utils-test-common
 )
 

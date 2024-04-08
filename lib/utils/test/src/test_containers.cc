@@ -358,18 +358,18 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("Testing value_all function") {
-    std::vector<optional<int>> v = {1, 2, 3, 4, 5};
+    std::vector<std::optional<int>> v = {1, 2, 3, 4, 5};
     auto value_all_v = value_all(v);
     CHECK(value_all_v == std::vector<int>({1, 2, 3, 4, 5}));
   }
 
   TEST_CASE("Testing subvec function") {
     std::vector<int> v = {1, 2, 3, 4, 5};
-    auto subvec_v = subvec(v, tl::optional<int>(1), tl::optional<int>(4));
+    auto subvec_v = subvec(v, std::optional<int>(1), std::optional<int>(4));
 
     CHECK(subvec_v == std::vector<int>({2, 3, 4}));
 
-    auto subvec_v2 = subvec(v, tl::nullopt, tl::optional<int>(3));
+    auto subvec_v2 = subvec(v, std::nullopt, std::optional<int>(3));
     CHECK(subvec_v2 == std::vector<int>({1, 2, 3}));
   }
 
