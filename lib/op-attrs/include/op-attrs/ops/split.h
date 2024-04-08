@@ -2,8 +2,8 @@
 #define _FLEXFLOW_SPLIT_ATTRS_H
 
 #include "core.h"
-#include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/ops/split_attrs.h"
+#include "op-attrs/parallel_tensor_shape.h"
 
 namespace FlexFlow {
 

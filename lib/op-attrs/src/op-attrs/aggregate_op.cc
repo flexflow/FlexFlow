@@ -10,8 +10,9 @@ std::string format_as(AggregateOp o) {
     case AggregateOp::AVG:
       return "AVG";
     default:
-      throw mk_runtime_error(fmt::format("Unknown aggregate op {}", static_cast<int>(o)));
+      throw mk_runtime_error(
+          fmt::format("Unknown aggregate op {}", static_cast<int>(o)));
   }
 }
 
-}
+} // namespace FlexFlow

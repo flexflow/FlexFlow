@@ -2,9 +2,9 @@
 #define _FLEXFLOW_ATTENTION_ATTRS_H
 
 #include "core.h"
+#include "op-attrs/ops/attention_attrs.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/visitable.h"
-#include "op-attrs/ops/attention_attrs.h"
 
 namespace FlexFlow {
 

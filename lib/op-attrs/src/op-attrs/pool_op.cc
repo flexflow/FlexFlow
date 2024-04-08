@@ -10,8 +10,9 @@ std::string format_as(PoolOp o) {
     case PoolOp::AVG:
       return "AVG";
     default:
-      throw mk_runtime_error(fmt::format("Unknown pool op {}", static_cast<int>(o)));
+      throw mk_runtime_error(
+          fmt::format("Unknown pool op {}", static_cast<int>(o)));
   }
 }
 
-}
+} // namespace FlexFlow

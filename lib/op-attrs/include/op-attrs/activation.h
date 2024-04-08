@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPATTRS_INCLUDE_OPATTRS_ACTIVATION_H
 #define _FLEXFLOW_OPATTRS_INCLUDE_OPATTRS_ACTIVATION_H
 
-#include "utils/fmt.h"
 #include "nlohmann/json.hpp"
+#include "utils/fmt.h"
 
 namespace FlexFlow {
 
@@ -14,7 +14,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(Activation,
                               {Activation::TANH, "TANH"},
                               {Activation::GELU, "GELU"}});
 
-}
+} // namespace FlexFlow
 
 namespace fmt {
 

@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_AGGREGATE_OP_H
 #define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_AGGREGATE_OP_H
 
-#include "utils/fmt.h"
 #include "nlohmann/json.hpp"
+#include "utils/fmt.h"
 
 namespace FlexFlow {
 
