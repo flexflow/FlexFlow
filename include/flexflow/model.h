@@ -837,18 +837,11 @@ public:
   // ========================================
   // PEFT Layers
   // ========================================
-  void lora_linear(Tensor const input,
-                   Tensor const output,
-                   OperatorType _type,
-                   char const *name = nullptr);
+  PEFTModelID *add_lora_layer(LoraLinearConfig const peft_config);
   // ========================================
   // Inference APIs
   // ========================================
   std::vector<GenerationResult> generate(std::vector<Request> const &requests);
-
-  PEFTModelID register_peft_model(
-      LoraLinearConfig const mlp_first = LoraLinearConfig::DefaultConfig,
-      LoraLinearConfig const mlp_second = LoraLinearConfig::DefaultConfig);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
@@ -1174,6 +1167,12 @@ public:
   std::vector<Layer *> layers;
   std::vector<Op *> operators;
   std::vector<ParallelTensor> parameters;
+  // PEFT related
+  std::unordered_map<Layer *, Layer *> base_layer_to_peft_layer;
+  std::unordered_map<Layer *, std::vector<PEFTModelID>> peft_layer_to_peft_id;
+  std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
+  //   std::vector<Op *> peft_operators;
+
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer

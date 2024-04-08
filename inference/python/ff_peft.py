@@ -41,49 +41,44 @@ def get_configs():
         # Define sample configs
         ff_init_configs = {
             # required parameters
-            "num_gpus": 2,
-            "memory_per_gpu": 14000,
-            "zero_copy_memory_per_node": 40000,
+            "num_gpus": 1,
+            "memory_per_gpu": 8192,
+            "zero_copy_memory_per_node": 12000,
             # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
             "data_parallelism_degree": 1,
             "tensor_parallelism_degree": 1,
-            "pipeline_parallelism_degree": 2,
+            "pipeline_parallelism_degree": 1,
             "offload": False,
-            "offload_reserve_space_size": 8 * 1024, # 8GB
+            "offload_reserve_space_size": 8 * 1024,  # 8GB
             "use_4bit_quantization": False,
             "use_8bit_quantization": False,
-            "enable_peft": False,
-            "peft_activation_reserve_space_size": 1024, # 1GB
-            "peft_weight_reserve_space_size": 1024, # 1GB
+            "enable_peft": True,
+            "peft_activation_reserve_space_size": 1024,  # 1GB
+            "peft_weight_reserve_space_size": 1024,  # 1GB
             "profiling": False,
-            "benchmarking": False,
-            "inference_debugging": False,
+            "inference_debugging": True,
             "fusion": True,
         }
-        llm_configs = {
-            # required llm arguments
-            "llm_model": "meta-llama/Llama-2-7b-hf",
-            # optional llm parameters
-            "cache_path": os.environ.get("FF_CACHE_PATH", ""),
+        model_configs = {
+            # required parameters
+            "base_model": "JackFram/llama-160m",
+            "peft_model_ids": [
+                "goliaro/llama-160m-lora-full",
+            ],
+            # optional parameters
+            "cache_path": "",
             "refresh_cache": False,
             "full_precision": False,
-            "ssms": [
-                {
-                    # required ssm parameter
-                    "ssm_model": "JackFram/llama-160m",
-                    # optional ssm parameters
-                    "cache_path": "",
-                    "refresh_cache": False,
-                    "full_precision": False,
-                }
-            ],
-            # "prompt": "",
+            "prompt": "",
+            "finetuning_dataset": os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "../prompt/peft.json"
+            ),
             "output_file": "",
         }
         # Merge dictionaries
-        ff_init_configs.update(llm_configs)
+        ff_init_configs.update(model_configs)
         return ff_init_configs
 
 
@@ -99,62 +94,55 @@ def main():
         ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
     )
     llm = ff.LLM(
-        configs.llm_model,
+        configs.base_model,
         data_type=ff_data_type,
         cache_path=configs.cache_path,
         refresh_cache=configs.refresh_cache,
         output_file=configs.output_file,
     )
+    for peft_model_id in configs.peft_model_ids:
+        llm.add_peft(peft_model_id)
 
-    # Create the SSMs
-    ssms = []
-    for ssm_config in configs.ssms:
-        ssm_config = SimpleNamespace(**ssm_config)
-        ff_data_type = (
-            ff.DataType.DT_FLOAT if ssm_config.full_precision else ff.DataType.DT_HALF
-        )
-        ssm = ff.SSM(
-            ssm_config.ssm_model,
-            data_type=ff_data_type,
-            cache_path=ssm_config.cache_path,
-            refresh_cache=ssm_config.refresh_cache,
-            output_file=configs.output_file,
-        )
-        ssms.append(ssm)
-
-    # Create the sampling configs
+    # Compile the LLM for inference and load the weights into memory
     generation_config = ff.GenerationConfig(
         do_sample=False, temperature=0.9, topp=0.8, topk=1
     )
-
-    # Compile the SSMs for inference and load the weights into memory
-    for ssm in ssms:
-        ssm.compile(
-            generation_config,
-            max_requests_per_batch=1,
-            max_seq_length=256,
-            max_tokens_per_batch=64,
-        )
-
-    # Compile the LLM for inference and load the weights into memory
     llm.compile(
         generation_config,
         max_requests_per_batch=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
-        ssms=ssms,
     )
-    
+
     llm.start_server()
 
+    requests = []
+    # Serving
     if len(configs.prompt) > 0:
         prompts = [s for s in json.load(open(configs.prompt))]
-        results = llm.generate(prompts)
-    else:
-        result = llm.generate("Three tips for staying healthy are: ")
-        
+        inference_requests = [
+            ff.Request(
+                ff.RequestType.REQ_INFERENCE, prompt=prompt, max_sequence_length=128
+            )
+            for prompt in prompts
+        ]
+        requests += inference_requests
+    # Finetuning
+    if len(configs.finetuning_dataset) > 0:
+        for peft_model_id in configs.peft_model_ids:
+            finetuning_request = ff.Request(
+                ff.RequestType.REQ_FINETUNING,
+                max_sequence_length=128,
+                peft_model_id=llm.get_ff_peft_id(peft_model_id),
+                dataset_filepath=configs.finetuning_dataset,
+            )
+            requests.append(finetuning_request)
+
+    llm.generate(requests)
+
     llm.stop_server()
 
+
 if __name__ == "__main__":
-    print("flexflow inference example (speculative inference)")
+    print("flexflow PEFT example")
     main()

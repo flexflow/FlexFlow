@@ -67,6 +67,8 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_request_manager_t, RequestManager *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_file_data_loader_t, FileDataLoader *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_generation_result_t, GenerationResult *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_lora_linear_config_t, LoraLinearConfig *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_peft_model_id_t, PEFTModelID *);
 };
 
 Logger ffc_log("flexflow_c");
@@ -1542,6 +1544,21 @@ flexflow_tensor_t flexflow_model_add_argmax(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_peft_model_id_t flexflow_model_add_lora_layer(
+    flexflow_model_t handle_,
+    const flexflow_lora_linear_config_t peft_config_) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  LoraLinearConfig const *peft_config = FFCObjectWrapper::unwrap(peft_config_);
+  PEFTModelID *peft_model_id = handle->add_lora_layer(*peft_config);
+
+  DEBUG_PRINT("[Add Lora Layer] model handle: %p, peft_config handle %p, "
+              "peft_model_id: %p",
+              handle,
+              peft_config,
+              peft_model_id);
+  return FFCObjectWrapper::wrap(peft_model_id);
+}
+
 void flexflow_model_set_sgd_optimizer(flexflow_model_t handle_,
                                       flexflow_sgd_optimizer_t optimizer_) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
@@ -1597,43 +1614,74 @@ void flexflow_model_set_transformer_layer_id(flexflow_model_t handle_, int id) {
 
 void flexflow_model_generate(flexflow_model_t handle_,
                              int num_requests,
+                             enum RequestType *request_types,
                              char const **input_texts,
-                             int max_num_chars,
                              char **output_texts,
-                             int max_seq_length,
+                             int *max_seq_lengths,
+                             flexflow_peft_model_id_t *peft_model_ids,
+                             char const **dataset_filepaths,
+                             int *training_steps,
                              int **output_length_and_tokens) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::vector<Request> requests;
+
+  int finetuning_req_idx = 0;
   for (int i = 0; i < num_requests; i++) {
-    std::string const text_str(input_texts[i]);
-    Request inference_req;
-    inference_req.prompt = text_str;
-    inference_req.max_sequence_length = max_seq_length;
-    requests.push_back(inference_req);
-    DEBUG_PRINT("[Model] generate[%d] %p %s %i",
-                i,
-                handle,
-                text_str.c_str(),
-                max_seq_length);
+    if (request_types[i] == RequestType::REQ_INFERENCE) {
+      std::string const text_str(input_texts[i]);
+      Request inference_req;
+      inference_req.prompt = text_str;
+      inference_req.max_sequence_length = max_seq_lengths[i];
+      PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(peft_model_ids[i]);
+      if (peft_model_id != nullptr) {
+        inference_req.peft_model_id = *peft_model_id;
+      }
+      requests.push_back(inference_req);
+      DEBUG_PRINT("[Model] generate[%d] %p %s %i",
+                  i,
+                  handle,
+                  text_str.c_str(),
+                  max_seq_lengths[i]);
+    } else {
+      Request fine_tuning_req;
+      fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
+      fine_tuning_req.max_sequence_length = max_seq_lengths[i];
+      PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(peft_model_ids[i]);
+      if (peft_model_id != nullptr) {
+        fine_tuning_req.peft_model_id = *peft_model_id;
+      }
+      std::string const dataset_fp(dataset_filepaths[finetuning_req_idx]);
+      fine_tuning_req.dataset_filepath = dataset_fp;
+      fine_tuning_req.max_training_steps = training_steps[finetuning_req_idx];
+      requests.push_back(fine_tuning_req);
+      DEBUG_PRINT("[Model] generate[%d] %p %s %i %i",
+                  i,
+                  handle,
+                  dataset_fp.c_str(),
+                  max_seq_lengths[i],
+                  training_steps[finetuning_req_idx]);
+      finetuning_req_idx++;
+    }
   }
 
   std::vector<GenerationResult> results = handle->generate(requests);
 
-  // If the prompt exceeds max seq len, check that we return the prompt with no
-  // additional token. Otherwise, check that the output does not exceed the max
-  // sequence length.
   for (int i = 0; i < num_requests; i++) {
-    assert(results[i].output_tokens.size() <= max_seq_length ||
-           results[i].output_tokens.size() == results[i].input_tokens.size());
-    output_length_and_tokens[i][0] = results[i].output_tokens.size();
-    std::copy(results[i].output_tokens.begin(),
-              results[i].output_tokens.end(),
-              output_length_and_tokens[i] + 1);
-    std::memcpy(output_texts[i],
-                results[i].output_text.c_str(),
-                results[i].output_text.length());
+    if (request_types[i] == RequestType::REQ_INFERENCE) {
+      // If the prompt exceeds max seq len, check that we return the prompt with
+      // no additional token. Otherwise, check that the output does not exceed
+      // the max sequence length.
+      assert(results[i].output_tokens.size() <= max_seq_lengths[i] ||
+             results[i].output_tokens.size() == results[i].input_tokens.size());
+      output_length_and_tokens[i][0] = results[i].output_tokens.size();
+      std::copy(results[i].output_tokens.begin(),
+                results[i].output_tokens.end(),
+                output_length_and_tokens[i] + 1);
+      std::memcpy(output_texts[i],
+                  results[i].output_text.c_str(),
+                  results[i].output_text.length());
+    }
   }
-  // return FFCObjectWrapper::wrap(&results[0]);
 }
 
 void flexflow_model_set_position_offset(flexflow_model_t handle_,
@@ -2599,6 +2647,14 @@ void flexflow_request_manager_set_max_tokens_per_batch(
   DEBUG_PRINT("[RequestManager] set max_tokens_per_batch %d", max_num_tokens);
 }
 
+void flexflow_request_manager_set_max_spec_tree_token_num(
+    flexflow_request_manager_t handle_, int max_num_tokens) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_spec_tree_token_num(max_num_tokens);
+  DEBUG_PRINT("[RequestManager] set max_spec_tree_token_num %d",
+              max_num_tokens);
+}
+
 void flexflow_request_manager_set_max_sequence_length(
     flexflow_request_manager_t handle_, int max_seq_length) {
   RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
@@ -2738,4 +2794,51 @@ void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
   FileDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_handle_);
   handle->load_weights(model);
+}
+
+// -----------------------------------------------------------------------
+// LoraLinearConfig
+// -----------------------------------------------------------------------
+
+flexflow_lora_linear_config_t
+    flexflow_lora_linear_config_create(char const *cache_folder_,
+                                       char const *peft_model_id_) {
+  assert(cache_folder_ != nullptr &&
+         "Cannot convert nullptr char * to std::string");
+  assert(peft_model_id_ != nullptr &&
+         "Cannot convert nullptr char * to std::string");
+  std::string const cache_folder(cache_folder_);
+  std::string const peft_model_id(peft_model_id_);
+  LoraLinearConfig *handle = new LoraLinearConfig(cache_folder, peft_model_id);
+  DEBUG_PRINT("[LoraLinearConfig] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+void flexflow_lora_linear_config_destroy(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *peft_config = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[LoraLinearConfig] delete %p", peft_config);
+  delete peft_config;
+}
+
+// -----------------------------------------------------------------------
+// PEFTModelID
+// -----------------------------------------------------------------------
+
+flexflow_peft_model_id_t flexflow_peft_model_id_create() {
+  PEFTModelID *handle = new PEFTModelID();
+  DEBUG_PRINT("[PEFTModelID] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+flexflow_peft_model_id_t flexflow_peft_model_id_create_id(size_t id) {
+  PEFTModelID *handle = new PEFTModelID(id);
+  DEBUG_PRINT("[PEFTModelID] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+void flexflow_peft_model_id_destroy(flexflow_peft_model_id_t handle_) {
+  PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[PEFTModelID] delete %p", peft_model_id);
+  delete peft_model_id;
 }

@@ -55,6 +55,8 @@ FF_NEW_OPAQUE_TYPE(flexflow_inference_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_request_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_file_data_loader_t);
 FF_NEW_OPAQUE_TYPE(flexflow_generation_result_t);
+FF_NEW_OPAQUE_TYPE(flexflow_lora_linear_config_t);
+FF_NEW_OPAQUE_TYPE(flexflow_peft_model_id_t);
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -593,6 +595,9 @@ flexflow_tensor_t flexflow_model_add_argmax(flexflow_model_t handle_,
                                             bool beam_search,
                                             char const *name);
 
+flexflow_peft_model_id_t flexflow_model_add_lora_layer(
+    flexflow_model_t handle_, const flexflow_lora_linear_config_t peft_config_);
+
 void flexflow_model_set_sgd_optimizer(flexflow_model_t handle,
                                       flexflow_sgd_optimizer_t optimizer);
 
@@ -616,10 +621,13 @@ void flexflow_model_set_transformer_layer_id(flexflow_model_t handle, int id);
 
 void flexflow_model_generate(flexflow_model_t handle_,
                              int num_requests,
-                             char const **input_text,
-                             int max_num_chars,
-                             char **output_text,
-                             int max_seq_length,
+                             enum RequestType *request_types,
+                             char const **input_texts,
+                             char **output_texts,
+                             int *max_seq_lengths,
+                             flexflow_peft_model_id_t *peft_model_ids,
+                             char const **dataset_filepaths,
+                             int *training_steps,
                              int **output_length_and_tokens);
 
 void flexflow_model_set_position_offset(flexflow_model_t handle, int offset);
@@ -975,6 +983,9 @@ void flexflow_request_manager_set_max_requests_per_batch(
 void flexflow_request_manager_set_max_tokens_per_batch(
     flexflow_request_manager_t handle_, int max_num_tokens);
 
+void flexflow_request_manager_set_max_spec_tree_token_num(
+    flexflow_request_manager_t handle_, int max_num_tokens);
+
 void flexflow_request_manager_set_max_sequence_length(
     flexflow_request_manager_t handle_, int max_seq_length);
 
@@ -1035,6 +1046,26 @@ void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_);
 
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
                                             flexflow_model_t model_handle_);
+
+// -----------------------------------------------------------------------
+// LoraLinearConfig
+// -----------------------------------------------------------------------
+
+flexflow_lora_linear_config_t
+    flexflow_lora_linear_config_create(char const *cache_folder_,
+                                       char const *peft_model_id_);
+
+void flexflow_lora_linear_config_destroy(flexflow_lora_linear_config_t handle_);
+
+// -----------------------------------------------------------------------
+// PEFTModelID
+// -----------------------------------------------------------------------
+
+flexflow_peft_model_id_t flexflow_peft_model_id_create();
+
+flexflow_peft_model_id_t flexflow_peft_model_id_create_id(unsigned long id);
+
+void flexflow_peft_model_id_destroy(flexflow_peft_model_id_t handle_);
 
 #ifdef __cplusplus
 }

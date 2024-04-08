@@ -189,10 +189,8 @@ std::string get_operator_type_name(OperatorType type) {
     case OP_ARGMAX:
       return "ArgMax";
     // PEFT Ops
-    case OP_LORA_MLP_FIRST:
-      return "Lora MLP First Layer";
-    case OP_LORA_MLP_SECOND:
-      return "Lora MLP Second Layer";
+    case OP_LORA:
+      return "Lora Layer";
     // Parallel Ops
     case OP_REPARTITION:
       return "Repartition";

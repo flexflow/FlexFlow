@@ -136,12 +136,12 @@ void load_attention_bias_v2(DT *ptr,
                             bool final_bias,
                             std::string layer_name,
                             std::string weights_folder) {
-  std::string q_file = layer_name + "_wq_bias";
-  std::string k_file = layer_name + "_wk_bias";
-  std::string v_file = layer_name + "_wv_bias";
+  std::string q_file = layer_name + ".q_proj.bias";
+  std::string k_file = layer_name + ".k_proj.bias";
+  std::string v_file = layer_name + ".v_proj.bias";
   std::vector<std::string> bias_files = {q_file, k_file, v_file};
   if (final_bias) {
-    std::string o_file = layer_name + "_wo_bias";
+    std::string o_file = layer_name + ".o_proj.bias";
     bias_files.push_back(o_file);
   }
 
@@ -217,12 +217,10 @@ void load_attention_weights_v2(DT *ptr,
                                std::string weights_folder,
                                size_t volume,
                                int tensor_parallelism_degree) {
-  // layers_0_attention_wq_weight
-  // layers_0_self_attn_q_proj_weight
-  std::string q_file = layer_name + "_wq_weight";
-  std::string k_file = layer_name + "_wk_weight";
-  std::string v_file = layer_name + "_wv_weight";
-  std::string o_file = layer_name + "_wo_weight";
+  std::string q_file = layer_name + ".q_proj.weight";
+  std::string k_file = layer_name + ".k_proj.weight";
+  std::string v_file = layer_name + ".v_proj.weight";
+  std::string o_file = layer_name + ".o_proj.weight";
   std::vector<std::string> weight_filenames = {q_file, k_file, v_file};
   int file_index = 0;
 
@@ -407,12 +405,10 @@ void load_attention_weights_quantized(char *ptr,
                                       std::string weights_folder,
                                       DataType data_type,
                                       bool use_full_precision) {
-  // layers_0_attention_wq_weight
-  // layers_0_self_attn_q_proj_weight
-  std::string q_file = layer_name + "_wq_weight";
-  std::string k_file = layer_name + "_wk_weight";
-  std::string v_file = layer_name + "_wv_weight";
-  std::string o_file = layer_name + "_wo_weight";
+  std::string q_file = layer_name + ".q_proj.weight";
+  std::string k_file = layer_name + ".k_proj.weight";
+  std::string v_file = layer_name + ".v_proj.weight";
+  std::string o_file = layer_name + ".o_proj.weight";
   std::vector<std::string> weight_filenames = {q_file, k_file, v_file, o_file};
 
   int file_index = 0;
@@ -690,7 +686,7 @@ void FileDataLoader::load_quantization_weight(FFModel *ff,
     if (weight_idx > 0) {
       assert(weight_idx == 0 || weight_idx == 1);
       if (weight_filename != "embed_tokens_weight_lm_head") {
-        weight_filename += weight_idx == 0 ? "_weight" : "_bias";
+        weight_filename += weight_idx == 0 ? ".weight" : ".bias";
       }
     }
     load_from_quantized_file(data,
@@ -725,15 +721,15 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
 
   std::string weight_filename = removeGuidOperatorName(std::string(l->name));
 
-  if (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
-      l->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION ||
-      l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION) {
-    if (weight_filename.find("self_attention") != std::string::npos) {
-      load_attention_weights_multi_query(
-          data, weight_filename, weights_folder, hidden_dim, num_heads);
-    } else if (weight_filename.find("attention") != std::string::npos &&
-               weight_filename.rfind("attention") ==
-                   weight_filename.length() - strlen("attention")) {
+  if (ff->config.benchmarking) {
+    std::cout << "Initializing weight " << weight_filename
+              << " with random data (benchmarking mode)" << std::endl;
+    // If benchmarking, we don't need to load the weights
+    // We can just fill the weight tensor with random data
+  } else {
+    if (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+        l->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION ||
+        l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION) {
       if (weight_idx == 0) {
         load_attention_weights_v2(data,
                                   num_heads,
@@ -757,29 +753,23 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
                                weight_filename,
                                weights_folder);
       }
-
+    } else if (l->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM) {
+      assert(weight_idx >= 0 || weight_idx <= 2);
+      weight_filename += (weight_idx == 0)
+                             ? ".attn_bias"
+                             : ((weight_idx == 1) ? ".weight" : ".bias");
+      std::cout << "Loading weight file " << weight_filename << std::endl;
+      std::string weight_filepath = join_path({weights_folder, weight_filename});
+      load_from_file(data, volume, weight_filepath);
     } else {
-      assert(false);
+      // default op
+      assert(weight_idx == 0 || weight_idx == 1);
+      // handle exception
+      if (weight_filename != "embed_tokens_weight_lm_head") {
+        weight_filename += weight_idx == 0 ? ".weight" : ".bias";
+      }
     }
-  } else if (l->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM) {
-    assert(weight_idx >= 0 || weight_idx <= 2);
-    weight_filename += (weight_idx == 0)
-                           ? "_attn_bias"
-                           : ((weight_idx == 1) ? "_weight" : "_bias");
-    std::cout << "Loading weight file " << weight_filename << std::endl;
-    std::string weight_filepath = join_path({weights_folder, weight_filename});
-    load_from_file(data, volume, weight_filepath);
-  } else {
-    // default op
-    assert(weight_idx == 0 || weight_idx == 1);
-    // handle exception
-    if (weight_filename != "embed_tokens_weight_lm_head") {
-      weight_filename += weight_idx == 0 ? "_weight" : "_bias";
-    }
-    std::cout << "Loading weight file " << weight_filename << std::endl;
-    std::string weight_filepath = join_path({weights_folder, weight_filename});
-    load_from_file(data, volume, weight_filepath);
-  }
+  } 
 
   // Copy the weight data from the buffer to the weight's ParallelTensor
   ParallelTensor weight_pt;
@@ -801,7 +791,7 @@ void FileDataLoader::load_weights(FFModel *ff) {
         continue;
       }
       // TODO: currently skip Lora layers
-      if (l->op_type == OP_LORA_MLP_FIRST || l->op_type == OP_LORA_MLP_SECOND) {
+      if (l->op_type == OP_LORA) {
         continue;
       }
       switch (weight->data_type) {

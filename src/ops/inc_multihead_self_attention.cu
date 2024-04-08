@@ -1537,7 +1537,8 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (bc->request_completed[i] || (!bc->requestsInfo[i].prompt_phase)) {
+    if (bc->request_completed[i] ||
+        (!bc->requestsInfo[i].prompt_phase && !bc->requestsInfo[i].peft_bwd)) {
       continue;
     }
     std::cout << "attn kernel inside: " << "\n";
@@ -1794,6 +1795,12 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     }
     tokens_previous_requests += num_new_tokens;
+  }
+  if (tokens_previous_requests != (num_tokens - bc->num_generation_tokens)) {
+    bc->print();
+    printf("tokens_previous_requests: %i\n", tokens_previous_requests);
+    printf("num_tokens: %i\n", num_tokens);
+    printf("bc->num_generation_tokens: %i\n", bc->num_generation_tokens);
   }
   assert(tokens_previous_requests == (num_tokens - bc->num_generation_tokens));
 }
@@ -2098,11 +2105,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         key_cache_size = num_q_heads * kProjSize *
                          BeamSearchBatchConfig::max_requests_per_batch() *
                          (BatchConfig::max_sequence_length() +
-                          BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+                          BatchConfig::max_spec_tree_token_num());
         value_cache_size = num_q_heads * vProjSize *
                            BeamSearchBatchConfig::max_requests_per_batch() *
                            (BatchConfig::max_sequence_length() +
-                            BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+                            BatchConfig::max_spec_tree_token_num());
         break;
       }
       default:
