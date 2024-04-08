@@ -103,27 +103,27 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        cuda_version: ["11.1", "11.2", "11.3", "11.4", "11.5", "11.6", "11.7", "11.8", "12.0"]
+        cuda_version: ["11.1", "11.6", "11.7", "11.8", "12.0", "12.1", "12.2"]
       fail-fast: false
     env:
       FF_GPU_BACKEND: "cuda"
       cuda_version: ${{ matrix.cuda_version }}
     steps:
       - name: Checkout Git Repository
-        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '11.8' }}
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '12.0' }}
         uses: actions/checkout@v3
         with:
           submodules: recursive
 
       - name: Free additional space on runner
-        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '11.8' }}
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '12.0' }}
         run: .github/workflows/helpers/free_space_on_runner.sh
 
       - name: Build Docker container
-        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '11.8' }}
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '12.0' }}
         env:
           deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
-          build_needed: ${{ matrix.cuda_version == '11.8' }}
+          build_needed: ${{ matrix.cuda_version == '12.0' }}
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
@@ -137,7 +137,7 @@ jobs:
           fi
 
       - name: Check availability of flexflow modules in Python
-        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '11.8' }}
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '12.0' }}
         run: docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
 
       - name: Publish Docker environment image (on push to inference)

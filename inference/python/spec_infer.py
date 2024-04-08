@@ -58,6 +58,7 @@ def get_configs():
             "peft_activation_reserve_space_size": 1024, # 1GB
             "peft_weight_reserve_space_size": 1024, # 1GB
             "profiling": False,
+            "benchmarking": False,
             "inference_debugging": False,
             "fusion": True,
         }
@@ -65,7 +66,7 @@ def get_configs():
             # required llm arguments
             "llm_model": "meta-llama/Llama-2-7b-hf",
             # optional llm parameters
-            "cache_path": "",
+            "cache_path": os.environ.get("FF_CACHE_PATH", ""),
             "refresh_cache": False,
             "full_precision": False,
             "ssms": [

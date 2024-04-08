@@ -356,8 +356,6 @@ class LLM:
     ):
         """Compile the LLM for inference and load the weights into memory
 
-        :param mode: The LLM inference mode (InferenceMode.INC_DECODING_MODE for incremental decoding, InferenceMode.BEAM_SEARCH_MODE for beam search, or InferenceMode.TREE_VERIFY_MODE for token tree verification), defaults to InferenceMode.INC_DECODING_MODE
-        :type mode: InferenceMode, optional
         :param generation_config: The GenerationConfig object with the configurations to use for sampling, defaults to GenerationConfig()
         :type generation_config: GenerationConfig, optional
         :param max_requests_per_batch: The maximum batch size to allow, defaults to 1
@@ -434,6 +432,13 @@ class LLM:
 
         # Create file data loader, load weights into tensors
         model_configs = self.config_class(self.hf_config)
+
+        self.rm.set_max_spec_tree_token_num(
+            model_configs.max_spec_tree_token_num
+            if "max_spec_tree_token_num"
+            in model_configs.__dict__
+            else 20
+        )
 
         self.fileloader = FileDataLoader(
             self.weights_path,

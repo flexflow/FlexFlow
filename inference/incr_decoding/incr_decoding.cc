@@ -107,7 +107,9 @@ void parse_input_args(char **argv,
     }
   }
   if (paths.cache_folder_path.empty()) {
-    paths.cache_folder_path = "~/.cache/flexflow";
+    char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
+    paths.cache_folder_path = ff_cache_path ? std::string(ff_cache_path)
+                                            : std::string("~/.cache/flexflow");
   }
   // Expand ~ to the home directory if needed
   wordexp_t p;
