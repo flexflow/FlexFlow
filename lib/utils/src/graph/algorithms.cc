@@ -376,6 +376,24 @@ std::unordered_set<Node> get_predecessors(DiGraphView const &g, Node const &n) {
   return get_predecessors(g, std::unordered_set<Node>{n}).at(n);
 }
 
+std::unordered_map<Node, std::unordered_set<Node>>
+    get_successors(DiGraphView const &g,
+                     std::unordered_set<Node> const &nodes) {
+
+  std::unordered_map<Node, std::unordered_set<Node>> successors;
+  for (Node const &n : nodes) {
+    successors[n];
+  }
+  for (DirectedEdge const &e : get_outgoing_edges(g, nodes)) {
+    successors.at(e.src).insert(e.dst);
+  }
+  return successors;
+}
+
+std::unordered_set<Node> get_successors(DiGraphView const &g, Node const &n) {
+  return get_successors(g, std::unordered_set<Node>{n}).at(n);
+}
+
 std::vector<Node> get_unchecked_dfs_ordering(
     DiGraphView const &g, std::unordered_set<Node> const &starting_points) {
   UncheckedDFSView dfs_view = unchecked_dfs(g, starting_points);
