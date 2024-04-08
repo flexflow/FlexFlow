@@ -18,6 +18,7 @@ ff_init_configs = {
     "use_4bit_quantization": False,
     "use_8bit_quantization": False,
     "profiling": False,
+    "benchmarking": False,
     "inference_debugging": False,
     "fusion": True,
 }
@@ -25,7 +26,7 @@ llm_configs = {
     # required parameters
     "llm_model": "tiiuae/falcon-7b",
     # optional parameters
-    "cache_path": "",
+    "cache_path": os.environ.get("FF_CACHE_PATH", ""),
     "refresh_cache": False,
     "full_precision": True,
     "prompt": "",

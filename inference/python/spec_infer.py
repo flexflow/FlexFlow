@@ -55,6 +55,7 @@ def get_configs():
             "use_4bit_quantization": False,
             "use_8bit_quantization": False,
             "profiling": False,
+            "benchmarking": False,
             "inference_debugging": False,
             "fusion": True,
         }
@@ -62,7 +63,7 @@ def get_configs():
             # required llm arguments
             "llm_model": "meta-llama/Llama-2-7b-hf",
             # optional llm parameters
-            "cache_path": "",
+            "cache_path": os.environ.get("FF_CACHE_PATH", ""),
             "refresh_cache": False,
             "full_precision": False,
             "ssms": [
