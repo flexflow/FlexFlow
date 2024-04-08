@@ -4,6 +4,10 @@
 #include "pcg/parallel_computation_graph.h"
 #include "utils/exception.h"
 #include "utils/graph/serialparallel.h"
+#include "utils/deduplicated_priority_queue.h"
+
+#include <algorithm>
+
 
 namespace FlexFlow {
 
@@ -108,6 +112,60 @@ float estimate_cost(SubParallelComputationGraphView const &g,
         g.at(node).attrs, inputs, device_mapping.machine_views.at(node));
   }
   return cost;
+}
+
+struct NodeComparison {
+    bool operator()(const Node& lhs, const Node& rhs) const {
+      return 1; //Have good heuristic
+    }
+};
+
+struct FinishingTimeComparison {
+  //Comparator within the processing queue, Nodes are sorted by cost / finishing time
+}
+
+float single_node_cost_estimate(SubParallelComputationGraphView const &g,
+                    CostEstimator const &estimator,
+                    MachineMapping const &device_mapping) {
+  std::unordered_set<UpwardOpenMultiDiEdge> incoming_edges =
+        get_incoming_edges(g, node);
+  std::vector<ParallelTensorShape> inputs =
+      transform(as_vector(incoming_edges),
+                [&](UpwardOpenMultiDiEdge const &input_edge) {
+                  return g.at(input_edge).get_shape();
+                });
+    return estimator.estimate_cost(
+        g.at(node).attrs, inputs, device_mapping.machine_views.at(node));
+}
+
+float estimate_cost_(SubParallelComputationGraphView const &g,
+                    CostEstimator const &estimator,
+                    MachineMapping const &device_mapping,
+                    std::unordered_map<OpenMultiDiEdge, MachineView> const
+                        &frontier_machine_views) {
+
+  DeduplicatedPriorityQueue<Node, std::vector<Node>, NodeComparison> frontier;
+  DeduplicatedPriorityQueue<Node, std::vector<Node>, FinishingTimeComparison> processing;
+  std::unordered_map<Node, float> cost_estimates;
+  std::unordered_map<int, bool> available_devices;
+
+  for (const auto& edge : frontier_machine_views) {
+    Node node = get_dst_node(edge);
+    frontier.push(node);
+  }
+  while (!frontier.empty()) {
+    Node node = frontier.empty();
+
+    const auto& device_ids = device_mapping.machine_views.device_ids();
+    if (!std::all_of(device_ids.begin(), device_ids.end(), [](int i){return available_devices.find(i)==available_devices.end() || available_devices.at(i)==true})) {
+      frontier.push(node);
+    }
+    else {
+      for (const auto& id : device_ids) {
+        available_devices[id] = false;
+      }
+    }
+  }
 }
 
 void minimize_runtime(OptimalCostResult &m1, OptimalCostResult const &m2) {
