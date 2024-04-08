@@ -128,18 +128,18 @@ float node_estimate_cost(Node node, SubParallelComputationGraphView const &g,
   return cost;
 }
 
-struct TimeComparison {
-  bool operator()(TimedNode const& lhs, TimedNode const& rhs) {
-    return (lhs.time < rhs.time);
-  }
-};
-
 struct TimedNode { //Node and associated finishing time
   Node node;
   float endtime;
 };
 
-float estimate_cost_(SubParallelComputationGraphView const &g,
+struct TimeComparison {
+  bool operator()(TimedNode const& lhs, TimedNode const& rhs) const {
+    return (lhs.endtime < rhs.endtime);
+  }
+};
+
+float parallel_estimate_cost(SubParallelComputationGraphView const &g,
                     CostEstimator const &estimator,
                     MachineMapping const &device_mapping,
                     std::unordered_map<OpenMultiDiEdge, MachineView> const
