@@ -207,8 +207,7 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  void store_ssm_inference_results(TreeSearchBatchConfig const &old_bc,
-                                   SsmInferenceResult const &result);
+  bool store_ssm_inference_results(SsmInferenceResult const &result);
   void update_beam_metadata(TreeSearchBatchConfig &new_bc,
                             TreeSearchBatchConfig const &old_bc,
                             BeamTree &tree,
@@ -389,6 +388,8 @@ private:
   // first small model inference results, the step equals to 1. That is, every
   // time a small model inference task is launched, the step is increased by 1.
   int current_speculation_step = 0;
+  // Maps the index of the request in the batch config to the request guid.
+  int guid_of_requests[BatchConfig::MAX_NUM_REQUESTS];
 
   // This is a helper data structure to store help the pruning of the token
   // trees across different requests.

@@ -1686,69 +1686,56 @@ void RequestManager::initialize_root_of_spec_token_trees() {
   }
 }
 
-void RequestManager::store_ssm_inference_results(
-    TreeSearchBatchConfig const &old_bc, SsmInferenceResult const &result) {
-  if (old_bc.num_tokens <= 0) {
-    return;
-  }
-
-  // Depth starts from 1, because the root is at layer 0
-  int depth = old_bc.current_depth;
-  assert(depth > 0);
+bool RequestManager::store_ssm_inference_results(
+    SsmInferenceResult const &result) {
+  // This function returns false if no tokens are added to the token tree,
+  // which indicates that the ssm inference phase is done.
+  assert(current_speculation_step > 0);
 
   int num_branches = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
   int num_old_bc_tokens_processed = 0;
-
-  int request_index = old_bc.tokensInfo[0].request_index;
-  FlexFlow::RequestManager::RequestGuid guid =
-      old_bc.requestsInfo[request_index].request_guid;
-  Request &request = all_requests[guid];
-  int start_depth = old_bc.tokensInfo[0].abs_depth_in_request;
-
   int result_index = 0;
 
-  if (verbose) {
-    std::cout << "Store total of " << old_bc.num_tokens * num_branches
-              << " tokens in the current batch.\n";
-  }
+  // TODO: here we assume that the order of the tokens in the last
+  // TreeSearchBatchConfig and hence the last SsmInferenceResult is equal to the
+  // order of the request in the last TreeSearchBatchConfig, check this!
+  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+       ++request_index) {
+    FlexFlow::RequestManager::RequestGuid guid =
+        guid_of_requests[request_index];
+    Request &request = all_requests[guid];
 
-  while (num_old_bc_tokens_processed < old_bc.num_tokens) {
-    // Process the tokens for the current request
-    int num_parent_tokens_processed_in_request = 0;
     TokenTree &token_tree = request.speculative_token_trees[0];
-    std::list<std::shared_ptr<TokenTreeNode>> &tree_layer =
-        token_tree.tree_layers[depth - 1];
-    for (auto parent_it = tree_layer.begin(); parent_it != tree_layer.end();
-         parent_it++) {
-      if ((*parent_it)->pruned) {
-        // Parent token is pruned, we have to skip all its children
-        // Because no token is pruned in the last layer during the small
-        // model inference, the reason why some parents are pruned is that
-        // adding tokens to the new layer of the tree may result in some
-        // node being pruned in internal layers.
-        result_index += num_branches;
-      } else {
-        // Parent token is not pruned
-        for (int child_idx = 0; child_idx < num_branches; child_idx++) {
-          float parent_prob = (*parent_it)->joint_prob;
-          add_token_to_spec_token_tree(guid,
-                                       result.token_ids[result_index],
-                                       result.probs[result_index] * parent_prob,
-                                       result.parent_id[result_index],
-                                       depth);
-          result_index++;
+    if (token_tree.tree_layers.size() < current_speculation_step) {
+      // This means that the parent layer is empty
+      continue;
+    } else {
+      std::list<std::shared_ptr<TokenTreeNode>> &parent_tree_layer =
+          token_tree.tree_layers[current_speculation_step - 1];
+      for (auto parent_it = parent_tree_layer.begin();
+           parent_it != parent_tree_layer.end();
+           parent_it++) {
+        if ((*parent_it)->pruned) {
+          // Parent token is pruned, we have to skip all its children
+          // Because no token is pruned in the last layer during the small
+          // model inference, the reason why some parents are pruned is that
+          // adding tokens to the new layer of the tree may result in some
+          // node being pruned in internal layers.
+          result_index += num_branches;
+        } else {
+          // Parent token is not pruned
+          for (int child_idx = 0; child_idx < num_branches; child_idx++) {
+            float parent_prob = (*parent_it)->joint_prob;
+            add_token_to_spec_token_tree(guid,
+                                         result.token_ids[result_index],
+                                         result.probs[result_index] *
+                                             parent_prob,
+                                         result.parent_id[result_index]);
+            result_index++;
+          }
         }
       }
-      num_old_bc_tokens_processed++;
     }
-
-    // Switch to the next request
-    int request_index =
-        old_bc.tokensInfo[num_old_bc_tokens_processed].request_index;
-    FlexFlow::RequestManager::RequestGuid guid =
-        old_bc.requestsInfo[request_index].request_guid;
-    Request &request = all_requests[guid];
-    int start_depth = old_bc.tokensInfo[0].abs_depth_in_request;
   }
 }
 
@@ -1789,7 +1776,8 @@ void RequestManager::update_beam_metadata(TreeSearchBatchConfig &new_bc,
       new_bc.beamRequestsInfo[request_index].tokens[j] =
           tree.treeLayers[depth].tokens[j];
       // std::cout << "token: " << j << ": "
-      //           << new_bc.beamRequestsInfo[request_index].tokens[j] << "\n";
+      //           << new_bc.beamRequestsInfo[request_index].tokens[j] <<
+      //           "\n";
     }
   }
   if (verbose) {
@@ -1811,8 +1799,8 @@ void RequestManager::update_beam_metadata(TreeSearchBatchConfig &new_bc,
 void RequestManager::init_bitmask(BatchConfig::BitMask &bitmask,
                                   int initLength) {
   assert(initLength > 0);
-  // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100, t4:
-  // 0000000..1000
+  // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100,
+  // t4: 0000000..1000
   bitmask.non_tree_cache_size = 0;
   bitmask.tree_size = 1;
 
@@ -1829,8 +1817,8 @@ void RequestManager::update_bitmask(BatchConfig::BitMask &bitmask,
                                     int initLength,
                                     int non_tree_size) {
   // assert(initLength == 1);
-  // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100, t4:
-  // 0000000..1000
+  // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100,
+  // t4: 0000000..1000
   assert(initLength <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM &&
          "do not support tree size > 64");
   assert(initLength >= 1 && "verified token num should >= 1");
@@ -1919,8 +1907,9 @@ void RequestManager::append_bitmask(BatchConfig::BitMask &bitmask,
   // }
 
   // std::cout << "see bit mask append" << bitmask.prompt_size << "\n";
-  // std::cout << "see bit mask append" << bitmask.non_tree_cache_size << "\n";
-  // std::cout << "see bit mask append" << std::bitset<64>(bitmask.mask[0])
+  // std::cout << "see bit mask append" << bitmask.non_tree_cache_size <<
+  // "\n"; std::cout << "see bit mask append" <<
+  // std::bitset<64>(bitmask.mask[0])
   //           << "\n";
 }
 
@@ -1963,8 +1952,8 @@ void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
                                           int initLength) {
   assert(initLength > 0);
   // std::cout << "append pending bit mask: " << initLength << "\n";
-  // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100, t4:
-  // 0000000..1000
+  // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100,
+  // t4: 0000000..1000
   bitmask.non_tree_cache_size = 0;
   bitmask.tree_size = 1;
   bitmask.prompt_size += initLength;
@@ -2057,8 +2046,8 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
                     outputSerializedTree.size());
   { // Input tree
     std::ostringstream oss;
-    // inputSerializedTree is the dfs_tree_inputs_map[guid] array og (token id,
-    // depth) pairs
+    // inputSerializedTree is the dfs_tree_inputs_map[guid] array og (token
+    // id, depth) pairs
     for (auto const &pair : inputSerializedTree) {
       oss << " " << pair.second << ":" << pair.first;
       // log_req_mgr.print("(%d, %d)", pair.first, pair.second);
@@ -2087,8 +2076,9 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
     log_req_mgr.print("Committed tokens:%s", oss.str().c_str());
   }
 
-  // It's safe to have inputSerializedTree.size() > outputSerializedTree.size()
-  // In this case the inputSeriedTree ends with padding 0s
+  // It's safe to have inputSerializedTree.size() >
+  // outputSerializedTree.size() In this case the inputSeriedTree ends with
+  // padding 0s
   assert(inputSerializedTree.size() >= outputSerializedTree.size());
 
   int *treeLayers = new int[inputSerializedTree.size()];
@@ -2171,7 +2161,8 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
         // at this point, you'll not go other branches
         // std::cout << "verify tree push back: " << output.first
         //           << ", tree size is: " << verifiedTree.size()
-        //           << ", ??: " << input.first << ", " << input.second << "\n";
+        //           << ", ??: " << input.first << ", " << input.second <<
+        //           "\n";
       }
 
       assert(committed_tokens.at(guid).at(i).first == input.second);
@@ -2641,7 +2632,8 @@ void RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
       // Insertion failed
       add_new_node = false;
     } else {
-      // Remove the minimum node from the pool, and set its pruned field to true
+      // Remove the minimum node from the pool, and set its pruned field to
+      // true
       remove_min_node = true;
     }
   } else if (token_tree_node_pool.size() > BatchConfig::MAX_NUM_TOKENS) {
