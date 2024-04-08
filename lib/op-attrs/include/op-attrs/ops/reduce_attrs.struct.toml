@@ -1,0 +1,28 @@
+namespace = "FlexFlow"
+name = "ReduceAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/op.h",
+  "op-attrs/ff_dim.h",
+  "utils/stack_vector.h",
+]
+
+[[fields]]
+name = "axes"
+type = "::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>"
+
+[[fields]]
+name = "op_type"
+type = "::FlexFlow::Op"
+
+[[fields]]
+name = "keepdims"
+type = "bool"

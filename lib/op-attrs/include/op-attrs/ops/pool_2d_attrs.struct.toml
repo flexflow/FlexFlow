@@ -1,0 +1,47 @@
+namespace = "FlexFlow"
+name = "Pool2DAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/pool_op.h",
+  "op-attrs/activation.h",
+]
+
+[[fields]]
+name = "kernel_h"
+type = "int"
+
+[[fields]]
+name = "kernel_w"
+type = "int"
+
+[[fields]]
+name = "stride_h"
+type = "int"
+
+[[fields]]
+name = "stride_w"
+type = "int"
+
+[[fields]]
+name = "padding_h"
+type = "int"
+
+[[fields]]
+name = "padding_w"
+type = "int"
+
+[[fields]]
+name = "pool_type"
+type = "::FlexFlow::PoolOp"
+
+[[fields]]
+name = "activation"
+type = "::FlexFlow::Activation"

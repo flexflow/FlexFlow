@@ -1,0 +1,32 @@
+namespace = "FlexFlow"
+name = "ElementBinaryAttrs"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/op.h",
+  "op-attrs/datatype.h",
+]
+
+[[fields]]
+name = "type"
+type = "::FlexFlow::Op"
+
+[[fields]]
+name = "compute_type"
+type = "::FlexFlow::DataType"
+
+[[fields]]
+name = "should_broadcast_lhs"
+type = "bool"
+
+[[fields]]
+name = "should_broadcast_rhs"
+type = "bool"

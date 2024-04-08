@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "ElementScalarUnaryAttrs"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/op.h"
+]
+
+[[fields]]
+name = "op_type"
+type = "::FlexFlow::Op"
+
+[[fields]]
+name = "scalar"
+type = "float"

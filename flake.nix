@@ -109,6 +109,10 @@
           inputsFrom = [ ci ];
           inherit (ci) CMAKE_FLAGS;
 
+          VIMPLUGINS = lib.strings.concatStringsSep "," [
+            "${proj-repo.packages.${system}.proj-nvim}"
+          ];
+
           buildInputs = builtins.concatLists [
             (with pkgs; [
               clang-tools

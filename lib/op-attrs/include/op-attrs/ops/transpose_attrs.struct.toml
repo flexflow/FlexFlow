@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "TransposeAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/ff_dim.h",
+  "utils/stack_vector.h",
+]
+
+[[fields]]
+name = "perm"
+type = "::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>"

@@ -5,16 +5,19 @@
 #ifndef _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_BROADCAST_H
 #define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_BROADCAST_H
 
-#include "core.h"
+#include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "utils/stack_vector.h"
 #include <functional>
+#include <ostream>
+#include <sstream>
 #include <tuple>
 
 namespace FlexFlow {
 struct BroadcastAttrs {
   BroadcastAttrs() = delete;
-  BroadcastAttrs(stack_vector<int, MAX_TENSOR_DIM> const &target_dims);
+  BroadcastAttrs(
+      ::FlexFlow::stack_vector<int, MAX_TENSOR_DIM> const &target_dims);
 
   bool operator==(BroadcastAttrs const &) const;
   bool operator!=(BroadcastAttrs const &) const;
@@ -22,7 +25,7 @@ struct BroadcastAttrs {
   bool operator>(BroadcastAttrs const &) const;
   bool operator<=(BroadcastAttrs const &) const;
   bool operator>=(BroadcastAttrs const &) const;
-  stack_vector<int, MAX_TENSOR_DIM> target_dims;
+  ::FlexFlow::stack_vector<int, MAX_TENSOR_DIM> target_dims;
 };
 } // namespace FlexFlow
 
@@ -40,5 +43,10 @@ struct adl_serializer<FlexFlow::BroadcastAttrs> {
   static void to_json(json &, FlexFlow::BroadcastAttrs const &);
 };
 } // namespace nlohmann
+
+namespace FlexFlow {
+std::string format_as(BroadcastAttrs const &);
+std::ostream &operator<<(std::ostream &, BroadcastAttrs const &);
+} // namespace FlexFlow
 
 #endif // _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_BROADCAST_H

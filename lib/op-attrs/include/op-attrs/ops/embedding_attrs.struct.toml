@@ -1,0 +1,32 @@
+namespace = "FlexFlow"
+name = "EmbeddingAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "utils/stack_vector.h",
+  "op-attrs/aggregate_op.h",
+  "op-attrs/datatype.h",
+]
+
+[[fields]]
+name = "num_entries"
+type = "int"
+
+[[fields]]
+name = "out_channels"
+type = "int"
+
+[[fields]]
+name = "aggr"
+type = "::FlexFlow::AggregateOp"
+
+[[fields]]
+name = "data_type"
+type = "::FlexFlow::DataType"

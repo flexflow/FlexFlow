@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "ReplicateAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/ff_dim.h",
+]
+
+[[fields]]
+name = "replicate_dim"
+type = "::FlexFlow::ff_dim_t"
+
+[[fields]]
+name = "replicate_degree"
+type = "int"

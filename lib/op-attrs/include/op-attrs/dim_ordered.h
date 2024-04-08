@@ -28,11 +28,11 @@ struct DimOrdered {
       : contents(contents.begin(), contents.end()) {}
 
   T const &at(Idx idx) const {
-    return this->contents.at(idx.value());
+    return this->contents.at(idx.value);
   }
 
   T &at(Idx idx) {
-    return this->contents.at(idx.value());
+    return this->contents.at(idx.value);
   }
 
   T const &operator[](Idx idx) const {

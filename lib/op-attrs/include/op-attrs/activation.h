@@ -2,10 +2,17 @@
 #define _FLEXFLOW_OPATTRS_INCLUDE_OPATTRS_ACTIVATION_H
 
 #include "utils/fmt.h"
+#include "nlohmann/json.hpp"
 
 namespace FlexFlow {
 
 enum class Activation { RELU, SIGMOID, TANH, GELU };
+
+NLOHMANN_JSON_SERIALIZE_ENUM(Activation,
+                             {{Activation::RELU, "RELU"},
+                              {Activation::SIGMOID, "SIGMOID"},
+                              {Activation::TANH, "TANH"},
+                              {Activation::GELU, "GELU"}});
 
 }
 

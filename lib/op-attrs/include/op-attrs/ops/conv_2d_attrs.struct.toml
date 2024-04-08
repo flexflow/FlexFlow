@@ -1,0 +1,29 @@
+namespace = "FlexFlow"
+name = "Conv2DAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "<optional>",
+  "op-attrs/activation.h",
+  "utils/json.h",
+]
+
+fields = [
+  { name = "out_channels", type = "int" },
+  { name = "kernel_h", type = "int" },
+  { name = "kernel_w", type = "int" },
+  { name = "stride_h", type = "int" },
+  { name = "stride_w", type = "int" },
+  { name = "padding_h", type = "int" },
+  { name = "padding_w", type = "int" },
+  { name = "groups", type = "int" },
+  { name = "activation", type = "std::optional<::FlexFlow::Activation>" },
+  { name = "use_bias", type = "bool" },
+]

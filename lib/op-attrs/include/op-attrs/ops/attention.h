@@ -4,23 +4,9 @@
 #include "core.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/visitable.h"
+#include "op-attrs/ops/attention_attrs.h"
 
 namespace FlexFlow {
-
-struct MultiHeadAttentionAttrs {
-  req<int> embed_dim, num_heads, kdim, vdim;
-  req<float> dropout;
-  req<bool> bias, add_bias_kv, add_zero_attn;
-};
-FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs,
-                    embed_dim,
-                    num_heads,
-                    kdim,
-                    vdim,
-                    dropout,
-                    bias,
-                    add_bias_kv,
-                    add_zero_attn);
 
 template <typename TensorType>
 struct MultiHeadAttentionInputs

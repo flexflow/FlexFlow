@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 BroadcastAttrs::BroadcastAttrs(
-    stack_vector<int, MAX_TENSOR_DIM> const &target_dims)
+    ::FlexFlow::stack_vector<int, MAX_TENSOR_DIM> const &target_dims)
     : target_dims(target_dims) {}
 bool BroadcastAttrs::operator==(BroadcastAttrs const &other) const {
   return std::tie(this->target_dims) == std::tie(other.target_dims);
@@ -32,7 +32,8 @@ namespace std {
 size_t hash<FlexFlow::BroadcastAttrs>::operator()(
     FlexFlow::BroadcastAttrs const &x) const {
   size_t result = 0;
-  result ^= std::hash<stack_vector<int, MAX_TENSOR_DIM>>{}(x.target_dims) +
+  result ^= std::hash<::FlexFlow::stack_vector<int, MAX_TENSOR_DIM>>{}(
+                x.target_dims) +
             0x9e3779b9 + (result << 6) + (result >> 2);
   return result;
 }
@@ -41,8 +42,8 @@ size_t hash<FlexFlow::BroadcastAttrs>::operator()(
 namespace nlohmann {
 FlexFlow::BroadcastAttrs
     adl_serializer<FlexFlow::BroadcastAttrs>::from_json(json const &j) {
-  return {
-      j.at("target_dims").template get<stack_vector<int, MAX_TENSOR_DIM>>()};
+  return {j.at("target_dims")
+              .template get<::FlexFlow::stack_vector<int, MAX_TENSOR_DIM>>()};
 }
 void adl_serializer<FlexFlow::BroadcastAttrs>::to_json(
     json &j, FlexFlow::BroadcastAttrs const &v) {
@@ -50,3 +51,16 @@ void adl_serializer<FlexFlow::BroadcastAttrs>::to_json(
   j["target_dims"] = v.target_dims;
 }
 } // namespace nlohmann
+
+namespace FlexFlow {
+std::string format_as(BroadcastAttrs const &x) {
+  std::ostringstream oss;
+  oss << "<BroadcastAttrs";
+  oss << " target_dims=" << x.target_dims;
+  oss << ">";
+  return oss.str();
+}
+std::ostream &operator<<(std::ostream &s, BroadcastAttrs const &x) {
+  return s << fmt::to_string(x);
+}
+} // namespace FlexFlow

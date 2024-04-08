@@ -1,0 +1,37 @@
+namespace = "FlexFlow"
+name = "LinearAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/datatype.h",
+  "op-attrs/activation.h",
+  "op-attrs/regularizer_attrs.h",
+  "utils/json.h",
+]
+
+[[fields]]
+name = "out_channels"
+type = "int"
+
+[[fields]]
+name = "use_bias"
+type = "bool"
+
+[[fields]]
+name = "data_type"
+type = "::FlexFlow::DataType"
+
+[[fields]]
+name = "activation"
+type = "::FlexFlow::Activation"
+
+[[fields]]
+name = "regularizer"
+type = "std::optional<::FlexFlow::RegularizerAttrs>"
