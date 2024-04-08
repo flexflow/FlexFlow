@@ -4,6 +4,7 @@
 #include "flexflow/ffconst.h"
 #include <cstddef>
 #include <functional>
+#include <iostream>
 
 namespace FlexFlow {
 
