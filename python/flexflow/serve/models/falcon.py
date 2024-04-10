@@ -379,16 +379,35 @@ class FlexFlowFalcon(FlexFlowModel):
                 
         # Assign combined QKV weights
         for qkv_name, weights_dict in qkv_weights.items():
-            print(f"qkv name is {qkv_name}")
+            print("\n========= Processing combined QKV weights ==========")
+            print(f"qkv name is {qkv_name}, hidden size is {hidden_size}, number of attention heads is {n_head}")
             print(f"the weights dimensions are: {weights_dict['q_proj'].shape}, {weights_dict['k_proj'].shape}, {weights_dict['v_proj'].shape}")
-            combined_qkv = np.concatenate([weights_dict['q_proj'], weights_dict['k_proj'], weights_dict['v_proj']], axis=0)
-            qkv_weight_name = qkv_name+".weight"
+
+            q_proj_weight = weights_dict['q_proj']
+            k_proj_weight = weights_dict['k_proj']
+            v_proj_weight = weights_dict['v_proj']
+            
+            print("Original QKV weights dimensions:")
+            print("Q:", q_proj_weight.shape)
+            print("K:", k_proj_weight.shape)
+            print("V:", v_proj_weight.shape)
+
+            # Reshape the weights to match the expected shape
+            q_proj_weight_reshaped = q_proj_weight.reshape(-1, hidden_size)
+            k_proj_weight_reshaped = k_proj_weight.reshape(-1, hidden_size // n_head) 
+            v_proj_weight_reshaped = v_proj_weight.reshape(-1, hidden_size // n_head)
+            # q_proj_weight_reshaped = q_proj_weight.reshape(k_proj_weight_reshaped.shape[0], -1)
+
+            print("Reshaped QKV weights dimensions:")
+            print("Q:", q_proj_weight_reshaped.shape)
+            print("K:", k_proj_weight_reshaped.shape)
+            print("V:", v_proj_weight_reshaped.shape)
+
+            combined_qkv = np.concatenate([q_proj_weight_reshaped, k_proj_weight_reshaped, v_proj_weight_reshaped], axis=1)
+            qkv_weight_name = qkv_name + ".weight"
             param_shape = model.state_dict()[qkv_weight_name].shape
             print(f"param shape expected to be {param_shape}, qkv weights combined with weights size {combined_qkv.shape}")
-            combined_qkv_reshaped = combined_qkv.reshape(param_shape)
-            print(f"reshaped qkv weights shape is: {combined_qkv_reshaped.shape}")
-            model.state_dict()[qkv_weight_name].copy_(torch.from_numpy(combined_qkv_reshaped))
+
+            model.state_dict()[qkv_weight_name].copy_(torch.from_numpy(combined_qkv))
             print(f"Assigned combined QKV weights to {qkv_weight_name}.")
             
-            
-    

@@ -413,12 +413,12 @@ class LLM:
         :param private: Whether to upload the model as a private model.
         """
         print(f"Preparing model for upload to Hugging Face Hub: {new_model_id}")
-        print("tokenizer path is: ", self.tokenizer_path)
+        print("Tokenizer path is: ", self.tokenizer_path)
 
         # Initialize a new Hugging Face model instance
         hf_model = AutoModelForCausalLM.from_config(self.hf_config)
         weights_path = self.weights_path
-        print(f"model class is: {self.model_class}")
+        print(f"Model class is: {self.model_class}")
 
         # Load FlexFlow weights into the Hugging Face model instance
         try:
