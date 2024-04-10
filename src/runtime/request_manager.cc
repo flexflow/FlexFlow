@@ -1937,9 +1937,6 @@ void RequestManager::append_bitmask(RequestGuid guid,
     // in its corresponding layer, check this
     bitmask.bit_mask[child_offset + child_idx] =
         bitmask.bit_mask[parent_offset + child_ptr->parent_pos];
-    // Each child attend to its parent
-    bitmask.bit_mask[child_offset + child_idx].set_bit(parent_offset +
-                                                       child_ptr->parent_pos);
     // Each child attend to itself
     bitmask.bit_mask[child_offset + child_idx].set_bit(child_offset +
                                                        child_idx);
