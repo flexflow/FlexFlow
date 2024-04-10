@@ -25,8 +25,22 @@ def get_configs():
         type=str,
         default="",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--publish-peft-with-id", 
+        help="The Hugging Face model ID to upload the trained model with",
+        type=str, 
+        default=""
+    )
 
+    args = parser.parse_args()
+    publish_peft_with_id = args.publish_peft_with_id
+    if len(publish_peft_with_id) == 0:
+        print(
+            "Please pass a --publish-peft-with-id if you want to upload the trained model"
+        )
+    else:
+        print(f"The trained model will be uploaded with id: {publish_peft_with_id}")
+        
     # Load configs from JSON file (if specified)
     if len(args.config_file) > 0:
         if not os.path.isfile(args.config_file):
@@ -68,17 +82,19 @@ def get_configs():
                 "goliaro/llama-160m-lora-full",
             ],
             # optional parameters
-            "cache_path": "",
+            "cache_path": "~/.cache/flexflow",
             "refresh_cache": False,
             "full_precision": False,
             "prompt": "",
             "finetuning_dataset": os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), "../prompt/peft.json"
+                # peft.json is a sample dataset for finetuning, should contain a list of strings
             ),
-            "output_file": "",
+            "output_file": ""
         }
         # Merge dictionaries
         ff_init_configs.update(model_configs)
+        ff_init_configs["publish_peft_with_id"] = publish_peft_with_id
         return ff_init_configs
 
 
@@ -98,7 +114,7 @@ def main():
         data_type=ff_data_type,
         cache_path=configs.cache_path,
         refresh_cache=configs.refresh_cache,
-        output_file=configs.output_file,
+        output_file=configs.output_file
     )
     for peft_model_id in configs.peft_model_ids:
         llm.add_peft(peft_model_id)
@@ -115,6 +131,8 @@ def main():
     )
 
     llm.start_server()
+    
+    print(f"LLM model class is: {llm.model_class}")
 
     requests = []
     # Serving
@@ -141,12 +159,16 @@ def main():
     # use the (finetuned) llm to generate some responses
     llm.generate(requests)
     
+    llm.stop_server()
+    
     # upload the model back to huggingface after finetuning
     # the model format would be converted from flexflow format back to huggingface format
-    llm.upload_hf_model(peft_model_id, cache_folder, private=private)
-
-    llm.stop_server()
-
+    if len(configs.publish_peft_with_id) > 0:
+        print(
+            f"Done training! Uploading the model to HF hub with id: {configs.publish_peft_with_id}..."
+        )
+        llm.upload_peft_model(configs.publish_peft_with_id, private=True)
+    
 
 if __name__ == "__main__":
     print("flexflow PEFT example")

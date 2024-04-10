@@ -38,7 +38,7 @@ def main():
     llm.download_hf_config()
 
     print(f"Uploading processed model to Hugging Face Hub: {new_model_id}")
-    llm.upload_hf_model(new_model_id, cache_folder, private=private)
+    llm.upload_hf_model(new_model_id, private=private)
     print("Upload completed successfully.")
 
 if __name__ == "__main__":
