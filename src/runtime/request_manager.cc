@@ -1687,7 +1687,7 @@ void RequestManager::initialize_root_of_spec_token_trees() {
 }
 
 bool RequestManager::store_ssm_inference_results(
-    SsmInferenceResult const &result) {
+    SsmInferenceResult const &ssm_inference_result) {
   // This function returns false if no tokens are added to the token tree,
   // which indicates that the ssm inference phase is done.
   assert(current_speculation_step > 0);
@@ -1726,11 +1726,11 @@ bool RequestManager::store_ssm_inference_results(
           // Parent token is not pruned
           for (int child_idx = 0; child_idx < num_branches; child_idx++) {
             float parent_prob = (*parent_it)->joint_prob;
-            add_token_to_spec_token_tree(guid,
-                                         result.token_ids[result_index],
-                                         result.probs[result_index] *
-                                             parent_prob,
-                                         result.parent_id[result_index]);
+            add_token_to_spec_token_tree(
+                guid,
+                ssm_inference_result.token_ids[result_index],
+                ssm_inference_result.probs[result_index] * parent_prob,
+                ssm_inference_result.parent_id[result_index]);
             result_index++;
           }
         }

@@ -207,7 +207,8 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  bool store_ssm_inference_results(SsmInferenceResult const &result);
+  bool store_ssm_inference_results(
+      SsmInferenceResult const &ssm_inference_result);
   void update_beam_metadata(TreeSearchBatchConfig &new_bc,
                             TreeSearchBatchConfig const &old_bc,
                             BeamTree &tree,
