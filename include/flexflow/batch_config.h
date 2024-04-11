@@ -64,6 +64,12 @@ public:
   int num_tokens;
   // number of tokens in prompt phase, start offset of tokens in inc_decoding
   // phase. num_tokens - num_prompt_tokens = num_generation_tokens;
+
+  // TODO: remove this in the kernel.
+  // Previously this field is used to track how many tokens are from the
+  // decoding phase, now since we separate decoding from prefilling in small
+  // model inference, we don't need this field anymore.
+  [[deprecated("Not in use anymore")]]
   int num_generation_tokens;
 
   struct PerRequestInfo {
@@ -72,7 +78,9 @@ public:
     int num_tokens_in_batch;
     int max_sequence_length;
 
+    // TODO: remove this field
     // request id in batch config:
+    [[deprecated("This is now moved to the request manager")]]
     int batch_config_request_id;
     bool prompt_phase = false;
     RequestGuid request_guid;
@@ -83,7 +91,7 @@ public:
     TokenId token_id;
   };
 
-  struct BitMask {
+  class BitMask {
     class Bitset {
     public:
       Bitset() : bits{0} {}
@@ -115,6 +123,7 @@ public:
       uint64_t bits[MAX_SPEC_TREE_TOKEN_NUM / 8]; // Array to hold 256 bits
     };
 
+  public:
     Bitset bit_mask[MAX_SPEC_TREE_TOKEN_NUM];
     // the number of tokens before the tree
     int non_tree_cache_size = 0;
@@ -123,6 +132,16 @@ public:
     int current_layer_size = 0;
     // input length-> prompt/root
     int prompt_size = 0;
+    BitMask() = default;
+    BitMask(BitMask const &other) {
+      non_tree_cache_size = other.non_tree_cache_size;
+      tree_size = other.tree_size;
+      current_layer_size = other.current_layer_size;
+      prompt_size = other.prompt_size;
+      for (int i = 0; i < MAX_SPEC_TREE_TOKEN_NUM; i++) {
+        bit_mask[i] = other.bit_mask[i];
+      }
+    }
   };
 
   BitMask causalMask[MAX_NUM_REQUESTS];
