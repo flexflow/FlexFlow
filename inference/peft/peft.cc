@@ -49,7 +49,8 @@ void parse_input_args(char **argv,
                       float &topp,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
-                      int &max_sequence_length) {
+                      int &max_sequence_length,
+                      int &max_requests_to_run) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -118,6 +119,10 @@ void parse_input_args(char **argv,
       max_sequence_length = std::stoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--max-requests-to-run")) {
+      max_requests_to_run = std::stoi(argv[++i]);
+      continue;
+    }
   }
   if (paths.cache_folder_path.empty()) {
     paths.cache_folder_path = "~/.cache/flexflow";
@@ -148,6 +153,7 @@ void FlexFlow::top_level_task(Task const *task,
   int max_requests_per_batch = 8;
   int max_tokens_per_batch = 128;
   int max_sequence_length = 256;
+  int max_requests_to_run = 1000000000;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -165,7 +171,8 @@ void FlexFlow::top_level_task(Task const *task,
                    topp,
                    max_requests_per_batch,
                    max_tokens_per_batch,
-                   max_sequence_length);
+                   max_sequence_length,
+                   max_requests_to_run);
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
@@ -301,27 +308,42 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
-    // for (auto &prompt : prompt_json) {
-    //   std::string text = prompt.get<std::string>();
-    //   printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-    //   Request inference_req;
-    //   inference_req.prompt = text;
-    //   inference_req.max_sequence_length = 128;
-    //   inference_req.peft_model_id = peft_model_id;
-    //   requests.push_back(inference_req);
-    //   total_num_requests++;
-    // }
+    std::vector<std::pair<int, int>> prompts;
+    int index = 0;
+    for (auto &entry : prompt_json) {
+      if (index >= max_requests_to_run) {
+        break;
+      }
+      int prompt_length = entry["human"];
+      int sequence_length = entry["gpt"];
+      assert(prompt_length + sequence_length <= max_sequence_length &&
+             "Prompt + sequence length exceeds max sequence length");
+      prompts.push_back(std::make_pair(prompt_length, sequence_length));
+      index++;
+    }
+    printf("Total number of prompts: %d", prompts.size());
+    for (auto &prompt : prompts) {
+      // printf("Prompt length: %d, sequence length: %d\n", prompt_length,
+      // sequence_length);
+      Request inference_req;
+      inference_req.benchmarking_tokens = prompt.first;
+      inference_req.max_sequence_length = prompt.second + prompt.first;
+      inference_req.peft_model_id =
+          (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
+      requests.push_back(inference_req);
+      total_num_requests++;
+    }
 
-    // Add fine-tuning request
-    Request fine_tuning_req;
-    fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
-    fine_tuning_req.max_sequence_length = 128;
-    fine_tuning_req.peft_model_id =
-        (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
-    fine_tuning_req.dataset_filepath = file_paths.prompt_file_path;
-    fine_tuning_req.max_training_steps = 1;
-    requests.push_back(fine_tuning_req);
-    total_num_requests++;
+    // // Add fine-tuning request
+    // Request fine_tuning_req;
+    // fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
+    // fine_tuning_req.max_sequence_length = 128;
+    // fine_tuning_req.peft_model_id =
+    //     (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
+    // fine_tuning_req.dataset_filepath = file_paths.prompt_file_path;
+    // fine_tuning_req.max_training_steps = 1;
+    // requests.push_back(fine_tuning_req);
+    // total_num_requests++;
 
     std::vector<GenerationResult> result = model.generate(requests);
   }

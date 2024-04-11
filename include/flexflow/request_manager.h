@@ -80,6 +80,7 @@ struct Request {
   RequestType req_type = REQ_INFERENCE;
   int completed_training_steps = 0;
   int max_training_steps = 1;
+  int benchmarking_tokens = -1;
   std::string dataset_filepath;
   std::vector<std::pair<std::vector<BatchConfig::TokenId>,
                         std::vector<BatchConfig::TokenId>>>

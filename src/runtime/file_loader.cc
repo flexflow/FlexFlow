@@ -759,7 +759,8 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
                              ? ".attn_bias"
                              : ((weight_idx == 1) ? ".weight" : ".bias");
       std::cout << "Loading weight file " << weight_filename << std::endl;
-      std::string weight_filepath = join_path({weights_folder, weight_filename});
+      std::string weight_filepath =
+          join_path({weights_folder, weight_filename});
       load_from_file(data, volume, weight_filepath);
     } else {
       // default op
@@ -769,7 +770,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
         weight_filename += weight_idx == 0 ? ".weight" : ".bias";
       }
     }
-  } 
+  }
 
   // Copy the weight data from the buffer to the weight's ParallelTensor
   ParallelTensor weight_pt;

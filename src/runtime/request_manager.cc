@@ -239,17 +239,26 @@ RequestManager::RequestGuid
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
-  std::vector<int32_t> tokens = this->tokenizer_->Encode(request_.prompt);
-  if (tokens.size() >= get_max_sequence_length()) {
-    std::cout << "Warning: too many tokens in prompt, only load up to "
-              << get_max_sequence_length() << " tokens, but got "
-              << tokens.size() << ".\n";
-    return INVALID_GUID;
+  if (request_.benchmarking_tokens >= 0) {
+    assert(request_.benchmarking_tokens < get_max_sequence_length());
+    request.benchmarking_tokens = request_.benchmarking_tokens;
+    request.tokens.insert(request.tokens.end(),
+                          request_.benchmarking_tokens,
+                          15); // insert random number
+  } else {
+    std::vector<int32_t> tokens = this->tokenizer_->Encode(request_.prompt);
+    if (tokens.size() >= get_max_sequence_length()) {
+      std::cout << "Warning: too many tokens in prompt, only load up to "
+                << get_max_sequence_length() << " tokens, but got "
+                << tokens.size() << ".\n";
+      return INVALID_GUID;
+    }
+    for (int i = 0; i < tokens.size(); i++) {
+      std::cout << "[" << i << "]" << tokens.at(i) << "\n";
+    }
+    request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
   }
-  for (int i = 0; i < tokens.size(); i++) {
-    std::cout << "[" << i << "]" << tokens.at(i) << "\n";
-  }
-  request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
+
   request.initial_len = request.tokens.size();
 
   if (get_num_ssms() == 0) {
@@ -558,20 +567,27 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           if (!output_filepath.empty()) {
             std::ofstream outputFile(output_filepath, std::ios::app);
             if (outputFile.is_open()) {
-              outputFile << "end-to-end latency: " << std::fixed
-                         << std::setprecision(3) << total_request_run_time
-                         << std::endl;
-              outputFile << "num decoding steps: "
-                         << profile_info.llm_decoding_steps << std::endl;
-              outputFile << "token IDs: ";
-              for (int i = 0; i < request.tokens.size(); i++) {
-                outputFile << request.tokens[i];
-                if (i < request.tokens.size() - 1) {
-                  outputFile << ",";
-                }
-              }
-              outputFile << std::endl;
-              outputFile << output;
+              outputFile << "[Profile] guid(" << request.guid
+                         << ") llm_decoding_steps("
+                         << profile_info.llm_decoding_steps << ") latency("
+                         << std::fixed << std::setprecision(3)
+                         << (profile_info.finish_time - profile_info.start_time)
+                         << ")\n";
+              // outputFile << "end-to-end latency: " << std::fixed
+              //            << std::setprecision(3) << total_request_run_time
+              //            << std::endl;
+              // outputFile << "num decoding steps: "
+              //            << profile_info.llm_decoding_steps << std::endl;
+              // outputFile << "token IDs: ";
+              // for (int i = 0; i < request.tokens.size(); i++) {
+              //   outputFile << request.tokens[i];
+              //   if (i < request.tokens.size() - 1) {
+              //     outputFile << ",";
+              //   }
+              // }
+              // outputFile << std::endl;
+              // outputFile << output;
+              // outputFile << std::endl;
               outputFile.close();
             } else {
               std::cout << "Unable to open the output file: " << output_filepath
@@ -603,8 +619,18 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             new_bc.requestsInfo[i].prompt_phase = false;
           } else {
             // Prompt phase
+            assert(old_bc.requestsInfo[i].prompt_phase == true);
+            int space_for_incr_dec_requests = 0;
+            for (int ii = i + 1; i < BatchConfig::max_requests_per_batch();
+                 ii++) {
+              if (!old_bc.request_completed[ii] &&
+                  !old_bc.requestsInfo[ii].prompt_phase) {
+                space_for_incr_dec_requests++;
+              }
+            }
             new_bc.requestsInfo[i].num_tokens_in_batch = std::min(
-                get_max_tokens_per_batch() - new_bc.num_tokens,
+                get_max_tokens_per_batch() - new_bc.num_tokens -
+                    space_for_incr_dec_requests,
                 (int)request.tokens.size() -
                     new_bc.requestsInfo[i].first_token_depth_in_request);
             new_bc.requestsInfo[i].prompt_phase = true;
@@ -733,7 +759,25 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       }
     }
   }
-
+  // pid_t pid = getpid();
+  // std::string filenamen = "new_bc_" + std::to_string(pid) + ".txt";
+  // std::ofstream filen(filenamen);
+  // if (filen.is_open()) {
+  //     filen << new_bc << std::endl;
+  //     filen.close();
+  //     std::cout << "String written to file: " << filenamen << std::endl;
+  // } else {
+  //     std::cout << "Unable to open file: " << filenamen << std::endl;
+  // }
+  // std::string filenameo = "old_bc_" + std::to_string(pid) + ".txt";
+  // std::ofstream fileo(filenameo);
+  // if (fileo.is_open()) {
+  //     fileo << old_bc << std::endl;
+  //     fileo.close();
+  //     std::cout << "String written to file: " << filenameo << std::endl;
+  // } else {
+  //     std::cout << "Unable to open file: " << filenameo << std::endl;
+  // }
   return new_bc;
 }
 
@@ -905,21 +949,27 @@ BeamSearchBatchConfig
         if (!output_filepath.empty()) {
           std::ofstream outputFile(output_filepath, std::ios::app);
           if (outputFile.is_open()) {
-            outputFile << "end-to-end latency: " << std::fixed
-                       << std::setprecision(3) << total_request_run_time
-                       << std::endl;
-            outputFile << "num decoding steps: "
-                       << profile_info.llm_decoding_steps << std::endl;
-            outputFile << "token IDs: ";
-            for (int i = 0; i < request.tokens.size(); i++) {
-              outputFile << request.tokens[i];
-              if (i < request.tokens.size() - 1) {
-                outputFile << ",";
-              }
-            }
-            outputFile << std::endl;
-            outputFile << output;
-
+            outputFile << "[Profile] guid(" << request.guid
+                       << ") llm_decoding_steps("
+                       << profile_info.llm_decoding_steps << ") latency("
+                       << std::fixed << std::setprecision(3)
+                       << (profile_info.finish_time - profile_info.start_time)
+                       << ")\n";
+            // outputFile << "end-to-end latency: " << std::fixed
+            //            << std::setprecision(3) << total_request_run_time
+            //            << std::endl;
+            // outputFile << "num decoding steps: "
+            //            << profile_info.llm_decoding_steps << std::endl;
+            // outputFile << "token IDs: ";
+            // for (int i = 0; i < request.tokens.size(); i++) {
+            //   outputFile << request.tokens[i];
+            //   if (i < request.tokens.size() - 1) {
+            //     outputFile << ",";
+            //   }
+            // }
+            // outputFile << std::endl;
+            // outputFile << output;
+            // outputFile << std::endl;
             outputFile.close();
           } else {
             std::cout << "Unable to open the output file: " << output_filepath
