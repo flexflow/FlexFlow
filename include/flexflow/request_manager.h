@@ -224,7 +224,7 @@ public:
   // Given the last speculation result, prepare the next speculation batch.
   TreeSearchBatchConfig
       prepare_next_batch_spec(TreeSearchBatchConfig const &old_bc,
-                              SsmInferenceResult const &result);
+                              SsmInferenceResult const &ssm_inference_result);
   // A wrapper function.
   TreeSearchBatchConfigFuture
       prepare_next_batch_spec(TreeSearchBatchConfigFuture const &old_bc,
