@@ -559,6 +559,7 @@ if(NOT BUILD_LEGION_ONLY)
     add_subdirectory(inference/spec_infer)
     add_subdirectory(inference/incr_decoding)
     add_subdirectory(inference/peft)
+    add_subdirectory(rdelacou/req_rate_benchmark)
   endif()
 
 
