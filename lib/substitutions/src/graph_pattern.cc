@@ -103,14 +103,14 @@ struct EvaluateTensorAttributeExpr {
     switch (key) {
       case TensorAttributeKey::DIM_SIZES: {
         std::vector<int> result;
-        for (ParallelDim const &dim : this->tensor_shape.dims) {
+        for (ParallelDim const &dim : ff_ordered(this->tensor_shape.dims)) {
           result.push_back(dim.size);
         }
         return result;
       }
       case TensorAttributeKey::DIM_DEGREES: {
         std::vector<int> result;
-        for (ParallelDim const &dim : this->tensor_shape.dims) {
+        for (ParallelDim const &dim : ff_ordered(this->tensor_shape.dims)) {
           result.push_back(dim.degree);
         }
         return result;

@@ -100,8 +100,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     MultiDiEdge e4{n5, p5, n4, p4};
     pcg.add_edge(e4);
+    ParallelDim dim = {2, 1, false};
+    ParallelTensorDims dims = {
+      FFOrdered<ParallelDim>{dim}
+    };
     pcg.add_label(e4,
-                  ParallelTensor(ParallelTensorDims({2, 1}),
+                  ParallelTensor(dims,
                                  DataType::FLOAT,
                                  CreateGrad::YES));
 

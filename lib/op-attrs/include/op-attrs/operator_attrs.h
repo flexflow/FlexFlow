@@ -33,6 +33,7 @@
 #include "ops/transpose.h"
 #include "utils/variant.h"
 #include <variant>
+#include "utils/record_formatter.h"
 
 namespace FlexFlow {
 

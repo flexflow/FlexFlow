@@ -1,0 +1,26 @@
+namespace = "FlexFlow"
+name = "MultiHeadAttentionInputs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/tensor_shape.h"
+]
+
+[[fields]]
+name = "query"
+type = "::FlexFlow::TensorShape"
+
+[[fields]]
+name = "key"
+type = "::FlexFlow::TensorShape"
+
+[[fields]]
+name = "value"
+type = "::FlexFlow::TensorShape"

@@ -1,0 +1,26 @@
+namespace = "FlexFlow"
+name = "ParallelMultiHeadAttentionInputs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/parallel_tensor_shape.h"
+]
+
+[[fields]]
+name = "query"
+type = "::FlexFlow::ParallelTensorShape"
+
+[[fields]]
+name = "key"
+type = "::FlexFlow::ParallelTensorShape"
+
+[[fields]]
+name = "value"
+type = "::FlexFlow::ParallelTensorShape"

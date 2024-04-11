@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "ParallelTensorDims"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/dim_ordered.h",
+  "op-attrs/parallel_dim.h",
+]
+
+[[fields]]
+name = "unwrapped"
+type = "::FlexFlow::FFOrdered<::FlexFlow::ParallelDim>"

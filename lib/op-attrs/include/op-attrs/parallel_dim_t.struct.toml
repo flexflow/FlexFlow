@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "ParallelDim"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "size"
+type = "size_t"
+
+[[fields]]
+name = "degree"
+type = "int"
+
+[[fields]]
+name = "is_replica_dim"
+type = "bool"

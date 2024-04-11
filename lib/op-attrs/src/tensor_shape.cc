@@ -2,12 +2,8 @@
 
 namespace FlexFlow {
 
-size_t TensorShape::at(ff_dim_t d) const {
-  return dims.at(d);
-}
-
-size_t TensorShape::operator[](ff_dim_t d) const {
-  return dims[d];
+size_t dim_at_idx(TensorShape const &s, ff_dim_t idx) {
+  return dim_at_idx(s.dims, idx);
 }
 
 } // namespace FlexFlow
