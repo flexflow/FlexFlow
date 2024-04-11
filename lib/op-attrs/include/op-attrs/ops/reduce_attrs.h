@@ -8,7 +8,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/ff_dim.h"
-#include "op-attrs/op.h"
+#include "op-attrs/operator_type.h"
 #include "utils/stack_vector.h"
 #include <functional>
 #include <ostream>
@@ -20,7 +20,7 @@ struct ReduceAttrs {
   ReduceAttrs() = delete;
   ReduceAttrs(::FlexFlow::stack_vector<::FlexFlow::ff_dim_t,
                                        MAX_TENSOR_DIM> const &axes,
-              ::FlexFlow::Op const &op_type,
+              ::FlexFlow::OperatorType const &op_type,
               bool const &keepdims);
 
   bool operator==(ReduceAttrs const &) const;
@@ -30,7 +30,7 @@ struct ReduceAttrs {
   bool operator<=(ReduceAttrs const &) const;
   bool operator>=(ReduceAttrs const &) const;
   ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM> axes;
-  ::FlexFlow::Op op_type;
+  ::FlexFlow::OperatorType op_type;
   bool keepdims;
 };
 } // namespace FlexFlow

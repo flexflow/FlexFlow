@@ -26,6 +26,14 @@ ParallelDim dim_at_idx(ParallelTensorShape const &s, ff_dim_t d) {
   return dim_at_idx(s.dims, d);
 }
 
+ParallelDim &dim_at_idx(ParallelTensorShape &s, ff_dim_t d) {
+  return dim_at_idx(s.dims, d);
+}
+
+ParallelTensorShape lift_to_parallel(TensorShape const &s) {
+  return { lift_to_parallel(s.dims), s.data_type };
+}
+
 TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &) {
   NOT_IMPLEMENTED();
 }

@@ -4,6 +4,7 @@
 #include "fmt/format.h"
 #include <unordered_set>
 #include <vector>
+#include <variant>
 
 #define CHECK_FMTABLE(...)                                                     \
   static_assert(::FlexFlow::is_fmtable<__VA_ARGS__>::value,                    \
@@ -43,6 +44,14 @@ struct formatter<::std::vector<T>> : formatter<::std::string> {
   auto format(::std::vector<T> const &m, FormatContext &ctx)
       -> decltype(ctx.out());
 };
+
+template <typename... Ts>
+struct formatter<::std::variant<Ts...>> : formatter<::std::string> {
+  template <typename FormatContext>
+  auto format(::std::variant<Ts...> const &m, FormatContext &ctx)
+      -> decltype(ctx.out());
+};
+
 
 } // namespace fmt
 

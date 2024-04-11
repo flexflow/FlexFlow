@@ -5,7 +5,7 @@
 #include "op-attrs/ops/element_binary_attrs.h"
 
 namespace FlexFlow {
-ElementBinaryAttrs::ElementBinaryAttrs(::FlexFlow::Op const &type,
+ElementBinaryAttrs::ElementBinaryAttrs(::FlexFlow::OperatorType const &type,
                                        ::FlexFlow::DataType const &compute_type,
                                        bool const &should_broadcast_lhs,
                                        bool const &should_broadcast_rhs)
@@ -78,8 +78,8 @@ namespace std {
 size_t hash<FlexFlow::ElementBinaryAttrs>::operator()(
     FlexFlow::ElementBinaryAttrs const &x) const {
   size_t result = 0;
-  result ^= std::hash<::FlexFlow::Op>{}(x.type) + 0x9e3779b9 + (result << 6) +
-            (result >> 2);
+  result ^= std::hash<::FlexFlow::OperatorType>{}(x.type) + 0x9e3779b9 +
+            (result << 6) + (result >> 2);
   result ^= std::hash<::FlexFlow::DataType>{}(x.compute_type) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
   result ^= std::hash<bool>{}(x.should_broadcast_lhs) + 0x9e3779b9 +
@@ -93,7 +93,7 @@ size_t hash<FlexFlow::ElementBinaryAttrs>::operator()(
 namespace nlohmann {
 FlexFlow::ElementBinaryAttrs
     adl_serializer<FlexFlow::ElementBinaryAttrs>::from_json(json const &j) {
-  return {j.at("type").template get<::FlexFlow::Op>(),
+  return {j.at("type").template get<::FlexFlow::OperatorType>(),
           j.at("compute_type").template get<::FlexFlow::DataType>(),
           j.at("should_broadcast_lhs").template get<bool>(),
           j.at("should_broadcast_rhs").template get<bool>()};

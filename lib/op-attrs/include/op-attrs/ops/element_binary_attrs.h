@@ -8,7 +8,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/datatype.h"
-#include "op-attrs/op.h"
+#include "op-attrs/operator_type.h"
 #include <functional>
 #include <ostream>
 #include <sstream>
@@ -17,7 +17,7 @@
 namespace FlexFlow {
 struct ElementBinaryAttrs {
   ElementBinaryAttrs() = delete;
-  ElementBinaryAttrs(::FlexFlow::Op const &type,
+  ElementBinaryAttrs(::FlexFlow::OperatorType const &type,
                      ::FlexFlow::DataType const &compute_type,
                      bool const &should_broadcast_lhs,
                      bool const &should_broadcast_rhs);
@@ -28,7 +28,7 @@ struct ElementBinaryAttrs {
   bool operator>(ElementBinaryAttrs const &) const;
   bool operator<=(ElementBinaryAttrs const &) const;
   bool operator>=(ElementBinaryAttrs const &) const;
-  ::FlexFlow::Op type;
+  ::FlexFlow::OperatorType type;
   ::FlexFlow::DataType compute_type;
   bool should_broadcast_lhs;
   bool should_broadcast_rhs;

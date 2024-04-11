@@ -18,7 +18,7 @@ namespace FlexFlow {
 struct ParallelTensorDims {
   ParallelTensorDims() = delete;
   ParallelTensorDims(
-      ::FlexFlow::FFOrdered<::FlexFlow::ParallelDim> const &unwrapped);
+      ::FlexFlow::FFOrdered<::FlexFlow::ParallelDim> const &ff_ordered);
 
   bool operator==(ParallelTensorDims const &) const;
   bool operator!=(ParallelTensorDims const &) const;
@@ -26,7 +26,7 @@ struct ParallelTensorDims {
   bool operator>(ParallelTensorDims const &) const;
   bool operator<=(ParallelTensorDims const &) const;
   bool operator>=(ParallelTensorDims const &) const;
-  ::FlexFlow::FFOrdered<::FlexFlow::ParallelDim> unwrapped;
+  ::FlexFlow::FFOrdered<::FlexFlow::ParallelDim> ff_ordered;
 };
 } // namespace FlexFlow
 

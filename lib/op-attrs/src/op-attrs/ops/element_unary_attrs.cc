@@ -5,7 +5,7 @@
 #include "op-attrs/ops/element_unary_attrs.h"
 
 namespace FlexFlow {
-ElementUnaryAttrs::ElementUnaryAttrs(::FlexFlow::Op const &op_type)
+ElementUnaryAttrs::ElementUnaryAttrs(::FlexFlow::OperatorType const &op_type)
     : op_type(op_type) {}
 bool ElementUnaryAttrs::operator==(ElementUnaryAttrs const &other) const {
   return std::tie(this->op_type) == std::tie(other.op_type);
@@ -31,7 +31,7 @@ namespace std {
 size_t hash<FlexFlow::ElementUnaryAttrs>::operator()(
     FlexFlow::ElementUnaryAttrs const &x) const {
   size_t result = 0;
-  result ^= std::hash<::FlexFlow::Op>{}(x.op_type) + 0x9e3779b9 +
+  result ^= std::hash<::FlexFlow::OperatorType>{}(x.op_type) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
   return result;
 }
@@ -40,7 +40,7 @@ size_t hash<FlexFlow::ElementUnaryAttrs>::operator()(
 namespace nlohmann {
 FlexFlow::ElementUnaryAttrs
     adl_serializer<FlexFlow::ElementUnaryAttrs>::from_json(json const &j) {
-  return {j.at("op_type").template get<::FlexFlow::Op>()};
+  return {j.at("op_type").template get<::FlexFlow::OperatorType>()};
 }
 void adl_serializer<FlexFlow::ElementUnaryAttrs>::to_json(
     json &j, FlexFlow::ElementUnaryAttrs const &v) {

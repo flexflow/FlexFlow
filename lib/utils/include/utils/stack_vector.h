@@ -311,6 +311,9 @@ private:
       implies<is_lt_comparable<T>, is_lt_comparable<stack_vector>>::value, "");
 };
 
+template <typename T, std::size_t MAXSIZE>
+struct delegate_ostream_operator<stack_vector<T, MAXSIZE>> : std::true_type {};
+
 // CHECK_FMTABLE(stack_vector<test_types::fmtable, 5>);
 
 template <typename T, std::size_t MAXSIZE>

@@ -11,12 +11,12 @@ features = [
 ]
 
 includes = [
-  "op-attrs/op.h"
+  "op-attrs/operator_type.h"
 ]
 
 [[fields]]
 name = "op_type"
-type = "::FlexFlow::Op"
+type = "::FlexFlow::OperatorType"
 
 [[fields]]
 name = "scalar"

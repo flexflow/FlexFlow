@@ -7,7 +7,7 @@
 namespace FlexFlow {
 ReduceAttrs::ReduceAttrs(
     ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM> const &axes,
-    ::FlexFlow::Op const &op_type,
+    ::FlexFlow::OperatorType const &op_type,
     bool const &keepdims)
     : axes(axes), op_type(op_type), keepdims(keepdims) {}
 bool ReduceAttrs::operator==(ReduceAttrs const &other) const {
@@ -45,7 +45,7 @@ size_t hash<FlexFlow::ReduceAttrs>::operator()(
           ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>{}(
           x.axes) +
       0x9e3779b9 + (result << 6) + (result >> 2);
-  result ^= std::hash<::FlexFlow::Op>{}(x.op_type) + 0x9e3779b9 +
+  result ^= std::hash<::FlexFlow::OperatorType>{}(x.op_type) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
   result ^= std::hash<bool>{}(x.keepdims) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -60,7 +60,7 @@ FlexFlow::ReduceAttrs
       j.at("axes")
           .template get<
               ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>(),
-      j.at("op_type").template get<::FlexFlow::Op>(),
+      j.at("op_type").template get<::FlexFlow::OperatorType>(),
       j.at("keepdims").template get<bool>()};
 }
 void adl_serializer<FlexFlow::ReduceAttrs>::to_json(

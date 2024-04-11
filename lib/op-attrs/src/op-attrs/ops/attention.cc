@@ -105,6 +105,11 @@ TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
 int get_oSize(ParallelTensorShape const &) {
   NOT_IMPLEMENTED();
 }
+
+int get_oSize(TensorShape const &) {
+  NOT_IMPLEMENTED();
+}
+
 } // namespace FlexFlow
 
 // Tensor FFModel::multihead_attention(const Tensor query,

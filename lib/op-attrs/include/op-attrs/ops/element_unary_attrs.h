@@ -7,7 +7,7 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
-#include "op-attrs/op.h"
+#include "op-attrs/operator_type.h"
 #include <functional>
 #include <ostream>
 #include <sstream>
@@ -16,7 +16,7 @@
 namespace FlexFlow {
 struct ElementUnaryAttrs {
   ElementUnaryAttrs() = delete;
-  ElementUnaryAttrs(::FlexFlow::Op const &op_type);
+  ElementUnaryAttrs(::FlexFlow::OperatorType const &op_type);
 
   bool operator==(ElementUnaryAttrs const &) const;
   bool operator!=(ElementUnaryAttrs const &) const;
@@ -24,7 +24,7 @@ struct ElementUnaryAttrs {
   bool operator>(ElementUnaryAttrs const &) const;
   bool operator<=(ElementUnaryAttrs const &) const;
   bool operator>=(ElementUnaryAttrs const &) const;
-  ::FlexFlow::Op op_type;
+  ::FlexFlow::OperatorType op_type;
 };
 } // namespace FlexFlow
 

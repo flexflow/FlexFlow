@@ -5,8 +5,8 @@
 #include "op-attrs/ops/element_scalar_unary_attrs.h"
 
 namespace FlexFlow {
-ElementScalarUnaryAttrs::ElementScalarUnaryAttrs(::FlexFlow::Op const &op_type,
-                                                 float const &scalar)
+ElementScalarUnaryAttrs::ElementScalarUnaryAttrs(
+    ::FlexFlow::OperatorType const &op_type, float const &scalar)
     : op_type(op_type), scalar(scalar) {}
 bool ElementScalarUnaryAttrs::operator==(
     ElementScalarUnaryAttrs const &other) const {
@@ -44,7 +44,7 @@ namespace std {
 size_t hash<FlexFlow::ElementScalarUnaryAttrs>::operator()(
     FlexFlow::ElementScalarUnaryAttrs const &x) const {
   size_t result = 0;
-  result ^= std::hash<::FlexFlow::Op>{}(x.op_type) + 0x9e3779b9 +
+  result ^= std::hash<::FlexFlow::OperatorType>{}(x.op_type) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
   result ^=
       std::hash<float>{}(x.scalar) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -56,7 +56,7 @@ namespace nlohmann {
 FlexFlow::ElementScalarUnaryAttrs
     adl_serializer<FlexFlow::ElementScalarUnaryAttrs>::from_json(
         json const &j) {
-  return {j.at("op_type").template get<::FlexFlow::Op>(),
+  return {j.at("op_type").template get<::FlexFlow::OperatorType>(),
           j.at("scalar").template get<float>()};
 }
 void adl_serializer<FlexFlow::ElementScalarUnaryAttrs>::to_json(

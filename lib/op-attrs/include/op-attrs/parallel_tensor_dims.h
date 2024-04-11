@@ -13,7 +13,7 @@ std::vector<ParallelDim> as_vector(ParallelTensorDims const &);
 
 int get_num_replica_dims(ParallelTensorDims const &);
 
-size_t get_volume(ParallelTensorDims const &);
+/* size_t get_volume(ParallelTensorDims const &); */
 size_t num_dims(ParallelTensorDims const &);
 
 ParallelDim dim_at_idx(ParallelTensorDims const &, ff_dim_t);

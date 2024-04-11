@@ -11,13 +11,13 @@ features = [
 ]
 
 includes = [
-  "op-attrs/op.h",
+  "op-attrs/operator_type.h",
   "op-attrs/datatype.h",
 ]
 
 [[fields]]
 name = "type"
-type = "::FlexFlow::Op"
+type = "::FlexFlow::OperatorType"
 
 [[fields]]
 name = "compute_type"

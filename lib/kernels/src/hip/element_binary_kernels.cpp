@@ -42,17 +42,17 @@ ElementBinaryPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(miopenCreateReduceTensorDescriptor(&reduceAddDesc));
 
   switch (op_type) {
-    case Op::EW_ADD:
-    case Op::EW_SUB:
+    case OperatorType::EW_ADD:
+    case OperatorType::EW_SUB:
       mode = miopenTensorOpAdd;
       break;
-    case Op::EW_MUL:
+    case OperatorType::EW_MUL:
       mode = miopenTensorOpMul;
       break;
-    case Op::EW_MAX:
+    case OperatorType::EW_MAX:
       mode = miopenTensorOpMax;
       break;
-    case Op::EW_MIN:
+    case OperatorType::EW_MIN:
       mode = miopenTensorOpMin;
       break;
     default:
@@ -90,25 +90,25 @@ __global__ void elewise_binary_forward_kernel(coord_t volume,
                                               float const *in2,
                                               float *out) {
   switch (type) {
-    case Op::EW_ADD: {
+    case OperatorType::EW_ADD: {
       CUDA_KERNEL_LOOP(i, volume) {
         out[i] = alpha * (in1[i] + in2[i]) + beta * out[i];
       }
       break;
     }
-    case Op::EW_SUB: {
+    case OperatorType::EW_SUB: {
       CUDA_KERNEL_LOOP(i, volume) {
         out[i] = alpha * (in1[i] - in2[i]) + beta * out[i];
       }
       break;
     }
-    case Op::EW_MUL: {
+    case OperatorType::EW_MUL: {
       CUDA_KERNEL_LOOP(i, volume) {
         out[i] = alpha * in1[i] * in2[i] + beta * out[i];
       }
       break;
     }
-    case Op::EW_DIV: {
+    case OperatorType::EW_DIV: {
       CUDA_KERNEL_LOOP(i, volume) {
         out[i] = alpha * (in1[i] / in2[i]) + beta * out[i];
       }
@@ -130,22 +130,22 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
                                                float *in2_grad) {
   CUDA_KERNEL_LOOP(i, volume) {
     switch (type) {
-      case Op::EW_ADD: {
+      case OperatorType::EW_ADD: {
         in1_grad[i] = alpha * out_grad[i] + beta * in1_grad[i];
         in2_grad[i] = alpha * out_grad[i] + beta * in2_grad[i];
         break;
       }
-      case Op::EW_SUB: {
+      case OperatorType::EW_SUB: {
         in1_grad[i] = alpha * out_grad[i] + beta * in1_grad[i];
         in2_grad[i] = -alpha * out_grad[i] + beta * in2_grad[i];
         break;
       }
-      case Op::EW_MUL: {
+      case OperatorType::EW_MUL: {
         in1_grad[i] = alpha * out_grad[i] * in2[i] + beta * in1_grad[i];
         in2_grad[i] = alpha * out_grad[i] * in1[i] + beta * in2_grad[i];
         break;
       }
-      case Op::EW_DIV: {
+      case OperatorType::EW_DIV: {
         in1_grad[i] = alpha * out_grad[i] / in2[i] + beta * in1_grad[i];
         in2_grad[i] = -alpha * out_grad[i] * in1[i] / (in2[i] * in2[i]) +
                       beta * in2_grad[i];
@@ -170,11 +170,11 @@ void forward_kernel(hipStream_t stream,
 
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
   switch (op_type) {
-    case Op::EW_SUB:
+    case OperatorType::EW_SUB:
       alpha2 = -1.0f;
       break;
-    case Op::EW_ADD:
-    case Op::EW_MUL:
+    case OperatorType::EW_ADD:
+    case OperatorType::EW_MUL:
       break;
     default:
       assert(false);
@@ -183,7 +183,7 @@ void forward_kernel(hipStream_t stream,
   // cudnnOpTensor
   if (broadcast_inputLHS) {
     // currently only handle add and sub
-    assert(op_type == Op::EW_SUB || op_type == Op::EW_ADD);
+    assert(op_type == OperatorType::EW_SUB || op_type == OperatorType::EW_ADD);
     checkCUDNN(miopenOpTensor(handle.dnn,
                               m.opDesc,
                               &beta,
@@ -235,7 +235,7 @@ void backward_kernel(hipStream_t stream,
   checkCUDA(hipblasSetStream(handle.blas, stream));
   checkCUDNN(miopenSetStream(handle.dnn, stream));
 
-  if (m.op_type == Op::EW_ADD || m.op_type == Op::EW_SUB) {
+  if (m.op_type == OperatorType::EW_ADD || m.op_type == OperatorType::EW_SUB) {
     float alpha = 1.0f, alpha2 = 0.0f, beta = 1.0f;
     if (lhs_grad_ptr != nullptr) {
       if (m.broadcast_input1) {
@@ -265,7 +265,7 @@ void backward_kernel(hipStream_t stream,
                                   lhs_grad_ptr));
       }
     }
-    if (m.op_type == Op::EW_SUB) {
+    if (m.op_type == OperatorType::EW_SUB) {
       alpha = -1.0f;
     }
     if (rhs_grad_ptr != nullptr) {
@@ -296,7 +296,7 @@ void backward_kernel(hipStream_t stream,
                                   rhs_grad_ptr));
       }
     }
-  } else if (m.op_type == Op::EW_MUL) {
+  } else if (m.op_type == OperatorType::EW_MUL) {
     float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
     if (lhs_grad_ptr != nullptr) {
       checkCUDNN(miopenOpTensor(handle.dnn,

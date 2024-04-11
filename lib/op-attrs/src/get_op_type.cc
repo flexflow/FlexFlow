@@ -3,25 +3,25 @@
 namespace FlexFlow {
 
 OperatorType get_op_type(BatchMatmulAttrs const &) {
-  return Op::BATCHMATMUL;
+  return OperatorType::BATCHMATMUL;
 }
 OperatorType get_op_type(BatchNormAttrs const &) {
-  return Op::BATCHNORM;
+  return OperatorType::BATCHNORM;
 }
 OperatorType get_op_type(BroadcastAttrs const &) {
-  return Op::BROADCAST;
+  return OperatorType::BROADCAST;
 }
 OperatorType get_op_type(CastAttrs const &) {
-  return Op::CAST;
+  return OperatorType::CAST;
 }
 OperatorType get_op_type(ConcatAttrs const &) {
-  return Op::CONCAT;
+  return OperatorType::CONCAT;
 }
 OperatorType get_op_type(Conv2DAttrs const &) {
-  return Op::CONV2D;
+  return OperatorType::CONV2D;
 }
 OperatorType get_op_type(DropoutAttrs const &) {
-  return Op::DROPOUT;
+  return OperatorType::DROPOUT;
 }
 OperatorType get_op_type(ElementBinaryAttrs const &attrs) {
   return attrs.type;
@@ -33,64 +33,64 @@ OperatorType get_op_type(ElementScalarUnaryAttrs const &attrs) {
   return attrs.op_type;
 }
 OperatorType get_op_type(EmbeddingAttrs const &) {
-  return Op::EMBEDDING;
+  return OperatorType::EMBEDDING;
 }
 OperatorType get_op_type(FlatAttrs const &) {
-  return Op::FLAT;
+  return OperatorType::FLAT;
 }
 OperatorType get_op_type(GatherAttrs const &) {
-  return Op::GATHER;
+  return OperatorType::GATHER;
 }
 OperatorType get_op_type(InputAttrs const &) {
-  return Op::INPUT;
+  return OperatorType::INPUT;
 }
 OperatorType get_op_type(LayerNormAttrs const &) {
-  return Op::LAYERNORM;
+  return OperatorType::LAYERNORM;
 }
 OperatorType get_op_type(LinearAttrs const &) {
-  return Op::LINEAR;
+  return OperatorType::LINEAR;
 }
 OperatorType get_op_type(MultiHeadAttentionAttrs const &) {
-  return Op::MULTIHEAD_ATTENTION;
+  return OperatorType::MULTIHEAD_ATTENTION;
 }
 OperatorType get_op_type(NoopAttrs const &) {
-  return Op::NOOP;
+  return OperatorType::NOOP;
 }
 OperatorType get_op_type(Pool2DAttrs const &) {
-  return Op::POOL2D;
+  return OperatorType::POOL2D;
 }
 OperatorType get_op_type(ReduceAttrs const &) {
-  return Op::REDUCE_SUM;
+  return OperatorType::REDUCE_SUM;
 }
 OperatorType get_op_type(ReshapeAttrs const &) {
-  return Op::RESHAPE;
+  return OperatorType::RESHAPE;
 }
 OperatorType get_op_type(SplitAttrs const &) {
-  return Op::SPLIT;
+  return OperatorType::SPLIT;
 }
 OperatorType get_op_type(SoftmaxAttrs const &) {
-  return Op::SOFTMAX;
+  return OperatorType::SOFTMAX;
 }
 OperatorType get_op_type(TopKAttrs const &) {
-  return Op::TOPK;
+  return OperatorType::TOPK;
 }
 OperatorType get_op_type(TransposeAttrs const &) {
-  return Op::TRANSPOSE;
+  return OperatorType::TRANSPOSE;
 }
 OperatorType get_op_type(CombineAttrs const &) {
-  return Op::COMBINE;
+  return OperatorType::COMBINE;
 }
 OperatorType get_op_type(ReductionAttrs const &) {
-  return Op::REDUCTION;
+  return OperatorType::REDUCTION;
 }
 OperatorType get_op_type(RepartitionAttrs const &) {
-  return Op::REPARTITION;
+  return OperatorType::REPARTITION;
 }
 OperatorType get_op_type(ReplicateAttrs const &) {
-  return Op::REPLICATE;
+  return OperatorType::REPLICATE;
 }
 OperatorType get_op_type(ReverseAttrs const &attrs) {
-  return Op::REVERSE;
+  return OperatorType::REVERSE;
 }
 
 } // namespace FlexFlow

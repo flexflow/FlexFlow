@@ -41,8 +41,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     MultiDiEdge e{n1, pcg.add_node_port(), n0, pcg.add_node_port()};
     pcg.add_edge(e);
+    ParallelDim dim = {2, 1, false};
+    ParallelTensorDims dims = {
+      FFOrdered<ParallelDim>{dim}
+    };
     pcg.add_output(e,
-                   ParallelTensor(ParallelTensorDims({2, 1}),
+                   ParallelTensor(dims,
                                   DataType::FLOAT,
                                   CreateGrad::YES));
 

@@ -10,7 +10,7 @@ features = [
 ]
 
 includes = [
-  "op-attrs/op.h",
+  "op-attrs/operator_type.h",
   "op-attrs/ff_dim.h",
   "utils/stack_vector.h",
 ]
@@ -21,7 +21,7 @@ type = "::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>"
 
 [[fields]]
 name = "op_type"
-type = "::FlexFlow::Op"
+type = "::FlexFlow::OperatorType"
 
 [[fields]]
 name = "keepdims"

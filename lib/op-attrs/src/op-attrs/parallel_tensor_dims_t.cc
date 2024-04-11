@@ -6,25 +6,25 @@
 
 namespace FlexFlow {
 ParallelTensorDims::ParallelTensorDims(
-    ::FlexFlow::FFOrdered<::FlexFlow::ParallelDim> const &unwrapped)
-    : unwrapped(unwrapped) {}
+    ::FlexFlow::FFOrdered<::FlexFlow::ParallelDim> const &ff_ordered)
+    : ff_ordered(ff_ordered) {}
 bool ParallelTensorDims::operator==(ParallelTensorDims const &other) const {
-  return std::tie(this->unwrapped) == std::tie(other.unwrapped);
+  return std::tie(this->ff_ordered) == std::tie(other.ff_ordered);
 }
 bool ParallelTensorDims::operator!=(ParallelTensorDims const &other) const {
-  return std::tie(this->unwrapped) != std::tie(other.unwrapped);
+  return std::tie(this->ff_ordered) != std::tie(other.ff_ordered);
 }
 bool ParallelTensorDims::operator<(ParallelTensorDims const &other) const {
-  return std::tie(this->unwrapped) < std::tie(other.unwrapped);
+  return std::tie(this->ff_ordered) < std::tie(other.ff_ordered);
 }
 bool ParallelTensorDims::operator>(ParallelTensorDims const &other) const {
-  return std::tie(this->unwrapped) > std::tie(other.unwrapped);
+  return std::tie(this->ff_ordered) > std::tie(other.ff_ordered);
 }
 bool ParallelTensorDims::operator<=(ParallelTensorDims const &other) const {
-  return std::tie(this->unwrapped) <= std::tie(other.unwrapped);
+  return std::tie(this->ff_ordered) <= std::tie(other.ff_ordered);
 }
 bool ParallelTensorDims::operator>=(ParallelTensorDims const &other) const {
-  return std::tie(this->unwrapped) >= std::tie(other.unwrapped);
+  return std::tie(this->ff_ordered) >= std::tie(other.ff_ordered);
 }
 } // namespace FlexFlow
 
@@ -32,9 +32,9 @@ namespace std {
 size_t hash<FlexFlow::ParallelTensorDims>::operator()(
     FlexFlow::ParallelTensorDims const &x) const {
   size_t result = 0;
-  result ^=
-      std::hash<::FlexFlow::FFOrdered<::FlexFlow::ParallelDim>>{}(x.unwrapped) +
-      0x9e3779b9 + (result << 6) + (result >> 2);
+  result ^= std::hash<::FlexFlow::FFOrdered<::FlexFlow::ParallelDim>>{}(
+                x.ff_ordered) +
+            0x9e3779b9 + (result << 6) + (result >> 2);
   return result;
 }
 } // namespace std
@@ -42,13 +42,13 @@ size_t hash<FlexFlow::ParallelTensorDims>::operator()(
 namespace nlohmann {
 FlexFlow::ParallelTensorDims
     adl_serializer<FlexFlow::ParallelTensorDims>::from_json(json const &j) {
-  return {j.at("unwrapped")
+  return {j.at("ff_ordered")
               .template get<::FlexFlow::FFOrdered<::FlexFlow::ParallelDim>>()};
 }
 void adl_serializer<FlexFlow::ParallelTensorDims>::to_json(
     json &j, FlexFlow::ParallelTensorDims const &v) {
   j["__type"] = "ParallelTensorDims";
-  j["unwrapped"] = v.unwrapped;
+  j["ff_ordered"] = v.ff_ordered;
 }
 } // namespace nlohmann
 
@@ -56,7 +56,7 @@ namespace FlexFlow {
 std::string format_as(ParallelTensorDims const &x) {
   std::ostringstream oss;
   oss << "<ParallelTensorDims";
-  oss << " unwrapped=" << x.unwrapped;
+  oss << " ff_ordered=" << x.ff_ordered;
   oss << ">";
   return oss.str();
 }
