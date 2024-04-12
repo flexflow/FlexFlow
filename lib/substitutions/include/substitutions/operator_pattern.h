@@ -11,18 +11,6 @@
 
 namespace FlexFlow {
 
-/**
- * @enum OperatorAttributeKey
- * @brief OperatorAttributeKey represents the keys of the attributes of an Operator.
- * Specifically, each operator have a set of attributes, and each attribute will have 
- * a key as its name and a concrete value representation.
- * The OP_TYPE is a OperatorAttributeKey is a special attribute key that represents the 
- * type of the Operator and will exist in every Operator. Given the OP_TYPE, the other 
- * attributes will be determined accordingly.
- * 
- * For example, a batch matrix multiplication Operator will have OP_TYPE BATCH_MATMUL and 
- * dimensions as A_SEQ_LENGTH_DIM and B_SEQ_LENGTH_DIM
- */
 enum class OperatorAttributeKey {
   OP_TYPE, // AnyOp
   USE_BIAS,
@@ -82,37 +70,27 @@ enum class OperatorAttributeKey {
   NUM_INPUTS
 };
 
-
-/**
- * @brief OperatorAttributeValue is a representation of the concrete value of an attribute of an Operator.
- * The OperatorAttributeValue is evaluated from AttributeExpr. The datatype of the value corresponds to the 
- * datatype of the attributekey listed in OperatorAttributeKey.
- */
-using OperatorAttributeValue =
-    std::variant<int,
-                 float,
-                 bool,
-                 stack_vector<int, MAX_TENSOR_DIM>,
-                 stack_vector<int, MAX_NUM_OUTPUTS>,
-                 OperatorType,
-                 Activation,
-                 ff_dim_t,
-                 unsigned long long,
-                 AggregateOp,
-                 stack_vector<ff_dim_t, MAX_TENSOR_DIM>,
-                 std::optional<RegularizerAttrs>,
-                 PoolOp,
-                 TensorShape,
-                 DataType>;
+using OperatorAttributeValue = variant<int,
+                                       float,
+                                       bool,
+                                       stack_vector<int, MAX_TENSOR_DIM>,
+                                       stack_vector<int, MAX_NUM_OUTPUTS>,
+                                       OperatorType,
+                                       Activation,
+                                       ff_dim_t,
+                                       unsigned long long,
+                                       AggregateOp,
+                                       stack_vector<ff_dim_t, MAX_TENSOR_DIM>,
+                                       optional<RegularizerAttrs>,
+                                       PoolOp,
+                                       TensorShape,
+                                       DataType>;
 
 FF_VISITABLE_STRUCT(ListIndexAccess<FlexFlow::OperatorAttributeKey>,
                     attribute_key,
                     index);
 FF_VISITABLE_STRUCT(ListSize<FlexFlow::OperatorAttributeKey>, attribute_key);
 
-/**
- * @brief OperatorAttributeConstraint is an instance of template struct AttributeConstraint.
- */
 using OperatorAttributeConstraint =
     AttributeConstraint<OperatorAttributeKey, OperatorAttributeValue>;
 
@@ -122,12 +100,7 @@ using OperatorAttributeConstraint =
 using OperatorPattern =
     AttributePattern<OperatorAttributeKey, OperatorAttributeValue>;
 
-/**
- * @brief Given a specific attribute of an Operator, evaluate the expression of the attribute 
- * using one of the three methods: direct value, list index access, or list size and return the
- * value of the attribute.
- */
-std::optional<OperatorAttributeValue>
+optional<OperatorAttributeValue>
     evaluate_attribute_expr(Operator const &attrs,
                             AttributeExpr<OperatorAttributeKey> const &expr);
 
