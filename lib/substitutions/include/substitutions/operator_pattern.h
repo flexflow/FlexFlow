@@ -94,9 +94,6 @@ FF_VISITABLE_STRUCT(ListSize<FlexFlow::OperatorAttributeKey>, attribute_key);
 using OperatorAttributeConstraint =
     AttributeConstraint<OperatorAttributeKey, OperatorAttributeValue>;
 
-/**
- * @brief OperatorPattern is an instance of template struct AttributePattern.
- */
 using OperatorPattern =
     AttributePattern<OperatorAttributeKey, OperatorAttributeValue>;
 

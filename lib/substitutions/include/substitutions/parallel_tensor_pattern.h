@@ -8,24 +8,11 @@ namespace FlexFlow {
 
 enum class TensorAttributeKey { DIM_SIZES, DIM_DEGREES };
 
-
-/**
- * @brief DIM_SIZES and DIM_DEGREES are represented by 
- * a vector of ints that is listed as corresponding dimension
- */
 using TensorAttributeValue = std::variant<int, std::vector<int>>;
 
-/**
- * @brief TensorAttributeConstraint is an instance of AttributeConstraint that
- * defines the contraint a tensor should satisfy when doing pattern matching.
- */
 using TensorAttributeConstraint =
     AttributeConstraint<TensorAttributeKey, TensorAttributeValue>;
 
-/**
- * @brief ParallelTensor is an instance of OperatorAttributeExpr that represents
- * a set of constraints pattern matching should satisfy.
- */
 using ParallelTensorPattern =
     AttributePattern<TensorAttributeKey, TensorAttributeValue>;
 
