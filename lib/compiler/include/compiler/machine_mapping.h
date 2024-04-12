@@ -69,11 +69,12 @@ OptimalCostResult
                  MachineSpecification const &resources,
                  OptimalCostCache &cached_subgraph_costs);
 
-float parallel_estimate_cost(SubParallelComputationGraphView const &g,
-                    CostEstimator const &estimator,
-                    MachineMapping const &device_mapping,
-                    std::unordered_map<OpenMultiDiEdge, MachineView> const
-                        &frontier_machine_views);
+float parallel_estimate_cost(
+    SubParallelComputationGraphView const &g,
+    CostEstimator const &estimator,
+    MachineMapping const &device_mapping,
+    std::unordered_map<OpenMultiDiEdge, MachineView> const
+        &frontier_machine_views);
 
 } // namespace FlexFlow
 
