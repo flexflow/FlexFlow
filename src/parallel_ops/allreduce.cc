@@ -392,7 +392,7 @@ void AllReduce::peft_bwd_task(Task const *task,
 
   AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
-  if (bc->num_active_peft_tokens() == 0) {
+  if (bc->num_active_peft_bwd_tokens_() == 0) {
     return;
   }
   GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(

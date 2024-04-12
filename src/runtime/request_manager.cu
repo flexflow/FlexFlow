@@ -62,6 +62,7 @@ void RequestManager::load_tokens_task(
   }
 
   for (int i = 0; i < batch_config->num_tokens; i++) {
+    printf("load token index is%d, value is%d\n", i, batch_config->tokensInfo[i].token_id);
     dram_copy[i] = batch_config->tokensInfo[i].token_id;
   }
   TokenId *fb_ptr = helperGetTensorPointerWO<TokenId>(

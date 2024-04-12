@@ -46,6 +46,8 @@ public:
   int num_active_tokens() const;
   int num_active_infr_tokens() const;
   int num_active_peft_tokens() const;
+  int num_active_peft_fwd_tokens_() const;
+  int num_active_peft_bwd_tokens_() const;
   static int max_requests_per_batch();
   static int max_tokens_per_batch();
   static int max_verify_tokens_per_batch();
@@ -63,9 +65,13 @@ public:
   static int const MAX_NUM_TOKENS = 1024;
   static int const MAX_SPEC_TREE_TOKEN_NUM = 64;
 
+  // TODO change this
+  static int const MAX_PEFT_TOKENS = 5;
+
   //  Set by update
 
-  int num_tokens = 0, num_peft_tokens = 0, num_peft_label_tokens = 0;
+  int num_tokens = 0, num_peft_fwd_tokens = 0, num_peft_label_tokens = 0;
+  int num_peft_bwd_tokens = 0;
   // number of tokens in prompt phase, start offset of tokens in inc_decoding
   // phase. num_tokens - num_prompt_tokens = num_generation_tokens;
   int num_generation_tokens = 0;
@@ -79,6 +85,9 @@ public:
       request_guid = 0;
       peft_model_id = PEFTModelID::NO_ID;
       peft_bwd = false;
+      peft_fwd_tokens = 0;
+      peft_bwd_tokens = 0;
+      peft_total_tokens = 0;
     }
     int first_token_depth_in_request;
     int first_token_offset_in_batch;
@@ -92,6 +101,9 @@ public:
     // PEFT fields
     PEFTModelID peft_model_id;
     bool peft_bwd;
+    size_t peft_fwd_tokens;
+    size_t peft_bwd_tokens;
+    size_t peft_total_tokens;
   };
   struct PerTokenInfo {
     int abs_depth_in_request;

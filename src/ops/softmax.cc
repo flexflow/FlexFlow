@@ -27,6 +27,8 @@ using Legion::coord_t;
 using Legion::Domain;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
+using Legion::Machine;
+using Legion::Memory;
 using Legion::PhysicalRegion;
 using Legion::Predicate;
 using Legion::Rect;
@@ -269,7 +271,13 @@ OpMeta *Softmax::init_task(Task const *task,
   } else {
     domain = input_domain;
   }
-  SoftmaxMeta *m = new SoftmaxMeta(handle, softmax, domain);
+
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  SoftmaxMeta *m = new SoftmaxMeta(handle, softmax, gpu_mem_allocator, domain);
   // checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
   std::strcpy(m->op_name, softmax->name);
   m->layer_guid = softmax->layer_guid;
@@ -544,8 +552,10 @@ bool Softmax::measure_operator_cost(Simulator *sim,
   if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
   }
+  MemoryAllocator gpu_mem_allocator(sim->memory);
 
-  SoftmaxMeta *m = new SoftmaxMeta(sim->handler, this, sub_output.get_domain());
+  SoftmaxMeta *m = new SoftmaxMeta(
+      sim->handler, this, gpu_mem_allocator, sub_output.get_domain());
 
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);

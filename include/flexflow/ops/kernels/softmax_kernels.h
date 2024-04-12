@@ -12,6 +12,7 @@ class SoftmaxMeta : public OpMeta {
 public:
   SoftmaxMeta(FFHandler handle,
               Softmax const *softmax,
+              MemoryAllocator &gpu_mem_allocator,
               Legion::Domain const &input_domain);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor;
@@ -20,9 +21,16 @@ public:
   miopenTensorDescriptor_t inputTensor;
   miopenTensorDescriptor_t outputTensor;
 #endif
+  ~SoftmaxMeta(void);
+
+public:
   bool profiling;
   bool inference_debugging;
   int dim;
+
+  // PEFT partial loss
+  void *lm_head_cache;
+  Realm::RegionInstance reserveInst;
 };
 
 namespace Kernels {
