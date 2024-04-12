@@ -22,7 +22,6 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Linear {
 
-// what's the float * one_ptr
 LinearPerDeviceState
     init_kernel(PerDeviceFFHandle handle, Allocator allocator, float *one_ptr;
                 ActiMode activation,
@@ -81,6 +80,21 @@ LinearPerDeviceState
                                            weight_type,
                                            output_type};
   return per_device_state;
+}
+
+bool use_activation(ActiMode mode) {
+  switch (mode) {
+    case AC_MODE_RELU:
+    case AC_MODE_SIGMOID:
+    case AC_MODE_TANH:
+      return true;
+    case AC_MODE_NONE:
+      return false;
+    default:
+      assert(0);
+      break;
+  }
+  return false;
 }
 
 void forward_kernel(cudaStream_t stream,

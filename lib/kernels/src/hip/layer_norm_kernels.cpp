@@ -24,27 +24,6 @@ constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 constexpr int kColwiseReduceTileSize = 32;
 
-LayerNormPerDeviceState::LayerNormPerDeviceState(
-    FFHandler handle,
-    bool elementwise_affine_,
-    int64_t effective_batch_size_,
-    int64_t effective_num_elements_,
-    bool profiling_,
-    float eps_)
-    : PerDeviceOpState(handle) {
-  elementwise_affine = elementwise_affine_;
-  effective_batch_size = effective_batch_size_;
-  effective_num_elements = effective_num_elements_;
-  profiling = profiling_;
-  eps = eps_;
-  checkCUDA(hipMalloc(&mean_ptr, sizeof(float) * effective_batch_size));
-  checkCUDA(hipMalloc(&rstd_ptr, sizeof(float) * effective_batch_size));
-  checkCUDA(hipMalloc(&ds_ptr, sizeof(float) * effective_batch_size));
-  checkCUDA(hipMalloc(&db_ptr, sizeof(float) * effective_batch_size));
-  checkCUDA(hipMalloc(&scale_ptr, sizeof(float) * effective_batch_size));
-  checkCUDA(hipMalloc(&bias_ptr, sizeof(float) * effective_batch_size));
-}
-
 namespace Kernels {
 namespace LayerNorm {
 
@@ -54,18 +33,17 @@ LayerNormPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                     int64_t effective_batch_size_,
                                     int64_t effective_num_elements_,
                                     float eps_) {
-  elementwise_affine = elementwise_affine_;
-  effective_batch_size = effective_batch_size_;
-  effective_num_elements = effective_num_elements_;
-  eps = eps_;
-  mean = allocator.allocate(sizeof(float) * effective_batch_size);
-  rstd = allocator.allocate(sizeof(float) * effective_batch_size);
-  ds = allocator.allocate(sizeof(float) * effective_batch_size);
-  db = allocator.allocate(sizeof(float) * effective_batch_size);
-  scale = allocator.allocate(sizeof(float) * effective_batch_size);
-  bias = allocator.allocate(sizeof(float) * effective_batch_size);
-  LayerNormPerDeviceState per_device_state =
-      LayerNormPerDeviceState(handle,
+  bool elementwise_affine = elementwise_affine_;
+  int64_t effective_batch_size = effective_batch_size_;
+  int64_t effective_num_elements = effective_num_elements_;
+  float eps = eps_;
+  float* mean = allocator.allocate(sizeof(float) * effective_batch_size);
+  float* rstd = allocator.allocate(sizeof(float) * effective_batch_size);
+  float* ds = allocator.allocate(sizeof(float) * effective_batch_size);
+  float* db = allocator.allocate(sizeof(float) * effective_batch_size);
+  float* scale = allocator.allocate(sizeof(float) * effective_batch_size);
+  float* bias = allocator.allocate(sizeof(float) * effective_batch_size);
+  LayerNormPerDeviceState per_device_state = {handle,
                               elementwise_affine,
                               effective_batch_size,
                               effective_num_elements,
@@ -75,37 +53,37 @@ LayerNormPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                               ds,
                               db,
                               scale,
-                              bias);
+                              bias};
   return per_device_state;
 }
 
 template <DataType T>
 struct ForwardKernel {
   void operator()(hipStream_t stream,
-                  LayerNormPerDeviceState const *m,
+                  LayerNormPerDeviceState const &m,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output,
                   GenericTensorAccessorW const &gamma,
                   GenericTensorAccessorW const &beta) {
     hipLaunchKernelGGL(HIP_KERNEL_NAME(RowwiseMomentsCUDAKernel<float>),
-                       m->effective_batch_size,
+                       m.effective_batch_size,
                        kCUDABlockReduceNumThreads,
                        0,
                        stream,
-                       m->effective_num_elements,
-                       m->eps,
+                       m.effective_num_elements,
+                       m.eps,
                        input.get<T>(),
-                       m->mean_ptr,
-                       m->rstd_ptr);
+                       m.mean_ptr,
+                       m.rstd_ptr);
     hipLaunchKernelGGL(HIP_KERNEL_NAME(LayerNormForwardCUDAKernel<float>),
-                       m->effective_batch_size,
+                       m.effective_batch_size,
                        kCUDANumThreads,
                        0,
                        stream,
-                       m->effective_num_elements,
+                       m.effective_num_elements,
                        input.get<T>(),
-                       m->mean_ptr,
-                       m->rstd_ptr,
+                       m.mean_ptr,
+                       m.rstd_ptr,
                        gamma.get<T>(),
                        beta.get<T>(),
                        output.get<T>());
@@ -115,15 +93,15 @@ struct ForwardKernel {
 template <DataType T>
 struct BackwardKernel {
   void operator()(hipStream_t stream,
-                  LayerNormPerDeviceState const *m,
+                  LayerNormPerDeviceState const &m,
                   GenericTensorAccessorR const &output_grad,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &input_grad,
                   GenericTensorAccessorR const &gamma,
                   GenericTensorAccessorW const &gamma_grad,
                   GenericTensorAccessorW const &beta_grad) {
-    const int64_t M = m->effective_batch_size;
-    const int64_t N = m->effective_num_elements;
+    const int64_t M = m.effective_batch_size;
+    const int64_t N = m.effective_num_elements;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeInternalGradientsCUDAKernel<T>),
                        M,
                        kCUDABlockReduceNumThreads,
@@ -133,8 +111,8 @@ struct BackwardKernel {
                        output_grad.get<T>(),
                        input.get<T>(),
                        gamma.get<T>(),
-                       m->ds_ptr,
-                       m->db_ptr);
+                       m.ds_ptr,
+                       m.db_ptr);
     const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeGradientFusedParamsCUDAKernel<T>),
                        B,
@@ -143,12 +121,12 @@ struct BackwardKernel {
                        stream,
                        M,
                        N,
-                       m->mean_ptr,
-                       m->rstd_ptr,
-                       m->ds_ptr,
-                       m->db_ptr,
-                       m->scale_ptr,
-                       m->bias_ptr);
+                       m.mean_ptr,
+                       m.rstd_ptr,
+                       m.ds_ptr,
+                       m.db_ptr,
+                       m.scale_ptr,
+                       m.bias_ptr);
     if (gamma_grad.get<T>() != NULL || beta_grad.get<T>() != NULL) {
       if (M < 512) {
         // For small batch size, do colwise reduce directly
@@ -163,8 +141,8 @@ struct BackwardKernel {
             N,
             output_grad.get<T>(),
             input.get<T>(),
-            m->mean_ptr,
-            m->rstd_ptr,
+            m.mean_ptr,
+            m.rstd_ptr,
             gamma_grad.get<T>(),
             beta_grad.get<T>());
       } else {
@@ -181,8 +159,8 @@ struct BackwardKernel {
                            N,
                            output_grad.get<T>(),
                            input.get<T>(),
-                           m->mean_ptr,
-                           m->rstd_ptr,
+                           m.mean_ptr,
+                           m.rstd_ptr,
                            gamma_grad.get<T>(),
                            beta_grad.get<T>());
       }
@@ -190,24 +168,24 @@ struct BackwardKernel {
   }
 
   void forward_kernel(hipStream_t stream,
-                      LayerNormPerDeviceState const *m,
+                      LayerNormPerDeviceState const &m,
                       GenericTensorAccessorR const &input,
                       GenericTensorAccessorW const &output,
                       GenericTensorAccessorW const &gamma,
                       GenericTensorAccessorW const &beta) {
     DataTypeDispatch1<ForwardKernel>{}(
-        m->data_type, stream, m, input, output, gamma, beta);
+        m.data_type, stream, m, input, output, gamma, beta);
   }
 
   void backward_kernel(hipStream_t stream,
-                       LayerNormPerDeviceState const *m,
+                       LayerNormPerDeviceState const &m,
                        GenericTensorAccessorR const &output_grad,
                        GenericTensorAccessorR const &input,
                        GenericTensorAccessorW const &input_grad,
                        GenericTensorAccessorR const &gamma,
                        GenericTensorAccessorW const &gamma_grad,
                        GenericTensorAccessorW const &beta_grad) {
-    DataTypeDispatch1<BackwardKernel>{}(m->data_type,
+    DataTypeDispatch1<BackwardKernel>{}(m.data_type,
                                         stream,
                                         m,
                                         output_grad,
