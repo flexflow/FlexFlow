@@ -15,7 +15,7 @@ struct AttrConstant {
   OperatorAttributeValue value;
 };
 
-using OperatorAttributeExpr = variant<OperatorAttrAccess, AttrConstant>;
+using OperatorAttributeExpr = std::variant<OperatorAttrAccess, AttrConstant>;
 
 // NOTE(@wmdi): Not sure if it aligns with other design. Or alternatively we can
 // define the assignment for each operator type.

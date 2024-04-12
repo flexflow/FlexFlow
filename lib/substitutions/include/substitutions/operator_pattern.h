@@ -70,21 +70,22 @@ enum class OperatorAttributeKey {
   NUM_INPUTS
 };
 
-using OperatorAttributeValue = std::variant<int,
-                                       float,
-                                       bool,
-                                       stack_vector<int, MAX_TENSOR_DIM>,
-                                       stack_vector<int, MAX_NUM_OUTPUTS>,
-                                       OperatorType,
-                                       Activation,
-                                       ff_dim_t,
-                                       unsigned long long,
-                                       AggregateOp,
-                                       stack_vector<ff_dim_t, MAX_TENSOR_DIM>,
-                                       optional<RegularizerAttrs>,
-                                       PoolOp,
-                                       TensorShape,
-                                       DataType>;
+using OperatorAttributeValue =
+    std::variant<int,
+                 float,
+                 bool,
+                 stack_vector<int, MAX_TENSOR_DIM>,
+                 stack_vector<int, MAX_NUM_OUTPUTS>,
+                 OperatorType,
+                 Activation,
+                 ff_dim_t,
+                 unsigned long long,
+                 AggregateOp,
+                 stack_vector<ff_dim_t, MAX_TENSOR_DIM>,
+                 std::optional<RegularizerAttrs>,
+                 PoolOp,
+                 TensorShape,
+                 DataType>;
 
 FF_VISITABLE_STRUCT(ListIndexAccess<FlexFlow::OperatorAttributeKey>,
                     attribute_key,
@@ -97,7 +98,7 @@ using OperatorAttributeConstraint =
 using OperatorPattern =
     AttributePattern<OperatorAttributeKey, OperatorAttributeValue>;
 
-optional<OperatorAttributeValue>
+std::optional<OperatorAttributeValue>
     evaluate_attribute_expr(Operator const &attrs,
                             AttributeExpr<OperatorAttributeKey> const &expr);
 

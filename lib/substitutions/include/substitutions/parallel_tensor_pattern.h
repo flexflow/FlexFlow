@@ -16,7 +16,7 @@ using TensorAttributeConstraint =
 using ParallelTensorPattern =
     AttributePattern<TensorAttributeKey, TensorAttributeValue>;
 
-optional<TensorAttributeValue>
+std::optional<TensorAttributeValue>
     evaluate_attribute_expr(ParallelTensor const &tensor_shape,
                             AttributeExpr<TensorAttributeKey> const &expr);
 
