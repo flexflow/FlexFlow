@@ -390,6 +390,7 @@ private:
   int current_speculation_step = 0;
   // Maps the index of the request in the batch config to the request guid.
   int guid_of_requests[BatchConfig::MAX_NUM_REQUESTS];
+  bool request_available[BatchConfig::MAX_NUM_REQUESTS];
 
   // This is a helper data structure to store help the pruning of the token
   // trees across different requests.
