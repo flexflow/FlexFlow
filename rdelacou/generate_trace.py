@@ -2,7 +2,7 @@ import datasets
 from datasets import load_dataset
 import pandas as pd
 from math import ceil
-from random import shuffle
+from random import shuffle, uniform
 import json
 
 class TraceBuilder(object):
@@ -53,11 +53,14 @@ class TraceBuilder(object):
 
   # Delta is in seconds
   # Rate is in req per second
-  def generate_trace(self, delta, scale=1):
+  def generate_trace(self, target_arrival_rate=10):
     self.import_trace_timestamps()
     self.import_prompt_data()
-    
+
     microsec = 1000000
+    avg_arrival_rate = len(self.req_times) / (self.req_times[-1]/float(microsec)) # Request per second. Computed that way to enforce working with numbers of reasonable orders of magnitude
+    scale_factor = float(target_arrival_rate) / avg_arrival_rate
+
     nb_buckets = ceil(self.req_times[-1] / (delta*microsec))
     buckets = []
     j = 0
@@ -67,7 +70,10 @@ class TraceBuilder(object):
       while(j < len(self.req_times) and self.req_times[j] >= delta*i*microsec and self.req_times[j] < delta*(i+1)*microsec):
         bucket_size += 1
         j += 1
-      bucket_size = int(bucket_size*scale)
+      bucket_size = bucket_size*scale_factor
+      prob = bucket_size - int(bucket_size)
+      bucket_size = int(bucket_size) + int(uniform(0, 1) <= prob)
+      
       # If used all of the prompt data, loop back at the beggining and reuse some prompts
       if k+bucket_size > len(self.prompt_data):
         bucket = self.prompt_data[k:] + self.prompt_data[:(k+bucket_size)%len(prompt_data)]
@@ -79,7 +85,7 @@ class TraceBuilder(object):
 
 if __name__ == '__main__':
   builder = TraceBuilder()
-  trace = builder.generate_trace(delta=1, scale=1)
+  trace = builder.generate_trace(target_arrival_rate=10)
   # Save to a file
   with open('trace_data.json', 'w', encoding='utf-8') as f:
     json.dump(trace, f, ensure_ascii=False, indent=2)
