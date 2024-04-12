@@ -70,7 +70,7 @@ enum class OperatorAttributeKey {
   NUM_INPUTS
 };
 
-using OperatorAttributeValue = variant<int,
+using OperatorAttributeValue = std::variant<int,
                                        float,
                                        bool,
                                        stack_vector<int, MAX_TENSOR_DIM>,
