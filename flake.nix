@@ -60,11 +60,7 @@
       devShells = rec {
         ci = mkShell {
           shellHook = ''
-<<<<<<< HEAD
-            export PATH="$HOME/ff/.scripts/:$HOME/ff/.modules/proj/bin/:$PATH"
-=======
             export PATH="$HOME/ff/.scripts/:$PATH"
->>>>>>> origin/repo-refactor
           '';
           
           CMAKE_FLAGS = lib.strings.concatStringsSep " " [
@@ -75,10 +71,7 @@
             "-DFF_USE_EXTERNAL_SPDLOG=ON"
             "-DFF_USE_EXTERNAL_DOCTEST=ON"
             "-DFF_USE_EXTERNAL_RAPIDCHECK=ON"
-<<<<<<< HEAD
-=======
             "-DFF_USE_EXTERNAL_EXPECTED=ON"
->>>>>>> origin/repo-refactor
             "-DFF_USE_EXTERNAL_RANGEV3=ON"
             "-DFF_USE_EXTERNAL_BOOST_PREPROCESSOR=ON"
             "-DFF_USE_EXTERNAL_TYPE_INDEX=ON"
@@ -102,10 +95,7 @@
               cudaPackages.nccl
               cudaPackages.libcublas
               cudaPackages.cuda_cudart
-<<<<<<< HEAD
-=======
               tl-expected
->>>>>>> origin/repo-refactor
             ])
             (with self.packages.${system}; [
               legion
