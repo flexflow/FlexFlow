@@ -1,4 +1,9 @@
-set(EXPECTED_BUILD_TESTS OFF)
-set(EXPECTED_BUILD_PACKAGE OFF)
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/expected)
+include(aliasing)
+if (FF_USE_EXTERNAL_EXPECTED)
+  find_package(tl-expected REQUIRED)
+  alias_library(expected tl::expected)
+else()
+  set(EXPECTED_BUILD_TESTS OFF)
+  set(EXPECTED_BUILD_PACKAGE OFF)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/expected)
+endif()

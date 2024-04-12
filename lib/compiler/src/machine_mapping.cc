@@ -93,6 +93,7 @@ GraphSplit
 }
 
 float estimate_cost(SubParallelComputationGraphView const &g,
+<<<<<<< HEAD
                     CostEstimator const &estimator,
                     MachineMapping const &device_mapping,
                     std::unordered_map<OpenMultiDiEdge, MachineView> const
@@ -118,11 +119,23 @@ float node_estimate_cost(Node node, SubParallelComputationGraphView const &g,
                     CostEstimator const &estimator,
                     MachineMapping const &device_mapping) {
   std::unordered_set<UpwardOpenMultiDiEdge> incoming_edges = get_incoming_edges(g, node);
+=======
+                    CostEstimator const &estimator,
+                    MachineMapping const &device_mapping,
+                    std::unordered_map<OpenMultiDiEdge, MachineView> const
+                        &frontier_machine_views) {
+  // TODO: Consider parallelism
+  float cost = 0;
+  for (Node const &node : get_nodes(g)) {
+    std::unordered_set<UpwardOpenMultiDiEdge> incoming_edges =
+        get_incoming_edges(g, node);
+>>>>>>> origin/repo-refactor
     std::vector<ParallelTensorShape> inputs =
         transform(as_vector(incoming_edges),
                   [&](UpwardOpenMultiDiEdge const &input_edge) {
                     return g.at(input_edge).get_shape();
                   });
+<<<<<<< HEAD
     float cost = estimator.estimate_cost(
         g.at(node).attrs, inputs, device_mapping.machine_views.at(node));
   return cost;
@@ -191,6 +204,12 @@ float parallel_estimate_cost(SubParallelComputationGraphView const &g,
     }
   }
   return current_time;
+=======
+    cost += estimator.estimate_cost(
+        g.at(node).attrs, inputs, device_mapping.machine_views.at(node));
+  }
+  return cost;
+>>>>>>> origin/repo-refactor
 }
 
 void minimize_runtime(OptimalCostResult &m1, OptimalCostResult const &m2) {
