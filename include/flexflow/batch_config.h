@@ -62,28 +62,12 @@ public:
 
   //  Set by update
   int num_tokens;
-  // number of tokens in prompt phase, start offset of tokens in inc_decoding
-  // phase. num_tokens - num_prompt_tokens = num_generation_tokens;
-
-  // TODO: remove this in the kernel.
-  // Previously this field is used to track how many tokens are from the
-  // decoding phase, now since we separate decoding from prefilling in small
-  // model inference, we don't need this field anymore.
-  [[deprecated("Not in use anymore")]]
-  int num_generation_tokens;
+  int num_available_requests;
 
   struct PerRequestInfo {
     int first_token_depth_in_request;
     int first_token_offset_in_batch;
     int num_tokens_in_batch;
-    int max_sequence_length;
-
-    // TODO: remove this field
-    // request id in batch config:
-    [[deprecated("This is now moved to the request manager")]]
-    int batch_config_request_id;
-    bool prompt_phase = false;
-    RequestGuid request_guid;
   };
   struct PerTokenInfo {
     int abs_depth_in_request;
@@ -195,15 +179,8 @@ public:
   inline static int const MAX_TREE_DEPTH = 16;
 
   // how many requests is in speculative phase
-  int speculative_request_num = 0;
   int current_depth = 0;
   int model_id;
-
-  struct TreeSearchPerRequestInfo {
-    int num_tokens_at_depth = 0;
-  };
-
-  TreeSearchPerRequestInfo tree_requests_info[MAX_NUM_REQUESTS];
 };
 
 struct SsmInferenceResult {
