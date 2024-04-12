@@ -223,7 +223,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (bc->request_completed[i]) {
+    if (bc->request_available[i]) {
       continue;
     }
     for (int sub_req_id = 0; sub_req_id < bc->sub_requests[i]; sub_req_id++) {

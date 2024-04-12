@@ -128,12 +128,12 @@ void RequestManager::load_batch_config_task(
 
     checkCUDA(cudaMemcpyAsync(
         static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(batch_config->request_completed),
-        sizeof(BatchConfig::request_completed),
+        &(batch_config->request_available),
+        sizeof(BatchConfig::request_available),
         cudaMemcpyHostToDevice,
         stream));
 
-    total_copy_size += sizeof(BatchConfig::request_completed);
+    total_copy_size += sizeof(BatchConfig::request_available);
   } else if (batch_config->get_mode() == TREE_VERIFY_MODE) {
     TreeVerifyBatchConfig const *tree_batch_config =
         static_cast<TreeVerifyBatchConfig const *>(batch_config);
@@ -155,12 +155,12 @@ void RequestManager::load_batch_config_task(
 
     checkCUDA(cudaMemcpyAsync(
         static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(batch_config->request_completed),
-        sizeof(BatchConfig::request_completed),
+        &(batch_config->request_available),
+        sizeof(BatchConfig::request_available),
         cudaMemcpyHostToDevice,
         stream));
 
-    total_copy_size += sizeof(BatchConfig::request_completed);
+    total_copy_size += sizeof(BatchConfig::request_available);
   }
 
   // add a size check

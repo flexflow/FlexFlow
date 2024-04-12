@@ -30,7 +30,7 @@ BatchConfig::BatchConfig() : num_tokens(0) {
     requestsInfo[i].first_token_depth_in_request = 0;
     requestsInfo[i].first_token_offset_in_batch = 0;
     requestsInfo[i].num_tokens_in_batch = 0;
-    request_completed[i] = true;
+    request_available[i] = true;
   }
   for (int i = 0; i < MAX_NUM_TOKENS; i++) {
     tokensInfo[i].abs_depth_in_request = 0;
@@ -63,7 +63,7 @@ InferenceMode BatchConfig::get_mode() const {
 int BatchConfig::num_active_requests() const {
   int num_requests = 0;
   for (int i = 0; i < max_requests_per_batch(); i++) {
-    if (!request_completed[i]) {
+    if (!request_available[i]) {
       num_requests++;
     }
   }
@@ -113,7 +113,7 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
   // Per-request info
   os << "Per-request info:\n";
   for (int i = 0; i < bc.max_requests_per_batch(); i++) {
-    if (!bc.request_completed[i]) {
+    if (!bc.request_available[i]) {
       os << "  Request " << i << ":\n";
       os << "    First token depth in request: "
          << bc.requestsInfo[i].first_token_depth_in_request << std::endl;
@@ -124,7 +124,7 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
       os << "    GUID: " << bc.requestsInfo[i].request_guid << std::endl;
       os << "    Max sequence length: "
          << bc.requestsInfo[i].max_sequence_length << std::endl;
-      os << "    Request completed: " << bc.request_completed[i] << std::endl;
+      os << "    Request completed: " << bc.request_available[i] << std::endl;
       os << "    Request running: " << bc.request_running[i] << std::endl;
     }
   }

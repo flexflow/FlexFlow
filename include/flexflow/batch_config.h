@@ -148,8 +148,7 @@ public:
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
 
-  bool request_completed[MAX_NUM_REQUESTS];
-  bool request_running[MAX_NUM_REQUESTS];
+  bool request_available[MAX_NUM_REQUESTS];
 };
 
 class TreeVerifyBatchConfig : public BatchConfig {

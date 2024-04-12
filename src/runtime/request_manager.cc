@@ -391,7 +391,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   // Step 2: prepare the next batch for existing requests
   BatchConfig new_bc;
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
-    if (old_bc.request_completed[i]) { // add new requests to the next batch
+    if (old_bc.request_available[i]) { // add new requests to the next batch
       continue;
     } else {
       assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
@@ -470,7 +470,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         }
 
       } else {
-        new_bc.request_completed[i] = false;
+        new_bc.request_available[i] = false;
         new_bc.requestsInfo[i].first_token_depth_in_request = processed_tokens;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid =
@@ -511,7 +511,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
 
   // Step 3: add new requests to the next batch
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
-    if (new_bc.request_completed[i]) {
+    if (new_bc.request_available[i]) {
       if (!pending_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
         Request new_request = pending_request_queue.front();
@@ -526,7 +526,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                      (int)new_request.tokens.size());
         new_bc.requestsInfo[i].max_sequence_length =
             new_request.max_sequence_length;
-        new_bc.request_completed[i] = false;
+        new_bc.request_available[i] = false;
         new_bc.requestsInfo[i].prompt_phase = true;
         num_active_req++;
         new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
@@ -606,7 +606,7 @@ TreeSearchBatchConfig
   int num_active_req = -1;
 
   for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
-    if (old_bc.request_completed[i]) {
+    if (old_bc.request_available[i]) {
       continue;
     }
     size_t guid = old_bc.requestsInfo[i].request_guid;
@@ -698,7 +698,7 @@ TreeSearchBatchConfig
         trigger_request_completion_future(request.guid);
         log_req_mgr.print("Final output: %s", output.c_str());
 
-        new_bc.request_completed[i] = true;
+        new_bc.request_available[i] = true;
         new_bc.request_running[i] = false;
         num_processed_requests++;
 
@@ -750,7 +750,7 @@ TreeSearchBatchConfig
 
       } else { // Request not finished, pass verified_tokens to next iteration
 
-        new_bc.request_completed[i] = false;
+        new_bc.request_available[i] = false;
         new_bc.request_running[i] = true;
         num_active_req++;
 
@@ -830,7 +830,7 @@ TreeSearchBatchConfig
       }
 
     } else if (request.status == Request::PENDING) {
-      new_bc.request_completed[i] = false;
+      new_bc.request_available[i] = false;
       new_bc.request_running[i] = false;
       num_active_req++;
 
@@ -883,7 +883,7 @@ TreeSearchBatchConfig
 
   // Step 2: Initialize new request
   for (int i = 0; i < TreeSearchBatchConfig::max_requests_per_batch(); i++) {
-    if (new_bc.request_completed[i]) {
+    if (new_bc.request_available[i]) {
       if (!pending_request_queue.empty() &&
           new_bc.num_tokens < get_max_tokens_per_batch()) {
         Request new_request = pending_request_queue.front();
@@ -925,7 +925,7 @@ TreeSearchBatchConfig
           new_bc.beamRequestsInfo[i].probs[j] = 1;
         }
 
-        new_bc.request_completed[i] = false;
+        new_bc.request_available[i] = false;
         new_bc.requestsInfo[i].prompt_phase = true;
 
         new_bc.beamRequestsInfo[i].sub_request_num = 1;
@@ -1056,7 +1056,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_spec(
     Request &request = all_requests[guid];
     // TODO: check this!
     assert(request.status == Request::RUNNING);
-    new_bc.request_completed[request_index] = false;
+    new_bc.request_available[request_index] = false;
     // TODO
     int processed_tokens = old_bc.requestsInfo[i].first_token_depth_in_request +
                            old_bc.requestsInfo[i].num_tokens_in_batch;
@@ -1165,7 +1165,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 
   int max_prompt_load_size = get_max_verify_tokens_per_batch();
   for (int i = 0; i < TreeVerifyBatchConfig::max_requests_per_batch(); i++) {
-    if (old_batches.at(0).request_completed[i]) {
+    if (old_batches.at(0).request_available[i]) {
       continue;
     } else if (old_batches.at(0).request_running[i]) {
       max_prompt_load_size -= (TreeSearchBatchConfig::MAX_BEAM_DEPTH + 1);
@@ -1175,7 +1175,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
   }
   int num_active_req = -1;
   for (int i = 0; i < TreeVerifyBatchConfig::max_requests_per_batch(); i++) {
-    if (old_batches.at(0).request_completed[i]) {
+    if (old_batches.at(0).request_available[i]) {
       continue;
     }
     num_active_req++;
@@ -1225,7 +1225,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
              sizeof(BatchConfig::BitMask));
       // TODO: Check this
       new_bc.requestsInfo[i].num_tokens_in_batch = 0;
-      new_bc.request_completed[i] = false;
+      new_bc.request_available[i] = false;
 
       // std::cout << "dfs_tree_inputs: " << dfs_tree_inputs.size() << ", "
       //           << new_bc.causalMask[i].tree_size << ", "
@@ -1361,7 +1361,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           old_batches.at(0).requestsInfo[i].max_sequence_length;
       new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
 
-      new_bc.request_completed[i] = false;
+      new_bc.request_available[i] = false;
 
       new_bc.requestsInfo[i].num_tokens_in_batch =
           std::min(max_prompt_load_size,
@@ -1537,7 +1537,7 @@ void RequestManager::update_beam_metadata(TreeSearchBatchConfig &new_bc,
                                           int request_index) {
 
   // do the exchange
-  if (new_bc.request_completed[request_index]) {
+  if (new_bc.request_available[request_index]) {
     assert(false);
   }
   int depth = new_bc.beamRequestsInfo[request_index].current_depth - 1;

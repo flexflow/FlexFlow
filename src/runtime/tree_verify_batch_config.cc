@@ -45,7 +45,7 @@ std::ostream &operator<<(std::ostream &os, TreeVerifyBatchConfig const &bc) {
 
   os << "Per-request info:\n";
   for (int i = 0; i < bc.max_requests_per_batch(); i++) {
-    if (!bc.request_completed[i]) {
+    if (!bc.request_available[i]) {
       os << "  Request " << i << ":\n";
       os << "    First token depth in request: "
          << bc.requestsInfo[i].first_token_depth_in_request << std::endl;
@@ -56,7 +56,7 @@ std::ostream &operator<<(std::ostream &os, TreeVerifyBatchConfig const &bc) {
       os << "    GUID: " << bc.requestsInfo[i].request_guid << std::endl;
       os << "    Max sequence length: "
          << bc.requestsInfo[i].max_sequence_length << std::endl;
-      os << "    Request completed: " << bc.request_completed[i] << std::endl;
+      os << "    Request completed: " << bc.request_available[i] << std::endl;
       os << "    Request running: " << bc.request_running[i] << std::endl;
     }
   }

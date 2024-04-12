@@ -536,7 +536,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (bc->request_completed[i]) {
+    if (bc->request_available[i]) {
       continue;
     }
     assert(processed_tokens_in_batch ==

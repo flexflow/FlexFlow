@@ -78,7 +78,7 @@ std::ostream &
 
   os << "Per-request info:\n";
   for (int i = 0; i < tree_search_batch_config.max_requests_per_batch(); i++) {
-    if (!tree_search_batch_config.request_completed[i]) {
+    if (!tree_search_batch_config.request_available[i]) {
       os << "  Request " << i << ":\n";
       os << "    First token depth in request: "
          << tree_search_batch_config.requestsInfo[i]
@@ -96,7 +96,7 @@ std::ostream &
          << tree_search_batch_config.requestsInfo[i].max_sequence_length
          << std::endl;
       os << "    Request completed: "
-         << tree_search_batch_config.request_completed[i] << std::endl;
+         << tree_search_batch_config.request_available[i] << std::endl;
       os << "    Request running: "
          << tree_search_batch_config.request_running[i] << std::endl;
       os << "    Tree Search Specific: " << std::endl;
