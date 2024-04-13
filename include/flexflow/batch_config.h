@@ -60,7 +60,6 @@ public:
   static int const MAX_NUM_TOKENS = 1024;
   static int const MAX_SPEC_TREE_TOKEN_NUM = 64;
 
-  //  Set by update
   int num_tokens;
   int num_available_requests;
 

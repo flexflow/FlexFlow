@@ -106,7 +106,10 @@ struct CompareSharedTokenTreeNodePtrRequestGuidPair {
 class TokenTree {
 public:
   std::vector<std::list<shared_ptr<TokenTreeNode>>> tree_layers = {};
+  // The numebr of tokens in the tree that are not pruned
   int tree_size = 0;
+  // The numebr of tokens in the tree including the pruned ones
+  int tree_node_size = 0;
   void add_layer() {
     tree_layers.emplace_back();
   }
@@ -391,6 +394,7 @@ private:
   // Maps the index of the request in the batch config to the request guid.
   int guid_of_requests[BatchConfig::MAX_NUM_REQUESTS];
   bool request_available[BatchConfig::MAX_NUM_REQUESTS];
+  int num_available_requests = 0;
 
   // This is a helper data structure to store help the pruning of the token
   // trees across different requests.

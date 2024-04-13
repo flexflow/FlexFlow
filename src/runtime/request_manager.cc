@@ -1038,6 +1038,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_spec(
     std::cout << "Number of tokens in each requests: " << std::endl;
   }
 
+  // TODO: separate this
   // Store small model's inference result to the token tree struct
   store_ssm_inference_results(ssm_inference_result);
 
@@ -1059,14 +1060,9 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_spec(
     assert(request.status == Request::RUNNING);
     new_bc.request_available[request_index] = true;
     new_bc.num_available_requests++;
-    // TODO
-    int processed_tokens = old_bc.requestsInfo[i].first_token_depth_in_request +
-                           old_bc.requestsInfo[i].num_tokens_in_batch;
-    new_bc.requestsInfo[request_index].first_token_index_in_request =
-        processed_tokens;
     new_bc.requestsInfo[request_index].first_token_offset_in_batch =
         new_bc.num_tokens;
-    // TODO: check profiling
+    // TODO: check this profiling
     profiling_requests[request.guid].ssm_decoding_steps += 1;
 
     // Fill in the tokens
@@ -1075,19 +1071,30 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_spec(
       // This request has no token to decode in this and the following small
       // model inference steps
       new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
+      new_bc.requestsInfo[request_index].first_token_index_in_request =
+          request.tokens.size() + token_tree.tree_node_size;
       continue;
     } else {
       std::list<std::shared_ptr<TokenTreeNode>> &current_layer =
           token_tree.tree_layers.at(current_speculation_step);
+      // Exclude the current layer from the token tree, because we want the
+      // start index
+      new_bc.requestsInfo[request_index].first_token_index_in_request =
+          request.tokens.size() + token_tree.tree_node_size -
+          current_layer.size();
       new_bc.requestsInfo[request_index].num_tokens_in_batch =
           current_layer.size();
-      for (auto &node_ptr : current_layer) {
+
+      int child_index = 0;
+      for (auto const &node_ptr : current_layer) {
         new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
-        // TODO: check this!
         new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
-            request.tokens.size() + current_speculation_step;
+            new_bc.requestsInfo[request_index].first_token_index_in_request +
+            child_index;
         new_bc.tokensInfo[new_bc.num_tokens].token_id = node_ptr->id;
+
         new_bc.num_tokens++;
+        child_index++;
       }
     }
 
@@ -1096,9 +1103,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_spec(
     new_bc.causalMask[request_index] = request.causal_mask;
   }
 
-  // TODO: how do we know how many reqeusts are in the speculative phase if the
-  // batch is not full? how many requests is in speculative phase
-  new_bc.num_available_requests = num_active_req + 1;
+  new_bc.num_available_requests = num_available_requests;
   if (verbose) {
     std::cout << "prepare_next_batch_beam NEW batchconfig:" << std::endl;
     new_bc.print();
@@ -2477,6 +2482,7 @@ void RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
         .tree_layers[current_speculation_step]
         .push_back(node_ptr);
     speculative_token_tree.tree_size++;
+    speculative_token_tree.tree_node_size++;
   }
 }
 
