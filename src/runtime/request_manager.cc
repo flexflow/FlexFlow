@@ -1483,7 +1483,6 @@ bool RequestManager::store_ssm_inference_results(
   assert(current_speculation_step > 0);
 
   int num_branches = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
-  int num_old_bc_tokens_processed = 0;
   int result_index = 0;
 
   // TODO: here we assume that the order of the tokens in the last
@@ -1491,6 +1490,10 @@ bool RequestManager::store_ssm_inference_results(
   // order of the request in the last TreeSearchBatchConfig, check this!
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
     FlexFlow::RequestManager::RequestGuid guid =
         guid_of_requests[request_index];
     Request &request = all_requests[guid];
