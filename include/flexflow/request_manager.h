@@ -167,6 +167,8 @@ public:
   bool is_request_completed(RequestGuid const &guid);
   void trigger_request_completion_future(RequestGuid const &guid);
   // Methods for preparing next batches
+  bool check_inf_req_completion(BatchConfig const &old_bc, int i);
+  void check_batch(BatchConfig const &old_bc, BatchConfig const &new_bc);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
   BatchConfigFuture prepare_next_batch(BatchConfigFuture const &bc,

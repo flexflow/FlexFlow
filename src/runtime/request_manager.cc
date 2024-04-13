@@ -444,6 +444,62 @@ BatchConfig RequestManager::prepare_next_batch_task(
   return rm->prepare_next_batch(*bc, result);
 }
 
+bool RequestManager::check_inf_req_completion(BatchConfig const &old_bc,
+                                              int i) {
+  Request &request = all_requests[old_bc.requestsInfo[i].request_guid];
+  bool request_completed = false;
+  // printf("model_type = %d\n", this->model_type);
+  if (request.tokens.size() >= old_bc.requestsInfo[i].max_sequence_length) {
+    request_completed = true;
+  } else if (request.tokens.back() == eos_token_id) {
+    // Encounter EOS token id
+    request_completed = true;
+  }
+  return request_completed;
+}
+
+void RequestManager::check_batch(BatchConfig const &old_bc,
+                                 BatchConfig const &new_bc) {
+  int num_incomplete_prompts = 0;
+  for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
+    if (new_bc.request_completed[i]) {
+      continue;
+    }
+    // ensure there is no request with zero tokens
+    assert(new_bc.requestsInfo[i].num_tokens_in_batch > 0);
+    // ensure there is no more than one incomplete prompt
+    if (new_bc.requestsInfo[i].prompt_phase &&
+        new_bc.requestsInfo[i].num_tokens_in_batch +
+                new_bc.requestsInfo[i].first_token_depth_in_request <
+            all_requests[new_bc.requestsInfo[i].request_guid].tokens.size()) {
+      num_incomplete_prompts++;
+    }
+  }
+  if (num_incomplete_prompts > 1) {
+    std::cout << "Error: more than one incomplete prompt in the batch\n";
+    pid_t pid = getpid();
+    std::string filenamen = "new_bc_" + std::to_string(pid) + ".txt";
+    std::ofstream filen(filenamen);
+    if (filen.is_open()) {
+      filen << new_bc << std::endl;
+      filen.close();
+      std::cout << "String written to file: " << filenamen << std::endl;
+    } else {
+      std::cout << "Unable to open file: " << filenamen << std::endl;
+    }
+    std::string filenameo = "old_bc_" + std::to_string(pid) + ".txt";
+    std::ofstream fileo(filenameo);
+    if (fileo.is_open()) {
+      fileo << old_bc << std::endl;
+      fileo.close();
+      std::cout << "String written to file: " << filenameo << std::endl;
+    } else {
+      std::cout << "Unable to open file: " << filenameo << std::endl;
+    }
+    assert(false);
+  }
+}
+
 BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                                                InferenceResult const &result) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
@@ -518,15 +574,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             old_bc.requestsInfo[i].first_token_depth_in_request +
             old_bc.requestsInfo[i].num_tokens_in_batch;
         assert(processed_tokens < request.tokens.size());
-        bool request_completed = false;
-        // printf("model_type = %d\n", this->model_type);
-        if (request.tokens.size() >=
-            old_bc.requestsInfo[i].max_sequence_length) {
-          request_completed = true;
-        } else if (request.tokens.back() == eos_token_id) {
-          // Encounter EOS token id
-          request_completed = true;
-        }
+        bool request_completed = check_inf_req_completion(old_bc, i);
         if (request_completed) {
           std::string output = this->tokenizer_->Decode(request.tokens);
           // Unlike Huggingface, the sentencepiece C++ library automatically
@@ -621,10 +669,18 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             // Prompt phase
             assert(old_bc.requestsInfo[i].prompt_phase == true);
             int space_for_incr_dec_requests = 0;
-            for (int ii = i + 1; i < BatchConfig::max_requests_per_batch();
+            // If the prompt can't fit in the batch, compute how much space we
+            // need to leave out for incomplete requests in decoding phase at
+            // higher indices.
+            for (int ii = i + 1; ii < BatchConfig::max_requests_per_batch();
                  ii++) {
-              if (!old_bc.request_completed[ii] &&
-                  !old_bc.requestsInfo[ii].prompt_phase) {
+              if (old_bc.request_completed[ii]) {
+                continue;
+              }
+              Request &old_request =
+                  all_requests[old_bc.requestsInfo[ii].request_guid];
+              bool req_completed = check_inf_req_completion(old_bc, ii);
+              if (!req_completed) {
                 space_for_incr_dec_requests++;
               }
             }
@@ -759,25 +815,6 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       }
     }
   }
-  // pid_t pid = getpid();
-  // std::string filenamen = "new_bc_" + std::to_string(pid) + ".txt";
-  // std::ofstream filen(filenamen);
-  // if (filen.is_open()) {
-  //     filen << new_bc << std::endl;
-  //     filen.close();
-  //     std::cout << "String written to file: " << filenamen << std::endl;
-  // } else {
-  //     std::cout << "Unable to open file: " << filenamen << std::endl;
-  // }
-  // std::string filenameo = "old_bc_" + std::to_string(pid) + ".txt";
-  // std::ofstream fileo(filenameo);
-  // if (fileo.is_open()) {
-  //     fileo << old_bc << std::endl;
-  //     fileo.close();
-  //     std::cout << "String written to file: " << filenameo << std::endl;
-  // } else {
-  //     std::cout << "Unable to open file: " << filenameo << std::endl;
-  // }
   return new_bc;
 }
 
