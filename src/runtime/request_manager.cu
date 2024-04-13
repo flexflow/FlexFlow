@@ -186,7 +186,7 @@ void RequestManager::load_positions_task(
   int dram_copy[BatchConfig::MAX_NUM_TOKENS];
 
   for (int i = 0; i < batch_config->num_tokens; i++) {
-    dram_copy[i] = batch_config->tokensInfo[i].abs_depth_in_request + offset;
+    dram_copy[i] = batch_config->tokensInfo[i].abs_index_in_request + offset;
   }
 
   cudaStream_t stream;

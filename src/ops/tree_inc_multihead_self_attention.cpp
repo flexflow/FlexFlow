@@ -119,7 +119,7 @@ __global__ void update_tree_branch_kv_cache(
     DT vVal = devQKVProjArray[val_idx + hidden_size];
 
     int const req_id = tokenInfos[token_idx].request_index;
-    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
+    int const tok_id = tokenInfos[token_idx].abs_index_in_request;
     kCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
                offset] = kVal;
     vCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
@@ -187,13 +187,13 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       int num_new_tokens = 1;
       int j = processed_tokens_in_batch;
       while ((j + 1 <= last_token_idx_of_the_request) &&
-             (bc->tokensInfo[j].abs_depth_in_request + 1 ==
-              bc->tokensInfo[j + 1].abs_depth_in_request)) {
+             (bc->tokensInfo[j].abs_index_in_request + 1 ==
+              bc->tokensInfo[j + 1].abs_index_in_request)) {
         j++;
         num_new_tokens++;
       }
 
-      int total_tokens_in_request = bc->tokensInfo[j].abs_depth_in_request + 1;
+      int total_tokens_in_request = bc->tokensInfo[j].abs_index_in_request + 1;
       assert(num_new_tokens >= 1 && total_tokens_in_request >= num_new_tokens);
       {
         // update K-V cache

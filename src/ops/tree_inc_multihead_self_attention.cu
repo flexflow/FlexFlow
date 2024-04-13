@@ -83,7 +83,7 @@ __global__ void compute_attention_kernel_fused_kernel(
   int const first_step = 0;
 
   int const tlength =
-      request_infos[batch_config_request_id].first_token_depth_in_request +
+      request_infos[batch_config_request_id].first_token_index_in_request +
       request_infos[batch_config_request_id].num_tokens_in_batch;
   int const qlength =
       request_infos[batch_config_request_id].num_tokens_in_batch;
@@ -98,7 +98,7 @@ __global__ void compute_attention_kernel_fused_kernel(
 
   bool prompt_phase = request_infos[batch_config_request_id].prompt_phase;
   int q_start =
-      request_infos[batch_config_request_id].first_token_depth_in_request;
+      request_infos[batch_config_request_id].first_token_index_in_request;
 
   // shared memory objects
   extern __shared__ char smem_[];
@@ -424,7 +424,7 @@ __global__ void update_tree_branch_kv_cache(
     DT vVal = devQKVProjArray[val_idx + hidden_size];
 
     int const req_id = tokenInfos[token_idx].request_index;
-    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
+    int const tok_id = tokenInfos[token_idx].abs_index_in_request;
     kCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
                offset] = kVal;
     vCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
@@ -461,7 +461,7 @@ __global__ void update_tree_branch_kv_cache_fused(
     int const request_token_offset =
         request_infos[req_id].first_token_offset_in_batch;
     int const first_token_depth =
-        request_infos[req_id].first_token_depth_in_request;
+        request_infos[req_id].first_token_index_in_request;
 
     // if(i % hidden_size == 0){
     //   printf("update token request id: %d, %d, %d  real id %d, value%.10f\n",
@@ -547,13 +547,13 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       int num_new_tokens = 1;
       int j = processed_tokens_in_batch;
       while ((j + 1 <= last_token_idx_of_the_request) &&
-             (bc->tokensInfo[j].abs_depth_in_request + 1 ==
-              bc->tokensInfo[j + 1].abs_depth_in_request)) {
+             (bc->tokensInfo[j].abs_index_in_request + 1 ==
+              bc->tokensInfo[j + 1].abs_index_in_request)) {
         j++;
         num_new_tokens++;
       }
 
-      int total_tokens_in_request = bc->tokensInfo[j].abs_depth_in_request + 1;
+      int total_tokens_in_request = bc->tokensInfo[j].abs_index_in_request + 1;
       assert(num_new_tokens >= 1 && total_tokens_in_request >= num_new_tokens);
       {
         // update K-V cache

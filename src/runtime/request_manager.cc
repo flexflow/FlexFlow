@@ -372,11 +372,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     size_t guid =
         old_bc.requestsInfo[old_bc.tokensInfo[i].request_index].request_guid;
     Request &request = all_requests[guid];
-    if (old_bc.tokensInfo[i].abs_depth_in_request + 1 < request.tokens.size()) {
+    if (old_bc.tokensInfo[i].abs_index_in_request + 1 < request.tokens.size()) {
       // This is a prompt token
       continue;
     } else {
-      assert(old_bc.tokensInfo[i].abs_depth_in_request + 1 ==
+      assert(old_bc.tokensInfo[i].abs_index_in_request + 1 ==
              request.tokens.size());
       // This is a decoding token
       log_req_mgr.print("Output token is: %d", result.token_ids[i]);
@@ -397,7 +397,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       assert(old_bc.requestsInfo[i].num_tokens_in_batch > 0);
       Request &request = all_requests[old_bc.requestsInfo[i].request_guid];
       int processed_tokens =
-          old_bc.requestsInfo[i].first_token_depth_in_request +
+          old_bc.requestsInfo[i].first_token_index_in_request +
           old_bc.requestsInfo[i].num_tokens_in_batch;
       assert(processed_tokens < request.tokens.size());
       bool request_completed = false;
@@ -471,7 +471,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
 
       } else {
         new_bc.request_available[i] = false;
-        new_bc.requestsInfo[i].first_token_depth_in_request = processed_tokens;
+        new_bc.requestsInfo[i].first_token_index_in_request = processed_tokens;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid =
             old_bc.requestsInfo[i].request_guid;
@@ -479,7 +479,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
             old_bc.requestsInfo[i].max_sequence_length;
         num_active_req++;
         new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
-        if (new_bc.requestsInfo[i].first_token_depth_in_request + 1 ==
+        if (new_bc.requestsInfo[i].first_token_index_in_request + 1 ==
             request.tokens.size()) {
           // Incremental phase
           new_bc.requestsInfo[i].num_tokens_in_batch = 1;
@@ -490,13 +490,13 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           new_bc.requestsInfo[i].num_tokens_in_batch =
               std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
                        (int)request.tokens.size() -
-                           new_bc.requestsInfo[i].first_token_depth_in_request);
+                           new_bc.requestsInfo[i].first_token_index_in_request);
           new_bc.requestsInfo[i].prompt_phase = true;
         }
         for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
-          int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
+          int depth = new_bc.requestsInfo[i].first_token_index_in_request + j;
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
-          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
+          new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request = depth;
           assert(depth < request.tokens.size());
           new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens[depth];
           new_bc.num_tokens++;
@@ -518,7 +518,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         pending_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
 
-        new_bc.requestsInfo[i].first_token_depth_in_request = 0;
+        new_bc.requestsInfo[i].first_token_index_in_request = 0;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid = new_request.guid;
         new_bc.requestsInfo[i].num_tokens_in_batch =
@@ -536,9 +536,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         profile_info.start_time = Realm::Clock::current_time_in_microseconds();
         profiling_requests[new_request.guid] = profile_info;
         for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
-          int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
+          int depth = new_bc.requestsInfo[i].first_token_index_in_request + j;
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
-          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
+          new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request = depth;
           assert(depth < new_request.tokens.size());
           new_bc.tokensInfo[new_bc.num_tokens].token_id =
               new_request.tokens[depth];
@@ -632,7 +632,7 @@ TreeSearchBatchConfig
 
     while (result_index < old_bc.num_tokens &&
            old_bc.tokensInfo[result_index].request_index == i) {
-      int abs_depth = old_bc.tokensInfo[result_index].abs_depth_in_request;
+      int abs_depth = old_bc.tokensInfo[result_index].abs_index_in_request;
       int token_id = result.token_ids[result_index];
 
       if (request.status == Request::PENDING) {
@@ -755,7 +755,7 @@ TreeSearchBatchConfig
         num_active_req++;
 
         // Normal Request Info
-        new_bc.requestsInfo[i].first_token_depth_in_request =
+        new_bc.requestsInfo[i].first_token_index_in_request =
             verified_tokens.front().second;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid =
@@ -768,7 +768,7 @@ TreeSearchBatchConfig
         // TODO: Beam Request Info, missing from VerifyTreeBatchConfig
         int new_max_depth =
             new_bc.requestsInfo[i].max_sequence_length -
-            new_bc.requestsInfo[i].first_token_depth_in_request -
+            new_bc.requestsInfo[i].first_token_index_in_request -
             verified_tokens.size();
         new_bc.beamRequestsInfo[i].current_depth = 1;
 
@@ -804,7 +804,7 @@ TreeSearchBatchConfig
           // Normal Token Info
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
           new_bc.tokensInfo[new_bc.num_tokens].token_id = token.first;
-          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+          new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
               token.second;
 
           // Beam Token Info
@@ -839,7 +839,7 @@ TreeSearchBatchConfig
       assert(request.ssm_cache_size == request.initial_len);
 
       // Normal Request Info
-      new_bc.requestsInfo[i].first_token_depth_in_request =
+      new_bc.requestsInfo[i].first_token_index_in_request =
           request.ssm_cache_size;
       new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
@@ -890,7 +890,7 @@ TreeSearchBatchConfig
         pending_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
         num_active_req++;
-        new_bc.requestsInfo[i].first_token_depth_in_request = 0;
+        new_bc.requestsInfo[i].first_token_index_in_request = 0;
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid = new_request.guid;
         new_bc.requestsInfo[i].num_tokens_in_batch =
@@ -935,9 +935,9 @@ TreeSearchBatchConfig
         new_bc.sub_requests[i] = 1;
 
         for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
-          int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
+          int depth = new_bc.requestsInfo[i].first_token_index_in_request + j;
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
-          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request = depth;
+          new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request = depth;
           assert(depth < new_request.tokens.size());
           new_bc.tokensInfo[new_bc.num_tokens].token_id =
               new_request.tokens[depth];
@@ -1045,26 +1045,28 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_spec(
   TreeSearchBatchConfig new_bc;
   // We assume that only one small model is in use now
   new_bc.model_id = 0;
-
   new_bc.num_tokens = 0;
+  new_bc.num_available_requests = 0;
 
-  // TODO: check if we should use BatchConfig::MAX_NUM_REQUESTS or some variable
-  // storing the current active requests
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
+    if (!request_available[request_index]) {
+      new_bc.request_available[request_index] = false;
+      continue;
+    }
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
-    // TODO: check this!
     assert(request.status == Request::RUNNING);
-    new_bc.request_available[request_index] = false;
+    new_bc.request_available[request_index] = true;
+    new_bc.num_available_requests++;
     // TODO
     int processed_tokens = old_bc.requestsInfo[i].first_token_depth_in_request +
                            old_bc.requestsInfo[i].num_tokens_in_batch;
-    new_bc.requestsInfo[request_index].first_token_depth_in_request =
+    new_bc.requestsInfo[request_index].first_token_index_in_request =
         processed_tokens;
     new_bc.requestsInfo[request_index].first_token_offset_in_batch =
         new_bc.num_tokens;
-    new_bc.requestsInfo[request_index].request_guid = guid;
+    // TODO: check profiling
     profiling_requests[request.guid].ssm_decoding_steps += 1;
 
     // Fill in the tokens
@@ -1072,17 +1074,17 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_spec(
     if (token_tree.tree_layers.size() <= current_speculation_step) {
       // This request has no token to decode in this and the following small
       // model inference steps
-      new_bc.tree_requests_info[request_index].num_tokens_at_depth = 0;
+      new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
       continue;
     } else {
       std::list<std::shared_ptr<TokenTreeNode>> &current_layer =
           token_tree.tree_layers.at(current_speculation_step);
-      new_bc.tree_requests_info[request_index].num_tokens_at_depth =
+      new_bc.requestsInfo[request_index].num_tokens_in_batch =
           current_layer.size();
       for (auto &node_ptr : current_layer) {
         new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
         // TODO: check this!
-        new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+        new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
             request.tokens.size() + current_speculation_step;
         new_bc.tokensInfo[new_bc.num_tokens].token_id = node_ptr->id;
         new_bc.num_tokens++;
@@ -1096,7 +1098,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_spec(
 
   // TODO: how do we know how many reqeusts are in the speculative phase if the
   // batch is not full? how many requests is in speculative phase
-  new_bc.speculative_request_num = num_active_req + 1;
+  new_bc.num_available_requests = num_active_req + 1;
   if (verbose) {
     std::cout << "prepare_next_batch_beam NEW batchconfig:" << std::endl;
     new_bc.print();
@@ -1210,7 +1212,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       }
 
       // Normal Request Info
-      new_bc.requestsInfo[i].first_token_depth_in_request =
+      new_bc.requestsInfo[i].first_token_index_in_request =
           dfs_tree_inputs.front().second;
       new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid =
@@ -1265,7 +1267,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       // Incremental phase: only add the last committed token
       new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
       new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens.back();
-      new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+      new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
           request.tokens.size() - 1;
 
       new_bc.num_tokens++;
@@ -1277,7 +1279,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         break;
       }
 
-      new_bc.requestsInfo[i].first_token_depth_in_request =
+      new_bc.requestsInfo[i].first_token_index_in_request =
           request.tokens.size() - 1;
 
       bool cutLayer = false;
@@ -1291,7 +1293,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
         // Normal Token Info
         new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
         new_bc.tokensInfo[new_bc.num_tokens].token_id = token.first;
-        new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+        new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
             token.second;
 
         new_bc.num_tokens++;
@@ -1311,8 +1313,8 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           new_bc.num_tokens--;
           new_bc.requestsInfo[i].num_tokens_in_batch--;
           // std::cout << "cut: " << j << "\n";
-          if (new_bc.tokensInfo[j].abs_depth_in_request !=
-              new_bc.tokensInfo[j - 1].abs_depth_in_request) {
+          if (new_bc.tokensInfo[j].abs_index_in_request !=
+              new_bc.tokensInfo[j - 1].abs_index_in_request) {
             break;
           }
         }
@@ -1352,7 +1354,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
              sizeof(BatchConfig::BitMask));
 
       // Normal Request Info
-      new_bc.requestsInfo[i].first_token_depth_in_request =
+      new_bc.requestsInfo[i].first_token_index_in_request =
           request.llm_cache_size;
       new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid =
@@ -1366,7 +1368,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       new_bc.requestsInfo[i].num_tokens_in_batch =
           std::min(max_prompt_load_size,
                    (int)request.initial_len -
-                       new_bc.requestsInfo[i].first_token_depth_in_request);
+                       new_bc.requestsInfo[i].first_token_index_in_request);
       max_prompt_load_size -= new_bc.requestsInfo[i].num_tokens_in_batch;
 
       std::cout << "max_prompt_load_size: " << max_prompt_load_size
@@ -1381,7 +1383,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
           new_bc.tokensInfo[new_bc.num_tokens].token_id =
               request.tokens[request.llm_cache_size + j];
-          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+          new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
               request.llm_cache_size + j;
           new_bc.num_tokens++;
         }
@@ -1419,7 +1421,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
           new_bc.tokensInfo[new_bc.num_tokens].token_id = request.tokens.back();
-          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+          new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
               request.tokens.size() - 1;
 
           new_bc.num_tokens++;

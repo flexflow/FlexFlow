@@ -86,7 +86,7 @@ __global__ void compute_attention_kernel_generation_kernel(
   int const first_step = 0;
 
   int const tlength =
-      request_infos[batch_config_request_id].first_token_depth_in_request +
+      request_infos[batch_config_request_id].first_token_index_in_request +
       request_infos[batch_config_request_id].num_tokens_in_batch;
 
   // shared memory objects
@@ -420,7 +420,7 @@ __global__ void
 
     int token_idx =
         (real_i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
-    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
+    size_t pos = tokenInfos[token_idx].abs_index_in_request;
 
     // float before_real = complex_input[i].x, before_complex =
     // complex_input[i].y;
@@ -470,7 +470,7 @@ __global__ void
     // get position of token
 
     // size_t pos = id_map[token_idx].token_position;
-    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
+    size_t pos = tokenInfos[token_idx].abs_index_in_request;
 
     // float before_real = complex_input[i].x, before_complex =
     int pos_i = real_i % (proj_size / 2);
@@ -866,7 +866,7 @@ __global__ void store_kv_cache(DT const *devQKVProjArray,
     DT kVal = devQKVProjArray[val_idx];
     DT vVal = devQKVProjArray[val_idx + hidden_size];
     int const req_id = tokenInfos[token_idx].request_index;
-    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
+    int const tok_id = tokenInfos[token_idx].abs_index_in_request;
 
     // key cache
     kCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
@@ -933,7 +933,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
       continue;
     }
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-    int total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
+    int total_tokens = bc->requestsInfo[i].first_token_index_in_request +
                        bc->requestsInfo[i].num_tokens_in_batch;
     // Step 1: compute query-key product QK.T/sqrt(d_k)
     {

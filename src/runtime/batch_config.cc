@@ -27,13 +27,13 @@ using Legion::Memory;
 
 BatchConfig::BatchConfig() : num_tokens(0) {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    requestsInfo[i].first_token_depth_in_request = 0;
+    requestsInfo[i].first_token_index_in_request = 0;
     requestsInfo[i].first_token_offset_in_batch = 0;
     requestsInfo[i].num_tokens_in_batch = 0;
     request_available[i] = true;
   }
   for (int i = 0; i < MAX_NUM_TOKENS; i++) {
-    tokensInfo[i].abs_depth_in_request = 0;
+    tokensInfo[i].abs_index_in_request = 0;
     tokensInfo[i].request_index = 0;
     tokensInfo[i].token_id = 0;
   }
@@ -116,7 +116,7 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
     if (!bc.request_available[i]) {
       os << "  Request " << i << ":\n";
       os << "    First token depth in request: "
-         << bc.requestsInfo[i].first_token_depth_in_request << std::endl;
+         << bc.requestsInfo[i].first_token_index_in_request << std::endl;
       os << "    First token offset in batch: "
          << bc.requestsInfo[i].first_token_offset_in_batch << std::endl;
       os << "    Number of tokens in batch: "
@@ -134,7 +134,7 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
   for (int i = 0; i < bc.num_tokens; i++) {
     os << "  Token " << i << ":\n";
     os << "    Absolute depth in request: "
-       << bc.tokensInfo[i].abs_depth_in_request << std::endl;
+       << bc.tokensInfo[i].abs_index_in_request << std::endl;
     os << "    Request index: " << bc.tokensInfo[i].request_index << std::endl;
     os << "    Token id: " << bc.tokensInfo[i].token_id << std::endl;
   }

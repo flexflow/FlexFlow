@@ -67,7 +67,7 @@ __global__ void spec_store_kv_cache(
     // int const beam_width = id_map[token_idx].beam_width;
 
     int const req_id = tokenInfos[token_idx].request_index;
-    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
+    int const tok_id = tokenInfos[token_idx].abs_index_in_request;
     int const sub_req_id = beamTokenInfos[token_idx].sub_request_index;
     int const parent_id = beamRequestInfos[req_id].parent_id[sub_req_id];
     int const beam_depth = beamRequestInfos[req_id].current_depth;
@@ -232,7 +232,7 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       // int total_tokens = bc->token_last_available_idx[i] + 1;
 
       int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-      int total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
+      int total_tokens = bc->requestsInfo[i].first_token_index_in_request +
                          bc->requestsInfo[i].num_tokens_in_batch;
       // Compute (QK^T/sqrt(d_k))
       int m_ = num_new_tokens;

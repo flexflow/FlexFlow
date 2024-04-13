@@ -65,12 +65,12 @@ public:
   int num_available_requests;
 
   struct PerRequestInfo {
-    int first_token_depth_in_request;
+    int first_token_index_in_request;
     int first_token_offset_in_batch;
     int num_tokens_in_batch;
   };
   struct PerTokenInfo {
-    int abs_depth_in_request;
+    int abs_index_in_request;
     int request_index;
     TokenId token_id;
   };

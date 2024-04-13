@@ -82,7 +82,7 @@ std::ostream &
       os << "  Request " << i << ":\n";
       os << "    First token depth in request: "
          << tree_search_batch_config.requestsInfo[i]
-                .first_token_depth_in_request
+                .first_token_index_in_request
          << std::endl;
       os << "    First token offset in batch: "
          << tree_search_batch_config.requestsInfo[i].first_token_offset_in_batch
@@ -108,7 +108,7 @@ std::ostream &
   for (int i = 0; i < tree_search_batch_config.num_tokens; i++) {
     os << "  Token " << i << ":\n";
     os << "    Absolute depth in request: "
-       << tree_search_batch_config.tokensInfo[i].abs_depth_in_request
+       << tree_search_batch_config.tokensInfo[i].abs_index_in_request
        << std::endl;
     os << "    Request index: "
        << tree_search_batch_config.tokensInfo[i].request_index << std::endl;
