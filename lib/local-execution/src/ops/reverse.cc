@@ -21,7 +21,7 @@
 namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::Reverse;
-using legion_coord_t = long long;
+using coord_t = long long;
 
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
 
@@ -50,7 +50,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   int output_size = output.shape.get_volume();
   auto axis = attrs.axis;
-  legion_coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
+  coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < output.shape.get_dim(); i++) {
     if (i < axis) {
       in_blk_size *= output.shape.at(ff_dim_t(i));
@@ -80,7 +80,7 @@ static std::optional<float>
   auto attrs = acc.get_argument<ReverseAttrs>(ATTRS);
 
   int axis = input_grad.shape.get_dim() - attrs.axis.value() - 1;
-  legion_coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
+  coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < input_grad.shape.get_dim(); i++) {
     if (i < axis) {
       in_blk_size *= input_grad.shape.at(ff_dim_t(i));

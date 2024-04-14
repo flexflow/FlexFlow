@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/element_unary_kernels.h"
-#include "device.h"
 #include "op-attrs/get_op_type.h"
 #include <optional>
 
@@ -40,7 +40,7 @@ static bool use_cudnn(OperatorType op_type) {
 template <typename T>
 T get_scalar(ElementUnaryUnifiedAttrs const &attrs) {
   if (std::holds_alternative<ElementScalarUnaryAttrs>(attrs)) {
-    return (T) std::get<ElementScalarUnaryAttrs>(attrs).scalar;
+    return (T)std::get<ElementScalarUnaryAttrs>(attrs).scalar;
   } else {
     T dummy_scalar;
     return dummy_scalar;
@@ -90,13 +90,9 @@ ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
   return {inputTensor, outputTensor, actiDesc};
 }
 
-
 template <typename T>
-__global__ void elewise_unary_forward_kernel(coord_t volume,
-                                             T const scalar,
-                                             OperatorType type,
-                                             T const *in,
-                                             T *out) {
+__global__ void elewise_unary_forward_kernel(
+    coord_t volume, T const scalar, OperatorType type, T const *in, T *out) {
   CUDA_KERNEL_LOOP(i, volume) {
     switch (type) {
       case Op::EXP: {
@@ -197,8 +193,8 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
         break;
       }
       case Op::POW: {
-        input_grad[i] = (T)(output_grad[i] * scalar *
-                            powf(input[i], scalar - 1));
+        input_grad[i] =
+            (T)(output_grad[i] * scalar * powf(input[i], scalar - 1));
         break;
       }
       case Op::SIN: {
@@ -237,11 +233,13 @@ struct ForwardKernel {
                                         output.get<T>()));
     } else {
       size_t num_elements = input.shape.num_elements();
-      elewise_unary_forward_kernel<real_type<T>><<<GET_BLOCKS(num_elements),
-                                     CUDA_NUM_THREADS,
-                                     0,
-                                     stream>>>(
-          num_elements, get_scalar<real_type<T>>(attrs), op_type, input.get<T>(), output.get<T>());
+      elewise_unary_forward_kernel<real_type<T>>
+          <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
+              num_elements,
+              get_scalar<real_type<T>>(attrs),
+              op_type,
+              input.get<T>(),
+              output.get<T>());
     }
   }
 };
@@ -262,17 +260,17 @@ struct BackwardKernel {
     if (use_cudnn(op_type)) {
       float alpha = 1.0f;
       checkCUDNN(cudnnActivationBackward(handle.dnn,
-                                        m.actiDesc,
-                                        &alpha,
-                                        m.outputTensor,
-                                        output.get<T>(),
-                                        m.outputTensor,
-                                        output_grad.get<T>(),
-                                        m.inputTensor,
-                                        input.get<T>(),
-                                        &alpha,
-                                        m.inputTensor,
-                                        input_grad.get<T>()));
+                                         m.actiDesc,
+                                         &alpha,
+                                         m.outputTensor,
+                                         output.get<T>(),
+                                         m.outputTensor,
+                                         output_grad.get<T>(),
+                                         m.inputTensor,
+                                         input.get<T>(),
+                                         &alpha,
+                                         m.inputTensor,
+                                         input_grad.get<T>()));
     } else {
       size_t num_elements = input.shape.num_elements();
       elewise_unary_backward_kernel<real_type<T>>
@@ -316,7 +314,6 @@ void backward_kernel(ffStream_t stream,
                                       output,
                                       output_grad);
 }
-
 
 } // namespace ElementUnary
 } // namespace Kernels

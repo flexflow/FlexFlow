@@ -288,7 +288,6 @@ __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
   }
 }
 
-
 // TODO: handle any data type for stats
 LayerNormPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                     Allocator &allocator,
@@ -296,24 +295,30 @@ LayerNormPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                     int64_t effective_batch_size_,
                                     int64_t effective_num_elements_,
                                     float eps_) {
-  float *mean = (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
-  float *rstd = (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
-  float *ds = (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
-  float *db = (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
-  float *scale = (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
-  float *bias = (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
+  float *mean =
+      (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
+  float *rstd =
+      (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
+  float *ds =
+      (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
+  float *db =
+      (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
+  float *scale =
+      (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
+  float *bias =
+      (float *)allocator.allocate(sizeof(float) * effective_batch_size_);
   LayerNormPerDeviceState per_device_state = {handle,
-                              elementwise_affine_,
-                              effective_batch_size_,
-                              effective_num_elements_,
-                              eps_,
-                              mean,
-                              rstd,
-                              ds,
-                              db,
-                              scale,
-                              bias,
-                              DataType::FLOAT};
+                                              elementwise_affine_,
+                                              effective_batch_size_,
+                                              effective_num_elements_,
+                                              eps_,
+                                              mean,
+                                              rstd,
+                                              ds,
+                                              db,
+                                              scale,
+                                              bias,
+                                              DataType::FLOAT};
   return per_device_state;
 }
 
@@ -357,49 +362,46 @@ struct BackwardKernel {
     const int64_t M = m.effective_batch_size;
     const int64_t N = m.effective_num_elements;
     ComputeInternalGradientsCUDAKernel<float>
-        <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(N,
-                                                       output_grad.get<DataType::FLOAT>(),
-                                                       input.get<DataType::FLOAT>(),
-                                                       gamma.get<DataType::FLOAT>(),
-                                                       m.ds,
-                                                       m.db);
+        <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+            N,
+            output_grad.get<DataType::FLOAT>(),
+            input.get<DataType::FLOAT>(),
+            gamma.get<DataType::FLOAT>(),
+            m.ds,
+            m.db);
     const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
     ComputeGradientFusedParamsCUDAKernel<float>
-        <<<B, kCUDANumThreads, 0, stream>>>(M,
-                                            N,
-                                            m.mean,
-                                            m.rstd,
-                                            m.ds,
-                                            m.db,
-                                            m.scale,
-                                            m.bias);
+        <<<B, kCUDANumThreads, 0, stream>>>(
+            M, N, m.mean, m.rstd, m.ds, m.db, m.scale, m.bias);
     if (gamma_grad.get<T>() != NULL || beta_grad.get<T>() != NULL) {
       if (M < 512) {
         // For small batch size, do colwise reduce directly
         const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
         GammaBetaBackwardSimpleCUDAKernel<float>
-            <<<B, kCUDANumThreads, 0, stream>>>(M,
-                                                N,
-                                                output_grad.get<DataType::FLOAT>(),
-                                                input.get<DataType::FLOAT>(),
-                                                m.mean,
-                                                m.rstd,
-                                                gamma_grad.get<DataType::FLOAT>(),
-                                                beta_grad.get<DataType::FLOAT>());
+            <<<B, kCUDANumThreads, 0, stream>>>(
+                M,
+                N,
+                output_grad.get<DataType::FLOAT>(),
+                input.get<DataType::FLOAT>(),
+                m.mean,
+                m.rstd,
+                gamma_grad.get<DataType::FLOAT>(),
+                beta_grad.get<DataType::FLOAT>());
       } else {
         const int64_t B =
             (N + kColwiseReduceTileSize - 1) / kColwiseReduceTileSize;
         constexpr int kThreadX = kColwiseReduceTileSize;
         constexpr int kThreadY = kColwiseReduceTileSize / 2;
         GammaBetaBackwardCUDAKernel<float>
-            <<<B, dim3(kThreadX, kThreadY), 0, stream>>>(M,
-                                                         N,
-                                                         output_grad.get<DataType::FLOAT>(),
-                                                         input.get<DataType::FLOAT>(),
-                                                         m.mean,
-                                                         m.rstd,
-                                                         gamma_grad.get<DataType::FLOAT>(),
-                                                         beta_grad.get<DataType::FLOAT>());
+            <<<B, dim3(kThreadX, kThreadY), 0, stream>>>(
+                M,
+                N,
+                output_grad.get<DataType::FLOAT>(),
+                input.get<DataType::FLOAT>(),
+                m.mean,
+                m.rstd,
+                gamma_grad.get<DataType::FLOAT>(),
+                beta_grad.get<DataType::FLOAT>());
       }
     }
   }

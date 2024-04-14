@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/accessor.h"
 #include "kernels/transpose_kernels.h"
 #include "utils/exception.h"
-#include "device.h"
 
 namespace FlexFlow {
 // declare Legion names
-using legion_coord_t = long long;
+using coord_t = long long;
 
 struct TransposeStrides {
   int num_dim;
@@ -52,7 +52,7 @@ __global__ void transpose_simple_kernel(std::size_t volume,
     size_t i_idx = 0;
     size_t t = o_idx;
     for (int i = info.num_dim - 1; i >= 0; i--) {
-      legion_coord_t ratio = t / info.out_strides[i];
+      coord_t ratio = t / info.out_strides[i];
       t -= ratio * info.out_strides[i];
       i_idx += ratio * info.in_strides[info.perm[i]];
     }

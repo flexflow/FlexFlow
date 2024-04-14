@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-#include "kernels/split_kernels.h"
 #include "device.h"
+#include "kernels/split_kernels.h"
 
 namespace FlexFlow {
 // declare Legion names
-using legion_coord_t = long long;
+using coord_t = long long;
 
 namespace Kernels {
 namespace Split {
@@ -26,9 +26,9 @@ namespace Split {
 void forward_kernel(cudaStream_t stream,
                     float **out_ptrs,
                     float const *in_ptr,
-                    legion_coord_t const *out_blk_sizes,
-                    legion_coord_t in_blk_size,
-                    legion_coord_t num_blks,
+                    coord_t const *out_blk_sizes,
+                    coord_t in_blk_size,
+                    coord_t num_blks,
                     int numOutputs) {
 
   for (int i = 0; i < numOutputs; i++) {
@@ -44,9 +44,9 @@ void forward_kernel(cudaStream_t stream,
 void backward_kernel(cudaStream_t stream,
                      float *in_grad_ptr,
                      float const **out_grad_ptr,
-                     legion_coord_t const *out_blk_sizes,
-                     legion_coord_t in_blk_size,
-                     legion_coord_t num_blks,
+                     coord_t const *out_blk_sizes,
+                     coord_t in_blk_size,
+                     coord_t num_blks,
                      int numOutputs) {
 
   for (int i = 0; i < numOutputs; i++) {

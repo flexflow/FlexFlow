@@ -18,7 +18,7 @@
 
 namespace FlexFlow {
 // declare Legion names
-using legion_coord_t = long long;
+using coord_t = long long;
 
 namespace Kernels {
 namespace TopK {
@@ -415,10 +415,10 @@ __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
                                      size_t batch_size,
                                      int length,
                                      int k) {
-  legion_coord_t size = (legion_coord_t)batch_size * k;
+  coord_t size = (coord_t)batch_size * k;
   CUDA_KERNEL_LOOP(i, size) {
-    legion_coord_t batch_idx = i / k;
-    legion_coord_t src_offset = batch_idx * length + indices_ptr[i];
+    coord_t batch_idx = i / k;
+    coord_t src_offset = batch_idx * length + indices_ptr[i];
     in_grad_ptr[src_offset] += value_grad_ptr[i];
   }
 }

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "kernels/allocation.h"
 #include "device.h"
+#include "kernels/allocation.h"
 #include "kernels/linear_kernels.h"
 
 namespace FlexFlow {
@@ -74,18 +74,17 @@ LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
     case Activation::NONE:
       break;
     // case Activation::GELU:
-    //   mode = CUDNN_ACTIVATION_GELU;  --- cudnnActivationMode_t does not have GELU
-    //   break;
+    //   mode = CUDNN_ACTIVATION_GELU;  --- cudnnActivationMode_t does not have
+    //   GELU break;
     default:
       // Unsupported activation mode
       assert(false);
   }
   checkCUDNN(
       cudnnSetActivationDescriptor(actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
-  // don't need this line below because we are already setting 4dDescriptor for outputTensor above
-  // checkCUDNN(
+  // don't need this line below because we are already setting 4dDescriptor for
+  // outputTensor above checkCUDNN(
   //     cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
-
 
   // todo: how to use allocator to allocate memory for float * one_ptr, how many
   // bytes to allocate?
@@ -251,7 +250,8 @@ void backward_kernel(cudaStream_t stream,
   } else {
     RegularizerAttrs regularizer_attrs = m.regularizer.value();
     if (std::holds_alternative<L2RegularizerAttrs>(regularizer_attrs)) {
-      L2RegularizerAttrs l2_attrs = std::get<L2RegularizerAttrs>(regularizer_attrs);
+      L2RegularizerAttrs l2_attrs =
+          std::get<L2RegularizerAttrs>(regularizer_attrs);
       float lambda = l2_attrs.lambda;
       checkCUDA(cublasSgeam(m.handle.blas,
                             CUBLAS_OP_N,

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "kernels/pool_2d_kernels.h"
 #include "device.h"
+#include "kernels/pool_2d_kernels.h"
 
 namespace FlexFlow {
 

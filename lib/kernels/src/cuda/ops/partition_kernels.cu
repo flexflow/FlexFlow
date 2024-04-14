@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/partition_kernels.h"
-#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -42,16 +42,16 @@ struct BackwardKernel {
                   GenericTensorAccessorR const &output_grad,
                   GenericTensorAccessorW const &input_grad) {
     add_kernel<real_type<T>><<<GET_BLOCKS(input_grad.shape.num_elements()),
-                    CUDA_NUM_THREADS,
-                    0,
-                    stream>>>(input_grad.get<T>(),
-                              output_grad.get<T>(),
-                              input_grad.shape.num_elements());
+                               CUDA_NUM_THREADS,
+                               0,
+                               stream>>>(input_grad.get<T>(),
+                                         output_grad.get<T>(),
+                                         input_grad.shape.num_elements());
   }
 };
 
-RepartitionPerDeviceState
-    init_kernel(PerDeviceFFHandle const &handle, DataType data_type) {
+RepartitionPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
+                                      DataType data_type) {
   RepartitionPerDeviceState per_device_state = {handle, data_type};
   return per_device_state;
 }

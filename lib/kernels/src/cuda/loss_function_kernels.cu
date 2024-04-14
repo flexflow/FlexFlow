@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "kernels/loss_function_kernels.h"
 #include "device.h"
+#include "kernels/loss_function_kernels.h"
 
 namespace FlexFlow {
 
@@ -85,15 +85,14 @@ void sparse_categorical_crossentropy_loss_backward_kernel(
       logit_grad_ptr, logit_grad_volume, 0, scale_factor * k);
 }
 
-void categorical_crossentropy_loss_backward_kernel(
-    cudaStream_t stream,
-    float *logit_grad_ptr,
-    float const *logit_ptr,
-    float const *label_ptr,
-    size_t logit_volume,
-    size_t logit_grad_volume,
-    float scale_factor) {
-  //cudaStream_t stream;
+void categorical_crossentropy_loss_backward_kernel(cudaStream_t stream,
+                                                   float *logit_grad_ptr,
+                                                   float const *logit_ptr,
+                                                   float const *label_ptr,
+                                                   size_t logit_volume,
+                                                   size_t logit_grad_volume,
+                                                   float scale_factor) {
+  // cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   categorical_crossentropy_loss_backward<<<GET_BLOCKS(logit_volume),
                                            CUDA_NUM_THREADS,
@@ -105,14 +104,13 @@ void categorical_crossentropy_loss_backward_kernel(
       logit_grad_ptr, logit_grad_volume, 0, scale_factor);
 }
 
-void mean_squared_error_avg_loss_backward_kernel(
-    cudaStream_t stream,
-    float *logit_grad_ptr,
-    float const *logit_ptr,
-    float const *label_ptr,
-    size_t logit_volume,
-    size_t logit_grad_volume,
-    float scale_factor) {
+void mean_squared_error_avg_loss_backward_kernel(cudaStream_t stream,
+                                                 float *logit_grad_ptr,
+                                                 float const *logit_ptr,
+                                                 float const *label_ptr,
+                                                 size_t logit_volume,
+                                                 size_t logit_grad_volume,
+                                                 float scale_factor) {
   // cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   mean_squared_error_avg_loss_backward<<<GET_BLOCKS(logit_volume),
@@ -125,11 +123,12 @@ void mean_squared_error_avg_loss_backward_kernel(
       logit_grad_ptr, logit_grad_volume, 0, scale_factor);
 }
 
-void identity_loss_backward_kernel(cudaStream_t stream, float *loss_grad_ptr,
-                                                 float const *loss_ptr,
-                                                 size_t loss_volume,
-                                                 size_t loss_grad_volume,
-                                                 float scale_factor) {
+void identity_loss_backward_kernel(cudaStream_t stream,
+                                   float *loss_grad_ptr,
+                                   float const *loss_ptr,
+                                   size_t loss_volume,
+                                   size_t loss_grad_volume,
+                                   float scale_factor) {
   // cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   identity_loss_backward<<<GET_BLOCKS(loss_volume),

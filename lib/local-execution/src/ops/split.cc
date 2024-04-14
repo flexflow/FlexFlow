@@ -23,7 +23,7 @@
 namespace FlexFlow {
 
 using namespace FlexFlow::Kernels::Split;
-using legion_coord_t = long long;
+using coord_t = long long;
 
 enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
 
@@ -44,8 +44,8 @@ OpTaskInvocation backward(SplitAttrs const &attrs) {
   return {SPLIT_BWD_TASK_ID, binding};
 }
 
-void calc_block_size(legion_coord_t &num_blks,
-                     legion_coord_t &blk_size,
+void calc_block_size(coord_t &num_blks,
+                     coord_t &blk_size,
                      ArrayShape const &array_shape,
                      int axis) {
   num_blks = 1;
@@ -65,11 +65,11 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto attrs = acc.get_argument<SplitAttrs>(ATTRS);
 
-  legion_coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
+  coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
   calc_block_size(num_blks, in_blk_size, input.shape, attrs.axis.value());
 
   for (int i = 0; i < attrs.splits.size(); i++) {
-    legion_coord_t out_num_blks;
+    coord_t out_num_blks;
     calc_block_size(
         out_num_blks, out_blk_size[i], output.shape, attrs.axis.value());
   }
@@ -93,10 +93,10 @@ static std::optional<float>
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
   auto attrs = acc.get_argument<SplitAttrs>(ATTRS);
 
-  legion_coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
+  coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
   calc_block_size(num_blks, in_blk_size, input_grad.shape, attrs.axis.value());
   for (int i = 0; i < attrs.splits.size(); i++) {
-    legion_coord_t out_num_blks;
+    coord_t out_num_blks;
     calc_block_size(
         out_num_blks, out_blk_size[i], output_grad.shape, attrs.axis.value());
   }

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "kernels/softmax_kernels.h"
 #include "device.h"
+#include "kernels/softmax_kernels.h"
 
 namespace FlexFlow {
 

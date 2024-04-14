@@ -13,14 +13,13 @@
  * limitations under the License.
  */
 
-#include "kernels/datatype_dispatch.h"
 #include "device.h"
+#include "kernels/datatype_dispatch.h"
 #include "kernels/embedding_kernels.h"
 
 namespace FlexFlow {
 namespace Kernels {
 namespace Embedding {
-
 
 void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) {
   cudaStream_t stream;
@@ -39,18 +38,34 @@ void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p) {
 }
 
 template <typename TI, typename TD>
-__global__ void embed_forward_no_aggr(TI const *input, TD *output, TD const *embed, int out_dim, int batch_size);
+__global__ void embed_forward_no_aggr(
+    TI const *input, TD *output, TD const *embed, int out_dim, int batch_size);
 template <typename TI, typename TD>
-__global__ void embed_forward_with_aggr(TI const *input, TD *output, TD const *embed, int out_dim, int in_dim, int batch_size, AggregateOp aggr);
+__global__ void embed_forward_with_aggr(TI const *input,
+                                        TD *output,
+                                        TD const *embed,
+                                        int out_dim,
+                                        int in_dim,
+                                        int batch_size,
+                                        AggregateOp aggr);
 template <typename TI, typename TD>
-__global__ void embed_backward_no_aggr(TI const *input, TD const *output, TD *embed, int out_dim, int batch_size);
+__global__ void embed_backward_no_aggr(
+    TI const *input, TD const *output, TD *embed, int out_dim, int batch_size);
 template <typename TI, typename TD>
-__global__ void embed_backward_with_aggr(TI const *input, TD const *output, TD *embed, int out_dim, int in_dim, int batch_size, AggregateOp aggr);
-
+__global__ void embed_backward_with_aggr(TI const *input,
+                                         TD const *output,
+                                         TD *embed,
+                                         int out_dim,
+                                         int in_dim,
+                                         int batch_size,
+                                         AggregateOp aggr);
 
 template <int32_t, typename TD>
-__global__ void embed_forward_no_aggr(
-    int32_t const *input, TD *output, TD const *embed, int out_dim, int batch_size) {
+__global__ void embed_forward_no_aggr(int32_t const *input,
+                                      TD *output,
+                                      TD const *embed,
+                                      int out_dim,
+                                      int batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     output[i] = 0;
     int idx = i / out_dim;
@@ -61,8 +76,11 @@ __global__ void embed_forward_no_aggr(
 }
 
 template <int64_t, typename TD>
-__global__ void embed_forward_no_aggr(
-    int64_t const *input, TD *output, TD const *embed, int out_dim, int batch_size) {
+__global__ void embed_forward_no_aggr(int64_t const *input,
+                                      TD *output,
+                                      TD const *embed,
+                                      int out_dim,
+                                      int batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     output[i] = 0;
     int idx = i / out_dim;
@@ -123,8 +141,11 @@ __global__ void embed_forward_with_aggr(int64_t const *input,
 }
 
 template <int32_t, typename TD>
-__global__ void embed_backward_no_aggr(
-    int32_t const *input, TD const *output, TD *embed, int out_dim, int batch_size) {
+__global__ void embed_backward_no_aggr(int32_t const *input,
+                                       TD const *output,
+                                       TD *embed,
+                                       int out_dim,
+                                       int batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     int idx = i / out_dim;
     int off = i % out_dim;
@@ -134,8 +155,11 @@ __global__ void embed_backward_no_aggr(
 }
 
 template <int64_t, typename TD>
-__global__ void embed_backward_no_aggr(
-    int64_t const *input, TD const *output, TD *embed, int out_dim, int batch_size) {
+__global__ void embed_backward_no_aggr(int64_t const *input,
+                                       TD const *output,
+                                       TD *embed,
+                                       int out_dim,
+                                       int batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     int idx = i / out_dim;
     int off = i % out_dim;
@@ -148,10 +172,10 @@ __global__ void embed_backward_no_aggr(
 
 template <>
 __global__ void embed_backward_no_aggr<int32_t, half>(int32_t const *input,
-                                                  half const *output,
-                                                  half *embed,
-                                                  int out_dim,
-                                                  int batch_size) {
+                                                      half const *output,
+                                                      half *embed,
+                                                      int out_dim,
+                                                      int batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     int idx = i / out_dim;
     int off = i % out_dim;
@@ -244,12 +268,12 @@ __global__ void embed_backward_with_aggr(int64_t const *input,
 
 template <>
 __global__ void embed_backward_with_aggr<int32_t, half>(int32_t const *input,
-                                                    half const *output,
-                                                    half *embed,
-                                                    int out_dim,
-                                                    int in_dim,
-                                                    int batch_size,
-                                                    AggregateOp aggr) {
+                                                        half const *output,
+                                                        half *embed,
+                                                        int out_dim,
+                                                        int in_dim,
+                                                        int batch_size,
+                                                        AggregateOp aggr) {
   half scale = 1.0f / in_dim;
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     int idx = i / out_dim;
@@ -325,31 +349,35 @@ struct ForwardKernel {
                   int in_dim,
                   int out_dim,
                   int batch_size) {
-    assert(input.data_type == DataType::INT32 || input.data_type == DataType::INT64);
-    assert(weight.data_type == DataType::HALF || weight.data_type == DataType::FLOAT ||
+    assert(input.data_type == DataType::INT32 ||
+           input.data_type == DataType::INT64);
+    assert(weight.data_type == DataType::HALF ||
+           weight.data_type == DataType::FLOAT ||
            weight.data_type == DataType::DOUBLE);
 
     if (aggr == AggregateOp::NONE) {
-      embed_forward_no_aggr<real_type<TI>, real_type<TD>><<<GET_BLOCKS(output.shape.get_volume()),
-                                      CUDA_NUM_THREADS,
-                                      0,
-                                      stream>>>(input.get<TI>(),
-                                                output.get<TD>(),
-                                                weight.get<TD>(),
-                                                out_dim,
-                                                batch_size);
+      embed_forward_no_aggr<real_type<TI>, real_type<TD>>
+          <<<GET_BLOCKS(output.shape.get_volume()),
+             CUDA_NUM_THREADS,
+             0,
+             stream>>>(input.get<TI>(),
+                       output.get<TD>(),
+                       weight.get<TD>(),
+                       out_dim,
+                       batch_size);
     } else {
       assert(aggr == AggregateOp::AVG || aggr == AggregateOp::SUM);
-      embed_forward_with_aggr<real_type<TI>, real_type<TD>><<<GET_BLOCKS(output.shape.get_volume()),
-                                        CUDA_NUM_THREADS,
-                                        0,
-                                        stream>>>(input.get<TI>(),
-                                                  output.get<TD>(),
-                                                  weight.get<TD>(),
-                                                  out_dim,
-                                                  in_dim,
-                                                  batch_size,
-                                                  aggr);
+      embed_forward_with_aggr<real_type<TI>, real_type<TD>>
+          <<<GET_BLOCKS(output.shape.get_volume()),
+             CUDA_NUM_THREADS,
+             0,
+             stream>>>(input.get<TI>(),
+                       output.get<TD>(),
+                       weight.get<TD>(),
+                       out_dim,
+                       in_dim,
+                       batch_size,
+                       aggr);
     }
   }
 };
@@ -364,29 +392,33 @@ struct BackwardKernel {
                   int in_dim,
                   int out_dim,
                   int batch_size) {
-    assert(input.data_type == DataType::INT32 || input.data_type == DataType::INT64);
-    assert(output.data_type == DataType::HALF || output.data_type == DataType::FLOAT
-           || output.data_type == DataType::DOUBLE);
+    assert(input.data_type == DataType::INT32 ||
+           input.data_type == DataType::INT64);
+    assert(output.data_type == DataType::HALF ||
+           output.data_type == DataType::FLOAT ||
+           output.data_type == DataType::DOUBLE);
     if (aggr == AggregateOp::NONE) {
-      embed_backward_no_aggr<real_type<TI>, real_type<TD>><<<GET_BLOCKS(output.shape.get_volume()),
-                                       CUDA_NUM_THREADS,
-                                       0,
-                                       stream>>>(input.get<TI>(),
-                                                 output.get<TD>(),
-                                                 weight_grad.get<TD>(),
-                                                 out_dim,
-                                                 batch_size);
+      embed_backward_no_aggr<real_type<TI>, real_type<TD>>
+          <<<GET_BLOCKS(output.shape.get_volume()),
+             CUDA_NUM_THREADS,
+             0,
+             stream>>>(input.get<TI>(),
+                       output.get<TD>(),
+                       weight_grad.get<TD>(),
+                       out_dim,
+                       batch_size);
     } else {
-      embed_backward_with_aggr<real_type<TI>, real_type<TD>><<<GET_BLOCKS(output.shape.get_volume()),
-                                         CUDA_NUM_THREADS,
-                                         0,
-                                         stream>>>(input.get<TI>(),
-                                                   output.get<TD>(),
-                                                   weight_grad.get<TD>(),
-                                                   out_dim,
-                                                   in_dim,
-                                                   batch_size,
-                                                   aggr);
+      embed_backward_with_aggr<real_type<TI>, real_type<TD>>
+          <<<GET_BLOCKS(output.shape.get_volume()),
+             CUDA_NUM_THREADS,
+             0,
+             stream>>>(input.get<TI>(),
+                       output.get<TD>(),
+                       weight_grad.get<TD>(),
+                       out_dim,
+                       in_dim,
+                       batch_size,
+                       aggr);
     }
   }
 };
@@ -434,7 +466,6 @@ void backward_kernel(cudaStream_t stream,
                                       out_dim,
                                       batch_size);
 }
-
 
 } // namespace Embedding
 } // namespace Kernels

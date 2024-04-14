@@ -5,7 +5,7 @@
 
 namespace FlexFlow {
 
-using legion_coord_t = long long;
+using coord_t = long long;
 
 namespace Kernels {
 namespace Reverse {
@@ -13,18 +13,18 @@ namespace Reverse {
 void forward_kernel(ffStream_t stream,
                     float const *in_ptr,
                     float *out_ptr,
-                    legion_coord_t num_out_blks,
-                    legion_coord_t reverse_dim_size,
-                    legion_coord_t in_blk_size,
-                    legion_coord_t output_size);
+                    coord_t num_out_blks,
+                    coord_t reverse_dim_size,
+                    coord_t in_blk_size,
+                    coord_t output_size);
 
 void backward_kernel(ffStream_t stream,
                      float const *out_grad_ptr,
                      float *in_grad_ptr,
-                     legion_coord_t num_out_blks,
-                     legion_coord_t reverse_dim_size,
-                     legion_coord_t in_blk_size,
-                     legion_coord_t input_size);
+                     coord_t num_out_blks,
+                     coord_t reverse_dim_size,
+                     coord_t in_blk_size,
+                     coord_t input_size);
 
 } // namespace Reverse
 } // namespace Kernels

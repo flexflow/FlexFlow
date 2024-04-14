@@ -13,15 +13,14 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/reshape_kernels.h"
-#include "device.h"
 
 namespace FlexFlow {
 
 namespace Kernels {
 namespace Reshape {
-
 
 ReshapePerDeviceState init_kernel(DataType data_type) {
   return ReshapePerDeviceState{data_type};
@@ -47,10 +46,12 @@ struct BackwardKernel {
                   GenericTensorAccessorR const &output) {
     float alpha = 1.0f;
     apply_add_with_scale<real_type<T>><<<GET_BLOCKS(input.shape.num_elements()),
-                              CUDA_NUM_THREADS,
-                              0,
-                              stream>>>(
-        input.get<T>(), output.get<T>(), input.shape.num_elements(), (real_type<T>)alpha);
+                                         CUDA_NUM_THREADS,
+                                         0,
+                                         stream>>>(input.get<T>(),
+                                                   output.get<T>(),
+                                                   input.shape.num_elements(),
+                                                   (real_type<T>)alpha);
   }
 };
 

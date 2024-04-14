@@ -13,14 +13,13 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/gather_kernels.h"
-#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {
 namespace Gather {
-
 
 template <typename IndexType>
 __global__ void gather_forward(float const *input,
@@ -95,16 +94,17 @@ struct ForwardKernel {
         output.domain.hi()[m->legion_dim] - output.domain.lo()[m->legion_dim] +
     1;
 */
-    gather_forward<real_type<IndexType>><<<GET_BLOCKS(output.shape.get_volume()),
-                                CUDA_NUM_THREADS,
-                                0,
-                                stream>>>(input.get<DataType::FLOAT>(),
-                                          index.get<IndexType>(),
-                                          output.get<DataType::FLOAT>(),
-                                          output.shape.get_volume(),
-                                          stride,
-                                          input_dim_size,
-                                          output_dim_size);
+    gather_forward<real_type<IndexType>>
+        <<<GET_BLOCKS(output.shape.get_volume()),
+           CUDA_NUM_THREADS,
+           0,
+           stream>>>(input.get<DataType::FLOAT>(),
+                     index.get<IndexType>(),
+                     output.get<DataType::FLOAT>(),
+                     output.shape.get_volume(),
+                     stride,
+                     input_dim_size,
+                     output_dim_size);
   }
 };
 
@@ -144,16 +144,17 @@ struct BackwardKernel {
     size_t dim_size = output_grad.domain.hi()[m->legion_dim] -
                       output_grad.domain.lo()[m->legion_dim] + 1;
     */
-    gather_backward<real_type<IndexType>><<<GET_BLOCKS(output_grad.shape.get_volume()),
-                                 CUDA_NUM_THREADS,
-                                 0,
-                                 stream>>>(output_grad.get<DataType::FLOAT>(),
-                                           index.get<IndexType>(),
-                                           input_grad.get<DataType::FLOAT>(),
-                                           output_grad.shape.get_volume(),
-                                           stride,
-                                           input_dim_size,
-                                           output_dim_size);
+    gather_backward<real_type<IndexType>>
+        <<<GET_BLOCKS(output_grad.shape.get_volume()),
+           CUDA_NUM_THREADS,
+           0,
+           stream>>>(output_grad.get<DataType::FLOAT>(),
+                     index.get<IndexType>(),
+                     input_grad.get<DataType::FLOAT>(),
+                     output_grad.shape.get_volume(),
+                     stride,
+                     input_dim_size,
+                     output_dim_size);
   }
 };
 
