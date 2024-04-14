@@ -78,7 +78,9 @@ struct Request {
   std::vector<struct BeamTree> beam_trees;
   // PEFT field
   RequestType req_type = REQ_INFERENCE;
+  size_t processed_finetuning_tokens = 0;
   int completed_training_steps = 0;
+  int dataset_entry_processed_tokens = 0;
   int max_training_steps = 1;
   int benchmarking_tokens = -1;
   std::string dataset_filepath;
@@ -132,6 +134,9 @@ public:
   void set_max_sequence_length(int max_seq_length);
   void push_spec_infer_tree_width(int tree_width);
   int get_max_sequence_length();
+  void set_enable_peft_finetuning(bool enable_peft_finetuning_);
+  void set_disable_peft_bwd(bool disable_peft_bwd_);
+  static void set_inference_finished();
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -277,6 +282,11 @@ private:
   int max_spec_tree_token_num;
   int max_sequence_length;
   Status request_manager_status;
+
+  // peft benchmarking
+  bool enable_peft_finetuning = false;
+  bool disable_peft_bwd = false;
+  static bool inference_finished;
 
   // tree width in each speculative step, if not specified 1
   std::vector<int> spec_infer_tree_width;
