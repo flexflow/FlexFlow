@@ -35,6 +35,7 @@ using json = nlohmann::json;
 LegionRuntime::Logger::Category log_app("llama");
 
 class ConcurrentQueue {
+public:
   std::queue<RequestManager::RequestGuid> queue;
   std::mutex request_queue_mutex;
   bool producer_finished = false;
@@ -51,17 +52,19 @@ ConcurrentQueue *get_common_guids_queue() {
 }
 
 void consume() {
-  ConcurrentQueue guids = get_common_guids_queue();
+  RequestManager *rm = RequestManager::get_request_manager();
+  ConcurrentQueue *guids = get_common_guids_queue();
   bool producer_is_finished = false;
   bool queue_is_empty = false;
   while(!producer_is_finished || !queue_is_empty) {
       RequestManager::RequestGuid guid = RequestManager::INVALID_GUID;
       {
-        const std::lock_guard<std::mutex> lock(guids.request_queue_mutex);
-        queue_is_empty = guids.queue.empty();
-        producer_is_finished = guids.producer_finished;
+        const std::lock_guard<std::mutex> lock(guids->request_queue_mutex);
+        queue_is_empty = guids->queue.empty();
+        producer_is_finished = guids->producer_finished;
         if(!queue_is_empty) {
-          guid = guids.queue.pop();
+          guid = guids->queue.front();
+          guids->queue.pop();
         }
       }
       if(guid != RequestManager::INVALID_GUID) {
@@ -307,7 +310,7 @@ void FlexFlow::top_level_task(Task const *task,
   nb_millisecs = nb_millisecs * bucket_timespan;
   int total_num_requests = 0;
   int num_arrival_buckets = 0;
-  ConcurrentQueue guids = get_common_guids_queue();
+  ConcurrentQueue *guids = get_common_guids_queue();
   std::thread consumer{consume};
   {
     using json = nlohmann::json;
@@ -338,11 +341,11 @@ void FlexFlow::top_level_task(Task const *task,
             std::this_thread::sleep_for(std::chrono::milliseconds(nb_millisecs-req_load_time));
         }
         {
-          const std::lock_guard<std::mutex> lock(guids.request_queue_mutex);
+          const std::lock_guard<std::mutex> lock(guids->request_queue_mutex);
           for (int i = 0; i < requests.size(); i++) {
               RequestManager::RequestGuid guid = rm->register_new_request(requests.at(i));
               if (guid != RequestManager::INVALID_GUID) {
-                guids.queue.push(guid);
+                guids->queue.push(guid);
               }
           }
         }
@@ -360,7 +363,7 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   // Wait for consumer to finish
-  consumer.join()
+  consumer.join();
 
   // float* data
   std::cout << "----------inference finished--------------" << std::endl;
