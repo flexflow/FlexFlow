@@ -53,21 +53,26 @@ class TraceBuilder(object):
 
   # Delta is in seconds
   # Rate is in req per second
-  def generate_trace(self, target_arrival_rate=10):
+  def generate_trace(self, target_arrival_rate=10, debug_verbose=False):
     self.import_trace_timestamps()
     self.import_prompt_data()
 
     microsec = 1000000
     avg_arrival_rate = len(self.req_times) / (self.req_times[-1]/float(microsec)) # Request per second. Computed that way to enforce working with numbers of reasonable orders of magnitude
+    if debug_verbose:
+      print("Avg arrival rate of original trace (req/s): ", avg_arrival_rate)
     scale_factor = float(target_arrival_rate) / avg_arrival_rate
+    if debug_verbose:
+      print("Scale factor to obtain target arrival rate: ", scale_factor)
 
-    nb_buckets = ceil(self.req_times[-1] / (delta*microsec))
+    # Buckets are 1 second timeframes
+    nb_buckets = ceil(self.req_times[-1] / microsec)
     buckets = []
     j = 0
     k = 0
     for i in range(nb_buckets):
       bucket_size = 0
-      while(j < len(self.req_times) and self.req_times[j] >= delta*i*microsec and self.req_times[j] < delta*(i+1)*microsec):
+      while(j < len(self.req_times) and self.req_times[j] >= i*microsec and self.req_times[j] < (i+1)*microsec):
         bucket_size += 1
         j += 1
       bucket_size = bucket_size*scale_factor
@@ -81,6 +86,9 @@ class TraceBuilder(object):
         bucket = self.prompt_data[k:k+bucket_size]
       k = (k+bucket_size) % len(self.prompt_data)
       buckets.append(bucket)
+
+    if debug_verbose:
+      print("Avg arrival rate obtained (req/s): ", sum([len(b) for b in buckets])/len(buckets))
     return buckets
 
 if __name__ == '__main__':
