@@ -15,7 +15,7 @@
 
 #include "kernels/allocation.h"
 #include "kernels/batch_norm_kernels.h"
-#include "kernels/device.h"
+#include "device.h"
 #include "kernels/ff_handle.h"
 
 namespace FlexFlow {

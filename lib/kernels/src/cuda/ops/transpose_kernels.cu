@@ -16,6 +16,7 @@
 #include "kernels/accessor.h"
 #include "kernels/transpose_kernels.h"
 #include "utils/exception.h"
+#include "device.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -32,16 +33,14 @@ namespace Transpose {
 
 TransposePerDeviceState init_kernel(int num_dim,
                                     std::vector<ff_dim_t> const &perm) {
-
-  TransposePerDeviceState state;
-  state.num_dim = num_dim;
   int const length = perm.size();
 
+  std::vector<int> perm_vector;
   for (int i = 0; i < std::min(length, MAX_TENSOR_DIM); ++i) {
-    state.perm[i] = perm[i].value();
+    perm_vector.push_back(perm[i].value());
   }
 
-  return state;
+  return {num_dim, perm_vector};
 }
 
 __global__ void transpose_simple_kernel(std::size_t volume,
@@ -50,8 +49,8 @@ __global__ void transpose_simple_kernel(std::size_t volume,
                                         const TransposeStrides info,
                                         float const beta) {
   CUDA_KERNEL_LOOP(o_idx, volume) {
-    std::size i_idx = 0;
-    std::size t = o_idx;
+    size_t i_idx = 0;
+    size_t t = o_idx;
     for (int i = info.num_dim - 1; i >= 0; i--) {
       legion_coord_t ratio = t / info.out_strides[i];
       t -= ratio * info.out_strides[i];

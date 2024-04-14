@@ -13,21 +13,21 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/datatype_dispatch.h"
-#include "kernels/reduction_kernels.h"
+#include "kernels/replicate_kernels.h"
 
 namespace FlexFlow {
 namespace Kernels {
-namespace Reduction {
+namespace Replicate {
 
 template <typename T>
-__global__ void reduction_forward_kernel(T const *input_ptr,
-                                         T *output_ptr,
-                                         size_t num_elements,
-                                         size_t num_replicas) {
+__global__ void replicate_backward_kernel(T const *input_ptr,
+                                          T *output_ptr,
+                                          size_t num_elements,
+                                          size_t num_replicas) {
   CUDA_KERNEL_LOOP(i, num_elements) {
-    output_ptr[i] = input_ptr[i];
-    for (size_t j = 1; j < num_replicas; j++) {
+    for (size_t j = 0; j < num_replicas; j++) {
       output_ptr[i] += input_ptr[i + j * num_elements];
     }
   }
@@ -37,46 +37,46 @@ template <DataType T>
 struct ForwardKernel {
   void operator()(cudaStream_t stream,
                   GenericTensorAccessorR const &input,
+                  GenericTensorAccessorW const &output) {
+
+    checkCUDA(cudaMemcpyAsync((void *)input.get<T>(),
+                              (void *)output.get<T>(),
+                              input.shape.num_elements() * size_of_datatype(T),
+                              cudaMemcpyDeviceToDevice,
+                              stream));
+  }
+};
+
+template <DataType T>
+struct BackwardKernel {
+  void operator()(cudaStream_t stream,
+                  GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output,
                   size_t num_replicas) {
-
     size_t total_elements = input.shape.num_elements() * num_replicas;
-    reduction_forward_kernel<T>
+    replicate_backward_kernel<real_type<T>>
         <<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
             input.get<T>(),
             output.get<T>(),
             input.shape.num_elements(),
             num_replicas);
   }
-}
-
-template <DataType T>
-struct BackwardKernel {
-  void operator()(cudaStream_t stream,
-                  GenericTensorAccessorW const &input,
-                  GenericTensorAccessorR const &output) {
-    checkCUDA(cudaMemcpyAsync(input.get<T>(),
-                              output.get<T>(),
-                              input.shape.num_elements() * sizeof(T),
-                              cudaMemcpyDeviceToDevice,
-                              stream));
-  }
-}
+};
 
 void forward_kernel(cudaStream_t stream,
                     GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output,
-                    size_t num_replicas) {
-  DataTypeDispatch1<ForwardKernel>{}(
-      input->data_type, stream, input, output, num_replicas);
+                    GenericTensorAccessorW const &output) {
+  DataTypeDispatch1<ForwardKernel>{}(input.data_type, stream, input, output);
 }
 
 void backward_kernel(cudaStream_t stream,
-                     GenericTensorAccessorW const &input,
-                     GenericTensorAccessorR const &output) {
-  DataTypeDispatch1<BackwardKernel>{}(input->data_type, stream, input, output);
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorW const &output,
+                     size_t num_replicas) {
+  DataTypeDispatch1<BackwardKernel>{}(
+      input.data_type, stream, input, output, num_replicas);
 }
 
-} // namespace Reduction
+} // namespace Replicate
 } // namespace Kernels
 } // namespace FlexFlow

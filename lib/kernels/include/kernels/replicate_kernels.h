@@ -13,8 +13,8 @@ void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorW const &output);
 
 void backward_kernel(ffStream_t stream,
-                     GenericTensorAccessorW const &input,
-                     GenericTensorAccessorR const &output,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorW const &output,
                      size_t num_replicas);
 
 } // namespace Replicate

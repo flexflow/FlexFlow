@@ -14,6 +14,7 @@
  */
 
 #include "kernels/split_kernels.h"
+#include "device.h"
 
 namespace FlexFlow {
 // declare Legion names

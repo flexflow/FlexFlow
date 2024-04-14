@@ -6,17 +6,18 @@
 
 namespace FlexFlow {
 
-class GatherPerDeviceState : public PerDeviceOpState {
-public:
-  GatherPerDeviceState(FFHandler handler);
+struct GatherPerDeviceState {
   int legion_dim;
-  DataType index_data_type;
+  req<DataType> index_data_type;
 };
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GatherPerDeviceState,
+                                             legion_dim,
+                                             index_data_type);
 
 namespace Kernels {
 namespace Gather {
 void forward_kernel(ffStream_t stream,
-                    GatherPerDeviceState const *m,
+                    GatherPerDeviceState const &m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorR const &index,
                     GenericTensorAccessorW const &output,
@@ -24,7 +25,7 @@ void forward_kernel(ffStream_t stream,
                     size_t input_dim_size,
                     size_t output_dim_size);
 void backward_kernel(ffStream_t stream,
-                     GatherPerDeviceState const *m,
+                     GatherPerDeviceState const &m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorR const &index,
                      GenericTensorAccessorW const &input_grad,

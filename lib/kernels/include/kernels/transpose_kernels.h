@@ -8,7 +8,7 @@ namespace FlexFlow {
 
 struct TransposePerDeviceState {
   int num_dim;
-  req<int> perm[MAX_TENSOR_DIM];
+  req<std::vector<int>> perm;
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(TransposePerDeviceState,

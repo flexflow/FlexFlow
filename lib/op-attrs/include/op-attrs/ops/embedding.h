@@ -41,6 +41,8 @@ struct formatter<::FlexFlow::AggregateOp> : formatter<string_view> {
       case AggregateOp::AVG:
         name = "Avg";
         break;
+      case AggregateOp::NONE:
+        break;
     }
     return formatter<string_view>::format(name, ctx);
   }

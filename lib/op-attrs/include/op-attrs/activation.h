@@ -5,7 +5,7 @@
 
 namespace FlexFlow {
 
-enum class Activation { RELU, SIGMOID, TANH, GELU };
+enum class Activation { RELU, SIGMOID, TANH, GELU, NONE };
 
 }
 
@@ -31,6 +31,9 @@ struct formatter<::FlexFlow::Activation> : formatter<string_view> {
         break;
       case Activation::GELU:
         name = "GeLU";
+        break;
+      case Activation::NONE:
+        name = "None";
         break;
     }
     return formatter<string_view>::format(name, ctx);

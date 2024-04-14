@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "reduce_kernels.h"
+#include "kernels/reduce_kernels.h"
+#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -70,10 +71,10 @@ void backward_kernel(cudaStream_t stream,
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
   float alpha = 1.0, beta = 1.0f;
   switch (m.op_type) {
-    case OP_REDUCE_SUM:
+    case Op::REDUCE_SUM:
       alpha = 1.0f;
       break;
-    case OP_REDUCE_MEAN:
+    case Op::REDUCE_MEAN:
       // When the output is the average of multiple input elements
       // we need to scale the gradients by 1.0 / reduction_size
       alpha = 1.0f / m.reduction_size;

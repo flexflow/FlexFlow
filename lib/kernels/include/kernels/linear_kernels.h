@@ -13,7 +13,8 @@ struct LinearPerDeviceState {
   ffTensorDescriptor_t outputTensor;
   ffActivationDescriptor_t actiDesc;
   float const *one_ptr; // how to handle this?
-  cudnnActivationMode_t activation;
+  cudnnActivationMode_t activation_mode;
+  Activation activation;
   std::optional<RegularizerAttrs> regularizer;
   bool use_bias;
   DataType input_type, weight_type, output_type;
@@ -24,6 +25,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(LinearPerDeviceState,
                                              outputTensor,
                                              actiDesc,
                                              one_ptr,
+                                             activation_mode,
                                              activation,
                                              regularizer,
                                              use_bias,
@@ -44,7 +46,7 @@ LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  int batch_size,
                                  int channel);
 
-bool use_activation(Activation mode);
+bool use_activation(Activation activation);
 
 void forward_kernel(ffStream_t stream,
                     LinearPerDeviceState const &m,

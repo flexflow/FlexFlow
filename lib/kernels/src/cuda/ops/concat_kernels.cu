@@ -74,7 +74,7 @@ void backward_kernel(cudaStream_t stream,
 
   calc_blk_size(num_blocks, output_blk_size, output_grad.shape, axis);
   for (int i = 0; i < num_inputs; i++) {
-    shape = input_grads[i].shape;
+    ArrayShape shape = input_grads[i].shape;
     size_t input_num_blocks = 1;
     calc_blk_size(input_num_blocks, input_blk_sizes[i], shape, axis);
     assert(input_num_blocks == num_blocks);

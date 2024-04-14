@@ -14,7 +14,7 @@
  */
 
 #include "kernels/allocation.h"
-
+#include "device.h"
 #include "kernels/linear_kernels.h"
 
 namespace FlexFlow {
@@ -22,11 +22,27 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Linear {
 
+bool use_activation(Activation activation) {
+  switch (activation) {
+    case Activation::RELU:
+    case Activation::SIGMOID:
+    case Activation::TANH:
+      return true;
+    case Activation::GELU:
+    case Activation::NONE:
+      return false;
+    default:
+      assert(false && "Unsupported activation for Linear");
+      break;
+  }
+  return false;
+}
+
 // what's the float * one_ptr
 LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  float *one_ptr,
                                  Activation activation,
-                                 RegularizerAttrs regularizer,
+                                 std::optional<RegularizerAttrs> regularizer,
                                  bool use_bias,
                                  DataType input_type,
                                  DataType weight_type,
@@ -46,26 +62,30 @@ LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                         1));
   cudnnActivationMode_t mode;
   switch (activation) {
-    case RELU:
+    case Activation::RELU:
       mode = CUDNN_ACTIVATION_RELU;
       break;
-    case SIGMOID:
+    case Activation::SIGMOID:
       mode = CUDNN_ACTIVATION_SIGMOID;
       break;
-    case TANH:
+    case Activation::TANH:
       mode = CUDNN_ACTIVATION_TANH;
       break;
-    case GELU:
-      mode = CUDNN_ACTIVATION_GELU;
+    case Activation::NONE:
       break;
+    // case Activation::GELU:
+    //   mode = CUDNN_ACTIVATION_GELU;  --- cudnnActivationMode_t does not have GELU
+    //   break;
     default:
       // Unsupported activation mode
       assert(false);
   }
   checkCUDNN(
       cudnnSetActivationDescriptor(actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
+  // don't need this line below because we are already setting 4dDescriptor for outputTensor above
+  // checkCUDNN(
+  //     cudnnSetTensorDescriptorFromArrayShape(outputTensor, output_shape));
+
 
   // todo: how to use allocator to allocate memory for float * one_ptr, how many
   // bytes to allocate?
@@ -74,6 +94,7 @@ LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                            outputTensor,
                                            actiDesc,
                                            one_ptr,
+                                           mode,
                                            activation,
                                            regularizer,
                                            use_bias,
@@ -155,16 +176,14 @@ void forward_kernel(cudaStream_t stream,
                                       &beta,
                                       m.outputTensor,
                                       output_ptr));
-  } else if (m.activation == AC_MODE_GELU) {
+  } else if (m.activation == Activation::GELU) {
     size_t elements = (size_t)out_dim * (size_t)batch_size;
     constexpr float B = 0.7978845608028654f;   // sqrt(2.0/M_PI)
     constexpr float C = 0.035677408136300125f; // 0.044715 * sqrt(2.0/M_PI)
     gelu_forward_kernel<<<GET_BLOCKS(elements), CUDA_NUM_THREADS>>>(
         elements, B, C, (float *)output_ptr);
-  } else if (m.activation == AC_MODE_NONE) {
-    // Do nothing
   } else {
-    assert(false && "Unsupported activation for Linear");
+    // Do nothing
   }
 }
 
@@ -195,15 +214,15 @@ void backward_kernel(cudaStream_t stream,
   cudaDataType_t compute_type = CUDA_R_32F;
 #endif
   int output_size = out_dim * batch_size;
-  if (m.activation == AC_MODE_RELU) {
+  if (m.activation == Activation::RELU) {
     relu_backward_kernel(
         m.output_type, output_grad_ptr, output_ptr, output_size, stream);
-  } else if (m.activation == AC_MODE_SIGMOID) {
+  } else if (m.activation == Activation::SIGMOID) {
     sigmoid_backward_kernel(
         m.output_type, output_grad_ptr, output_ptr, output_size, stream);
   } else {
     // TODO: only support relu and sigmoid for now
-    assert(m.activation == AC_MODE_NONE);
+    assert(m.activation == Activation::NONE);
   }
   // Compute weight gradiant
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
@@ -226,24 +245,30 @@ void backward_kernel(cudaStream_t stream,
                          in_dim,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  if (m.kernel_reg_type == REG_MODE_NONE) {
+
+  if (m.regularizer == std::nullopt) {
     // do nothing
-  } else if (m.kernel_reg_type == REG_MODE_L2) {
-    checkCUDA(cublasSgeam(m.handle.blas,
-                          CUBLAS_OP_N,
-                          CUBLAS_OP_N,
-                          in_dim,
-                          out_dim,
-                          &alpha,
-                          (float *)kernel_grad_ptr,
-                          in_dim,
-                          &(m.kernel_reg_lambda),
-                          (float *)kernel_ptr,
-                          in_dim,
-                          (float *)kernel_grad_ptr,
-                          in_dim));
   } else {
-    assert(false && "Only L2 regularization is supported");
+    RegularizerAttrs regularizer_attrs = m.regularizer.value();
+    if (std::holds_alternative<L2RegularizerAttrs>(regularizer_attrs)) {
+      L2RegularizerAttrs l2_attrs = std::get<L2RegularizerAttrs>(regularizer_attrs);
+      float lambda = l2_attrs.lambda;
+      checkCUDA(cublasSgeam(m.handle.blas,
+                            CUBLAS_OP_N,
+                            CUBLAS_OP_N,
+                            in_dim,
+                            out_dim,
+                            &alpha,
+                            (float *)kernel_grad_ptr,
+                            in_dim,
+                            &lambda,
+                            (float *)kernel_ptr,
+                            in_dim,
+                            (float *)kernel_grad_ptr,
+                            in_dim));
+    } else {
+      assert(false && "Only L2 regularization is supported");
+    }
   }
 
   // Compute bias gradiant

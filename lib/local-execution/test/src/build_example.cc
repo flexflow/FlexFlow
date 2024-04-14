@@ -34,7 +34,7 @@ LocalModelTrainingInstance init_model_training_instance() {
   // pre-allocated tensors
   Allocator allocator = get_local_memory_allocator();
   GenericTensorAccessorW input_tensor_backing = allocator.allocate(input);
-  std::unordered_map<tensor_guid_t, GenericTensorAccessorW &>
+  std::unordered_map<tensor_guid_t, GenericTensorAccessorW const &>
       pre_allocated_tensors;
   pre_allocated_tensors.insert({input_tensor, input_tensor_backing});
 
@@ -60,6 +60,7 @@ LocalModelTrainingInstance init_model_training_instance() {
 int main() {
   // TOOD: metrics and update
   LocalModelTrainingInstance ff_model = init_model_training_instance();
+  ff_model.init();
   for (int epoch = 0; epoch < TRAINING_EPOCHS; epoch++) {
     // ff_model.reset_metrics();
     for (int iter = 0; iter < BATCH_ITERS; iter++) {

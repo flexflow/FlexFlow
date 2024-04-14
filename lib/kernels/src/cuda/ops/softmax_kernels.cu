@@ -14,6 +14,7 @@
  */
 
 #include "kernels/softmax_kernels.h"
+#include "device.h"
 
 namespace FlexFlow {
 
@@ -33,7 +34,7 @@ void forward_kernel(cudaStream_t stream,
                     SoftmaxPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnSoftmaxForward(m.handle.dnn,

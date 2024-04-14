@@ -26,6 +26,7 @@ namespace FlexFlow {
 // };
 
 struct LayerNormPerDeviceState {
+  PerDeviceFFHandle handle;
   bool elementwise_affine;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
@@ -34,6 +35,7 @@ struct LayerNormPerDeviceState {
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(LayerNormPerDeviceState,
+                                             handle,
                                              elementwise_affine,
                                              effective_batch_size,
                                              effective_num_elements,
