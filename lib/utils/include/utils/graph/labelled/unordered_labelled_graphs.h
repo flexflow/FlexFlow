@@ -1,138 +1,227 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_UNORDERED_LABELLED_GRAPHS_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_UNORDERED_LABELLED_GRAPHS_H
 
-#include "labelled_open_interfaces.h"
-#include "node_labelled_interfaces.h"
-#include "output_labelled_interfaces.h"
-#include "standard_labelled_interfaces.h"
-#include "utils/graph/open_graphs.h"
+#include "output_labelled_open_interfaces.h"
+#include "unordered_label.h"
+#include "utils/graph/adjacency_openmultidigraph.h"
 
 namespace FlexFlow {
 
 template <typename NodeLabel>
-struct UnorderedNodeLabelledMultiDiGraph
-    : public INodeLabelledMultiDiGraph<NodeLabel>,
-      protected MultiDiGraph {
-public:
-  UnorderedNodeLabelledMultiDiGraph() = delete;
+struct UnorderedNodeLabelledOpenMultiDiGraph
+    : public INodeLabelledOpenMultiDiGraph<NodeLabel> {
 
-  Node add_node(NodeLabel const &label) override {
-    Node n = MultiDiGraph::add_node();
-    node_map.insert({n, label});
-    return n;
+  UnorderedNodeLabelledOpenMultiDiGraph()
+      : g(OpenMultiDiGraph::create<AdjacencyOpenMultiDiGraph>()) {}
+
+  Node add_node(NodeLabel const &l) override {
+    Node node = g.add_node();
+    this->node_labelling.add_label(node, l);
+    return node;
   }
 
-  NodeLabel &at(Node const &n) override {
-    return this->node_map.at(n);
+  NodePort add_node_port() override {
+    return this->g.add_node_port();
   }
 
   NodeLabel const &at(Node const &n) const override {
-    return this->node_map.at(n);
+    return this->node_labelling.get_label(n);
   }
 
-  using MultiDiGraph::query_edges;
-  using MultiDiGraph::query_nodes;
+  NodeLabel &at(Node const &n) override {
+    return this->node_labelling.get_label(n);
+  }
+
+  void add_edge(OpenMultiDiEdge const &e) override {
+    this->g.add_edge(e);
+  }
+
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
+    return g.query_nodes(q);
+  }
+
+  std::unordered_set<OpenMultiDiEdge>
+      query_edges(OpenMultiDiEdgeQuery const &q) const override {
+    return g.query_edges(q);
+  }
+
+  using INodeLabelledOpenMultiDiGraph<NodeLabel>::query_edges;
+
+  UnorderedNodeLabelledOpenMultiDiGraph *clone() const override {
+    return new UnorderedNodeLabelledOpenMultiDiGraph<NodeLabel>(g,
+                                                                node_labelling);
+  }
 
 private:
-  std::unordered_map<Node, NodeLabel> node_map;
+  UnorderedNodeLabelledOpenMultiDiGraph(
+      OpenMultiDiGraph const &g,
+      UnorderedLabelling<Node, NodeLabel> const &node_labelling)
+      : g(g), node_labelling(node_labelling) {}
+
+  OpenMultiDiGraph g;
+  UnorderedLabelling<Node, NodeLabel> node_labelling;
 };
-
-template <typename NodeLabel, typename EdgeLabel>
-struct UnorderedLabelledMultiDiGraph
-    : public ILabelledMultiDiGraph<NodeLabel, EdgeLabel>,
-      public UnorderedNodeLabelledMultiDiGraph<NodeLabel> {
-  void add_edge(MultiDiEdge const &e, EdgeLabel const &label) override {
-    MultiDiGraph::add_edge(e);
-    edge_map.insert({e, label});
-  }
-
-  EdgeLabel &at(MultiDiEdge const &n) override {
-    return this->edge_map.at(n);
-  }
-
-  EdgeLabel const &at(MultiDiEdge const &n) const override {
-    return this->edge_map.at(n);
-  }
-
-private:
-  std::unordered_map<MultiDiEdge, EdgeLabel> edge_map;
-};
-
-MultiDiOutput get_output(MultiDiEdge const &e);
+CHECK_NOT_ABSTRACT(UnorderedNodeLabelledOpenMultiDiGraph<test_types::hash_cmp>);
 
 template <typename NodeLabel, typename OutputLabel>
 struct UnorderedOutputLabelledMultiDiGraph
-    : public IOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>,
-      public UnorderedNodeLabelledMultiDiGraph<NodeLabel> {
-public:
-  void add_output(MultiDiOutput const &output,
-                  OutputLabel const &label) override {
-    this->output_map.insert({output, label});
+    : public IOutputLabelledMultiDiGraph<NodeLabel, OutputLabel> {
+
+  UnorderedOutputLabelledMultiDiGraph()
+      : g(MultiDiGraph::create<AdjacencyMultiDiGraph>()) {}
+
+  OutputLabel const &at(MultiDiOutput const &i) const override {
+    return this->output_labelling.get_label(i);
+  }
+
+  OutputLabel &at(MultiDiOutput const &i) override {
+    return this->output_labelling.get_label(i);
+  }
+
+  Node add_node(NodeLabel const &l) override {
+    Node node = g.add_node();
+    this->node_labelling.add_label(node, l);
+    return node;
+  }
+
+  NodePort add_node_port() override {
+    return this->g.add_node_port();
+  }
+
+  NodeLabel const &at(Node const &n) const override {
+    return this->node_labelling.get_label(n);
+  }
+
+  NodeLabel &at(Node const &n) override {
+    return this->node_labelling.get_label(n);
   }
 
   void add_edge(MultiDiEdge const &e) override {
-    MultiDiOutput output = get_output(e);
-    if (!contains_key(this->output_map, output)) {
-      throw mk_runtime_error("Could not find output {}", output);
-    }
-    this->add_edge(e);
+    this->g.add_edge(e);
   }
 
-  void add_edge(MultiDiOutput const &output,
-                MultiDiInput const &input) override {
-    this->add_edge(MultiDiEdge{output.node, input.node, output.idx, input.idx});
+  void add_output(MultiDiOutput const &output,
+                  OutputLabel const &label) override {
+    this->output_labelling.add_label(output, label);
   }
 
-private:
-  std::unordered_map<MultiDiOutput, OutputLabel> output_map;
-};
-
-template <typename NodeLabel,
-          typename EdgeLabel,
-          typename InputLabel = EdgeLabel,
-          typename OutputLabel = InputLabel>
-struct UnorderedLabelledOpenMultiDiGraph
-    : public ILabelledOpenMultiDiGraph<NodeLabel,
-                                       EdgeLabel,
-                                       InputLabel,
-                                       OutputLabel>,
-      public UnorderedLabelledMultiDiGraph<NodeLabel, EdgeLabel> {
-public:
-  void add_edge(InputMultiDiEdge const &e, InputLabel const &label) {
-    this->add_edge(e);
-    this->input_map.insert({e, label});
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
+    return g.query_nodes(q);
   }
 
-  void add_edge(OutputMultiDiEdge const &e, OutputLabel const &label) {
-    this->add_edge(e);
-    this->output_map.insert({e, label});
+  std::unordered_set<MultiDiEdge>
+      query_edges(MultiDiEdgeQuery const &q) const override {
+    return g.query_edges(q);
   }
 
-  InputLabel const &at(InputMultiDiEdge const &e) const {
-    return this->input_map.at(e);
-  }
+  using IOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>::query_edges;
 
-  InputLabel &at(InputMultiDiEdge const &e) {
-    return this->input_map.at(e);
-  }
-
-  OutputLabel const &at(OutputMultiDiEdge const &e) const {
-    return this->output_map.at(e);
-  }
-
-  OutputLabel &at(DownwardOpenMultiDiEdge const &e) {
-    return this->output_map.at(e);
-  }
-
-  UnorderedLabelledOpenMultiDiGraph() {
-    NOT_IMPLEMENTED();
+  UnorderedOutputLabelledMultiDiGraph *clone() const override {
+    return new UnorderedOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>(
+        g, node_labelling, output_labelling);
   }
 
 private:
-  OpenMultiDiGraph base_graph;
-  std::unordered_map<InputMultiDiEdge, InputLabel> input_map;
-  std::unordered_map<OutputMultiDiEdge, OutputLabel> output_map;
+  UnorderedOutputLabelledMultiDiGraph(
+      MultiDiGraph const &g,
+      UnorderedLabelling<Node, NodeLabel> const &node_labelling,
+      UnorderedLabelling<MultiDiOutput, OutputLabel> const &output_labelling)
+      : g(g), node_labelling(node_labelling),
+        output_labelling(output_labelling) {}
+
+  MultiDiGraph g;
+  UnorderedLabelling<Node, NodeLabel> node_labelling;
+  UnorderedLabelling<MultiDiOutput, OutputLabel> output_labelling;
 };
+CHECK_NOT_ABSTRACT(UnorderedOutputLabelledMultiDiGraph<test_types::hash_cmp,
+                                                       test_types::hash_cmp>);
+
+template <typename NodeLabel, typename EdgeLabel>
+struct UnorderedOutputLabelledOpenMultiDiGraph
+    : public IOutputLabelledOpenMultiDiGraph<NodeLabel, EdgeLabel> {
+
+  UnorderedOutputLabelledOpenMultiDiGraph()
+      : g(OpenMultiDiGraph::create<AdjacencyOpenMultiDiGraph>()) {}
+
+  EdgeLabel const &at(InputMultiDiEdge const &i) const override {
+    return this->input_labelling.get_label(i);
+  }
+
+  EdgeLabel &at(InputMultiDiEdge const &i) override {
+    return this->input_labelling.get_label(i);
+  }
+
+  EdgeLabel const &at(MultiDiOutput const &i) const override {
+    return this->output_labelling.get_label(i);
+  }
+
+  EdgeLabel &at(MultiDiOutput const &i) override {
+    return this->output_labelling.get_label(i);
+  }
+
+  Node add_node(NodeLabel const &l) override {
+    Node node = g.add_node();
+    this->node_labelling.add_label(node, l);
+    return node;
+  }
+
+  NodePort add_node_port() override {
+    return this->g.add_node_port();
+  }
+
+  NodeLabel const &at(Node const &n) const override {
+    return this->node_labelling.get_label(n);
+  }
+
+  NodeLabel &at(Node const &n) override {
+    return this->node_labelling.get_label(n);
+  }
+
+  void add_label(MultiDiOutput const &o, EdgeLabel const &l) override {
+    this->output_labelling.add_label(o, l);
+  }
+
+  void add_label(InputMultiDiEdge const &i, EdgeLabel const &l) override {
+    this->input_labelling.add_label(i, l);
+  }
+
+  void add_edge(OpenMultiDiEdge const &e) override {
+    this->g.add_edge(e);
+  }
+
+  std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
+    return this->g.query_nodes(q);
+  }
+
+  std::unordered_set<OpenMultiDiEdge>
+      query_edges(OpenMultiDiEdgeQuery const &q) const override {
+    return this->g.query_edges(q);
+  }
+
+  using IOutputLabelledOpenMultiDiGraph<NodeLabel, EdgeLabel>::query_edges;
+
+  UnorderedOutputLabelledOpenMultiDiGraph *clone() const override {
+    return new UnorderedOutputLabelledOpenMultiDiGraph<NodeLabel, EdgeLabel>(
+        g, node_labelling, input_labelling, output_labelling);
+  }
+
+private:
+  UnorderedOutputLabelledOpenMultiDiGraph(
+      OpenMultiDiGraph const &g,
+      UnorderedLabelling<Node, NodeLabel> const &node_labelling,
+      UnorderedLabelling<InputMultiDiEdge, EdgeLabel> const &input_labelling,
+      UnorderedLabelling<MultiDiOutput, EdgeLabel> const &output_labelling)
+      : g(g), node_labelling(node_labelling), input_labelling(input_labelling),
+        output_labelling(output_labelling) {}
+
+  OpenMultiDiGraph g;
+  UnorderedLabelling<Node, NodeLabel> node_labelling;
+  UnorderedLabelling<InputMultiDiEdge, EdgeLabel> input_labelling;
+  UnorderedLabelling<MultiDiOutput, EdgeLabel> output_labelling;
+};
+CHECK_NOT_ABSTRACT(
+    UnorderedOutputLabelledOpenMultiDiGraph<test_types::hash_cmp,
+                                            test_types::hash_cmp>);
 
 } // namespace FlexFlow
 

@@ -226,7 +226,7 @@ std::vector<typename C::mapped_type> values(C const &c) {
 }
 
 template <typename C>
-std::unordered_set<std::pair<typename C::key_type, typename C::value_type>>
+std::unordered_set<std::pair<typename C::key_type, typename C::mapped_type>>
     items(C const &c) {
   return {c.begin(), c.end()};
 }
@@ -665,6 +665,16 @@ T reversed(T const &t) {
 
 template <typename T>
 std::vector<T> value_all(std::vector<std::optional<T>> const &v) {
+  return transform(v, [](std::optional<T> const &element) {
+    return unwrap(element, [] {
+      throw mk_runtime_error(
+          "Encountered element without value in call to value_all");
+    });
+  });
+}
+
+template <typename T>
+std::unordered_set<T> value_all(std::unordered_set<std::optional<T>> const &v) {
   return transform(v, [](std::optional<T> const &element) {
     return unwrap(element, [] {
       throw mk_runtime_error(

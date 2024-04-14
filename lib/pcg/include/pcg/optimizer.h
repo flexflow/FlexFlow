@@ -7,21 +7,21 @@
 namespace FlexFlow {
 
 struct SGDOptimizer {
-  req<double> lr;
-  req<double> momentum;
-  req<bool> nesterov;
+  double lr;
+  double momentum;
+  bool nesterov;
   req<double> weight_decay;
 };
 FF_VISITABLE_STRUCT(SGDOptimizer, lr, momentum, nesterov, weight_decay);
 
 struct AdamOptimizer {
-  req<double> alpha;
-  req<double> beta1;
-  req<double> beta2;
-  req<double> weight_decay;
-  req<double> epsilon;
-  req<double> alpha_t;
-  req<double> beta_t;
+  double alpha;
+  double beta1;
+  double beta2;
+  double weight_decay;
+  double epsilon;
+  double alpha_t;
+  double beta_t;
   req<double> beta2_t;
 };
 FF_VISITABLE_STRUCT(AdamOptimizer,

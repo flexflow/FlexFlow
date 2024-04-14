@@ -9,6 +9,7 @@
 #include "utils/graph/traversal.h"
 #include "utils/graph/undirected.h"
 #include "utils/graph/views.h"
+#include "utils/variant.h"
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -40,6 +41,10 @@ std::vector<Node> add_nodes(DiGraph &g, int num_nodes) {
 
 std::vector<Node> add_nodes(MultiDiGraph &g, int num_nodes) {
   return add_nodes_impl<MultiDiGraph>(g, num_nodes);
+}
+
+std::vector<Node> add_nodes(OpenMultiDiGraph &g, int num_nodes) {
+  return add_nodes_impl<OpenMultiDiGraph>(g, num_nodes);
 }
 
 std::vector<NodePort> add_node_ports(MultiDiGraph &g, int num_node_ports) {
@@ -164,7 +169,9 @@ DiGraphView apply_contraction(DiGraphView const &g,
   for (auto const &kv : nodes) {
     Node from = kv.first;
     Node into = kv.second;
-    contractedView = contract_node(contractedView, from, into);
+    if (from != into) {
+      contractedView = contract_node(contractedView, from, into);
+    }
   }
   return contractedView;
 }
@@ -250,7 +257,7 @@ std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &g,
 
 std::unordered_set<MultiDiOutput> get_outputs(MultiDiGraphView const &g) {
   return transform(get_edges(g), [&](MultiDiEdge const &e) -> MultiDiOutput {
-    return MultiDiOutput(e);
+    return static_cast<MultiDiOutput>(e);
   });
 }
 
@@ -327,24 +334,29 @@ std::unordered_map<NodePort, std::unordered_set<MultiDiEdge>>
 
 std::unordered_set<DownwardOpenMultiDiEdge>
     get_outgoing_edges(OpenMultiDiGraphView const &g, Node const &n) {
-  return transform(g.query_edges(OpenMultiDiEdgeQuery(
-                       InputMultiDiEdgeQuery::none(),
-                       MultiDiEdgeQuery::all().with_src_nodes({n}),
-                       OutputMultiDiEdgeQuery::all().with_src_nodes({n}))),
-                   [](OpenMultiDiEdge const &e) {
-                     return narrow<DownwardOpenMultiDiEdge>(e).value();
-                   });
+  return value_all(
+      narrow<DownwardOpenMultiDiEdge>(g.query_edges(OpenMultiDiEdgeQuery(
+          InputMultiDiEdgeQuery::none(),
+          MultiDiEdgeQuery::all().with_src_nodes({n}),
+          OutputMultiDiEdgeQuery::all().with_src_nodes({n})))));
 }
 
 std::unordered_set<UpwardOpenMultiDiEdge>
     get_incoming_edges(OpenMultiDiGraphView const &g, Node const &n) {
-  return transform(g.query_edges(OpenMultiDiEdgeQuery(
-                       InputMultiDiEdgeQuery::all().with_dst_nodes({n}),
-                       MultiDiEdgeQuery::all().with_dst_nodes({n}),
-                       OutputMultiDiEdgeQuery::none())),
-                   [](OpenMultiDiEdge const &e) {
-                     return narrow<UpwardOpenMultiDiEdge>(e).value();
-                   });
+  return value_all(narrow<UpwardOpenMultiDiEdge>(g.query_edges(
+      OpenMultiDiEdgeQuery(InputMultiDiEdgeQuery::all().with_dst_nodes({n}),
+                           MultiDiEdgeQuery::all().with_dst_nodes({n}),
+                           OutputMultiDiEdgeQuery::none()))));
+}
+
+std::unordered_set<OutputMultiDiEdge>
+    get_open_outputs(OpenMultiDiGraphView const &g) {
+  return narrow<OutputMultiDiEdge>(
+      g.query_edges(OutputMultiDiEdgeQuery::all()));
+}
+std::unordered_set<InputMultiDiEdge>
+    get_open_inputs(OpenMultiDiGraphView const &g) {
+  return narrow<InputMultiDiEdge>(g.query_edges(InputMultiDiEdgeQuery::all()));
 }
 
 std::unordered_map<Node, std::unordered_set<Node>>
@@ -756,6 +768,30 @@ std::unordered_set<std::unordered_set<Node>>
     visited = set_union(visited, component);
   }
   return components;
+}
+
+std::unordered_set<Node> get_closed_sources(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return get_incoming_edges(g, n).size() == 0;
+  });
+}
+
+std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return get_outgoing_edges(g, n).size() == 0;
+  });
+}
+
+std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return !get_incoming_edges(g, n).empty();
+  });
+}
+
+std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g) {
+  return filter(get_nodes(g), [&](Node const &n) {
+    return !get_outgoing_edges(g, n).empty();
+  });
 }
 
 } // namespace FlexFlow

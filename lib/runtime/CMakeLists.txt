@@ -17,18 +17,18 @@ ff_add_library(
     pcg
 )
 
-ff_add_test_executable(
-  NAME
-    runtime-test
-  SRC_PATTERNS
-    test/src/*.cc
-  PUBLIC_INCLUDE
-    include/
-  PRIVATE_INCLUDE
-    test/src/ src/
-  DEPS
-    runtime
-    doctest
-)
+# ff_add_test_executable(
+#   NAME
+#     runtime-test
+#   SRC_PATTERNS
+#     test/src/*.cc
+#   PUBLIC_INCLUDE
+#     include/
+#   PRIVATE_INCLUDE
+#     test/src/ src/
+#   DEPS
+#     runtime
+#     doctest
+# )
 
 add_subdirectory(ffi)

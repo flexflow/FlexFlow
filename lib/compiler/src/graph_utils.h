@@ -9,7 +9,8 @@ SerialParallelDecomposition
     get_serial_parallel_decomposition(ParallelComputationGraph const &pcg);
 
 ParallelComputationGraph cg_to_pcg(ComputationGraph const &g);
-SubParallelComputationGraph pcg_to_subpcg(ParallelComputationGraph const &g);
+SubParallelComputationGraphView
+    pcg_to_subpcg(ParallelComputationGraph const &g);
 
 // NOTE(@wmdi): I think we should have the following interfaces in the graph
 // library eventually.
