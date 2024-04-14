@@ -3,15 +3,15 @@
 namespace FlexFlow {
 
 bool is_input_edge(OpenMultiDiEdge const &e) {
-  return holds_alternative<InputMultiDiEdge>(e);
+  return std::holds_alternative<InputMultiDiEdge>(e);
 }
 
 bool is_output_edge(OpenMultiDiEdge const &e) {
-  return holds_alternative<OutputMultiDiEdge>(e);
+  return std::holds_alternative<OutputMultiDiEdge>(e);
 }
 
 bool is_standard_edge(OpenMultiDiEdge const &e) {
-  return holds_alternative<MultiDiEdge>(e);
+  return std::holds_alternative<MultiDiEdge>(e);
 }
 
 OpenMultiDiEdgeQuery::OpenMultiDiEdgeQuery(

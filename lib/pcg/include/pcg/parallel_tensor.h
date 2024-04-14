@@ -47,6 +47,8 @@ struct ParallelTensor : public use_visitable_cmp<ParallelTensor> {
                  std::optional<ParamSync> sync_type = std::nullopt,
                  std::optional<Initializer> initializer = std::nullopt);
 
+  ParallelTensorShape get_shape() const;
+
 public:
   ParallelTensorDims dims;
   DataType data_type;

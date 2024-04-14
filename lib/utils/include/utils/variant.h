@@ -42,7 +42,7 @@ struct elements_satisfy<Cond, std::variant<Ts...>>
     : elements_satisfy_impl<Cond, Ts...> {};
 
 template <typename T, typename Variant>
-struct is_in_variant;
+struct is_in_variant : std::false_type {};
 template <typename T, typename... Rest>
 struct is_in_variant<T, std::variant<T, Rest...>> : std::true_type {};
 template <typename T, typename Head, typename... Rest>
@@ -169,7 +169,7 @@ auto widen(Container const &c) -> decltype(transform(
 template <
     typename VariantOut,
     typename VariantIn,
-    typename = std::enable_if<is_subeq_variant<VariantOut, VariantIn>::value>>
+    typename = std::enable_if_t<is_subeq_variant<VariantOut, VariantIn>::value>>
 std::optional<VariantOut> narrow(VariantIn const &v) {
   return visit(VariantNarrowFunctor<VariantOut>{}, v);
 }
@@ -178,7 +178,7 @@ template <
     typename VariantOut,
     typename Container,
     typename VariantIn = typename Container::value_type,
-    typename = std::enable_if<is_subeq_variant<VariantIn, VariantOut>::value>>
+    typename = std::enable_if_t<is_subeq_variant<VariantOut, VariantIn>::value>>
 auto narrow(Container const &c) -> decltype(transform(
     c,
     std::declval<
@@ -186,12 +186,20 @@ auto narrow(Container const &c) -> decltype(transform(
   return transform(c, [](VariantIn const &i) { return narrow<VariantOut>(i); });
 }
 
+template <typename TypeOut,
+          typename Container,
+          typename VariantIn = typename Container::value_type,
+          typename = std::enable_if_t<is_in_variant<TypeOut, VariantIn>::value>>
+auto narrow(Container const &c) {
+  return transform(c, [](VariantIn const &e) { return get<TypeOut>(e); });
+}
+
 template <
     typename T1,
     typename T2,
     typename... Trest,
     typename VariantIn,
-    typename = std::enable_if<
+    typename = std::enable_if_t<
         !is_subeq_variant<std::variant<T1, T2, Trest...>, VariantIn>::value>>
 std::optional<std::variant<T1, T2, Trest...>> narrow(VariantIn const &v) {
   return visit(VariantNarrowFunctor<std::variant<T1, T2, Trest...>>{}, v);

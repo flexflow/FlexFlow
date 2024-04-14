@@ -19,7 +19,7 @@ struct ListSize {
 };
 
 template <typename T>
-using AttributeExpr = variant<T, ListIndexAccess<T>, ListSize<T>>;
+using AttributeExpr = std::variant<T, ListIndexAccess<T>, ListSize<T>>;
 
 template <typename K, typename V>
 struct AttributeConstraint {

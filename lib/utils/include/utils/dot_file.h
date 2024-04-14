@@ -5,6 +5,7 @@
 #include <cassert>
 #include <fstream>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -28,16 +29,16 @@ private:
     return s.str();
   }
   bool has_ostream() const {
-    return this->owned_fstream.has_value() || this->out.has_value();
+    return this->owned_fstream.has_value() || this->out != nullptr;
   }
   std::ostream &get_ostream() {
     bool has_owned_stream = this->owned_fstream.has_value();
-    bool has_stream_ref = this->out.has_value();
+    bool has_stream_ref = (this->out != nullptr);
     assert(has_owned_stream != has_stream_ref);
     if (has_owned_stream) {
       return this->owned_fstream.value();
     } else if (has_stream_ref) {
-      return this->out.value();
+      return *this->out;
     } else {
       throw std::runtime_error("No ostream value set");
     }
