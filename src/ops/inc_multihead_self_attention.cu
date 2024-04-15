@@ -1495,12 +1495,18 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
     int total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
                        bc->requestsInfo[i].num_tokens_in_batch;
+    int max_peft_tokens = bc->requestsInfo[i].max_sequence_length;
     // Copy query to m->query_activation_buffer if we need to compute
     // PEFT backward
     if (bc->requestsInfo[i].peft_bwd) {
-      MemoryAllocator *allocator = m->handle.peft_activation_allocator;
-      m->query_activation_buffer = allocator->allocate_instance_untyped(
-          sizeof(DT) * total_tokens * m->num_q_heads * m->qProjSize);
+      size_t activation_size_needed =
+          sizeof(DT) * max_peft_tokens * m->num_q_heads * m->qProjSize;
+      if (activation_size_needed > m->allocated_peft_buffer_size1) {
+        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+        m->query_activation_buffer =
+            allocator->allocate_instance_untyped(activation_size_needed);
+        m->allocated_peft_buffer_size1 = activation_size_needed;
+      }
       int parallelism = m->hidden_size * num_tokens;
       store_query_cache<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
@@ -1646,9 +1652,14 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
     // PEFT backward
     if (bc->requestsInfo[i].peft_bwd) {
       DT *C_softmax = static_cast<DT *>(m->qk_prods_softmax);
-      MemoryAllocator *allocator = m->handle.peft_activation_allocator;
-      m->softmax_activation_buffer = allocator->allocate_instance_untyped(
-          sizeof(DT) * total_tokens * num_new_tokens * m->num_q_heads);
+      size_t activation_size_needed =
+          sizeof(DT) * max_peft_tokens * max_peft_tokens * m->num_q_heads;
+      if (activation_size_needed > m->allocated_peft_buffer_size2) {
+        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+        m->softmax_activation_buffer =
+            allocator->allocate_instance_untyped(activation_size_needed);
+        m->allocated_peft_buffer_size2 = activation_size_needed;
+      }
       checkCUDA(cudaMemcpyAsync(m->softmax_activation_buffer,
                                 C_softmax,
                                 sizeof(DT) * total_tokens * num_new_tokens *
@@ -2131,6 +2142,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
              gpu_mem_allocator.reserved_allocated_size);
     }
   }
+  allocated_peft_buffer_size1 = 0;
+  allocated_peft_buffer_size2 = 0;
   cudaStreamSynchronize(stream);
 }
 

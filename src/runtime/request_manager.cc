@@ -315,6 +315,7 @@ RequestManager::RequestGuid
 
 RequestManager::RequestGuid
     RequestManager::register_new_peft_request(Request const &request_) {
+  assert(enable_peft_finetuning && "PEFT finetuning is not enabled");
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Add a new request
   Request request;
@@ -330,11 +331,18 @@ RequestManager::RequestGuid
 
   // Load dataset
   if (request_.benchmarking_tokens >= 0) {
-    assert(request_.benchmarking_tokens == get_max_sequence_length());
+    assert(request_.benchmarking_tokens <= get_max_sequence_length());
     request.benchmarking_tokens = request_.benchmarking_tokens;
-    request.tokens.insert(request.tokens.end(),
-                          request_.benchmarking_tokens,
-                          15); // insert random number
+    std::vector<int32_t> input_tokens;
+    std::vector<int32_t> output_tokens;
+    bool bos_added = (bos_token_id >= 0 && model_type != ModelType::FALCON);
+    if (bos_added) {
+      input_tokens.push_back(bos_token_id);
+    }
+    input_tokens.insert(input_tokens.end(),
+                        request_.benchmarking_tokens - (int)bos_added,
+                        15); // insert random number
+    request.dataset.push_back(std::make_pair(input_tokens, output_tokens));
   } else {
     using json = nlohmann::json;
     std::ifstream file_handle(request.dataset_filepath);
@@ -527,12 +535,13 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                                                InferenceResult const &result) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   // Step 1: append result from previous iteration to request's tokens
-  for (int i = 0; i < old_bc.num_active_infr_tokens(); i++) {
+  for (int i = 0; i < old_bc.num_active_tokens(); i++) {
     size_t guid =
         old_bc.requestsInfo[old_bc.tokensInfo[i].request_index].request_guid;
     Request &request = all_requests[guid];
-    assert(request.req_type == RequestType::REQ_INFERENCE &&
-           "Found misplaced finetuning request");
+    if (request.req_type == RequestType::REQ_FINETUNING) {
+      continue;
+    }
     if (old_bc.tokensInfo[i].abs_depth_in_request + 1 < request.tokens.size()) {
       // This is a prompt token
       continue;

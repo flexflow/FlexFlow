@@ -222,6 +222,7 @@ public:
   // PEFT specific fields
   void *softmax_activation_buffer;
   void *query_activation_buffer;
+  size_t allocated_peft_buffer_size1 = 0, allocated_peft_buffer_size2 = 0;
 };
 
 }; // namespace FlexFlow

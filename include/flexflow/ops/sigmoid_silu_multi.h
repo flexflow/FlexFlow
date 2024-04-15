@@ -110,6 +110,7 @@ public:
   Realm::RegionInstance reserveInst;
   // PEFT related fields
   void *input_activation;
+  size_t allocated_peft_buffer_size = 0;
 };
 
 }; // namespace FlexFlow
