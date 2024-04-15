@@ -74,7 +74,8 @@ LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
         mode = CUDNN_ACTIVATION_TANH;
         break;
       case Activation::GELU:
-        // mode = CUDNN_ACTIVATION_GELU; //cudnnActivationMode_t does not have GELU
+        // mode = CUDNN_ACTIVATION_GELU; //cudnnActivationMode_t does not have
+        // GELU
         break;
       default:
         // Unsupported activation mode
