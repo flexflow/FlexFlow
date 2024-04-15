@@ -1,4 +1,6 @@
-'''Script to generate a PlantUML graph for the inheritance / dependency hierarchy between the graph classes'''
+'''
+Script to generate a PlantUML graph for the inheritance / dependency hierarchy between the graph classes
+'''
 
 import subprocess
 import re
@@ -95,5 +97,5 @@ if __name__=='__main__':
 
     final_puml+='\n'.join(connections)
     final_puml+="\n\n@enduml"
-    with open('output.puml', 'w') as file:
+    with open('graph_diagram.puml', 'w') as file:
         file.write(final_puml)

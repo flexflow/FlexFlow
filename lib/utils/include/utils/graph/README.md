@@ -220,7 +220,7 @@ C++ polymorphism is normally achieved with the following pattern:
 `std::shared_ptr<BaseClass> = new DerivedClass();`
 
 This pattern however leaves the burden of memory management on the user.
-To address this, graph classes within the library store as a member 
+To address this, graph classes have a cow_ptr as a member (with type equal to their corresponding Interface class), to which all function calls are delegated.
 ### strong_typedef
 `Node` inherits from `strong_typedef`: this is in order to ensure that distinct types that alias the same type are still considered distinct (and thus using one in place of the other will result in a compiler error).  
 For more info, see https://www.foonathan.net/2016/10/strong-typedefs/
