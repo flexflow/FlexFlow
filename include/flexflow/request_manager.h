@@ -83,6 +83,7 @@ struct Request {
   int dataset_entry_processed_tokens = 0;
   int max_training_steps = 1;
   int benchmarking_tokens = -1;
+  bool warmup = false;
   std::string dataset_filepath;
   std::vector<std::pair<std::vector<BatchConfig::TokenId>,
                         std::vector<BatchConfig::TokenId>>>
@@ -136,7 +137,7 @@ public:
   int get_max_sequence_length();
   void set_enable_peft_finetuning(bool enable_peft_finetuning_);
   void set_disable_peft_bwd(bool disable_peft_bwd_);
-  static void set_inference_finished();
+  static void set_inference_finished(bool finished = true);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,

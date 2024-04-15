@@ -170,8 +170,8 @@ void RequestManager::set_disable_peft_bwd(bool disable_peft_bwd_) {
   disable_peft_bwd = disable_peft_bwd_;
 }
 
-void RequestManager::set_inference_finished() {
-  inference_finished = true;
+void RequestManager::set_inference_finished(bool finished) {
+  inference_finished = finished;
 }
 
 void RequestManager::register_tokenizer(ModelType type,
@@ -250,6 +250,7 @@ RequestManager::RequestGuid
   request.guid = next_available_guid++;
   request.max_sequence_length = request_.max_sequence_length;
   request.peft_model_id = request_.peft_model_id;
+  request.warmup = request_.warmup;
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
@@ -333,6 +334,7 @@ RequestManager::RequestGuid
   request.completed_training_steps = 0;
   request.max_training_steps = request_.max_training_steps;
   request.dataset_filepath = request_.dataset_filepath;
+  request.warmup = request_.warmup;
 
   // Load dataset
   if (request_.benchmarking_tokens >= 0) {
@@ -623,21 +625,22 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         total_request_run_time +=
             profile_info.finish_time - profile_info.start_time;
         profiling_requests[request.guid] = profile_info;
-        log_req_mgr.print(
-            "[Profile] guid(%zu) llm_decoding_steps(%d) start(%.1lf) "
-            "finish(%.1lf) latency(%.1lf) ttft(%.1lf)",
-            request.guid,
-            profile_info.llm_decoding_steps,
-            profile_info.start_time,
-            profile_info.finish_time,
-            profile_info.finish_time - profile_info.start_time,
-            profile_info.first_token_time - profile_info.registration_time);
+        log_req_mgr.print("[%s] guid(%zu) llm_decoding_steps(%d) start(%.1lf) "
+                          "finish(%.1lf) latency(%.1lf) ttft(%.1lf)",
+                          request.warmup ? "Warmup" : "Profile",
+                          request.guid,
+                          profile_info.llm_decoding_steps,
+                          profile_info.start_time,
+                          profile_info.finish_time,
+                          profile_info.finish_time - profile_info.start_time,
+                          profile_info.first_token_time -
+                              profile_info.registration_time);
         // Write output to file if needed:
         if (!output_filepath.empty()) {
           std::ofstream outputFile(output_filepath, std::ios::app);
           if (outputFile.is_open()) {
-            outputFile << "[Profile] guid(" << request.guid
-                       << ") llm_decoding_steps("
+            outputFile << "[" << (request.warmup ? "Warmup" : "Profile")
+                       << "] guid(" << request.guid << ") llm_decoding_steps("
                        << profile_info.llm_decoding_steps << ") latency("
                        << std::fixed << std::setprecision(3)
                        << (profile_info.finish_time - profile_info.start_time)
