@@ -22,6 +22,23 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Linear {
 
+bool use_activation(std::optional<Activation> activation) {
+  if (activation.has_value()) {
+    switch (activation.value()) {
+      case Activation::RELU:
+      case Activation::SIGMOID:
+      case Activation::TANH:
+        return true;
+      case Activation::GELU:
+        return false;
+      default:
+        assert(false && "Unsupported activation for Linear");
+        break;
+    }
+  }
+  return false;
+}
+
 LinearPerDeviceState
     init_kernel(PerDeviceFFHandle handle, Allocator allocator, float *one_ptr;
                 ActiMode activation,
@@ -37,38 +54,34 @@ LinearPerDeviceState
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   checkCUDNN(miopenSetActivationDescriptor(actiDesc, mode, 0.0, 0.0, 0.0));
   checkCUDNN(miopenSet4dTensorDescriptor(outputTensor,
-                                           ff_to_cudnn_datatype(output_type),
-                                           batch_size,
-                                           channel,
-                                           1,
-                                           1));
+                                         ff_to_cudnn_datatype(output_type),
+                                         batch_size,
+                                         channel,
+                                         1,
+                                         1));
 
   miopenActivationMode_t mode;
-  switch (activation) {
-    case RELU:
-      mode = MIOPEN_ACTIVATION_RELU;
-      break;
-    case SIGMOID:
-      mode = MIOPEN_ACTIVATION_SIGMOID;
-      break;
-    case TANH:
-      mode = MIOPEN_ACTIVATION_TANH;
-      break;
-    case GELU:
-      mode = MIOPEN_ACTIVATION_GELU;
-      break;
-    default:
-      // Unsupported activation mode
-      assert(false);
+  if (activation.has_value()) {
+    switch (activation.value()) {
+      case Activation::RELU:
+        mode = CUDNN_ACTIVATION_RELU;
+        break;
+      case Activation::SIGMOID:
+        mode = CUDNN_ACTIVATION_SIGMOID;
+        break;
+      case Activation::TANH:
+        mode = CUDNN_ACTIVATION_TANH;
+        break;
+      case Activation::GELU:
+        // mode = CUDNN_ACTIVATION_GELU; //cudnnActivationMode_t does not have
+        // GELU
+        break;
+      default:
+        // Unsupported activation mode
+        assert(false);
+    }
   }
   checkCUDNN(miopenSetActivationDescriptor(actiDesc, mode, 0.0, 0.0, 0.0));
-  checkCUDNN(miopenSet4dTensorDescriptor(outputTensor,
-                                          ff_to_cudnn_datatype(m.output_type),
-                                          batch_size,
-                                          channel,
-                                          1,
-                                          1));
-
   // todo: how to use allocator to allocate memory for float * one_ptr, how many
   // bytes to allocate?
   checkCUDA(hipMalloc(&one_ptr, sizeof(float) * batch_size));
@@ -83,21 +96,6 @@ LinearPerDeviceState
                                            weight_type,
                                            output_type};
   return per_device_state;
-}
-
-bool use_activation(ActiMode mode) {
-  switch (mode) {
-    case AC_MODE_RELU:
-    case AC_MODE_SIGMOID:
-    case AC_MODE_TANH:
-      return true;
-    case AC_MODE_NONE:
-      return false;
-    default:
-      assert(0);
-      break;
-  }
-  return false;
 }
 
 void forward_kernel(hipStream_t stream,
@@ -185,10 +183,8 @@ void forward_kernel(hipStream_t stream,
                        B,
                        C,
                        (float *)output_ptr);
-  } else if (m.activation == AC_MODE_NONE) {
-    // Do nothing
   } else {
-    assert(false && "Unsupported activation for Linear");
+    // Do nothing
   }
 }
 
@@ -219,15 +215,17 @@ void backward_kernel(hipStream_t stream,
   hipblasDatatype_t compute_type = HIPBLAS_R_32F;
 #endif
   int output_size = out_dim * batch_size;
-  if (m.activation == AC_MODE_RELU) {
-    relu_backward_kernel(
-        m.output_type, output_grad_ptr, output_ptr, output_size, stream);
-  } else if (m.activation == AC_MODE_SIGMOID) {
-    sigmoid_backward_kernel(
-        m.output_type, output_grad_ptr, output_ptr, output_size, stream);
-  } else {
-    // TODO: only support relu and sigmoid for now
-    assert(m.activation == AC_MODE_NONE);
+  if (m.activation.has_value()) {
+    if (m.activation == Activation::RELU) {
+      relu_backward_kernel(
+          m.output_type, output_grad_ptr, output_ptr, output_size, stream);
+    } else if (m.activation == Activation::SIGMOID) {
+      sigmoid_backward_kernel(
+          m.output_type, output_grad_ptr, output_ptr, output_size, stream);
+    } else {
+      // TODO: only support relu and sigmoid for now
+      assert(false && "Unsupported activation for Linear");
+    }
   }
   // Compute weight gradiant
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
@@ -251,24 +249,30 @@ void backward_kernel(hipStream_t stream,
                           compute_type,
                           HIPBLAS_GEMM_DEFAULT));
 
-  if (m.kernel_reg_type == REG_MODE_NONE){
-    //do nothing
-  } else if (m.kernel_reg_type == REG_MODE_L2){
-    checkCUDA(hipblasSgeam(m.handle.blas,
-                          HIPBLAS_OP_N,
-                          HIPBLAS_OP_N,
-                          in_dim,
-                          out_dim,
-                          &alpha,
-                          (float *)kernel_grad_ptr,
-                          in_dim,
-                          &(m.kernel_reg_lambda),
-                          (float *)kernel_ptr,
-                          in_dim,
-                          (float *)kernel_grad_ptr,
-                          in_dim));
-  }else{
-    assert(false && "Only L2 regularization is supported");
+  if (m.regularizer == std::nullopt) {
+    // do nothing
+  } else {
+    RegularizerAttrs regularizer_attrs = m.regularizer.value();
+    if (std::holds_alternative<L2RegularizerAttrs>(regularizer_attrs)) {
+      L2RegularizerAttrs l2_attrs =
+          std::get<L2RegularizerAttrs>(regularizer_attrs);
+      float lambda = l2_attrs.lambda;
+      checkCUDA(hipblasSgeam(m.handle.blas,
+                             HIPBLAS_OP_N,
+                             HIPBLAS_OP_N,
+                             in_dim,
+                             out_dim,
+                             &alpha,
+                             (float *)kernel_grad_ptr,
+                             in_dim,
+                             &(m.kernel_reg_lambda),
+                             (float *)kernel_ptr,
+                             in_dim,
+                             (float *)kernel_grad_ptr,
+                             in_dim));
+    } else {
+      assert(false && "Only L2 regularization is supported");
+    }
   }
   // compute bias gradient
   // NOTE: we use alpha=1 for bias_grad to accumulate gradients
