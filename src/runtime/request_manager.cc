@@ -310,6 +310,11 @@ RequestManager::RequestGuid
   gr.output_text = request_.prompt;
   gr.output_tokens = request.tokens;
   request_generation_results[request.guid] = gr;
+
+  ProfileInfo profile_info;
+  profile_info.registration_time = Realm::Clock::current_time_in_microseconds();
+  profiling_requests[request.guid] = profile_info;
+
   return request.guid;
 }
 
@@ -415,6 +420,11 @@ RequestManager::RequestGuid
   // gr.output_text = prompt;
   // gr.output_tokens = request.tokens;
   request_generation_results[request.guid] = gr;
+
+  ProfileInfo profile_info;
+  profile_info.registration_time = Realm::Clock::current_time_in_microseconds();
+  profiling_requests[request.guid] = profile_info;
+
   return request.guid;
 }
 
@@ -546,9 +556,14 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       // This is a prompt token
       continue;
     } else {
+      // This is a decoding token
       assert(old_bc.tokensInfo[i].abs_depth_in_request + 1 ==
              request.tokens.size());
-      // This is a decoding token
+      if (!profiling_requests[guid].first_token_time_set) {
+        profiling_requests[guid].first_token_time =
+            Realm::Clock::current_time_in_microseconds();
+        profiling_requests[guid].first_token_time_set = true;
+      }
       log_req_mgr.print("Output token is: %d", result.token_ids[i]);
       request.tokens.push_back(result.token_ids[i]);
       // std::string output = this->tokenizer_->Decode(request.tokens);
@@ -610,12 +625,13 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         profiling_requests[request.guid] = profile_info;
         log_req_mgr.print(
             "[Profile] guid(%zu) llm_decoding_steps(%d) start(%.1lf) "
-            "finish(%.1lf) latency(%.1lf)",
+            "finish(%.1lf) latency(%.1lf) ttft(%.1lf)",
             request.guid,
             profile_info.llm_decoding_steps,
             profile_info.start_time,
             profile_info.finish_time,
-            profile_info.finish_time - profile_info.start_time);
+            profile_info.finish_time - profile_info.start_time,
+            profile_info.first_token_time - profile_info.registration_time);
         // Write output to file if needed:
         if (!output_filepath.empty()) {
           std::ofstream outputFile(output_filepath, std::ios::app);
@@ -625,6 +641,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                        << profile_info.llm_decoding_steps << ") latency("
                        << std::fixed << std::setprecision(3)
                        << (profile_info.finish_time - profile_info.start_time)
+                       << ") ttft(" << std::fixed << std::setprecision(3)
+                       << (profile_info.first_token_time -
+                           profile_info.registration_time)
                        << ")\n";
             outputFile.close();
           } else {
@@ -717,11 +736,10 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         new_bc.requestsInfo[i].prompt_phase = true;
         num_active_req++;
         new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
-        // add profile_info for the new request
-        ProfileInfo profile_info;
-        profile_info.llm_decoding_steps = 1;
-        profile_info.start_time = Realm::Clock::current_time_in_microseconds();
-        profiling_requests[new_request.guid] = profile_info;
+        // add start time to profile_info for the new request
+        profiling_requests[new_request.guid].llm_decoding_steps = 1;
+        profiling_requests[new_request.guid].start_time =
+            Realm::Clock::current_time_in_microseconds();
         for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
           int depth = new_bc.requestsInfo[i].first_token_depth_in_request + j;
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
@@ -1233,13 +1251,13 @@ BeamSearchBatchConfig
         new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
 
         // add profile_info for the new request
-        ProfileInfo profile_info;
-        profile_info.llm_decoding_steps = 0;
-        profile_info.ssm_decoding_steps = 0;
-        profile_info.start_time = Realm::Clock::current_time_in_microseconds();
-        profiling_requests[new_request.guid] = profile_info;
+        profiling_requests[new_request.guid].llm_decoding_steps = 0;
+        profiling_requests[new_request.guid].ssm_decoding_steps = 0;
+        profiling_requests[new_request.guid].start_time =
+            Realm::Clock::current_time_in_microseconds();
         // init the beam search metadata per request
-        int ssm_decoding_steps = profile_info.ssm_decoding_steps;
+        int ssm_decoding_steps =
+            profiling_requests[new_request.guid].ssm_decoding_steps;
 
         new_bc.beamRequestsInfo[i].beam_size =
             spec_infer_tree_width.size() > ssm_decoding_steps

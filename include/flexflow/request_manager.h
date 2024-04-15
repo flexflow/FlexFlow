@@ -328,6 +328,8 @@ private:
     int llm_decoding_steps;
     int ssm_decoding_steps;
     double start_time, finish_time;
+    double registration_time, first_token_time;
+    bool first_token_time_set = false;
   };
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;
