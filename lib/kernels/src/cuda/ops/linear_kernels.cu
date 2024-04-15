@@ -22,18 +22,19 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Linear {
 
-bool use_activation(Activation activation) {
-  switch (activation) {
-    case Activation::RELU:
-    case Activation::SIGMOID:
-    case Activation::TANH:
-      return true;
-    case Activation::GELU:
-    case Activation::NONE:
-      return false;
-    default:
-      assert(false && "Unsupported activation for Linear");
-      break;
+bool use_activation(std::optional<Activation> activation) {
+  if (activation.has_value()) {
+    switch (activation.value()) {
+      case Activation::RELU:
+      case Activation::SIGMOID:
+      case Activation::TANH:
+        return true;
+      case Activation::GELU:
+        return false;
+      default:
+        assert(false && "Unsupported activation for Linear");
+        break;
+    }
   }
   return false;
 }
@@ -41,7 +42,7 @@ bool use_activation(Activation activation) {
 // what's the float * one_ptr
 LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  float *one_ptr,
-                                 Activation activation,
+                                 std::optional<Activation> activation,
                                  std::optional<RegularizerAttrs> regularizer,
                                  bool use_bias,
                                  DataType input_type,
@@ -61,24 +62,24 @@ LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                         1,
                                         1));
   cudnnActivationMode_t mode;
-  switch (activation) {
-    case Activation::RELU:
-      mode = CUDNN_ACTIVATION_RELU;
-      break;
-    case Activation::SIGMOID:
-      mode = CUDNN_ACTIVATION_SIGMOID;
-      break;
-    case Activation::TANH:
-      mode = CUDNN_ACTIVATION_TANH;
-      break;
-    case Activation::NONE:
-      break;
-    // case Activation::GELU:
-    //   mode = CUDNN_ACTIVATION_GELU;  --- cudnnActivationMode_t does not have
-    //   GELU break;
-    default:
-      // Unsupported activation mode
-      assert(false);
+  if (activation.has_value()) {
+    switch (activation.value()) {
+      case Activation::RELU:
+        mode = CUDNN_ACTIVATION_RELU;
+        break;
+      case Activation::SIGMOID:
+        mode = CUDNN_ACTIVATION_SIGMOID;
+        break;
+      case Activation::TANH:
+        mode = CUDNN_ACTIVATION_TANH;
+        break;
+      case Activation::GELU:
+        // mode = CUDNN_ACTIVATION_GELU; //cudnnActivationMode_t does not have GELU
+        break;
+      default:
+        // Unsupported activation mode
+        assert(false);
+    }
   }
   checkCUDNN(
       cudnnSetActivationDescriptor(actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
@@ -213,15 +214,17 @@ void backward_kernel(cudaStream_t stream,
   cudaDataType_t compute_type = CUDA_R_32F;
 #endif
   int output_size = out_dim * batch_size;
-  if (m.activation == Activation::RELU) {
-    relu_backward_kernel(
-        m.output_type, output_grad_ptr, output_ptr, output_size, stream);
-  } else if (m.activation == Activation::SIGMOID) {
-    sigmoid_backward_kernel(
-        m.output_type, output_grad_ptr, output_ptr, output_size, stream);
-  } else {
-    // TODO: only support relu and sigmoid for now
-    assert(m.activation == Activation::NONE);
+  if (m.activation.has_value()) {
+    if (m.activation == Activation::RELU) {
+      relu_backward_kernel(
+          m.output_type, output_grad_ptr, output_ptr, output_size, stream);
+    } else if (m.activation == Activation::SIGMOID) {
+      sigmoid_backward_kernel(
+          m.output_type, output_grad_ptr, output_ptr, output_size, stream);
+    } else {
+      // TODO: only support relu and sigmoid for now
+      assert(false && "Unsupported activation for Linear");
+    }
   }
   // Compute weight gradiant
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients

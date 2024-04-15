@@ -27,7 +27,7 @@ struct LinearAttrs {
   int out_channels;
   bool use_bias;
   DataType data_type;
-  Activation activation;
+  std::optional<Activation> activation;
   req<std::optional<RegularizerAttrs>> regularizer;
 };
 FF_VISITABLE_STRUCT(
