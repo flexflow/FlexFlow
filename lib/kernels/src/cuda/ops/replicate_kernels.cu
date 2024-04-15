@@ -13,42 +13,13 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
+#include "device.h"
+#include "kernels/datatype_dispatch.h"
 #include "kernels/replicate_kernels.h"
 
 namespace FlexFlow {
 namespace Kernels {
 namespace Replicate {
-
-template <DataType T>
-struct ForwardKernel {
-  void operator()(cudaStream_t stream,
-                  GenericTensorAccessorR const &input,
-                  GenericTensorAccessorW const &output) {
-
-    checkCUDA(cudaMemcpyAsync(input.get<T>(),
-                              output.get<T>(),
-                              input.shape.num_elements() * sizeof(T),
-                              cudaMemcpyDeviceToDevice,
-                              stream));
-  }
-}
-
-template <DataType T>
-struct BackwardKernel {
-  void operator()(cudaStream_t stream,
-                  GenericTensorAccessorW const &input,
-                  GenericTensorAccessorR const &output,
-                  size_t num_replicas) {
-    size_t total_elements = input.shape.num_elements() * num_replicas;
-    replicate_backward_kernel<T>
-        <<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
-            input.get<T>(),
-            output.get<T>(),
-            input.shape.num_elements(),
-            num_replicas);
-  }
-}
 
 template <typename T>
 __global__ void replicate_backward_kernel(T const *input_ptr,
@@ -62,18 +33,48 @@ __global__ void replicate_backward_kernel(T const *input_ptr,
   }
 }
 
+template <DataType T>
+struct ForwardKernel {
+  void operator()(cudaStream_t stream,
+                  GenericTensorAccessorR const &input,
+                  GenericTensorAccessorW const &output) {
+
+    checkCUDA(cudaMemcpyAsync((void *)input.get<T>(),
+                              (void *)output.get<T>(),
+                              input.shape.num_elements() * size_of_datatype(T),
+                              cudaMemcpyDeviceToDevice,
+                              stream));
+  }
+};
+
+template <DataType T>
+struct BackwardKernel {
+  void operator()(cudaStream_t stream,
+                  GenericTensorAccessorR const &input,
+                  GenericTensorAccessorW const &output,
+                  size_t num_replicas) {
+    size_t total_elements = input.shape.num_elements() * num_replicas;
+    replicate_backward_kernel<real_type<T>>
+        <<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
+            input.get<T>(),
+            output.get<T>(),
+            input.shape.num_elements(),
+            num_replicas);
+  }
+};
+
 void forward_kernel(cudaStream_t stream,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
-  DataTypeDispatch1<ForwardKernel>{}(input->data_type, stream, input, output);
+  DataTypeDispatch1<ForwardKernel>{}(input.data_type, stream, input, output);
 }
 
 void backward_kernel(cudaStream_t stream,
-                     GenericTensorAccessorW const &input,
-                     GenericTensorAccessorR const &output,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorW const &output,
                      size_t num_replicas) {
   DataTypeDispatch1<BackwardKernel>{}(
-      input->data_type, stream, input, output, num_replicas);
+      input.data_type, stream, input, output, num_replicas);
 }
 
 } // namespace Replicate

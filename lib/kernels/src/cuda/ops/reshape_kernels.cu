@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
+#include "device.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/reshape_kernels.h"
 
 namespace FlexFlow {
 
+namespace Kernels {
+namespace Reshape {
+
 ReshapePerDeviceState init_kernel(DataType data_type) {
   return ReshapePerDeviceState{data_type};
 }
-
-namespace Kernels {
-namespace Reshape {
 
 template <DataType T>
 struct ForwardKernel {
@@ -33,11 +33,11 @@ struct ForwardKernel {
                   GenericTensorAccessorW const &output) {
     checkCUDA(cudaMemcpyAsync(output.get<T>(),
                               input.get<T>(),
-                              input.shape.num_elements() * sizeof(T),
+                              input.shape.num_elements() * size_of_datatype(T),
                               cudaMemcpyDeviceToDevice,
                               stream));
   }
-}
+};
 
 template <DataType T>
 struct BackwardKernel {
@@ -45,13 +45,15 @@ struct BackwardKernel {
                   GenericTensorAccessorW const &input,
                   GenericTensorAccessorR const &output) {
     float alpha = 1.0f;
-    apply_add_with_scale<T><<<GET_BLOCKS(input.shape.num_elements()),
-                              CUDA_NUM_THREADS,
-                              0,
-                              stream>>>(
-        input.get<T>(), output.get<T>(), input.shape.num_elements(), (T)alpha);
+    apply_add_with_scale<real_type<T>><<<GET_BLOCKS(input.shape.num_elements()),
+                                         CUDA_NUM_THREADS,
+                                         0,
+                                         stream>>>(input.get<T>(),
+                                                   output.get<T>(),
+                                                   input.shape.num_elements(),
+                                                   (real_type<T>)alpha);
   }
-}
+};
 
 void forward_kernel(cudaStream_t stream,
                     ReshapePerDeviceState const &m,

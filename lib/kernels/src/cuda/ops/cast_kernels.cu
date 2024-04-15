@@ -16,7 +16,6 @@
 #include "device.h"
 #include "kernels/cast_kernels.h"
 #include "kernels/datatype_dispatch.h"
-#include "kernels/device.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -66,7 +65,7 @@ void forward_kernel(PerDeviceFFHandle handle,
                     DataType input_type,
                     DataType output_type) {
   DataTypeDispatch2<ForwardKernel>{}(
-      input_type, output_type, stream, handle, input, output);
+      input_type, output_type, stream, input, output);
 }
 
 void backward_kernel(PerDeviceFFHandle handle,
@@ -76,7 +75,7 @@ void backward_kernel(PerDeviceFFHandle handle,
                      DataType input_type,
                      DataType output_type) {
   DataTypeDispatch2<BackwardKernel>{}(
-      input_type, output_type, stream, handle, input, output);
+      input_type, output_type, stream, input, output);
 }
 
 } // namespace Cast

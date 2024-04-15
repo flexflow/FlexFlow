@@ -13,68 +13,53 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
+#include "device.h"
+#include "kernels/accessor.h"
+#include "kernels/combine_kernels.h"
 #include "kernels/datatype_dispatch.h"
-#include "kernels/partition_kernels.h"
 
 namespace FlexFlow {
-
-RepartitionPerDeviceState::RepartitionPerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {}
-
 namespace Kernels {
-namespace Repartition {
+namespace Combine {
 
-template <DataType T>
+template <DataType DT>
 struct ForwardKernel {
-  void operator()(cudaStream_t stream,
-                  RepartitionPerDeviceState const &m,
+  void operator()(ffStream_t stream,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
-    checkCUDA(cudaMemcpyAsync(output.get<T>(),
-                              input.get<T>(),
-                              input.shape.num_elements() * sizeof(T),
+    checkCUDA(cudaMemcpyAsync(output.get<DT>(),
+                              input.get<DT>(),
+                              input.shape.get_volume() * size_of_datatype(DT),
                               cudaMemcpyDeviceToDevice,
                               stream));
   }
-}
+};
 
-template <DataType T>
+template <DataType DT>
 struct BackwardKernel {
-  void operator()(cudaStream_t stream,
-                  RepartitionPerDeviceState const &m,
+  void operator()(ffStream_t stream,
                   GenericTensorAccessorR const &output_grad,
                   GenericTensorAccessorW const &input_grad) {
-    add_kernel<T><<<GET_BLOCKS(input_grad.shape.num_elements()),
-                    CUDA_NUM_THREADS,
-                    0,
-                    stream>>>(input_grad.get<T>(),
-                              output_grad.get<T>(),
-                              input_grad.shape.num_elements());
+    size_t num_elements = output_grad.shape.get_volume();
+    add_kernel<real_type<DT>>
+        <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
+            input_grad.get<DT>(), output_grad.get<DT>(), num_elements);
   }
-}
+};
 
-RepartitionPerDeviceState
-    init_kernel(PerDeviceFFHandle const &handle, DataType data_type) {
-  RepartitionPerDeviceState per_device_state = {handle, data_type};
-  return per_device_state;
-}
-
-void forward_kernel(cudaStream_t stream,
-                    RepartitionPerDeviceState const &m,
+void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
-  DataTypeDispatch1<ForwardKernel>{}(m.data_type, stream, m, input, output)
+  DataTypeDispatch1<ForwardKernel>{}(input.data_type, stream, input, output);
 }
 
-void backward_kernel(cudaStream_t stream,
-                     RepartitionPerDeviceState const &m,
+void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const &input_grad) {
   DataTypeDispatch1<BackwardKernel>{}(
-      m.data_type, stream, m, input_grad, output_grad)
+      input_grad.data_type, stream, output_grad, input_grad);
 }
 
-} // namespace Repartition
+} // namespace Combine
 } // namespace Kernels
 } // namespace FlexFlow
