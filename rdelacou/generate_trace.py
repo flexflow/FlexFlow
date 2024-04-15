@@ -1,9 +1,7 @@
-import datasets
-from datasets import load_dataset
 import pandas as pd
 from math import ceil
 from random import shuffle, uniform
-import json
+import json, pickle, requests, os, argparse
 
 class TraceBuilder(object):
 
@@ -29,24 +27,37 @@ class TraceBuilder(object):
   
   def import_prompt_data(self, shuffle_=True):
     if not self.imported_prompt_data:
-      # Import ShareGPT data
-      datasets.builder.has_sufficient_disk_space = lambda needed_bytes, directory='.': True # Workaround for memory permissions (see https://github.com/huggingface/datasets/issues/1785)
-      data_files = {"json": "ShareGPT_V3_unfiltered_cleaned_split_no_imsorry.json"}
-      json_file = load_dataset("anon8231489123/ShareGPT_Vicuna_unfiltered", data_files=data_files)["json"]
+      sharegpt_filename = "sharegpt_opt_text_completion_length.pkl"
+      sharegpt_filepath = f"./{sharegpt_filename}"
+      if os.path.exists(sharegpt_filepath):
+        os.remove("sharegpt_opt_text_completion_length.pkl")
+      sharegpt_url = f"https://github.com/sosp-ae-39/sosp-ae-astra/raw/main/datasets/{sharegpt_filename}"
+      response = requests.get(sharegpt_url)
+      with open(sharegpt_filename, "wb") as file:
+        file.write(response.content)
+      with open(sharegpt_filepath, 'rb') as f:
+        data2 = pickle.load(f)
+      os.remove("sharegpt_opt_text_completion_length.pkl")
 
-      self.prompt_data = []
-      for entry in json_file:
-        conv = entry["conversations"]
-        i = 0
-        while i < len(conv):
-          if conv[i]["from"] == "human" and i+1 < len(conv) and conv[i+1]["from"] == "gpt":
-            prompt = conv[i]["value"]
-            #generated = conv[i+1]["value"]
-            if len(prompt) > 0: ################# TODO: Clean prompts (sequence length bounds, context, etc...)
-              self.prompt_data.append(prompt)
-            i += 2
-          else:
-            i += 1
+      prompt_lengths = [pair[0] for pair in data2 if pair[0] <= 2048 and pair[0] >= 4 and pair[1] >= 4 and pair[1] <= 2048 and pair[0]+pair[1] <= 2048]
+      generation_lengths = [pair[1] for pair in data2 if pair[0] <= 2048 and pair[0] >= 4 and pair[1] >= 4 and pair[1] <= 2048 and pair[0]+pair[1] <= 2048]
+
+      for pair in data2:
+        assert(len(pair) == 2)
+
+      prompt_lengths = [pair[0] for pair in data2 if pair[0] <= 2048 and pair[0] >= 4 and pair[1] >= 4 and pair[1] <= 2048 and pair[0]+pair[1] <= 2048]
+      generation_lengths = [pair[1] for pair in data2 if pair[0] <= 2048 and pair[0] >= 4 and pair[1] >= 4 and pair[1] <= 2048 and pair[0]+pair[1] <= 2048]
+      num_pairs = len(prompt_lengths)
+      assert(num_pairs == len(generation_lengths))
+      print("Number of conversation pairs: ", num_pairs)
+
+      print(f"Prompt lengths: min={min(prompt_lengths)}, max={max(prompt_lengths)}, avg={sum(prompt_lengths)/len(prompt_lengths)}")
+      print(f"Generation lengths: min={min(generation_lengths)}, max={max(generation_lengths)}, avg={sum(generation_lengths)/len(generation_lengths)}")
+      total_lengths = [prompt_lengths[i] + generation_lengths[i] for i in range(len(prompt_lengths))]
+      print(f"Total lengths: min={min(total_lengths)}, max={max(total_lengths)}, avg={sum(total_lengths)/len(total_lengths)}")
+
+      self.prompt_data = [{"human": prompt_lengths[i], "gpt": generation_lengths[i]} for i in range(num_pairs)]
+        
       if shuffle_:
         shuffle(self.prompt_data)
       self.imported_prompt_data = True
@@ -81,7 +92,7 @@ class TraceBuilder(object):
       
       # If used all of the prompt data, loop back at the beggining and reuse some prompts
       if k+bucket_size > len(self.prompt_data):
-        bucket = self.prompt_data[k:] + self.prompt_data[:(k+bucket_size)%len(prompt_data)]
+        bucket = self.prompt_data[k:] + self.prompt_data[:(k+bucket_size)%len(self.prompt_data)]
       else:
         bucket = self.prompt_data[k:k+bucket_size]
       k = (k+bucket_size) % len(self.prompt_data)
@@ -91,9 +102,19 @@ class TraceBuilder(object):
       print("Avg arrival rate obtained (req/s): ", sum([len(b) for b in buckets])/len(buckets))
     return buckets
 
-if __name__ == '__main__':
+def generate_and_save_trace(arrival_rate):
   builder = TraceBuilder()
-  trace = builder.generate_trace(target_arrival_rate=10)
-  # Save to a file
-  with open('trace_data.json', 'w', encoding='utf-8') as f:
-    json.dump(trace, f, ensure_ascii=False, indent=2)
+  trace = builder.generate_trace(target_arrival_rate=arrival_rate, debug_verbose=True)
+  with open('sharegpt.json', 'w+') as f:
+    json.dump(trace, f, indent=2)
+
+if __name__ == '__main__':
+  # Set up the argument parser
+  parser = argparse.ArgumentParser(description='Generate and save a trace.')
+  parser.add_argument('--arrival-rate', type=float, default=10.0, help='The target arrival rate for the trace.')
+
+  # Parse the command-line arguments
+  args = parser.parse_args()
+
+  # Call the function with the user-provided arrival rate
+  generate_and_save_trace(args.arrival_rate)
