@@ -33,7 +33,7 @@ struct formatter<::FlexFlow::Activation> : formatter<string_view> {
         name = "GeLU";
         break;
       case Activation::NONE:
-	break;
+        break;
     }
     return formatter<string_view>::format(name, ctx);
   }

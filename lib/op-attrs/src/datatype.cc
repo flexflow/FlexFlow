@@ -22,4 +22,3 @@ size_t size_of_datatype(DataType data_type) {
 }
 
 } // namespace FlexFlow
-
