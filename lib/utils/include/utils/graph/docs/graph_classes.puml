@@ -1,0 +1,193 @@
+@startuml
+
+package Graph.BasicGraph { 
+	class AdjacencyDiGraph
+	class DiGraph
+	class Graph
+	abstract class IDiGraph
+	abstract class IGraph
+	class ViewUndirectedGraphAsDiGraph 
+}
+
+package Edge { 
+	class AdjacencyInputEdges
+	class AdjacencyOutputEdges
+	class AddDirectedEdgesView
+	class DiInput
+	class DiOutput
+	class DirectedEdge
+	class InputMultiDiEdge
+	class MultiDiEdge
+	class MultiDiInput
+	class MultiDiOutput
+	class OutputMultiDiEdge
+	class UndirectedEdge 
+}
+
+package Graph.MultiDiGraph_ { 
+	class AdjacencyMultiDiGraph
+	class AdjacencyOpenMultiDiGraph
+	class DownwardOpenMultiDiGraph
+	abstract class IDownwardOpenMultiDiGraph
+	abstract class IMultiDiGraph
+	abstract class IOpenMultiDiGraph
+	abstract class IUpwardOpenMultiDiGraph
+	class MultiDiGraph
+	class OpenMultiDiGraph
+	class UpwardOpenMultiDiGraph
+	class ViewDiGraphAsMultiDiGraph
+	class ViewMultiDiGraphAsOpenMultiDiGraph 
+}
+
+package Graph.UndirectedGraph_ { 
+	class HashmapUndirectedGraph
+	abstract class IUndirectedGraph
+	class UndirectedGraph
+	class ViewDiGraphAsUndirectedGraph 
+}
+
+package View.BasicView { 
+	class BFSView
+	class CheckedDFSView
+	class DiGraphView
+	class FlippedView
+	class GraphView
+	abstract class IDiGraphView
+	abstract class IGraphView
+	abstract class IUndirectedGraphView
+	class JoinedDigraphView
+	class JoinedMultiDigraphView
+	class JoinedUndirectedGraphView
+	class UncheckedDFSView
+	class UndirectedGraphView 
+}
+
+package View.SubgraphView_ { 
+	class ClosedMultiDiSubgraphView
+	class DiSubgraphView
+	class DownwardOpenMultiDiSubgraphView
+	class MultiDiSubgraphView
+	class OpenMultiDiSubgraphView
+	class UndirectedSubgraphView
+	class UpwardOpenMultiDiSubgraphView 
+}
+
+package Node { 
+	class ContractNodeView
+	class GetDstNodeFunctor
+	class GetSrcNodeFunctor
+	class JoinNodeKey
+	class JoinedNodeView
+	class Node
+	class NodePort
+	class NodeSource
+	class SingleSourceNodeView 
+}
+
+package Query { 
+	class DirectedEdgeQuery
+	class DownwardOpenMultiDiEdgeQuery
+	class InputMultiDiEdgeQuery
+	class MultiDiEdgeQuery
+	class NodeQuery
+	class OpenMultiDiEdgeQuery
+	class OutputMultiDiEdgeQuery
+	class UndirectedEdgeQuery
+	class UpwardOpenMultiDiEdgeQuery 
+}
+
+package View.MultiDiGraphView_ { 
+	class DownwardOpenMultiDiGraphView
+	abstract class IDownwardOpenMultiDiGraphView
+	abstract class IMultiDiGraphView
+	abstract class IOpenMultiDiGraphView
+	abstract class IUpwardOpenMultiDiGraphView
+	class MultiDiGraphView
+	class OpenMultiDiGraphView
+	class UpwardOpenMultiDiGraphView 
+}
+
+package Other { 
+	class GetDstIdxFunctor
+	class GetSrcIdxFunctor
+	class Parallel
+	class Serial
+	class bfs_iterator
+	class checked_dfs_iterator
+	class cow_ptr_t <template<typename T>>
+	class query_set <template<typename T>>
+	class unchecked_dfs_iterator 
+}
+
+DiGraphView <|-- DiGraph
+DiGraphView <|-- MultiDiGraphView
+DiInput <|-- DirectedEdge
+DiInput <|-- MultiDiInput
+DiOutput <|-- DirectedEdge
+DiOutput <|-- MultiDiOutput
+DownwardOpenMultiDiGraphView <|-- DownwardOpenMultiDiGraph
+GraphView <|-- DiGraphView
+GraphView <|-- Graph
+GraphView <|-- UndirectedGraphView
+IDiGraph <|-- AdjacencyDiGraph
+IDiGraphView <|-- AddDirectedEdgesView
+IDiGraphView <|-- ContractNodeView
+IDiGraphView <|-- DiSubgraphView
+IDiGraphView <|-- FlippedView
+IDiGraphView <|-- IDiGraph
+IDiGraphView <|-- IMultiDiGraphView
+IDiGraphView <|-- JoinedDigraphView
+IDiGraphView <|-- SingleSourceNodeView
+IDiGraphView <|-- ViewUndirectedGraphAsDiGraph
+IDownwardOpenMultiDiGraphView <|-- IDownwardOpenMultiDiGraph
+IGraphView <|-- IDiGraphView
+IGraphView <|-- IGraph
+IGraphView <|-- IUndirectedGraphView
+IMultiDiGraph <|-- AdjacencyMultiDiGraph
+IMultiDiGraphView <|-- IMultiDiGraph
+IMultiDiGraphView <|-- IOpenMultiDiGraphView
+IMultiDiGraphView <|-- JoinedMultiDigraphView
+IMultiDiGraphView <|-- MultiDiSubgraphView
+IMultiDiGraphView <|-- ViewDiGraphAsMultiDiGraph
+IOpenMultiDiGraph <|-- AdjacencyOpenMultiDiGraph
+IOpenMultiDiGraphView <|-- ClosedMultiDiSubgraphView
+IOpenMultiDiGraphView <|-- DownwardOpenMultiDiSubgraphView
+IOpenMultiDiGraphView <|-- IDownwardOpenMultiDiGraphView
+IOpenMultiDiGraphView <|-- IOpenMultiDiGraph
+IOpenMultiDiGraphView <|-- IUpwardOpenMultiDiGraphView
+IOpenMultiDiGraphView <|-- OpenMultiDiSubgraphView
+IOpenMultiDiGraphView <|-- UpwardOpenMultiDiSubgraphView
+IOpenMultiDiGraphView <|-- ViewMultiDiGraphAsOpenMultiDiGraph
+IUndirectedGraph <|-- HashmapUndirectedGraph
+IUndirectedGraphView <|-- IUndirectedGraph
+IUndirectedGraphView <|-- JoinedUndirectedGraphView
+IUndirectedGraphView <|-- UndirectedSubgraphView
+IUndirectedGraphView <|-- ViewDiGraphAsUndirectedGraph
+IUpwardOpenMultiDiGraphView <|-- IUpwardOpenMultiDiGraph
+MultiDiGraphView <|-- DownwardOpenMultiDiGraphView
+MultiDiGraphView <|-- MultiDiGraph
+MultiDiGraphView <|-- OpenMultiDiGraphView
+MultiDiGraphView <|-- UpwardOpenMultiDiGraphView
+MultiDiInput <|-- InputMultiDiEdge
+MultiDiInput <|-- MultiDiEdge
+MultiDiOutput <|-- MultiDiEdge
+MultiDiOutput <|-- OutputMultiDiEdge
+OpenMultiDiGraphView <|-- OpenMultiDiGraph
+UndirectedGraphView <|-- UndirectedGraph
+UpwardOpenMultiDiGraphView <|-- UpwardOpenMultiDiGraph
+IDiGraph *-- DiGraph
+IOpenMultiDiGraph *-- OpenMultiDiGraph
+IUpwardOpenMultiDiGraphView *-- UpwardOpenMultiDiGraphView
+IDownwardOpenMultiDiGraphView *-- DownwardOpenMultiDiGraphView
+IUndirectedGraphView *-- UndirectedGraphView
+IMultiDiGraphView *-- MultiDiGraphView
+IUpwardOpenMultiDiGraph *-- UpwardOpenMultiDiGraph
+IMultiDiGraph *-- MultiDiGraph
+IGraphView *-- GraphView
+IDownwardOpenMultiDiGraph *-- DownwardOpenMultiDiGraph
+IGraph *-- Graph
+IUndirectedGraph *-- UndirectedGraph
+IDiGraphView *-- DiGraphView
+IOpenMultiDiGraphView *-- OpenMultiDiGraphView
+
+@enduml

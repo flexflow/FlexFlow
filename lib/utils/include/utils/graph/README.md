@@ -4,8 +4,8 @@
 
 FlexFlow's graph library very intentionally attempts to balance performance and ease of use. 
 The graph library aims to have a very simple external interface that is highly decoupled from the underlying representations, so performance and internal implementations can be tuned and modified over time without breaking the code that uses the library.
-Because FlexFlow's graphs are not on the scale of machine memory or not so large that single traversals takes nontrivial time, the graph library intentially avoids performance opportunites that would expose many of these performance aspects to user code.
-Of course, there are also some optimizations that simply have not been done due to time constraints: for example, algorithms currently are able to be specialized for the underlyign representation being used, but this could be added without modifying the user-side interface.
+Because FlexFlow's graphs are not on the scale of machine memory or not so large that single traversals takes nontrivial time, the graph library intentionally avoids performance opportunities that would expose many of these performance aspects to user code.
+Of course, there are also some optimizations that simply have not been done due to time constraints: for example, algorithms currently are able to be specialized for the underlying representation being used, but this could be added without modifying the user-side interface.
 
 ## Usage
 
@@ -17,7 +17,7 @@ At their core, they are as follows:
 
 - `UndirectedGraph`: at most one edge allowed between every pair of nodes, edges are undirected
 - `DirectedGraph`: at most one edge allowed between every ordered pair of nodes, edges are directed (i.e., have a source node and a destination node)
-- `MultiDiGraph`: arbitrary numbers of edges allowed between every pair of nodes, but each must have not only source/destination nodes but also _source/destination` indices_, which serve to disambiguate different edges between the same nodes. There can exist at most one edge for every ordered tuple of source node, destination node, source index, and destination index.
+- `MultiDiGraph`: arbitrary numbers of edges allowed between every pair of nodes, but each must have not only source/destination nodes but also _source/destination indices_, which serve to disambiguate different edges between the same nodes. There can exist at most one edge for every ordered tuple of source node, destination node, source index, and destination index.
 
 Examples of the different graph variants are shown below.
 
@@ -149,6 +149,7 @@ To add an edge between two nodes `Node n1` and `Node n2` to an `UndirectedGraph 
 In `UndirectedGraph` the order of the arguments of `add_edge` doesn't matter as edges are undirected, but the order does matter for `DiGraph` and `MultiDiGraph`.
 `MultiDiGraph::add_edge` takes in two additional arguments of type `NodePort`, specifying the source and destination indices.
 Similar to `Node`s, `NodePort`s can be generated via `g.add_node_port()`.
+`NodePort:` an opaque object used within `MultiDiGraph` to disambiguate between multiple edges. `MultiDiGraph` will be able to distinguish between 2 edges that share the same source and destination as long as at at least one `NodePort` differs. Within the context of a PCG, `NodePorts` must be thought of as the various inputs and outputs of a single node.
 
 The last paragraph covered the base API used to write to graphs, but we also want to be able to read from graphs.
 Reading from graphs is implemented with the `query_nodes` and `query_edges` methods, which can be thought of as executing a database query over the nodes and edges of the target graph, respectively (where queries are restricted to an incredibly simple set of operations).
@@ -179,6 +180,12 @@ Generally users will use underlying representations provided by the graph librar
 [^1]: At some point we will likely add actual runtime checks on this, but for now we rely on the user not to mess up. Currently the implementation will keep going silently until the incorrectness grows so large that something breaks/crashes.
 [^2]: See <https://en.wikipedia.org/wiki/Type_conversion> if you're not familiar with the term _type coercion_
 
+### Open, Upward, Downward
+
+`Open` is to be intended similarly to the topological sense: that is, a graph that contains some edges where one of the 2 nodes is not present in the graph itself.
+We can further specify the "openeness" of a **directed** graph by specifying whether they are `UpwardOpen` (so some of the incoming edges are open) or `DownwardOpen` (so some of the outgoing edges are open).
+
+
 ### Labelled Graphs
 
 As nice as all of the above is, graphs without labels are mostly useless--in practice, nodes and edges represent some other system and the properties of that system (or at least a way to map the result of graph algorithms back to the underlying system) are necessary.
@@ -193,4 +200,27 @@ As such, the labelled graph types provide the typical `at` method (as on `std::u
 
 ## Internals
 
-TODO @lockshaw
+Most of the major graph classes in the library come in sets of 4 (example considering `ClassName`)
+- `ClassName`
+- `ClassNameView`
+- `IClassName`
+- `IClassNameView`
+
+The rationale behind the `View` variants has been explained in previous sections.
+
+The rationale for the `I(nterface)` variations is derived from the way that C++ models polymorphism.
+Inheritance within the library is almost exclusively virtual: such inheritance model is demanded by the nested inheritance structure.
+In the case of a diamond inheritance pattern C++, unlike languages such as Python, will instantiate multiple copies of the base class whenever we instantiate a derived class.
+To address this issue, we employ [Virtual Inheritance](https://en.wikipedia.org/wiki/Virtual_inheritance), which removes the ambiguity associated with the multiple copies.
+
+Furthermore, the use of virtual functions allows for runtime polymorphism, allowing for a single function defined on some superclass to also work correctly on it's subclasses.
+
+C++ polymorphism is normally achieved with the following pattern:
+
+`std::shared_ptr<BaseClass> = new DerivedClass();`
+
+This pattern however leaves the burden of memory management on the user.
+To address this, graph classes within the library store as a member 
+### strong_typedef
+`Node` inherits from `strong_typedef`: this is in order to ensure that distinct types that alias the same type are still considered distinct (and thus using one in place of the other will result in a compiler error).  
+For more info, see https://www.foonathan.net/2016/10/strong-typedefs/
