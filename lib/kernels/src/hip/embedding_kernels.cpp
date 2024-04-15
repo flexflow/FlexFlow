@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
+#include "kernels/embedding_kernels.h"
 #include "device.h"
 #include "kernels/datatype_dispatch.h"
-#include "kernels/embedding_kernels.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 namespace Kernels {
 namespace Embedding {
 
-void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p){
+void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) {
   hipStream_t stream;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(rand_generate_int),
                      GET_BLOCKS(size),
@@ -34,7 +34,7 @@ void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p){
                      p);
 }
 
-void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p){
+void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p) {
   hipStream_t stream;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(rand_generate_int),
                      GET_BLOCKS(size),
@@ -363,7 +363,6 @@ struct ForwardKernel {
     assert(weight.data_type == DataType::HALF ||
            weight.data_type == DataType::FLOAT ||
            weight.data_type == DataType::DOUBLE);
-
 
     if (aggr == AggregateOp::NONE) {
       hipLaunchKernelGGL(HIP_KERNEL_NAME(embed_forward_no_aggr<TI, TD>),

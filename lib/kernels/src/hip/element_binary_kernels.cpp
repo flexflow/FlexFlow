@@ -203,7 +203,8 @@ void forward_kernel(hipStream_t stream,
   // cudnnOpTensor
   if (broadcast_inputLHS) {
     // currently only handle add and sub
-    assert(op_type == Op::EW_SUB || op_type == Op::EW_ADD || op_type == Op::EW_MUL);
+    assert(op_type == Op::EW_SUB || op_type == Op::EW_ADD ||
+           op_type == Op::EW_MUL);
     if (op_type == Op::EW_SUB || op_type == Op::EW_ADD) {
       checkCUDNN(miopenOpTensor(handle.dnn,
                                 m.opDesc,
@@ -227,239 +228,239 @@ void forward_kernel(hipStream_t stream,
                                 &alpha1,
                                 m.outputTensor,
                                 out_ptr));
-  } else if (op_type == Op::EW_MUL) {
-    checkCUDNN(cudnnSetOpTensorDescriptor(m.opDesc,
-                                          CUDNN_OP_TENSOR_MUL,
-                                          CUDNN_DATA_FLOAT,
-                                          CUDNN_NOT_PROPAGATE_NAN));
-    checkCUDNN(miopenOpTensor(handle.dnn,
-                            m.opDesc,
-                            &alpha1,
-                            m.inputLHSTensor,
-                            lhs_ptr,
-                            &alpha2,
-                            m.inputRHSTensor,
-                            rhs_ptr,
-                            &beta,
-                            m.outputTensor,
-                            out_ptr));
-    checkCUDNN(cudnnSetOpTensorDescriptor(m.opDesc,
-                                          CUDNN_OP_TENSOR_ADD,
-                                          CUDNN_DATA_FLOAT,
-                                          CUDNN_NOT_PROPAGATE_NAN));
-
-    checkCUDNN(miopenOpTensor(handle.dnn,
-                            m.opDesc,
-                            &beta,
-                            m.outputTensor,
-                            out_ptr,
-                            &alpha1,
-                            m.inputLHSTensor,
-                            lhs_ptr,
-                            &beta,
-                            m.outputTensor,
-                            out_ptr));
-  } else {
-    checkCUDNN(miopenOpTensor(handle.dnn,
-                              m.opDesc,
-                              &alpha1,
-                              m.inputLHSTensor,
-                              lhs_ptr,
-                              &alpha2,
-                              m.inputRHSTensor,
-                              rhs_ptr,
-                              &beta,
-                              m.outputTensor,
-                              out_ptr));
-  }
-}
-
-void backward_kernel(hipStream_t stream,
-                     ElementBinaryPerDeviceState const &m,
-                     float const *out_grad_ptr,
-                     float const *lhs_ptr,
-                     float const *rhs_ptr,
-                     float *lhs_grad_ptr,
-                     float *rhs_grad_ptr,
-                     OperatorType op_type,
-                     bool broadcast_inputLHS,
-                     bool broadcast_inputRHS,
-                     PerDeviceFFHandle handle) {
-  checkCUDA(hipblasSetStream(handle.blas, stream));
-  checkCUDNN(miopenSetStream(handle.dnn, stream));
-
-  if (m.op_type == Op::EW_ADD || m.op_type == Op::EW_SUB) {
-    float alpha = 1.0f, beta = 1.0f;
-    if (lhs_grad_ptr != nullptr) {
-      if (broadcast_inputLHS) {
-        checkCUDNN(miopenReduceTensor(handle.dnn,
-                                      m.reduceAddDesc,
-                                      nullptr /*indices*/,
-                                      0 /*indicesSizeInBytes*/,
-                                      handle.workSpace,
-                                      handle.workSpaceSize,
-                                      &alpha,
-                                      m.outputTensor,
-                                      out_grad_ptr,
-                                      &beta,
-                                      m.inputLHSTensor,
-                                      lhs_grad_ptr));
-      } else {
-        checkCUDNN(miopenOpTensor(handle.dnn,
-                                  miopenTensorOpAdd,
-                                  &alpha,
-                                  m.outputTensor,
-                                  out_grad_ptr,
-                                  &alpha2,
-                                  m.outputTensor,
-                                  out_grad_ptr,
-                                  &beta,
-                                  m.inputLHSTensor,
-                                  lhs_grad_ptr));
-      }
-    }
-    if (m.op_type == Op::EW_SUB) {
-      alpha = -1.0f;
-    }
-    if (rhs_grad_ptr != nullptr) {
-      if (broadcast_inputRHS) {
-        checkCUDNN(miopenReduceTensor(handle.dnn,
-                                      m.reduceAddDesc,
-                                      nullptr /*indices*/,
-                                      0 /*indicesSizeInBytes*/,
-                                      handle.workSpace,
-                                      handle.workSpaceSize,
-                                      &alpha,
-                                      m.outputTensor,
-                                      out_grad_ptr,
-                                      &beta,
-                                      m.inputRHSTensor,
-                                      rhs_grad_ptr));
-      } else {
-        checkCUDNN(miopenOpTensor(handle.dnn,
-                                  miopenTensorOpAdd,
-                                  &alpha,
-                                  m.outputTensor,
-                                  out_grad_ptr,
-                                  &alpha2,
-                                  m.outputTensor,
-                                  out_grad_ptr,
-                                  &beta,
-                                  m.inputRHSTensor,
-                                  rhs_grad_ptr));
-      }
-    }
-  } else if (m.op_type == Op::EW_MUL) {
-    float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f, zero = 0.0f;
-    if (lhs_grad_ptr != nullptr) {
-      if (broadcast_inputLHS){
-        checkCUDNN(miopenOpTensor(handle.dnn,
-                                  m.opDesc,
-                                  &alpha1,
-                                  m.outputTensor,
-                                  out_grad_ptr,
-                                  &alpha2,
-                                  m.inputRHSTensor,
-                                  rhs_ptr,
-                                  &beta,
-                                  m.inputLHSTensor,
-                                  lhs_grad_ptr));
-        checkCUDNN(miopenReduceTensor(handle.dnn,
-                                      m.reduceAddDesc,
-                                      nullptr /*indices*/,
-                                      0 /*indicesSizeInBytes*/,
-                                      handle.workSpace,
-                                      handle.workSpaceSize,
-                                      &alpha1,
-                                      m.outputTensor,
-                                      out_grad_ptr,
-                                      &zero,
-                                      m.inputLHSTensor,
-                                      lhs_grad_ptr));
-      }else{
-        checkCUDNN(miopenOpTensor(handle.dnn,
+    } else if (op_type == Op::EW_MUL) {
+      checkCUDNN(cudnnSetOpTensorDescriptor(m.opDesc,
+                                            CUDNN_OP_TENSOR_MUL,
+                                            CUDNN_DATA_FLOAT,
+                                            CUDNN_NOT_PROPAGATE_NAN));
+      checkCUDNN(miopenOpTensor(handle.dnn,
                                 m.opDesc,
                                 &alpha1,
-                                m.outputTensor,
-                                out_grad_ptr,
+                                m.inputLHSTensor,
+                                lhs_ptr,
                                 &alpha2,
                                 m.inputRHSTensor,
                                 rhs_ptr,
                                 &beta,
-                                m.inputLHSTensor,
-                                lhs_grad_ptr));
-      }
-    }
-    if (rhs_grad_ptr != nullptr) {
-      if (broadcast_inputRHS){
-        checkCUDNN(miopenOpTensor(handle.dnn,
-                                  m.opDesc,
-                                  &alpha1,
-                                  m.outputTensor,
-                                  out_grad_ptr,
-                                  &alpha2,
-                                  m.inputLHSTensor,
-                                  lhs_ptr,
-                                  &beta,
-                                  m.inputRHSTensor,
-                                  rhs_grad_ptr));
-        checkCUDNN(miopenReduceTensor(handle.dnn,
-                                      m.reduceAddDesc,
-                                      nullptr /*indices*/,
-                                      0 /*indicesSizeInBytes*/,
-                                      handle.workSpace,
-                                      handle.workSpaceSize,
-                                      &alpha1,
-                                      m.outputTensor,
-                                      out_grad_ptr,
-                                      &zero,
-                                      m.inputRHSTensor,
-                                      rhs_grad_ptr));
-      }else{
-        checkCUDNN(miopenOpTensor(handle.dnn,
-                                m.opDesc,
-                                &alpha1,
                                 m.outputTensor,
-                                out_grad_ptr,
-                                &alpha2,
+                                out_ptr));
+      checkCUDNN(cudnnSetOpTensorDescriptor(m.opDesc,
+                                            CUDNN_OP_TENSOR_ADD,
+                                            CUDNN_DATA_FLOAT,
+                                            CUDNN_NOT_PROPAGATE_NAN));
+
+      checkCUDNN(miopenOpTensor(handle.dnn,
+                                m.opDesc,
+                                &beta,
+                                m.outputTensor,
+                                out_ptr,
+                                &alpha1,
                                 m.inputLHSTensor,
                                 lhs_ptr,
                                 &beta,
+                                m.outputTensor,
+                                out_ptr));
+    } else {
+      checkCUDNN(miopenOpTensor(handle.dnn,
+                                m.opDesc,
+                                &alpha1,
+                                m.inputLHSTensor,
+                                lhs_ptr,
+                                &alpha2,
                                 m.inputRHSTensor,
-                                rhs_grad_ptr));
+                                rhs_ptr,
+                                &beta,
+                                m.outputTensor,
+                                out_ptr));
+    }
+  }
+
+  void backward_kernel(hipStream_t stream,
+                       ElementBinaryPerDeviceState const &m,
+                       float const *out_grad_ptr,
+                       float const *lhs_ptr,
+                       float const *rhs_ptr,
+                       float *lhs_grad_ptr,
+                       float *rhs_grad_ptr,
+                       OperatorType op_type,
+                       bool broadcast_inputLHS,
+                       bool broadcast_inputRHS,
+                       PerDeviceFFHandle handle) {
+    checkCUDA(hipblasSetStream(handle.blas, stream));
+    checkCUDNN(miopenSetStream(handle.dnn, stream));
+
+    if (m.op_type == Op::EW_ADD || m.op_type == Op::EW_SUB) {
+      float alpha = 1.0f, beta = 1.0f;
+      if (lhs_grad_ptr != nullptr) {
+        if (broadcast_inputLHS) {
+          checkCUDNN(miopenReduceTensor(handle.dnn,
+                                        m.reduceAddDesc,
+                                        nullptr /*indices*/,
+                                        0 /*indicesSizeInBytes*/,
+                                        handle.workSpace,
+                                        handle.workSpaceSize,
+                                        &alpha,
+                                        m.outputTensor,
+                                        out_grad_ptr,
+                                        &beta,
+                                        m.inputLHSTensor,
+                                        lhs_grad_ptr));
+        } else {
+          checkCUDNN(miopenOpTensor(handle.dnn,
+                                    miopenTensorOpAdd,
+                                    &alpha,
+                                    m.outputTensor,
+                                    out_grad_ptr,
+                                    &alpha2,
+                                    m.outputTensor,
+                                    out_grad_ptr,
+                                    &beta,
+                                    m.inputLHSTensor,
+                                    lhs_grad_ptr));
+        }
+      }
+      if (m.op_type == Op::EW_SUB) {
+        alpha = -1.0f;
+      }
+      if (rhs_grad_ptr != nullptr) {
+        if (broadcast_inputRHS) {
+          checkCUDNN(miopenReduceTensor(handle.dnn,
+                                        m.reduceAddDesc,
+                                        nullptr /*indices*/,
+                                        0 /*indicesSizeInBytes*/,
+                                        handle.workSpace,
+                                        handle.workSpaceSize,
+                                        &alpha,
+                                        m.outputTensor,
+                                        out_grad_ptr,
+                                        &beta,
+                                        m.inputRHSTensor,
+                                        rhs_grad_ptr));
+        } else {
+          checkCUDNN(miopenOpTensor(handle.dnn,
+                                    miopenTensorOpAdd,
+                                    &alpha,
+                                    m.outputTensor,
+                                    out_grad_ptr,
+                                    &alpha2,
+                                    m.outputTensor,
+                                    out_grad_ptr,
+                                    &beta,
+                                    m.inputRHSTensor,
+                                    rhs_grad_ptr));
+        }
+      }
+    } else if (m.op_type == Op::EW_MUL) {
+      float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f, zero = 0.0f;
+      if (lhs_grad_ptr != nullptr) {
+        if (broadcast_inputLHS) {
+          checkCUDNN(miopenOpTensor(handle.dnn,
+                                    m.opDesc,
+                                    &alpha1,
+                                    m.outputTensor,
+                                    out_grad_ptr,
+                                    &alpha2,
+                                    m.inputRHSTensor,
+                                    rhs_ptr,
+                                    &beta,
+                                    m.inputLHSTensor,
+                                    lhs_grad_ptr));
+          checkCUDNN(miopenReduceTensor(handle.dnn,
+                                        m.reduceAddDesc,
+                                        nullptr /*indices*/,
+                                        0 /*indicesSizeInBytes*/,
+                                        handle.workSpace,
+                                        handle.workSpaceSize,
+                                        &alpha1,
+                                        m.outputTensor,
+                                        out_grad_ptr,
+                                        &zero,
+                                        m.inputLHSTensor,
+                                        lhs_grad_ptr));
+        } else {
+          checkCUDNN(miopenOpTensor(handle.dnn,
+                                    m.opDesc,
+                                    &alpha1,
+                                    m.outputTensor,
+                                    out_grad_ptr,
+                                    &alpha2,
+                                    m.inputRHSTensor,
+                                    rhs_ptr,
+                                    &beta,
+                                    m.inputLHSTensor,
+                                    lhs_grad_ptr));
+        }
+      }
+      if (rhs_grad_ptr != nullptr) {
+        if (broadcast_inputRHS) {
+          checkCUDNN(miopenOpTensor(handle.dnn,
+                                    m.opDesc,
+                                    &alpha1,
+                                    m.outputTensor,
+                                    out_grad_ptr,
+                                    &alpha2,
+                                    m.inputLHSTensor,
+                                    lhs_ptr,
+                                    &beta,
+                                    m.inputRHSTensor,
+                                    rhs_grad_ptr));
+          checkCUDNN(miopenReduceTensor(handle.dnn,
+                                        m.reduceAddDesc,
+                                        nullptr /*indices*/,
+                                        0 /*indicesSizeInBytes*/,
+                                        handle.workSpace,
+                                        handle.workSpaceSize,
+                                        &alpha1,
+                                        m.outputTensor,
+                                        out_grad_ptr,
+                                        &zero,
+                                        m.inputRHSTensor,
+                                        rhs_grad_ptr));
+        } else {
+          checkCUDNN(miopenOpTensor(handle.dnn,
+                                    m.opDesc,
+                                    &alpha1,
+                                    m.outputTensor,
+                                    out_grad_ptr,
+                                    &alpha2,
+                                    m.inputLHSTensor,
+                                    lhs_ptr,
+                                    &beta,
+                                    m.inputRHSTensor,
+                                    rhs_grad_ptr));
+        }
+      }
+    } else if (op_type == Op::EW_MIN || op_type == Op::EW_MAX) {
+      float alpha = 1.0f, beta = 1.0f;
+      miopenDataType_t data_type;
+      int n;
+      int dims[MAX_TENSOR_DIM];
+      int strides[MAX_TENSOR_DIM];
+      checkCUDNN(miopenGetTensorDescriptorSize(m.outputTensor, &n));
+      size_t volume = 1;
+      for (int i = 0; i < n; i++) {
+        volume *= dims[i];
+      }
+      // launch hip kernel
+      hipLaunchKernelGGL(elewise_binary_backward_kernel,
+                         dim3((volume + 255) / 256),
+                         dim3(256),
+                         0,
+                         stream,
+                         volume,
+                         alpha,
+                         beta,
+                         op_type,
+                         out_grad_ptr,
+                         lhs_ptr,
+                         rhs_ptr,
+                         lhs_grad_ptr,
+                         rhs_grad_ptr);
+      else {
+        assert(false && "Unsupported ElementWise Binary Type");
       }
     }
-  } else if (op_type == Op::EW_MIN || op_type == Op::EW_MAX) {
-    float alpha = 1.0f, beta = 1.0f;
-    miopenDataType_t data_type;
-    int n;
-    int dims[MAX_TENSOR_DIM];
-    int strides[MAX_TENSOR_DIM];
-    checkCUDNN(miopenGetTensorDescriptorSize(m.outputTensor, &n));
-    size_t volume = 1;
-    for (int i = 0; i < n; i++) {
-      volume *= dims[i];
-    }
-    // launch hip kernel
-    hipLaunchKernelGGL(elewise_binary_backward_kernel,
-                      dim3((volume + 255) / 256),
-                      dim3(256),
-                      0,
-                      stream,
-                      volume,
-                      alpha,
-                      beta,
-                      op_type,
-                      out_grad_ptr,
-                      lhs_ptr,
-                      rhs_ptr,
-                      lhs_grad_ptr,
-                      rhs_grad_ptr);
-  else {
-    assert(false && "Unsupported ElementWise Binary Type");
-  }
-}
 
-} // namespace ElementBinary
+  } // namespace ElementBinary
 } // namespace Kernels
 } // namespace FlexFlow

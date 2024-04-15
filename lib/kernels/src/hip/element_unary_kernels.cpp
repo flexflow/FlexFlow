@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
+#include "kernels/element_unary_kernels.h"
 #include "device.h"
 #include "kernels/datatype_dispatch.h"
-#include "kernels/element_unary_kernels.h"
 #include "op-attrs/get_op_type.h"
-#include <optional>
 #include <hip/hip_runtime.h>
+#include <optional>
 
 namespace FlexFlow {
 namespace Kernels {
@@ -84,8 +84,7 @@ ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_shape));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_shape));
   return {inputTensor, outputTensor, actiDesc};
-                                       }
-
+}
 
 template <typename T>
 __global__ void elewise_unary_forward_kernel(
