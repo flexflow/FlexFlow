@@ -102,6 +102,11 @@ public:
     SSM_SPEC = 1003,
     LLM_VERIFY = 1004,
   };
+  enum BackgroundServerStatus {
+    INITIALIZED = 2001,
+    SERVING = 2002,
+    TERMINATED = 2003,
+  };
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
 
@@ -265,6 +270,7 @@ private:
   int max_spec_tree_token_num;
   int max_sequence_length;
   Status request_manager_status;
+  BackgroundServerStatus background_server_status;
 
   // tree width in each speculative step, if not specified 1
   std::vector<int> spec_infer_tree_width;

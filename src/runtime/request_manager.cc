@@ -44,7 +44,7 @@ std::string LoadBytesFromFile(std::string const &path) {
 }
 
 RequestManager::RequestManager()
-    : request_manager_status(INITIALIZED), verbose(false),
+    : background_server_status(INITIALIZED), verbose(false),
       next_available_guid(1000000), num_processed_requests(0),
       total_request_run_time(0.0f) {
   // The following config parameters are set
@@ -184,7 +184,7 @@ size_t RequestManager::get_num_ssms() {
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::vector<TokenId> const &prompt,
                                          int max_sequence_length) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   // Add a new request
   Request request;
@@ -219,7 +219,7 @@ RequestManager::RequestGuid
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
   {
-    const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
+    std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
     request_to_promise[request.guid] = new std::promise<void>();
   }
 
@@ -244,7 +244,7 @@ RequestManager::RequestGuid
 RequestManager::RequestGuid
     RequestManager::register_new_request(std::string const &prompt,
                                          int max_sequence_length) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   // Add a new request
   Request request;
   request.status = Request::PENDING;
@@ -283,7 +283,7 @@ RequestManager::RequestGuid
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
   {
-    const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
+    std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
     request_to_promise[request.guid] = new std::promise<void>();
   }
 
@@ -307,7 +307,7 @@ RequestManager::RequestGuid
 }
 
 bool RequestManager::is_request_completed(RequestGuid const &guid) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   assert(all_requests.find(guid) != all_requests.end());
   Request const &request = all_requests[guid];
   // return request.tokens.size() >= request.max_sequence_length;
@@ -319,7 +319,7 @@ GenerationResult
   // First get the future of the request
   std::future<void> future;
   {
-    const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
+    std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
     assert(request_to_promise.find(guid) != request_to_promise.end());
     future = request_to_promise[guid]->get_future();
   }
@@ -327,7 +327,7 @@ GenerationResult
   future.get();
   // Get the generation result
   {
-    const std::lock_guard<std::mutex> lock(request_queue_mutex);
+    std::lock_guard<std::mutex> const lock(request_queue_mutex);
     assert(request_generation_results.find(guid) !=
            request_generation_results.end());
     return request_generation_results[guid];
@@ -365,7 +365,7 @@ BatchConfig RequestManager::prepare_next_batch_task(
 
 BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                                                InferenceResult const &result) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   // Step 1: append result from previous iteration to request's tokens
   for (int i = 0; i < old_bc.num_tokens; i++) {
@@ -591,7 +591,7 @@ BeamSearchBatchConfig
     RequestManager::prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
                                             InferenceResult const &result,
                                             int model_id) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout << "\n############### prepare_next_batch_init ###############\n";
   }
@@ -1026,13 +1026,12 @@ BeamSearchBatchConfig RequestManager::prepare_next_batch_beam_task(
 BeamSearchBatchConfig
     RequestManager::prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
                                             BeamInferenceResult const &result) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout << "\n############### prepare_next_batch_beam ###############\n";
   }
   if (verbose) {
-    std::cout << "print all results"
-              << "\n";
+    std::cout << "print all results" << "\n";
     for (int i = 0; i < 40; i++) {
       std::cout << result.token_ids[i] << ", ";
     }
@@ -1340,7 +1339,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify_task(
 
 TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
     std::vector<BeamSearchBatchConfig> const &old_batches) {
-  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   if (verbose) {
     std::cout
@@ -1692,8 +1691,7 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
       if (depth == 1) {
         // store the last input into the tree;
         if (verbose) {
-          std::cout << "try to store the input"
-                    << "\n";
+          std::cout << "try to store the input" << "\n";
         }
 
         request.beam_trees.at(old_bc.model_id).treeLayers[0].tokens[0] =
@@ -1950,8 +1948,7 @@ bool PreOrder(
     if (verbose) {
       std::cout << "last tokens: " << tree.treeLayers[current_depth].tokens[id]
                 << "\n";
-      std::cout << "return true"
-                << "\n";
+      std::cout << "return true" << "\n";
     }
     return true;
   }
@@ -2315,8 +2312,8 @@ std::vector<GenerationResult>
 }
 
 void RequestManager::start_background_server(FFModel *model) {
-  assert(request_manager_status == INITIALIZED);
-  request_manager_status = SERVING;
+  assert(background_server_status == INITIALIZED);
+  background_server_status = SERVING;
   // Start background task
   Runtime *runtime = Runtime::get_runtime();
   Context ctx = Runtime::get_context();
@@ -2520,7 +2517,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
 
 void RequestManager::trigger_request_completion_future(
     RequestGuid const &guid) {
-  const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
+  std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
   assert(request_to_promise.find(guid) != request_to_promise.end());
   // Set the completion promise in case other threads are waiting
   request_to_promise[guid]->set_value();
@@ -2533,8 +2530,8 @@ void RequestManager::terminate_background_server_at_exit() {
 }
 
 void RequestManager::terminate_background_server() {
-  if (request_manager_status == SERVING) {
-    request_manager_status = TERMINATED;
+  if (background_server_status == SERVING) {
+    background_server_status = TERMINATED;
     // Wait for the background server to terminate
     Runtime *runtime = Runtime::get_runtime();
     Context ctx = Runtime::get_context();
@@ -2543,7 +2540,7 @@ void RequestManager::terminate_background_server() {
 }
 
 bool RequestManager::is_background_server_terminated() {
-  return request_manager_status == TERMINATED;
+  return background_server_status == TERMINATED;
 }
 
 RequestManager *request_manager_singleton = nullptr;
