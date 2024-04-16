@@ -368,6 +368,7 @@ public:
   /* New APIs */
 
   void update_inference_results(InferenceResult const &results);
+  void update_inference_results(SsmInferenceResult const &results);
   BatchConfig get_next_batch_config();
 
 private:
