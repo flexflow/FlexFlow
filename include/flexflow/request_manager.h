@@ -97,14 +97,15 @@ struct BeamTree {
 class RequestManager {
 public:
   enum Status {
-    INITIALIZED = 1001,
-    SERVING = 1002,
-    TERMINATED = 1003,
+    PREFILLING = 1001,
+    DECODING = 1002,
+    SSM_SPEC = 1003,
+    LLM_VERIFY = 1004,
   };
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
 
-  static const RequestGuid INVALID_GUID = 0;
+  static RequestGuid const INVALID_GUID = 0;
   RequestManager();
   static RequestManager *get_request_manager();
   size_t get_num_processed_requests();
