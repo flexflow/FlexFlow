@@ -1492,9 +1492,9 @@ bool RequestManager::update_inference_results(
   int num_branches = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
   int result_index = 0;
 
-  // TODO: here we assume that the order of the tokens in the last
+  // Here we assume that the order of the tokens in the last
   // TreeSearchBatchConfig and hence the last SsmInferenceResult is equal to the
-  // order of the request in the last TreeSearchBatchConfig, check this!
+  // order of the request in the last TreeSearchBatchConfig
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
     if (!request_available[request_index]) {
@@ -1539,61 +1539,7 @@ bool RequestManager::update_inference_results(
   }
 }
 
-// for updating the beam search metadata in requests in incremental phase
-[[deprecated("I don't think this function is used anymore")]]
-void RequestManager::update_beam_metadata(TreeSearchBatchConfig &new_bc,
-                                          TreeSearchBatchConfig const &old_bc,
-                                          BeamTree &tree,
-                                          int request_index) {
-
-  // do the exchange
-  if (new_bc.request_available[request_index]) {
-    assert(false);
-  }
-  int depth = new_bc.beamRequestsInfo[request_index].current_depth - 1;
-  int beam_size = new_bc.beamRequestsInfo[request_index].beam_size;
-
-  // int leaf_node_num = old_bc.sub_requests[request_index];
-  int leaf_node_num = new_bc.beamRequestsInfo[request_index].sub_request_num;
-
-  if (new_bc.beamRequestsInfo[request_index].current_depth ==
-      1) { // TODO: check if this is correct
-    // for (int j = 0; j < beam_size; j++) {
-    //   new_bc.beamRequestsInfo[request_index].parent_id[j] = j;
-    //   new_bc.beamRequestsInfo[request_index].probs[j] =
-    //       tree.treeLayers[depth].probs[j]; // ?
-    //   new_bc.beamRequestsInfo[request_index].tokens[j] =
-    //       tree.treeLayers[depth].tokens[j]; // ?
-    // }
-    // Do nothing
-    // assert(false);
-  } else {
-    for (int j = 0; j < leaf_node_num; j++) {
-      new_bc.beamRequestsInfo[request_index].parent_id[j] =
-          tree.treeLayers[depth].parent_ids[j];
-      new_bc.beamRequestsInfo[request_index].probs[j] =
-          tree.treeLayers[depth].probs[j];
-      new_bc.beamRequestsInfo[request_index].tokens[j] =
-          tree.treeLayers[depth].tokens[j];
-      // std::cout << "token: " << j << ": "
-      //           << new_bc.beamRequestsInfo[request_index].tokens[j] <<
-      //           "\n";
-    }
-  }
-  if (verbose) {
-    std::cout << "-----------after parent id exchange-----------" << std::endl;
-    for (int j = 0; j < beam_size; j++) {
-      std::cout << "after request id: " << request_index << "beam id = " << j
-                << "parent: "
-                << new_bc.beamRequestsInfo[request_index].parent_id[j]
-                << "token: " << new_bc.beamRequestsInfo[request_index].tokens[j]
-                << "probs: " << new_bc.beamRequestsInfo[request_index].probs[j]
-                << std::endl;
-    }
-  }
-}
-
-// bit mask related function
+// bitmask related functions
 
 // prompt phase, init task
 void RequestManager::init_bitmask(BatchConfig::BitMask &bitmask,

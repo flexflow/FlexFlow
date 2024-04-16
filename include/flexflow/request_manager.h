@@ -216,11 +216,6 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  void update_beam_metadata(TreeSearchBatchConfig &new_bc,
-                            TreeSearchBatchConfig const &old_bc,
-                            BeamTree &tree,
-                            int request_index);
-
   std::vector<std::pair<BatchConfig::TokenId, int>>
       traverse_beam_tree(TreeSearchBatchConfig const &old_bc,
                          int request_index,
