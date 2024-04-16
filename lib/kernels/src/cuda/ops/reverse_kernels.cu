@@ -17,7 +17,7 @@
 #include "kernels/reverse_kernels.h"
 
 namespace FlexFlow {
-// declare Legion names
+
 using coord_t = long long;
 
 namespace Kernels {

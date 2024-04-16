@@ -34,16 +34,6 @@ ReducePerDeviceState init_kernel(PerDeviceFFHandle const &,
                                  ArrayShape input_shape,
                                  ArrayShape output_shape);
 
-// void forward_kernel_wrapper(ReducePerDeviceState const &m,
-//                             GenericTensorAccessorR const &input,
-//                             GenericTensorAccessorW const &output);
-
-// void backward_kernel_wrapper(ReducePerDeviceState const &m,
-//                              GenericTensorAccessorR const &output_grad,
-//                              GenericTensorAccessorW const &input_grad);
-
-// namespace Internal {
-
 void forward_kernel(ffStream_t stream,
                     ReducePerDeviceState const &m,
                     float const *input_ptr,
@@ -53,7 +43,6 @@ void backward_kernel(ffStream_t stream,
                      ReducePerDeviceState const &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr);
-//} // namespace Internal
 } // namespace Reduce
 } // namespace Kernels
 } // namespace FlexFlow

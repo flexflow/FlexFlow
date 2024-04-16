@@ -31,22 +31,6 @@ void backward_kernel(cudaStream_t stream,
                      GenericTensorAccessorW const &in_grad,
                      GenericTensorAccessorR const &out_grad);
 
-// namespace Internal {
-
-// void forward_kernel_wrapper(TransposePerDeviceState const &m,
-//                             float const *input_ptr,
-//                             float *output_ptr,
-//                             GenericTensorAccessorR const &input,
-//                             GenericTensorAccessorW const &output,
-//                             ffStream_t stream);
-// void backward_kernel_wrapper(TransposePerDeviceState const &m,
-//                              float *input_grad_ptr,
-//                              float const *output_grad_ptr,
-//                              GenericTensorAccessorW const &in_grad,
-//                              GenericTensorAccessorR const &out_grad,
-//                              ffStream_t stream);
-
-// } // namespace Internal
 } // namespace Transpose
 } // namespace Kernels
 } // namespace FlexFlow
