@@ -725,60 +725,69 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
 
   std::string weight_filename = removeGuidOperatorName(std::string(l->name));
 
-  if (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
-      l->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION ||
-      l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION) {
-    if (weight_filename.find("self_attention") != std::string::npos) {
-      load_attention_weights_multi_query(
-          data, weight_filename, weights_folder, hidden_dim, num_heads);
-    } else if (weight_filename.find("attention") != std::string::npos &&
-               weight_filename.rfind("attention") ==
-                   weight_filename.length() - strlen("attention")) {
-      if (weight_idx == 0) {
-        load_attention_weights_v2(data,
-                                  num_heads,
-                                  num_kv_heads,
-                                  hidden_dim,
-                                  qkv_inner_dim,
-                                  weight_filename,
-                                  weights_folder,
-                                  volume,
-                                  tensor_parallelism_degree);
-      } else {
-        long long value;
-        l->get_int_property("final_bias", value);
-        bool final_bias = (bool)value;
-        load_attention_bias_v2(data,
-                               num_heads,
-                               num_kv_heads,
-                               hidden_dim,
-                               qkv_inner_dim,
-                               final_bias,
-                               weight_filename,
-                               weights_folder);
-      }
-
-    } else {
-      assert(false);
-    }
-  } else if (l->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM) {
-    assert(weight_idx >= 0 || weight_idx <= 2);
-    weight_filename += (weight_idx == 0)
-                           ? "_attn_bias"
-                           : ((weight_idx == 1) ? "_weight" : "_bias");
-    std::cout << "Loading weight file " << weight_filename << std::endl;
-    std::string weight_filepath = join_path({weights_folder, weight_filename});
-    load_from_file(data, volume, weight_filepath);
+  if (ff->config.benchmarking) {
+    std::cout << "Initializing weight " << weight_filename
+              << " with random data (benchmarking mode)" << std::endl;
+    // If benchmarking, we don't need to load the weights
+    // We can just fill the weight tensor with random data
   } else {
-    // default op
-    assert(weight_idx == 0 || weight_idx == 1);
-    // handle exception
-    if (weight_filename != "embed_tokens_weight_lm_head") {
-      weight_filename += weight_idx == 0 ? "_weight" : "_bias";
+    if (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+        l->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION ||
+        l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION) {
+      if (weight_filename.find("self_attention") != std::string::npos) {
+        load_attention_weights_multi_query(
+            data, weight_filename, weights_folder, hidden_dim, num_heads);
+      } else if (weight_filename.find("attention") != std::string::npos &&
+                 weight_filename.rfind("attention") ==
+                     weight_filename.length() - strlen("attention")) {
+        if (weight_idx == 0) {
+          load_attention_weights_v2(data,
+                                    num_heads,
+                                    num_kv_heads,
+                                    hidden_dim,
+                                    qkv_inner_dim,
+                                    weight_filename,
+                                    weights_folder,
+                                    volume,
+                                    tensor_parallelism_degree);
+        } else {
+          long long value;
+          l->get_int_property("final_bias", value);
+          bool final_bias = (bool)value;
+          load_attention_bias_v2(data,
+                                 num_heads,
+                                 num_kv_heads,
+                                 hidden_dim,
+                                 qkv_inner_dim,
+                                 final_bias,
+                                 weight_filename,
+                                 weights_folder);
+        }
+
+      } else {
+        assert(false);
+      }
+    } else if (l->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM) {
+      assert(weight_idx >= 0 || weight_idx <= 2);
+      weight_filename += (weight_idx == 0)
+                             ? "_attn_bias"
+                             : ((weight_idx == 1) ? "_weight" : "_bias");
+      std::cout << "Loading weight file " << weight_filename << std::endl;
+      std::string weight_filepath =
+          join_path({weights_folder, weight_filename});
+      load_from_file(data, volume, weight_filepath);
+    } else {
+      // default op
+      assert(weight_idx == 0 || weight_idx == 1);
+      // handle exception
+      if (weight_filename != "embed_tokens_weight_lm_head") {
+        weight_filename += weight_idx == 0 ? "_weight" : "_bias";
+      }
+      std::cout << "Loading weight file " << weight_filename << std::endl;
+      std::string weight_filepath =
+          join_path({weights_folder, weight_filename});
+      load_from_file(data, volume, weight_filepath);
     }
-    std::cout << "Loading weight file " << weight_filename << std::endl;
-    std::string weight_filepath = join_path({weights_folder, weight_filename});
-    load_from_file(data, volume, weight_filepath);
   }
 
   // Copy the weight data from the buffer to the weight's ParallelTensor

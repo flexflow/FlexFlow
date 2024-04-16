@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import flexflow.serve as ff
-import argparse
+import argparse, os
 
 
 def parse_args():
@@ -12,7 +12,7 @@ def parse_args():
         "--cache-folder",
         type=str,
         help="Folder to use to store the model(s) assets in FlexFlow format",
-        default="",
+        default=os.environ.get("FF_CACHE_PATH", ""),
     )
     parser.add_argument(
         "--refresh-cache",

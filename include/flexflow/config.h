@@ -145,7 +145,7 @@ public:
   Legion::Runtime *lg_hlr;
   Legion::IndexSpaceT<1> all_gpu_task_is;
   // Legion::FieldSpace field_space;
-  bool syntheticInput, profiling, perform_fusion;
+  bool benchmarking, profiling, perform_fusion;
   bool inference_debugging;
   size_t simulator_work_space_size;
   size_t search_budget;
