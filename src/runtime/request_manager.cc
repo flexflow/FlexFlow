@@ -2670,7 +2670,9 @@ std::vector<GenerationResult>
   for (int i = 0; i < inf_guids.size(); i++) {
     results.push_back(rm->get_generation_result(inf_guids[i]));
   }
-  rm->set_inference_finished();
+  if (inf_guids.size() > 0) {
+    rm->set_inference_finished();
+  }
   for (int i = 0; i < peft_guids.size(); i++) {
     results.push_back(rm->get_generation_result(peft_guids[i]));
   }
