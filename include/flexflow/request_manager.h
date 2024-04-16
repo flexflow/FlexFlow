@@ -263,6 +263,9 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
+  void update_inference_results(std::vector<InferenceResult> const &results);
+  BatchConfig get_next_batch_config();
+
 private:
   // configuration parameters
   int max_requests_per_batch;
