@@ -44,7 +44,7 @@ std::string LoadBytesFromFile(std::string const &path) {
 }
 
 RequestManager::RequestManager()
-    : request_manager_status(INITIALIZED), verbose(false),
+    : background_server_status(INITIALIZED), verbose(false),
       next_available_guid(1000000), num_processed_requests(0),
       total_request_run_time(0.0f) {
   // The following config parameters are set
@@ -2144,8 +2144,8 @@ std::vector<GenerationResult>
 }
 
 void RequestManager::start_background_server(FFModel *model) {
-  assert(request_manager_status == INITIALIZED);
-  request_manager_status = SERVING;
+  assert(background_server_status == INITIALIZED);
+  background_server_status = SERVING;
   // Start background task
   Runtime *runtime = Runtime::get_runtime();
   Context ctx = Runtime::get_context();
@@ -2362,8 +2362,8 @@ void RequestManager::terminate_background_server_at_exit() {
 }
 
 void RequestManager::terminate_background_server() {
-  if (request_manager_status == SERVING) {
-    request_manager_status = TERMINATED;
+  if (background_server_status == SERVING) {
+    background_server_status = TERMINATED;
     // Wait for the background server to terminate
     Runtime *runtime = Runtime::get_runtime();
     Context ctx = Runtime::get_context();
@@ -2372,7 +2372,7 @@ void RequestManager::terminate_background_server() {
 }
 
 bool RequestManager::is_background_server_terminated() {
-  return request_manager_status == TERMINATED;
+  return background_server_status == TERMINATED;
 }
 
 RequestManager *request_manager_singleton = nullptr;

@@ -118,9 +118,15 @@ public:
 class RequestManager {
 public:
   enum Status {
-    INITIALIZED = 1001,
-    SERVING = 1002,
-    TERMINATED = 1003,
+    PREFILLING = 1001,
+    DECODING = 1002,
+    SSM_SPEC = 1003,
+    LLM_VERIFY = 1004,
+  };
+  enum BackgroundServerStatus {
+    INITIALIZED = 2001,
+    SERVING = 2002,
+    TERMINATED = 2003,
   };
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
@@ -361,6 +367,9 @@ public:
       Legion::Runtime *runtime);
   /* New APIs */
 
+  void update_inference_results(std::vector<InferenceResult> const &results);
+  BatchConfig get_next_batch_config();
+
 private:
   // configuration parameters
   int max_requests_per_batch;
@@ -368,6 +377,7 @@ private:
   int max_spec_tree_token_num;
   int max_sequence_length;
   Status request_manager_status;
+  BackgroundServerStatus background_server_status;
 
   // tree width in each speculative step, if not specified 1
   [[deprecated("This field will be removed")]]
