@@ -1040,7 +1040,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_spec(
 
   // TODO: separate this
   // Store small model's inference result to the token tree struct
-  store_ssm_inference_results(ssm_inference_result);
+  update_inference_results(ssm_inference_result);
 
   // Prepare the next batch for existing requests
   TreeSearchBatchConfig new_bc;
@@ -1483,7 +1483,7 @@ void RequestManager::initialize_root_of_spec_token_trees() {
   }
 }
 
-bool RequestManager::store_ssm_inference_results(
+bool RequestManager::update_inference_results(
     SsmInferenceResult const &ssm_inference_result) {
   // This function returns false if no tokens are added to the token tree,
   // which indicates that the ssm inference phase is done.

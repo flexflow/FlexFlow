@@ -216,8 +216,6 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  bool store_ssm_inference_results(
-      SsmInferenceResult const &ssm_inference_result);
   void update_beam_metadata(TreeSearchBatchConfig &new_bc,
                             TreeSearchBatchConfig const &old_bc,
                             BeamTree &tree,
@@ -368,7 +366,7 @@ public:
   /* New APIs */
 
   void update_inference_results(InferenceResult const &results);
-  void update_inference_results(SsmInferenceResult const &results);
+  bool update_inference_results(SsmInferenceResult const &ssm_inference_result);
   BatchConfig get_next_batch_config();
 
 private:
