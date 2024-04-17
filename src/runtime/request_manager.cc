@@ -413,40 +413,7 @@ BatchConfig RequestManager::prepare_next_batch() {
 /* ----- Speculative Inference Specific functions ----- */
 
 /***** Request Init Phase *****/
-TreeSearchBatchConfigFuture RequestManager::prepare_first_spec_batch_config(
-    TreeVerifyBatchConfigFuture const &old_bc,
-    InferenceResultFuture const &result,
-    int model_id,
-    Context ctx,
-    Runtime *runtime) {
-
-  RequestManager *rm = this;
-  TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
-                        TaskArgument(&rm, sizeof(RequestManager *)));
-  launcher.add_future(old_bc);
-  launcher.add_future(result);
-  launcher.add_future(Future::from_value<int>(model_id));
-  return runtime->execute_task(ctx, launcher);
-}
-
-TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config_task(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
-    Runtime *runtime) {
-  RequestManager *rm = *((RequestManager **)task->args);
-  TreeVerifyBatchConfig const &bc =
-      Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
-  InferenceResult const &result =
-      Future(task->futures[1]).get_result<InferenceResult>();
-  int model_id = Future(task->futures[2]).get_result<int>();
-  return rm->get_first_spec_batch_config(bc, result, model_id);
-}
-
-TreeSearchBatchConfig RequestManager::get_first_spec_batch_config(
-    TreeVerifyBatchConfig const &old_bc,
-    InferenceResult const &result,
-    int model_id) {
+TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout << "\n############### prepare_next_batch_init ###############\n";
@@ -851,33 +818,6 @@ TreeSearchBatchConfig RequestManager::get_first_spec_batch_config(
 }
 
 /***** Speculative Decoding Phase *****/
-TreeSearchBatchConfigFuture RequestManager::prepare_next_spec_batch_config(
-    TreeSearchBatchConfigFuture const &old_bc,
-    SsmInferenceResultFuture const &result,
-    Context ctx,
-    Runtime *runtime) {
-
-  RequestManager *rm = this;
-  TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_SPEC_TASK_ID,
-                        TaskArgument(&rm, sizeof(RequestManager *)));
-  launcher.add_future(old_bc);
-  launcher.add_future(result);
-  return runtime->execute_task(ctx, launcher);
-}
-
-TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config_task(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
-    Runtime *runtime) {
-  RequestManager *rm = *((RequestManager **)task->args);
-  TreeSearchBatchConfig const &bc =
-      Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
-  SsmInferenceResult const &result =
-      Future(task->futures[1]).get_result<SsmInferenceResult>();
-  return rm->prepare_next_batch_beam(bc, result);
-}
-
 TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
@@ -954,51 +894,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
 }
 
 /***** Verify Phase *****/
-
-TreeVerifyBatchConfigFuture RequestManager::prepare_next_batch_verify(
-    std::vector<TreeSearchBatchConfigFuture> const &old_batches,
-    Context ctx,
-    Runtime *runtime) {
-
-  RequestManager *rm = this;
-  TaskLauncher launcher(RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
-                        TaskArgument(&rm, sizeof(RequestManager *)));
-  for (auto const &bcf : old_batches) {
-    launcher.add_future(bcf);
-  }
-  return runtime->execute_task(ctx, launcher);
-}
-
-TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify_task(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
-    Runtime *runtime) {
-  RequestManager *rm = *((RequestManager **)task->args);
-  std::vector<TreeSearchBatchConfig> old_batches;
-  for (auto const &bcf : task->futures) {
-    old_batches.push_back(Future(bcf).get_result<TreeSearchBatchConfig>());
-  }
-  return rm->prepare_next_batch_verify(old_batches);
-}
-
-/* New APIs */
-TreeSearchBatchConfig RequestManager::get_verify_batch_config_task(
-    Legion::Task const *task,
-    std::vector<Legion::PhysicalRegion> const &regions,
-    Legion::Context ctx,
-    Legion::Runtime *runtime) {
-  RequestManager *rm = *((RequestManager **)task->args);
-  std::vector<TreeSearchBatchConfig> old_batches;
-  for (auto const &bcf : task->futures) {
-    old_batches.push_back(Future(bcf).get_result<TreeSearchBatchConfig>());
-  }
-  return rm->prepare_next_batch_verify(old_batches);
-}
-/* New APIs */
-
-TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
-    std::vector<TreeSearchBatchConfig> const &old_batches) {
+TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   if (verbose) {
@@ -1290,39 +1186,6 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
   }
 
   return new_bc;
-}
-
-/* New APIs */
-TreeSearchBatchConfig RequestManager::prepare_verify_batch_config(
-    std::vector<TreeSearchBatchConfig> const &old_batches) {
-  if (verbose) {
-    std::cout
-        << "\n############### prepare_next_batch_verify ###############\n";
-  }
-
-  assert(old_batches.size() > 0);
-
-  TreeVerifyBatchConfig new_bc;
-  new_bc.num_tokens_to_commit = 0;
-  new_bc.num_tokens = 0;
-
-  return new_bc;
-}
-/* New APIs */
-void RequestManager::initialize_root_of_spec_token_trees() {
-  // This method assumes only one small model is used for speculation
-
-  // TODO: Do we need to iterate over all requests?
-  for (auto &request_pair : all_requests) {
-    Request &request = request_pair.second;
-    TokenTree &token_tree = request.speculative_token_trees[0];
-    token_tree.tree_layers.clear();
-    token_tree.add_layer();
-    token_tree.tree_layers[0].emplace_back(
-        // TODO: Make sure every request has at least one token,
-        // otherwise, we need to handle this case
-        std::make_shared<TokenTreeNode>(request.tokens.back(), 0, 1.0));
-  }
 }
 
 bool RequestManager::update_ssm_inference_results(
@@ -2132,7 +1995,7 @@ RequestManager *RequestManager::get_request_manager() {
   return request_manager_singleton;
 }
 
-/********** Request Token Tree Related Functions **********/
+/* --------- Request Token Tree Related Functions --------- */
 void RequestManager::init_token_trees(RequestGuid guid) {
   Request &request = all_requests[guid];
   request.speculative_token_trees.clear();
@@ -2260,6 +2123,6 @@ void RequestManager::prune_last_layer_of_spec_token_tree(RequestGuid guid) {
     }
   }
 }
-/********** Request Token Tree Related Functions **********/
+/* --------- Request Token Tree Related Functions --------- */
 
 }; // namespace FlexFlow
