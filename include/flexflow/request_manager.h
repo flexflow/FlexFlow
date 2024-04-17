@@ -286,6 +286,9 @@ private:
       std::vector<std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>>,
       CompareSharedTokenTreeNodePtrRequestGuidPair>
       token_tree_node_pool;
+  // rm state
+  std::mutex rm_state_mutex;
+  std::vector<Request> activated_requests;
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,
