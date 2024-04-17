@@ -117,7 +117,7 @@ public:
 
 class RequestManager {
 public:
-  enum Status {
+  enum State {
     PREFILLING = 1001,
     DECODING = 1002,
     SSM_SPEC = 1003,
@@ -344,9 +344,18 @@ public:
       Legion::Runtime *runtime);
   /* Old APIs for reference */
 
-  void update_inference_results(InferenceResult const &results);
-  bool update_inference_results(SsmInferenceResult const &ssm_inference_result);
-  BatchConfig get_next_batch_config();
+  // API for rm state machine
+  BatchConfigFuture get_next_batch_config(InferenceResultFuture const &result,
+                                          Legion::Context ctx,
+                                          Legion::Runtime *runtime);
+  static BatchConfig get_next_batch_config_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+  BatchConfig get_next_batch_config(InferenceResult const &result);
+  void update_inference_results(InferenceResult const &result);
+  BatchConfig prepare_next_batch();
 
 private:
   // configuration parameters
@@ -354,7 +363,7 @@ private:
   int max_tokens_per_batch;
   int max_spec_tree_token_num;
   int max_sequence_length;
-  Status request_manager_status;
+  State request_manager_status;
   BackgroundServerStatus background_server_status;
 
   std::unique_ptr<Tokenizer> tokenizer_;

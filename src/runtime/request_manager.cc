@@ -338,6 +338,79 @@ size_t RequestManager::get_num_processed_requests() {
   return num_processed_requests;
 }
 
+BatchConfigFuture RequestManager::get_next_batch_config(
+    InferenceResultFuture const &result, Context ctx, Runtime *runtime) {
+  RequestManager *rm = this;
+  TaskLauncher launcher(RM_GET_NEXT_BATCH_CONFIG_TASK_ID,
+                        TaskArgument(&rm, sizeof(RequestManager *)));
+  launcher.add_future(result);
+  return runtime->execute_task(ctx, launcher);
+}
+
+BatchConfig RequestManager::get_next_batch_config_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  RequestManager *rm = *((RequestManager **)task->args);
+  InferenceResult const &result =
+      Future(task->futures[0]).get_result<InferenceResult>();
+  return rm->get_next_batch_config(result);
+}
+
+BatchConfig
+    RequestManager::get_next_batch_config(InferenceResult const &result) {
+  update_inference_results(result);
+  return prepare_next_batch();
+}
+
+void RequestManager::update_inference_results(InferenceResult const &result) {
+  // Update the inference results
+  for (int i = 0; i < result.num_tokens; i++) {
+    size_t guid = result.request_guids[i];
+    Request &request = all_requests[guid];
+    if (request.tokens.size() < request.max_sequence_length) {
+      request.tokens.push_back(result.token_ids[i]);
+    }
+  }
+}
+
+BatchConfig RequestManager::prepare_next_batch() {
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
+  BatchConfig bc;
+  bc.num_tokens = 0;
+  int num_generation_tokens = 0;
+  int num_active_req = -1;
+  for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
+    if (pending_request_queue.empty()) {
+      break;
+    }
+    Request new_request = pending_request_queue.front();
+    pending_request_queue.pop();
+    all_requests[new_request.guid] = new_request;
+    bc.requestsInfo[i].first_token_depth_in_request = 0;
+    bc.requestsInfo[i].first_token_offset_in_batch = bc.num_tokens;
+    bc.requestsInfo[i].request_guid = new_request.guid;
+    bc.requestsInfo[i].num_tokens_in_batch =
+        std::min(get_max_tokens_per_batch(), (int)new_request.tokens.size());
+    bc.requestsInfo[i].max_sequence_length = new_request.max_sequence_length;
+    bc.request_completed[i] = false;
+    bc.requestsInfo[i].prompt_phase = true;
+    num_active_req++;
+    bc.requestsInfo[num_active_req].batch_config_request_id = i;
+    for (int j = 0; j < bc.requestsInfo[i].num_tokens_in_batch; j++) {
+      int depth = bc.requestsInfo[i].first_token_depth_in_request + j;
+      bc.tokensInfo[bc.num_tokens].request_index = i;
+      bc.tokensInfo[bc.num_tokens].abs_depth_in_request = depth;
+      assert(depth < new_request.tokens.size());
+      bc.tokensInfo[bc.num_tokens].token_id = new_request.tokens[depth];
+      bc.num_tokens++;
+    }
+  }
+  bc.num_generation_tokens = num_generation_tokens;
+  return bc;
+}
+
 BatchConfigFuture
     RequestManager::prepare_next_batch(BatchConfigFuture const &old_bc,
                                        InferenceResultFuture const &result,
