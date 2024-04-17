@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_CONV_2D_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_CONV_2D_KERNELS_H
 
+#include "device.h"
 #include "kernels/accessor.h"
-#include "kernels/device.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/activation.h"
 #include "utils/visitable.h"
@@ -38,7 +38,7 @@ namespace Kernels {
 namespace Conv2D {
 
 Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                                 optional<Activation> activation,
+                                 std::optional<Activation> activation,
                                  int kernel_h,
                                  int kernel_w,
                                  int groups,
@@ -57,7 +57,7 @@ void forward_kernel(ffStream_t stream,
                     float *output_ptr,
                     float const *filter_ptr,
                     float const *bias_ptr,
-                    optional<Activation> activation);
+                    std::optional<Activation> activation);
 
 void backward_kernel(ffStream_t stream,
                      Conv2DPerDeviceState const &m,
@@ -68,7 +68,7 @@ void backward_kernel(ffStream_t stream,
                      float const *filter_ptr,
                      float *filter_grad_ptr,
                      float *bias_grad_ptr,
-                     optional<Activation> activation);
+                     std::optional<Activation> activation);
 
 } // namespace Conv2D
 } // namespace Kernels

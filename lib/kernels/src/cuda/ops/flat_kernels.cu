@@ -15,7 +15,6 @@
 
 #include "device.h"
 #include "kernels/accessor.h"
-#include "kernels/device.h"
 #include "kernels/flat_kernels.h"
 
 namespace FlexFlow {

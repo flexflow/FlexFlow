@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
+#include "device.h"
 #include "kernels/pool_2d_kernels.h"
 
 namespace FlexFlow {
@@ -22,7 +22,7 @@ namespace Kernels {
 namespace Pool2D {
 
 Pool2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                                 optional<Activation> activation,
+                                 std::optional<Activation> activation,
                                  int input_w,
                                  int input_h,
                                  int input_c,
@@ -90,58 +90,6 @@ Pool2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   Pool2DPerDeviceState state = {
       handle, inputTensor, outputTensor, actiDesc, poolDesc, relu};
   return state;
-}
-
-void init_kernel(Pool2DPerDeviceState *m,
-                 int input_w,
-                 int input_h,
-                 int input_c,
-                 int input_n,
-                 int output_w,
-                 int output_h,
-                 int output_c,
-                 int output_n,
-                 int pad_h,
-                 int pad_w,
-                 int kernel_h,
-                 int kernel_w,
-                 int stride_h,
-                 int stride_w,
-                 PoolType pool_type) {
-  checkCUDNN(cudnnSetTensor4dDescriptor(m.inputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        input_n,
-                                        input_c,
-                                        input_h,
-                                        input_w));
-
-  cudnnPoolingMode_t mode;
-  if (pool_type == POOL_MAX) {
-    mode = CUDNN_POOLING_MAX;
-  } else {
-    assert(pool_type == POOL_AVG);
-    mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
-  }
-  checkCUDNN(cudnnSetPooling2dDescriptor(m.poolDesc,
-                                         mode,
-                                         CUDNN_PROPAGATE_NAN,
-                                         kernel_h,
-                                         kernel_w,
-                                         pad_h,
-                                         pad_w,
-                                         stride_h,
-                                         stride_w));
-  int n, c, h, w;
-  checkCUDNN(cudnnGetPooling2dForwardOutputDim(
-      m.poolDesc, m.inputTensor, &n, &c, &h, &w));
-  assert(n == output_n);
-  assert(c == output_c);
-  assert(h == output_h);
-  assert(w == output_w);
-
-  checkCUDNN(cudnnSetTensor4dDescriptor(
-      m.outputTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, n, c, h, w));
 }
 
 void forward_kernel(cudaStream_t stream,
