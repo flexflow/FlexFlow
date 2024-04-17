@@ -287,7 +287,8 @@ void FFMapper::select_task_options(MapperContext const ctx,
       (task.task_id == RM_PREPARE_NEXT_BATCH_INIT_TASK_ID) ||
       (task.task_id == RM_PREPARE_NEXT_BATCH_SPEC_TASK_ID) ||
       (task.task_id == RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID) ||
-      (task.task_id == RM_BACKGROUND_SERVING_TASK_ID)) {
+      (task.task_id == RM_BACKGROUND_SERVING_TASK_ID) ||
+      (task.task_id == RM_GET_NEXT_BATCH_CONFIG_TASK_ID)) {
     output.initial_proc = all_cpus[0];
     return;
   }
