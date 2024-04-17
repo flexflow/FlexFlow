@@ -1053,7 +1053,7 @@ TreeSearchBatchConfig RequestManager::get_next_spec_batch_config() {
 
     // Fill in the tokens
     TokenTree &token_tree = request.speculative_token_trees.at(new_bc.model_id);
-    if (token_tree.tree_layers.size() <= current_speculation_step) {
+    if (token_tree.tree_layers.size() < current_speculation_step) {
       // This request has no token to decode in this and the following small
       // model inference steps
       new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
@@ -1062,7 +1062,7 @@ TreeSearchBatchConfig RequestManager::get_next_spec_batch_config() {
       continue;
     } else {
       std::list<std::shared_ptr<TokenTreeNode>> &current_layer =
-          token_tree.tree_layers.at(current_speculation_step);
+          token_tree.tree_layers.at(current_speculation_step - 1);
       // Exclude the current layer from the token tree, because we want the
       // start index
       new_bc.requestsInfo[request_index].first_token_index_in_request =
@@ -1493,12 +1493,22 @@ bool RequestManager::update_inference_results(
     Request &request = all_requests[guid];
 
     TokenTree &token_tree = request.speculative_token_trees[0];
-    if (token_tree.tree_layers.size() < current_speculation_step) {
+    if (token_tree.tree_layers.size() == 0 && current_speculation_step == 1) {
+      // This is the first layer of the tree
+      for (int child_idx = 0; child_idx < num_branches; child_idx++) {
+        add_token_to_spec_token_tree(
+            guid,
+            ssm_inference_result.token_ids[result_index],
+            ssm_inference_result.probs[result_index],
+            0);
+        result_index++;
+      }
+    } else if (token_tree.tree_layers.size() < current_speculation_step - 1) {
       // This means that the parent layer is empty
       continue;
     } else {
       std::list<std::shared_ptr<TokenTreeNode>> &parent_tree_layer =
-          token_tree.tree_layers[current_speculation_step - 1];
+          token_tree.tree_layers[current_speculation_step - 2];
       int parent_pos = 0;
       for (auto parent_it = parent_tree_layer.begin();
            parent_it != parent_tree_layer.end();
@@ -1588,13 +1598,14 @@ void RequestManager::append_bitmask(RequestGuid guid) {
   BatchConfig::BitMask &bitmask = request.causal_mask;
   TokenTree &token_tree = request.speculative_token_trees[0];
 
-  if (token_tree.tree_layers.size() <= current_speculation_step) {
+  if (token_tree.tree_layers.size() < current_speculation_step) {
     // This request has no token added in this and the following small model
     // inference steps, skip it
     return;
   }
   std::list<std::shared_ptr<TokenTreeNode>> &tree_layer =
-      request.speculative_token_trees[0].tree_layers[current_speculation_step];
+      request.speculative_token_trees[0]
+          .tree_layers[current_speculation_step - 1];
   int new_layer_size = tree_layer.size();
   int last_layer_size = bitmask.current_layer_size;
   int previous_tree_size = bitmask.tree_size;
@@ -1612,7 +1623,7 @@ void RequestManager::append_bitmask(RequestGuid guid) {
     // Here we assume child_ptr->parent_pos denotes the position of the parent
     // in its corresponding layer, check this
     if (current_speculation_step > 1) {
-      // Root is not in the bitmask, when current_speculation_step == 1, the
+      // When current_speculation_step == 1, the
       // tokens don't have a parent to attend to
       bitmask.bit_mask[child_offset + child_idx] =
           bitmask.bit_mask[parent_offset + child_ptr->parent_pos];
@@ -2286,14 +2297,15 @@ void RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
   Request &request = all_requests[guid];
   TokenTree &speculative_token_tree = request.speculative_token_trees[0];
 
-  if (speculative_token_tree.tree_layers.size() == current_speculation_step) {
+  if (speculative_token_tree.tree_layers.size() ==
+      current_speculation_step - 1) {
     // When adding the first token, we need to add a new layer
     speculative_token_tree.add_layer();
   } else {
     // To add a token, the tree depth is either the same as the current
     // speculation step or one more than the current speculation step.
     assert(speculative_token_tree.tree_layers.size() ==
-               current_speculation_step + 1 &&
+               current_speculation_step &&
            "The depth of the token tree should be consistent with the depth of "
            "the token being added");
   }
@@ -2370,7 +2382,7 @@ void RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
         std::make_shared<TokenTreeNode>(token_id, parent_pos, joint_prob);
     token_tree_node_pool.push(std::make_pair(node_ptr, guid));
     request.speculative_token_trees[0]
-        .tree_layers[current_speculation_step]
+        .tree_layers[current_speculation_step - 1]
         .push_back(node_ptr);
     speculative_token_tree.tree_size++;
     speculative_token_tree.tree_node_size++;
@@ -2381,7 +2393,7 @@ void RequestManager::prune_last_layer_of_spec_token_tree(RequestGuid guid) {
   // This method assumes only one small model is used for speculation
   Request &request = all_requests[guid];
 
-  if (request.speculative_token_trees[0].tree_layers.size() <=
+  if (request.speculative_token_trees[0].tree_layers.size() <
       current_speculation_step) {
     // There are no tokens in the last layer
     return;
