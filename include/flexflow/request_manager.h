@@ -303,6 +303,10 @@ private:
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
 
+  // rm state 
+  std::mutex rm_state_mutex;
+  std::vector<Request> activated_requests;
+
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,
                      std::vector<std::pair<BatchConfig::TokenId, int>>>
