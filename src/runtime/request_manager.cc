@@ -419,6 +419,15 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
     std::cout << "\n############### prepare_next_batch_init ###############\n";
   }
 
+  // TODO: Clean up the code, this method does the following:
+  // 1. Commit the verified tokens to through the batch config. We can do this
+  // request by request. Put the information of the committed tokens into
+  // BatchConfig::TokensInfo. TODO: where to store those tokens?
+  // 2. Maintain BatchConfig::RequestsInfo and all other fields of
+  // TreeSearchBatchConfig.
+  // Please refer to the implementation of prepare_next_spec_batch_config() for
+  // more details.
+
   // Step 1: use result to update requests
   TreeSearchBatchConfig new_bc;
   new_bc.num_tokens = 0;
@@ -902,6 +911,16 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
         << "\n############### prepare_next_batch_verify ###############\n";
   }
 
+  // TODO: Clean up the code, this method does the following:
+  // 1. Commit the verified tokens through a TreeVerifyBatchConfig . We can do
+  // this request by request. Put the information of the committed tokens into
+  // TreeVerifyBatchConfig::committed_tokens. TODO: where to store those tokens?
+  // 2. Load the tokens on the token tree to TreeVerifyBatchConfig::tokensInfo.
+  // 2. Maintain BatchConfig::RequestsInfo and all other fields of
+  // TreeSearchBatchConfig.
+  // Please refer to the implementation of prepare_next_spec_batch_config() for
+  // more details.
+
   assert(old_batches.size() > 0);
 
   TreeVerifyBatchConfig new_bc;
@@ -1186,6 +1205,11 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   }
 
   return new_bc;
+}
+
+void RequestManager::update_llm_verify_results(
+    InferenceResult const &llm_verify_result) {
+  // TODO: Implement this function
 }
 
 bool RequestManager::update_ssm_inference_results(

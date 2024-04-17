@@ -319,9 +319,8 @@ private:
   // cache of the small model.
   TreeSearchBatchConfig prepare_first_spec_batch_config();
   TreeVerifyBatchConfig prepare_verify_batch_config();
-  bool RequestManager::update_llm_verify_results(
-      InferenceResult const &llm_verify_result);
-  bool RequestManager::update_ssm_inference_results(
+  void update_llm_verify_results(InferenceResult const &llm_verify_result);
+  bool update_ssm_inference_results(
       SsmInferenceResult const &ssm_inference_result);
   /* ---------- New Helper Functions ---------- */
 
