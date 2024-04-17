@@ -994,7 +994,7 @@ TreeSearchBatchConfig RequestManager::get_first_spec_batch_config(
   return new_bc;
 }
 
-/***** Beam Search Phase *****/
+/***** Speculative Decoding Phase *****/
 TreeSearchBatchConfigFuture RequestManager::get_next_spec_batch_config(
     TreeSearchBatchConfigFuture const &old_bc,
     SsmInferenceResultFuture const &result,
@@ -1022,26 +1022,12 @@ TreeSearchBatchConfig RequestManager::get_next_spec_batch_config_task(
   return rm->prepare_next_batch_beam(bc, result);
 }
 
-// update beam search metadata
-TreeSearchBatchConfig RequestManager::get_next_spec_batch_config(
-    SsmInferenceResult const &ssm_inference_result) {
+TreeSearchBatchConfig RequestManager::get_next_spec_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout << "\n############### prepare_next_batch_spec ###############\n";
-  }
-  if (verbose) {
-    std::cout << "print all results" << "\n";
-    for (int i = 0; i < 40; i++) {
-      std::cout << ssm_inference_result.token_ids[i] << ", ";
-    }
     std::cout << "Current tree depth: " << current_speculation_step << "\n";
-    std::cout << "Number of tokens in each requests: " << std::endl;
   }
-
-  // TODO: separate this
-  // Store small model's inference result to the token tree struct
-  update_inference_results(ssm_inference_result);
-
   // Prepare the next batch for existing requests
   TreeSearchBatchConfig new_bc;
   // We assume that only one small model is in use now
@@ -1536,6 +1522,7 @@ bool RequestManager::update_inference_results(
         }
       }
     }
+    append_bitmask(guid);
   }
 }
 
@@ -1588,81 +1575,10 @@ void RequestManager::update_bitmask(BatchConfig::BitMask &bitmask,
   //           << "\n";
 }
 
-// prepare next beam, append layers to the tree
-void RequestManager::append_bitmask(BatchConfig::BitMask &bitmask,
-                                    int newNodes,
-                                    BeamTree const tree,
-                                    int currentDepth) {
-  int pre_tree_size = bitmask.tree_size;
-  bitmask.tree_size += newNodes;
-  bitmask.layer_size = newNodes;
-  assert(bitmask.tree_size <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM &&
-         "do not support tree size > 64");
-  // preBeamSize: replicate num
-
-  // add relationship with input/prompt
-  for (int i = 0; i < bitmask.prompt_size; i++) {
-    for (int j = pre_tree_size; j < bitmask.tree_size; j++) {
-      bitmask.mask[i] |= (1 << j);
-      // std::cout << "see bit mask append: " << i << ", to" << j
-      //           << std::bitset<64>(bitmask.mask[i]) << "\n";
-    }
-  }
-
-  // std::cout << "bitmask.tree_size: " << bitmask.tree_size << ", "
-  //           << pre_tree_size << ", " << bitmask.prompt_size << ", "
-  //           << preBeamSize << "\n";
-
-  // int num_groups = newNodes / preBeamSize;
-  // int group_size = newNodes / num_groups;
-  // add relations to branch
-  // requests in same groups share same relations, except the last token.
-
-  // set middle layers
-  //  skip the root prompt/tokens
-  int token_idx = bitmask.prompt_size;
-  int new_nodes_start_idx = pre_tree_size;
-  // std::cout << "new nodes start " << new_nodes_start_idx << "\n";
-  for (int i = 1; i < currentDepth; i++) {
-    new_nodes_start_idx = pre_tree_size;
-    int nodes_this_layer = tree.treeLayers[i].nodes_num_this_layer;
-    // std::cout << "tree layer: " << i << " nodes:" << nodes_this_layer
-    //           << "group size: " << newNodes / nodes_this_layer << "\n";
-    for (int j = 0; j < nodes_this_layer; j++) {
-      int group_size = newNodes / nodes_this_layer;
-      for (int k = 0; k < group_size; k++) {
-        bitmask.mask[token_idx] |= (1 << new_nodes_start_idx);
-        new_nodes_start_idx += 1;
-      }
-      token_idx += 1;
-    }
-  }
-
-  assert(token_idx == pre_tree_size);
-  assert(currentDepth <= 1 || new_nodes_start_idx == bitmask.tree_size);
-
-  // assert(currentDepth <= 2);
-  // set last layer, all tokens are only relevant to it self;
-  for (int i = token_idx; i < bitmask.tree_size; i++) {
-    bitmask.mask[i] |= (1 << i);
-    // std::cout << "set rel: " << i << "to: " << i << "\n";
-  }
-
-  // if(bitmask.non_tree_cache_size == 19 && bitmask.tree_size > 2){
-  //   assert(false);
-  // }
-
-  // std::cout << "see bit mask append" << bitmask.prompt_size << "\n";
-  // std::cout << "see bit mask append" << bitmask.non_tree_cache_size <<
-  // "\n"; std::cout << "see bit mask append" <<
-  // std::bitset<64>(bitmask.mask[0])
-  //           << "\n";
-}
-
-void RequestManager::append_bitmask(RequestGuid guid,
-                                    BatchConfig::BitMask &bitmask) {
+void RequestManager::append_bitmask(RequestGuid guid) {
   // This function changes the bitmask in place
   Request &request = all_requests[guid];
+  BatchConfig::BitMask &bitmask = request.causal_mask;
   std::list<std::shared_ptr<TokenTreeNode>> &tree_layer =
       request.speculative_token_trees[0].tree_layers.back();
   int new_layer_size = tree_layer.size();

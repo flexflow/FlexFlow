@@ -155,11 +155,7 @@ public:
   void register_output_filepath(std::string const &);
   void appendPendingRequest(BatchConfig::BitMask &bitmask, int initLength);
   void init_bitmask(BatchConfig::BitMask &bitmask, int initLength);
-  void append_bitmask(BatchConfig::BitMask &bitmask,
-                      int newNodes,
-                      BeamTree const tree,
-                      int currentDepth);
-  void append_bitmask(RequestGuid guid, BatchConfig::BitMask &bitmask);
+  void append_bitmask(RequestGuid guid);
   void update_bitmask(BatchConfig::BitMask &bitmask,
                       int initLength,
                       int non_tree_size);
