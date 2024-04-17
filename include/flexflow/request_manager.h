@@ -265,8 +265,8 @@ public:
 
   // API for rm state machine
   BatchConfigFuture get_next_batch_config(InferenceResultFuture const &result,
-                                          Context ctx,
-                                          Runtime *runtime);
+                                          Legion::Context ctx,
+                                          Legion::Runtime *runtime);
   static BatchConfig get_next_batch_config_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
