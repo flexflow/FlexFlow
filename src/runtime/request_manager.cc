@@ -339,9 +339,7 @@ size_t RequestManager::get_num_processed_requests() {
 }
 
 BatchConfigFuture RequestManager::get_next_batch_config(
-  InferenceResultFuture const &result,
-  Context ctx,
-  Runtime *runtime) {
+    InferenceResultFuture const &result, Context ctx, Runtime *runtime) {
   RequestManager *rm = this;
   TaskLauncher launcher(RM_GET_NEXT_BATCH_CONFIG_TASK_ID,
                         TaskArgument(&rm, sizeof(RequestManager *)));
@@ -350,17 +348,18 @@ BatchConfigFuture RequestManager::get_next_batch_config(
 }
 
 BatchConfig RequestManager::get_next_batch_config_task(
-      Task const *task,
-      std::vector<PhysicalRegion> const &regions,
-      Context ctx,
-      Runtime *runtime) {
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
   RequestManager *rm = *((RequestManager **)task->args);
   InferenceResult const &result =
       Future(task->futures[0]).get_result<InferenceResult>();
   return rm->get_next_batch_config(result);
 }
 
-BatchConfig RequestManager::get_next_batch_config(InferenceResult const &result) {
+BatchConfig
+    RequestManager::get_next_batch_config(InferenceResult const &result) {
   update_inference_results(result);
   return prepare_next_batch();
 }
@@ -411,8 +410,6 @@ BatchConfig RequestManager::prepare_next_batch() {
   bc.num_generation_tokens = num_generation_tokens;
   return bc;
 }
-
-
 
 BatchConfigFuture
     RequestManager::prepare_next_batch(BatchConfigFuture const &old_bc,
@@ -1107,7 +1104,8 @@ BeamSearchBatchConfig
     std::cout << "\n############### prepare_next_batch_beam ###############\n";
   }
   if (verbose) {
-    std::cout << "print all results" << "\n";
+    std::cout << "print all results"
+              << "\n";
     for (int i = 0; i < 40; i++) {
       std::cout << result.token_ids[i] << ", ";
     }
@@ -1767,7 +1765,8 @@ void RequestManager::store_beam_metadata(BeamSearchBatchConfig const &old_bc,
       if (depth == 1) {
         // store the last input into the tree;
         if (verbose) {
-          std::cout << "try to store the input" << "\n";
+          std::cout << "try to store the input"
+                    << "\n";
         }
 
         request.beam_trees.at(old_bc.model_id).treeLayers[0].tokens[0] =
@@ -2024,7 +2023,8 @@ bool PreOrder(
     if (verbose) {
       std::cout << "last tokens: " << tree.treeLayers[current_depth].tokens[id]
                 << "\n";
-      std::cout << "return true" << "\n";
+      std::cout << "return true"
+                << "\n";
     }
     return true;
   }

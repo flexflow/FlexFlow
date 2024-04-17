@@ -4459,15 +4459,14 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
-      Runtime::preregister_task_variant<
-          BatchConfig,
-          RequestManager::get_next_batch_config>(
+      Runtime::preregister_task_variant<BatchConfig,
+                                        RequestManager::get_next_batch_config>(
           registrar, "RequestManager Get Next Batch Config Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<BatchConfig, 
+      runtime->register_task_variant<BatchConfig,
                                      RequestManager::get_next_batch_config>(
           registrar);
     }

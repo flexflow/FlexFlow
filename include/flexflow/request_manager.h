@@ -263,12 +263,11 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-
   // API for rm state machine
   BatchConfigFuture get_next_batch_config(InferenceResultFuture const &result,
                                           Context ctx,
                                           Runtime *runtime);
-  static BatchConfig get_next_batch_config_task(      
+  static BatchConfig get_next_batch_config_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
@@ -303,8 +302,6 @@ private:
   std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
-
-  
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,
