@@ -96,7 +96,7 @@ struct BeamTree {
 
 class RequestManager {
 public:
-  enum Status {
+  enum State {
     PREFILLING = 1001,
     DECODING = 1002,
     SSM_SPEC = 1003,
@@ -263,8 +263,19 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  void update_inference_results(std::vector<InferenceResult> const &results);
-  BatchConfig get_next_batch_config();
+
+  // API for rm state machine
+  BatchConfigFuture get_next_batch_config(InferenceResultFuture const &result,
+                                          Context ctx,
+                                          Runtime *runtime);
+  static BatchConfig get_next_batch_config_task(      
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+  BatchConfig get_next_batch_config(InferenceResult const &result);
+  void update_inference_results(InferenceResult const &result);
+  BatchConfig prepare_next_batch();
 
 private:
   // configuration parameters
@@ -272,7 +283,7 @@ private:
   int max_tokens_per_batch;
   int max_spec_tree_token_num;
   int max_sequence_length;
-  Status request_manager_status;
+  State request_manager_status;
   BackgroundServerStatus background_server_status;
 
   // tree width in each speculative step, if not specified 1
@@ -292,6 +303,8 @@ private:
   std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
+
+  
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,
