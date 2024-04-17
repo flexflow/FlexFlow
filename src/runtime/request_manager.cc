@@ -771,6 +771,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         old_bc.requestsInfo[inference_batch_size].num_tokens_in_batch;
     request.processed_finetuning_tokens +=
         old_bc.requestsInfo[inference_batch_size].num_tokens_in_batch;
+    request.finetuning_tokens_per_batch.push_back(
+        old_bc.requestsInfo[inference_batch_size].num_tokens_in_batch);
     int dataset_entry =
         request.completed_training_steps % request.dataset.size();
     if (old_bc.requestsInfo[inference_batch_size].first_token_depth_in_request +
@@ -798,8 +800,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       total_request_run_time +=
           profile_info.finish_time - profile_info.start_time;
       profiling_requests[request.guid] = profile_info;
-      log_req_mgr.print("[Finetuning] guid(%zu) completed_training_steps(%d) "
+      log_req_mgr.print("[%s] guid(%zu) completed_training_steps(%d) "
                         "processed_finetuning_tokens(%lu) latency(%.1lf)",
+                        request.warmup ? "Warmup" : "Finetuning",
                         request.guid,
                         request.completed_training_steps,
                         request.processed_finetuning_tokens,
@@ -807,14 +810,24 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       if (!output_filepath.empty()) {
         std::ofstream outputFile(output_filepath, std::ios::app);
         if (outputFile.is_open()) {
-          outputFile << "[Finetuning] guid(" << request.guid
+          std::string tokens_str = "[";
+          for (size_t i = 0; i < request.finetuning_tokens_per_batch.size(); i++) {
+            tokens_str += std::to_string(request.finetuning_tokens_per_batch[i]);
+            if (i != request.finetuning_tokens_per_batch.size() - 1) {
+              tokens_str += ", ";
+            }
+          }
+          tokens_str += "]";
+          outputFile << "[" << (request.warmup ? "Warmup" : "Finetuning") 
+                     << "] guid(" << request.guid
                      << ") completed_training_steps("
                      << request.completed_training_steps
                      << ") processed_finetuning_tokens("
                      << request.processed_finetuning_tokens << ") latency("
                      << std::fixed << std::setprecision(3)
                      << (profile_info.finish_time - profile_info.start_time)
-                     << ")\n";
+                     << ") tokens_per_batch("
+                     << tokens_str << ")\n";
           outputFile.close();
         } else {
           std::cout << "Unable to open the output file: " << output_filepath
