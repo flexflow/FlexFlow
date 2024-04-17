@@ -69,9 +69,11 @@ public:
     int num_tokens_in_batch;
   };
   struct PerTokenInfo {
+    TokenId token_id;
     int abs_index_in_request;
     int request_index;
-    TokenId token_id;
+    // This offset is only used for small model KV cache commit
+    int last_batch_offset = -1;
   };
 
   class BitMask {
