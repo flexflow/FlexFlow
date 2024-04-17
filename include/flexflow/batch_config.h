@@ -185,6 +185,7 @@ public:
 };
 
 class SsmInferenceResult : public InferenceResult {
+public:
   BatchConfig::TokenId
       token_ids[MAX_NUM_TOKENS *
                 TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
