@@ -199,15 +199,15 @@ public:
                               Legion::Context ctx,
                               Legion::Runtime *runtime);
   TreeSearchBatchConfig
-      prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
-                              InferenceResult const &result,
-                              int model_id);
+      get_first_spec_batch_config(TreeVerifyBatchConfig const &old_bc,
+                                  InferenceResult const &result,
+                                  int model_id);
   TreeSearchBatchConfigFuture
-      prepare_next_batch_init(TreeVerifyBatchConfigFuture const &old_bc,
-                              InferenceResultFuture const &result,
-                              int model_id,
-                              Legion::Context ctx,
-                              Legion::Runtime *runtime);
+      get_first_spec_batch_config(TreeVerifyBatchConfigFuture const &old_bc,
+                                  InferenceResultFuture const &result,
+                                  int model_id,
+                                  Legion::Context ctx,
+                                  Legion::Runtime *runtime);
 
   TreeVerifyBatchConfig prepare_next_batch_verify(
       std::vector<TreeSearchBatchConfig> const &old_batches);
@@ -222,48 +222,61 @@ public:
                          int first_token_depth_in_request);
   /* Old APIs for reference */
 
-  /* New APIs */
-  // Given the last speculation result, prepare the next speculation batch.
-  TreeSearchBatchConfig
-      prepare_next_batch_spec(SsmInferenceResult const &ssm_inference_result);
+  /*********** New APIs ***********/
+  // Prepare the next speculation batch config. This function is called before
+  // the second step of the speculation.
+  TreeSearchBatchConfig get_next_spec_batch_config();
+
   // A wrapper function.
   TreeSearchBatchConfigFuture
-      prepare_next_batch_spec(TreeSearchBatchConfigFuture const &old_bc,
-                              SsmInferenceResultFuture const &result,
-                              Legion::Context ctx,
-                              Legion::Runtime *runtime);
-  // Given the verification result, prepare the first speculation batch.
-  TreeSearchBatchConfig
-      prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
-                              InferenceResult const &result,
-                              int model_id);
+      get_next_spec_batch_config(TreeSearchBatchConfigFuture const &old_bc,
+                                 SsmInferenceResultFuture const &result,
+                                 Legion::Context ctx,
+                                 Legion::Runtime *runtime);
+
+  // A wrapper function.
+  static TreeSearchBatchConfig get_next_spec_batch_config_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+
+  // Prepare the first speculation batch config. This function is called before
+  // the first step of the speculation. The difference with
+  // prepare_next_batch_config_spec is that we put the info of the committed
+  // tokens into the batch config in the first speculation step to commit the KV
+  // cache of the small model.
+  TreeSearchBatchConfig get_first_spec_batch_config();
+
   // A wrapper function.
   TreeSearchBatchConfigFuture
-      prepare_next_batch_init(TreeVerifyBatchConfigFuture const &old_bc,
-                              InferenceResultFuture const &result,
-                              int model_id,
-                              Legion::Context ctx,
-                              Legion::Runtime *runtime);
-  // Given the speculation result, prepare the verification batch.
-  TreeSearchBatchConfig prepare_next_batch_verify(
-      std::vector<TreeSearchBatchConfig> const &old_batches);
+      get_first_spec_batch_config(TreeVerifyBatchConfigFuture const &old_bc,
+                                  InferenceResultFuture const &result,
+                                  int model_id,
+                                  Legion::Context ctx,
+                                  Legion::Runtime *runtime);
+
   // A wrapper function.
-  TreeSearchBatchConfigFuture prepare_next_batch_verify(
+  static TreeSearchBatchConfig get_first_spec_batch_config_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+
+  TreeVerifyBatchConfig prepare_verify_batch_config();
+
+  // A wrapper function.
+  TreeVerifyBatchConfigFuture prepare_verify_batch_config(
       std::vector<TreeSearchBatchConfigFuture> const &old_batches,
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  // This function takes the small model inference results and the last
-  // speculation batch config and use the information to update the token tree
-  // stored in RequestManager::all_requests.
-  void store_spec_metadata(TreeSearchBatchConfig const &old_bc,
-                           SsmInferenceResult const &result);
-  // Put the last layer of the token tree stored in RequestManager::all_requests
-  // into new_bc::beamRequestsInfo .
-  void update_spec_metadata(TreeSearchBatchConfig &new_bc,
-                            TreeSearchBatchConfig const &old_bc,
-                            Token &tree,
-                            int request_index);
+  static TreeVerifyBatchConfig get_verify_batch_config_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+  /*********** New APIs ***********/
 
   // This function takes the tree stored in the token trees in
   // RequestManager::all_requests, and convert them into serialized version.
@@ -272,7 +285,6 @@ public:
       traverse_spec_tree(TreeSearchBatchConfig const &old_bc,
                          int request_index,
                          int first_token_depth_in_request);
-  /* New APIs */
 
   // remove guid after put the cached tree in request
   std::vector<std::pair<BatchConfig::TokenId, int>> merge_dfs_trees(
@@ -323,42 +335,18 @@ public:
       Legion::Runtime *runtime);
 
   // A wrapper function.
-  static TreeSearchBatchConfig prepare_next_batch_init_task(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
-  /* Old APIs for reference */
-
-  /* New APIs */
-  static TreeSearchBatchConfig prepare_next_batch_spec_task(
+  static TreeSearchBatchConfig get_first_spec_batch_config_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  static TreeSearchBatchConfig prepare_next_batch_init_task(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
-  /* New APIs */
-
-  /* Old APIs for reference */
   static TreeVerifyBatchConfig prepare_next_batch_verify_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
   /* Old APIs for reference */
-
-  /* New APIs */
-  static TreeSearchBatchConfig prepare_next_batch_verify_task(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
-  /* New APIs */
 
   void update_inference_results(InferenceResult const &results);
   bool update_inference_results(SsmInferenceResult const &ssm_inference_result);

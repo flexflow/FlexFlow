@@ -557,7 +557,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
 /* ----- Speculative Inference Specific functions ----- */
 
 /***** Request Init Phase *****/
-TreeSearchBatchConfigFuture RequestManager::prepare_next_batch_init(
+TreeSearchBatchConfigFuture RequestManager::get_first_spec_batch_config(
     TreeVerifyBatchConfigFuture const &old_bc,
     InferenceResultFuture const &result,
     int model_id,
@@ -573,7 +573,7 @@ TreeSearchBatchConfigFuture RequestManager::prepare_next_batch_init(
   return runtime->execute_task(ctx, launcher);
 }
 
-TreeSearchBatchConfig RequestManager::prepare_next_batch_init_task(
+TreeSearchBatchConfig RequestManager::get_first_spec_batch_config_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
@@ -584,13 +584,13 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_init_task(
   InferenceResult const &result =
       Future(task->futures[1]).get_result<InferenceResult>();
   int model_id = Future(task->futures[2]).get_result<int>();
-  return rm->prepare_next_batch_init(bc, result, model_id);
+  return rm->get_first_spec_batch_config(bc, result, model_id);
 }
 
-TreeSearchBatchConfig
-    RequestManager::prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
-                                            InferenceResult const &result,
-                                            int model_id) {
+TreeSearchBatchConfig RequestManager::get_first_spec_batch_config(
+    TreeVerifyBatchConfig const &old_bc,
+    InferenceResult const &result,
+    int model_id) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout << "\n############### prepare_next_batch_init ###############\n";
@@ -995,7 +995,7 @@ TreeSearchBatchConfig
 }
 
 /***** Beam Search Phase *****/
-TreeSearchBatchConfigFuture RequestManager::prepare_next_batch_spec(
+TreeSearchBatchConfigFuture RequestManager::get_next_spec_batch_config(
     TreeSearchBatchConfigFuture const &old_bc,
     SsmInferenceResultFuture const &result,
     Context ctx,
@@ -1009,7 +1009,7 @@ TreeSearchBatchConfigFuture RequestManager::prepare_next_batch_spec(
   return runtime->execute_task(ctx, launcher);
 }
 
-TreeSearchBatchConfig RequestManager::prepare_next_batch_spec_task(
+TreeSearchBatchConfig RequestManager::get_next_spec_batch_config_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
@@ -1023,7 +1023,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_batch_spec_task(
 }
 
 // update beam search metadata
-TreeSearchBatchConfig RequestManager::prepare_next_batch_spec(
+TreeSearchBatchConfig RequestManager::get_next_spec_batch_config(
     SsmInferenceResult const &ssm_inference_result) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
@@ -1141,7 +1141,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify_task(
 }
 
 /* New APIs */
-TreeSearchBatchConfig RequestManager::prepare_next_batch_verify_task(
+TreeSearchBatchConfig RequestManager::get_verify_batch_config_task(
     Legion::Task const *task,
     std::vector<Legion::PhysicalRegion> const &regions,
     Legion::Context ctx,
@@ -1451,7 +1451,7 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
 }
 
 /* New APIs */
-TreeSearchBatchConfig RequestManager::prepare_next_batch_verify(
+TreeSearchBatchConfig RequestManager::prepare_verify_batch_config(
     std::vector<TreeSearchBatchConfig> const &old_batches) {
   if (verbose) {
     std::cout
@@ -2258,7 +2258,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
       }
     }
     auto const &next_batch = batch_pipeline.back();
-    TreeSearchBatchConfigFuture beam_bcf = prepare_next_batch_init(
+    TreeSearchBatchConfigFuture beam_bcf = get_first_spec_batch_config(
         next_batch.first, next_batch.second, 0, ctx, runtime);
     std::vector<TreeSearchBatchConfigFuture> beam_bcf_vec(get_num_ssms());
     for (size_t ssm_id = 0; ssm_id < get_num_ssms(); ssm_id++) {
