@@ -182,8 +182,7 @@ public:
   int model_id;
 };
 
-struct SsmInferenceResult {
-  static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
+class SsmInferenceResult : public InferenceResult {
   BatchConfig::TokenId
       token_ids[MAX_NUM_TOKENS *
                 TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
