@@ -102,19 +102,20 @@ class TraceBuilder(object):
       print("Avg arrival rate obtained (req/s): ", sum([len(b) for b in buckets])/len(buckets))
     return buckets
 
-def generate_and_save_trace(arrival_rate):
+def generate_and_save_trace(arrival_rate, output_file):
   builder = TraceBuilder()
   trace = builder.generate_trace(target_arrival_rate=arrival_rate, debug_verbose=True)
-  with open('sharegpt.json', 'w+') as f:
+  with open(output_file, 'w+') as f:
     json.dump(trace, f, indent=2)
 
 if __name__ == '__main__':
   # Set up the argument parser
   parser = argparse.ArgumentParser(description='Generate and save a trace.')
   parser.add_argument('--arrival-rate', type=float, default=10.0, help='The target arrival rate for the trace.')
+  parser.add_argument('--output-file', type=str, default='sharegpt.json', help='The path to the output file to save the trace.')
 
   # Parse the command-line arguments
   args = parser.parse_args()
 
   # Call the function with the user-provided arrival rate
-  generate_and_save_trace(args.arrival_rate)
+  generate_and_save_trace(args.arrival_rate, args.output_file)
