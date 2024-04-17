@@ -557,7 +557,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
 /* ----- Speculative Inference Specific functions ----- */
 
 /***** Request Init Phase *****/
-TreeSearchBatchConfigFuture RequestManager::get_first_spec_batch_config(
+TreeSearchBatchConfigFuture RequestManager::prepare_first_spec_batch_config(
     TreeVerifyBatchConfigFuture const &old_bc,
     InferenceResultFuture const &result,
     int model_id,
@@ -573,7 +573,7 @@ TreeSearchBatchConfigFuture RequestManager::get_first_spec_batch_config(
   return runtime->execute_task(ctx, launcher);
 }
 
-TreeSearchBatchConfig RequestManager::get_first_spec_batch_config_task(
+TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
@@ -995,7 +995,7 @@ TreeSearchBatchConfig RequestManager::get_first_spec_batch_config(
 }
 
 /***** Speculative Decoding Phase *****/
-TreeSearchBatchConfigFuture RequestManager::get_next_spec_batch_config(
+TreeSearchBatchConfigFuture RequestManager::prepare_next_spec_batch_config(
     TreeSearchBatchConfigFuture const &old_bc,
     SsmInferenceResultFuture const &result,
     Context ctx,
@@ -1009,7 +1009,7 @@ TreeSearchBatchConfigFuture RequestManager::get_next_spec_batch_config(
   return runtime->execute_task(ctx, launcher);
 }
 
-TreeSearchBatchConfig RequestManager::get_next_spec_batch_config_task(
+TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
@@ -1022,7 +1022,7 @@ TreeSearchBatchConfig RequestManager::get_next_spec_batch_config_task(
   return rm->prepare_next_batch_beam(bc, result);
 }
 
-TreeSearchBatchConfig RequestManager::get_next_spec_batch_config() {
+TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout << "\n############### prepare_next_batch_spec ###############\n";
@@ -2203,7 +2203,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
       }
     }
     auto const &next_batch = batch_pipeline.back();
-    TreeSearchBatchConfigFuture beam_bcf = get_first_spec_batch_config(
+    TreeSearchBatchConfigFuture beam_bcf = prepare_first_spec_batch_config(
         next_batch.first, next_batch.second, 0, ctx, runtime);
     std::vector<TreeSearchBatchConfigFuture> beam_bcf_vec(get_num_ssms());
     for (size_t ssm_id = 0; ssm_id < get_num_ssms(); ssm_id++) {

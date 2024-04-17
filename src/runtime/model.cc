@@ -4503,7 +4503,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     if (pre_register) {
       Runtime::preregister_task_variant<
           TreeSearchBatchConfig,
-          RequestManager::get_first_spec_batch_config_task>(
+          RequestManager::prepare_first_spec_batch_config_task>(
           registrar, "RequestManager Prepare Next Batch (Init Beam) Task");
     } else {
       if (enable_control_replication) {
@@ -4511,7 +4511,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       }
       runtime->register_task_variant<
           TreeSearchBatchConfig,
-          RequestManager::get_first_spec_batch_config_task>(registrar);
+          RequestManager::prepare_first_spec_batch_config_task>(registrar);
     }
   }
   // RequestManager prepare_next_batch_verify
@@ -4524,16 +4524,15 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     if (pre_register) {
       Runtime::preregister_task_variant<
           TreeVerifyBatchConfig,
-          RequestManager::get_verify_batch_config_task>(
+          RequestManager::prepare_verify_batch_config_task>(
           registrar, "RequestManager Prepare Next Batch (Verify) Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime
-          ->register_task_variant<TreeVerifyBatchConfig,
-                                  RequestManager::get_verify_batch_config_task>(
-              registrar);
+      runtime->register_task_variant<
+          TreeVerifyBatchConfig,
+          RequestManager::prepare_verify_batch_config_task>(registrar);
     }
   }
   // RequestManager background serving task

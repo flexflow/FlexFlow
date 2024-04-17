@@ -199,11 +199,11 @@ public:
                                   InferenceResult const &result,
                                   int model_id);
   TreeSearchBatchConfigFuture
-      get_first_spec_batch_config(TreeVerifyBatchConfigFuture const &old_bc,
-                                  InferenceResultFuture const &result,
-                                  int model_id,
-                                  Legion::Context ctx,
-                                  Legion::Runtime *runtime);
+      prepare_first_spec_batch_config(TreeVerifyBatchConfigFuture const &old_bc,
+                                      InferenceResultFuture const &result,
+                                      int model_id,
+                                      Legion::Context ctx,
+                                      Legion::Runtime *runtime);
 
   TreeVerifyBatchConfig prepare_next_batch_verify(
       std::vector<TreeSearchBatchConfig> const &old_batches);
@@ -221,17 +221,17 @@ public:
   /*********** New APIs ***********/
   // Prepare the next speculation batch config. This function is called before
   // the second step of the speculation.
-  TreeSearchBatchConfig get_next_spec_batch_config();
+  TreeSearchBatchConfig prepare_next_spec_batch_config();
 
   // A wrapper function.
   TreeSearchBatchConfigFuture
-      get_next_spec_batch_config(TreeSearchBatchConfigFuture const &old_bc,
-                                 SsmInferenceResultFuture const &result,
-                                 Legion::Context ctx,
-                                 Legion::Runtime *runtime);
+      prepare_next_spec_batch_config(TreeSearchBatchConfigFuture const &old_bc,
+                                     SsmInferenceResultFuture const &result,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime);
 
   // A wrapper function.
-  static TreeSearchBatchConfig get_next_spec_batch_config_task(
+  static TreeSearchBatchConfig prepare_next_spec_batch_config_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
@@ -242,18 +242,18 @@ public:
   // prepare_next_batch_config_spec is that we put the info of the committed
   // tokens into the batch config in the first speculation step to commit the KV
   // cache of the small model.
-  TreeSearchBatchConfig get_first_spec_batch_config();
+  TreeSearchBatchConfig prepare_first_spec_batch_config();
 
   // A wrapper function.
   TreeSearchBatchConfigFuture
-      get_first_spec_batch_config(TreeVerifyBatchConfigFuture const &old_bc,
-                                  InferenceResultFuture const &result,
-                                  int model_id,
-                                  Legion::Context ctx,
-                                  Legion::Runtime *runtime);
+      prepare_first_spec_batch_config(TreeVerifyBatchConfigFuture const &old_bc,
+                                      InferenceResultFuture const &result,
+                                      int model_id,
+                                      Legion::Context ctx,
+                                      Legion::Runtime *runtime);
 
   // A wrapper function.
-  static TreeSearchBatchConfig get_first_spec_batch_config_task(
+  static TreeSearchBatchConfig prepare_first_spec_batch_config_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
@@ -267,7 +267,7 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
-  static TreeVerifyBatchConfig get_verify_batch_config_task(
+  static TreeVerifyBatchConfig prepare_verify_batch_config_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
@@ -331,7 +331,7 @@ public:
       Legion::Runtime *runtime);
 
   // A wrapper function.
-  static TreeSearchBatchConfig get_first_spec_batch_config_task(
+  static TreeSearchBatchConfig prepare_first_spec_batch_config_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
@@ -356,10 +356,6 @@ private:
   int max_sequence_length;
   Status request_manager_status;
   BackgroundServerStatus background_server_status;
-
-  // tree width in each speculative step, if not specified 1
-  [[deprecated("This field will be removed")]]
-  std::vector<int> spec_infer_tree_width; // Old version, delete after refactor
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
