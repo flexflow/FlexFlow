@@ -77,6 +77,16 @@ struct Request {
   std::vector<TokenTree> speculative_token_trees;
   // To make request manager stateful, we need to store the causal mask here
   BatchConfig::BitMask causal_mask;
+  // Committed tokens
+  struct CommittedToken {
+    int absolute_index;
+    int request_offset; // Equivalent to the order of the token in the request
+                        // speculative token tree
+  };
+  // Here we have to maintain two versions of the committed tokens because the
+  // tree seen by the LLM and the SSM is different due to the pruning
+  std::vector<CommittedToken> llm_committed_tokens;
+  std::vector<CommittedToken> ssm_committed_tokens;
 };
 
 class TokenTreeNode {
@@ -190,13 +200,6 @@ public:
                          int request_index,
                          int first_token_depth_in_request);
 
-  // remove guid after put the cached tree in request
-  std::vector<std::pair<BatchConfig::TokenId, int>> merge_dfs_trees(
-      std::vector<std::vector<std::pair<BatchConfig::TokenId, int>>>
-          input_trees,
-      int root_depth,
-      RequestGuid guid);
-
   std::vector<std::pair<BatchConfig::TokenId, int>> traverse_verify_tree(
       size_t guid,
       std::vector<std::pair<BatchConfig::TokenId, int>> const
@@ -288,8 +291,6 @@ private:
   std::unordered_map<RequestGuid,
                      std::vector<std::pair<BatchConfig::TokenId, int>>>
       dfs_tree_inputs;
-  std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
-      committed_tokens;
 
   // Multi-model support
   std::vector<FFModel *> ssm_models;

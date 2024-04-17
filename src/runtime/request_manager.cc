@@ -915,7 +915,9 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   // 1. Commit the verified tokens through a TreeVerifyBatchConfig . We can do
   // this request by request. Put the information of the committed tokens into
   // TreeVerifyBatchConfig::committed_tokens. TODO: where to store those tokens?
-  // 2. Load the tokens on the token tree to TreeVerifyBatchConfig::tokensInfo.
+  // 2. Load the tokens on the token tree that are not yet pruned to
+  // TreeVerifyBatchConfig::tokensInfo.
+  // 3. Update the causal mask for the large model.
   // 2. Maintain BatchConfig::RequestsInfo and all other fields of
   // TreeSearchBatchConfig.
   // Please refer to the implementation of prepare_next_spec_batch_config() for
@@ -1210,10 +1212,19 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
 void RequestManager::update_llm_verify_results(
     InferenceResult const &llm_verify_result) {
   // TODO: Implement this function
+  // We may have two types of InferenceResults, one is the results from sampling
+  // the large model, the other is the top-p / top-k logits of the large model,
+  // we can first implement the former one
+  // For the latter one, we have to add a CPU based verify function
+  // 1. Compare the verified results with the request speculative token tree,
+  // and store all the committed tokens into committed_tokens of each request.
+  // 2. Store the verified tokens to Request.tokens.
+  // 3. Change the state of the request manager to SSM_SPEC.
 }
 
 bool RequestManager::update_ssm_inference_results(
     SsmInferenceResult const &ssm_inference_result) {
+  // TODO: change the request manager state
   // This function returns false if no tokens are added to the token tree,
   // which indicates that the ssm inference phase is done.
   assert(current_speculation_step >= 1 &&
@@ -1694,69 +1705,6 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 
   return serializedTree;
   // }
-}
-
-std::vector<std::pair<BatchConfig::TokenId, int>>
-    RequestManager::merge_dfs_trees(
-        std::vector<std::vector<std::pair<BatchConfig::TokenId, int>>>
-            input_trees,
-        int root_depth,
-        RequestGuid guid) {
-  assert(input_trees.size() == 1 && "currently using one ssm");
-  dfs_tree_inputs[guid] = input_trees.at(0);
-  return input_trees.at(0);
-
-  std::vector<std::pair<BatchConfig::TokenId, int>> merged_tree;
-
-  std::unordered_map<int, std::set<int>> childrens;
-  std::unordered_map<int, int> curr_path;
-
-  // convert <token_id, depth> pair to an integer
-  auto root = input_trees.at(0).at(0);
-  int root_id = root.first * 10000 + root.second;
-
-  for (int i = 0; i < input_trees.size(); i++) {
-    auto tree = input_trees.at(i);
-    // all trees should have the same root
-    assert(tree.at(0) == root);
-
-    for (auto const &pair : tree) {
-      int id = pair.first * 10000 + pair.second; // current node
-      curr_path[pair.second] = id;               // log node in current search
-
-      if (childrens.find(id) == childrens.end()) {
-        // init empty set
-        childrens[id] = std::set<int>();
-      }
-
-      if (pair.second > root_depth) {
-        int parent_id = curr_path[pair.second - 1];
-        childrens[parent_id].insert(id);
-      }
-    }
-  }
-
-  std::stack<int> q;
-  q.push(root_id);
-
-  while (!q.empty()) {
-    int curr = q.top();
-    q.pop();
-    merged_tree.push_back(std::make_pair(curr / 10000, curr % 10000));
-    for (int child : childrens[curr]) {
-      q.push(child);
-    }
-  }
-
-  if (verbose) {
-    for (auto &pair : merged_tree) {
-      std::cout << pair.first << ", depth: " << pair.second << std::endl;
-    }
-  }
-
-  dfs_tree_inputs[guid] = merged_tree;
-
-  return merged_tree;
 }
 
 std::vector<GenerationResult>
