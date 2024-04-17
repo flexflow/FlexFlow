@@ -418,13 +418,14 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   if (verbose) {
     std::cout << "\n############### prepare_next_batch_init ###############\n";
   }
-
   // TODO: Clean up the code, this method does the following:
-  // 1. Commit the verified tokens to through the batch config. We can do this
-  // request by request. Put the information of the committed tokens into
-  // BatchConfig::TokensInfo. TODO: where to store those tokens?
+  // 1. Commit the verified tokens through TreeSearchBatchConfig. We can do this
+  // request by request. The infomation of the committed tokens are stored in
+  // Request.ssm_committed_tokens. Put the information of the committed tokens
+  // into BatchConfig.TokensInfo.
   // 2. Maintain BatchConfig::RequestsInfo and all other fields of
   // TreeSearchBatchConfig.
+  // 3. Init causal mask.
   // Please refer to the implementation of prepare_next_spec_batch_config() for
   // more details.
 
@@ -905,20 +906,22 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
 /***** Verify Phase *****/
 TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
-
   if (verbose) {
     std::cout
         << "\n############### prepare_next_batch_verify ###############\n";
   }
-
   // TODO: Clean up the code, this method does the following:
-  // 1. Commit the verified tokens through a TreeVerifyBatchConfig . We can do
-  // this request by request. Put the information of the committed tokens into
-  // TreeVerifyBatchConfig::committed_tokens. TODO: where to store those tokens?
+  // 1. Commit the verified tokens in the last iteration through the
+  // TreeVerifyBatchConfig . We can do this request by request. The information
+  // of the committed tokens is stored in Request.llm_committed_tokens. Put the
+  // information of the committed tokens into
+  // TreeVerifyBatchConfig::committed_tokens.
   // 2. Load the tokens on the token tree that are not yet pruned to
-  // TreeVerifyBatchConfig::tokensInfo.
-  // 3. Update the causal mask for the large model.
-  // 2. Maintain BatchConfig::RequestsInfo and all other fields of
+  // TreeVerifyBatchConfig::tokensInfo. Be careful with the abs_depth etc. (skip
+  // the pruned tokens).
+  // 3. Create the causal mask for the large model based on the small model
+  // causal mask.
+  // 4. Maintain BatchConfig::RequestsInfo and all other fields of
   // TreeSearchBatchConfig.
   // Please refer to the implementation of prepare_next_spec_batch_config() for
   // more details.
@@ -1216,15 +1219,18 @@ void RequestManager::update_llm_verify_results(
   // the large model, the other is the top-p / top-k logits of the large model,
   // we can first implement the former one
   // For the latter one, we have to add a CPU based verify function
-  // 1. Compare the verified results with the request speculative token tree,
-  // and store all the committed tokens into committed_tokens of each request.
-  // 2. Store the verified tokens to Request.tokens.
-  // 3. Change the state of the request manager to SSM_SPEC.
+  // 1. Compare the results returned from the LLM and compare them with the
+  // SSM's speculative token tree. For the greedy construction of the
+  // speculative token tree, we can simply compare LLM's sample result at each
+  // token, while for the sampling construction of the speculative token tree,
+  // we need to implement a CPU based verify function.
+  // 2. Store the committed tokens to Request.llm_committed_tokens and
+  // Request.ssm_committed_tokens.
+  // 3. Store the verified tokens to Request.tokens.
 }
 
 bool RequestManager::update_ssm_inference_results(
     SsmInferenceResult const &ssm_inference_result) {
-  // TODO: change the request manager state
   // This function returns false if no tokens are added to the token tree,
   // which indicates that the ssm inference phase is done.
   assert(current_speculation_step >= 1 &&
