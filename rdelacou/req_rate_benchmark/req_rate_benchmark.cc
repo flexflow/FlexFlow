@@ -56,6 +56,7 @@ void consume() {
   ConcurrentQueue *guids = get_common_guids_queue();
   bool producer_is_finished = false;
   bool queue_is_empty = false;
+  int i=0;
   while(!producer_is_finished || !queue_is_empty) {
       RequestManager::RequestGuid guid = RequestManager::INVALID_GUID;
       {
@@ -72,6 +73,8 @@ void consume() {
       } else {
         std::this_thread::sleep_for(std::chrono::milliseconds(nb_millisecs));
       }
+      i++;
+      cout << "Iteration " << i;
   }
 }
 
@@ -350,6 +353,10 @@ void FlexFlow::top_level_task(Task const *task,
           }
         }
         num_arrival_buckets++;
+    }
+    { // Notify the consumer that no more requests are incoming
+      const std::lock_guard<std::mutex> lock(guids->request_queue_mutex);
+      guids->producer_finished = true;
     }
   }
 
