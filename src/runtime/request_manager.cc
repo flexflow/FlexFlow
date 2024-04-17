@@ -1542,7 +1542,7 @@ void RequestManager::initialize_root_of_spec_token_trees() {
   }
 }
 
-bool RequestManager::update_inference_results(
+bool RequestManager::update_ssm_inference_results(
     SsmInferenceResult const &ssm_inference_result) {
   // This function returns false if no tokens are added to the token tree,
   // which indicates that the ssm inference phase is done.
@@ -2350,10 +2350,9 @@ RequestManager *RequestManager::get_request_manager() {
 }
 
 /********** Request Token Tree Related Functions **********/
-void RequestManager::init_token_trees() {
-  // TODO: implement this function
-  // Add a layer that only contains the root token of the token tree. The root
-  // token's info should be
+void RequestManager::init_token_trees(RequestGuid guid) {
+  Request &request = all_requests[guid];
+  request.speculative_token_trees.clear();
 }
 
 void RequestManager::add_token_to_spec_token_tree(RequestGuid guid,

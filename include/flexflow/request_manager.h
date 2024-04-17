@@ -382,7 +382,8 @@ private:
 
   // Added to make the request manager stateful. During the processing of the
   // first small model inference results, the step equals to 1. That is, every
-  // time a small model inference task is launched, the step is increased by 1.
+  // time a small model inference task is launched, the step is increased
+  // by 1.
   int current_speculation_step = 0;
   // Maps the index of the request in the batch config to the request guid.
   int guid_of_requests[BatchConfig::MAX_NUM_REQUESTS];
@@ -421,7 +422,10 @@ private:
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;
 
-  void RequestManager::init_token_trees();
+  bool RequestManager::update_ssm_inference_results(
+      SsmInferenceResult const &ssm_inference_result);
+  // Helper functions related to token trees
+  void RequestManager::init_token_trees(RequestGuid guid);
   void add_token_to_spec_token_tree(RequestGuid guid,
                                     BatchConfig::TokenId token_id,
                                     int parent_pos,
