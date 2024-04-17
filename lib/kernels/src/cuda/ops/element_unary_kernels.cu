@@ -23,8 +23,6 @@ namespace FlexFlow {
 namespace Kernels {
 namespace ElementUnary {
 
-using coord_t = long long;
-
 static bool use_cudnn(OperatorType op_type) {
   switch (op_type) {
     case Op::RELU:

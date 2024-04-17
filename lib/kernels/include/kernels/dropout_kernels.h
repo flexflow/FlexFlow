@@ -41,12 +41,12 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                   Allocator allocator);
 
 void forward_kernel(ffStream_t stream,
-                    DropoutPerDeviceState &m,
+                    DropoutPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr);
 
 void backward_kernel(ffStream_t stream,
-                     DropoutPerDeviceState &m,
+                     DropoutPerDeviceState const &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr);
 

@@ -5,8 +5,6 @@
 
 namespace FlexFlow {
 
-using coord_t = long long;
-
 namespace Kernels {
 namespace Split {
 void forward_kernel(ffStream_t stream,

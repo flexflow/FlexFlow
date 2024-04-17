@@ -4,9 +4,6 @@
 #include "device.h"
 
 namespace FlexFlow {
-
-using coord_t = long long;
-
 namespace Kernels {
 namespace Reverse {
 

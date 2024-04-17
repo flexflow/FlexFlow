@@ -10,11 +10,11 @@
 
 namespace FlexFlow {
 
-enum class AggregateOp { SUM, AVG, NONE };
+enum class AggregateOp { SUM, AVG };
 
 struct EmbeddingAttrs {
-  req<int> num_entries, out_channels;
-  req<AggregateOp> aggr;
+  int num_entries, out_channels;
+  std::optional<AggregateOp> aggr;
   req<DataType> data_type;
 };
 FF_VISITABLE_STRUCT(EmbeddingAttrs, num_entries, out_channels, aggr, data_type);
@@ -40,8 +40,6 @@ struct formatter<::FlexFlow::AggregateOp> : formatter<string_view> {
         break;
       case AggregateOp::AVG:
         name = "Avg";
-        break;
-      case AggregateOp::NONE:
         break;
     }
     return formatter<string_view>::format(name, ctx);

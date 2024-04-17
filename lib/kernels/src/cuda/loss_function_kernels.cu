@@ -18,8 +18,6 @@
 
 namespace FlexFlow {
 
-using coord_t = long long;
-
 __global__ void
     sparse_categorical_crossentropy_loss_backward(float *logit_grad,
                                                   int const *label,

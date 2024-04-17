@@ -19,8 +19,6 @@
 #include "utils/exception.h"
 
 namespace FlexFlow {
-// declare Legion names
-using coord_t = long long;
 
 struct TransposeStrides {
   int num_dim;
@@ -36,7 +34,8 @@ TransposePerDeviceState init_kernel(int num_dim,
   int const length = perm.size();
 
   std::vector<int> perm_vector;
-  for (int i = 0; i < std::min(length, MAX_TENSOR_DIM); ++i) {
+  assert(length <= MAX_TENSOR_DIM);
+  for (int i = 0; i < length; ++i) {
     perm_vector.push_back(perm[i].value());
   }
 

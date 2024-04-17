@@ -17,13 +17,8 @@ struct IAllocator {
 struct Allocator {
   Allocator() = delete;
 
-  void *allocate(size_t mem_size) {
-    return this->i_allocator->allocate(mem_size);
-  }
-
-  void deallocate(void *ptr) {
-    this->i_allocator->deallocate(ptr);
-  }
+  void *allocate(size_t mem_size);
+  void deallocate(void *ptr);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IAllocator, T>::value,

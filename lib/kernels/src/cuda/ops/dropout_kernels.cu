@@ -62,7 +62,7 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
 }
 
 void forward_kernel(cudaStream_t stream,
-                    DropoutPerDeviceState &m,
+                    DropoutPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr) {
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
@@ -78,7 +78,7 @@ void forward_kernel(cudaStream_t stream,
 }
 
 void backward_kernel(cudaStream_t stream,
-                     DropoutPerDeviceState &m,
+                     DropoutPerDeviceState const &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr) {
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));

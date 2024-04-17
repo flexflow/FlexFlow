@@ -56,14 +56,14 @@ BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                     bool relu);
 
 void forward_kernel(ffStream_t stream,
-                    BatchNormPerDeviceState &m,
+                    BatchNormPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
                     float const *scale_ptr,
                     float const *bias_ptr);
 
 void backward_kernel(ffStream_t stream,
-                     BatchNormPerDeviceState &m,
+                     BatchNormPerDeviceState const &m,
                      float const *input_ptr,
                      float *output_grad_ptr,
                      float const *output_ptr,

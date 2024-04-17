@@ -51,7 +51,7 @@ void forward_kernel(cudaStream_t stream,
 }
 
 void backward_kernel(cudaStream_t stream,
-                     BatchNormPerDeviceState &m,
+                     BatchNormPerDeviceState const &m,
                      float const *input_ptr,
                      float *output_grad_ptr,
                      float const *output_ptr,
