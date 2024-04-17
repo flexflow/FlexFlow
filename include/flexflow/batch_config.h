@@ -59,7 +59,7 @@ public:
   // Maximum possible values for different parameters
   // These maximum values are used for copying BatchConfig
   // across workers
-  static int const MAX_NUM_REQUESTS = 64;
+  static int const MAX_NUM_REQUESTS = 65;
   static int const MAX_NUM_TOKENS = 1024;
   static int const MAX_SPEC_TREE_TOKEN_NUM = 64;
 
@@ -77,6 +77,8 @@ public:
       num_tokens_in_batch = 0;
       max_sequence_length = 0;
       request_guid = 0;
+      prompt_phase = false;
+      batch_config_request_id = -1;
       peft_model_id = PEFTModelID::NO_ID;
       peft_bwd = false;
     }
@@ -86,7 +88,7 @@ public:
     int max_sequence_length;
 
     // request id in batch config:
-    int batch_config_request_id;
+    int batch_config_request_id = -1;
     bool prompt_phase = false;
     RequestGuid request_guid;
     // PEFT fields

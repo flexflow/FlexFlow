@@ -120,6 +120,8 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
      << std::endl;
   os << "Number of peft tokens: " << bc.num_active_peft_tokens() << std::endl;
   os << "Number of requests: " << bc.num_active_requests() << std::endl;
+  os << "Number of generation tokens: " << bc.num_generation_tokens
+     << std::endl;
 
   // Per-request info
   os << "Per-request info:\n";
@@ -133,6 +135,10 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
       os << "    Number of tokens in batch: "
          << bc.requestsInfo[i].num_tokens_in_batch << std::endl;
       os << "    GUID: " << bc.requestsInfo[i].request_guid << std::endl;
+      os << "    Prompt phase: " << bc.requestsInfo[i].prompt_phase
+         << std::endl;
+      os << "    BatchConfig Req ID: "
+         << bc.requestsInfo[i].batch_config_request_id << std::endl;
       // PEFT values
       os << "    PEFT Model ID: " << bc.requestsInfo[i].peft_model_id
          << std::endl;

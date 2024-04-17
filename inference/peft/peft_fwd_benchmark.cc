@@ -314,33 +314,6 @@ void FlexFlow::top_level_task(Task const *task,
   // Start background server
   rm->start_background_server(&model);
 
-  // Warmup stage
-  {
-    std::vector<Request> requests;
-    for (int i = 0; i < 100; i++) {
-      Request inference_req;
-      inference_req.benchmarking_tokens = 128;
-      inference_req.max_sequence_length = 256;
-      inference_req.warmup = true;
-      inference_req.peft_model_id =
-          (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
-      requests.push_back(inference_req);
-    }
-    Request fine_tuning_req;
-    fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
-    fine_tuning_req.benchmarking_tokens = 1024;
-    fine_tuning_req.max_sequence_length = 1024;
-    fine_tuning_req.warmup = true;
-    fine_tuning_req.peft_model_id =
-        (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
-    fine_tuning_req.max_training_steps = 1;
-    requests.push_back(fine_tuning_req);
-    std::vector<GenerationResult> result = model.generate(requests);
-  }
-
-  rm->set_inference_finished(false); // reset inference finished flag
-  std::cout << "----------warmup finished--------------" << std::endl;
-
   // Run workload
   {
     std::vector<Request> requests;
@@ -377,17 +350,6 @@ void FlexFlow::top_level_task(Task const *task,
           (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
       requests.push_back(inference_req);
     }
-
-    // Add fine-tuning request
-    Request fine_tuning_req;
-    fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
-    fine_tuning_req.benchmarking_tokens = 1024;
-    fine_tuning_req.max_sequence_length = 1024;
-    fine_tuning_req.peft_model_id =
-        (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
-    // fine_tuning_req.dataset_filepath = file_paths.prompt_file_path;
-    fine_tuning_req.max_training_steps = 1000000000;
-    requests.push_back(fine_tuning_req);
 
     std::vector<GenerationResult> result = model.generate(requests);
   }
