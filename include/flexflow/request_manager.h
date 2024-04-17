@@ -416,7 +416,7 @@ private:
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;
 
-  void RequestManager::initialize_root_of_spec_token_trees();
+  void RequestManager::init_token_trees();
   void add_token_to_spec_token_tree(RequestGuid guid,
                                     BatchConfig::TokenId token_id,
                                     int parent_pos,

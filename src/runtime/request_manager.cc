@@ -1473,7 +1473,8 @@ bool RequestManager::update_inference_results(
     SsmInferenceResult const &ssm_inference_result) {
   // This function returns false if no tokens are added to the token tree,
   // which indicates that the ssm inference phase is done.
-  assert(current_speculation_step > 0);
+  assert(current_speculation_step >= 1 &&
+         "The current speculation step should be no less than 1");
 
   int num_branches = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
   int result_index = 0;
@@ -1498,6 +1499,7 @@ bool RequestManager::update_inference_results(
     } else {
       std::list<std::shared_ptr<TokenTreeNode>> &parent_tree_layer =
           token_tree.tree_layers[current_speculation_step - 1];
+      int parent_pos = 0;
       for (auto parent_it = parent_tree_layer.begin();
            parent_it != parent_tree_layer.end();
            parent_it++) {
@@ -1516,10 +1518,11 @@ bool RequestManager::update_inference_results(
                 guid,
                 ssm_inference_result.token_ids[result_index],
                 ssm_inference_result.probs[result_index] * parent_prob,
-                ssm_inference_result.parent_id[result_index]);
+                parent_pos);
             result_index++;
           }
         }
+        parent_pos++;
       }
     }
     append_bitmask(guid);
@@ -1576,11 +1579,22 @@ void RequestManager::update_bitmask(BatchConfig::BitMask &bitmask,
 }
 
 void RequestManager::append_bitmask(RequestGuid guid) {
-  // This function changes the bitmask in place
+  // This method changes the bitmask in place
+  // This method is called after the first small model decoding step
+  assert(current_speculation_step >= 1 &&
+         "The current speculation step should be no less than 1");
+
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
+  TokenTree &token_tree = request.speculative_token_trees[0];
+
+  if (token_tree.tree_layers.size() <= current_speculation_step) {
+    // This request has no token added in this and the following small model
+    // inference steps, skip it
+    return;
+  }
   std::list<std::shared_ptr<TokenTreeNode>> &tree_layer =
-      request.speculative_token_trees[0].tree_layers.back();
+      request.speculative_token_trees[0].tree_layers[current_speculation_step];
   int new_layer_size = tree_layer.size();
   int last_layer_size = bitmask.current_layer_size;
   int previous_tree_size = bitmask.tree_size;
@@ -1597,8 +1611,12 @@ void RequestManager::append_bitmask(RequestGuid guid) {
     // Each child copy its parent's mask
     // Here we assume child_ptr->parent_pos denotes the position of the parent
     // in its corresponding layer, check this
-    bitmask.bit_mask[child_offset + child_idx] =
-        bitmask.bit_mask[parent_offset + child_ptr->parent_pos];
+    if (current_speculation_step > 1) {
+      // Root is not in the bitmask, when current_speculation_step == 1, the
+      // tokens don't have a parent to attend to
+      bitmask.bit_mask[child_offset + child_idx] =
+          bitmask.bit_mask[parent_offset + child_ptr->parent_pos];
+    }
     // Each child attend to itself
     bitmask.bit_mask[child_offset + child_idx].set_bit(child_offset +
                                                        child_idx);
@@ -2247,11 +2265,22 @@ RequestManager *RequestManager::get_request_manager() {
   return request_manager_singleton;
 }
 
+/********** Request Token Tree Related Functions **********/
+void RequestManager::init_token_trees() {
+  // TODO: implement this function
+  // Add a layer that only contains the root token of the token tree. The root
+  // token's info should be
+}
+
 void RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
                                                   BatchConfig::TokenId token_id,
                                                   int parent_pos,
                                                   float joint_prob) {
   // This method assumes only one small model is used for speculation
+
+  // This is called after the first small model inference
+  assert(current_speculation_step >= 1 &&
+         "The current speculation step should be no less than 1");
 
   // First make sure there are enough layers in the speculation tree
   Request &request = all_requests[guid];
@@ -2364,4 +2393,6 @@ void RequestManager::prune_last_layer_of_spec_token_tree(RequestGuid guid) {
     }
   }
 }
+/********** Request Token Tree Related Functions **********/
+
 }; // namespace FlexFlow
