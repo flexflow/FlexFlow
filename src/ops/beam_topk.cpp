@@ -290,7 +290,7 @@ __device__ void mergeBeamShards(int num_shards,
     // Initialize the heap as a min-heap.
     for (int slot = 0; slot < heap_size; slot++) {
       // int beam = (slot % max_heap_size) / k;
-      T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
+      /* Reserved: BatchConfig Updated, leave beamsearch to kill */T prob = probs[request_id * BeamSearchBatchConfig::MAX_BEAM_WIDTH +
                      ((slot % max_heap_size) / k)];
       min_heap.assign(slot, {slot, (entries[slot].value * prob)});
     }
@@ -474,7 +474,7 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
 /*static*/
 template <typename DT>
 void BeamTopK::forward_kernel(BeamTopKMeta const *m,
-                              BeamSearchBatchConfig const *bc,
+                              TreeSearchBatchConfig const *bc,
                               DT const *input_ptr,
                               float *output_ptr,
                               int *indices_ptr,
@@ -511,7 +511,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   DT acc_probs[max_total_requests];
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (bc->request_completed[i]) {
+    if (!bc->request_available[i]) {
       continue;
     }
     assert(bc->beamRequestsInfo[i].beam_size > 0);
@@ -625,7 +625,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
 
 /*static*/
 void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
-                                      BeamSearchBatchConfig const *bc,
+                                      TreeSearchBatchConfig const *bc,
                                       GenericTensorAccessorR const &input,
                                       float *output_ptr,
                                       int *indices_ptr,

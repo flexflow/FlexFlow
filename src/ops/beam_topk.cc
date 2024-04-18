@@ -292,7 +292,7 @@ void BeamTopK::forward(FFModel const &ff) {
 }
 
 FutureMap BeamTopK::inference(FFModel const &ff,
-                              BatchConfigFuture const &bc,
+                              /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
                               std::vector<ParallelTensor> const &batch_inputs,
                               std::vector<ParallelTensor> const &batch_outputs,
                               MachineView const *mv) {
@@ -354,7 +354,7 @@ SsmInferenceResult
   TreeSearchBatchConfig const &bc =
       Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
 
-  if (bc.num_tokens == 0) {
+  if (bc.num_active_tokens() == 0) {
     SsmInferenceResult ir;
     return ir;
   }
