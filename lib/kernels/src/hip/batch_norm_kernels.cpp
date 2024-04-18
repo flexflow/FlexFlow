@@ -14,60 +14,48 @@
  */
 
 #include "kernels/batch_norm_kernels.h"
-#include "kernels/hip_helper.h"
+#include "device.h"
+#include "kernels/allocation.h"
+#include "kernels/ff_handle.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-
-// declare Legion names
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::Machine;
-using Legion::Memory;
-using Legion::PhysicalRegion;
-using Legion::Rect;
-using Legion::Runtime;
-using Legion::Task;
-
-#define MIOPEN_BN_MIN_EPSILON 0.001
-
 namespace Kernels {
 namespace BatchNorm {
 
 void forward_kernel(hipStream_t stream,
-                    BatchNormPerDeviceState const *m,
+                    BatchNormPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
                     float const *scale_ptr,
                     float const *bias_ptr) {
 
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+  checkCUDNN(miopenSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
   // coord_t numChannels = m->numChannels;
   checkCUDNN(miopenBatchNormalizationForwardTraining(
-      m->handle.dnn,
-      m->mode,
+      m.handle.dnn,
+      m.mode,
       &alpha,
       &beta,
-      m->inputTensor,
+      m.inputTensor,
       input_ptr,
-      m->outputTensor,
+      m.outputTensor,
       output_ptr,
-      m->biasTensor,
+      m.biasTensor,
       static_cast<void *>(const_cast<float *>(scale_ptr)),
       static_cast<void *>(const_cast<float *>(bias_ptr)),
       1.0,
-      m->runningMean,
-      m->runningVar,
+      m.runningMean,
+      m.runningVar,
       MIOPEN_BN_MIN_EPSILON,
-      m->saveMean,
-      m->saveVar));
+      m.saveMean,
+      m.saveVar));
 }
 
 void backward_kernel(hipStream_t stream,
-                     BatchNormPerDeviceState *m,
+                     BatchNormPerDeviceState &m,
                      float const *input_ptr,
                      float *output_grad_ptr,
                      float const *output_ptr,
@@ -77,10 +65,10 @@ void backward_kernel(hipStream_t stream,
                      float *bias_grad_ptr,
                      size_t numElements) {
 
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+  checkCUDNN(miopenSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f;
-  if (m->relu) {
+  if (m.relu) {
     hipLaunchKernelGGL(reluBackward,
                        GET_BLOCKS(numElements),
                        CUDA_NUM_THREADS,
@@ -90,28 +78,28 @@ void backward_kernel(hipStream_t stream,
                        output_ptr,
                        numElements);
   }
-  checkCUDNN(miopenBatchNormalizationBackward(m->handle.dnn,
-                                              m->mode,
+  checkCUDNN(miopenBatchNormalizationBackward(m.handle.dnn,
+                                              m.mode,
                                               &alpha,
                                               &alpha,
                                               &alpha,
                                               &alpha,
-                                              m->inputTensor,
+                                              m.inputTensor,
                                               input_ptr,
-                                              m->outputTensor,
+                                              m.outputTensor,
                                               output_grad_ptr,
-                                              m->inputTensor,
+                                              m.inputTensor,
                                               input_grad_ptr,
-                                              m->biasTensor,
+                                              m.biasTensor,
                                               scale_ptr,
                                               scale_grad_ptr,
                                               bias_grad_ptr,
                                               MIOPEN_BN_MIN_EPSILON,
-                                              m->saveMean,
-                                              m->saveVar));
+                                              m.saveMean,
+                                              m.saveVar));
 }
 
-BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handler,
+BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                     Allocator allocator,
                                     float *runningMean,
                                     int output_n,
@@ -127,10 +115,10 @@ BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handler,
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&biasTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
-  mode = miopenBNSpatial;
-  // #if HIPDNN_VERSION >= 7000
-  //   mode = HIPDNN_BATCHNORM_SPATIAL_PERSISTENT;
-  // #endif
+  mode = HIPDNN_BATCHNORM_SPATIAL;
+#if HIPDNN_VERSION >= 7000
+  mode = HIPDNN_BATCHNORM_SPATIAL_PERSISTENT;
+#endif
   fprintf(
       stderr, "output(%d,%d,%d,%d)\n", output_n, output_c, output_h, output_w);
   checkCUDNN(miopenSet4dTensorDescriptor(
@@ -170,6 +158,23 @@ BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handler,
     checkCUDNN(miopenSetActivationDescriptor(
         actiDesc, miopenActivationRELU, 0.0, 0.0, 0.0));
   }
+
+  BatchNormPerDeviceState per_device_state = {handle,
+                                              inputTensor,
+                                              outputTensor,
+                                              biasTensor,
+                                              actiDesc,
+                                              mode,
+                                              runningMean,
+                                              runningVar,
+                                              saveMean,
+                                              saveVar,
+                                              output_n,
+                                              output_c,
+                                              output_h,
+                                              output_w,
+                                              relu};
+  return per_device_state;
 }
 
 void cleanup_kernel(Allocator allocator,

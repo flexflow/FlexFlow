@@ -14,8 +14,9 @@
  */
 
 #include "kernels/combine_kernels.h"
+#include "device.h"
+#include "kernels/accessor.h"
 #include "kernels/datatype_dispatch.h"
-#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
