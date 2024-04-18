@@ -1169,6 +1169,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
   // We assume that only one small model is in use now
   new_bc.model_id = 0;
   new_bc.num_tokens = 0;
+  new_bc.current_depth = current_speculation_step;
   new_bc.num_available_requests = 0;
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
@@ -1220,11 +1221,10 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
       }
     }
 
-    // Copy the causal mask
+    // Copy the causal mask, it should already been updated
     new_bc.causalMask[request_index] = request.causal_mask;
   }
 
-  new_bc.num_available_requests = num_available_requests;
   if (verbose) {
     std::cout << "prepare_next_batch_beam NEW batchconfig:" << std::endl;
     new_bc.print();
