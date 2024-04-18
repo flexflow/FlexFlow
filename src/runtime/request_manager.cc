@@ -1152,6 +1152,9 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   // TreeSearchBatchConfig.
   // Please refer to the implementation of prepare_next_spec_batch_config() for
   // more details.
+  TreeSearchBatchConfig new_bc;
+
+  return new_bc;
 }
 
 /***** Speculative Decoding Phase *****/
@@ -1238,16 +1241,16 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   }
   // TODO: Clean up the code, this method does the following:
   // 1. Commit the verified tokens in the last iteration through the
-  // TreeVerifyBatchConfig . We can do this request by request. The information
-  // of the committed tokens is stored in Request.llm_committed_tokens. Put the
-  // information of the committed tokens into
-  // TreeVerifyBatchConfig::committed_tokens.
+  // TreeVerifyBatchConfig. We can do this request by request.
+  // The information of the committed tokens is stored in
+  // Request.llm_committed_tokens. Put the information of the committed tokens
+  // into TreeVerifyBatchConfig.committed_tokens.
   // 2. Load the tokens on the token tree that are not yet pruned to
-  // TreeVerifyBatchConfig::tokensInfo. Be careful with the abs_depth etc. (skip
+  // TreeVerifyBatchConfig.tokensInfo. Be careful with the abs_depth etc. (skip
   // the pruned tokens).
   // 3. Create the causal mask for the large model based on the small model
-  // causal mask.
-  // 4. Maintain BatchConfig::RequestsInfo and all other fields of
+  // causal mask (call create_llm_bitmask()).
+  // 4. Maintain TreeVerifyBatchConfig::RequestsInfo and all other fields of
   // TreeSearchBatchConfig.
   // Please refer to the implementation of prepare_next_spec_batch_config() for
   // more details.
