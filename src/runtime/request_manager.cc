@@ -1774,6 +1774,12 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 }
 // TO BE REMOVED: END
 
+void RequestManager::get_verify_results(
+    InferenceResult const &llm_verify_result) {
+  // This function should return the verified tokens and maintain the committed
+  // tokens.
+}
+
 std::vector<GenerationResult>
     FFModel::generate(std::vector<std::string> &prompts, int max_seq_length) {
   RequestManager *rm = RequestManager::get_request_manager();

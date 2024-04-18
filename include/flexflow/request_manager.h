@@ -316,6 +316,7 @@ private:
   void update_llm_verify_results(InferenceResult const &llm_verify_result);
   bool update_ssm_inference_results(
       SsmInferenceResult const &ssm_inference_result);
+  void get_verify_results(InferenceResult const &llm_verify_result);
   /* ---------- New Helper Functions ---------- */
 
   // Helper functions related to token trees
