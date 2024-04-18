@@ -158,7 +158,6 @@ public:
   int get_max_spec_tree_token_num();
   int get_max_verify_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
-  void push_spec_infer_tree_width(int tree_width);
   int get_max_sequence_length();
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,

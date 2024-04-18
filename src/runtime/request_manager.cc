@@ -109,11 +109,6 @@ int RequestManager::get_max_sequence_length() {
   return max_sequence_length;
 }
 
-void RequestManager::push_spec_infer_tree_width(int tree_width) {
-  assert(tree_width <= TreeSearchBatchConfig::MAX_BEAM_WIDTH);
-  spec_infer_tree_width.emplace_back(tree_width);
-}
-
 void RequestManager::register_tokenizer(ModelType type,
                                         int bos_token_id,
                                         int eos_token_id,
@@ -387,21 +382,25 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
   std::lock_guard<std::mutex> const lock(rm_state_mutex);
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
-    if guid_of_requests[i] == INVALID_GUID {
+    if (guid_of_requests[i] == INVALID_GUID) {
       continue;
     }
     Request &request = all_requests[guid_of_requests[i]];
 
     switch (request_manager_status) {
       case PREFILLING:
-        if (request.initial_len == request.llm_cache_size) { // all prompt tokens are prefilled
-          request.tokens.push_back(result.token_ids[request.num_tokens_in_batch]);
+        if (request.initial_len ==
+            request.llm_cache_size) { // all prompt tokens are prefilled
+          request.tokens.push_back(
+              result.token_ids[request.num_tokens_in_batch]);
           request_manager_status = DECODING;
         }
         break;
-      case DECODING: 
-        request.tokens.push_back(result.token_ids[request.first_token_offset_in_batch]);
-        if (request.tokens.size() == request.max_sequence_length) { // request is completed
+      case DECODING:
+        request.tokens.push_back(
+            result.token_ids[request.first_token_offset_in_batch]);
+        if (request.tokens.size() ==
+            request.max_sequence_length) { // request is completed
           request.status = Request::COMPLETED;
           trigger_request_completion_future(request.guid);
           guid_of_requests[i] = INVALID_GUID;
@@ -417,7 +416,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 BatchConfig RequestManager::prepare_next_batch() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
-  swicth (request_manager_status) {
+  switch (request_manager_status) {
     case PREFILLING:
       return prepare_prefilling_batch();
     case DECODING:
@@ -450,7 +449,8 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   // Per Request Info
   bc.requestsInfo[request_index].first_token_depth_in_request = 0;
   bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
-  bc.requestsInfo[request_index].num_tokens_in_batch = std::min(bc.num_tokens, (int)new_request.tokens.size());
+  bc.requestsInfo[request_index].num_tokens_in_batch =
+      std::min(bc.num_tokens, (int)new_request.tokens.size());
 
   bc.request_completed[request_index] = false;
 
@@ -458,11 +458,11 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   new_request.num_tokens_in_batch = 0;
 
   // Delete those after update BatchConfig
-  bc.requestsInfo[request_index].max_sequence_length = new_request.max_sequence_length;
+  bc.requestsInfo[request_index].max_sequence_length =
+      new_request.max_sequence_length;
   bc.requestsInfo[request_index].request_guid = new_request.guid;
   bc.requestsInfo[request_index].prompt_phase = true;
   bc.requestsInfo[request_index].batch_config_request_id = request_index;
-
 
   // Per Token Info
   for (int j = 0; j < bc.requestsInfo[request_index].num_tokens_in_batch; j++) {
@@ -475,7 +475,7 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
     new_request.llm_cache_size++;
     new_request.num_tokens_in_batch++;
   }
-  
+
   return bc;
 }
 
@@ -1610,6 +1610,7 @@ void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
   // }
 }
 
+// TO BE REMOVED: START
 std::vector<std::pair<BatchConfig::TokenId, int>>
     RequestManager::traverse_verify_tree(
         size_t guid,
@@ -1771,6 +1772,7 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 
   return verifiedTree;
 }
+// TO BE REMOVED: END
 
 std::vector<GenerationResult>
     FFModel::generate(std::vector<std::string> &prompts, int max_seq_length) {
@@ -2161,5 +2163,4 @@ void RequestManager::prune_last_layer_of_spec_token_tree(RequestGuid guid) {
   }
 }
 /* --------- Request Token Tree Related Functions --------- */
-
 }; // namespace FlexFlow
