@@ -1404,6 +1404,12 @@ void RequestManager::init_bitmask(RequestGuid guid, int prompt_length) {
   // 1. Clear the causal mask because our current speculative token tree is
   // empty.
   // 2. Maintain all other fields.
+  Request &request = all_requests[guid];
+  BatchConfig::BitMask &bitmask = request.causal_mask;
+  bitmask.tree_size = 0;
+  bitmask.current_layer_size = 0;
+  bitmask.prompt_size = prompt_length;
+  bitmask.non_tree_cache_size = prompt_length;
 }
 
 void RequestManager::update_bitmask(RequestGuid guid,
@@ -1414,6 +1420,11 @@ void RequestManager::update_bitmask(RequestGuid guid,
   // 1. Clear the causal mask because our current speculative token tree is
   // empty.
   // 2. Maintain all other fields.
+  Request &request = all_requests[guid];
+  BatchConfig::BitMask &bitmask = request.causal_mask;
+  bitmask.tree_size = 0;
+  bitmask.current_layer_size = 0;
+  bitmask.non_tree_cache_size += num_committed_tokens;
 }
 
 void RequestManager::append_bitmask(RequestGuid guid) {
