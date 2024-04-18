@@ -70,6 +70,9 @@ struct Request {
   int ssm_cache_size = 0;
   int llm_cache_size = 0;
 
+  int first_token_offset_in_batch;
+  int num_tokens_in_batch;
+
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
@@ -232,6 +235,9 @@ public:
   void update_inference_results(InferenceResult const &result);
   BatchConfig prepare_next_batch();
 
+  int get_num_active_requests();
+  int get_empty_request_index();
+
 private:
   // configuration parameters
   int max_requests_per_batch;
@@ -274,7 +280,7 @@ private:
       token_tree_node_pool;
   // rm state
   std::mutex rm_state_mutex;
-  std::vector<Request> activated_requests;
+  int guid_of_requests[BatchConfig::MAX_NUM_REQUESTS];
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,
