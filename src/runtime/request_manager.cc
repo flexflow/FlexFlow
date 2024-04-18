@@ -416,7 +416,8 @@ BatchConfig RequestManager::prepare_next_batch() {
 TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
-    std::cout << "\n############### prepare_next_batch_init ###############\n";
+    std::cout
+        << "\n############### prepare_first_spec_batch_config ##############\n";
   }
   // TODO: Clean up the code, this method does the following:
   // 1. Commit the verified tokens through TreeSearchBatchConfig. We can do this
@@ -425,7 +426,6 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   // into BatchConfig.TokensInfo.
   // 2. Maintain BatchConfig::RequestsInfo and all other fields of
   // TreeSearchBatchConfig.
-  // 3. Init causal mask.
   // Please refer to the implementation of prepare_next_spec_batch_config() for
   // more details.
 
@@ -1227,6 +1227,7 @@ void RequestManager::update_llm_verify_results(
   // 2. Store the committed tokens to Request.llm_committed_tokens and
   // Request.ssm_committed_tokens.
   // 3. Store the verified tokens to Request.tokens.
+  // 4. For requests not completed, update their causal mask.
 }
 
 bool RequestManager::update_ssm_inference_results(
@@ -1301,6 +1302,7 @@ bool RequestManager::update_ssm_inference_results(
 
 // bitmask related functions
 
+// TO BE REMOVED: START
 // prompt phase, init task
 void RequestManager::init_bitmask(BatchConfig::BitMask &bitmask,
                                   int initLength) {
@@ -1346,6 +1348,26 @@ void RequestManager::update_bitmask(BatchConfig::BitMask &bitmask,
   // std::cout << "see bit mask update" << bitmask.prompt_size << "\n";
   // std::cout << "see bit mask update" << std::bitset<64>(bitmask.mask[0])
   //           << "\n";
+}
+// TO BE REMOVED: END
+
+void RequestManager::init_bitmask(RequestGuid guid, int prompt_length) {
+  // This method modifies the bitmask in place
+  // This method is called by update_llm_verify_results
+  // TODO: implement this function
+  // 1. Clear the causal mask because our current speculative token tree is
+  // empty.
+  // 2. Maintain all other fields.
+}
+
+void RequestManager::update_bitmask(RequestGuid guid,
+                                    int num_committed_tokens) {
+  // This method modifies the bitmask in place
+  // This method is called by update_llm_verify_results
+  // TODO: implement this function
+  // 1. Clear the causal mask because our current speculative token tree is
+  // empty.
+  // 2. Maintain all other fields.
 }
 
 void RequestManager::append_bitmask(RequestGuid guid) {
@@ -1393,6 +1415,15 @@ void RequestManager::append_bitmask(RequestGuid guid) {
                                                        child_idx);
     child_idx++;
   }
+}
+
+BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
+  // This method creates a new bitmask for LLM verification model's bitmask, it
+  // does not modify the small model's bitmask
+  // This method is called by prepare_verify_batch_config
+  // TODO: implement this function
+  // 1. Create the bitmask based on the pruned request token tree
+  // 2. Maintain all other fields
 }
 
 // prompt phase, init task
