@@ -338,6 +338,25 @@ size_t RequestManager::get_num_processed_requests() {
   return num_processed_requests;
 }
 
+int RequestManager::get_num_active_requests() {
+  int count = 0;
+  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+    if (guid_of_requests[i] != INVALID_GUID) {
+      count++;
+    }
+  }
+  return count;
+}
+
+int RequestManager::get_empty_request_index() {
+  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+    if (guid_of_requests[i] == INVALID_GUID) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 BatchConfigFuture RequestManager::get_next_batch_config(
     InferenceResultFuture const &result, Context ctx, Runtime *runtime) {
   RequestManager *rm = this;
@@ -366,48 +385,136 @@ BatchConfig
 
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
-  for (int i = 0; i < result.num_tokens; i++) {
-    size_t guid = result.request_guids[i];
-    Request &request = all_requests[guid];
-    if (request.tokens.size() < request.max_sequence_length) {
-      request.tokens.push_back(result.token_ids[i]);
+  std::lock_guard<std::mutex> const lock(rm_state_mutex);
+  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+    if guid_of_requests[i] == INVALID_GUID {
+      continue;
+    }
+    Request &request = all_requests[guid_of_requests[i]];
+
+    switch (request_manager_status) {
+      case PREFILLING:
+        if (request.initial_len == request.llm_cache_size) { // all prompt tokens are prefilled
+          request.tokens.push_back(result.token_ids[request.num_tokens_in_batch]);
+          request_manager_status = DECODING;
+        }
+        break;
+      case DECODING: 
+        request.tokens.push_back(result.token_ids[request.first_token_offset_in_batch]);
+        if (request.tokens.size() == request.max_sequence_length) { // request is completed
+          request.status = Request::COMPLETED;
+          trigger_request_completion_future(request.guid);
+          guid_of_requests[i] = INVALID_GUID;
+          request_manager_status = PREFILLING;
+        }
+        break;
+      default:
+        assert(false);
     }
   }
 }
 
 BatchConfig RequestManager::prepare_next_batch() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
-  BatchConfig bc;
-  bc.num_tokens = 0;
-  int num_generation_tokens = 0;
-  int num_active_req = -1;
-  for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
-    if (pending_request_queue.empty()) {
-      break;
-    }
-    Request new_request = pending_request_queue.front();
-    pending_request_queue.pop();
-    all_requests[new_request.guid] = new_request;
-    bc.requestsInfo[i].first_token_depth_in_request = 0;
-    bc.requestsInfo[i].first_token_offset_in_batch = bc.num_tokens;
-    bc.requestsInfo[i].request_guid = new_request.guid;
-    bc.requestsInfo[i].num_tokens_in_batch =
-        std::min(get_max_tokens_per_batch(), (int)new_request.tokens.size());
-    bc.requestsInfo[i].max_sequence_length = new_request.max_sequence_length;
-    bc.request_completed[i] = false;
-    bc.requestsInfo[i].prompt_phase = true;
-    num_active_req++;
-    bc.requestsInfo[num_active_req].batch_config_request_id = i;
-    for (int j = 0; j < bc.requestsInfo[i].num_tokens_in_batch; j++) {
-      int depth = bc.requestsInfo[i].first_token_depth_in_request + j;
-      bc.tokensInfo[bc.num_tokens].request_index = i;
-      bc.tokensInfo[bc.num_tokens].abs_depth_in_request = depth;
-      assert(depth < new_request.tokens.size());
-      bc.tokensInfo[bc.num_tokens].token_id = new_request.tokens[depth];
-      bc.num_tokens++;
+
+  swicth (request_manager_status) {
+    case PREFILLING:
+      return prepare_prefilling_batch();
+    case DECODING:
+      return prepare_decoding_batch();
+    default:
+      assert(false);
+  }
+}
+
+BatchConfig RequestManager::prepare_prefilling_batch() {
+  if (pending_request_queue.empty()) {
+    if (get_num_active_requests() == 0) {
+      return BatchConfig();
+    } else {
+      return prepare_decoding_batch();
     }
   }
-  bc.num_generation_tokens = num_generation_tokens;
+
+  BatchConfig bc;
+  bc.num_tokens = BatchConfig::MAX_NUM_TOKENS;
+
+  request_index = get_empty_request_index();
+  assert(request_index != -1);
+
+  Request new_request = pending_request_queue.front();
+  pending_request_queue.pop();
+  all_requests[new_request.guid] = new_request;
+  guid_of_requests[request_index] = new_request.guid;
+
+  // Per Request Info
+  bc.requestsInfo[request_index].first_token_depth_in_request = 0;
+  bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
+  bc.requestsInfo[request_index].num_tokens_in_batch = std::min(bc.num_tokens, (int)new_request.tokens.size());
+
+  bc.request_completed[request_index] = false;
+
+  new_request.first_token_offset_in_batch = 0;
+  new_request.num_tokens_in_batch = 0;
+
+  // Delete those after update BatchConfig
+  bc.requestsInfo[request_index].max_sequence_length = new_request.max_sequence_length;
+  bc.requestsInfo[request_index].request_guid = new_request.guid;
+  bc.requestsInfo[request_index].prompt_phase = true;
+  bc.requestsInfo[request_index].batch_config_request_id = request_index;
+
+
+  // Per Token Info
+  for (int j = 0; j < bc.requestsInfo[request_index].num_tokens_in_batch; j++) {
+    int depth = bc.requestsInfo[request_index].first_token_depth_in_request + j;
+    bc.tokensInfo[j].request_index = request_index;
+    bc.tokensInfo[j].abs_depth_in_request = depth;
+    assert(depth < new_request.tokens.size());
+    bc.tokensInfo[j].token_id = new_request.tokens[depth];
+
+    new_request.llm_cache_size++;
+    new_request.num_tokens_in_batch++;
+  }
+  
+  return bc;
+}
+
+BatchConfig RequestManager::prepare_decoding_batch() {
+  BatchConfig bc;
+  bc.num_tokens = 0;
+
+  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+    if (guid_of_requests[i] == INVALID_GUID) {
+      continue;
+    }
+
+    Request &request = all_requests[guid_of_requests[i]];
+
+    // Per Request Info
+    bc.requestsInfo[i].first_token_depth_in_request = request.llm_cache_size;
+    bc.requestsInfo[i].first_token_offset_in_batch = bc.num_tokens;
+    bc.requestsInfo[i].num_tokens_in_batch = 1;
+
+    bc.request_completed[i] = false;
+
+    request.first_token_offset_in_batch = bc.num_tokens;
+    request.num_tokens_in_batch = 1;
+
+    // Delete those after update BatchConfig
+    bc.requestsInfo[i].max_sequence_length = request.max_sequence_length;
+    bc.requestsInfo[i].request_guid = request.guid;
+    bc.requestsInfo[i].prompt_phase = false;
+    bc.requestsInfo[i].batch_config_request_id = i;
+
+    // Per Token Info
+    bc.tokensInfo[bc.num_tokens].request_index = i;
+    bc.tokensInfo[bc.num_tokens].abs_depth_in_request = llm_cache_size;
+    bc.tokensInfo[bc.num_tokens].token_id = request.tokens.back();
+
+    request.llm_cache_size++;
+    bc.num_tokens++;
+  }
+
   return bc;
 }
 
