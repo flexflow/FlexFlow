@@ -110,7 +110,8 @@ public:
 
   public:
     Bitset bit_mask[MAX_SPEC_TREE_TOKEN_NUM];
-    // the number of tokens before the tree
+    // the number of generated tokens before the speculation tree (excluding the
+    // prompt tokens)
     int non_tree_cache_size = 0;
     // current tree size
     int tree_size = 0;

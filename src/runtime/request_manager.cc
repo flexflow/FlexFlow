@@ -1516,7 +1516,7 @@ void RequestManager::init_bitmask(RequestGuid guid, int prompt_length) {
   bitmask.tree_size = 0;
   bitmask.current_layer_size = 0;
   bitmask.prompt_size = prompt_length;
-  bitmask.non_tree_cache_size = prompt_length;
+  bitmask.non_tree_cache_size = 0;
 }
 
 void RequestManager::update_bitmask(RequestGuid guid,
