@@ -525,7 +525,7 @@ __host__ void
   // const FusedOp* fused = (FusedOp*) task->args;
   FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
-  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  /* Reserved: BatchConfig Updated */BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
   }
@@ -871,7 +871,7 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         TreeIncMultiHeadSelfAttentionMeta *m =
             (TreeIncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        TreeVerifyBatchConfig const &tree_bc =
+        TreeVerifyBatchConfig const &verify_bc =
             Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
         assert(fused->op_num_weights[op] ==
                (1 + (int)(*m->qkv_bias || *m->final_bias)));
@@ -882,7 +882,7 @@ __host__ void
         }
         TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
             m,
-            &tree_bc,
+            &verify_bc,
             task->index_point.point_data[0],
             my_input_accessor[0],
             my_weight_accessor[0],
@@ -895,10 +895,10 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         SpecIncMultiHeadSelfAttentionMeta const *m =
             (SpecIncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        // BeamSearchBatchConfig const *beam_bc =
-        //     (BeamSearchBatchConfig *)task->args;
-        BeamSearchBatchConfig const &beam_bc =
-            Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
+        // TreeSearchBatchConfig const *search_bc =
+        //     (TreeSearchBatchConfig *)task->args;
+        TreeSearchBatchConfig const &search_bc =
+            Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
         assert(fused->op_num_weights[op] ==
                (1 + (int)(*m->qkv_bias || *m->final_bias)));
         GenericTensorAccessorR biases;
@@ -908,7 +908,7 @@ __host__ void
         }
         SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
             m,
-            &beam_bc,
+            &search_bc,
             task->index_point.point_data[0],
             my_input_accessor[0],
             my_weight_accessor[0],
