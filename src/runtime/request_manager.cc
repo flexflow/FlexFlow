@@ -412,7 +412,7 @@ BatchConfig RequestManager::prepare_next_batch() {
 }
 /* ----- Speculative Inference Specific functions ----- */
 
-/***** Request Init Phase *****/
+// TO BE REMOVED: START
 TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
@@ -827,83 +827,6 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   return new_bc;
 }
 
-/***** Speculative Decoding Phase *****/
-TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
-  std::lock_guard<std::mutex> const lock(request_queue_mutex);
-  if (verbose) {
-    std::cout << "\n############### prepare_next_batch_spec ###############\n";
-    std::cout << "Current tree depth: " << current_speculation_step << "\n";
-  }
-  // Prepare the next batch for existing requests
-  TreeSearchBatchConfig new_bc;
-  // We assume that only one small model is in use now
-  new_bc.model_id = 0;
-  new_bc.num_tokens = 0;
-  new_bc.num_available_requests = 0;
-
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
-       ++request_index) {
-    if (!request_available[request_index]) {
-      new_bc.request_available[request_index] = false;
-      continue;
-    }
-    int guid = guid_of_requests[request_index];
-    Request &request = all_requests[guid];
-    assert(request.status == Request::RUNNING);
-    new_bc.request_available[request_index] = true;
-    new_bc.num_available_requests++;
-    new_bc.requestsInfo[request_index].first_token_offset_in_batch =
-        new_bc.num_tokens;
-    // TODO: check this profiling
-    profiling_requests[request.guid].ssm_decoding_steps += 1;
-
-    // Fill in the tokens
-    TokenTree &token_tree = request.speculative_token_trees.at(new_bc.model_id);
-    if (token_tree.tree_layers.size() < current_speculation_step) {
-      // This request has no token to decode in this and the following small
-      // model inference steps
-      new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
-      new_bc.requestsInfo[request_index].first_token_index_in_request =
-          request.tokens.size() + token_tree.tree_node_size;
-      continue;
-    } else {
-      std::list<std::shared_ptr<TokenTreeNode>> &current_layer =
-          token_tree.tree_layers.at(current_speculation_step - 1);
-      // Exclude the current layer from the token tree, because we want the
-      // start index
-      new_bc.requestsInfo[request_index].first_token_index_in_request =
-          request.tokens.size() + token_tree.tree_node_size -
-          current_layer.size();
-      new_bc.requestsInfo[request_index].num_tokens_in_batch =
-          current_layer.size();
-
-      int child_index = 0;
-      for (auto const &node_ptr : current_layer) {
-        new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
-        new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
-            new_bc.requestsInfo[request_index].first_token_index_in_request +
-            child_index;
-        new_bc.tokensInfo[new_bc.num_tokens].token_id = node_ptr->id;
-
-        new_bc.num_tokens++;
-        child_index++;
-      }
-    }
-
-    // TODO: we should call append_bitmask at some point before this
-    // Copy the causal mask
-    new_bc.causalMask[request_index] = request.causal_mask;
-  }
-
-  new_bc.num_available_requests = num_available_requests;
-  if (verbose) {
-    std::cout << "prepare_next_batch_beam NEW batchconfig:" << std::endl;
-    new_bc.print();
-  }
-  return new_bc;
-}
-
-/***** Verify Phase *****/
 TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
@@ -1211,6 +1134,124 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
 
   return new_bc;
 }
+// TO BE REMOVED: END
+
+/***** Request Init Phase *****/
+TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
+  if (verbose) {
+    std::cout
+        << "\n############### prepare_first_spec_batch_config ##############\n";
+  }
+  // TODO: Clean up the code, this method does the following:
+  // 1. Commit the verified tokens through TreeSearchBatchConfig. We can do this
+  // request by request. The infomation of the committed tokens are stored in
+  // Request.ssm_committed_tokens. Put the information of the committed tokens
+  // into BatchConfig.TokensInfo.
+  // 2. Maintain BatchConfig::RequestsInfo and all other fields of
+  // TreeSearchBatchConfig.
+  // Please refer to the implementation of prepare_next_spec_batch_config() for
+  // more details.
+}
+
+/***** Speculative Decoding Phase *****/
+TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
+  if (verbose) {
+    std::cout << "\n############### prepare_next_batch_spec ###############\n";
+    std::cout << "Current tree depth: " << current_speculation_step << "\n";
+  }
+  // Prepare the next batch for existing requests
+  TreeSearchBatchConfig new_bc;
+  // We assume that only one small model is in use now
+  new_bc.model_id = 0;
+  new_bc.num_tokens = 0;
+  new_bc.num_available_requests = 0;
+
+  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+       ++request_index) {
+    if (!request_available[request_index]) {
+      new_bc.request_available[request_index] = false;
+      continue;
+    }
+    int guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+    new_bc.request_available[request_index] = true;
+    new_bc.num_available_requests++;
+    new_bc.requestsInfo[request_index].first_token_offset_in_batch =
+        new_bc.num_tokens;
+    // TODO: check this profiling
+    profiling_requests[request.guid].ssm_decoding_steps += 1;
+
+    // Fill in the tokens
+    TokenTree &token_tree = request.speculative_token_trees.at(new_bc.model_id);
+    if (token_tree.tree_layers.size() < current_speculation_step) {
+      // This request has no token to decode in this and the following small
+      // model inference steps
+      new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
+      new_bc.requestsInfo[request_index].first_token_index_in_request =
+          request.tokens.size() + token_tree.tree_node_size;
+      continue;
+    } else {
+      std::list<std::shared_ptr<TokenTreeNode>> &current_layer =
+          token_tree.tree_layers.at(current_speculation_step - 1);
+      // Exclude the current layer from the token tree, because we want the
+      // start index
+      new_bc.requestsInfo[request_index].first_token_index_in_request =
+          request.tokens.size() + token_tree.tree_node_size -
+          current_layer.size();
+      new_bc.requestsInfo[request_index].num_tokens_in_batch =
+          current_layer.size();
+
+      int child_index = 0;
+      for (auto const &node_ptr : current_layer) {
+        new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
+        new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
+            new_bc.requestsInfo[request_index].first_token_index_in_request +
+            child_index;
+        new_bc.tokensInfo[new_bc.num_tokens].token_id = node_ptr->id;
+
+        new_bc.num_tokens++;
+        child_index++;
+      }
+    }
+
+    // Copy the causal mask
+    new_bc.causalMask[request_index] = request.causal_mask;
+  }
+
+  new_bc.num_available_requests = num_available_requests;
+  if (verbose) {
+    std::cout << "prepare_next_batch_beam NEW batchconfig:" << std::endl;
+    new_bc.print();
+  }
+  return new_bc;
+}
+
+/***** Verify Phase *****/
+TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
+  if (verbose) {
+    std::cout
+        << "\n############### prepare_next_batch_verify ###############\n";
+  }
+  // TODO: Clean up the code, this method does the following:
+  // 1. Commit the verified tokens in the last iteration through the
+  // TreeVerifyBatchConfig . We can do this request by request. The information
+  // of the committed tokens is stored in Request.llm_committed_tokens. Put the
+  // information of the committed tokens into
+  // TreeVerifyBatchConfig::committed_tokens.
+  // 2. Load the tokens on the token tree that are not yet pruned to
+  // TreeVerifyBatchConfig::tokensInfo. Be careful with the abs_depth etc. (skip
+  // the pruned tokens).
+  // 3. Create the causal mask for the large model based on the small model
+  // causal mask.
+  // 4. Maintain BatchConfig::RequestsInfo and all other fields of
+  // TreeSearchBatchConfig.
+  // Please refer to the implementation of prepare_next_spec_batch_config() for
+  // more details.
+}
 
 void RequestManager::update_llm_verify_results(
     InferenceResult const &llm_verify_result) {
@@ -1227,7 +1268,9 @@ void RequestManager::update_llm_verify_results(
   // 2. Store the committed tokens to Request.llm_committed_tokens and
   // Request.ssm_committed_tokens.
   // 3. Store the verified tokens to Request.tokens.
-  // 4. For requests not completed, update their causal mask.
+  // 4. Some requests may be completed after appending the verified tokens,
+  // maintain the complete requests, and start a prefilling iteration.
+  // 5. For requests not completed, update their causal mask.
 }
 
 bool RequestManager::update_ssm_inference_results(
