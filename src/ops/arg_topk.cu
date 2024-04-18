@@ -379,7 +379,7 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
                              int length,
                              int k,
                              bool sorted,
-                             BeamSearchBatchConfig const *bc,
+                             /* Reserved: BatchConfig Updated, leave beamsearch to kill */TreeSearchBatchConfig const *bc,
                              cudaStream_t stream) {
   // Adopted from TensorFlow's ArgTopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
@@ -410,7 +410,7 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
     int last_request_idx =
         bc->requestsInfo[num_activate_requests - 1].batch_config_request_id;
     for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-      if (bc->request_completed[i]) {
+      if (!bc->request_available[i]) {
         continue;
       } else if (beam_size == -1) {
         beam_size = bc->beamRequestsInfo[i].beam_size;
@@ -454,7 +454,7 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
                                      GenericTensorAccessorW const &probs,
                                      GenericTensorAccessorW const &indices,
                                      int batch_size,
-                                     BeamSearchBatchConfig const *bc) {
+                                     TreeSearchBatchConfig const *bc) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
