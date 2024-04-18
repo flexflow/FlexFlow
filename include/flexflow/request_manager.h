@@ -186,19 +186,6 @@ public:
   // Methods to check and mark request completion
   bool is_request_completed(RequestGuid const &guid);
   void trigger_request_completion_future(RequestGuid const &guid);
-
-  std::vector<std::pair<BatchConfig::TokenId, int>>
-      traverse_beam_tree(TreeSearchBatchConfig const &old_bc,
-                         int request_index,
-                         int first_token_depth_in_request);
-  // This function takes the tree stored in the token trees in
-  // RequestManager::all_requests, and convert them into serialized version.
-  // Called by prepare_next_batch_verify().
-  std::vector<std::pair<BatchConfig::TokenId, int>>
-      traverse_spec_tree(TreeSearchBatchConfig const &old_bc,
-                         int request_index,
-                         int first_token_depth_in_request);
-
   std::vector<std::pair<BatchConfig::TokenId, int>> traverse_verify_tree(
       size_t guid,
       std::vector<std::pair<BatchConfig::TokenId, int>> const

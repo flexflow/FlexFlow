@@ -1217,8 +1217,8 @@ void RequestManager::update_llm_verify_results(
   // TODO: Implement this function
   // We may have two types of InferenceResults, one is the results from sampling
   // the large model, the other is the top-p / top-k logits of the large model,
-  // we can first implement the former one
-  // For the latter one, we have to add a CPU based verify function
+  // we can first implement the former one. For the latter one, we have to add a
+  // CPU based verify function.
   // 1. Compare the results returned from the LLM and compare them with the
   // SSM's speculative token tree. For the greedy construction of the
   // speculative token tree, we can simply compare LLM's sample result at each
@@ -1300,7 +1300,7 @@ bool RequestManager::update_ssm_inference_results(
   }
 }
 
-// bitmask related functions
+/* --------- Bitmask Related Functions --------- */
 
 // TO BE REMOVED: START
 // prompt phase, init task
@@ -1425,6 +1425,7 @@ BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
   // 1. Create the bitmask based on the pruned request token tree
   // 2. Maintain all other fields
 }
+/* --------- Bitmask Related Functions --------- */
 
 // prompt phase, init task
 void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
@@ -1443,69 +1444,6 @@ void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
   //     bitmask.mask[i] |= (1 << j);
   //   }
   // }
-}
-
-bool PreOrder(
-    BeamTree const &tree,
-    int max_depth,
-    int current_depth,
-    int beam_width,
-    int id,
-    std::vector<std::pair<TreeSearchBatchConfig::TokenId, int>> &serializedTree,
-    bool verbose) {
-  // terminate
-  if (current_depth >= max_depth) {
-    serializedTree.push_back(std::make_pair(
-        tree.treeLayers[current_depth].tokens[id], current_depth));
-    if (verbose) {
-      std::cout << "last tokens: " << tree.treeLayers[current_depth].tokens[id]
-                << "\n";
-      std::cout << "return true" << "\n";
-    }
-    return true;
-  }
-
-  // add to tree;
-  // std::cout<<"node: " << current_depth << ", id: " <<
-  serializedTree.push_back(
-      std::make_pair(tree.treeLayers[current_depth].tokens[id], current_depth));
-  if (verbose) {
-    std::cout << "push something: " << tree.treeLayers[current_depth].tokens[id]
-              << ", " << current_depth << std::endl;
-  }
-  int index = serializedTree.size() - 1;
-  int next_layers = current_depth + 1;
-
-  bool flag = false;
-  // recursion
-  for (int i = 0; i < beam_width; i++) {
-    int child_id = i;
-    int child_parent = tree.treeLayers[next_layers].parent_ids[i];
-
-    // for all childs, do preOrder
-    if (child_parent == id) {
-      if (verbose) {
-        std::cout << "current depth: " << current_depth << ", child_parent, "
-                  << child_parent << ", child_id, " << child_id << "\n";
-      }
-      bool res = PreOrder(tree,
-                          max_depth,
-                          current_depth + 1,
-                          beam_width,
-                          child_id,
-                          serializedTree,
-                          verbose);
-      flag = flag || res;
-    }
-  }
-  // if (!flag) {
-  //   // no child for this token, delete it
-  //   std::cout << "delete a node: " <<
-  //   tree.treeLayers[current_depth].tokens[id]
-  //             << ", " << current_depth << std::endl;
-  //   serializedTree.erase(serializedTree.begin() + index);
-  // }
-  return flag;
 }
 
 std::vector<std::pair<BatchConfig::TokenId, int>>
@@ -1668,80 +1606,6 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   }
 
   return verifiedTree;
-}
-
-std::vector<std::pair<BatchConfig::TokenId, int>>
-    RequestManager::traverse_beam_tree(TreeSearchBatchConfig const &old_bc,
-                                       int request_index,
-                                       int first_token_depth_in_request) {
-  if (verbose) {
-    std::cout << "[Traverse Beam Tree] request_index: " << request_index
-              << "\n";
-    std::cout << "[Traverse Beam Tree] max_depth: "
-              << old_bc.beamRequestsInfo[request_index].max_depth << "\n";
-    std::cout << "[Traverse Beam Tree] current_depth: "
-              << old_bc.beamRequestsInfo[request_index].current_depth << "\n";
-    std::cout << "[Traverse Beam Tree] beam_width: "
-              << old_bc.beamRequestsInfo[request_index].beam_size << "\n";
-    std::cout << "[Traverse Beam Tree] start index: "
-              << first_token_depth_in_request << "\n";
-  }
-
-  auto guid = old_bc.requestsInfo[request_index].request_guid;
-  Request &request = all_requests[guid];
-  // std::cout << "request.beam_trees.size(): " << request.beam_trees.size()
-  //           << std::endl;
-  BeamTree tree = request.beam_trees.at(old_bc.model_id);
-
-  // std::cout << "print beam tree: "
-  //           << "\n";
-  std::vector<std::pair<BatchConfig::TokenId, int>> serializedTree;
-  for (int i = 0; i <= old_bc.beamRequestsInfo[request_index].max_depth; i++) {
-    // std::cout << "tree layer: " << i
-    //           << ", num_nodes: " << tree.treeLayers[i].nodes_num_this_layer
-    //           << "\n";
-    // push tokens into tree
-    for (int j = 0; j < tree.treeLayers[i].nodes_num_this_layer; j++) {
-      // std::cout << "token: " << tree.treeLayers[i].tokens[j] << "\n";
-      serializedTree.push_back(std::make_pair(tree.treeLayers[i].tokens[j], i));
-    }
-  }
-  // token, index
-  // todo make this one global for different stages
-
-  // PreOrder(tree,
-  //          old_bc.beamRequestsInfo[request_index].max_depth,
-  //          0,
-  //          old_bc.beamRequestsInfo[request_index].beam_size,
-  //          0,
-  //          serializedTree,
-  //          verbose);
-
-  // print it
-  if (verbose) {
-    std::cout << "Print serialized tree: size:" << request_index
-              << serializedTree.size() << "\n";
-  }
-  for (int k = 0; k < serializedTree.size(); k++) {
-    serializedTree.at(k).second += first_token_depth_in_request;
-    if (verbose) {
-      std::cout << "token id: " << serializedTree.at(k).first
-                << ", depth: " << serializedTree.at(k).second << "\n";
-    }
-  }
-
-  // if (dfs_tree_inputs.find(old_bc.requestsInfo[request_index].request_guid)
-  // !=
-  //     dfs_tree_inputs.end()) {
-  //   dfs_tree_inputs[old_bc.requestsInfo[request_index].request_guid] =
-  //       serializedTree;
-  // } else {
-  //   dfs_tree_inputs.insert(std::make_pair(
-  //       old_bc.requestsInfo[request_index].request_guid, serializedTree));
-  // }
-
-  return serializedTree;
-  // }
 }
 
 std::vector<GenerationResult>
