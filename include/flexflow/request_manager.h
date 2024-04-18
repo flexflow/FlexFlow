@@ -280,7 +280,6 @@ private:
       token_tree_node_pool;
   // rm state
   std::mutex rm_state_mutex;
-  int guid_of_requests[BatchConfig::MAX_NUM_REQUESTS];
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,
