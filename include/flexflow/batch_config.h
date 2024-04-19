@@ -72,8 +72,8 @@ public:
     TokenId token_id;
     int abs_index_in_request;
     int request_index;
-    // This offset is only used for small model KV cache commit
-    int last_batch_offset = -1;
+    // For SSM KV cache commitment
+    int kv_cache_index = -1;
   };
 
   class BitMask {
