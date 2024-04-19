@@ -1,6 +1,4 @@
-'''
-Script to generate a PlantUML graph for the inheritance / dependency hierarchy between the graph classes
-'''
+'''Script to generate a PlantUML graph for the inheritance / dependency hierarchy between the graph classes'''
 
 import subprocess
 import re
@@ -18,6 +16,7 @@ def clean_puml(puml : bytes) -> str:
     puml = (line.strip('\t') for line in puml)
     puml = '\n'.join(puml)
     puml = puml.replace(" {\n}", '')
+    puml =  re.sub(r' <.*?<.*?>>', '', puml) #remove the templates
     return puml
 
 def remove_enum(puml):
@@ -54,29 +53,50 @@ def get_connections(puml, includeaggregation=False):
             connections.append(line)
     return connections
 
-def classify_component(name):
-    if name.endswith('Query'):
-        return 'Query'
-    if 'Labelled' in name:
-        return 'Labelled'
-    if 'Node' in name:
-        return 'Node'
-    if any(pattern in name for pattern in ('Edge', 'Input', 'Output')):
-        return 'Edge'
-    if name.endswith('Graph'):
-        if name.endswith('MultiDiGraph'): return 'Graph.MultiDiGraph_'
-        if name.endswith('UndirectedGraph'): return 'Graph.UndirectedGraph_'
-        return 'Graph.BasicGraph'
-    if name.endswith('View'):
-        if name.endswith('MultiDiGraphView'): return 'View.MultiDiGraphView_'
-        if name.endswith('SubgraphView'): return 'View.SubgraphView_'
-        return 'View.BasicView'
-    return 'Other'
+def filter_by_groups(groups, components):
+    component_classifications = defaultdict(list)
+    filtered_components = []
+    for component in components:
+        for packagename in groups:
+            filtering_func = GROUPS[packagename]
+            if filtering_func(component.name):
+                component_classifications[packagename].append(component)
+                filtered_components.append(component)
+                break
+    return component_classifications, filtered_components
+
+
+def filter_connections(connections, components):
+    filtered_connections = []
+    component_names = {comp.name for comp in components}
+    for conn in connections:
+        parent, _, child = conn.split(' ')
+        if parent in component_names and child in component_names:
+            filtered_connections.append(conn)
+    return filtered_connections
 
 if __name__=='__main__':
-    cmd = 'hpp2plantuml -i "../*.h"' 
+    cmd = 'hpp2plantuml -i "../labelled/*.h"'
     puml : bytes = subprocess.check_output(cmd, shell=True)
-    print(puml)
+
+    GROUPS = {
+        'Graph' : lambda comp : 'Graph' in comp,
+        'Edges' : lambda comp : any(comp.endswith(pattern) for pattern in ('Input', 'Output', 'Edge')),
+        'Open' : lambda comp : 'Open' in comp and 'Query' not in comp, # doesn't include Upwards or Downwards
+        'Open.Upward' : lambda comp : 'Upward' in comp and 'Query' not in comp,
+        'Open.Downward' : lambda comp : 'Downward' in comp and 'Query' not in comp,
+        'DiGraphs.MultiDiGraphs' : lambda comp : 'MultiDiGraph' in comp,
+        'DiGraphs' : lambda comp : 'DiGraph' in comp,
+        'Undirected' : lambda comp : 'UndirectedGraph' in comp,
+
+        'Labelled' : lambda comp : 'Labelled' in comp,
+        'Labelled.NodeLabelled' : lambda comp : 'NodeLabelled' in comp,
+        'Labelled.OutputLabelled' : lambda comp : 'OutputLabelled' in comp
+    }
+
+    selected_groups = ('Labelled','Labelled.NodeLabelled','Labelled.OutputLabelled')
+    selected_groups = sorted(selected_groups, reverse=True) #to ensure that classification for subcategories is given precedence
+
     puml = clean_puml(puml)
     puml = remove_enum(puml)
     puml = remove_namespace(puml)
@@ -85,17 +105,19 @@ if __name__=='__main__':
     connections = get_connections(puml)
     cowptr_connections = get_additional_cowptr_connections(components)
     connections += cowptr_connections
-    packages = defaultdict(list)
-    for component in components:
-        packages[classify_component(component.name)].append(component)
+    
+    packageclassification, components = filter_by_groups(selected_groups, components)
+    connections = filter_connections(connections, components)
 
     final_puml = ""
-    final_puml += "@startuml\n\n"
-    for packagename, components in packages.items():
+    final_puml += "@startuml\nleft to right direction\n\n"
+    
+    for packagename, components in packageclassification.items():
         component_string = '\n'.join(f'\t{c.rawstring}' for c in components)
         final_puml+=f'package {packagename} {{ \n{component_string} \n}}\n\n'
 
     final_puml+='\n'.join(connections)
     final_puml+="\n\n@enduml"
-    with open('graph_diagram.puml', 'w') as file:
+    print(final_puml)
+    with open('output.puml', 'w') as file:
         file.write(final_puml)
