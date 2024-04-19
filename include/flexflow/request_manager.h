@@ -113,11 +113,14 @@ struct Request {
   // TreeVerifyBatchConfig
   // to_index: The absolute index of the token in the request
 
-  struct CommittedTokens {
+  struct CommittedToken {
     int from_index;
     int to_index;
+    BatchConfig::TokenId token_id;
+    CommittedToken(int from_index, int to_index, BatchConfig::TokenId token_id)
+        : from_index(from_index), to_index(to_index), token_id(token_id) {}
   };
-  std::vector<CommittedTokens> committed_tokens;
+  std::vector<CommittedToken> committed_tokens;
 };
 
 class TokenTreeNode {

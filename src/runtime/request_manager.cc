@@ -1425,7 +1425,7 @@ bool RequestManager::update_ssm_inference_results(
             guid,
             ssm_inference_result.token_ids[result_index],
             ssm_inference_result.probs[result_index],
-            0);
+            -1);
         result_index++;
       }
     } else if (token_tree.tree_layers.size() < current_speculation_step - 1) {
@@ -1787,8 +1787,54 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 
 void RequestManager::get_verify_results(
     InferenceResult const &llm_verify_result) {
-  // This function should return the verified tokens and maintain the
+  // This function maintain the generated token list of the request and the
   // committed tokens.
+  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+       ++request_index) {
+    if (!request_available[request_index]) {
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+    request.committed_tokens.clear();
+
+    // Traverse the speculative token tree and it with the LLM's sampling output
+    int llm_result_index = 0;
+    int verified_parent_pos = -1;
+    int committed_token_index = 0;
+    TokenTree &token_tree = request.speculative_token_trees[0];
+    for (auto const &tree_layer : token_tree.tree_layers) {
+      bool token_accepted_this_layer = false;
+      int current_layer_index = 0;
+      for (auto const &node_ptr : tree_layer) {
+        if (node_ptr->pruned) {
+          continue;
+        }
+        if (node_ptr->parent_pos != verified_parent_pos) {
+          llm_result_index++;
+          current_layer_index++;
+          continue;
+        } else if (token_accepted_this_layer) {
+          // A token is already accepted in the current layer
+          llm_result_index++;
+          current_layer_index++;
+          continue;
+        } else {
+          if (node_ptr->id == llm_verify_result.token_ids[llm_result_index]) {
+            request.committed_tokens.push_back(Request::CommittedToken(
+                llm_result_index, committed_token_index, node_ptr->id));
+            request.tokens.push_back(node_ptr->id);
+            token_accepted_this_layer = true;
+            verified_parent_pos = current_layer_index;
+            committed_token_index++;
+          }
+          llm_result_index++;
+          current_layer_index++;
+        }
+      }
+    }
+  }
 }
 
 std::vector<GenerationResult>
