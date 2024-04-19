@@ -91,6 +91,9 @@ struct Request {
   // should be the place to put the KV cache in the SSM KV cache: prompt_length
   // + generated_sequence_length + index_in_committed_tokens.
   //
+  // from_index -> BatchConfig::PerTokenInfo.abs_index_in_request
+  // to_index -> BatchConfig::PerTokenInfo.kv_cache_dest_index
+  //
   // 2. Commit the LLM KV cache: On the GPU, the KV cache of the speculative
   // token tree and the generated tokens are stored separately. So the
   // `from_index` should be the index of the token in the speculative token
@@ -98,9 +101,13 @@ struct Request {
   // cache: prompt_length + generated_sequence_length +
   // index_in_committed_tokens.
   //
+  // from_index -> TreeVerifyBatchConfig::CommittedTokensInfo.token_index
+  // to_index -> TreeVerifyBatchConfig::CommittedTokensInfo.token_depth
+  //
   // Even though `from_index` and `to_index` means different things for the SSM
   // and the LLM, we can still use the same struct to store the committed
   // tokens.
+
   struct CommittedTokens {
     int from_index;
     int to_index;
