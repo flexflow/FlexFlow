@@ -701,29 +701,31 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
-#define LAUNCH_ATTENTION_SCORE_KERNEL(                                         \
-    DT, Dh, Dh_MAX, THDS_PER_KEY, THREADS_PER_VALUE, THDS_PER_BLOCK, stream)   \
-  smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                               \
-                                   BatchConfig::max_sequence_length(),         \
-                                   THREADS_PER_VALUE,                          \
-                                   THDS_PER_BLOCK);                            \
-  compute_attention_kernel_generation_kernel<DT,                               \
-                                             THDS_PER_BLOCK,                   \
-                                             Dh,                               \
-                                             Dh_MAX,                           \
-                                             THDS_PER_KEY,                     \
-                                             THREADS_PER_VALUE>                \
-      <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                             \
-          static_cast<DT *>(m->devQKVProjArray),                               \
-          static_cast<DT *>(m->keyCache),                                      \
-          static_cast<DT *>(m->valueCache),                                    \
-          output_ptr,                                                          \
-          scale,                                                               \
-          BatchConfig::max_sequence_length(),                                  \
-          m->qProjSize,                                                        \
-          m->hidden_size,                                                      \
-          m->request_infos,                                                    \
-          m->request_available)
+#define LAUNCH_ATTENTION_SCORE_KERNEL(                                          \
+    DT, Dh, Dh_MAX, THDS_PER_KEY, THREADS_PER_VALUE, THDS_PER_BLOCK, stream)    \
+  do {                                                                          \
+    smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                              \
+                                    BatchConfig::max_sequence_length(),         \
+                                    THREADS_PER_VALUE,                          \
+                                    THDS_PER_BLOCK);                            \
+    compute_attention_kernel_generation_kernel<DT,                              \
+                                              THDS_PER_BLOCK,                   \
+                                              Dh,                               \
+                                              Dh_MAX,                           \
+                                              THDS_PER_KEY,                     \
+                                              THREADS_PER_VALUE>                \
+        <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                            \
+            static_cast<DT *>(m->devQKVProjArray),                              \
+            static_cast<DT *>(m->keyCache),                                     \
+            static_cast<DT *>(m->valueCache),                                   \
+            output_ptr,                                                         \
+            scale,                                                              \
+            BatchConfig::max_sequence_length(),                                 \
+            m->qProjSize,                                                       \
+            m->hidden_size,                                                     \
+            m->request_infos,                                                   \
+            m->request_available);                                              \
+  } while (0)
 
 template <typename DT>
 void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
