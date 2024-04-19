@@ -1,7 +1,10 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_REDUCE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_REDUCE_KERNELS_H
 
-#include "kernels/device.h"
+#include "array_shape.h"
+#include "device.h"
+#include "ff_handle.h"
+#include "op-attrs/op.h"
 
 namespace FlexFlow {
 
@@ -11,7 +14,7 @@ struct ReducePerDeviceState {
   ffTensorDescriptor_t outputTensor;
   ffReduceTensorDescriptor_t reduceDesc;
   OperatorType op_type;
-  size_t reduction_size;
+  req<size_t> reduction_size;
 };
 
 FF_VISITABLE_STRUCT(ReducePerDeviceState,
@@ -25,32 +28,21 @@ FF_VISITABLE_STRUCT(ReducePerDeviceState,
 namespace Kernels {
 namespace Reduce {
 
-ReducePerDeviceState init_kernel(PerDeviceFFhandle const &,
+ReducePerDeviceState init_kernel(PerDeviceFFHandle const &,
                                  OperatorType const &,
                                  size_t const &,
                                  ArrayShape input_shape,
                                  ArrayShape output_shape);
 
-void forward_kernel_wrapper(ReducePerDeviceState const &m,
-                            GenericTensorAccessorR const &input,
-                            GenericTensorAccessorW const &output);
-
-void backward_kernel_wrapper(ReducePerDeviceState const &m,
-                             GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorW const &input_grad);
-
-namespace Internal {
-
-void forward_kernel(ReducePerDeviceState const *m,
+void forward_kernel(ffStream_t stream,
+                    ReducePerDeviceState const &m,
                     float const *input_ptr,
-                    float *output_ptr,
-                    ffStream_t stream);
+                    float *output_ptr);
 
-void backward_kernel(ReducePerDeviceState const *m,
+void backward_kernel(ffStream_t stream,
+                     ReducePerDeviceState const &m,
                      float const *output_grad_ptr,
-                     float *input_grad_ptr,
-                     ffStream_t stream);
-} // namespace Internal
+                     float *input_grad_ptr);
 } // namespace Reduce
 } // namespace Kernels
 } // namespace FlexFlow

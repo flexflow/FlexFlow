@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_REPLICATE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_REPLICATE_KERNELS_H
 
+#include "device.h"
 #include "kernels/accessor.h"
-#include "kernels/device.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -13,8 +13,8 @@ void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorW const &output);
 
 void backward_kernel(ffStream_t stream,
-                     GenericTensorAccessorW const &input,
-                     GenericTensorAccessorR const &output,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorW const &output,
                      size_t num_replicas);
 
 } // namespace Replicate

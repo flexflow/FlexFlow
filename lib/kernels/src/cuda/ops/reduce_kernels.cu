@@ -13,61 +13,14 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
+#include "device.h"
 #include "kernels/reduce_kernels.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::coord_t;
-using Legion::Domain;
-
-ReducePerDeviceState::ReducePerDeviceState(FFHandler handler,
-                                           Reduce const *rd,
-                                           Domain const &input_domain)
-    : op_type(rd->op_type), PerDeviceOpState(handler) {
-  checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
-  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
-  cudnnReduceTensorOp_t reduce_op;
-  switch (rd->op_type) {
-    case OP_REDUCE_SUM:
-      reduce_op = CUDNN_REDUCE_TENSOR_ADD;
-      break;
-    case OP_REDUCE_MEAN:
-      reduce_op = CUDNN_REDUCE_TENSOR_AVG;
-      break;
-    default:
-      assert(false);
-  }
-  checkCUDNN(cudnnSetReduceTensorDescriptor(reduceDesc,
-                                            reduce_op,
-                                            CUDNN_DATA_FLOAT,
-                                            CUDNN_PROPAGATE_NAN,
-                                            CUDNN_REDUCE_TENSOR_NO_INDICES,
-                                            CUDNN_32BIT_INDICES));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
-  Domain output_domain = input_domain;
-  for (size_t i = 0; i < rd->num_axes; i++) {
-    assert(input_domain.dim > rd->axes[i]);
-    output_domain.rect_data[rd->axes[i] + output_domain.dim] =
-        output_domain.rect_data[rd->axes[i]];
-  }
-  assert(output_domain.get_volume() % input_domain.get_volume() == 0);
-  reduction_size = input_domain.get_volume() / output_domain.get_volume();
-  assert(reduction_size > 0);
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
-}
-
-ReducePerDeviceState::~ReducePerDeviceState(void) {
-  checkCUDNN(cudnnDestroyReduceTensorDescriptor(reduceDesc));
-  checkCUDNN(cudnnDestroyTensorDescriptor(inputTensor));
-  checkCUDNN(cudnnDestroyTensorDescriptor(outputTensor));
-}
-
 namespace Kernels {
 namespace Reduce {
 
-ReducePerDeviceState init_kernel(PerDeviceFFhandle const &handle,
+ReducePerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                  OperatorType const &op_type,
                                  size_t const &reduction_size,
                                  ArrayShape const &input_shape,
@@ -79,7 +32,7 @@ ReducePerDeviceState init_kernel(PerDeviceFFhandle const &handle,
 
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
-  ;
+
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
 
   checkCUDNN(cudnnSetTensorDescriptorFromArrayShape(inputTensor, input_shape));
@@ -88,6 +41,7 @@ ReducePerDeviceState init_kernel(PerDeviceFFhandle const &handle,
 
   ReducePerDeviceState per_device = {
       handle, inputTensor, outputTensor, reduceDesc, op_type, reduction_size};
+  return per_device;
 }
 
 void forward_kernel(cudaStream_t stream,
@@ -117,10 +71,10 @@ void backward_kernel(cudaStream_t stream,
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
   float alpha = 1.0, beta = 1.0f;
   switch (m.op_type) {
-    case OP_REDUCE_SUM:
+    case Op::REDUCE_SUM:
       alpha = 1.0f;
       break;
-    case OP_REDUCE_MEAN:
+    case Op::REDUCE_MEAN:
       // When the output is the average of multiple input elements
       // we need to scale the gradients by 1.0 / reduction_size
       alpha = 1.0f / m.reduction_size;
