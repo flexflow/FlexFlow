@@ -96,27 +96,18 @@ void RequestManager::load_batch_config_task(
                             stream));
   total_copy_size += sizeof(BatchConfig::requestsInfo);
 
+  checkCUDA(cudaMemcpyAsync(
+      static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
+      &(batch_config->request_available),
+      sizeof(BatchConfig::request_available),
+      cudaMemcpyHostToDevice,
+      stream));
+  total_copy_size += sizeof(BatchConfig::request_available);
+
   // load speculative metadata
   if (batch_config->get_mode() == BEAM_SEARCH_MODE) {
     TreeSearchBatchConfig const *beam_batch_config =
         static_cast<TreeSearchBatchConfig const *>(batch_config);
-
-    checkCUDA(cudaMemcpyAsync(
-        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(beam_batch_config->beamTokenInfo),
-        sizeof(TreeSearchBatchConfig::beamTokenInfo),
-        cudaMemcpyHostToDevice,
-        stream));
-
-    total_copy_size += sizeof(TreeSearchBatchConfig::beamTokenInfo);
-
-    checkCUDA(cudaMemcpyAsync(
-        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(beam_batch_config->beamRequestsInfo),
-        sizeof(TreeSearchBatchConfig::beamRequestsInfo),
-        cudaMemcpyHostToDevice,
-        stream));
-    total_copy_size += sizeof(TreeSearchBatchConfig::beamRequestsInfo);
 
     checkCUDA(cudaMemcpyAsync(
         static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
@@ -125,15 +116,6 @@ void RequestManager::load_batch_config_task(
         cudaMemcpyHostToDevice,
         stream));
     total_copy_size += sizeof(BatchConfig::causalMask);
-
-    checkCUDA(cudaMemcpyAsync(
-        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(batch_config->request_available),
-        sizeof(BatchConfig::request_available),
-        cudaMemcpyHostToDevice,
-        stream));
-
-    total_copy_size += sizeof(BatchConfig::request_available);
   } else if (batch_config->get_mode() == TREE_VERIFY_MODE) {
     TreeVerifyBatchConfig const *tree_batch_config =
         static_cast<TreeVerifyBatchConfig const *>(batch_config);
@@ -152,15 +134,6 @@ void RequestManager::load_batch_config_task(
         cudaMemcpyHostToDevice,
         stream));
     total_copy_size += sizeof(TreeVerifyBatchConfig::committed_tokens);
-
-    checkCUDA(cudaMemcpyAsync(
-        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(batch_config->request_available),
-        sizeof(BatchConfig::request_available),
-        cudaMemcpyHostToDevice,
-        stream));
-
-    total_copy_size += sizeof(BatchConfig::request_available);
   }
 
   // add a size check
