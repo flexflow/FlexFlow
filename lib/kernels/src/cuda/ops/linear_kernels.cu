@@ -105,21 +105,6 @@ LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
   return per_device_state;
 }
 
-bool use_activation(ActiMode mode) {
-  switch (mode) {
-    case AC_MODE_RELU:
-    case AC_MODE_SIGMOID:
-    case AC_MODE_TANH:
-      return true;
-    case AC_MODE_NONE:
-      return false;
-    default:
-      assert(0);
-      break;
-  }
-  return false;
-}
-
 void forward_kernel(cudaStream_t stream,
                     LinearPerDeviceState const &m,
                     void const *input_ptr,
