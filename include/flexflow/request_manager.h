@@ -80,16 +80,40 @@ struct Request {
   std::vector<TokenTree> speculative_token_trees;
   // To make request manager stateful, we need to store the causal mask here
   BatchConfig::BitMask causal_mask;
-  // Committed tokens
-  struct CommittedToken {
-    int absolute_index;
-    int request_offset; // Equivalent to the order of the token in the request
-                        // speculative token tree
-  };
   // Here we have to maintain two versions of the committed tokens because the
-  // tree seen by the LLM and the SSM is different due to the pruning
-  std::vector<CommittedToken> llm_committed_tokens;
-  std::vector<CommittedToken> ssm_committed_tokens;
+  // tree seen by the LLM and the SSM is different due to the pruning.
+  //
+  // 1. Commit the SSM KV cache: On the GPU, the KV cache of the
+  // tokens on the speculative token tree is stored together with the KV cache
+  // of the already verified tokens. So the `from_index` should be the absolute
+  // index of the token in the entire token: prompt_length +
+  // generated_sequence_length + index in the speculative token tree. `to_index`
+  // should be the place to put the KV cache in the SSM KV cache: prompt_length
+  // + generated_sequence_length + index_in_committed_tokens.
+  //
+  // from_index -> BatchConfig::PerTokenInfo.abs_index_in_request
+  // to_index -> BatchConfig::PerTokenInfo.kv_cache_dest_index
+  //
+  // 2. Commit the LLM KV cache: On the GPU, the KV cache of the speculative
+  // token tree and the generated tokens are stored separately. So the
+  // `from_index` should be the index of the token in the speculative token
+  // tree. `to_index` should be the place to put the KV cache in the LLM KV
+  // cache: prompt_length + generated_sequence_length +
+  // index_in_committed_tokens.
+  //
+  // from_index -> TreeVerifyBatchConfig::CommittedTokensInfo.token_index
+  // to_index -> TreeVerifyBatchConfig::CommittedTokensInfo.token_depth
+  //
+  // Even though `from_index` and `to_index` means different things for the SSM
+  // and the LLM, we can still use the same struct to store the committed
+  // tokens.
+
+  struct CommittedTokens {
+    int from_index;
+    int to_index;
+  };
+  std::vector<CommittedTokens> llm_committed_tokens;
+  std::vector<CommittedTokens> ssm_committed_tokens;
 };
 
 class TokenTreeNode {
@@ -158,7 +182,6 @@ public:
   int get_max_spec_tree_token_num();
   int get_max_verify_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
-  void push_spec_infer_tree_width(int tree_width);
   int get_max_sequence_length();
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
@@ -317,6 +340,7 @@ private:
   void update_llm_verify_results(InferenceResult const &llm_verify_result);
   bool update_ssm_inference_results(
       SsmInferenceResult const &ssm_inference_result);
+  void get_verify_results(InferenceResult const &llm_verify_result);
   /* ---------- New Helper Functions ---------- */
 
   // Helper functions related to token trees

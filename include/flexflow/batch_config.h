@@ -72,8 +72,8 @@ public:
     TokenId token_id;
     int abs_index_in_request;
     int request_index;
-    // This offset is only used for small model KV cache commit
-    int last_batch_offset = -1;
+    // For SSM KV cache commitment
+    int kv_cache_dest_index = -1;
   };
 
   class BitMask {
@@ -110,7 +110,8 @@ public:
 
   public:
     Bitset bit_mask[MAX_SPEC_TREE_TOKEN_NUM];
-    // the number of tokens before the tree
+    // the number of generated tokens before the speculation tree (excluding the
+    // prompt tokens)
     int non_tree_cache_size = 0;
     // current tree size
     int tree_size = 0;

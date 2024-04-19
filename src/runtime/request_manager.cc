@@ -109,11 +109,6 @@ int RequestManager::get_max_sequence_length() {
   return max_sequence_length;
 }
 
-void RequestManager::push_spec_infer_tree_width(int tree_width) {
-  assert(tree_width <= TreeSearchBatchConfig::MAX_BEAM_WIDTH);
-  spec_infer_tree_width.emplace_back(tree_width);
-}
-
 void RequestManager::register_tokenizer(ModelType type,
                                         int bos_token_id,
                                         int eos_token_id,
@@ -387,21 +382,25 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
   std::lock_guard<std::mutex> const lock(rm_state_mutex);
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
-    if guid_of_requests[i] == INVALID_GUID {
+    if (guid_of_requests[i] == INVALID_GUID) {
       continue;
     }
     Request &request = all_requests[guid_of_requests[i]];
 
     switch (request_manager_status) {
       case PREFILLING:
-        if (request.initial_len == request.llm_cache_size) { // all prompt tokens are prefilled
-          request.tokens.push_back(result.token_ids[request.num_tokens_in_batch]);
+        if (request.initial_len ==
+            request.llm_cache_size) { // all prompt tokens are prefilled
+          request.tokens.push_back(
+              result.token_ids[request.num_tokens_in_batch]);
           request_manager_status = DECODING;
         }
         break;
-      case DECODING: 
-        request.tokens.push_back(result.token_ids[request.first_token_offset_in_batch]);
-        if (request.tokens.size() == request.max_sequence_length) { // request is completed
+      case DECODING:
+        request.tokens.push_back(
+            result.token_ids[request.first_token_offset_in_batch]);
+        if (request.tokens.size() ==
+            request.max_sequence_length) { // request is completed
           request.status = Request::COMPLETED;
           trigger_request_completion_future(request.guid);
           guid_of_requests[i] = INVALID_GUID;
@@ -417,11 +416,19 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 BatchConfig RequestManager::prepare_next_batch() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
-  swicth (request_manager_status) {
+  switch (request_manager_status) {
     case PREFILLING:
       return prepare_prefilling_batch();
     case DECODING:
       return prepare_decoding_batch();
+    case SSM_SPEC:
+      if (current_speculation_step == 0) {
+        return prepare_first_spec_batch_config();
+      } else {
+        return prepare_next_spec_batch_config();
+      }
+    case LLM_VERIFY:
+      return prepare_verify_batch_config();
     default:
       assert(false);
   }
@@ -450,7 +457,8 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   // Per Request Info
   bc.requestsInfo[request_index].first_token_depth_in_request = 0;
   bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
-  bc.requestsInfo[request_index].num_tokens_in_batch = std::min(bc.num_tokens, (int)new_request.tokens.size());
+  bc.requestsInfo[request_index].num_tokens_in_batch =
+      std::min(bc.num_tokens, (int)new_request.tokens.size());
 
   bc.request_completed[request_index] = false;
 
@@ -458,11 +466,11 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   new_request.num_tokens_in_batch = 0;
 
   // Delete those after update BatchConfig
-  bc.requestsInfo[request_index].max_sequence_length = new_request.max_sequence_length;
+  bc.requestsInfo[request_index].max_sequence_length =
+      new_request.max_sequence_length;
   bc.requestsInfo[request_index].request_guid = new_request.guid;
   bc.requestsInfo[request_index].prompt_phase = true;
   bc.requestsInfo[request_index].batch_config_request_id = request_index;
-
 
   // Per Token Info
   for (int j = 0; j < bc.requestsInfo[request_index].num_tokens_in_batch; j++) {
@@ -475,7 +483,7 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
     new_request.llm_cache_size++;
     new_request.num_tokens_in_batch++;
   }
-  
+
   return bc;
 }
 
@@ -523,18 +531,18 @@ BatchConfig RequestManager::prepare_decoding_batch() {
 TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
-    std::cout
-        << "\n############### prepare_first_spec_batch_config ##############\n";
+    std::cout << "\n############### prepare_first_spec_batch_config "
+                 "##############\n";
   }
   // TODO: Clean up the code, this method does the following:
-  // 1. Commit the verified tokens through TreeSearchBatchConfig. We can do this
-  // request by request. The infomation of the committed tokens are stored in
-  // Request.ssm_committed_tokens. Put the information of the committed tokens
-  // into BatchConfig.TokensInfo.
+  // 1. Commit the verified tokens through TreeSearchBatchConfig. We can do
+  // this request by request. The infomation of the committed tokens are
+  // stored in Request.ssm_committed_tokens. Put the information of the
+  // committed tokens into BatchConfig.TokensInfo.
   // 2. Maintain BatchConfig::RequestsInfo and all other fields of
   // TreeSearchBatchConfig.
-  // Please refer to the implementation of prepare_next_spec_batch_config() for
-  // more details.
+  // Please refer to the implementation of prepare_next_spec_batch_config()
+  // for more details.
 
   // Step 1: use result to update requests
   TreeSearchBatchConfig new_bc;
@@ -591,8 +599,8 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
                  tree_outputs.back().second,
                  token_id);
         }
-        // std::cout << "Index within old batch: " << result_index << std::endl;
-        // printf("  Input: [%d] %d ---> [%d] %d \n",
+        // std::cout << "Index within old batch: " << result_index <<
+        // std::endl; printf("  Input: [%d] %d ---> [%d] %d \n",
         //        abs_depth,
         //        old_bc.tokensInfo[result_index].token_id,
         //        tree_outputs.back().second,
@@ -809,8 +817,8 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
 
       // Token Info
       std::string output = this->tokenizer_->Decode(request.tokens);
-      // Unlike Huggingface, the sentencepiece C++ library automatically removes
-      // the BOS token
+      // Unlike Huggingface, the sentencepiece C++ library automatically
+      // removes the BOS token
       if (model_type == ModelType::LLAMA &&
           request.tokens.at(0) == bos_token_id) {
         output = "<s> " + output;
@@ -942,19 +950,19 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   }
   // TODO: Clean up the code, this method does the following:
   // 1. Commit the verified tokens in the last iteration through the
-  // TreeVerifyBatchConfig . We can do this request by request. The information
-  // of the committed tokens is stored in Request.llm_committed_tokens. Put the
-  // information of the committed tokens into
-  // TreeVerifyBatchConfig::committed_tokens.
+  // TreeVerifyBatchConfig . We can do this request by request. The
+  // information of the committed tokens is stored in
+  // Request.llm_committed_tokens. Put the information of the committed tokens
+  // into TreeVerifyBatchConfig::committed_tokens.
   // 2. Load the tokens on the token tree that are not yet pruned to
-  // TreeVerifyBatchConfig::tokensInfo. Be careful with the abs_depth etc. (skip
-  // the pruned tokens).
+  // TreeVerifyBatchConfig::tokensInfo. Be careful with the abs_depth etc.
+  // (skip the pruned tokens).
   // 3. Create the causal mask for the large model based on the small model
   // causal mask.
   // 4. Maintain BatchConfig::RequestsInfo and all other fields of
   // TreeSearchBatchConfig.
-  // Please refer to the implementation of prepare_next_spec_batch_config() for
-  // more details.
+  // Please refer to the implementation of prepare_next_spec_batch_config()
+  // for more details.
 
   assert(old_batches.size() > 0);
 
@@ -1029,7 +1037,8 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
       // std::cout << "dfs_tree_inputs: " << dfs_tree_inputs.size() << ", "
       //           << new_bc.causalMask[i].tree_size << ", "
       //           << new_bc.causalMask[i].non_tree_cache_size << "\n";
-      // std::cout << "mask: " << std::bitset<64>(new_bc.causalMask[i].mask[0])
+      // std::cout << "mask: " <<
+      // std::bitset<64>(new_bc.causalMask[i].mask[0])
       //           << "\n";
 
       // Committed Tokens
@@ -1174,7 +1183,8 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
       if (request.llm_cache_size < request.initial_len) {
         // std::cout << "Initialization (prompt) phase: "
         //           << new_bc.requestsInfo[i].num_tokens_in_batch << ", "
-        //           << old_batches.at(0).beamRequestsInfo[i].beam_size << "\n";
+        //           << old_batches.at(0).beamRequestsInfo[i].beam_size <<
+        //           "\n";
         // Initialization (prompt) phase
         for (int j = 0; j < new_bc.requestsInfo[i].num_tokens_in_batch; j++) {
           new_bc.tokensInfo[new_bc.num_tokens].request_index = i;
@@ -1209,7 +1219,8 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
               std::vector<std::pair<BatchConfig::TokenId, int>>{std::make_pair(
                   request.tokens.back(), request.tokens.size() - 1)};
         }
-      } else { // launch the request into running phase after loading all prompt
+      } else { // launch the request into running phase after loading all
+               // prompt
         if (get_max_verify_tokens_per_batch() - new_bc.num_tokens > 0) {
           // std::cout << "Initialization running phase: "
           //           << new_bc.requestsInfo[i].num_tokens_in_batch << "\n";
@@ -1247,18 +1258,18 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
 TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
-    std::cout
-        << "\n############### prepare_first_spec_batch_config ##############\n";
+    std::cout << "\n############### prepare_first_spec_batch_config "
+                 "##############\n";
   }
   // TODO: Clean up the code, this method does the following:
-  // 1. Commit the verified tokens through TreeSearchBatchConfig. We can do this
-  // request by request. The infomation of the committed tokens are stored in
-  // Request.ssm_committed_tokens. Put the information of the committed tokens
-  // into BatchConfig.TokensInfo.
+  // 1. Commit the verified tokens through TreeSearchBatchConfig. We can do
+  // this request by request. The infomation of the committed tokens are
+  // stored in Request.ssm_committed_tokens. Put the information of the
+  // committed tokens into BatchConfig.TokensInfo.
   // 2. Maintain BatchConfig::RequestsInfo and all other fields of
   // TreeSearchBatchConfig.
-  // Please refer to the implementation of prepare_next_spec_batch_config() for
-  // more details.
+  // Please refer to the implementation of prepare_next_spec_batch_config()
+  // for more details.
   TreeSearchBatchConfig new_bc;
 
   return new_bc;
@@ -1353,23 +1364,23 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   // Request.llm_committed_tokens. Put the information of the committed tokens
   // into TreeVerifyBatchConfig.committed_tokens.
   // 2. Load the tokens on the token tree that are not yet pruned to
-  // TreeVerifyBatchConfig.tokensInfo. Be careful with the abs_depth etc. (skip
-  // the pruned tokens).
+  // TreeVerifyBatchConfig.tokensInfo. Be careful with the abs_depth etc.
+  // (skip the pruned tokens).
   // 3. Create the causal mask for the large model based on the small model
   // causal mask (call create_llm_bitmask()).
   // 4. Maintain TreeVerifyBatchConfig::RequestsInfo and all other fields of
   // TreeSearchBatchConfig.
-  // Please refer to the implementation of prepare_next_spec_batch_config() for
-  // more details.
+  // Please refer to the implementation of prepare_next_spec_batch_config()
+  // for more details.
 }
 
 void RequestManager::update_llm_verify_results(
     InferenceResult const &llm_verify_result) {
   // TODO: Implement this function
-  // We may have two types of InferenceResults, one is the results from sampling
-  // the large model, the other is the top-p / top-k logits of the large model,
-  // we can first implement the former one. For the latter one, we have to add a
-  // CPU based verify function.
+  // We may have two types of InferenceResults, one is the results from
+  // sampling the large model, the other is the top-p / top-k logits of the
+  // large model, we can first implement the former one. For the latter one,
+  // we have to add a CPU based verify function.
   // 1. Compare the results returned from the LLM and compare them with the
   // SSM's speculative token tree. For the greedy construction of the
   // speculative token tree, we can simply compare LLM's sample result at each
@@ -1394,8 +1405,8 @@ bool RequestManager::update_ssm_inference_results(
   int result_index = 0;
 
   // Here we assume that the order of the tokens in the last
-  // TreeSearchBatchConfig and hence the last SsmInferenceResult is equal to the
-  // order of the request in the last TreeSearchBatchConfig
+  // TreeSearchBatchConfig and hence the last SsmInferenceResult is equal to
+  // the order of the request in the last TreeSearchBatchConfig
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
     if (!request_available[request_index]) {
@@ -1516,7 +1527,7 @@ void RequestManager::init_bitmask(RequestGuid guid, int prompt_length) {
   bitmask.tree_size = 0;
   bitmask.current_layer_size = 0;
   bitmask.prompt_size = prompt_length;
-  bitmask.non_tree_cache_size = prompt_length;
+  bitmask.non_tree_cache_size = 0;
 }
 
 void RequestManager::update_bitmask(RequestGuid guid,
@@ -1582,9 +1593,9 @@ void RequestManager::append_bitmask(RequestGuid guid) {
 }
 
 BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
-  // This method creates a new bitmask for LLM verification model's bitmask, it
-  // does not modify the small model's bitmask
-  // This method is called by prepare_verify_batch_config
+  // This method creates a new bitmask for LLM verification model's bitmask,
+  // it does not modify the small model's bitmask This method is called by
+  // prepare_verify_batch_config
   // TODO: implement this function
   // 1. Create the bitmask based on the pruned request token tree
   // 2. Maintain all other fields
@@ -1610,6 +1621,7 @@ void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
   // }
 }
 
+// TO BE REMOVED: START
 std::vector<std::pair<BatchConfig::TokenId, int>>
     RequestManager::traverse_verify_tree(
         size_t guid,
@@ -1770,6 +1782,13 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
   }
 
   return verifiedTree;
+}
+// TO BE REMOVED: END
+
+void RequestManager::get_verify_results(
+    InferenceResult const &llm_verify_result) {
+  // This function should return the verified tokens and maintain the
+  // committed tokens.
 }
 
 std::vector<GenerationResult>
@@ -2161,5 +2180,4 @@ void RequestManager::prune_last_layer_of_spec_token_tree(RequestGuid guid) {
   }
 }
 /* --------- Request Token Tree Related Functions --------- */
-
 }; // namespace FlexFlow
