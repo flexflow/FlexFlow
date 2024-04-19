@@ -365,7 +365,7 @@ void ResidualRMSNorm::forward(FFModel const &ff) {
 
 FutureMap
     ResidualRMSNorm::inference(FFModel const &ff,
-                               BatchConfigFuture const &bc,
+                               /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
                                std::vector<ParallelTensor> const &batch_inputs,
                                std::vector<ParallelTensor> const &batch_outputs,
                                MachineView const *mv) {
