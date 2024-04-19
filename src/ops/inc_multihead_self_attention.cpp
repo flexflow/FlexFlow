@@ -127,7 +127,7 @@ template <typename DT>
 __global__ void
     apply_rotary_embedding_native(DT *input_ptr,
                                   hipFloatComplex *complex_input,
-                                  BatchConfig::PerTokenInfo const *tokenInfos,
+                                  /* Reserved: BatchConfig Updated, leave beamsearch to kill */BatchConfig::PerTokenInfo const *tokenInfos,
                                   int qProjSize,
                                   int kProjSize,
                                   int num_q_heads,
@@ -530,7 +530,7 @@ void compute_attention_kernel(IncMultiHeadSelfAttentionMeta const *m,
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (bc->request_available[i]) {
+    if (!bc->request_available[i]) {
       continue;
     }
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;

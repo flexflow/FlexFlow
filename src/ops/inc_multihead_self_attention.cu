@@ -52,7 +52,8 @@ __global__ void compute_attention_kernel_generation_kernel(
     int max_seq_length,
     int per_head_size,
     int hidden_size,
-    BatchConfig::PerRequestInfo *request_infos) {
+    /* Reserved: BatchConfig Updated */BatchConfig::PerRequestInfo *request_infos,
+    bool *request_available) {
 
   // q, k
   using Q_vec = typename VEC_K<DT, THREADS_PER_KEY>::Type;
@@ -80,14 +81,21 @@ __global__ void compute_attention_kernel_generation_kernel(
   // request idx
   int const request_idx = blockIdx.y;
 
-  int const batch_config_request_id =
-      request_infos[request_idx].batch_config_request_id;
+  int requext_idx_in_batch = 0;
+  for (int i = 0; i < request_idx; i++) {
+    while (!request_available[requext_idx_in_batch]) {
+      requext_idx_in_batch++;
+    }
+  }
+
+  // threads converge
+  __syncthreads();
 
   int const first_step = 0;
 
   int const tlength =
-      request_infos[batch_config_request_id].first_token_index_in_request +
-      request_infos[batch_config_request_id].num_tokens_in_batch;
+      request_infos[requext_idx_in_batch].first_token_index_in_request +
+      request_infos[requext_idx_in_batch].num_tokens_in_batch;
 
   // shared memory objects
   extern __shared__ char smem_[];
@@ -135,7 +143,7 @@ __global__ void compute_attention_kernel_generation_kernel(
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
   DT const *k_cache_batch =
-      key_cache + batch_config_request_id * max_seq_length * hidden_size + ki;
+      key_cache + requext_idx_in_batch * max_seq_length * hidden_size + ki;
 
   int ti_end =
       div_up(tlength - first_step, K_PER_WARP) * K_PER_WARP + first_step;
@@ -238,7 +246,7 @@ __global__ void compute_attention_kernel_generation_kernel(
 
   // The base pointer for the value in the cache buffer.
   DT const *v_cache_batch =
-      value_cache + batch_config_request_id * max_seq_length * hidden_size + vi;
+      value_cache + requext_idx_in_batch * max_seq_length * hidden_size + vi;
 
   if (Dh == Dh_MAX || vi < Dh) {
     for (int ti = first_step + vo; ti < tlength; ti += V_PER_ITER) {
@@ -714,14 +722,15 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
           BatchConfig::max_sequence_length(),                                  \
           m->qProjSize,                                                        \
           m->hidden_size,                                                      \
-          m->request_infos)
+          m->request_infos,                                                    \
+          m->request_available)
 
 template <typename DT>
 void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
                                          BatchConfig const *bc,
                                          DT *output_ptr,
                                          cudaStream_t stream) {
-  dim3 grid(m->num_q_heads, bc->num_generation_tokens);
+  dim3 grid(m->num_q_heads, bc->num_tokens);
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
   size_t smem_sz;
@@ -825,13 +834,13 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      stream);
   update_kv_cache_kernel<DT>(m, bc, stream);
 
-  if (bc->num_generation_tokens > 0) {
+  if (bc->num_tokens > 0) {
     // phase 3: Compute attention score for generation tokens
     compute_attention_kernel_generation<DT>(
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
 
-  if (bc->num_tokens > bc->num_generation_tokens) {
+  if (bc->num_tokens > bc->num_tokens) {
     // phase 4: Compute attention score for prompt tokens;
     compute_attention_kernel_prompt(
         m, bc, shard_id, bias_ptr, weight_ptr, stream);
@@ -929,7 +938,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (bc->request_available[i] || (!bc->requestsInfo[i].prompt_phase)) {
+    if (!bc->request_available[i] || (!bc->requestsInfo[i].prompt_phase)) {
       continue;
     }
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
@@ -1125,13 +1134,13 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
     }
     tokens_previous_requests += num_new_tokens;
   }
-  if (tokens_previous_requests != (num_tokens - bc->num_generation_tokens)) {
+  if (tokens_previous_requests != (num_tokens - bc->num_tokens)) {
     bc->print();
     printf("tokens_previous_requests: %i\n", tokens_previous_requests);
     printf("num_tokens: %i\n", num_tokens);
-    printf("bc->num_generation_tokens: %i\n", bc->num_generation_tokens);
+    printf("bc->num_tokens: %i\n", bc->num_tokens);
   }
-  assert(tokens_previous_requests == (num_tokens - bc->num_generation_tokens));
+  assert(tokens_previous_requests == (num_tokens - bc->num_tokens));
 }
 
 /*static*/
@@ -1429,6 +1438,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     request_infos = reinterpret_cast<BatchConfig::PerRequestInfo *>(
         reinterpret_cast<char *>(handler.batch_config_metadata) +
         sizeof(BatchConfig::tokensInfo));
+    request_available = reinterpret_cast<bool *>(
+        reinterpret_cast<char *>(handler.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo));
 
     if (offload) {
       // token_infos =
