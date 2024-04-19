@@ -202,31 +202,49 @@ As such, the labelled graph types provide the typical `at` method (as on `std::u
 
 [^3]: `operator[]` currently is not present because all nodes must have labels and we don't require label types to be default constructible, though some simple template programming could probably add `operator[]` support in the cases where the label types _are_ default constructible.
 
-![Labelled Graphs Inheritance Diagram]
+![Labelled Graphs Inheritance Diagram](docs/labelled.svg)
+
+
 
 ## Internals
 
-Most of the major graph classes in the library come in sets of 4 (example considering `ClassName`)
-- `ClassName`
-- `ClassNameView`
-- `IClassName`
-- `IClassNameView`
+Most of the major graph classes in the library come in sets of 4. For a given class `GlassName` we have:
+1. `ClassName`
+2. `ClassNameView`
+3. `IClassName`
+4. `IClassNameView`
 
-The rationale behind the `View` variants has been explained in previous sections.
+General rules which apply to most classes:
+- `ClassName` (virtually) inherits from `ClassNameView`. Similarly, `IClassName` (virtually) inherits from `IClassNameView`.
+- `ClassName` has, as a member variable, a `cow_ptr` of type `IClassName`. Same holds for `ClassNameView`.
+Thus, the bulk of the inheritance that actually extends functionality is present among `IClassNameView` classes. 
 
-The rationale for the `I(nterface)` variations is derived from the way that C++ models polymorphism.
-Inheritance within the library is almost exclusively virtual: such inheritance model is demanded by the nested inheritance structure.
-In the case of a diamond inheritance pattern C++, unlike languages such as Python, will instantiate multiple copies of the base class whenever we instantiate a derived class.
+
+### cow_ptr and Interfaces
+
+The reason for the existence of the `View` variants has been explained in previous sections.
+The existence of the `I(nterface)` variants stems from C++'s approach to modeling polymorphism.
+
+C++ polymorphism is achieved through the use of [virtual functions](https://www.learncpp.com/cpp-tutorial/virtual-functions/).
+To create objects with polymorphic behaviour, we use the following syntax:
+`BaseClass* obj = new DerivedClass(); //or alternatives such as std::shared_ptr<BaseClass> obj = std::make_shared<DerivedClass>();`
+Any call to `obj`'s member functions are resolved at runtime (dynamic binding), with C++ calling the most derived implementation of the function.
+
+While this pattern works nicely, the way instantiation is done leaves the burden of memory management on the user.
+To address this, graph classes store a cow_ptr as a member variable, which point to instances of type equal to their corresponding interface class.
+
+All member functions present in `ClassName` and `ClassNameView` delegate their calls to their corresponding interface classes (which implement the actual logic), meaning that these classes essentially act as wrappers to their interface counterparts.
+
+To create graphs within the library, we thus use the following syntax:
+`BaseGraph obj = BaseGraph::create<DerivedGraph>();`
+
+
+### Virtual Inheritance (Possibly superflous)
+Due to the complexity of the graph library, diamond-style inheritance patterns emerge.
+In the case of a diamond inheritance pattern C++ will instantiate multiple copies of the base class whenever we instantiate a derived class.
 To address this issue, we employ [Virtual Inheritance](https://en.wikipedia.org/wiki/Virtual_inheritance), which removes the ambiguity associated with the multiple copies.
-
 Furthermore, the use of virtual functions allows for runtime polymorphism, allowing for a single function defined on some superclass to also work correctly on it's subclasses.
 
-C++ polymorphism is normally achieved with the following pattern:
-
-`std::shared_ptr<BaseClass> = new DerivedClass();`
-
-This pattern however leaves the burden of memory management on the user.
-To address this, graph classes have a cow_ptr as a member (with type equal to their corresponding Interface class), to which all function calls are delegated.
 ### strong_typedef
 `Node` inherits from `strong_typedef`: this is in order to ensure that distinct types that alias the same type are still considered distinct (and thus using one in place of the other will result in a compiler error).  
-For more info, see https://www.foonathan.net/2016/10/strong-typedefs/
+For more info, see https://www.foonathan.net/2016/10/strong-typedefs/.
