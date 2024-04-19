@@ -185,7 +185,7 @@ Generally users will use underlying representations provided by the graph librar
 `Open` is to be intended similarly to the topological sense: that is, a graph that contains some edges where one of the 2 nodes is not present in the graph itself.
 We can further specify the "openeness" of a **directed** graph by specifying whether they are `UpwardOpen` (so some of the incoming edges are open) or `DownwardOpen` (so some of the outgoing edges are open).
 
-[Open graphs inheritance diagram](docs/open.svg)
+![Open graphs inheritance diagram](docs/open.svg)
 
 Arrows with pointed tips indicate inheritance, while arrows with square tips indicate that the pointing class has a 'cow_ptr' of the type of the pointed class. (for more info on `cow_ptr`, see below).
 
@@ -202,7 +202,7 @@ As such, the labelled graph types provide the typical `at` method (as on `std::u
 
 [^3]: `operator[]` currently is not present because all nodes must have labels and we don't require label types to be default constructible, though some simple template programming could probably add `operator[]` support in the cases where the label types _are_ default constructible.
 
-[Labelled Graphs Inheritance Diagram]
+![Labelled Graphs Inheritance Diagram]
 
 ## Internals
 
