@@ -371,27 +371,27 @@ void FlexFlow::top_level_task(Task const *task,
       LLAMA::create_llama_model(beam_model,
                                 model_metadata.ssm_model_config_paths[ssm_id],
                                 model_metadata.ssm_model_weights_paths[ssm_id],
-                                BEAM_SEARCH_MODE,
+                                TREE_SEARCH_MODE,
                                 generationConfig,
                                 use_full_precision);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::OPT) {
       OPT::create_opt_model(beam_model,
                             model_metadata.ssm_model_config_paths[ssm_id],
                             model_metadata.ssm_model_weights_paths[ssm_id],
-                            BEAM_SEARCH_MODE,
+                            TREE_SEARCH_MODE,
                             use_full_precision);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::FALCON) {
       FALCON::create_falcon_model(
           beam_model,
           model_metadata.ssm_model_config_paths[ssm_id],
           model_metadata.ssm_model_weights_paths[ssm_id],
-          BEAM_SEARCH_MODE,
+          TREE_SEARCH_MODE,
           use_full_precision);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::MPT) {
       MPT::create_mpt_model(beam_model,
                             model_metadata.ssm_model_config_paths[ssm_id],
                             model_metadata.ssm_model_weights_paths[ssm_id],
-                            BEAM_SEARCH_MODE,
+                            TREE_SEARCH_MODE,
                             generationConfig,
                             use_full_precision);
     } else {

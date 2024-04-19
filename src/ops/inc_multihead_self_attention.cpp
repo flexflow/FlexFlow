@@ -124,18 +124,19 @@ __global__ void scaling_query_kernel(DT *input_ptr,
 }
 
 template <typename DT>
-__global__ void
-    apply_rotary_embedding_native(DT *input_ptr,
-                                  hipFloatComplex *complex_input,
-                                  /* Reserved: BatchConfig Updated, leave beamsearch to kill */BatchConfig::PerTokenInfo const *tokenInfos,
-                                  int qProjSize,
-                                  int kProjSize,
-                                  int num_q_heads,
-                                  int num_tokens,
-                                  int num_kv_heads,
-                                  int q_block_size,
-                                  int k_block_size,
-                                  int q_array_size) {
+__global__ void apply_rotary_embedding_native(
+    DT *input_ptr,
+    hipFloatComplex *complex_input,
+    /* Reserved: BatchConfig Updated, leave beamsearch to kill */
+    BatchConfig::PerTokenInfo const *tokenInfos,
+    int qProjSize,
+    int kProjSize,
+    int num_q_heads,
+    int num_tokens,
+    int num_kv_heads,
+    int q_block_size,
+    int k_block_size,
+    int q_array_size) {
   CUDA_KERNEL_LOOP(
       i,
       num_tokens * (qProjSize * num_q_heads + kProjSize * num_kv_heads) / 2) {
@@ -965,7 +966,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                            BatchConfig::max_sequence_length();
         break;
       }
-      case BEAM_SEARCH_MODE: {
+      case TREE_SEARCH_MODE: {
         key_cache_size = num_q_heads * kProjSize *
                          TreeSearchBatchConfig::max_requests_per_batch() *
                          BatchConfig::max_sequence_length() *

@@ -823,7 +823,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     int _num_q_heads,
     int _num_kv_heads)
     : IncMultiHeadSelfAttentionMeta(handler,
-                                    BEAM_SEARCH_MODE,
+                                    TREE_SEARCH_MODE,
                                     attn,
                                     attn->qSize,
                                     attn->kSize,

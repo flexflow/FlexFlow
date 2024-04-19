@@ -90,7 +90,7 @@ void RequestManager::load_batch_config_task(
   total_copy_size += sizeof(BatchConfig::requestsInfo);
 
   // load speculative metadata
-  if (batch_config->get_mode() == BEAM_SEARCH_MODE) {
+  if (batch_config->get_mode() == TREE_SEARCH_MODE) {
     TreeSearchBatchConfig const *beam_batch_config =
         static_cast<TreeSearchBatchConfig const *>(batch_config);
 

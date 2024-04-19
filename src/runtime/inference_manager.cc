@@ -310,7 +310,7 @@ FutureMap InferenceManager::inference(FFModel *model,
   if (bc.get_mode() == INC_DECODING_MODE) {
     BatchConfigFuture bcf = Future::from_value<BatchConfig>(bc);
     return inference(model, index, bcf);
-  } else if (bc.get_mode() == BEAM_SEARCH_MODE) {
+  } else if (bc.get_mode() == TREE_SEARCH_MODE) {
     BatchConfig const *bc_ptr = &bc;
     TreeSearchBatchConfig const *bsbc_ptr =
         static_cast<TreeSearchBatchConfig const *>(bc_ptr);

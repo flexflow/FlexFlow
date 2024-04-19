@@ -49,7 +49,7 @@ void STARCODER::create_starcoder_model(
   {
     // assert(startcoder_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
     int const token_dims[] = {
-        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+        (mode == TREE_VERIFY_MODE || mode == TREE_SEARCH_MODE)
             ? BatchConfig::max_verify_tokens_per_batch()
             : BatchConfig::max_tokens_per_batch(),
         1};
@@ -205,7 +205,7 @@ void STARCODER::create_starcoder_model(
                             "lm_head");
 
   Tensor output;
-  if (mode == BEAM_SEARCH_MODE) {
+  if (mode == TREE_SEARCH_MODE) {
     Tensor softmax = ff.softmax(lm_head, -1);
     // output = ff.beam_top_k(softmax, startcoder_config.max_beam_width, false);
     output = ff.argmax(softmax, /*beam_Search*/ true);

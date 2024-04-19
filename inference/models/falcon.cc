@@ -40,7 +40,7 @@ void FALCON::create_falcon_model(FFModel &ff,
   {
     // assert(falcon_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
     int const token_dims[] = {
-        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+        (mode == TREE_VERIFY_MODE || mode == TREE_SEARCH_MODE)
             ? BatchConfig::max_verify_tokens_per_batch()
             : BatchConfig::max_tokens_per_batch(),
         1};
@@ -97,7 +97,7 @@ void FALCON::create_falcon_model(FFModel &ff,
     }
 
     switch (mode) {
-      case BEAM_SEARCH_MODE: {
+      case TREE_SEARCH_MODE: {
         mha = ff.spec_inc_multiquery_self_attention(
             att_norm,
             falcon_config.hidden_size,
@@ -233,7 +233,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                             "lm_head");
 
   Tensor output;
-  if (mode == BEAM_SEARCH_MODE) {
+  if (mode == TREE_SEARCH_MODE) {
     Tensor softmax = ff.softmax(lm_head, -1);
     output = ff.argmax(softmax, /*beam_Search*/ true);
   } else {
