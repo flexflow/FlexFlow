@@ -72,8 +72,6 @@ public:
     TokenId token_id;
     int abs_index_in_request;
     int request_index;
-    // For SSM KV cache commitment
-    int kv_cache_dest_index = -1;
   };
 
   class BitMask {

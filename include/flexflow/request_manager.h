@@ -80,19 +80,19 @@ struct Request {
   std::vector<TokenTree> speculative_token_trees;
   // To make request manager stateful, we need to store the causal mask here
   BatchConfig::BitMask causal_mask;
-  // Here we have to maintain two versions of the committed tokens because the
-  // tree seen by the LLM and the SSM is different due to the pruning.
+  // Here we maintain a struct CommitTokens which has a field `from_index` and
+  // `to_index`. The `from_index` is used by the LLM KV cache commitment and the
+  // `to_index` is used both by the the SSM KV cache recomputation and the LLM
+  // KV cache commitment. Details are as follows:
   //
-  // 1. Commit the SSM KV cache: On the GPU, the KV cache of the
-  // tokens on the speculative token tree is stored together with the KV cache
-  // of the already verified tokens. So the `from_index` should be the absolute
-  // index of the token in the entire token: prompt_length +
-  // generated_sequence_length + index in the speculative token tree. `to_index`
-  // should be the place to put the KV cache in the SSM KV cache: prompt_length
-  // + generated_sequence_length + index_in_committed_tokens.
+  // 1. Recompute the SSM KV cache: We don't commit the KV cache of the SSM
+  // committed tokens but recompute them instead. That is, after the we append
+  // the committed tokens to the generated sequence, just like in the prefilling
+  // phase, and pass them into the SSM to recompute the KV cache. Here we don't
+  // need `from_index` because we don't copy the KV cache, but we need
+  // `to_index`, which is the indices of the committed tokens in the request.
   //
-  // from_index -> BatchConfig::PerTokenInfo.abs_index_in_request
-  // to_index -> BatchConfig::PerTokenInfo.kv_cache_dest_index
+  // to_index -> BatchConfig::PerTokenInfo.abs_index_in_request
   //
   // 2. Commit the LLM KV cache: On the GPU, the KV cache of the speculative
   // token tree and the generated tokens are stored separately. So the
@@ -104,16 +104,20 @@ struct Request {
   // from_index -> TreeVerifyBatchConfig::CommittedTokensInfo.token_index
   // to_index -> TreeVerifyBatchConfig::CommittedTokensInfo.token_depth
   //
-  // Even though `from_index` and `to_index` means different things for the SSM
-  // and the LLM, we can still use the same struct to store the committed
-  // tokens.
+  // Actually, for a committed token, the `to_index` for the LLM KV cache and
+  // the SSM KV cache are the same thing, so we can use the same field to store
+  // the information.
+  //
+  // When storing the committed tokens:
+  // from_index: The offset of the committed token in the request in the
+  // TreeVerifyBatchConfig
+  // to_index: The absolute index of the token in the request
 
   struct CommittedTokens {
     int from_index;
     int to_index;
   };
-  std::vector<CommittedTokens> llm_committed_tokens;
-  std::vector<CommittedTokens> ssm_committed_tokens;
+  std::vector<CommittedTokens> committed_tokens;
 };
 
 class TokenTreeNode {
