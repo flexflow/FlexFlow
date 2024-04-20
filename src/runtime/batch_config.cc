@@ -46,7 +46,7 @@ BatchConfig const *BatchConfig::from_future(BatchConfigFuture const &future) {
   // Check future size
   if (bc->get_mode() == INC_DECODING_MODE) {
     assert(Future(future).get_untyped_size() == sizeof(BatchConfig));
-  } else if (bc->get_mode() == BEAM_SEARCH_MODE) {
+  } else if (bc->get_mode() == TREE_SEARCH_MODE) {
     assert(Future(future).get_untyped_size() == sizeof(TreeSearchBatchConfig));
   } else if (bc->get_mode() == TREE_VERIFY_MODE) {
     assert(Future(future).get_untyped_size() == sizeof(TreeVerifyBatchConfig));

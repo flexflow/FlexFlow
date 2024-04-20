@@ -96,16 +96,16 @@ void RequestManager::load_batch_config_task(
                             stream));
   total_copy_size += sizeof(BatchConfig::requestsInfo);
 
-  checkCUDA(cudaMemcpyAsync(
-      static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-      &(batch_config->request_available),
-      sizeof(BatchConfig::request_available),
-      cudaMemcpyHostToDevice,
-      stream));
+  checkCUDA(cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                                total_copy_size,
+                            &(batch_config->request_available),
+                            sizeof(BatchConfig::request_available),
+                            cudaMemcpyHostToDevice,
+                            stream));
   total_copy_size += sizeof(BatchConfig::request_available);
 
   // load speculative metadata
-  if (batch_config->get_mode() == BEAM_SEARCH_MODE) {
+  if (batch_config->get_mode() == TREE_SEARCH_MODE) {
     TreeSearchBatchConfig const *beam_batch_config =
         static_cast<TreeSearchBatchConfig const *>(batch_config);
 

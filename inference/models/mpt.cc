@@ -41,7 +41,7 @@ void MPT::create_mpt_model(FFModel &ff,
   Tensor input;
   {
     int const token_dims[] = {
-        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+        (mode == TREE_VERIFY_MODE || mode == TREE_SEARCH_MODE)
             ? BatchConfig::max_verify_tokens_per_batch()
             : BatchConfig::max_tokens_per_batch(),
         1};
@@ -94,7 +94,7 @@ void MPT::create_mpt_model(FFModel &ff,
 
     Tensor attn_outputs;
     switch (mode) {
-      case BEAM_SEARCH_MODE: {
+      case TREE_SEARCH_MODE: {
         attn_outputs = ff.spec_inc_multihead_self_attention(
             layernorm_output,
             mpt_config.hidden_size,
@@ -241,7 +241,7 @@ void MPT::create_mpt_model(FFModel &ff,
                             "lm_head");
 
   Tensor output;
-  if (mode == BEAM_SEARCH_MODE) {
+  if (mode == TREE_SEARCH_MODE) {
     Tensor softmax = ff.softmax(lm_head, -1);
     output = ff.argmax(softmax, /*beam_Search*/ true);
   } else {

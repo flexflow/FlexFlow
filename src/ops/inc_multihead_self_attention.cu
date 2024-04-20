@@ -52,7 +52,8 @@ __global__ void compute_attention_kernel_generation_kernel(
     int max_seq_length,
     int per_head_size,
     int hidden_size,
-    /* Reserved: BatchConfig Updated */BatchConfig::PerRequestInfo *request_infos,
+    /* Reserved: BatchConfig Updated */
+    BatchConfig::PerRequestInfo *request_infos,
     bool *request_available) {
 
   // q, k
@@ -701,30 +702,30 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
-#define LAUNCH_ATTENTION_SCORE_KERNEL(                                          \
-    DT, Dh, Dh_MAX, THDS_PER_KEY, THREADS_PER_VALUE, THDS_PER_BLOCK, stream)    \
-  do {                                                                          \
-    smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                              \
-                                    BatchConfig::max_sequence_length(),         \
-                                    THREADS_PER_VALUE,                          \
-                                    THDS_PER_BLOCK);                            \
-    compute_attention_kernel_generation_kernel<DT,                              \
-                                              THDS_PER_BLOCK,                   \
-                                              Dh,                               \
-                                              Dh_MAX,                           \
-                                              THDS_PER_KEY,                     \
-                                              THREADS_PER_VALUE>                \
-        <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                            \
-            static_cast<DT *>(m->devQKVProjArray),                              \
-            static_cast<DT *>(m->keyCache),                                     \
-            static_cast<DT *>(m->valueCache),                                   \
-            output_ptr,                                                         \
-            scale,                                                              \
-            BatchConfig::max_sequence_length(),                                 \
-            m->qProjSize,                                                       \
-            m->hidden_size,                                                     \
-            m->request_infos,                                                   \
-            m->request_available);                                              \
+#define LAUNCH_ATTENTION_SCORE_KERNEL(                                         \
+    DT, Dh, Dh_MAX, THDS_PER_KEY, THREADS_PER_VALUE, THDS_PER_BLOCK, stream)   \
+  do {                                                                         \
+    smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                             \
+                                     BatchConfig::max_sequence_length(),       \
+                                     THREADS_PER_VALUE,                        \
+                                     THDS_PER_BLOCK);                          \
+    compute_attention_kernel_generation_kernel<DT,                             \
+                                               THDS_PER_BLOCK,                 \
+                                               Dh,                             \
+                                               Dh_MAX,                         \
+                                               THDS_PER_KEY,                   \
+                                               THREADS_PER_VALUE>              \
+        <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                           \
+            static_cast<DT *>(m->devQKVProjArray),                             \
+            static_cast<DT *>(m->keyCache),                                    \
+            static_cast<DT *>(m->valueCache),                                  \
+            output_ptr,                                                        \
+            scale,                                                             \
+            BatchConfig::max_sequence_length(),                                \
+            m->qProjSize,                                                      \
+            m->hidden_size,                                                    \
+            m->request_infos,                                                  \
+            m->request_available);                                             \
   } while (0)
 
 template <typename DT>
@@ -1363,7 +1364,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                            BatchConfig::max_sequence_length();
         break;
       }
-      case BEAM_SEARCH_MODE:
+      case TREE_SEARCH_MODE:
       case TREE_VERIFY_MODE: {
         // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_q_heads * kProjSize *

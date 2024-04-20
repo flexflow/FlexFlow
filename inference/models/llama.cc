@@ -42,7 +42,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   Tensor input;
   {
     int const token_dims[] = {
-        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+        (mode == TREE_VERIFY_MODE || mode == TREE_SEARCH_MODE)
             ? BatchConfig::max_verify_tokens_per_batch()
             : BatchConfig::max_tokens_per_batch(),
         1};
@@ -93,7 +93,7 @@ void LLAMA::create_llama_model(FFModel &ff,
 
     Tensor mha;
     switch (mode) {
-      case BEAM_SEARCH_MODE: {
+      case TREE_SEARCH_MODE: {
         mha = ff.spec_inc_multihead_self_attention(
             att_norm,
             llama_config.hidden_size,
@@ -247,7 +247,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                           "output");
 
   Tensor output;
-  if (mode == BEAM_SEARCH_MODE) {
+  if (mode == TREE_SEARCH_MODE) {
     Tensor softmax = ff.softmax(dense, -1);
     // output = ff.beam_top_k(softmax, llama_config.max_beam_width, false);
     // output = ff.argmax(softmax, /*beam_Search*/ true);

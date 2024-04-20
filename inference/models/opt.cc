@@ -43,7 +43,7 @@ void OPT::create_opt_model(FFModel &ff,
   ff.set_position_offset(2);
   {
     int const token_dims[] = {
-        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+        (mode == TREE_VERIFY_MODE || mode == TREE_SEARCH_MODE)
             ? BatchConfig::max_verify_tokens_per_batch()
             : BatchConfig::max_tokens_per_batch(),
         1};
@@ -102,7 +102,7 @@ void OPT::create_opt_model(FFModel &ff,
 
     Tensor mha;
     switch (mode) {
-      case BEAM_SEARCH_MODE: {
+      case TREE_SEARCH_MODE: {
         mha = ff.spec_inc_multihead_self_attention(
             hidden_states,
             opt_config.hidden_size,
@@ -246,7 +246,7 @@ void OPT::create_opt_model(FFModel &ff,
                             "embed_tokens_weight_lm_head");
 
   Tensor output;
-  if (mode == BEAM_SEARCH_MODE) {
+  if (mode == TREE_SEARCH_MODE) {
     Tensor softmax = ff.softmax(lm_head, -1);
     // output = ff.beam_top_k(softmax, opt_config.max_beam_width, false);
     output = ff.argmax(softmax, /*beam_Search*/ true);
