@@ -238,6 +238,8 @@ All member functions present in `ClassName` and `ClassNameView` delegate their c
 To create graphs within the library, we thus use the following syntax:
 `BaseGraph obj = BaseGraph::create<DerivedGraph>();`
 
+Resulting in an object that, while of type `BaseGraph`, can access at runtime the member functions defined in `DerivedGraph`
+
 
 ### Virtual Inheritance (Possibly superflous)
 Due to the complexity of the graph library, diamond-style inheritance patterns emerge.
