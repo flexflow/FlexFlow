@@ -1271,10 +1271,10 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   // Please refer to the implementation of prepare_next_spec_batch_config()
   // for more details.
   TreeSearchBatchConfig new_bc;
-  // Assume that only one small model is in use now -> All the requests in a batch are using the same small model? 
+  // Assume that only one small model is in use now
   new_bc.model_id = 0;
   new_bc.num_tokens = 0;
-  new_bc.current_depth = 0; // depth of first spec is 0
+  new_bc.current_depth = 0;
   new_bc.num_available_requests = 0;
   assert(current_speculation_step == 0);
 
@@ -1445,13 +1445,12 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
     for (int committed_token_index = 0; committed_token_index < committed_tokens.size(); committed_token_index++) {
       CommittedToken committed_token = committed_tokens.at(committed_token_index);
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index = request_index;
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index = committed_token.from_index; // not sure
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth = committed_token.to_index; // not sure
+      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index = committed_token.from_index;
+      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth = committed_token.to_index;
       new_bc.num_tokens_to_commit++;
     }
 
-    // 3. Load the tokens on the token tree that are not yet pruned to
-    // TreeVerifyBatchConfig.tokensInfo. Be careful with the abs_depth etc.
+    // 3. Load the tokens on the token tree that are not yet pruned to TreeVerifyBatchConfig.tokensInfo.
     TokenTree &token_tree = request.speculative_token_trees.at(new_bc.model_id);
     int token_tree_index = 0;
     for (std::list<std::shared_ptr<TokenTreeNode>> &tree_layer : token_tree.tree_layers) {
