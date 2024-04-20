@@ -379,7 +379,7 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
                              int length,
                              int k,
                              bool sorted,
-                             /* Reserved: BatchConfig Updated, leave beamsearch to kill */TreeSearchBatchConfig const *bc,
+                             /* Reserved: BatchConfig Updated */TreeSearchBatchConfig const *bc,
                              cudaStream_t stream) {
   // Adopted from TensorFlow's ArgTopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
@@ -399,34 +399,16 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
   // size_t num_blocks = (batch_size + num_shards - 1) / num_shards;
   size_t num_blocks = batch_size;
 
-  // all requests are in the same beam stages
+  // all requests share the same number of branches
   if (m->speculative_decoding) {
     assert(bc->num_active_requests() >= 0);
-
-    // check
-    // allow last request different with others
-    int beam_size = -1;
-    int num_activate_requests = bc->num_active_requests();
-    int last_request_idx =
-        bc->requestsInfo[num_activate_requests - 1].batch_config_request_id;
-    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-      if (!bc->request_available[i]) {
-        continue;
-      } else if (beam_size == -1) {
-        beam_size = bc->beamRequestsInfo[i].beam_size;
-
-      } else if (i != last_request_idx) {
-        assert(beam_size == bc->beamRequestsInfo[i].beam_size);
-      } else if (i == last_request_idx) {
-      }
-    }
-    assert(num_shards >= (size_t)beam_size);
+    assert(num_shards >= (size_t)TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
     num_shards = k;
     arg_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
         input_ptr,
         shared_memory_size,
         length,
-        beam_size,
+        TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES,
         sorted,
         output_ptr,
         indices_ptr,
