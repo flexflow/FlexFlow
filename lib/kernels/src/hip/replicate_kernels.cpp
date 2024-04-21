@@ -13,13 +13,26 @@
  * limitations under the License.
  */
 
+#include "device.h"
+#include "kernels/datatype_dispatch.h"
 #include "kernels/replicate_kernels.h"
-#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 namespace Kernels {
 namespace Replicate {
+
+template <typename T>
+__global__ void replicate_backward_kernel(T const *input_ptr,
+                                          T *output_ptr,
+                                          size_t num_elements,
+                                          size_t num_replicas) {
+  CUDA_KERNEL_LOOP(i, num_elements) {
+    for (size_t j = 0; j < num_replicas; j++) {
+      output_ptr[i] += input_ptr[i + j * num_elements];
+    }
+  }
+}
 
 template <DataType T>
 struct ForwardKernel {
@@ -54,22 +67,10 @@ struct BackwardKernel {
   }
 }
 
-template <typename T>
-__global__ void replicate_backward_kernel(T const *input_ptr,
-                                          T *output_ptr,
-                                          size_t num_elements,
-                                          size_t num_replicas) {
-  CUDA_KERNEL_LOOP(i, num_elements) {
-    for (size_t j = 0; j < num_replicas; j++) {
-      output_ptr[i] += input_ptr[i + j * num_elements];
-    }
-  }
-}
-
 void forward_kernel(hipStream_t stream,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
-  DataTypeDispatch1<ForwardKernel>{}(input->data_type, stream, input, output);
+  DataTypeDispatch1<ForwardKernel>{}(input.data_type, stream, input, output);
 }
 
 void backward_kernel(hipStream_t stream,
@@ -77,7 +78,7 @@ void backward_kernel(hipStream_t stream,
                      GenericTensorAccessorR const &output,
                      size_t num_replicas) {
   DataTypeDispatch1<BackwardKernel>{}(
-      input->data_type, stream, input, output, num_replicas);
+      input.data_type, stream, input, output, num_replicas);
 }
 
 } // namespace Replicate

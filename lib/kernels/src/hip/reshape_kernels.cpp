@@ -13,18 +13,19 @@
  * limitations under the License.
  */
 
-#include "kernels/reshape_kernels.h"
+#include "device.h"
 #include "kernels/datatype_dispatch.h"
-#include "kernels/hip_helper.h"
+#include "kernels/reshape_kernels.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
-ReshapePerDeviceState::ReshapePerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {}
-
 namespace Kernels {
 namespace Reshape {
+
+ReshapePerDeviceState init_kernel(DataType data_type) {
+  return ReshapePerDeviceState{data_type};
+}
 
 template <DataType T>
 struct ForwardKernel {
@@ -42,7 +43,7 @@ struct ForwardKernel {
 template <DataType T>
 struct BackwardKernel {
   void operator()(hipStream_t stream,
-                  ReshapePerDeviceState const *m,
+                  ReshapePerDeviceState const &m,
                   GenericTensorAccessorW const &input,
                   GenericTensorAccessorR const &output) {
     float alpha = 1.0f;
@@ -59,17 +60,17 @@ struct BackwardKernel {
 }
 
 void forward_kernel(hipStream_t stream,
-                    ReshapePerDeviceState const *m,
+                    ReshapePerDeviceState const &m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
-  DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output);
+  DataTypeDispatch1<ForwardKernel>{}(m.data_type, stream, m, input, output);
 }
 
 void backward_kernel(hipStream_t stream,
-                     ReshapePerDeviceState const *m,
+                     ReshapePerDeviceState const &m,
                      GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output) {
-  DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, m, input, output);
+  DataTypeDispatch1<BackwardKernel>{}(m.data_type, stream, m, input, output);
 }
 
 } // namespace Reshape

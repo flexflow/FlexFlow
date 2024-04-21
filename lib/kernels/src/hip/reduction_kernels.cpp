@@ -37,7 +37,7 @@ __global__ void reduction_forward_kernel(T const *input_ptr,
 
 template <DataType T>
 struct ForwardKernel {
-  void operator()(cudaStream_t stream,
+  void operator()(hipStream_t stream,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output,
                   size_t num_replicas) {
@@ -57,7 +57,7 @@ struct ForwardKernel {
 
 template <DataType T>
 struct BackwardKernel {
-  void operator()(cudaStream_t stream,
+  void operator()(hipStream_t stream,
                   GenericTensorAccessorW const &input,
                   GenericTensorAccessorR const &output) {
     checkCUDA(hipMemcpyAsync(input.get<T>(),
@@ -73,13 +73,13 @@ void forward_kernel(hipStream_t stream,
                     GenericTensorAccessorW const &output,
                     size_t num_replicas) {
   DataTypeDispatch1<ForwardKernel>{}(
-      input->data_type, stream, input, output, num_replicas);
+      input.data_type, stream, input, output, num_replicas);
 }
 
 void backward_kernel(hipStream_t stream,
                      GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output) {
-  DataTypeDispatch1<BackwardKernel>{}(input->data_type, stream, input, output);
+  DataTypeDispatch1<BackwardKernel>{}(input.data_type, stream, input, output);
 }
 
 } // namespace Reduction
