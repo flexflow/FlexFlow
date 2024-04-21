@@ -13,15 +13,10 @@
  * limitations under the License.
  */
 
-#include "flexflow/accessor.h"
-#include "flexflow/model.h"
-#include "flexflow/optimizer.h"
-#include "utils/hip_helper.h"
+#include "kernels/optimizer_kernels.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-
-LegionRuntime::Logger::Category log_optimizer("optimizer");
 
 __global__ void sgd_update(size_t count,
                            float lr,
@@ -87,6 +82,7 @@ __host__ void SGDOptimizer::ps_update_task_gpu(SGDOptimizer const *op,
 
 #ifdef FF_USE_NCCL
 __host__ void SGDOptimizer::nccl_update_task_gpu(SGDOptimizer const *op,
+                                                 PerDeviceOpState const *meta,
                                                  float const *w_grad_ptr,
                                                  size_t size,
                                                  float *w_ptr,
@@ -208,6 +204,7 @@ __host__ void AdamOptimizer::ps_update_task_gpu(AdamOptimizer const *op,
 
 #ifdef FF_USE_NCCL
 __host__ void AdamOptimizer::nccl_update_task_gpu(AdamOptimizer const *op,
+                                                  PerDeviceOpState const *meta,
                                                   float const *w_grad_ptr,
                                                   size_t size,
                                                   float *w_ptr,
