@@ -14,15 +14,10 @@
  */
 
 #include "kernels/topk_kernels.h"
-#include "kernels/hip_helper.h"
+#include "device.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::coord_t;
-
-TopKPerDeviceState::TopKPerDeviceState(FFHandler handler)
-    : PerDeviceOpState(handler) {}
 
 namespace Kernels {
 namespace TopK {
@@ -371,7 +366,7 @@ __global__ void topk_forward_kernel(T const *__restrict__ input,
 }
 
 void forward_kernel(hipStream_t stream,
-                    TopKPerDeviceState const *m,
+                    TopKPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
                     int *indices_ptr,
@@ -428,7 +423,7 @@ __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
 }
 
 void backward_kernel(hipStream_t stream,
-                     TopKPerDeviceState const *m,
+                     TopKPerDeviceState const &m,
                      float const *value_grad_ptr,
                      int const *indices_ptr,
                      float *in_grad_ptr,

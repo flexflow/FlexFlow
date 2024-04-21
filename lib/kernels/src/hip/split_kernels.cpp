@@ -14,12 +14,10 @@
  */
 
 #include "kernels/split_kernels.h"
-#include "kernels/hip_helper.h"
+#include "device.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::coord_t;
 
 namespace Kernels {
 namespace Split {
