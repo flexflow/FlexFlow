@@ -63,6 +63,13 @@ public:
   int num_tokens;
   int num_available_requests;
 
+  enum class ExecutionPhase {
+    PROMPT,
+    GENERATION
+  };
+
+  ExecutionPhase current_phase;
+
   struct PerRequestInfo {
     int first_token_index_in_request;
     int first_token_offset_in_batch;
