@@ -139,10 +139,7 @@ public:
   ~SpecIncMultiHeadSelfAttentionMeta(void);
 
 public:
-  Realm::RegionInstance beam_search_reserve_inst;
-  TreeSearchBatchConfig::BeamSearchPerTokenInfo *beam_token_infos;
-  TreeSearchBatchConfig::BeamSearchPerRequestInfo *beam_request_infos;
-  bool *request_completed;
+  Realm::RegionInstance tree_search_reserve_inst;
   BatchConfig::BitMask *causalMask;
 };
 
