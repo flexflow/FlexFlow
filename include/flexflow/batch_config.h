@@ -179,8 +179,6 @@ public:
                                   TreeSearchBatchConfig const &bc);
   void print() const;
   void save_to_file(std::string const &filename) const;
-  int current_depth() const;
-  int get_speculative_request_num() const;
 
   inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3;
   inline static int const MAX_TREE_DEPTH = 16;

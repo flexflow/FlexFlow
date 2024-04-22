@@ -1289,33 +1289,38 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
     assert(request.status == Request::RUNNING);
     new_bc.request_available[request_index] = true;
     new_bc.num_available_requests++;
-    new_bc.requestsInfo[request_index].first_token_offset_in_batch = new_bc.num_tokens;
     // TODO: check this profiling, what is profiling
     profiling_requests[request.guid].ssm_decoding_steps += 1;
 
-    TokenTree &token_tree = request.speculative_token_trees.at(new_bc.model_id);
-    assert(token_tree.tree_size == 0);
-    assert(token_tree.tree_node_size == 0);
-    // 1. Get committed tokens from committed_tokens
-    std::vector <CommittedToken> &committed_tokens = request.committed_tokens;
+    std::vector<Request::CommittedToken> &committed_tokens =
+        request.committed_tokens;
 
-    // 2. Maintain all other fields of TreeSearchBatchConfig
-    new_bc.requestsInfo[request_index].first_token_index_in_request = request.tokens.size();
-    new_bc.requestsInfo[request_index].num_tokens_in_batch = committed_tokens.size();
+    // 2. Maintain requestsInfo
+    new_bc.requestsInfo[request_index].first_token_offset_in_batch =
+        new_bc.num_tokens;
+    new_bc.requestsInfo[request_index].first_token_index_in_request =
+        request.tokens.size() - committed_tokens.size();
+    new_bc.requestsInfo[request_index].num_tokens_in_batch =
+        committed_tokens.size();
 
     // 3. Store committed tokens to tokensInfo
-    for (int committed_token_index = 0; committed_token_index < committed_tokens.size(); committed_token_index++) {
-      CommittedToken committed_token = committed_tokens.at(committed_token_index);
+    for (int committed_token_index = 0;
+         committed_token_index < committed_tokens.size();
+         committed_token_index++) {
+      Request::CommittedToken &committed_token =
+          committed_tokens.at(committed_token_index);
       new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
-      new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request = committed_token.to_index;
+      new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
+          committed_token.to_index;
       new_bc.tokensInfo[new_bc.num_tokens].token_id = committed_token.token_id;
       new_bc.num_tokens++;
     }
-    // Copy the causal mask, it should already been updated
+    // 4. Copy the causal mask, it should already been updated
     new_bc.causalMask[request_index] = request.causal_mask;
   }
   if (verbose) {
-    std::cout << "prepare_first_spec_batch_config NEW batchconfig:" << std::endl;
+    std::cout << "prepare_first_spec_batch_config NEW batchconfig:"
+              << std::endl;
     new_bc.print();
   }
   return new_bc;
@@ -1434,31 +1439,40 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
     assert(request.status == Request::RUNNING);
     new_bc.request_available[request_index] = true;
     new_bc.num_available_requests++;
-    new_bc.requestsInfo[request_index].first_token_offset_in_batch = new_bc.num_tokens;
+    // TODO: check this profiling
     profiling_requests[request.guid].llm_decoding_steps += 1;
 
-    // 1. Maintain requestsInfo.first_token_index_in_request of TreeSearchBatchConfig
-    new_bc.requestsInfo[request_index].first_token_index_in_request = request.tokens.size();
+    // 1. Maintain requestsInfo
+    new_bc.requestsInfo[request_index].first_token_index_in_request =
+        request.tokens.size();
+    new_bc.requestsInfo[request_index].first_token_offset_in_batch =
+        new_bc.num_tokens;
 
-    // 2. Put the information of the committed tokens into TreeVerifyBatchConfig.committed_tokens.
-    std::vector<CommittedToken> committed_tokens = request.committed_tokens;
-    for (int committed_token_index = 0; committed_token_index < committed_tokens.size(); committed_token_index++) {
-      CommittedToken committed_token = committed_tokens.at(committed_token_index);
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index = request_index;
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index = committed_token.from_index;
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth = committed_token.to_index;
+    // 2. Put the information of the committed tokens into
+    // TreeVerifyBatchConfig.committed_tokens.
+    std::vector<Request::CommittedToken> &committed_tokens =
+        request.committed_tokens;
+    for (auto const &committed_token : committed_tokens) {
+      new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
+          request_index;
+      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
+          committed_token.from_index;
+      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
+          committed_token.to_index;
       new_bc.num_tokens_to_commit++;
     }
 
-    // 3. Load the tokens on the token tree that are not yet pruned to TreeVerifyBatchConfig.tokensInfo.
-    TokenTree &token_tree = request.speculative_token_trees.at(new_bc.model_id);
+    // 3. Load the tokens on the token tree that are not yet pruned to
+    // TreeVerifyBatchConfig.tokensInfo.
+    TokenTree &token_tree = request.speculative_token_trees[0];
     int token_tree_index = 0;
-    for (std::list<std::shared_ptr<TokenTreeNode>> &tree_layer : token_tree.tree_layers) {
-      for (std::shared_ptr<TokenTreeNode> tree_node : tree_layer) {
+    for (auto const &tree_layer : token_tree.tree_layers) {
+      for (auto const &tree_node : tree_layer) {
         if (tree_node->pruned == false) {
           new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
-          new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request = request.tokens.size() + token_tree_index;
-          new_bc.tokensInfo[new_bc.num_tokens].token_id = tree_node.id;
+          new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
+              request.tokens.size() + token_tree_index;
+          new_bc.tokensInfo[new_bc.num_tokens].token_id = tree_node->id;
           new_bc.num_tokens++;
           token_tree_index++;
         }
@@ -1466,9 +1480,11 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
     }
 
     // 4. Maintain requestsInfo.num_tokens_in_batch of TreeSearchBatchConfig
-    new_bc.requestsInfo[request_index].num_tokens_in_batch = token_tree_index;
+    new_bc.requestsInfo[request_index].num_tokens_in_batch =
+        token_tree_index + 1;
 
-    // 5. Create the causal mask for the large model based on the small model causal mask.
+    // 5. Create the causal mask for the large model based on the small model
+    // causal mask.
     new_bc.causalMask[request_index] = create_llm_bitmask(guid);
   }
 

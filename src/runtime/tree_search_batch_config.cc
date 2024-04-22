@@ -46,10 +46,6 @@ InferenceMode TreeSearchBatchConfig::get_mode() const {
   return TREE_SEARCH_MODE;
 }
 
-int TreeSearchBatchConfig::get_speculative_request_num() const {
-  return speculative_request_num;
-}
-
 std::ostream &
     operator<<(std::ostream &os,
                TreeSearchBatchConfig const &tree_search_batch_config) {
