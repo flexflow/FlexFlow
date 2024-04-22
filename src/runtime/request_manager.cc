@@ -1595,7 +1595,7 @@ void RequestManager::init_bitmask(BatchConfig::BitMask &bitmask,
   // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100,
   // t4: 0000000..1000
   bitmask.non_tree_cache_size = 0;
-  bitmask.tree_size = 1;
+  bitmask.tree_or_prompt_size = 1;
 
   bitmask.prompt_size = initLength;
   bitmask.layer_size = initLength;
@@ -1620,7 +1620,7 @@ void RequestManager::update_bitmask(BatchConfig::BitMask &bitmask,
   //           << bitmask.non_tree_cache_size << "\n";
 
   bitmask.non_tree_cache_size = non_tree_size + initLength - 1;
-  bitmask.tree_size = 1;
+  bitmask.tree_or_prompt_size = 1;
   bitmask.layer_size = initLength;
   // std::cout << "non_tree_size: " << non_tree_size << "\n";
   bitmask.prompt_size = 1;
@@ -1645,7 +1645,7 @@ void RequestManager::init_bitmask(RequestGuid guid, int prompt_length) {
   // 2. Maintain all other fields.
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
-  bitmask.tree_size = 0;
+  bitmask.tree_or_prompt_size = 0;
   bitmask.current_layer_size = 0;
   bitmask.prompt_size = prompt_length;
   bitmask.non_tree_cache_size = 0;
@@ -1661,7 +1661,7 @@ void RequestManager::update_bitmask(RequestGuid guid,
   // 2. Maintain all other fields.
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
-  bitmask.tree_size = 0;
+  bitmask.tree_or_prompt_size = 0;
   bitmask.current_layer_size = 0;
   bitmask.non_tree_cache_size += num_committed_tokens;
 }
@@ -1686,11 +1686,11 @@ void RequestManager::append_bitmask(RequestGuid guid) {
           .tree_layers[current_speculation_step - 1];
   int new_layer_size = tree_layer.size();
   int last_layer_size = bitmask.current_layer_size;
-  int previous_tree_size = bitmask.tree_size;
+  int previous_tree_size = bitmask.tree_or_prompt_size;
   bitmask.current_layer_size = new_layer_size;
-  bitmask.tree_size += new_layer_size;
+  bitmask.tree_or_prompt_size += new_layer_size;
 
-  assert(bitmask.tree_size <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+  assert(bitmask.tree_or_prompt_size <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
 
   int parent_offset = previous_tree_size - last_layer_size;
   int child_offset = previous_tree_size;
@@ -1731,7 +1731,7 @@ void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
   // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100,
   // t4: 0000000..1000
   bitmask.non_tree_cache_size = 0;
-  bitmask.tree_size = 1;
+  bitmask.tree_or_prompt_size = 1;
   bitmask.prompt_size += initLength;
   bitmask.layer_size = initLength;
 

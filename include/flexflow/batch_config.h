@@ -111,17 +111,17 @@ public:
     // the number of generated tokens before the speculation tree (excluding the
     // prompt tokens)
     int non_tree_cache_size = 0;
-    // current tree size
-    int tree_size = 0;
+    // Tree size or prompt size. Because the prefilling phase and the decoding
+    // phase are separated, we only need one field to store the size of the tree
+    // or the prompt.
+    int tree_or_prompt_size = 0;
     int current_layer_size = 0;
-    // input length-> prompt/root
-    int prompt_size = 0;
+
     BitMask() = default;
     BitMask(BitMask const &other) {
       non_tree_cache_size = other.non_tree_cache_size;
-      tree_size = other.tree_size;
+      tree_or_prompt_size = other.tree_or_prompt_size;
       current_layer_size = other.current_layer_size;
-      prompt_size = other.prompt_size;
       for (int i = 0; i < MAX_SPEC_TREE_TOKEN_NUM; i++) {
         bit_mask[i] = other.bit_mask[i];
       }

@@ -87,8 +87,11 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
   //     request_infos[batch_config_request_id].first_token_depth_in_request +
   //     request_infos[batch_config_request_id].num_tokens_in_batch;
 
+  //   int const totalCacheSize = bitmask.non_tree_cache_size +
+  //                              bitmask.tree_or_prompt_size +
+  //                              bitmask.prompt_size - 1;
   int const totalCacheSize =
-      bitmask.non_tree_cache_size + bitmask.tree_size + bitmask.prompt_size - 1;
+      bitmask.non_tree_cache_size + bitmask.tree_or_prompt_size;
 
   int first_token_idx = 0;
   for (int r = 0; r < batch_config_request_id; r++) {
@@ -141,8 +144,10 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
           ii * THREADS_PER_KEY * K_VEC_SIZE);
     }
 
-    int const query_token =
-        bitmask.prompt_size + bitmask.tree_size - 1 - tree_branch_num + qi;
+    // int const query_token = bitmask.prompt_size + bitmask.tree_or_prompt_size
+    // -
+    //                         1 - tree_branch_num + qi;
+    int const query_token = bitmask.tree_or_prompt_size - tree_branch_num + qi;
 
     __syncthreads();
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
@@ -347,9 +352,13 @@ __global__ void spec_inc_store_kv_cache(
     // if prompt token -> token id
     // if tree token:
 
-    int const cache_idx = bitmask.prompt_size + bitmask.non_tree_cache_size +
-                          bitmask.tree_size - 1 - bitmask.current_layer_size +
-                          token_idx - request_token_offset;
+    // int const cache_idx = bitmask.prompt_size + bitmask.non_tree_cache_size +
+    //                       bitmask.tree_or_prompt_size - 1 -
+    //                       bitmask.current_layer_size + token_idx -
+    //                       request_token_offset;
+    int const cache_idx =
+        bitmask.non_tree_cache_size + bitmask.tree_or_prompt_size -
+        bitmask.current_layer_size + token_idx - request_token_offset;
 
     kCache_ptr[req_id * (hidden_size * max_seq_len) + (cache_idx)*hidden_size +
                offset] = kVal;
