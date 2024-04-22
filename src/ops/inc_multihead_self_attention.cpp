@@ -127,7 +127,7 @@ template <typename DT>
 __global__ void apply_rotary_embedding_native(
     DT *input_ptr,
     hipFloatComplex *complex_input,
-    /* Reserved: BatchConfig Updated, leave beamsearch to kill */
+    /* Reserved: BatchConfig Updated */
     BatchConfig::PerTokenInfo const *tokenInfos,
     int qProjSize,
     int kProjSize,
@@ -970,11 +970,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         key_cache_size = num_q_heads * kProjSize *
                          TreeSearchBatchConfig::max_requests_per_batch() *
                          BatchConfig::max_sequence_length() *
-                         TreeSearchBatchConfig::MAX_BEAM_WIDTH;
+                         TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
         value_cache_size = num_q_heads * vProjSize *
                            TreeSearchBatchConfig::max_requests_per_batch() *
                            BatchConfig::max_sequence_length() *
-                           TreeSearchBatchConfig::MAX_BEAM_WIDTH;
+                           TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
         break;
       }
       default:
