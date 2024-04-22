@@ -18,7 +18,7 @@
     flake-utils.url = "github:numtide/flake-utils";
 
     proj-repo = {
-      url = "github:lockshaw/proj";
+      url = "path:/home/qinghanc/proj";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
@@ -96,6 +96,8 @@
               cudaPackages.libcublas
               cudaPackages.cuda_cudart
               tl-expected
+              lcov # for code coverage
+              xdg_utils # for xdg-open to open html files
             ])
             (with self.packages.${system}; [
               legion
