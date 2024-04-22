@@ -837,14 +837,12 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      stream);
   update_kv_cache_kernel<DT>(m, bc, stream);
 
-  if (bc->num_tokens > 0) {
+  if (bc->current_phase == BatchConfig::ExecutionPhase::GENERATION) {
     // phase 3: Compute attention score for generation tokens
     compute_attention_kernel_generation<DT>(
         m, bc, static_cast<DT *>(m->attn_heads), stream);
-  }
-
-  if (bc->num_tokens > bc->num_tokens) {
-    // phase 4: Compute attention score for prompt tokens;
+  } else if (bc->current_phase == BatchConfig::ExecutionPhase::PROMPT) {
+    // phase 3: Compute attention score for prompt tokens;
     compute_attention_kernel_prompt(
         m, bc, shard_id, bias_ptr, weight_ptr, stream);
   }
@@ -941,7 +939,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (!bc->request_available[i] || (!bc->requestsInfo[i].prompt_phase)) {
+    if (!bc->request_available[i]) {
       continue;
     }
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;

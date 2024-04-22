@@ -36,7 +36,7 @@ __global__ void spec_store_kv_cache(
     DT const *devQKVProjArray,
     DT *kCache_ptr,
     DT *vCache_ptr,
-    BatchConfig::PerTokenInfo *tokenInfos,
+    /* Reserved: BatchConfig, leave HIP code to be updated */BatchConfig::PerTokenInfo *tokenInfos,
     BatchConfig::PerRequestInfo *requestInfo,
     TreeSearchBatchConfig::BeamSearchPerTokenInfo *beamTokenInfos,
     TreeSearchBatchConfig::BeamSearchPerRequestInfo *beamRequestInfos,
