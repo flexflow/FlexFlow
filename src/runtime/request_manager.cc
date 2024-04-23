@@ -996,25 +996,6 @@ BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
 }
 /* --------- Bitmask Related Functions --------- */
 
-// prompt phase, init task
-void RequestManager::appendPendingRequest(BatchConfig::BitMask &bitmask,
-                                          int initLength) {
-  assert(initLength > 0);
-  // std::cout << "append pending bit mask: " << initLength << "\n";
-  // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100,
-  // t4: 0000000..1000
-  bitmask.non_tree_cache_size = 0;
-  bitmask.tree_or_prompt_size = 1;
-  bitmask.prompt_size += initLength;
-  bitmask.layer_size = initLength;
-
-  // for (int i = 0; i < bitmask.prompt_size; i++) {
-  //   for (int j = i; j < bitmask.prompt_size; j++) {
-  //     bitmask.mask[i] |= (1 << j);
-  //   }
-  // }
-}
-
 // TO BE REMOVED: START
 std::vector<std::pair<BatchConfig::TokenId, int>>
     RequestManager::traverse_verify_tree(

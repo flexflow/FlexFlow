@@ -196,7 +196,6 @@ public:
                           int eos_token_id,
                           std::string const &path);
   void register_output_filepath(std::string const &);
-  void appendPendingRequest(BatchConfig::BitMask &bitmask, int initLength);
   void init_bitmask(RequestGuid guid, int prompt_length);
   void append_bitmask(RequestGuid guid);
   void update_bitmask(RequestGuid guid, int num_committed_tokens);
