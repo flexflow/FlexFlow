@@ -105,8 +105,8 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
         request_available[r] ? causalMask[r].current_layer_size : 0;
   }
 
-  int const tree_branch_num =
-      beam_request_infos[requext_idx_in_batch].sub_request_num;
+  int const tree_branch_num = 
+      request_infos[requext_idx_in_batch].num_tokens_in_batch;
 
   // shared memory objects
   extern __shared__ char smem_[];
@@ -435,7 +435,7 @@ void compute_spec_inc_attention_kernel_generation(
     cudaStream_t stream) {
   // one block == one head per request
   // how many generation requests
-  dim3 grid(m->num_q_heads, bc->num_active_requests());
+  dim3 grid(m->num_q_heads, bc->num_available_requests);
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
   size_t smem_sz;

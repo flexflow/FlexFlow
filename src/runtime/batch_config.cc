@@ -63,7 +63,7 @@ InferenceMode BatchConfig::get_mode() const {
 int BatchConfig::num_active_requests() const {
   int num_requests = 0;
   for (int i = 0; i < max_requests_per_batch(); i++) {
-    if (!request_available[i]) {
+    if (request_available[i]) {
       num_requests++;
     }
   }
