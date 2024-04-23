@@ -196,9 +196,10 @@ public:
                           int eos_token_id,
                           std::string const &path);
   void register_output_filepath(std::string const &);
-  void init_bitmask(RequestGuid guid, int prompt_length);
+  void init_bitmask_prompt(RequestGuid guid, int prompt_length);
   void append_bitmask(RequestGuid guid);
-  void update_bitmask(RequestGuid guid, int num_committed_tokens);
+  void update_bitmask_prompt(RequestGuid guid, int num_committed_tokens);
+  void init_bitmask_spec(RequestGuid guid, int num_committed_tokens);
   BatchConfig::BitMask create_llm_bitmask(RequestGuid guid);
 
   FFModel *get_ssm_model(int model_id);

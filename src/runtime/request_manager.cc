@@ -913,34 +913,54 @@ void RequestManager::update_bitmask(BatchConfig::BitMask &bitmask,
 }
 // TO BE REMOVED: END
 
-void RequestManager::init_bitmask(RequestGuid guid, int prompt_length) {
-  // This method modifies the bitmask in place
-  // This method is called by update_llm_verify_results
-  // TODO: implement this function
+void RequestManager::init_bitmask_prompt(RequestGuid guid, int prompt_length) {
+  // This method is called by update_llm_verify_results when there are new
+  // request to load into the batch
   // 1. Clear the causal mask because our current speculative token tree is
   // empty.
   // 2. Maintain all other fields.
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
-  bitmask.tree_or_prompt_size = 0;
-  bitmask.current_layer_size = 0;
-  bitmask.prompt_size = prompt_length;
+
+  bitmask.clear_bitmask();
+  bitmask.tree_or_prompt_size = prompt_length;
+  bitmask.current_layer_size = prompt_length;
   bitmask.non_tree_cache_size = 0;
 }
 
-void RequestManager::update_bitmask(RequestGuid guid,
-                                    int num_committed_tokens) {
+void RequestManager::update_bitmask_prompt(RequestGuid guid,
+                                           int num_committed_tokens) {
   // This method modifies the bitmask in place
   // This method is called by update_llm_verify_results
-  // TODO: implement this function
-  // 1. Clear the causal mask because our current speculative token tree is
-  // empty.
+  // 1. Clear the causal mask because the first SSM inference uses the prompt
+  // kernel and it doesn't use mask.
   // 2. Maintain all other fields.
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
-  bitmask.tree_or_prompt_size = 0;
-  bitmask.current_layer_size = 0;
+  bitmask.clear_bitmask();
+  bitmask.tree_or_prompt_size = num_committed_tokens;
+  bitmask.current_layer_size = num_committed_tokens;
+}
+
+void RequestManager::init_bitmask_spec(RequestGuid guid,
+                                       int num_committed_tokens) {
+  // This method modifies the bitmask in place
+  // This method is called by the first call of update_ssm_verify_results in a
+  // speculative iteration
+  // CAUTION: You should still call append_bitmask() after this method
+  // 1. Clear the causal mask and add a root into it, because the tree is
+  // currently empty but we have a root.
+  // 2. Maintain all other fields.
+  assert(current_speculation_step == 1 &&
+         "The current speculation step should be 1");
+  Request &request = all_requests[guid];
+  BatchConfig::BitMask &bitmask = request.causal_mask;
+  bitmask.clear_bitmask();
+  // Set the mask for the root
+  bitmask.bit_mask[0].set_bit(0);
+  bitmask.tree_or_prompt_size = 1;
   bitmask.non_tree_cache_size += num_committed_tokens;
+  bitmask.current_layer_size = 1;
 }
 
 void RequestManager::append_bitmask(RequestGuid guid) {

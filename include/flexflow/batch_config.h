@@ -63,10 +63,7 @@ public:
   int num_tokens;
   int num_available_requests;
 
-  enum class ExecutionPhase {
-    PROMPT,
-    GENERATION
-  };
+  enum class ExecutionPhase { PROMPT, GENERATION };
 
   ExecutionPhase current_phase;
 
@@ -109,6 +106,10 @@ public:
         return (bits[idx] & (1ULL << bit)) != 0;
       }
 
+      void clear() {
+        std::memset(bits, 0, sizeof(bits));
+      }
+
     private:
       uint64_t bits[MAX_SPEC_TREE_TOKEN_NUM / 8]; // Array to hold 256 bits
     };
@@ -125,12 +126,20 @@ public:
     int current_layer_size = 0;
 
     BitMask() = default;
+
     BitMask(BitMask const &other) {
       non_tree_cache_size = other.non_tree_cache_size;
       tree_or_prompt_size = other.tree_or_prompt_size;
       current_layer_size = other.current_layer_size;
       for (int i = 0; i < MAX_SPEC_TREE_TOKEN_NUM; i++) {
         bit_mask[i] = other.bit_mask[i];
+      }
+    }
+
+    void clear_bitmask() {
+      // Clear bit_mask but keep the other fields
+      for (int i = 0; i < MAX_SPEC_TREE_TOKEN_NUM; i++) {
+        bit_mask[i].clear();
       }
     }
   };
