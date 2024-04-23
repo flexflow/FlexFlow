@@ -36,7 +36,7 @@ __global__ void commit_tokens_kernel(
     DT const *devQKVProjArray,
     DT *kCache_ptr,
     DT *vCache_ptr,
-    /* Reserved: BatchConfig, leave HIP code to be updated */TreeVerifyBatchConfig::CommittedTokensInfo const *committedTokenInfos,
+    /* Reserved: BatchConfig Updated, leave HIP code to be updated */TreeVerifyBatchConfig::CommittedTokensInfo const *committedTokenInfos,
     int qProjSize,
     int kProjSize,
     int vProjSize,
