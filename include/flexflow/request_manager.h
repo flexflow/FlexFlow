@@ -153,7 +153,7 @@ public:
   // The numebr of tokens in the tree that are not pruned
   int tree_size = 0;
   // The numebr of tokens in the tree including the pruned ones
-  int tree_node_size = 0;
+  int tree_size_including_pruned = 0;
   void add_layer() {
     tree_layers.emplace_back();
   }
@@ -350,8 +350,10 @@ private:
   /* ---------- New Helper Functions ---------- */
 
   // Helper functions related to token trees
-  void RequestManager::init_token_trees(RequestGuid guid);
-  void add_token_to_spec_token_tree(RequestGuid guid,
+  void init_token_trees(RequestGuid guid);
+  void add_root_to_spec_token_tree(RequestGuid guid,
+                                   BatchConfig::TokenId token_id);
+  bool add_token_to_spec_token_tree(RequestGuid guid,
                                     BatchConfig::TokenId token_id,
                                     int parent_pos,
                                     float joint_prob);
