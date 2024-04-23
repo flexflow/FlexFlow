@@ -50,12 +50,13 @@ __global__ void compute_attention_kernel_fused_kernel(
     int const max_token_per_batch,
     int per_head_size,
     int hidden_size,
-    BatchConfig::PerRequestInfo *request_infos,
+    /* Reserved: BatchConfig Updated */BatchConfig::PerRequestInfo *request_infos,
     int num_heads,
     int num_requests,
     BatchConfig::BitMask *causalMask,
-    bool *request_completed,
-    int qk_smem_sz) {
+    bool *request_available,
+    int qk_smem_sz,
+    bool prompt_phase) {
 
   // q, k
   using Q_vec = typename VEC_K<DT, THREADS_PER_KEY>::Type;
@@ -77,28 +78,35 @@ __global__ void compute_attention_kernel_fused_kernel(
   // request idx
   int const request_idx = blockIdx.y;
 
-  int const batch_config_request_id =
-      request_infos[request_idx].batch_config_request_id;
+  // request id in batch config
+  int requext_idx_in_batch = 0;
+  for (int i = 0; i < request_idx; i++) {
+    while (!request_available[requext_idx_in_batch]) {
+      requext_idx_in_batch++;
+    }
+  }
+
+  // threads converge
+  __syncthreads();
 
   int const first_step = 0;
 
   int const tlength =
-      request_infos[batch_config_request_id].first_token_index_in_request +
-      request_infos[batch_config_request_id].num_tokens_in_batch;
+      request_infos[requext_idx_in_batch].first_token_index_in_request +
+      request_infos[requext_idx_in_batch].num_tokens_in_batch;
   int const qlength =
-      request_infos[batch_config_request_id].num_tokens_in_batch;
+      request_infos[requext_idx_in_batch].num_tokens_in_batch;
 
-  BatchConfig::BitMask bitmask = causalMask[batch_config_request_id];
+  BatchConfig::BitMask bitmask = causalMask[requext_idx_in_batch];
 
   int first_token_idx = 0;
-  for (int r = 0; r < batch_config_request_id; r++) {
+  for (int r = 0; r < requext_idx_in_batch; r++) {
     first_token_idx +=
-        request_completed[r] ? 0 : request_infos[r].num_tokens_in_batch;
+        request_available[r] ? request_infos[r].num_tokens_in_batch : 0;
   }
 
-  bool prompt_phase = request_infos[batch_config_request_id].prompt_phase;
   int q_start =
-      request_infos[batch_config_request_id].first_token_index_in_request;
+      request_infos[requext_idx_in_batch].first_token_index_in_request;
 
   // shared memory objects
   extern __shared__ char smem_[];
@@ -129,7 +137,7 @@ __global__ void compute_attention_kernel_fused_kernel(
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
   DT const *k_cache_batch =
-      key_cache + batch_config_request_id * max_seq_length * hidden_size + ki;
+      key_cache + requext_idx_in_batch * max_seq_length * hidden_size + ki;
 
   int ti_end =
       div_up(tlength - first_step, K_PER_WARP) * K_PER_WARP + first_step;
@@ -260,7 +268,7 @@ __global__ void compute_attention_kernel_fused_kernel(
 
     // The base pointer for the value in the cache buffer.
     DT const *v_cache_batch =
-        value_cache + batch_config_request_id * max_seq_length * hidden_size +
+        value_cache + requext_idx_in_batch * max_seq_length * hidden_size +
         vi;
 
     if (Dh == Dh_MAX || vi < Dh) {
@@ -536,7 +544,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (bc->request_available[i]) {
+    if (!bc->request_available[i]) {
       continue;
     }
     assert(processed_tokens_in_batch ==
@@ -792,7 +800,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
 }
 
 #define LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(                             \
-    DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)      \
+    DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream, prompt_phase)      \
   smem_size_in_bytes_tree<DT>(m->qProjSize,                                    \
                               BatchConfig::max_sequence_length() +             \
                                   BatchConfig::max_spec_tree_token_num(),      \
@@ -813,7 +821,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
           output_ptr,                                                          \
           scale,                                                               \
           BatchConfig::max_sequence_length() +                                 \
-              BatchConfig::BatchConfig::max_spec_tree_token_num(),             \
+              BatchConfig::max_spec_tree_token_num(),                          \
           BatchConfig::max_tokens_per_batch(),                                 \
           m->qProjSize,                                                        \
           m->hidden_size,                                                      \
@@ -821,8 +829,9 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
           m->num_q_heads,                                                      \
           bc->num_active_requests(),                                           \
           m->causalMask,                                                       \
-          m->request_completed,                                                \
-          smem_sz[0])
+          m->request_available,                                                \
+          smem_sz[0],                                                          \
+          prompt_phase)
 
 template <typename DT>
 void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
@@ -852,6 +861,7 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
       m->hidden_size);
 
   dim3 grid(m->num_q_heads, bc->num_active_requests());
+  bool const prompt_phase = (bc->current_phase == BatchConfig::ExecutionPhase::PROMPT);
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
   // 0->qk production size, 1->total shared size
@@ -859,11 +869,11 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
   if (per_head_size == 64) {
     constexpr int THREADS_PER_VALUE_64 = threads_per_value_t<DT, 64>::value;
     LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(
-        DT, 64, 64, 4, THREADS_PER_VALUE_64, 128, stream);
+        DT, 64, 64, 4, THREADS_PER_VALUE_64, 128, stream, prompt_phase);
   } else if (per_head_size == 128) {
     constexpr int THREADS_PER_VALUE_128 = threads_per_value_t<DT, 128>::value;
     LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(
-        DT, 128, 128, 4, THREADS_PER_VALUE_128, 128, stream);
+        DT, 128, 128, 4, THREADS_PER_VALUE_128, 128, stream, prompt_phase);
   } else {
     assert(false && "a unsupported head size");
   }
@@ -1059,22 +1069,17 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-
     causalMask = reinterpret_cast<BatchConfig::BitMask *>(
         reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo));
+        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
+        sizeof(BatchConfig::request_available));
     committed_token_infos =
         reinterpret_cast<TreeVerifyBatchConfig::CommittedTokensInfo *>(
             reinterpret_cast<char *>(handler.batch_config_metadata) +
             sizeof(BatchConfig::tokensInfo) +
             sizeof(BatchConfig::requestsInfo) +
+            sizeof(BatchConfig::request_available)) +
             sizeof(BatchConfig::causalMask));
-
-    request_completed = reinterpret_cast<bool *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-        sizeof(BatchConfig::causalMask) +
-        sizeof(TreeVerifyBatchConfig::committed_tokens));
   }
 
   cudaStreamSynchronize(stream);
