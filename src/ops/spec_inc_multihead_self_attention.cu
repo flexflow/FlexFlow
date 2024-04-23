@@ -99,11 +99,7 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
   int const totalCacheSize =
       bitmask.non_tree_cache_size + bitmask.tree_or_prompt_size;
 
-  int first_token_idx = 0;
-  for (int r = 0; r < requext_idx_in_batch; r++) {
-    first_token_idx +=
-        request_available[r] ? causalMask[r].current_layer_size : 0;
-  }
+  int const first_token_idx = request_infos[requext_idx_in_batch].first_token_offset_in_batch;
 
   int const tree_branch_num = 
       request_infos[requext_idx_in_batch].num_tokens_in_batch;

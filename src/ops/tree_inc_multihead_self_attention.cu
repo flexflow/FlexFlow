@@ -99,11 +99,7 @@ __global__ void compute_attention_kernel_fused_kernel(
 
   BatchConfig::BitMask bitmask = causalMask[requext_idx_in_batch];
 
-  int first_token_idx = 0;
-  for (int r = 0; r < requext_idx_in_batch; r++) {
-    first_token_idx +=
-        request_available[r] ? request_infos[r].num_tokens_in_batch : 0;
-  }
+  int const first_token_idx = request_infos[requext_idx_in_batch].first_token_offset_in_batch;
 
   int q_start =
       request_infos[requext_idx_in_batch].first_token_index_in_request;
