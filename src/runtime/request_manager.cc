@@ -439,7 +439,7 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   BatchConfig bc;
   bc.num_tokens = BatchConfig::MAX_NUM_TOKENS;
 
-  request_index = get_empty_request_index();
+  int request_index = get_empty_request_index();
   assert(request_index != -1);
 
   Request new_request = pending_request_queue.front();
@@ -508,7 +508,7 @@ BatchConfig RequestManager::prepare_decoding_batch() {
 
     // Per Token Info
     bc.tokensInfo[bc.num_tokens].request_index = i;
-    bc.tokensInfo[bc.num_tokens].abs_depth_in_request = llm_cache_size;
+    bc.tokensInfo[bc.num_tokens].abs_depth_in_request = request.llm_cache_size;
     bc.tokensInfo[bc.num_tokens].token_id = request.tokens.back();
 
     request.llm_cache_size++;
