@@ -11,7 +11,7 @@ features = [
 
 includes = [
   "utils/stack_vector.h",
-  "op-attrs/ff_dim.h",
+  "op-attrs/ff_dim.dtg.h",
 ]
 
 [[fields]]

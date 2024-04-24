@@ -2,7 +2,7 @@
 #define _FLEXFLOW_GATHER_ATTRS_H
 
 #include "core.h"
-#include "op-attrs/ops/gather_attrs.h"
+#include "op-attrs/ops/gather_attrs.dtg.h"
 #include "op-attrs/parallel_tensor_shape.h"
 
 namespace FlexFlow {

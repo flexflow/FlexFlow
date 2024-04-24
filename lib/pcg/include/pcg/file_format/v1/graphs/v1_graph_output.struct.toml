@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "V1GraphOutput"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "srcNode"
+type = "size_t"
+
+[[fields]]
+name = "srcIdx"
+type = "size_t"

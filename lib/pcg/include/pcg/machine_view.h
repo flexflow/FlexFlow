@@ -1,30 +1,19 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_MACHINE_VIEW_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_MACHINE_VIEW_H
 
-#include "device_id.h"
-#include "device_type.h"
-#include "strided_rectangle.h"
-#include "utils/graph.h"
-#include "utils/visitable.h"
+#include "pcg/machine_view.dtg.h"
+#include "pcg/device_id_t.dtg.h"
+#include "pcg/device_type.dtg.h"
+#include "pcg/num_points_t.dtg.h"
+#include "pcg/cpu_id_t.dtg.h"
+#include "pcg/gpu_id_t.dtg.h"
+#include "pcg/side_size_t.dtg.h"
 #include <cstddef>
-#include <ostream>
 #include <vector>
 
 namespace FlexFlow {
 
-struct MachineView {
-  std::vector<int> device_ids() const;
-
-  device_id_t at(FFOrdered<num_points_t> const &coord) const;
-  StridedRectangleSide at(size_t) const;
-
-public:
-  device_id_t start;
-  StridedRectangle rect;
-};
-
-FF_VISITABLE_STRUCT(MachineView, start, rect);
-
+std::vector<device_id_t> device_ids(MachineView const &);
 std::size_t num_dims(MachineView const &);
 std::size_t num_devices(MachineView const &);
 DeviceType get_device_type(MachineView const &);

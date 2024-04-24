@@ -2,7 +2,7 @@
 #define _FLEXFLOW_COMBINE_ATTRS_H
 
 #include "core.h"
-#include "op-attrs/ops/combine_attrs.h"
+#include "op-attrs/ops/combine_attrs.dtg.h"
 
 namespace FlexFlow {
 

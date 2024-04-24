@@ -2,7 +2,7 @@
 #define _FLEXFLOW_CONCAT_ATTRS_H
 
 #include "core.h"
-#include "op-attrs/ops/concat_attrs.h"
+#include "op-attrs/ops/concat_attrs.dtg.h"
 
 namespace FlexFlow {
 

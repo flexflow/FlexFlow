@@ -10,8 +10,8 @@ features = [
 ]
 
 includes = [
-  "op-attrs/pool_op.h",
-  "op-attrs/activation.h",
+  "op-attrs/pool_op.dtg.h",
+  "op-attrs/activation.dtg.h",
 ]
 
 [[fields]]

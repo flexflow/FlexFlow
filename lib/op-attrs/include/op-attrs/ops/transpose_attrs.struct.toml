@@ -10,7 +10,7 @@ features = [
 ]
 
 includes = [
-  "op-attrs/ff_dim.h",
+  "op-attrs/ff_dim.dtg.h",
   "utils/stack_vector.h",
 ]
 

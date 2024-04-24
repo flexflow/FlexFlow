@@ -2,7 +2,7 @@
 #define _FLEXFLOW_CAST_ATTRS_H
 
 #include "core.h"
-#include "op-attrs/ops/cast_attrs.h"
+#include "op-attrs/ops/cast_attrs.dtg.h"
 
 namespace FlexFlow {
 

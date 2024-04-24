@@ -34,6 +34,7 @@
 #include "utils/variant.h"
 #include <variant>
 #include "utils/record_formatter.h"
+#include "op-attrs/pcg_operator_attrs.dtg.h"
 
 namespace FlexFlow {
 
@@ -94,8 +95,8 @@ using ComputationGraphAttrs =
     variant_join<SharedOperatorAttrs, std::variant<BroadcastAttrs>>;
 using CompGraphOperatorAttrs = ComputationGraphAttrs;
 
-using PCGOperatorAttrs =
-    variant_join<SharedOperatorAttrs, ParallelOperatorAttrs>;
+/* using PCGOperatorAttrs = */
+/*     variant_join<SharedOperatorAttrs, ParallelOperatorAttrs>; */
 
 static_assert(is_equal_comparable<ComputationGraphAttrs>::value,
               "ComputationGraphAttrs must support ==");
@@ -108,14 +109,14 @@ static_assert(is_lt_comparable<ComputationGraphAttrs>::value,
 static_assert(is_hashable<ComputationGraphAttrs>::value,
               "ComputationGraphAttrs must be hashable");
 
-static_assert(is_equal_comparable<PCGOperatorAttrs>::value,
-              "PCGOperatorAttrs must support ==");
-static_assert(is_neq_comparable<PCGOperatorAttrs>::value,
-              "PCGOperatorAttrs must support !=");
-static_assert(is_lt_comparable<PCGOperatorAttrs>::value,
-              "PCGOperatorAttrs must support <");
-static_assert(is_hashable<PCGOperatorAttrs>::value,
-              "PCGOperatorAttrs must be hashable");
+/* static_assert(is_equal_comparable<PCGOperatorAttrs>::value, */
+/*               "PCGOperatorAttrs must support =="); */
+/* static_assert(is_neq_comparable<PCGOperatorAttrs>::value, */
+/*               "PCGOperatorAttrs must support !="); */
+/* static_assert(is_lt_comparable<PCGOperatorAttrs>::value, */
+/*               "PCGOperatorAttrs must support <"); */
+/* static_assert(is_hashable<PCGOperatorAttrs>::value, */
+/*               "PCGOperatorAttrs must be hashable"); */
 
 /* OperatorType get_op_type(CompGraphOperatorAttrs const &); */
 /* OperatorType get_op_type(PCGOperatorAttrs const &); */

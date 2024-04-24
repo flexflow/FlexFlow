@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_OPERATOR_TYPE_H
 #define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_OPERATOR_TYPE_H
 
-#include "op-attrs/operator_type_t.h"
+#include "op-attrs/operator_type.dtg.h"
 
 namespace FlexFlow {
 

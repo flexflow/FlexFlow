@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_PARALLEL_DIM_H
 #define _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_PARALLEL_DIM_H
 
-#include "op-attrs/parallel_dim_t.h"
+#include "op-attrs/parallel_dim.dtg.h"
 
 namespace FlexFlow {
 

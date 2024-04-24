@@ -21,56 +21,14 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_PARALLEL_TENSOR_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_PARALLEL_TENSOR_H
 
-#include "create_grad.h"
-#include "initializer.h"
-#include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/param_sync.h"
+#include "pcg/parallel_tensor_attrs.h"
 
 namespace FlexFlow {
-
-/**
- * @brief Base structure of the parallel tensor representation.
- *
- * @details Parallel tensor is the fundamental component to support the
- * representation and exploration of parallelization strategies.
- */
-struct ParallelTensor : public use_visitable_cmp<ParallelTensor> {
-  ParallelTensor() = delete;
-
-  ParallelTensor(ParallelTensorShape const &,
-                 CreateGrad create_gradients,
-                 std::optional<ParamSync> sync_type = std::nullopt,
-                 std::optional<Initializer> initializer = std::nullopt);
-  ParallelTensor(ParallelTensorDims const &,
-                 DataType,
-                 CreateGrad create_gradients,
-                 std::optional<ParamSync> sync_type = std::nullopt,
-                 std::optional<Initializer> initializer = std::nullopt);
-
-  ParallelTensorShape get_shape() const;
-
-public:
-  ParallelTensorDims dims;
-  DataType data_type;
-  std::optional<ParamSync> sync_type = std::nullopt;
-  std::optional<Initializer> initializer = std::nullopt;
-  CreateGrad create_gradients;
-};
-
-using ParallelParameter = ParallelTensor;
 
 } // namespace FlexFlow
 
-VISITABLE_STRUCT(::FlexFlow::ParallelTensor,
-                 dims,
-                 data_type,
-                 sync_type,
-                 initializer,
-                 create_gradients);
-MAKE_VISIT_HASHABLE(::FlexFlow::ParallelTensor);
-
 namespace FlexFlow {
-static_assert(is_well_behaved_value_type<ParallelTensor>::value, "");
+static_assert(is_well_behaved_value_type<ParallelTensorAttrs>::value, "");
 }
 
 #endif

@@ -1,0 +1,37 @@
+namespace = "FlexFlow"
+name = "InitializerAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "pcg/initializers/glorot_uniform_attrs.dtg.h",
+  "pcg/initializers/zero_initializer_attrs.dtg.h",
+  "pcg/initializers/uniform_initializer_attrs.dtg.h",
+  "pcg/initializers/norm_initializer_attrs.dtg.h",
+  "pcg/initializers/constant_initializer_attrs.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::GlorotUniformAttrs"
+key = "glorot_uniform"
+
+[[values]]
+type = "::FlexFlow::ZeroInitializerAttrs"
+key = "zero"
+
+[[values]]
+type = "::FlexFlow::UniformInitializerAttrs"
+key = "uniform"
+
+[[values]]
+type = "::FlexFlow::NormInitializerAttrs"
+key = "normal"
+
+[[values]]
+type = "::FlexFlow::ConstantInitializerAttrs"
+key = "constant"

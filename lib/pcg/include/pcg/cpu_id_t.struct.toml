@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "cpu_id_t"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "cpu_index"
+type = "int"

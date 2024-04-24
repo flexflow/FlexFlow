@@ -11,7 +11,7 @@ features = [
 
 includes = [
   "<optional>",
-  "op-attrs/activation.h",
+  "op-attrs/activation.dtg.h",
   "utils/json.h",
 ]
 

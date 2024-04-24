@@ -1,18 +1,13 @@
-#ifndef _FLEXFLOW_SUBSTITUTIONS_SUB_PARALLEL_COMPUTATION_GRAPH_H
-#define _FLEXFLOW_SUBSTITUTIONS_SUB_PARALLEL_COMPUTATION_GRAPH_H
+#ifndef _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_SUB_PARALLEL_COMPUTATION_GRAPH_H
+#define _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_SUB_PARALLEL_COMPUTATION_GRAPH_H
 
-#include "op-attrs/operator_attrs.h"
-#include "pcg/machine_view.h"
-#include "pcg/operator.h"
-#include "pcg/parallel_tensor.h"
-#include "utils/graph.h"
+#include "substitutions/sub_parallel_computation_graph.dtg.h"
 
 namespace FlexFlow {
 
-using SubParallelComputationGraph =
-    OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>;
-
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(SubParallelComputationGraph);
+ParallelLayerAttrs get_parallel_layer_attrs(SubParallelComputationGraph const &, Node const &);
+PCGOperatorAttrs get_operator_attrs(SubParallelComputationGraph const &, Node const &);
+ParallelTensorAttrs get_parallel_tensor_attrs(SubParallelComputationGraph const &, OpenMultiDiEdge const &);
 
 } // namespace FlexFlow
 

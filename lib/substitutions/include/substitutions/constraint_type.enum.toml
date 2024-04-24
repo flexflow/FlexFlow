@@ -1,0 +1,11 @@
+namespace = "FlexFlow"
+name = "ConstraintType"
+features = [
+  "json",
+  "hash",
+  "rapidcheck",
+  "fmt",
+]
+
+[[values]]
+name = "EQUAL"

@@ -143,8 +143,7 @@ struct VariantToJsonFunctor {
   void operator()(T const &t) {
     static_assert(is_jsonable<T>::value, "");
 
-    j["type"] = get_name(t);
-    j["value"] = t;
+    j = t;
   }
 };
 

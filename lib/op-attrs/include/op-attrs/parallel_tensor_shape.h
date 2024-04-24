@@ -3,7 +3,7 @@
 
 #include "op-attrs/tensor_shape.h"
 #include <vector>
-#include "op-attrs/parallel_tensor_shape_t.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/tensor_shape.h"
 
 namespace FlexFlow {

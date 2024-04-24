@@ -10,9 +10,9 @@ features = [
 ]
 
 includes = [
-  "op-attrs/datatype.h",
-  "op-attrs/activation.h",
-  "op-attrs/regularizer_attrs.h",
+  "op-attrs/datatype.dtg.h",
+  "op-attrs/activation.dtg.h",
+  "op-attrs/regularizer_attrs.dtg.h",
   "utils/json.h",
 ]
 

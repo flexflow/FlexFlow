@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "RegularizerAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/l1_regularizer_attrs.dtg.h",
+  "op-attrs/l2_regularizer_attrs.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::L1RegularizerAttrs"
+key = "l1"
+
+[[values]]
+type = "::FlexFlow::L2RegularizerAttrs"
+key = "l2"

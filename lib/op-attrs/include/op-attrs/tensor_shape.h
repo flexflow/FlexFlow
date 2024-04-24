@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_OPATTRS_TENSOR_SHAPE_H
 #define _FLEXFLOW_OPATTRS_TENSOR_SHAPE_H
 
-#include "op-attrs/tensor_shape_t.h"
+#include "op-attrs/tensor_shape.dtg.h"
 
 namespace FlexFlow {
 

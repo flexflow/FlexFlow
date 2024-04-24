@@ -1,0 +1,117 @@
+namespace = "FlexFlow"
+name = "PCGOperatorAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/ops/attention_attrs.dtg.h", 
+  "op-attrs/ops/batch_matmul.dtg.h", 
+  "op-attrs/ops/batch_norm_attrs.dtg.h", 
+  "op-attrs/ops/cast_attrs.dtg.h", 
+  "op-attrs/ops/combine_attrs.dtg.h", 
+  "op-attrs/ops/combine_attrs.dtg.h", 
+  "op-attrs/ops/concat_attrs.dtg.h", 
+  "op-attrs/ops/conv_2d_attrs.dtg.h",
+  "op-attrs/ops/dropout_attrs.dtg.h",
+  "op-attrs/ops/element_binary_attrs.dtg.h",
+  "op-attrs/ops/element_scalar_unary_attrs.dtg.h",
+  "op-attrs/ops/element_unary_attrs.dtg.h",
+  "op-attrs/ops/embedding_attrs.dtg.h",
+  "op-attrs/ops/flat_attrs.dtg.h",
+  "op-attrs/ops/gather_attrs.dtg.h",
+  "op-attrs/ops/input_attrs.dtg.h",
+  "op-attrs/ops/layer_norm_attrs.dtg.h",
+  "op-attrs/ops/linear_attrs.dtg.h",
+  "op-attrs/ops/noop_attrs.dtg.h",
+  "op-attrs/ops/pool_2d_attrs.dtg.h",
+  "op-attrs/ops/reduce_attrs.dtg.h",
+  "op-attrs/ops/reduction_attrs.dtg.h",
+  "op-attrs/ops/repartition_attrs.dtg.h",
+  "op-attrs/ops/replicate_attrs.dtg.h",
+  "op-attrs/ops/reshape_attrs.dtg.h",
+  "op-attrs/ops/reverse_attrs.dtg.h",
+  "op-attrs/ops/softmax_attrs.dtg.h",
+  "op-attrs/ops/split_attrs.dtg.h",
+  "op-attrs/ops/topk_attrs.dtg.h",
+  "op-attrs/ops/transpose_attrs.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::BatchMatmulAttrs"
+
+[[values]]
+type = "::FlexFlow::BatchNormAttrs"
+
+[[values]]
+type = "::FlexFlow::CastAttrs"
+
+[[values]]
+type = "::FlexFlow::ConcatAttrs"
+
+[[values]]
+type = "::FlexFlow::Conv2DAttrs"
+
+[[values]]
+type = "::FlexFlow::DropoutAttrs"
+
+[[values]]
+type = "::FlexFlow::ElementBinaryAttrs"
+
+[[values]]
+type = "::FlexFlow::ElementUnaryAttrs"
+
+[[values]]
+type = "::FlexFlow::ElementScalarUnaryAttrs"
+
+[[values]]
+type = "::FlexFlow::EmbeddingAttrs"
+
+[[values]]
+type = "::FlexFlow::FlatAttrs"
+
+[[values]]
+type = "::FlexFlow::GatherAttrs"
+
+[[values]]
+type = "::FlexFlow::InputAttrs"
+
+[[values]]
+type = "::FlexFlow::LayerNormAttrs"
+
+[[values]]
+type = "::FlexFlow::LinearAttrs"
+
+[[values]]
+type = "::FlexFlow::MultiHeadAttentionAttrs"
+
+[[values]]
+type = "::FlexFlow::NoopAttrs"
+
+[[values]]
+type = "::FlexFlow::Pool2DAttrs"
+
+[[values]]
+type = "::FlexFlow::ReduceAttrs"
+
+[[values]]
+type = "::FlexFlow::ReverseAttrs"
+
+[[values]]
+type = "::FlexFlow::ReshapeAttrs"
+
+[[values]]
+type = "::FlexFlow::SplitAttrs"
+
+[[values]]
+type = "::FlexFlow::SoftmaxAttrs"
+
+[[values]]
+type = "::FlexFlow::TopKAttrs"
+
+[[values]]
+type = "::FlexFlow::TransposeAttrs"

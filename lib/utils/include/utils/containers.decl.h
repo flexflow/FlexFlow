@@ -16,19 +16,6 @@ struct get_element_type;
 template <typename T>
 using get_element_type_t = typename get_element_type<T>::type;
 
-template <typename InputIt, typename F>
-std::string join_strings(InputIt first,
-                         InputIt last,
-                         std::string const &delimiter,
-                         F const &f);
-
-template <typename InputIt>
-std::string
-    join_strings(InputIt first, InputIt last, std::string const &delimiter);
-
-template <typename Container>
-std::string join_strings(Container const &c, std::string const &delimiter);
-
 template <typename Container>
 typename Container::const_iterator
     find(Container const &c, typename Container::value_type const &e);
@@ -154,6 +141,9 @@ template <typename F,
           typename V = std::invoke_result_t<F, K>>
 bidict<K, V> generate_bidict(C const &c, F const &f);
 
+template <typename E>
+std::optional<E> at_idx(std::vector<E> const &v, size_t idx);
+
 template <typename K, typename V>
 std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m);
 
@@ -207,6 +197,10 @@ void extend(C &lhs, std::optional<E> const &e);
 
 template <typename C, typename F>
 bool all_of(C const &c, F const &f);
+
+template <typename Container, typename Function>
+std::optional<bool> optional_all_of(Container const &,
+                                    Function const &);
 
 template <typename C, typename F>
 int count(C const &c, F const &f);

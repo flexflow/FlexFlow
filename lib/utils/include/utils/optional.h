@@ -27,8 +27,12 @@ T const &assert_unwrap(std::optional<T> const &o) {
 
 namespace fmt {
 
-template <typename T>
-struct formatter<::std::optional<T>> : formatter<std::string> {
+template <typename T, typename Char>
+struct formatter<
+  ::std::optional<T>,
+  Char,
+  std::enable_if_t<!detail::has_format_as<std::optional<T>>::value>
+> : formatter<std::string> {
   template <typename FormatContext>
   auto format(::std::optional<T> const &q, FormatContext &ctx)
       -> decltype(ctx.out()) {

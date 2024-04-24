@@ -1,32 +1,22 @@
 #ifndef _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTIONS_H
 #define _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTIONS_H
 
-#include "graph_pattern_match.h"
-#include "operator_pattern.h"
-#include "parallel_tensor_pattern.h"
-#include "sub_parallel_computation_graph.h"
+#include "substitutions/sub_parallel_computation_graph.dtg.h"
+#include "substitutions/pcg_pattern.dtg.h"
+#include "substitutions/unlabelled/pattern_edge.dtg.h"
+#include "substitutions/unlabelled/pattern_node.dtg.h"
+#include "substitutions/unlabelled/pattern_matching.h"
+#include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
 
 namespace FlexFlow {
 
-struct GraphPattern
-    : public strong_typedef<
-          GraphPattern,
-          OutputLabelledOpenMultiDiGraph<OperatorPattern,
-                                         ParallelTensorPattern>> {
-  using strong_typedef::strong_typedef;
-};
+UnlabelledGraphPattern get_unlabelled_pattern(PCGPattern const &);
 
-GraphSplit split_pattern(OpenMultiDiGraphView const &pattern);
-
-bool is_singleton_pattern(OpenMultiDiGraphView const &);
-
-bool operator_satisfies(Operator const &params, OperatorPattern const &pattern);
-
-bool parallel_tensor_satisfies(ParallelTensor const &params,
-                               ParallelTensorPattern const &pattern);
+TensorAttributePattern get_tensor_pattern(PCGPattern const &, PatternEdge const &);
+OperatorAttributePattern get_operator_pattern(PCGPattern const &, PatternNode const &);
 
 bool assignment_satisfies(SubParallelComputationGraph const &,
-                          GraphPattern const &,
+                          PCGPattern const &,
                           MultiDiGraphPatternMatch const &);
 
 } // namespace FlexFlow

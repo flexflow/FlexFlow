@@ -4,7 +4,7 @@
 #include "utils/fmt.h"
 #include "utils/fp16.h"
 #include <variant>
-#include "op-attrs/datatype_t.h"
+#include "op-attrs/datatype.dtg.h"
 
 namespace FlexFlow {
 
@@ -53,7 +53,7 @@ using DataTypeValue = std::variant<real_type<DataType::FLOAT>,
                                    real_type<DataType::DOUBLE>,
                                    real_type<DataType::INT32>,
                                    real_type<DataType::INT64>,
-                                   real_type<DataType::HALF>,
+                                   /* real_type<DataType::HALF>, */
                                    real_type<DataType::BOOL>>;
 
 size_t size_of(DataType);

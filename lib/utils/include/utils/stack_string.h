@@ -7,6 +7,7 @@
 #include "utils/type_traits.h"
 #include <cstring>
 #include <string>
+#include "utils/json.h"
 
 namespace FlexFlow {
 
@@ -63,6 +64,20 @@ private:
 
 template <size_t MAXSIZE>
 using stack_string = stack_basic_string<char, MAXSIZE>;
+
+template <std::size_t MAXSIZE>
+void to_json(json &j, stack_string<MAXSIZE> const &v) {
+  std::string as_string = v;
+  j = as_string;
+}
+
+template <std::size_t MAXSIZE>
+void from_json(json const &j, stack_string<MAXSIZE> &v) {
+  std::string as_string;
+  j.get_to(as_string);
+  v = stack_string<MAXSIZE>{as_string};
+}
+
 
 } // namespace FlexFlow
 

@@ -1,0 +1,26 @@
+namespace = "FlexFlow"
+name = "LayerAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/operator_attrs.h",
+  "utils/stack_string.h",
+  "<optional>",
+  "utils/json.h"
+]
+
+[[fields]]
+name = "attrs"
+type = "::FlexFlow::CompGraphOperatorAttrs"
+
+[[fields]]
+name = "name"
+type = "std::optional<::FlexFlow::stack_string<MAX_OPNAME>>"
+
