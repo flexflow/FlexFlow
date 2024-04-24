@@ -723,9 +723,15 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
 
     // 2. Put the information of the committed tokens into
     // TreeVerifyBatchConfig.committed_tokens.
+    // Note here, we shouldn't put the last token in request.committed_tokens
+    // into new_bc. Because the LLM don't have that token's KV cache.
     std::vector<Request::CommittedToken> &committed_tokens =
         request.committed_tokens;
-    for (auto const &committed_token : committed_tokens) {
+    for (int committed_token_index = 0;
+         committed_token_index < committed_tokens.size() - 1;
+         committed_token_index++) {
+      Request::CommittedToken &committed_token =
+          committed_tokens.at(committed_token_index);
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
           request_index;
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
