@@ -387,7 +387,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
   std::lock_guard<std::mutex> const lock(rm_state_mutex);
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
-    if guid_of_requests[i] == INVALID_GUID {
+    if (guid_of_requests[i] == INVALID_GUID) {
       continue;
     }
     Request &request = all_requests[guid_of_requests[i]];
@@ -417,7 +417,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 BatchConfig RequestManager::prepare_next_batch() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
-  swicth (request_manager_status) {
+  switch (request_manager_status) {
     case PREFILLING:
       return prepare_prefilling_batch();
     case DECODING:

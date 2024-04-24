@@ -278,6 +278,8 @@ public:
   BatchConfig get_next_batch_config(InferenceResult const &result);
   void update_inference_results(InferenceResult const &result);
   BatchConfig prepare_next_batch();
+  BatchConfig prepare_prefilling_batch();
+  BatchConfig prepare_decoding_batch();
 
   int get_num_active_requests();
   int get_empty_request_index();
