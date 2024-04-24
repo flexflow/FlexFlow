@@ -277,16 +277,6 @@ void LLAMA::create_llama_model(FFModel &ff,
 
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->register_model_weights_loader(&ff, fileloader);
-#ifdef DEADCODE
-  // Compile the model
-  std::cout << "------start compile ----------" << std::endl;
-  im->compile_model_and_allocate_buffer(&ff);
-  fileloader.load_weights(&ff);
-  std::cout << "------load weight finished----------" << std::endl;
-
-  // init operators
-  im->init_operators_inference(&ff);
-#endif
 }
 
 }; // namespace FlexFlow

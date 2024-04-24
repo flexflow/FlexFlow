@@ -1,25 +1,8 @@
 name: "gpu-ci"
 on:
-  pull_request:
-    paths:
-      - "cmake/**"
-      - "config/**"
-      - "deps/**"
-      - "python/**"
-      - "setup.py"
-      - "include/**"
-      - "inference/**"
-      - "src/**"
-      - "tests/inference/**"
-      - "conda/flexflow.yml"
-      - ".github/workflows/gpu-ci.yml"
-      - "tests/cpp_gpu_tests.sh"
-      - "tests/inference_tests.sh"
-      - "tests/training_tests.sh"
-      - "tests/python_interface_test.sh"
   push:
     branches:
-      - "master"
+      - "inference"
     paths:
       - "cmake/**"
       - "config/**"
@@ -194,7 +177,7 @@ jobs:
       
       - name: Save inference output as an artifact
         if: always()
-        run: | 
+        run: |
           cd inference
           tar -zcvf output.tar.gz ./output
 
