@@ -768,7 +768,7 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   return new_bc;
 }
 
-void RequestManager::update_llm_verify_results(
+bool RequestManager::update_llm_verify_results(
     InferenceResult const &llm_verify_result) {
   // TODO: Implement this function
   // We may have two types of InferenceResults, one is the results from
@@ -778,14 +778,14 @@ void RequestManager::update_llm_verify_results(
   // 1. Compare the results returned from the LLM and compare them with the
   // SSM's speculative token tree. For the greedy construction of the
   // speculative token tree, we can simply compare LLM's sample result at each
-  // token, while for the sampling construction of the speculative token tree,
-  // we need to implement a CPU based verify function.
-  // 2. Store the committed tokens to Request.llm_committed_tokens and
-  // Request.ssm_committed_tokens.
+  // token, this is implemented in get_verify_results_greedy(). For the
+  // sampling construction of the speculative token tree, we need to implement a
+  // CPU based verify function.
+  // 2. Store the committed tokens to Request.committed_tokens.
   // 3. Store the verified tokens to Request.tokens.
-  // 4. Some requests may be completed after appending the verified tokens,
-  // maintain the complete requests, and start a prefilling iteration.
-  // 5. For requests not completed, update their causal mask.
+  // 4. For requests not completed, update their causal mask.
+  // 5. Some requests may be completed after appending the verified tokens. If
+  // there is a request completed, return true.
 }
 
 bool RequestManager::update_ssm_inference_results(
@@ -1007,7 +1007,7 @@ void RequestManager::append_bitmask(RequestGuid guid) {
 BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
   // This method creates a new bitmask for LLM verification model's bitmask,
   // it does not modify the small model's bitmask This method is called by
-  // prepare_verify_batch_config
+  // prepare_verify_batch_config()
   // TODO: implement this function
   // 1. Create the bitmask based on the pruned request token tree
   // 2. Maintain all other fields
@@ -1178,7 +1178,7 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 }
 // TO BE REMOVED: END
 
-void RequestManager::get_verify_results(
+void RequestManager::get_verify_results_greedy(
     InferenceResult const &llm_verify_result) {
   // This function maintain the generated token list of the request and the
   // committed tokens.
