@@ -778,14 +778,14 @@ bool RequestManager::update_llm_verify_results(
   // 1. Compare the results returned from the LLM and compare them with the
   // SSM's speculative token tree. For the greedy construction of the
   // speculative token tree, we can simply compare LLM's sample result at each
-  // token, this is implemented in get_verify_results_greedy(). For the
-  // sampling construction of the speculative token tree, we need to implement a
-  // CPU based verify function.
-  // 2. Store the committed tokens to Request.committed_tokens.
-  // 3. Store the verified tokens to Request.tokens.
-  // 4. For requests not completed, update their causal mask.
-  // 5. Some requests may be completed after appending the verified tokens. If
+  // token, this is implemented in get_verify_results_greedy(). This function
+  // stores the commmitted tokens into the corresponding fields in the Request.
+  // For the sampling construction of the speculative token tree, we need to
+  // implement a CPU based verify function.
+  // 2. For requests not completed, update their causal mask.
+  // 3. Some requests may be completed after appending the verified tokens. If
   // there is a request completed, return true.
+  get_verify_results_greedy(llm_verify_result);
 }
 
 bool RequestManager::update_ssm_inference_results(
@@ -1180,6 +1180,7 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 
 void RequestManager::get_verify_results_greedy(
     InferenceResult const &llm_verify_result) {
+  int llm_result_offset = 0;
   // This function maintain the generated token list of the request and the
   // committed tokens.
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
@@ -1192,41 +1193,86 @@ void RequestManager::get_verify_results_greedy(
     assert(request.status == Request::RUNNING);
     request.committed_tokens.clear();
 
-    // Traverse the speculative token tree and it with the LLM's sampling output
-    int llm_result_index = 0;
-    int verified_parent_pos = -1;
-    int committed_token_index = 0;
+    int committed_token_index = request.tokens.size();
+
     TokenTree &token_tree = request.speculative_token_trees[0];
-    for (auto const &tree_layer : token_tree.tree_layers) {
+    // First add the root to the committed tokens
+    request.committed_tokens.push_back(Request::CommittedToken(
+        llm_result_offset,
+        committed_token_index,
+        llm_verify_result.token_ids[llm_result_offset]));
+    committed_token_index++;
+    // The position of the last accepted token in its tree layer
+    int last_accepted_token_layer_index = 0;
+    // The index of the last accepted token in the entire tree (excluding the
+    // pruned tokens)
+    int last_accepted_token_index = 0;
+
+    int current_token_index = 1; // Because we skip the root
+    int num_layers = token_tree.tree_layers.size();
+    for (int layer_index = 1; layer_index < num_layers; layer_index++) {
+      // We skip the first layer
+      std::list<std::shared_ptr<TokenTreeNode>> &tree_layer =
+          token_tree.tree_layers.at(layer_index);
+
       bool token_accepted_this_layer = false;
-      int current_layer_index = 0;
+      int current_token_layer_index = 0;
+
       for (auto const &node_ptr : tree_layer) {
         if (node_ptr->pruned) {
           continue;
         }
-        if (node_ptr->parent_pos != verified_parent_pos) {
-          llm_result_index++;
-          current_layer_index++;
-          continue;
-        } else if (token_accepted_this_layer) {
-          // A token is already accepted in the current layer
-          llm_result_index++;
-          current_layer_index++;
+        if ((node_ptr->parent_pos != last_accepted_token_layer_index) ||
+            token_accepted_this_layer) {
+          // The token's parent is not accepted, or there is already another
+          // token accepted in this layer
+          current_token_index++;
+          current_token_layer_index++;
           continue;
         } else {
-          if (node_ptr->id == llm_verify_result.token_ids[llm_result_index]) {
+          // The token's parent is accepted, and no token has been accepted in
+          // this layer yet
+          if (node_ptr->id ==
+              llm_verify_result
+                  .token_ids[llm_result_offset + last_accepted_token_index]) {
+            // The token's parent is accepted, and this token's id equals the
+            // llm's sample at its parent's position. We accept this token.
+
+            // from_index: the index of the token in the tree
+            // to_index: the committed token index in the request
             request.committed_tokens.push_back(Request::CommittedToken(
-                llm_result_index, committed_token_index, node_ptr->id));
+                current_token_index, committed_token_index, node_ptr->id));
             request.tokens.push_back(node_ptr->id);
+
             token_accepted_this_layer = true;
-            verified_parent_pos = current_layer_index;
+            last_accepted_token_index = current_token_index;
+            last_accepted_token_layer_index = current_token_layer_index;
             committed_token_index++;
+            current_token_index++;
+            current_token_layer_index++;
           }
-          llm_result_index++;
-          current_layer_index++;
         }
       }
+      if (!token_accepted_this_layer) {
+        // No token is accepted in this layer, we should stop the traversal
+        // However, we have to add the last sampled token as a correction from
+        // the LLM
+
+        // from_index: since this token is not in the token tree, neither the
+        // ssm nor the llm have its KV cache, so the from_index should be a
+        // place holder, which is -1
+        request.committed_tokens.push_back(Request::CommittedToken(
+            -1,
+            committed_token_index,
+            llm_verify_result
+                .token_ids[llm_result_offset + last_accepted_token_index]));
+        request.tokens.push_back(
+            llm_verify_result
+                .token_ids[llm_result_offset + last_accepted_token_index]);
+        break;
+      }
     }
+    llm_result_offset += token_tree.tree_size;
   }
 }
 
