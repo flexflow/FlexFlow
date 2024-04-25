@@ -205,11 +205,6 @@ public:
                           int eos_token_id,
                           std::string const &path);
   void register_output_filepath(std::string const &);
-  void init_bitmask_prompt(RequestGuid guid, int prompt_length);
-  void append_bitmask(RequestGuid guid);
-  void update_bitmask_prompt(RequestGuid guid, int num_committed_tokens);
-  void init_bitmask_spec(RequestGuid guid, int num_committed_tokens);
-  BatchConfig::BitMask create_llm_bitmask(RequestGuid guid);
 
   FFModel *get_ssm_model(int model_id);
 
@@ -228,12 +223,6 @@ public:
   // Methods to check and mark request completion
   bool is_request_completed(RequestGuid const &guid);
   void trigger_request_completion_future(RequestGuid const &guid);
-  std::vector<std::pair<BatchConfig::TokenId, int>> traverse_verify_tree(
-      size_t guid,
-      std::vector<std::pair<BatchConfig::TokenId, int>> const
-          &inputSerializedTree,
-      std::vector<std::pair<BatchConfig::TokenId, int>> const
-          &outputSerializedTree);
   static void background_serving_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
@@ -260,7 +249,6 @@ public:
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
-
   // API for rm state machine
   BatchConfigFuture get_next_batch_config(InferenceResultFuture const &result,
                                           Legion::Context ctx,
@@ -344,7 +332,10 @@ private:
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;
 
-  /* ---------- New Helper Functions ---------- */
+  /* ---------- Spec Decoding Helper Functions ---------- */
+  bool update_llm_verify_results(InferenceResult const &llm_verify_result);
+  bool update_ssm_inference_results(
+      SsmInferenceResult const &ssm_inference_result);
   // Prepare the next speculation batch config. This function is called before
   // the second step of the speculation.
   TreeSearchBatchConfig prepare_next_spec_batch_config();
@@ -355,13 +346,18 @@ private:
   // cache of the small model.
   TreeSearchBatchConfig prepare_first_spec_batch_config();
   TreeVerifyBatchConfig prepare_verify_batch_config();
-  bool update_llm_verify_results(InferenceResult const &llm_verify_result);
-  bool update_ssm_inference_results(
-      SsmInferenceResult const &ssm_inference_result);
-  void get_verify_results_greedy(InferenceResult const &llm_verify_result);
-  /* ---------- New Helper Functions ---------- */
 
-  // Helper functions related to token trees
+  // LLM result verification
+  void get_verify_results_greedy(InferenceResult const &llm_verify_result);
+
+  // Bitmask related
+  void init_bitmask_prompt(RequestGuid guid, int prompt_length);
+  void append_bitmask(RequestGuid guid);
+  void update_bitmask_prompt(RequestGuid guid, int num_committed_tokens);
+  void init_bitmask_spec(RequestGuid guid, int num_committed_tokens);
+  BatchConfig::BitMask create_llm_bitmask(RequestGuid guid);
+
+  // Token tree related
   void init_token_tree(RequestGuid guid);
   void add_root_to_spec_token_tree(RequestGuid guid,
                                    BatchConfig::TokenId token_id);
@@ -370,6 +366,7 @@ private:
                                     int parent_pos,
                                     float joint_prob);
   void prune_last_layer_of_spec_token_tree(RequestGuid guid);
+  /* ---------- Spec Decoding Helper Functions ---------- */
 };
 
 }; // namespace FlexFlow
