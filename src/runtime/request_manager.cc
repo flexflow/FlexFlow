@@ -788,8 +788,11 @@ bool RequestManager::update_llm_verify_results(
   // stores the commmitted tokens into the corresponding fields in the Request.
   // For the sampling construction of the speculative token tree, we need to
   // implement a CPU based verify function.
-  // 2. For requests not completed, update their causal mask.
-  // 3. Some requests may be completed after appending the verified tokens. If
+  // 2. Call add_root_token_to_spec_token_tree() to add the root token to the
+  // requests' speculative token tree. The root token is the last committed
+  // token.
+  // 3. For requests not completed, update their causal mask.
+  // 4. Some requests may be completed after appending the verified tokens. If
   // there is a request completed, return true.
   get_verify_results_greedy(llm_verify_result);
 }
