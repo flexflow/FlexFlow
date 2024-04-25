@@ -600,8 +600,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                       tokens_per_request.data(),
                       sizeof(int) * beam_num_blocks,
                       hipMemcpyHostToDevice));
-  // int depth =
-  //     bc->beamRequestsInfo[bc->tokensInfo[0].request_index].current_depth;
+
   beam_topk_forward_kernel<<<beam_num_blocks, num_shards, 0, stream>>>(
       input_ptr,
       shared_memory_size,

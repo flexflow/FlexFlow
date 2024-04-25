@@ -857,7 +857,6 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
       m->hidden_size);
 
   dim3 grid(m->num_q_heads, bc->num_active_requests());
-  bool const prompt_phase = (bc->current_phase == BatchConfig::ExecutionPhase::PROMPT);
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
   // 0->qk production size, 1->total shared size
@@ -865,11 +864,11 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
   if (per_head_size == 64) {
     constexpr int THREADS_PER_VALUE_64 = threads_per_value_t<DT, 64>::value;
     LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(
-        DT, 64, 64, 4, THREADS_PER_VALUE_64, 128, stream, prompt_phase);
+        DT, 64, 64, 4, THREADS_PER_VALUE_64, 128, stream, bc->prompt_phase);
   } else if (per_head_size == 128) {
     constexpr int THREADS_PER_VALUE_128 = threads_per_value_t<DT, 128>::value;
     LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(
-        DT, 128, 128, 4, THREADS_PER_VALUE_128, 128, stream, prompt_phase);
+        DT, 128, 128, 4, THREADS_PER_VALUE_128, 128, stream, bc->prompt_phase);
   } else {
     assert(false && "a unsupported head size");
   }

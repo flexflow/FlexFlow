@@ -837,14 +837,14 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      stream);
   update_kv_cache_kernel<DT>(m, bc, stream);
 
-  if (bc->current_phase == BatchConfig::ExecutionPhase::GENERATION) {
-    // phase 3: Compute attention score for generation tokens
-    compute_attention_kernel_generation<DT>(
-        m, bc, static_cast<DT *>(m->attn_heads), stream);
-  } else if (bc->current_phase == BatchConfig::ExecutionPhase::PROMPT) {
+  if (bc->prompt_phase) {
     // phase 3: Compute attention score for prompt tokens;
     compute_attention_kernel_prompt(
         m, bc, shard_id, bias_ptr, weight_ptr, stream);
+  } else {
+    // phase 3: Compute attention score for generation tokens
+    compute_attention_kernel_generation<DT>(
+        m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
 
   // compute output production and bias together for all tokens

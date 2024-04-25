@@ -329,7 +329,6 @@ __global__ void spec_inc_store_kv_cache(
     int vProjSize,
     int num_tokens,
     int max_seq_len,
-    bool is_root,
     int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
     int token_idx = i / (hidden_size);
@@ -372,7 +371,6 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                             TreeSearchBatchConfig const *bc,
                             cudaStream_t stream) {
   int num_tokens = bc->num_active_tokens();
-  int curr_depth = bc->current_depth;
   if (num_tokens > 0) {
     int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_tokens;
     spec_inc_store_kv_cache<<<GET_BLOCKS(parallelism),
@@ -391,7 +389,6 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
         num_tokens,
         BatchConfig::max_sequence_length() +
             BatchConfig::max_spec_tree_token_num(),
-        /*root*/ curr_depth == 0,
         m->hidden_size);
   }
 }
@@ -731,12 +728,12 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-  if (bc->current_phase == BatchConfig::ExecutionPhase::GENERATION) {
-    compute_spec_inc_attention_kernel_generation<DT>(
-        m, bc, static_cast<DT *>(m->attn_heads), stream);
-  } else if (bc->current_phase == BatchConfig::ExecutionPhase::PROMPT) {
+  if (bc->prompt_phase) {
     compute_attention_kernel_prompt(
         m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
+  } else {
+    compute_spec_inc_attention_kernel_generation<DT>(
+        m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
 
   // compute output production and bias together for all tokens

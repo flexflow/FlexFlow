@@ -641,8 +641,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                             sizeof(int) * beam_num_blocks,
                             cudaMemcpyHostToDevice,
                             stream));
-  // int depth =
-  //     bc->beamRequestsInfo[bc->tokensInfo[0].request_index].current_depth;
+
   beam_num_blocks = bc->num_active_tokens();
   beam_topk_forward_kernel<<<beam_num_blocks, num_shards, 0, stream>>>(
       input_ptr,
