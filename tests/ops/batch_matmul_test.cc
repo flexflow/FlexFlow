@@ -5,7 +5,7 @@
 #include <iostream>
 #include <sstream>
 using namespace Legion;
-LegionRuntime::Logger::Category log_app("bmm_test");
+Legion::Logger log_app("bmm_test");
 
 struct BMMTestMeta {
   int m, k, n, d;

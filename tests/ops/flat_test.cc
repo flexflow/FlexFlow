@@ -7,7 +7,7 @@
 #include <sstream>
 
 using namespace Legion;
-LegionRuntime::Logger::Category log_app("Flat_test");
+Legion::Logger log_app("Flat_test");
 
 struct FlatTestMeta {
   int i_dim, o_dim;

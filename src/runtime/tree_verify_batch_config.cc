@@ -21,7 +21,7 @@
 
 namespace FlexFlow {
 
-LegionRuntime::Logger::Category log_tree_bc("TreeVerifyBatchConfig");
+Legion::Logger log_tree_bc("TreeVerifyBatchConfig");
 
 TreeVerifyBatchConfig::TreeVerifyBatchConfig() : BatchConfig() {}
 

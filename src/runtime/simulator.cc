@@ -31,10 +31,10 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_sim("sim");
-LegionRuntime::Logger::Category log_ps_sim("ps_sim");
-LegionRuntime::Logger::Category log_xfer_sim("xfer_sim");
-LegionRuntime::Logger::Category log_xfer_est("xfer_est");
+Legion::Logger log_sim("sim");
+Legion::Logger log_ps_sim("ps_sim");
+Legion::Logger log_xfer_sim("xfer_sim");
+Legion::Logger log_xfer_est("xfer_est");
 
 // template class std::map<const Op*, ParallelConfig>; // for debugging in gdb
 // template class std::map<const Op*, MachineView>; // for debugging in gdb

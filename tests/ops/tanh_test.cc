@@ -6,7 +6,7 @@
 #include <sstream>
 #define PRECISION 16
 using namespace Legion;
-LegionRuntime::Logger::Category log_app("Tanh_test");
+Legion::Logger log_app("Tanh_test");
 
 struct TanhTestMeta {
   int i_dim, o_dim;
