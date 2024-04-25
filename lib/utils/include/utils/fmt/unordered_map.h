@@ -17,11 +17,12 @@ struct formatter<
   template <typename FormatContext>
   auto format(::std::unordered_map<K, V> const &m, FormatContext &ctx)
       -> decltype(ctx.out()) {
-  CHECK_FMTABLE(K);
-  CHECK_FMTABLE(V);
+  /* CHECK_FMTABLE(K); */
+  /* CHECK_FMTABLE(V); */
 
-    std::string result = ::FlexFlow::join_strings(
-        m.cbegin(), m.cend(), ", ", [](std::pair<K, V> const &p) { return fmt::to_string(p); });
+  /*   std::string result = ::FlexFlow::join_strings( */
+  /*       m.cbegin(), m.cend(), ", ", [](std::pair<K, V> const &p) { return fmt::to_string(p); }); */
+  std::string result = "";
   return formatter<std::string>::format(result, ctx);
   }
 };

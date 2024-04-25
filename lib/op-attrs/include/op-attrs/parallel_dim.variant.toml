@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "ParallelDim"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/shard_parallel_dim.dtg.h",
+  "op-attrs/replica_parallel_dim.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::ShardParallelDim"
+key = "shard_dim"
+
+[[values]]
+type = "::FlexFlow::ReplicaParallelDim"
+key = "replica_dim" 

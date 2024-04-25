@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/parallel_attention_inputs.struct.toml
 /* proj-data
 {
-  "generated_from": "722d92014b31bffcd5ad45eda476d8b3"
+  "generated_from": "8d1e2a2d3852bfb59d8668d14d52c958"
 }
 */
 
@@ -27,10 +27,6 @@ struct ParallelMultiHeadAttentionInputs {
 
   bool operator==(ParallelMultiHeadAttentionInputs const &) const;
   bool operator!=(ParallelMultiHeadAttentionInputs const &) const;
-  bool operator<(ParallelMultiHeadAttentionInputs const &) const;
-  bool operator>(ParallelMultiHeadAttentionInputs const &) const;
-  bool operator<=(ParallelMultiHeadAttentionInputs const &) const;
-  bool operator>=(ParallelMultiHeadAttentionInputs const &) const;
   ::FlexFlow::ParallelTensorShape query;
   ::FlexFlow::ParallelTensorShape key;
   ::FlexFlow::ParallelTensorShape value;

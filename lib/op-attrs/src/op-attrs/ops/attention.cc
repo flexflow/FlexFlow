@@ -81,9 +81,10 @@ ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
                                      ParallelTensorShape const &query_shape,
                                      ParallelTensorShape const &key_shape,
                                      ParallelTensorShape const &value_shape) {
-  ParallelTensorShape output_shape = query_shape;
-  dim_at_idx(output_shape, ff_dim_t(num_dims(output_shape) - 1)).size = attrs.embed_dim;
-  return output_shape;
+  NOT_IMPLEMENTED();
+  /* ParallelTensorShape output_shape = query_shape; */
+  /* dim_at_idx(output_shape, ff_dim_t(num_dims(output_shape) - 1)).size = attrs.embed_dim; */
+  /* return output_shape; */
 }
 
 TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,

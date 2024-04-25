@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/parallel_attention_inputs.struct.toml
 /* proj-data
 {
-  "generated_from": "722d92014b31bffcd5ad45eda476d8b3"
+  "generated_from": "8d1e2a2d3852bfb59d8668d14d52c958"
 }
 */
 
@@ -26,26 +26,6 @@ bool ParallelMultiHeadAttentionInputs::operator==(
 bool ParallelMultiHeadAttentionInputs::operator!=(
     ParallelMultiHeadAttentionInputs const &other) const {
   return std::tie(this->query, this->key, this->value) !=
-         std::tie(other.query, other.key, other.value);
-}
-bool ParallelMultiHeadAttentionInputs::operator<(
-    ParallelMultiHeadAttentionInputs const &other) const {
-  return std::tie(this->query, this->key, this->value) <
-         std::tie(other.query, other.key, other.value);
-}
-bool ParallelMultiHeadAttentionInputs::operator>(
-    ParallelMultiHeadAttentionInputs const &other) const {
-  return std::tie(this->query, this->key, this->value) >
-         std::tie(other.query, other.key, other.value);
-}
-bool ParallelMultiHeadAttentionInputs::operator<=(
-    ParallelMultiHeadAttentionInputs const &other) const {
-  return std::tie(this->query, this->key, this->value) <=
-         std::tie(other.query, other.key, other.value);
-}
-bool ParallelMultiHeadAttentionInputs::operator>=(
-    ParallelMultiHeadAttentionInputs const &other) const {
-  return std::tie(this->query, this->key, this->value) >=
          std::tie(other.query, other.key, other.value);
 }
 } // namespace FlexFlow

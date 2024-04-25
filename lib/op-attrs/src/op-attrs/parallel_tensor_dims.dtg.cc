@@ -3,37 +3,32 @@
 // lib/op-attrs/include/op-attrs/parallel_tensor_dims.struct.toml
 /* proj-data
 {
-  "generated_from": "b46ffa08758bdcc57a75183255248ca6"
+  "generated_from": "141639bdce009a1594501f33c2f25c9e"
 }
 */
 
 #include "op-attrs/parallel_tensor_dims.dtg.h"
 
 #include "op-attrs/dim_ordered.h"
-#include "op-attrs/parallel_dim.h"
+#include "op-attrs/replica_parallel_dim_set.dtg.h"
+#include "op-attrs/shard_parallel_dim.dtg.h"
+#include "utils/fmt/pair.h"
+#include "utils/fmt/unordered_map.h"
 #include <sstream>
+#include <unordered_map>
 
 namespace FlexFlow {
 ParallelTensorDims::ParallelTensorDims(
-    ::FlexFlow::FFOrdered<::FlexFlow::ParallelDim> const &ff_ordered)
-    : ff_ordered(ff_ordered) {}
+    ::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim> const &shard_dims,
+    ::FlexFlow::ReplicaParallelDimSet const &replica_dims)
+    : shard_dims(shard_dims), replica_dims(replica_dims) {}
 bool ParallelTensorDims::operator==(ParallelTensorDims const &other) const {
-  return std::tie(this->ff_ordered) == std::tie(other.ff_ordered);
+  return std::tie(this->shard_dims, this->replica_dims) ==
+         std::tie(other.shard_dims, other.replica_dims);
 }
 bool ParallelTensorDims::operator!=(ParallelTensorDims const &other) const {
-  return std::tie(this->ff_ordered) != std::tie(other.ff_ordered);
-}
-bool ParallelTensorDims::operator<(ParallelTensorDims const &other) const {
-  return std::tie(this->ff_ordered) < std::tie(other.ff_ordered);
-}
-bool ParallelTensorDims::operator>(ParallelTensorDims const &other) const {
-  return std::tie(this->ff_ordered) > std::tie(other.ff_ordered);
-}
-bool ParallelTensorDims::operator<=(ParallelTensorDims const &other) const {
-  return std::tie(this->ff_ordered) <= std::tie(other.ff_ordered);
-}
-bool ParallelTensorDims::operator>=(ParallelTensorDims const &other) const {
-  return std::tie(this->ff_ordered) >= std::tie(other.ff_ordered);
+  return std::tie(this->shard_dims, this->replica_dims) !=
+         std::tie(other.shard_dims, other.replica_dims);
 }
 } // namespace FlexFlow
 
@@ -41,8 +36,10 @@ namespace std {
 size_t hash<FlexFlow::ParallelTensorDims>::operator()(
     FlexFlow::ParallelTensorDims const &x) const {
   size_t result = 0;
-  result ^= std::hash<::FlexFlow::FFOrdered<::FlexFlow::ParallelDim>>{}(
-                x.ff_ordered) +
+  result ^= std::hash<::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim>>{}(
+                x.shard_dims) +
+            0x9e3779b9 + (result << 6) + (result >> 2);
+  result ^= std::hash<::FlexFlow::ReplicaParallelDimSet>{}(x.replica_dims) +
             0x9e3779b9 + (result << 6) + (result >> 2);
   return result;
 }
@@ -51,13 +48,16 @@ size_t hash<FlexFlow::ParallelTensorDims>::operator()(
 namespace nlohmann {
 FlexFlow::ParallelTensorDims
     adl_serializer<FlexFlow::ParallelTensorDims>::from_json(json const &j) {
-  return {j.at("ff_ordered")
-              .template get<::FlexFlow::FFOrdered<::FlexFlow::ParallelDim>>()};
+  return {
+      j.at("shard_dims")
+          .template get<::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim>>(),
+      j.at("replica_dims").template get<::FlexFlow::ReplicaParallelDimSet>()};
 }
 void adl_serializer<FlexFlow::ParallelTensorDims>::to_json(
     json &j, FlexFlow::ParallelTensorDims const &v) {
   j["__type"] = "ParallelTensorDims";
-  j["ff_ordered"] = v.ff_ordered;
+  j["shard_dims"] = v.shard_dims;
+  j["replica_dims"] = v.replica_dims;
 }
 } // namespace nlohmann
 
@@ -65,7 +65,8 @@ namespace FlexFlow {
 std::string format_as(ParallelTensorDims const &x) {
   std::ostringstream oss;
   oss << "<ParallelTensorDims";
-  oss << " ff_ordered=" << x.ff_ordered;
+  oss << " shard_dims=" << x.shard_dims;
+  oss << " replica_dims=" << x.replica_dims;
   oss << ">";
   return oss.str();
 }

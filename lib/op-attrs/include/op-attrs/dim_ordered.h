@@ -126,7 +126,6 @@ struct DimOrdered {
   }
 
   friend struct ::std::hash<DimOrdered>;
-
 private:
   stack_vector<T, MAX_TENSOR_DIM> contents;
 };
@@ -134,7 +133,16 @@ private:
 template <typename T>
 using FFOrdered = DimOrdered<ff_dim_t, T>;
 
-/* CHECK_JSONABLE(FFOrdered<int>); */
+template <typename T>
+std::string format_as(FFOrdered<T> const &v) {
+  std::vector<T> as_vec(v.cbegin(), v.cend());
+  return fmt::format("<ff_ordered {}>", as_vec);
+}
+
+template <typename T>
+std::ostream &operator<<(std::ostream &s, FFOrdered<T> const &v) {
+  return (s << fmt::to_string(v));
+}
 
 template <typename T>
 auto inner_to_outer(FFOrdered<T> const &ff_ordered)

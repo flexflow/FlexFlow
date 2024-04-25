@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "ParallelDim"
+name = "ShardParallelDim"
 features = [
   "eq",
   "ord",
@@ -16,7 +16,3 @@ type = "size_t"
 [[fields]]
 name = "degree"
 type = "int"
-
-[[fields]]
-name = "is_replica_dim"
-type = "bool"

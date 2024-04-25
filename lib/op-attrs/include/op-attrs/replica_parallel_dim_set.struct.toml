@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "ReplicaParallelDimSet"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "sum_degree"
+type = "int"
+
+[[fields]]
+name = "discard_copy_degree"
+type = "int"

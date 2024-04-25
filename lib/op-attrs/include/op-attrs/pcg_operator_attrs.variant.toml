@@ -14,7 +14,6 @@ includes = [
   "op-attrs/ops/batch_norm_attrs.dtg.h", 
   "op-attrs/ops/cast_attrs.dtg.h", 
   "op-attrs/ops/combine_attrs.dtg.h", 
-  "op-attrs/ops/combine_attrs.dtg.h", 
   "op-attrs/ops/concat_attrs.dtg.h", 
   "op-attrs/ops/conv_2d_attrs.dtg.h",
   "op-attrs/ops/dropout_attrs.dtg.h",
@@ -43,75 +42,116 @@ includes = [
 
 [[values]]
 type = "::FlexFlow::BatchMatmulAttrs"
+key = "batch_matmul"
 
 [[values]]
 type = "::FlexFlow::BatchNormAttrs"
+key = "batch_norm"
 
 [[values]]
 type = "::FlexFlow::CastAttrs"
+key = "cast"
+
+[[values]]
+type = "::FlexFlow::CombineAttrs"
+key = "combine_distributed"
 
 [[values]]
 type = "::FlexFlow::ConcatAttrs"
+key = "concat"
 
 [[values]]
 type = "::FlexFlow::Conv2DAttrs"
+key = "conv2d"
 
 [[values]]
 type = "::FlexFlow::DropoutAttrs"
+key = "dropout"
 
 [[values]]
 type = "::FlexFlow::ElementBinaryAttrs"
+key = "element_binary"
 
 [[values]]
 type = "::FlexFlow::ElementUnaryAttrs"
+key = "element_unary"
 
 [[values]]
 type = "::FlexFlow::ElementScalarUnaryAttrs"
+key = "element_scalar_unary"
 
 [[values]]
 type = "::FlexFlow::EmbeddingAttrs"
+key = "embedding"
 
 [[values]]
 type = "::FlexFlow::FlatAttrs"
+key = "flat"
 
 [[values]]
 type = "::FlexFlow::GatherAttrs"
+key = "gather"
 
 [[values]]
 type = "::FlexFlow::InputAttrs"
+key = "input"
 
 [[values]]
 type = "::FlexFlow::LayerNormAttrs"
+key = "layer_norm"
 
 [[values]]
 type = "::FlexFlow::LinearAttrs"
+key = "linear"
 
 [[values]]
 type = "::FlexFlow::MultiHeadAttentionAttrs"
+key = "multi_head_attention"
 
 [[values]]
 type = "::FlexFlow::NoopAttrs"
+key = "noop"
 
 [[values]]
 type = "::FlexFlow::Pool2DAttrs"
+key = "pool2d"
 
 [[values]]
 type = "::FlexFlow::ReduceAttrs"
+key = "reduce"
+
+[[values]]
+type = "::FlexFlow::ReductionAttrs"
+key = "reduce_distributed"
+
+[[values]]
+type = "::FlexFlow::RepartitionAttrs"
+key = "partition_distributed"
+
+[[values]]
+type = "::FlexFlow::ReplicateAttrs"
+key = "replicate_distributed"
 
 [[values]]
 type = "::FlexFlow::ReverseAttrs"
+key = "reverse"
 
 [[values]]
 type = "::FlexFlow::ReshapeAttrs"
+key = "reshape"
 
 [[values]]
 type = "::FlexFlow::SplitAttrs"
+key = "split"
 
 [[values]]
 type = "::FlexFlow::SoftmaxAttrs"
+key = "softmax"
 
 [[values]]
 type = "::FlexFlow::TopKAttrs"
+key = "topk"
 
 [[values]]
 type = "::FlexFlow::TransposeAttrs"
+key = "transpose"

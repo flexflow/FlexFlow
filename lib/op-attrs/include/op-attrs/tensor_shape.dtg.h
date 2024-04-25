@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/tensor_shape.struct.toml
 /* proj-data
 {
-  "generated_from": "c02c9d2331d864a25c1443cfe70062d1"
+  "generated_from": "52968754cf94f415c366d228c87042db"
 }
 */
 
@@ -12,8 +12,8 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
-#include "op-attrs/datatype.h"
-#include "op-attrs/tensor_dims.h"
+#include "op-attrs/datatype.dtg.h"
+#include "op-attrs/tensor_dims.dtg.h"
 #include <functional>
 #include <ostream>
 #include <tuple>

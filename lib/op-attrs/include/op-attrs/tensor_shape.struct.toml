@@ -10,8 +10,8 @@ features = [
 ]
 
 includes = [
-  "op-attrs/tensor_dims.h",
-  "op-attrs/datatype.h",
+  "op-attrs/tensor_dims.dtg.h",
+  "op-attrs/datatype.dtg.h",
 ]
 
 [[fields]]

@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/parallel_tensor_dims.struct.toml
 /* proj-data
 {
-  "generated_from": "b46ffa08758bdcc57a75183255248ca6"
+  "generated_from": "141639bdce009a1594501f33c2f25c9e"
 }
 */
 
@@ -13,24 +13,26 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/dim_ordered.h"
-#include "op-attrs/parallel_dim.h"
+#include "op-attrs/replica_parallel_dim_set.dtg.h"
+#include "op-attrs/shard_parallel_dim.dtg.h"
+#include "utils/fmt/pair.h"
+#include "utils/fmt/unordered_map.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
+#include <unordered_map>
 
 namespace FlexFlow {
 struct ParallelTensorDims {
   ParallelTensorDims() = delete;
   ParallelTensorDims(
-      ::FlexFlow::FFOrdered<::FlexFlow::ParallelDim> const &ff_ordered);
+      ::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim> const &shard_dims,
+      ::FlexFlow::ReplicaParallelDimSet const &replica_dims);
 
   bool operator==(ParallelTensorDims const &) const;
   bool operator!=(ParallelTensorDims const &) const;
-  bool operator<(ParallelTensorDims const &) const;
-  bool operator>(ParallelTensorDims const &) const;
-  bool operator<=(ParallelTensorDims const &) const;
-  bool operator>=(ParallelTensorDims const &) const;
-  ::FlexFlow::FFOrdered<::FlexFlow::ParallelDim> ff_ordered;
+  ::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim> shard_dims;
+  ::FlexFlow::ReplicaParallelDimSet replica_dims;
 };
 } // namespace FlexFlow
 
