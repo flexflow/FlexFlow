@@ -24,8 +24,6 @@ TensorShape get_kernel_shape(Conv2DAttrs const &attrs, TensorShape const &raw_in
     },
     input.datatype,
   };
-
-  NOT_IMPLEMENTED();
 }
 
 TensorShape get_bias_shape(Conv2DAttrs const &attrs, TensorShape const &raw_input_shape) {
