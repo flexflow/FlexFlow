@@ -1,48 +1,12 @@
 #include "op-attrs/ops/conv_2d.h"
-#include "conv_2d_input_shape.dtg.h"
-#include "conv_2d_parallel_input_shape.dtg.h"
+#include "op-attrs/ops/conv_2d/conv_2d_input_shape.h"
+#include "op-attrs/ops/conv_2d/conv_2d_parallel_input_shape.h"
 
 namespace FlexFlow {
 
 static size_t as_size_t(int x) {
   assert (x >= 0);
   return static_cast<size_t>(x);
-}
-
-static Conv2DInputShape parse_input_shape(TensorShape const &input) {
-  assert(num_dims(input) == 4);
-
-  size_t num_samples = dim_at_idx(input, ff_dim_t{0});
-  size_t in_channels = dim_at_idx(input, ff_dim_t{1});
-  size_t in_height = dim_at_idx(input, ff_dim_t{2});
-  size_t in_width = dim_at_idx(input, ff_dim_t{3});
-
-  return Conv2DInputShape{
-    num_samples,
-    in_channels,
-    in_height,
-    in_width,
-    input.data_type,
-  };
-}
-
-static Conv2DParallelInputShape parse_parallel_input_shape(ParallelTensorShape const &input) {
-  assert(num_shard_dims(input) == 4);
-  
-  ShardParallelDim sample_dim = shard_dim_at_idx(input, ff_dim_t{0});
-  ShardParallelDim channel_dim = shard_dim_at_idx(input, ff_dim_t{1});
-  ShardParallelDim height_dim = shard_dim_at_idx(input, ff_dim_t{2});
-  ShardParallelDim width_dim = shard_dim_at_idx(input, ff_dim_t{3});
-
-  return Conv2DParallelInputShape{
-    sample_dim,
-    channel_dim,
-    height_dim,
-    width_dim,
-    input.dims.replica_dims.sum_degree,
-    input.dims.replica_dims.discard_copy_degree,
-    input.data_type,
-  };
 }
 
 TensorShape get_kernel_shape(Conv2DAttrs const &attrs, TensorShape const &raw_input_shape) {
