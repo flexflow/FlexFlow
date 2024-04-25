@@ -33,6 +33,7 @@ LegionRuntime::Logger::Category log_app("llama");
 struct FilePaths {
   std::string cache_folder_path;
   std::string prompt_file_path;
+  std::string dataset_file_path;
   std::string output_file_path;
 };
 
@@ -50,7 +51,6 @@ void parse_input_args(char **argv,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
                       int &max_sequence_length,
-                      int &max_requests_to_run,
                       bool &enable_peft_finetuning,
                       bool &disable_peft_bwd) {
   for (int i = 1; i < argc; i++) {
@@ -81,6 +81,11 @@ void parse_input_args(char **argv,
     // prompts
     if (!strcmp(argv[i], "-prompt")) {
       paths.prompt_file_path = std::string(argv[++i]);
+      continue;
+    }
+    // dataset for finetuning
+    if (!strcmp(argv[i], "-finetuning-dataset")) {
+      paths.dataset_file_path = std::string(argv[++i]);
       continue;
     }
     // output file
@@ -121,10 +126,6 @@ void parse_input_args(char **argv,
       max_sequence_length = std::stoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "--max-requests-to-run")) {
-      max_requests_to_run = std::stoi(argv[++i]);
-      continue;
-    }
     if (!strcmp(argv[i], "-enable-peft-finetuning")) {
       enable_peft_finetuning = true;
       continue;
@@ -160,11 +161,10 @@ void FlexFlow::top_level_task(Task const *task,
   bool enable_peft = false;
   float temperature = 0.0f;
   float topp = 0.0f;
-  int max_requests_per_batch = 8;
+  int max_requests_per_batch = 1;
   int max_tokens_per_batch = 128;
   int max_sequence_length = 256;
-  int max_requests_to_run = 1000000000;
-  bool enable_peft_finetuning = false;
+  bool enable_peft_finetuning = true;
   bool disable_peft_bwd = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
@@ -184,7 +184,6 @@ void FlexFlow::top_level_task(Task const *task,
                    max_requests_per_batch,
                    max_tokens_per_batch,
                    max_sequence_length,
-                   max_requests_to_run,
                    enable_peft_finetuning,
                    disable_peft_bwd);
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
@@ -314,81 +313,47 @@ void FlexFlow::top_level_task(Task const *task,
   // Start background server
   rm->start_background_server(&model);
 
-  // Warmup stage
-  {
-    std::vector<Request> requests;
-    for (int i = 0; i < 100; i++) {
-      Request inference_req;
-      inference_req.benchmarking_tokens = 128;
-      inference_req.max_sequence_length = 256;
-      inference_req.warmup = true;
-      inference_req.peft_model_id =
-          (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
-      requests.push_back(inference_req);
-    }
-    Request fine_tuning_req;
-    fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
-    fine_tuning_req.benchmarking_tokens = 1024;
-    fine_tuning_req.max_sequence_length = 1024;
-    fine_tuning_req.warmup = true;
-    fine_tuning_req.peft_model_id =
-        (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
-    fine_tuning_req.max_training_steps = 1;
-    requests.push_back(fine_tuning_req);
-    std::vector<GenerationResult> result = model.generate(requests);
-  }
-
-  rm->set_inference_finished(false); // reset inference finished flag
-  std::cout << "----------warmup finished--------------" << std::endl;
-
   // Run workload
   {
     std::vector<Request> requests;
 
     // Add inference requests
-    using json = nlohmann::json;
-    std::ifstream file_handle(file_paths.prompt_file_path);
-    assert(file_handle.good() && "Prompt file does not exist.");
-    json prompt_json = json::parse(file_handle,
-                                   /*parser_callback_t */ nullptr,
-                                   /*allow_exceptions */ true,
-                                   /*ignore_comments */ true);
-    std::vector<std::pair<int, int>> prompts;
-    int index = 0;
-    for (auto &entry : prompt_json) {
-      if (index >= max_requests_to_run) {
-        break;
+    if (!file_paths.prompt_file_path.empty()) {
+      using json = nlohmann::json;
+      std::ifstream file_handle(file_paths.prompt_file_path);
+      assert(file_handle.good() && "Prompt file does not exist.");
+      json prompt_json = json::parse(file_handle,
+                                     /*parser_callback_t */ nullptr,
+                                     /*allow_exceptions */ true,
+                                     /*ignore_comments */ true);
+      int total_num_requests = 0;
+      for (auto &prompt : prompt_json) {
+        std::string text = prompt.get<std::string>();
+        printf("Inference prompt[%d]: %s\n", total_num_requests, text.c_str());
+        Request inference_req;
+        inference_req.prompt = text;
+        inference_req.max_sequence_length = 128;
+        inference_req.peft_model_id =
+            (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
+        requests.push_back(inference_req);
+        total_num_requests++;
       }
-      int prompt_length = entry["human"];
-      int sequence_length = entry["gpt"];
-      assert(prompt_length + sequence_length <= max_sequence_length &&
-             "Prompt + sequence length exceeds max sequence length");
-      prompts.push_back(std::make_pair(prompt_length, sequence_length));
-      index++;
-    }
-    printf("Total number of prompts: %d", prompts.size());
-    for (auto &prompt : prompts) {
-      // printf("Prompt length: %d, sequence length: %d\n", prompt_length,
-      // sequence_length);
-      Request inference_req;
-      inference_req.benchmarking_tokens = prompt.first;
-      inference_req.max_sequence_length = prompt.second + prompt.first;
-      inference_req.peft_model_id =
-          (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
-      requests.push_back(inference_req);
     }
 
     // Add fine-tuning request
-    Request fine_tuning_req;
-    fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
-    fine_tuning_req.benchmarking_tokens = 1024;
-    fine_tuning_req.max_sequence_length = 1024;
-    fine_tuning_req.peft_model_id =
-        (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
-    // fine_tuning_req.dataset_filepath = file_paths.prompt_file_path;
-    fine_tuning_req.max_training_steps = 1000000000;
-    requests.push_back(fine_tuning_req);
-
+    if (enable_peft_finetuning) {
+      assert(!file_paths.dataset_file_path.empty() &&
+             "Dataset file path is required for fine-tuning.");
+      printf("Finetuning request with dataset %s\n",
+             file_paths.dataset_file_path.c_str());
+      Request fine_tuning_req;
+      fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
+      fine_tuning_req.peft_model_id =
+          (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
+      fine_tuning_req.dataset_filepath = file_paths.dataset_file_path;
+      fine_tuning_req.max_training_steps = 1;
+      requests.push_back(fine_tuning_req);
+    }
     std::vector<GenerationResult> result = model.generate(requests);
   }
 

@@ -83,7 +83,7 @@ struct Request {
   int dataset_entry_processed_tokens = 0;
   int max_training_steps = 1;
   int benchmarking_tokens = -1;
-  std::vector<int>finetuning_tokens_per_batch;
+  std::vector<int> finetuning_tokens_per_batch;
   bool warmup = false;
   std::string dataset_filepath;
   std::vector<std::pair<std::vector<BatchConfig::TokenId>,

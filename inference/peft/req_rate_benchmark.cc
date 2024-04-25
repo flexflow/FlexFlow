@@ -21,12 +21,11 @@
 #include "inference/models/opt.h"
 #include "inference/models/starcoder.h"
 #include <chrono>
-#include <thread>
 #include <mutex>
+#include <thread>
 #include <wordexp.h>
 
 #include <nlohmann/json.hpp>
-
 
 using namespace FlexFlow;
 using namespace Legion;
@@ -58,7 +57,7 @@ void consume() {
   bool producer_is_finished = false;
   bool queue_is_empty = false;
   // int i=0;
-  while(!producer_is_finished || !queue_is_empty) {
+  while (!producer_is_finished || !queue_is_empty) {
     RequestManager::RequestGuid guid = RequestManager::INVALID_GUID;
     {
       const std::lock_guard<std::mutex> lock(guids->request_queue_mutex);
@@ -78,9 +77,10 @@ void consume() {
     // cout << "Iteration " << i;
   }
   rm->set_inference_finished();
-  
+
   while (guids->peft_queue.size() > 0) {
-    GenerationResult result = rm->get_generation_result(guids->peft_queue.front());
+    GenerationResult result =
+        rm->get_generation_result(guids->peft_queue.front());
     guids->peft_queue.pop();
   }
 }
@@ -422,21 +422,21 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
-    
-    const auto& lists = prompt_json.get<std::vector<std::vector<json>>>();
+
+    auto const &lists = prompt_json.get<std::vector<std::vector<json>>>();
     std::vector<size_t> bucket_arrival_times_s;
     std::vector<std::vector<std::pair<int, int>>> buckets;
 
-    size_t index=0;
-    for (const auto& list : lists) {
+    size_t index = 0;
+    for (auto const &list : lists) {
       if (!list.empty()) {
         bucket_arrival_times_s.push_back(index);
         std::vector<std::pair<int, int>> prompts;
-        for (const auto& dict : list) {
+        for (auto const &dict : list) {
           int prompt_length = dict["human"];
           int sequence_length = dict["gpt"];
           assert(prompt_length + sequence_length <= max_sequence_length &&
-             "Prompt + sequence length exceeds max sequence length");
+                 "Prompt + sequence length exceeds max sequence length");
           prompts.push_back(std::make_pair(prompt_length, sequence_length));
         }
         buckets.push_back(prompts);
@@ -446,9 +446,9 @@ void FlexFlow::top_level_task(Task const *task,
     assert(bucket_arrival_times_s.size() == buckets.size() &&
            "Bucket arrival times and buckets are not the same size");
     // for (int i=0; i<10; i++) {
-    //   printf("bucket_arrival_times_s[%i]: %i\n", i, bucket_arrival_times_s[i]);
-    //   printf("bucket[%i]: %i\n", i, buckets[i].size());
-    //   for (const auto& prompt : buckets[i]) {
+    //   printf("bucket_arrival_times_s[%i]: %i\n", i,
+    //   bucket_arrival_times_s[i]); printf("bucket[%i]: %i\n", i,
+    //   buckets[i].size()); for (const auto& prompt : buckets[i]) {
     //     printf("\tprompt: %i, %i\n", prompt.first, prompt.second);
     //   }
     // }
@@ -461,7 +461,8 @@ void FlexFlow::top_level_task(Task const *task,
     fine_tuning_req.peft_model_id =
         (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
     fine_tuning_req.max_training_steps = 1000000000;
-    RequestManager::RequestGuid ft_guid = rm->register_new_peft_request(fine_tuning_req);
+    RequestManager::RequestGuid ft_guid =
+        rm->register_new_peft_request(fine_tuning_req);
     if (ft_guid != RequestManager::INVALID_GUID) {
       const std::lock_guard<std::mutex> lock(guids->request_queue_mutex);
       guids->peft_queue.push(ft_guid);
@@ -469,17 +470,19 @@ void FlexFlow::top_level_task(Task const *task,
 
     // Replay the trace of inference requests
     auto start_time = std::chrono::steady_clock::now();
-    for (int i=0; i<bucket_arrival_times_s.size(); i++) {
+    for (int i = 0; i < bucket_arrival_times_s.size(); i++) {
       if (bucket_arrival_times_s[i] >= max_buckets_to_run) {
         break;
       }
       // sleep until bucket arrives
-      auto bucket_arrival_time = start_time + std::chrono::milliseconds(bucket_arrival_times_s[i] * nb_millisecs);
+      auto bucket_arrival_time =
+          start_time +
+          std::chrono::milliseconds(bucket_arrival_times_s[i] * nb_millisecs);
       std::this_thread::sleep_until(bucket_arrival_time);
 
       // create inference requests for the bucket
       std::vector<Request> requests;
-      for (const auto& prompt : buckets[i]) {
+      for (auto const &prompt : buckets[i]) {
         // printf("Prompt length: %d, sequence length: %d\n", prompt_length,
         // sequence_length);
         Request inference_req;
@@ -493,14 +496,15 @@ void FlexFlow::top_level_task(Task const *task,
       {
         const std::lock_guard<std::mutex> lock(guids->request_queue_mutex);
         for (int i = 0; i < requests.size(); i++) {
-          RequestManager::RequestGuid guid = rm->register_new_request(requests.at(i));
+          RequestManager::RequestGuid guid =
+              rm->register_new_request(requests.at(i));
           if (guid != RequestManager::INVALID_GUID) {
             guids->inf_queue.push(guid);
           }
         }
       }
     }
-      
+
     { // Notify the consumer that no more requests are incoming
       const std::lock_guard<std::mutex> lock(guids->request_queue_mutex);
       guids->producer_finished = true;
@@ -518,8 +522,6 @@ void FlexFlow::top_level_task(Task const *task,
     Future future = runtime->issue_execution_fence(ctx);
     future.get_void_result();
   }
-
-  
 
   // float* data
   std::cout << "----------inference finished--------------" << std::endl;

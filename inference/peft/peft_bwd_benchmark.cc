@@ -356,28 +356,28 @@ void FlexFlow::top_level_task(Task const *task,
     std::vector<int> lengths;
     int index = 0;
     for (auto &entry : prompt_json) {
-        if (index == max_requests_to_run) {
-            break;
-        }
-        int prompt_length = entry.get<int>();
-        assert(prompt_length > 0 && "Prompt length must be greater than 0.");
-        assert(prompt_length <= 1024 &&
-                "Prompt length must be less than or equal to 1024.");
-        lengths.push_back(prompt_length);
-        index++;
+      if (index == max_requests_to_run) {
+        break;
+      }
+      int prompt_length = entry.get<int>();
+      assert(prompt_length > 0 && "Prompt length must be greater than 0.");
+      assert(prompt_length <= 1024 &&
+             "Prompt length must be less than or equal to 1024.");
+      lengths.push_back(prompt_length);
+      index++;
     }
     printf("Total number of finetuning requests: %d", lengths.size());
 
     // Add fine-tuning requests
     for (int i = 0; i < lengths.size(); i++) {
-        Request fine_tuning_req;
-        fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
-        fine_tuning_req.benchmarking_tokens = lengths[i];
-        fine_tuning_req.max_sequence_length = lengths[i];
-        fine_tuning_req.peft_model_id =
-            (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
-        fine_tuning_req.max_training_steps = 1;
-        requests.push_back(fine_tuning_req);
+      Request fine_tuning_req;
+      fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
+      fine_tuning_req.benchmarking_tokens = lengths[i];
+      fine_tuning_req.max_sequence_length = lengths[i];
+      fine_tuning_req.peft_model_id =
+          (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
+      fine_tuning_req.max_training_steps = 1;
+      requests.push_back(fine_tuning_req);
     }
     std::vector<GenerationResult> result = model.generate(requests);
   }

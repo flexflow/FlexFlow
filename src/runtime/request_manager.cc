@@ -811,14 +811,16 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         std::ofstream outputFile(output_filepath, std::ios::app);
         if (outputFile.is_open()) {
           std::string tokens_str = "[";
-          for (size_t i = 0; i < request.finetuning_tokens_per_batch.size(); i++) {
-            tokens_str += std::to_string(request.finetuning_tokens_per_batch[i]);
+          for (size_t i = 0; i < request.finetuning_tokens_per_batch.size();
+               i++) {
+            tokens_str +=
+                std::to_string(request.finetuning_tokens_per_batch[i]);
             if (i != request.finetuning_tokens_per_batch.size() - 1) {
               tokens_str += ", ";
             }
           }
           tokens_str += "]";
-          outputFile << "[" << (request.warmup ? "Warmup" : "Finetuning") 
+          outputFile << "[" << (request.warmup ? "Warmup" : "Finetuning")
                      << "] guid(" << request.guid
                      << ") completed_training_steps("
                      << request.completed_training_steps
@@ -826,8 +828,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                      << request.processed_finetuning_tokens << ") latency("
                      << std::fixed << std::setprecision(3)
                      << (profile_info.finish_time - profile_info.start_time)
-                     << ") tokens_per_batch("
-                     << tokens_str << ")\n";
+                     << ") tokens_per_batch(" << tokens_str << ")\n";
           outputFile.close();
         } else {
           std::cout << "Unable to open the output file: " << output_filepath
