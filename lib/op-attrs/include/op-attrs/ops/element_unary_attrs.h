@@ -8,6 +8,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/operator_type.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <sstream>
@@ -42,6 +43,13 @@ struct adl_serializer<FlexFlow::ElementUnaryAttrs> {
   static void to_json(json &, FlexFlow::ElementUnaryAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ElementUnaryAttrs> {
+  static Gen<FlexFlow::ElementUnaryAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ElementUnaryAttrs const &);

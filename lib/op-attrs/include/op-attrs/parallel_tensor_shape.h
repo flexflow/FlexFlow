@@ -1,10 +1,9 @@
 #ifndef _OP_META_PARALLEL_TENSOR_SHAPE_H
 #define _OP_META_PARALLEL_TENSOR_SHAPE_H
 
-#include "op-attrs/tensor_shape.h"
-#include <vector>
 #include "op-attrs/parallel_tensor_shape_t.h"
 #include "op-attrs/tensor_shape.h"
+#include <vector>
 
 namespace FlexFlow {
 

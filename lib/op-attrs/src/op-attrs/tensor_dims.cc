@@ -13,9 +13,10 @@ size_t dim_at_idx(TensorDims const &dims, ff_dim_t idx) {
 
 ParallelTensorDims lift_to_parallel(TensorDims const &dims) {
   FFOrdered<ParallelDim> lifted = {
-    transform(as_vector(dims.ff_ordered), [](size_t const &size) { return ParallelDim{size, 1, false}; })
-  };
+      transform(as_vector(dims.ff_ordered), [](size_t const &size) {
+        return ParallelDim{size, 1, false};
+      })};
   return {lifted};
 }
 
-}
+} // namespace FlexFlow

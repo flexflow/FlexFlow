@@ -170,6 +170,20 @@ void adl_serializer<FlexFlow::Pool2DAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::Pool2DAttrs> Arbitrary<FlexFlow::Pool2DAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::Pool2DAttrs>(
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<::FlexFlow::PoolOp>(),
+      gen::arbitrary<::FlexFlow::Activation>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(Pool2DAttrs const &x) {
   std::ostringstream oss;

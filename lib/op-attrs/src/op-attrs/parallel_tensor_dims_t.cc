@@ -52,6 +52,14 @@ void adl_serializer<FlexFlow::ParallelTensorDims>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::ParallelTensorDims>
+    Arbitrary<FlexFlow::ParallelTensorDims>::arbitrary() {
+  return gen::construct<FlexFlow::ParallelTensorDims>(
+      gen::arbitrary<::FlexFlow::FFOrdered<::FlexFlow::ParallelDim>>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(ParallelTensorDims const &x) {
   std::ostringstream oss;

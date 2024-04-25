@@ -9,6 +9,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/ff_dim.h"
 #include "op-attrs/operator_type.h"
+#include "rapidcheck.h"
 #include "utils/stack_vector.h"
 #include <functional>
 #include <ostream>
@@ -49,6 +50,13 @@ struct adl_serializer<FlexFlow::ReduceAttrs> {
   static void to_json(json &, FlexFlow::ReduceAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ReduceAttrs> {
+  static Gen<FlexFlow::ReduceAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ReduceAttrs const &);

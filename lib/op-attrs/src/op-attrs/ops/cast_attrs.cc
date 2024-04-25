@@ -48,6 +48,12 @@ void adl_serializer<FlexFlow::CastAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::CastAttrs> Arbitrary<FlexFlow::CastAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::CastAttrs>(gen::arbitrary<DataType>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(CastAttrs const &x) {
   std::ostringstream oss;

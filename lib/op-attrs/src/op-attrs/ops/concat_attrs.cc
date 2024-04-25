@@ -60,6 +60,13 @@ void adl_serializer<FlexFlow::ConcatAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::ConcatAttrs> Arbitrary<FlexFlow::ConcatAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ConcatAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(ConcatAttrs const &x) {
   std::ostringstream oss;

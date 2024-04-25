@@ -9,6 +9,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/activation.h"
 #include "op-attrs/pool_op.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <sstream>
@@ -57,6 +58,13 @@ struct adl_serializer<FlexFlow::Pool2DAttrs> {
   static void to_json(json &, FlexFlow::Pool2DAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::Pool2DAttrs> {
+  static Gen<FlexFlow::Pool2DAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(Pool2DAttrs const &);

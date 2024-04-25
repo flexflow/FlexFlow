@@ -9,6 +9,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/dim_ordered.h"
 #include "op-attrs/parallel_dim.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <sstream>
@@ -44,6 +45,13 @@ struct adl_serializer<FlexFlow::ParallelTensorDims> {
   static void to_json(json &, FlexFlow::ParallelTensorDims const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ParallelTensorDims> {
+  static Gen<FlexFlow::ParallelTensorDims> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ParallelTensorDims const &);

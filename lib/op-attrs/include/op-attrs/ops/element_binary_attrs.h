@@ -9,6 +9,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/datatype.h"
 #include "op-attrs/operator_type.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <sstream>
@@ -49,6 +50,13 @@ struct adl_serializer<FlexFlow::ElementBinaryAttrs> {
   static void to_json(json &, FlexFlow::ElementBinaryAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ElementBinaryAttrs> {
+  static Gen<FlexFlow::ElementBinaryAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ElementBinaryAttrs const &);

@@ -49,6 +49,13 @@ void adl_serializer<FlexFlow::TensorDims>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::TensorDims> Arbitrary<FlexFlow::TensorDims>::arbitrary() {
+  return gen::construct<FlexFlow::TensorDims>(
+      gen::arbitrary<::FlexFlow::FFOrdered<size_t>>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(TensorDims const &x) {
   std::ostringstream oss;

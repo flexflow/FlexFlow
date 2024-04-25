@@ -7,6 +7,7 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
+#include "rapidcheck.h"
 #include "utils/stack_vector.h"
 #include <functional>
 #include <ostream>
@@ -43,6 +44,13 @@ struct adl_serializer<FlexFlow::BroadcastAttrs> {
   static void to_json(json &, FlexFlow::BroadcastAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::BroadcastAttrs> {
+  static Gen<FlexFlow::BroadcastAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(BroadcastAttrs const &);

@@ -49,6 +49,13 @@ void adl_serializer<FlexFlow::ReshapeAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::ReshapeAttrs> Arbitrary<FlexFlow::ReshapeAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ReshapeAttrs>(
+      gen::arbitrary<::FlexFlow::TensorShape>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(ReshapeAttrs const &x) {
   std::ostringstream oss;

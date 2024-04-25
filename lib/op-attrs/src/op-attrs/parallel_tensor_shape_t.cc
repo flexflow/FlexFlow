@@ -61,6 +61,15 @@ void adl_serializer<FlexFlow::ParallelTensorShape>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::ParallelTensorShape>
+    Arbitrary<FlexFlow::ParallelTensorShape>::arbitrary() {
+  return gen::construct<FlexFlow::ParallelTensorShape>(
+      gen::arbitrary<::FlexFlow::ParallelTensorDims>(),
+      gen::arbitrary<::FlexFlow::DataType>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(ParallelTensorShape const &x) {
   std::ostringstream oss;

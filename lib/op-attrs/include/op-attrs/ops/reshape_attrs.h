@@ -8,6 +8,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/tensor_shape.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <sstream>
@@ -42,6 +43,13 @@ struct adl_serializer<FlexFlow::ReshapeAttrs> {
   static void to_json(json &, FlexFlow::ReshapeAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ReshapeAttrs> {
+  static Gen<FlexFlow::ReshapeAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ReshapeAttrs const &);

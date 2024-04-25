@@ -60,6 +60,13 @@ void adl_serializer<FlexFlow::ReplicateAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::ReplicateAttrs> Arbitrary<FlexFlow::ReplicateAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ReplicateAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(ReplicateAttrs const &x) {
   std::ostringstream oss;

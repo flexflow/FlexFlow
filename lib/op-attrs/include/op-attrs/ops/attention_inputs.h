@@ -8,6 +8,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/tensor_shape.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <sstream>
@@ -46,6 +47,13 @@ struct adl_serializer<FlexFlow::MultiHeadAttentionInputs> {
   static void to_json(json &, FlexFlow::MultiHeadAttentionInputs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::MultiHeadAttentionInputs> {
+  static Gen<FlexFlow::MultiHeadAttentionInputs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(MultiHeadAttentionInputs const &);

@@ -49,6 +49,14 @@ void adl_serializer<FlexFlow::ElementUnaryAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::ElementUnaryAttrs>
+    Arbitrary<FlexFlow::ElementUnaryAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ElementUnaryAttrs>(
+      gen::arbitrary<::FlexFlow::OperatorType>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(ElementUnaryAttrs const &x) {
   std::ostringstream oss;

@@ -101,6 +101,16 @@ void adl_serializer<FlexFlow::EmbeddingAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::EmbeddingAttrs> Arbitrary<FlexFlow::EmbeddingAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::EmbeddingAttrs>(
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<::FlexFlow::AggregateOp>(),
+      gen::arbitrary<::FlexFlow::DataType>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(EmbeddingAttrs const &x) {
   std::ostringstream oss;

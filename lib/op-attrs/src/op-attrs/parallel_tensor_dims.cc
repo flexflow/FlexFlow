@@ -16,7 +16,8 @@ int get_num_replica_dims(ParallelTensorDims const &d) {
 }
 
 bool is_valid(ParallelTensorDims const &dims) {
-  return all_of(dims.ff_ordered, [](ParallelDim const &d) { return is_valid(d); });
+  return all_of(dims.ff_ordered,
+                [](ParallelDim const &d) { return is_valid(d); });
 }
 
 size_t num_dims(ParallelTensorDims const &dims) {
@@ -31,4 +32,4 @@ ParallelDim &dim_at_idx(ParallelTensorDims &d, ff_dim_t idx) {
   return d.ff_ordered.at(idx);
 }
 
-}
+} // namespace FlexFlow

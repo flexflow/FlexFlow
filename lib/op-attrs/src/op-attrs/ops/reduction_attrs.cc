@@ -60,6 +60,13 @@ void adl_serializer<FlexFlow::ReductionAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::ReductionAttrs> Arbitrary<FlexFlow::ReductionAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ReductionAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(ReductionAttrs const &x) {
   std::ostringstream oss;

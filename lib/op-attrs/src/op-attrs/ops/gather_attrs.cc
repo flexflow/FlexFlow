@@ -48,6 +48,13 @@ void adl_serializer<FlexFlow::GatherAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::GatherAttrs> Arbitrary<FlexFlow::GatherAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::GatherAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(GatherAttrs const &x) {
   std::ostringstream oss;

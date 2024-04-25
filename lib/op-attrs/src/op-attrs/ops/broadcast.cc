@@ -52,6 +52,13 @@ void adl_serializer<FlexFlow::BroadcastAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::BroadcastAttrs> Arbitrary<FlexFlow::BroadcastAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::BroadcastAttrs>(
+      gen::arbitrary<::FlexFlow::stack_vector<int, MAX_TENSOR_DIM>>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(BroadcastAttrs const &x) {
   std::ostringstream oss;

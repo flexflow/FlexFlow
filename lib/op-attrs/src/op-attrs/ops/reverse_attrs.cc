@@ -48,6 +48,13 @@ void adl_serializer<FlexFlow::ReverseAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::ReverseAttrs> Arbitrary<FlexFlow::ReverseAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ReverseAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(ReverseAttrs const &x) {
   std::ostringstream oss;

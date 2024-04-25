@@ -60,6 +60,14 @@ void adl_serializer<FlexFlow::TensorShape>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::TensorShape> Arbitrary<FlexFlow::TensorShape>::arbitrary() {
+  return gen::construct<FlexFlow::TensorShape>(
+      gen::arbitrary<::FlexFlow::TensorDims>(),
+      gen::arbitrary<::FlexFlow::DataType>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(TensorShape const &x) {
   std::ostringstream oss;

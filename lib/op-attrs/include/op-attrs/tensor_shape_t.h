@@ -9,6 +9,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/datatype.h"
 #include "op-attrs/tensor_dims.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <sstream>
@@ -45,6 +46,13 @@ struct adl_serializer<FlexFlow::TensorShape> {
   static void to_json(json &, FlexFlow::TensorShape const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::TensorShape> {
+  static Gen<FlexFlow::TensorShape> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(TensorShape const &);

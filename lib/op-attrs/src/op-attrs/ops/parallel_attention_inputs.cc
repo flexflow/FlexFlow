@@ -73,6 +73,16 @@ void adl_serializer<FlexFlow::ParallelMultiHeadAttentionInputs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::ParallelMultiHeadAttentionInputs>
+    Arbitrary<FlexFlow::ParallelMultiHeadAttentionInputs>::arbitrary() {
+  return gen::construct<FlexFlow::ParallelMultiHeadAttentionInputs>(
+      gen::arbitrary<::FlexFlow::ParallelTensorShape>(),
+      gen::arbitrary<::FlexFlow::ParallelTensorShape>(),
+      gen::arbitrary<::FlexFlow::ParallelTensorShape>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(ParallelMultiHeadAttentionInputs const &x) {
   std::ostringstream oss;

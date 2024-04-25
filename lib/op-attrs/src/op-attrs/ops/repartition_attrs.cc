@@ -61,6 +61,14 @@ void adl_serializer<FlexFlow::RepartitionAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::RepartitionAttrs>
+    Arbitrary<FlexFlow::RepartitionAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::RepartitionAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(RepartitionAttrs const &x) {
   std::ostringstream oss;

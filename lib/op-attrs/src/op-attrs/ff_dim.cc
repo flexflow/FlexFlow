@@ -47,6 +47,12 @@ void adl_serializer<FlexFlow::ff_dim_t>::to_json(json &j,
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::ff_dim_t> Arbitrary<FlexFlow::ff_dim_t>::arbitrary() {
+  return gen::construct<FlexFlow::ff_dim_t>(gen::arbitrary<int>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(ff_dim_t const &x) {
   std::ostringstream oss;

@@ -63,6 +63,14 @@ void adl_serializer<FlexFlow::SplitAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::SplitAttrs> Arbitrary<FlexFlow::SplitAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::SplitAttrs>(
+      gen::arbitrary<::FlexFlow::stack_vector<int, MAX_NUM_OUTPUTS>>(),
+      gen::arbitrary<::FlexFlow::ff_dim_t>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(SplitAttrs const &x) {
   std::ostringstream oss;

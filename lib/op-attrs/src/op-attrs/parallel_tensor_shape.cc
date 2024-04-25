@@ -31,7 +31,7 @@ ParallelDim &dim_at_idx(ParallelTensorShape &s, ff_dim_t d) {
 }
 
 ParallelTensorShape lift_to_parallel(TensorShape const &s) {
-  return { lift_to_parallel(s.dims), s.data_type };
+  return {lift_to_parallel(s.dims), s.data_type};
 }
 
 TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &) {

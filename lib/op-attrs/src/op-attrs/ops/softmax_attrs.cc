@@ -48,6 +48,13 @@ void adl_serializer<FlexFlow::SoftmaxAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::SoftmaxAttrs> Arbitrary<FlexFlow::SoftmaxAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::SoftmaxAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(SoftmaxAttrs const &x) {
   std::ostringstream oss;

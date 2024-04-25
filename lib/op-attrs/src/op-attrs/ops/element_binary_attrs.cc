@@ -108,6 +108,17 @@ void adl_serializer<FlexFlow::ElementBinaryAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::ElementBinaryAttrs>
+    Arbitrary<FlexFlow::ElementBinaryAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ElementBinaryAttrs>(
+      gen::arbitrary<::FlexFlow::OperatorType>(),
+      gen::arbitrary<::FlexFlow::DataType>(),
+      gen::arbitrary<bool>(),
+      gen::arbitrary<bool>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(ElementBinaryAttrs const &x) {
   std::ostringstream oss;

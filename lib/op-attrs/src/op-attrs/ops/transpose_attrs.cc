@@ -55,6 +55,14 @@ void adl_serializer<FlexFlow::TransposeAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::TransposeAttrs> Arbitrary<FlexFlow::TransposeAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::TransposeAttrs>(
+      gen::arbitrary<
+          ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(TransposeAttrs const &x) {
   std::ostringstream oss;

@@ -31,9 +31,9 @@
 #include "ops/split.h"
 #include "ops/topk.h"
 #include "ops/transpose.h"
+#include "utils/record_formatter.h"
 #include "utils/variant.h"
 #include <variant>
-#include "utils/record_formatter.h"
 
 namespace FlexFlow {
 
