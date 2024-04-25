@@ -441,6 +441,11 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   // This function takes the pending request, and load its prefilling tokens,
   // constructing a BatchConfig with only one request.
 
+  // TODO:
+  // 1. Adept this function to the new design
+  // 2. Move the following part to the update_inference_results() function
+  // 3. Change the BatchConfig.prompt_phase
+
   // The following part should be moved to the update_inference_results()
   // function
   if (pending_request_queue.empty()) {
@@ -499,6 +504,11 @@ BatchConfig RequestManager::prepare_decoding_batch() {
   // This function is called when the request_manager_status is DECODING. It
   // fills the last token of each request in the current batch to the
   // BatchConfig for the LLM to decode.
+
+  // TODO:
+  // 1. Adept this function to the new design
+  // 2. Move the following part to the update_inference_results() function
+  // 3. Change the BatchConfig::prompt_phase
 
   BatchConfig bc;
   bc.num_tokens = 0;
@@ -561,6 +571,7 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   new_bc.num_tokens = 0;
   new_bc.current_depth = 0;
   new_bc.num_available_requests = 0;
+  new_bc.prompt_phase = true;
   assert(current_speculation_step == 0);
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
@@ -625,6 +636,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
   new_bc.num_tokens = 0;
   new_bc.current_depth = current_speculation_step;
   new_bc.num_available_requests = 0;
+  new_bc.prompt_phase = false;
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
@@ -712,6 +724,7 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   new_bc.num_tokens = 0;
   new_bc.num_available_requests = 0;
   new_bc.num_tokens_to_commit = 0;
+  new_bc.prompt_phase = false;
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
