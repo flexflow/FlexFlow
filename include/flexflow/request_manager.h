@@ -154,9 +154,18 @@ public:
   int tree_size = 0;
   // The numebr of tokens in the tree including the pruned ones
   int tree_size_including_pruned = 0;
+
   void add_layer() {
     tree_layers.emplace_back();
   }
+
+  void clear() {
+    tree_layers.clear();
+    tree_size = 0;
+    tree_size_including_pruned = 0;
+  }
+
+  TokenTree() : tree_size(0), tree_size_including_pruned(0) {}
 };
 
 class RequestManager {
@@ -353,7 +362,7 @@ private:
   /* ---------- New Helper Functions ---------- */
 
   // Helper functions related to token trees
-  void init_token_trees(RequestGuid guid);
+  void init_token_tree(RequestGuid guid);
   void add_root_to_spec_token_tree(RequestGuid guid,
                                    BatchConfig::TokenId token_id);
   bool add_token_to_spec_token_tree(RequestGuid guid,

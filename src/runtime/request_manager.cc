@@ -788,9 +788,9 @@ bool RequestManager::update_llm_verify_results(
   // stores the commmitted tokens into the corresponding fields in the Request.
   // For the sampling construction of the speculative token tree, we need to
   // implement a CPU based verify function.
-  // 2. Call add_root_token_to_spec_token_tree() to add the root token to the
-  // requests' speculative token tree. The root token is the last committed
-  // token.
+  // 2. Call init_token_tree() add_root_token_to_spec_token_tree() to add the
+  // root token to the requests' speculative token tree. The root token is the
+  // last committed token.
   // 3. For requests not completed, update their causal mask.
   // 4. Some requests may be completed after appending the verified tokens. If
   // there is a request completed, return true.
@@ -1546,9 +1546,11 @@ RequestManager *RequestManager::get_request_manager() {
 }
 
 /* --------- Request Token Tree Related Functions --------- */
-void RequestManager::init_token_trees(RequestGuid guid) {
+void RequestManager::init_token_tree(RequestGuid guid) {
   Request &request = all_requests[guid];
   request.speculative_token_trees.clear();
+  // Assume we only use one small model for speculation
+  request.speculative_token_trees.emplace_back();
 }
 
 void RequestManager::add_root_to_spec_token_tree(
@@ -1560,6 +1562,11 @@ void RequestManager::add_root_to_spec_token_tree(
   // to verify its childs (the tokens in the first layer).
   // This method should: construct and add the root token to the empty
   // speculative token tree, with parent_pos being -1 and joint_prob being 1.0
+  Request &request = all_requests[guid];
+  TokenTree &speculative_token_tree = request.speculative_token_trees[0];
+  speculative_token_tree.add_layer();
+  auto node_ptr = std::make_shared<TokenTreeNode>(token_id, -1, 1.0);
+  speculative_token_tree.tree_layers[0].push_back(node_ptr);
 }
 
 bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
