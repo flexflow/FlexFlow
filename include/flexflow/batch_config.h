@@ -62,20 +62,18 @@ public:
 
   int num_tokens;
   int num_available_requests;
-
-  enum class ExecutionPhase { PROMPT, GENERATION };
-
-  ExecutionPhase current_phase;
+  bool prompt_phase;
 
   struct PerRequestInfo {
-    int first_token_index_in_request;
-    int first_token_offset_in_batch;
-    int num_tokens_in_batch;
+    int first_token_index_in_request = 0;
+    int first_token_offset_in_batch = 0;
+    int num_tokens_in_batch = 0;
   };
+
   struct PerTokenInfo {
-    TokenId token_id;
-    int abs_index_in_request;
-    int request_index;
+    TokenId token_id = 0;
+    int abs_index_in_request = 0;
+    int request_index = 0;
   };
 
   class BitMask {

@@ -25,18 +25,11 @@ LegionRuntime::Logger::Category log_bc("BatchConfig");
 using Legion::Future;
 using Legion::Memory;
 
-BatchConfig::BatchConfig() : num_tokens(0) {
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    requestsInfo[i].first_token_index_in_request = 0;
-    requestsInfo[i].first_token_offset_in_batch = 0;
-    requestsInfo[i].num_tokens_in_batch = 0;
-    request_available[i] = true;
-  }
-  for (int i = 0; i < MAX_NUM_TOKENS; i++) {
-    tokensInfo[i].abs_index_in_request = 0;
-    tokensInfo[i].request_index = 0;
-    tokensInfo[i].token_id = 0;
-  }
+BatchConfig::BatchConfig()
+    : num_tokens(0), num_available_requests(0), prompt_phase(false) {
+  memset(request_available, false, sizeof(bool) * MAX_NUM_REQUESTS);
+  // Don't need to initialize requestInfo ,tokensInfo, and causalMask here
+  // because they initialize themselves.
 }
 
 /*static*/
