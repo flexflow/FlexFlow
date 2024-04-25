@@ -435,6 +435,14 @@ BatchConfig RequestManager::prepare_next_batch() {
 }
 
 BatchConfig RequestManager::prepare_prefilling_batch() {
+  // This function is called when the request_manager_status is PREFILLING,
+  // which means that there is at least one empty slot in the currnet decoding
+  // batch, and there is at least one pending request in the request queue.
+  // This function takes the pending request, and load its prefilling tokens,
+  // constructing a BatchConfig with only one request.
+
+  // The following part should be moved to the update_inference_results()
+  // function
   if (pending_request_queue.empty()) {
     if (get_num_active_requests() == 0) {
       return BatchConfig();
@@ -455,12 +463,12 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   guid_of_requests[request_index] = new_request.guid;
 
   // Per Request Info
-  bc.requestsInfo[request_index].first_token_depth_in_request = 0;
+  bc.requestsInfo[request_index].first_token_index_in_request = 0;
   bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
   bc.requestsInfo[request_index].num_tokens_in_batch =
       std::min(bc.num_tokens, (int)new_request.tokens.size());
 
-  bc.request_completed[request_index] = false;
+  bc.request_available[request_index] = true;
 
   new_request.first_token_offset_in_batch = 0;
   new_request.num_tokens_in_batch = 0;
@@ -488,6 +496,10 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
 }
 
 BatchConfig RequestManager::prepare_decoding_batch() {
+  // This function is called when the request_manager_status is DECODING. It
+  // fills the last token of each request in the current batch to the
+  // BatchConfig for the LLM to decode.
+
   BatchConfig bc;
   bc.num_tokens = 0;
 
