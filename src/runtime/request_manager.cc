@@ -435,6 +435,19 @@ BatchConfig RequestManager::prepare_next_batch() {
 }
 
 BatchConfig RequestManager::prepare_prefilling_batch() {
+  // This function is called when the request_manager_status is PREFILLING,
+  // which means that there is at least one empty slot in the currnet decoding
+  // batch, and there is at least one pending request in the request queue.
+  // This function takes the pending request, and load its prefilling tokens,
+  // constructing a BatchConfig with only one request.
+
+  // TODO:
+  // 1. Adept this function to the new design
+  // 2. Move the following part to the update_inference_results() function
+  // 3. Change the BatchConfig.prompt_phase
+
+  // The following part should be moved to the update_inference_results()
+  // function
   if (pending_request_queue.empty()) {
     if (get_num_active_requests() == 0) {
       return BatchConfig();
@@ -446,7 +459,7 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   BatchConfig bc;
   bc.num_tokens = BatchConfig::MAX_NUM_TOKENS;
 
-  request_index = get_empty_request_index();
+  int request_index = get_empty_request_index();
   assert(request_index != -1);
 
   Request new_request = pending_request_queue.front();
@@ -455,12 +468,12 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   guid_of_requests[request_index] = new_request.guid;
 
   // Per Request Info
-  bc.requestsInfo[request_index].first_token_depth_in_request = 0;
+  bc.requestsInfo[request_index].first_token_index_in_request = 0;
   bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
   bc.requestsInfo[request_index].num_tokens_in_batch =
       std::min(bc.num_tokens, (int)new_request.tokens.size());
 
-  bc.request_completed[request_index] = false;
+  bc.request_available[request_index] = true;
 
   new_request.first_token_offset_in_batch = 0;
   new_request.num_tokens_in_batch = 0;
@@ -488,6 +501,15 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
 }
 
 BatchConfig RequestManager::prepare_decoding_batch() {
+  // This function is called when the request_manager_status is DECODING. It
+  // fills the last token of each request in the current batch to the
+  // BatchConfig for the LLM to decode.
+
+  // TODO:
+  // 1. Adept this function to the new design
+  // 2. Move the following part to the update_inference_results() function
+  // 3. Change the BatchConfig::prompt_phase
+
   BatchConfig bc;
   bc.num_tokens = 0;
 
@@ -516,7 +538,7 @@ BatchConfig RequestManager::prepare_decoding_batch() {
 
     // Per Token Info
     bc.tokensInfo[bc.num_tokens].request_index = i;
-    bc.tokensInfo[bc.num_tokens].abs_depth_in_request = llm_cache_size;
+    bc.tokensInfo[bc.num_tokens].abs_depth_in_request = request.llm_cache_size;
     bc.tokensInfo[bc.num_tokens].token_id = request.tokens.back();
 
     request.llm_cache_size++;
@@ -549,6 +571,7 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   new_bc.num_tokens = 0;
   new_bc.current_depth = 0;
   new_bc.num_available_requests = 0;
+  new_bc.prompt_phase = true;
   assert(current_speculation_step == 0);
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
@@ -613,6 +636,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
   new_bc.num_tokens = 0;
   new_bc.current_depth = current_speculation_step;
   new_bc.num_available_requests = 0;
+  new_bc.prompt_phase = false;
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
@@ -700,6 +724,7 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   new_bc.num_tokens = 0;
   new_bc.num_available_requests = 0;
   new_bc.num_tokens_to_commit = 0;
+  new_bc.prompt_phase = false;
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
@@ -723,9 +748,15 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
 
     // 2. Put the information of the committed tokens into
     // TreeVerifyBatchConfig.committed_tokens.
+    // Note here, we shouldn't put the last token in request.committed_tokens
+    // into new_bc. Because the LLM don't have that token's KV cache.
     std::vector<Request::CommittedToken> &committed_tokens =
         request.committed_tokens;
-    for (auto const &committed_token : committed_tokens) {
+    for (int committed_token_index = 0;
+         committed_token_index < committed_tokens.size() - 1;
+         committed_token_index++) {
+      Request::CommittedToken &committed_token =
+          committed_tokens.at(committed_token_index);
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
           request_index;
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
@@ -768,7 +799,7 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   return new_bc;
 }
 
-void RequestManager::update_llm_verify_results(
+bool RequestManager::update_llm_verify_results(
     InferenceResult const &llm_verify_result) {
   // TODO: Implement this function
   // We may have two types of InferenceResults, one is the results from
@@ -778,14 +809,17 @@ void RequestManager::update_llm_verify_results(
   // 1. Compare the results returned from the LLM and compare them with the
   // SSM's speculative token tree. For the greedy construction of the
   // speculative token tree, we can simply compare LLM's sample result at each
-  // token, while for the sampling construction of the speculative token tree,
-  // we need to implement a CPU based verify function.
-  // 2. Store the committed tokens to Request.llm_committed_tokens and
-  // Request.ssm_committed_tokens.
-  // 3. Store the verified tokens to Request.tokens.
-  // 4. Some requests may be completed after appending the verified tokens,
-  // maintain the complete requests, and start a prefilling iteration.
-  // 5. For requests not completed, update their causal mask.
+  // token, this is implemented in get_verify_results_greedy(). This function
+  // stores the commmitted tokens into the corresponding fields in the Request.
+  // For the sampling construction of the speculative token tree, we need to
+  // implement a CPU based verify function.
+  // 2. Call init_token_tree() add_root_token_to_spec_token_tree() to add the
+  // root token to the requests' speculative token tree. The root token is the
+  // last committed token.
+  // 3. For requests not completed, update their causal mask.
+  // 4. Some requests may be completed after appending the verified tokens. If
+  // there is a request completed, return true.
+  get_verify_results_greedy(llm_verify_result);
 }
 
 bool RequestManager::update_ssm_inference_results(
@@ -864,83 +898,54 @@ bool RequestManager::update_ssm_inference_results(
 
 /* --------- Bitmask Related Functions --------- */
 
-// TO BE REMOVED: START
-// prompt phase, init task
-void RequestManager::init_bitmask(BatchConfig::BitMask &bitmask,
-                                  int initLength) {
-  assert(initLength > 0);
-  // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100,
-  // t4: 0000000..1000
-  bitmask.non_tree_cache_size = 0;
-  bitmask.tree_or_prompt_size = 1;
-
-  bitmask.prompt_size = initLength;
-  bitmask.layer_size = initLength;
-  // std::cout << "see bit mask" << bitmask.prompt_size << "\n";
-  // std::cout << "see bit mask" << std::bitset<64>(bitmask.mask[0]) << "\n";
-  // std::cout << "see bit mask" << std::bitset<64>(bitmask.mask[1]) << "\n";
-  // std::cout << "see bit mask" << std::bitset<64>(bitmask.mask[2]) << "\n";
-}
-
-// prepare next init
-void RequestManager::update_bitmask(BatchConfig::BitMask &bitmask,
-                                    int initLength,
-                                    int non_tree_size) {
-  // assert(initLength == 1);
-  // eg. 4 tokens: t1: 0000000..1111, t2: 0000000..1110, t3: 0000000..1100,
-  // t4: 0000000..1000
-  assert(initLength <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM &&
-         "do not support tree size > 64");
-  assert(initLength >= 1 && "verified token num should >= 1");
-
-  // std::cout << "non tree size: " << non_tree_size << ", "
-  //           << bitmask.non_tree_cache_size << "\n";
-
-  bitmask.non_tree_cache_size = non_tree_size + initLength - 1;
-  bitmask.tree_or_prompt_size = 1;
-  bitmask.layer_size = initLength;
-  // std::cout << "non_tree_size: " << non_tree_size << "\n";
-  bitmask.prompt_size = 1;
-  for (int i = 0; i < bitmask.prompt_size; i++) {
-    for (int j = i; j < bitmask.prompt_size; j++) {
-      bitmask.mask[i] |= (1 << j);
-    }
-  }
-
-  // std::cout << "see bit mask update" << bitmask.prompt_size << "\n";
-  // std::cout << "see bit mask update" << std::bitset<64>(bitmask.mask[0])
-  //           << "\n";
-}
-// TO BE REMOVED: END
-
-void RequestManager::init_bitmask(RequestGuid guid, int prompt_length) {
-  // This method modifies the bitmask in place
-  // This method is called by update_llm_verify_results
-  // TODO: implement this function
+void RequestManager::init_bitmask_prompt(RequestGuid guid, int prompt_length) {
+  // This method is called by update_llm_verify_results when there are new
+  // request to load into the batch
   // 1. Clear the causal mask because our current speculative token tree is
   // empty.
   // 2. Maintain all other fields.
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
-  bitmask.tree_or_prompt_size = 0;
-  bitmask.current_layer_size = 0;
-  bitmask.prompt_size = prompt_length;
+
+  bitmask.clear_bitmask();
+  bitmask.tree_or_prompt_size = prompt_length;
+  bitmask.current_layer_size = prompt_length;
   bitmask.non_tree_cache_size = 0;
 }
 
-void RequestManager::update_bitmask(RequestGuid guid,
-                                    int num_committed_tokens) {
+void RequestManager::update_bitmask_prompt(RequestGuid guid,
+                                           int num_committed_tokens) {
   // This method modifies the bitmask in place
   // This method is called by update_llm_verify_results
-  // TODO: implement this function
-  // 1. Clear the causal mask because our current speculative token tree is
-  // empty.
+  // 1. Clear the causal mask because the first SSM inference uses the prompt
+  // kernel and it doesn't use mask.
   // 2. Maintain all other fields.
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
-  bitmask.tree_or_prompt_size = 0;
-  bitmask.current_layer_size = 0;
+  bitmask.clear_bitmask();
+  bitmask.tree_or_prompt_size = num_committed_tokens;
+  bitmask.current_layer_size = num_committed_tokens;
+}
+
+void RequestManager::init_bitmask_spec(RequestGuid guid,
+                                       int num_committed_tokens) {
+  // This method modifies the bitmask in place
+  // This method is called by the first call of update_ssm_verify_results in a
+  // speculative iteration
+  // CAUTION: You should still call append_bitmask() after this method
+  // 1. Clear the causal mask and add a root into it, because the tree is
+  // currently empty but we have a root.
+  // 2. Maintain all other fields.
+  assert(current_speculation_step == 1 &&
+         "The current speculation step should be 1");
+  Request &request = all_requests[guid];
+  BatchConfig::BitMask &bitmask = request.causal_mask;
+  bitmask.clear_bitmask();
+  // Set the mask for the root
+  bitmask.bit_mask[0].set_bit(0);
+  bitmask.tree_or_prompt_size = 1;
   bitmask.non_tree_cache_size += num_committed_tokens;
+  bitmask.current_layer_size = 1;
 }
 
 void RequestManager::append_bitmask(RequestGuid guid) {
@@ -987,179 +992,16 @@ void RequestManager::append_bitmask(RequestGuid guid) {
 BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
   // This method creates a new bitmask for LLM verification model's bitmask,
   // it does not modify the small model's bitmask This method is called by
-  // prepare_verify_batch_config
+  // prepare_verify_batch_config()
   // TODO: implement this function
   // 1. Create the bitmask based on the pruned request token tree
   // 2. Maintain all other fields
 }
 /* --------- Bitmask Related Functions --------- */
 
-// TO BE REMOVED: START
-std::vector<std::pair<BatchConfig::TokenId, int>>
-    RequestManager::traverse_verify_tree(
-        size_t guid,
-        std::vector<std::pair<BatchConfig::TokenId, int>> const
-            &inputSerializedTree,
-        std::vector<std::pair<BatchConfig::TokenId, int>> const
-            &outputSerializedTree) {
-  std::vector<std::pair<TreeSearchBatchConfig::TokenId, int>> verifiedTree;
-  // verifiedTree.push_back(inputSerializedTree.at(0));
-  std::vector<std::pair<int, int>> new_committed_tokens =
-      std::vector<std::pair<int, int>>();
-
-  log_req_mgr.print("Input tree size (%zu) Output tree size (%zu)",
-                    inputSerializedTree.size(),
-                    outputSerializedTree.size());
-  { // Input tree
-    std::ostringstream oss;
-    // inputSerializedTree is the dfs_tree_inputs_map[guid] array og (token
-    // id, depth) pairs
-    for (auto const &pair : inputSerializedTree) {
-      oss << " " << pair.second << ":" << pair.first;
-      // log_req_mgr.print("(%d, %d)", pair.first, pair.second);
-    }
-    log_req_mgr.print("Input tree:%s", oss.str().c_str());
-  }
-  { // Output tree
-    // log_req_mgr.print("========Output============");
-    // outputSerializedTree is an array of (token id, depth + 1) pairs
-    std::ostringstream oss;
-    for (auto const &pair : outputSerializedTree) {
-      // log_req_mgr.print("(%d, %d)", pair.first, pair.second);
-      oss << " " << pair.second << ":" << pair.first;
-    }
-    log_req_mgr.print("Output tree:%s", oss.str().c_str());
-  }
-  {
-    // log_req_mgr.print("========Committed============");
-    //  committed_tokens[guid] is an array of (depth, result_index) pairs for
-    //  the given request
-    std::ostringstream oss;
-    for (auto const &pair : committed_tokens.at(guid)) {
-      // log_req_mgr.print("(%d, %d)", pair.first, pair.second);
-      oss << " " << pair.second << ":" << pair.first;
-    }
-    log_req_mgr.print("Committed tokens:%s", oss.str().c_str());
-  }
-
-  // It's safe to have inputSerializedTree.size() >
-  // outputSerializedTree.size() In this case the inputSeriedTree ends with
-  // padding 0s
-  assert(inputSerializedTree.size() >= outputSerializedTree.size());
-
-  int *treeLayers = new int[inputSerializedTree.size()];
-  int node_num = 1;
-  int layer_num = 0;
-  for (int token_id = 0; token_id < inputSerializedTree.size(); token_id++) {
-    if (token_id == (inputSerializedTree.size() - 1) ||
-        inputSerializedTree.at(token_id + 1).second !=
-            inputSerializedTree.at(token_id).second) {
-      treeLayers[layer_num] = node_num;
-      layer_num += 1;
-      node_num = 1;
-    } else {
-      node_num++;
-    }
-  }
-
-  // to avoid branch switch when same tokens in input tree.
-  // todo, only checked for N->1->1->1 cases
-
-  bool findFirst = false;
-  layer_num = -1;
-  int first_layer_slot = 0;
-  int first_layer_slot_total = 0;
-  int processed_whole_layer_tokens = 0;
-
-  for (int i = 0; i < outputSerializedTree.size(); i++) {
-    auto input = inputSerializedTree.at(i);
-    auto output = outputSerializedTree.at(i);
-
-    if (i == 0 || inputSerializedTree.at(i - 1).second !=
-                      inputSerializedTree.at(i).second) {
-      layer_num += 1;
-      processed_whole_layer_tokens += i == 0 ? 0 : treeLayers[layer_num - 1];
-    }
-
-    if (i == 0) {
-      verifiedTree.push_back(output);
-
-      new_committed_tokens.push_back(std::make_pair(
-          input.second,
-          committed_tokens.at(guid).at(i).second)); // <input_abs_depth,
-                                                    // input_index_in_batch>
-      // std::cout << committed_tokens.at(guid).at(i).first << ", "
-      //           << committed_tokens.at(guid).at(i).second << std::endl;
-      // std::cout << input.first << ", " << input.second << std::endl;
-
-      assert(committed_tokens.at(guid).at(i).first == input.second);
-      continue;
-    }
-
-    if (input.first == verifiedTree.back().first &&
-        input.second == verifiedTree.back().second) {
-      if (findFirst) {
-        // must in this branch.
-        int layer_slot = i - processed_whole_layer_tokens;
-        int layer_slot_total = treeLayers[layer_num];
-        if ((first_layer_slot == layer_slot)) {
-          verifiedTree.push_back(output);
-          new_committed_tokens.push_back(std::make_pair(
-              input.second, committed_tokens.at(guid).at(i).second));
-          // at this point, you'll not go other branches
-          // std::cout << "verify tree push back: " << output.first
-          //           << ", tree size is: " << verifiedTree.size()
-          //           << ", ??: " << input.first << ", " << input.second <<
-          //           "\n";
-
-        } else {
-          printf("not correct slot\n");
-        }
-      } else {
-        verifiedTree.push_back(output);
-        first_layer_slot = i - processed_whole_layer_tokens;
-        first_layer_slot_total = treeLayers[layer_num];
-        findFirst = true;
-        new_committed_tokens.push_back(std::make_pair(
-            input.second,
-            committed_tokens.at(guid).at(i).second)); // <input_abs_depth,
-                                                      // input_index_in_batch>
-        // at this point, you'll not go other branches
-        // std::cout << "verify tree push back: " << output.first
-        //           << ", tree size is: " << verifiedTree.size()
-        //           << ", ??: " << input.first << ", " << input.second <<
-        //           "\n";
-      }
-
-      assert(committed_tokens.at(guid).at(i).first == input.second);
-    }
-  }
-  committed_tokens[guid] = new_committed_tokens;
-  {
-    // log_req_mgr.print("========Verified============");
-    std::ostringstream oss;
-    for (auto const &pair : verifiedTree) {
-      // log_req_mgr.print("(%d, %d)", pair.first, pair.second);
-      oss << " " << pair.second << ":" << pair.first;
-    }
-    log_req_mgr.print("Verified:%s", oss.str().c_str());
-  }
-  {
-    // log_req_mgr.print("========New Committed============");
-    std::ostringstream oss;
-    for (auto const &pair : committed_tokens.at(guid)) {
-      // log_req_mgr.print("(%d, %d)", pair.first, pair.second);
-      oss << " " << pair.second << ":" << pair.first;
-    }
-    log_req_mgr.print("New committed:%s", oss.str().c_str());
-  }
-
-  return verifiedTree;
-}
-// TO BE REMOVED: END
-
-void RequestManager::get_verify_results(
+void RequestManager::get_verify_results_greedy(
     InferenceResult const &llm_verify_result) {
+  int llm_result_offset = 0;
   // This function maintain the generated token list of the request and the
   // committed tokens.
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
@@ -1172,41 +1014,86 @@ void RequestManager::get_verify_results(
     assert(request.status == Request::RUNNING);
     request.committed_tokens.clear();
 
-    // Traverse the speculative token tree and it with the LLM's sampling output
-    int llm_result_index = 0;
-    int verified_parent_pos = -1;
-    int committed_token_index = 0;
+    int committed_token_index = request.tokens.size();
+
     TokenTree &token_tree = request.speculative_token_trees[0];
-    for (auto const &tree_layer : token_tree.tree_layers) {
+    // First add the root to the committed tokens
+    request.committed_tokens.push_back(Request::CommittedToken(
+        llm_result_offset,
+        committed_token_index,
+        llm_verify_result.token_ids[llm_result_offset]));
+    committed_token_index++;
+    // The position of the last accepted token in its tree layer
+    int last_accepted_token_layer_index = 0;
+    // The index of the last accepted token in the entire tree (excluding the
+    // pruned tokens)
+    int last_accepted_token_index = 0;
+
+    int current_token_index = 1; // Because we skip the root
+    int num_layers = token_tree.tree_layers.size();
+    for (int layer_index = 1; layer_index < num_layers; layer_index++) {
+      // We skip the first layer
+      std::list<std::shared_ptr<TokenTreeNode>> &tree_layer =
+          token_tree.tree_layers.at(layer_index);
+
       bool token_accepted_this_layer = false;
-      int current_layer_index = 0;
+      int current_token_layer_index = 0;
+
       for (auto const &node_ptr : tree_layer) {
         if (node_ptr->pruned) {
           continue;
         }
-        if (node_ptr->parent_pos != verified_parent_pos) {
-          llm_result_index++;
-          current_layer_index++;
-          continue;
-        } else if (token_accepted_this_layer) {
-          // A token is already accepted in the current layer
-          llm_result_index++;
-          current_layer_index++;
+        if ((node_ptr->parent_pos != last_accepted_token_layer_index) ||
+            token_accepted_this_layer) {
+          // The token's parent is not accepted, or there is already another
+          // token accepted in this layer
+          current_token_index++;
+          current_token_layer_index++;
           continue;
         } else {
-          if (node_ptr->id == llm_verify_result.token_ids[llm_result_index]) {
+          // The token's parent is accepted, and no token has been accepted in
+          // this layer yet
+          if (node_ptr->id ==
+              llm_verify_result
+                  .token_ids[llm_result_offset + last_accepted_token_index]) {
+            // The token's parent is accepted, and this token's id equals the
+            // llm's sample at its parent's position. We accept this token.
+
+            // from_index: the index of the token in the tree
+            // to_index: the committed token index in the request
             request.committed_tokens.push_back(Request::CommittedToken(
-                llm_result_index, committed_token_index, node_ptr->id));
+                current_token_index, committed_token_index, node_ptr->id));
             request.tokens.push_back(node_ptr->id);
+
             token_accepted_this_layer = true;
-            verified_parent_pos = current_layer_index;
+            last_accepted_token_index = current_token_index;
+            last_accepted_token_layer_index = current_token_layer_index;
             committed_token_index++;
+            current_token_index++;
+            current_token_layer_index++;
           }
-          llm_result_index++;
-          current_layer_index++;
         }
       }
+      if (!token_accepted_this_layer) {
+        // No token is accepted in this layer, we should stop the traversal
+        // However, we have to add the last sampled token as a correction from
+        // the LLM
+
+        // from_index: since this token is not in the token tree, neither the
+        // ssm nor the llm have its KV cache, so the from_index should be a
+        // place holder, which is -1
+        request.committed_tokens.push_back(Request::CommittedToken(
+            -1,
+            committed_token_index,
+            llm_verify_result
+                .token_ids[llm_result_offset + last_accepted_token_index]));
+        request.tokens.push_back(
+            llm_verify_result
+                .token_ids[llm_result_offset + last_accepted_token_index]);
+        break;
+      }
     }
+    llm_result_offset += token_tree.tree_size;
   }
 }
 
@@ -1471,9 +1358,11 @@ RequestManager *RequestManager::get_request_manager() {
 }
 
 /* --------- Request Token Tree Related Functions --------- */
-void RequestManager::init_token_trees(RequestGuid guid) {
+void RequestManager::init_token_tree(RequestGuid guid) {
   Request &request = all_requests[guid];
   request.speculative_token_trees.clear();
+  // Assume we only use one small model for speculation
+  request.speculative_token_trees.emplace_back();
 }
 
 void RequestManager::add_root_to_spec_token_tree(
@@ -1485,6 +1374,11 @@ void RequestManager::add_root_to_spec_token_tree(
   // to verify its childs (the tokens in the first layer).
   // This method should: construct and add the root token to the empty
   // speculative token tree, with parent_pos being -1 and joint_prob being 1.0
+  Request &request = all_requests[guid];
+  TokenTree &speculative_token_tree = request.speculative_token_trees[0];
+  speculative_token_tree.add_layer();
+  auto node_ptr = std::make_shared<TokenTreeNode>(token_id, -1, 1.0);
+  speculative_token_tree.tree_layers[0].push_back(node_ptr);
 }
 
 bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,

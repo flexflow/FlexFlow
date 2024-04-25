@@ -62,23 +62,18 @@ public:
 
   int num_tokens;
   int num_available_requests;
-
-  enum class ExecutionPhase {
-    PROMPT,
-    GENERATION
-  };
-
-  ExecutionPhase current_phase;
+  bool prompt_phase;
 
   struct PerRequestInfo {
-    int first_token_index_in_request;
-    int first_token_offset_in_batch;
-    int num_tokens_in_batch;
+    int first_token_index_in_request = 0;
+    int first_token_offset_in_batch = 0;
+    int num_tokens_in_batch = 0;
   };
+
   struct PerTokenInfo {
-    TokenId token_id;
-    int abs_index_in_request;
-    int request_index;
+    TokenId token_id = 0;
+    int abs_index_in_request = 0;
+    int request_index = 0;
   };
 
   class BitMask {
@@ -109,6 +104,10 @@ public:
         return (bits[idx] & (1ULL << bit)) != 0;
       }
 
+      void clear() {
+        std::memset(bits, 0, sizeof(bits));
+      }
+
     private:
       uint64_t bits[MAX_SPEC_TREE_TOKEN_NUM / 8]; // Array to hold 256 bits
     };
@@ -125,12 +124,20 @@ public:
     int current_layer_size = 0;
 
     BitMask() = default;
+
     BitMask(BitMask const &other) {
       non_tree_cache_size = other.non_tree_cache_size;
       tree_or_prompt_size = other.tree_or_prompt_size;
       current_layer_size = other.current_layer_size;
       for (int i = 0; i < MAX_SPEC_TREE_TOKEN_NUM; i++) {
         bit_mask[i] = other.bit_mask[i];
+      }
+    }
+
+    void clear_bitmask() {
+      // Clear bit_mask but keep the other fields
+      for (int i = 0; i < MAX_SPEC_TREE_TOKEN_NUM; i++) {
+        bit_mask[i].clear();
       }
     }
   };
