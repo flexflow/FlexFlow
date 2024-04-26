@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "kernels/cuda_helper.h"
+#include "device.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/reduction_kernels.h"
 
@@ -42,14 +42,14 @@ struct ForwardKernel {
                   size_t num_replicas) {
 
     size_t total_elements = input.shape.num_elements() * num_replicas;
-    reduction_forward_kernel<T>
+    reduction_forward_kernel<real_type<T>>
         <<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
             input.get<T>(),
             output.get<T>(),
             input.shape.num_elements(),
             num_replicas);
   }
-}
+};
 
 template <DataType T>
 struct BackwardKernel {
@@ -58,24 +58,24 @@ struct BackwardKernel {
                   GenericTensorAccessorR const &output) {
     checkCUDA(cudaMemcpyAsync(input.get<T>(),
                               output.get<T>(),
-                              input.shape.num_elements() * sizeof(T),
+                              input.shape.num_elements() * size_of_datatype(T),
                               cudaMemcpyDeviceToDevice,
                               stream));
   }
-}
+};
 
 void forward_kernel(cudaStream_t stream,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
                     size_t num_replicas) {
   DataTypeDispatch1<ForwardKernel>{}(
-      input->data_type, stream, input, output, num_replicas);
+      input.data_type, stream, input, output, num_replicas);
 }
 
 void backward_kernel(cudaStream_t stream,
                      GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output) {
-  DataTypeDispatch1<BackwardKernel>{}(input->data_type, stream, input, output);
+  DataTypeDispatch1<BackwardKernel>{}(input.data_type, stream, input, output);
 }
 
 } // namespace Reduction

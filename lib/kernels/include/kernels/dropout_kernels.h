@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_DROPOUT_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_DROPOUT_KERNELS_H
 
+#include "device.h"
 #include "kernels/allocation.h"
 #include "kernels/array_shape.h"
-#include "kernels/device.h"
 #include "kernels/ff_handle.h"
 #include <cstddef>
 
@@ -12,7 +12,6 @@ namespace FlexFlow {
 struct DropoutPerDeviceState {
 public:
   PerDeviceFFHandle handle;
-  Allocator allocator;
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
   ffDropoutDescriptor_t dropoutDesc;
@@ -24,7 +23,6 @@ public:
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(DropoutPerDeviceState,
                                              handle,
-                                             allocator,
                                              inputTensor,
                                              outputTensor,
                                              dropoutDesc,
@@ -43,12 +41,12 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                   Allocator allocator);
 
 void forward_kernel(ffStream_t stream,
-                    DropoutPerDeviceState &m,
+                    DropoutPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr);
 
 void backward_kernel(ffStream_t stream,
-                     DropoutPerDeviceState &m,
+                     DropoutPerDeviceState const &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr);
 

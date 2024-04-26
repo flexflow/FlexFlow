@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_KERNELS_ALLOCATION_H
 #define _FLEXFLOW_KERNELS_ALLOCATION_H
 
+#include "accessor.h"
 #include <cstddef>
 #include <memory>
 
@@ -16,8 +17,8 @@ struct IAllocator {
 struct Allocator {
   Allocator() = delete;
 
-  void *allocate(size_t);
-  void deallocate(void *);
+  void *allocate(size_t mem_size);
+  void deallocate(void *ptr);
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IAllocator, T>::value,
@@ -27,6 +28,7 @@ struct Allocator {
   }
 
 private:
+  Allocator(std::shared_ptr<IAllocator> ptr) : i_allocator(ptr){};
   std::shared_ptr<IAllocator> i_allocator;
 };
 

@@ -10,14 +10,11 @@
 
 namespace FlexFlow {
 
-enum class AggregateOp {
-  SUM,
-  AVG,
-};
+enum class AggregateOp { SUM, AVG };
 
 struct EmbeddingAttrs {
-  req<int> num_entries, out_channels;
-  req<AggregateOp> aggr;
+  int num_entries, out_channels;
+  std::optional<AggregateOp> aggr;
   req<DataType> data_type;
 };
 FF_VISITABLE_STRUCT(EmbeddingAttrs, num_entries, out_channels, aggr, data_type);

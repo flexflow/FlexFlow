@@ -13,16 +13,12 @@
  * limitations under the License.
  */
 
-#include "kernel/accessor.h"
+#include "device.h"
 #include "kernels/accessor.h"
-#include "kernels/cuda_helper.h"
 #include "kernels/transpose_kernels.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::coord_t;
-using Legion::Domain;
 
 struct TransposeStrides {
   int num_dim;
@@ -33,17 +29,17 @@ struct TransposeStrides {
 namespace Kernels {
 namespace Transpose {
 
-TransposePerDeviceState init_kernel(int num_dim, std::vector<int> const &perm) {
-
-  TransposePerDeviceState state;
-  state.num_dim = num_dim;
+TransposePerDeviceState init_kernel(int num_dim,
+                                    std::vector<ff_dim_t> const &perm) {
   int const length = perm.size();
 
-  for (int i = 0; i < std::min(length, MAX_TENSOR_DIM); ++i) {
-    state.perm[i] = perm[i];
+  std::vector<int> perm_vector;
+  assert(length <= MAX_TENSOR_DIM);
+  for (int i = 0; i < length; ++i) {
+    perm_vector.push_back(perm[i].value());
   }
 
-  return state;
+  return {num_dim, perm_vector};
 }
 
 __global__ void transpose_simple_kernel(std::size_t volume,
@@ -52,8 +48,8 @@ __global__ void transpose_simple_kernel(std::size_t volume,
                                         const TransposeStrides info,
                                         float const beta) {
   CUDA_KERNEL_LOOP(o_idx, volume) {
-    std::size i_idx = 0;
-    std::size t = o_idx;
+    size_t i_idx = 0;
+    size_t t = o_idx;
     for (int i = info.num_dim - 1; i >= 0; i--) {
       coord_t ratio = t / info.out_strides[i];
       t -= ratio * info.out_strides[i];
@@ -93,7 +89,8 @@ void forward_kernel(cudaStream_t stream,
                                       0.0f /*beta*/);
 }
 
-void backward_kernel(TransposePerDeviceState const &m,
+void backward_kernel(cudaStream_t stream,
+                     TransposePerDeviceState const &m,
                      GenericTensorAccessorW const &in_grad,
                      GenericTensorAccessorR const &out_grad) {
 
