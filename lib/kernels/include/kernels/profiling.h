@@ -1,8 +1,7 @@
 #ifndef _FLEXFLOW_KERNELS_PROFILING_H
 #define _FLEXFLOW_KERNELS_PROFILING_H
 
-#include "kernels/device.h"
-#include "utils/optional.h"
+#include "device.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
@@ -18,7 +17,7 @@ public:
 };
 
 template <typename F, typename... Ts>
-optional<float>
+std::optional<float>
     profiling_wrapper(F const &f, bool enable_profiling, Ts &&...ts) {
   if (enable_profiling) {
     ProfilingSettings settings = {0, 1};
@@ -27,14 +26,14 @@ optional<float>
     ffStream_t stream;
     checkCUDA(get_legion_stream(&stream));
     f(stream, std::forward<Ts>(ts)...);
-    return nullopt;
+    return std::nullopt;
   }
 }
 
 template <typename F, typename... Ts>
-optional<float> profiling_wrapper(F const &f,
-                                  ProfilingSettings const &settings,
-                                  Ts &&...ts) {
+std::optional<float> profiling_wrapper(F const &f,
+                                       ProfilingSettings const &settings,
+                                       Ts &&...ts) {
   ffStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 

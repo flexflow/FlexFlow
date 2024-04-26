@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_ELEMENT_UNARY_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_ELEMENT_UNARY_KERNELS_H
 
+#include "device.h"
 #include "kernels/accessor.h"
-#include "kernels/device.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/ops/element_unary.h"
 #include <cstddef>
@@ -10,11 +10,11 @@
 namespace FlexFlow {
 
 using ElementUnaryUnifiedAttrs =
-    variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
+    std::variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
 
 struct ElementUnaryPerDeviceState {
   ffTensorDescriptor_t inputTensor, outputTensor;
-  ffActivationDescriptor_t actiDesc;
+  req<ffActivationDescriptor_t> actiDesc;
 };
 
 FF_VISITABLE_STRUCT_NO_EQ(ElementUnaryPerDeviceState,
