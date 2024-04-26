@@ -1410,6 +1410,8 @@ void RequestManager::add_root_to_spec_token_tree(
   speculative_token_tree.add_layer();
   auto node_ptr = std::make_shared<TokenTreeNode>(token_id, -1, 1.0);
   speculative_token_tree.tree_layers[0].push_back(node_ptr);
+  speculative_token_tree.tree_size++;
+  speculative_token_tree.tree_size_including_pruned++;
 }
 
 bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
@@ -1532,6 +1534,7 @@ void RequestManager::prune_last_layer_of_spec_token_tree(RequestGuid guid) {
   for (auto it = last_layer.begin(); it != last_layer.end(); ++it) {
     if ((*it)->pruned) {
       last_layer.erase(it);
+      request.speculative_token_trees[0].tree_size--;
     }
   }
 }
