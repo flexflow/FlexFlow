@@ -394,14 +394,18 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 
     switch (request_manager_status) {
       case PREFILLING:
-        if (request.initial_len == request.llm_cache_size) { // all prompt tokens are prefilled
-          request.tokens.push_back(result.token_ids[request.num_tokens_in_batch]);
+        if (request.initial_len ==
+            request.llm_cache_size) { // all prompt tokens are prefilled
+          request.tokens.push_back(
+              result.token_ids[request.num_tokens_in_batch]);
           request_manager_status = DECODING;
         }
         break;
-      case DECODING: 
-        request.tokens.push_back(result.token_ids[request.first_token_offset_in_batch]);
-        if (request.tokens.size() == request.max_sequence_length) { // request is completed
+      case DECODING:
+        request.tokens.push_back(
+            result.token_ids[request.first_token_offset_in_batch]);
+        if (request.tokens.size() ==
+            request.max_sequence_length) { // request is completed
           request.status = Request::COMPLETED;
           trigger_request_completion_future(request.guid);
           guid_of_requests[i] = INVALID_GUID;
@@ -450,7 +454,8 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   // Per Request Info
   bc.requestsInfo[request_index].first_token_depth_in_request = 0;
   bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
-  bc.requestsInfo[request_index].num_tokens_in_batch = std::min(bc.num_tokens, (int)new_request.tokens.size());
+  bc.requestsInfo[request_index].num_tokens_in_batch =
+      std::min(bc.num_tokens, (int)new_request.tokens.size());
 
   bc.request_completed[request_index] = false;
 
@@ -458,11 +463,11 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   new_request.num_tokens_in_batch = 0;
 
   // Delete those after update BatchConfig
-  bc.requestsInfo[request_index].max_sequence_length = new_request.max_sequence_length;
+  bc.requestsInfo[request_index].max_sequence_length =
+      new_request.max_sequence_length;
   bc.requestsInfo[request_index].request_guid = new_request.guid;
   bc.requestsInfo[request_index].prompt_phase = true;
   bc.requestsInfo[request_index].batch_config_request_id = request_index;
-
 
   // Per Token Info
   for (int j = 0; j < bc.requestsInfo[request_index].num_tokens_in_batch; j++) {
@@ -475,7 +480,7 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
     new_request.llm_cache_size++;
     new_request.num_tokens_in_batch++;
   }
-  
+
   return bc;
 }
 

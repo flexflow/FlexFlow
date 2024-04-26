@@ -311,7 +311,7 @@ private:
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
 
-  // rm state 
+  // rm state
   std::mutex rm_state_mutex;
   int guid_of_requests[BatchConfig::MAX_NUM_REQUESTS];
 
