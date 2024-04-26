@@ -46,7 +46,7 @@ std::string LoadBytesFromFile(std::string const &path) {
 RequestManager::RequestManager()
     : background_server_status(INITIALIZED), verbose(false),
       next_available_guid(1000000), num_processed_requests(0),
-      total_request_run_time(0.0f) {
+      total_request_run_time(0.0f), request_manager_status(PREFILLING) {
   // The following config parameters are set
   // during ffmodel.compile()
   // Initialize them to -1 to make sure no one
@@ -430,6 +430,8 @@ BatchConfig RequestManager::prepare_next_batch() {
     case LLM_VERIFY:
       return prepare_verify_batch_config();
     default:
+      std::cout << "Invalid request manager status: " << request_manager_status
+                << std::endl;
       assert(false);
   }
 }
@@ -1161,7 +1163,8 @@ void RequestManager::background_serving_task(
   }
   if (rm->get_num_ssms() == 0) {
     // No SSMs: perform incremental decoding
-    rm->serve_incr_decoding(llm);
+    // rm->serve_incr_decoding(llm);
+    rm->serve_decoding(llm);
   } else {
     // Registered SSMs: perform speculative inference
     rm->serve_spec_infer(llm);
@@ -1169,6 +1172,57 @@ void RequestManager::background_serving_task(
 }
 
 /*static*/
+void RequestManager::serve_decoding(FFModel *llm) {
+  Context ctx = llm->config.lg_ctx;
+  Runtime *runtime = llm->config.lg_hlr;
+  // Compile the llm
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  im->compile_model_and_allocate_buffer(llm);
+  assert(im->model_weights_loaders.find(llm) !=
+         im->model_weights_loaders.end());
+  // Load model weights
+  im->model_weights_loaders[llm]->load_weights(llm);
+  // init operators
+  im->init_operators_inference(llm);
+  // Legion futures for inc_decoding and spec_infer
+  InferenceResultFuture last_irf;
+  {
+    // Initialize futures for incr decoding
+    InferenceResult ir;
+    last_irf = Future::from_value<InferenceResult>(ir);
+  }
+
+  std::queue<InferenceResultFuture> batch_pipeline;
+  { batch_pipeline.push(last_irf); }
+
+  while (!is_background_server_terminated()) {
+
+    if (batch_pipeline.size() >= 4) {
+      // Block here to avoid launching too many batches
+      auto const &ir = batch_pipeline.front();
+      ir.get_void_result();
+    }
+    // deque finished batches
+    while (batch_pipeline.size() > 1) {
+      auto const &ir = batch_pipeline.front();
+      if (ir.is_ready()) {
+        batch_pipeline.pop();
+      } else {
+        break;
+      }
+    }
+    runtime->begin_trace(ctx, 12346 /*trace_id*/);
+    InferenceResultFuture next_ir = batch_pipeline.back();
+    BatchConfigFuture bcf = get_next_batch_config(next_ir, ctx, runtime);
+    FutureMap fm = im->inference(llm, 0, bcf);
+    assert(fm.get_future_map_domain().get_volume() == 1);
+    InferenceResultFuture irf = fm.get_future(0);
+    batch_pipeline.push(irf);
+    last_irf = irf;
+    runtime->end_trace(ctx, 12346 /*trace_id*/);
+  }
+}
+
 void RequestManager::serve_incr_decoding(FFModel *llm) {
   Context ctx = llm->config.lg_ctx;
   Runtime *runtime = llm->config.lg_hlr;
