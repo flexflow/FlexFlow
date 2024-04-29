@@ -33,13 +33,13 @@ LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
 std::string LoadBytesFromFile(std::string const &path) {
   std::ifstream fs(path, std::ios::in | std::ios::binary);
-  assert(!fs.fail() && "no such file");
-  std::string data;
+  assert(fs.is_open() && "Failed to open file for reading.");
   fs.seekg(0, std::ios::end);
-  size_t size = static_cast<size_t>(fs.tellg());
+  size_t size = fs.tellg();
   fs.seekg(0, std::ios::beg);
-  data.resize(size);
-  fs.read(data.data(), size);
+  std::string data(size, '\0');
+  fs.read(&data[0], size);
+  assert(!fs.fail() && "Failed to read data from file.");
   return data;
 }
 
@@ -464,12 +464,15 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   int request_index = get_empty_request_index();
   assert(request_index != -1);
 
+  // The following should be moved to update_inference_results()
   Request new_request = pending_request_queue.front();
   pending_request_queue.pop();
   all_requests[new_request.guid] = new_request;
   guid_of_requests[request_index] = new_request.guid;
+  request_available[request_index] = true;
 
   // Per Request Info
+  // TODO: what if the prompt phase needs multiple runs to finish?
   bc.requestsInfo[request_index].first_token_index_in_request = 0;
   bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
   bc.requestsInfo[request_index].num_tokens_in_batch =
@@ -480,20 +483,16 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   new_request.first_token_offset_in_batch = 0;
   new_request.num_tokens_in_batch = 0;
 
-  // Delete those after update BatchConfig
-  bc.requestsInfo[request_index].max_sequence_length =
-      new_request.max_sequence_length;
-  bc.requestsInfo[request_index].request_guid = new_request.guid;
-  bc.requestsInfo[request_index].prompt_phase = true;
-  bc.requestsInfo[request_index].batch_config_request_id = request_index;
-
   // Per Token Info
-  for (int j = 0; j < bc.requestsInfo[request_index].num_tokens_in_batch; j++) {
-    int depth = bc.requestsInfo[request_index].first_token_depth_in_request + j;
-    bc.tokensInfo[j].request_index = request_index;
-    bc.tokensInfo[j].abs_depth_in_request = depth;
+  for (int token_idx = 0;
+       token_idx < bc.requestsInfo[request_index].num_tokens_in_batch;
+       token_idx++) {
+    int depth =
+        bc.requestsInfo[request_index].first_token_index_in_request + token_idx;
     assert(depth < new_request.tokens.size());
-    bc.tokensInfo[j].token_id = new_request.tokens[depth];
+    bc.tokensInfo[token_idx].request_index = request_index;
+    bc.tokensInfo[token_idx].abs_index_in_request = depth;
+    bc.tokensInfo[token_idx].token_id = new_request.tokens[depth];
 
     new_request.llm_cache_size++;
     new_request.num_tokens_in_batch++;
@@ -507,42 +506,32 @@ BatchConfig RequestManager::prepare_decoding_batch() {
   // fills the last token of each request in the current batch to the
   // BatchConfig for the LLM to decode.
 
-  // TODO:
-  // 1. Adept this function to the new design
-  // 2. Move the following part to the update_inference_results() function
-  // 3. Change the BatchConfig::prompt_phase
-
   BatchConfig bc;
-  bc.num_tokens = 0;
+  bc.prompt_phase = false;
 
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
-    if (guid_of_requests[i] == INVALID_GUID) {
+    if (!request_available[i]) {
       continue;
     }
+    bc.request_available[i] = true;
+    bc.num_available_requests++;
 
     Request &request = all_requests[guid_of_requests[i]];
 
     // Per Request Info
-    bc.requestsInfo[i].first_token_depth_in_request = request.llm_cache_size;
+    bc.requestsInfo[i].first_token_index_in_request = request.llm_cache_size;
     bc.requestsInfo[i].first_token_offset_in_batch = bc.num_tokens;
     bc.requestsInfo[i].num_tokens_in_batch = 1;
-
-    bc.request_completed[i] = false;
 
     request.first_token_offset_in_batch = bc.num_tokens;
     request.num_tokens_in_batch = 1;
 
-    // Delete those after update BatchConfig
-    bc.requestsInfo[i].max_sequence_length = request.max_sequence_length;
-    bc.requestsInfo[i].request_guid = request.guid;
-    bc.requestsInfo[i].prompt_phase = false;
-    bc.requestsInfo[i].batch_config_request_id = i;
-
     // Per Token Info
     bc.tokensInfo[bc.num_tokens].request_index = i;
-    bc.tokensInfo[bc.num_tokens].abs_depth_in_request = request.llm_cache_size;
+    bc.tokensInfo[bc.num_tokens].abs_index_in_request = request.llm_cache_size;
     bc.tokensInfo[bc.num_tokens].token_id = request.tokens.back();
 
+    // TODO: this should be updated in the update_inference_results() function
     request.llm_cache_size++;
     bc.num_tokens++;
   }
