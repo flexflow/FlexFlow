@@ -83,7 +83,8 @@ public:
 
       Bitset(Bitset const &other) {
         // Copy the entire array of bits from 'other' to this object
-        std::memcpy(bits, other.bits, sizeof(bits));
+        std::copy(
+            std::begin(other.bits), std::end(other.bits), std::begin(bits));
       }
 
       void set_bit(size_t pos) {
@@ -105,11 +106,11 @@ public:
       }
 
       void clear() {
-        std::memset(bits, 0, sizeof(bits));
+        std::fill(std::begin(bits), std::end(bits), 0);
       }
 
     private:
-      uint64_t bits[MAX_SPEC_TREE_TOKEN_NUM / 8]; // Array to hold 256 bits
+      uint64_t bits[MAX_SPEC_TREE_TOKEN_NUM / 64];
     };
 
   public:
