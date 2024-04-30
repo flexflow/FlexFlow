@@ -377,6 +377,49 @@ BatchConfig
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
   std::lock_guard<std::mutex> const lock(rm_state_mutex);
+  switch (request_manager_status) {
+    case PREFILLING:
+      if (update_llm_prefill_results(result)) {
+        // This indicates that the prefilling phase finishes
+        if (inference_mode == INCREMENTAL_DECODING) {
+          request_manager_status = DECODING;
+        } else if (inference_mode == SPECULATIVE_DECODING) {
+          request_manager_status = SSM_SPEC;
+        } else {
+          assert(false && "Invalid inference mode.");
+        }
+      }
+      // else, continue the unfinished prefilling
+      break;
+    case DECODING:
+      update_llm_decode_results(result);
+      break;
+    case LLM_VERIFY:
+      if (update_llm_verify_results(result)) {
+        // A request completed after the verification
+        if (pending_request_queue.empty()) {
+          // No pending request to process, continue the speculation
+          request_manager_status = SSM_SPEC;
+        } else {
+          request_manager_status = PREFILLING;
+        }
+      }
+      break;
+    case SSM_SPEC:
+      SsmInferenceResult const &ssm_result =
+          dynamic_cast<SsmInferenceResult const &>(result);
+      if (update_ssm_inference_results(ssm_result)) {
+        // Stop condition for the speculation phase has been reached
+        request_manager_status = LLM_VERIFY;
+      }
+      // else, keep the current status
+      break;
+  }
+}
+
+void RequestManager::update_inference_results(InferenceResult const &result) {
+  // Update the inference results
+  std::lock_guard<std::mutex> const lock(rm_state_mutex);
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
     if (guid_of_requests[i] == INVALID_GUID) {
       continue;
@@ -408,6 +451,11 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
     }
   }
 }
+
+bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
+}
+
+void RequestManager::update_llm_decode_results(InferenceResult const &result) {}
 
 BatchConfig RequestManager::prepare_next_batch() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
