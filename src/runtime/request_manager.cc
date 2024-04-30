@@ -1208,62 +1208,65 @@ void RequestManager::serve_decoding(FFModel *llm) {
   }
 }
 
-void RequestManager::serve_incr_decoding(FFModel *llm) {
-  Context ctx = llm->config.lg_ctx;
-  Runtime *runtime = llm->config.lg_hlr;
-  // Compile the llm
-  InferenceManager *im = InferenceManager::get_inference_manager();
-  im->compile_model_and_allocate_buffer(llm);
-  assert(im->model_weights_loaders.find(llm) !=
-         im->model_weights_loaders.end());
-  // Load model weights
-  im->model_weights_loaders[llm]->load_weights(llm);
-  // init operators
-  im->init_operators_inference(llm);
-  // Legion futures for inc_decoding and spec_infer
-  BatchConfigFuture last_bcf;
-  InferenceResultFuture last_irf;
-  {
-    // Initialize futures for incr decoding
-    BatchConfig bc;
-    InferenceResult ir;
-    last_bcf = Future::from_value<BatchConfig>(bc);
-    last_irf = Future::from_value<InferenceResult>(ir);
-  }
+// TO BE REMOVED: START
+// void RequestManager::serve_incr_decoding(FFModel *llm) {
+//   Context ctx = llm->config.lg_ctx;
+//   Runtime *runtime = llm->config.lg_hlr;
+//   // Compile the llm
+//   InferenceManager *im = InferenceManager::get_inference_manager();
+//   im->compile_model_and_allocate_buffer(llm);
+//   assert(im->model_weights_loaders.find(llm) !=
+//          im->model_weights_loaders.end());
+//   // Load model weights
+//   im->model_weights_loaders[llm]->load_weights(llm);
+//   // init operators
+//   im->init_operators_inference(llm);
+//   // Legion futures for inc_decoding and spec_infer
+//   BatchConfigFuture last_bcf;
+//   InferenceResultFuture last_irf;
+//   {
+//     // Initialize futures for incr decoding
+//     BatchConfig bc;
+//     InferenceResult ir;
+//     last_bcf = Future::from_value<BatchConfig>(bc);
+//     last_irf = Future::from_value<InferenceResult>(ir);
+//   }
 
-  std::queue<std::pair<BatchConfigFuture, InferenceResultFuture>>
-      batch_pipeline;
-  { batch_pipeline.push(std::make_pair(last_bcf, last_irf)); }
+//   std::queue<std::pair<BatchConfigFuture, InferenceResultFuture>>
+//       batch_pipeline;
+//   { batch_pipeline.push(std::make_pair(last_bcf, last_irf)); }
 
-  while (!is_background_server_terminated()) {
+//   while (!is_background_server_terminated()) {
 
-    if (batch_pipeline.size() >= 4) {
-      // Block here to avoid launching too many batches
-      auto const &batch = batch_pipeline.front();
-      batch.second.get_void_result();
-    }
-    // deque finished batches
-    while (batch_pipeline.size() > 1) {
-      auto const &batch = batch_pipeline.front();
-      if (batch.second.is_ready()) {
-        batch_pipeline.pop();
-      } else {
-        break;
-      }
-    }
-    runtime->begin_trace(ctx, 12346 /*trace_id*/);
-    auto const &next_batch = batch_pipeline.back();
-    BatchConfigFuture bcf =
-        prepare_next_batch(next_batch.first, next_batch.second, ctx, runtime);
-    FutureMap fm = im->inference(llm, 0, bcf);
-    assert(fm.get_future_map_domain().get_volume() == 1);
-    InferenceResultFuture irf = fm.get_future(0);
-    batch_pipeline.push(std::make_pair(bcf, irf));
-    last_bcf = bcf;
-    last_irf = irf;
-    runtime->end_trace(ctx, 12346 /*trace_id*/);
-  }
-}
+//     if (batch_pipeline.size() >= 4) {
+//       // Block here to avoid launching too many batches
+//       auto const &batch = batch_pipeline.front();
+//       batch.second.get_void_result();
+//     }
+//     // deque finished batches
+//     while (batch_pipeline.size() > 1) {
+//       auto const &batch = batch_pipeline.front();
+//       if (batch.second.is_ready()) {
+//         batch_pipeline.pop();
+//       } else {
+//         break;
+//       }
+//     }
+//     runtime->begin_trace(ctx, 12346 /*trace_id*/);
+//     auto const &next_batch = batch_pipeline.back();
+//     BatchConfigFuture bcf =
+//         prepare_next_batch(next_batch.first, next_batch.second, ctx,
+//         runtime);
+//     FutureMap fm = im->inference(llm, 0, bcf);
+//     assert(fm.get_future_map_domain().get_volume() == 1);
+//     InferenceResultFuture irf = fm.get_future(0);
+//     batch_pipeline.push(std::make_pair(bcf, irf));
+//     last_bcf = bcf;
+//     last_irf = irf;
+//     runtime->end_trace(ctx, 12346 /*trace_id*/);
+//   }
+// }
+// TO BE REMOVED: END
 
 /*static*/
 void RequestManager::serve_spec_infer(FFModel *llm) {

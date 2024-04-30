@@ -26,7 +26,7 @@
 namespace FlexFlow {
 
 class FFModel;
-class BeamTree;
+class TokenTree;
 class RequestManager;
 using tokenizers::Tokenizer;
 
