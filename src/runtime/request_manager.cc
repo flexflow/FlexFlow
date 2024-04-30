@@ -205,10 +205,8 @@ RequestManager::RequestGuid
               << std::endl;
   } else {
     std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
-    for (int i = 0; i < get_num_ssms(); i++) {
-      BeamTree beam_tree = BeamTree{};
-      request.beam_trees.push_back(beam_tree);
-    }
+    assert(get_num_ssms() == 1 && "Only one SSM is supported now.");
+    init_token_tree(request.guid);
   }
 
   pending_request_queue.push(request);
@@ -269,10 +267,8 @@ RequestManager::RequestGuid
               << std::endl;
   } else {
     std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
-    for (int i = 0; i < get_num_ssms(); i++) {
-      BeamTree beam_tree = BeamTree{};
-      request.beam_trees.push_back(beam_tree);
-    }
+    assert(get_num_ssms() == 1 && "Only one SSM is supported now.");
+    init_token_tree(request.guid);
   }
 
   pending_request_queue.push(request);
