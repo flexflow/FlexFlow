@@ -172,6 +172,7 @@ public:
 struct InferenceResult {
   static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId token_ids[MAX_NUM_TOKENS];
+  virtual ~InferenceResult() = default;
 };
 
 class TreeSearchBatchConfig : public BatchConfig {
