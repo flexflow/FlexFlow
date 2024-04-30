@@ -987,6 +987,41 @@ BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
   // TODO: implement this function
   // 1. Create the bitmask based on the pruned request token tree
   // 2. Maintain all other fields
+  Request &request = all_requests[guid];
+  BatchConfig::BitMask &ssm_bitmask = request.causal_mask;
+  BatchConfig::BitMask &llm_bitmask = new BatchConfig::BitMask();
+  llm_bitmask.clear_bitmask(); // is it necessary?
+
+  // Set the mask for the root
+  bitmask.bit_mask[0].set_bit(0);
+  int parent_offset = 0;
+  int child_offset = 1;
+
+  // Traversal of pruned token tree
+  TokenTree &token_tree = request.speculative_token_trees[0];
+  for (auto const &tree_layer : token_tree.tree_layers) {
+    int child_idx = 0;
+    for (auto const &tree_node : tree_layer) {
+      if (tree_node->pruned == false) {
+        // Each child copy its parent's mask
+        llm_bitmask.bit_mask[child_offset + child_idx] =
+            llm_bitmask.bit_mask[parent_offset + tree_node->parent_pos];
+        // Each child attend to itself
+        bitmask.bit_mask[child_offset + child_idx].set_bit(child_offset +
+                                                          child_idx);
+        child_idx++;
+      }
+    }
+    if (child_idx == 0) break;
+    parent_offset = child_offset;
+    child_offset += child_idx;
+  }
+
+  // Maintain other fields of llm_bitmask
+  llm_bitmask.non_tree_cache_size = ssm_bitmask.non_tree_cache_size; // not sure
+  llm_bitmask.current_layer_size = child_offset - parent_offset; // needed for llm_bitmask?
+  llm_bitmask.tree_or_prompt_size = child_offset;
+  return llm_bitmask;
 }
 /* --------- Bitmask Related Functions --------- */
 
