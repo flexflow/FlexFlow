@@ -20,26 +20,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  oracle-runner-start:
-    name: Start an Oracle instance to build the ROCM Docker images
+  rocm-builder-start:
+    name: Start an AWS instance to build the ROCM Docker images
     runs-on: ubuntu-latest
     if: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
     env: 
-      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
-      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
-      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
-      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }} 
-      OCI_INSTANCE_ID: ${{ secrets.OCI_INSTANCE_ID }}
+      ROCM_BUILDER_INSTANCE_ID: ${{ secrets.ROCM_BUILDER_INSTANCE_ID }}
     steps:
-      - name: Checkout Git Repository
-        uses: actions/checkout@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
 
-      - name: Install Oracle Cloud Infrastructure library
-        run: pip install oci
-      
-      - name: Start Oracle Machine
-        run: python3 .github/workflows/helpers/oracle_con.py --start --instance_id $OCI_INSTANCE_ID
+      - name: Start EC2 instance
+        run: aws ec2 start-instances --instance-ids $ROCM_BUILDER_INSTANCE_ID
 
   docker-build-rocm:
     name: Build and Install FlexFlow in a Docker Container (ROCm backend)
@@ -66,8 +62,8 @@ jobs:
 
   docker-build-and-publish-rocm:
     name: Build and Deploy FlexFlow Docker Containers (ROCm backend)
-    needs: oracle-runner-start
-    runs-on: [self-hosted, cpu_only]
+    needs: rocm-builder-start
+    runs-on: [self-hosted, rocm_builder]
     if: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
     strategy:
       matrix:
@@ -148,27 +144,23 @@ jobs:
           ./docker/publish.sh flexflow-environment
           ./docker/publish.sh flexflow
 
-  oracle-runner-stop:
+  rocm-builder-stop:
     needs: docker-build-and-publish-rocm
     if: ${{ always() && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
     runs-on: ubuntu-latest
-    name: Stop the Oracle instance we used to build the ROCM Docker images
+    name: Stop the AWS instance we used to build the ROCM Docker images
     env:
-      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
-      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
-      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
-      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }} 
-      OCI_INSTANCE_ID: ${{ secrets.OCI_INSTANCE_ID }}
+      ROCM_BUILDER_INSTANCE_ID: ${{ secrets.ROCM_BUILDER_INSTANCE_ID }}
     steps:
-      - name: Checkout Git Repository
-        uses: actions/checkout@v3
-      
-      - name: Install Oracle Cloud Infrastructure library
-        run: pip install oci
-        
-      - name: Stop Oracle Machine
-        run: python3 .github/workflows/helpers/oracle_con.py --stop --instance_id $OCI_INSTANCE_ID
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Start EC2 instance
+        run: aws ec2 stop-instances --instance-ids $ROCM_BUILDER_INSTANCE_ID
 
   notify-slack:
     name: Notify Slack in case of failure
