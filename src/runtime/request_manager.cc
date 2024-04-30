@@ -205,10 +205,8 @@ RequestManager::RequestGuid
               << std::endl;
   } else {
     std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
-    for (int i = 0; i < get_num_ssms(); i++) {
-      BeamTree beam_tree = BeamTree{};
-      request.beam_trees.push_back(beam_tree);
-    }
+    assert(get_num_ssms() == 1 && "Only one SSM is supported now.");
+    init_token_tree(request.guid);
   }
 
   pending_request_queue.push(request);
@@ -269,10 +267,8 @@ RequestManager::RequestGuid
               << std::endl;
   } else {
     std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
-    for (int i = 0; i < get_num_ssms(); i++) {
-      BeamTree beam_tree = BeamTree{};
-      request.beam_trees.push_back(beam_tree);
-    }
+    assert(get_num_ssms() == 1 && "Only one SSM is supported now.");
+    init_token_tree(request.guid);
   }
 
   pending_request_queue.push(request);
@@ -381,6 +377,49 @@ BatchConfig
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
   std::lock_guard<std::mutex> const lock(rm_state_mutex);
+  switch (request_manager_status) {
+    case PREFILLING:
+      if (update_llm_prefill_results(result)) {
+        // This indicates that the prefilling phase finishes
+        if (decoding_mode == INCREMENTAL_DECODING) {
+          request_manager_status = DECODING;
+        } else if (decoding_mode == SPECULATIVE_DECODING) {
+          request_manager_status = SSM_SPEC;
+        } else {
+          assert(false && "Invalid inference mode.");
+        }
+      }
+      // else, continue the unfinished prefilling
+      break;
+    case DECODING:
+      update_llm_decode_results(result);
+      break;
+    case LLM_VERIFY:
+      if (update_llm_verify_results(result)) {
+        // A request completed after the verification
+        if (pending_request_queue.empty()) {
+          // No pending request to process, continue the speculation
+          request_manager_status = SSM_SPEC;
+        } else {
+          request_manager_status = PREFILLING;
+        }
+      }
+      break;
+    case SSM_SPEC:
+      SsmInferenceResult const &ssm_result =
+          dynamic_cast<SsmInferenceResult const &>(result);
+      if (update_ssm_inference_results(ssm_result)) {
+        // Stop condition for the speculation phase has been reached
+        request_manager_status = LLM_VERIFY;
+      }
+      // else, keep the current status
+      break;
+  }
+}
+
+void RequestManager::update_inference_results(InferenceResult const &result) {
+  // Update the inference results
+  std::lock_guard<std::mutex> const lock(rm_state_mutex);
   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
     if (guid_of_requests[i] == INVALID_GUID) {
       continue;
@@ -412,6 +451,11 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
     }
   }
 }
+
+bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
+}
+
+void RequestManager::update_llm_decode_results(InferenceResult const &result) {}
 
 BatchConfig RequestManager::prepare_next_batch() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
@@ -1247,62 +1291,65 @@ void RequestManager::serve_decoding(FFModel *llm) {
   }
 }
 
-void RequestManager::serve_incr_decoding(FFModel *llm) {
-  Context ctx = llm->config.lg_ctx;
-  Runtime *runtime = llm->config.lg_hlr;
-  // Compile the llm
-  InferenceManager *im = InferenceManager::get_inference_manager();
-  im->compile_model_and_allocate_buffer(llm);
-  assert(im->model_weights_loaders.find(llm) !=
-         im->model_weights_loaders.end());
-  // Load model weights
-  im->model_weights_loaders[llm]->load_weights(llm);
-  // init operators
-  im->init_operators_inference(llm);
-  // Legion futures for inc_decoding and spec_infer
-  BatchConfigFuture last_bcf;
-  InferenceResultFuture last_irf;
-  {
-    // Initialize futures for incr decoding
-    BatchConfig bc;
-    InferenceResult ir;
-    last_bcf = Future::from_value<BatchConfig>(bc);
-    last_irf = Future::from_value<InferenceResult>(ir);
-  }
+// TO BE REMOVED: START
+// void RequestManager::serve_incr_decoding(FFModel *llm) {
+//   Context ctx = llm->config.lg_ctx;
+//   Runtime *runtime = llm->config.lg_hlr;
+//   // Compile the llm
+//   InferenceManager *im = InferenceManager::get_inference_manager();
+//   im->compile_model_and_allocate_buffer(llm);
+//   assert(im->model_weights_loaders.find(llm) !=
+//          im->model_weights_loaders.end());
+//   // Load model weights
+//   im->model_weights_loaders[llm]->load_weights(llm);
+//   // init operators
+//   im->init_operators_inference(llm);
+//   // Legion futures for inc_decoding and spec_infer
+//   BatchConfigFuture last_bcf;
+//   InferenceResultFuture last_irf;
+//   {
+//     // Initialize futures for incr decoding
+//     BatchConfig bc;
+//     InferenceResult ir;
+//     last_bcf = Future::from_value<BatchConfig>(bc);
+//     last_irf = Future::from_value<InferenceResult>(ir);
+//   }
 
-  std::queue<std::pair<BatchConfigFuture, InferenceResultFuture>>
-      batch_pipeline;
-  { batch_pipeline.push(std::make_pair(last_bcf, last_irf)); }
+//   std::queue<std::pair<BatchConfigFuture, InferenceResultFuture>>
+//       batch_pipeline;
+//   { batch_pipeline.push(std::make_pair(last_bcf, last_irf)); }
 
-  while (!is_background_server_terminated()) {
+//   while (!is_background_server_terminated()) {
 
-    if (batch_pipeline.size() >= 4) {
-      // Block here to avoid launching too many batches
-      auto const &batch = batch_pipeline.front();
-      batch.second.get_void_result();
-    }
-    // deque finished batches
-    while (batch_pipeline.size() > 1) {
-      auto const &batch = batch_pipeline.front();
-      if (batch.second.is_ready()) {
-        batch_pipeline.pop();
-      } else {
-        break;
-      }
-    }
-    runtime->begin_trace(ctx, 12346 /*trace_id*/);
-    auto const &next_batch = batch_pipeline.back();
-    BatchConfigFuture bcf =
-        prepare_next_batch(next_batch.first, next_batch.second, ctx, runtime);
-    FutureMap fm = im->inference(llm, 0, bcf);
-    assert(fm.get_future_map_domain().get_volume() == 1);
-    InferenceResultFuture irf = fm.get_future(0);
-    batch_pipeline.push(std::make_pair(bcf, irf));
-    last_bcf = bcf;
-    last_irf = irf;
-    runtime->end_trace(ctx, 12346 /*trace_id*/);
-  }
-}
+//     if (batch_pipeline.size() >= 4) {
+//       // Block here to avoid launching too many batches
+//       auto const &batch = batch_pipeline.front();
+//       batch.second.get_void_result();
+//     }
+//     // deque finished batches
+//     while (batch_pipeline.size() > 1) {
+//       auto const &batch = batch_pipeline.front();
+//       if (batch.second.is_ready()) {
+//         batch_pipeline.pop();
+//       } else {
+//         break;
+//       }
+//     }
+//     runtime->begin_trace(ctx, 12346 /*trace_id*/);
+//     auto const &next_batch = batch_pipeline.back();
+//     BatchConfigFuture bcf =
+//         prepare_next_batch(next_batch.first, next_batch.second, ctx,
+//         runtime);
+//     FutureMap fm = im->inference(llm, 0, bcf);
+//     assert(fm.get_future_map_domain().get_volume() == 1);
+//     InferenceResultFuture irf = fm.get_future(0);
+//     batch_pipeline.push(std::make_pair(bcf, irf));
+//     last_bcf = bcf;
+//     last_irf = irf;
+//     runtime->end_trace(ctx, 12346 /*trace_id*/);
+//   }
+// }
+// TO BE REMOVED: END
 
 /*static*/
 void RequestManager::serve_spec_infer(FFModel *llm) {

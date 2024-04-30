@@ -26,7 +26,7 @@
 namespace FlexFlow {
 
 class FFModel;
-class BeamTree;
+class TokenTree;
 class RequestManager;
 using tokenizers::Tokenizer;
 
@@ -181,6 +181,11 @@ public:
     SERVING = 2002,
     TERMINATED = 2003,
   };
+  enum DecodingMode {
+    INCREMENTAL_DECODING = 3001,
+    SPECULATIVE_DECODING = 3002,
+  };
+
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
 
@@ -262,8 +267,6 @@ public:
   BatchConfig get_next_batch_config(InferenceResult const &result);
   void update_inference_results(InferenceResult const &result);
   BatchConfig prepare_next_batch();
-  BatchConfig prepare_prefilling_batch();
-  BatchConfig prepare_decoding_batch();
 
   int get_num_active_requests();
   int get_empty_request_index();
@@ -276,6 +279,7 @@ private:
   int max_sequence_length;
   State request_manager_status;
   BackgroundServerStatus background_server_status;
+  DecodingMode decoding_mode;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -332,11 +336,18 @@ private:
   };
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;
+  /* ---------- Incremental Decoding Helper Functions ---------- */
+  bool update_llm_prefill_results(InferenceResult const &result);
+  void update_llm_decode_results(InferenceResult const &result);
+  BatchConfig prepare_prefilling_batch();
+  BatchConfig prepare_decoding_batch();
+  /* ---------- Incremental Decoding Helper Functions ---------- */
 
   /* ---------- Spec Decoding Helper Functions ---------- */
   bool update_llm_verify_results(InferenceResult const &llm_verify_result);
   bool update_ssm_inference_results(
       SsmInferenceResult const &ssm_inference_result);
+  void update_ssm_prefill_results(InferenceResult const &ssm_prefill_result);
   // Prepare the next speculation batch config. This function is called before
   // the second step of the speculation.
   TreeSearchBatchConfig prepare_next_spec_batch_config();
