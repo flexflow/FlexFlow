@@ -381,9 +381,9 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
     case PREFILLING:
       if (update_llm_prefill_results(result)) {
         // This indicates that the prefilling phase finishes
-        if (inference_mode == INCREMENTAL_DECODING) {
+        if (decoding_mode == INCREMENTAL_DECODING) {
           request_manager_status = DECODING;
-        } else if (inference_mode == SPECULATIVE_DECODING) {
+        } else if (decoding_mode == SPECULATIVE_DECODING) {
           request_manager_status = SSM_SPEC;
         } else {
           assert(false && "Invalid inference mode.");

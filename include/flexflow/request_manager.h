@@ -181,7 +181,7 @@ public:
     SERVING = 2002,
     TERMINATED = 2003,
   };
-  enum InferenceMode {
+  enum DecodingMode {
     INCREMENTAL_DECODING = 3001,
     SPECULATIVE_DECODING = 3002,
   };
@@ -279,7 +279,7 @@ private:
   int max_sequence_length;
   State request_manager_status;
   BackgroundServerStatus background_server_status;
-  InferenceMode inference_mode;
+  DecodingMode decoding_mode;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
