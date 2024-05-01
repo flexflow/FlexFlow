@@ -498,12 +498,13 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   // TODO:
   // The pending request can be found at Request_manager.prefill_request
-  // 1. Check if the prefilling is finished (request.tokens.size() ==
+  // 1. Update request.llm_cache_size
+  // 2. Check if the prefilling is finished (request.tokens.size() ==
   // request.llm_cache_size)
-  // 2. If the prefilling is finished, push the last token in result to
+  // 3. If the prefilling is finished, push the last token in result to
   // request.tokens
-  // 3. Otherwise, no need to push
-  // 4. Return true if the prefilling is finished
+  // 4. Otherwise, no need to push
+  // 5. Return true if the prefilling is finished
 }
 
 bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
