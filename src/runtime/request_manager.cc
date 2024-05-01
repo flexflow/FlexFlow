@@ -509,8 +509,9 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
 
 bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
   // TODO:
-  // 1. Iterate over all requests
-  // request.num_tokens_in_batch != 0
+  // 1. Iterate over all requests, update the llm_cache_size and push token to
+  // request.tokens (find the token index in result by
+  // first_token_offset_in_batch)
   // 2. Check if the prefilling is finished
   // 3. If at least one request is completed, return true
 }
