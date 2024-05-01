@@ -348,7 +348,7 @@ private:
   bool update_llm_verify_results(InferenceResult const &llm_verify_result);
   bool update_ssm_inference_results(
       SsmInferenceResult const &ssm_inference_result);
-  void update_ssm_prefill_results(InferenceResult const &ssm_prefill_result);
+  bool update_ssm_prefill_results(InferenceResult const &ssm_prefill_result);
   // Prepare the next speculation batch config. This function is called before
   // the second step of the speculation.
   TreeSearchBatchConfig prepare_next_spec_batch_config();

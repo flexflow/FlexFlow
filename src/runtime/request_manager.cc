@@ -392,17 +392,29 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
   std::lock_guard<std::mutex> const lock(rm_state_mutex);
   switch (request_manager_status) {
     case PREFILLING:
-      if (update_llm_prefill_results(result)) {
-        // This indicates that the prefilling phase finishes
-        if (decoding_mode == INCREMENTAL_DECODING) {
+      if (decoding_mode == INCREMENTAL_DECODING) {
+        if (update_llm_prefill_results(result)) {
+          // This indicates that the prefilling phase finishes
           request_manager_status = DECODING;
-        } else if (decoding_mode == SPECULATIVE_DECODING) {
-          request_manager_status = SSM_SPEC;
+        }
+      } else if (decoding_mode == SPECULATIVE_DECODING) {
+        if (prefill_model == SSM) {
+          if (update_ssm_prefill_results(result)) {
+            // This indicates that the prefilling phase for SSM finishes
+            // We need to start the LLM prefilling
+            prefill_model = LLM;
+          }
+        } else if (prefill_model == LLM) {
+          if (update_llm_prefill_results(result)) {
+            // This indicates that the prefilling phase finishes
+            request_manager_status = SSM_SPEC;
+          }
         } else {
           assert(false && "Invalid inference mode.");
         }
+      } else {
+        assert(false && "Invalid inference mode.");
       }
-      // else, continue the unfinished prefilling
       break;
     case DECODING:
       if (update_llm_decode_results(result)) {
@@ -425,6 +437,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
         } else {
           request_manager_status = PREFILLING;
           load_pending_reqeust_to_batch();
+          prefill_model = SSM;
         }
       }
       break;
@@ -440,40 +453,43 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
   }
 }
 
-void RequestManager::update_inference_results(InferenceResult const &result) {
-  // Update the inference results
-  std::lock_guard<std::mutex> const lock(rm_state_mutex);
-  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
-    if (guid_of_requests[i] == INVALID_GUID) {
-      continue;
-    }
-    Request &request = all_requests[guid_of_requests[i]];
+// TO BE REMOVED: START
+// void RequestManager::update_inference_results(InferenceResult const &result)
+// {
+//   // Update the inference results
+//   std::lock_guard<std::mutex> const lock(rm_state_mutex);
+//   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+//     if (guid_of_requests[i] == INVALID_GUID) {
+//       continue;
+//     }
+//     Request &request = all_requests[guid_of_requests[i]];
 
-    switch (request_manager_status) {
-      case PREFILLING:
-        if (request.initial_len ==
-            request.llm_cache_size) { // all prompt tokens are prefilled
-          request.tokens.push_back(
-              result.token_ids[request.num_tokens_in_batch]);
-          request_manager_status = DECODING;
-        }
-        break;
-      case DECODING:
-        request.tokens.push_back(
-            result.token_ids[request.first_token_offset_in_batch]);
-        if (request.tokens.size() ==
-            request.max_sequence_length) { // request is completed
-          request.status = Request::COMPLETED;
-          trigger_request_completion_future(request.guid);
-          guid_of_requests[i] = INVALID_GUID;
-          request_manager_status = PREFILLING;
-        }
-        break;
-      default:
-        assert(false);
-    }
-  }
-}
+//     switch (request_manager_status) {
+//       case PREFILLING:
+//         if (request.initial_len ==
+//             request.llm_cache_size) { // all prompt tokens are prefilled
+//           request.tokens.push_back(
+//               result.token_ids[request.num_tokens_in_batch]);
+//           request_manager_status = DECODING;
+//         }
+//         break;
+//       case DECODING:
+//         request.tokens.push_back(
+//             result.token_ids[request.first_token_offset_in_batch]);
+//         if (request.tokens.size() ==
+//             request.max_sequence_length) { // request is completed
+//           request.status = Request::COMPLETED;
+//           trigger_request_completion_future(request.guid);
+//           guid_of_requests[i] = INVALID_GUID;
+//           request_manager_status = PREFILLING;
+//         }
+//         break;
+//       default:
+//         assert(false);
+//     }
+//   }
+// }
+// TO BE REMOVED: END
 
 bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   // TODO:
@@ -519,15 +535,9 @@ BatchConfig RequestManager::prepare_next_batch() {
 
 BatchConfig RequestManager::prepare_prefilling_batch() {
   // This function is called when the request_manager_status is PREFILLING,
-  // which means that there is at least one empty slot in the currnet decoding
-  // batch, and there is at least one pending request in the request queue.
-  // This function takes the pending request, and load its prefilling tokens,
-  // constructing a BatchConfig with only one request.
-
-  // TODO:
-  // 1. Adept this function to the new design
-  // 2. Move the following part to the update_inference_results() function
-  // 3. Change the BatchConfig.prompt_phase
+  // which means that there is a request in the prefilling phase.
+  // This function load its prefilling tokens, constructing a BatchConfig with
+  // only one request.
 
   BatchConfig bc;
   bc.prompt_phase = true;
@@ -536,15 +546,29 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
          "No prefilling request to process in the prefilling phase.");
   int request_index = prefill_request->batch_index;
 
-  // Request Info
-  bc.requestsInfo[request_index].first_token_index_in_request =
-      prefill_request->llm_cache_size;
-  bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
-  bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
-      BatchConfig::MAX_NUM_TOKENS,
-      (int)prefill_request->tokens.size() - prefill_request->llm_cache_size);
-
+  std::copy(std::begin(request_available),
+            std::end(request_available),
+            std::begin(bc.request_available));
   bc.request_available[request_index] = true;
+  bc.num_available_requests = num_available_requests;
+
+  bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
+  if (prefill_model == SSM) {
+    // Request Info
+    bc.requestsInfo[request_index].first_token_index_in_request =
+        prefill_request->ssm_cache_size;
+    bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
+        BatchConfig::MAX_NUM_TOKENS,
+        (int)prefill_request->tokens.size() - prefill_request->ssm_cache_size);
+
+  } else if (prefill_model == LLM) {
+    // Request Info
+    bc.requestsInfo[request_index].first_token_index_in_request =
+        prefill_request->llm_cache_size;
+    bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
+        BatchConfig::MAX_NUM_TOKENS,
+        (int)prefill_request->tokens.size() - prefill_request->llm_cache_size);
+  }
 
   prefill_request->first_token_offset_in_batch = 0;
   prefill_request->num_tokens_in_batch =
@@ -554,23 +578,25 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   for (int token_idx = 0;
        token_idx < bc.requestsInfo[request_index].num_tokens_in_batch;
        token_idx++) {
-    int abs_idx = prefill_request->llm_cache_size + token_idx;
+    int abs_idx = -1;
+    if (prefill_model == SSM) {
+      abs_idx = prefill_request->ssm_cache_size + token_idx;
+    } else if (prefill_model == LLM) {
+      abs_idx = prefill_request->llm_cache_size + token_idx;
+    } else {
+      assert(false && "Invalid prefill model.");
+    }
     assert(abs_idx < prefill_request->tokens.size());
+
     bc.tokensInfo[token_idx].request_index = request_index;
     bc.tokensInfo[token_idx].abs_index_in_request = abs_idx;
     bc.tokensInfo[token_idx].token_id = prefill_request->tokens[abs_idx];
 
     bc.num_tokens++;
-    prefill_request->llm_cache_size++;
     prefill_request->num_tokens_in_batch++;
+    // TODO: move the following line to update_inference_results
+    // prefill_request->llm_cache_size++;
   }
-
-  // Other metadata
-  bc.num_available_requests = num_available_requests;
-  std::copy(std::begin(request_available),
-            std::end(request_available),
-            std::begin(bc.request_available));
-  bc.prompt_phase = true;
 
   return bc;
 }
@@ -875,9 +901,9 @@ bool RequestManager::update_llm_verify_results(
   // SSM's speculative token tree. For the greedy construction of the
   // speculative token tree, we can simply compare LLM's sample result at each
   // token, this is implemented in get_verify_results_greedy(). This function
-  // stores the commmitted tokens into the corresponding fields in the Request.
-  // For the sampling construction of the speculative token tree, we need to
-  // implement a CPU based verify function.
+  // stores the commmitted tokens into the corresponding fields in the
+  // Request. For the sampling construction of the speculative token tree, we
+  // need to implement a CPU based verify function.
   // 2. Call init_token_tree() add_root_token_to_spec_token_tree() to add the
   // root token to the requests' speculative token tree. The root token is the
   // last committed token.
@@ -1521,10 +1547,10 @@ void RequestManager::add_root_to_spec_token_tree(
   // This method is called by update_llm_verify_results()
   // The last token in the accepted sequence should be the root of the next
   // speculation tree. The reason is that the KV cache of this token is not
-  // computed yet, and we need the large model to decode the logit of this token
-  // to verify its childs (the tokens in the first layer).
-  // This method should: construct and add the root token to the empty
-  // speculative token tree, with parent_pos being -1 and joint_prob being 1.0
+  // computed yet, and we need the large model to decode the logit of this
+  // token to verify its childs (the tokens in the first layer). This method
+  // should: construct and add the root token to the empty speculative token
+  // tree, with parent_pos being -1 and joint_prob being 1.0
   Request &request = all_requests[guid];
   TokenTree &speculative_token_tree = request.speculative_token_trees[0];
   speculative_token_tree.add_layer();
