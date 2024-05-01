@@ -1439,16 +1439,32 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
     runtime->begin_trace(ctx, 12346 /*trace_id*/);
     InferenceResultFuture next_ir = batch_pipeline.back();
     BatchConfigFuture bcf = get_next_batch_config(next_ir, ctx, runtime);
-    if (request_manager_status == LLM_VERIFY) {
+    if (request_manager_status == PREFILLING) {
+      if (prefill_model == LLM) {
+        FutureMap fm = im->inference(llm, 0, bcf);
+        assert(fm.get_future_map_domain().get_volume() == 1);
+        InferenceResultFuture irf = fm.get_future(0);
+        batch_pipeline.push(irf);
+      } else if (prefill_model == SSM) {
+        FutureMap fm = im->inference(get_ssm_model(0), 0, bcf);
+        assert(fm.get_future_map_domain().get_volume() == 1);
+        InferenceResultFuture irf = fm.get_future(0);
+        batch_pipeline.push(irf);
+      } else {
+        assert(false && "Invalid prefill model");
+      }
+    } else if (request_manager_status == LLM_VERIFY) {
       FutureMap fm = im->inference(llm, 0, bcf);
       assert(fm.get_future_map_domain().get_volume() == 1);
       InferenceResultFuture irf = fm.get_future(0);
       batch_pipeline.push(irf);
-    } else {
+    } else if (request_manager_status == SSM_SPEC) {
       FutureMap fm = im->inference(get_ssm_model(0), 0, bcf);
       assert(fm.get_future_map_domain().get_volume() == 1);
       InferenceResultFuture irf = fm.get_future(0);
       batch_pipeline.push(irf);
+    } else {
+      assert(false && "Invalid request manager status");
     }
     runtime->end_trace(ctx, 12345 /*trace_id*/);
   }
