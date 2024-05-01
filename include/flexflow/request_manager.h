@@ -184,6 +184,10 @@ public:
     INCREMENTAL_DECODING = 3001,
     SPECULATIVE_DECODING = 3002,
   };
+  enum PrefillModel {
+    LLM = 4001,
+    SSM = 4002,
+  };
 
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
@@ -274,6 +278,7 @@ private:
   State request_manager_status;
   BackgroundServerStatus background_server_status;
   DecodingMode decoding_mode;
+  PrefillModel prefill_model;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
