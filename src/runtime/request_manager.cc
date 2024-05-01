@@ -408,9 +408,11 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           if (update_llm_prefill_results(result)) {
             // This indicates that the prefilling phase finishes
             request_manager_status = SSM_SPEC;
+            // Reset the prefill_request
+            prefill_request = nullptr;
           }
         } else {
-          assert(false && "Invalid inference mode.");
+          assert(false && "Invalid prefill model.");
         }
       } else {
         assert(false && "Invalid inference mode.");
@@ -450,6 +452,8 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       }
       // else, keep the current status
       break;
+    default:
+      assert(false && "Invalid request manager status.");
   }
 }
 
@@ -508,6 +512,19 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
   // request.num_tokens_in_batch != 0
   // 2. Check if the prefilling is finished
   // 3. If at least one request is completed, return true
+}
+
+bool RequestManager::update_ssm_prefill_results(
+    InferenceResult const &ssm_prefill_result) {
+  // This function is called by update_inference_results when the
+  // request_manager_status is PREFILLING and the prefill_model is SSM.
+  // There's no results to update, but we should update some SSM related states
+  // related to SSM.
+  prefill_request->ssm_cache_size += prefill_request->num_tokens_in_batch;
+  if (prefill_request->ssm_cache_size == prefill_request->tokens.size()) {
+    return true;
+  }
+  return false;
 }
 
 BatchConfig RequestManager::prepare_next_batch() {
