@@ -505,6 +505,12 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   // request.tokens
   // 4. Otherwise, no need to push
   // 5. Return true if the prefilling is finished
+  prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
+  if (prefill_request->llm_cache_size == prefill_request->tokens.size()) { 
+    prefill_request->tokens.push_back(result.token_ids[prefill_request->num_tokens_in_batch]);
+    return true;
+  }
+  return false;
 }
 
 bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
@@ -512,8 +518,21 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
   // 1. Iterate over all requests, update the llm_cache_size and push token to
   // request.tokens (find the token index in result by
   // first_token_offset_in_batch)
-  // 2. Check if the prefilling is finished
+  // 2. Check if the decoding is finished
   // 3. If at least one request is completed, return true
+  int completed_request = 0;
+  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+       ++request_index) {
+    int guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    request.llm_cache_size++;
+    request.tokens.push_back(result.token_ids[request.first_token_offset_in_batch]);
+    if (request.tokens.size() == get_max_sequence_length()) {
+      request.status = Request::COMPLETED;
+      completed_request++;
+    }
+  }
+  return completed_request >= 1;
 }
 
 bool RequestManager::update_ssm_prefill_results(
