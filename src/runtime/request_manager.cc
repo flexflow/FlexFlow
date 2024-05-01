@@ -410,6 +410,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
             request_manager_status = SSM_SPEC;
             // Reset the prefill_request
             prefill_request = nullptr;
+            current_speculation_step = 1;
           }
         } else {
           assert(false && "Invalid prefill model.");
@@ -436,6 +437,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
         if (pending_request_queue.empty()) {
           // No pending request to process, continue the speculation
           request_manager_status = SSM_SPEC;
+          current_speculation_step = 1;
         } else {
           request_manager_status = PREFILLING;
           load_pending_reqeust_to_batch();
@@ -743,8 +745,6 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
   TreeSearchBatchConfig new_bc;
   // We assume that only one small model is in use now
   new_bc.model_id = 0;
-  new_bc.num_tokens = 0;
-  new_bc.num_available_requests = 0;
   new_bc.prompt_phase = false;
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
@@ -1033,8 +1033,8 @@ void RequestManager::update_bitmask_prompt(RequestGuid guid,
 void RequestManager::init_bitmask_spec(RequestGuid guid,
                                        int num_committed_tokens) {
   // This method modifies the bitmask in place
-  // This method is called by the first call of update_ssm_verify_results in a
-  // speculative iteration
+  // This method is called by the first call of update_ssm_inference_results in
+  // a speculative iteration
   // CAUTION: You should still call append_bitmask() after this method
   // 1. Clear the causal mask and add a root into it, because the tree is
   // currently empty but we have a root.
