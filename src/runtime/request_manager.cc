@@ -680,8 +680,6 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   TreeSearchBatchConfig new_bc;
   // Assume that only one small model is in use now
   new_bc.model_id = 0;
-  new_bc.num_tokens = 0;
-  new_bc.num_available_requests = 0;
   new_bc.prompt_phase = true;
   assert(current_speculation_step == 0);
 
@@ -691,7 +689,7 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
       new_bc.request_available[request_index] = false;
       continue;
     }
-    int guid = guid_of_requests[request_index];
+    BatchConfig::RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
     new_bc.request_available[request_index] = true;
@@ -722,7 +720,8 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
       new_bc.tokensInfo[new_bc.num_tokens].token_id = committed_token.token_id;
       new_bc.num_tokens++;
     }
-    // 4. Copy the causal mask, it should already been updated
+    // 4. Copy the causal mask, it should already been updated in
+    // update_llm_verify_results
     new_bc.causalMask[request_index] = request.causal_mask;
   }
   if (verbose) {
@@ -993,17 +992,11 @@ bool RequestManager::update_ssm_inference_results(
     }
     append_bitmask(guid);
   }
-  return token_added_to_spec_tree;
 
-  /* Move this to update_inference_results() */
-  // State maintenance
   current_speculation_step++;
-  if (!token_added_to_spec_tree ||
-      current_speculation_step > TreeSearchBatchConfig::MAX_TREE_DEPTH) {
-    // No token is added to the token tree, which indicates that the ssm
-    // inference phase is done. Proceed to the large model verification phase.
-    request_manager_status = LLM_VERIFY;
-  }
+  // Stop conditions
+  return !token_added_to_spec_tree ||
+         current_speculation_step > TreeSearchBatchConfig::MAX_TREE_DEPTH;
 }
 
 /* --------- Bitmask Related Functions --------- */
