@@ -8,7 +8,7 @@
 #include "flexflow/ops/argmax_params.h"
 #include "flexflow/ops/attention_params.h"
 #include "flexflow/ops/batch_matmul_params.h"
-#include "flexflow/ops/beam_topk_params.h"
+// #include "flexflow/ops/beam_topk_params.h"
 #include "flexflow/ops/cast_params.h"
 #include "flexflow/ops/concat_params.h"
 #include "flexflow/ops/conv_2d_params.h"
@@ -69,7 +69,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        LinearParams,
                                        MultiHeadAttentionParams,
                                        IncMultiHeadSelfAttentionParams,
-                                       BeamTopKParams,
+                                       //    BeamTopKParams,
                                        SpecIncMultiHeadSelfAttentionParams,
                                        TreeIncMultiHeadSelfAttentionParams,
                                        RMSNormParams,

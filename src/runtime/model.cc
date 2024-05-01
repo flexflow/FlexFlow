@@ -30,7 +30,7 @@
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
-#include "flexflow/ops/beam_topk.h"
+// #include "flexflow/ops/beam_topk.h"
 #include "flexflow/ops/cache.h"
 #include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
@@ -3246,11 +3246,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
-    case OP_BEAM_TOPK: {
-      Op *op = BeamTopK::create_operator_from_layer(*this, layer, inputs);
-      operators.push_back(op);
-      return op;
-    }
+    // case OP_BEAM_TOPK: {
+    //   Op *op = BeamTopK::create_operator_from_layer(*this, layer, inputs);
+    //   operators.push_back(op);
+    //   return op;
+    // }
     case OP_SAMPLING: {
       Op *op = Sampling::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -6077,37 +6077,41 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   // BeamTopk task
-  {
-    TaskVariantRegistrar registrar(BEAM_TOPK_INIT_TASK_ID, "BeamTopK Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    if (pre_register) {
-      Runtime::preregister_task_variant<OpMeta *, BeamTopK::init_task>(
-          registrar, "BeamTopK Init Task");
-    } else {
-      if (enable_control_replication) {
-        registrar.global_registration = false;
-      }
-      runtime->register_task_variant<OpMeta *, BeamTopK::init_task>(registrar);
-    }
-  }
-  {
-    TaskVariantRegistrar registrar(BEAM_TOPK_INF_TASK_ID, "BeamTopK Inference");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    if (pre_register) {
-      Runtime::preregister_task_variant<SsmInferenceResult,
-                                        BeamTopK::inference_task>(
-          registrar, "BeamTopK Inference Task");
-    } else {
-      if (enable_control_replication) {
-        registrar.global_registration = false;
-      }
-      runtime
-          ->register_task_variant<SsmInferenceResult, BeamTopK::inference_task>(
-              registrar);
-    }
-  }
+  //   {
+  //     TaskVariantRegistrar registrar(BEAM_TOPK_INIT_TASK_ID, "BeamTopK
+  //     Init");
+  //     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+  //     registrar.set_leaf();
+  //     if (pre_register) {
+  //       Runtime::preregister_task_variant<OpMeta *, BeamTopK::init_task>(
+  //           registrar, "BeamTopK Init Task");
+  //     } else {
+  //       if (enable_control_replication) {
+  //         registrar.global_registration = false;
+  //       }
+  //       runtime->register_task_variant<OpMeta *,
+  //       BeamTopK::init_task>(registrar);
+  //     }
+  //   }
+  //   {
+  //     TaskVariantRegistrar registrar(BEAM_TOPK_INF_TASK_ID, "BeamTopK
+  //     Inference");
+  //     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+  //     registrar.set_leaf();
+  //     if (pre_register) {
+  //       Runtime::preregister_task_variant<SsmInferenceResult,
+  //                                         BeamTopK::inference_task>(
+  //           registrar, "BeamTopK Inference Task");
+  //     } else {
+  //       if (enable_control_replication) {
+  //         registrar.global_registration = false;
+  //       }
+  //       runtime
+  //           ->register_task_variant<SsmInferenceResult,
+  //           BeamTopK::inference_task>(
+  //               registrar);
+  //     }
+  //   }
   // Sampling task
   {
     TaskVariantRegistrar registrar(SAMPLING_INIT_TASK_ID, "Sampling Init");

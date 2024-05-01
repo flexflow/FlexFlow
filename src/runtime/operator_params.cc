@@ -7,7 +7,7 @@
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
-#include "flexflow/ops/beam_topk.h"
+// #include "flexflow/ops/beam_topk.h"
 #include "flexflow/ops/cache.h"
 #include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
@@ -141,8 +141,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((ResidualRMSNorm *)op)->get_params();
     case OP_ARG_TOPK:
       return ((ArgTopK *)op)->get_params();
-    case OP_BEAM_TOPK:
-      return ((BeamTopK *)op)->get_params();
+    // case OP_BEAM_TOPK:
+    //   return ((BeamTopK *)op)->get_params();
     case OP_SAMPLING:
       return ((Sampling *)op)->get_params();
     case OP_ARGMAX:

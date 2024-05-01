@@ -21,7 +21,7 @@
 #include "flexflow/ops/argmax.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
-#include "flexflow/ops/beam_topk.h"
+// #include "flexflow/ops/beam_topk.h"
 #include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
@@ -69,7 +69,7 @@ using FlexFlow::MachineView;
 LegionRuntime::Logger::Category log_graph("graph");
 LegionRuntime::Logger::Category log_simplify("graph_simplify");
 
-const Node Node::INVALID_NODE = Node();
+Node const Node::INVALID_NODE = Node();
 
 Node::Node(void) : guid(0), ptr(NULL) {}
 
@@ -1604,17 +1604,15 @@ T SearchHelper::graph_cost(Graph const *graph,
                            bool include_sink_compute_time) const {
   TAG_ENTER(this->logger);
   this->logger->debug() << "PCG::SearchHelper::graph_cost: sink("
-                        << sink.node.guid << ") "
-                        << "sink.view(" << sink.view.ndims << " "
-                        << sink.view.start_device_id << " " << sink.view.dim[0]
-                        << ") "
-                        << "source(" << source.node.guid << ") "
-                        << "source.view(" << source.view.ndims << " "
+                        << sink.node.guid << ") " << "sink.view("
+                        << sink.view.ndims << " " << sink.view.start_device_id
+                        << " " << sink.view.dim[0] << ") " << "source("
+                        << source.node.guid << ") " << "source.view("
+                        << source.view.ndims << " "
                         << source.view.start_device_id << " "
-                        << source.view.dim[0] << ") "
-                        << "resources(" << resources.num_nodes << " "
-                        << resources.start_gpu_id << " "
-                        << resources.available_gpus_per_node << ")";
+                        << source.view.dim[0] << ") " << "resources("
+                        << resources.num_nodes << " " << resources.start_gpu_id
+                        << " " << resources.available_gpus_per_node << ")";
   if (this->model->config.profiling) {
     graph->print_dot();
   }
@@ -1737,11 +1735,11 @@ T SearchHelper::graph_cost(Graph const *graph,
     this->logger->spew() << "  op_total_mem: " << metrics.op_total_mem;
     float op_total_mem_mb = (float)((metrics.op_total_mem) / 1e4) / 1e2;
     this->logger->debug() << "[PCG::SearchHelper::graph_cost] Sink node cost ["
-                          << sink.node.to_string() << "]: "
-                          << "forward(" << metrics.forward_time << ") "
-                          << "backward(" << metrics.backward_time << ") "
-                          << "sync(" << metrics.sync_time << ") "
-                          << "memory(" << op_total_mem_mb << " MB)";
+                          << sink.node.to_string() << "]: " << "forward("
+                          << metrics.forward_time << ") " << "backward("
+                          << metrics.backward_time << ") " << "sync("
+                          << metrics.sync_time << ") " << "memory("
+                          << op_total_mem_mb << " MB)";
     this->add_sink_node_costs<T>(sink, metrics, &result);
   }
 
@@ -2976,10 +2974,10 @@ void FFModel::deserialize_graph_optimal_view(
         node = ArgTopK::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
-      case OP_BEAM_TOPK: {
-        node = BeamTopK::deserialize(*this, dez, inputs, num_inputs);
-        break;
-      }
+        //   case OP_BEAM_TOPK: {
+        //     node = BeamTopK::deserialize(*this, dez, inputs, num_inputs);
+        //     break;
+        //   }
       case OP_SAMPLING: {
         node = Sampling::deserialize(*this, dez, inputs, num_inputs);
         break;
