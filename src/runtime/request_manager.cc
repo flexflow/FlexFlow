@@ -392,7 +392,15 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       // else, continue the unfinished prefilling
       break;
     case DECODING:
-      update_llm_decode_results(result);
+      if (update_llm_decode_results(result)) {
+        // A request completed after the decode
+        if (pending_request_queue.empty()) {
+          // No pending request to process, continue the speculation
+          request_manager_status = DECODING;
+        } else {
+          request_manager_status = PREFILLING;
+        }
+      }
       break;
     case LLM_VERIFY:
       if (update_llm_verify_results(result)) {
@@ -453,9 +461,20 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 }
 
 bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
+  // TODO:
+  // 1. Iterate over all requests, find the prefilling request:
+  // request.num_tokens_in_batch != 0
+  // 2. Check if the prefilling is finished
+  // 3. If the prefilling is finished, return true
 }
 
-void RequestManager::update_llm_decode_results(InferenceResult const &result) {}
+bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
+  // TODO:
+  // 1. Iterate over all requests
+  // request.num_tokens_in_batch != 0
+  // 2. Check if the prefilling is finished
+  // 3. If at least one request is completed, return true
+}
 
 BatchConfig RequestManager::prepare_next_batch() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);

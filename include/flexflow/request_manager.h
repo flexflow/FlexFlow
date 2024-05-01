@@ -338,7 +338,7 @@ private:
   double total_request_run_time;
   /* ---------- Incremental Decoding Helper Functions ---------- */
   bool update_llm_prefill_results(InferenceResult const &result);
-  void update_llm_decode_results(InferenceResult const &result);
+  bool update_llm_decode_results(InferenceResult const &result);
   BatchConfig prepare_prefilling_batch();
   BatchConfig prepare_decoding_batch();
   /* ---------- Incremental Decoding Helper Functions ---------- */
