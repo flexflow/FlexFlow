@@ -193,7 +193,6 @@ public:
   inline static int const MAX_TREE_DEPTH = 16;
 
   // how many requests is in speculative phase
-  int current_depth = 0;
   int model_id;
 };
 

@@ -650,10 +650,12 @@ BatchConfig RequestManager::prepare_decoding_batch() {
     bc.tokensInfo[bc.num_tokens].abs_index_in_request = request.llm_cache_size;
     bc.tokensInfo[bc.num_tokens].token_id = request.tokens.back();
 
-    // TODO: this should be updated in the update_inference_results() function
-    request.llm_cache_size++;
     bc.num_tokens++;
+
+    // TODO: this should be updated in the update_inference_results() function
+    // request.llm_cache_size++;
   }
+  assert(bc.num_available_requests == num_available_requests);
 
   return bc;
 }
@@ -679,7 +681,6 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   // Assume that only one small model is in use now
   new_bc.model_id = 0;
   new_bc.num_tokens = 0;
-  new_bc.current_depth = 0;
   new_bc.num_available_requests = 0;
   new_bc.prompt_phase = true;
   assert(current_speculation_step == 0);
@@ -744,7 +745,6 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
   // We assume that only one small model is in use now
   new_bc.model_id = 0;
   new_bc.num_tokens = 0;
-  new_bc.current_depth = current_speculation_step;
   new_bc.num_available_requests = 0;
   new_bc.prompt_phase = false;
 

@@ -69,8 +69,6 @@ std::ostream &
      << std::endl;
   os << "Max num branch: "
      << TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES << std::endl;
-  os << "Current depth: " << tree_search_batch_config.current_depth
-     << std::endl;
 
   os << "Per-request info:\n";
   for (int i = 0; i < tree_search_batch_config.max_requests_per_batch(); i++) {
