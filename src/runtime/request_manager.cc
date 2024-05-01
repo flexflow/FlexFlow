@@ -185,7 +185,6 @@ RequestManager::RequestGuid
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
-  request.max_sequence_length = max_sequence_length;
 
   if (prompt.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
@@ -195,7 +194,6 @@ RequestManager::RequestGuid
     printf("tokens size: %zu\n", request.tokens.size());
     return INVALID_GUID;
   } else {
-    request.initial_len = prompt.size();
     request.tokens = prompt;
   }
 
@@ -242,7 +240,6 @@ RequestManager::RequestGuid
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
-  request.max_sequence_length = max_sequence_length;
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
@@ -259,7 +256,6 @@ RequestManager::RequestGuid
     std::cout << "[" << i << "]" << tokens.at(i) << "\n";
   }
   request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
-  request.initial_len = request.tokens.size();
 
   if (get_num_ssms() == 0) {
     std::cout << "No small speculative model registered, using incremental "
@@ -373,6 +369,23 @@ BatchConfig
   update_inference_results(result);
   return prepare_next_batch();
 }
+void RequestManager::load_pending_reqeust_to_batch() {
+  assert(!pending_request_queue.empty() && "No pending request to process.");
+  Request &new_request = pending_request_queue.front();
+  all_requests[new_request.guid] = new_request;
+  BatchConfig::RequestGuid guid = new_request.guid;
+  pending_request_queue.pop();
+  prefill_request = std::make_shared<Request>(all_requests[guid]);
+
+  // Find an empty slot
+  int request_index = get_empty_request_index();
+  assert(request_index != -1 && "No empty request slot to load the request.");
+  prefill_request->batch_index = request_index;
+  guid_of_requests[request_index] = guid;
+  request_available[request_index] = true;
+  num_available_requests++;
+  request_available[request_index] = true;
+}
 
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
@@ -399,6 +412,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           request_manager_status = DECODING;
         } else {
           request_manager_status = PREFILLING;
+          load_pending_reqeust_to_batch();
         }
       }
       break;
@@ -410,6 +424,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           request_manager_status = SSM_SPEC;
         } else {
           request_manager_status = PREFILLING;
+          load_pending_reqeust_to_batch();
         }
       }
       break;
@@ -511,55 +526,48 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   // 2. Move the following part to the update_inference_results() function
   // 3. Change the BatchConfig.prompt_phase
 
-  // The following part should be moved to the update_inference_results()
-  // function
-  if (pending_request_queue.empty()) {
-    if (get_num_active_requests() == 0) {
-      return BatchConfig();
-    } else {
-      return prepare_decoding_batch();
-    }
-  }
-
   BatchConfig bc;
-  bc.num_tokens = BatchConfig::MAX_NUM_TOKENS;
+  bc.prompt_phase = true;
 
-  int request_index = get_empty_request_index();
-  assert(request_index != -1);
+  assert(prefill_request != nullptr &&
+         "No prefilling request to process in the prefilling phase.");
+  int request_index = prefill_request->batch_index;
 
-  // The following should be moved to update_inference_results()
-  Request new_request = pending_request_queue.front();
-  pending_request_queue.pop();
-  all_requests[new_request.guid] = new_request;
-  guid_of_requests[request_index] = new_request.guid;
-  request_available[request_index] = true;
-
-  // Per Request Info
-  // TODO: what if the prompt phase needs multiple runs to finish?
-  bc.requestsInfo[request_index].first_token_index_in_request = 0;
+  // Request Info
+  bc.requestsInfo[request_index].first_token_index_in_request =
+      prefill_request->llm_cache_size;
   bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
-  bc.requestsInfo[request_index].num_tokens_in_batch =
-      std::min(bc.num_tokens, (int)new_request.tokens.size());
+  bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
+      BatchConfig::MAX_NUM_TOKENS,
+      (int)prefill_request->tokens.size() - prefill_request->llm_cache_size);
 
   bc.request_available[request_index] = true;
 
-  new_request.first_token_offset_in_batch = 0;
-  new_request.num_tokens_in_batch = 0;
+  prefill_request->first_token_offset_in_batch = 0;
+  prefill_request->num_tokens_in_batch =
+      bc.requestsInfo[request_index].num_tokens_in_batch;
 
-  // Per Token Info
+  // Token Info
   for (int token_idx = 0;
        token_idx < bc.requestsInfo[request_index].num_tokens_in_batch;
        token_idx++) {
-    int depth =
-        bc.requestsInfo[request_index].first_token_index_in_request + token_idx;
-    assert(depth < new_request.tokens.size());
+    int abs_idx = prefill_request->llm_cache_size + token_idx;
+    assert(abs_idx < prefill_request->tokens.size());
     bc.tokensInfo[token_idx].request_index = request_index;
-    bc.tokensInfo[token_idx].abs_index_in_request = depth;
-    bc.tokensInfo[token_idx].token_id = new_request.tokens[depth];
+    bc.tokensInfo[token_idx].abs_index_in_request = abs_idx;
+    bc.tokensInfo[token_idx].token_id = prefill_request->tokens[abs_idx];
 
-    new_request.llm_cache_size++;
-    new_request.num_tokens_in_batch++;
+    bc.num_tokens++;
+    prefill_request->llm_cache_size++;
+    prefill_request->num_tokens_in_batch++;
   }
+
+  // Other metadata
+  bc.num_available_requests = num_available_requests;
+  std::copy(std::begin(request_available),
+            std::end(request_available),
+            std::begin(bc.request_available));
+  bc.prompt_phase = true;
 
   return bc;
 }

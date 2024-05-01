@@ -65,8 +65,7 @@ struct Request {
     FINISHING = 104, // finishing request, but not yet verified
   };
   BatchConfig::RequestGuid guid;
-  int max_sequence_length;
-  int initial_len;
+  int batch_index = -1;
   int ssm_cache_size = 0;
   int llm_cache_size = 0;
 
@@ -250,11 +249,6 @@ public:
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
-  static BatchConfig prepare_next_batch_task(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
   // API for rm state machine
   BatchConfigFuture get_next_batch_config(InferenceResultFuture const &result,
                                           Legion::Context ctx,
@@ -294,6 +288,7 @@ private:
   std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
+  std::shared_ptr<Request> prefill_request = nullptr;
 
   // Added to make the request manager stateful. During the processing of the
   // first small model inference results, the step equals to 1. That is, every
@@ -336,6 +331,7 @@ private:
   };
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;
+  void load_pending_reqeust_to_batch();
   /* ---------- Incremental Decoding Helper Functions ---------- */
   bool update_llm_prefill_results(InferenceResult const &result);
   bool update_llm_decode_results(InferenceResult const &result);
