@@ -340,7 +340,7 @@ class ArgTopK;
 class Transpose;
 class RMSNorm;
 class ResidualRMSNorm;
-class BeamTopK;
+// class BeamTopK;
 class SpecIncMultiHeadSelfAttention;
 class Sampling;
 class ArgMax;
