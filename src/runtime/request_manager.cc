@@ -498,40 +498,30 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 // TO BE REMOVED: END
 
 bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
-  // TODO:
-  // The pending request can be found at Request_manager.prefill_request
-  // 1. Update request.llm_cache_size
-  // 2. Check if the prefilling is finished (request.tokens.size() ==
-  // request.llm_cache_size)
-  // 3. If the prefilling is finished, push the last token in result to
-  // request.tokens
-  // 4. Otherwise, no need to push
-  // 5. Return true if the prefilling is finished
   prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
-  if (prefill_request->llm_cache_size == prefill_request->tokens.size()) { 
-    prefill_request->tokens.push_back(result.token_ids[prefill_request->num_tokens_in_batch]);
+  if (prefill_request->llm_cache_size == prefill_request->tokens.size()) {
+    prefill_request->tokens.push_back(
+        result.token_ids[prefill_request->num_tokens_in_batch]);
     return true;
   }
   return false;
 }
 
 bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
-  // TODO:
-  // 1. Iterate over all requests, update the llm_cache_size and push token to
-  // request.tokens (find the token index in result by
-  // first_token_offset_in_batch)
-  // 2. Check if the decoding is finished
-  // 3. If at least one request is completed, return true
   int completed_request = 0;
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     request.llm_cache_size++;
-    request.tokens.push_back(result.token_ids[request.first_token_offset_in_batch]);
+    request.tokens.push_back(
+        result.token_ids[request.first_token_offset_in_batch]);
     if (request.tokens.size() == get_max_sequence_length()) {
       request.status = Request::COMPLETED;
       completed_request++;
+      trigger_request_completion_future(request.guid);
+      guid_of_requests[request_index] = INVALID_GUID;
+      request_available[request_index] = false;
     }
   }
   return completed_request >= 1;
