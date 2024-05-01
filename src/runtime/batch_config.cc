@@ -27,9 +27,9 @@ using Legion::Memory;
 
 BatchConfig::BatchConfig()
     : num_tokens(0), num_available_requests(0), prompt_phase(false) {
-  memset(request_available, false, sizeof(bool) * MAX_NUM_REQUESTS);
-  // Don't need to initialize requestInfo ,tokensInfo, and causalMask here
-  // because they initialize themselves.
+  std::fill(std::begin(request_available), std::end(request_available), 0);
+  // Don't need to initialize requestInfo ,tokensInfo, and causalMask
+  // here because they initialize themselves.
 }
 
 /*static*/
