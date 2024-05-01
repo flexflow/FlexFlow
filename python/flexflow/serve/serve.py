@@ -349,6 +349,7 @@ class LLM:
         max_requests_per_batch: int = 1,
         max_seq_length: int = 256,
         max_tokens_per_batch: int = 64,
+        enable_peft_finetuning: bool = False,
         model_specific_data_parallelism_degree: int = None,
         model_specific_tensor_parallelism_degree: int = None,
         model_specific_pipeline_parallelism_degree: int = None,
@@ -364,6 +365,8 @@ class LLM:
         :type max_seq_length: int, optional
         :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 64
         :type max_tokens_per_batch: int, optional
+        :param enable_peft_finetuning: Whether to enable support for PEFT fine-tuning, defaults to False
+        :type enable_peft_finetuning: bool, optional
         :param model_specific_data_parallelism_degree: Use this parameter if you want to give the LLM a different data parallelism degree than the one used to initialize the runtime, defaults to None
         :type model_specific_data_parallelism_degree: int, optional
         :param model_specific_tensor_parallelism_degree: Use this parameter if you want to give the LLM a different tensor parallelism degree than the one used to initialize the runtime, defaults to None
@@ -373,9 +376,6 @@ class LLM:
         :param ssms: The SSMs to use when operating in speculative inference mode, defaults to []
         :type ssms: list, optional
         """
-        # self.max_requests_per_batch = max_requests_per_batch
-        # self.max_seq_length = max_seq_length
-        # self.max_tokens_per_batch = max_tokens_per_batch
         self.ssms = ssms
         self.generation_config = GenerationConfig()
         self.ffconfig = FFConfig()
@@ -407,6 +407,7 @@ class LLM:
         self.rm.set_max_requests_per_batch(max_requests_per_batch)
         self.rm.set_max_tokens_per_batch(max_tokens_per_batch)
         self.rm.set_max_sequence_length(max_seq_length)
+        self.rm.set_enable_peft_finetuning(enable_peft_finetuning)
 
         # Instantiate the relevant model
         self.model = self.model_class(
@@ -560,15 +561,13 @@ class SSM(LLM):
         max_requests_per_batch: int = 16,
         max_seq_length: int = 256,
         max_tokens_per_batch: int = 128,
+        enable_peft_finetuning: bool = False,
         model_specific_data_parallelism_degree: int = 1,
         model_specific_tensor_parallelism_degree: int = 1,
         model_specific_pipeline_parallelism_degree: int = 1,
         ssms: list = [],
     ):
         """Compile the SSM for inference and load the weights into memory
-
-        :param mode: The SSM inference mode (InferenceMode.INC_DECODING_MODE for incremental decoding, InferenceMode.BEAM_SEARCH_MODE for beam search, or InferenceMode.TREE_VERIFY_MODE for token tree verification), defaults to InferenceMode.INC_DECODING_MODE
-        :type mode: InferenceMode, optional
         :param generation_config: The GenerationConfig object with the configurations to use for sampling, defaults to GenerationConfig()
         :type generation_config: GenerationConfig, optional
         :param max_requests_per_batch: The maximum batch size to allow, defaults to 16
@@ -577,6 +576,8 @@ class SSM(LLM):
         :type max_seq_length: int, optional
         :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 128
         :type max_tokens_per_batch: int, optional
+        :param enable_peft_finetuning: Whether to enable support for PEFT fine-tuning, defaults to False
+        :type enable_peft_finetuning: bool, optional
         :param model_specific_data_parallelism_degree: Use this parameter if you want to give the SSM a different data parallelism degree than the default one, defaults to 1
         :type model_specific_data_parallelism_degree: int, optional
         :param model_specific_tensor_parallelism_degree: Use this parameter if you want to give the SSM a different tensor parallelism degree than the default one, defaults to 1
@@ -591,6 +592,7 @@ class SSM(LLM):
             max_requests_per_batch,
             max_seq_length,
             max_tokens_per_batch,
+            enable_peft_finetuning,
             model_specific_data_parallelism_degree,
             model_specific_tensor_parallelism_degree,
             model_specific_pipeline_parallelism_degree,

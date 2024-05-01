@@ -109,6 +109,7 @@ def main():
     )
     llm.compile(
         generation_config,
+        enable_peft_finetuning = (len(configs.finetuning_dataset) > 0),
         max_requests_per_batch=1,
         max_seq_length=256,
         max_tokens_per_batch=64,

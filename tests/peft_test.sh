@@ -29,13 +29,13 @@ python ../inference/utils/download_peft_model.py goliaro/llama-160m-lora-full --
 
 # CPP test
 ../build/inference/peft/peft \
-    -ll:gpu 1 -ll:cpu 4 -ll:util 4 \
+    -ll:gpu 4 -ll:cpu 4 -ll:util 4 \
+    -tensor-parallelism-degree 4 \
     -ll:fsize 8192 -ll:zsize 12000 \
     -llm-model JackFram/llama-160m \
     -finetuning-dataset ../inference/prompt/peft_dataset.json \
     -peft-model goliaro/llama-160m-lora-full \
     --use-full-precision \
-    --inference-debugging \
     --fusion \
     -enable-peft
 

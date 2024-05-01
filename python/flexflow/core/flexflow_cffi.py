@@ -1612,6 +1612,10 @@ class RequestManager(object):
     def set_max_sequence_length(self, max_length):
         return ffc().flexflow_request_manager_set_max_sequence_length(
             self.handle, max_length)
+    
+    def set_enable_peft_finetuning(self, enable_peft_finetuning):
+        return ffc().flexflow_request_manager_set_enable_peft_finetuning(
+            self.handle, enable_peft_finetuning)
 
     def start_server(self, model):
         return ffc().flexflow_request_manager_start_background_server(

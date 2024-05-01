@@ -166,10 +166,6 @@ void RequestManager::set_enable_peft_finetuning(bool enable_peft_finetuning_) {
   enable_peft_finetuning = enable_peft_finetuning_;
 }
 
-void RequestManager::set_disable_peft_bwd(bool disable_peft_bwd_) {
-  disable_peft_bwd = disable_peft_bwd_;
-}
-
 void RequestManager::set_inference_finished(bool finished) {
   inference_finished = finished;
 }
@@ -2846,7 +2842,7 @@ void RequestManager::serve_incr_decoding(FFModel *llm) {
     BatchConfigFuture bcf =
         prepare_next_batch(next_batch.first, next_batch.second, ctx, runtime);
     FutureMap fm = im->inference(llm, 0, bcf);
-    if (llm->config.enable_peft && !disable_peft_bwd) {
+    if (llm->config.enable_peft) {
       im->peft_bwd(llm, 0, bcf);
     }
     assert(fm.get_future_map_domain().get_volume() == 1);

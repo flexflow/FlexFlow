@@ -50,9 +50,7 @@ void parse_input_args(char **argv,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
                       int &max_sequence_length,
-                      int &max_requests_to_run,
-                      bool &enable_peft_finetuning,
-                      bool &disable_peft_bwd) {
+                      int &max_requests_to_run) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -125,14 +123,6 @@ void parse_input_args(char **argv,
       max_requests_to_run = std::stoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-enable-peft-finetuning")) {
-      enable_peft_finetuning = true;
-      continue;
-    }
-    if (!strcmp(argv[i], "-disable-peft-bwd")) {
-      disable_peft_bwd = true;
-      continue;
-    }
   }
   if (paths.cache_folder_path.empty()) {
     paths.cache_folder_path = "~/.cache/flexflow";
@@ -165,7 +155,6 @@ void FlexFlow::top_level_task(Task const *task,
   int max_sequence_length = 256;
   int max_requests_to_run = 1000000000;
   bool enable_peft_finetuning = false;
-  bool disable_peft_bwd = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -184,9 +173,7 @@ void FlexFlow::top_level_task(Task const *task,
                    max_requests_per_batch,
                    max_tokens_per_batch,
                    max_sequence_length,
-                   max_requests_to_run,
-                   enable_peft_finetuning,
-                   disable_peft_bwd);
+                   max_requests_to_run);
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
@@ -265,7 +252,6 @@ void FlexFlow::top_level_task(Task const *task,
       model_type, bos_token_id, eos_token_id, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);
   rm->set_enable_peft_finetuning(enable_peft_finetuning);
-  rm->set_disable_peft_bwd(disable_peft_bwd);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
   if (model_type == ModelType::LLAMA) {
@@ -366,7 +352,7 @@ void FlexFlow::top_level_task(Task const *task,
       lengths.push_back(prompt_length);
       index++;
     }
-    printf("Total number of finetuning requests: %d", lengths.size());
+    printf("Total number of finetuning requests: %ld", lengths.size());
 
     // Add fine-tuning requests
     for (int i = 0; i < lengths.size(); i++) {

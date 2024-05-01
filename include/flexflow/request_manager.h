@@ -137,7 +137,6 @@ public:
   void push_spec_infer_tree_width(int tree_width);
   int get_max_sequence_length();
   void set_enable_peft_finetuning(bool enable_peft_finetuning_);
-  void set_disable_peft_bwd(bool disable_peft_bwd_);
   static void set_inference_finished(bool finished = true);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
@@ -287,7 +286,6 @@ private:
 
   // peft benchmarking
   bool enable_peft_finetuning = false;
-  bool disable_peft_bwd = false;
   static bool inference_finished;
 
   // tree width in each speculative step, if not specified 1

@@ -106,8 +106,6 @@ void parse_input_args(char **argv,
                       int &max_tokens_per_batch,
                       int &max_sequence_length,
                       int &max_buckets_to_run,
-                      bool &enable_peft_finetuning,
-                      bool &disable_peft_bwd,
                       int &bucket_timeframe) {
   for (int i = 1; i < argc; i++) {
     // llm model type
@@ -181,14 +179,6 @@ void parse_input_args(char **argv,
       max_buckets_to_run = std::stoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-enable-peft-finetuning")) {
-      enable_peft_finetuning = true;
-      continue;
-    }
-    if (!strcmp(argv[i], "-disable-peft-bwd")) {
-      disable_peft_bwd = true;
-      continue;
-    }
     if (!strcmp(argv[i], "--bucket-timeframe")) {
       bucket_timeframe = std::stoi(argv[++i]);
       continue;
@@ -227,7 +217,6 @@ void FlexFlow::top_level_task(Task const *task,
   int max_sequence_length = 256;
   int max_buckets_to_run = 1000000000;
   bool enable_peft_finetuning = false;
-  bool disable_peft_bwd = false;
   int bucket_timespan = 1;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
@@ -248,8 +237,6 @@ void FlexFlow::top_level_task(Task const *task,
                    max_tokens_per_batch,
                    max_sequence_length,
                    max_buckets_to_run,
-                   enable_peft_finetuning,
-                   disable_peft_bwd,
                    bucket_timespan);
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
@@ -329,7 +316,6 @@ void FlexFlow::top_level_task(Task const *task,
       model_type, bos_token_id, eos_token_id, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);
   rm->set_enable_peft_finetuning(enable_peft_finetuning);
-  rm->set_disable_peft_bwd(disable_peft_bwd);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
   if (model_type == ModelType::LLAMA) {
