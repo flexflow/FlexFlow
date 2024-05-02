@@ -216,7 +216,6 @@ public:
 
   FFModel *get_ssm_model(int model_id);
 
-  void serve_incr_decoding(FFModel *model);
   void serve_spec_infer(FFModel *model);
   void serve_decoding(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
