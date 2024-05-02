@@ -49,10 +49,7 @@ public:
                   << std::endl;
         assert(false);
       }
-      // max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
-      // max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
-      max_beam_width = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
-      max_beam_depth = TreeSearchBatchConfig::MAX_TREE_DEPTH;
+      k_of_arg_topk = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
     }
 
     void print() const {
@@ -67,12 +64,11 @@ public:
 
       // std::cout << "\tmax_seq_len: " << max_seq_len << std::endl;
       // std::cout << "\tmax_num_tokens: " << max_num_tokens << std::endl;
-      std::cout << "\tmax_beam_width: " << max_beam_width << std::endl;
-      std::cout << "\tmax_beam_depth: " << max_beam_depth << std::endl;
+      std::cout << "\tk_of_arg_topk : " << k_of_arg_topk << std::endl;
     }
 
     // int max_seq_len, max_num_tokens;
-    int max_beam_width, max_beam_depth;
+    int k_of_arg_topk;
     int num_hidden_layers, vocab_size, num_attention_heads, hidden_size,
         intermediate_size;
     float rms_norm_eps;

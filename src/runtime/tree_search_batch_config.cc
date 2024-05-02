@@ -24,7 +24,7 @@
 
 namespace FlexFlow {
 
-LegionRuntime::Logger::Category log_tree_bc("TreeSearchBatchConfig");
+LegionRuntime::Logger::Category log_tree_search_bc("TreeSearchBatchConfig");
 
 TreeSearchBatchConfig::TreeSearchBatchConfig() : BatchConfig() {}
 

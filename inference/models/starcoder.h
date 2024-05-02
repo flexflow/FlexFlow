@@ -53,14 +53,13 @@ public:
       }
       // max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
       // max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
-      max_beam_width = TreeSearchBatchConfig::MAX_BEAM_WIDTH;
-      max_beam_depth = TreeSearchBatchConfig::MAX_BEAM_DEPTH;
+      k_of_arg_topk = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
     }
 
     void print() const {}
 
     // int max_seq_len, max_num_tokens;
-    int max_beam_width, max_beam_depth;
+    int k_of_arg_topk;
     int num_hidden_layers, vocab_size, num_attention_heads, hidden_size,
         intermediate_size, max_position_embeddings;
     float layer_norm_epsilon, dropout_p;

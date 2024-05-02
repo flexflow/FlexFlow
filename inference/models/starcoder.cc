@@ -207,8 +207,8 @@ void STARCODER::create_starcoder_model(
   Tensor output;
   if (mode == TREE_SEARCH_MODE) {
     Tensor softmax = ff.softmax(lm_head, -1);
-    // output = ff.beam_top_k(softmax, startcoder_config.max_beam_width, false);
-    output = ff.argmax(softmax, /*beam_Search*/ true);
+    output =
+        ff.arg_top_k(softmax, startcoder_config.k_of_arg_topk, false, true);
   } else {
     // Tensor softmax = ff.softmax(dense, -1);
     if (generationConfig.do_sample) {
