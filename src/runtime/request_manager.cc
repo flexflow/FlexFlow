@@ -499,7 +499,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
   if (prefill_request->llm_cache_size == prefill_request->tokens.size()) {
     prefill_request->tokens.push_back(
-        result.token_ids[prefill_request->num_tokens_in_batch]);
+        result.token_ids[prefill_request->num_tokens_in_batch - 1]);
     return true;
   }
   return false;
