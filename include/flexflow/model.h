@@ -601,11 +601,11 @@ public:
                          int dim,
                          DataType data_type = DT_NONE,
                          char const *name = NULL);
-  // Add a beam search top k layer
-  Tensor beam_top_k(Tensor const input,
-                    int max_beam_size,
-                    bool sorted,
-                    char const *name = NULL);
+  //   // Add a beam search top k layer
+  //   Tensor beam_top_k(Tensor const input,
+  //                     int max_beam_size,
+  //                     bool sorted,
+  //                     char const *name = NULL);
 
   // Add a dense layer
   Tensor dense(Tensor const input,

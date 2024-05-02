@@ -1500,16 +1500,16 @@ flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t flexflow_model_add_beam_top_k(flexflow_model_t handle_,
-                                                flexflow_tensor_t const input_,
-                                                int max_beam_size,
-                                                bool sorted,
-                                                char const *name) {
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor tensor = handle->beam_top_k(input, max_beam_size, sorted, name);
-  return FFCObjectWrapper::wrap(tensor);
-}
+// flexflow_tensor_t flexflow_model_add_beam_top_k(flexflow_model_t handle_,
+//                                                 flexflow_tensor_t const
+//                                                 input_, int max_beam_size,
+//                                                 bool sorted,
+//                                                 char const *name) {
+//   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+//   Tensor input = FFCObjectWrapper::unwrap(input_);
+//   Tensor tensor = handle->beam_top_k(input, max_beam_size, sorted, name);
+//   return FFCObjectWrapper::wrap(tensor);
+// }
 
 flexflow_tensor_t flexflow_model_add_sampling(flexflow_model_t handle_,
                                               flexflow_tensor_t const input_,

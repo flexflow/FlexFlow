@@ -133,71 +133,71 @@ flexflow_tensor_t flexflow_model_get_label_tensor(flexflow_model_t handle);
 void flexflow_model_zero_gradients(flexflow_model_t handle);
 
 flexflow_tensor_t flexflow_model_add_exp(flexflow_model_t handle,
-                                         const flexflow_tensor_t x,
+                                         flexflow_tensor_t const x,
                                          char const *name);
 
 flexflow_tensor_t flexflow_model_add_sin(flexflow_model_t handle,
-                                         const flexflow_tensor_t x,
+                                         flexflow_tensor_t const x,
                                          char const *name);
 
 flexflow_tensor_t flexflow_model_add_cos(flexflow_model_t handle,
-                                         const flexflow_tensor_t x,
+                                         flexflow_tensor_t const x,
                                          char const *name);
 
 flexflow_tensor_t flexflow_model_add_add(flexflow_model_t handle,
-                                         const flexflow_tensor_t x,
-                                         const flexflow_tensor_t y,
+                                         flexflow_tensor_t const x,
+                                         flexflow_tensor_t const y,
                                          bool inplace_a,
                                          char const *name);
 
 flexflow_tensor_t flexflow_model_add_subtract(flexflow_model_t handle,
-                                              const flexflow_tensor_t x,
-                                              const flexflow_tensor_t y,
+                                              flexflow_tensor_t const x,
+                                              flexflow_tensor_t const y,
                                               bool inplace_a,
                                               char const *name);
 
 flexflow_tensor_t flexflow_model_add_multiply(flexflow_model_t handle,
-                                              const flexflow_tensor_t x,
-                                              const flexflow_tensor_t y,
+                                              flexflow_tensor_t const x,
+                                              flexflow_tensor_t const y,
                                               bool inplace_a,
                                               char const *name);
 
 flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle,
-                                            const flexflow_tensor_t x,
-                                            const flexflow_tensor_t y,
+                                            flexflow_tensor_t const x,
+                                            flexflow_tensor_t const y,
                                             bool inplace_a,
                                             char const *name);
 
 flexflow_tensor_t flexflow_model_add_max(flexflow_model_t handle,
-                                         const flexflow_tensor_t x,
-                                         const flexflow_tensor_t y,
+                                         flexflow_tensor_t const x,
+                                         flexflow_tensor_t const y,
                                          bool inplace_a,
                                          char const *name);
 
 flexflow_tensor_t flexflow_model_add_min(flexflow_model_t handle,
-                                         const flexflow_tensor_t x,
-                                         const flexflow_tensor_t y,
+                                         flexflow_tensor_t const x,
+                                         flexflow_tensor_t const y,
                                          bool inplace_a,
                                          char const *name);
 
 flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
-                                                const flexflow_tensor_t input_,
+                                                flexflow_tensor_t const input_,
                                                 int *axes,
                                                 int n,
                                                 bool keepdims,
                                                 char const *name);
 
 flexflow_tensor_t flexflow_model_add_rsqrt(flexflow_model_t handle_,
-                                           const flexflow_tensor_t input_,
+                                           flexflow_tensor_t const input_,
                                            char const *name);
 
 flexflow_tensor_t flexflow_model_add_pow(flexflow_model_t handle_,
-                                         const flexflow_tensor_t input_,
+                                         flexflow_tensor_t const input_,
                                          float const exponent,
                                          char const *name);
 
 flexflow_tensor_t flexflow_model_add_mean(flexflow_model_t handle_,
-                                          const flexflow_tensor_t input_,
+                                          flexflow_tensor_t const input_,
                                           int *dims,
                                           int n,
                                           bool keepdims,
@@ -205,7 +205,7 @@ flexflow_tensor_t flexflow_model_add_mean(flexflow_model_t handle_,
 
 flexflow_tensor_t
     flexflow_model_add_conv2d(flexflow_model_t handle,
-                              const flexflow_tensor_t input,
+                              flexflow_tensor_t const input,
                               int out_channels,
                               int kernel_h,
                               int kernel_w,
@@ -223,7 +223,7 @@ flexflow_tensor_t
 
 flexflow_tensor_t
     flexflow_model_add_embedding(flexflow_model_t handle,
-                                 const flexflow_tensor_t input,
+                                 flexflow_tensor_t const input,
                                  int num_entries,
                                  int out_dim,
                                  enum AggrMode aggr,
@@ -246,12 +246,12 @@ flexflow_tensor_t
                               char const *name);
 
 flexflow_tensor_t flexflow_model_add_batch_norm(flexflow_model_t handle,
-                                                const flexflow_tensor_t input,
+                                                flexflow_tensor_t const input,
                                                 bool relu,
                                                 char const *name);
 
 flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle,
-                                                const flexflow_tensor_t input,
+                                                flexflow_tensor_t const input,
                                                 int n,
                                                 int *axes,
                                                 bool elementwise_affine,
@@ -261,9 +261,9 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle,
 
 flexflow_tensor_t *
     flexflow_model_add_residual_layer_norm(flexflow_model_t handle,
-                                           const flexflow_tensor_t input,
-                                           const flexflow_tensor_t residual1,
-                                           const flexflow_tensor_t residual2,
+                                           flexflow_tensor_t const input,
+                                           flexflow_tensor_t const residual1,
+                                           flexflow_tensor_t const residual2,
                                            bool use_two_residuals,
                                            int n,
                                            int *axes,
@@ -274,8 +274,8 @@ flexflow_tensor_t *
 
 flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
     flexflow_model_t handle,
-    const flexflow_tensor_t input,
-    const flexflow_tensor_t residual,
+    flexflow_tensor_t const input,
+    flexflow_tensor_t const residual,
     int n,
     int *axes,
     bool elementwise_affine,
@@ -285,20 +285,20 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
 
 flexflow_tensor_t
     flexflow_model_add_sigmoid_silu_multi(flexflow_model_t handle,
-                                          const flexflow_tensor_t input1,
-                                          const flexflow_tensor_t input2,
+                                          flexflow_tensor_t const input1,
+                                          flexflow_tensor_t const input2,
                                           char const *name);
 
 flexflow_tensor_t
     flexflow_model_add_batch_matmul(flexflow_model_t handle,
-                                    const flexflow_tensor_t a,
-                                    const flexflow_tensor_t b,
+                                    flexflow_tensor_t const a,
+                                    flexflow_tensor_t const b,
                                     int a_seq_length_dim /* -1 */,
                                     int b_seq_length_dim /* -1 */);
 
 flexflow_tensor_t flexflow_model_add_dense(
     flexflow_model_t handle,
-    const flexflow_tensor_t input,
+    flexflow_tensor_t const input,
     int out_dim,
     enum ActiMode activation /* AC_MODE_NONE */,
     bool use_bias /* true */,
@@ -329,96 +329,96 @@ flexflow_tensor_t flexflow_model_add_flat(flexflow_model_t handle,
                                           char const *name);
 
 flexflow_tensor_t flexflow_model_add_gather(flexflow_model_t handle,
-                                            const flexflow_tensor_t input,
-                                            const flexflow_tensor_t index,
+                                            flexflow_tensor_t const input,
+                                            flexflow_tensor_t const index,
                                             int dim,
                                             char const *name);
 
 flexflow_tensor_t flexflow_model_add_softmax(flexflow_model_t handle,
-                                             const flexflow_tensor_t input,
+                                             flexflow_tensor_t const input,
                                              int dim,
                                              char const *name);
 
 flexflow_tensor_t flexflow_model_add_transpose(flexflow_model_t handle,
-                                               const flexflow_tensor_t input,
+                                               flexflow_tensor_t const input,
                                                int n,
                                                int *perm,
                                                char const *name);
 
 flexflow_tensor_t flexflow_model_add_reshape(flexflow_model_t handle,
-                                             const flexflow_tensor_t input,
+                                             flexflow_tensor_t const input,
                                              int n,
                                              int *shape,
                                              char const *name);
 
 flexflow_tensor_t flexflow_model_add_reverse(flexflow_model_t handle,
-                                             const flexflow_tensor_t input,
+                                             flexflow_tensor_t const input,
                                              int axis,
                                              char const *name);
 
 flexflow_tensor_t flexflow_model_add_relu(flexflow_model_t handle,
-                                          const flexflow_tensor_t input,
+                                          flexflow_tensor_t const input,
                                           bool inplace,
                                           char const *name);
 
 flexflow_tensor_t
     flexflow_model_add_scalar_multiply(flexflow_model_t handle,
-                                       const flexflow_tensor_t input,
+                                       flexflow_tensor_t const input,
                                        float const scalar,
                                        bool inplace,
                                        char const *name);
 
 flexflow_tensor_t flexflow_model_add_scalar_add(flexflow_model_t handle,
-                                                const flexflow_tensor_t input,
+                                                flexflow_tensor_t const input,
                                                 float const scalar,
                                                 bool inplace,
                                                 char const *name);
 
 flexflow_tensor_t flexflow_model_add_scalar_sub(flexflow_model_t handle,
-                                                const flexflow_tensor_t input,
+                                                flexflow_tensor_t const input,
                                                 float const scalar,
                                                 bool inplace,
                                                 char const *name);
 
 flexflow_tensor_t
     flexflow_model_add_scalar_truediv(flexflow_model_t handle,
-                                      const flexflow_tensor_t input,
+                                      flexflow_tensor_t const input,
                                       float const scalar,
                                       bool inplace,
                                       char const *name);
 
 flexflow_tensor_t flexflow_model_add_gelu(flexflow_model_t handle,
-                                          const flexflow_tensor_t input,
+                                          flexflow_tensor_t const input,
                                           char const *name);
 
 flexflow_tensor_t flexflow_model_add_identity(flexflow_model_t handle,
-                                              const flexflow_tensor_t input,
+                                              flexflow_tensor_t const input,
                                               char const *name);
 
 flexflow_tensor_t flexflow_model_add_sigmoid(flexflow_model_t handle,
-                                             const flexflow_tensor_t input,
+                                             flexflow_tensor_t const input,
                                              char const *name);
 
 flexflow_tensor_t flexflow_model_add_tanh(flexflow_model_t handle,
-                                          const flexflow_tensor_t input,
+                                          flexflow_tensor_t const input,
                                           char const *name);
 
 flexflow_tensor_t flexflow_model_add_elu(flexflow_model_t handle,
-                                         const flexflow_tensor_t input,
+                                         flexflow_tensor_t const input,
                                          bool inplace,
                                          char const *name);
 
 flexflow_tensor_t flexflow_model_add_dropout(flexflow_model_t handle,
-                                             const flexflow_tensor_t input,
+                                             flexflow_tensor_t const input,
                                              float rate,
                                              unsigned long long seed,
                                              char const *name);
 
 flexflow_tensor_t flexflow_model_add_multihead_attention(
     flexflow_model_t handle,
-    const flexflow_tensor_t query,
-    const flexflow_tensor_t key,
-    const flexflow_tensor_t value,
+    flexflow_tensor_t const query,
+    flexflow_tensor_t const key,
+    flexflow_tensor_t const value,
     int embed_dim,
     int num_heads,
     int kdim,
@@ -432,7 +432,7 @@ flexflow_tensor_t flexflow_model_add_multihead_attention(
 
 flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention(
     flexflow_model_t handle_,
-    const flexflow_tensor_t input_,
+    flexflow_tensor_t const input_,
     int embed_dim,
     int num_heads,
     int kdim,
@@ -452,7 +452,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention(
 
 flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
     flexflow_model_t handle_,
-    const flexflow_tensor_t input_,
+    flexflow_tensor_t const input_,
     int embed_dim,
     int num_heads,
     int kdim,
@@ -472,7 +472,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
 
 flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
     flexflow_model_t handle_,
-    const flexflow_tensor_t input_,
+    flexflow_tensor_t const input_,
     int embed_dim,
     int num_heads,
     int kdim,
@@ -492,7 +492,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
 
 flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
     flexflow_model_t handle_,
-    const flexflow_tensor_t input_,
+    flexflow_tensor_t const input_,
     int embed_dim,
     int num_q_heads,
     int num_kv_heads,
@@ -513,7 +513,7 @@ flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
 
 flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
     flexflow_model_t handle_,
-    const flexflow_tensor_t input_,
+    flexflow_tensor_t const input_,
     int embed_dim,
     int num_q_heads,
     int num_kv_heads,
@@ -534,7 +534,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
 
 flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention_verify(
     flexflow_model_t handle_,
-    const flexflow_tensor_t input_,
+    flexflow_tensor_t const input_,
     int embed_dim,
     int num_q_heads,
     int num_kv_heads,
@@ -554,39 +554,39 @@ flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention_verify(
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_rms_norm(flexflow_model_t handle_,
-                                              const flexflow_tensor_t input_,
+                                              flexflow_tensor_t const input_,
                                               float eps,
                                               int dim,
                                               char const *name);
 
 flexflow_tensor_t *
     flexflow_model_add_residual_rms_norm(flexflow_model_t handle_,
-                                         const flexflow_tensor_t input1_,
-                                         const flexflow_tensor_t input2_,
+                                         flexflow_tensor_t const input1_,
+                                         flexflow_tensor_t const input2_,
                                          float eps,
                                          int dim,
                                          char const *name);
 
 flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
-                                               const flexflow_tensor_t input_,
+                                               flexflow_tensor_t const input_,
                                                int k,
                                                bool sorted,
                                                bool speculative_decoding,
                                                char const *name);
 
-flexflow_tensor_t flexflow_model_add_beam_top_k(flexflow_model_t handle_,
-                                                const flexflow_tensor_t input_,
-                                                int max_beam_size,
-                                                bool sorted,
-                                                char const *name);
+// flexflow_tensor_t flexflow_model_add_beam_top_k(flexflow_model_t handle_,
+//                                                 const flexflow_tensor_t
+//                                                 input_, int max_beam_size,
+//                                                 bool sorted,
+//                                                 char const *name);
 
 flexflow_tensor_t flexflow_model_add_sampling(flexflow_model_t handle_,
-                                              const flexflow_tensor_t input_,
+                                              flexflow_tensor_t const input_,
                                               float top_p,
                                               char const *name);
 
 flexflow_tensor_t flexflow_model_add_argmax(flexflow_model_t handle_,
-                                            const flexflow_tensor_t input_,
+                                            flexflow_tensor_t const input_,
                                             bool beam_search,
                                             char const *name);
 
