@@ -388,6 +388,7 @@ void RequestManager::load_pending_reqeust_to_batch() {
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
   std::lock_guard<std::mutex> const lock(rm_state_mutex);
+  SsmInferenceResult const *ssm_result_ptr;
   switch (request_manager_status) {
     case PREFILLING:
       if (decoding_mode == INCREMENTAL_DECODING) {
@@ -444,9 +445,8 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       }
       break;
     case SSM_SPEC:
-      SsmInferenceResult const &ssm_result =
-          dynamic_cast<SsmInferenceResult const &>(result);
-      if (update_ssm_inference_results(ssm_result)) {
+      ssm_result_ptr = dynamic_cast<SsmInferenceResult const *>(&result);
+      if (update_ssm_inference_results(*ssm_result_ptr)) {
         // Stop condition for the speculation phase has been reached
         request_manager_status = LLM_VERIFY;
       }
