@@ -410,7 +410,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
             request_manager_status = SSM_SPEC;
             // Reset the prefill_request
             prefill_request = nullptr;
-            current_speculation_step = 1;
+            current_speculation_step = 0;
           }
         } else {
           assert(false && "Invalid prefill model.");
@@ -437,7 +437,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
         if (pending_request_queue.empty()) {
           // No pending request to process, continue the speculation
           request_manager_status = SSM_SPEC;
-          current_speculation_step = 1;
+          current_speculation_step = 0;
         } else {
           request_manager_status = PREFILLING;
           load_pending_reqeust_to_batch();
@@ -624,8 +624,6 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
 
     bc.num_tokens++;
     prefill_request->num_tokens_in_batch++;
-    // TODO: move the following line to update_inference_results
-    // prefill_request->llm_cache_size++;
   }
 
   return bc;
@@ -662,9 +660,6 @@ BatchConfig RequestManager::prepare_decoding_batch() {
     bc.tokensInfo[bc.num_tokens].token_id = request.tokens.back();
 
     bc.num_tokens++;
-
-    // TODO: this should be updated in the update_inference_results() function
-    // request.llm_cache_size++;
   }
   assert(bc.num_available_requests == num_available_requests);
 
@@ -679,7 +674,7 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
     std::cout << "\n############### prepare_first_spec_batch_config "
                  "##############\n";
   }
-  // TODO: Clean up the code, this method does the following:
+  // This method does the following:
   // 1. Commit the verified tokens through TreeSearchBatchConfig. We can do
   // this request by request. The infomation of the committed tokens are
   // stored in Request.ssm_committed_tokens. Put the information of the
@@ -697,7 +692,6 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
     if (!request_available[request_index]) {
-      new_bc.request_available[request_index] = false;
       continue;
     }
     BatchConfig::RequestGuid guid = guid_of_requests[request_index];
@@ -747,19 +741,18 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
 TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
-    std::cout << "\n############### prepare_next_batch_spec ###############\n";
-    std::cout << "Current tree depth: " << current_speculation_step << "\n";
+    std::cout
+        << "\n############### prepare_next_spec_batch_config ###############\n";
+    std::cout << "Current tree depth: " << current_speculation_step + 1 << "\n";
   }
   // Prepare the next batch for existing requests
   TreeSearchBatchConfig new_bc;
   // We assume that only one small model is in use now
   new_bc.model_id = 0;
-  new_bc.prompt_phase = false;
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
     if (!request_available[request_index]) {
-      new_bc.request_available[request_index] = false;
       continue;
     }
     int guid = guid_of_requests[request_index];
@@ -823,7 +816,7 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
     std::cout
         << "\n############### prepare_next_batch_verify ###############\n";
   }
-  // TODO: Clean up the code, this method does the following:
+  // This method does the following:
   // 1. Commit the verified tokens in the last iteration through the
   // TreeVerifyBatchConfig. We can do this request by request.
   // The information of the committed tokens is stored in
@@ -944,8 +937,9 @@ bool RequestManager::update_ssm_inference_results(
     SsmInferenceResult const &ssm_inference_result) {
   // This function returns false if no tokens are added to the token tree,
   // which indicates that the ssm inference phase is done.
-  assert(current_speculation_step >= 1 &&
-         "The current speculation step should be no less than 1");
+  assert(current_speculation_step >= 0 &&
+         "The current speculation step should be no less than 0");
+  current_speculation_step++;
 
   int num_branches = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
   int result_index = 0;
@@ -999,10 +993,12 @@ bool RequestManager::update_ssm_inference_results(
         parent_pos++;
       }
     }
+    if (current_speculation_step == 1) {
+      init_bitmask_spec(guid);
+    }
     append_bitmask(guid);
   }
 
-  current_speculation_step++;
   // Stop conditions
   return !token_added_to_spec_tree ||
          current_speculation_step > TreeSearchBatchConfig::MAX_TREE_DEPTH;
@@ -1039,8 +1035,7 @@ void RequestManager::update_bitmask_prompt(RequestGuid guid,
   bitmask.current_layer_size = num_committed_tokens;
 }
 
-void RequestManager::init_bitmask_spec(RequestGuid guid,
-                                       int num_committed_tokens) {
+void RequestManager::init_bitmask_spec(RequestGuid guid) {
   // This method modifies the bitmask in place
   // This method is called by the first call of update_ssm_inference_results in
   // a speculative iteration
@@ -1051,13 +1046,12 @@ void RequestManager::init_bitmask_spec(RequestGuid guid,
   assert(current_speculation_step == 1 &&
          "The current speculation step should be 1");
   Request &request = all_requests[guid];
-  BatchConfig::BitMask &bitmask = request.causal_mask;
-  bitmask.clear_bitmask();
+  request.causal_mask = BatchConfig::BitMask();
   // Set the mask for the root
-  bitmask.bit_mask[0].set_bit(0);
-  bitmask.tree_or_prompt_size = 1;
-  bitmask.non_tree_cache_size += num_committed_tokens;
-  bitmask.current_layer_size = 1;
+  request.causal_mask.bit_mask[0].set_bit(0);
+  request.causal_mask.tree_or_prompt_size = 1;
+  request.causal_mask.non_tree_cache_size = request.tokens.size() - 1;
+  request.causal_mask.current_layer_size = 1;
 }
 
 void RequestManager::append_bitmask(RequestGuid guid) {

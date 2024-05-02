@@ -367,7 +367,7 @@ private:
   void init_bitmask_prompt(RequestGuid guid, int prompt_length);
   void append_bitmask(RequestGuid guid);
   void update_bitmask_prompt(RequestGuid guid, int num_committed_tokens);
-  void init_bitmask_spec(RequestGuid guid, int num_committed_tokens);
+  void init_bitmask_spec(RequestGuid guid);
   BatchConfig::BitMask create_llm_bitmask(RequestGuid guid);
 
   // Token tree related
