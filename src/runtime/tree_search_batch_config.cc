@@ -84,17 +84,8 @@ std::ostream &
       os << "    Number of tokens in batch: "
          << tree_search_batch_config.requestsInfo[i].num_tokens_in_batch
          << std::endl;
-      os << "    GUID: "
-         << tree_search_batch_config.requestsInfo[i].request_guid << std::endl;
-      os << "    Max sequence length: "
-         << tree_search_batch_config.requestsInfo[i].max_sequence_length
-         << std::endl;
-      os << "    Request completed: "
+      os << "    Request available: "
          << tree_search_batch_config.request_available[i] << std::endl;
-      os << "    Request running: "
-         << tree_search_batch_config.request_running[i] << std::endl;
-      os << "    Tree Search Specific: " << std::endl;
-      os << "        Number of tokens in the current batch: " os << std::endl;
     }
   }
 
