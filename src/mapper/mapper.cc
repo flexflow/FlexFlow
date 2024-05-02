@@ -507,25 +507,6 @@ std::string humanReadableSize(size_t size, bool mb = false) {
   return std::string(buffer);
 }
 
-std::string humanReadableSize(size_t size, bool mb = false) {
-  assert(size >= 0);
-  char const *units[] = {"B", "KiB", "MiB", "GiB", "TiB"};
-  int i = 0;
-  double finalSize = size;
-  if (mb) {
-    finalSize /= 1024 * 1024;
-    i = 2;
-  } else {
-    while (finalSize >= 1024 && i < 4) {
-      finalSize /= 1024;
-      i++;
-    }
-  }
-  char buffer[256];
-  snprintf(buffer, sizeof(buffer), "%.2lf %s", finalSize, units[i]);
-  return std::string(buffer);
-}
-
 void FFMapper::map_task(MapperContext const ctx,
                         Task const &task,
                         MapTaskInput const &input,
