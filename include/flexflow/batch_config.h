@@ -109,7 +109,6 @@ public:
         std::fill(std::begin(bits), std::end(bits), 0);
       }
 
-    private:
       uint64_t bits[MAX_SPEC_TREE_TOKEN_NUM / 64];
     };
 

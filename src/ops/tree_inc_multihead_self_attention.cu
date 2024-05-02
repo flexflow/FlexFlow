@@ -97,7 +97,8 @@ __global__ void compute_attention_kernel_fused_kernel(
   int const qlength =
       request_infos[requext_idx_in_batch].num_tokens_in_batch;
 
-  BatchConfig::BitMask bitmask = causalMask[requext_idx_in_batch];
+  // BatchConfig::BitMask bitmask = causalMask[requext_idx_in_batch];
+  BatchConfig::BitMask* bitmask = &causalMask[requext_idx_in_batch];
 
   int const first_token_idx = request_infos[requext_idx_in_batch].first_token_offset_in_batch;
 
@@ -170,9 +171,10 @@ __global__ void compute_attention_kernel_fused_kernel(
       if (ti < tlength && tidx % THREADS_PER_KEY == 0) {
         bool const mask =
             prompt_phase ? (qi + q_start < ti)
-                         : (ti >= bitmask.non_tree_cache_size &&
-                            (!(bitmask.mask[ti - bitmask.non_tree_cache_size] &
-                               (1 << qi))));
+                         : (ti >= bitmask->non_tree_cache_size &&
+                            !test_bit(bitmask->bit_mask, ti - bitmask->non_tree_cache_size, qi));
+                            // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
+                            //    (1 << qi))));
 
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
@@ -185,7 +187,7 @@ __global__ void compute_attention_kernel_fused_kernel(
         //          qk,
         //          q_vecs[ki_o][0].x,
         //          k[0].x,
-        //          bitmask.non_tree_cache_size);
+        //          bitmask->non_tree_cache_size);
         // }
         qk_smem[ti - first_step] = mask ? 0.0f : qk;
       }
@@ -228,9 +230,10 @@ __global__ void compute_attention_kernel_fused_kernel(
     for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
       bool const mask =
           prompt_phase ? (q_start + qi < ti)
-                       : (ti >= bitmask.non_tree_cache_size &&
-                          (!(bitmask.mask[ti - bitmask.non_tree_cache_size] &
-                             (1 << qi))));
+                       : (ti >= bitmask->non_tree_cache_size &&
+                          !test_bit(bitmask->bit_mask, ti - bitmask->non_tree_cache_size, qi));
+                          // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
+                          //    (1 << qi))));
       float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
       exp_sum += logit;
       qk_smem[ti - first_step] = mask ? 0.0f : logit;
@@ -279,9 +282,10 @@ __global__ void compute_attention_kernel_fused_kernel(
           bool const mask =
               prompt_phase
                   ? (q_start + qi < ti)
-                  : (ti >= bitmask.non_tree_cache_size &&
-                     (!(bitmask.mask[ti - bitmask.non_tree_cache_size] &
-                        (1 << qi))));
+                  : (ti >= bitmask->non_tree_cache_size &&
+                      !test_bit(bitmask->bit_mask, ti - bitmask->non_tree_cache_size, qi));
+                      // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
+                      //   (1 << qi))));
           float logit = mask ? 0.0f : qk_smem[ti - first_step];
           out = FlexFlow::fma(logit, cast_to_float(v), out);
         }
@@ -1073,7 +1077,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
             reinterpret_cast<char *>(handler.batch_config_metadata) +
             sizeof(BatchConfig::tokensInfo) +
             sizeof(BatchConfig::requestsInfo) +
-            sizeof(BatchConfig::request_available)) +
+            sizeof(BatchConfig::request_available) +
             sizeof(BatchConfig::causalMask));
   }
 
