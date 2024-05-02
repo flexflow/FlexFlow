@@ -177,8 +177,7 @@ size_t RequestManager::get_num_ssms() {
 }
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::vector<TokenId> const &prompt,
-                                         int max_sequence_length) {
+    RequestManager::register_new_request(std::vector<TokenId> const &prompt) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   // Add a new request
@@ -233,8 +232,7 @@ RequestManager::RequestGuid
 }
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::string const &prompt,
-                                         int max_sequence_length) {
+    RequestManager::register_new_request(std::string const &prompt) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   // Add a new request
   Request request;
@@ -1238,13 +1236,13 @@ void RequestManager::get_verify_results_greedy(
   }
 }
 
+// TODO: the max_seq_length is not used in the current implementation
 std::vector<GenerationResult>
     FFModel::generate(std::vector<std::string> &prompts, int max_seq_length) {
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
   for (int i = 0; i < prompts.size(); i++) {
-    RequestManager::RequestGuid guid =
-        rm->register_new_request(prompts.at(i), max_seq_length);
+    RequestManager::RequestGuid guid = rm->register_new_request(prompts.at(i));
     if (guid != RequestManager::INVALID_GUID) {
       guids.push_back(guid);
     }
