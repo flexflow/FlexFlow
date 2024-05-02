@@ -114,11 +114,7 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
          << bc.requestsInfo[i].first_token_offset_in_batch << std::endl;
       os << "    Number of tokens in batch: "
          << bc.requestsInfo[i].num_tokens_in_batch << std::endl;
-      os << "    GUID: " << bc.requestsInfo[i].request_guid << std::endl;
-      os << "    Max sequence length: "
-         << bc.requestsInfo[i].max_sequence_length << std::endl;
-      os << "    Request completed: " << bc.request_available[i] << std::endl;
-      os << "    Request running: " << bc.request_running[i] << std::endl;
+      os << "    Request available: " << bc.request_available[i] << std::endl;
     }
   }
 
