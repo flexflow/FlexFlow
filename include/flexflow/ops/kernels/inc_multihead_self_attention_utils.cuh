@@ -482,13 +482,13 @@ inline void smem_size_in_bytes_tree(int hidden_size_per_head,
   int max_query_length = 0;
   int max_total_length = 0;
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (bc->request_completed[i]) {
+    if (!bc->request_available[i]) {
       continue;
     }
     max_query_length =
         max(max_query_length, bc->requestsInfo[i].num_tokens_in_batch);
     max_total_length = max(max_total_length,
-                           bc->requestsInfo[i].first_token_depth_in_request +
+                           bc->requestsInfo[i].first_token_index_in_request +
                                bc->requestsInfo[i].num_tokens_in_batch);
   }
 
