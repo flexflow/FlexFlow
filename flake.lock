@@ -43,11 +43,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1713942681,
-        "narHash": "sha256-thpBjg7m0wCqmcLzLZdZqXIW2sfwUpiBrHriimfeoZU=",
+        "lastModified": 1714185778,
+        "narHash": "sha256-Rl33HVDHhmcgKnHPYo96XA7Zm85PUmfuCZGeSWseAdw=",
         "owner": "lockshaw",
         "repo": "proj",
-        "rev": "f9ee9aa7de919734228518f76f0f02d5fcdbb295",
+        "rev": "9b9465925365e76d0db5c11579d52b47fecc4dcd",
         "type": "github"
       },
       "original": {

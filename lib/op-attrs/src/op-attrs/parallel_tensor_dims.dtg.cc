@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/parallel_tensor_dims.struct.toml
 /* proj-data
 {
-  "generated_from": "141639bdce009a1594501f33c2f25c9e"
+  "generated_from": "31a9e757f42ec3e468b299cda2cbcd4e"
 }
 */
 
@@ -28,6 +28,22 @@ bool ParallelTensorDims::operator==(ParallelTensorDims const &other) const {
 }
 bool ParallelTensorDims::operator!=(ParallelTensorDims const &other) const {
   return std::tie(this->shard_dims, this->replica_dims) !=
+         std::tie(other.shard_dims, other.replica_dims);
+}
+bool ParallelTensorDims::operator<(ParallelTensorDims const &other) const {
+  return std::tie(this->shard_dims, this->replica_dims) <
+         std::tie(other.shard_dims, other.replica_dims);
+}
+bool ParallelTensorDims::operator>(ParallelTensorDims const &other) const {
+  return std::tie(this->shard_dims, this->replica_dims) >
+         std::tie(other.shard_dims, other.replica_dims);
+}
+bool ParallelTensorDims::operator<=(ParallelTensorDims const &other) const {
+  return std::tie(this->shard_dims, this->replica_dims) <=
+         std::tie(other.shard_dims, other.replica_dims);
+}
+bool ParallelTensorDims::operator>=(ParallelTensorDims const &other) const {
+  return std::tie(this->shard_dims, this->replica_dims) >=
          std::tie(other.shard_dims, other.replica_dims);
 }
 } // namespace FlexFlow

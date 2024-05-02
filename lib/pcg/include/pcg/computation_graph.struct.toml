@@ -3,11 +3,11 @@ name = "ComputationGraph"
 features = [ ]
 
 includes = [
-  "utils/graph.h",
   "pcg/layer_attrs.dtg.h",
-  "pcg/tensor_attrs.dtg.h"
+  "pcg/tensor_attrs.dtg.h",
+  "pcg/operator_graph.h",
 ]
 
 [[fields]]
 name = "raw_graph"
-type = "::FlexFlow::OutputLabelledMultiDiGraph<::FlexFlow::LayerAttrs, ::FlexFlow::TensorAttrs>"
+type = "::FlexFlow::LabelledOperatorGraph<::FlexFlow::LayerAttrs, ::FlexFlow::TensorAttrs>"

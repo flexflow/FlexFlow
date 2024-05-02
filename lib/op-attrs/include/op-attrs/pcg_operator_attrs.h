@@ -6,6 +6,7 @@
 namespace FlexFlow {
 
 bool is_parallel_op(PCGOperatorAttrs const &);
+OperatorType get_op_type(PCGOperatorAttrs const &);
 
 } // namespace FlexFlow
 

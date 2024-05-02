@@ -10,7 +10,7 @@ features = [
 ]
 
 includes = [
-  "op-attrs/operator_attrs.h",
+  "op-attrs/computation_graph_op_attrs.dtg.h",
   "utils/stack_string.h",
   "<optional>",
   "utils/json.h"
@@ -18,7 +18,7 @@ includes = [
 
 [[fields]]
 name = "attrs"
-type = "::FlexFlow::CompGraphOperatorAttrs"
+type = "::FlexFlow::ComputationGraphOpAttrs"
 
 [[fields]]
 name = "name"

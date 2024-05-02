@@ -3,20 +3,19 @@
 // lib/pcg/include/pcg/computation_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "3639f7e8bb97a5ca2c2ef13caff3c84e"
+  "generated_from": "7d22a6bc44163f331bc33002714721cf"
 }
 */
 
 #include "pcg/computation_graph.dtg.h"
 
 #include "pcg/layer_attrs.dtg.h"
+#include "pcg/operator_graph.h"
 #include "pcg/tensor_attrs.dtg.h"
-#include "utils/graph.h"
 
 namespace FlexFlow {
 ComputationGraph::ComputationGraph(
-    ::FlexFlow::OutputLabelledMultiDiGraph<::FlexFlow::LayerAttrs,
-                                           ::FlexFlow::TensorAttrs> const
-        &raw_graph)
+    ::FlexFlow::LabelledOperatorGraph<::FlexFlow::LayerAttrs,
+                                      ::FlexFlow::TensorAttrs> const &raw_graph)
     : raw_graph(raw_graph) {}
 } // namespace FlexFlow

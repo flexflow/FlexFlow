@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/layer_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "12b49c15e8defff5118e5607a7823f59"
+  "generated_from": "b3e4f0c07a906139b599bd4696cb5e65"
 }
 */
 
@@ -12,7 +12,7 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
-#include "op-attrs/operator_attrs.h"
+#include "op-attrs/computation_graph_op_attrs.dtg.h"
 #include "utils/json.h"
 #include "utils/stack_string.h"
 #include <functional>
@@ -23,7 +23,7 @@
 namespace FlexFlow {
 struct LayerAttrs {
   LayerAttrs() = delete;
-  LayerAttrs(::FlexFlow::CompGraphOperatorAttrs const &attrs,
+  LayerAttrs(::FlexFlow::ComputationGraphOpAttrs const &attrs,
              std::optional<::FlexFlow::stack_string<MAX_OPNAME>> const &name);
 
   bool operator==(LayerAttrs const &) const;
@@ -32,7 +32,7 @@ struct LayerAttrs {
   bool operator>(LayerAttrs const &) const;
   bool operator<=(LayerAttrs const &) const;
   bool operator>=(LayerAttrs const &) const;
-  ::FlexFlow::CompGraphOperatorAttrs attrs;
+  ::FlexFlow::ComputationGraphOpAttrs attrs;
   std::optional<::FlexFlow::stack_string<MAX_OPNAME>> name;
 };
 } // namespace FlexFlow

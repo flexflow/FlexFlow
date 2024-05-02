@@ -3,13 +3,13 @@
 // lib/pcg/include/pcg/layer_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "12b49c15e8defff5118e5607a7823f59"
+  "generated_from": "b3e4f0c07a906139b599bd4696cb5e65"
 }
 */
 
 #include "pcg/layer_attrs.dtg.h"
 
-#include "op-attrs/operator_attrs.h"
+#include "op-attrs/computation_graph_op_attrs.dtg.h"
 #include "utils/json.h"
 #include "utils/stack_string.h"
 #include <optional>
@@ -17,7 +17,7 @@
 
 namespace FlexFlow {
 LayerAttrs::LayerAttrs(
-    ::FlexFlow::CompGraphOperatorAttrs const &attrs,
+    ::FlexFlow::ComputationGraphOpAttrs const &attrs,
     std::optional<::FlexFlow::stack_string<MAX_OPNAME>> const &name)
     : attrs(attrs), name(name) {}
 bool LayerAttrs::operator==(LayerAttrs const &other) const {
@@ -44,7 +44,7 @@ namespace std {
 size_t hash<FlexFlow::LayerAttrs>::operator()(
     FlexFlow::LayerAttrs const &x) const {
   size_t result = 0;
-  result ^= std::hash<::FlexFlow::CompGraphOperatorAttrs>{}(x.attrs) +
+  result ^= std::hash<::FlexFlow::ComputationGraphOpAttrs>{}(x.attrs) +
             0x9e3779b9 + (result << 6) + (result >> 2);
   result ^=
       std::hash<std::optional<::FlexFlow::stack_string<MAX_OPNAME>>>{}(x.name) +
@@ -57,7 +57,7 @@ namespace nlohmann {
 FlexFlow::LayerAttrs
     adl_serializer<FlexFlow::LayerAttrs>::from_json(json const &j) {
   return {
-      j.at("attrs").template get<::FlexFlow::CompGraphOperatorAttrs>(),
+      j.at("attrs").template get<::FlexFlow::ComputationGraphOpAttrs>(),
       j.at("name")
           .template get<std::optional<::FlexFlow::stack_string<MAX_OPNAME>>>()};
 }

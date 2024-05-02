@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/parallel_tensor_shape.struct.toml
 /* proj-data
 {
-  "generated_from": "bc7e838003fe037b95d45cd5ab4aa16f"
+  "generated_from": "b2d36c9212916e66569af4e958c893f4"
 }
 */
 
@@ -26,6 +26,10 @@ struct ParallelTensorShape {
 
   bool operator==(ParallelTensorShape const &) const;
   bool operator!=(ParallelTensorShape const &) const;
+  bool operator<(ParallelTensorShape const &) const;
+  bool operator>(ParallelTensorShape const &) const;
+  bool operator<=(ParallelTensorShape const &) const;
+  bool operator>=(ParallelTensorShape const &) const;
   ::FlexFlow::ParallelTensorDims dims;
   ::FlexFlow::DataType data_type;
 };

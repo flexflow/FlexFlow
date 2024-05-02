@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/computation_graph_op_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "87653647c900faaf564d3069478569e7"
+  "generated_from": "dc1445fed47c2acaed22038975eec627"
 }
 */
 
@@ -38,6 +38,7 @@
 #include "op-attrs/ops/split_attrs.dtg.h"
 #include "op-attrs/ops/topk_attrs.dtg.h"
 #include "op-attrs/ops/transpose_attrs.dtg.h"
+#include "op-attrs/ops/weight_attrs.dtg.h"
 #include <cstddef>
 #include <functional>
 #include <ostream>
@@ -73,6 +74,7 @@ struct ComputationGraphOpAttrs {
   explicit ComputationGraphOpAttrs(::FlexFlow::SoftmaxAttrs const &);
   explicit ComputationGraphOpAttrs(::FlexFlow::TopKAttrs const &);
   explicit ComputationGraphOpAttrs(::FlexFlow::TransposeAttrs const &);
+  explicit ComputationGraphOpAttrs(::FlexFlow::WeightAttrs const &);
   template <typename T>
   static constexpr bool IsPartOfComputationGraphOpAttrs_v =
       std::is_same_v<T, ::FlexFlow::BatchMatmulAttrs> ||
@@ -100,7 +102,8 @@ struct ComputationGraphOpAttrs {
       std::is_same_v<T, ::FlexFlow::SplitAttrs> ||
       std::is_same_v<T, ::FlexFlow::SoftmaxAttrs> ||
       std::is_same_v<T, ::FlexFlow::TopKAttrs> ||
-      std::is_same_v<T, ::FlexFlow::TransposeAttrs>;
+      std::is_same_v<T, ::FlexFlow::TransposeAttrs> ||
+      std::is_same_v<T, ::FlexFlow::WeightAttrs>;
   template <typename ReturnType, typename Visitor>
   ReturnType visit(Visitor &&v) const {
     switch (this->index()) {
@@ -206,6 +209,10 @@ struct ComputationGraphOpAttrs {
       }
       case 25: {
         ReturnType result = v(this->get<::FlexFlow::TransposeAttrs>());
+        return result;
+      }
+      case 26: {
+        ReturnType result = v(this->get<::FlexFlow::WeightAttrs>());
         return result;
       }
       default: {
@@ -322,6 +329,10 @@ struct ComputationGraphOpAttrs {
         ReturnType result = v(this->get<::FlexFlow::TransposeAttrs>());
         return result;
       }
+      case 26: {
+        ReturnType result = v(this->get<::FlexFlow::WeightAttrs>());
+        return result;
+      }
       default: {
         throw std::runtime_error(
             fmt::format("Unknown index {} for type ComputationGraphOpAttrs",
@@ -346,7 +357,8 @@ struct ComputationGraphOpAttrs {
         "::FlexFlow::Pool2DAttrs, ::FlexFlow::ReduceAttrs, "
         "::FlexFlow::ReverseAttrs, ::FlexFlow::ReshapeAttrs, "
         "::FlexFlow::SplitAttrs, ::FlexFlow::SoftmaxAttrs, "
-        "::FlexFlow::TopKAttrs, ::FlexFlow::TransposeAttrs], received T");
+        "::FlexFlow::TopKAttrs, ::FlexFlow::TransposeAttrs, "
+        "::FlexFlow::WeightAttrs], received T");
     return std::holds_alternative<T>(this->raw_variant);
   }
   template <typename T>
@@ -366,7 +378,8 @@ struct ComputationGraphOpAttrs {
         "::FlexFlow::Pool2DAttrs, ::FlexFlow::ReduceAttrs, "
         "::FlexFlow::ReverseAttrs, ::FlexFlow::ReshapeAttrs, "
         "::FlexFlow::SplitAttrs, ::FlexFlow::SoftmaxAttrs, "
-        "::FlexFlow::TopKAttrs, ::FlexFlow::TransposeAttrs], received T");
+        "::FlexFlow::TopKAttrs, ::FlexFlow::TransposeAttrs, "
+        "::FlexFlow::WeightAttrs], received T");
     return std::get<T>(this->raw_variant);
   }
   template <typename T>
@@ -386,7 +399,8 @@ struct ComputationGraphOpAttrs {
         "::FlexFlow::Pool2DAttrs, ::FlexFlow::ReduceAttrs, "
         "::FlexFlow::ReverseAttrs, ::FlexFlow::ReshapeAttrs, "
         "::FlexFlow::SplitAttrs, ::FlexFlow::SoftmaxAttrs, "
-        "::FlexFlow::TopKAttrs, ::FlexFlow::TransposeAttrs], received T");
+        "::FlexFlow::TopKAttrs, ::FlexFlow::TransposeAttrs, "
+        "::FlexFlow::WeightAttrs], received T");
     return std::get<T>(this->raw_variant);
   }
   size_t index() const {
@@ -423,7 +437,8 @@ struct ComputationGraphOpAttrs {
                ::FlexFlow::SplitAttrs,
                ::FlexFlow::SoftmaxAttrs,
                ::FlexFlow::TopKAttrs,
-               ::FlexFlow::TransposeAttrs>
+               ::FlexFlow::TransposeAttrs,
+               ::FlexFlow::WeightAttrs>
       raw_variant;
 };
 } // namespace FlexFlow

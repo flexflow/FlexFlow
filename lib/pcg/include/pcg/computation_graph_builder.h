@@ -169,8 +169,7 @@ public:
               bool keepdims,
               char const *name);
   // Add a split layer
-  void split(tensor_guid_t const &input,
-             tensor_guid_t *outputs,
+  std::vector<tensor_guid_t> split(tensor_guid_t const &input,
              std::vector<int> const &split,
              int axis,
              std::optional<std::string> const &name = std::nullopt);
@@ -195,8 +194,7 @@ public:
   tensor_guid_t reverse(tensor_guid_t const &input,
                  int axis,
                  std::optional<std::string> const &name = std::nullopt);
-  void top_k(tensor_guid_t const &input,
-             tensor_guid_t *outputs,
+  std::vector<tensor_guid_t> top_k(tensor_guid_t const &input,
              int k,
              bool sorted,
              std::optional<std::string> const &name = std::nullopt);
@@ -229,27 +227,26 @@ public:
 
   TensorAttrs get_attrs(tensor_guid_t const &) const;
   TensorShape get_shape(tensor_guid_t const &) const;
+
 private:
   tensor_guid_t broadcast(tensor_guid_t const &, TensorShape const &);
 
-  void add_layer(LayerAttrs const &layer,
-                 std::vector<tensor_guid_t> const &inputs,
-                 std::vector<tensor_guid_t> const &weights,
-                 std::vector<tensor_guid_t> const &outputs);
-  tensor_guid_t add_layer(
-      LayerAttrs const &layer,
-      std::vector<tensor_guid_t> const &inputs,
-      std::vector<std::pair<TensorShape, std::optional<InitializerAttrs>>> const
-          &weight_shapes,
-      TensorShape const &output_shape);
-  std::vector<tensor_guid_t> add_layer(
-      LayerAttrs const &layer,
-      std::vector<tensor_guid_t> const &inputs,
-      std::vector<std::pair<TensorShape, std::optional<InitializerAttrs>>> const
-          &weight_shapes,
-      std::vector<TensorShape> const &output_shapes);
-
   tensor_guid_t as_type(tensor_guid_t const &, DataType, std::string const &);
+
+  std::vector<tensor_guid_t> add_layer(LayerAttrs const &layer,
+                                       std::vector<tensor_guid_t> const &inputs, 
+                                       std::vector<TensorAttrs> const &weights,
+                                       std::vector<TensorAttrs> const &outputs);
+
+  tensor_guid_t add_layer(LayerAttrs const &layer,
+                          std::vector<tensor_guid_t> const &inputs,
+                          std::vector<TensorAttrs> const &weights,
+                          TensorAttrs const &output);
+
+  tensor_guid_t add_layer(LayerAttrs const &layer,
+                          std::vector<tensor_guid_t> const &inputs,
+                          std::vector<TensorAttrs> const &weights,
+                          TensorShape const &output);
 
   TensorShape get_broadcast_target_shape(std::vector<tensor_guid_t> const &);
   TensorShape get_broadcast_target_shape(std::vector<TensorShape> const &);

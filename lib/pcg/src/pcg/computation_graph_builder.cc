@@ -1,37 +1,76 @@
 #include "pcg/computation_graph_builder.h"
 #include "op-attrs/get_op_type.h"
 #include "op-attrs/get_output_shapes.h"
+#include "op-attrs/ops/weight_attrs.dtg.h"
 #include "utils/expected.h"
 #include "utils/fmt.h"
 #include "op-attrs/ops/element_binary.h"
 #include "op-attrs/ops/embedding.h"
-
+#include "op-attrs/computation_graph_op_attrs.h"
+#include "utils/containers.h"
+#include "utils/containers/enumerate_vector.h"
+#include "pcg/computation_graph.h"
+#include "utils/containers/concat_vectors.h"
+ 
 namespace FlexFlow {
 
-void ComputationGraphBuilder::add_layer(LayerAttrs const &layer,
-                                        std::vector<tensor_guid_t> const &inputs,
-                                        std::vector<tensor_guid_t> const &weights,
-                                        std::vector<tensor_guid_t> const &outputs) {
+std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(LayerAttrs const &layer,
+               std::vector<tensor_guid_t> const &inputs,
+               std::vector<TensorAttrs> const &weights,
+               std::vector<TensorAttrs> const &outputs) {
+  std::vector<tensor_guid_t> weight_tensors;
+  for (auto const &kv : enumerate_vector(weights)) {
+    int weight_idx = kv.first;
+    TensorAttrs weight_tensor_attrs = kv.second;
+
+    std::optional<std::string> weight_name = transform(layer.name, [&](std::string const &layer_name) { return fmt::format("{}.weights[{}]", layer_name, weight_idx); });
+    LayerAttrs weight_layer_attrs = LayerAttrs{
+      ComputationGraphOpAttrs{WeightAttrs{}},
+      weight_name,
+    };
+    std::vector<tensor_guid_t> weight_layer_inputs = {};
+    std::vector<TensorAttrs> weight_layer_outputs = {weight_tensor_attrs};
+    LayerAddedResult added_weight = ::FlexFlow::add_layer(this->computation_graph, weight_layer_attrs, weight_layer_inputs, weight_layer_outputs);
+    weight_tensors.push_back(get_only(added_weight.outputs));
+  }
+
+  LayerAddedResult added = ::FlexFlow::add_layer(this->computation_graph, layer, concat_vectors(inputs, weight_tensors), outputs);
+  return added.outputs;
+}
+
+tensor_guid_t ComputationGraphBuilder::add_layer(LayerAttrs const &layer,
+               std::vector<tensor_guid_t> const &inputs,
+               std::vector<TensorAttrs> const &weights,
+               TensorAttrs const &output) {
+  std::vector<TensorAttrs> outputs = {output};
+  return get_only(this->add_layer(layer, inputs, weights, outputs));
+}
+
+static tensor_guid_t make_weight_tensor(ComputationGraphBuilder &cgb, TensorShape const &shape, std::optional<InitializerAttrs> const &initializer_attrs = std::nullopt) {
   NOT_IMPLEMENTED();
 }
 
-tensor_guid_t ComputationGraphBuilder::add_layer(
-    LayerAttrs const &layer,
-    std::vector<tensor_guid_t> const &inputs,
-    std::vector<std::pair<TensorShape, std::optional<InitializerAttrs>>> const
-        &weight_shapes,
-    TensorShape const &output_shape) {
+static tensor_guid_t make_output_tensor(ComputationGraphBuilder &cgb, TensorShape const &shape, std::optional<InitializerAttrs> const &initializer_attrs = std::nullopt) {
   NOT_IMPLEMENTED();
 }
 
-std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
-    LayerAttrs const &layer,
-    std::vector<tensor_guid_t> const &inputs,
-    std::vector<std::pair<TensorShape, std::optional<InitializerAttrs>>> const
-        &weight_shapes,
-    std::vector<TensorShape> const &output_shapes) {
-  NOT_IMPLEMENTED();
+static tensor_guid_t cast_to(ComputationGraphBuilder &cgb, 
+                             tensor_guid_t const &x,
+                             DataType data_type,
+                             std::string const &name) {
+  DataType x_datatype = cgb.get_shape(x).data_type;
+  if (x_datatype < data_type) {
+    return cgb.cast(x, data_type, name);
+  } else if (x_datatype > data_type) {
+    throw mk_runtime_error(fmt::format("Could not convert provided tensor data type {} to "
+                                       "desired data type {}",
+                                       x_datatype,
+                                       data_type));
+  } else {
+    return x;
+  }
 }
+
 
 tensor_guid_t ComputationGraphBuilder::broadcast(tensor_guid_t const &, TensorShape const &) {
   NOT_IMPLEMENTED();
@@ -42,32 +81,17 @@ tensor_guid_t ComputationGraphBuilder::cast(tensor_guid_t const &input,
                                      std::optional<std::string> const &name){
     NOT_IMPLEMENTED()}
 
-tensor_guid_t ComputationGraphBuilder::as_type(tensor_guid_t const &x,
-                                        DataType data_type,
-                                        std::string const &name) {
-  DataType x_datatype = this->get_shape(x).data_type;
-  if (x_datatype < data_type) {
-    return this->cast(x, data_type, name);
-  } else if (x_datatype > data_type) {
-    throw mk_runtime_error("Could not convert provided tensor data type {} to "
-                           "desired data type {}",
-                           x_datatype,
-                           data_type);
-  }
-  return x;
-}
-
 static std::string get_default_name(OperatorType op_type) {
   return get_operator_type_name(op_type);
 }
 
-static std::string get_default_name(ComputationGraphAttrs const &attrs) {
+static std::string get_default_name(ComputationGraphOpAttrs const &attrs) {
   return get_default_name(get_op_type(attrs));
 }
 
-template <typename... Args>
-static std::string get_default_name(std::variant<Args...> const &attrs) {
-  return get_default_name(widen<ComputationGraphAttrs>(attrs));
+template <typename T>
+static std::string get_default_name(T const &t) {
+  return get_default_name(t);
 }
 
 tensor_guid_t ComputationGraphBuilder::element_unary(
@@ -78,10 +102,19 @@ tensor_guid_t ComputationGraphBuilder::element_unary(
 
   tensor_guid_t input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
-  LayerAttrs layer = {attrs, name};
+  LayerAttrs layer = LayerAttrs{
+    ComputationGraphOpAttrs{attrs}, 
+    name
+  };
+
   TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
 
-  return this->add_layer(layer, {input}, {}, output_shape);
+  return this->add_layer(
+    layer, 
+    {input}, 
+    {}, 
+    output_shape
+  );
 }
 
 tensor_guid_t ComputationGraphBuilder::element_scalar_unary(
@@ -92,7 +125,11 @@ tensor_guid_t ComputationGraphBuilder::element_scalar_unary(
 
   tensor_guid_t input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
-  LayerAttrs layer = {attrs, name};
+  LayerAttrs layer = {
+    ComputationGraphOpAttrs{attrs}, 
+    name
+  };
+
   TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
 
   return this->add_layer(layer, {input}, {}, output_shape);
@@ -137,7 +174,11 @@ tensor_guid_t ComputationGraphBuilder::element_binary(
 
   ElementBinaryAttrs attrs = {op_type, compute_type, false, false};
 
-  LayerAttrs layer = {attrs, name};
+  LayerAttrs layer = {
+    ComputationGraphOpAttrs{attrs}, 
+    name
+  };
+
   TensorShape output_shape = get_output_shape(
     attrs, 
     this->get_shape(lhs_input), 
@@ -266,6 +307,8 @@ tensor_guid_t ComputationGraphBuilder::elu(tensor_guid_t const &input,
   return this->element_unary(OperatorType::ELU, input, name);
 }
 
+static TensorAttrs make_weight_attrs(TensorShape const &, std::optional<InitializerAttrs> const &) { NOT_IMPLEMENTED(); }
+
 tensor_guid_t ComputationGraphBuilder::conv2d(
     tensor_guid_t const &x,
     int outChannels,
@@ -292,19 +335,25 @@ tensor_guid_t ComputationGraphBuilder::conv2d(
                        groups,
                        activation,
                        use_bias};
+
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
   tensor_guid_t input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
-  LayerAttrs layer = {attrs, name};
-  TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
+  LayerAttrs layer = {
+    ComputationGraphOpAttrs{attrs}, 
+    name
+  };
+  
+  TensorShape input_shape = this->get_shape(input);
+  TensorShape output_shape = get_output_shape(attrs, input_shape);
 
-  std::vector<std::pair<TensorShape, std::optional<InitializerAttrs>>> weights;
+  std::vector<TensorAttrs> weights;
 
-  weights.push_back({get_kernel_shape(attrs, this->get_shape(input)), kernel_initializer});
+  weights.push_back(make_weight_attrs(get_kernel_shape(attrs, input_shape), kernel_initializer));
 
   if (use_bias) {
-    weights.push_back({get_bias_shape(attrs, this->get_shape(input)), bias_initializer});
+    weights.push_back(make_weight_attrs(get_bias_shape(attrs, input_shape), bias_initializer));
   }
 
   return this->add_layer(layer, {input}, weights, output_shape);
@@ -318,7 +367,7 @@ tensor_guid_t ComputationGraphBuilder::dropout(
   DropoutAttrs attrs = {rate, seed};
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  LayerAttrs layer = {attrs, name};
+  LayerAttrs layer = {ComputationGraphOpAttrs{attrs}, name};
   tensor_guid_t input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
   TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
@@ -333,18 +382,25 @@ tensor_guid_t ComputationGraphBuilder::embedding(
     AggregateOp aggr,
     DataType dtype,
     std::optional<InitializerAttrs> const &kernel_initializer,
-    std::optional<std::string> const &maybe_name) {
+    std::optional<std::string> const &maybe_name) 
+{
   EmbeddingAttrs attrs = {num_entries, outDim, aggr, dtype};
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  LayerAttrs layer = {attrs, name};
+  LayerAttrs layer = {ComputationGraphOpAttrs{attrs}, name};
   tensor_guid_t input = this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
 
+  TensorShape input_shape = this->get_shape(input);
+
+  TensorAttrs weight_attrs = make_weight_attrs(
+    get_weights_shape(attrs, input_shape),
+    kernel_initializer
+  );
+
   TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
-  TensorShape weights_shape = get_weights_shape(attrs, this->get_shape(input));
 
   return this->add_layer(
-      layer, {input}, {{weights_shape, kernel_initializer}}, output_shape);
+      layer, {input}, {weight_attrs}, output_shape);
 }
 
 std::vector<tensor_guid_t> ComputationGraphBuilder::gather(
@@ -355,7 +411,7 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::gather(
   GatherAttrs attrs = {dim};
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  LayerAttrs layer = {attrs, name};
+  LayerAttrs layer = {ComputationGraphOpAttrs{attrs}, name};
   if (this->get_shape(index).data_type != DataType::INT32 &&
       this->get_shape(index).data_type != DataType::INT64) {
     throw mk_runtime_error("Invalid data type for input tensor 2 for Gather: "
@@ -411,7 +467,7 @@ tensor_guid_t ComputationGraphBuilder::batch_norm(
   BatchNormAttrs attrs = BatchNormAttrs{relu};
   std::string name = maybe_name.value_or(get_default_name(attrs));
 
-  LayerAttrs layer = {attrs, name};
+  LayerAttrs layer = {ComputationGraphOpAttrs{attrs}, name};
 
   TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
 

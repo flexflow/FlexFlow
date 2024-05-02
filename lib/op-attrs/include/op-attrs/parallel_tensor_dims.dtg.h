@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/parallel_tensor_dims.struct.toml
 /* proj-data
 {
-  "generated_from": "141639bdce009a1594501f33c2f25c9e"
+  "generated_from": "31a9e757f42ec3e468b299cda2cbcd4e"
 }
 */
 
@@ -31,6 +31,10 @@ struct ParallelTensorDims {
 
   bool operator==(ParallelTensorDims const &) const;
   bool operator!=(ParallelTensorDims const &) const;
+  bool operator<(ParallelTensorDims const &) const;
+  bool operator>(ParallelTensorDims const &) const;
+  bool operator<=(ParallelTensorDims const &) const;
+  bool operator>=(ParallelTensorDims const &) const;
   ::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim> shard_dims;
   ::FlexFlow::ReplicaParallelDimSet replica_dims;
 };

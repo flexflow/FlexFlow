@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/computation_graph_op_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "87653647c900faaf564d3069478569e7"
+  "generated_from": "dc1445fed47c2acaed22038975eec627"
 }
 */
 
@@ -88,6 +88,9 @@ ComputationGraphOpAttrs::ComputationGraphOpAttrs(::FlexFlow::TopKAttrs const &v)
 ComputationGraphOpAttrs::ComputationGraphOpAttrs(
     ::FlexFlow::TransposeAttrs const &v)
     : raw_variant(v) {}
+ComputationGraphOpAttrs::ComputationGraphOpAttrs(
+    ::FlexFlow::WeightAttrs const &v)
+    : raw_variant(v) {}
 bool ComputationGraphOpAttrs::operator==(
     ComputationGraphOpAttrs const &other) const {
   return this->raw_variant == other.raw_variant;
@@ -141,7 +144,8 @@ size_t hash<::FlexFlow::ComputationGraphOpAttrs>::operator()(
                                 ::FlexFlow::SplitAttrs,
                                 ::FlexFlow::SoftmaxAttrs,
                                 ::FlexFlow::TopKAttrs,
-                                ::FlexFlow::TransposeAttrs>>{}(x.raw_variant);
+                                ::FlexFlow::TransposeAttrs,
+                                ::FlexFlow::WeightAttrs>>{}(x.raw_variant);
 }
 } // namespace std
 namespace nlohmann {
@@ -227,6 +231,9 @@ namespace nlohmann {
   } else if (key == "transpose") {
     return ::FlexFlow::ComputationGraphOpAttrs{
         j.at("value").template get<::FlexFlow::TransposeAttrs>()};
+  } else if (key == "weight") {
+    return ::FlexFlow::ComputationGraphOpAttrs{
+        j.at("value").template get<::FlexFlow::WeightAttrs>()};
   } else {
     throw std::runtime_error(fmt::format("Unknown type key {}", key));
   }
@@ -363,6 +370,11 @@ void adl_serializer<::FlexFlow::ComputationGraphOpAttrs>::to_json(
     case 25: {
       j["type"] = "transpose";
       j["value"] = x.get<::FlexFlow::TransposeAttrs>();
+      break;
+    }
+    case 26: {
+      j["type"] = "weight";
+      j["value"] = x.get<::FlexFlow::WeightAttrs>();
       break;
     }
     default: {
@@ -504,6 +516,11 @@ std::string format_as(::FlexFlow::ComputationGraphOpAttrs const &x) {
     case 25: {
       oss << "<ComputationGraphOpAttrs transpose="
           << x.get<::FlexFlow::TransposeAttrs>() << ">";
+      break;
+    }
+    case 26: {
+      oss << "<ComputationGraphOpAttrs weight="
+          << x.get<::FlexFlow::WeightAttrs>() << ">";
       break;
     }
     default: {

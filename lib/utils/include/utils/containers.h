@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "utils/containers/extend_vector.h"
 
 namespace FlexFlow {
 
@@ -418,6 +419,7 @@ T get_first(std::unordered_set<T> const &s) {
 
 template <typename T, typename C>
 void extend(std::vector<T> &lhs, C const &rhs) {
+  extend_vector(lhs, rhs);
   lhs.reserve(lhs.size() + std::distance(rhs.begin(), rhs.end()));
   lhs.insert(lhs.end(), rhs.begin(), rhs.end());
 }

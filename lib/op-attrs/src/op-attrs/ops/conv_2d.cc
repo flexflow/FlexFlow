@@ -99,7 +99,7 @@ ParallelTensorShape get_bias_shape(Conv2DAttrs const &attrs, ParallelTensorShape
   assert (attrs.groups == 1); // TODO(@lockshaw): currently not supported
   Conv2DParallelInputShape input = parse_parallel_input_shape(raw_input_shape);
 
-  ShardParallelDim output_channels_dim = {attrs.out_channels, input.discard_copy_reduction_degree};
+  ShardParallelDim output_channels_dim = {as_size_t(attrs.out_channels), input.discard_copy_reduction_degree};
 
   int sum_degree = 1;
   int discard_copy_degree = input.height_dim.degree * input.width_dim.degree * input.sum_reduction_degree * input.channel_dim.degree;

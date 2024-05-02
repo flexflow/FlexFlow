@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/parallel_tensor_shape.struct.toml
 /* proj-data
 {
-  "generated_from": "bc7e838003fe037b95d45cd5ab4aa16f"
+  "generated_from": "b2d36c9212916e66569af4e958c893f4"
 }
 */
 
@@ -24,6 +24,22 @@ bool ParallelTensorShape::operator==(ParallelTensorShape const &other) const {
 }
 bool ParallelTensorShape::operator!=(ParallelTensorShape const &other) const {
   return std::tie(this->dims, this->data_type) !=
+         std::tie(other.dims, other.data_type);
+}
+bool ParallelTensorShape::operator<(ParallelTensorShape const &other) const {
+  return std::tie(this->dims, this->data_type) <
+         std::tie(other.dims, other.data_type);
+}
+bool ParallelTensorShape::operator>(ParallelTensorShape const &other) const {
+  return std::tie(this->dims, this->data_type) >
+         std::tie(other.dims, other.data_type);
+}
+bool ParallelTensorShape::operator<=(ParallelTensorShape const &other) const {
+  return std::tie(this->dims, this->data_type) <=
+         std::tie(other.dims, other.data_type);
+}
+bool ParallelTensorShape::operator>=(ParallelTensorShape const &other) const {
+  return std::tie(this->dims, this->data_type) >=
          std::tie(other.dims, other.data_type);
 }
 } // namespace FlexFlow
