@@ -1098,10 +1098,7 @@ void RequestManager::append_bitmask(RequestGuid guid) {
 BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
   // This method creates a new bitmask for LLM verification model's bitmask,
   // it does not modify the small model's bitmask This method is called by
-  // prepare_verify_batch_config()
-  // TODO: implement this function
-  // 1. Create the bitmask based on the pruned request token tree
-  // 2. Maintain all other fields
+  // prepare_verify_batch_config().
 
   Request &request = all_requests[guid];
   TokenTree &token_tree = request.speculative_token_trees[0];
