@@ -374,6 +374,7 @@ void RequestManager::load_pending_reqeust_to_batch() {
   pending_request_queue.pop();
 
   prefill_request = std::make_shared<Request>(all_requests[guid]);
+  prefill_request->status = Request::RUNNING;
 
   // Find an empty slot
   int request_index = get_empty_request_index();

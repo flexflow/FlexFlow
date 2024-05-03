@@ -69,8 +69,8 @@ struct Request {
   int ssm_cache_size = 0;
   int llm_cache_size = 0;
 
-  int first_token_offset_in_batch;
-  int num_tokens_in_batch;
+  int first_token_offset_in_batch = 0;
+  int num_tokens_in_batch = 0;
 
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
@@ -304,6 +304,7 @@ private:
 
   // This is a helper data structure to store help the pruning of the token
   // trees across different requests.
+  // TODO: clear this in the first step of the speculation!
   std::priority_queue<
       std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>,
       std::vector<std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>>,
@@ -312,11 +313,6 @@ private:
   // rm state
   std::mutex rm_state_mutex;
 
-  // TODO: Move this two vector to request struct
-  std::unordered_map<RequestGuid,
-                     std::vector<std::pair<BatchConfig::TokenId, int>>>
-      dfs_tree_inputs;
-
   // Multi-model support
   std::vector<FFModel *> ssm_models;
 
@@ -324,6 +320,7 @@ private:
   Legion::Future background_server_handler;
 
   // Performance profiling
+  // TODO: maintain this field
   size_t num_processed_requests;
 
   struct ProfileInfo {
