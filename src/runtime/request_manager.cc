@@ -17,6 +17,7 @@
 #include "flexflow/parallel_ops/parallel_op.h"
 // #include "flexflow/tokenizers.h"
 #include <bitset>
+#include <cmath>
 #include <filesystem>
 #include <future>
 #include <iomanip>
@@ -441,9 +442,10 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           request_manager_status = PREFILLING;
           load_pending_reqeust_to_batch();
           prefill_model = SSM;
-          // Initialize the bitmask for the new requests with their prompt lengths
-          for (auto& request : all_requests) {
-            Request& req = request.second;
+          // Initialize the bitmask for the new requests with their prompt
+          // lengths
+          for (auto &request : all_requests) {
+            Request &req = request.second;
             if (req.status == Request::PENDING) {
               init_bitmask_prompt(request.first, req.prompt.size());
             }
@@ -937,8 +939,8 @@ bool RequestManager::update_llm_verify_results(
   get_verify_results_greedy(llm_verify_result);
 
   // Iterate over the requests
-  for (auto& request : all_requests) {
-    Request& req = request.second;
+  for (auto &request : all_requests) {
+    Request &req = request.second;
 
     // 2. Call init_token_tree() add_root_token_to_spec_token_tree() to add the
     // root token to the requests' speculative token tree. The root token is the
@@ -949,15 +951,17 @@ bool RequestManager::update_llm_verify_results(
 
       // Add the last committed token as the root of the speculative token tree
       if (!req.committed_tokens.empty()) {
-        add_root_to_spec_token_tree(request.first, req.committed_tokens.back().token_id);
+        add_root_to_spec_token_tree(request.first,
+                                    req.committed_tokens.back().token_id);
       }
 
       // 3. For requests not completed, update their causal mask.
-      // Update the bitmask for the request based on the number of committed tokens
+      // Update the bitmask for the request based on the number of committed
+      // tokens
       update_bitmask_prompt(request.first, req.committed_tokens.size());
 
-      // 4. Some requests may be completed after appending the verified tokens. 
-      // If there is a request completed, return true. 
+      // 4. Some requests may be completed after appending the verified tokens.
+      // If there is a request completed, return true.
       if (req.is_completed()) {
         is_request_completed = true;
       }
@@ -968,7 +972,6 @@ bool RequestManager::update_llm_verify_results(
   }
 
   return is_request_completed;
-
 }
 
 bool RequestManager::update_ssm_inference_results(
@@ -1017,13 +1020,14 @@ bool RequestManager::update_ssm_inference_results(
         } else {
           // Parent token is not pruned
           for (int child_idx = 0; child_idx < num_branches; child_idx++) {
-            float parent_prob = (*parent_it)->joint_prob;
+            float parent_log_prob = (*parent_it)->log_accumulated_prob;
             token_added_to_spec_tree =
                 token_added_to_spec_tree ||
                 add_token_to_spec_token_tree(
                     guid,
                     ssm_inference_result.token_ids[result_index],
-                    ssm_inference_result.probs[result_index] * parent_prob,
+                    log(ssm_inference_result.probs[result_index]) +
+                        parent_log_prob,
                     parent_pos);
             result_index++;
           }
@@ -1539,11 +1543,11 @@ void RequestManager::add_root_to_spec_token_tree(
   // computed yet, and we need the large model to decode the logit of this
   // token to verify its childs (the tokens in the first layer). This method
   // should: construct and add the root token to the empty speculative token
-  // tree, with parent_pos being -1 and joint_prob being 1.0
+  // tree, with parent_pos being -1 and log_accumulated_prob being 0.0
   Request &request = all_requests[guid];
   TokenTree &speculative_token_tree = request.speculative_token_trees[0];
   speculative_token_tree.add_layer();
-  auto node_ptr = std::make_shared<TokenTreeNode>(token_id, -1, 1.0);
+  auto node_ptr = std::make_shared<TokenTreeNode>(token_id, -1, 0.0);
   speculative_token_tree.tree_layers[0].push_back(node_ptr);
   speculative_token_tree.tree_size++;
   speculative_token_tree.tree_size_including_pruned++;
@@ -1552,7 +1556,7 @@ void RequestManager::add_root_to_spec_token_tree(
 bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
                                                   BatchConfig::TokenId token_id,
                                                   int parent_pos,
-                                                  float joint_prob) {
+                                                  float log_accumulated_prob) {
   // This method assumes only one small model is used for speculation
   // This method is called by update_ssm_inference_results()
 
@@ -1593,7 +1597,7 @@ bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
     // The pool is full, check if the new node has a higher joint probability
     // than the minimum node in the pool.
 
-    if (joint_prob < min_node_ptr->joint_prob) {
+    if (log_accumulated_prob < min_node_ptr->log_accumulated_prob) {
       // Insertion failed
       add_new_node = false;
     } else {
@@ -1643,8 +1647,8 @@ bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
 
   if (add_new_node) {
     // Add the new node to the pool and the last layer of the speculation tree
-    auto node_ptr =
-        std::make_shared<TokenTreeNode>(token_id, parent_pos, joint_prob);
+    auto node_ptr = std::make_shared<TokenTreeNode>(
+        token_id, parent_pos, log_accumulated_prob);
     token_tree_node_pool.push(std::make_pair(node_ptr, guid));
     request.speculative_token_trees[0]
         .tree_layers[current_speculation_step]

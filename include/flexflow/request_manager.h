@@ -125,15 +125,15 @@ struct Request {
 class TokenTreeNode {
 public:
   BatchConfig::TokenId id;
-  float joint_prob;
+  float log_accumulated_prob;
   int parent_pos;
   bool pruned = false;
 
-  TokenTreeNode(BatchConfig::TokenId id, float joint_prob, int parent_pos)
-      : id(id), joint_prob(joint_prob), parent_pos(parent_pos) {}
-  bool operator>(TokenTreeNode const &other) const {
-    return joint_prob > other.joint_prob;
-  }
+  TokenTreeNode(BatchConfig::TokenId id,
+                float log_accumulated_prob,
+                int parent_pos)
+      : id(id), log_accumulated_prob(log_accumulated_prob),
+        parent_pos(parent_pos) {}
 };
 
 // A comparator for shared_ptr<TokenTreeNode>
@@ -142,7 +142,7 @@ struct CompareSharedTokenTreeNodePtrRequestGuidPair {
                             BatchConfig::RequestGuid> const &lhs,
                   std::pair<std::shared_ptr<TokenTreeNode>,
                             BatchConfig::RequestGuid> const &rhs) const {
-    return lhs.first->joint_prob > rhs.first->joint_prob;
+    return lhs.first->log_accumulated_prob > rhs.first->log_accumulated_prob;
   }
 };
 
@@ -374,7 +374,7 @@ private:
   bool add_token_to_spec_token_tree(RequestGuid guid,
                                     BatchConfig::TokenId token_id,
                                     int parent_pos,
-                                    float joint_prob);
+                                    float log_accumulated_prob);
   void prune_last_layer_of_spec_token_tree(RequestGuid guid);
   /* ---------- Spec Decoding Helper Functions ---------- */
 };
