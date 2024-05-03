@@ -370,20 +370,33 @@ BatchConfig
 }
 void RequestManager::load_pending_reqeust_to_batch() {
   assert(!pending_request_queue.empty() && "No pending request to process.");
-  Request &new_request = pending_request_queue.front();
-  all_requests[new_request.guid] = new_request;
-  BatchConfig::RequestGuid guid = new_request.guid;
+  BatchConfig::RequestGuid guid = pending_request_queue.front().guid;
   pending_request_queue.pop();
+
   prefill_request = std::make_shared<Request>(all_requests[guid]);
 
   // Find an empty slot
   int request_index = get_empty_request_index();
   assert(request_index != -1 && "No empty request slot to load the request.");
+  // Load request into batch
   prefill_request->batch_index = request_index;
   guid_of_requests[request_index] = guid;
   request_available[request_index] = true;
   num_available_requests++;
-  request_available[request_index] = true;
+  // Initialize the bitmask for the new request with its prompt length
+  init_bitmask_prompt(guid, prefill_request->tokens.size());
+}
+
+void RequestManager::request_complete_clean_up(int batch_index) {
+  BatchConfig::RequestGuid guid = guid_of_requests[batch_index];
+  Request &request = all_requests[guid];
+
+  guid_of_requests[batch_index] = INVALID_GUID;
+  request_available[batch_index] = false;
+  num_available_requests--;
+  request.status = Request::COMPLETED;
+
+  trigger_request_completion_future(guid);
 }
 
 void RequestManager::update_inference_results(InferenceResult const &result) {
@@ -442,14 +455,6 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           request_manager_status = PREFILLING;
           load_pending_reqeust_to_batch();
           prefill_model = SSM;
-          // Initialize the bitmask for the new requests with their prompt
-          // lengths
-          for (auto &request : all_requests) {
-            Request &req = request.second;
-            if (req.status == Request::PENDING) {
-              init_bitmask_prompt(request.first, req.prompt.size());
-            }
-          }
         }
       }
       break;
@@ -515,6 +520,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
 }
 
 bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
+  bool request_completed = false;
   int completed_request = 0;
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
@@ -524,14 +530,11 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     request.tokens.push_back(
         result.token_ids[request.first_token_offset_in_batch]);
     if (request.tokens.size() == get_max_sequence_length()) {
-      request.status = Request::COMPLETED;
-      completed_request++;
-      trigger_request_completion_future(request.guid);
-      guid_of_requests[request_index] = INVALID_GUID;
-      request_available[request_index] = false;
+      request_completed = true;
+      request_complete_clean_up(request_index);
     }
   }
-  return completed_request >= 1;
+  return request_completed;
 }
 
 bool RequestManager::update_ssm_prefill_results(
@@ -919,15 +922,14 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
 
 bool RequestManager::update_llm_verify_results(
     InferenceResult const &llm_verify_result) {
-  // TODO: Implement this function
   // We may have two types of InferenceResults, one is the results from
   // sampling the large model, the other is the top-p / top-k logits of the
   // large model, we can first implement the former one. For the latter one,
   // we have to add a CPU based verify function.
 
-  bool is_request_completed = false;
+  bool request_completed = false;
 
-  // 1. Compare the results returned from the LLM and compare them with the
+  // Compare the results returned from the LLM and compare them with the
   // SSM's speculative token tree. For the greedy construction of the
   // speculative token tree, we can simply compare LLM's sample result at each
   // token, this is implemented in get_verify_results_greedy(). This function
@@ -939,39 +941,37 @@ bool RequestManager::update_llm_verify_results(
   get_verify_results_greedy(llm_verify_result);
 
   // Iterate over the requests
-  for (auto &request : all_requests) {
-    Request &req = request.second;
+  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    int guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
 
-    // 2. Call init_token_tree() add_root_token_to_spec_token_tree() to add the
-    // root token to the requests' speculative token tree. The root token is the
-    // last committed token.
-    if (req.status == Request::RUNNING) {
-      // Initialize the token tree for the request
-      init_token_tree(request.first);
+    // Initialize the token tree for the request
+    init_token_tree(guid);
+    assert(!request.committed_tokens.empty() &&
+           "The committed tokens should not be empty.");
+    // Add the last committed token as the root of the speculative token tree
+    add_root_to_spec_token_tree(guid, request.committed_tokens.back().token_id);
 
-      // Add the last committed token as the root of the speculative token tree
-      if (!req.committed_tokens.empty()) {
-        add_root_to_spec_token_tree(request.first,
-                                    req.committed_tokens.back().token_id);
-      }
-
-      // 3. For requests not completed, update their causal mask.
-      // Update the bitmask for the request based on the number of committed
-      // tokens
-      update_bitmask_prompt(request.first, req.committed_tokens.size());
-
-      // 4. Some requests may be completed after appending the verified tokens.
-      // If there is a request completed, return true.
-      if (req.is_completed()) {
-        is_request_completed = true;
-      }
-    } else if (req.status == Request::PENDING) {
-      // Initialize the bitmask for the new request with the prompt length
-      init_bitmask_prompt(request.first, req.prompt.size());
+    // Check if the request is completed. If its completed, clean up the
+    // metainfo stored in the RequestManager. Otherwise, update its bitmask.
+    if (request.tokens.size() >= max_sequence_length) {
+      // Request is completed
+      request_completed = true;
+      request_complete_clean_up(request_index);
+    } else {
+      update_bitmask_prompt(guid, request.committed_tokens.size());
     }
   }
 
-  return is_request_completed;
+  // Some requests may be completed after appending the verified tokens.
+  // If there is a request completed, return true.
+  return request_completed;
 }
 
 bool RequestManager::update_ssm_inference_results(
@@ -1049,7 +1049,7 @@ bool RequestManager::update_ssm_inference_results(
 /* --------- Bitmask Related Functions --------- */
 
 void RequestManager::init_bitmask_prompt(RequestGuid guid, int prompt_length) {
-  // This method is called by update_llm_verify_results when there are new
+  // This method is called by load_pending_reqeust_to_batch when there is a new
   // request to load into the batch
   // 1. Clear the causal mask because our current speculative token tree is
   // empty.
@@ -1057,10 +1057,11 @@ void RequestManager::init_bitmask_prompt(RequestGuid guid, int prompt_length) {
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
 
+  // TODO: check if we need mask in the ssm prompt kernel
   bitmask.clear_bitmask();
-  bitmask.tree_or_prompt_size = prompt_length;
-  bitmask.current_layer_size = prompt_length;
-  bitmask.non_tree_cache_size = 0;
+  bitmask.tree_or_prompt_size = 0;
+  bitmask.current_layer_size = 0;
+  bitmask.non_tree_cache_size = prompt_length;
 }
 
 void RequestManager::update_bitmask_prompt(RequestGuid guid,
@@ -1073,6 +1074,7 @@ void RequestManager::update_bitmask_prompt(RequestGuid guid,
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
   bitmask.clear_bitmask();
+  // TODO: check if we need mask in the ssm prompt kernel
   bitmask.tree_or_prompt_size = num_committed_tokens;
   bitmask.current_layer_size = num_committed_tokens;
 }

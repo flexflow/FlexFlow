@@ -334,6 +334,7 @@ private:
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;
   void load_pending_reqeust_to_batch();
+  void request_complete_clean_up(int batch_index);
   /* ---------- Incremental Decoding Helper Functions ---------- */
   bool update_llm_prefill_results(InferenceResult const &result);
   bool update_llm_decode_results(InferenceResult const &result);
