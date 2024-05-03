@@ -121,6 +121,17 @@ void adl_serializer<FlexFlow::LinearAttrs>::to_json(
 }
 } // namespace nlohmann
 
+namespace rc {
+Gen<FlexFlow::LinearAttrs> Arbitrary<FlexFlow::LinearAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::LinearAttrs>(
+      gen::arbitrary<int>(),
+      gen::arbitrary<bool>(),
+      gen::arbitrary<::FlexFlow::DataType>(),
+      gen::arbitrary<::FlexFlow::Activation>(),
+      gen::arbitrary<std::optional<::FlexFlow::RegularizerAttrs>>());
+}
+} // namespace rc
+
 namespace FlexFlow {
 std::string format_as(LinearAttrs const &x) {
   std::ostringstream oss;

@@ -12,3 +12,4 @@ ff_add_library(
 )
 
 add_subdirectory(ffi)
+add_subdirectory(test)

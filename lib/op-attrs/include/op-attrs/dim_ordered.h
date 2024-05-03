@@ -206,7 +206,7 @@ template <typename Idx, typename T>
 struct Arbitrary<::FlexFlow::DimOrdered<Idx, T>> {
   static Gen<::FlexFlow::DimOrdered<Idx, T>> arbitrary() {
     return gen::construct<::FlexFlow::DimOrdered<Idx, T>>(
-        gen::arbitrary<std::vector<T>>());
+        gen::arbitrary<::FlexFlow::stack_vector<T, MAX_TENSOR_DIM>>());
   }
 };
 

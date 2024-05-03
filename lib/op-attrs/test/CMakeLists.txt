@@ -1,0 +1,12 @@
+ff_add_test_executable(
+  NAME
+    opattrs-tests
+  SRC_PATTERNS
+    src/test_dim_ordered.cc
+  PRIVATE_INCLUDE
+    src/
+  DEPS
+    op-attrs
+    doctest
+    utils-test-common
+)

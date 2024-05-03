@@ -10,6 +10,7 @@
 #include "op-attrs/activation.h"
 #include "op-attrs/datatype.h"
 #include "op-attrs/regularizer_attrs.h"
+#include "rapidcheck.h"
 #include "utils/json.h"
 #include <functional>
 #include <ostream>
@@ -53,6 +54,13 @@ struct adl_serializer<FlexFlow::LinearAttrs> {
   static void to_json(json &, FlexFlow::LinearAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::LinearAttrs> {
+  static Gen<FlexFlow::LinearAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(LinearAttrs const &);
