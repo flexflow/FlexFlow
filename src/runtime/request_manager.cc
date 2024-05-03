@@ -937,8 +937,6 @@ bool RequestManager::update_llm_verify_results(
   // large model, we can first implement the former one. For the latter one,
   // we have to add a CPU based verify function.
 
-  bool request_completed = false;
-
   // Compare the results returned from the LLM and compare them with the
   // SSM's speculative token tree. For the greedy construction of the
   // speculative token tree, we can simply compare LLM's sample result at each
@@ -950,6 +948,8 @@ bool RequestManager::update_llm_verify_results(
   // Process the LLM results greedily
   get_verify_results_greedy(llm_verify_result);
 
+  bool request_completed = false;
+
   // Iterate over the requests
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
@@ -960,7 +960,6 @@ bool RequestManager::update_llm_verify_results(
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-
     // Initialize the token tree for the request
     init_token_tree(guid);
     assert(!request.committed_tokens.empty() &&
@@ -1081,8 +1080,9 @@ void RequestManager::update_bitmask_prompt(RequestGuid guid,
   // 2. Maintain all other fields.
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
+  // Clear because the prompt kernel doesn't use mask
   bitmask.clear_bitmask();
-  // TODO: check if we need mask in the ssm prompt kernel
+  // No need to change non_tree_cache_size
   bitmask.tree_or_prompt_size = num_committed_tokens;
   bitmask.current_layer_size = num_committed_tokens;
 }
@@ -1216,7 +1216,9 @@ void RequestManager::get_verify_results_greedy(
         committed_token_index,
         llm_verify_result.token_ids[llm_result_offset]));
     committed_token_index++;
-    // The position of the last accepted token in its tree layer
+
+    // The position of the last accepted token in its tree layer (includeing the
+    // pruned tokens)
     int last_accepted_token_layer_index = 0;
     // The index of the last accepted token in the entire tree (excluding the
     // pruned tokens)
@@ -1234,6 +1236,7 @@ void RequestManager::get_verify_results_greedy(
 
       for (auto const &node_ptr : tree_layer) {
         if (node_ptr->pruned) {
+          current_token_layer_index++;
           continue;
         }
         if ((node_ptr->parent_pos != last_accepted_token_layer_index) ||
@@ -1252,7 +1255,8 @@ void RequestManager::get_verify_results_greedy(
             // The token's parent is accepted, and this token's id equals the
             // llm's sample at its parent's position. We accept this token.
 
-            // from_index: the index of the token in the tree
+            // from_index: the index of the token in the tree (excluding the
+            // pruned tokens)
             // to_index: the committed token index in the request
             request.committed_tokens.push_back(Request::CommittedToken(
                 current_token_index, committed_token_index, node_ptr->id));
@@ -1272,9 +1276,9 @@ void RequestManager::get_verify_results_greedy(
         // However, we have to add the last sampled token as a correction from
         // the LLM
 
-        // from_index: since this token is not in the token tree, neither the
-        // ssm nor the llm have its KV cache, so the from_index should be a
-        // place holder, which is -1
+        // from_index: since this token is not in the token tree, the llm
+        // doesn't have its KV cache, so the from_index should be a place
+        // holder, which is -1
         request.committed_tokens.push_back(Request::CommittedToken(
             -1,
             committed_token_index,
