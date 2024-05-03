@@ -1057,11 +1057,10 @@ void RequestManager::init_bitmask_prompt(RequestGuid guid, int prompt_length) {
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
 
-  // TODO: check if we need mask in the ssm prompt kernel
   bitmask.clear_bitmask();
-  bitmask.tree_or_prompt_size = 0;
-  bitmask.current_layer_size = 0;
-  bitmask.non_tree_cache_size = prompt_length;
+  bitmask.tree_or_prompt_size = prompt_length;
+  bitmask.current_layer_size = prompt_length;
+  bitmask.non_tree_cache_size = 0;
 }
 
 void RequestManager::update_bitmask_prompt(RequestGuid guid,
