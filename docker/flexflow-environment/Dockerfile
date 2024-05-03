@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binut
 
 # Install Python3 with Miniconda
 ARG python_version "latest"
-RUN MINICONDA_SCRIPT_NAME=Miniconda3-latest-Linux-x86_64.sh; \
+#RUN MINICONDA_SCRIPT_NAME=Miniconda3-latest-Linux-x86_64.sh; \
+RUN MINICONDA_SCRIPT_NAME=Miniconda3-py311_23.5.2-0-Linux-x86_64.sh; \
     if [ "$python_version" != "3.8" ] && [ "$python_version" != "3.9" ] && [ "$python_version" != "3.10" ] && [ "$python_version" != "3.11" ] && [ "$python_version" != "latest" ]; then \
         echo "python_version '${python_version}' is not supported, please choose among {3.8, 3.9, 3.10, 3.11 or latest (default)}"; \
         exit 1; \
