@@ -397,7 +397,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
         if (request.initial_len ==
             request.llm_cache_size) { // all prompt tokens are prefilled
           request.tokens.push_back(
-              result.token_ids[request.num_tokens_in_batch]);
+              result.token_ids[request.num_tokens_in_batch - 1]);
           request_manager_status = DECODING;
         }
         break;
