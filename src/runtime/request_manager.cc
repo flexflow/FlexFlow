@@ -370,7 +370,7 @@ BatchConfig
 }
 void RequestManager::load_pending_reqeust_to_batch() {
   assert(!pending_request_queue.empty() && "No pending request to process.");
-  BatchConfig::RequestGuid guid = pending_request_queue.front().guid;
+  RequestGuid guid = pending_request_queue.front().guid;
   pending_request_queue.pop();
 
   prefill_request = std::make_shared<Request>(all_requests[guid]);
@@ -389,7 +389,7 @@ void RequestManager::load_pending_reqeust_to_batch() {
 }
 
 void RequestManager::request_complete_clean_up(int batch_index) {
-  BatchConfig::RequestGuid guid = guid_of_requests[batch_index];
+  RequestGuid guid = guid_of_requests[batch_index];
   Request &request = all_requests[guid];
 
   guid_of_requests[batch_index] = INVALID_GUID;
@@ -714,7 +714,7 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
     if (!request_available[request_index]) {
       continue;
     }
-    BatchConfig::RequestGuid guid = guid_of_requests[request_index];
+    RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
     new_bc.request_available[request_index] = true;
@@ -1004,8 +1004,7 @@ bool RequestManager::update_ssm_inference_results(
       // Request in this slot is unavailable
       continue;
     }
-    FlexFlow::RequestManager::RequestGuid guid =
-        guid_of_requests[request_index];
+    RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
 
     TokenTree &token_tree = request.speculative_token_trees[0];
