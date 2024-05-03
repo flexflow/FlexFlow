@@ -527,11 +527,15 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
 
 bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
   bool request_completed = false;
-  int completed_request = 0;
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
     request.llm_cache_size++;
     request.tokens.push_back(
         result.token_ids[request.first_token_offset_in_batch]);
@@ -965,7 +969,7 @@ bool RequestManager::update_llm_verify_results(
 
     // Check if the request is completed. If its completed, clean up the
     // metainfo stored in the RequestManager. Otherwise, update its bitmask.
-    if (request.tokens.size() >= max_sequence_length) {
+    if (request.tokens.size() >= get_max_sequence_length()) {
       // Request is completed
       request_completed = true;
       request_complete_clean_up(request_index);
