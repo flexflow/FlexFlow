@@ -441,6 +441,13 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           request_manager_status = PREFILLING;
           load_pending_reqeust_to_batch();
           prefill_model = SSM;
+          // Initialize the bitmask for the new requests with their prompt lengths
+          for (auto& request : all_requests) {
+            Request& req = request.second;
+            if (req.status == Request::PENDING) {
+              init_bitmask_prompt(request.first, req.prompt.size());
+            }
+          }
         }
       }
       break;
@@ -915,6 +922,9 @@ bool RequestManager::update_llm_verify_results(
   // sampling the large model, the other is the top-p / top-k logits of the
   // large model, we can first implement the former one. For the latter one,
   // we have to add a CPU based verify function.
+
+  bool is_request_completed = false;
+
   // 1. Compare the results returned from the LLM and compare them with the
   // SSM's speculative token tree. For the greedy construction of the
   // speculative token tree, we can simply compare LLM's sample result at each
@@ -922,13 +932,43 @@ bool RequestManager::update_llm_verify_results(
   // stores the commmitted tokens into the corresponding fields in the
   // Request. For the sampling construction of the speculative token tree, we
   // need to implement a CPU based verify function.
-  // 2. Call init_token_tree() add_root_token_to_spec_token_tree() to add the
-  // root token to the requests' speculative token tree. The root token is the
-  // last committed token.
-  // 3. For requests not completed, update their causal mask.
-  // 4. Some requests may be completed after appending the verified tokens. If
-  // there is a request completed, return true.
+
+  // Process the LLM results greedily
   get_verify_results_greedy(llm_verify_result);
+
+  // Iterate over the requests
+  for (auto& request : all_requests) {
+    Request& req = request.second;
+
+    // 2. Call init_token_tree() add_root_token_to_spec_token_tree() to add the
+    // root token to the requests' speculative token tree. The root token is the
+    // last committed token.
+    if (req.status == Request::RUNNING) {
+      // Initialize the token tree for the request
+      init_token_tree(request.first);
+
+      // Add the last committed token as the root of the speculative token tree
+      if (!req.committed_tokens.empty()) {
+        add_root_to_spec_token_tree(request.first, req.committed_tokens.back().token_id);
+      }
+
+      // 3. For requests not completed, update their causal mask.
+      // Update the bitmask for the request based on the number of committed tokens
+      update_bitmask_prompt(request.first, req.committed_tokens.size());
+
+      // 4. Some requests may be completed after appending the verified tokens. 
+      // If there is a request completed, return true. 
+      if (req.is_completed()) {
+        is_request_completed = true;
+      }
+    } else if (req.status == Request::PENDING) {
+      // Initialize the bitmask for the new request with the prompt length
+      init_bitmask_prompt(request.first, req.prompt.size());
+    }
+  }
+
+  return is_request_completed;
+
 }
 
 bool RequestManager::update_ssm_inference_results(
