@@ -409,7 +409,10 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
         if (update_llm_prefill_results(result)) {
           // This indicates that the prefilling phase finishes
           request_manager_status = DECODING;
+          // Reset the prefill_request
+          prefill_request = nullptr;
         }
+        // Not completed, continue prefilling
       } else if (decoding_mode == SPECULATIVE_DECODING) {
         if (prefill_model == SSM) {
           if (update_ssm_prefill_results(result)) {
@@ -417,6 +420,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
             // We need to start the LLM prefilling
             prefill_model = LLM;
           }
+          // Not completed, continue SSM prefilling
         } else if (prefill_model == LLM) {
           if (update_llm_prefill_results(result)) {
             // This indicates that the prefilling phase finishes
@@ -425,6 +429,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
             prefill_request = nullptr;
             current_speculation_step = 0;
           }
+          // Not completed, continue LLM prefilling
         } else {
           assert(false && "Invalid prefill model.");
         }
@@ -512,6 +517,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
   if (prefill_request->llm_cache_size == prefill_request->tokens.size()) {
+    // Indicates that the LLM prefilling phase finishes
     prefill_request->tokens.push_back(
         result.token_ids[prefill_request->num_tokens_in_batch - 1]);
     return true;
@@ -541,8 +547,7 @@ bool RequestManager::update_ssm_prefill_results(
     InferenceResult const &ssm_prefill_result) {
   // This function is called by update_inference_results when the
   // request_manager_status is PREFILLING and the prefill_model is SSM.
-  // There's no results to update, but we should update some SSM related states
-  // related to SSM.
+  // There's no results to update, but we should update ssm_cache_size.
   prefill_request->ssm_cache_size += prefill_request->num_tokens_in_batch;
   if (prefill_request->ssm_cache_size == prefill_request->tokens.size()) {
     return true;
@@ -1051,13 +1056,12 @@ bool RequestManager::update_ssm_inference_results(
 void RequestManager::init_bitmask_prompt(RequestGuid guid, int prompt_length) {
   // This method is called by load_pending_reqeust_to_batch when there is a new
   // request to load into the batch
-  // 1. Clear the causal mask because our current speculative token tree is
-  // empty.
-  // 2. Maintain all other fields.
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
 
+  // Clear because the prompt kernel doesn't use mask
   bitmask.clear_bitmask();
+  // Set the info for the mask which is used to store the KV cache
   bitmask.tree_or_prompt_size = prompt_length;
   bitmask.current_layer_size = prompt_length;
   bitmask.non_tree_cache_size = 0;
