@@ -755,16 +755,20 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
 
 /***** Speculative Decoding Phase *****/
 TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
-  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout
         << "\n############### prepare_next_spec_batch_config ###############\n";
     std::cout << "Current tree depth: " << current_speculation_step + 1 << "\n";
   }
+
   // Prepare the next batch for existing requests
   TreeSearchBatchConfig new_bc;
   // We assume that only one small model is in use now
   new_bc.model_id = 0;
+  std::copy(std::begin(request_available),
+            std::end(request_available),
+            std::begin(new_bc.request_available));
+  new_bc.num_available_requests = num_available_requests;
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
@@ -774,8 +778,6 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-    new_bc.request_available[request_index] = true;
-    new_bc.num_available_requests++;
     new_bc.requestsInfo[request_index].first_token_offset_in_batch =
         new_bc.num_tokens;
     // TODO: check this profiling
@@ -796,7 +798,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
       // Exclude the current layer from the token tree, because we want the
       // start index
       new_bc.requestsInfo[request_index].first_token_index_in_request =
-          request.tokens.size() + token_tree.tree_size_including_pruned -
+          request.tokens.size() - 1 + token_tree.tree_size_including_pruned -
           current_layer.size();
       new_bc.requestsInfo[request_index].num_tokens_in_batch =
           current_layer.size();
@@ -814,7 +816,8 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
       }
     }
 
-    // Copy the causal mask, it should already been updated
+    // Copy the causal mask, it should already been updated by
+    // update_ssm_inference_results
     new_bc.causalMask[request_index] = request.causal_mask;
   }
 
@@ -1040,6 +1043,9 @@ bool RequestManager::update_ssm_inference_results(
         parent_pos++;
       }
     }
+
+    prune_last_layer_of_spec_token_tree(guid);
+
     if (current_speculation_step == 1) {
       init_bitmask_spec(guid);
     }
@@ -1684,6 +1690,7 @@ void RequestManager::prune_last_layer_of_spec_token_tree(RequestGuid guid) {
     if ((*it)->pruned) {
       last_layer.erase(it);
       request.speculative_token_trees[0].tree_size--;
+      request.speculative_token_trees[0].tree_size_including_pruned--;
     }
   }
 }
