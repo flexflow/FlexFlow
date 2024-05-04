@@ -689,25 +689,25 @@ BatchConfig RequestManager::prepare_decoding_batch() {
 
 /***** Request Init Phase *****/
 TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
-  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout << "\n############### prepare_first_spec_batch_config "
                  "##############\n";
   }
   // This method does the following:
-  // 1. Commit the verified tokens through TreeSearchBatchConfig. We can do
-  // this request by request. The infomation of the committed tokens are
-  // stored in Request.ssm_committed_tokens. Put the information of the
-  // committed tokens into BatchConfig.TokensInfo.
+  // 1. Commit the verified tokens through TreeSearchBatchConfig. The infomation
+  // of the committed tokens are stored in request.committed_tokens. Put the
+  // information of the committed tokens into BatchConfig.TokensInfo.
   // 2. Maintain BatchConfig::RequestsInfo and all other fields of
   // TreeSearchBatchConfig.
-  // Please refer to the implementation of prepare_next_spec_batch_config()
-  // for more details.
+  assert(current_speculation_step == 0);
+
   TreeSearchBatchConfig new_bc;
   // Assume that only one small model is in use now
-  new_bc.model_id = 0;
   new_bc.prompt_phase = true;
-  assert(current_speculation_step == 0);
+  std::copy(std::begin(request_available),
+            std::end(request_available),
+            std::begin(new_bc.request_available));
+  new_bc.num_available_requests = num_available_requests;
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
@@ -717,15 +717,14 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
     RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-    new_bc.request_available[request_index] = true;
-    new_bc.num_available_requests++;
+
     // TODO: check this profiling, what is profiling
     profiling_requests[request.guid].ssm_decoding_steps += 1;
 
     std::vector<Request::CommittedToken> &committed_tokens =
         request.committed_tokens;
 
-    // 2. Maintain requestsInfo
+    // Maintain requestsInfo
     new_bc.requestsInfo[request_index].first_token_offset_in_batch =
         new_bc.num_tokens;
     new_bc.requestsInfo[request_index].first_token_index_in_request =
@@ -733,19 +732,16 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
     new_bc.requestsInfo[request_index].num_tokens_in_batch =
         committed_tokens.size();
 
-    // 3. Store committed tokens to tokensInfo
-    for (int committed_token_index = 0;
-         committed_token_index < committed_tokens.size();
-         committed_token_index++) {
-      Request::CommittedToken &committed_token =
-          committed_tokens.at(committed_token_index);
+    // Store committed tokens to tokensInfo
+    for (auto const &committed_token : committed_tokens) {
       new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
       new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
           committed_token.to_index;
       new_bc.tokensInfo[new_bc.num_tokens].token_id = committed_token.token_id;
       new_bc.num_tokens++;
     }
-    // 4. Copy the causal mask, it should already been updated in
+
+    // Copy the causal mask, it should already been updated in
     // update_llm_verify_results
     new_bc.causalMask[request_index] = request.causal_mask;
   }
