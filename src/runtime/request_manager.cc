@@ -368,6 +368,7 @@ BatchConfig
   update_inference_results(result);
   return prepare_next_batch();
 }
+
 void RequestManager::load_pending_reqeust_to_batch() {
   assert(!pending_request_queue.empty() && "No pending request to process.");
   RequestGuid guid = pending_request_queue.front().guid;
@@ -403,6 +404,8 @@ void RequestManager::request_complete_clean_up(int batch_index) {
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
   std::lock_guard<std::mutex> const lock(rm_state_mutex);
+  std::lock_guard<std::mutex> const lock(request_queue_mutex);
+
   SsmInferenceResult const *ssm_result_ptr;
   switch (request_manager_status) {
     case PREFILLING:
@@ -561,8 +564,6 @@ bool RequestManager::update_ssm_prefill_results(
 }
 
 BatchConfig RequestManager::prepare_next_batch() {
-  std::lock_guard<std::mutex> const lock(request_queue_mutex);
-
   switch (request_manager_status) {
     case PREFILLING:
       return prepare_prefilling_batch();
@@ -588,20 +589,17 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   // which means that there is a request in the prefilling phase.
   // This function load its prefilling tokens, constructing a BatchConfig with
   // only one request.
+  assert(prefill_request != nullptr &&
+         "No prefilling request to process in the prefilling phase.");
 
   BatchConfig bc;
   bc.prompt_phase = true;
-
-  assert(prefill_request != nullptr &&
-         "No prefilling request to process in the prefilling phase.");
-  int request_index = prefill_request->batch_index;
-
   std::copy(std::begin(request_available),
             std::end(request_available),
             std::begin(bc.request_available));
-  bc.request_available[request_index] = true;
   bc.num_available_requests = num_available_requests;
 
+  int request_index = prefill_request->batch_index;
   bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
   if (prefill_model == SSM) {
     // Request Info
@@ -643,7 +641,6 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
     bc.tokensInfo[token_idx].token_id = prefill_request->tokens[abs_idx];
 
     bc.num_tokens++;
-    prefill_request->num_tokens_in_batch++;
   }
 
   return bc;
