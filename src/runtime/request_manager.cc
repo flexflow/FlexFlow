@@ -1021,6 +1021,10 @@ bool RequestManager::update_ssm_inference_results(
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
 
+    if (current_speculation_step == 1) {
+      request.ssm_cache_size += request.committed_tokens.size() - 1;
+    }
+
     TokenTree &token_tree = request.speculative_token_trees[0];
     if (token_tree.tree_layers.size() < current_speculation_step) {
       // This means that the parent layer is empty
