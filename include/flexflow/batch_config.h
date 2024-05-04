@@ -93,12 +93,6 @@ public:
         bits[idx] |= (1ULL << bit);
       }
 
-      void reset_bit(size_t pos) {
-        size_t idx = pos / 64;
-        size_t bit = pos % 64;
-        bits[idx] &= ~(1ULL << bit);
-      }
-
       bool test_bit(size_t pos) const {
         size_t idx = pos / 64;
         size_t bit = pos % 64;
@@ -164,7 +158,7 @@ public:
     int token_depth;   // position of the token in the request's sequence
   };
 
-  int num_tokens_to_commit;
+  int num_tokens_to_commit = 0;
   CommittedTokensInfo committed_tokens[MAX_NUM_TOKENS];
 };
 
