@@ -417,10 +417,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 
   if (num_available_requests == 0) {
     // Update nothing
-    if (pending_request_queue.empty()) {
-      // No request to process
-      return;
-    } else {
+    if (!pending_request_queue.empty()) {
       // Load the pending request to the batch
       load_pending_reqeust_to_batch();
       request_manager_status = PREFILLING;
@@ -428,6 +425,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
         prefill_model = SSM;
       }
     }
+    return;
   }
 
   SsmInferenceResult const *ssm_result_ptr;
