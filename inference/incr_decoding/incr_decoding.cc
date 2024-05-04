@@ -136,6 +136,8 @@ void FlexFlow::top_level_task(Task const *task,
   int max_requests_per_batch = 8;
   int max_tokens_per_batch = 128;
   int max_sequence_length = 256;
+  RequestManager::DecodingMode decoding_mode =
+      RequestManager::INCREMENTAL_DECODING;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -211,6 +213,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_requests_per_batch(max_requests_per_batch);
   rm->set_max_tokens_per_batch(max_tokens_per_batch);
   rm->set_max_sequence_length(max_sequence_length);
+  rm->set_decoding_mode(decoding_mode);
   rm->register_tokenizer(
       model_type, bos_token_id, eos_token_id, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);
