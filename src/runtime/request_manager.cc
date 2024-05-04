@@ -653,32 +653,35 @@ BatchConfig RequestManager::prepare_decoding_batch() {
 
   BatchConfig bc;
   bc.prompt_phase = false;
+  std::copy(std::begin(request_available),
+            std::end(request_available),
+            std::begin(bc.request_available));
+  bc.num_available_requests = num_available_requests;
 
-  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
-    if (!request_available[i]) {
+  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+       request_index++) {
+    if (!request_available[request_index]) {
       continue;
     }
-    bc.request_available[i] = true;
-    bc.num_available_requests++;
-
-    Request &request = all_requests[guid_of_requests[i]];
+    Request &request = all_requests[guid_of_requests[request_index]];
+    assert(request.status == Request::RUNNING);
 
     // Per Request Info
-    bc.requestsInfo[i].first_token_index_in_request = request.llm_cache_size;
-    bc.requestsInfo[i].first_token_offset_in_batch = bc.num_tokens;
-    bc.requestsInfo[i].num_tokens_in_batch = 1;
+    bc.requestsInfo[request_index].first_token_index_in_request =
+        request.llm_cache_size;
+    bc.requestsInfo[request_index].first_token_offset_in_batch = bc.num_tokens;
+    bc.requestsInfo[request_index].num_tokens_in_batch = 1;
 
     request.first_token_offset_in_batch = bc.num_tokens;
     request.num_tokens_in_batch = 1;
 
     // Per Token Info
-    bc.tokensInfo[bc.num_tokens].request_index = i;
+    bc.tokensInfo[bc.num_tokens].request_index = request_index;
     bc.tokensInfo[bc.num_tokens].abs_index_in_request = request.llm_cache_size;
     bc.tokensInfo[bc.num_tokens].token_id = request.tokens.back();
 
     bc.num_tokens++;
   }
-  assert(bc.num_available_requests == num_available_requests);
 
   return bc;
 }
