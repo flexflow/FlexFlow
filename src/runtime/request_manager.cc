@@ -851,10 +851,10 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   // Please refer to the implementation of prepare_next_spec_batch_config()
   // for more details.
   TreeVerifyBatchConfig new_bc;
-  new_bc.num_tokens = 0;
-  new_bc.num_available_requests = 0;
-  new_bc.num_tokens_to_commit = 0;
-  new_bc.prompt_phase = false;
+  std::copy(std::begin(request_available),
+            std::end(request_available),
+            std::begin(new_bc.request_available));
+  new_bc.num_available_requests = num_available_requests;
 
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
@@ -865,18 +865,19 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-    new_bc.request_available[request_index] = true;
-    new_bc.num_available_requests++;
+
     // TODO: check this profiling
     profiling_requests[request.guid].llm_decoding_steps += 1;
 
     // 1. Maintain requestsInfo
     new_bc.requestsInfo[request_index].first_token_index_in_request =
-        request.tokens.size();
+        request.tokens.size() - 1; // Exclude the last token
     new_bc.requestsInfo[request_index].first_token_offset_in_batch =
         new_bc.num_tokens;
+    new_bc.requestsInfo[request_index].num_tokens_in_batch =
+        request.speculative_token_trees[0].tree_size;
 
-    // 2. Put the information of the committed tokens into
+    // Put the information of the committed tokens into
     // TreeVerifyBatchConfig.committed_tokens.
     // Note here, we shouldn't put the last token in request.committed_tokens
     // into new_bc. Because the LLM don't have that token's KV cache.
@@ -896,7 +897,7 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
       new_bc.num_tokens_to_commit++;
     }
 
-    // 3. Load the tokens on the token tree that are not yet pruned to
+    // Load the tokens on the token tree that are not yet pruned to
     // TreeVerifyBatchConfig.tokensInfo.
     TokenTree &token_tree = request.speculative_token_trees[0];
     int token_tree_index = 0;
@@ -912,12 +913,9 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
         }
       }
     }
+    assert(token_tree_index == token_tree.tree_size - 1);
 
-    // 4. Maintain requestsInfo.num_tokens_in_batch of TreeSearchBatchConfig
-    new_bc.requestsInfo[request_index].num_tokens_in_batch =
-        token_tree_index + 1;
-
-    // 5. Create the causal mask for the large model based on the small model
+    // Create the causal mask for the large model based on the small model
     // causal mask.
     new_bc.causalMask[request_index] = create_llm_bitmask(guid);
   }
@@ -943,6 +941,22 @@ bool RequestManager::update_llm_verify_results(
   // stores the commmitted tokens into the corresponding fields in the
   // Request. For the sampling construction of the speculative token tree, we
   // need to implement a CPU based verify function.
+
+  // Update llm_cache_size with the last committed_tokens, and clear
+  // committed_tokens
+  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    int guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+    request.llm_cache_size +=
+        request.committed_tokens.size() - 1; // Exclude the last token
+    request.committed_tokens.clear();
+  }
 
   // Process the LLM results greedily
   get_verify_results_greedy(llm_verify_result);
@@ -1207,7 +1221,6 @@ void RequestManager::get_verify_results_greedy(
     RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-    request.committed_tokens.clear();
 
     int committed_token_index = request.tokens.size();
 
@@ -1218,6 +1231,7 @@ void RequestManager::get_verify_results_greedy(
         committed_token_index,
         llm_verify_result.token_ids[llm_result_offset]));
     committed_token_index++;
+    // Don't add it to request.tokens because it has already been added.
 
     // The position of the last accepted token in its tree layer (includeing the
     // pruned tokens)
