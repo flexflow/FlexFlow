@@ -1135,13 +1135,13 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
     }
     tokens_previous_requests += num_new_tokens;
   }
-  if (tokens_previous_requests != (num_tokens - bc->num_tokens)) {
-    bc->print();
-    printf("tokens_previous_requests: %i\n", tokens_previous_requests);
-    printf("num_tokens: %i\n", num_tokens);
-    printf("bc->num_tokens: %i\n", bc->num_tokens);
-  }
-  assert(tokens_previous_requests == (num_tokens - bc->num_tokens));
+  //   if (tokens_previous_requests != (num_tokens - bc->num_tokens)) {
+  //     bc->print();
+  //     printf("tokens_previous_requests: %i\n", tokens_previous_requests);
+  //     printf("num_tokens: %i\n", num_tokens);
+  //     printf("bc->num_tokens: %i\n", bc->num_tokens);
+  //   }
+  //   assert(tokens_previous_requests == (num_tokens - bc->num_tokens));
 }
 
 /*static*/

@@ -92,7 +92,7 @@ SoftmaxParams Softmax::get_params() const {
   return params;
 }
 
-Tensor FFModel::softmax(const Tensor _input,
+Tensor FFModel::softmax(Tensor const _input,
                         int dim,
                         DataType data_type,
                         char const *name) {
@@ -135,7 +135,7 @@ Op *Softmax::create_operator_from_layer(
 
 Softmax::Softmax(FFModel &model,
                  LayerID const &_layer_guid,
-                 const ParallelTensor _input,
+                 ParallelTensor const _input,
                  int _dim,
                  char const *name)
     : Op(model,
@@ -160,7 +160,7 @@ Softmax::Softmax(FFModel &model,
 
 Softmax::Softmax(FFModel &model,
                  SoftmaxParams const &params,
-                 const ParallelTensor input,
+                 ParallelTensor const input,
                  char const *name)
     : Softmax(model, params.layer_guid, input, params.dim, params.name) {}
 
@@ -278,11 +278,12 @@ OpMeta *Softmax::init_task(Task const *task,
   return m;
 }
 
-FutureMap Softmax::inference(FFModel const &ff,
-                             /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
-                             std::vector<ParallelTensor> const &batch_inputs,
-                             std::vector<ParallelTensor> const &batch_outputs,
-                             MachineView const *mv) {
+FutureMap Softmax::inference(
+    FFModel const &ff,
+    /* Reserved: BatchConfig Updated */ BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
