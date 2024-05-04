@@ -47,7 +47,8 @@ std::string LoadBytesFromFile(std::string const &path) {
 RequestManager::RequestManager()
     : background_server_status(INITIALIZED), verbose(false),
       next_available_guid(1000000), num_processed_requests(0),
-      total_request_run_time(0.0f), request_manager_status(PREFILLING) {
+      total_request_run_time(0.0f), request_manager_status(PREFILLING),
+      decoding_mode(INCREMENTAL_DECODING), prefill_model(SSM) {
   // The following config parameters are set
   // during ffmodel.compile()
   // Initialize them to -1 to make sure no one
@@ -57,6 +58,9 @@ RequestManager::RequestManager()
   max_tokens_per_batch = -1;
   max_spec_tree_token_num = -1;
   max_sequence_length = -1;
+  std::fill(std::begin(request_available), std::end(request_available), false);
+  std::fill(
+      std::begin(guid_of_requests), std::end(guid_of_requests), INVALID_GUID);
 }
 
 void RequestManager::set_max_requests_per_batch(int max_num_requests) {
@@ -108,6 +112,11 @@ void RequestManager::set_max_sequence_length(int max_seq_length) {
 int RequestManager::get_max_sequence_length() {
   assert(max_sequence_length > 0);
   return max_sequence_length;
+}
+
+void RequestManager::set_decoding_mode(DecodingMode mode) {
+  assert(mode == INCREMENTAL_DECODING || mode == SPECULATIVE_DECODING);
+  decoding_mode = mode;
 }
 
 void RequestManager::register_tokenizer(ModelType type,
@@ -403,8 +412,23 @@ void RequestManager::request_complete_clean_up(int batch_index) {
 
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
-  std::lock_guard<std::mutex> const lock(rm_state_mutex);
-  std::lock_guard<std::mutex> const lock(request_queue_mutex);
+  std::lock_guard<std::mutex> const rm_state_lock(rm_state_mutex);
+  std::lock_guard<std::mutex> const request_queue_lock(request_queue_mutex);
+
+  if (num_available_requests == 0) {
+    // Update nothing
+    if (pending_request_queue.empty()) {
+      // No request to process
+      return;
+    } else {
+      // Load the pending request to the batch
+      load_pending_reqeust_to_batch();
+      request_manager_status = PREFILLING;
+      if (decoding_mode == SPECULATIVE_DECODING) {
+        prefill_model = SSM;
+      }
+    }
+  }
 
   SsmInferenceResult const *ssm_result_ptr;
   switch (request_manager_status) {
@@ -1376,7 +1400,7 @@ void RequestManager::background_serving_task(
       ssm->config.lg_ctx = ctx;
     }
   }
-  if (rm->get_num_ssms() == 0) {
+  if (rm->decoding_mode == INCREMENTAL_DECODING) {
     // No SSMs: perform incremental decoding
     rm->serve_decoding(llm);
   } else {

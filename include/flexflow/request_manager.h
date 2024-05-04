@@ -207,6 +207,7 @@ public:
   int get_max_verify_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();
+  void set_decoding_mode(DecodingMode mode);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
