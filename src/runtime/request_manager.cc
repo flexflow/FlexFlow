@@ -1006,6 +1006,7 @@ bool RequestManager::update_ssm_inference_results(
     }
     RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
 
     TokenTree &token_tree = request.speculative_token_trees[0];
     if (token_tree.tree_layers.size() < current_speculation_step) {
@@ -1577,10 +1578,10 @@ bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
   assert(current_speculation_step >= 1 &&
          "The current speculation step should be no less than 1");
 
-  // First make sure there are enough layers in the speculation tree
   Request &request = all_requests[guid];
   TokenTree &speculative_token_tree = request.speculative_token_trees[0];
 
+  // Make sure there are enough layers in the speculation tree
   if (speculative_token_tree.tree_layers.size() == current_speculation_step) {
     // When adding the first token, we need to add a new layer
     speculative_token_tree.add_layer();
