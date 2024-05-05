@@ -383,7 +383,7 @@ void RequestManager::load_pending_reqeust_to_batch() {
   RequestGuid guid = pending_request_queue.front().guid;
   pending_request_queue.pop();
 
-  prefill_request = std::shared_ptr<Request>(&all_requests[guid]);
+  prefill_request = &all_requests[guid];
   prefill_request->status = Request::RUNNING;
 
   // Find an empty slot
@@ -406,6 +406,8 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   request_available[batch_index] = false;
   num_available_requests--;
   request.status = Request::COMPLETED;
+
+  // TODO: remove the request from all_requests?
 
   trigger_request_completion_future(guid);
 }

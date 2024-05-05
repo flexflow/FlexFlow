@@ -291,7 +291,7 @@ private:
   std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
-  std::shared_ptr<Request> prefill_request = nullptr;
+  Request *prefill_request = nullptr;
 
   // Added to make the request manager stateful. During the processing of the
   // first small model inference results, the step equals to 1. That is, every
