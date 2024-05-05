@@ -279,6 +279,8 @@ void FlexFlow::top_level_task(Task const *task,
   int max_sequence_length = 1024;
   int max_spec_tree_token_num = 23;
   int expansion_degree = 3;
+  RequestManager::DecodingMode decoding_mode =
+      RequestManager::SPECULATIVE_DECODING;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -312,6 +314,7 @@ void FlexFlow::top_level_task(Task const *task,
                          model_metadata.bos_token_id,
                          model_metadata.eos_token_id,
                          model_metadata.llm_tokenizer_path);
+  rm->set_decoding_mode(decoding_mode);
   rm->register_output_filepath(file_paths.output_file_path);
 
   // Create LLM model
