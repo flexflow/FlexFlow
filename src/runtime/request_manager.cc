@@ -407,6 +407,9 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   num_available_requests--;
   request.status = Request::COMPLETED;
 
+  std::string output = this->tokenizer_->Decode(request.tokens);
+  std::cout << "Request " << guid << " completed: " << std::endl
+            << output << std::endl;
   // TODO: remove the request from all_requests?
 
   trigger_request_completion_future(guid);
@@ -503,44 +506,6 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       assert(false && "Invalid request manager status.");
   }
 }
-
-// TO BE REMOVED: START
-// void RequestManager::update_inference_results(InferenceResult const &result)
-// {
-//   // Update the inference results
-//   std::lock_guard<std::mutex> const lock(rm_state_mutex);
-//   for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
-//     if (guid_of_requests[i] == INVALID_GUID) {
-//       continue;
-//     }
-//     Request &request = all_requests[guid_of_requests[i]];
-
-//     switch (request_manager_status) {
-//       case PREFILLING:
-//         if (request.initial_len ==
-//             request.llm_cache_size) { // all prompt tokens are prefilled
-//           request.tokens.push_back(
-//               result.token_ids[request.num_tokens_in_batch]);
-//           request_manager_status = DECODING;
-//         }
-//         break;
-//       case DECODING:
-//         request.tokens.push_back(
-//             result.token_ids[request.first_token_offset_in_batch]);
-//         if (request.tokens.size() ==
-//             request.max_sequence_length) { // request is completed
-//           request.status = Request::COMPLETED;
-//           trigger_request_completion_future(request.guid);
-//           guid_of_requests[i] = INVALID_GUID;
-//           request_manager_status = PREFILLING;
-//         }
-//         break;
-//       default:
-//         assert(false);
-//     }
-//   }
-// }
-// TO BE REMOVED: END
 
 bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
