@@ -192,7 +192,7 @@ public:
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
 
-  static RequestGuid const INVALID_GUID = 0;
+  inline static RequestGuid const INVALID_GUID = 0;
   RequestManager();
   static RequestManager *get_request_manager();
   size_t get_num_processed_requests();
