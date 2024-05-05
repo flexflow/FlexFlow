@@ -1508,7 +1508,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
     } else {
       assert(false && "Invalid request manager status");
     }
-    runtime->end_trace(ctx, 12345 /*trace_id*/);
+    runtime->end_trace(ctx, 12346 /*trace_id*/);
   }
 }
 
