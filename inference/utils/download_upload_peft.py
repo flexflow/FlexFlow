@@ -15,7 +15,7 @@ def parse_args():
 
 
 def main():
-    model_name = "meta-llama/Llama-2-7b"
+    model_name = "tiiuae/falcon-7b"
     new_model_id = "your_username/new-model-name"
     cache_folder = "~/.cache/flexflow"
     private = True
