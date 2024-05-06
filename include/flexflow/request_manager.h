@@ -208,6 +208,7 @@ public:
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();
   void set_decoding_mode(DecodingMode mode);
+  void set_verbose(bool verbose_);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -336,11 +337,12 @@ private:
   /* ---------- Incremental Decoding Helper Functions ---------- */
   bool update_llm_prefill_results(InferenceResult const &result);
   bool update_llm_decode_results(InferenceResult const &result);
-  BatchConfig prepare_prefilling_batch();
+  BatchConfig prepare_llm_prefilling_batch();
   BatchConfig prepare_decoding_batch();
   /* ---------- Incremental Decoding Helper Functions ---------- */
 
   /* ---------- Spec Decoding Helper Functions ---------- */
+  TreeSearchBatchConfig prepare_ssm_prefilling_batch();
   bool update_llm_verify_results(InferenceResult const &llm_verify_result);
   bool update_ssm_inference_results(
       SsmInferenceResult const &ssm_inference_result);

@@ -119,6 +119,10 @@ void RequestManager::set_decoding_mode(DecodingMode mode) {
   decoding_mode = mode;
 }
 
+void RequestManager::set_verbose(bool verbose_) {
+  verbose = verbose_;
+}
+
 void RequestManager::register_tokenizer(ModelType type,
                                         int bos_token_id,
                                         int eos_token_id,
@@ -555,7 +559,20 @@ bool RequestManager::update_ssm_prefill_results(
 BatchConfig RequestManager::prepare_next_batch() {
   switch (request_manager_status) {
     case PREFILLING:
-      return prepare_prefilling_batch();
+      if (decoding_mode == INCREMENTAL_DECODING) {
+        return prepare_llm_prefilling_batch();
+      } else if (decoding_mode == SPECULATIVE_DECODING) {
+        if (prefill_model == SSM) {
+          return prepare_ssm_prefilling_batch();
+        } else if (prefill_model == LLM) {
+          return prepare_llm_prefilling_batch();
+        } else {
+          assert(false && "Invalid prefill model.");
+        }
+      } else {
+        assert(false && "Invalid inference mode.");
+      }
+      break;
     case DECODING:
       return prepare_decoding_batch();
     case SSM_SPEC:
@@ -573,11 +590,15 @@ BatchConfig RequestManager::prepare_next_batch() {
   }
 }
 
-BatchConfig RequestManager::prepare_prefilling_batch() {
+BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   // This function is called when the request_manager_status is PREFILLING,
   // which means that there is a request in the prefilling phase.
   // This function load its prefilling tokens, constructing a BatchConfig with
   // only one request.
+  if (verbose) {
+    std::cout << "\n############### prepare_llm_prefilling_batch "
+                 "##############\n";
+  }
   assert(prefill_request != nullptr &&
          "No prefilling request to process in the prefilling phase.");
 
@@ -589,23 +610,13 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   bc.num_available_requests = num_available_requests;
 
   int request_index = prefill_request->batch_index;
+  // Request Info
   bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
-  if (prefill_model == SSM) {
-    // Request Info
-    bc.requestsInfo[request_index].first_token_index_in_request =
-        prefill_request->ssm_cache_size;
-    bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
-        BatchConfig::MAX_NUM_TOKENS,
-        (int)prefill_request->tokens.size() - prefill_request->ssm_cache_size);
-
-  } else if (prefill_model == LLM) {
-    // Request Info
-    bc.requestsInfo[request_index].first_token_index_in_request =
-        prefill_request->llm_cache_size;
-    bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
-        BatchConfig::MAX_NUM_TOKENS,
-        (int)prefill_request->tokens.size() - prefill_request->llm_cache_size);
-  }
+  bc.requestsInfo[request_index].first_token_index_in_request =
+      prefill_request->llm_cache_size;
+  bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
+      BatchConfig::MAX_NUM_TOKENS,
+      (int)prefill_request->tokens.size() - prefill_request->llm_cache_size);
 
   prefill_request->first_token_offset_in_batch = 0;
   prefill_request->num_tokens_in_batch =
@@ -615,14 +626,56 @@ BatchConfig RequestManager::prepare_prefilling_batch() {
   for (int token_idx = 0;
        token_idx < bc.requestsInfo[request_index].num_tokens_in_batch;
        token_idx++) {
-    int abs_idx = -1;
-    if (prefill_model == SSM) {
-      abs_idx = prefill_request->ssm_cache_size + token_idx;
-    } else if (prefill_model == LLM) {
-      abs_idx = prefill_request->llm_cache_size + token_idx;
-    } else {
-      assert(false && "Invalid prefill model.");
-    }
+    int abs_idx = prefill_request->llm_cache_size + token_idx;
+    assert(abs_idx < prefill_request->tokens.size());
+
+    bc.tokensInfo[token_idx].request_index = request_index;
+    bc.tokensInfo[token_idx].abs_index_in_request = abs_idx;
+    bc.tokensInfo[token_idx].token_id = prefill_request->tokens[abs_idx];
+
+    bc.num_tokens++;
+  }
+
+  return bc;
+}
+
+TreeSearchBatchConfig RequestManager::prepare_ssm_prefilling_batch() {
+  // This function is called when the request_manager_status is PREFILLING,
+  // which means that there is a request in the prefilling phase.
+  // This function load its prefilling tokens, constructing a BatchConfig with
+  // only one request.
+  if (verbose) {
+    std::cout << "\n############### prepare_ssm_prefilling_batch "
+                 "##############\n";
+  }
+  assert(prefill_request != nullptr &&
+         "No prefilling request to process in the prefilling phase.");
+
+  TreeSearchBatchConfig bc;
+  bc.prompt_phase = true;
+  std::copy(std::begin(request_available),
+            std::end(request_available),
+            std::begin(bc.request_available));
+  bc.num_available_requests = num_available_requests;
+
+  int request_index = prefill_request->batch_index;
+  // Request Info
+  bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
+  bc.requestsInfo[request_index].first_token_index_in_request =
+      prefill_request->ssm_cache_size;
+  bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
+      BatchConfig::MAX_NUM_TOKENS,
+      (int)prefill_request->tokens.size() - prefill_request->ssm_cache_size);
+
+  prefill_request->first_token_offset_in_batch = 0;
+  prefill_request->num_tokens_in_batch =
+      bc.requestsInfo[request_index].num_tokens_in_batch;
+
+  // Token Info
+  for (int token_idx = 0;
+       token_idx < bc.requestsInfo[request_index].num_tokens_in_batch;
+       token_idx++) {
+    int abs_idx = prefill_request->ssm_cache_size + token_idx;
     assert(abs_idx < prefill_request->tokens.size());
 
     bc.tokensInfo[token_idx].request_index = request_index;
@@ -639,6 +692,10 @@ BatchConfig RequestManager::prepare_decoding_batch() {
   // This function is called when the request_manager_status is DECODING. It
   // fills the last token of each request in the current batch to the
   // BatchConfig for the LLM to decode.
+  if (verbose) {
+    std::cout << "\n############### prepare_decoding_batch "
+                 "##############\n";
+  }
 
   BatchConfig bc;
   bc.prompt_phase = false;
@@ -822,7 +879,7 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout
-        << "\n############### prepare_next_batch_verify ###############\n";
+        << "\n############### prepare_verify_batch_config ###############\n";
   }
   // This method does the following:
   // 1. Commit the verified tokens in the last iteration through the
@@ -910,7 +967,7 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   }
 
   if (verbose) {
-    std::cout << "prepare_next_batch_verify NEW batchconfig:" << std::endl;
+    std::cout << "prepare_verify_batch_config NEW batchconfig:" << std::endl;
     new_bc.print();
   }
   return new_bc;
