@@ -10,4 +10,8 @@ std::size_t ArrayShape::get_volume() const {
   return product(this->dims);
 }
 
+std::size_t get_volume(FlexFlow::ArrayShape const&) {
+  NOT_IMPLEMENTED(); 
+}
+
 } // namespace FlexFlow

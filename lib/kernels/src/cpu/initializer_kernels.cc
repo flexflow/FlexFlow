@@ -1,6 +1,8 @@
 #include "kernels/initializer_kernels.h"
 #include "kernels/accessor.h"
 #include "kernels/datatype_dispatch.h"
+#include "kernels/local_allocator.h"
+#include "kernels/device.h"
 
 namespace FlexFlow {
 
@@ -42,6 +44,10 @@ void zero_init_kernel(TaskLocation const &loc,
   } else if (loc == TaskLocation::GPU) {
     return zero_init_kernel_gpu(tensor);
   }
+}
+
+void zero_init_kernel_gpu(GenericTensorAccessorW const &tensor) {
+  NOT_IMPLEMENTED(); 
 }
 
 } // namespace FlexFlow

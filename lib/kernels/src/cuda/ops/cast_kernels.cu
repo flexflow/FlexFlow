@@ -58,8 +58,8 @@ struct BackwardKernel {
   }
 };
 
-void forward_kernel(PerDeviceFFHandle handle,
-                    ffStream_t stream,
+// void forward_kernel(PerDeviceFFHandle handle,
+void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
                     DataType input_type,
@@ -68,8 +68,8 @@ void forward_kernel(PerDeviceFFHandle handle,
       input_type, output_type, stream, input, output);
 }
 
-void backward_kernel(PerDeviceFFHandle handle,
-                     ffStream_t stream,
+// void backward_kernel(PerDeviceFFHandle handle,
+void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &output,
                      DataType input_type,

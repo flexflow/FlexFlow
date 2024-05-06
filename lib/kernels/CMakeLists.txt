@@ -7,7 +7,7 @@ file(GLOB_RECURSE SRC
      CONFIGURE_DEPENDS
      LIST_DIRECTORIES False
      src/*.cc
-     src/cuda/ops/*.cu
+     src/cuda/cast_kernels.cu
      )
 
 add_library(
@@ -37,3 +37,5 @@ set_target_properties(
   PROPERTIES 
   CUDA_STANDARD 17
 )
+
+add_subdirectory(test)
