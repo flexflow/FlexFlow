@@ -333,6 +333,7 @@ __device__ void mergeShards(int num_shards,
     // top_k_values[last_k] = max_element.value;
     int shard_index = max_element.index;
     top_k_indices[last_k] = entries[shard_index].index;
+    top_k_values[last_k] = static_cast<float>(max_element.value);
   }
 }
 
