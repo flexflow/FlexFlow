@@ -148,7 +148,7 @@ struct CompareSharedTokenTreeNodePtrRequestGuidPair {
 
 class TokenTree {
 public:
-  std::vector<std::list<shared_ptr<TokenTreeNode>>> tree_layers = {};
+  std::list<std::list<shared_ptr<TokenTreeNode>>> tree_layers = {};
   // The numebr of tokens in the tree that are not pruned
   int tree_size = 0;
   // The numebr of tokens in the tree including the pruned ones
@@ -342,21 +342,21 @@ private:
   /* ---------- Incremental Decoding Helper Functions ---------- */
 
   /* ---------- Spec Decoding Helper Functions ---------- */
-  TreeSearchBatchConfig prepare_ssm_prefilling_batch();
+  BatchConfig prepare_ssm_prefilling_batch();
   bool update_llm_verify_results(InferenceResult const &llm_verify_result);
-  bool update_ssm_inference_results(
-      SsmInferenceResult const &ssm_inference_result);
+  bool
+      update_ssm_inference_results(InferenceResult const &ssm_inference_result);
   bool update_ssm_prefill_results(InferenceResult const &ssm_prefill_result);
   // Prepare the next speculation batch config. This function is called before
   // the second step of the speculation.
-  TreeSearchBatchConfig prepare_next_spec_batch_config();
+  BatchConfig prepare_next_spec_batch_config();
   // Prepare the first speculation batch config. This function is called before
   // the first step of the speculation. The difference with
   // prepare_next_batch_config_spec is that we put the info of the committed
   // tokens into the batch config in the first speculation step to commit the KV
   // cache of the small model.
-  TreeSearchBatchConfig prepare_first_spec_batch_config();
-  TreeVerifyBatchConfig prepare_verify_batch_config();
+  BatchConfig prepare_first_spec_batch_config();
+  BatchConfig prepare_verify_batch_config();
 
   // LLM result verification
   void get_verify_results_greedy(InferenceResult const &llm_verify_result);

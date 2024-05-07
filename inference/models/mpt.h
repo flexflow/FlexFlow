@@ -48,7 +48,7 @@ public:
       }
       // max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
       // max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
-      k_of_arg_topk = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+      k_of_arg_topk = BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
     }
 
     void print() const {

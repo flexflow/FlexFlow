@@ -291,11 +291,12 @@ void ArgTopK::forward(FFModel const &ff) {
   assert(false);
 }
 
-FutureMap ArgTopK::inference(FFModel const &ff,
-                             /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
-                             std::vector<ParallelTensor> const &batch_inputs,
-                             std::vector<ParallelTensor> const &batch_outputs,
-                             MachineView const *mv) {
+FutureMap ArgTopK::inference(
+    FFModel const &ff,
+    /* Reserved: BatchConfig Updated */ BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -404,18 +405,17 @@ InferenceResult
   return ir;
 }
 
-SsmInferenceResult ArgTopK::inference_speculative_task(
+InferenceResult ArgTopK::inference_speculative_task(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  TreeSearchBatchConfig const &bc =
-      Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
+  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
   if (bc.num_active_tokens() == 0) {
     // Directly return for empty batch config
-    SsmInferenceResult ir;
+    InferenceResult ir;
     return ir;
   }
   ArgTopKMeta *m = *((ArgTopKMeta **)task->local_args);
@@ -430,7 +430,7 @@ SsmInferenceResult ArgTopK::inference_speculative_task(
   int batch_size = bc.num_active_tokens();
   ArgTopK::forward_kernel_wrapper(m, input, probs, indices, batch_size, &bc);
 
-  SsmInferenceResult ir;
+  InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size * m->k);
   download_tensor<float>(probs.get_float_ptr(), ir.probs, batch_size * m->k);

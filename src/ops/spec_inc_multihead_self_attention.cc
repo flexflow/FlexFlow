@@ -673,7 +673,7 @@ void SpecIncMultiHeadSelfAttention::forward(FFModel const &ff) {
 
 FutureMap SpecIncMultiHeadSelfAttention::inference(
     FFModel const &ff,
-    /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
+    /* Reserved: BatchConfig Updated */ BatchConfigFuture const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     MachineView const *mv) {
@@ -736,8 +736,7 @@ void SpecIncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(task->regions.size() == regions.size());
 
-  TreeSearchBatchConfig const &bc =
-      Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
+  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
   if (bc.num_tokens == 0) {
     return;
   }

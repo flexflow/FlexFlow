@@ -46,7 +46,7 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
-LegionRuntime::Logger::Category log_tree_verify("TreeVerifyIncMHA");
+LegionRuntime::Logger::Category log_tree_verify("BatchConfig");
 
 bool TreeIncMultiHeadSelfAttentionParams::is_valid(
     ParallelTensorShape const &input) const {
@@ -55,7 +55,7 @@ bool TreeIncMultiHeadSelfAttentionParams::is_valid(
 }
 
 Tensor FFModel::inc_multihead_self_attention_verify(
-    const Tensor input,
+    Tensor const input,
     int embed_dim,
     int num_heads,
     int kdim,
@@ -93,7 +93,7 @@ Tensor FFModel::inc_multihead_self_attention_verify(
 }
 
 Tensor FFModel::inc_multiquery_self_attention_verify(
-    const Tensor input,
+    Tensor const input,
     int embed_dim,
     int num_q_heads,
     int num_kv_heads,
@@ -279,7 +279,7 @@ Op *TreeIncMultiHeadSelfAttention::create_operator_from_layer(
 TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     FFModel &model,
     LayerID const &_layer_guid,
-    const ParallelTensor _input,
+    ParallelTensor const _input,
     int _embed_dim,
     int _num_q_heads,
     int _num_kv_heads,
@@ -393,8 +393,8 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
 
 TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     FFModel &model,
-    const ParallelTensor _input,
-    const ParallelTensor _weight,
+    ParallelTensor const _input,
+    ParallelTensor const _weight,
     int _embed_dim,
     int _num_q_heads,
     int _num_kv_heads,
@@ -510,7 +510,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
 TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     FFModel &model,
     TreeIncMultiHeadSelfAttention const &other,
-    const ParallelTensor input,
+    ParallelTensor const input,
     bool allocate_weights)
     : TreeIncMultiHeadSelfAttention(model,
                                     other.layer_guid,
@@ -740,7 +740,7 @@ void TreeIncMultiHeadSelfAttention::forward(FFModel const &ff) {
 
 FutureMap TreeIncMultiHeadSelfAttention::inference(
     FFModel const &ff,
-    /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
+    /* Reserved: BatchConfig Updated */ BatchConfigFuture const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     MachineView const *mv) {
@@ -806,12 +806,10 @@ void TreeIncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(task->regions.size() == regions.size());
 
-  TreeVerifyBatchConfig const &bc =
-      Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
-  log_tree_verify.debug(
-      "TreeVerifyBatchConfig, num_tokens: %d, num_requests: %d",
-      bc.num_tokens,
-      bc.num_active_requests());
+  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
+  log_tree_verify.debug("BatchConfig, num_tokens: %d, num_requests: %d",
+                        bc.num_tokens,
+                        bc.num_active_requests());
   if (bc.num_tokens == 0) {
     return;
   }

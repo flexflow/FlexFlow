@@ -109,7 +109,7 @@ public:
 
   static void
       inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta const *m,
-                               TreeSearchBatchConfig const *bc,
+                               BatchConfig const *bc,
                                int shard_id,
                                GenericTensorAccessorR const &input,
                                GenericTensorAccessorR const &weight,

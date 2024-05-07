@@ -64,7 +64,7 @@ public:
                      std::vector<Legion::PhysicalRegion> const &regions,
                      Legion::Context ctx,
                      Legion::Runtime *runtime);
-  static SsmInferenceResult inference_speculative_task(
+  static InferenceResult inference_speculative_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
@@ -89,14 +89,14 @@ public:
                              int length,
                              int k,
                              bool sorted,
-                             TreeSearchBatchConfig const *bc,
+                             BatchConfig const *bc,
                              ffStream_t stream);
   static void forward_kernel_wrapper(ArgTopKMeta const *m,
                                      GenericTensorAccessorR const &input,
                                      GenericTensorAccessorW const &prob,
                                      GenericTensorAccessorW const &indices,
                                      int batch_size,
-                                     TreeSearchBatchConfig const *bc);
+                                     BatchConfig const *bc);
   Params get_params() const;
 
 public:

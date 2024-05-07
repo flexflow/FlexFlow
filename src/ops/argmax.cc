@@ -260,11 +260,12 @@ void ArgMax::forward(FFModel const &ff) {
   assert(false);
 }
 
-FutureMap ArgMax::inference(FFModel const &ff,
-                            /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
-                            std::vector<ParallelTensor> const &batch_inputs,
-                            std::vector<ParallelTensor> const &batch_outputs,
-                            MachineView const *mv) {
+FutureMap ArgMax::inference(
+    FFModel const &ff,
+    /* Reserved: BatchConfig Updated */ BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -332,7 +333,7 @@ FutureMap ArgMax::inference(FFModel const &ff,
   }
 }
 
-SsmInferenceResult
+InferenceResult
     ArgMax::inference_task_beam(Task const *task,
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
@@ -342,7 +343,7 @@ SsmInferenceResult
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     // Directly return for empty batch config
-    SsmInferenceResult ir;
+    InferenceResult ir;
     return ir;
   }
   ArgMaxMeta *m = *((ArgMaxMeta **)task->local_args);
@@ -355,17 +356,16 @@ SsmInferenceResult
   GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[2], task->regions[2], FID_DATA, ctx, runtime);
   ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
-  SsmInferenceResult ir;
+  InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   download_tensor(m->probs, ir.probs, batch_size);
-  download_tensor<int>(parent.get_int32_ptr(), ir.parent_id, batch_size);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     ArgMax::save_inference_tensors_to_file(
-        m, shard_id, bc, {}, {}, {input, indices, parent});
+        m, shard_id, bc, {}, {}, {input, indices});
   }
 
   return ir;

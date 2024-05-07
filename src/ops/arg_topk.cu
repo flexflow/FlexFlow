@@ -371,16 +371,17 @@ __global__ void arg_topk_forward_kernel(T const *__restrict__ input,
 
 /*static*/
 template <typename DT>
-void ArgTopK::forward_kernel(ArgTopKMeta const *m,
-                             DT const *input_ptr,
-                             float *output_ptr,
-                             int *indices_ptr,
-                             size_t batch_size,
-                             int length,
-                             int k,
-                             bool sorted,
-                             /* Reserved: BatchConfig Updated */TreeSearchBatchConfig const *bc,
-                             cudaStream_t stream) {
+void ArgTopK::forward_kernel(
+    ArgTopKMeta const *m,
+    DT const *input_ptr,
+    float *output_ptr,
+    int *indices_ptr,
+    size_t batch_size,
+    int length,
+    int k,
+    bool sorted,
+    /* Reserved: BatchConfig Updated */ BatchConfig const *bc,
+    cudaStream_t stream) {
   // Adopted from TensorFlow's ArgTopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
   int num_shards = 0;
@@ -402,13 +403,13 @@ void ArgTopK::forward_kernel(ArgTopKMeta const *m,
   // all requests share the same number of branches
   if (m->speculative_decoding) {
     assert(bc->num_active_requests() >= 0);
-    assert(num_shards >= (size_t)TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
+    assert(num_shards >= (size_t)BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
     num_shards = k;
     arg_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
         input_ptr,
         shared_memory_size,
         length,
-        TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES,
+        BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES,
         sorted,
         output_ptr,
         indices_ptr,
@@ -436,7 +437,7 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
                                      GenericTensorAccessorW const &probs,
                                      GenericTensorAccessorW const &indices,
                                      int batch_size,
-                                     TreeSearchBatchConfig const *bc) {
+                                     BatchConfig const *bc) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 

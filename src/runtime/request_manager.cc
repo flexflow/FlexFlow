@@ -437,7 +437,6 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
     return;
   }
 
-  SsmInferenceResult const *ssm_result_ptr;
   switch (request_manager_status) {
     case PREFILLING:
       if (decoding_mode == INCREMENTAL_DECODING) {
@@ -496,11 +495,13 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           load_pending_reqeust_to_batch();
           prefill_model = SSM;
         }
+      } else {
+        request_manager_status = SSM_SPEC;
+        current_speculation_step = 0;
       }
       break;
     case SSM_SPEC:
-      ssm_result_ptr = dynamic_cast<SsmInferenceResult const *>(&result);
-      if (update_ssm_inference_results(*ssm_result_ptr)) {
+      if (update_ssm_inference_results(result)) {
         // Stop condition for the speculation phase has been reached
         request_manager_status = LLM_VERIFY;
       }
@@ -512,14 +513,28 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 }
 
 bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
+  bool prefill_completed = false;
   prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
   if (prefill_request->llm_cache_size == prefill_request->tokens.size()) {
     // Indicates that the LLM prefilling phase finishes
     prefill_request->tokens.push_back(
         result.token_ids[prefill_request->num_tokens_in_batch - 1]);
-    return true;
+    prefill_completed = true;
+
+    if (decoding_mode == SPECULATIVE_DECODING) {
+      // Add the last token to the token tree
+      prefill_request->committed_tokens.push_back(
+          Request::CommittedToken{-1,
+                                  (int)prefill_request->tokens.size() - 1,
+                                  prefill_request->tokens.back()});
+
+      init_token_tree(prefill_request->guid);
+      add_root_to_spec_token_tree(prefill_request->guid,
+                                  prefill_request->tokens.back());
+      update_bitmask_prompt(prefill_request->guid, 1);
+    }
   }
-  return false;
+  return prefill_completed;
 }
 
 bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
@@ -603,6 +618,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
          "No prefilling request to process in the prefilling phase.");
 
   BatchConfig bc;
+  bc.inference_mode = InferenceMode::INC_DECODING_MODE;
   bc.prompt_phase = true;
   std::copy(std::begin(request_available),
             std::end(request_available),
@@ -639,7 +655,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   return bc;
 }
 
-TreeSearchBatchConfig RequestManager::prepare_ssm_prefilling_batch() {
+BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
   // This function is called when the request_manager_status is PREFILLING,
   // which means that there is a request in the prefilling phase.
   // This function load its prefilling tokens, constructing a BatchConfig with
@@ -651,7 +667,8 @@ TreeSearchBatchConfig RequestManager::prepare_ssm_prefilling_batch() {
   assert(prefill_request != nullptr &&
          "No prefilling request to process in the prefilling phase.");
 
-  TreeSearchBatchConfig bc;
+  BatchConfig bc;
+  bc.inference_mode = InferenceMode::TREE_SEARCH_MODE;
   bc.prompt_phase = true;
   std::copy(std::begin(request_available),
             std::end(request_available),
@@ -698,6 +715,7 @@ BatchConfig RequestManager::prepare_decoding_batch() {
   }
 
   BatchConfig bc;
+  bc.inference_mode = InferenceMode::INC_DECODING_MODE;
   bc.prompt_phase = false;
   std::copy(std::begin(request_available),
             std::end(request_available),
@@ -734,20 +752,21 @@ BatchConfig RequestManager::prepare_decoding_batch() {
 /* ----- Speculative Inference Specific functions ----- */
 
 /***** Request Init Phase *****/
-TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
+BatchConfig RequestManager::prepare_first_spec_batch_config() {
   if (verbose) {
     std::cout << "\n############### prepare_first_spec_batch_config "
                  "##############\n";
   }
   // This method does the following:
-  // 1. Commit the verified tokens through TreeSearchBatchConfig. The infomation
+  // 1. Commit the verified tokens through BatchConfig. The infomation
   // of the committed tokens are stored in request.committed_tokens. Put the
   // information of the committed tokens into BatchConfig.TokensInfo.
   // 2. Maintain BatchConfig::RequestsInfo and all other fields of
-  // TreeSearchBatchConfig.
+  // BatchConfig.
   assert(current_speculation_step == 0);
 
-  TreeSearchBatchConfig new_bc;
+  BatchConfig new_bc;
+  new_bc.inference_mode = InferenceMode::TREE_SEARCH_MODE;
   // Assume that only one small model is in use now
   new_bc.prompt_phase = true;
   std::copy(std::begin(request_available),
@@ -800,7 +819,7 @@ TreeSearchBatchConfig RequestManager::prepare_first_spec_batch_config() {
 }
 
 /***** Speculative Decoding Phase *****/
-TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
+BatchConfig RequestManager::prepare_next_spec_batch_config() {
   if (verbose) {
     std::cout
         << "\n############### prepare_next_spec_batch_config ###############\n";
@@ -808,7 +827,8 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
   }
 
   // Prepare the next batch for existing requests
-  TreeSearchBatchConfig new_bc;
+  BatchConfig new_bc;
+  new_bc.inference_mode = InferenceMode::TREE_SEARCH_MODE;
   // We assume that only one small model is in use now
   new_bc.model_id = 0;
   std::copy(std::begin(request_available),
@@ -840,7 +860,7 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
       continue;
     } else {
       std::list<std::shared_ptr<TokenTreeNode>> &current_layer =
-          token_tree.tree_layers.at(current_speculation_step);
+          token_tree.tree_layers.back();
       // Exclude the current layer from the token tree, because we want the
       // start index
       new_bc.requestsInfo[request_index].first_token_index_in_request =
@@ -868,14 +888,14 @@ TreeSearchBatchConfig RequestManager::prepare_next_spec_batch_config() {
   }
 
   if (verbose) {
-    std::cout << "prepare_next_batch_beam NEW batchconfig:" << std::endl;
+    std::cout << "prepare_next_spec_batch_config NEW batchconfig:" << std::endl;
     new_bc.print();
   }
   return new_bc;
 }
 
 /***** Verify Phase *****/
-TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
+BatchConfig RequestManager::prepare_verify_batch_config() {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout
@@ -883,20 +903,21 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
   }
   // This method does the following:
   // 1. Commit the verified tokens in the last iteration through the
-  // TreeVerifyBatchConfig. We can do this request by request.
+  // BatchConfig. We can do this request by request.
   // The information of the committed tokens is stored in
   // Request.llm_committed_tokens. Put the information of the committed tokens
-  // into TreeVerifyBatchConfig.committed_tokens.
+  // into BatchConfig.committed_tokens.
   // 2. Load the tokens on the token tree that are not yet pruned to
-  // TreeVerifyBatchConfig.tokensInfo. Be careful with the abs_depth etc.
+  // BatchConfig.tokensInfo. Be careful with the abs_depth etc.
   // (skip the pruned tokens).
   // 3. Create the causal mask for the large model based on the small model
   // causal mask (call create_llm_bitmask()).
-  // 4. Maintain TreeVerifyBatchConfig::RequestsInfo and all other fields of
-  // TreeSearchBatchConfig.
+  // 4. Maintain BatchConfig::RequestsInfo and all other fields of
+  // BatchConfig.
   // Please refer to the implementation of prepare_next_spec_batch_config()
   // for more details.
-  TreeVerifyBatchConfig new_bc;
+  BatchConfig new_bc;
+  new_bc.inference_mode = InferenceMode::TREE_VERIFY_MODE;
   std::copy(std::begin(request_available),
             std::end(request_available),
             std::begin(new_bc.request_available));
@@ -924,7 +945,7 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
         request.speculative_token_trees[0].tree_size;
 
     // Put the information of the committed tokens into
-    // TreeVerifyBatchConfig.committed_tokens.
+    // BatchConfig.committed_tokens.
     // Note here, we shouldn't put the last token in request.committed_tokens
     // into new_bc. Because the LLM don't have that token's KV cache.
     std::vector<Request::CommittedToken> &committed_tokens =
@@ -944,7 +965,7 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
     }
 
     // Load the tokens on the token tree that are not yet pruned to
-    // TreeVerifyBatchConfig.tokensInfo.
+    // BatchConfig.tokensInfo.
     TokenTree &token_tree = request.speculative_token_trees[0];
     int token_tree_index = 0;
     for (auto const &tree_layer : token_tree.tree_layers) {
@@ -959,7 +980,7 @@ TreeVerifyBatchConfig RequestManager::prepare_verify_batch_config() {
         }
       }
     }
-    assert(token_tree_index == token_tree.tree_size - 1);
+    assert(token_tree_index == token_tree.tree_size);
 
     // Create the causal mask for the large model based on the small model
     // causal mask.
@@ -1043,20 +1064,20 @@ bool RequestManager::update_llm_verify_results(
 }
 
 bool RequestManager::update_ssm_inference_results(
-    SsmInferenceResult const &ssm_inference_result) {
+    InferenceResult const &ssm_inference_result) {
   // This function returns false if no tokens are added to the token tree,
   // which indicates that the ssm inference phase is done.
   assert(current_speculation_step >= 0 &&
          "The current speculation step should be no less than 0");
   current_speculation_step++;
 
-  int num_branches = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+  int num_branches = BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
   int result_index = 0;
   bool token_added_to_spec_tree = false;
 
   // Here we assume that the order of the tokens in the last
-  // TreeSearchBatchConfig and hence the last SsmInferenceResult is equal to
-  // the order of the request in the last TreeSearchBatchConfig
+  // BatchConfig and hence the last InferenceResult is equal to
+  // the order of the request in the last BatchConfig
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
     if (!request_available[request_index]) {
@@ -1076,13 +1097,17 @@ bool RequestManager::update_ssm_inference_results(
       // This means that the parent layer is empty
       continue;
     } else {
+      auto parent_layer_iter =
+          token_tree.tree_layers.end(); // The iterator after the last element
+      --parent_layer_iter;
       std::list<std::shared_ptr<TokenTreeNode>> &parent_tree_layer =
-          token_tree.tree_layers[current_speculation_step - 1];
+          *parent_layer_iter;
       int parent_pos = 0;
-      for (auto parent_it = parent_tree_layer.begin();
-           parent_it != parent_tree_layer.end();
-           parent_it++) {
-        if ((*parent_it)->pruned) {
+      //   for (auto &parent_it = parent_tree_layer.begin();
+      //        parent_it != parent_tree_layer.end();
+      //        parent_it++) {
+      for (auto parent_ptr : parent_tree_layer) {
+        if (parent_ptr->pruned) {
           // Parent token is pruned, we have to skip all its children
           // Because no token is pruned in the last layer during the small
           // model inference, the reason why some parents are pruned is that
@@ -1092,7 +1117,7 @@ bool RequestManager::update_ssm_inference_results(
         } else {
           // Parent token is not pruned
           for (int child_idx = 0; child_idx < num_branches; child_idx++) {
-            float parent_log_prob = (*parent_it)->log_accumulated_prob;
+            float parent_log_prob = parent_ptr->log_accumulated_prob;
             token_added_to_spec_tree =
                 token_added_to_spec_tree ||
                 add_token_to_spec_token_tree(
@@ -1118,14 +1143,14 @@ bool RequestManager::update_ssm_inference_results(
 
   // Stop conditions
   return !token_added_to_spec_tree ||
-         current_speculation_step > TreeSearchBatchConfig::MAX_TREE_DEPTH;
+         current_speculation_step > BatchConfig::MAX_TREE_DEPTH;
 }
 
 /* --------- Bitmask Related Functions --------- */
 
 void RequestManager::init_bitmask_prompt(RequestGuid guid, int prompt_length) {
-  // This method is called by load_pending_reqeust_to_batch when there is a new
-  // request to load into the batch
+  // This method is called by load_pending_reqeust_to_batch when there is a
+  // new request to load into the batch
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
 
@@ -1148,16 +1173,21 @@ void RequestManager::update_bitmask_prompt(RequestGuid guid,
   BatchConfig::BitMask &bitmask = request.causal_mask;
   // Clear because the prompt kernel doesn't use mask
   bitmask.clear_bitmask();
-  // No need to change non_tree_cache_size
   bitmask.tree_or_prompt_size = num_committed_tokens;
   bitmask.current_layer_size = num_committed_tokens;
+
+  // If the request just finishes the prefilling phase, we need to set the
+  // non_tree_cache_size to the size of the prompt
+  if (bitmask.non_tree_cache_size == 0) {
+    bitmask.non_tree_cache_size = request.tokens.size() - num_committed_tokens;
+  }
 }
 
 void RequestManager::init_bitmask_spec(RequestGuid guid) {
   // This method modifies the bitmask in place
-  // This method is called by the first call of update_ssm_inference_results in
-  // a speculative iteration
-  // CAUTION: You should still call append_bitmask() after this method
+  // This method is called by the first call of update_ssm_inference_results
+  // in a speculative iteration CAUTION: You should still call
+  // append_bitmask() after this method
   // 1. Clear the causal mask and add a root into it, because the tree is
   // currently empty but we have a root.
   // 2. Maintain all other fields.
@@ -1189,7 +1219,7 @@ void RequestManager::append_bitmask(RequestGuid guid) {
     return;
   }
   std::list<std::shared_ptr<TokenTreeNode>> &tree_layer =
-      request.speculative_token_trees[0].tree_layers[current_speculation_step];
+      request.speculative_token_trees[0].tree_layers.back();
   int new_layer_size = tree_layer.size();
   int last_layer_size = bitmask.current_layer_size;
   int previous_tree_size = bitmask.tree_or_prompt_size;
@@ -1283,8 +1313,8 @@ void RequestManager::get_verify_results_greedy(
     committed_token_index++;
     // Don't add it to request.tokens because it has already been added.
 
-    // The position of the last accepted token in its tree layer (includeing the
-    // pruned tokens)
+    // The position of the last accepted token in its tree layer (includeing
+    // the pruned tokens)
     int last_accepted_token_layer_index = 0;
     // The index of the last accepted token in the entire tree (excluding the
     // pruned tokens)
@@ -1292,10 +1322,12 @@ void RequestManager::get_verify_results_greedy(
 
     int current_token_index = 1; // Because we skip the root
     int num_layers = token_tree.tree_layers.size();
-    for (int layer_index = 1; layer_index < num_layers; layer_index++) {
+    auto layer_it = token_tree.tree_layers.begin();
+    ++layer_it;
+    // for (int layer_index = 1; layer_index < num_layers; layer_index++) {
+    for (; layer_it != token_tree.tree_layers.end(); layer_it++) {
       // We skip the first layer
-      std::list<std::shared_ptr<TokenTreeNode>> &tree_layer =
-          token_tree.tree_layers.at(layer_index);
+      std::list<std::shared_ptr<TokenTreeNode>> &tree_layer = *layer_it;
 
       bool token_accepted_this_layer = false;
       int current_token_layer_index = 0;
@@ -1535,37 +1567,54 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
         break;
       }
     }
-    runtime->begin_trace(ctx, 12346 /*trace_id*/);
-    InferenceResultFuture next_ir = batch_pipeline.back();
-    BatchConfigFuture bcf = get_next_batch_config(next_ir, ctx, runtime);
-    if (request_manager_status == PREFILLING) {
-      if (prefill_model == LLM) {
-        FutureMap fm = im->inference(llm, 0, bcf);
-        assert(fm.get_future_map_domain().get_volume() == 1);
-        InferenceResultFuture irf = fm.get_future(0);
-        batch_pipeline.push(irf);
-      } else if (prefill_model == SSM) {
-        FutureMap fm = im->inference(get_ssm_model(0), 0, bcf);
-        assert(fm.get_future_map_domain().get_volume() == 1);
-        InferenceResultFuture irf = fm.get_future(0);
-        batch_pipeline.push(irf);
-      } else {
-        assert(false && "Invalid prefill model");
-      }
-    } else if (request_manager_status == LLM_VERIFY) {
+    if ((request_manager_status == PREFILLING and prefill_model == LLM) or
+        request_manager_status == LLM_VERIFY) {
+      runtime->begin_trace(ctx, 12345 /*trace_id*/);
+      InferenceResultFuture next_ir = batch_pipeline.back();
+      BatchConfigFuture bcf = get_next_batch_config(next_ir, ctx, runtime);
       FutureMap fm = im->inference(llm, 0, bcf);
       assert(fm.get_future_map_domain().get_volume() == 1);
       InferenceResultFuture irf = fm.get_future(0);
       batch_pipeline.push(irf);
-    } else if (request_manager_status == SSM_SPEC) {
+      runtime->end_trace(ctx, 12345 /*trace_id*/);
+    } else if ((request_manager_status == PREFILLING and
+                prefill_model == SSM) or
+               request_manager_status == SSM_SPEC) {
+      runtime->begin_trace(ctx, 23456 /*trace_id*/);
+      InferenceResultFuture next_ir = batch_pipeline.back();
+      BatchConfigFuture bcf = get_next_batch_config(next_ir, ctx, runtime);
       FutureMap fm = im->inference(get_ssm_model(0), 0, bcf);
       assert(fm.get_future_map_domain().get_volume() == 1);
       InferenceResultFuture irf = fm.get_future(0);
       batch_pipeline.push(irf);
+      runtime->end_trace(ctx, 23456 /*trace_id*/);
     } else {
       assert(false && "Invalid request manager status");
     }
-    runtime->end_trace(ctx, 12346 /*trace_id*/);
+    // runtime->begin_trace(ctx, 12345 /*trace_id*/);
+    // InferenceResultFuture next_ir = batch_pipeline.back();
+    // BatchConfigFuture bcf = get_next_batch_config(next_ir, ctx, runtime);
+    // FutureMap fm;
+    // if (request_manager_status == PREFILLING) {
+    //   if (prefill_model == LLM) {
+    //     fm = im->inference(llm, 0, bcf);
+    //   } else if (prefill_model == SSM) {
+    //     fm = im->inference(get_ssm_model(0), 0, bcf);
+    //   } else {
+    //     assert(false && "Invalid prefill model");
+    //   }
+    // } else if (request_manager_status == LLM_VERIFY) {
+    //   fm = im->inference(llm, 0, bcf);
+    // } else if (request_manager_status == SSM_SPEC) {
+    //   fm = im->inference(get_ssm_model(0), 0, bcf);
+    // } else {
+    //   assert(false && "Invalid request manager status");
+    // }
+    // std::cout << "after inference" << std::endl;
+    // assert(fm.get_future_map_domain().get_volume() == 1);
+    // InferenceResultFuture irf = fm.get_future(0);
+    // batch_pipeline.push(irf);
+    // runtime->end_trace(ctx, 12345 /*trace_id*/);
   }
 }
 
@@ -1627,8 +1676,8 @@ void RequestManager::add_root_to_spec_token_tree(
   Request &request = all_requests[guid];
   TokenTree &speculative_token_tree = request.speculative_token_trees[0];
   speculative_token_tree.add_layer();
-  auto node_ptr = std::make_shared<TokenTreeNode>(token_id, -1, 0.0);
-  speculative_token_tree.tree_layers[0].push_back(node_ptr);
+  auto node_ptr = std::make_shared<TokenTreeNode>(token_id, 0.0, -1);
+  speculative_token_tree.tree_layers.front().push_back(node_ptr);
   speculative_token_tree.tree_size++;
   speculative_token_tree.tree_size_including_pruned++;
 }
@@ -1730,9 +1779,7 @@ bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
     auto node_ptr = std::make_shared<TokenTreeNode>(
         token_id, parent_pos, log_accumulated_prob);
     token_tree_node_pool.push(std::make_pair(node_ptr, guid));
-    request.speculative_token_trees[0]
-        .tree_layers[current_speculation_step]
-        .push_back(node_ptr);
+    speculative_token_tree.tree_layers.back().push_back(node_ptr);
     speculative_token_tree.tree_size++;
     speculative_token_tree.tree_size_including_pruned++;
   }
@@ -1748,8 +1795,7 @@ void RequestManager::prune_last_layer_of_spec_token_tree(RequestGuid guid) {
     // There are no tokens in the last layer
     return;
   }
-  auto &last_layer =
-      request.speculative_token_trees[0].tree_layers[current_speculation_step];
+  auto &last_layer = request.speculative_token_trees[0].tree_layers.back();
   for (auto it = last_layer.begin(); it != last_layer.end(); ++it) {
     if ((*it)->pruned) {
       last_layer.erase(it);

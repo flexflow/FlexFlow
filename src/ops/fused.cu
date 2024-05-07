@@ -539,7 +539,8 @@ __host__ void
   // const FusedOp* fused = (FusedOp*) task->args;
   FusedOpMeta *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
-  /* Reserved: BatchConfig Updated */BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  /* Reserved: BatchConfig Updated */ BatchConfig const *bc =
+      BatchConfig::from_future(task->futures[0]);
   // Return if no active tokens
   if (bc->num_tokens == 0) {
     return;
@@ -907,8 +908,8 @@ __host__ void
             (TreeIncMultiHeadSelfAttentionMeta *)metas->meta[op];
         // TreeVerifyBatchConfig const *verify_bc =
         //     (TreeVerifyBatchConfig *)task->args;
-        TreeVerifyBatchConfig const &verify_bc =
-            Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
+        BatchConfig const &verify_bc =
+            Future(task->futures[0]).get_result<BatchConfig>();
         assert(fused->op_num_weights[op] ==
                (1 + (int)(*m->qkv_bias || *m->final_bias)));
         GenericTensorAccessorR biases;
@@ -933,8 +934,8 @@ __host__ void
             (SpecIncMultiHeadSelfAttentionMeta *)metas->meta[op];
         // TreeSearchBatchConfig const *search_bc =
         //     (TreeSearchBatchConfig *)task->args;
-        TreeSearchBatchConfig const &search_bc =
-            Future(task->futures[0]).get_result<TreeSearchBatchConfig>();
+        BatchConfig const &search_bc =
+            Future(task->futures[0]).get_result<BatchConfig>();
         assert(fused->op_num_weights[op] ==
                (1 + (int)(*m->qkv_bias || *m->final_bias)));
         GenericTensorAccessorR biases;

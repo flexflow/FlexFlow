@@ -49,7 +49,7 @@ public:
                   << std::endl;
         assert(false);
       }
-      k_of_arg_topk = TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+      k_of_arg_topk = BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
     }
 
     void print() const {

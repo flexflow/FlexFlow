@@ -476,7 +476,7 @@ inline void smem_size_in_bytes_tree(int hidden_size_per_head,
                                     int max_sequence_length,
                                     int threads_per_value,
                                     int threads_per_block,
-                                    TreeVerifyBatchConfig const *bc,
+                                    BatchConfig const *bc,
                                     int shared_mem[]) {
 
   int max_query_length = 0;

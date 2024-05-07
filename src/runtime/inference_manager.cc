@@ -307,26 +307,8 @@ void InferenceManager::init_operators_inference(FFModel *model) {
 FutureMap InferenceManager::inference(FFModel *model,
                                       int index,
                                       BatchConfig const &bc) {
-  if (bc.get_mode() == INC_DECODING_MODE) {
-    BatchConfigFuture bcf = Future::from_value<BatchConfig>(bc);
-    return inference(model, index, bcf);
-  } else if (bc.get_mode() == TREE_SEARCH_MODE) {
-    BatchConfig const *bc_ptr = &bc;
-    TreeSearchBatchConfig const *tsbc_ptr =
-        static_cast<TreeSearchBatchConfig const *>(bc_ptr);
-    TreeSearchBatchConfigFuture bcf =
-        Future::from_value<TreeSearchBatchConfig>(*tsbc_ptr);
-    return inference(model, index, bcf);
-  } else if (bc.get_mode() == TREE_VERIFY_MODE) {
-    BatchConfig const *bc_ptr = &bc;
-    TreeVerifyBatchConfig const *tvbc_ptr =
-        static_cast<TreeVerifyBatchConfig const *>(bc_ptr);
-    TreeVerifyBatchConfigFuture bcf =
-        Future::from_value<TreeVerifyBatchConfig>(*tvbc_ptr);
-    return inference(model, index, bcf);
-  } else {
-    assert(false && "Unsupported inference mode");
-  }
+  BatchConfigFuture bcf = Future::from_value<BatchConfig>(bc);
+  return inference(model, index, bcf);
 }
 
 FutureMap InferenceManager::inference(FFModel *model,

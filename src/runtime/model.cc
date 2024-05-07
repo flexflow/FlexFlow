@@ -5981,14 +5981,14 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
-      Runtime::preregister_task_variant<SsmInferenceResult,
+      Runtime::preregister_task_variant<InferenceResult,
                                         ArgTopK::inference_speculative_task>(
           registrar, "ArgTopK Speculative Inference Task");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<SsmInferenceResult,
+      runtime->register_task_variant<InferenceResult,
                                      ArgTopK::inference_speculative_task>(
           registrar);
     }
@@ -6081,15 +6081,16 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
-      Runtime::preregister_task_variant<SsmInferenceResult,
+      Runtime::preregister_task_variant<InferenceResult,
                                         ArgMax::inference_task_beam>(
           registrar, "ArgMax Inference Task Beam");
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<SsmInferenceResult,
-                                     ArgMax::inference_task_beam>(registrar);
+      runtime
+          ->register_task_variant<InferenceResult, ArgMax::inference_task_beam>(
+              registrar);
     }
   }
   {

@@ -26,7 +26,7 @@ public:
 
   TreeIncMultiHeadSelfAttention(FFModel &model,
                                 LayerID const &layer_guid,
-                                const ParallelTensor _input,
+                                ParallelTensor const _input,
                                 int _embed_dim,
                                 int _num_q_heads,
                                 int _num_kv_heads,
@@ -47,8 +47,8 @@ public:
                                 int _tensor_parallelism_degree,
                                 char const *name);
   TreeIncMultiHeadSelfAttention(FFModel &model,
-                                const ParallelTensor _input,
-                                const ParallelTensor _weight,
+                                ParallelTensor const _input,
+                                ParallelTensor const _weight,
                                 int _embed_dim,
                                 int _num_q_heads,
                                 int _num_kv_heads,
@@ -70,7 +70,7 @@ public:
                                 char const *name);
   TreeIncMultiHeadSelfAttention(FFModel &model,
                                 TreeIncMultiHeadSelfAttention const &other,
-                                const ParallelTensor input,
+                                ParallelTensor const input,
                                 bool allocate_weights);
   TreeIncMultiHeadSelfAttention(FFModel &model,
                                 Params const &params,
@@ -111,7 +111,7 @@ public:
                              CostMetrics &cost_metrics) const override;
 
   static void inference_kernel_wrapper(TreeIncMultiHeadSelfAttentionMeta *m,
-                                       TreeVerifyBatchConfig const *bc,
+                                       BatchConfig const *bc,
                                        int shard_id,
                                        GenericTensorAccessorR const &input,
                                        GenericTensorAccessorR const &weight,
@@ -146,7 +146,7 @@ public:
 public:
   int num_active_tokens;
   Realm::RegionInstance committed_token_reserve_inst;
-  TreeVerifyBatchConfig::CommittedTokensInfo *committed_token_infos;
+  BatchConfig::CommittedTokensInfo *committed_token_infos;
   BatchConfig::BitMask *causalMask;
 };
 

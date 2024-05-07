@@ -61,10 +61,9 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_single_dataloader_t, SingleDataLoader *);
   // inference
   FF_NEW_OPAQUE_WRAPPER(flexflow_batch_config_t, BatchConfig *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_tree_verify_batch_config_t,
-                        TreeVerifyBatchConfig *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_beam_search_batch_config_t,
-                        TreeSearchBatchConfig *);
+  //   FF_NEW_OPAQUE_WRAPPER(flexflow_tree_verify_batch_config_t, BatchConfig
+  //   *); FF_NEW_OPAQUE_WRAPPER(flexflow_beam_search_batch_config_t,
+  //   BatchConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_inference_manager_t, InferenceManager *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_request_manager_t, RequestManager *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_file_data_loader_t, FileDataLoader *);
@@ -2527,37 +2526,37 @@ void flexflow_batch_config_destroy(flexflow_batch_config_t handle_) {
 // TreeVerifyBatchConfig
 // -----------------------------------------------------------------------
 
-flexflow_tree_verify_batch_config_t
-    flexflow_tree_verify_batch_config_create(void) {
-  TreeVerifyBatchConfig *config = new TreeVerifyBatchConfig();
-  DEBUG_PRINT("[TreeVerifyBatchConfig] new %p", config);
-  return FFCObjectWrapper::wrap(config);
-}
+// flexflow_tree_verify_batch_config_t
+//     flexflow_tree_verify_batch_config_create(void) {
+//   BatchConfig *config = new BatchConfig();
+//   DEBUG_PRINT("[BatchConfig] new %p", config);
+//   return FFCObjectWrapper::wrap(config);
+// }
 
-void flexflow_tree_verify_batch_config_destroy(
-    flexflow_tree_verify_batch_config_t handle_) {
-  TreeVerifyBatchConfig *handle = FFCObjectWrapper::unwrap(handle_);
-  DEBUG_PRINT("[TreeVerifyBatchConfig] delete %p", handle);
-  delete handle;
-}
+// void flexflow_tree_verify_batch_config_destroy(
+//     flexflow_tree_verify_batch_config_t handle_) {
+//   BatchConfig *handle = FFCObjectWrapper::unwrap(handle_);
+//   DEBUG_PRINT("[BatchConfig] delete %p", handle);
+//   delete handle;
+// }
 
 // -----------------------------------------------------------------------
 // BeamSearchBatchConfig
 // -----------------------------------------------------------------------
 
-flexflow_beam_search_batch_config_t
-    flexflow_beam_search_batch_config_create(void) {
-  TreeSearchBatchConfig *config = new TreeSearchBatchConfig();
-  DEBUG_PRINT("[BeamSearchBatchConfig] new %p", config);
-  return FFCObjectWrapper::wrap(config);
-}
+// flexflow_beam_search_batch_config_t
+//     flexflow_beam_search_batch_config_create(void) {
+//   BatchConfig *config = new BatchConfig();
+//   DEBUG_PRINT("[BeamSearchBatchConfig] new %p", config);
+//   return FFCObjectWrapper::wrap(config);
+// }
 
-void flexflow_beam_search_batch_config_destroy(
-    flexflow_beam_search_batch_config_t handle_) {
-  TreeSearchBatchConfig *handle = FFCObjectWrapper::unwrap(handle_);
-  DEBUG_PRINT("[BeamSearchBatchConfig] delete %p", handle);
-  delete handle;
-}
+// void flexflow_beam_search_batch_config_destroy(
+//     flexflow_beam_search_batch_config_t handle_) {
+//   BatchConfig *handle = FFCObjectWrapper::unwrap(handle_);
+//   DEBUG_PRINT("[BeamSearchBatchConfig] delete %p", handle);
+//   delete handle;
+// }
 
 // -----------------------------------------------------------------------
 // RequestManager

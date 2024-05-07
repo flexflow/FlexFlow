@@ -36,7 +36,8 @@ __global__ void commit_tokens_kernel(
     DT const *devQKVProjArray,
     DT *kCache_ptr,
     DT *vCache_ptr,
-    /* Reserved: BatchConfig Updated, leave HIP code to be updated */TreeVerifyBatchConfig::CommittedTokensInfo const *committedTokenInfos,
+    /* Reserved: BatchConfig Updated, leave HIP code to be updated */
+    BatchConfig::CommittedTokensInfo const *committedTokenInfos,
     int qProjSize,
     int kProjSize,
     int vProjSize,
@@ -70,7 +71,7 @@ __global__ void commit_tokens_kernel(
 
 template <typename DT>
 void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
-                   TreeVerifyBatchConfig const *bc,
+                   BatchConfig const *bc,
                    hipStream_t stream) {
   int num_tokens_to_commit = bc->num_tokens_to_commit;
   if (num_tokens_to_commit > 0) {
@@ -96,19 +97,19 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
-__global__ void update_tree_branch_kv_cache(
-    DT const *devQKVProjArray,
-    DT *kCache_ptr,
-    DT *vCache_ptr,
-    TreeVerifyBatchConfig::PerTokenInfo const *tokenInfos,
-    int qProjSize,
-    int kProjSize,
-    int vProjSize,
-    int num_tokens_in_branch,
-    int processed_tokens_in_batch,
-    int total_tokens_in_batch,
-    int max_seq_len,
-    int hidden_size) {
+__global__ void
+    update_tree_branch_kv_cache(DT const *devQKVProjArray,
+                                DT *kCache_ptr,
+                                DT *vCache_ptr,
+                                BatchConfig::PerTokenInfo const *tokenInfos,
+                                int qProjSize,
+                                int kProjSize,
+                                int vProjSize,
+                                int num_tokens_in_branch,
+                                int processed_tokens_in_batch,
+                                int total_tokens_in_batch,
+                                int max_seq_len,
+                                int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_tokens_in_branch * hidden_size * 2) {
     int token_idx = i / (hidden_size * KV_WEIGHT_NUM);
     int offset = i % hidden_size;
@@ -146,7 +147,7 @@ __global__ void tree_fill_entries_above_diagonal(DT *matrix,
 
 template <typename DT>
 void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
-                              TreeVerifyBatchConfig const *bc,
+                              BatchConfig const *bc,
                               int shard_id,
                               DT *output_ptr,
                               DT const *bias_ptr,
@@ -437,7 +438,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
 
 template <typename DT>
 void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
-                      TreeVerifyBatchConfig const *bc,
+                      BatchConfig const *bc,
                       int shard_id,
                       DT const *input_ptr,
                       DT const *weight_ptr,
@@ -464,13 +465,12 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // Note that m->num_active_tokens stores the number of active
   // tokens in the previous batch, which is needed for committing
   // keys/values to the key-value cache
-  checkCUDA(
-      hipMemcpyAsync(m->committed_token_infos,
-                     &(bc->committed_tokens),
-                     bc->num_tokens_to_commit *
-                         sizeof(TreeVerifyBatchConfig::CommittedTokensInfo),
-                     hipMemcpyHostToDevice,
-                     stream));
+  checkCUDA(hipMemcpyAsync(m->committed_token_infos,
+                           &(bc->committed_tokens),
+                           bc->num_tokens_to_commit *
+                               sizeof(BatchConfig::CommittedTokensInfo),
+                           hipMemcpyHostToDevice,
+                           stream));
   commit_tokens<DT>(m, bc, stream);
 
   // After commit we update m->num_active_tokens to be the number of active
@@ -486,7 +486,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   checkCUDA(hipMemcpyAsync(m->token_infos,
                            &(bc->tokensInfo),
                            bc->num_active_tokens() *
-                               sizeof(TreeVerifyBatchConfig::PerTokenInfo),
+                               sizeof(BatchConfig::PerTokenInfo),
                            hipMemcpyHostToDevice,
                            stream));
   // phase 1: Implement kernel to compute KQV for input tokens
@@ -515,7 +515,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 /*static*/
 void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     TreeIncMultiHeadSelfAttentionMeta *m,
-    TreeVerifyBatchConfig const *bc,
+    BatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,
@@ -631,24 +631,22 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   {
     int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
     size_t committed_tokeninfo_size = max_tokens_per_batch;
-    size_t total_size = committed_tokeninfo_size *
-                        sizeof(TreeVerifyBatchConfig::CommittedTokensInfo);
+    size_t total_size =
+        committed_tokeninfo_size * sizeof(BatchConfig::CommittedTokensInfo);
     if (offload) {
       // assert that we have enough reserved work space left
       assert(gpu_mem_allocator.reserved_total_size -
                  gpu_mem_allocator.reserved_allocated_size >=
              total_size);
       committed_token_infos =
-          gpu_mem_allocator
-              .allocate_reserved<TreeVerifyBatchConfig::CommittedTokensInfo>(
-                  committed_tokeninfo_size);
+          gpu_mem_allocator.allocate_reserved<BatchConfig::CommittedTokensInfo>(
+              committed_tokeninfo_size);
     } else {
       gpu_mem_allocator.create_legion_instance(committed_token_reserve_inst,
                                                total_size);
       committed_token_infos =
-          gpu_mem_allocator
-              .allocate_instance<TreeVerifyBatchConfig::CommittedTokensInfo>(
-                  committed_tokeninfo_size);
+          gpu_mem_allocator.allocate_instance<BatchConfig::CommittedTokensInfo>(
+              committed_tokeninfo_size);
     }
   }
 

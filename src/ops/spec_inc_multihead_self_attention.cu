@@ -48,7 +48,8 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
     int const max_seq_length,
     int per_head_size,
     int hidden_size,
-    /* Reserved: BatchConfig Updated */BatchConfig::PerRequestInfo *request_infos,
+    /* Reserved: BatchConfig Updated */
+    BatchConfig::PerRequestInfo *request_infos,
     BatchConfig::BitMask *causalMask,
     bool *request_available) {
 
@@ -86,7 +87,7 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
   // request_idx = re
 
   // BatchConfig::BitMask bitmask = causalMask[requext_idx_in_batch];
-  BatchConfig::BitMask* bitmask = &causalMask[requext_idx_in_batch];
+  BatchConfig::BitMask *bitmask = &causalMask[requext_idx_in_batch];
 
   int const first_step = 0;
 
@@ -100,9 +101,10 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
   int const totalCacheSize =
       bitmask->non_tree_cache_size + bitmask->tree_or_prompt_size;
 
-  int const first_token_idx = request_infos[requext_idx_in_batch].first_token_offset_in_batch;
+  int const first_token_idx =
+      request_infos[requext_idx_in_batch].first_token_offset_in_batch;
 
-  int const tree_branch_num = 
+  int const tree_branch_num =
       request_infos[requext_idx_in_batch].num_tokens_in_batch;
 
   // shared memory objects
@@ -147,7 +149,8 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
           ii * THREADS_PER_KEY * K_VEC_SIZE);
     }
 
-    // int const query_token = bitmask->prompt_size + bitmask->tree_or_prompt_size
+    // int const query_token = bitmask->prompt_size +
+    // bitmask->tree_or_prompt_size
     // -
     //                         1 - tree_branch_num + qi;
     int const query_token = bitmask->tree_or_prompt_size - tree_branch_num + qi;
@@ -172,9 +175,11 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
         // todo add alobi here
         // bool const mask = ti_circ >= totalCacheSize;
         bool const mask = (ti >= bitmask->non_tree_cache_size &&
-                          !test_bit(bitmask->bit_mask, ti - bitmask->non_tree_cache_size, query_token));
-                          // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
-                          //   (1 << query_token))));
+                           !test_bit(bitmask->bit_mask,
+                                     ti - bitmask->non_tree_cache_size,
+                                     query_token));
+        // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
+        //   (1 << query_token))));
 
         // if (head_idx == 0 && ti == 0 && request_idx == 15 && !mask) {
         //   printf("spec inc attn qkqkqk  request id %d,  %.10f, %d\n",
@@ -225,9 +230,11 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
     for (int ti = first_step + tidx; ti < totalCacheSize;
          ti += THREADS_PER_BLOCK) {
       bool const mask = (ti >= bitmask->non_tree_cache_size &&
-                          !test_bit(bitmask->bit_mask, ti - bitmask->non_tree_cache_size, query_token));
-                          // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
-                          //   (1 << query_token))));
+                         !test_bit(bitmask->bit_mask,
+                                   ti - bitmask->non_tree_cache_size,
+                                   query_token));
+      // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
+      //   (1 << query_token))));
       float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
       exp_sum += logit;
       qk_smem[ti - first_step] = mask ? 0.0f : logit;
@@ -262,8 +269,7 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
 
     // The base pointer for the value in the cache buffer.
     DT const *v_cache_batch =
-        value_cache + requext_idx_in_batch * max_seq_length * hidden_size +
-        vi;
+        value_cache + requext_idx_in_batch * max_seq_length * hidden_size + vi;
 
     if (Dh == Dh_MAX || vi < Dh) {
       for (int ti = first_step + vo; ti < totalCacheSize; ti += V_PER_ITER) {
@@ -273,9 +279,11 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
             v_cache_batch + ti_circ * hidden_size + head_idx * per_head_size);
 
         bool const mask = (ti >= bitmask->non_tree_cache_size &&
-                            !test_bit(bitmask->bit_mask, ti - bitmask->non_tree_cache_size, query_token));
-                            // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
-                            //   (1 << query_token))));
+                           !test_bit(bitmask->bit_mask,
+                                     ti - bitmask->non_tree_cache_size,
+                                     query_token));
+        // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
+        //   (1 << query_token))));
         float logit = mask ? 0.0f : qk_smem[ti - first_step];
         out = FlexFlow::fma(logit, cast_to_float(v), out);
       }
@@ -321,19 +329,19 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
 }
 
 template <typename DT>
-__global__ void spec_inc_store_kv_cache(
-    DT const *devQKVProjArray,
-    DT *kCache_ptr,
-    DT *vCache_ptr,
-    BatchConfig::PerTokenInfo *tokenInfos,
-    BatchConfig::PerRequestInfo *requestInfo,
-    BatchConfig::BitMask *causalMask,
-    int qProjSize,
-    int kProjSize,
-    int vProjSize,
-    int num_tokens,
-    int max_seq_len,
-    int hidden_size) {
+__global__ void
+    spec_inc_store_kv_cache(DT const *devQKVProjArray,
+                            DT *kCache_ptr,
+                            DT *vCache_ptr,
+                            BatchConfig::PerTokenInfo *tokenInfos,
+                            BatchConfig::PerRequestInfo *requestInfo,
+                            BatchConfig::BitMask *causalMask,
+                            int qProjSize,
+                            int kProjSize,
+                            int vProjSize,
+                            int num_tokens,
+                            int max_seq_len,
+                            int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
     int token_idx = i / (hidden_size);
     int offset = i % hidden_size;
@@ -351,12 +359,13 @@ __global__ void spec_inc_store_kv_cache(
         requestInfo[req_id].first_token_offset_in_batch;
 
     // BatchConfig::BitMask bitmask = causalMask[req_id];
-    BatchConfig::BitMask* bitmask = &causalMask[req_id];
+    BatchConfig::BitMask *bitmask = &causalMask[req_id];
 
     // if prompt token -> token id
     // if tree token:
 
-    // int const cache_idx = bitmask->prompt_size + bitmask->non_tree_cache_size +
+    // int const cache_idx = bitmask->prompt_size + bitmask->non_tree_cache_size
+    // +
     //                       bitmask->tree_or_prompt_size - 1 -
     //                       bitmask->current_layer_size + token_idx -
     //                       request_token_offset;
@@ -373,7 +382,7 @@ __global__ void spec_inc_store_kv_cache(
 
 template <typename DT>
 void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
-                            TreeSearchBatchConfig const *bc,
+                            BatchConfig const *bc,
                             cudaStream_t stream) {
   int num_tokens = bc->num_active_tokens();
   if (num_tokens > 0) {
@@ -428,7 +437,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 template <typename DT>
 void compute_spec_inc_attention_kernel_generation(
     SpecIncMultiHeadSelfAttentionMeta const *m,
-    TreeSearchBatchConfig const *bc,
+    BatchConfig const *bc,
     DT *output_ptr,
     cudaStream_t stream) {
   // one block == one head per request
@@ -469,7 +478,7 @@ __global__ void spec_fill_entries_above_diagonal(DT *matrix,
 
 template <typename DT>
 void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
-                                     TreeSearchBatchConfig const *bc,
+                                     BatchConfig const *bc,
                                      int shard_id,
                                      DT *output_ptr,
                                      DT const *bias_ptr,
@@ -711,7 +720,7 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
 
 template <typename DT>
 void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
-                      TreeSearchBatchConfig const *bc,
+                      BatchConfig const *bc,
                       int shard_id,
                       DT const *input_ptr,
                       DT const *weight_ptr,
@@ -754,7 +763,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 /*static*/
 void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     SpecIncMultiHeadSelfAttentionMeta const *m,
-    TreeSearchBatchConfig const *bc,
+    BatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
     GenericTensorAccessorR const &weight,

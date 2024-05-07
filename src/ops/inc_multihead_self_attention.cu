@@ -1366,11 +1366,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       case TREE_VERIFY_MODE: {
         // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_q_heads * kProjSize *
-                         TreeSearchBatchConfig::max_requests_per_batch() *
+                         BatchConfig::max_requests_per_batch() *
                          (BatchConfig::max_sequence_length() +
                           BatchConfig::max_spec_tree_token_num());
         value_cache_size = num_q_heads * vProjSize *
-                           TreeSearchBatchConfig::max_requests_per_batch() *
+                           BatchConfig::max_requests_per_batch() *
                            (BatchConfig::max_sequence_length() +
                             BatchConfig::max_spec_tree_token_num());
         break;

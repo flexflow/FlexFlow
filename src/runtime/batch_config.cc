@@ -25,42 +25,53 @@ LegionRuntime::Logger::Category log_bc("BatchConfig");
 using Legion::Future;
 using Legion::Memory;
 
-BatchConfig::BatchConfig()
-    : num_tokens(0), num_available_requests(0), prompt_phase(false) {
+// BatchConfig::BatchConfig() : model_id(0), inference_mode(INC_DECODING_MODE) {
+//   std::fill(std::begin(request_available), std::end(request_available), 0);
+//   // Don't need to initialize requestInfo ,tokensInfo, causalMask and
+//   // committed_tokens here because they initialize themselves.
+//   // Other fields are already initialized to proper value.
+// }
+
+BatchConfig::BatchConfig(InferenceMode inference_mode_, int model_id_)
+    : model_id(model_id_), inference_mode(inference_mode_) {
   std::fill(std::begin(request_available), std::end(request_available), 0);
-  // Don't need to initialize requestInfo ,tokensInfo, and causalMask
-  // here because they initialize themselves.
+  // Don't need to initialize requestInfo ,tokensInfo, causalMask and
+  // committed_tokens here because they initialize themselves.
+  // Other fields are already initialized to proper value.
 }
 
 /*static*/
+// BatchConfig const *BatchConfig::from_future(BatchConfigFuture const &future)
+// {
+//   BatchConfig const *bc = static_cast<BatchConfig const *>(
+//       Future(future).get_buffer(Memory::SYSTEM_MEM));
+//   // Check future size
+//   if (bc->get_mode() == INC_DECODING_MODE) {
+//     assert(Future(future).get_untyped_size() == sizeof(BatchConfig));
+//   } else if (bc->get_mode() == TREE_SEARCH_MODE) {
+//     assert(Future(future).get_untyped_size() ==
+//     sizeof(TreeSearchBatchConfig));
+//   } else if (bc->get_mode() == TREE_VERIFY_MODE) {
+//     assert(Future(future).get_untyped_size() ==
+//     sizeof(TreeVerifyBatchConfig));
+//   } else {
+//     assert(false && "Unsupported inference mode");
+//   }
+//   return bc;
+// }
+
+/*static*/
 BatchConfig const *BatchConfig::from_future(BatchConfigFuture const &future) {
-  BatchConfig const *bc = static_cast<BatchConfig const *>(
+  return static_cast<BatchConfig const *>(
       Future(future).get_buffer(Memory::SYSTEM_MEM));
-  // Check future size
-  if (bc->get_mode() == INC_DECODING_MODE) {
-    assert(Future(future).get_untyped_size() == sizeof(BatchConfig));
-  } else if (bc->get_mode() == TREE_SEARCH_MODE) {
-    assert(Future(future).get_untyped_size() == sizeof(TreeSearchBatchConfig));
-  } else if (bc->get_mode() == TREE_VERIFY_MODE) {
-    assert(Future(future).get_untyped_size() == sizeof(TreeVerifyBatchConfig));
-  } else {
-    assert(false && "Unsupported inference mode");
-  }
-  return bc;
 }
 
 InferenceMode BatchConfig::get_mode() const {
-  return INC_DECODING_MODE;
+  return inference_mode;
 }
 
 int BatchConfig::num_active_requests() const {
-  int num_requests = 0;
-  for (int i = 0; i < max_requests_per_batch(); i++) {
-    if (request_available[i]) {
-      num_requests++;
-    }
-  }
-  return num_requests;
+  return num_available_requests;
 }
 
 int BatchConfig::num_active_tokens() const {
@@ -95,18 +106,37 @@ int BatchConfig::max_spec_tree_token_num() {
 std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
   os << "@@@@@@@@@@@@@@ Batch Config (mode " << bc.get_mode()
      << ") @@@@@@@@@@@@@@" << std::endl;
-  // Max values
-  os << "Max number of requests: " << bc.max_requests_per_batch() << std::endl;
-  os << "Max number of tokens: " << bc.max_tokens_per_batch() << std::endl;
-  os << "Max sequence length: " << bc.max_sequence_length() << std::endl;
   // Current values
   os << "Number of tokens: " << bc.num_active_tokens() << std::endl;
   os << "Number of requests: " << bc.num_active_requests() << std::endl;
+  os << "Prompt phase: " << bc.prompt_phase << std::endl;
+  os << "Inference mode: ";
+  switch (bc.inference_mode) {
+    case INC_DECODING_MODE:
+      os << "Incremental decoding";
+      break;
+    case TREE_SEARCH_MODE:
+      os << "Tree search";
+      break;
+    case TREE_VERIFY_MODE:
+      os << "Tree verify";
+      break;
+    default:
+      os << "Unknown";
+  }
+  os << std::endl;
+  if (bc.inference_mode == TREE_VERIFY_MODE) {
+    os << "Number of tokens to commit: " << bc.num_tokens_to_commit
+       << std::endl;
+  }
+  if (bc.inference_mode == TREE_SEARCH_MODE) {
+    os << "Model id: " << bc.model_id << std::endl;
+  }
 
   // Per-request info
   os << "Per-request info:\n";
   for (int i = 0; i < bc.max_requests_per_batch(); i++) {
-    if (!bc.request_available[i]) {
+    if (bc.request_available[i]) {
       os << "  Request " << i << ":\n";
       os << "    First token depth in request: "
          << bc.requestsInfo[i].first_token_index_in_request << std::endl;
@@ -127,6 +157,38 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
     os << "    Request index: " << bc.tokensInfo[i].request_index << std::endl;
     os << "    Token id: " << bc.tokensInfo[i].token_id << std::endl;
   }
+
+  if (bc.inference_mode == TREE_VERIFY_MODE) {
+    os << "Committed tokens info:\n";
+    for (int i = 0; i < bc.num_tokens_to_commit; i++) {
+      os << "  Token " << i << ":\n";
+      os << "    Token index: " << bc.committed_tokens[i].token_index
+         << std::endl;
+      os << "    Request index: " << bc.committed_tokens[i].request_index
+         << std::endl;
+      os << "    Token depth: " << bc.committed_tokens[i].token_depth
+         << std::endl;
+    }
+  }
+
+  if (bc.inference_mode == TREE_SEARCH_MODE ||
+      bc.inference_mode == TREE_VERIFY_MODE) {
+    os << "Causal mask:\n";
+    for (int i = 0; i < bc.max_requests_per_batch(); i++) {
+      if (bc.request_available[i]) {
+        os << "  Request " << i << ":\n";
+        os << "    Non tree cache size: "
+           << bc.causalMask[i].non_tree_cache_size << std::endl;
+        os << "    Tree or prompt size: "
+           << bc.causalMask[i].tree_or_prompt_size
+
+           << std::endl;
+        os << "    Current layer size: " << bc.causalMask[i].current_layer_size
+           << std::endl;
+      }
+    }
+  }
+
   os << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
   return os;
 }

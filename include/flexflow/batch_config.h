@@ -28,19 +28,16 @@
 namespace FlexFlow {
 
 class InferenceResult;
-class SsmInferenceResult;
 
 using BatchConfigFuture = Legion::Future;
 using InferenceResultFuture = Legion::Future;
-using TreeSearchBatchConfigFuture = Legion::Future;
-using TreeVerifyBatchConfigFuture = Legion::Future;
-using SsmInferenceResultFuture = Legion::Future;
 
 class BatchConfig {
 public:
   using RequestGuid = size_t;
   using TokenId = int;
-  BatchConfig();
+  BatchConfig(InferenceMode inference_mode = INC_DECODING_MODE,
+              int model_id = 0);
   int num_active_requests() const;
   int num_active_tokens() const;
   static int max_requests_per_batch();
@@ -53,27 +50,40 @@ public:
   void save_to_file(std::string const &filename) const;
   virtual InferenceMode get_mode() const;
   static BatchConfig const *from_future(BatchConfigFuture const &future);
+
   // Maximum possible values for different parameters
   // These maximum values are used for copying BatchConfig
   // across workers
   inline static int const MAX_NUM_REQUESTS = 64;
   inline static int const MAX_NUM_TOKENS = 1024;
   inline static int const MAX_SPEC_TREE_TOKEN_NUM = 64;
+  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3;
+  inline static int const MAX_TREE_DEPTH = 16;
+  inline static int const MAX_K_LOGITS = 16;
 
-  int num_tokens;
-  int num_available_requests;
-  bool prompt_phase;
+  int num_tokens = 0;
+  int num_available_requests = 0;
+  bool prompt_phase = false;
+  int num_tokens_to_commit = 0;
+  int model_id;
+  InferenceMode inference_mode;
 
   struct PerRequestInfo {
-    int first_token_index_in_request = 0;
-    int first_token_offset_in_batch = 0;
+    int first_token_index_in_request = -1;
+    int first_token_offset_in_batch = -1;
     int num_tokens_in_batch = 0;
   };
 
   struct PerTokenInfo {
-    TokenId token_id = 0;
-    int abs_index_in_request = 0;
-    int request_index = 0;
+    TokenId token_id = -1;
+    int abs_index_in_request = -1;
+    int request_index = -1;
+  };
+
+  struct CommittedTokensInfo {
+    int token_index = -1;   // the index of the token in the previous batch
+    int request_index = -1; // request index in the batch
+    int token_depth = -1;   // position of the token in the request's sequence
   };
 
   class BitMask {
@@ -139,65 +149,67 @@ public:
   BitMask causalMask[MAX_NUM_REQUESTS];
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
-
+  CommittedTokensInfo committed_tokens[MAX_NUM_TOKENS];
   bool request_available[MAX_NUM_REQUESTS];
 };
 
-class TreeVerifyBatchConfig : public BatchConfig {
-public:
-  TreeVerifyBatchConfig();
-  ~TreeVerifyBatchConfig();
-  InferenceMode get_mode() const;
-  friend std::ostream &operator<<(std::ostream &os,
-                                  TreeVerifyBatchConfig const &bc);
-  void print() const;
-  void save_to_file(std::string const &filename) const;
-  struct CommittedTokensInfo {
-    int token_index;   // the index of the token in the previous batch
-    int request_index; // request index in the batch
-    int token_depth;   // position of the token in the request's sequence
-  };
+// class TreeVerifyBatchConfig : public BatchConfig {
+// public:
+//   TreeVerifyBatchConfig();
+//   ~TreeVerifyBatchConfig();
+//   InferenceMode get_mode() const;
+//   friend std::ostream &operator<<(std::ostream &os,
+//                                   TreeVerifyBatchConfig const &bc);
+//   void print() const;
+//   void save_to_file(std::string const &filename) const;
+//   struct CommittedTokensInfo {
+//     int token_index;   // the index of the token in the previous batch
+//     int request_index; // request index in the batch
+//     int token_depth;   // position of the token in the request's sequence
+//   };
 
-  int num_tokens_to_commit = 0;
-  CommittedTokensInfo committed_tokens[MAX_NUM_TOKENS];
-};
+//   int num_tokens_to_commit = 0;
+//   CommittedTokensInfo committed_tokens[MAX_NUM_TOKENS];
+// };
 
 struct InferenceResult {
-  static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
-  BatchConfig::TokenId token_ids[MAX_NUM_TOKENS];
-  virtual ~InferenceResult() = default;
+  BatchConfig::TokenId token_ids[BatchConfig::MAX_NUM_TOKENS *
+                                 BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+  float probs[BatchConfig::MAX_NUM_TOKENS *
+              BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+  float topk_logits[BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_K_LOGITS];
 };
 
-class TreeSearchBatchConfig : public BatchConfig {
-public:
-  TreeSearchBatchConfig();
-  TreeSearchBatchConfig(int model_id);
-  TreeSearchBatchConfig(TreeSearchBatchConfig const &other, int model_id);
-  InferenceMode get_mode() const;
+// class TreeSearchBatchConfig : public BatchConfig {
+// public:
+//   TreeSearchBatchConfig();
+//   TreeSearchBatchConfig(int model_id);
+//   TreeSearchBatchConfig(TreeSearchBatchConfig const &other, int model_id);
+//   InferenceMode get_mode() const;
 
-  ~TreeSearchBatchConfig();
+//   ~TreeSearchBatchConfig();
 
-  friend std::ostream &operator<<(std::ostream &os,
-                                  TreeSearchBatchConfig const &bc);
-  void print() const;
-  void save_to_file(std::string const &filename) const;
+//   friend std::ostream &operator<<(std::ostream &os,
+//                                   TreeSearchBatchConfig const &bc);
+//   void print() const;
+//   void save_to_file(std::string const &filename) const;
 
-  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3;
-  inline static int const MAX_TREE_DEPTH = 16;
+//   inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3;
+//   inline static int const MAX_TREE_DEPTH = 16;
 
-  // how many requests is in speculative phase
-  int model_id;
-};
+//   // how many requests is in speculative phase
+//   int model_id;
+// };
 
-class SsmInferenceResult : public InferenceResult {
-public:
-  BatchConfig::TokenId
-      token_ids[MAX_NUM_TOKENS *
-                TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-  float probs[MAX_NUM_TOKENS *
-              TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-  int parent_id[MAX_NUM_TOKENS *
-                TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-};
+// class SsmInferenceResult : public InferenceResult {
+// public:
+//   BatchConfig::TokenId
+//       token_ids[MAX_NUM_TOKENS *
+//                 TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+//   float probs[MAX_NUM_TOKENS *
+//               TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+//   int parent_id[MAX_NUM_TOKENS *
+//                 TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+// };
 
 }; // namespace FlexFlow
