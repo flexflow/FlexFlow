@@ -1097,11 +1097,8 @@ bool RequestManager::update_ssm_inference_results(
       // This means that the parent layer is empty
       continue;
     } else {
-      auto parent_layer_iter =
-          token_tree.tree_layers.end(); // The iterator after the last element
-      --parent_layer_iter;
       std::list<std::shared_ptr<TokenTreeNode>> &parent_tree_layer =
-          *parent_layer_iter;
+          token_tree.tree_layers.back();
       int parent_pos = 0;
       //   for (auto &parent_it = parent_tree_layer.begin();
       //        parent_it != parent_tree_layer.end();
@@ -1118,14 +1115,24 @@ bool RequestManager::update_ssm_inference_results(
           // Parent token is not pruned
           for (int child_idx = 0; child_idx < num_branches; child_idx++) {
             float parent_log_prob = parent_ptr->log_accumulated_prob;
+            std::cout << "Probability: "
+                      << ssm_inference_result.probs[result_index] << std::endl;
+            std::cout << "Log Probability: "
+                      << log(ssm_inference_result.probs[result_index])
+                      << std::endl;
+            assert(parent_log_prob != -std::numeric_limits<float>::infinity() &&
+                   "Parent log probability should not be -inf.");
+            assert(log(ssm_inference_result.probs[result_index]) !=
+                       -std::numeric_limits<float>::infinity() &&
+                   "Child log probability should not be -inf.");
             token_added_to_spec_tree =
                 token_added_to_spec_tree ||
                 add_token_to_spec_token_tree(
                     guid,
                     ssm_inference_result.token_ids[result_index],
+                    parent_pos,
                     log(ssm_inference_result.probs[result_index]) +
-                        parent_log_prob,
-                    parent_pos);
+                        parent_log_prob);
             result_index++;
           }
         }
@@ -1689,6 +1696,12 @@ bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
   // This method assumes only one small model is used for speculation
   // This method is called by update_ssm_inference_results()
 
+  if (verbose) {
+    std::cout << "add_token_to_spec_token_tree: guid=" << guid
+              << " token_id=" << token_id << " parent_pos=" << parent_pos
+              << " log_accumulated_prob=" << log_accumulated_prob << std::endl;
+  }
+
   // This is called after the first small model inference
   assert(current_speculation_step >= 1 &&
          "The current speculation step should be no less than 1");
@@ -1777,7 +1790,7 @@ bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
   if (add_new_node) {
     // Add the new node to the pool and the last layer of the speculation tree
     auto node_ptr = std::make_shared<TokenTreeNode>(
-        token_id, parent_pos, log_accumulated_prob);
+        token_id, log_accumulated_prob, parent_pos);
     token_tree_node_pool.push(std::make_pair(node_ptr, guid));
     speculative_token_tree.tree_layers.back().push_back(node_ptr);
     speculative_token_tree.tree_size++;
