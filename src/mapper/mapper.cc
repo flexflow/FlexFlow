@@ -487,6 +487,25 @@ void FFMapper::premap_task(const MapperContext ctx,
   assert(false);
 }
 
+std::string humanReadableSize(size_t size, bool mb = false) {
+  assert(size >= 0);
+  char const *units[] = {"B", "KiB", "MiB", "GiB", "TiB"};
+  int i = 0;
+  double finalSize = size;
+  if (mb) {
+    finalSize /= 1024 * 1024;
+    i = 2;
+  } else {
+    while (finalSize >= 1024 && i < 4) {
+      finalSize /= 1024;
+      i++;
+    }
+  }
+  char buffer[256];
+  snprintf(buffer, sizeof(buffer), "%.2lf %s", finalSize, units[i]);
+  return std::string(buffer);
+}
+
 void FFMapper::map_task(const MapperContext ctx,
                         Task const &task,
                         MapTaskInput const &input,
@@ -501,7 +520,9 @@ void FFMapper::map_task(const MapperContext ctx,
   output.task_priority = 0;
   output.postmap_task = false;
   if (task.target_proc.address_space() != node_id) {
-    assert(false);
+    if (enable_control_replication) {
+      assert(false);
+    }
     output.target_procs.push_back(task.target_proc);
   } else if (task.target_proc.kind() == Processor::TOC_PROC) {
     output.target_procs.push_back(task.target_proc);
@@ -635,16 +656,19 @@ void FFMapper::map_task(const MapperContext ctx,
       }
       // Report failed to creation
       log_ff_mapper.error(
-          "FlexFlow failed allocation of size %zd bytes for "
-          "region requirement %d of task %s (UID %lld) in memory " IDFMT
-          " with kind %d for processor " IDFMT ".",
-          footprint,
+          "Out of memory! FlexFlow failed to reserve block of size %s"
+          " for region requirement %d of task %s (UID %lld) in %s memory (id: "
+          "%llx)"
+          " for processor id: %llx."
+          " Total pre-allocated memory capacity of this kind: %s.",
+          humanReadableSize(footprint).c_str(),
           idx,
           task.get_task_name(),
           task.get_unique_id(),
+          Legion::Mapping::Utilities::to_string(target_mem.kind()),
           target_mem.id,
-          target_mem.kind(),
-          task.target_proc.id);
+          task.target_proc.id,
+          humanReadableSize(target_mem.capacity(), true).c_str());
       assert(false);
     } else {
       output.chosen_instances[idx].push_back(result);
@@ -927,15 +951,17 @@ void FFMapper::map_inline(const MapperContext ctx,
                              created,
                              &footprint)) {
     log_ff_mapper.error(
-        "FlexFlow Mapper failed allocation of size %zd bytes"
+        "Out of memory! FlexFlow failed to reserve block of size %s"
         " for region requirement of inline mapping in task %s (UID %lld)"
-        " in memory " IDFMT "for processor " IDFMT ".",
-        footprint,
+        " in %s memory (id: %llx) for processor id: %llx."
+        " Total pre-allocated memory capacity of this kind: %s.",
+        humanReadableSize(footprint).c_str(),
         inline_op.parent_task->get_task_name(),
         inline_op.parent_task->get_unique_id(),
+        Legion::Mapping::Utilities::to_string(target_memory.kind()),
         target_memory.id,
-        inline_op.parent_task->current_proc.id);
-    printf("target_memory.kind() = %d\n", target_memory.kind());
+        inline_op.parent_task->current_proc.id,
+        humanReadableSize(target_memory.capacity(), true).c_str());
     assert(false);
   } else {
     output.chosen_instances.push_back(result);

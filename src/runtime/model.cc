@@ -613,7 +613,9 @@ void Op::finish_nccl_comms_task(Task const *task,
                                 Context ctx,
                                 Runtime *runtime) {
   ncclComm_t comm = *((ncclComm_t *)task->local_args);
+#if (NCCL_MAJOR == 2) && (NCCL_MINOR >= 14)
   checkNCCL(ncclCommFinalize(comm));
+#endif
   checkNCCL(ncclCommDestroy(comm));
 }
 #endif
@@ -4132,6 +4134,7 @@ struct DefaultConfig {
   // const static int iterations = 1;
   const static int batchSize = 64;
   const static bool profiling = false;
+  const static bool benchmarking = false;
   const static bool inference_debugging = false;
   constexpr static float learningRate = 0.01f;
   constexpr static float weightDecay = 0.0001f;
@@ -4173,6 +4176,7 @@ FFConfig::FFConfig() {
   // iterations = DefaultConfig::iterations;
   batchSize = DefaultConfig::batchSize;
   profiling = DefaultConfig::profiling;
+  benchmarking = DefaultConfig::benchmarking;
   inference_debugging = DefaultConfig::inference_debugging;
   learningRate = DefaultConfig::learningRate;
   weightDecay = DefaultConfig::weightDecay;
@@ -4215,7 +4219,7 @@ FFConfig::FFConfig() {
   export_strategy_computation_graph_file = "";
   dataset_path = "";
   substitution_json_path = tl::nullopt;
-  syntheticInput = false;
+  benchmarking = false;
   perform_fusion = false;
   base_optimize_threshold = DefaultConfig::base_optimize_threshold;
   perform_memory_search = false;
@@ -4378,6 +4382,10 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if (!strcmp(argv[i], "--profiling")) {
       profiling = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--benchmarking")) {
+      benchmarking = true;
       continue;
     }
     if (!strcmp(argv[i], "--inference-debugging")) {

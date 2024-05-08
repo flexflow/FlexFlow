@@ -40,19 +40,33 @@ void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
                       std::string &llm_model_name,
+                      std::string &peft_model_name,
                       bool &use_full_precision,
                       bool &verbose,
                       bool &do_sample,
+                      bool &enable_peft,
                       float &temperature,
                       float &topp,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
-                      int &max_sequence_length) {
+                      int &max_sequence_length,
+                      int &max_requests_to_run) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
       llm_model_name = std::string(argv[++i]);
       for (char &c : llm_model_name) {
+        c = std::tolower(c);
+      }
+      continue;
+    }
+    if (!strcmp(argv[i], "-enable-peft")) {
+      enable_peft = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "-peft-model")) {
+      peft_model_name = std::string(argv[++i]);
+      for (char &c : peft_model_name) {
         c = std::tolower(c);
       }
       continue;
@@ -105,11 +119,13 @@ void parse_input_args(char **argv,
       max_sequence_length = std::stoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--max-requests-to-run")) {
+      max_requests_to_run = std::stoi(argv[++i]);
+      continue;
+    }
   }
   if (paths.cache_folder_path.empty()) {
-    char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
-    paths.cache_folder_path = ff_cache_path ? std::string(ff_cache_path)
-                                            : std::string("~/.cache/flexflow");
+    paths.cache_folder_path = "~/.cache/flexflow";
   }
   // Expand ~ to the home directory if needed
   wordexp_t p;
@@ -127,15 +143,18 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false && "Doesn't support quantization in non-offload mode");
   }
   FilePaths file_paths;
-  std::string llm_model_name;
+  std::string llm_model_name, peft_model_name;
   bool use_full_precision = false;
   bool verbose = false;
   bool do_sample = false;
+  bool enable_peft = false;
   float temperature = 0.0f;
   float topp = 0.0f;
   int max_requests_per_batch = 8;
   int max_tokens_per_batch = 128;
   int max_sequence_length = 256;
+  int max_requests_to_run = 1000000000;
+  bool enable_peft_finetuning = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -144,15 +163,17 @@ void FlexFlow::top_level_task(Task const *task,
                    argc,
                    file_paths,
                    llm_model_name,
+                   peft_model_name,
                    use_full_precision,
                    verbose,
                    do_sample,
+                   enable_peft,
                    temperature,
                    topp,
                    max_requests_per_batch,
                    max_tokens_per_batch,
-                   max_sequence_length);
-
+                   max_sequence_length,
+                   max_requests_to_run);
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
@@ -172,6 +193,14 @@ void FlexFlow::top_level_task(Task const *task,
               << std::endl;
     assert(false);
   }
+  if (enable_peft && peft_model_name.empty()) {
+    std::cout << "PEFT enabled, but no PEFT model id passed" << std::endl;
+    assert(false);
+  } else if (!enable_peft && !peft_model_name.empty()) {
+    std::cout << "PEFT model id passed, but PEFT is not enabled" << std::endl;
+    assert(false);
+  }
+
   json model_config = json::parse(config_file_handle,
                                   /*parser_callback_t */ nullptr,
                                   /*allow_exceptions */ true,
@@ -206,14 +235,23 @@ void FlexFlow::top_level_task(Task const *task,
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
 
+  // load PEFT config
+  LoraLinearConfig peft_config =
+      peft_model_name.empty()
+          ? LoraLinearConfig::EmptyConfig
+          : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
+
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
-  rm->set_max_requests_per_batch(max_requests_per_batch);
+  rm->set_max_requests_per_batch(
+      max_requests_per_batch +
+      (int)enable_peft_finetuning); // add one slot for finetuning if needed
   rm->set_max_tokens_per_batch(max_tokens_per_batch);
   rm->set_max_sequence_length(max_sequence_length);
   rm->register_tokenizer(
       model_type, bos_token_id, eos_token_id, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);
+  rm->set_enable_peft_finetuning(enable_peft_finetuning);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
   if (model_type == ModelType::LLAMA) {
@@ -253,10 +291,20 @@ void FlexFlow::top_level_task(Task const *task,
     assert(false && "unknow model type");
   }
 
+  // Add PEFT layer
+  PEFTModelID *peft_model_id = nullptr;
+  if (!peft_model_name.empty()) {
+    peft_model_id = model.add_lora_layer(peft_config);
+  }
+
+  // Start background server
   rm->start_background_server(&model);
 
-  int total_num_requests = 0;
+  // Run workload
   {
+    std::vector<Request> requests;
+
+    // Add inference requests
     using json = nlohmann::json;
     std::ifstream file_handle(file_paths.prompt_file_path);
     assert(file_handle.good() && "Prompt file does not exist.");
@@ -264,17 +312,31 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
-
-    std::vector<Request> requests;
-    for (auto &prompt : prompt_json) {
-      std::string text = prompt.get<std::string>();
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-      Request inference_req;
-      inference_req.prompt = text;
-      inference_req.max_sequence_length = 128;
-      requests.push_back(inference_req);
-      total_num_requests++;
+    std::vector<std::pair<int, int>> prompts;
+    int index = 0;
+    for (auto &entry : prompt_json) {
+      if (index >= max_requests_to_run) {
+        break;
+      }
+      int prompt_length = entry["human"];
+      int sequence_length = entry["gpt"];
+      assert(prompt_length + sequence_length <= max_sequence_length &&
+             "Prompt + sequence length exceeds max sequence length");
+      prompts.push_back(std::make_pair(prompt_length, sequence_length));
+      index++;
     }
+    printf("Total number of prompts: %ld", prompts.size());
+    for (auto &prompt : prompts) {
+      // printf("Prompt length: %d, sequence length: %d\n", prompt_length,
+      // sequence_length);
+      Request inference_req;
+      inference_req.benchmarking_tokens = prompt.first;
+      inference_req.max_sequence_length = prompt.second + prompt.first;
+      inference_req.peft_model_id =
+          (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
+      requests.push_back(inference_req);
+    }
+
     std::vector<GenerationResult> result = model.generate(requests);
   }
 
@@ -287,7 +349,10 @@ void FlexFlow::top_level_task(Task const *task,
     future.get_void_result();
   }
 
-  // float* data
+  if (peft_model_id != nullptr) {
+    free(peft_model_id);
+  }
+
   std::cout << "----------inference finished--------------" << std::endl;
 
   // free tokenizer space in memory

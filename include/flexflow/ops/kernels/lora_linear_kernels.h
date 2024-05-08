@@ -23,6 +23,7 @@ public:
   void *low_rank_activation;
   void *input_activation;
   std::unordered_map<PEFTModelID, LoraLinearWeight> model_weights;
+  size_t allocated_peft_buffer_size1 = 0, allocated_peft_buffer_size2 = 0;
 };
 
 namespace Kernels {

@@ -40,8 +40,21 @@ void RequestManager::load_tokens_task(
     printf("Warning: too many tokens in prompt, only load up to %d tokens\n",
            BatchConfig::max_tokens_per_batch());
     printf("Got: %d tokens\n", batch_config->num_tokens);
+
+    // pid_t pid = getpid();
+    // std::string filename = "bc_" + std::to_string(pid) + ".txt";
+    // std::ofstream file(filename);
+    // if (file.is_open()) {
+    //     file << *batch_config << std::endl;
+    //     file.close();
+    //     std::cout << "String written to file: " << filename << std::endl;
+    // } else {
+    //     std::cout << "Unable to open file: " << filename << std::endl;
+    // }
+
   } else if (batch_config->num_tokens >
-             BatchConfig::max_verify_tokens_per_batch()) {
+                 BatchConfig::max_verify_tokens_per_batch() &&
+             batch_config->get_mode() != INC_DECODING_MODE) {
     printf("Warning: Speculative decoding. too many tokens in prompt, only "
            "load up to %d tokens\n",
            BatchConfig::max_verify_tokens_per_batch());

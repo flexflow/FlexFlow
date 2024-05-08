@@ -33,6 +33,7 @@ LegionRuntime::Logger::Category log_app("llama");
 struct FilePaths {
   std::string cache_folder_path;
   std::string prompt_file_path;
+  std::string dataset_file_path;
   std::string output_file_path;
 };
 
@@ -78,6 +79,11 @@ void parse_input_args(char **argv,
     // prompts
     if (!strcmp(argv[i], "-prompt")) {
       paths.prompt_file_path = std::string(argv[++i]);
+      continue;
+    }
+    // dataset for finetuning
+    if (!strcmp(argv[i], "-finetuning-dataset")) {
+      paths.dataset_file_path = std::string(argv[++i]);
       continue;
     }
     // output file
@@ -145,9 +151,10 @@ void FlexFlow::top_level_task(Task const *task,
   bool enable_peft = false;
   float temperature = 0.0f;
   float topp = 0.0f;
-  int max_requests_per_batch = 8;
+  int max_requests_per_batch = 1;
   int max_tokens_per_batch = 128;
   int max_sequence_length = 256;
+  bool enable_peft_finetuning = true;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -235,12 +242,15 @@ void FlexFlow::top_level_task(Task const *task,
 
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
-  rm->set_max_requests_per_batch(max_requests_per_batch);
+  rm->set_max_requests_per_batch(
+      max_requests_per_batch +
+      (int)enable_peft_finetuning); // add one slot for finetuning if needed
   rm->set_max_tokens_per_batch(max_tokens_per_batch);
   rm->set_max_sequence_length(max_sequence_length);
   rm->register_tokenizer(
       model_type, bos_token_id, eos_token_id, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);
+  rm->set_enable_peft_finetuning(enable_peft_finetuning);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
   if (model_type == ModelType::LLAMA) {
@@ -289,40 +299,47 @@ void FlexFlow::top_level_task(Task const *task,
   // Start background server
   rm->start_background_server(&model);
 
-  int total_num_requests = 0;
+  // Run workload
   {
     std::vector<Request> requests;
 
     // Add inference requests
-    using json = nlohmann::json;
-    std::ifstream file_handle(file_paths.prompt_file_path);
-    assert(file_handle.good() && "Prompt file does not exist.");
-    json prompt_json = json::parse(file_handle,
-                                   /*parser_callback_t */ nullptr,
-                                   /*allow_exceptions */ true,
-                                   /*ignore_comments */ true);
-    // for (auto &prompt : prompt_json) {
-    //   std::string text = prompt.get<std::string>();
-    //   printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-    //   Request inference_req;
-    //   inference_req.prompt = text;
-    //   inference_req.max_sequence_length = 128;
-    //   inference_req.peft_model_id = peft_model_id;
-    //   requests.push_back(inference_req);
-    //   total_num_requests++;
-    // }
+    if (!file_paths.prompt_file_path.empty()) {
+      using json = nlohmann::json;
+      std::ifstream file_handle(file_paths.prompt_file_path);
+      assert(file_handle.good() && "Prompt file does not exist.");
+      json prompt_json = json::parse(file_handle,
+                                     /*parser_callback_t */ nullptr,
+                                     /*allow_exceptions */ true,
+                                     /*ignore_comments */ true);
+      int total_num_requests = 0;
+      for (auto &prompt : prompt_json) {
+        std::string text = prompt.get<std::string>();
+        printf("Inference prompt[%d]: %s\n", total_num_requests, text.c_str());
+        Request inference_req;
+        inference_req.prompt = text;
+        inference_req.max_sequence_length = 128;
+        inference_req.peft_model_id =
+            (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
+        requests.push_back(inference_req);
+        total_num_requests++;
+      }
+    }
 
     // Add fine-tuning request
-    Request fine_tuning_req;
-    fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
-    fine_tuning_req.max_sequence_length = 128;
-    fine_tuning_req.peft_model_id =
-        (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
-    fine_tuning_req.dataset_filepath = file_paths.prompt_file_path;
-    fine_tuning_req.max_training_steps = 1;
-    requests.push_back(fine_tuning_req);
-    total_num_requests++;
-
+    if (enable_peft_finetuning) {
+      assert(!file_paths.dataset_file_path.empty() &&
+             "Dataset file path is required for fine-tuning.");
+      printf("Finetuning request with dataset %s\n",
+             file_paths.dataset_file_path.c_str());
+      Request fine_tuning_req;
+      fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
+      fine_tuning_req.peft_model_id =
+          (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
+      fine_tuning_req.dataset_filepath = file_paths.dataset_file_path;
+      fine_tuning_req.max_training_steps = 1;
+      requests.push_back(fine_tuning_req);
+    }
     std::vector<GenerationResult> result = model.generate(requests);
   }
 
@@ -339,7 +356,6 @@ void FlexFlow::top_level_task(Task const *task,
     free(peft_model_id);
   }
 
-  // float* data
   std::cout << "----------inference finished--------------" << std::endl;
 
   // free tokenizer space in memory

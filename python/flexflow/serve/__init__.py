@@ -57,6 +57,7 @@ def init(
     peft_activation_reserve_space_size: Optional[int] = None,
     peft_weight_reserve_space_size: Optional[int] = None,
     profiling: Optional[bool] = None,
+    benchmarking: Optional[bool] = None,
     inference_debugging: Optional[bool] = None,
     fusion: Optional[bool] = None,
 ):
@@ -87,6 +88,7 @@ def init(
     - peft_activation_reserve_space_size: the space (in MB) to reserve on GPU for PEFT activations, default to 1 GB
     - peft_weight_reserve_space_size: the space (in MB) to reserve on GPU for PEFT weights, default to 1 GB
     - profiling: whether to enable the FlexFlow profiling mode, defaults to False
+    - benchmarking: whether to run benchmaking only, without loading real weights, defaults to False
     - inference_debugging: whether to run inference in debugging mode, saving all inputs/outputs/weights to file, defaults to False
     - fusion: whether to enable the FlexFlow operator fusion optimization, defaults to True
 
@@ -127,6 +129,8 @@ def init(
     :type peft_weight_reserve_space_size: Optional[int], optional
     :param profiling: whether to enable the FlexFlow profiling mode, defaults to False
     :type profiling: Optional[bool], optional
+    :param benchmarking: whether to run benchmaking only, without loading real weights, defaults to False
+    :type benchmarking: Optional[bool], optional
     :param inference_debugging: whether to run inference in debugging mode, saving all inputs/outputs/weights to file, defaults to False
     :type inference_debugging: Optional[bool], optional
     :param fusion: whether to enable the FlexFlow operator fusion optimization, defaults to True
@@ -156,6 +160,7 @@ def init(
             peft_activation_reserve_space_size is not None,
             peft_weight_reserve_space_size is not None,
             profiling is not None,
+            benchmarking is not None,
             inference_debugging is not None,
             fusion is not None,
         ]
@@ -184,6 +189,7 @@ def init(
             "peft_activation_reserve_space_size": peft_activation_reserve_space_size,
             "peft_weight_reserve_space_size": peft_weight_reserve_space_size,
             "profiling": profiling,
+            "benchmarking": benchmarking,
             "inference_debugging": inference_debugging,
             "fusion": fusion,
         }
@@ -236,6 +242,8 @@ def init(
         configs_dict["peft_weight_reserve_space_size"] = 1024**3
     if configs_dict.get("profiling", None) is None:
         configs_dict["profiling"] = False
+    if configs_dict.get("benchmarking", None) is None:
+        configs_dict["benchmarking"] = False
     if configs_dict.get("inference_debugging", None) is None:
         configs_dict["inference_debugging"] = False
     if configs_dict.get("fusion", None) is None:

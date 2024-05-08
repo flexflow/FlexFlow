@@ -35,7 +35,7 @@ If you run into any issue during the install, or if you would like to use the C+
 docker run --gpus all -it --rm --shm-size=8g ghcr.io/flexflow/flexflow-cuda-12.0:latest
 ```
 
-To download a Docker container for a backend other than CUDA v12.0, you can replace the `cuda-12.0` suffix with any of the following backends: `cuda-11.1`, `cuda-11.2`, `cuda-11.3`, `cuda-11.4`, `cuda-11.5`, `cuda-11.6`, `cuda-11.7`, `cuda-11.8`, and `hip_rocm-5.3`, `hip_rocm-5.4`, `hip_rocm-5.5`, `hip_rocm-5.6`). More info on the Docker images, with instructions to build a new image from source, or run with additional configurations, can be found [here](./docker/README.md).
+To download a Docker container for a backend other than CUDA v12.0, you can replace the `cuda-12.0` suffix with any of the following backends: `cuda-11.1`, `cuda-11.6`, `cuda-11.7`, `cuda-11.8`, `cuda-12.0`, `cuda-12.1`, `cuda-12.1`, and `hip_rocm-5.3`, `hip_rocm-5.4`, `hip_rocm-5.5`, `hip_rocm-5.6`. More info on the Docker images, with instructions to build a new image from source, or run with additional configurations, can be found [here](./docker/README.md).
 
 ### Build from source
 

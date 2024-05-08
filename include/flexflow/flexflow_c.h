@@ -983,8 +983,14 @@ void flexflow_request_manager_set_max_requests_per_batch(
 void flexflow_request_manager_set_max_tokens_per_batch(
     flexflow_request_manager_t handle_, int max_num_tokens);
 
+void flexflow_request_manager_set_max_spec_tree_token_num(
+    flexflow_request_manager_t handle_, int max_num_tokens);
+
 void flexflow_request_manager_set_max_sequence_length(
     flexflow_request_manager_t handle_, int max_seq_length);
+
+void flexflow_request_manager_set_enable_peft_finetuning(
+    flexflow_request_manager_t handle_, bool enable_peft_finetuning_);
 
 void flexflow_request_manager_register_tokenizer(
     flexflow_request_manager_t handle_,

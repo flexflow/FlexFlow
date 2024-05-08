@@ -26,6 +26,7 @@ SigmoidSiluMultiMeta::SigmoidSiluMultiMeta(FFHandler handle,
     : OpMeta(handle, ssm) {
   profiling = ssm->profiling;
   inference_debugging = ssm->inference_debugging;
+  allocated_peft_buffer_size = 0;
 }
 
 SigmoidSiluMultiMeta::~SigmoidSiluMultiMeta(void) {
