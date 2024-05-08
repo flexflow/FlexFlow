@@ -136,7 +136,15 @@ public:
         parent_pos(parent_pos) {}
 };
 
-// A comparator for shared_ptr<TokenTreeNode>
+// A comparator for std::shared_ptr<TokenTreeNode>
+struct CompareSharedTokenTreeNodePtr {
+  bool operator()(std::shared_ptr<TokenTreeNode> const &lhs,
+                  std::shared_ptr<TokenTreeNode> const &rhs) const {
+    return lhs->log_accumulated_prob < rhs->log_accumulated_prob;
+  }
+};
+
+// A comparator for std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>
 struct CompareSharedTokenTreeNodePtrRequestGuidPair {
   bool operator()(std::pair<std::shared_ptr<TokenTreeNode>,
                             BatchConfig::RequestGuid> const &lhs,
@@ -152,7 +160,6 @@ public:
   // The numebr of tokens in the tree that are not pruned
   int tree_size = 0;
   // The numebr of tokens in the tree including the pruned ones
-  int tree_size_including_pruned = 0;
 
   void add_layer() {
     tree_layers.emplace_back();
@@ -161,10 +168,9 @@ public:
   void clear() {
     tree_layers.clear();
     tree_size = 0;
-    tree_size_including_pruned = 0;
   }
 
-  TokenTree() : tree_size(0), tree_size_including_pruned(0) {}
+  TokenTree() : tree_size(0) {}
 };
 
 class RequestManager {
@@ -372,11 +378,13 @@ private:
   void init_token_tree(RequestGuid guid);
   void add_root_to_spec_token_tree(RequestGuid guid,
                                    BatchConfig::TokenId token_id);
-  bool add_token_to_spec_token_tree(RequestGuid guid,
-                                    BatchConfig::TokenId token_id,
-                                    int parent_pos,
-                                    float log_accumulated_prob);
-  void prune_last_layer_of_spec_token_tree(RequestGuid guid);
+  bool add_tokens_to_spec_token_tree(
+      InferenceResult const &ssm_inference_result);
+  //   bool add_token_to_spec_token_tree(RequestGuid guid,
+  //                                     BatchConfig::TokenId token_id,
+  //                                     int parent_pos,
+  //                                     float log_accumulated_prob);
+  //   bool prune_last_layer_of_spec_token_trees();
   /* ---------- Spec Decoding Helper Functions ---------- */
 };
 
