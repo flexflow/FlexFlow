@@ -14,7 +14,7 @@ fi
 # Create test prompt file
 mkdir -p ../inference/prompt
 echo '["Two things are infinite: "]' > ../inference/prompt/peft.json
-echo "[\"“Two things are infinite: the universe and human stupidity; and I'm not sure about the universe.“\"]" > ../inference/prompt/peft_dataset.json
+echo '["“Two things are infinite: the universe and human stupidity; and I'\''m not sure about the universe.“"]' > ../inference/prompt/peft_dataset.json
 
 
 # Create output folder
