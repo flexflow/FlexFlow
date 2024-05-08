@@ -20,6 +20,7 @@
 #include "flexflow/ops/flat_params.h"
 #include "flexflow/ops/gather_params.h"
 #include "flexflow/ops/groupby_params.h"
+#include "flexflow/ops/gumbel_topk_params.h"
 #include "flexflow/ops/inc_multihead_self_attention_params.h"
 #include "flexflow/ops/layer_norm_params.h"
 #include "flexflow/ops/linear_params.h"
@@ -79,6 +80,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        ReshapeParams,
                                        SplitParams,
                                        TopKParams,
+                                       GumbelTopKParams,
                                        ArgTopKParams,
                                        SamplingParams,
                                        ArgMaxParams,

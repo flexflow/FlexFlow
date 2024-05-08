@@ -2970,6 +2970,10 @@ void FFModel::deserialize_graph_optimal_view(
         node = TopK::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
+      case OP_GUMBEL_TOPK: {
+        node = GumbelTopK::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
       case OP_ARG_TOPK: {
         node = ArgTopK::deserialize(*this, dez, inputs, num_inputs);
         break;

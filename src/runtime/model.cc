@@ -3241,6 +3241,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_GUMBEL_TOPK: {
+      Op *op = GumbelTopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_ARG_TOPK: {
       Op *op = ArgTopK::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);

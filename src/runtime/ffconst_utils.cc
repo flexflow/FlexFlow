@@ -114,6 +114,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "Size";
     case OP_TOPK:
       return "TopK";
+    case OP_GUMBEL_TOPK:
+      return "GumbelTopK";
     case OP_ARG_TOPK:
       return "ArgTopK";
     // case OP_BEAM_TOPK:
