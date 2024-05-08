@@ -517,6 +517,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   int committed_token_offset = prefill_request->llm_cache_size;
   prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
 
+  prefill_request->committed_tokens.clear();
   if (decoding_mode == SPECULATIVE_DECODING) {
     // Add the committed tokens to the token tree
     for (int i = 0; i < prefill_request->num_tokens_in_batch; i++) {
@@ -964,7 +965,6 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
     if (!request_available[request_index]) {
-      new_bc.request_available[request_index] = false;
       continue;
     }
     int guid = guid_of_requests[request_index];
@@ -992,14 +992,14 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
          committed_token_index++) {
       Request::CommittedToken &committed_token =
           committed_tokens.at(committed_token_index);
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
+      new_bc.committed_tokens[committed_token_index].request_index =
           request_index;
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
+      new_bc.committed_tokens[committed_token_index].token_index =
           committed_token.from_index;
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
+      new_bc.committed_tokens[committed_token_index].token_depth =
           committed_token.to_index;
-      new_bc.num_tokens_to_commit++;
     }
+    new_bc.num_tokens_to_commit = committed_tokens.size() - 1;
 
     // Load the tokens on the token tree that are not yet pruned to
     // BatchConfig.tokensInfo.
