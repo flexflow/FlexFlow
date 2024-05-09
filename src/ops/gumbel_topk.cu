@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/arg_topk.h"
+#include "flexflow/ops/gumbel_topk.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -24,17 +24,18 @@ enum class HeapType { kMinHeap, kMaxHeap };
 enum class PreferIndices { kLower, kHigher };
 
 template <typename T>
-struct Entry {
+struct GumbelEntry {
   int index;
   T value;
+  T perturbed_value;
 };
 
 template <typename T>
 struct LinearData {
-  typedef Entry<T> Entry;
+  typedef GumbelEntry<T> GumbelEntry;
 
-  __device__ Entry &operator[](std::size_t index) const {
-    return data[index];
+  __device__ GumbelEntry &operator[](std::size_t i) const {
+    return data[i];
   }
 
   __device__ int get_index(int i) const {
@@ -43,16 +44,19 @@ struct LinearData {
   __device__ T get_value(int i) const {
     return data[i].value;
   }
+  __device__ T get_perturbed_value(int i) const {
+    return data[i].perturbed_value;
+  }
 
-  Entry *const data;
+  GumbelEntry *const data;
 };
 
 template <typename T>
 struct IndirectLinearData {
-  typedef Entry<T> Entry;
+  typedef GumbelEntry<T> GumbelEntry;
 
-  __device__ Entry &operator[](std::size_t index) const {
-    return data[index];
+  __device__ GumbelEntry &operator[](std::size_t i) const {
+    return data[i];
   }
 
   __device__ int get_index(int i) const {
@@ -61,17 +65,20 @@ struct IndirectLinearData {
   __device__ T get_value(int i) const {
     return data[i].value;
   }
+  __device__ T get_perturbed_value(int i) const {
+    return data[i].perturbed_value;
+  }
 
-  Entry *const data;
-  Entry *const backing_data;
+  GumbelEntry *const data;
+  GumbelEntry *const backing_data;
 };
 
 template <typename T>
 struct StridedData {
-  typedef Entry<T> Entry;
+  typedef GumbelEntry<T> GumbelEntry;
 
-  __device__ Entry &operator[](std::size_t index) const {
-    return data[index * blockDim.x + threadIdx.x];
+  __device__ GumbelEntry &operator[](std::size_t i) const {
+    return data[i * blockDim.x + threadIdx.x];
   }
 
   __device__ int get_index(int i) const {
@@ -80,25 +87,28 @@ struct StridedData {
   __device__ T get_value(int i) const {
     return (*this)[i].value;
   }
+  __device__ T get_perturbed_value(int i) const {
+    return (*this)[i].perturbed_value;
+  }
 
-  Entry *const data;
+  GumbelEntry *const data;
 };
 
-// A heap of Entry<T> that can either work as a min-heap or as a max-heap.
+// A heap of GumbelEntry<T> that can either work as a min-heap or as a max-heap.
 template <HeapType heapType,
           PreferIndices preferIndices,
           template <typename>
           class Data,
           typename T>
 struct IndexedHeap {
-  typedef typename Data<T>::Entry Entry;
+  typedef typename Data<T>::GumbelEntry GumbelEntry;
   Data<T> const data;
   __device__ IndexedHeap(Data<T> const &d) : data(d) {}
 
   __device__ bool is_above(int left, int right) {
-    T left_value = data.get_value(left);
-    T right_value = data.get_value(right);
-    if (left_value == right_value) {
+    T left_perturbed_value = data.get_perturbed_value(left);
+    T right_perturbed_value = data.get_perturbed_value(right);
+    if (left_perturbed_value == right_perturbed_value) {
       if (preferIndices == PreferIndices::kLower) {
         return data.get_index(left) < data.get_index(right);
       } else {
@@ -106,13 +116,13 @@ struct IndexedHeap {
       }
     }
     if (heapType == HeapType::kMinHeap) {
-      return left_value < right_value;
+      return left_perturbed_value < right_perturbed_value;
     } else {
-      return left_value > right_value;
+      return left_perturbed_value > right_perturbed_value;
     }
   }
 
-  __device__ void assign(int i, Entry const &entry) {
+  __device__ void assign(int i, GumbelEntry const &entry) {
     data[i] = entry;
   }
 
@@ -183,12 +193,12 @@ struct IndexedHeap {
     }
   }
 
-  __device__ void replace_root(Entry const &entry, int k) {
+  __device__ void replace_root(GumbelEntry const &entry, int k) {
     data[0] = entry;
     push_root_down(k);
   }
 
-  __device__ Entry const &root() {
+  __device__ GumbelEntry const &root() {
     return data[0];
   }
 };
@@ -199,24 +209,27 @@ template <HeapType heapType,
           class Data,
           typename T>
 __device__ IndexedHeap<heapType, preferIndices, Data, T>
-    make_indexed_heap(typename Data<T>::Entry *data) {
+    make_indexed_heap(typename Data<T>::GumbelEntry *data) {
   return IndexedHeap<heapType, preferIndices, Data, T>{Data<T>{data}};
 }
 
-// heapArgTopK walks over [input, input+length) with `step_size` stride starting
+// heapGumbelTopK walks over [input, input+length) with `step_size` stride starting
 // at `start_index`. It builds a top-`k` heap that is stored in `heap_entries`
 // using `Accessor` to access elements in `heap_entries`. If sorted=true, the
 // elements will be sorted at the end.
+// NOTE that it applies Gumbel trick on `input`, which is,
+// input -> log(input) - log(-log(U)), where U is a uniform random number in (0, 1).
 template <typename T, template <typename> class Data = LinearData>
-__device__ void heapArgTopK(T const *__restrict__ input,
+__device__ void heapGumbelTopK(T const *__restrict__ input,
                             int length,
                             int k,
-                            Entry<T> *__restrict__ heap_entries,
+                            GumbelEntry<T> *__restrict__ heap_entries,
                             bool sorted = false,
                             int start_index = 0,
                             int step_size = 1) {
   assert(k <= length);
 
+  // TODO: apply uniform random
   auto heap =
       make_indexed_heap<HeapType::kMinHeap, PreferIndices::kHigher, Data, T>(
           heap_entries);
@@ -228,7 +241,9 @@ __device__ void heapArgTopK(T const *__restrict__ input,
   // Initialize the min-heap.
   for (int index = start_index, slot = 0; index < heap_end_index;
        index += step_size, slot++) {
-    heap.assign(slot, {index, input[index]});
+    T value = log(input[index]);
+    T perturbed_value = value - log(-log(1.0f * (index + 1) / length));
+    heap.assign(slot, {index, value, perturbed_value});
   }
 
   heap.build(k);
@@ -239,9 +254,11 @@ __device__ void heapArgTopK(T const *__restrict__ input,
   for (int index = heap_end_index; index < length; index += step_size) {
     // We prefer elements with lower indices. This is given here.
     // Later elements automatically have higher indices, so can be discarded.
-    if (input[index] > heap.root().value) {
+    T value = log(input[index]);
+    T perturbed_value = value - log(-log(1.0f * (index + 1) / length));
+    if (perturbed_value > heap.root().perturbed_value) {
       // This element should replace the min.
-      heap.replace_root({index, input[index]}, k);
+      heap.replace_root({index, value, perturbed_value}, k);
     }
   }
 
@@ -254,15 +271,16 @@ __device__ void heapArgTopK(T const *__restrict__ input,
 // mergeShards performs a top-k merge on `num_shards` many sorted streams that
 // are sorted and stored in `entries` in a strided way:
 // |s_1 1st|s_2 1st|...s_{num_shards} 1st|s_1 2nd|s_2 2nd|...
-// The overall top k elements are written to `top_k_values` and their indices
-// to top_k_indices.
+// The overall top k elements are written to `top_k_values` and `top_k_perturbed_values`,
+// and their indices to `top_k_indices`.
 // `top_k_heap` is used as temporary storage for the merge heap.
 template <typename T>
 __device__ void mergeShards(int num_shards,
                             int k,
-                            Entry<T> *__restrict__ entries,
-                            Entry<T> *__restrict__ top_k_heap,
+                            GumbelEntry<T> *__restrict__ entries,
+                            GumbelEntry<T> *__restrict__ top_k_heap,
                             float *top_k_values,
+                            float *top_k_perturbed_values,
                             int *top_k_indices,
                             bool speculative_decoding) {
   // If k < num_shards, we can use a min-heap with k elements to get the top k
@@ -279,7 +297,7 @@ __device__ void mergeShards(int num_shards,
                                 T>{IndirectLinearData<T>{top_k_heap, entries}};
     // Initialize the heap as a min-heap.
     for (int slot = 0; slot < heap_size; slot++) {
-      min_heap.assign(slot, {slot, entries[slot].value});
+      min_heap.assign(slot, {slot, entries[slot].value, entries[slot].perturbed_value});
     }
     min_heap.build(heap_size);
 
@@ -287,15 +305,15 @@ __device__ void mergeShards(int num_shards,
     for (int shard = heap_size; shard < num_shards; shard++) {
       auto const entry = entries[shard];
       auto const root = min_heap.root();
-      if (entry.value < root.value) {
+      if (entry.perturbed_value < root.perturbed_value) {
         continue;
       }
-      if (entry.value == root.value &&
+      if (entry.perturbed_value == root.perturbed_value &&
           entry.index > entries[root.index].index) {
         continue;
       }
       // This element should replace the min.
-      min_heap.replace_root({shard, entry.value}, heap_size);
+      min_heap.replace_root({shard, entry.value, entry.perturbed_value}, heap_size);
     }
   }
 
@@ -313,58 +331,64 @@ __device__ void mergeShards(int num_shards,
     // k is treated specially.
     int const last_k = k - 1;
     for (int rank = 0; rank < last_k; rank++) {
-      Entry<T> const &max_element = max_heap.root();
+      GumbelEntry<T> const &max_element = max_heap.root();
+      int shard_index = max_element.index;
+      top_k_indices[rank] = entries[shard_index].index;
       if (speculative_decoding) {
         assert(top_k_values != nullptr);
         top_k_values[rank] = static_cast<float>(max_element.value);
+        top_k_perturbed_values[rank] = static_cast<float>(max_element.perturbed_value);
       }
-
-      int shard_index = max_element.index;
-      top_k_indices[rank] = entries[shard_index].index;
       int next_shard_index = shard_index + num_shards;
       // For rank < k-1, each top k heap still contains at least 1 element,
       // so we can draw a replacement.
-      max_heap.replace_root({next_shard_index, entries[next_shard_index].value},
+      max_heap.replace_root({next_shard_index, entries[next_shard_index].value, entries[next_shard_index].perturbed_value},
                             heap_size);
     }
 
     // rank == last_k.
-    Entry<T> const &max_element = max_heap.root();
-    // top_k_values[last_k] = max_element.value;
+    GumbelEntry<T> const &max_element = max_heap.root();
     int shard_index = max_element.index;
     top_k_indices[last_k] = entries[shard_index].index;
-    top_k_values[last_k] = static_cast<float>(max_element.value);
+    if (speculative_decoding) {
+      assert(top_k_values != nullptr);
+      top_k_values[last_k] = static_cast<float>(max_element.value);
+      top_k_perturbed_values[last_k] = static_cast<float>(max_element.perturbed_value);
+    }
   }
 }
 
 template <typename T>
-__global__ void arg_topk_forward_kernel(T const *__restrict__ input,
+__global__ void gumbel_topk_forward_kernel(T const *__restrict__ input,
                                         size_t shared_memory_size,
                                         int length,
                                         int k,
                                         bool sorted,
-                                        float *__restrict__ output,
+                                        float *__restrict__ log_probs_ptr,
+                                        float *__restrict__ perturbed_log_probs_ptr,
                                         int *__restrict__ indices,
                                         bool speculative_decoding) {
-  __shared__ char shared_memory[48 << 10];
+  __shared__ char shared_memory[48 << 10]; // block-wise shared memory
   int const batch_index = blockIdx.x;
   T const *batch_input = input + batch_index * length;
   int const thread_index = threadIdx.x;
   int const thread_count = blockDim.x;
-  Entry<T> *shared_entries = (Entry<T> *)shared_memory;
-  heapArgTopK<T, StridedData>(
+  GumbelEntry<T> *shared_entries = (GumbelEntry<T> *)shared_memory;
+  heapGumbelTopK<T, StridedData>(
       batch_input, length, k, shared_entries, true, thread_index, thread_count);
   __syncthreads();
   if (thread_index == 0) {
     int const offset = batch_index * k;
-    auto batch_output = output + offset;
+    auto batch_log_probs_ptr = log_probs_ptr + offset;
+    auto batch_perturbed_log_probs_ptr = perturbed_log_probs_ptr + offset;
     auto batch_indices = indices + offset;
-    Entry<T> *top_k_heap = shared_entries + thread_count * k;
+    GumbelEntry<T> *top_k_heap = shared_entries + thread_count * k;
     mergeShards(thread_count,
                 k,
                 shared_entries,
                 top_k_heap,
-                batch_output,
+                batch_log_probs_ptr
+                batch_perturbed_log_probs_ptr,
                 batch_indices,
                 speculative_decoding);
   }
@@ -372,10 +396,11 @@ __global__ void arg_topk_forward_kernel(T const *__restrict__ input,
 
 /*static*/
 template <typename DT>
-void ArgTopK::forward_kernel(
-    ArgTopKMeta const *m,
+void GumbelTopK::forward_kernel(
+    GumbelTopKMeta const *m,
     DT const *input_ptr,
-    float *output_ptr,
+    float *log_probs_ptr,
+    float *perturbed_log_probs_ptr,
     int *indices_ptr,
     size_t batch_size,
     int length,
@@ -388,7 +413,7 @@ void ArgTopK::forward_kernel(
   int num_shards = 0;
   {
     constexpr auto shared_memory_size = 48 << 10;
-    auto const heap_size = k * sizeof(Entry<DT>);
+    auto const heap_size = k * sizeof(GumbelEntry<DT>);
     // shared_memory_size = (num_shards + 1) * heap_size <=>
     num_shards = shared_memory_size / heap_size - 1;
     assert(num_shards > 0);
@@ -397,7 +422,7 @@ void ArgTopK::forward_kernel(
     }
   }
   // We are limited by the amount of shared memory we have per block.
-  size_t shared_memory_size = (num_shards + 1) * k * sizeof(Entry<DT>);
+  size_t shared_memory_size = (num_shards + 1) * k * sizeof(GumbelEntry<DT>);
   // size_t num_blocks = (batch_size + num_shards - 1) / num_shards;
   size_t num_blocks = batch_size;
 
@@ -406,25 +431,27 @@ void ArgTopK::forward_kernel(
     assert(bc->num_active_requests() >= 0);
     assert(num_shards >= (size_t)BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
     num_shards = k;
-    arg_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
+    gumbel_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
         input_ptr,
         shared_memory_size,
         length,
         BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES,
         sorted,
-        output_ptr,
+        log_probs_ptr,
+        perturbed_log_probs_ptr
         indices_ptr,
         m->speculative_decoding);
   } else {
 
     assert(num_shards >= (size_t)k);
     num_shards = k;
-    arg_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
+    gumbel_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
         input_ptr,
         shared_memory_size,
         length,
         k,
         sorted,
+        nullptr,
         nullptr,
         indices_ptr,
         false);
@@ -432,10 +459,11 @@ void ArgTopK::forward_kernel(
 }
 
 /*static*/
-void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
+void GumbelTopK::forward_kernel_wrapper(GumbelTopKMeta const *m,
                                      GenericTensorAccessorR const &input,
                                      // float *output_ptr,
-                                     GenericTensorAccessorW const &probs,
+                                     GenericTensorAccessorW const &log_probs,
+                                     GenericTensorAccessorW const &perturbed_log_probs,
                                      GenericTensorAccessorW const &indices,
                                      int batch_size,
                                      BatchConfig const *bc) {
@@ -481,9 +509,11 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
   }
 
   if (input.data_type == DT_HALF) {
-    ArgTopK::forward_kernel(m,
+    GumbelTopK::forward_kernel(m,
                             input.get_half_ptr(),
-                            m->speculative_decoding ? probs.get_float_ptr()
+                            m->speculative_decoding ? log_probs.get_float_ptr()
+                                                    : nullptr,
+                            m->speculative_decoding ? perturbed_log_probs.get_float_ptr()
                                                     : nullptr,
                             indices.get_int32_ptr(),
                             batch_size,
@@ -493,9 +523,11 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
                             m->speculative_decoding ? bc : nullptr,
                             stream);
   } else if (input.data_type == DT_FLOAT) {
-    ArgTopK::forward_kernel(m,
+    GumbelTopK::forward_kernel(m,
                             input.get_float_ptr(),
-                            m->speculative_decoding ? probs.get_float_ptr()
+                            m->speculative_decoding ? log_probs.get_float_ptr()
+                                                    : nullptr,
+                            m->speculative_decoding ? perturbed_log_probs.get_float_ptr()
                                                     : nullptr,
                             indices.get_int32_ptr(),
                             batch_size,
@@ -515,11 +547,11 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("[ArgTopK] forward time = %.2lfms\n", elapsed);
+    printf("[GumbelTopK] forward time = %.2lfms\n", elapsed);
   }
 }
 
-ArgTopKMeta::ArgTopKMeta(FFHandler handler, Op const *op)
+GumbelTopKMeta::GumbelTopKMeta(FFHandler handler, Op const *op)
     : OpMeta(handler, op) {}
 
 }; // namespace FlexFlow
