@@ -46,8 +46,8 @@ using Legion::TaskLauncher;
 using PCG::Node;
 
 // For an input tensor, computes the top k entries in each row
-// (resp. vector along the last dimension). Thus,
-// values.shape = indices.shape = input.shape[:-1] + [k]
+// (resp. vector along the last dimension) using Gumbel trick (https://arxiv.org/abs/1903.06059). 
+// Thus, values.shape = indices.shape = input.shape[:-1] + [k]
 Tensor FFModel::gumbel_top_k(Tensor const input,
                           int k,
                           bool sorted,
@@ -57,9 +57,9 @@ Tensor FFModel::gumbel_top_k(Tensor const input,
                         OP_GUMBEL_TOPK,
                         input->data_type,
                         name,
-                        1 /*inputs*/,
-                        0 /*weights*/,
-                        speculative_decoding ? 2 : 1 /*outputs*/,
+                        1,
+                        0,
+                        speculative_decoding ? 3 : 1 /*outputs*/,
                         input);
   {
     int numdims = input->num_dims;
@@ -68,21 +68,22 @@ Tensor FFModel::gumbel_top_k(Tensor const input,
       dims[i] = input->dims[i];
     }
     dims[0] = k;
-    // li->outputs[0] = create_tensor_legion_ordering(
-    //     numdims, dims, input->data_type, li, 0, true /*create_grad*/);
+    // token_ids
     li->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, DT_INT32, li, 0, false /*create_grad*/);
     if (speculative_decoding) {
+      // log_probs
       li->outputs[1] = create_tensor_legion_ordering(
           numdims, dims, DT_FLOAT, li, 1, false /*create_grad*/);
+      // perturbed_log_probs
+      li->outputs[2] = create_tensor_legion_ordering(
+          numdims, dims, DT_FLOAT, li, 2, false /*create_grad*/);
     }
   }
   li->add_int_property("k", k);
   li->add_int_property("sorted", sorted);
   li->add_int_property("speculative_decoding", speculative_decoding);
   layers.push_back(li);
-  // outputs[0] = li->outputs[0];
-  // outputs[1] = li->outputs[1];
   return li->outputs[0];
 }
 

@@ -679,6 +679,12 @@ public:
              int k,
              bool sorted,
              char const *name = NULL);
+  Tensor gumbel_top_k(Tensor const input,
+                   // Tensor *outputs,
+                   int k,
+                   bool sorted,
+                   bool speculative_decoding,
+                   char const *name = NULL);
   Tensor arg_top_k(Tensor const input,
                    // Tensor *outputs,
                    int k,
