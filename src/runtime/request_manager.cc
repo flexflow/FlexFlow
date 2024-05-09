@@ -1385,7 +1385,7 @@ void RequestManager::get_verify_results_greedy(
     ++layer_it;
     for (; layer_it != token_tree.tree_layers.end(); layer_it++) {
       // We skip the first layer
-      std::list<std::shared_ptr<TokenTreeNode>> &tree_layer = *layer_it;
+      std::list<std::shared_ptr<TokenTreeNode>> const &tree_layer = *layer_it;
 
       bool token_accepted_this_layer = false;
       int current_token_index_in_layer = 0;
@@ -1414,8 +1414,10 @@ void RequestManager::get_verify_results_greedy(
             // from_index: the index of the token in the tree (excluding the
             // pruned tokens)
             // to_index: the committed token index in the request
-            request.committed_tokens.push_back(Request::CommittedToken(
-                current_token_index, committed_token_index, node_ptr->id));
+            request.committed_tokens.push_back(
+                Request::CommittedToken(llm_result_offset + current_token_index,
+                                        committed_token_index,
+                                        node_ptr->id));
             request.tokens.push_back(node_ptr->id);
 
             token_accepted_this_layer = true;
@@ -1429,23 +1431,23 @@ void RequestManager::get_verify_results_greedy(
       }
       if (!token_accepted_this_layer) {
         // No token is accepted in this layer, we should stop the traversal
-        // However, we have to add the last sampled token as a correction from
-        // the LLM
-
-        // from_index: since this token is not in the token tree, the llm
-        // doesn't have its KV cache, so the from_index should be a place
-        // holder, which is -1
-        request.committed_tokens.push_back(Request::CommittedToken(
-            -1,
-            committed_token_index,
-            llm_verify_result
-                .token_ids[llm_result_offset + last_accepted_token_index]));
-        request.tokens.push_back(
-            llm_verify_result
-                .token_ids[llm_result_offset + last_accepted_token_index]);
         break;
       }
     }
+
+    // Add the last token (that is not verified by the LLM)
+    // from_index: since this token is not in the token tree, the llm
+    // doesn't have its KV cache, so the from_index should be a place
+    // holder, which is -1
+    request.committed_tokens.push_back(Request::CommittedToken(
+        -1,
+        committed_token_index,
+        llm_verify_result
+            .token_ids[llm_result_offset + last_accepted_token_index]));
+    request.tokens.push_back(
+        llm_verify_result
+            .token_ids[llm_result_offset + last_accepted_token_index]);
+
     llm_result_offset += request.num_tokens_in_batch;
 
     if (verbose) {
