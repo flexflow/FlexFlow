@@ -25,13 +25,6 @@ LegionRuntime::Logger::Category log_bc("BatchConfig");
 using Legion::Future;
 using Legion::Memory;
 
-// BatchConfig::BatchConfig() : model_id(0), inference_mode(INC_DECODING_MODE) {
-//   std::fill(std::begin(request_available), std::end(request_available), 0);
-//   // Don't need to initialize requestInfo ,tokensInfo, causalMask and
-//   // committed_tokens here because they initialize themselves.
-//   // Other fields are already initialized to proper value.
-// }
-
 BatchConfig::BatchConfig(InferenceMode inference_mode_, int model_id_)
     : model_id(model_id_), inference_mode(inference_mode_) {
   std::fill(std::begin(request_available), std::end(request_available), 0);
@@ -39,26 +32,6 @@ BatchConfig::BatchConfig(InferenceMode inference_mode_, int model_id_)
   // committed_tokens here because they initialize themselves.
   // Other fields are already initialized to proper value.
 }
-
-/*static*/
-// BatchConfig const *BatchConfig::from_future(BatchConfigFuture const &future)
-// {
-//   BatchConfig const *bc = static_cast<BatchConfig const *>(
-//       Future(future).get_buffer(Memory::SYSTEM_MEM));
-//   // Check future size
-//   if (bc->get_mode() == INC_DECODING_MODE) {
-//     assert(Future(future).get_untyped_size() == sizeof(BatchConfig));
-//   } else if (bc->get_mode() == TREE_SEARCH_MODE) {
-//     assert(Future(future).get_untyped_size() ==
-//     sizeof(TreeSearchBatchConfig));
-//   } else if (bc->get_mode() == TREE_VERIFY_MODE) {
-//     assert(Future(future).get_untyped_size() ==
-//     sizeof(TreeVerifyBatchConfig));
-//   } else {
-//     assert(false && "Unsupported inference mode");
-//   }
-//   return bc;
-// }
 
 /*static*/
 BatchConfig const *BatchConfig::from_future(BatchConfigFuture const &future) {
