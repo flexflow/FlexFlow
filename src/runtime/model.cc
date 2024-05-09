@@ -44,6 +44,7 @@
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/ops/gumbel_topk.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -3329,7 +3330,7 @@ void FFModel::create_operators_from_layers() {
     if (config.computationMode == COMP_MODE_INFERENCE &&
         config.tensor_parallelism_degree > 1 &&
         (l->op_type == OP_ARG_TOPK || l->op_type == OP_SOFTMAX ||
-         l->op_type == OP_ARGMAX)) {
+         l->op_type == OP_ARGMAX || l->op_type == OP_GUMBEL_TOPK)) {
       std::vector<ParallelTensor> partitioned_inputs;
       assert(inputs.size() == 1);
       Combine *comb = new Combine(*this,
@@ -5947,6 +5948,55 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<TopK::backward_task>(registrar);
+    }
+  }
+  // GumbelTopk task
+  {
+    TaskVariantRegistrar registrar(GUMBEL_TOPK_INIT_TASK_ID, "GumbelTopK Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, GumbelTopK::init_task>(
+          registrar, "GumbelTopK Init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, GumbelTopK::init_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(GUMBEL_TOPK_INF_TASK_ID, "GumbelTopK Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        GumbelTopK::inference_task>(
+          registrar, "GumbelTopK Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult, GumbelTopK::inference_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(GUMBEL_TOPK_INF_SPECULATIVE_TASK_ID,
+                                   "GumbelTopK Speculative Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<InferenceResult,
+                                        GumbelTopK::inference_speculative_task>(
+          registrar, "GumbelTopK Speculative Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<InferenceResult,
+                                     GumbelTopK::inference_speculative_task>(
+          registrar);
     }
   }
   // ArgTopk task
