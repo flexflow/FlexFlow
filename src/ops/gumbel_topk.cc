@@ -54,7 +54,7 @@ Tensor FFModel::gumbel_top_k(Tensor const input,
                           bool speculative_decoding,
                           char const *name) {
   Layer *li = new Layer(this,
-                        OP_ARG_TOPK,
+                        OP_GUMBEL_TOPK,
                         input->data_type,
                         name,
                         1 /*inputs*/,
@@ -136,7 +136,7 @@ GumbelTopK::GumbelTopK(FFModel &model,
                  bool _speculative_decoding,
                  char const *name)
     : Op(model,
-         OP_ARG_TOPK,
+         OP_GUMBEL_TOPK,
          _input->data_type,
          name,
          1 /*inputs*/,
@@ -200,7 +200,7 @@ void GumbelTopK::init_inference(FFModel const &ff,
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
-  IndexLauncher launcher(ARG_TOPK_INIT_TASK_ID,
+  IndexLauncher launcher(GUMBEL_TOPK_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(GumbelTopK)),
                          argmap,
@@ -238,7 +238,7 @@ void GumbelTopK::init(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(ARG_TOPK_INIT_TASK_ID,
+  IndexLauncher launcher(GUMBEL_TOPK_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(GumbelTopK)),
                          argmap,
@@ -307,7 +307,7 @@ FutureMap GumbelTopK::inference(
   /* std::cout << "GumbelTopK op machine_view: " << *(MachineView const *)mv
             << std::endl; */
   if (speculative_decoding) {
-    IndexLauncher launcher(ARG_TOPK_INF_SPECULATIVE_TASK_ID,
+    IndexLauncher launcher(GUMBEL_TOPK_INF_SPECULATIVE_TASK_ID,
                            parallel_is,
                            TaskArgument(nullptr, 0),
                            argmap,
@@ -340,7 +340,7 @@ FutureMap GumbelTopK::inference(
     return runtime->execute_index_space(ctx, launcher);
 
   } else {
-    IndexLauncher launcher(ARG_TOPK_INF_TASK_ID,
+    IndexLauncher launcher(GUMBEL_TOPK_INF_TASK_ID,
                            parallel_is,
                            TaskArgument(nullptr, 0),
                            argmap,
