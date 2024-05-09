@@ -87,6 +87,7 @@ public:
   };
 
   class BitMask {
+  public:
     class Bitset {
     public:
       Bitset() : bits{0} {}
@@ -116,7 +117,6 @@ public:
       uint64_t bits[MAX_SPEC_TREE_TOKEN_NUM / 64];
     };
 
-  public:
     Bitset bit_mask[MAX_SPEC_TREE_TOKEN_NUM];
     // the number of generated tokens before the speculation tree (excluding the
     // prompt tokens)

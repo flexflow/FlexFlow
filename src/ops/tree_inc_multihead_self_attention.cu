@@ -170,12 +170,12 @@ __global__ void compute_attention_kernel_fused_kernel(
       float qk = scale * Qk_dot<DT, THREADS_PER_KEY>::dot(q_vecs[ki_o], k);
 
       if (ti < tlength && tidx % THREADS_PER_KEY == 0) {
-        bool const mask = prompt_phase
-                              ? (qi + q_start < ti)
-                              : (ti >= bitmask->non_tree_cache_size &&
-                                 !test_bit(bitmask->bit_mask,
-                                           ti - bitmask->non_tree_cache_size,
-                                           qi));
+        bool const mask =
+            prompt_phase ? (qi + q_start < ti)
+                         : (ti >= bitmask->non_tree_cache_size &&
+                            (!test_bit(bitmask->bit_mask,
+                                       qi,
+                                       ti - bitmask->non_tree_cache_size)));
         // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
         //    (1 << qi))));
 
@@ -231,12 +231,12 @@ __global__ void compute_attention_kernel_fused_kernel(
 
     float exp_sum = 0.f;
     for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
-      bool const mask =
-          prompt_phase
-              ? (q_start + qi < ti)
-              : (ti >= bitmask->non_tree_cache_size &&
-                 !test_bit(
-                     bitmask->bit_mask, ti - bitmask->non_tree_cache_size, qi));
+      bool const mask = prompt_phase
+                            ? (q_start + qi < ti)
+                            : (ti >= bitmask->non_tree_cache_size &&
+                               (!test_bit(bitmask->bit_mask,
+                                          qi,
+                                          ti - bitmask->non_tree_cache_size)));
       // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
       //    (1 << qi))));
       float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
@@ -283,12 +283,12 @@ __global__ void compute_attention_kernel_fused_kernel(
             v_cache_batch + ti_circ * hidden_size + head_idx * per_head_size);
 
         if (ti < tlength) {
-          bool const mask = prompt_phase
-                                ? (q_start + qi < ti)
-                                : (ti >= bitmask->non_tree_cache_size &&
-                                   !test_bit(bitmask->bit_mask,
-                                             ti - bitmask->non_tree_cache_size,
-                                             qi));
+          bool const mask =
+              prompt_phase ? (q_start + qi < ti)
+                           : (ti >= bitmask->non_tree_cache_size &&
+                              (!test_bit(bitmask->bit_mask,
+                                         qi,
+                                         ti - bitmask->non_tree_cache_size)));
           // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
           //   (1 << qi))));
           float logit = mask ? 0.0f : qk_smem[ti - first_step];

@@ -514,7 +514,20 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 
 bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   bool prefill_completed = false;
+  int committed_token_offset = prefill_request->llm_cache_size;
   prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
+
+  prefill_request->committed_tokens.clear();
+  if (decoding_mode == SPECULATIVE_DECODING) {
+    // Add the committed tokens to the token tree
+    for (int i = 0; i < prefill_request->num_tokens_in_batch; i++) {
+      prefill_request->committed_tokens.push_back(Request::CommittedToken{
+          i,
+          committed_token_offset + i,
+          prefill_request->tokens[i + committed_token_offset]});
+    }
+  }
+
   if (prefill_request->llm_cache_size == prefill_request->tokens.size()) {
     // Indicates that the LLM prefilling phase finishes
     prefill_request->tokens.push_back(
@@ -618,7 +631,11 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
          "No prefilling request to process in the prefilling phase.");
 
   BatchConfig bc;
-  bc.inference_mode = InferenceMode::INC_DECODING_MODE;
+  if (decoding_mode == INCREMENTAL_DECODING) {
+    bc.inference_mode = InferenceMode::INC_DECODING_MODE;
+  } else if (decoding_mode == SPECULATIVE_DECODING) {
+    bc.inference_mode = InferenceMode::TREE_VERIFY_MODE;
+  }
   bc.prompt_phase = true;
   std::copy(std::begin(request_available),
             std::end(request_available),
@@ -650,6 +667,16 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     bc.tokensInfo[token_idx].token_id = prefill_request->tokens[abs_idx];
 
     bc.num_tokens++;
+  }
+
+  // Committed tokens
+  for (auto const &committed_token : prefill_request->committed_tokens) {
+    bc.committed_tokens[bc.num_tokens_to_commit].token_index =
+        committed_token.from_index;
+    bc.committed_tokens[bc.num_tokens_to_commit].request_index = request_index;
+    bc.committed_tokens[bc.num_tokens_to_commit].token_depth =
+        committed_token.to_index;
+    bc.num_tokens_to_commit++;
   }
 
   return bc;
@@ -793,16 +820,29 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
     new_bc.requestsInfo[request_index].first_token_offset_in_batch =
         new_bc.num_tokens;
     new_bc.requestsInfo[request_index].first_token_index_in_request =
-        request.tokens.size() - committed_tokens.size();
+        request.ssm_cache_size;
+    // We don't directly use committed_tokens.size() here because there is a
+    // case where committed_tokens.size() != request.tokens.size() -
+    // request.ssm_cache_size, that's when the LLM prefilling is just finished
     new_bc.requestsInfo[request_index].num_tokens_in_batch =
-        committed_tokens.size();
+        request.tokens.size() - request.ssm_cache_size;
+
+    request.first_token_offset_in_batch = new_bc.num_tokens;
+    request.num_tokens_in_batch =
+        request.tokens.size() - request.ssm_cache_size;
 
     // Store committed tokens to tokensInfo
-    for (auto const &committed_token : committed_tokens) {
+    int start_offset = committed_tokens.size() - request.tokens.size() +
+                       request.ssm_cache_size;
+    assert(start_offset >= 0 && "Invalid start offset.");
+    for (int committed_token_index = start_offset;
+         committed_token_index < committed_tokens.size();
+         committed_token_index++) {
       new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
       new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
-          committed_token.to_index;
-      new_bc.tokensInfo[new_bc.num_tokens].token_id = committed_token.token_id;
+          committed_tokens[committed_token_index].to_index;
+      new_bc.tokensInfo[new_bc.num_tokens].token_id =
+          committed_tokens[committed_token_index].token_id;
       new_bc.num_tokens++;
     }
 
@@ -856,7 +896,9 @@ BatchConfig RequestManager::prepare_next_spec_batch_config() {
       // model inference steps
       new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
       new_bc.requestsInfo[request_index].first_token_index_in_request =
-          request.tokens.size() + token_tree.tree_size_including_pruned;
+          request.causal_mask.non_tree_cache_size +
+          request.causal_mask.tree_or_prompt_size -
+          request.causal_mask.current_layer_size;
       continue;
     } else {
       std::list<std::shared_ptr<TokenTreeNode>> &current_layer =
@@ -864,10 +906,11 @@ BatchConfig RequestManager::prepare_next_spec_batch_config() {
       // Exclude the current layer from the token tree, because we want the
       // start index
       new_bc.requestsInfo[request_index].first_token_index_in_request =
-          request.tokens.size() - 1 + token_tree.tree_size_including_pruned -
-          current_layer.size();
+          request.causal_mask.non_tree_cache_size +
+          request.causal_mask.tree_or_prompt_size -
+          request.causal_mask.current_layer_size;
       new_bc.requestsInfo[request_index].num_tokens_in_batch =
-          current_layer.size();
+          request.causal_mask.current_layer_size;
 
       int child_index = 0;
       for (auto const &node_ptr : current_layer) {
@@ -926,7 +969,6 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
     if (!request_available[request_index]) {
-      new_bc.request_available[request_index] = false;
       continue;
     }
     int guid = guid_of_requests[request_index];
@@ -941,8 +983,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
         request.tokens.size() - 1; // Exclude the last token
     new_bc.requestsInfo[request_index].first_token_offset_in_batch =
         new_bc.num_tokens;
-    new_bc.requestsInfo[request_index].num_tokens_in_batch =
-        request.speculative_token_trees[0].tree_size;
+    new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
 
     // Put the information of the committed tokens into
     // BatchConfig.committed_tokens.
@@ -955,14 +996,14 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
          committed_token_index++) {
       Request::CommittedToken &committed_token =
           committed_tokens.at(committed_token_index);
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
+      new_bc.committed_tokens[committed_token_index].request_index =
           request_index;
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
+      new_bc.committed_tokens[committed_token_index].token_index =
           committed_token.from_index;
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
+      new_bc.committed_tokens[committed_token_index].token_depth =
           committed_token.to_index;
-      new_bc.num_tokens_to_commit++;
     }
+    new_bc.num_tokens_to_commit = committed_tokens.size() - 1;
 
     // Load the tokens on the token tree that are not yet pruned to
     // BatchConfig.tokensInfo.
@@ -973,7 +1014,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
         if (tree_node->pruned == false) {
           new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
           new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
-              request.tokens.size() + token_tree_index;
+              request.tokens.size() - 1 + token_tree_index;
           new_bc.tokensInfo[new_bc.num_tokens].token_id = tree_node->id;
           new_bc.num_tokens++;
           token_tree_index++;
@@ -981,6 +1022,10 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
       }
     }
     assert(token_tree_index == token_tree.tree_size);
+    new_bc.requestsInfo[request_index].num_tokens_in_batch = token_tree_index;
+
+    request.first_token_offset_in_batch = new_bc.num_tokens - token_tree_index;
+    request.num_tokens_in_batch = token_tree_index;
 
     // Create the causal mask for the large model based on the small model
     // causal mask.
@@ -1054,9 +1099,15 @@ bool RequestManager::update_llm_verify_results(
       request_completed = true;
       request_complete_clean_up(request_index);
     } else {
-      update_bitmask_prompt(guid, request.committed_tokens.size());
+      update_bitmask_prompt(guid, request.committed_tokens.size() - 1);
     }
   }
+
+  // Clear the token tree node pool
+  token_tree_node_pool = std::priority_queue<
+      std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>,
+      std::vector<std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>>,
+      CompareSharedTokenTreeNodePtrRequestGuidPair>();
 
   // Some requests may be completed after appending the verified tokens.
   // If there is a request completed, return true.
@@ -1073,11 +1124,13 @@ bool RequestManager::update_ssm_inference_results(
 
   int num_branches = BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
   int result_index = 0;
-  bool token_added_to_spec_tree = false;
 
   // Here we assume that the order of the tokens in the last
   // BatchConfig and hence the last InferenceResult is equal to
   // the order of the request in the last BatchConfig
+  bool all_request_last_layer_empty =
+      add_tokens_to_spec_token_tree(ssm_inference_result);
+
   for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
        ++request_index) {
     if (!request_available[request_index]) {
@@ -1089,58 +1142,60 @@ bool RequestManager::update_ssm_inference_results(
     assert(request.status == Request::RUNNING);
 
     if (current_speculation_step == 1) {
-      request.ssm_cache_size += request.committed_tokens.size() - 1;
+      request.ssm_cache_size = request.tokens.size();
     }
 
-    TokenTree &token_tree = request.speculative_token_trees[0];
-    if (token_tree.tree_layers.size() < current_speculation_step) {
-      // This means that the parent layer is empty
-      continue;
-    } else {
-      std::list<std::shared_ptr<TokenTreeNode>> &parent_tree_layer =
-          token_tree.tree_layers.back();
-      int parent_pos = 0;
-      //   for (auto &parent_it = parent_tree_layer.begin();
-      //        parent_it != parent_tree_layer.end();
-      //        parent_it++) {
-      for (auto parent_ptr : parent_tree_layer) {
-        if (parent_ptr->pruned) {
-          // Parent token is pruned, we have to skip all its children
-          // Because no token is pruned in the last layer during the small
-          // model inference, the reason why some parents are pruned is that
-          // adding tokens to the new layer of the tree may result in some
-          // node being pruned in internal layers.
-          result_index += num_branches;
-        } else {
-          // Parent token is not pruned
-          for (int child_idx = 0; child_idx < num_branches; child_idx++) {
-            float parent_log_prob = parent_ptr->log_accumulated_prob;
-            std::cout << "Probability: "
-                      << ssm_inference_result.probs[result_index] << std::endl;
-            std::cout << "Log Probability: "
-                      << log(ssm_inference_result.probs[result_index])
-                      << std::endl;
-            assert(parent_log_prob != -std::numeric_limits<float>::infinity() &&
-                   "Parent log probability should not be -inf.");
-            assert(log(ssm_inference_result.probs[result_index]) !=
-                       -std::numeric_limits<float>::infinity() &&
-                   "Child log probability should not be -inf.");
-            token_added_to_spec_tree =
-                token_added_to_spec_tree ||
-                add_token_to_spec_token_tree(
-                    guid,
-                    ssm_inference_result.token_ids[result_index],
-                    parent_pos,
-                    log(ssm_inference_result.probs[result_index]) +
-                        parent_log_prob);
-            result_index++;
-          }
-        }
-        parent_pos++;
-      }
-    }
+    // TokenTree &token_tree = request.speculative_token_trees[0];
+    // if (token_tree.tree_layers.size() < current_speculation_step) {
+    //   // This means that the parent layer is empty
+    //   continue;
+    // } else {
+    //   std::list<std::shared_ptr<TokenTreeNode>> &parent_tree_layer =
+    //       token_tree.tree_layers.back();
+    //   int parent_pos = 0;
+    //   //   for (auto &parent_it = parent_tree_layer.begin();
+    //   //        parent_it != parent_tree_layer.end();
+    //   //        parent_it++) {
+    //   for (auto parent_ptr : parent_tree_layer) {
+    //     if (parent_ptr->pruned) {
+    //       // Parent token is pruned, we have to skip all its children
+    //       // Because no token is pruned in the last layer during the small
+    //       // model inference, the reason why some parents are pruned is that
+    //       // adding tokens to the new layer of the tree may result in some
+    //       // node being pruned in internal layers.
+    //       result_index += num_branches;
+    //     } else {
+    //       // Parent token is not pruned
+    //       for (int child_idx = 0; child_idx < num_branches; child_idx++) {
+    //         float parent_log_prob = parent_ptr->log_accumulated_prob;
+    //         std::cout << "Probability: "
+    //                   << ssm_inference_result.probs[result_index] <<
+    //                   std::endl;
+    //         std::cout << "Log Probability: "
+    //                   << log(ssm_inference_result.probs[result_index])
+    //                   << std::endl;
+    //         assert(parent_log_prob != -std::numeric_limits<float>::infinity()
+    //         &&
+    //                "Parent log probability should not be -inf.");
+    //         assert(log(ssm_inference_result.probs[result_index]) !=
+    //                    -std::numeric_limits<float>::infinity() &&
+    //                "Child log probability should not be -inf.");
+    //         add_token_to_spec_token_tree(
+    //             guid,
+    //             ssm_inference_result.token_ids[result_index],
+    //             parent_pos,
+    //             log(ssm_inference_result.probs[result_index]) +
+    //                 parent_log_prob);
+    //         result_index++;
+    //       }
+    //     }
+    //     parent_pos++;
+    //   }
+    // }
 
-    prune_last_layer_of_spec_token_tree(guid);
+    // bool last_layer_empty = prune_last_layer_of_spec_token_tree(guid);
+    // all_request_last_layer_empty =
+    //     all_request_last_layer_empty && last_layer_empty;
 
     if (current_speculation_step == 1) {
       init_bitmask_spec(guid);
@@ -1149,7 +1204,7 @@ bool RequestManager::update_ssm_inference_results(
   }
 
   // Stop conditions
-  return !token_added_to_spec_tree ||
+  return all_request_last_layer_empty ||
          current_speculation_step > BatchConfig::MAX_TREE_DEPTH;
 }
 
@@ -1309,47 +1364,43 @@ void RequestManager::get_verify_results_greedy(
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
 
-    int committed_token_index = request.tokens.size();
+    int committed_token_index = request.tokens.size() - 1;
 
     TokenTree &token_tree = request.speculative_token_trees[0];
     // First add the root to the committed tokens
     request.committed_tokens.push_back(Request::CommittedToken(
-        llm_result_offset,
-        committed_token_index,
-        llm_verify_result.token_ids[llm_result_offset]));
+        llm_result_offset, committed_token_index, request.tokens.back()));
     committed_token_index++;
     // Don't add it to request.tokens because it has already been added.
 
     // The position of the last accepted token in its tree layer (includeing
     // the pruned tokens)
-    int last_accepted_token_layer_index = 0;
+    int last_accepted_token_index_in_layer = 0;
     // The index of the last accepted token in the entire tree (excluding the
     // pruned tokens)
     int last_accepted_token_index = 0;
 
     int current_token_index = 1; // Because we skip the root
-    int num_layers = token_tree.tree_layers.size();
     auto layer_it = token_tree.tree_layers.begin();
     ++layer_it;
-    // for (int layer_index = 1; layer_index < num_layers; layer_index++) {
     for (; layer_it != token_tree.tree_layers.end(); layer_it++) {
       // We skip the first layer
-      std::list<std::shared_ptr<TokenTreeNode>> &tree_layer = *layer_it;
+      std::list<std::shared_ptr<TokenTreeNode>> const &tree_layer = *layer_it;
 
       bool token_accepted_this_layer = false;
-      int current_token_layer_index = 0;
+      int current_token_index_in_layer = 0;
 
       for (auto const &node_ptr : tree_layer) {
         if (node_ptr->pruned) {
-          current_token_layer_index++;
+          current_token_index_in_layer++;
           continue;
         }
-        if ((node_ptr->parent_pos != last_accepted_token_layer_index) ||
+        if ((node_ptr->parent_pos != last_accepted_token_index_in_layer) ||
             token_accepted_this_layer) {
           // The token's parent is not accepted, or there is already another
           // token accepted in this layer
           current_token_index++;
-          current_token_layer_index++;
+          current_token_index_in_layer++;
           continue;
         } else {
           // The token's parent is accepted, and no token has been accepted in
@@ -1363,39 +1414,51 @@ void RequestManager::get_verify_results_greedy(
             // from_index: the index of the token in the tree (excluding the
             // pruned tokens)
             // to_index: the committed token index in the request
-            request.committed_tokens.push_back(Request::CommittedToken(
-                current_token_index, committed_token_index, node_ptr->id));
+            request.committed_tokens.push_back(
+                Request::CommittedToken(llm_result_offset + current_token_index,
+                                        committed_token_index,
+                                        node_ptr->id));
             request.tokens.push_back(node_ptr->id);
 
             token_accepted_this_layer = true;
             last_accepted_token_index = current_token_index;
-            last_accepted_token_layer_index = current_token_layer_index;
+            last_accepted_token_index_in_layer = current_token_index_in_layer;
             committed_token_index++;
-            current_token_index++;
-            current_token_layer_index++;
           }
+          current_token_index++;
+          current_token_index_in_layer++;
         }
       }
       if (!token_accepted_this_layer) {
         // No token is accepted in this layer, we should stop the traversal
-        // However, we have to add the last sampled token as a correction from
-        // the LLM
-
-        // from_index: since this token is not in the token tree, the llm
-        // doesn't have its KV cache, so the from_index should be a place
-        // holder, which is -1
-        request.committed_tokens.push_back(Request::CommittedToken(
-            -1,
-            committed_token_index,
-            llm_verify_result
-                .token_ids[llm_result_offset + last_accepted_token_index]));
-        request.tokens.push_back(
-            llm_verify_result
-                .token_ids[llm_result_offset + last_accepted_token_index]);
         break;
       }
     }
-    llm_result_offset += token_tree.tree_size;
+
+    // Add the last token (that is not verified by the LLM)
+    // from_index: since this token is not in the token tree, the llm
+    // doesn't have its KV cache, so the from_index should be a place
+    // holder, which is -1
+    request.committed_tokens.push_back(Request::CommittedToken(
+        -1,
+        committed_token_index,
+        llm_verify_result
+            .token_ids[llm_result_offset + last_accepted_token_index]));
+    request.tokens.push_back(
+        llm_verify_result
+            .token_ids[llm_result_offset + last_accepted_token_index]);
+
+    llm_result_offset += request.num_tokens_in_batch;
+
+    if (verbose) {
+      std::cout << "Request " << request.guid << " committed tokens: ";
+      for (auto const &committed_token : request.committed_tokens) {
+        std::cout << committed_token.token_id << " ";
+      }
+      std::cout << std::endl;
+      std::string output = this->tokenizer_->Decode(request.tokens);
+      std::cout << "Output sequence: " << output << std::endl;
+    }
   }
 }
 
@@ -1555,73 +1618,35 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
     InferenceResult ir;
     last_irf = Future::from_value<InferenceResult>(ir);
   }
-  std::queue<InferenceResultFuture> batch_pipeline;
-  { batch_pipeline.push(last_irf); }
+
+  request_manager_status = PREFILLING;
+  prefill_model = SSM;
 
   while (!is_background_server_terminated()) {
+    last_irf.get_void_result();
+    BatchConfigFuture bcf = get_next_batch_config(last_irf, ctx, runtime);
+    bcf.get_void_result();
 
-    if (batch_pipeline.size() >= 4) {
-      // Block here to avoid launching too many batches
-      auto const &ir = batch_pipeline.front();
-      ir.get_void_result();
-    }
-    // deque finished batches
-    while (batch_pipeline.size() > 1) {
-      auto const &ir = batch_pipeline.front();
-      if (ir.is_ready()) {
-        batch_pipeline.pop();
-      } else {
-        break;
-      }
-    }
     if ((request_manager_status == PREFILLING and prefill_model == LLM) or
         request_manager_status == LLM_VERIFY) {
+      std::cout << "Branch 1" << std::endl;
       runtime->begin_trace(ctx, 12345 /*trace_id*/);
-      InferenceResultFuture next_ir = batch_pipeline.back();
-      BatchConfigFuture bcf = get_next_batch_config(next_ir, ctx, runtime);
       FutureMap fm = im->inference(llm, 0, bcf);
       assert(fm.get_future_map_domain().get_volume() == 1);
-      InferenceResultFuture irf = fm.get_future(0);
-      batch_pipeline.push(irf);
+      last_irf = fm.get_future(0);
       runtime->end_trace(ctx, 12345 /*trace_id*/);
     } else if ((request_manager_status == PREFILLING and
                 prefill_model == SSM) or
                request_manager_status == SSM_SPEC) {
+      std::cout << "Branch 2" << std::endl;
       runtime->begin_trace(ctx, 23456 /*trace_id*/);
-      InferenceResultFuture next_ir = batch_pipeline.back();
-      BatchConfigFuture bcf = get_next_batch_config(next_ir, ctx, runtime);
       FutureMap fm = im->inference(get_ssm_model(0), 0, bcf);
       assert(fm.get_future_map_domain().get_volume() == 1);
-      InferenceResultFuture irf = fm.get_future(0);
-      batch_pipeline.push(irf);
+      last_irf = fm.get_future(0);
       runtime->end_trace(ctx, 23456 /*trace_id*/);
     } else {
       assert(false && "Invalid request manager status");
     }
-    // runtime->begin_trace(ctx, 12345 /*trace_id*/);
-    // InferenceResultFuture next_ir = batch_pipeline.back();
-    // BatchConfigFuture bcf = get_next_batch_config(next_ir, ctx, runtime);
-    // FutureMap fm;
-    // if (request_manager_status == PREFILLING) {
-    //   if (prefill_model == LLM) {
-    //     fm = im->inference(llm, 0, bcf);
-    //   } else if (prefill_model == SSM) {
-    //     fm = im->inference(get_ssm_model(0), 0, bcf);
-    //   } else {
-    //     assert(false && "Invalid prefill model");
-    //   }
-    // } else if (request_manager_status == LLM_VERIFY) {
-    //   fm = im->inference(llm, 0, bcf);
-    // } else if (request_manager_status == SSM_SPEC) {
-    //   fm = im->inference(get_ssm_model(0), 0, bcf);
-    // } else {
-    //   assert(false && "Invalid request manager status");
-    // }
-    // std::cout << "after inference" << std::endl;
-    // assert(fm.get_future_map_domain().get_volume() == 1);
-    // InferenceResultFuture irf = fm.get_future(0);
-    // batch_pipeline.push(irf);
-    // runtime->end_trace(ctx, 12345 /*trace_id*/);
   }
 }
 
@@ -1684,138 +1709,308 @@ void RequestManager::add_root_to_spec_token_tree(
   TokenTree &speculative_token_tree = request.speculative_token_trees[0];
   speculative_token_tree.add_layer();
   auto node_ptr = std::make_shared<TokenTreeNode>(token_id, 0.0, -1);
+  token_tree_node_pool.push(std::make_pair(node_ptr, guid));
   speculative_token_tree.tree_layers.front().push_back(node_ptr);
   speculative_token_tree.tree_size++;
-  speculative_token_tree.tree_size_including_pruned++;
 }
 
-bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
-                                                  BatchConfig::TokenId token_id,
-                                                  int parent_pos,
-                                                  float log_accumulated_prob) {
-  // This method assumes only one small model is used for speculation
-  // This method is called by update_ssm_inference_results()
+bool RequestManager::add_tokens_to_spec_token_tree(
+    InferenceResult const &ssm_inference_result) {
 
-  if (verbose) {
-    std::cout << "add_token_to_spec_token_tree: guid=" << guid
-              << " token_id=" << token_id << " parent_pos=" << parent_pos
-              << " log_accumulated_prob=" << log_accumulated_prob << std::endl;
-  }
-
-  // This is called after the first small model inference
-  assert(current_speculation_step >= 1 &&
-         "The current speculation step should be no less than 1");
-
-  Request &request = all_requests[guid];
-  TokenTree &speculative_token_tree = request.speculative_token_trees[0];
-
-  // Make sure there are enough layers in the speculation tree
-  if (speculative_token_tree.tree_layers.size() == current_speculation_step) {
-    // When adding the first token, we need to add a new layer
-    speculative_token_tree.add_layer();
-  } else {
-    // To add a token, the tree depth is either the same as the current
-    // speculation step or one more than the current speculation step.
-    assert(speculative_token_tree.tree_layers.size() ==
-               current_speculation_step + 1 &&
-           "Invalid token tree depth");
-  }
-
-  bool remove_min_node = false;
-  bool add_new_node = true;
-
-  std::shared_ptr<TokenTreeNode> min_node_ptr = nullptr;
-  RequestGuid min_node_guid = -1;
-  if (token_tree_node_pool.size() > 0) {
-    std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>
-        min_node_pair_in_pool = token_tree_node_pool.top();
-    min_node_ptr = min_node_pair_in_pool.first;
-    min_node_guid = min_node_pair_in_pool.second;
-  }
-
-  // We maintain the size of the token tree node pool to not exceed
-  //  BatchConfig::MAX_NUM_TOKENS
-  if (token_tree_node_pool.size() == BatchConfig::MAX_NUM_TOKENS) {
-    // The pool is full, check if the new node has a higher joint probability
-    // than the minimum node in the pool.
-
-    if (log_accumulated_prob < min_node_ptr->log_accumulated_prob) {
-      // Insertion failed
-      add_new_node = false;
-    } else {
-      // Remove the minimum node from the pool, and set its pruned field to
-      // true
-      remove_min_node = true;
+  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
     }
-  } else if (token_tree_node_pool.size() > BatchConfig::MAX_NUM_TOKENS) {
-    assert(false && "The size of the token tree node pool should not exceed "
-                    "BatchConfig::MAX_NUM_TOKENS");
-  }
-  // Do nothing if the pool is not full
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
 
-  // The request's token tree size should not exceed
-  // BatchConfig::MAX_SPEC_TREE_TOKEN_NUM
-  // The judgement is done here to avoid the case where the tree is full but a
-  // node is pruned.
-  if (speculative_token_tree.tree_size ==
-      BatchConfig::MAX_SPEC_TREE_TOKEN_NUM) {
-    if (remove_min_node && guid == min_node_guid) {
-      // The minimum node in the pool is pruned, and it's in the same request
-      // with the new node. Only in this case we can add the new node.
-      // Because remove_min_node is true means that the new node has a higher
-      // joint probability than the minimum node in the pool.
-      add_new_node = true;
-    } else {
-      // Otherwise, we cannot add the new node, and we don't need to expel the
-      // minimum node from the pool.
-      add_new_node = false;
-      remove_min_node = false;
+    int parent_num = request.num_tokens_in_batch;
+    if (parent_num == 0) {
+      // The request has no committed tokens, we don't need to add tokens to the
+      // token tree
+      continue;
     }
-  } else if (speculative_token_tree.tree_size >
-             BatchConfig::MAX_SPEC_TREE_TOKEN_NUM) {
-    assert(false && "The size of the token tree should not exceed "
-                    "BatchConfig::MAX_SPEC_TREE_TOKEN_NUM");
+    int result_offset = request.first_token_offset_in_batch *
+                        BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+    int result_num = parent_num * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+    int current_tree_size = request.causal_mask.tree_or_prompt_size;
+    int empty_slots_on_tree = BatchConfig::MAX_SPEC_TREE_TOKEN_NUM -
+                              current_tree_size; // The number of empty slots
+
+    if (empty_slots_on_tree == 0) {
+      // The token tree is full, we don't need to add tokens to it
+      continue;
+    }
+
+    bool token_pool_full =
+        token_tree_node_pool.size() == BatchConfig::MAX_NUM_TOKENS;
+
+    TokenTree &spec_token_tree = request.speculative_token_trees[0];
+    std::list<std::shared_ptr<TokenTreeNode>> &last_layer =
+        spec_token_tree.tree_layers.back();
+    std::set<std::shared_ptr<TokenTreeNode>, CompareSharedTokenTreeNodePtr>
+        tokens;
+    int parent_pos = 0;
+    for (auto const &parent_ptr : last_layer) {
+      for (int child_pos = 0;
+           child_pos < BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+           child_pos++) {
+        int result_idx =
+            result_offset +
+            parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES + child_pos;
+        float log_prob = log(ssm_inference_result.probs[result_idx]);
+        float log_accumulated_prob =
+            log_prob + parent_ptr->log_accumulated_prob;
+
+        std::cout << "Probability at result index" << result_idx << ": "
+                  << ssm_inference_result.probs[result_idx] << std::endl;
+        std::cout << "Token id: " << ssm_inference_result.token_ids[result_idx]
+                  << std::endl;
+        std::cout << "Log Probability: " << log_prob << std::endl;
+        assert(log_prob != -std::numeric_limits<float>::infinity() &&
+               "Child log probability should not be -inf.");
+
+        if (tokens.size() == empty_slots_on_tree and
+            log_accumulated_prob <= (*tokens.begin())->log_accumulated_prob) {
+          // The token tree is full, and the new token has a lower joint
+          // probability than the minimum node in the pool, we don't need to add
+          // the new token and the following tokens belong to the same parent
+          // to the tree, because the tokens are sorted by their probability
+          break;
+        } else if (token_pool_full and
+                   log_accumulated_prob <=
+                       token_tree_node_pool.top().first->log_accumulated_prob) {
+          // The token tree is not full, but the token pool is full, and the new
+          // token has a lower joint probability than the minimum node in the
+          // pool, we don't need to add the new token and the following tokens
+          // belong to the same parent to the tree, because the tokens are
+          // sorted by their probability
+          break;
+        } else {
+          std::shared_ptr<TokenTreeNode> node_ptr =
+              std::make_shared<TokenTreeNode>(
+                  ssm_inference_result.token_ids[result_idx],
+                  log_accumulated_prob,
+                  parent_pos);
+          if (tokens.size() == empty_slots_on_tree and
+              log_accumulated_prob > (*tokens.begin())->log_accumulated_prob) {
+            // The token tree is full, and the new token has a higher joint
+            // probability than the minimum node in the pool, we need to remove
+            // the minimum node from the pool and add the new token to the tree
+            tokens.erase(tokens.begin());
+          }
+          tokens.insert(node_ptr);
+        }
+      }
+      parent_pos++;
+    }
+
+    // Now add all tokens in the set to the token tree, in descending order of
+    // their joint probability
+    spec_token_tree.add_layer();
+    for (auto token_it = tokens.crbegin(); token_it != tokens.crend();
+         token_it++) {
+      if (token_pool_full and
+          token_tree_node_pool.top().first->log_accumulated_prob >=
+              (*token_it)->log_accumulated_prob) {
+        break;
+      } else if (token_pool_full) {
+        token_tree_node_pool.top().first->pruned = true;
+        token_tree_node_pool.pop();
+      }
+
+      token_tree_node_pool.push(std::make_pair((*token_it), guid));
+      spec_token_tree.tree_layers.back().push_back((*token_it));
+      spec_token_tree.tree_size++;
+    }
   }
 
-  assert(!(remove_min_node && !add_new_node) &&
-         "The minimum node should be removed only when the new node is added");
+  bool all_request_last_layer_empty = true;
 
-  if (remove_min_node) {
-    // Remove the minimum node from the pool, and set its pruned field to true
-    min_node_ptr->pruned = true;
-    token_tree_node_pool.pop();
-    all_requests[min_node_guid].speculative_token_trees[0].tree_size--;
-  }
+  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+    TokenTree &spec_token_tree = request.speculative_token_trees[0];
 
-  if (add_new_node) {
-    // Add the new node to the pool and the last layer of the speculation tree
-    auto node_ptr = std::make_shared<TokenTreeNode>(
-        token_id, log_accumulated_prob, parent_pos);
-    token_tree_node_pool.push(std::make_pair(node_ptr, guid));
-    speculative_token_tree.tree_layers.back().push_back(node_ptr);
-    speculative_token_tree.tree_size++;
-    speculative_token_tree.tree_size_including_pruned++;
+    if (spec_token_tree.tree_layers.size() <= current_speculation_step) {
+      // This request has no token added in this layer, skip it
+      continue;
+    }
+
+    std::list<std::shared_ptr<TokenTreeNode>> &last_layer =
+        request.speculative_token_trees[0].tree_layers.back();
+    for (auto it = last_layer.begin(); it != last_layer.end();) {
+      if ((*it)->pruned) {
+        it = last_layer.erase(it);
+        spec_token_tree.tree_size--;
+      } else {
+        ++it;
+      }
+    }
+    all_request_last_layer_empty &= last_layer.empty();
   }
-  return add_new_node;
+  return all_request_last_layer_empty;
 }
 
-void RequestManager::prune_last_layer_of_spec_token_tree(RequestGuid guid) {
-  // This method assumes only one small model is used for speculation
-  Request &request = all_requests[guid];
+// bool RequestManager::add_token_to_spec_token_tree(RequestGuid guid,
+//                                                   BatchConfig::TokenId
+//                                                   token_id, int parent_pos,
+//                                                   float log_accumulated_prob)
+//                                                   {
+//   // This method assumes only one small model is used for speculation
+//   // This method is called by update_ssm_inference_results()
 
-  if (request.speculative_token_trees[0].tree_layers.size() <=
-      current_speculation_step) {
-    // There are no tokens in the last layer
-    return;
-  }
-  auto &last_layer = request.speculative_token_trees[0].tree_layers.back();
-  for (auto it = last_layer.begin(); it != last_layer.end(); ++it) {
-    if ((*it)->pruned) {
-      last_layer.erase(it);
-      request.speculative_token_trees[0].tree_size--;
-      request.speculative_token_trees[0].tree_size_including_pruned--;
-    }
-  }
-}
+//   if (verbose) {
+//     std::cout << "add_token_to_spec_token_tree: guid=" << guid
+//               << " token_id=" << token_id << " parent_pos=" << parent_pos
+//               << " log_accumulated_prob=" << log_accumulated_prob <<
+//               std::endl;
+//   }
+
+//   // This is called after the first small model inference
+//   assert(current_speculation_step >= 1 &&
+//          "The current speculation step should be no less than 1");
+
+//   Request &request = all_requests[guid];
+//   TokenTree &speculative_token_tree = request.speculative_token_trees[0];
+
+//   // Make sure there are enough layers in the speculation tree
+//   if (speculative_token_tree.tree_layers.size() == current_speculation_step)
+//   {
+//     // When adding the first token, we need to add a new layer
+//     speculative_token_tree.add_layer();
+//   } else {
+//     // To add a token, the tree depth is either the same as the current
+//     // speculation step or one more than the current speculation step.
+//     assert(speculative_token_tree.tree_layers.size() ==
+//                current_speculation_step + 1 &&
+//            "Invalid token tree depth");
+//   }
+
+//   bool remove_min_node = false;
+//   bool add_new_node = true;
+
+//   std::shared_ptr<TokenTreeNode> min_node_ptr = nullptr;
+//   RequestGuid min_node_guid = -1;
+//   if (token_tree_node_pool.size() > 0) {
+//     std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>
+//         min_node_pair_in_pool = token_tree_node_pool.top();
+//     min_node_ptr = min_node_pair_in_pool.first;
+//     min_node_guid = min_node_pair_in_pool.second;
+//   }
+
+//   // We maintain the size of the token tree node pool to not exceed
+//   //  BatchConfig::MAX_NUM_TOKENS
+//   if (token_tree_node_pool.size() == BatchConfig::MAX_NUM_TOKENS) {
+//     // The pool is full, check if the new node has a higher joint probability
+//     // than the minimum node in the pool.
+
+//     if (log_accumulated_prob < min_node_ptr->log_accumulated_prob) {
+//       // Insertion failed
+//       add_new_node = false;
+//     } else {
+//       // Remove the minimum node from the pool, and set its pruned field to
+//       // true
+//       remove_min_node = true;
+//     }
+//   } else if (token_tree_node_pool.size() > BatchConfig::MAX_NUM_TOKENS) {
+//     assert(false && "The size of the token tree node pool should not exceed "
+//                     "BatchConfig::MAX_NUM_TOKENS");
+//   }
+//   // Do nothing if the pool is not full
+
+//   // The request's token tree size should not exceed
+//   // BatchConfig::MAX_SPEC_TREE_TOKEN_NUM
+//   // The judgement is done here to avoid the case where the tree is full but
+//   a
+//   // node is pruned.
+//   if (speculative_token_tree.tree_size ==
+//       BatchConfig::MAX_SPEC_TREE_TOKEN_NUM) {
+//     if (remove_min_node && guid == min_node_guid) {
+//       // The minimum node in the pool is pruned, and it's in the same request
+//       // with the new node. Only in this case we can add the new node.
+//       // Because remove_min_node is true means that the new node has a higher
+//       // joint probability than the minimum node in the pool.
+//       add_new_node = true;
+//     } else {
+//       // Otherwise, we cannot add the new node, and we don't need to expel
+//       the
+//       // minimum node from the pool.
+//       add_new_node = false;
+//       remove_min_node = false;
+//     }
+//   } else if (speculative_token_tree.tree_size >
+//              BatchConfig::MAX_SPEC_TREE_TOKEN_NUM) {
+//     assert(false && "The size of the token tree should not exceed "
+//                     "BatchConfig::MAX_SPEC_TREE_TOKEN_NUM");
+//   }
+
+//   assert(!(remove_min_node && !add_new_node) &&
+//          "The minimum node should be removed only when the new node is
+//          added");
+
+//   if (remove_min_node) {
+//     // Remove the minimum node from the pool, and set its pruned field to
+//     true min_node_ptr->pruned = true; token_tree_node_pool.pop();
+//     all_requests[min_node_guid].speculative_token_trees[0].tree_size--;
+//   }
+
+//   if (add_new_node) {
+//     // Add the new node to the pool and the last layer of the speculation
+//     tree auto node_ptr = std::make_shared<TokenTreeNode>(
+//         token_id, log_accumulated_prob, parent_pos);
+//     token_tree_node_pool.push(std::make_pair(node_ptr, guid));
+//     speculative_token_tree.tree_layers.back().push_back(node_ptr);
+//     speculative_token_tree.tree_size++;
+//     speculative_token_tree.tree_size_including_pruned++;
+//   }
+//   return add_new_node;
+// }
+
+// bool RequestManager::prune_last_layer_of_spec_token_trees() {
+//   // Returns true if the last layers of the token tree of all requests are
+//   empty for (int request_idx = 0; request_idx <
+//   BatchConfig::MAX_NUM_REQUESTS;
+//        request_idx++) {
+//     RequestGuid guid = request_idx;
+//     if (all_requests[guid].status != Request::RUNNING) {
+//       continue;
+//     }
+//     if (prune_last_layer_of_spec_token_tree(guid)) {
+//       return true;
+//     }
+//   }
+//   Request &request = all_requests[guid];
+
+//   if (request.speculative_token_trees[0].tree_layers.size() <=
+//       current_speculation_step) {
+//     // There are no tokens in the last layer
+//     return true;
+//   }
+//   auto &last_layer = request.speculative_token_trees[0].tree_layers.back();
+//   for (auto it = last_layer.begin(); it != last_layer.end();) {
+//     if ((*it)->pruned) {
+//       it = last_layer.erase(it);
+//       request.speculative_token_trees[0].tree_size--;
+//       request.speculative_token_trees[0].tree_size_including_pruned--;
+//     } else {
+//       ++it;
+//     }
+//   }
+
+//   if (last_layer.empty()) {
+//     return true;
+//   }
+//   return false;
+// }
 /* --------- Request Token Tree Related Functions --------- */
 }; // namespace FlexFlow
