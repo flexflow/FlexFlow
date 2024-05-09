@@ -631,7 +631,11 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
          "No prefilling request to process in the prefilling phase.");
 
   BatchConfig bc;
-  bc.inference_mode = InferenceMode::INC_DECODING_MODE;
+  if (decoding_mode == INCREMENTAL_DECODING) {
+    bc.inference_mode = InferenceMode::INC_DECODING_MODE;
+  } else if (decoding_mode == SPECULATIVE_DECODING) {
+    bc.inference_mode = InferenceMode::TREE_VERIFY_MODE;
+  }
   bc.prompt_phase = true;
   std::copy(std::begin(request_available),
             std::end(request_available),
@@ -1095,7 +1099,7 @@ bool RequestManager::update_llm_verify_results(
       request_completed = true;
       request_complete_clean_up(request_index);
     } else {
-      update_bitmask_prompt(guid, request.committed_tokens.size());
+      update_bitmask_prompt(guid, request.committed_tokens.size() - 1);
     }
   }
 
@@ -1360,7 +1364,7 @@ void RequestManager::get_verify_results_greedy(
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
 
-    int committed_token_index = request.tokens.size();
+    int committed_token_index = request.tokens.size() - 1;
 
     TokenTree &token_tree = request.speculative_token_trees[0];
     // First add the root to the committed tokens
@@ -1418,9 +1422,9 @@ void RequestManager::get_verify_results_greedy(
             last_accepted_token_index = current_token_index;
             last_accepted_token_index_in_layer = current_token_index_in_layer;
             committed_token_index++;
-            current_token_index++;
-            current_token_index_in_layer++;
           }
+          current_token_index++;
+          current_token_index_in_layer++;
         }
       }
       if (!token_accepted_this_layer) {
@@ -1759,7 +1763,9 @@ bool RequestManager::add_tokens_to_spec_token_tree(
         float log_accumulated_prob =
             log_prob + parent_ptr->log_accumulated_prob;
 
-        std::cout << "Probability: " << ssm_inference_result.probs[result_idx]
+        std::cout << "Probability at result index" << result_idx << ": "
+                  << ssm_inference_result.probs[result_idx] << std::endl;
+        std::cout << "Token id: " << ssm_inference_result.token_ids[result_idx]
                   << std::endl;
         std::cout << "Log Probability: " << log_prob << std::endl;
         assert(log_prob != -std::numeric_limits<float>::infinity() &&
