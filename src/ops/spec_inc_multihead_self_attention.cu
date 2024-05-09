@@ -175,9 +175,9 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
         // todo add alobi here
         // bool const mask = ti_circ >= totalCacheSize;
         bool const mask = (ti >= bitmask->non_tree_cache_size &&
-                           !test_bit(bitmask->bit_mask,
-                                     ti - bitmask->non_tree_cache_size,
-                                     query_token));
+                           (!test_bit(bitmask->bit_mask,
+                                      query_token,
+                                      ti - bitmask->non_tree_cache_size)));
         // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
         //   (1 << query_token))));
 
@@ -230,9 +230,9 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
     for (int ti = first_step + tidx; ti < totalCacheSize;
          ti += THREADS_PER_BLOCK) {
       bool const mask = (ti >= bitmask->non_tree_cache_size &&
-                         !test_bit(bitmask->bit_mask,
-                                   ti - bitmask->non_tree_cache_size,
-                                   query_token));
+                         (!test_bit(bitmask->bit_mask,
+                                    query_token,
+                                    ti - bitmask->non_tree_cache_size)));
       // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
       //   (1 << query_token))));
       float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
@@ -279,9 +279,9 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
             v_cache_batch + ti_circ * hidden_size + head_idx * per_head_size);
 
         bool const mask = (ti >= bitmask->non_tree_cache_size &&
-                           !test_bit(bitmask->bit_mask,
-                                     ti - bitmask->non_tree_cache_size,
-                                     query_token));
+                           (!test_bit(bitmask->bit_mask,
+                                      query_token,
+                                      ti - bitmask->non_tree_cache_size)));
         // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
         //   (1 << query_token))));
         float logit = mask ? 0.0f : qk_smem[ti - first_step];
