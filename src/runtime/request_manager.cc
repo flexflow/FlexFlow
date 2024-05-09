@@ -679,6 +679,10 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     bc.num_tokens_to_commit++;
   }
 
+  if (verbose) {
+    std::cout << "prepare_llm_prefilling_batch NEW batchconfig:" << std::endl;
+    bc.print();
+  }
   return bc;
 }
 
@@ -729,6 +733,10 @@ BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
     bc.num_tokens++;
   }
 
+  if (verbose) {
+    std::cout << "prepare_ssm_prefilling_batch NEW batchconfig:" << std::endl;
+    bc.print();
+  }
   return bc;
 }
 
@@ -774,6 +782,10 @@ BatchConfig RequestManager::prepare_decoding_batch() {
     bc.num_tokens++;
   }
 
+  if (verbose) {
+    std::cout << "prepare_decoding_batch NEW batchconfig:" << std::endl;
+    bc.print();
+  }
   return bc;
 }
 /* ----- Speculative Inference Specific functions ----- */
