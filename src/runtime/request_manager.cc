@@ -339,7 +339,7 @@ size_t RequestManager::get_num_processed_requests() {
 
 int RequestManager::get_num_active_requests() {
   int count = 0;
-  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < get_max_requests_per_batch(); i++) {
     if (guid_of_requests[i] != INVALID_GUID) {
       count++;
     }
@@ -348,7 +348,7 @@ int RequestManager::get_num_active_requests() {
 }
 
 int RequestManager::get_empty_request_index() {
-  for (int i = 0; i < BatchConfig::MAX_NUM_REQUESTS; i++) {
+  for (int i = 0; i < get_max_requests_per_batch(); i++) {
     if (guid_of_requests[i] == INVALID_GUID) {
       return i;
     }
@@ -552,7 +552,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
 
 bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
   bool request_completed = false;
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
       // Request in this slot is unavailable
@@ -648,7 +648,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   bc.requestsInfo[request_index].first_token_index_in_request =
       prefill_request->llm_cache_size;
   bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
-      BatchConfig::MAX_NUM_TOKENS,
+      get_max_tokens_per_batch(),
       (int)prefill_request->tokens.size() - prefill_request->llm_cache_size);
 
   prefill_request->first_token_offset_in_batch = 0;
@@ -712,7 +712,7 @@ BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
   bc.requestsInfo[request_index].first_token_index_in_request =
       prefill_request->ssm_cache_size;
   bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
-      BatchConfig::MAX_NUM_TOKENS,
+      get_max_tokens_per_batch(),
       (int)prefill_request->tokens.size() - prefill_request->ssm_cache_size);
 
   prefill_request->first_token_offset_in_batch = 0;
@@ -757,7 +757,7 @@ BatchConfig RequestManager::prepare_decoding_batch() {
             std::begin(bc.request_available));
   bc.num_available_requests = num_available_requests;
 
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
        request_index++) {
     if (!request_available[request_index]) {
       continue;
@@ -813,7 +813,7 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
             std::begin(new_bc.request_available));
   new_bc.num_available_requests = num_available_requests;
 
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
       continue;
@@ -888,7 +888,7 @@ BatchConfig RequestManager::prepare_next_spec_batch_config() {
             std::begin(new_bc.request_available));
   new_bc.num_available_requests = num_available_requests;
 
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
       continue;
@@ -978,7 +978,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
             std::begin(new_bc.request_available));
   new_bc.num_available_requests = num_available_requests;
 
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
       continue;
@@ -1068,7 +1068,7 @@ bool RequestManager::update_llm_verify_results(
 
   // Update llm_cache_size with the last committed_tokens, and clear
   // committed_tokens
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
       // Request in this slot is unavailable
@@ -1088,7 +1088,7 @@ bool RequestManager::update_llm_verify_results(
   bool request_completed = false;
 
   // Iterate over the requests
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
       // Request in this slot is unavailable
@@ -1143,7 +1143,7 @@ bool RequestManager::update_ssm_inference_results(
   bool all_request_last_layer_empty =
       add_tokens_to_spec_token_tree(ssm_inference_result);
 
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
       // Request in this slot is unavailable
@@ -1367,7 +1367,7 @@ void RequestManager::get_verify_results_greedy(
   int llm_result_offset = 0;
   // This function maintain the generated token list of the request and the
   // committed tokens.
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
       continue;
@@ -1395,8 +1395,7 @@ void RequestManager::get_verify_results_greedy(
     int current_token_index = 1; // Because we skip the root
     auto layer_it = token_tree.tree_layers.begin();
     ++layer_it;
-    for (int layer_index = 1; layer_index < token_tree.tree_layers.size();
-         layer_index++) {
+    for (; layer_it != token_tree.tree_layers.end(); ++layer_it) {
       // We skip the first layer
       std::list<std::shared_ptr<TokenTreeNode>> const &tree_layer = *layer_it;
 
@@ -1446,7 +1445,6 @@ void RequestManager::get_verify_results_greedy(
         // No token is accepted in this layer, we should stop the traversal
         break;
       }
-      ++layer_it;
     }
 
     // Add the last token (that is not verified by the LLM)
@@ -1732,7 +1730,7 @@ void RequestManager::add_root_to_spec_token_tree(
 bool RequestManager::add_tokens_to_spec_token_tree(
     InferenceResult const &ssm_inference_result) {
 
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
       // Request in this slot is unavailable
@@ -1760,7 +1758,7 @@ bool RequestManager::add_tokens_to_spec_token_tree(
     }
 
     bool token_pool_full =
-        token_tree_node_pool.size() == BatchConfig::MAX_NUM_TOKENS;
+        token_tree_node_pool.size() == get_max_tokens_per_batch();
 
     TokenTree &spec_token_tree = request.speculative_token_trees[0];
     std::list<std::shared_ptr<TokenTreeNode>> &last_layer =
@@ -1847,7 +1845,7 @@ bool RequestManager::add_tokens_to_spec_token_tree(
 
   bool all_request_last_layer_empty = true;
 
-  for (int request_index = 0; request_index < BatchConfig::MAX_NUM_REQUESTS;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
       // Request in this slot is unavailable
