@@ -120,7 +120,7 @@ GumbelTopKParams GumbelTopK::get_params() const {
 }
 
 bool GumbelTopKParams::is_valid(ParallelTensorShape const &) const {
-  // topk is always valid
+  // gumbel_topk is always valid
   return true;
 }
 
@@ -142,7 +142,7 @@ GumbelTopK::GumbelTopK(FFModel &model,
          name,
          1 /*inputs*/,
          0 /*weights*/,
-         _speculative_decoding ? 2 : 1 /*outputs*/,
+         _speculative_decoding ? 3 : 1 /*outputs*/,
          _input),
       k(_k), sorted(_sorted), speculative_decoding(_speculative_decoding) {
   // overwrite layer_guid
@@ -162,6 +162,8 @@ GumbelTopK::GumbelTopK(FFModel &model,
   if (_speculative_decoding) {
     outputs[1] = model.create_parallel_tensor_legion_ordering(
         numdim, dims, DT_FLOAT, this, 1 /*owner_idx*/);
+    outputs[2] = model.create_parallel_tensor_legion_ordering(
+        numdim, dims, DT_FLOAT, this, 2 /*owner_idx*/);
   }
 }
 
@@ -226,7 +228,7 @@ void GumbelTopK::init_inference(FFModel const &ff,
   //                                                     WRITE_ONLY,
   //                                                     EXCLUSIVE,
   //                                                     batch_outputs[1]->region));
-  //   launcher.add_field(2, FID_DATA);
+  launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
@@ -259,12 +261,6 @@ void GumbelTopK::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  //   launcher.add_region_requirement(RegionRequirement(outputs[1]->part,
-  //                                                     0 /*projection id*/,
-  //                                                     WRITE_ONLY,
-  //                                                     EXCLUSIVE,
-  //                                                     outputs[1]->region));
-  //   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -274,16 +270,16 @@ OpMeta *GumbelTopK::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
-  GumbelTopK *topk = (GumbelTopK *)task->args;
+  GumbelTopK *gumbel_topk = (GumbelTopK *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  GumbelTopKMeta *m = new GumbelTopKMeta(handle, topk);
-  m->profiling = topk->profiling;
-  m->inference_debugging = topk->inference_debugging;
-  m->sorted = topk->sorted;
-  m->k = topk->k;
-  std::strcpy(m->op_name, topk->name);
-  m->layer_guid = topk->layer_guid;
-  m->speculative_decoding = topk->speculative_decoding;
+  GumbelTopKMeta *m = new GumbelTopKMeta(handle, gumbel_topk);
+  m->profiling = gumbel_topk->profiling;
+  m->inference_debugging = gumbel_topk->inference_debugging;
+  m->sorted = gumbel_topk->sorted;
+  m->k = gumbel_topk->k;
+  std::strcpy(m->op_name, gumbel_topk->name);
+  m->layer_guid = gumbel_topk->layer_guid;
+  m->speculative_decoding = gumbel_topk->speculative_decoding;
   return m;
 }
 
@@ -323,6 +319,7 @@ FutureMap GumbelTopK::inference(
                                                       EXCLUSIVE,
                                                       batch_inputs[0]->region));
     launcher.add_field(0, FID_DATA);
+
     launcher.add_region_requirement(
         RegionRequirement(batch_outputs[0]->part,
                           0 /*projection id*/,
@@ -338,8 +335,16 @@ FutureMap GumbelTopK::inference(
                           EXCLUSIVE,
                           batch_outputs[1]->region));
     launcher.add_field(2, FID_DATA);
-    return runtime->execute_index_space(ctx, launcher);
 
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[2]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[2]->region));
+    launcher.add_field(3, FID_DATA);
+
+    return runtime->execute_index_space(ctx, launcher);
   } else {
     IndexLauncher launcher(GUMBEL_TOPK_INF_TASK_ID,
                            parallel_is,
@@ -363,6 +368,7 @@ FutureMap GumbelTopK::inference(
                           EXCLUSIVE,
                           batch_outputs[0]->region));
     launcher.add_field(1, FID_DATA);
+
     return runtime->execute_index_space(ctx, launcher);
   }
 }
@@ -387,11 +393,12 @@ InferenceResult
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW probs;
+  GenericTensorAccessorW log_probs;
+  GenericTensorAccessorW perturbed_log_probs;
 
   int batch_size = bc->num_active_tokens();
   GumbelTopK::forward_kernel_wrapper(
-      m, input, probs, indices, batch_size, nullptr);
+      m, input, log_probs, perturbed_log_probs, indices, batch_size, nullptr);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
@@ -411,8 +418,8 @@ InferenceResult GumbelTopK::inference_speculative_task(
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
   BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
   if (bc.num_active_tokens() == 0) {
     // Directly return for empty batch config
@@ -425,16 +432,19 @@ InferenceResult GumbelTopK::inference_speculative_task(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW probs = helperGetGenericTensorAccessorWO(
+  GenericTensorAccessorW log_probs = helperGetGenericTensorAccessorWO(
       DT_FLOAT, regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW perturbed_log_probs = helperGetGenericTensorAccessorWO(
+      DT_FLOAT, regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   int batch_size = bc.num_active_tokens();
-  GumbelTopK::forward_kernel_wrapper(m, input, probs, indices, batch_size, &bc);
+  GumbelTopK::forward_kernel_wrapper(m, input, log_probs, perturbed_log_probs, indices, batch_size, &bc);
 
   InferenceResult ir;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size * m->k);
-  download_tensor<float>(probs.get_float_ptr(), ir.probs, batch_size * m->k);
+  download_tensor<float>(log_probs.get_float_ptr(), ir.probs, batch_size * m->k);
+  download_tensor<float>(perturbed_log_probs.get_float_ptr(), ir.topk_logits, batch_size * m->k);
   return ir;
 }
 

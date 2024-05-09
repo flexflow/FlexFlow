@@ -83,7 +83,8 @@ public:
   template <typename DT>
   static void forward_kernel(GumbelTopKMeta const *m,
                              DT const *input_ptr,
-                             float *output_ptr,
+                             float *log_probs_ptr,
+                             float *perturbed_log_probs_ptr,
                              int *indices_ptr,
                              size_t batch_size,
                              int length,
@@ -93,7 +94,8 @@ public:
                              ffStream_t stream);
   static void forward_kernel_wrapper(GumbelTopKMeta const *m,
                                      GenericTensorAccessorR const &input,
-                                     GenericTensorAccessorW const &prob,
+                                     GenericTensorAccessorW const &log_probs,
+                                     GenericTensorAccessorW const &perturbed_log_probs,
                                      GenericTensorAccessorW const &indices,
                                      int batch_size,
                                      BatchConfig const *bc);
