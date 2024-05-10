@@ -951,7 +951,6 @@ BatchConfig RequestManager::prepare_next_spec_batch_config() {
 
 /***** Verify Phase *****/
 BatchConfig RequestManager::prepare_verify_batch_config() {
-  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   if (verbose) {
     std::cout
         << "\n############### prepare_verify_batch_config ###############\n";
