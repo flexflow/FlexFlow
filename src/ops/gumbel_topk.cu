@@ -227,7 +227,7 @@ __global__ void
 // NOTE that it applies Gumbel trick on `input`, which is,
 // input -> log(input) - log(-log(U)), where U is a uniform random number in (0, 1).
 template <typename T, template <typename> class Data = LinearData>
-__device__ void heapGumbelTopK(const curandState state,
+__device__ void heapGumbelTopK(curandState state,
                             T const *__restrict__ input,
                             int length,
                             int k,
@@ -249,7 +249,7 @@ __device__ void heapGumbelTopK(const curandState state,
   for (int index = start_index, slot = 0; index < heap_end_index;
        index += step_size, slot++) {
     T value = log(input[index]);
-    T perturbed_value = value - log(-log(curand_uniform(state)));
+    T perturbed_value = value - log(-log(curand_uniform(&state)));
     heap.assign(slot, {index, value, perturbed_value});
   }
 
@@ -262,7 +262,7 @@ __device__ void heapGumbelTopK(const curandState state,
     // We prefer elements with lower indices. This is given here.
     // Later elements automatically have higher indices, so can be discarded.
     T value = log(input[index]);
-    T perturbed_value = value - log(-log(curand_uniform(state)));
+    T perturbed_value = value - log(-log(curand_uniform(&state)));
     if (perturbed_value > heap.root().perturbed_value) {
       // This element should replace the min.
       heap.replace_root({index, value, perturbed_value}, k);
@@ -440,9 +440,9 @@ void GumbelTopK::forward_kernel(
     assert(num_shards >= (size_t)BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
     num_shards = k;
 
-    size_t state_length = batch_size * num_shards;
+    int state_length = batch_size * num_shards;
     init_random_kernel<<<GET_BLOCKS(state_length),
-                        min(CUDA_NUM_THREADS, state_length),
+                        min((int)CUDA_NUM_THREADS, state_length),
                         0,
                       stream>>>(m->state, state_length, rand());
 
@@ -454,16 +454,16 @@ void GumbelTopK::forward_kernel(
         BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES,
         sorted,
         log_probs_ptr,
-        perturbed_log_probs_ptr
+        perturbed_log_probs_ptr,
         indices_ptr,
         m->speculative_decoding);
   } else {
     assert(num_shards >= (size_t)k);
     num_shards = k;
     
-    size_t state_length = batch_size * num_shards;
+    int state_length = batch_size * num_shards;
     init_random_kernel<<<GET_BLOCKS(state_length),
-                        min(CUDA_NUM_THREADS, state_length),
+                        min((int)CUDA_NUM_THREADS, state_length),
                         0,
                       stream>>>(m->state, state_length, rand());
 
