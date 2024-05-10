@@ -395,7 +395,7 @@ __global__ void gumbel_topk_forward_kernel(curandState *state,
                 k,
                 shared_entries,
                 top_k_heap,
-                batch_log_probs_ptr
+                batch_log_probs_ptr,
                 batch_perturbed_log_probs_ptr,
                 batch_indices,
                 speculative_decoding);
