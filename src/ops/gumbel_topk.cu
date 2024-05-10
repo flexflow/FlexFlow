@@ -220,6 +220,16 @@ __global__ void
   }
 }
 
+// Unified log function for float
+__device__ inline float unified_log(float x) {
+    return logf(x);
+}
+
+// Unified log function for half
+__device__ inline __half unified_log(__half x) {
+    return hlog(x);
+}
+
 // heapGumbelTopK walks over [input, input+length) with `step_size` stride starting
 // at `start_index`. It builds a top-`k` heap that is stored in `heap_entries`
 // using `Accessor` to access elements in `heap_entries`. If sorted=true, the
@@ -248,8 +258,8 @@ __device__ void heapGumbelTopK(curandState state,
   // Initialize the min-heap.
   for (int index = start_index, slot = 0; index < heap_end_index;
        index += step_size, slot++) {
-    T value = log(input[index]);
-    T perturbed_value = value - log(-log(curand_uniform(&state)));
+    T value = unified_log(input[index]);
+    T perturbed_value = value - unified_log(-unified_log((T)curand_uniform(&state)));
     heap.assign(slot, {index, value, perturbed_value});
   }
 
@@ -261,8 +271,8 @@ __device__ void heapGumbelTopK(curandState state,
   for (int index = heap_end_index; index < length; index += step_size) {
     // We prefer elements with lower indices. This is given here.
     // Later elements automatically have higher indices, so can be discarded.
-    T value = log(input[index]);
-    T perturbed_value = value - log(-log(curand_uniform(&state)));
+    T value = unified_log(input[index]);
+    T perturbed_value = value - unified_log(-unified_log((T)curand_uniform(&state)));
     if (perturbed_value > heap.root().perturbed_value) {
       // This element should replace the min.
       heap.replace_root({index, value, perturbed_value}, k);
