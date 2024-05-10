@@ -10,7 +10,7 @@ cd "${BASH_SOURCE[0]%/*}"
 ###############################################################################################
 
 # LLAMA
-../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:cpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model meta-llama/Llama-2-7b-hf -ssm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama.txt -pipeline-parallelism-degree 4
+../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 --verbose --fusion --use-full-precision -llm-model meta-llama/Llama-2-7b-hf -ssm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama.txt -pipeline-parallelism-degree 4
 # LLAMA (half precision)
 ../../build/inference/spec_infer/spec_infer -ll:gpu 4 -ll:cpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model meta-llama/Llama-2-7b-hf -ssm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/spec_inference_llama_half.txt -pipeline-parallelism-degree 4
 
