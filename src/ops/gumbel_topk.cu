@@ -214,7 +214,7 @@ __device__ IndexedHeap<heapType, preferIndices, Data, T>
 }
 
 __global__ void
-    init_random_kernel(curandState *state, int batch_size, long rand) {
+    init_random_state_kernel(curandState *state, int batch_size, long rand) {
   CUDA_KERNEL_LOOP(i, batch_size) {
     curand_init(rand, i, 0, &state[i]);
   }
@@ -451,7 +451,7 @@ void GumbelTopK::forward_kernel(
     num_shards = k;
 
     int state_length = batch_size * num_shards;
-    init_random_kernel<<<GET_BLOCKS(state_length),
+    init_random_state_kernel<<<GET_BLOCKS(state_length),
                         min((int)CUDA_NUM_THREADS, state_length),
                         0,
                       stream>>>(m->state, state_length, rand());
@@ -472,7 +472,7 @@ void GumbelTopK::forward_kernel(
     num_shards = k;
     
     int state_length = batch_size * num_shards;
-    init_random_kernel<<<GET_BLOCKS(state_length),
+    init_random_state_kernel<<<GET_BLOCKS(state_length),
                         min((int)CUDA_NUM_THREADS, state_length),
                         0,
                       stream>>>(m->state, state_length, rand());
