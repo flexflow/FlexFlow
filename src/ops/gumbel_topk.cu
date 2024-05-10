@@ -213,6 +213,13 @@ __device__ IndexedHeap<heapType, preferIndices, Data, T>
   return IndexedHeap<heapType, preferIndices, Data, T>{Data<T>{data}};
 }
 
+__global__ void
+    init_random_kernel(curandState *state, int batch_size, long rand) {
+  CUDA_KERNEL_LOOP(i, batch_size) {
+    curand_init(rand, i, 0, &state[i]);
+  }
+}
+
 // heapGumbelTopK walks over [input, input+length) with `step_size` stride starting
 // at `start_index`. It builds a top-`k` heap that is stored in `heap_entries`
 // using `Accessor` to access elements in `heap_entries`. If sorted=true, the
@@ -220,7 +227,8 @@ __device__ IndexedHeap<heapType, preferIndices, Data, T>
 // NOTE that it applies Gumbel trick on `input`, which is,
 // input -> log(input) - log(-log(U)), where U is a uniform random number in (0, 1).
 template <typename T, template <typename> class Data = LinearData>
-__device__ void heapGumbelTopK(T const *__restrict__ input,
+__device__ void heapGumbelTopK(const curandState state,
+                            T const *__restrict__ input,
                             int length,
                             int k,
                             GumbelEntry<T> *__restrict__ heap_entries,
@@ -229,7 +237,6 @@ __device__ void heapGumbelTopK(T const *__restrict__ input,
                             int step_size = 1) {
   assert(k <= length);
 
-  // TODO: apply uniform random
   auto heap =
       make_indexed_heap<HeapType::kMinHeap, PreferIndices::kHigher, Data, T>(
           heap_entries);
@@ -242,7 +249,7 @@ __device__ void heapGumbelTopK(T const *__restrict__ input,
   for (int index = start_index, slot = 0; index < heap_end_index;
        index += step_size, slot++) {
     T value = log(input[index]);
-    T perturbed_value = value - log(-log(1.0f * (index + 1) / length));
+    T perturbed_value = value - log(-log(curand_uniform(state)));
     heap.assign(slot, {index, value, perturbed_value});
   }
 
@@ -255,7 +262,7 @@ __device__ void heapGumbelTopK(T const *__restrict__ input,
     // We prefer elements with lower indices. This is given here.
     // Later elements automatically have higher indices, so can be discarded.
     T value = log(input[index]);
-    T perturbed_value = value - log(-log(1.0f * (index + 1) / length));
+    T perturbed_value = value - log(-log(curand_uniform(state)));
     if (perturbed_value > heap.root().perturbed_value) {
       // This element should replace the min.
       heap.replace_root({index, value, perturbed_value}, k);
@@ -359,7 +366,8 @@ __device__ void mergeShards(int num_shards,
 }
 
 template <typename T>
-__global__ void gumbel_topk_forward_kernel(T const *__restrict__ input,
+__global__ void gumbel_topk_forward_kernel(curandState *state,
+                                        T const *__restrict__ input,
                                         size_t shared_memory_size,
                                         int length,
                                         int k,
@@ -375,7 +383,7 @@ __global__ void gumbel_topk_forward_kernel(T const *__restrict__ input,
   int const thread_count = blockDim.x;
   GumbelEntry<T> *shared_entries = (GumbelEntry<T> *)shared_memory;
   heapGumbelTopK<T, StridedData>(
-      batch_input, length, k, shared_entries, true, thread_index, thread_count);
+      state[thread_index + batch_index * thread_count], batch_input, length, k, shared_entries, true, thread_index, thread_count);
   __syncthreads();
   if (thread_index == 0) {
     int const offset = batch_index * k;
@@ -431,7 +439,15 @@ void GumbelTopK::forward_kernel(
     assert(bc->num_active_requests() >= 0);
     assert(num_shards >= (size_t)BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
     num_shards = k;
+
+    size_t state_length = batch_size * num_shards;
+    init_random_kernel<<<GET_BLOCKS(state_length),
+                        min(CUDA_NUM_THREADS, state_length),
+                        0,
+                      stream>>>(m->state, state_length, rand());
+
     gumbel_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
+        m->state,
         input_ptr,
         shared_memory_size,
         length,
@@ -442,10 +458,17 @@ void GumbelTopK::forward_kernel(
         indices_ptr,
         m->speculative_decoding);
   } else {
-
     assert(num_shards >= (size_t)k);
     num_shards = k;
+    
+    size_t state_length = batch_size * num_shards;
+    init_random_kernel<<<GET_BLOCKS(state_length),
+                        min(CUDA_NUM_THREADS, state_length),
+                        0,
+                      stream>>>(m->state, state_length, rand());
+
     gumbel_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
+        m->state,
         input_ptr,
         shared_memory_size,
         length,
@@ -551,7 +574,18 @@ void GumbelTopK::forward_kernel_wrapper(GumbelTopKMeta const *m,
   }
 }
 
-GumbelTopKMeta::GumbelTopKMeta(FFHandler handler, Op const *op)
-    : OpMeta(handler, op) {}
+GumbelTopKMeta::GumbelTopKMeta(FFHandler handler,
+                               Op const *op,
+                               MemoryAllocator &gpu_mem_allocator)
+    : OpMeta(handler, op) {
+  state_max_length = BatchConfig::MAX_NUM_TOKENS * max(BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES, CUDA_NUM_THREADS);
+  gpu_mem_allocator.create_legion_instance(reserveInst, sizeof(curandState) * state_max_length);
+  state = gpu_mem_allocator.allocate_instance<curandState>(state_max_length);
+}
 
+GumbelTopKMeta::~GumbelTopKMeta(void) {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
+}
 }; // namespace FlexFlow

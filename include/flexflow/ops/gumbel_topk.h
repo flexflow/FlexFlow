@@ -5,15 +5,33 @@
 #include "flexflow/model.h"
 #include "flexflow/node.h"
 #include "flexflow/ops/gumbel_topk_params.h"
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+#include <curand.h>
+#include <curand_kernel.h>
+#elif defined(FF_USE_HIP_ROCM)
+#include <hiprand/hiprand.h>
+#include <hiprand/hiprand_kernel.h>
+#endif
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
 class GumbelTopKMeta : public OpMeta {
 public:
-  GumbelTopKMeta(FFHandler handle, Op const *op);
   bool sorted;
   int k;
   bool speculative_decoding;
+  Realm::RegionInstance reserveInst;
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  curandState *state;
+  int state_max_length;
+#elif defined(FF_USE_HIP_ROCM)
+  hiprandState *state;
+#endif
+  GumbelTopKMeta(FFHandler handle,
+                 Op const *op,
+                 MemoryAllocator &gpu_mem_allocator);
+  ~GumbelTopKMeta(void);
 };
 
 class GumbelTopK : public Op {

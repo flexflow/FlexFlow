@@ -272,7 +272,12 @@ OpMeta *GumbelTopK::init_task(Task const *task,
                            Runtime *runtime) {
   GumbelTopK *gumbel_topk = (GumbelTopK *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  GumbelTopKMeta *m = new GumbelTopKMeta(handle, gumbel_topk);
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  GumbelTopKMeta *m = new GumbelTopKMeta(handle, gumbel_topk, gpu_mem_allocator);
   m->profiling = gumbel_topk->profiling;
   m->inference_debugging = gumbel_topk->inference_debugging;
   m->sorted = gumbel_topk->sorted;
