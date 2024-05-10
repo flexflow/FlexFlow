@@ -339,6 +339,7 @@ class Reshape;
 class Softmax;
 class Split;
 class TopK;
+class GumbelTopK;
 class ArgTopK;
 class Transpose;
 class RMSNorm;
@@ -1233,6 +1234,8 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
                          Softmax *>,
       std::unordered_map<std::pair<ParallelTensorShape, TopKParams>, TopK *>,
+      std::unordered_map<std::pair<ParallelTensorShape, GumbelTopKParams>,
+                         GumbelTopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, ArgTopKParams>,
                          ArgTopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,
