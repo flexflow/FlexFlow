@@ -79,7 +79,7 @@ int BatchConfig::max_spec_tree_token_num() {
 // Overloading the << operator for the Bitset class
 std::ostream &operator<<(std::ostream &os,
                          BatchConfig::BitMask::Bitset const &bitset) {
-  for (size_t i = 0; i < BatchConfig::MAX_SPEC_TREE_TOKEN_NUM; i++) {
+  for (size_t i = 0; i < BatchConfig::max_spec_tree_token_num(); i++) {
     os << (bitset.test_bit(i) ? '1' : '0');
   }
   return os;
@@ -168,7 +168,7 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
         os << "    Current layer size: " << bc.causalMask[i].current_layer_size
            << std::endl;
         os << "    Bit mask: " << std::endl;
-        for (int j = 0; j < BatchConfig::MAX_SPEC_TREE_TOKEN_NUM; j++) {
+        for (int j = 0; j < BatchConfig::max_spec_tree_token_num(); j++) {
           os << "      " << bc.causalMask[i].bit_mask[j] << std::endl;
         }
       }
