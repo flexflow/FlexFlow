@@ -33,6 +33,7 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/ops/gumbel_topk.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -2968,6 +2969,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_TOPK: {
         node = TopK::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_GUMBEL_TOPK: {
+        node = GumbelTopK::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_ARG_TOPK: {

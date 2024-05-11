@@ -145,6 +145,9 @@ enum TaskIDs {
   TOPK_INIT_TASK_ID,
   TOPK_FWD_TASK_ID,
   TOPK_BWD_TASK_ID,
+  GUMBEL_TOPK_INIT_TASK_ID,
+  GUMBEL_TOPK_INF_TASK_ID,
+  GUMBEL_TOPK_INF_SPECULATIVE_TASK_ID,
   ARG_TOPK_INIT_TASK_ID,
   ARG_TOPK_INF_TASK_ID,
   ARG_TOPK_INF_SPECULATIVE_TASK_ID,
@@ -336,6 +339,7 @@ class Reshape;
 class Softmax;
 class Split;
 class TopK;
+class GumbelTopK;
 class ArgTopK;
 class Transpose;
 class RMSNorm;
@@ -676,6 +680,12 @@ public:
              int k,
              bool sorted,
              char const *name = NULL);
+  Tensor gumbel_top_k(Tensor const input,
+                   // Tensor *outputs,
+                   int k,
+                   bool sorted,
+                   bool speculative_decoding,
+                   char const *name = NULL);
   Tensor arg_top_k(Tensor const input,
                    // Tensor *outputs,
                    int k,
@@ -1224,6 +1234,8 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
                          Softmax *>,
       std::unordered_map<std::pair<ParallelTensorShape, TopKParams>, TopK *>,
+      std::unordered_map<std::pair<ParallelTensorShape, GumbelTopKParams>,
+                         GumbelTopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, ArgTopKParams>,
                          ArgTopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,

@@ -19,6 +19,7 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/ops/gumbel_topk.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -129,6 +130,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((Split *)op)->get_params();
     case OP_TOPK:
       return ((TopK *)op)->get_params();
+    case OP_GUMBEL_TOPK:
+      return ((GumbelTopK *)op)->get_params();
     case OP_GROUP_BY:
       return ((Group_by *)op)->get_params();
     case OP_AGGREGATE:
