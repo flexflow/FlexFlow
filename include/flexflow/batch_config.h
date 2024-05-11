@@ -20,11 +20,6 @@
 #include <cstddef>
 #include <cstdlib>
 
-// #define MAX_SEQ_LEN 1024
-// #define BATCH_SIZE 2
-// #define BATCH_SIZE 16
-// #define MAX_REQUESTS 256
-
 namespace FlexFlow {
 
 class InferenceResult;
@@ -153,25 +148,6 @@ public:
   bool request_available[MAX_NUM_REQUESTS];
 };
 
-// class TreeVerifyBatchConfig : public BatchConfig {
-// public:
-//   TreeVerifyBatchConfig();
-//   ~TreeVerifyBatchConfig();
-//   InferenceMode get_mode() const;
-//   friend std::ostream &operator<<(std::ostream &os,
-//                                   TreeVerifyBatchConfig const &bc);
-//   void print() const;
-//   void save_to_file(std::string const &filename) const;
-//   struct CommittedTokensInfo {
-//     int token_index;   // the index of the token in the previous batch
-//     int request_index; // request index in the batch
-//     int token_depth;   // position of the token in the request's sequence
-//   };
-
-//   int num_tokens_to_commit = 0;
-//   CommittedTokensInfo committed_tokens[MAX_NUM_TOKENS];
-// };
-
 struct InferenceResult {
   BatchConfig::TokenId token_ids[BatchConfig::MAX_NUM_TOKENS *
                                  BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
@@ -179,37 +155,5 @@ struct InferenceResult {
               BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
   float topk_logits[BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_K_LOGITS];
 };
-
-// class TreeSearchBatchConfig : public BatchConfig {
-// public:
-//   TreeSearchBatchConfig();
-//   TreeSearchBatchConfig(int model_id);
-//   TreeSearchBatchConfig(TreeSearchBatchConfig const &other, int model_id);
-//   InferenceMode get_mode() const;
-
-//   ~TreeSearchBatchConfig();
-
-//   friend std::ostream &operator<<(std::ostream &os,
-//                                   TreeSearchBatchConfig const &bc);
-//   void print() const;
-//   void save_to_file(std::string const &filename) const;
-
-//   inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3;
-//   inline static int const MAX_TREE_DEPTH = 16;
-
-//   // how many requests is in speculative phase
-//   int model_id;
-// };
-
-// class SsmInferenceResult : public InferenceResult {
-// public:
-//   BatchConfig::TokenId
-//       token_ids[MAX_NUM_TOKENS *
-//                 TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-//   float probs[MAX_NUM_TOKENS *
-//               TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-//   int parent_id[MAX_NUM_TOKENS *
-//                 TreeSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-// };
 
 }; // namespace FlexFlow
