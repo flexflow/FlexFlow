@@ -826,6 +826,35 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
 
+  int size = m->num_q_heads * m->kProjSize * 50;
+  int *temp_key = new int[size];
+  int *temp_value = new int[size];
+  cudaMemcpy(temp_key, m->keyCache, size * sizeof(int), cudaMemcpyDeviceToHost);
+  cudaMemcpy(
+      temp_value, m->valueCache, size * sizeof(int), cudaMemcpyDeviceToHost);
+
+  printf("key: ");
+  for (int i = 0; i < 50; ++i) {
+    int temp = 0;
+    for (int j = 0; j < m->num_q_heads * m->kProjSize; ++j) {
+      temp += temp_key[i * m->num_q_heads * m->kProjSize + j];
+    }
+    printf("%d ", temp);
+  }
+  printf("\n");
+
+  printf("value: ");
+  for (int i = 0; i < 50; ++i) {
+    int temp = 0;
+    for (int j = 0; j < m->num_q_heads * m->kProjSize; ++j) {
+      temp += temp_value[i * m->num_q_heads * m->kProjSize + j];
+    }
+    printf("%d ", temp);
+  }
+  printf("\n");
+  delete[] temp_key;
+  delete[] temp_value;
+
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
@@ -846,6 +875,21 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
     compute_attention_kernel_generation<DT>(
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
+
+  size = m->hidden_size * 50;
+  int *temp_output = new int[size];
+  cudaMemcpy(
+      temp_output, m->attn_heads, size * sizeof(int), cudaMemcpyDeviceToHost);
+  printf("Output: ");
+  for (int i = 0; i < 50; ++i) {
+    int temp = 0;
+    for (int j = 0; j < m->hidden_size; ++j) {
+      temp += temp_output[i * m->hidden_size + j];
+    }
+    printf("%d ", temp);
+  }
+  printf("\n");
+  delete[] temp_output;
 
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
@@ -1345,13 +1389,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    int max_tokens_per_batch = infer_mode == TREE_VERIFY_MODE
-                                   ? BatchConfig::max_verify_tokens_per_batch()
-                                   : BatchConfig::max_tokens_per_batch();
+    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
     size_t qkv_max_proj_size = max_tokens_per_batch * (qProjSize * num_q_heads +
                                                        kProjSize * num_q_heads +
                                                        vProjSize * num_q_heads);
-    size_t key_cache_size = 0, value_cache_size = 0;
+    size_t key_cache_size = 0, value_cache_size = 0, qk_prod_size = 0;
     switch (infer_mode) {
       case INC_DECODING_MODE: {
         key_cache_size = num_q_heads * kProjSize *
@@ -1360,6 +1402,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         value_cache_size = num_q_heads * vProjSize *
                            BatchConfig::max_requests_per_batch() *
                            BatchConfig::max_sequence_length();
+        qk_prod_size = BatchConfig::max_spec_tree_token_num() *
+                       BatchConfig::max_sequence_length() * num_q_heads;
         break;
       }
       case TREE_SEARCH_MODE:
@@ -1373,15 +1417,15 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                            BatchConfig::max_requests_per_batch() *
                            (BatchConfig::max_sequence_length() +
                             BatchConfig::max_spec_tree_token_num());
+        qk_prod_size = BatchConfig::max_spec_tree_token_num() *
+                       (BatchConfig::max_sequence_length() +
+                        BatchConfig::max_spec_tree_token_num()) *
+                       num_q_heads;
         break;
       }
       default:
         assert(false && "Unkown inference mode");
     }
-    size_t requestinfo_size = BatchConfig::max_requests_per_batch();
-    // size_t tokeninfo_size = max_tokens_per_batch;
-    size_t qk_prod_size =
-        max_tokens_per_batch * BatchConfig::max_sequence_length() * num_q_heads;
     size_t attn_heads_size = max_tokens_per_batch * num_q_heads * vProjSize;
     size_t complex_size = (max_tokens_per_batch * (qProjSize * num_q_heads +
                                                    kProjSize * num_q_heads)) /
@@ -1419,13 +1463,12 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     }
 
     // in tree_verify, enable devQKVProjArray;
-    if (!offload || infer_mode == TREE_VERIFY_MODE) {
-      devQKVProjArray = gpu_mem_allocator.allocate_instance_untyped(
-          qkv_max_proj_size * size_of_dt);
-    } else {
+    if (offload) {
       devQKVProjArray = gpu_mem_allocator.allocate_reserved_untyped(
           qkv_max_proj_size * size_of_dt);
-      // offset += qkv_max_proj_size * size_of_dt;
+    } else {
+      devQKVProjArray = gpu_mem_allocator.allocate_instance_untyped(
+          qkv_max_proj_size * size_of_dt);
     }
 
     // use key value cache in all mode.

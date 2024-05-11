@@ -278,22 +278,10 @@ __global__ void compute_attention_kernel_fused_kernel(
       for (int ti = first_step + vo; ti < tlength; ti += V_PER_ITER) {
         // Load the values from the cache.
         int const ti_circ = ti % max_seq_length;
-        // int const real_cache_idx = topology.real_token_pos[sub_req_idx][ti];
         V_vec v = *reinterpret_cast<V_vec const *>(
             v_cache_batch + ti_circ * hidden_size + head_idx * per_head_size);
-
-        if (ti < tlength) {
-          bool const mask =
-              prompt_phase ? (q_start + qi < ti)
-                           : (ti >= bitmask->non_tree_cache_size &&
-                              (!test_bit(bitmask->bit_mask,
-                                         qi,
-                                         ti - bitmask->non_tree_cache_size)));
-          // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
-          //   (1 << qi))));
-          float logit = mask ? 0.0f : qk_smem[ti - first_step];
-          out = FlexFlow::fma(logit, cast_to_float(v), out);
-        }
+        float logit = qk_smem[ti - first_step];
+        out = FlexFlow::fma(logit, cast_to_float(v), out);
       }
     }
 
@@ -407,6 +395,35 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
         BatchConfig::max_sequence_length() +
             BatchConfig::max_spec_tree_token_num(),
         m->hidden_size);
+
+    int size = m->num_q_heads * m->kProjSize * 50;
+    int *temp_key = new int[size];
+    int *temp_value = new int[size];
+    cudaMemcpy(
+        temp_key, m->keyCache, size * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(
+        temp_value, m->valueCache, size * sizeof(int), cudaMemcpyDeviceToHost);
+    printf("key: ");
+    for (int i = 0; i < 50; ++i) {
+      int temp = 0;
+      for (int j = 0; j < m->num_q_heads * m->kProjSize; ++j) {
+        temp += temp_key[i * m->num_q_heads * m->kProjSize + j];
+      }
+      printf("%d ", temp);
+    }
+    printf("\n");
+
+    printf("value: ");
+    for (int i = 0; i < 50; ++i) {
+      int temp = 0;
+      for (int j = 0; j < m->num_q_heads * m->kProjSize; ++j) {
+        temp += temp_value[i * m->num_q_heads * m->kProjSize + j];
+      }
+      printf("%d ", temp);
+    }
+    printf("\n");
+    delete[] temp_key;
+    delete[] temp_value;
   }
 }
 
@@ -468,27 +485,14 @@ __global__ void update_tree_branch_kv_cache_fused(
     DT kVal = devQKVProjArray[val_idx];
     DT vVal = devQKVProjArray[val_idx + hidden_size];
 
-    int const req_id = tokenInfos[token_idx].request_index;
+    int const req_idx = tokenInfos[token_idx].request_index;
+    int const token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
     // int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
 
-    int const request_token_offset =
-        request_infos[req_id].first_token_offset_in_batch;
-    int const first_token_depth =
-        request_infos[req_id].first_token_index_in_request;
-
-    // if(i % hidden_size == 0){
-    //   printf("update token request id: %d, %d, %d  real id %d, value%.10f\n",
-    //   req_id, token_idx, request_token_offset,(token_idx + first_token_depth
-    //   - request_token_offset), kVal);
-    // }
-    kCache_ptr[req_id * (hidden_size * max_seq_len) +
-               (token_idx + first_token_depth - request_token_offset) *
-                   hidden_size +
-               offset] = kVal;
-    vCache_ptr[req_id * (hidden_size * max_seq_len) +
-               (token_idx + first_token_depth - request_token_offset) *
-                   hidden_size +
-               offset] = vVal;
+    kCache_ptr[req_idx * (hidden_size * max_seq_len) +
+               token_abs_idx * hidden_size + offset] = kVal;
+    vCache_ptr[req_idx * (hidden_size * max_seq_len) +
+               token_abs_idx * hidden_size + offset] = vVal;
   }
 }
 
@@ -539,13 +543,13 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   //     (m->qProjSize + m->kProjSize + m->vProjSize) * bc->num_active_tokens();
   int q_block_size = m->qProjSize;
   int kt_block_size = m->kProjSize;
-  int kt_req_block_size =
-      kt_block_size * m->num_q_heads * BatchConfig::max_sequence_length() +
-      BatchConfig::max_spec_tree_token_num();
+  int kt_req_block_size = kt_block_size * m->num_q_heads *
+                          (BatchConfig::max_sequence_length() +
+                           BatchConfig::max_spec_tree_token_num());
   int vt_block_size = m->vProjSize;
-  int vt_req_block_size =
-      vt_block_size * m->num_q_heads * BatchConfig::max_sequence_length() +
-      BatchConfig::max_spec_tree_token_num();
+  int vt_req_block_size = vt_block_size * m->num_q_heads *
+                          (BatchConfig::max_sequence_length() +
+                           BatchConfig::max_spec_tree_token_num());
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
@@ -585,7 +589,8 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
             num_new_tokens,            // num_tokens_in_branch
             processed_tokens_in_batch, // num_processed_tokens_in_batch
             m->num_active_tokens,      // total_tokens_in_batch
-            BatchConfig::max_sequence_length(),
+            BatchConfig::max_sequence_length() +
+                BatchConfig::max_spec_tree_token_num(),
             m->hidden_size);
       }
 
@@ -950,6 +955,20 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // use the new kernel
   compute_attention_kernel_fused<DT>(
       m, bc, static_cast<DT *>(m->attn_heads), stream);
+
+  int s = m->hidden_size * 50;
+  int *temp_output = new int[s];
+  cudaMemcpy(
+      temp_output, m->attn_heads, s * sizeof(int), cudaMemcpyDeviceToHost);
+  printf("Output: ");
+  for (int i = 0; i < 50; ++i) {
+    int temp = 0;
+    for (int j = 0; j < m->hidden_size; ++j) {
+      temp += temp_output[i * m->hidden_size + j];
+    }
+    printf("%d ", temp);
+  }
+  printf("\n");
 
   int processed_tokens_in_batch = bc->num_active_tokens();
 

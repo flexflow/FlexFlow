@@ -276,8 +276,8 @@ void FlexFlow::top_level_task(Task const *task,
   bool verbose = false;
   int max_requests_per_batch = 8;
   int max_tokens_per_batch = 256;
-  int max_sequence_length = 256;
-  int max_spec_tree_token_num = 64;
+  int max_sequence_length = 512;
+  int max_spec_tree_token_num = 8;
   int expansion_degree = 3;
   RequestManager::DecodingMode decoding_mode =
       RequestManager::SPECULATIVE_DECODING;
