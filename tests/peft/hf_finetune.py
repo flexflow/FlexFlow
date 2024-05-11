@@ -151,7 +151,7 @@ def peft_forward_hook(module, input, output):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--peft-model-id", type=str, default="goliaro/llama-160m-lora-full"
+        "--peft-model-id", type=str, default="goliaro/llama-160m-lora"
     )
     parser.add_argument("--lora-alpha", type=int, default=16)
     parser.add_argument("--lora-dropout", type=float, default=0.0)

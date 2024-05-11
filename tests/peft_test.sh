@@ -14,17 +14,17 @@ fi
 # Create test prompt file
 mkdir -p ../inference/prompt
 echo '["Two things are infinite: "]' > ../inference/prompt/peft.json
-echo '["“Two things are infinite: the universe and human stupidity; and I'\''m not sure about the universe.“"]' > ../inference/prompt/peft_dataset.json
+echo '["“Two things are infinite: the universe and human stupidity; and I'\''m not sure about the universe.”"]' > ../inference/prompt/peft_dataset.json
 
 
 # Create output folder
 mkdir -p ../inference/output
 
 # Enable backtrace in case we run into a segfault or assertion failure
-export LEGION_BACKTRACE=1
+# export LEGION_BACKTRACE=1
 
 # Download test model
-python ../inference/utils/download_peft_model.py goliaro/llama-160m-lora-full --base_model_name JackFram/llama-160m 
+python ../inference/utils/download_peft_model.py goliaro/llama-160m-lora --base_model_name JackFram/llama-160m 
 # if first time, add: --refresh-cache
 
 # CPP test
@@ -34,10 +34,30 @@ python ../inference/utils/download_peft_model.py goliaro/llama-160m-lora-full --
     -ll:fsize 8192 -ll:zsize 12000 \
     -llm-model JackFram/llama-160m \
     -finetuning-dataset ../inference/prompt/peft_dataset.json \
-    -peft-model goliaro/llama-160m-lora-full \
+    -peft-model goliaro/llama-160m-lora \
     --use-full-precision \
     --fusion \
     -enable-peft
 
-# Python test
+Python test
 python ../inference/python/ff_peft.py
+
+# cd ../build
+# rm -rf inference_tensors || true
+# ./inference/peft/peft \
+#     -ll:gpu 1 -ll:cpu 4 -ll:util 4 \
+#     -tensor-parallelism-degree 1 \
+#     -ll:fsize 8192 -ll:zsize 12000 \
+#     -llm-model JackFram/llama-160m \
+#     -finetuning-dataset ../inference/prompt/peft_dataset.json \
+#     -peft-model goliaro/llama-160m-lora \
+#     -enable-peft \
+#     --use-full-precision \
+#     --inference-debugging
+# rm -rf inference_tensors/bwd_*
+
+# cd ../tests/peft
+# rm -rf hf_peft_tensors || true
+# python hf_finetune.py --peft-model-id goliaro/llama-160m-lora --save-peft-tensors --use-full-precision
+# rm -rf hf_peft_tensors/bwd_*
+
