@@ -100,8 +100,7 @@ int RequestManager::get_max_spec_tree_token_num() {
 
 int RequestManager::get_max_verify_tokens_per_batch() {
   assert(max_tokens_per_batch > 0);
-  return max_tokens_per_batch +
-         max_spec_tree_token_num * max_requests_per_batch;
+  return max_tokens_per_batch;
 }
 
 void RequestManager::set_max_sequence_length(int max_seq_length) {
@@ -1105,7 +1104,6 @@ bool RequestManager::update_llm_verify_results(
     init_token_tree(guid);
     assert(!request.committed_tokens.empty() &&
            "The committed tokens should not be empty.");
-
     // Add the last committed token as the root of the speculative token tree
     add_root_to_spec_token_tree(guid, request.committed_tokens.back().token_id);
 
