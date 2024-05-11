@@ -173,6 +173,8 @@ public:
   TokenTree() : tree_size(0) {}
 };
 
+std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree);
+
 class RequestManager {
 public:
   enum State {

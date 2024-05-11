@@ -1096,10 +1096,16 @@ bool RequestManager::update_llm_verify_results(
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
+    if (verbose) {
+      std::cout << "Request " << guid << " token tree: " << std::endl;
+      std::cout << request.speculative_token_trees[0];
+    }
+
     // Initialize the token tree for the request
     init_token_tree(guid);
     assert(!request.committed_tokens.empty() &&
            "The committed tokens should not be empty.");
+
     // Add the last committed token as the root of the speculative token tree
     add_root_to_spec_token_tree(guid, request.committed_tokens.back().token_id);
 
@@ -1299,7 +1305,7 @@ void RequestManager::append_bitmask(RequestGuid guid) {
   bitmask.current_layer_size = new_layer_size;
   bitmask.tree_or_prompt_size += new_layer_size;
 
-  assert(bitmask.tree_or_prompt_size <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+  assert(bitmask.tree_or_prompt_size <= get_max_spec_tree_token_num());
 
   int parent_offset = previous_tree_size - last_layer_size;
   int child_offset = previous_tree_size;
@@ -1748,7 +1754,7 @@ bool RequestManager::add_tokens_to_spec_token_tree(
     int result_offset = request.first_token_offset_in_batch *
                         BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
     int current_tree_size = request.causal_mask.tree_or_prompt_size;
-    int empty_slots_on_tree = BatchConfig::MAX_SPEC_TREE_TOKEN_NUM -
+    int empty_slots_on_tree = get_max_spec_tree_token_num() -
                               current_tree_size; // The number of empty slots
 
     if (empty_slots_on_tree == 0) {
@@ -1877,6 +1883,24 @@ bool RequestManager::add_tokens_to_spec_token_tree(
     }
   }
   return all_request_last_layer_empty;
+}
+
+std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {
+  os << "Token tree: " << std::endl;
+  int layer_idx = 0;
+  for (auto const &layer : token_tree.tree_layers) {
+    os << "Layer: " << layer_idx << std::endl;
+    int token_pos = 0;
+    for (auto const &node : layer) {
+      if (!node->pruned) {
+        os << "token pos: " << token_pos << "token id: " << node->id << "\t"
+           << "parent pos: " << node->parent_pos << "\t" << std::endl;
+      }
+      token_pos++;
+    }
+    layer_idx++;
+  }
+  return os;
 }
 
 /* --------- Request Token Tree Related Functions --------- */
