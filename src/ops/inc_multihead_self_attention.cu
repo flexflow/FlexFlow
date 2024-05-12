@@ -826,35 +826,6 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
 
-  int size = m->num_q_heads * m->kProjSize * 50;
-  int *temp_key = new int[size];
-  int *temp_value = new int[size];
-  cudaMemcpy(temp_key, m->keyCache, size * sizeof(int), cudaMemcpyDeviceToHost);
-  cudaMemcpy(
-      temp_value, m->valueCache, size * sizeof(int), cudaMemcpyDeviceToHost);
-
-  printf("key: ");
-  for (int i = 0; i < 50; ++i) {
-    int temp = 0;
-    for (int j = 0; j < m->num_q_heads * m->kProjSize; ++j) {
-      temp += temp_key[i * m->num_q_heads * m->kProjSize + j];
-    }
-    printf("%d ", temp);
-  }
-  printf("\n");
-
-  printf("value: ");
-  for (int i = 0; i < 50; ++i) {
-    int temp = 0;
-    for (int j = 0; j < m->num_q_heads * m->kProjSize; ++j) {
-      temp += temp_value[i * m->num_q_heads * m->kProjSize + j];
-    }
-    printf("%d ", temp);
-  }
-  printf("\n");
-  delete[] temp_key;
-  delete[] temp_value;
-
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
@@ -876,20 +847,22 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
 
-  //   size = m->hidden_size * 50;
-  //   int *temp_output = new int[size];
+  // Debug output:
+  //   int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
+  //   float *temp_output = new float[size];
   //   cudaMemcpy(
-  //       temp_output, m->attn_heads, size * sizeof(int),
+  //       temp_output, m->attn_heads, size * sizeof(float),
   //       cudaMemcpyDeviceToHost);
   //   printf("Output: ");
-  //   for (int i = 0; i < 50; ++i) {
-  //     int temp = 0;
+  //   float temp = 0;
+  //   for (int i = 0; i < 1; ++i) {
   //     for (int j = 0; j < m->hidden_size; ++j) {
   //       temp += temp_output[i * m->hidden_size + j];
   //     }
-  //     printf("%d ", temp);
+  //     printf("%.6f ", temp);
   //   }
   //   printf("\n");
+
   //   delete[] temp_output;
 
   // compute output production and bias together for all tokens
