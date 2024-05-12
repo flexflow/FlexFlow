@@ -663,6 +663,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
 
     bc.tokensInfo[token_idx].request_index = request_index;
     bc.tokensInfo[token_idx].abs_index_in_request = abs_idx;
+    bc.tokensInfo[token_idx].abs_depth_in_request = abs_idx;
     bc.tokensInfo[token_idx].token_id = prefill_request->tokens[abs_idx];
 
     bc.num_tokens++;
@@ -727,6 +728,7 @@ BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
 
     bc.tokensInfo[token_idx].request_index = request_index;
     bc.tokensInfo[token_idx].abs_index_in_request = abs_idx;
+    bc.tokensInfo[token_idx].abs_depth_in_request = abs_idx;
     bc.tokensInfo[token_idx].token_id = prefill_request->tokens[abs_idx];
 
     bc.num_tokens++;
@@ -776,6 +778,7 @@ BatchConfig RequestManager::prepare_decoding_batch() {
     // Per Token Info
     bc.tokensInfo[bc.num_tokens].request_index = request_index;
     bc.tokensInfo[bc.num_tokens].abs_index_in_request = request.llm_cache_size;
+    bc.tokensInfo[bc.num_tokens].abs_depth_in_request = request.llm_cache_size;
     bc.tokensInfo[bc.num_tokens].token_id = request.tokens.back();
 
     bc.num_tokens++;
@@ -851,6 +854,8 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
          committed_token_index++) {
       new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
       new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
+          committed_tokens[committed_token_index].to_index;
+      new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
           committed_tokens[committed_token_index].to_index;
       new_bc.tokensInfo[new_bc.num_tokens].token_id =
           committed_tokens[committed_token_index].token_id;
@@ -929,6 +934,8 @@ BatchConfig RequestManager::prepare_next_spec_batch_config() {
         new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
             new_bc.requestsInfo[request_index].first_token_index_in_request +
             child_index;
+        new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+            request.tokens.size() - 1 + current_speculation_step;
         new_bc.tokensInfo[new_bc.num_tokens].token_id = node_ptr->id;
 
         new_bc.num_tokens++;
@@ -1019,17 +1026,21 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     // BatchConfig.tokensInfo.
     TokenTree &token_tree = request.speculative_token_trees[0];
     int token_tree_index = 0;
+    int layer_index = 0;
     for (auto const &tree_layer : token_tree.tree_layers) {
       for (auto const &tree_node : tree_layer) {
         if (tree_node->pruned == false) {
           new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
           new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
               request.tokens.size() - 1 + token_tree_index;
+          new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+              request.tokens.size() - 1 + layer_index;
           new_bc.tokensInfo[new_bc.num_tokens].token_id = tree_node->id;
           new_bc.num_tokens++;
           token_tree_index++;
         }
       }
+      layer_index++;
     }
     assert(token_tree_index == token_tree.tree_size);
     new_bc.requestsInfo[request_index].num_tokens_in_batch = token_tree_index;

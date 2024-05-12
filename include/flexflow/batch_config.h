@@ -71,7 +71,12 @@ public:
 
   struct PerTokenInfo {
     TokenId token_id = -1;
+    // Difference between the two:
+    // abs_index_in_request: non-tree cache size + index in the flattened
+    // speculative tree
+    // abs_depth_in_request: non_tree cache size + depth in the speculative tree
     int abs_index_in_request = -1;
+    int abs_depth_in_request = -1;
     int request_index = -1;
   };
 

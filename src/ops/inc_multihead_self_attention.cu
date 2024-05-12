@@ -429,7 +429,7 @@ __global__ void
 
     int token_idx =
         (real_i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
-    size_t pos = tokenInfos[token_idx].abs_index_in_request;
+    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
 
     // float before_real = complex_input[i].x, before_complex =
     // complex_input[i].y;
@@ -479,7 +479,7 @@ __global__ void
     // get position of token
 
     // size_t pos = id_map[token_idx].token_position;
-    size_t pos = tokenInfos[token_idx].abs_index_in_request;
+    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
 
     // float before_real = complex_input[i].x, before_complex =
     int pos_i = real_i % (proj_size / 2);
@@ -876,20 +876,21 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
 
-  size = m->hidden_size * 50;
-  int *temp_output = new int[size];
-  cudaMemcpy(
-      temp_output, m->attn_heads, size * sizeof(int), cudaMemcpyDeviceToHost);
-  printf("Output: ");
-  for (int i = 0; i < 50; ++i) {
-    int temp = 0;
-    for (int j = 0; j < m->hidden_size; ++j) {
-      temp += temp_output[i * m->hidden_size + j];
-    }
-    printf("%d ", temp);
-  }
-  printf("\n");
-  delete[] temp_output;
+  //   size = m->hidden_size * 50;
+  //   int *temp_output = new int[size];
+  //   cudaMemcpy(
+  //       temp_output, m->attn_heads, size * sizeof(int),
+  //       cudaMemcpyDeviceToHost);
+  //   printf("Output: ");
+  //   for (int i = 0; i < 50; ++i) {
+  //     int temp = 0;
+  //     for (int j = 0; j < m->hidden_size; ++j) {
+  //       temp += temp_output[i * m->hidden_size + j];
+  //     }
+  //     printf("%d ", temp);
+  //   }
+  //   printf("\n");
+  //   delete[] temp_output;
 
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
@@ -1402,7 +1403,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         value_cache_size = num_q_heads * vProjSize *
                            BatchConfig::max_requests_per_batch() *
                            BatchConfig::max_sequence_length();
-        qk_prod_size = BatchConfig::max_spec_tree_token_num() *
+        qk_prod_size = BatchConfig::max_sequence_length() *
                        BatchConfig::max_sequence_length() * num_q_heads;
         break;
       }
@@ -1417,7 +1418,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                            BatchConfig::max_requests_per_batch() *
                            (BatchConfig::max_sequence_length() +
                             BatchConfig::max_spec_tree_token_num());
-        qk_prod_size = BatchConfig::max_spec_tree_token_num() *
+        qk_prod_size = BatchConfig::max_sequence_length() *
                        (BatchConfig::max_sequence_length() +
                         BatchConfig::max_spec_tree_token_num()) *
                        num_q_heads;

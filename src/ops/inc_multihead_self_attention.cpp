@@ -158,7 +158,7 @@ __global__ void
 
     int token_idx =
         (real_i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
-    size_t pos = tokenInfos[token_idx].abs_index_in_request;
+    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
     int pos_i = real_i % (proj_size / 2);
     float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
     hipFloatComplex complex_pos = {cos(freq), sin(freq)};
@@ -204,7 +204,7 @@ __global__ void
     // get position of token
 
     // size_t pos = id_map[token_idx].token_position;
-    size_t pos = tokenInfos[token_idx].abs_index_in_request;
+    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
 
     // float before_real = complex_input[i].x, before_complex =
     int pos_i = real_i % (proj_size / 2);

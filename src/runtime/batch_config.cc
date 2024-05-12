@@ -134,8 +134,10 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
   os << "Per-token info:\n";
   for (int i = 0; i < bc.num_tokens; i++) {
     os << "  Token " << i << ":\n";
-    os << "    Absolute depth in request: "
+    os << "    Absolute index in request: "
        << bc.tokensInfo[i].abs_index_in_request << std::endl;
+    os << "    Absolute depth in request: "
+       << bc.tokensInfo[i].abs_depth_in_request << std::endl;
     os << "    Request index: " << bc.tokensInfo[i].request_index << std::endl;
     os << "    Token id: " << bc.tokensInfo[i].token_id << std::endl;
   }

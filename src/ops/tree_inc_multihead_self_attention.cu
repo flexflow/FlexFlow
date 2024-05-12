@@ -956,19 +956,19 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   compute_attention_kernel_fused<DT>(
       m, bc, static_cast<DT *>(m->attn_heads), stream);
 
-  int s = m->hidden_size * 50;
-  int *temp_output = new int[s];
-  cudaMemcpy(
-      temp_output, m->attn_heads, s * sizeof(int), cudaMemcpyDeviceToHost);
-  printf("Output: ");
-  for (int i = 0; i < 50; ++i) {
-    int temp = 0;
-    for (int j = 0; j < m->hidden_size; ++j) {
-      temp += temp_output[i * m->hidden_size + j];
-    }
-    printf("%d ", temp);
-  }
-  printf("\n");
+  //   int s = m->hidden_size * 50;
+  //   int *temp_output = new int[s];
+  //   cudaMemcpy(
+  //       temp_output, m->attn_heads, s * sizeof(int), cudaMemcpyDeviceToHost);
+  //   printf("Output: ");
+  //   for (int i = 0; i < 50; ++i) {
+  //     int temp = 0;
+  //     for (int j = 0; j < m->hidden_size; ++j) {
+  //       temp += temp_output[i * m->hidden_size + j];
+  //     }
+  //     printf("%d ", temp);
+  //   }
+  //   printf("\n");
 
   int processed_tokens_in_batch = bc->num_active_tokens();
 
