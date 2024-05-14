@@ -120,6 +120,8 @@ struct Request {
         : from_index(from_index), to_index(to_index), token_id(token_id) {}
   };
   std::vector<CommittedToken> committed_tokens;
+  bool llm_committed = true;
+  bool ssm_committed = true;
 };
 
 class TokenTreeNode {
