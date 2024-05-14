@@ -74,10 +74,12 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
   int const request_idx = blockIdx.y;
 
   // request id in batch config
-  int requext_idx_in_batch = 0;
-  for (int i = 0; i < request_idx; i++) {
-    while (!request_available[requext_idx_in_batch]) {
-      requext_idx_in_batch++;
+  int requext_idx_in_batch = -1;
+  int cnt_1 = 0;
+  while (cnt_1 < request_idx + 1) {
+    requext_idx_in_batch++;
+    if (request_available[requext_idx_in_batch]) {
+      cnt_1++;
     }
   }
 
@@ -353,25 +355,7 @@ __global__ void
     DT vVal = devQKVProjArray[val_idx + hidden_size];
 
     int const req_id = tokenInfos[token_idx].request_index;
-    // int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
-
-    int const request_token_offset =
-        requestInfo[req_id].first_token_offset_in_batch;
-
-    // BatchConfig::BitMask bitmask = causalMask[req_id];
-    BatchConfig::BitMask *bitmask = &causalMask[req_id];
-
-    // if prompt token -> token id
-    // if tree token:
-
-    // int const cache_idx = bitmask->prompt_size + bitmask->non_tree_cache_size
-    // +
-    //                       bitmask->tree_or_prompt_size - 1 -
-    //                       bitmask->current_layer_size + token_idx -
-    //                       request_token_offset;
-    int const cache_idx =
-        bitmask->non_tree_cache_size + bitmask->tree_or_prompt_size -
-        bitmask->current_layer_size + token_idx - request_token_offset;
+    int const cache_idx = tokenInfos[token_idx].abs_index_in_request;
 
     kCache_ptr[req_id * (hidden_size * max_seq_len) + (cache_idx)*hidden_size +
                offset] = kVal;
@@ -749,6 +733,25 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
     compute_spec_inc_attention_kernel_generation<DT>(
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
+
+  // Debug output:
+  int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
+  float *temp_output = new float[size];
+  cudaDeviceSynchronize();
+  cudaMemcpy(
+      temp_output, m->attn_heads, size * sizeof(float), cudaMemcpyDeviceToHost);
+
+  printf("Output: ");
+  for (int i = 0; i < bc->num_tokens; ++i) {
+    float temp = 0;
+    for (int j = 0; j < m->hidden_size; ++j) {
+      temp += temp_output[i * m->hidden_size + j];
+    }
+    printf("%.6f ", temp);
+  }
+  printf("\n");
+
+  delete[] temp_output;
 
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();

@@ -82,10 +82,12 @@ __global__ void compute_attention_kernel_generation_kernel(
   // request idx
   int const request_idx = blockIdx.y;
 
-  int requext_idx_in_batch = 0;
-  for (int i = 0; i < request_idx; i++) {
-    while (!request_available[requext_idx_in_batch]) {
-      requext_idx_in_batch++;
+  int requext_idx_in_batch = -1;
+  int cnt_1 = 0;
+  while (cnt_1 < request_idx + 1) {
+    requext_idx_in_batch++;
+    if (request_available[requext_idx_in_batch]) {
+      cnt_1++;
     }
   }
 
@@ -850,6 +852,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
   // Debug output:
   //   int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
   //   float *temp_output = new float[size];
+  //   cudaDeviceSynchronize();
   //   cudaMemcpy(
   //       temp_output, m->attn_heads, size * sizeof(float),
   //       cudaMemcpyDeviceToHost);
@@ -961,6 +964,9 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
       continue;
     }
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    if (num_new_tokens == 0) {
+      continue;
+    }
     int total_tokens = bc->requestsInfo[i].first_token_index_in_request +
                        bc->requestsInfo[i].num_tokens_in_batch;
     // Step 1: compute query-key product QK.T/sqrt(d_k)

@@ -80,10 +80,12 @@ __global__ void compute_attention_kernel_fused_kernel(
   int const request_idx = blockIdx.y;
 
   // request id in batch config
-  int requext_idx_in_batch = 0;
-  for (int i = 0; i < request_idx; i++) {
-    while (!request_available[requext_idx_in_batch]) {
-      requext_idx_in_batch++;
+  int requext_idx_in_batch = -1;
+  int cnt_1 = 0;
+  while (cnt_1 < request_idx + 1) {
+    requext_idx_in_batch++;
+    if (request_available[requext_idx_in_batch]) {
+      cnt_1++;
     }
   }
 
@@ -930,12 +932,13 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // Debug output:
   //   int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
   //   float *temp_output = new float[size];
+  //   cudaDeviceSynchronize();
   //   cudaMemcpy(
   //       temp_output, m->attn_heads, size * sizeof(float),
   //       cudaMemcpyDeviceToHost);
   //   printf("Output: ");
-  //   float temp = 0;
   //   for (int i = 0; i < 1; ++i) {
+  //     float temp = 0;
   //     for (int j = 0; j < m->hidden_size; ++j) {
   //       temp += temp_output[i * m->hidden_size + j];
   //     }
