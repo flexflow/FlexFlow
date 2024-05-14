@@ -2,19 +2,13 @@
 #define _FLEXFLOW_LIB_PCG_INCLUDE_PCG_OPERATOR_GRAPH_H
 
 #include "utils/graph.h"
+#include "pcg/operator_graph/operator_graph_output.dtg.h"
+#include "pcg/operator_graph/operator_graph_input.dtg.h"
 
 namespace FlexFlow {
 
-struct OperatorGraphOutput { };
-struct OperatorGraphInput { };
 struct OperatorGraphOutputQuery { };
 struct OperatorGraphEdge { };
-
-Node get_node(OperatorGraphOutput const &);
-int get_idx(OperatorGraphOutput const &);
-
-Node get_node(OperatorGraphInput const &);
-int get_idx(OperatorGraphInput const &);
 
 Node get_src_node(OperatorGraphEdge const &);
 Node get_dst_node(OperatorGraphEdge const &);
@@ -23,31 +17,44 @@ int get_dst_idx(OperatorGraphEdge const &);
 
 struct OperatorGraphEdgeQuery;
 
-struct OperatorGraphView : virtual MultiDiGraphView {
+struct OperatorGraphView {
 public:
   using Edge = OperatorGraphEdge;
   using EdgeQuery = OperatorGraphEdgeQuery;
 
-  OperatorGraphView(OperatorGraphView const &) = default;
-  OperatorGraphView &operator=(OperatorGraphView const &) = default;
+  OperatorGraphView(OperatorGraphView const &);
+  OperatorGraphView &operator=(OperatorGraphView const &);
+
+  OperatorGraphView(OperatorGraphView &&);
+  OperatorGraphView &&operator=(OperatorGraphView &&);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<OperatorGraphOutput> query_outputs(OperatorGraphOutputQuery const &) const;
   std::unordered_set<OperatorGraphEdge> query_edges(OperatorGraphEdgeQuery const &) const;
-};
-CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(MultiDiGraphView);
 
+  struct Impl;
+  std::unique_ptr<Impl> impl;
+};
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(OperatorGraphView);
+
+std::unordered_set<OperatorGraphOutput> get_outputs(OperatorGraphView const &);
 std::vector<OperatorGraphOutput> get_outputs(OperatorGraphView const &, Node const &);
 std::unordered_set<OperatorGraphInput> get_uses(OperatorGraphView const &, OperatorGraphOutput const &);
 
-struct OperatorGraph : virtual OperatorGraphView {
+struct OperatorGraph {
 public:
-  OperatorGraph() = delete;
+  OperatorGraph();
   OperatorGraph(OperatorGraph const &) = default;
   OperatorGraph &operator=(OperatorGraph const &) = default;
 
   Node add_node(std::vector<OperatorGraphOutput> const &inputs, int num_outputs);
+
+private:
+  struct Impl;
+  std::unique_ptr<Impl> impl;
 };
+
+struct value_t;
 
 template <typename NodeLabel, typename OutputLabel>
 struct LabelledOperatorGraphView : virtual OperatorGraphView {

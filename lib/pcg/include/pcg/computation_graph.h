@@ -9,6 +9,10 @@
 
 namespace FlexFlow {
 
+ComputationGraph make_empty_computation_graph();
+
+std::unordered_set<layer_guid_t> get_layers(ComputationGraph const &);
+
 LayerAddedResult add_layer(ComputationGraph &computation_graph, LayerAttrs const &attrs, std::vector<tensor_guid_t> const &inputs, std::vector<TensorAttrs> const &outputs);
 TensorAttrs get_tensor_attrs(ComputationGraph const &, tensor_guid_t const &);
 

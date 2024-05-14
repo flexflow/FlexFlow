@@ -1,13 +1,9 @@
 #include "op-attrs/ops/conv_2d.h"
 #include "op-attrs/ops/conv_2d/conv_2d_input_shape.h"
 #include "op-attrs/ops/conv_2d/conv_2d_parallel_input_shape.h"
+#include "utils/integer_conversions.h"
 
 namespace FlexFlow {
-
-static size_t as_size_t(int x) {
-  assert (x >= 0);
-  return static_cast<size_t>(x);
-}
 
 TensorShape get_kernel_shape(Conv2DAttrs const &attrs, TensorShape const &raw_input_shape) {
   assert (attrs.groups == 1); // TODO(@lockshaw): currently not supported
@@ -16,10 +12,10 @@ TensorShape get_kernel_shape(Conv2DAttrs const &attrs, TensorShape const &raw_in
   return TensorShape{
     TensorDims{
       FFOrdered<size_t>{
-        as_size_t(attrs.out_channels),
+        size_t_from_int(attrs.out_channels),
         input.num_channels,
-        as_size_t(attrs.kernel_h),
-        as_size_t(attrs.kernel_w),
+        size_t_from_int(attrs.kernel_h),
+        size_t_from_int(attrs.kernel_w),
       }
     },
     input.datatype,
@@ -33,7 +29,7 @@ TensorShape get_bias_shape(Conv2DAttrs const &attrs, TensorShape const &raw_inpu
   return TensorShape{
     TensorDims{
       FFOrdered<size_t>{
-        as_size_t(attrs.out_channels)
+        size_t_from_int(attrs.out_channels)
       },
     },
     input.datatype,
@@ -53,7 +49,7 @@ TensorShape get_output_shape(Conv2DAttrs const &attrs, TensorShape const &raw_in
     TensorDims{
       FFOrdered<size_t>{
         input.num_samples,
-        as_size_t(attrs.out_channels),
+        size_t_from_int(attrs.out_channels),
         out_height,
         out_width,
       }
@@ -66,10 +62,10 @@ ParallelTensorShape get_kernel_shape(Conv2DAttrs const &attrs, ParallelTensorSha
   assert (attrs.groups == 1); // TODO(@lockshaw): currently not supported
   Conv2DParallelInputShape input = parse_parallel_input_shape(raw_input_shape);
 
-  ShardParallelDim output_channels_dim = {as_size_t(attrs.out_channels), input.discard_copy_reduction_degree};
-  ShardParallelDim input_channels_dim = {as_size_t(input.channel_dim.size), input.channel_dim.degree};
-  ShardParallelDim kernel_height_dim = {as_size_t(attrs.kernel_h), 1};
-  ShardParallelDim kernel_width_dim = {as_size_t(attrs.kernel_w), 1};
+  ShardParallelDim output_channels_dim = {size_t_from_int(attrs.out_channels), input.discard_copy_reduction_degree};
+  ShardParallelDim input_channels_dim = {size_t_from_int(input.channel_dim.size), input.channel_dim.degree};
+  ShardParallelDim kernel_height_dim = {size_t_from_int(attrs.kernel_h), 1};
+  ShardParallelDim kernel_width_dim = {size_t_from_int(attrs.kernel_w), 1};
 
   int sum_degree = 1;
   int discard_copy_degree = input.height_dim.degree * input.width_dim.degree * input.sum_reduction_degree;
@@ -99,7 +95,7 @@ ParallelTensorShape get_bias_shape(Conv2DAttrs const &attrs, ParallelTensorShape
   assert (attrs.groups == 1); // TODO(@lockshaw): currently not supported
   Conv2DParallelInputShape input = parse_parallel_input_shape(raw_input_shape);
 
-  ShardParallelDim output_channels_dim = {as_size_t(attrs.out_channels), input.discard_copy_reduction_degree};
+  ShardParallelDim output_channels_dim = {size_t_from_int(attrs.out_channels), input.discard_copy_reduction_degree};
 
   int sum_degree = 1;
   int discard_copy_degree = input.height_dim.degree * input.width_dim.degree * input.sum_reduction_degree * input.channel_dim.degree;

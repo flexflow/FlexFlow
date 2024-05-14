@@ -5,9 +5,9 @@ features = [ ]
 includes = [
   "pcg/layer_attrs.dtg.h",
   "pcg/tensor_attrs.dtg.h",
-  "pcg/operator_graph.h",
+  "pcg/dataflow_graph.h",
 ]
 
 [[fields]]
 name = "raw_graph"
-type = "::FlexFlow::LabelledOperatorGraph<::FlexFlow::LayerAttrs, ::FlexFlow::TensorAttrs>"
+type = "::FlexFlow::DataflowGraph<::FlexFlow::LayerAttrs, ::FlexFlow::TensorAttrs>"

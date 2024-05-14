@@ -3,20 +3,19 @@
 // lib/pcg/include/pcg/parallel_computation_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "3bb0791e3481298ddea75f4bd134f9e1"
+  "generated_from": "e4db0f603f7b8947dda13e01f96c40fb"
 }
 */
 
 #include "pcg/parallel_computation_graph.dtg.h"
 
+#include "pcg/dataflow_graph.h"
 #include "pcg/parallel_layer_attrs.dtg.h"
 #include "pcg/parallel_tensor_attrs.dtg.h"
-#include "utils/graph.h"
 
 namespace FlexFlow {
 ParallelComputationGraph::ParallelComputationGraph(
-    ::FlexFlow::OutputLabelledMultiDiGraph<
-        ::FlexFlow::ParallelLayerAttrs,
-        ::FlexFlow::ParallelTensorAttrs> const &raw_graph)
+    ::FlexFlow::DataflowGraph<::FlexFlow::ParallelLayerAttrs,
+                              ::FlexFlow::ParallelTensorAttrs> const &raw_graph)
     : raw_graph(raw_graph) {}
 } // namespace FlexFlow
