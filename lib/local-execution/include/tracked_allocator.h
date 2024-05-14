@@ -5,7 +5,7 @@
 
 namespace FlexFlow {
 
-struct TrackedAllocator: public Allocator {
+struct TrackedAllocator : public Allocator {
   Allocator() = delete;
 
   void *allocate(size_t mem_size);
