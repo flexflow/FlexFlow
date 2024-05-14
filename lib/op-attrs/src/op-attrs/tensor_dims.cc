@@ -9,7 +9,14 @@ FFOrdered<size_t> const &ff_ordered(TensorDims const &dims) {
   return dims.ff_ordered;
 }
 
+size_t num_dims(TensorDims const &dims) {
+  return dims.ff_ordered.size();
+}
+
 size_t dim_at_idx(TensorDims const &dims, ff_dim_t idx) {
+  if (idx.value < 0) {
+    idx = ff_dim_t{num_dims(dims) + idx.value};
+  }
   return dims.ff_ordered.at(idx);
 }
 
