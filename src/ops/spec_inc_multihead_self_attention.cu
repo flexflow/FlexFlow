@@ -735,23 +735,24 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   }
 
   // Debug output:
-  int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
-  float *temp_output = new float[size];
-  cudaDeviceSynchronize();
-  cudaMemcpy(
-      temp_output, m->attn_heads, size * sizeof(float), cudaMemcpyDeviceToHost);
+  //   int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
+  //   float *temp_output = new float[size];
+  //   cudaDeviceSynchronize();
+  //   cudaMemcpy(
+  //       temp_output, m->attn_heads, size * sizeof(float),
+  //       cudaMemcpyDeviceToHost);
 
-  printf("Output: ");
-  for (int i = 0; i < bc->num_tokens; ++i) {
-    float temp = 0;
-    for (int j = 0; j < m->hidden_size; ++j) {
-      temp += temp_output[i * m->hidden_size + j];
-    }
-    printf("%.6f ", temp);
-  }
-  printf("\n");
+  //   printf("Output: ");
+  //   for (int i = 0; i < bc->num_tokens; ++i) {
+  //     float temp = 0;
+  //     for (int j = 0; j < m->hidden_size; ++j) {
+  //       temp += temp_output[i * m->hidden_size + j];
+  //     }
+  //     printf("%.6f ", temp);
+  //   }
+  //   printf("\n");
 
-  delete[] temp_output;
+  //   delete[] temp_output;
 
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
