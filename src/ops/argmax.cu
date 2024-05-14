@@ -23,7 +23,7 @@ __global__ void init_offset(int batch_size,
                             int vocab_size,
                             int total_eles,
                             int *d_offsets) {
-  CUDA_KERNEL_LOOP(i, total_eles) {
+  CUDA_KERNEL_LOOP(i, total_eles + 1) {
     if (i % vocab_size == 0) {
       d_offsets[i / vocab_size] = i;
     }
@@ -83,7 +83,7 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
                           prob_ptr,
                           batch_size,
                           m->beam_search);
-  // print_tensor<int>(indices_ptr, 32, "argmax op");
+  //   print_tensor<int>(indices_ptr, 4, "argmax op");
 }
 
 /*static*/
@@ -151,7 +151,7 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
-  size_t d_offsets_size = batch_size;
+  size_t d_offsets_size = batch_size + 1;
   size_t prob_size = batch_size;
   assert(data_type == DT_FLOAT || data_type == DT_HALF);
   size_t total_size =
