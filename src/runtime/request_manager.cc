@@ -1473,7 +1473,6 @@ BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
 
 void RequestManager::get_verify_results_greedy(
     InferenceResult const &llm_verify_result) {
-  int llm_result_offset = 0;
   // This function maintain the generated token list of the request and the
   // committed tokens.
   for (int request_index = 0; request_index < get_max_requests_per_batch();
@@ -1485,6 +1484,7 @@ void RequestManager::get_verify_results_greedy(
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
 
+    int llm_result_offset = request.first_token_offset_in_batch;
     int committed_token_index = request.tokens.size() - 1;
 
     TokenTree &token_tree = request.speculative_token_trees[0];
@@ -1568,8 +1568,6 @@ void RequestManager::get_verify_results_greedy(
     request.tokens.push_back(
         llm_verify_result
             .token_ids[llm_result_offset + last_accepted_token_index]);
-
-    llm_result_offset = request.first_token_offset_in_batch;
 
     request.llm_committed = false;
     request.ssm_committed = false;
@@ -1871,7 +1869,7 @@ bool RequestManager::add_tokens_to_spec_token_tree(
     }
 
     bool token_pool_full =
-        token_tree_node_pool.size() == get_max_tokens_per_batch();
+        token_tree_node_pool.size() >= get_max_tokens_per_batch();
 
     TokenTree &spec_token_tree = request.speculative_token_trees[0];
     std::list<std::shared_ptr<TokenTreeNode>> &last_layer =
@@ -1943,12 +1941,17 @@ bool RequestManager::add_tokens_to_spec_token_tree(
     spec_token_tree.add_layer();
     for (auto token_it = tokens.crbegin(); token_it != tokens.crend();
          token_it++) {
+      token_pool_full =
+          token_tree_node_pool.size() == get_max_tokens_per_batch();
       if (token_pool_full and
           token_tree_node_pool.top().first->log_accumulated_prob >=
               (*token_it)->log_accumulated_prob) {
         break;
       } else if (token_pool_full) {
         token_tree_node_pool.top().first->pruned = true;
+        all_requests[token_tree_node_pool.top().second]
+            .speculative_token_trees[0]
+            .tree_size--;
         token_tree_node_pool.pop();
       }
 
@@ -1981,7 +1984,7 @@ bool RequestManager::add_tokens_to_spec_token_tree(
     for (auto it = last_layer.begin(); it != last_layer.end();) {
       if ((*it)->pruned) {
         it = last_layer.erase(it);
-        spec_token_tree.tree_size--;
+        // spec_token_tree.tree_size--;
       } else {
         ++it;
       }
@@ -1992,6 +1995,8 @@ bool RequestManager::add_tokens_to_spec_token_tree(
       spec_token_tree.tree_layers.pop_back();
     }
   }
+  assert(token_tree_node_pool.size() <= get_max_tokens_per_batch() &&
+         "The token tree node pool should not exceed the maximum size.");
   return all_request_last_layer_empty;
 }
 
