@@ -58,6 +58,9 @@ RequestManager::RequestManager()
   max_tokens_per_batch = -1;
   max_spec_tree_token_num = -1;
   max_sequence_length = -1;
+  max_tree_depth = -1;
+  max_tree_width = -1;
+  k = -1;
   std::fill(std::begin(request_available), std::end(request_available), false);
   std::fill(
       std::begin(guid_of_requests), std::end(guid_of_requests), INVALID_GUID);
@@ -120,6 +123,44 @@ void RequestManager::set_decoding_mode(DecodingMode mode) {
 
 void RequestManager::set_verbose(bool verbose_) {
   verbose = verbose_;
+}
+
+int RequestManager::get_k() {
+  assert(k > 0 and k <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM and "Invalid k");
+  return k;
+}
+
+void RequestManager::set_k(int _k) {
+  assert(_k > 0 and _k <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM and "Invalid k");
+  k = _k;
+}
+
+int RequestManager::get_max_tree_depth() {
+  assert(max_tree_depth > 0 and
+         max_tree_depth <= BatchConfig::MAX_TREE_DEPTH and
+         "Invalid max_tree_depth");
+  return max_tree_depth;
+}
+
+void RequestManager::set_max_tree_depth(int max_tree_depth) {
+  assert(max_tree_depth > 0 and
+         max_tree_depth <= BatchConfig::MAX_TREE_DEPTH and
+         "Invalid max_tree_depth");
+  this->max_tree_depth = max_tree_depth;
+}
+
+int RequestManager::get_max_tree_width() {
+  assert(max_tree_width > 0 and
+         max_tree_width <= BatchConfig::MAX_TREE_WIDTH and
+         "Invalid max_tree_width");
+  return max_tree_width;
+}
+
+void RequestManager::set_max_tree_width(int max_tree_width) {
+  assert(max_tree_width > 0 and
+         max_tree_width <= BatchConfig::MAX_TREE_WIDTH and
+         "Invalid max_tree_width");
+  this->max_tree_width = max_tree_width;
 }
 
 void RequestManager::register_tokenizer(ModelType type,
@@ -1285,7 +1326,7 @@ bool RequestManager::update_ssm_inference_results(
 
   // Stop conditions
   return all_request_last_layer_empty ||
-         current_speculation_step > BatchConfig::MAX_TREE_DEPTH;
+         current_speculation_step > get_max_tree_depth();
 }
 
 /* --------- Bitmask Related Functions --------- */
@@ -1820,10 +1861,11 @@ bool RequestManager::add_tokens_to_spec_token_tree(
     int result_offset = request.first_token_offset_in_batch *
                         BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
     int current_tree_size = request.causal_mask.tree_or_prompt_size;
-    int empty_slots_on_tree = get_max_spec_tree_token_num() -
-                              current_tree_size; // The number of empty slots
+    int empty_slots_in_layer =
+        min(get_max_spec_tree_token_num() - current_tree_size,
+            get_max_tree_width()); // The number of empty slots
 
-    if (empty_slots_on_tree == 0) {
+    if (empty_slots_in_layer == 0) {
       // The token tree is full, we don't need to add tokens to it
       continue;
     }
@@ -1857,7 +1899,7 @@ bool RequestManager::add_tokens_to_spec_token_tree(
           assert(log_prob != -std::numeric_limits<float>::infinity() &&
                  "Child log probability should not be -inf.");
 
-          if (tokens.size() == empty_slots_on_tree and
+          if (tokens.size() == empty_slots_in_layer and
               log_accumulated_prob <= (*tokens.begin())->log_accumulated_prob) {
             // The token tree is full, and the new token has a lower joint
             // probability than the minimum node in the pool, we don't need to
@@ -1880,7 +1922,7 @@ bool RequestManager::add_tokens_to_spec_token_tree(
                     ssm_inference_result.token_ids[result_idx],
                     log_accumulated_prob,
                     parent_pos);
-            if (tokens.size() == empty_slots_on_tree and
+            if (tokens.size() == empty_slots_in_layer and
                 log_accumulated_prob >
                     (*tokens.begin())->log_accumulated_prob) {
               // The token tree is full, and the new token has a higher joint

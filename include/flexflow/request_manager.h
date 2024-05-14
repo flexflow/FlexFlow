@@ -219,6 +219,12 @@ public:
   int get_max_sequence_length();
   void set_decoding_mode(DecodingMode mode);
   void set_verbose(bool verbose_);
+  int get_k();
+  void set_k(int k);
+  int get_max_tree_depth();
+  void set_max_tree_depth(int max_tree_depth);
+  int get_max_tree_width();
+  void set_max_tree_width(int max_tree_width);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -284,6 +290,9 @@ private:
   int max_tokens_per_batch;
   int max_spec_tree_token_num;
   int max_sequence_length;
+  int max_tree_depth;
+  int max_tree_width;
+  int k;
   State request_manager_status;
   BackgroundServerStatus background_server_status;
   DecodingMode decoding_mode;

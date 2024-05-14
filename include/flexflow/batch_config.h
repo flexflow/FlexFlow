@@ -51,9 +51,10 @@ public:
   // across workers
   inline static int const MAX_NUM_REQUESTS = 64;
   inline static int const MAX_NUM_TOKENS = 1024;
-  inline static int const MAX_SPEC_TREE_TOKEN_NUM = 64;
-  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3;
+  inline static int const MAX_SPEC_TREE_TOKEN_NUM = 128;
+  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 4;
   inline static int const MAX_TREE_DEPTH = 16;
+  inline static int const MAX_TREE_WIDTH = 64;
   inline static int const MAX_K_LOGITS = 16;
 
   int num_tokens = 0;
