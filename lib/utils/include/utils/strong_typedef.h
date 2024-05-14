@@ -65,6 +65,10 @@ public:
     return value_;
   }
 
+  T &value() noexcept {
+    return value_;
+  }
+
   template <typename F>
   strong_typedef fmap(F const &f) {
     static_assert(

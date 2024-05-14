@@ -2,6 +2,7 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_COMPUTATION_GRAPH_BUILDER_H
 
 #include "computation_graph.h"
+#include "optimizer.h"
 
 namespace FlexFlow {
 
@@ -12,74 +13,78 @@ public:
 
   // C++ APIs for constructing models
   // Add an exp layer
-  Tensor exp(Tensor const &,
-             std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t exp(tensor_guid_t const &,
+                    std::optional<std::string> const &name = std::nullopt);
   // Add an add layer
-  Tensor add(Tensor const &x,
-             Tensor const &y,
-             std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t add(tensor_guid_t const &x,
+                    tensor_guid_t const &y,
+                    std::optional<std::string> const &name = std::nullopt);
   // Add a subtract layer
-  Tensor subtract(Tensor const &x,
-                  Tensor const &y,
-                  std::optional<std::string> const &name = std::nullopt);
-  // Add a multiply layer
-  Tensor multiply(Tensor const &x,
-                  Tensor const &y,
-                  std::optional<std::string> const &name = std::nullopt);
-  // Add a divide layer
-  Tensor divide(Tensor const &x,
-                Tensor const &y,
-                std::optional<std::string> const &name = std::nullopt);
-  // Add a max layer
-  Tensor max(Tensor const &x,
-             Tensor const &y,
-             std::optional<std::string> const &name = std::nullopt);
-  // Add a min layer
-  Tensor min(Tensor const &x,
-             Tensor const &y,
-             std::optional<std::string> const &name = std::nullopt);
-  // Add a rsqrt layer
-  Tensor rsqrt(Tensor const &x,
-               std::optional<std::string> const &name = std::nullopt);
-  // Add a pow layer
-  Tensor pow(Tensor const &x,
-             float exponent,
-             std::optional<std::string> const &name = std::nullopt);
-  // Add a scalar multiply layer
-  Tensor scalar_multiply(Tensor const &x,
-                         float scalar,
+  tensor_guid_t subtract(tensor_guid_t const &x,
+                         tensor_guid_t const &y,
                          std::optional<std::string> const &name = std::nullopt);
-  Tensor scalar_add(Tensor const &x,
-                    float scalar,
+  // Add a multiply layer
+  tensor_guid_t multiply(tensor_guid_t const &x,
+                         tensor_guid_t const &y,
+                         std::optional<std::string> const &name = std::nullopt);
+  // Add a divide layer
+  tensor_guid_t divide(tensor_guid_t const &x,
+                       tensor_guid_t const &y,
+                       std::optional<std::string> const &name = std::nullopt);
+  // Add a max layer
+  tensor_guid_t max(tensor_guid_t const &x,
+                    tensor_guid_t const &y,
                     std::optional<std::string> const &name = std::nullopt);
-  Tensor scalar_sub(Tensor const &lhs,
-                    float rhs,
+  // Add a min layer
+  tensor_guid_t min(tensor_guid_t const &x,
+                    tensor_guid_t const &y,
                     std::optional<std::string> const &name = std::nullopt);
-  Tensor scalar_truediv(Tensor const &numerator,
-                        float denominator,
-                        std::optional<std::string> const &name = std::nullopt);
-  // Add a sin layer
-  Tensor sin(Tensor const &x,
-             std::optional<std::string> const &name = std::nullopt);
-  // Add a cos layer
-  Tensor cos(Tensor const &x,
-             std::optional<std::string> const &name = std::nullopt);
-  // Add an activation layer
-  Tensor relu(Tensor const &x,
-              std::optional<std::string> const &name = std::nullopt);
-  Tensor identity(Tensor const &x,
-                  std::optional<std::string> const &name = std::nullopt);
-  Tensor gelu(Tensor const &x,
-              std::optional<std::string> const &name = std::nullopt);
-  Tensor sigmoid(Tensor const &x,
+  // Add a rsqrt layer
+  tensor_guid_t rsqrt(tensor_guid_t const &x,
+                      std::optional<std::string> const &name = std::nullopt);
+  // Add a pow layer
+  tensor_guid_t pow(tensor_guid_t const &x,
+                    float exponent,
+                    std::optional<std::string> const &name = std::nullopt);
+  // Add a scalar multiply layer
+  tensor_guid_t
+      scalar_multiply(tensor_guid_t const &x,
+                      float scalar,
+                      std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      scalar_add(tensor_guid_t const &x,
+                 float scalar,
                  std::optional<std::string> const &name = std::nullopt);
-  Tensor tanh(Tensor const &x,
-              std::optional<std::string> const &name = std::nullopt);
-  Tensor elu(Tensor const &x,
-             std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      scalar_sub(tensor_guid_t const &lhs,
+                 float rhs,
+                 std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      scalar_truediv(tensor_guid_t const &numerator,
+                     float denominator,
+                     std::optional<std::string> const &name = std::nullopt);
+  // Add a sin layer
+  tensor_guid_t sin(tensor_guid_t const &x,
+                    std::optional<std::string> const &name = std::nullopt);
+  // Add a cos layer
+  tensor_guid_t cos(tensor_guid_t const &x,
+                    std::optional<std::string> const &name = std::nullopt);
+  // Add an activation layer
+  tensor_guid_t relu(tensor_guid_t const &x,
+                     std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t identity(tensor_guid_t const &x,
+                         std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t gelu(tensor_guid_t const &x,
+                     std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t sigmoid(tensor_guid_t const &x,
+                        std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t tanh(tensor_guid_t const &x,
+                     std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t elu(tensor_guid_t const &x,
+                    std::optional<std::string> const &name = std::nullopt);
   // Add a 2D convolutional layer
-  Tensor conv2d(
-      Tensor const &input,
+  tensor_guid_t conv2d(
+      tensor_guid_t const &input,
       int outChannels,
       int kernelH,
       int kernelW,
@@ -95,13 +100,13 @@ public:
       std::optional<RegularizerAttrs> const &kernel_regularizer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
   // Add a dropout layer
-  Tensor dropout(Tensor const &input,
-                 float rate,
-                 unsigned long long seed = 0,
-                 std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t dropout(tensor_guid_t const &input,
+                        float rate,
+                        unsigned long long seed = 0,
+                        std::optional<std::string> const &name = std::nullopt);
   // Add an embedding layer
-  Tensor embedding(
-      Tensor const &input,
+  tensor_guid_t embedding(
+      tensor_guid_t const &input,
       int num_entries,
       int outDim,
       AggregateOp aggr,
@@ -109,43 +114,48 @@ public:
       std::optional<Initializer> const &kernel_initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
   // Add a gather layer
-  std::vector<Tensor>
-      gather(Tensor const &input,
-             Tensor const &index,
+  std::vector<tensor_guid_t>
+      gather(tensor_guid_t const &input,
+             tensor_guid_t const &index,
              ff_dim_t dim,
              std::optional<std::string> const &name = std::nullopt);
   // Add a cache layer
-  Tensor cache(Tensor const &input,
-               int num_batches,
-               std::function<float(float *, void const *, void const *, int)>
-                   score_f = {},
-               std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      cache(tensor_guid_t const &input,
+            int num_batches,
+            std::function<float(float *, void const *, void const *, int)>
+                score_f = {},
+            std::optional<std::string> const &name = std::nullopt);
   // Add a 2D pooling layer
-  Tensor pool2d(Tensor const &input,
-                int kernelH,
-                int kernelW,
-                int strideH,
-                int strideW,
-                int paddingH,
-                int paddingW,
-                PoolOp type = PoolOp::MAX,
-                std::optional<Activation> const &activation = std::nullopt,
-                std::optional<std::string> const &name = std::nullopt);
-  Tensor layer_norm(Tensor const &input,
-                    std::vector<int> const &axes,
-                    bool elementwise_affine,
-                    float eps,
-                    std::optional<std::string> const &name = std::nullopt);
-  Tensor batch_norm(Tensor const &input,
-                    bool relu = true,
-                    std::optional<std::string> const &name = std::nullopt);
-  Tensor batch_matmul(Tensor const &A,
-                      Tensor const &B,
-                      int a_seq_length_dim = -1,
-                      int b_seq_length_dim = -1,
-                      std::optional<std::string> const &name = std::nullopt);
-  Tensor
-      dense(Tensor const &input,
+  tensor_guid_t
+      pool2d(tensor_guid_t const &input,
+             int kernelH,
+             int kernelW,
+             int strideH,
+             int strideW,
+             int paddingH,
+             int paddingW,
+             PoolOp type = PoolOp::MAX,
+             std::optional<Activation> const &activation = std::nullopt,
+             std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      layer_norm(tensor_guid_t const &input,
+                 std::vector<int> const &axes,
+                 bool elementwise_affine,
+                 float eps,
+                 std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      batch_norm(tensor_guid_t const &input,
+                 bool relu = true,
+                 std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      batch_matmul(tensor_guid_t const &A,
+                   tensor_guid_t const &B,
+                   int a_seq_length_dim = -1,
+                   int b_seq_length_dim = -1,
+                   std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      dense(tensor_guid_t const &input,
             int outDim,
             std::optional<Activation> activation = std::nullopt,
             bool use_bias = true,
@@ -154,55 +164,59 @@ public:
             std::optional<Initializer> const &bias_initializer = std::nullopt,
             std::optional<std::string> const &name = std::nullopt);
   // Add a cast layer
-  Tensor cast(Tensor const &input,
-              DataType dtype,
-              std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t cast(tensor_guid_t const &input,
+                     DataType dtype,
+                     std::optional<std::string> const &name = std::nullopt);
   // Add a concat layer
-  Tensor concat(int n,
-                std::vector<Tensor> const &tensors,
-                int axis,
-                std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t concat(int n,
+                       std::vector<tensor_guid_t> const &tensors,
+                       int axis,
+                       std::optional<std::string> const &name = std::nullopt);
   // Add a mean layer
-  Tensor mean(Tensor const &input,
-              std::vector<int> const &dims,
-              bool keepdims,
-              char const *name);
+  tensor_guid_t mean(tensor_guid_t const &input,
+                     std::vector<int> const &dims,
+                     bool keepdims,
+                     char const *name);
   // Add a split layer
-  void split(Tensor const &input,
-             Tensor *outputs,
+  void split(tensor_guid_t const &input,
+             tensor_guid_t *outputs,
              std::vector<int> const &split,
              int axis,
              std::optional<std::string> const &name = std::nullopt);
   // Add a flat layer
-  Tensor flat(Tensor const &input,
-              std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t flat(tensor_guid_t const &input,
+                     std::optional<std::string> const &name = std::nullopt);
   // Add a softmax layer
-  Tensor softmax(Tensor const &input,
-                 int dim = -1,
-                 std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t softmax(tensor_guid_t const &input,
+                        int dim = -1,
+                        std::optional<std::string> const &name = std::nullopt);
   // Create input tensors and constants
-  Tensor transpose(Tensor const &input,
-                   std::vector<int> const &perm,
-                   std::optional<std::string> const &name = std::nullopt);
-  Tensor reduce_sum(Tensor const &input,
-                    std::vector<int> const &axes,
-                    bool keepdims = false,
-                    std::optional<std::string> const &name = std::nullopt);
-  Tensor reshape(Tensor const &input,
-                 std::vector<int> const &shape,
+  tensor_guid_t input(Tensor const &input_tensor,
+                      std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      transpose(tensor_guid_t const &input,
+                std::vector<int> const &perm,
+                std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      reduce_sum(tensor_guid_t const &input,
+                 std::vector<int> const &axes,
+                 bool keepdims = false,
                  std::optional<std::string> const &name = std::nullopt);
-  Tensor reverse(Tensor const &input,
-                 int axis,
-                 std::optional<std::string> const &name = std::nullopt);
-  void top_k(Tensor const &input,
-             Tensor *outputs,
+  tensor_guid_t reshape(tensor_guid_t const &input,
+                        std::vector<int> const &shape,
+                        std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t reverse(tensor_guid_t const &input,
+                        int axis,
+                        std::optional<std::string> const &name = std::nullopt);
+  void top_k(tensor_guid_t const &input,
+             tensor_guid_t *outputs,
              int k,
              bool sorted,
              std::optional<std::string> const &name = std::nullopt);
-  Tensor multihead_attention(
-      Tensor const &query,
-      Tensor const &key,
-      Tensor const &value,
+  tensor_guid_t multihead_attention(
+      tensor_guid_t const &query,
+      tensor_guid_t const &key,
+      tensor_guid_t const &value,
       int embed_dim,
       int num_heads,
       int kdim = 0,
@@ -213,62 +227,66 @@ public:
       bool add_zero_attn = false,
       std::optional<Initializer> initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
-  Tensor create_tensor(TensorShape const &, bool create_grad = true);
+  tensor_guid_t create_tensor(TensorShape const &, bool create_grad = true);
   Parameter create_weight(
       TensorShape const &,
       bool create_grad = true,
       std::optional<Initializer> const &initializer = std::nullopt,
       std::optional<ParamSync> sync_type = std::nullopt);
 
-  std::vector<Tensor> get_outputs(Layer const &) const;
-  Tensor get_output(Layer const &, int idx) const;
-
-  Tensor at(MultiDiEdge const &) const;
-  Layer at(Node const &) const;
+  std::vector<tensor_guid_t> get_outputs(operator_guid_t const &) const;
+  tensor_guid_t get_output(operator_guid_t const &, int idx) const;
+  Tensor get_tensor(tensor_guid_t const &) const;
 
 private:
-  Tensor broadcast(Tensor const &, TensorShape const &);
+  tensor_guid_t broadcast(tensor_guid_t const &, TensorShape const &);
 
   void add_layer(Layer const &layer,
-                 std::vector<Tensor> const &inputs,
-                 std::vector<Tensor> const &weights,
-                 std::vector<Tensor> const &outputs);
-  Tensor add_layer(
+                 std::vector<tensor_guid_t> const &inputs,
+                 std::vector<tensor_guid_t> const &weights,
+                 std::vector<tensor_guid_t> const &outputs);
+  tensor_guid_t add_layer(
       Layer const &layer,
-      std::vector<Tensor> const &inputs,
+      std::vector<tensor_guid_t> const &inputs,
       std::vector<std::pair<TensorShape, std::optional<Initializer>>> const
           &weight_shapes,
-      TensorShape const &output_shape);
-  std::vector<Tensor> add_layer(
+      Tensor const &output);
+  std::vector<tensor_guid_t> add_layer(
       Layer const &layer,
-      std::vector<Tensor> const &inputs,
+      std::vector<tensor_guid_t> const &inputs,
       std::vector<std::pair<TensorShape, std::optional<Initializer>>> const
           &weight_shapes,
-      std::vector<TensorShape> const &output_shapes);
+      std::vector<Tensor> const &outputs);
 
-  Tensor as_type(Tensor const &, DataType, std::string const &);
+  tensor_guid_t as_type(tensor_guid_t const &, DataType, std::string const &);
 
   TensorShape get_broadcast_target_shape(std::vector<TensorShape> const &);
 
-  Tensor element_binary(OperatorType,
-                        Tensor const &lhs,
-                        Tensor const &rhs,
-                        std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      element_binary(OperatorType,
+                     tensor_guid_t const &lhs,
+                     tensor_guid_t const &rhs,
+                     std::optional<std::string> const &name = std::nullopt);
 
-  Tensor element_unary(OperatorType,
-                       Tensor const &input,
-                       std::optional<std::string> const &name = std::nullopt);
-  Tensor element_scalar_unary(
+  tensor_guid_t
+      element_unary(OperatorType,
+                    tensor_guid_t const &input,
+                    std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t element_scalar_unary(
       OperatorType,
-      Tensor const &input,
+      tensor_guid_t const &input,
       float scalar,
       std::optional<std::string> const &name = std::nullopt);
-  Tensor element_unary(ElementUnaryAttrs const &,
-                       Tensor const &input,
-                       std::optional<std::string> const &name = std::nullopt);
-  Tensor element_scalar_unary(ElementScalarUnaryAttrs const &attrs,
-                              Tensor const &x,
-                              std::optional<std::string> const &maybe_name);
+  tensor_guid_t
+      element_unary(ElementUnaryAttrs const &,
+                    tensor_guid_t const &input,
+                    std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      element_scalar_unary(ElementScalarUnaryAttrs const &attrs,
+                           tensor_guid_t const &x,
+                           std::optional<std::string> const &maybe_name);
+
+  std::unordered_map<tensor_guid_t, Tensor> pre_edge_mapping;
 
 public:
   ComputationGraph computation_graph;
