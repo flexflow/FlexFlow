@@ -45,7 +45,7 @@ fi
 ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:cpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model JackFram/llama-160m -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_160M_half.txt -pipeline-parallelism-degree 4
 
 # LLAMA (big model)
-../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:cpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion --use-full-precision -llm-model meta-llama/Llama-2-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_2_7B.txt -pipeline-parallelism-degree 4
+../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:cpu 4 -ll:fsize 20000 -ll:zsize 30000 --verbose --fusion --use-full-precision -llm-model meta-llama/Llama-2-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_2_7B.txt -pipeline-parallelism-degree 4
 # LLAMA (big model, half precision)
 ../../build/inference/incr_decoding/incr_decoding -ll:gpu 4 -ll:cpu 4 -ll:fsize 14000 -ll:zsize 30000 --fusion -llm-model meta-llama/Llama-2-7b-hf -prompt ../../inference/prompt/test.json -output-file ../../inference/output/incr_decoding_llama_2_7B_half.txt -pipeline-parallelism-degree 4
 
