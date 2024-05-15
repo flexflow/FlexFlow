@@ -56,7 +56,7 @@ float parallel_estimate_cost(
       occupied; // keeps track of the devices that are currently occupied
 
   // Filling the frontier
-  for (auto &[edge, _] : frontier_machine_views) {
+  for (auto const &[edge, _] : frontier_machine_views) {
     Node node = get_dst_node(edge);
     frontier.insert(node);
   }
