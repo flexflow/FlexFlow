@@ -3327,10 +3327,14 @@ void FFModel::create_operators_from_layers() {
     }
     Op *op = nullptr;
     // add a combine before arg_topk
+    // if (config.computationMode == COMP_MODE_INFERENCE &&
+    //     config.tensor_parallelism_degree > 1 &&
+    //     (l->op_type == OP_ARG_TOPK || l->op_type == OP_SOFTMAX ||
+    //      l->op_type == OP_ARGMAX || l->op_type == OP_GUMBEL_TOPK)) {
     if (config.computationMode == COMP_MODE_INFERENCE &&
         config.tensor_parallelism_degree > 1 &&
-        (l->op_type == OP_ARG_TOPK || l->op_type == OP_SOFTMAX ||
-         l->op_type == OP_ARGMAX || l->op_type == OP_GUMBEL_TOPK)) {
+        (l->op_type == OP_SOFTMAX || l->op_type == OP_ARGMAX ||
+         l->op_type == OP_GUMBEL_TOPK)) {
       std::vector<ParallelTensor> partitioned_inputs;
       assert(inputs.size() == 1);
       Combine *comb = new Combine(*this,
@@ -5962,11 +5966,13 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<OpMeta *, GumbelTopK::init_task>(registrar);
+      runtime->register_task_variant<OpMeta *, GumbelTopK::init_task>(
+          registrar);
     }
   }
   {
-    TaskVariantRegistrar registrar(GUMBEL_TOPK_INF_TASK_ID, "GumbelTopK Inference");
+    TaskVariantRegistrar registrar(GUMBEL_TOPK_INF_TASK_ID,
+                                   "GumbelTopK Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     if (pre_register) {
@@ -5977,8 +5983,9 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<InferenceResult, GumbelTopK::inference_task>(
-          registrar);
+      runtime
+          ->register_task_variant<InferenceResult, GumbelTopK::inference_task>(
+              registrar);
     }
   }
   {
