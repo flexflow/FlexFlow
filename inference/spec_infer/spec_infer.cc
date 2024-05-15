@@ -277,8 +277,10 @@ void FlexFlow::top_level_task(Task const *task,
   int max_requests_per_batch = 8;
   int max_tokens_per_batch = 256;
   int max_sequence_length = 512;
-  int max_spec_tree_token_num = 8;
+  int max_spec_tree_token_num = 64;
   int expansion_degree = 3;
+  int max_tree_depth = 16;
+  int max_tree_width = 16;
   RequestManager::DecodingMode decoding_mode =
       RequestManager::SPECULATIVE_DECODING;
 
@@ -310,6 +312,8 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_tokens_per_batch(max_tokens_per_batch);
   rm->set_max_spec_tree_token_num(max_spec_tree_token_num);
   rm->set_max_sequence_length(max_sequence_length);
+  rm->set_max_tree_depth(max_tree_depth);
+  rm->set_max_tree_width(max_tree_width);
   rm->set_verbose(verbose);
   rm->register_tokenizer(model_metadata.llm_model_type,
                          model_metadata.bos_token_id,
@@ -357,6 +361,9 @@ void FlexFlow::top_level_task(Task const *task,
   FFConfig bm_config = ffconfig;
   bm_config.data_parallelism_degree = bm_config.tensor_parallelism_degree =
       bm_config.pipeline_parallelism_degree = 1;
+  //   bm_config.data_parallelism_degree = 1;
+  //   bm_config.tensor_parallelism_degree = 4;
+  //   bm_config.pipeline_parallelism_degree = 1;
   for (int ssm_id = 0; ssm_id < num_ssms; ssm_id++) {
     FFModel beam_model(bm_config);
     ssm_models.push_back(beam_model);
