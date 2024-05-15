@@ -45,6 +45,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           {n0, make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))}
     };
     auto frontier_machine_views = std::unordered_map<OpenMultiDiEdge, MachineView> {
+      {}
     } 
     float result = parallel_estimate_cost(g, estimator, device_mapping, frontier_machine_views);
     CHECK(result==0.3);
@@ -69,16 +70,23 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     g.add_edge(e0);
     g.add_edge(e1);
-    g.add_label(e0, 10);
-    g.add_label(e1, 11);
     
+    g.add_label(e1, ParallelTensor(ParallelTensorDims({2, 1}),
+                                  DataType::FLOAT,
+                                  CreateGrad::YES)););
+    g.add_input(e0,ParallelTensor(ParallelTensorDims({2, 1}),
+                                  DataType::FLOAT,
+                                  CreateGrad::YES));
+
     CostEstimator estimator = CostEstimator::create<TestCostEstimator>();
     MachineMapping device_mapping = std::unordered_map<Node,MachineView>{
           {n0, make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))},
           {n1, make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))},
           {n2, make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))}
     };
-    auto frontier_machine_views = std::unordered_map<OpenMultiDiEdge, MachineView> 
+    auto frontier_machine_views = std::unordered_map<OpenMultiDiEdge, MachineView> {
+      {e0, make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))},
+    }
     float result = parallel_estimate_cost(g, estimator, device_mapping, frontier_machine_views);
     CHECK(result==0.3);
   }
