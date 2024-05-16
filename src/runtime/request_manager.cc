@@ -440,12 +440,17 @@ void RequestManager::load_pending_reqeust_to_batch() {
   num_available_requests++;
   // Initialize the bitmask for the new request with its prompt length
   init_bitmask_prompt(guid, prefill_request->tokens.size());
+
+  profiling_requests[guid] = ProfileInfo();
+  profiling_requests[guid].start_time =
+      Realm::Clock::current_time_in_microseconds();
 }
 
 void RequestManager::request_complete_clean_up(int batch_index) {
   RequestGuid guid = guid_of_requests[batch_index];
+  profiling_requests[guid].finish_time =
+      Realm::Clock::current_time_in_microseconds();
   Request &request = all_requests[guid];
-
   guid_of_requests[batch_index] = INVALID_GUID;
   request_available[batch_index] = false;
   num_available_requests--;
@@ -454,7 +459,23 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   std::string output = this->tokenizer_->Decode(request.tokens);
   std::cout << "Request " << guid << " completed: " << std::endl
             << output << std::endl;
-  // TODO: remove the request from all_requests?
+  std::cout << "Request " << guid << " profiling: " << std::endl
+            << "Decoding time: "
+            << (profiling_requests[guid].finish_time -
+                profiling_requests[guid].start_decoding_time) *
+                   1e-3
+            << "ms" << std::endl
+            << "Total time: "
+            << (profiling_requests[guid].finish_time -
+                profiling_requests[guid].start_time) *
+                   1e-3
+            << "ms" << std::endl
+            << "LLM decoding steps: "
+            << profiling_requests[guid].llm_decoding_steps << std::endl;
+  if (decoding_mode == SPECULATIVE_DECODING) {
+    std::cout << "SSM decoding steps: "
+              << profiling_requests[guid].ssm_decoding_steps << std::endl;
+  }
 
   trigger_request_completion_future(guid);
 }
@@ -615,6 +636,8 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
     }
   }
 
+  profiling_requests[prefill_request->guid].llm_prefilling_steps++;
+
   // Manages the committed states for other requests in the batch
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
@@ -655,7 +678,9 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     request.llm_cache_size++;
     request.tokens.push_back(
         result.token_ids[request.first_token_offset_in_batch]);
-    if (request.tokens.size() == get_max_sequence_length()) {
+
+    profiling_requests[guid].llm_decoding_steps++;
+    if (request.tokens.size() >= get_max_sequence_length()) {
       request_completed = true;
       request_complete_clean_up(request_index);
     }
@@ -675,6 +700,9 @@ bool RequestManager::update_ssm_prefill_results(
   // request_manager_status is PREFILLING and the prefill_model is SSM.
   // There's no results to update, but we should update ssm_cache_size.
   prefill_request->ssm_cache_size += prefill_request->num_tokens_in_batch;
+
+  profiling_requests[prefill_request->guid].ssm_prefilling_steps++;
+
   if (prefill_request->ssm_cache_size == prefill_request->tokens.size()) {
     return true;
   }
@@ -900,6 +928,11 @@ BatchConfig RequestManager::prepare_decoding_batch() {
     bc.tokensInfo[bc.num_tokens].token_id = request.tokens.back();
 
     bc.num_tokens++;
+
+    if (profiling_requests[request.guid].llm_decoding_steps == 0) {
+      profiling_requests[request.guid].start_decoding_time =
+          Realm::Clock::current_time_in_microseconds();
+    }
   }
 
   if (verbose) {
@@ -942,9 +975,6 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
 
-    // TODO: check this profiling, what is profiling
-    profiling_requests[request.guid].ssm_decoding_steps += 1;
-
     std::vector<Request::CommittedToken> &committed_tokens =
         request.committed_tokens;
 
@@ -983,6 +1013,11 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
     // Copy the causal mask, it should already been updated in
     // update_llm_verify_results
     new_bc.causalMask[request_index] = request.causal_mask;
+
+    if (profiling_requests[guid].ssm_decoding_steps == 0) {
+      profiling_requests[guid].start_decoding_time =
+          Realm::Clock::current_time_in_microseconds();
+    }
   }
   if (verbose) {
     std::cout << "prepare_first_spec_batch_config NEW batchconfig:"
@@ -1020,8 +1055,6 @@ BatchConfig RequestManager::prepare_next_spec_batch_config() {
     assert(request.status == Request::RUNNING);
     new_bc.requestsInfo[request_index].first_token_offset_in_batch =
         new_bc.num_tokens;
-    // TODO: check this profiling
-    profiling_requests[request.guid].ssm_decoding_steps += 1;
 
     // Fill in the tokens
     TokenTree &token_tree = request.speculative_token_trees.at(new_bc.model_id);
@@ -1115,9 +1148,6 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-
-    // TODO: check this profiling
-    profiling_requests[request.guid].llm_decoding_steps += 1;
 
     // 1. Maintain requestsInfo
     new_bc.requestsInfo[request_index].first_token_index_in_request =
@@ -1226,10 +1256,18 @@ bool RequestManager::update_llm_verify_results(
         request.committed_tokens.clear();
       }
     }
+
+    profiling_requests[guid].llm_decoding_steps++;
   }
 
   // Process the LLM results greedily
   get_verify_results_greedy(llm_verify_result);
+
+  // Clear the token tree node pool
+  token_tree_node_pool = std::priority_queue<
+      std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>,
+      std::vector<std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>>,
+      CompareSharedTokenTreeNodePtrRequestGuidPair>();
 
   bool request_completed = false;
 
@@ -1265,12 +1303,6 @@ bool RequestManager::update_llm_verify_results(
       update_bitmask_prompt(guid, request.committed_tokens.size() - 1);
     }
   }
-
-  // Clear the token tree node pool
-  token_tree_node_pool = std::priority_queue<
-      std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>,
-      std::vector<std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>>,
-      CompareSharedTokenTreeNodePtrRequestGuidPair>();
 
   // Some requests may be completed after appending the verified tokens.
   // If there is a request completed, return true.
@@ -1322,6 +1354,8 @@ bool RequestManager::update_ssm_inference_results(
       init_bitmask_spec(guid);
     }
     append_bitmask(guid);
+
+    profiling_requests[guid].ssm_decoding_steps++;
   }
 
   // Stop conditions
@@ -1745,26 +1779,32 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   request_manager_status = PREFILLING;
   prefill_model = SSM;
 
+  long long time_1 = Realm::Clock::current_time_in_microseconds(), time_2;
+
   while (!is_background_server_terminated()) {
-    last_irf.get_void_result();
+    // last_irf.get_void_result();
     BatchConfigFuture bcf = get_next_batch_config(last_irf, ctx, runtime);
     bcf.get_void_result();
+    time_2 = Realm::Clock::current_time_in_microseconds();
+    std::cout << "Iteration time: " << (time_2 - time_1) * 1e-3 << "ms"
+              << std::endl;
 
+    time_1 = Realm::Clock::current_time_in_microseconds();
     if ((request_manager_status == PREFILLING and prefill_model == LLM) or
         request_manager_status == LLM_VERIFY) {
-      std::cout << "Branch 1" << std::endl;
+      //   std::cout << "Branch 1" << std::endl;
       runtime->begin_trace(ctx, 12345 /*trace_id*/);
       FutureMap fm = im->inference(llm, 0, bcf);
-      assert(fm.get_future_map_domain().get_volume() == 1);
+      //   assert(fm.get_future_map_domain().get_volume() == 1);
       last_irf = fm.get_future(0);
       runtime->end_trace(ctx, 12345 /*trace_id*/);
     } else if ((request_manager_status == PREFILLING and
                 prefill_model == SSM) or
                request_manager_status == SSM_SPEC) {
-      std::cout << "Branch 2" << std::endl;
+      //   std::cout << "Branch 2" << std::endl;
       runtime->begin_trace(ctx, 23456 /*trace_id*/);
       FutureMap fm = im->inference(get_ssm_model(0), 0, bcf);
-      assert(fm.get_future_map_domain().get_volume() == 1);
+      //   assert(fm.get_future_map_domain().get_volume() == 1);
       last_irf = fm.get_future(0);
       runtime->end_trace(ctx, 23456 /*trace_id*/);
     } else {
@@ -1890,10 +1930,11 @@ bool RequestManager::add_tokens_to_spec_token_tree(
           float log_accumulated_prob =
               log_prob + parent_ptr->log_accumulated_prob;
 
-          std::cout << "Probability at result index " << result_idx << ": "
-                    << ssm_inference_result.probs[result_idx] << "\t";
-          std::cout << "Token id: "
-                    << ssm_inference_result.token_ids[result_idx] << std::endl;
+          //   std::cout << "Probability at result index " << result_idx << ": "
+          //             << ssm_inference_result.probs[result_idx] << "\t";
+          //   std::cout << "Token id: "
+          //             << ssm_inference_result.token_ids[result_idx] <<
+          //             std::endl;
           assert(log_prob != -std::numeric_limits<float>::infinity() &&
                  "Child log probability should not be -inf.");
 
