@@ -345,9 +345,11 @@ private:
   size_t num_processed_requests;
 
   struct ProfileInfo {
-    int llm_decoding_steps;
-    int ssm_decoding_steps;
-    double start_time, finish_time;
+    int llm_prefilling_steps = 0;
+    int ssm_prefilling_steps = 0;
+    int llm_decoding_steps = 0;
+    int ssm_decoding_steps = 0;
+    long long start_time = 0, start_decoding_time = 0, finish_time = 0;
   };
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;

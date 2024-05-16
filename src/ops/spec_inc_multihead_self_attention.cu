@@ -84,7 +84,7 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
   }
 
   // threads converge
-  __syncthreads();
+  //   __syncthreads();
 
   // request_idx = re
 
@@ -279,14 +279,7 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
         int const ti_circ = ti % max_seq_length;
         V_vec v = *reinterpret_cast<V_vec const *>(
             v_cache_batch + ti_circ * hidden_size + head_idx * per_head_size);
-
-        bool const mask = (ti >= bitmask->non_tree_cache_size &&
-                           (!test_bit(bitmask->bit_mask,
-                                      query_token,
-                                      ti - bitmask->non_tree_cache_size)));
-        // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
-        //   (1 << query_token))));
-        float logit = mask ? 0.0f : qk_smem[ti - first_step];
+        float logit = qk_smem[ti - first_step];
         out = FlexFlow::fma(logit, cast_to_float(v), out);
       }
     }
@@ -713,6 +706,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       cudaStream_t stream) {
   // phase 1: Implement kernel to compute KQV for input tokens
 
+  long long time_1 = Realm::Clock::current_time_in_microseconds(), time_2;
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
@@ -759,6 +753,9 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 
   compute_o_prod_bias(
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
+  time_2 = Realm::Clock::current_time_in_microseconds();
+  std::cout << "SpecIncMultiHeadSelfAttention kernel time: "
+            << (time_2 - time_1) << "us" << std::endl;
 }
 
 } // namespace SpecIncMultiHeadSelfAttention

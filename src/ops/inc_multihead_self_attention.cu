@@ -92,7 +92,7 @@ __global__ void compute_attention_kernel_generation_kernel(
   }
 
   // threads converge
-  __syncthreads();
+  //   __syncthreads();
 
   int const first_step = 0;
 
