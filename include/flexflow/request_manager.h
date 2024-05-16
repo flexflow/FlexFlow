@@ -395,11 +395,6 @@ private:
                                    BatchConfig::TokenId token_id);
   bool add_tokens_to_spec_token_tree(
       InferenceResult const &ssm_inference_result);
-  //   bool add_token_to_spec_token_tree(RequestGuid guid,
-  //                                     BatchConfig::TokenId token_id,
-  //                                     int parent_pos,
-  //                                     float log_accumulated_prob);
-  //   bool prune_last_layer_of_spec_token_trees();
   /* ---------- Spec Decoding Helper Functions ---------- */
 };
 
