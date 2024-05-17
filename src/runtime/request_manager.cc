@@ -459,22 +459,32 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   std::string output = this->tokenizer_->Decode(request.tokens);
   std::cout << "Request " << guid << " completed: " << std::endl
             << output << std::endl;
-  std::cout << "Request " << guid << " profiling: " << std::endl
-            << "Decoding time: "
-            << (profiling_requests[guid].finish_time -
-                profiling_requests[guid].start_decoding_time) *
-                   1e-3
-            << "ms" << std::endl
-            << "Total time: "
-            << (profiling_requests[guid].finish_time -
-                profiling_requests[guid].start_time) *
-                   1e-3
-            << "ms" << std::endl
-            << "LLM decoding steps: "
-            << profiling_requests[guid].llm_decoding_steps << std::endl;
-  if (decoding_mode == SPECULATIVE_DECODING) {
-    std::cout << "SSM decoding steps: "
-              << profiling_requests[guid].ssm_decoding_steps << std::endl;
+  ProfileInfo profile_info = profiling_requests[guid];
+  if (!output_filepath.empty()) {
+    std::ofstream outputFile(output_filepath, std::ios::app);
+    if (outputFile.is_open()) {
+      outputFile << "Request " << guid << " profiling: " << std::endl;
+      outputFile << "Decoding time: "
+                  << (profile_info.finish_time -
+                  profile_info.start_decoding_time) * 1e-3
+                  << "ms" << std::endl;
+      outputFile << "Total time: "
+                  << (profile_info.finish_time -
+                      profile_info.start_time) * 1e-3
+                  << "ms" << std::endl;
+      outputFile << "LLM decoding steps: "
+                   << profile_info.llm_decoding_steps << std::endl;
+      if (decoding_mode == SPECULATIVE_DECODING) {
+        outputFile << "SSM decoding steps: "
+                    << profile_info.ssm_decoding_steps << std::endl;
+      }
+      outputFile << output << std::endl << std::endl;
+      outputFile.close();
+    } else {
+      std::cout << "Unable to open the output file: " << output_filepath
+                << std::endl;
+      assert(false);
+    }
   }
 
   trigger_request_completion_future(guid);
