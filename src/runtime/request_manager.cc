@@ -728,6 +728,7 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
         Realm::Clock::current_time_in_microseconds() - 
         profiling.llm_step_start) * 1e-3);
   profiling.requests_per_step.push_back(nb_requests_decoded);
+  profiling.generated_tokens_per_step.push_back(nb_requests_decoded);
   return request_completed;
 }
 
@@ -1565,6 +1566,7 @@ void RequestManager::get_verify_results_greedy(
     InferenceResult const &llm_verify_result) {
   // This function maintain the generated token list of the request and the
   // committed tokens.
+  int total_nb_generated_tokens = 0;
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
@@ -1662,6 +1664,7 @@ void RequestManager::get_verify_results_greedy(
     request.llm_committed = false;
     request.ssm_committed = false;
 
+    total_nb_generated_tokens += request.committed_tokens.size();
     if (verbose) {
       std::cout << "Request " << request.guid << " committed tokens: ";
       for (auto const &committed_token : request.committed_tokens) {
@@ -1673,6 +1676,7 @@ void RequestManager::get_verify_results_greedy(
       std::cout << "Output sequence: " << output << std::endl;
     }
   }
+  profiling.generated_tokens_per_step.push_back(total_nb_generated_tokens);
 }
 
 // TODO: the max_seq_length is not used in the current implementation
@@ -1842,8 +1846,8 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
     BatchConfigFuture bcf = get_next_batch_config(last_irf, ctx, runtime);
     bcf.get_void_result();
     time_2 = Realm::Clock::current_time_in_microseconds();
-    std::cout << "Iteration time: " << (time_2 - time_1) * 1e-3 << "ms"
-              << std::endl;
+    // std::cout << "Iteration time: " << (time_2 - time_1) * 1e-3 << "ms"
+    //           << std::endl;
 
     time_1 = Realm::Clock::current_time_in_microseconds();
     if ((request_manager_status == PREFILLING and prefill_model == LLM) or
@@ -1911,6 +1915,13 @@ void RequestManager::terminate_background_server() {
       ssm_step_times_ms += ")";
       str += ssm_step_times_ms;
     }
+    str += "\n generated_tokens_per_step(";
+    std::string generated_tokens_per_step = " ";
+    for (int nb : profiling.generated_tokens_per_step) {
+      generated_tokens_per_step += std::to_string(nb) + " ";
+    }
+    generated_tokens_per_step += ")";
+    str += generated_tokens_per_step;
     write_to_output_file(output_filepath, str);
     background_server_status = TERMINATED;
     // Wait for the background server to terminate

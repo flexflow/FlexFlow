@@ -79,7 +79,7 @@ struct Request {
   std::vector<TokenTree> speculative_token_trees;
   // To make request manager stateful, we need to store the causal mask here
   BatchConfig::BitMask causal_mask;
-  // Here we maintain a struct CommitTokens which has a field `from_index` and
+  // Here we maintain a struct CommittedToken which has a field `from_index` and
   // `to_index`. The `from_index` is used by the LLM KV cache commitment and the
   // `to_index` is used both by the the SSM KV cache recomputation and the LLM
   // KV cache commitment. Details are as follows:
@@ -361,6 +361,8 @@ private:
     std::vector<double> ssm_step_times;
     // Number of requests getting decoded at each step
     std::vector<int> requests_per_step;
+    // Number of generated tokens at each step
+    std::vector<int> generated_tokens_per_step;
   };
 
   ProfileInfo profiling;

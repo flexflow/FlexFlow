@@ -754,8 +754,8 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   compute_o_prod_bias(
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
   time_2 = Realm::Clock::current_time_in_microseconds();
-  std::cout << "SpecIncMultiHeadSelfAttention kernel time: "
-            << (time_2 - time_1) << "us" << std::endl;
+  // std::cout << "SpecIncMultiHeadSelfAttention kernel time: "
+  //           << (time_2 - time_1) << "us" << std::endl;
 }
 
 } // namespace SpecIncMultiHeadSelfAttention
