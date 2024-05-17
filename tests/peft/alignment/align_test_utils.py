@@ -18,10 +18,10 @@ def print_unique_files_list(dirname):
                     files_list.remove(f)
     return sorted(files_list)
 def compare_tensors(hf_tensor_filepath, ff_tensor_filepath, tolerance=1e-2):
-    if not (os.path.exists(hf_tensor_filepath) and os.path.exists(ff_tensor_filepath)):
-        print(hf_tensor_filepath, os.path.exists(hf_tensor_filepath))
-        print(ff_tensor_filepath, os.path.exists(ff_tensor_filepath))
-        assert False
+    if not os.path.exists(hf_tensor_filepath):
+        raise FileNotFoundError(f"HF tensor file: {hf_tensor_filepath} not found")
+    if not os.path.exists(ff_tensor_filepath):
+        raise FileNotFoundError(f"FF tensor file {ff_tensor_filepath} not found")
     hf_tensor = torch.load(hf_tensor_filepath)
     if type(hf_tensor) == tuple or type(hf_tensor) == list:
         assert(len(hf_tensor) == 1)

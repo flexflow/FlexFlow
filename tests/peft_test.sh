@@ -27,37 +27,39 @@ mkdir -p ../inference/output
 python ../inference/utils/download_peft_model.py goliaro/llama-160m-lora --base_model_name JackFram/llama-160m 
 # if first time, add: --refresh-cache
 
-# CPP test
-../build/inference/peft/peft \
-    -ll:gpu 4 -ll:cpu 4 -ll:util 4 \
-    -tensor-parallelism-degree 4 \
-    -ll:fsize 8192 -ll:zsize 12000 \
-    -llm-model JackFram/llama-160m \
-    -finetuning-dataset ../inference/prompt/peft_dataset.json \
-    -peft-model goliaro/llama-160m-lora \
-    --use-full-precision \
-    --fusion \
-    -enable-peft
-
-Python test
-python ../inference/python/ff_peft.py
-
-# cd ../build
-# rm -rf inference_tensors || true
-# ./inference/peft/peft \
-#     -ll:gpu 1 -ll:cpu 4 -ll:util 4 \
-#     -tensor-parallelism-degree 1 \
+# # CPP test
+# ../build/inference/peft/peft \
+#     -ll:gpu 4 -ll:cpu 4 -ll:util 4 \
+#     -tensor-parallelism-degree 4 \
 #     -ll:fsize 8192 -ll:zsize 12000 \
 #     -llm-model JackFram/llama-160m \
 #     -finetuning-dataset ../inference/prompt/peft_dataset.json \
 #     -peft-model goliaro/llama-160m-lora \
-#     -enable-peft \
 #     --use-full-precision \
-#     --inference-debugging
+#     --fusion \
+#     -enable-peft
+
+# # Python test
+# python ../inference/python/ff_peft.py
+
+cd ../build
+rm -rf inference_tensors || true
+./inference/peft/peft \
+    -ll:gpu 1 -ll:cpu 4 -ll:util 4 \
+    -tensor-parallelism-degree 1 \
+    -ll:fsize 8192 -ll:zsize 12000 \
+    -llm-model JackFram/llama-160m \
+    -finetuning-dataset ../inference/prompt/peft_dataset.json \
+    -peft-model goliaro/llama-160m-lora \
+    -enable-peft \
+    --use-full-precision \
+    --inference-debugging
 # rm -rf inference_tensors/bwd_*
 
-# cd ../tests/peft
-# rm -rf hf_peft_tensors || true
-# python hf_finetune.py --peft-model-id goliaro/llama-160m-lora --save-peft-tensors --use-full-precision
+cd ../tests/peft
+rm -rf hf_peft_tensors || true
+python hf_finetune.py --peft-model-id goliaro/llama-160m-lora --save-peft-tensors --use-full-precision
 # rm -rf hf_peft_tensors/bwd_*
 
+
+python peft_alignment_test.py
