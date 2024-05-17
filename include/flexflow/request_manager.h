@@ -344,16 +344,29 @@ private:
   // TODO: maintain this field
   size_t num_processed_requests;
 
-  struct ProfileInfo {
+  struct RequestProfileInfo {
     int llm_prefilling_steps = 0;
     int ssm_prefilling_steps = 0;
     int llm_decoding_steps = 0;
     int ssm_decoding_steps = 0;
     long long start_time = 0, start_decoding_time = 0, finish_time = 0;
   };
-  std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
+  struct ProfileInfo {
+    // For SpecInfer: One step is comprised of one ssm speculation phase + a single llm verification phase (forward pass + verification)
+    // For Incr Decoding: One step is one LLM decoding phase
+    long long llm_step_start = 0, ssm_step_start = 0;
+    // Times for each LLM verification phase (in ms)
+    std::vector<double> llm_step_times;
+    // Times for each SSM speculation phase (in ms)
+    std::vector<double> ssm_step_times;
+    // Number of requests getting decoded at each step
+    std::vector<int> requests_per_step;
+  };
+
+  ProfileInfo profiling;
+  std::unordered_map<RequestGuid, RequestProfileInfo> profiling_requests;
   double total_request_run_time;
-  void load_pending_reqeust_to_batch();
+  void load_pending_request_to_batch();
   void request_complete_clean_up(int batch_index);
   /* ---------- Incremental Decoding Helper Functions ---------- */
   bool update_llm_prefill_results(InferenceResult const &result);
