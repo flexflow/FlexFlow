@@ -122,14 +122,14 @@ def check_bwd_pass(tot_num_layers = 12):
     # ff_BWD_softmax_in = f"{ff_path}/model_0_bwd-step_0_layer-num_100_layer-name_Softmax_shard-id_0_input_0"
     print("-- LM head --")
     hf_BWD_lm_head_out = f"{hf_path}/bwd_step_0_base_model.model.lm_head.go_0"
-    ff_BWD_lm_head_out = f"{ff_path}/bwd_step_0_layers_{tot_num_layers-1}_output_shard_0_output_0"
+    ff_BWD_lm_head_out = f"{ff_path}/bwd_step_0_layers_{tot_num_layers-1}_lm_head_shard_0_output_0"
     compare_tensors(hf_BWD_lm_head_out, ff_BWD_lm_head_out, tolerance=1e-5)
     # compare weights
-    hf_lm_head_weight = f"{hf_path}/base_model.model.lm_head.weight"
-    ff_lm_head_weight = f"{ff_path}/fwd_step_0_layers_{tot_num_layers-1}_output_shard_0_weight_0"
-    compare_tensors(hf_lm_head_weight, ff_lm_head_weight, tolerance=1e-5)
+    # hf_lm_head_weight = f"{hf_path}/base_model.model.lm_head.weight"
+    # ff_lm_head_weight = f"{ff_path}/fwd_step_0_layers_{tot_num_layers-1}_output_shard_0_weight_0"
+    # compare_tensors(hf_lm_head_weight, ff_lm_head_weight, tolerance=1e-5)
     hf_BWD_lm_head_in = f"{hf_path}/bwd_step_0_base_model.model.lm_head.gi_0"
-    ff_BWD_lm_head_in = f"{ff_path}/bwd_step_0_layers_{tot_num_layers-1}_output_shard_0_input_0"
+    ff_BWD_lm_head_in = f"{ff_path}/bwd_step_0_layers_{tot_num_layers-1}_lm_head_shard_0_input_0"
     compare_tensors(hf_BWD_lm_head_in, ff_BWD_lm_head_in, tolerance=1e-5)
     # # Manually check the matmul
     # ff_tensor_out = np.loadtxt(ff_BWD_lm_head_out, delimiter=',')

@@ -44,21 +44,6 @@ def print_trainable_parameters(model):
     )
 
 
-def lm_head_pre_backward_hook(module, grad_output):
-    # Fill grad input tensor with 0.5 to align other layers without having to align loss
-    assert len(grad_output) == 1
-    assert "lm_head" in module.name
-    name = module.name.replace("base_model.model.model.", "")
-    print(
-        f"PRE-Backward Hook activated for module: {name}, bwd step: {module.bwd_step}"
-    )
-    print(grad_output[0].shape)
-    dev = grad_output[0].device
-    new_grad_output = torch.full(grad_output[0].shape, 0.5).to(dev)
-    assert new_grad_output.shape == grad_output[0].shape
-    return (new_grad_output,)
-
-
 def peft_backward_hook(module, grad_input, grad_output):
     assert(type(grad_input) == tuple and type(grad_output) == tuple)
     if len(grad_input) == 0 or len(grad_output) == 0:
@@ -247,9 +232,6 @@ def main():
             print(f"Adding hooks to layer {layer.name}")
             layer.register_forward_hook(peft_forward_hook)
             layer.register_full_backward_hook(peft_backward_hook)
-            # TODO: remove hard-coding of lm head grad input after aligning the loss
-            if "lm_head" in name:
-                layer.register_full_backward_pre_hook(lm_head_pre_backward_hook)
         # Save any weights of interest
         for name, params in model.named_parameters():
             simplified_name = name.replace("base_model.model.model.", "")
