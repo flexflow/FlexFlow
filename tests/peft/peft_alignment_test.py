@@ -152,6 +152,120 @@ def check_bwd_pass(tot_num_layers = 12):
     ff_BWD_norm_in = f"{ff_path}/bwd_step_0_layers_{tot_num_layers-1}_norm_shard_0_input_1"
     compare_tensors(hf_BWD_norm_in, ff_BWD_norm_in, tolerance=1e-5)
 
+    print("-- Transformers blocks --")
+    for i in range(tot_num_layers-1, -1, -1):
+        # HuggingFace filepaths
+        hf_BWD_norm_in = f"{hf_path}/bwd_step_0_norm.gi_0"
+        hf_BWD_loraB_out = f"{hf_path}/bwd_step_0_layers.{i}.mlp.down_proj.lora_B.default.go_0"
+        hf_BWD_loraB_in = f"{hf_path}/bwd_step_0_layers.{i}.mlp.down_proj.lora_B.default.gi_0"
+        hf_BWD_loraA_out = f"{hf_path}/bwd_step_0_layers.{i}.mlp.down_proj.lora_A.default.go_0"
+        hf_BWD_loraA_in = f"{hf_path}/bwd_step_0_layers.{i}.mlp.down_proj.lora_A.default.gi_0"
+        hf_loraA_weight = f"{hf_path}/layers.{i}.mlp.down_proj.lora_A.default.weight"
+        hf_loraB_weight = f"{hf_path}/layers.{i}.mlp.down_proj.lora_B.default.weight"
+        hf_BWD_w2_out = f"{hf_path}/bwd_step_0_layers.{i}.mlp.down_proj.go_0"
+        hf_BWD_w2_in = f"{hf_path}/bwd_step_0_layers.{i}.mlp.down_proj.gi_0"
+        hf_w2_weight = f"{hf_path}/layers.{i}.mlp.down_proj.base_layer.weight"
+        hf_BWD_w3_out = f"{hf_path}/bwd_step_0_layers.{i}.mlp.up_proj.go_0"
+        hf_BWD_w3_in = f"{hf_path}/bwd_step_0_layers.{i}.mlp.up_proj.gi_0"
+        hf_BWD_w1_out = f"{hf_path}/bwd_step_0_layers.{i}.mlp.gate_proj.go_0"
+        hf_BWD_w1_in = f"{hf_path}/bwd_step_0_layers.{i}.mlp.gate_proj.gi_0"
+        hf_BWD_act_fn_in = f"{hf_path}/bwd_step_0_layers.{i}.mlp.act_fn.gi_0"
+        hf_BWD_ffn_norm_out = f"{hf_path}/bwd_step_0_layers.{i}.post_attention_layernorm.go_0"
+        hf_BWD_ffn_norm_in = f"{hf_path}/bwd_step_0_layers.{i}.post_attention_layernorm.gi_0"
+        hf_BWD_attn_out_out = f"{hf_path}/bwd_step_0_layers.{i}.self_attn.o_proj.go_0"
+        
+        # FlexFlow filepaths
+        ff_BWD_w2_out = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.mlp.down_proj_shard_0_output_0"
+        ff_BWD_w2_in = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.mlp.down_proj_shard_0_input_0"
+        ff_BWD_w2_in_pre = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.mlp.down_proj_shard_0_pre_input_0"
+        ff_w2_weight = f"{ff_path}/fwd_step_0_layers_{i}_layers.{i}.mlp.down_proj_shard_0_weight_0"
+        ff_BWD_ssm_out = f"{ff_path}/bwd_step_0_layers_{i}_SigmoidSiluMulti_shard_0_output_0"
+        ff_BWD_ssm_in1 = f"{ff_path}/bwd_step_0_layers_{i}_SigmoidSiluMulti_shard_0_input_0"
+        ff_BWD_ssm_in2 = f"{ff_path}/bwd_step_0_layers_{i}_SigmoidSiluMulti_shard_0_input_1"
+        ff_BWD_w3_out = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.mlp.up_proj_shard_0_output_0"
+        ff_BWD_w3_in = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.mlp.up_proj_shard_0_input_0"
+        ff_BWD_lora_A_in = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.mlp.down_proj.lora_shard_0_input_0"
+        ff_BWD_lora_B_out = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.mlp.down_proj.lora_shard_0_output_0"
+        ff_lora_A_weight = f"{ff_path}/fwd_step_0_layers_{i}_layers.{i}.mlp.down_proj.lora_shard_0_weight_A"
+        ff_lora_B_weight = f"{ff_path}/fwd_step_0_layers_{i}_layers.{i}.mlp.down_proj.lora_shard_0_weight_B"
+        ff_BWD_w1_out = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.mlp.gate_proj_shard_0_output_0"
+        ff_BWD_w1_in = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.mlp.gate_proj_shard_0_input_0"
+        ff_BWD_w1_in_pre = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.mlp.gate_proj_shard_0_pre_input_0"
+        ff_BWD_ffn_norm_in1 = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.post_attention_layernorm_shard_0_input_0"
+        ff_BWD_ffn_norm_in2 = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.post_attention_layernorm_shard_0_input_1"
+        ff_BWD_ffn_norm_out = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.post_attention_layernorm_shard_0_output_0"
+        ff_BWD_attn_out = ff_path + f"/bwd_step_0_layers_{i}_layers.{i}.self_attn_shard_0_output_0"        
+        
+        # HuggingFace checks
+        print("\nHuggingface checks:")
+        if i == tot_num_layers-1:
+            compare_hf_tensors(hf_BWD_norm_in, hf_BWD_loraB_out)
+            compare_hf_tensors(hf_BWD_norm_in, hf_BWD_w2_out)
+        compare_hf_tensors(hf_BWD_loraB_out, hf_BWD_w2_out)
+        compare_hf_tensors(hf_BWD_loraB_in, hf_BWD_loraA_out)
+
+        compare_hf_tensors(hf_BWD_act_fn_in, hf_BWD_w1_out)
+        check_hf_sum_tensors(hf_BWD_ffn_norm_out, hf_BWD_w1_in, hf_BWD_w3_in)
+        if i == tot_num_layers-1:
+            check_hf_sum_tensors(hf_BWD_attn_out_out, hf_BWD_ffn_norm_in, hf_BWD_norm_in)
+
+        # FlexFlow checks
+        print("\nFlexFlow checks:")
+        compare_flexflow_tensors(ff_BWD_w2_out, ff_BWD_lora_B_out)
+        compare_flexflow_tensors(ff_BWD_w2_in_pre, ff_BWD_lora_A_in)
+        compare_flexflow_tensors(ff_BWD_w2_in, ff_BWD_ssm_out)
+        compare_flexflow_tensors(ff_BWD_ssm_in2, ff_BWD_w3_out)
+        compare_flexflow_tensors(ff_BWD_ssm_in1, ff_BWD_w1_out)
+        # compare_flexflow_tensors(ff_BWD_w1_in, ff_BWD_ffn_norm_out)
+        # compare_flexflow_tensors(ff_BWD_w1_in_pre, ff_BWD_w3_in)
+        # compare_flexflow_tensors(ff_BWD_ffn_norm_in1, ff_BWD_ffn_norm_in2, max_len=24*768)
+        
+        # HF-FlexFlow checks
+        print("\nHuggingface-FlexFlow checks:")
+        print("-- W2 --")
+        compare_tensors(hf_BWD_w2_out, ff_BWD_w2_out, tolerance=1e-5)
+        compare_tensors(hf_w2_weight, ff_w2_weight, tolerance=1e-5)
+        
+        print("-- Lora --")
+        compare_tensors(hf_loraA_weight, ff_lora_A_weight, tolerance=1e-5)
+        compare_tensors(hf_loraB_weight, ff_lora_B_weight, tolerance=1e-5)
+
+        compare_tensors(hf_BWD_loraB_out, ff_BWD_lora_B_out)
+        compare_tensors(hf_BWD_loraA_in, ff_BWD_lora_A_in)
+        
+        print("-- W2/W1/W3 --")
+        compare_tensors(hf_BWD_w2_in, ff_BWD_ssm_out)
+        compare_tensors(hf_BWD_w2_in, ff_BWD_w2_in)
+        compare_tensors(hf_BWD_w1_out, ff_BWD_w1_out)
+        compare_tensors_difference(hf_BWD_w1_in, ff_BWD_w1_in, ff_BWD_w1_in_pre)
+        compare_tensors(hf_BWD_w3_out, ff_BWD_w3_out)
+        compare_tensors(hf_BWD_w3_in, ff_BWD_w3_in)
+        compare_tensors(hf_BWD_w1_out, ff_BWD_w1_out)
+        
+        print("-- Attention --")
+        compare_tensors(hf_BWD_attn_out_out, ff_BWD_attn_out)
+        num_tokens = 24
+
+        hf_attn_in = f"{hf_path}/bwd_step_0_layers.{i}.input_layernorm.go_0"
+        hf_attn_in = torch.load(hf_attn_in)
+        hf_attn_in = hf_attn_in.squeeze().T
+        hf_attn_in = hf_attn_in.detach().cpu().numpy()
+        print("hf_attn_in: ", hf_attn_in.shape)
+        print(hf_attn_in)
+
+        ff_attn_in = f"{ff_path}/bwd_step_0_layers_{i}_layers_{i}_attention_shard_0_attn_final_grad_in"
+        ff_attn_in = np.loadtxt(ff_attn_in, delimiter=',').reshape((768,num_tokens), order = 'F')
+        print("ff_attn_in: ", ff_attn_in.shape)
+        print(ff_attn_in)
+        #assert(np.allclose(ff_attn_in, hf_attn_in, atol=1e-2))
+
+        mismatches = np.where(~np.isclose(ff_attn_in, hf_attn_in))
+        mismatches = [(mismatches[0][i], mismatches[1][i]) for i in range(len(mismatches[0]))]
+        pct_mismatch = len(mismatches) / (hf_attn_in.shape[0] * hf_attn_in.shape[1])
+        print(f"{pct_mismatch*100}% mismatch in attention input grads")
+        assert(pct_mismatch <= 0.1)
+
+
 if __name__ == "__main__":
     check_weights_alignment()
     check_fwd_pass()
