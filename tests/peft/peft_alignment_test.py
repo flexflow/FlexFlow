@@ -173,6 +173,15 @@ def check_bwd_pass(tot_num_layers = 12):
         hf_BWD_ffn_norm_out = f"{hf_path}/bwd_step_0_layers.{i}.post_attention_layernorm.go_0"
         hf_BWD_ffn_norm_in = f"{hf_path}/bwd_step_0_layers.{i}.post_attention_layernorm.gi_0"
         hf_BWD_attn_out_out = f"{hf_path}/bwd_step_0_layers.{i}.self_attn.o_proj.go_0"
+        hf_BWD_attn_q_in = f"{hf_path}/bwd_step_0_layers.11.self_attn.q_proj.gi_0"
+        hf_FWD_w1_out = f"{hf_path}/fwd_step_0_layers.{i}.mlp.gate_proj.output_0"
+        hf_FWD_w3_out = f"{hf_path}/fwd_step_0_layers.{i}.mlp.up_proj.output_0"
+        hf_FWD_act_fn_out = f"{hf_path}/fwd_step_0_layers.{i}.mlp.act_fn.output_0"
+        hf_BWD_attn_oproj_in = f"{hf_path}/bwd_step_0_layers.{i}.self_attn.o_proj.gi_0"
+        hf_attn_qproj_weight = f"{hf_path}/layers.{i}.self_attn.q_proj.weight"
+        hf_attn_kproj_weight = f"{hf_path}/layers.{i}.self_attn.k_proj.weight"
+        hf_attn_vproj_weight = f"{hf_path}/layers.{i}.self_attn.v_proj.weight"
+        hf_attn_oproj_weight = f"{hf_path}/layers.{i}.self_attn.o_proj.weight"
         
         # FlexFlow filepaths
         ff_BWD_w2_out = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.mlp.down_proj_shard_0_output_0"
@@ -195,7 +204,9 @@ def check_bwd_pass(tot_num_layers = 12):
         ff_BWD_ffn_norm_in2 = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.post_attention_layernorm_shard_0_input_1"
         ff_BWD_ffn_norm_out = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.post_attention_layernorm_shard_0_output_0"
         ff_BWD_attn_out = ff_path + f"/bwd_step_0_layers_{i}_layers.{i}.self_attn_shard_0_output_0"        
-        
+        ff_BWD_attn_o_proj_in = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.self_attn_shard_0_o_proj_in_grad"
+        ff_attn_oproj_weight = f"{ff_path}/fwd_step_0_layers_{i}_layers.{i}.self_attn_shard_0_weight_0"
+
         # HuggingFace checks
         print("\nHuggingface checks:")
         if i == tot_num_layers-1:
@@ -217,7 +228,7 @@ def check_bwd_pass(tot_num_layers = 12):
         compare_flexflow_tensors(ff_BWD_ssm_in2, ff_BWD_w3_out)
         compare_flexflow_tensors(ff_BWD_ssm_in1, ff_BWD_w1_out)
         # compare_flexflow_tensors(ff_BWD_w1_in, ff_BWD_ffn_norm_out)
-        # compare_flexflow_tensors(ff_BWD_w1_in_pre, ff_BWD_w3_in)
+        compare_flexflow_tensors(ff_BWD_w1_in_pre, ff_BWD_w3_in)
         # compare_flexflow_tensors(ff_BWD_ffn_norm_in1, ff_BWD_ffn_norm_in2, max_len=24*768)
         
         # HF-FlexFlow checks
@@ -243,27 +254,77 @@ def check_bwd_pass(tot_num_layers = 12):
         compare_tensors(hf_BWD_w1_out, ff_BWD_w1_out)
         
         print("-- Attention --")
-        compare_tensors(hf_BWD_attn_out_out, ff_BWD_attn_out)
         num_tokens = 24
+        hidden_size = 768
+        qProjSize = 64
+        num_heads = 12
+        # Check output
+        compare_tensors(hf_BWD_attn_out_out, ff_BWD_attn_out)
+        
+        # Check weights
+        ff_attn_weight_tensor = np.loadtxt(ff_attn_oproj_weight, delimiter=',')
+        ff_attn_qproj_weight_tensor = ff_attn_weight_tensor[:hidden_size*qProjSize*num_heads].reshape((hidden_size,qProjSize*num_heads), order = 'F')
+        ff_attn_kproj_weight_tensor = ff_attn_weight_tensor[hidden_size*qProjSize*num_heads:2*hidden_size*qProjSize*num_heads].reshape((hidden_size,qProjSize*num_heads), order = 'F')
+        ff_attn_vproj_weight_tensor = ff_attn_weight_tensor[2*hidden_size*qProjSize*num_heads:3*hidden_size*qProjSize*num_heads].reshape((hidden_size,qProjSize*num_heads), order = 'F')
+        ff_attn_oproj_weight_tensor = ff_attn_weight_tensor[3*hidden_size*qProjSize*num_heads:].reshape((qProjSize*num_heads,hidden_size), order='F')
+        
+        hf_attn_qproj_weight_tensor = torch.load(hf_attn_qproj_weight).T.detach().cpu().numpy()
+        hf_attn_kproj_weight_tensor = torch.load(hf_attn_kproj_weight).T.detach().cpu().numpy()
+        hf_attn_vproj_weight_tensor = torch.load(hf_attn_vproj_weight).T.detach().cpu().numpy()
+        hf_attn_oproj_weight_tensor = torch.load(hf_attn_oproj_weight).T.detach().cpu().numpy()
+        
+        assert(np.allclose(ff_attn_qproj_weight_tensor, hf_attn_qproj_weight_tensor, atol=1e-5))
+        assert(np.allclose(ff_attn_kproj_weight_tensor, hf_attn_kproj_weight_tensor, atol=1e-5))
+        assert(np.allclose(ff_attn_vproj_weight_tensor, hf_attn_vproj_weight_tensor, atol=1e-5))
+        assert(np.allclose(ff_attn_oproj_weight_tensor, hf_attn_oproj_weight_tensor, atol=1e-5))
 
+        # Compare attn outproj grad in tensors
+        compare_tensors(hf_BWD_attn_oproj_in, ff_BWD_attn_o_proj_in)
+
+        # Compare vproj grads
+        hf_vproj_grads = f"{hf_path}/bwd_step_0_layers.{i}.self_attn.v_proj.go_0"
+        ff_vproj_grads = ff_path + f"/bwd_step_0_layers_{i}_layers.{i}.self_attn_shard_0_v_proj_in_grad"
+        hf_vproj_grads = torch.load(hf_vproj_grads).squeeze().detach().cpu().numpy()
+        ff_vproj_grads = np.loadtxt(ff_vproj_grads, delimiter=',').reshape((num_tokens, qProjSize*num_heads), order='F')
+        compare_loaded_tensors(hf_vproj_grads, ff_vproj_grads)
+
+        # Compare kproj grads
+        ff_kproj = ff_path + f"/bwd_step_0_layers_{i}_layers.{i}.self_attn_shard_0_devkproj"
+        ff_kproj = np.loadtxt(ff_kproj, delimiter=',').reshape((num_tokens, qProjSize, num_heads), order = 'F')
+        hf_kproj_grads = f"{hf_path}/bwd_step_0_layers.{i}.self_attn.k_proj.go_0"
+        hf_kproj_grads = torch.load(hf_kproj_grads).squeeze()
+        reshaped_tensor = hf_kproj_grads.view(24, 12, 64).transpose(1, 2).contiguous().detach().cpu().numpy()
+        assert(np.allclose(ff_kproj, reshaped_tensor, atol=1e-2))
+        print("Ok!")
+
+        # Compare qproj grads
+        hf_qproj_grads = f"{hf_path}/bwd_step_0_layers.{i}.self_attn.q_proj.go_0"
+        hf_qproj_grads = torch.load(hf_qproj_grads).squeeze()
+        reshaped_tensor = hf_qproj_grads.view(24, 12, 64).transpose(1, 2).contiguous().detach().cpu().numpy()
+        ff_qproj = ff_path + f"/bwd_step_0_layers_{i}_layers.{i}.self_attn_shard_0_devQKVPRojArray"
+        ff_qproj = np.loadtxt(ff_qproj, delimiter=',').reshape((num_tokens, qProjSize, num_heads, 3), order = 'F')[:,:,:,0]
+        assert(np.allclose(ff_qproj, reshaped_tensor, atol=1e-2))
+        print("Ok!")
+
+        # Compare attn grad input 
         hf_attn_in = f"{hf_path}/bwd_step_0_layers.{i}.input_layernorm.go_0"
-        hf_attn_in = torch.load(hf_attn_in)
-        hf_attn_in = hf_attn_in.squeeze().T
-        hf_attn_in = hf_attn_in.detach().cpu().numpy()
-        print("hf_attn_in: ", hf_attn_in.shape)
-        print(hf_attn_in)
+        ff_attn_in = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.self_attn_shard_0_attn_final_grad_in"
+        compare_tensors(hf_attn_in, ff_attn_in)
 
-        ff_attn_in = f"{ff_path}/bwd_step_0_layers_{i}_layers_{i}_attention_shard_0_attn_final_grad_in"
-        ff_attn_in = np.loadtxt(ff_attn_in, delimiter=',').reshape((768,num_tokens), order = 'F')
-        print("ff_attn_in: ", ff_attn_in.shape)
-        print(ff_attn_in)
-        #assert(np.allclose(ff_attn_in, hf_attn_in, atol=1e-2))
+        # compare input layernorm
+        print("-- Input LayerNorm --")
+        if i > 0:
+            ff_input_ln_out = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.input_layernorm_shard_0_output_1"
+            ff_attn_operator_in = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.self_attn_shard_0_input_0"
+            compare_flexflow_tensors(ff_attn_operator_in, ff_input_ln_out)
+            hf_input_ln_in = f"{hf_path}/bwd_step_0_layers.{i}.input_layernorm.gi_0"
+            ff_input_ln_in0 = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.input_layernorm_shard_0_input_0"
+            ff_input_ln_in1 = f"{ff_path}/bwd_step_0_layers_{i}_layers.{i}.input_layernorm_shard_0_input_1"
+            compare_flexflow_tensors(ff_input_ln_in0, ff_input_ln_in1)
+            if i > 1:
+                compare_tensors(hf_input_ln_in, ff_input_ln_in0)
+        
 
-        mismatches = np.where(~np.isclose(ff_attn_in, hf_attn_in))
-        mismatches = [(mismatches[0][i], mismatches[1][i]) for i in range(len(mismatches[0]))]
-        pct_mismatch = len(mismatches) / (hf_attn_in.shape[0] * hf_attn_in.shape[1])
-        print(f"{pct_mismatch*100}% mismatch in attention input grads")
-        assert(pct_mismatch <= 0.1)
 
 
 if __name__ == "__main__":
