@@ -51,12 +51,12 @@ Pool2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
 
   checkCUDNN(miopenSet4dTensorDescriptor(
       inputTensor, miopenFloat, input_n, input_c, input_h, input_w));
-  cudnnPoolingMode_t mode;
+  miopenPoolingMode_t mode;
   if (pool_type == PoolOp::MAX) {
     mode = MIOPEN_POOLING_MAX;
   } else {
     assert(pool_type == PoolOp::AVG);
-    mode = MIOPEN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
+    mode = MIOPEN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
   }
 
   checkCUDNN(miopenSetPooling2dDescriptor(
