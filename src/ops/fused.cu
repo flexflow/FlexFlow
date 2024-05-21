@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "cuda.h"
 #include "flexflow/accessor.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/add_bias_residual_layer_norm.h"
@@ -43,19 +44,9 @@
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
+#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::Context;
-using Legion::coord_t;
-using Legion::Domain;
-using Legion::Future;
-using Legion::LogicalPartition;
-using Legion::LogicalRegion;
-using Legion::Memory;
-using Legion::PhysicalRegion;
-using Legion::Runtime;
-using Legion::Task;
 
 OpMeta *FusedOp::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
@@ -608,530 +599,582 @@ __host__ void
     }
   }
 
-  int ioff = 0, woff = 0, ooff = 0;
-  for (int op = 0; op < fused->numOperators; op++) {
-    // Domain my_id[MAX_NUM_INPUTS];
-    // Domain my_wd[MAX_NUM_WEIGHTS];
-    // Domain my_od[MAX_NUM_OUTPUTS];
-    GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
-    GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
-    GenericTensorAccessorW my_output_accessor[MAX_NUM_OUTPUTS];
-    for (int i = 0; i < fused->op_num_inputs[op]; i++) {
-      int my_off = fused->op_input_idx[i + ioff];
-      if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
-        // my_id[i] = input_domain[my_off];
-        assert(my_off < fused->numInputs);
-        my_input_accessor[i] = input_accessor[my_off];
-      } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
-        // my_id[i] = output_domain[my_off];
-        assert(my_off < fused->numOutputs);
-        my_input_accessor[i] = output_accessor[my_off];
-      } else {
-        assert(false);
-      }
-    }
-    for (int i = 0; i < fused->op_num_weights[op]; i++) {
-      assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
-      // my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
-      // my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
-      assert(fused->op_weight_idx[i + woff] < fused->numWeights);
-      my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
-    }
-    for (int i = 0; i < fused->op_num_outputs[op]; i++) {
-      int my_off = fused->op_output_idx[i + ooff];
-      assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
-      assert(my_off < fused->numOutputs);
-      // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
-      // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
-      my_output_accessor[i] = output_accessor[my_off];
-    }
-    switch (fused->op_op_type[op]) {
-      case OP_CONCAT: {
-        assert(fused->op_num_weights[op] == 0);
-        assert(fused->op_num_outputs[op] == 1);
-        ConcatMeta *m = (ConcatMeta *)metas->meta[op];
-        int num_inputs = fused->op_num_inputs[op];
-        Kernels::Concat::forward_kernel_wrapper(m,
-                                                my_output_accessor[0],
-                                                my_input_accessor,
-                                                num_inputs,
-                                                m->legion_axis);
-        break;
-      }
-      case OP_BATCHNORM: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain.get_dim() == 5);
-        assert(my_output_accessor[0].domain.get_dim() == 5);
-        assert(my_weight_accessor[0].domain.get_dim() == 2);
-        assert(my_weight_accessor[1].domain.get_dim() == 2);
-        BatchNormMeta *m = (BatchNormMeta *)metas->meta[op];
-        BatchNorm::forward_kernel(m,
-                                  my_input_accessor[0].get_float_ptr(),
-                                  my_output_accessor[0].get_float_ptr(),
-                                  my_weight_accessor[0].get_float_ptr(),
-                                  my_weight_accessor[1].get_float_ptr());
-        break;
-      }
-      case OP_LINEAR: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_outputs[op] == 1);
-        Domain kernel_domain = my_weight_accessor[0].domain;
-        int in_dim = kernel_domain.hi()[0] - kernel_domain.lo()[0] + 1;
-        int out_dim = kernel_domain.hi()[1] - kernel_domain.lo()[1] + 1;
-        int batch_size = my_input_accessor[0].domain.get_volume() / in_dim;
-        assert(my_output_accessor[0].domain.get_volume() ==
-               out_dim * batch_size);
-        assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
-        void const *bias_ptr = nullptr;
-        LinearMeta *m = (LinearMeta *)metas->meta[op];
-        if (fused->op_num_weights[op] == 2) {
-          assert(my_weight_accessor[1].domain.get_volume() == out_dim);
-          if (!m->add_bias_only_once || task->index_point.point_data[0] == 0) {
-            bias_ptr = my_weight_accessor[1].ptr;
-          }
-        } else {
-          assert(fused->op_num_weights[op] == 1);
-        }
-        assert(m->input_type[0] == my_input_accessor[0].data_type);
-        assert(m->input_type[0] == my_output_accessor[0].data_type);
-        batch_size = bc->num_active_tokens();
-        Kernels::Linear::forward_kernel_wrapper(m,
-                                                my_input_accessor[0].ptr,
-                                                my_output_accessor[0].ptr,
-                                                my_weight_accessor[0].ptr,
-                                                bias_ptr,
-                                                in_dim,
-                                                out_dim,
-                                                batch_size);
-        break;
-      }
-      case OP_BATCHMATMUL: {
-        assert(fused->op_num_inputs[op] == 2);
-        assert(fused->op_num_weights[op] == 0);
-        assert(fused->op_num_outputs[op] == 1);
-        Domain out_domain = my_output_accessor[0].domain;
-        Domain a_domain = my_input_accessor[0].domain;
-        Domain b_domain = my_input_accessor[1].domain;
-        int m = b_domain.hi()[0] - b_domain.lo()[0] + 1;
-        assert(m == out_domain.hi()[0] - out_domain.lo()[0] + 1);
-        int n = a_domain.hi()[1] - a_domain.lo()[1] + 1;
-        assert(n == out_domain.hi()[1] - out_domain.lo()[1] + 1);
-        int k = a_domain.hi()[0] - a_domain.lo()[0] + 1;
-        assert(k == b_domain.hi()[1] - b_domain.lo()[1] + 1);
-        assert(a_domain.get_dim() == b_domain.get_dim());
-        assert(a_domain.get_dim() == out_domain.get_dim());
-        int batch = 1;
-        for (int i = 2; i < a_domain.get_dim(); i++) {
-          int dim_size = a_domain.hi()[i] - a_domain.lo()[i] + 1;
-          assert(dim_size == b_domain.hi()[i] - b_domain.lo()[i] + 1);
-          assert(dim_size == out_domain.hi()[i] - out_domain.lo()[i] + 1);
-          batch *= dim_size;
-        }
-        BatchMatmulMeta *meta = (BatchMatmulMeta *)metas->meta[op];
-        Kernels::BatchMatmul::forward_kernel_wrapper(
-            meta,
-            my_output_accessor[0].get_float_ptr(),
-            my_input_accessor[0].get_float_ptr(),
-            my_input_accessor[1].get_float_ptr(),
-            (float const *)nullptr,
-            m,
-            n,
-            k,
-            batch,
-            meta->a_seq_length_dim,
-            meta->b_seq_length_dim,
-            fused->iter_config.seq_length);
-        break;
-      }
-      case OP_EW_ADD:
-      case OP_EW_SUB:
-      case OP_EW_MUL:
-      case OP_EW_DIV:
-      case OP_EW_MAX:
-      case OP_EW_MIN: {
-        assert(fused->op_num_inputs[op] == 2);
-        assert(fused->op_num_weights[op] == 0);
-        assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
-        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
-        Kernels::ElementBinary::forward_kernel_wrapper(m,
-                                                       my_input_accessor[0],
-                                                       my_input_accessor[1],
-                                                       my_output_accessor[0]);
-        break;
-      }
-      case OP_EMBEDDING: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_weights[op] == 1);
-        assert(fused->op_num_outputs[op] == 1);
-        EmbeddingMeta *m = (EmbeddingMeta *)metas->meta[op];
-        if (m->aggr == AGGR_MODE_NONE) {
-          // assert(kernel_domain.get_dim() == 2);
-          assert(my_input_accessor[0].domain.get_dim() + 1 ==
-                 my_output_accessor[0].domain.get_dim());
-          for (size_t i = 0; i < my_input_accessor[0].domain.get_dim(); i++) {
-            assert(my_input_accessor[0].domain.hi()[i] ==
-                   my_output_accessor[0].domain.hi()[i + 1]);
-            assert(my_input_accessor[0].domain.lo()[i] ==
-                   my_output_accessor[0].domain.lo()[i + 1]);
-          }
-          assert(my_weight_accessor[0].domain.hi()[0] -
-                     my_weight_accessor[0].domain.lo()[0] ==
-                 my_output_accessor[0].domain.hi()[0] -
-                     my_output_accessor[0].domain.lo()[0]);
-        } else {
-          assert(my_input_accessor[0].domain.get_dim() ==
-                 my_output_accessor[0].domain.get_dim());
-          for (size_t i = 1; i < my_input_accessor[0].domain.get_dim(); i++) {
-            assert(my_input_accessor[0].domain.hi()[i] ==
-                   my_output_accessor[0].domain.hi()[i]);
-            assert(my_input_accessor[0].domain.lo()[i] ==
-                   my_output_accessor[0].domain.lo()[i]);
-          }
-          assert(my_weight_accessor[0].domain.hi()[0] -
-                     my_weight_accessor[0].domain.lo()[0] ==
-                 my_output_accessor[0].domain.hi()[0] -
-                     my_output_accessor[0].domain.lo()[0]);
-        }
-        int in_dim, out_dim, effective_batch_size;
-        if (m->aggr == AGGR_MODE_NONE) {
-          in_dim = 1;
-          out_dim = my_output_accessor[0].domain.hi()[0] -
-                    my_output_accessor[0].domain.lo()[0] + 1;
-          effective_batch_size =
-              my_output_accessor[0].domain.get_volume() / out_dim;
-          assert(effective_batch_size * in_dim ==
-                 my_input_accessor[0].domain.get_volume());
-        } else {
-          assert(m->aggr == AGGR_MODE_AVG || m->aggr == AGGR_MODE_SUM);
-          in_dim = my_input_accessor[0].domain.hi()[0] -
-                   my_input_accessor[0].domain.lo()[0] + 1;
-          out_dim = my_output_accessor[0].domain.hi()[0] -
-                    my_output_accessor[0].domain.lo()[0] + 1;
-          effective_batch_size =
-              my_output_accessor[0].domain.get_volume() / out_dim;
-          assert(effective_batch_size * in_dim ==
-                 my_input_accessor[0].domain.get_volume());
-        }
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
 
-        assert(my_input_accessor[0].data_type == DT_INT32 ||
-               my_input_accessor[0].data_type == DT_INT64);
-        Kernels::Embedding::forward_kernel_wrapper(m,
-                                                   my_input_accessor[0],
-                                                   my_output_accessor[0],
-                                                   my_weight_accessor[0],
-                                                   in_dim,
-                                                   out_dim,
-                                                   effective_batch_size);
-        break;
-      }
-      case OP_GELU:
-      case OP_RELU:
-      case OP_SIGMOID:
-      case OP_TANH:
-      case OP_ELU:
-      case OP_SCALAR_TRUE_DIV: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_weights[op] == 0);
-        assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
-        if (m->data_type == DT_HALF) {
-          ElementUnary::forward_kernel_wrapper(
-              m,
-              my_input_accessor[0].get_half_ptr(),
-              my_output_accessor[0].get_half_ptr(),
-              my_input_accessor[0].domain.get_volume());
-        } else if (m->data_type == DT_FLOAT) {
-          ElementUnary::forward_kernel_wrapper(
-              m,
-              my_input_accessor[0].get_float_ptr(),
-              my_output_accessor[0].get_float_ptr(),
-              my_input_accessor[0].domain.get_volume());
-        } else {
-          assert(false && "Unsupported data type in ElementUnary forward");
-        }
-        break;
-      }
-      case OP_RMS_NORM: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_weights[op] == 1);
-        assert(fused->op_num_outputs[op] == 1);
-        RMSNormMeta const *m = (RMSNormMeta *)metas->meta[op];
-        Kernels::RMSNorm::forward_kernel_wrapper(m,
-                                                 my_input_accessor[0],
-                                                 my_weight_accessor[0],
-                                                 my_output_accessor[0]);
-        break;
-      }
-      case OP_RESIDUAL_RMS_NORM: {
-        assert(fused->op_num_inputs[op] == 2);
-        assert(fused->op_num_weights[op] == 1);
-        assert(fused->op_num_outputs[op] == 2);
-        ResidualRMSNormMeta const *m = (ResidualRMSNormMeta *)metas->meta[op];
-        Kernels::ResidualRMSNorm::forward_kernel_wrapper(m,
-                                                         my_input_accessor[0],
-                                                         my_input_accessor[1],
-                                                         my_weight_accessor[0],
-                                                         my_output_accessor[0],
-                                                         my_output_accessor[1]);
-        break;
-      }
-      case OP_INC_MULTIHEAD_SELF_ATTENTION: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_outputs[op] == 1);
-        IncMultiHeadSelfAttentionMeta const *m =
-            (IncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        assert(fused->op_num_weights[op] ==
-               (1 + (int)(*m->qkv_bias || *m->final_bias)));
-        GenericTensorAccessorR biases;
-        if (*m->qkv_bias || *m->final_bias) {
-          assert(fused->op_num_weights[op] == 2);
-          biases = my_weight_accessor[1];
-        }
-        IncMultiHeadSelfAttention::inference_kernel_wrapper(
-            m,
-            bc,
-            task->index_point.point_data[0],
-            my_input_accessor[0],
-            my_weight_accessor[0],
-            my_output_accessor[0],
-            biases);
-        break;
-      }
-      case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_outputs[op] == 1);
-        TreeIncMultiHeadSelfAttentionMeta *m =
-            (TreeIncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        // TreeVerifyBatchConfig const *verify_bc =
-        //     (TreeVerifyBatchConfig *)task->args;
-        BatchConfig const &verify_bc =
-            Future(task->futures[0]).get_result<BatchConfig>();
-        assert(fused->op_num_weights[op] ==
-               (1 + (int)(*m->qkv_bias || *m->final_bias)));
-        GenericTensorAccessorR biases;
-        if (*m->qkv_bias || *m->final_bias) {
-          assert(fused->op_num_weights[op] == 2);
-          biases = my_weight_accessor[1];
-        }
-        TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
-            m,
-            &verify_bc,
-            task->index_point.point_data[0],
-            my_input_accessor[0],
-            my_weight_accessor[0],
-            my_output_accessor[0],
-            biases);
-        break;
-      }
-      case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_outputs[op] == 1);
-        SpecIncMultiHeadSelfAttentionMeta const *m =
-            (SpecIncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        // TreeSearchBatchConfig const *search_bc =
-        //     (TreeSearchBatchConfig *)task->args;
-        BatchConfig const &search_bc =
-            Future(task->futures[0]).get_result<BatchConfig>();
-        assert(fused->op_num_weights[op] ==
-               (1 + (int)(*m->qkv_bias || *m->final_bias)));
-        GenericTensorAccessorR biases;
-        if (*m->qkv_bias || *m->final_bias) {
-          assert(fused->op_num_weights[op] == 2);
-          biases = my_weight_accessor[1];
-        }
-        SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
-            m,
-            &search_bc,
-            task->index_point.point_data[0],
-            my_input_accessor[0],
-            my_weight_accessor[0],
-            my_output_accessor[0],
-            biases);
-        break;
-      }
-      case OP_LAYERNORM: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_outputs[op] == 1);
-        LayerNormMeta const *m = (LayerNormMeta *)metas->meta[op];
-        if (m->elementwise_affine) {
-          assert(fused->op_num_weights[op] == 1 + (int)(m->use_bias));
-        }
-        GenericTensorAccessorR gamma, beta;
-        if (m->elementwise_affine) {
-          gamma = my_weight_accessor[0];
-          if (m->use_bias) {
-            beta = my_weight_accessor[1];
-          }
-        }
-        LayerNorm::forward_kernel_wrapper(
-            m, my_input_accessor[0], my_output_accessor[0], gamma, beta);
-        break;
-      }
-      case OP_RESIDUAL_LAYERNORM: {
-        assert(fused->op_num_outputs[op] == 2);
-        ResidualLayerNormMeta const *m =
-            (ResidualLayerNormMeta *)metas->meta[op];
-        if (m->use_two_residuals) {
-          assert(fused->op_num_inputs[op] == 3);
-        } else {
-          assert(fused->op_num_inputs[op] == 2);
-        }
-        if (!m->elementwise_affine) {
-          assert(fused->op_num_weights[op] == 0);
-        } else {
-          if (!m->use_bias) {
-            assert(fused->op_num_weights[op] == 1); // weight
+  // create new cuda graph
+  cudaGraph_t graph;
+  cudaGraphExec_t instance;
+  cudaGraphExecUpdateResult updateResult;
+
+  GraphParams graph_params = {bc->num_active_requests(),
+                      bc->num_active_tokens(),
+                      bc->prompt_phase};
+  //graph_params.Print();
+  int shard_id = task->index_point.point_data[0];
+
+  {            
+      cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
+      int ioff = 0, woff = 0, ooff = 0;
+      for (int op = 0; op < fused->numOperators; op++) {
+        // Domain my_id[MAX_NUM_INPUTS];
+        // Domain my_wd[MAX_NUM_WEIGHTS];
+        // Domain my_od[MAX_NUM_OUTPUTS];
+        GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
+        GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
+        GenericTensorAccessorW my_output_accessor[MAX_NUM_OUTPUTS];
+        for (int i = 0; i < fused->op_num_inputs[op]; i++) {
+          int my_off = fused->op_input_idx[i + ioff];
+          if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
+            // my_id[i] = input_domain[my_off];
+            assert(my_off < fused->numInputs);
+            my_input_accessor[i] = input_accessor[my_off];
+          } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
+            // my_id[i] = output_domain[my_off];
+            assert(my_off < fused->numOutputs);
+            my_input_accessor[i] = output_accessor[my_off];
           } else {
-            assert(fused->op_num_weights[op] == 2); // weight + bias
+            assert(false);
           }
         }
-        GenericTensorAccessorR residual2;
-        if (m->use_two_residuals) {
-          residual2 = my_input_accessor[2];
+        for (int i = 0; i < fused->op_num_weights[op]; i++) {
+          assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
+          // my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
+          // my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
+          assert(fused->op_weight_idx[i + woff] < fused->numWeights);
+          my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
         }
-        GenericTensorAccessorR gamma, beta;
-        if (m->elementwise_affine) {
-          gamma = my_weight_accessor[0];
-          if (m->use_bias) {
-            beta = my_weight_accessor[1];
-          }
+        for (int i = 0; i < fused->op_num_outputs[op]; i++) {
+          int my_off = fused->op_output_idx[i + ooff];
+          assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
+          assert(my_off < fused->numOutputs);
+          // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
+          // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
+          my_output_accessor[i] = output_accessor[my_off];
         }
-        ResidualLayerNorm::inference_kernel_wrapper(m,
-                                                    my_input_accessor[0],
-                                                    my_input_accessor[1],
-                                                    residual2,
+        switch (fused->op_op_type[op]) {
+          case OP_CONCAT: {
+            assert(fused->op_num_weights[op] == 0);
+            assert(fused->op_num_outputs[op] == 1);
+            ConcatMeta *m = (ConcatMeta *)metas->meta[op];
+            int num_inputs = fused->op_num_inputs[op];
+            Kernels::Concat::forward_kernel_wrapper(m,
                                                     my_output_accessor[0],
-                                                    my_output_accessor[1],
-                                                    gamma,
-                                                    beta);
-        break;
-      }
-      case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
-        assert(fused->op_num_inputs[op] == 2);
-        assert(fused->op_num_outputs[op] == 2);
-        AddBiasResidualLayerNormMeta const *m =
-            (AddBiasResidualLayerNormMeta *)metas->meta[op];
-        if (!m->elementwise_affine) {
-          assert(fused->op_num_weights[op] == 1); // attn bias
-        } else {
-          if (!m->use_bias) {
-            assert(fused->op_num_weights[op] == 2); // attn bias + weight
-          } else {
-            assert(fused->op_num_weights[op] == 3); // attn bias + weight + bias
+                                                    my_input_accessor,
+                                                    num_inputs,
+                                                    m->legion_axis);
+            break;
+          }
+          case OP_BATCHNORM: {
+            assert(fused->op_num_inputs[op] == 1);
+            assert(fused->op_num_outputs[op] == 1);
+            assert(my_input_accessor[0].domain.get_dim() == 5);
+            assert(my_output_accessor[0].domain.get_dim() == 5);
+            assert(my_weight_accessor[0].domain.get_dim() == 2);
+            assert(my_weight_accessor[1].domain.get_dim() == 2);
+            BatchNormMeta *m = (BatchNormMeta *)metas->meta[op];
+            BatchNorm::forward_kernel(m,
+                                      my_input_accessor[0].get_float_ptr(),
+                                      my_output_accessor[0].get_float_ptr(),
+                                      my_weight_accessor[0].get_float_ptr(),
+                                      my_weight_accessor[1].get_float_ptr());
+            break;
+          }
+          case OP_LINEAR: {
+            assert(fused->op_num_inputs[op] == 1);
+            assert(fused->op_num_outputs[op] == 1);
+            Domain kernel_domain = my_weight_accessor[0].domain;
+            int in_dim = kernel_domain.hi()[0] - kernel_domain.lo()[0] + 1;
+            int out_dim = kernel_domain.hi()[1] - kernel_domain.lo()[1] + 1;
+            int batch_size = my_input_accessor[0].domain.get_volume() / in_dim;
+            assert(my_output_accessor[0].domain.get_volume() ==
+                  out_dim * batch_size);
+            assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
+            void const *bias_ptr = nullptr;
+            LinearMeta *m = (LinearMeta *)metas->meta[op];
+            if (fused->op_num_weights[op] == 2) {
+              assert(my_weight_accessor[1].domain.get_volume() == out_dim);
+              if (!m->add_bias_only_once || task->index_point.point_data[0] == 0) {
+                bias_ptr = my_weight_accessor[1].ptr;
+              }
+            } else {
+              assert(fused->op_num_weights[op] == 1);
+            }
+            assert(m->input_type[0] == my_input_accessor[0].data_type);
+            assert(m->input_type[0] == my_output_accessor[0].data_type);
+            batch_size = bc->num_active_tokens();
+            Kernels::Linear::forward_kernel_wrapper(m,
+                                                    my_input_accessor[0].ptr,
+                                                    my_output_accessor[0].ptr,
+                                                    my_weight_accessor[0].ptr,
+                                                    bias_ptr,
+                                                    in_dim,
+                                                    out_dim,
+                                                    batch_size);
+            break;
+          }
+          case OP_BATCHMATMUL: {
+            assert(fused->op_num_inputs[op] == 2);
+            assert(fused->op_num_weights[op] == 0);
+            assert(fused->op_num_outputs[op] == 1);
+            Domain out_domain = my_output_accessor[0].domain;
+            Domain a_domain = my_input_accessor[0].domain;
+            Domain b_domain = my_input_accessor[1].domain;
+            int m = b_domain.hi()[0] - b_domain.lo()[0] + 1;
+            assert(m == out_domain.hi()[0] - out_domain.lo()[0] + 1);
+            int n = a_domain.hi()[1] - a_domain.lo()[1] + 1;
+            assert(n == out_domain.hi()[1] - out_domain.lo()[1] + 1);
+            int k = a_domain.hi()[0] - a_domain.lo()[0] + 1;
+            assert(k == b_domain.hi()[1] - b_domain.lo()[1] + 1);
+            assert(a_domain.get_dim() == b_domain.get_dim());
+            assert(a_domain.get_dim() == out_domain.get_dim());
+            int batch = 1;
+            for (int i = 2; i < a_domain.get_dim(); i++) {
+              int dim_size = a_domain.hi()[i] - a_domain.lo()[i] + 1;
+              assert(dim_size == b_domain.hi()[i] - b_domain.lo()[i] + 1);
+              assert(dim_size == out_domain.hi()[i] - out_domain.lo()[i] + 1);
+              batch *= dim_size;
+            }
+            BatchMatmulMeta *meta = (BatchMatmulMeta *)metas->meta[op];
+            Kernels::BatchMatmul::forward_kernel_wrapper(
+                meta,
+                my_output_accessor[0].get_float_ptr(),
+                my_input_accessor[0].get_float_ptr(),
+                my_input_accessor[1].get_float_ptr(),
+                (float const *)nullptr,
+                m,
+                n,
+                k,
+                batch,
+                meta->a_seq_length_dim,
+                meta->b_seq_length_dim,
+                fused->iter_config.seq_length);
+            break;
+          }
+          case OP_EW_ADD:
+          case OP_EW_SUB:
+          case OP_EW_MUL:
+          case OP_EW_DIV:
+          case OP_EW_MAX:
+          case OP_EW_MIN: {
+            assert(fused->op_num_inputs[op] == 2);
+            assert(fused->op_num_weights[op] == 0);
+            assert(fused->op_num_outputs[op] == 1);
+            assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
+            assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
+            ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
+            Kernels::ElementBinary::forward_kernel_wrapper(m,
+                                                          my_input_accessor[0],
+                                                          my_input_accessor[1],
+                                                          my_output_accessor[0]);
+            break;
+          }
+          case OP_EMBEDDING: {
+            assert(fused->op_num_inputs[op] == 1);
+            assert(fused->op_num_weights[op] == 1);
+            assert(fused->op_num_outputs[op] == 1);
+            EmbeddingMeta *m = (EmbeddingMeta *)metas->meta[op];
+            if (m->aggr == AGGR_MODE_NONE) {
+              // assert(kernel_domain.get_dim() == 2);
+              assert(my_input_accessor[0].domain.get_dim() + 1 ==
+                    my_output_accessor[0].domain.get_dim());
+              for (size_t i = 0; i < my_input_accessor[0].domain.get_dim(); i++) {
+                assert(my_input_accessor[0].domain.hi()[i] ==
+                      my_output_accessor[0].domain.hi()[i + 1]);
+                assert(my_input_accessor[0].domain.lo()[i] ==
+                      my_output_accessor[0].domain.lo()[i + 1]);
+              }
+              assert(my_weight_accessor[0].domain.hi()[0] -
+                        my_weight_accessor[0].domain.lo()[0] ==
+                    my_output_accessor[0].domain.hi()[0] -
+                        my_output_accessor[0].domain.lo()[0]);
+            } else {
+              assert(my_input_accessor[0].domain.get_dim() ==
+                    my_output_accessor[0].domain.get_dim());
+              for (size_t i = 1; i < my_input_accessor[0].domain.get_dim(); i++) {
+                assert(my_input_accessor[0].domain.hi()[i] ==
+                      my_output_accessor[0].domain.hi()[i]);
+                assert(my_input_accessor[0].domain.lo()[i] ==
+                      my_output_accessor[0].domain.lo()[i]);
+              }
+              assert(my_weight_accessor[0].domain.hi()[0] -
+                        my_weight_accessor[0].domain.lo()[0] ==
+                    my_output_accessor[0].domain.hi()[0] -
+                        my_output_accessor[0].domain.lo()[0]);
+            }
+            int in_dim, out_dim, effective_batch_size;
+            if (m->aggr == AGGR_MODE_NONE) {
+              in_dim = 1;
+              out_dim = my_output_accessor[0].domain.hi()[0] -
+                        my_output_accessor[0].domain.lo()[0] + 1;
+              effective_batch_size =
+                  my_output_accessor[0].domain.get_volume() / out_dim;
+              assert(effective_batch_size * in_dim ==
+                    my_input_accessor[0].domain.get_volume());
+            } else {
+              assert(m->aggr == AGGR_MODE_AVG || m->aggr == AGGR_MODE_SUM);
+              in_dim = my_input_accessor[0].domain.hi()[0] -
+                      my_input_accessor[0].domain.lo()[0] + 1;
+              out_dim = my_output_accessor[0].domain.hi()[0] -
+                        my_output_accessor[0].domain.lo()[0] + 1;
+              effective_batch_size =
+                  my_output_accessor[0].domain.get_volume() / out_dim;
+              assert(effective_batch_size * in_dim ==
+                    my_input_accessor[0].domain.get_volume());
+            }
+
+            assert(my_input_accessor[0].data_type == DT_INT32 ||
+                  my_input_accessor[0].data_type == DT_INT64);
+            Kernels::Embedding::forward_kernel_wrapper(m,
+                                                      my_input_accessor[0],
+                                                      my_output_accessor[0],
+                                                      my_weight_accessor[0],
+                                                      in_dim,
+                                                      out_dim,
+                                                      effective_batch_size);
+            break;
+          }
+          case OP_GELU:
+          case OP_RELU:
+          case OP_SIGMOID:
+          case OP_TANH:
+          case OP_ELU:
+          case OP_SCALAR_TRUE_DIV: {
+            assert(fused->op_num_inputs[op] == 1);
+            assert(fused->op_num_weights[op] == 0);
+            assert(fused->op_num_outputs[op] == 1);
+            assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
+            ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
+            if (m->data_type == DT_HALF) {
+              ElementUnary::forward_kernel_wrapper(
+                  m,
+                  my_input_accessor[0].get_half_ptr(),
+                  my_output_accessor[0].get_half_ptr(),
+                  my_input_accessor[0].domain.get_volume());
+            } else if (m->data_type == DT_FLOAT) {
+              ElementUnary::forward_kernel_wrapper(
+                  m,
+                  my_input_accessor[0].get_float_ptr(),
+                  my_output_accessor[0].get_float_ptr(),
+                  my_input_accessor[0].domain.get_volume());
+            } else {
+              assert(false && "Unsupported data type in ElementUnary forward");
+            }
+            break;
+          }
+          case OP_RMS_NORM: {
+            assert(fused->op_num_inputs[op] == 1);
+            assert(fused->op_num_weights[op] == 1);
+            assert(fused->op_num_outputs[op] == 1);
+            RMSNormMeta const *m = (RMSNormMeta *)metas->meta[op];
+            Kernels::RMSNorm::forward_kernel_wrapper(m,
+                                                    my_input_accessor[0],
+                                                    my_weight_accessor[0],
+                                                    my_output_accessor[0]);
+            break;
+          }
+          case OP_RESIDUAL_RMS_NORM: {
+            assert(fused->op_num_inputs[op] == 2);
+            assert(fused->op_num_weights[op] == 1);
+            assert(fused->op_num_outputs[op] == 2);
+            ResidualRMSNormMeta const *m = (ResidualRMSNormMeta *)metas->meta[op];
+            Kernels::ResidualRMSNorm::forward_kernel_wrapper(m,
+                                                            my_input_accessor[0],
+                                                            my_input_accessor[1],
+                                                            my_weight_accessor[0],
+                                                            my_output_accessor[0],
+                                                            my_output_accessor[1]);
+            break;
+          }
+          case OP_INC_MULTIHEAD_SELF_ATTENTION: {
+            assert(fused->op_num_inputs[op] == 1);
+            assert(fused->op_num_outputs[op] == 1);
+            IncMultiHeadSelfAttentionMeta const *m =
+                (IncMultiHeadSelfAttentionMeta *)metas->meta[op];
+            assert(fused->op_num_weights[op] ==
+                  (1 + (int)(*m->qkv_bias || *m->final_bias)));
+            GenericTensorAccessorR biases;
+            if (*m->qkv_bias || *m->final_bias) {
+              assert(fused->op_num_weights[op] == 2);
+              biases = my_weight_accessor[1];
+            }
+            IncMultiHeadSelfAttention::inference_kernel_wrapper(
+                m,
+                bc,
+                task->index_point.point_data[0],
+                my_input_accessor[0],
+                my_weight_accessor[0],
+                my_output_accessor[0],
+                biases);
+            break;
+          }
+          case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
+            assert(fused->op_num_inputs[op] == 1);
+            assert(fused->op_num_outputs[op] == 1);
+            TreeIncMultiHeadSelfAttentionMeta *m =
+                (TreeIncMultiHeadSelfAttentionMeta *)metas->meta[op];
+            // TreeVerifyBatchConfig const *verify_bc =
+            //     (TreeVerifyBatchConfig *)task->args;
+            BatchConfig const &verify_bc =
+                Future(task->futures[0]).get_result<BatchConfig>();
+            assert(fused->op_num_weights[op] ==
+                  (1 + (int)(*m->qkv_bias || *m->final_bias)));
+            GenericTensorAccessorR biases;
+            if (*m->qkv_bias || *m->final_bias) {
+              assert(fused->op_num_weights[op] == 2);
+              biases = my_weight_accessor[1];
+            }
+            TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
+                m,
+                &verify_bc,
+                task->index_point.point_data[0],
+                my_input_accessor[0],
+                my_weight_accessor[0],
+                my_output_accessor[0],
+                biases);
+            break;
+          }
+          case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
+            assert(fused->op_num_inputs[op] == 1);
+            assert(fused->op_num_outputs[op] == 1);
+            SpecIncMultiHeadSelfAttentionMeta const *m =
+                (SpecIncMultiHeadSelfAttentionMeta *)metas->meta[op];
+            // TreeSearchBatchConfig const *search_bc =
+            //     (TreeSearchBatchConfig *)task->args;
+            BatchConfig const &search_bc =
+                Future(task->futures[0]).get_result<BatchConfig>();
+            assert(fused->op_num_weights[op] ==
+                  (1 + (int)(*m->qkv_bias || *m->final_bias)));
+            GenericTensorAccessorR biases;
+            if (*m->qkv_bias || *m->final_bias) {
+              assert(fused->op_num_weights[op] == 2);
+              biases = my_weight_accessor[1];
+            }
+            SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
+                m,
+                &search_bc,
+                task->index_point.point_data[0],
+                my_input_accessor[0],
+                my_weight_accessor[0],
+                my_output_accessor[0],
+                biases);
+            break;
+          }
+          case OP_LAYERNORM: {
+            assert(fused->op_num_inputs[op] == 1);
+            assert(fused->op_num_outputs[op] == 1);
+            LayerNormMeta const *m = (LayerNormMeta *)metas->meta[op];
+            if (m->elementwise_affine) {
+              assert(fused->op_num_weights[op] == 1 + (int)(m->use_bias));
+            }
+            GenericTensorAccessorR gamma, beta;
+            if (m->elementwise_affine) {
+              gamma = my_weight_accessor[0];
+              if (m->use_bias) {
+                beta = my_weight_accessor[1];
+              }
+            }
+            LayerNorm::forward_kernel_wrapper(
+                m, my_input_accessor[0], my_output_accessor[0], gamma, beta);
+            break;
+          }
+          case OP_RESIDUAL_LAYERNORM: {
+            assert(fused->op_num_outputs[op] == 2);
+            ResidualLayerNormMeta const *m =
+                (ResidualLayerNormMeta *)metas->meta[op];
+            if (m->use_two_residuals) {
+              assert(fused->op_num_inputs[op] == 3);
+            } else {
+              assert(fused->op_num_inputs[op] == 2);
+            }
+            if (!m->elementwise_affine) {
+              assert(fused->op_num_weights[op] == 0);
+            } else {
+              if (!m->use_bias) {
+                assert(fused->op_num_weights[op] == 1); // weight
+              } else {
+                assert(fused->op_num_weights[op] == 2); // weight + bias
+              }
+            }
+            GenericTensorAccessorR residual2;
+            if (m->use_two_residuals) {
+              residual2 = my_input_accessor[2];
+            }
+            GenericTensorAccessorR gamma, beta;
+            if (m->elementwise_affine) {
+              gamma = my_weight_accessor[0];
+              if (m->use_bias) {
+                beta = my_weight_accessor[1];
+              }
+            }
+            ResidualLayerNorm::inference_kernel_wrapper(m,
+                                                        my_input_accessor[0],
+                                                        my_input_accessor[1],
+                                                        residual2,
+                                                        my_output_accessor[0],
+                                                        my_output_accessor[1],
+                                                        gamma,
+                                                        beta);
+            break;
+          }
+          case OP_ADD_BIAS_RESIDUAL_LAYERNORM: {
+            assert(fused->op_num_inputs[op] == 2);
+            assert(fused->op_num_outputs[op] == 2);
+            AddBiasResidualLayerNormMeta const *m =
+                (AddBiasResidualLayerNormMeta *)metas->meta[op];
+            if (!m->elementwise_affine) {
+              assert(fused->op_num_weights[op] == 1); // attn bias
+            } else {
+              if (!m->use_bias) {
+                assert(fused->op_num_weights[op] == 2); // attn bias + weight
+              } else {
+                assert(fused->op_num_weights[op] == 3); // attn bias + weight + bias
+              }
+            }
+            GenericTensorAccessorR gamma, beta;
+            if (m->elementwise_affine) {
+              gamma = my_weight_accessor[1];
+              if (m->use_bias) {
+                beta = my_weight_accessor[2];
+              }
+            }
+            Domain attn_bias_domain = my_weight_accessor[0].domain;
+            Domain residual_domain = my_input_accessor[1].domain;
+            int attn_bias_dim =
+                attn_bias_domain.hi()[0] - attn_bias_domain.lo()[0] + 1;
+            int residual_volume = residual_domain.get_volume();
+            AddBiasResidualLayerNorm::inference_kernel_wrapper(
+                m,
+                attn_bias_dim,
+                residual_volume,
+                my_input_accessor[0],
+                my_output_accessor[0],
+                my_output_accessor[1],
+                my_input_accessor[1],
+                my_weight_accessor[0],
+                gamma,
+                beta);
+            break;
+          }
+          case OP_SIGMOID_SILU_MULTI: {
+            assert(fused->op_num_inputs[op] == 2);
+            assert(fused->op_num_outputs[op] == 1);
+            SigmoidSiluMultiMeta const *m = (SigmoidSiluMultiMeta *)metas->meta[op];
+            SigmoidSiluMulti::inference_kernel_wrapper(m,
+                                                      my_input_accessor[0],
+                                                      my_input_accessor[1],
+                                                      my_output_accessor[0]);
+            break;
+          }
+          case OP_SOFTMAX: {
+            assert(fused->op_num_inputs[op] == 1);
+            assert(fused->op_num_weights[op] == 0);
+            assert(fused->op_num_outputs[op] == 1);
+            assert(my_input_accessor[0].domain.get_volume() ==
+                  my_output_accessor[0].domain.get_volume());
+            SoftmaxMeta *m = (SoftmaxMeta *)metas->meta[op];
+            if (m->input_type == DT_HALF) {
+              Kernels::Softmax::forward_kernel_wrapper(
+                  m,
+                  my_input_accessor[0].get_half_ptr(),
+                  my_output_accessor[0].get_half_ptr());
+            } else if (m->input_type == DT_FLOAT) {
+              Kernels::Softmax::forward_kernel_wrapper(
+                  m,
+                  my_input_accessor[0].get_float_ptr(),
+                  my_output_accessor[0].get_float_ptr());
+            }
+            break;
+          }
+          case OP_ALLREDUCE: {
+            assert(fused->op_num_inputs[op] == 1);
+            assert(fused->op_num_outputs[op] == 1);
+            AllReduceMeta const *m = (AllReduceMeta *)metas->meta[op];
+            Kernels::AllReduce::inference_kernel_wrapper(
+                m, bc, my_input_accessor[0], my_output_accessor[0]);
+            break;
+          }
+          default: {
+            fprintf(stderr,
+                    "Fusion currently does not support type = %d\n",
+                    fused->op_op_type[op]);
+            assert(false && "Fusion currently does not support type");
           }
         }
-        GenericTensorAccessorR gamma, beta;
-        if (m->elementwise_affine) {
-          gamma = my_weight_accessor[1];
-          if (m->use_bias) {
-            beta = my_weight_accessor[2];
+        if (metas->meta[op]->inference_debugging) {
+          std::vector<GenericTensorAccessorR> input_accessors_to_save;
+          std::vector<GenericTensorAccessorR> weight_accessors_to_save;
+          std::vector<GenericTensorAccessorR> output_accessors_to_save;
+          for (int i = 0; i < fused->op_num_inputs[op]; i++) {
+            int my_off = fused->op_input_idx[i + ioff];
+            if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
+              input_accessors_to_save.push_back(input_accessor[my_off]);
+            } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
+              input_accessors_to_save.push_back(output_accessor[my_off]);
+            } else {
+              assert(false);
+            }
           }
+          for (int i = 0; i < fused->op_num_weights[op]; i++) {
+            assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
+            weight_accessors_to_save.push_back(
+                weight_accessor[fused->op_weight_idx[i + woff]]);
+          }
+          for (int i = 0; i < fused->op_num_outputs[op]; i++) {
+            output_accessors_to_save.push_back(output_accessor[i + ooff]);
+          }
+          assert(task->index_point.get_dim() == 1);
+          int shard_id = task->index_point.point_data[0];
+          FusedOp::save_inference_tensors_to_file(metas->meta[op],
+                                                  shard_id,
+                                                  bc,
+                                                  input_accessors_to_save,
+                                                  weight_accessors_to_save,
+                                                  output_accessors_to_save);
         }
-        Domain attn_bias_domain = my_weight_accessor[0].domain;
-        Domain residual_domain = my_input_accessor[1].domain;
-        int attn_bias_dim =
-            attn_bias_domain.hi()[0] - attn_bias_domain.lo()[0] + 1;
-        int residual_volume = residual_domain.get_volume();
-        AddBiasResidualLayerNorm::inference_kernel_wrapper(
-            m,
-            attn_bias_dim,
-            residual_volume,
-            my_input_accessor[0],
-            my_output_accessor[0],
-            my_output_accessor[1],
-            my_input_accessor[1],
-            my_weight_accessor[0],
-            gamma,
-            beta);
-        break;
+        ioff += fused->op_num_inputs[op];
+        woff += fused->op_num_weights[op];
+        ooff += fused->op_num_outputs[op];
       }
-      case OP_SIGMOID_SILU_MULTI: {
-        assert(fused->op_num_inputs[op] == 2);
-        assert(fused->op_num_outputs[op] == 1);
-        SigmoidSiluMultiMeta const *m = (SigmoidSiluMultiMeta *)metas->meta[op];
-        SigmoidSiluMulti::inference_kernel_wrapper(m,
-                                                   my_input_accessor[0],
-                                                   my_input_accessor[1],
-                                                   my_output_accessor[0]);
-        break;
-      }
-      case OP_SOFTMAX: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_weights[op] == 0);
-        assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain.get_volume() ==
-               my_output_accessor[0].domain.get_volume());
-        SoftmaxMeta *m = (SoftmaxMeta *)metas->meta[op];
-        if (m->input_type == DT_HALF) {
-          Kernels::Softmax::forward_kernel_wrapper(
-              m,
-              my_input_accessor[0].get_half_ptr(),
-              my_output_accessor[0].get_half_ptr());
-        } else if (m->input_type == DT_FLOAT) {
-          Kernels::Softmax::forward_kernel_wrapper(
-              m,
-              my_input_accessor[0].get_float_ptr(),
-              my_output_accessor[0].get_float_ptr());
-        }
-        break;
-      }
-      case OP_ALLREDUCE: {
-        assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_outputs[op] == 1);
-        AllReduceMeta const *m = (AllReduceMeta *)metas->meta[op];
-        Kernels::AllReduce::inference_kernel_wrapper(
-            m, bc, my_input_accessor[0], my_output_accessor[0]);
-        break;
-      }
-      default: {
-        fprintf(stderr,
-                "Fusion currently does not support type = %d\n",
-                fused->op_op_type[op]);
-        assert(false && "Fusion currently does not support type");
-      }
+      // for (int i = 0; i < fused->numOutputs; i++)
+      //   print_tensor<float>(output_ptr[i], output_domain[i].get_volume(),
+      //   "[Fused:forward:output]");
+      cudaStreamEndCapture(stream, &graph);
     }
-    if (metas->meta[op]->inference_debugging) {
-      std::vector<GenericTensorAccessorR> input_accessors_to_save;
-      std::vector<GenericTensorAccessorR> weight_accessors_to_save;
-      std::vector<GenericTensorAccessorR> output_accessors_to_save;
-      for (int i = 0; i < fused->op_num_inputs[op]; i++) {
-        int my_off = fused->op_input_idx[i + ioff];
-        if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
-          input_accessors_to_save.push_back(input_accessor[my_off]);
-        } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
-          input_accessors_to_save.push_back(output_accessor[my_off]);
-        } else {
-          assert(false);
-        }
-      }
-      for (int i = 0; i < fused->op_num_weights[op]; i++) {
-        assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
-        weight_accessors_to_save.push_back(
-            weight_accessor[fused->op_weight_idx[i + woff]]);
-      }
-      for (int i = 0; i < fused->op_num_outputs[op]; i++) {
-        output_accessors_to_save.push_back(output_accessor[i + ooff]);
-      }
-      assert(task->index_point.get_dim() == 1);
-      int shard_id = task->index_point.point_data[0];
-      FusedOp::save_inference_tensors_to_file(metas->meta[op],
-                                              shard_id,
-                                              bc,
-                                              input_accessors_to_save,
-                                              weight_accessors_to_save,
-                                              output_accessors_to_save);
+
+  bool captured = false;
+
+  if(metas->graph_collections.count(graph_params)  != 0) {
+    captured = true;
+    instance = metas->graph_collections[graph_params];
+    if (cudaGraphExecUpdate(instance, graph, NULL, &updateResult) != cudaSuccess) {
+      cudaGraphExecDestroy(instance);
+      captured = false;
+    } else {
+      // if(shard_id == 0) {
+      //   printf("---------start to reuse the graph-------\n");
+      //   graph_params.Print();
+      //   // bc->print();
+      //   printf("---------end to reuse the graph-------\n");
+      // }
     }
-    ioff += fused->op_num_inputs[op];
-    woff += fused->op_num_weights[op];
-    ooff += fused->op_num_outputs[op];
+  } 
+  
+  if (!captured) {
+    cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+    metas->graph_collections[graph_params] = instance;
+    // if(shard_id == 0) {
+    //   printf("*************start cudaGraphInstantiate**********\n");
+    //   graph_params.Print();
+    //   // bc->print();
+    //   printf("*************end cudaGraphInstantiate**********\n");
+    // }
   }
-  // for (int i = 0; i < fused->numOutputs; i++)
-  //   print_tensor<float>(output_ptr[i], output_domain[i].get_volume(),
-  //   "[Fused:forward:output]");
+
+  assert(metas->graph_collections.find(graph_params) !=
+        metas->graph_collections.end());
+  cudaGraphDestroy(graph);
+  cudaGraphLaunch(instance, stream);
 }
 
 /*

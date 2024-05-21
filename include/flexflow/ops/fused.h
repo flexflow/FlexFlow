@@ -1,17 +1,43 @@
 #ifndef _FLEXFLOW_FUSED_H_
 #define _FLEXFLOW_FUSED_H_
 
+#include "flexflow/batch_config.h"
 #include "flexflow/model.h"
+#include "graph_params.h"
 
 namespace FlexFlow {
+
+// declare Legion names
+using Legion::Context;
+using Legion::coord_t;
+using Legion::Domain;
+using Legion::Future;
+using Legion::LogicalPartition;
+using Legion::LogicalRegion;
+using Legion::Memory;
+using Legion::PhysicalRegion;
+using Legion::Runtime;
+using Legion::Task;
 
 class FusedOp;
 class FusedOpMeta {
 public:
-  FusedOpMeta(void) {}
+  FusedOpMeta(void) {
+    graphCaptured = false;
+    graph_collections.reserve(BatchConfig::MAX_NUM_REQUESTS *
+                              BatchConfig::MAX_NUM_TOKENS * 2);
+  }
   OpMeta *meta[MAX_NUM_FUSED_OPERATORS];
   FusedOp *fused_op;
   int numOperators;
+  bool graphCaptured=false;
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  std::unordered_map<GraphParams, cudaGraphExec_t>
+      graph_collections;
+#else
+  std::unordered_map<GraphParams, hipGraphExec_t>
+      graph_collections;
+#endif
 };
 
 class FusedOp : public Op {
