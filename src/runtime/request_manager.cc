@@ -1789,17 +1789,17 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   request_manager_status = PREFILLING;
   prefill_model = SSM;
 
-  long long time_1 = Realm::Clock::current_time_in_microseconds(), time_2;
+  // long long time_1 = Realm::Clock::current_time_in_microseconds(), time_2;
 
   while (!is_background_server_terminated()) {
     // last_irf.get_void_result();
     BatchConfigFuture bcf = get_next_batch_config(last_irf, ctx, runtime);
     bcf.get_void_result();
-    time_2 = Realm::Clock::current_time_in_microseconds();
-    std::cout << "Iteration time: " << (time_2 - time_1) * 1e-3 << "ms"
-              << std::endl;
+    // time_2 = Realm::Clock::current_time_in_microseconds();
+    // std::cout << "Iteration time: " << (time_2 - time_1) * 1e-3 << "ms"
+    //           << std::endl;
 
-    time_1 = Realm::Clock::current_time_in_microseconds();
+    // time_1 = Realm::Clock::current_time_in_microseconds();
     if ((request_manager_status == PREFILLING and prefill_model == LLM) or
         request_manager_status == LLM_VERIFY) {
       //   std::cout << "Branch 1" << std::endl;

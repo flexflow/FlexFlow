@@ -706,7 +706,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       cudaStream_t stream) {
   // phase 1: Implement kernel to compute KQV for input tokens
 
-  long long time_1 = Realm::Clock::current_time_in_microseconds(), time_2;
+  // long long time_1 = Realm::Clock::current_time_in_microseconds(), time_2;
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
@@ -753,9 +753,9 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
 
   compute_o_prod_bias(
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
-  time_2 = Realm::Clock::current_time_in_microseconds();
-  std::cout << "SpecIncMultiHeadSelfAttention kernel time: "
-            << (time_2 - time_1) << "us" << std::endl;
+  // time_2 = Realm::Clock::current_time_in_microseconds();
+  // std::cout << "SpecIncMultiHeadSelfAttention kernel time: "
+  //           << (time_2 - time_1) << "us" << std::endl;
 }
 
 } // namespace SpecIncMultiHeadSelfAttention
