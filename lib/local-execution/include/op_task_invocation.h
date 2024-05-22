@@ -25,14 +25,6 @@ enum class IsTrainable { YES, NO };
 using OpArgSpec =
     std::variant<ConcreteArgSpec, OpArgRefSpec, RuntimeArgRefSpec>;
 
-struct OpArgSpecTypeAccessor {
-  std::type_index operator()(OpArgSpec &spec) {
-    return std::visit(
-        [](auto &&arg) -> std::type_index { return arg.get_type_index(); },
-        spec);
-  }
-};
-
 struct OpTaskBinding {
   OpTaskBinding() = default;
 
@@ -101,14 +93,12 @@ public:
   task_id_t task_id;
   OpTaskBinding binding;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskInvocation,
-                                             task_id,
-                                             binding);
+FF_VISITABLE_STRUCT(OpTaskInvocation, task_id, binding);
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
 
-bool validate_invocation(OpTaskSignature sig, OpTaskInvocation inv);
+bool is_invocation_valid(OpTaskSignature sig, OpTaskInvocation inv);
 
 } // namespace FlexFlow
 

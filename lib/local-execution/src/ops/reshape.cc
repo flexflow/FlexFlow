@@ -126,8 +126,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<RESHAPE_INIT_TASK_ID>() {
-  OpTaskSignature init;
-  init.type = OpTaskType::INIT;
+  OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<ReshapeAttrs>(ATTRS);
 
@@ -138,8 +137,7 @@ void register_task<RESHAPE_INIT_TASK_ID>() {
 
 template <>
 void register_task<RESHAPE_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<ReshapePerDeviceState>(PER_DEVICE_STATE);

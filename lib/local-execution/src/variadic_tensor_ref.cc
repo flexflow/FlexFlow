@@ -6,4 +6,4 @@ VariadicTensorRef<OpTensorSpec> get_input_tensors() {
   return {VariadicTensorRefType::INPUT_TENSORS};
 }
 
-}
+} // namespace FlexFlow

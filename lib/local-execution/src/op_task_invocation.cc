@@ -50,33 +50,48 @@ OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd) {
   return bwd;
 }
 
-bool validate_invocation(OpTaskSignature sig, OpTaskInvocation inv) {
-  // tensors
+bool is_op_tensor_spec_invalid(OpTensorSlotSpec tensor_slot_spec,
+                               OpTensorSpec tensor_spec) {
+  return tensor_spec.role != tensor_slot_spec.tensor_role ||
+         tensor_spec.slot_option != tensor_slot_spec.slot_option;
+}
+
+bool is_tensor_invocation_valid(OpTaskSignature sig, OpTaskInvocation inv) {
   auto tensor_bindings = inv.binding.get_tensor_bindings();
   for (OpTensorSlotSpec const &op_tensor_slot_spec : sig.get_tensor_slots()) {
-    slot_id name = op_tensor_slot_spec.name;
-    IsGrad is_grad = op_tensor_slot_spec.is_grad;
-    std::pair<slot_id, IsGrad> tensor_key = std::make_pair(name, is_grad);
+    std::pair<slot_id, IsGrad> tensor_key =
+        std::make_pair(op_tensor_slot_spec.name, op_tensor_slot_spec.is_grad);
     OpTensorSpec const &op_tensor_spec = tensor_bindings.at(tensor_key);
-    if (op_tensor_spec.role != op_tensor_slot_spec.tensor_role ||
-        op_tensor_spec.slot_option != op_tensor_slot_spec.slot_option) {
+    if (is_op_tensor_spec_invalid(op_tensor_slot_spec, op_tensor_spec)) {
       return false;
     }
   }
+  return true;
+}
 
-  // args
+bool is_arg_type_invalid(std::type_index expected_arg_type,
+                         OpArgSpec op_arg_spec) {
+  std::type_index arg_spec_type = std::visit(
+      [](auto &&arg) -> std::type_index { return arg.get_type_index(); },
+      op_arg_spec);
+  return arg_spec_type != expected_arg_type;
+}
+
+bool is_arg_invocation_valid(OpTaskSignature sig, OpTaskInvocation inv) {
   auto sig_arg_types = sig.get_arg_types();
-  OpArgSpecTypeAccessor type_accessor;
   for (auto arg_binding : inv.binding.get_arg_bindings()) {
-    slot_id name = arg_binding.first;
-    OpArgSpec op_arg_spec = arg_binding.second;
-    std::type_index arg_type = sig_arg_types.at(name);
-    if (type_accessor(op_arg_spec) != arg_type) {
+    std::type_index arg_type = sig_arg_types.at(arg_binding.first);
+    if (is_arg_type_invalid(arg_type, arg_binding.second)) {
       return false;
     }
   }
 
   return true;
+}
+
+bool is_invocation_valid(OpTaskSignature sig, OpTaskInvocation inv) {
+  return is_tensor_invocation_valid(sig, inv) &&
+         is_arg_invocation_valid(sig, inv);
 }
 
 } // namespace FlexFlow

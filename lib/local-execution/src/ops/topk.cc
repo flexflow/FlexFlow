@@ -157,8 +157,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<TOPK_INIT_TASK_ID>() {
-  OpTaskSignature init;
-  init.type = OpTaskType::INIT;
+  OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<TopKAttrs>(ATTRS); // Note: this may have some question
   init.add_return_value<TopKPerDeviceState>();
@@ -167,8 +166,7 @@ void register_task<TOPK_INIT_TASK_ID>() {
 
 template <>
 void register_task<TOPK_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_arg_slot<TopKAttrs>(ATTRS);

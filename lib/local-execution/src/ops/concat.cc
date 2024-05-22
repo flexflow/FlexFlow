@@ -111,8 +111,8 @@ CostMetrics
 
 template <>
 OpTaskSignature fwd_signature<CONCAT_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
+
   fwd.add_arg_slot<ConcatAttrs>(ATTRS);
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_input_slot(INPUTS, SlotType::VARIADIC);

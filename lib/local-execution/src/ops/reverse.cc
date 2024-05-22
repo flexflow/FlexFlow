@@ -133,8 +133,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<REVERSE_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_input_slot(INPUT);

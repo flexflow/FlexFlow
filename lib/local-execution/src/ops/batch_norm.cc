@@ -189,8 +189,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<BATCHNORM_INIT_TASK_ID>() {
-  OpTaskSignature init;
-  init.type = OpTaskType::INIT;
+  OpTaskSignature init(OpTaskType::INIT);
+
   init.add_input_slot(INPUT);
   init.add_input_slot(BIAS);
   init.add_output_slot(OUTPUT);
@@ -211,8 +211,7 @@ void register_task<BATCHNORM_INIT_TASK_ID>() {
 
 template <>
 OpTaskSignature fwd_signature<BATCHNORM_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
   fwd.add_input_slot(SCALE);

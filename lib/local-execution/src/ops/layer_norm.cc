@@ -133,15 +133,16 @@ static DeviceSpecific<LayerNormPerDeviceState>
     num_replicas *= input.shape.at(legion_dim_t(i));
     effective_num_elements = M;
     effective_batch_size = input.shape.get_volume() / M;
-
-    DeviceSpecific<LayerNormPerDeviceState> per_device_state =
-        init_kernel(handle,
-                    allocator,
-                    attrs.elementwise_affine,
-                    effective_batch_size,
-                    effective_num_elements,
-                    attrs.eps);
   }
+
+  DeviceSpecific<LayerNormPerDeviceState> per_device_state =
+      init_kernel(handle,
+                  allocator,
+                  attrs.elementwise_affine,
+                  effective_batch_size,
+                  effective_num_elements,
+                  attrs.eps);
+  return per_device_state;
 }
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
@@ -186,8 +187,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 OpTaskSignature fwd_signature<LAYERNORM_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
@@ -208,8 +208,8 @@ OpTaskSignature bwd_signature<LAYERNORM_BWD_TASK_ID>() {
 
 template <>
 OpTaskSignature init_signature<LAYERNORM_INIT_TASK_ID>() {
-  OpTaskSignature init;
-  init.type = OpTaskType::INIT;
+  OpTaskSignature init(OpTaskType::INIT);
+
   init.add_input_slot(INPUT);
   init.add_arg_slot<LayerNormAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);

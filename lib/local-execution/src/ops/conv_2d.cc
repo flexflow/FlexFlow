@@ -178,8 +178,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<CONV2D_INIT_TASK_ID>() {
-  OpTaskSignature init;
-  init.type = OpTaskType::INIT;
+  OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
   init.add_output_slot(OUTPUT);
@@ -202,8 +201,7 @@ void register_task<CONV2D_INIT_TASK_ID>() {
 
 template <>
 OpTaskSignature fwd_signature<CONV2D_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_unchecked_arg_slot<Conv2DPerDeviceState>(PER_DEVICE_STATE);

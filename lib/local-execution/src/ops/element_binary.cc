@@ -173,8 +173,7 @@ CostMetrics
 
 template <>
 OpTaskSignature init_signature<ELEMENTBINARY_INIT_TASK_ID>() {
-  OpTaskSignature init;
-  init.type = OpTaskType::INIT;
+  OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(LHS_INPUT);
   init.add_input_slot(RHS_INPUT);
@@ -197,8 +196,7 @@ void register_task<ELEMENTBINARY_INIT_TASK_ID>() {
 
 template <>
 OpTaskSignature fwd_signature<ELEMENTBINARY_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<ElementBinaryPerDeviceState>(PER_DEVICE_STATE);

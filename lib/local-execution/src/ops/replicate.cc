@@ -72,7 +72,7 @@ static std::optional<float>
                  "[replicate] backward_time = %.2lfms\n",
                  input_grad,
                  output_grad,
-                 attrs.replicate_degree); // is this `num_replicas`?
+                 attrs.replicate_degree);
 }
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
@@ -100,8 +100,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<REPLICATE_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_input_slot(INPUT);

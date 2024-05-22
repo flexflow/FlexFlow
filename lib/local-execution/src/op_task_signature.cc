@@ -2,7 +2,7 @@
 
 namespace FlexFlow {
 
-// OpTaskSignature::OpTaskSignature(OpTaskType t) : type(t){};
+OpTaskSignature::OpTaskSignature(OpTaskType t) : type(t){};
 
 void OpTaskSignature::add_input_slot(slot_id name, SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {

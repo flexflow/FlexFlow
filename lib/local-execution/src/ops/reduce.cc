@@ -49,8 +49,7 @@ static DeviceSpecific<ReducePerDeviceState>
 
 template <>
 void register_task<TRANSPOSE_INIT_TASK_ID>() {
-  OpTaskSignature init;
-  init.type = OpTaskType::INIT;
+  OpTaskSignature init(OpTaskType::INIT);
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_arg_slot<ReduceAttrs>(ATTRS);
@@ -92,8 +91,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
 template <>
 void register_task<REDUCE_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_unchecked_arg_slot<ReducePerDeviceState>(PER_DEVICE_STATE);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);

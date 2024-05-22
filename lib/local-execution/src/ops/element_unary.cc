@@ -150,8 +150,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<ELEMENTUNARY_INIT_TASK_ID>() {
-  OpTaskSignature init;
-  init.type = OpTaskType::INIT;
+  OpTaskSignature init(OpTaskType::INIT);
+
   init.add_arg_slot<ParallelTensorShape>(INPUT_SHAPE);
   init.add_arg_slot<ElementUnaryUnifiedAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
@@ -171,8 +171,7 @@ void register_task<ELEMENTUNARY_INIT_TASK_ID>() {
 
 template <>
 OpTaskSignature fwd_signature<ELEMENTUNARY_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);

@@ -138,8 +138,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<SOFTMAX_INIT_TASK_ID>() {
-  OpTaskSignature init;
-  init.type = OpTaskType::INIT;
+  OpTaskSignature init(OpTaskType::INIT);
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_arg_slot<SoftmaxAttrs>(ATTRS);
@@ -150,8 +149,7 @@ void register_task<SOFTMAX_INIT_TASK_ID>() {
 
 template <>
 void register_task<SOFTMAX_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<SoftmaxPerDeviceState>(PER_DEVICE_STATE);

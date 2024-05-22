@@ -44,17 +44,17 @@ OpTaskInvocation backward(SplitAttrs const &attrs) {
   return {SPLIT_BWD_TASK_ID, binding};
 }
 
-void calc_block_size(coord_t &num_blks,
-                     coord_t &blk_size,
+void calc_block_size(coord_t &num_blocks,
+                     coord_t &block_size,
                      ArrayShape const &array_shape,
                      int axis) {
-  num_blks = 1;
-  blk_size = 1;
+  num_blocks = 1;
+  block_size = 1;
   for (int d = 0; d < array_shape.num_elements(); d++) {
     if (d <= axis) {
-      blk_size *= array_shape.at(legion_dim_t(d));
+      block_size *= array_shape.at(legion_dim_t(d));
     } else {
-      num_blks *= array_shape.at(legion_dim_t(d));
+      num_blocks *= array_shape.at(legion_dim_t(d));
     }
   }
 }
@@ -65,13 +65,13 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto attrs = acc.get_argument<SplitAttrs>(ATTRS);
 
-  coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
-  calc_block_size(num_blks, in_blk_size, input.shape, attrs.axis.value());
+  coord_t num_blocks, in_block_size, out_block_size[MAX_NUM_OUTPUTS];
+  calc_block_size(num_blocks, in_block_size, input.shape, attrs.axis.value());
 
   for (int i = 0; i < attrs.splits.size(); i++) {
-    coord_t out_num_blks;
+    coord_t out_num_blocks;
     calc_block_size(
-        out_num_blks, out_blk_size[i], output.shape, attrs.axis.value());
+        out_num_blocks, out_block_size[i], output.shape, attrs.axis.value());
   }
   float *output_float_ptr = output.get_float_ptr();
   return profile(forward_kernel,
@@ -79,9 +79,9 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  "Split forward_time = %.2lfms\n",
                  &output_float_ptr,
                  input.get_float_ptr(),
-                 out_blk_size,
-                 in_blk_size,
-                 num_blks,
+                 out_block_size,
+                 in_block_size,
+                 num_blocks,
                  attrs.splits.size());
 }
 
@@ -93,12 +93,15 @@ static std::optional<float>
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
   auto attrs = acc.get_argument<SplitAttrs>(ATTRS);
 
-  coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
-  calc_block_size(num_blks, in_blk_size, input_grad.shape, attrs.axis.value());
+  coord_t num_blocks, in_block_size, out_block_size[MAX_NUM_OUTPUTS];
+  calc_block_size(
+      num_blocks, in_block_size, input_grad.shape, attrs.axis.value());
   for (int i = 0; i < attrs.splits.size(); i++) {
-    coord_t out_num_blks;
-    calc_block_size(
-        out_num_blks, out_blk_size[i], output_grad.shape, attrs.axis.value());
+    coord_t out_num_blocks;
+    calc_block_size(out_num_blocks,
+                    out_block_size[i],
+                    output_grad.shape,
+                    attrs.axis.value());
   }
   float const *output_grad_ptr = output_grad.get_float_ptr();
   return profile(backward_kernel,
@@ -106,9 +109,9 @@ static std::optional<float>
                  "Split backward_time = %.2lfms\n",
                  input_grad.get_float_ptr(),
                  &output_grad_ptr,
-                 out_blk_size,
-                 in_blk_size,
-                 num_blks,
+                 out_block_size,
+                 in_block_size,
+                 num_blocks,
                  attrs.splits.size());
 }
 
@@ -143,8 +146,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<SPLIT_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 

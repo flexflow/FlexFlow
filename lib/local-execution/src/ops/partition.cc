@@ -135,8 +135,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
 template <>
 void register_task<REPARTITION_INIT_TASK_ID>() {
-  OpTaskSignature init;
-  init.type = OpTaskType::INIT;
+  OpTaskSignature init(OpTaskType::INIT);
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
@@ -150,8 +149,7 @@ void register_task<REPARTITION_INIT_TASK_ID>() {
 
 template <>
 void register_task<REPARTITION_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);

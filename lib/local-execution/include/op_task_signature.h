@@ -41,8 +41,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
     OpTensorSlotSpec, name, slot_type, tensor_role, is_grad, slot_option);
 
 struct OpTaskSignature {
-  OpTaskSignature() = default;
-  // explicit OpTaskSignature(OpTaskType);
+  explicit OpTaskSignature(OpTaskType);
 
   OpTaskType get_task_type() const {
     return this->type;
@@ -72,7 +71,6 @@ struct OpTaskSignature {
 
   template <typename T>
   void add_return_value() {
-    // std::type_index return_value = init_type_index<T>();
     this->return_value = init_type_index<T>();
   }
 
@@ -92,11 +90,8 @@ struct OpTaskSignature {
   std::unordered_map<slot_id, std::type_index> task_arg_types;
   std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };
-// FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskSignature,
-//                                             type,
-//                                             return_value,
-//                                             task_arg_types,
-//                                             op_tensor_slots);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
+    OpTaskSignature, type, return_value, task_arg_types, op_tensor_slots);
 
 template <typename F>
 void register_task(task_id_t,

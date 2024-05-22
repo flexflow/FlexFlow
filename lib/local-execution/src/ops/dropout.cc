@@ -124,8 +124,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
 template <>
 OpTaskSignature init_signature<DROPOUT_INIT_TASK_ID>() {
-  OpTaskSignature init;
-  init.type = OpTaskType::INIT;
+  OpTaskSignature init(OpTaskType::INIT);
+
   init.add_arg_slot<DropoutAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(FF_HANDLE);
   init.add_output_slot(OUTPUT);
@@ -145,8 +145,7 @@ void register_task<DROPOUT_INIT_TASK_ID>() {
 
 template <>
 OpTaskSignature fwd_signature<DROPOUT_FWD_TASK_ID>() {
-  OpTaskSignature fwd;
-  fwd.type = OpTaskType::FWD;
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_unchecked_arg_slot<DropoutPerDeviceState>(PER_DEVICE_STATE);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
