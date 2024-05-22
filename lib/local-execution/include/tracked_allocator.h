@@ -5,16 +5,22 @@
 
 namespace FlexFlow {
 
-struct TrackedAllocator : public Allocator {
-  Allocator() = delete;
+struct TrackedAllocator : public IAllocator {
+  TrackedAllocator() = default;
+  TrackedAllocator(TrackedAllocator const &) = delete;
+  TrackedAllocator(TrackedAllocator &&) = delete;
+  ~TrackedAllocator() = default;
 
-  void *allocate(size_t mem_size);
-  void deallocate(void *ptr);
+  void *allocate(size_t) override;
+  void deallocate(void *) override;
   size_t get_current_mem_usage();
 
 private:
   size_t current_mem_usage;
 };
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(TrackedAllocator);
+
+Allocator get_tracked_memory_allocator();
 
 } // namespace FlexFlow
 
