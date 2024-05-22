@@ -29,7 +29,7 @@ std::vector<tensor_guid_t>
 }
 
 std::vector<tensor_guid_t>
-   get_outgoing_tensors(ComputationGraph const &comp_graph,
+    get_outgoing_tensors(ComputationGraph const &comp_graph,
                          operator_guid_t n) {
   return sort_edge_set(get_outgoing_edges(comp_graph.value(), n.value()));
 }
