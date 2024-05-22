@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_DEVICE_SPECIFIC_ARG_H
-#define _FLEXFLOW_RUNTIME_SRC_DEVICE_SPECIFIC_ARG_H
+#ifndef _FLEXFLOW_LOCAL_EXECUTION_DEVICE_SPECIFIC_H
+#define _FLEXFLOW_LOCAL_EXECUTION_DEVICE_SPECIFIC_H
 
 #include "serialization.h"
 #include "utils/exception.h"
@@ -10,10 +10,17 @@ template <typename T>
 struct DeviceSpecific {
 
   DeviceSpecific() = delete;
+  DeviceSpecific(T ptr_type) { // accessor
+    size_t device_idx = 0;
+    DeviceSpecific<T> device_specific =
+        DeviceSpecific::create(device_idx, ptr_type);
+    this->ptr = device_specific.ptr;
+    this->device_idx = device_specific.device_idx;
+  }
 
   template <typename... Args>
   static DeviceSpecific<T> create(size_t device_idx, Args &&...args) {
-    NOT_IMPLEMENTED();
+    NOT_IMPLEMENTED(); // accessor
   }
 
   T const *get(size_t curr_device_idx) const {
@@ -25,6 +32,8 @@ struct DeviceSpecific {
     }
     return this->ptr;
   }
+
+  // TODO: can modify ptr
 
 private:
   T *ptr;

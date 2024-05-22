@@ -1,8 +1,11 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_OP_TASK_SIGNATURE_H
-#define _FLEXFLOW_RUNTIME_SRC_OP_TASK_SIGNATURE_H
+#ifndef _FLEXFLOW_LOCAL_EXECUTION_OP_TASK_SIGNATURE_H
+#define _FLEXFLOW_LOCAL_EXECUTION_OP_TASK_SIGNATURE_H
 
-#include "task_invocation.h"
-#include "task_signature.h"
+#include "serialization.h"
+#include "slot_id.h"
+#include "slot_type.h"
+#include "tasks.h"
+#include "utils/type_index.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
@@ -14,6 +17,7 @@ enum class TensorRole {
 };
 
 enum class OpTaskType { INIT, FWD, BWD };
+enum class IsGrad { YES, NO };
 
 enum class OpSlotOptions {
   OPTIONAL,
@@ -25,7 +29,6 @@ enum class OpSlotOptions {
 struct OpTensorSlotSpec {
 public:
   OpTensorSlotSpec() = delete;
-  OpTensorSlotSpec(slot_id, SlotType, TensorRole);
 
 public:
   slot_id name;
@@ -38,10 +41,12 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
     OpTensorSlotSpec, name, slot_type, tensor_role, is_grad, slot_option);
 
 struct OpTaskSignature {
-  OpTaskSignature() = delete;
-  explicit OpTaskSignature(OpTaskType);
+  OpTaskSignature() = default;
+  // explicit OpTaskSignature(OpTaskType);
 
-  OpTaskType get_task_type() const;
+  OpTaskType get_task_type() const {
+    return this->type;
+  }
 
   void add_input_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
   void add_optional_input_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
@@ -59,45 +64,39 @@ struct OpTaskSignature {
 
   void add_from_slot_spec(OpTensorSlotSpec const &spec);
 
-  /* void add_input_slot(slot_id, Legion::PrivilegeMode); */
-  /* void add_input_slot(slot_id, SlotType, Legion::PrivilegeMode); */
-
-  bool operator==(OpTaskSignature const &) const;
-  bool operator!=(OpTaskSignature const &) const;
-
   template <typename T>
   void add_arg_slot(slot_id name) {
     static_assert(is_serializable<T>::value, "Type must be serializable");
+    this->task_arg_types.insert({name, init_type_index<T>()});
   }
 
   template <typename T>
-  void add_return_value();
+  void add_return_value() {
+    // std::type_index return_value = init_type_index<T>();
+    this->return_value = init_type_index<T>();
+  }
 
   // adds arg_slot without checking is_serializable, used for arguments that are
   // deviceSpecific
   template <typename T>
   void add_unchecked_arg_slot(slot_id name) {
-    NOT_IMPLEMENTED();
+    this->task_arg_types.insert({name, init_type_index<T>()});
   }
 
   std::unordered_set<OpTensorSlotSpec> get_tensor_slots();
   void set_arg_types(std::unordered_map<slot_id, std::type_index> const &);
   std::unordered_map<slot_id, std::type_index> get_arg_types();
 
-private:
+  OpTaskType type;
+  std::optional<std::type_index> return_value;
   std::unordered_map<slot_id, std::type_index> task_arg_types;
   std::unordered_set<OpTensorSlotSpec> op_tensor_slots;
 };
-
-template <task_id_t>
-OpTaskSignature init_signature();
-template <task_id_t>
-OpTaskSignature fwd_signature();
-template <task_id_t>
-OpTaskSignature bwd_signature();
-
-template <task_id_t>
-OpTaskSignature get_signature();
+// FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskSignature,
+//                                             type,
+//                                             return_value,
+//                                             task_arg_types,
+//                                             op_tensor_slots);
 
 template <typename F>
 void register_task(task_id_t,
@@ -111,6 +110,15 @@ void register_task(task_id_t,
                    OpTaskSignature const &,
                    F const &func,
                    F const &cpu_func);
+
+template <task_id_t>
+OpTaskSignature init_signature();
+
+template <task_id_t>
+OpTaskSignature fwd_signature();
+
+template <task_id_t>
+OpTaskSignature bwd_signature();
 
 } // namespace FlexFlow
 

@@ -3,36 +3,6 @@
 
 namespace FlexFlow {
 
-Legion::PrivilegeMode to_legion(Permissions p) {
-  switch (p) {
-    case Permissions::NONE:
-      return LEGION_NO_ACCESS;
-    case Permissions::RO:
-      return LEGION_READ_ONLY;
-    case Permissions::WO:
-      return LEGION_WRITE_ONLY;
-    case Permissions::RW:
-      return LEGION_READ_WRITE;
-    default:
-      throw mk_runtime_error("Unknown permission {}", static_cast<int>(p));
-  }
-}
-
-optional<Permissions> from_legion(Legion::PrivilegeMode p) {
-  switch (p) {
-    case LEGION_NO_ACCESS:
-      return Permissions::NONE;
-    case LEGION_READ_ONLY:
-      return Permissions::RO;
-    case LEGION_WRITE_ONLY:
-      return Permissions::WO;
-    case LEGION_READ_WRITE:
-      return Permissions::RW;
-    default:
-      return nullopt;
-  }
-}
-
 Permissions join(Permissions lhs, Permissions rhs) {
   if (lhs <= rhs) {
     return rhs;

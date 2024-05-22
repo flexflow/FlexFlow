@@ -1,5 +1,4 @@
 #include "op_task_invocation.h"
-#include "task_argument_accessor.h"
 
 namespace FlexFlow {
 
@@ -37,11 +36,6 @@ void OpTaskBinding::bind_grad(slot_id slot, OpTensorSpec const &tensor_spec) {
 std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
     OpTaskBinding::get_tensor_bindings() const {
   return this->tensor_bindings;
-}
-
-std::unordered_map<slot_id, OpTaskBinding::ArgSpec> const &
-    OpTaskBinding::get_arg_bindings() const {
-  return this->arg_bindings;
 }
 
 } // namespace FlexFlow

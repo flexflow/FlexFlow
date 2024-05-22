@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_OP_ARG_REF_H
-#define _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_OP_ARG_REF_H
+#ifndef _FLEXFLOW_LOCAL_EXECUTION_OP_ARG_REF_H
+#define _FLEXFLOW_LOCAL_EXECUTION_OP_ARG_REF_H
 
 #include "arg_ref.h"
 #include "device_specific.h"

@@ -1,8 +1,9 @@
-#ifndef _FLEXFLOW_TASKS_H
-#define _FLEXFLOW_TASKS_H
+#ifndef _FLEXFLOW_LOCAL_EXECUTION_TASKS_H
+#define _FLEXFLOW_LOCAL_EXECUTION_TASKS_H
 
-#include "utils/optional.h"
 #include <string>
+#include <variant>
+#include <optional>
 
 namespace FlexFlow {
 
@@ -170,9 +171,9 @@ template <typename F>
 void register_task(task_id_t,
                    std::string const &name,
                    F const &func,
-                   optional<F const &> cpu_func = nullopt);
+                   std::optional<F const &> cpu_func = std::nullopt);
 
-template <task_id_t>
+template <task_id_t id>
 void register_task();
 
 void register_tasks();

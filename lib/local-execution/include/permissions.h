@@ -1,17 +1,12 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_PERMISSION_H
-#define _FLEXFLOW_RUNTIME_SRC_PERMISSION_H
+#ifndef _FLEXFLOW_LOCAL_EXECUTION_PERMISSION_H
+#define _FLEXFLOW_LOCAL_EXECUTION_PERMISSION_H
 
-#include "legion.h"
 #include "utils/exception.h"
 #include "utils/fmt.h"
-#include "utils/optional.h"
 
 namespace FlexFlow {
 
 enum class Permissions { NONE, RO, WO, RW };
-
-Legion::PrivilegeMode to_legion(Permissions);
-optional<Permissions> from_legion(Legion::PrivilegeMode);
 
 Permissions join(Permissions lhs, Permissions rhs);
 Permissions meet(Permissions lhs, Permissions rhs);

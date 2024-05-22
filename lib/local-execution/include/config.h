@@ -13,12 +13,11 @@
  * limitations under the License.
  */
 
-#ifndef _FLEXFLOW_CONFIG_H_
-#define _FLEXFLOW_CONFIG_H_
-#include "legion.h"
+#ifndef _FLEXFLOW_LOCAL_EXECUTION_CONFIG_H_
+#define _FLEXFLOW_LOCAL_EXECUTION_CONFIG_H_
+
 #include "op-attrs/param_sync.h"
 #include "utils/fmt.h"
-#include "utils/optional.h"
 #include "utils/visitable.h"
 #include <cstring>
 
@@ -47,6 +46,8 @@ struct FFInitInfo : public use_visitable_cmp<FFInitInfo> {
   bool allowTensorOpMathConversion;
 };
 
+using legion_mapping_tag_id_t = unsigned long;
+
 struct FFConfig : public use_visitable_cmp<FFConfig> {
 public:
   enum PreservedIDs {
@@ -64,7 +65,7 @@ public:
   };
 
   FFConfig() = default;
-  static Legion::MappingTagID get_hash_id(std::string const &pcname);
+  static legion_mapping_tag_id_t get_hash_id(std::string const &pcname);
 
 public:
   int epochs = 1;
@@ -88,16 +89,17 @@ public:
   bool enable_inplace_optimizations = false;
   // Control Tensor Op Math Conversion
   bool allow_tensor_op_math_conversion = false;
-  optional<std::string> dataset_path = nullopt;
-  optional<std::string> export_strategy_computation_graph_file = nullopt;
+  std::optional<std::string> dataset_path = std::nullopt;
+  std::optional<std::string> export_strategy_computation_graph_file =
+      std::nullopt;
   bool include_costs_dot_graph = false;
-  optional<std::string> substitution_json_path = nullopt;
+  std::optional<std::string> substitution_json_path = std::nullopt;
   int machine_model_version = 0;
-  optional<std::string> machine_model_file = nullopt;
+  std::optional<std::string> machine_model_file = std::nullopt;
   int simulator_segment_size = 16777216; // 16 MB
   int simulator_max_num_segments = 1;
-  optional<int> search_num_nodes = nullopt;
-  optional<int> search_num_workers = nullopt;
+  std::optional<int> search_num_nodes = std::nullopt;
+  std::optional<int> search_num_workers = std::nullopt;
   int base_optimize_threshold = 10;
   bool enable_control_replication = true;
   // The default python data loader type is 2 to enable control replication

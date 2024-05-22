@@ -1,12 +1,13 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_OPS_SIM_ENVIRONMENT_H
-#define _FLEXFLOW_RUNTIME_SRC_OPS_SIM_ENVIRONMENT_H
+#ifndef _FLEXFLOW_LOCAL_EXECUTION_SIM_ENVIRONMENT_H
+#define _FLEXFLOW_LOCAL_EXECUTION_SIM_ENVIRONMENT_H
 
 #include "cost_metrics.h"
 #include "kernels/accessor.h"
 #include "kernels/allocation.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "task_spec/op_task_invocation.h"
-#include "task_spec/task_argument_accessor.h"
+#include "op_task_invocation.h"
+#include "pcg/machine_view.h"
+#include "task_argument_accessor.h"
 #include <vector>
 
 namespace FlexFlow {
