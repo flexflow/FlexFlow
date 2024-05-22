@@ -65,16 +65,16 @@ ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
     miopenActivationMode_t mode;
     switch (op_type) {
       case Op::SIGMOID:
-        mode = CUDNN_ACTIVATION_SIGMOID;
+        mode = miopenActivationLOGISTIC;
         break;
       case Op::RELU:
-        mode = CUDNN_ACTIVATION_RELU;
+        mode = miopenActivationRELU;
         break;
       case Op::TANH:
-        mode = CUDNN_ACTIVATION_TANH;
+        mode = miopenActivationTANH;
         break;
       case Op::ELU:
-        mode = CUDNN_ACTIVATION_ELU;
+        mode = miopenActivationELU;
         break;
       default:
         assert(false);
@@ -235,8 +235,8 @@ struct ForwardKernel {
                          0,
                          stream,
                          num_elements,
-                         (T)m->scalar,
-                         m->op_type,
+                         (T)m.scalar,
+                         m.op_type,
                          input.get<T>(),
                          output.get<T>());
     }
@@ -278,8 +278,8 @@ struct BackwardKernel {
                          0,
                          stream,
                          num_elements,
-                         m->scalar,
-                         m->op_type,
+                         m.scalar,
+                         m.op_type,
                          output.get<T>(),
                          output_grad.get<T>(),
                          input.get<T>(),

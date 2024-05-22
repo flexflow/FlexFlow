@@ -105,16 +105,16 @@ ElementBinaryPerDeviceState init_kernel(PerDeviceFFHandle handle,
   switch (op_type) {
     case Op::EW_ADD:
     case Op::EW_SUB:
-      mode = MIOPEN_OP_TENSOR_ADD;
+      mode = miopenTensorOpAdd;
       break;
     case Op::EW_MUL:
-      mode = MIOPEN_OP_TENSOR_MUL;
+      mode = miopenTensorOpMul;
       break;
     case Op::EW_MAX:
-      mode = MIOPEN_OP_TENSOR_MAX;
+      mode = miopenOpTensorMax;
       break;
     case Op::EW_MIN:
-      mode = MIOPEN_OP_TENSOR_MIN;
+      mode = miopenOpTensorMin;
       break;
     default:
       assert(false);
@@ -280,7 +280,7 @@ void backward_kernel(hipStream_t stream,
                                   &alpha,
                                   m.outputTensor,
                                   out_grad_ptr,
-                                  &alpha2,
+                                  &alpha,
                                   m.outputTensor,
                                   out_grad_ptr,
                                   &beta,
@@ -412,8 +412,8 @@ void backward_kernel(hipStream_t stream,
     }
     // launch hip kernel
     hipLaunchKernelGGL(elewise_binary_backward_kernel,
-                       dim3((volume + 255) / 256),
-                       dim3(256),
+                       GET_BLOCKS(volume),
+                       CUDA_NUM_THREADS,
                        0,
                        stream,
                        volume,
