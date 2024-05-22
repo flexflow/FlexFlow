@@ -58,7 +58,7 @@ __global__ void identity_loss_backward(float *loss_grad,
 }
 
 void sparse_categorical_crossentropy_loss_backward_kernel(
-    cudaStream_t stream,
+    hipStream_t stream,
     float *logit_grad_ptr,
     float const *logit_ptr,
     int const *label_ptr,
@@ -68,7 +68,7 @@ void sparse_categorical_crossentropy_loss_backward_kernel(
     int num_classes,
     int k,
     float scale_factor) {
-  // cudaStream_t stream;
+  // hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(hipMemcpy(logit_grad_ptr,
                       logit_ptr,
@@ -98,14 +98,14 @@ void sparse_categorical_crossentropy_loss_backward_kernel(
                      scale_factor);
 }
 
-void categorical_crossentropy_loss_backward_kernel(cudaStream_t stream,
+void categorical_crossentropy_loss_backward_kernel(hipStream_t stream,
                                                    float *logit_grad_ptr,
                                                    float const *logit_ptr,
                                                    float const *label_ptr,
                                                    size_t logit_volume,
                                                    size_t logit_grad_volume,
                                                    float scale_factor) {
-  // cudaStream_t stream;
+  // hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   hipLaunchKernelGGL(categorical_crossentropy_loss_backward,
                      dim3(GET_BLOCKS(logit_volume), 1, 1),
@@ -129,14 +129,14 @@ void categorical_crossentropy_loss_backward_kernel(cudaStream_t stream,
                      scale_factor);
 }
 
-void mean_squared_error_avg_loss_backward_kernel(cudaStream_t stream,
+void mean_squared_error_avg_loss_backward_kernel(hipStream_t stream,
                                                  float *logit_grad_ptr,
                                                  float const *logit_ptr,
                                                  float const *label_ptr,
                                                  size_t logit_volume,
                                                  size_t logit_grad_volume,
                                                  float scale_factor) {
-  // cudaStream_t stream;
+  // hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   hipLaunchKernelGGL(mean_squared_error_avg_loss_backward,
                      dim3(GET_BLOCKS(logit_volume), 1, 1),
@@ -159,13 +159,13 @@ void mean_squared_error_avg_loss_backward_kernel(cudaStream_t stream,
                      scale_factor);
 }
 
-void identity_loss_backward_kernel(cudaStream_t stream,
+void identity_loss_backward_kernel(hipStream_t stream,
                                    float *loss_grad_ptr,
                                    float const *loss_ptr,
                                    size_t loss_volume,
                                    size_t loss_grad_volume,
                                    float scale_factor) {
-  // cudaStream_t stream;
+  // hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   hipLaunchKernelGGL(identity_loss_backward,
                      dim3(GET_BLOCKS(loss_volume), 1, 1),
