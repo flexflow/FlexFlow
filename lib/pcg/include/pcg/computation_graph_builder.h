@@ -250,18 +250,19 @@ private:
       std::vector<tensor_guid_t> const &inputs,
       std::vector<std::pair<TensorShape, std::optional<Initializer>>> const
           &weight_shapes,
-      Tensor const &output);
+      TensorShape const &output_shape);
   std::vector<tensor_guid_t> add_layer(
       Layer const &layer,
       std::vector<tensor_guid_t> const &inputs,
       std::vector<std::pair<TensorShape, std::optional<Initializer>>> const
           &weight_shapes,
-      std::vector<Tensor> const &outputs);
+      std::vector<TensorShape> const &output_shapes);
 
   tensor_guid_t as_type(tensor_guid_t const &, DataType, std::string const &);
 
   TensorShape get_broadcast_target_shape(std::vector<TensorShape> const &);
-
+  TensorShape get_shape(tensor_guid_t const &t);
+  std::vector<TensorShape> get_shapes(std::vector<tensor_guid_t> const &t);
   tensor_guid_t
       element_binary(OperatorType,
                      tensor_guid_t const &lhs,
@@ -285,8 +286,6 @@ private:
       element_scalar_unary(ElementScalarUnaryAttrs const &attrs,
                            tensor_guid_t const &x,
                            std::optional<std::string> const &maybe_name);
-
-  std::unordered_map<tensor_guid_t, Tensor> pre_edge_mapping;
 
 public:
   ComputationGraph computation_graph;

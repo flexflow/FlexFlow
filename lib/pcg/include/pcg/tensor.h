@@ -33,6 +33,8 @@ FF_VISITABLE_STRUCT(
 
 using Parameter = Tensor;
 
+Tensor construct_tensor_from_output_shape(TensorShape const &);
+
 } // namespace FlexFlow
 
 #endif
