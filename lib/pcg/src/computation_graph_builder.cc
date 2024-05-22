@@ -12,13 +12,12 @@ tensor_guid_t ComputationGraphBuilder::add_layer(
     std::vector<std::pair<TensorShape, std::optional<Initializer>>> const
         &weight_shapes,
     TensorShape const &output_shape) {
-  operator_guid_t node = add_node(computation_graph, layer);
-  add_incoming_edges(computation_graph, inputs, node);
-  return create_outgoing_edge_with_label(
-      computation_graph,
-      node,
-      0,
-      construct_tensor_from_output_shape(output_shape));
+  operator_guid_t node = create_node(computation_graph, layer);
+  connect_incoming_edges(computation_graph, inputs, node);
+  return create_outgoing_edge(computation_graph,
+                              node,
+                              0,
+                              construct_tensor_from_output_shape(output_shape));
 }
 
 std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
@@ -27,11 +26,11 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
     std::vector<std::pair<TensorShape, std::optional<Initializer>>> const
         &weight_shapes,
     std::vector<TensorShape> const &output_shapes) {
-  operator_guid_t node = add_node(computation_graph, layer);
-  add_incoming_edges(computation_graph, inputs, node);
+  operator_guid_t node = create_node(computation_graph, layer);
+  connect_incoming_edges(computation_graph, inputs, node);
   std::vector<tensor_guid_t> output_tensor_guids;
   for (int i = 0; i < output_shapes.size(); ++i) {
-    output_tensor_guids.push_back(create_outgoing_edge_with_label(
+    output_tensor_guids.push_back(create_outgoing_edge(
         computation_graph,
         node,
         i,

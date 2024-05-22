@@ -36,22 +36,22 @@ struct ComputationGraph
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(ComputationGraph);
 
 std::vector<operator_guid_t>
-    traverse_comp_graph(ComputationGraph const &comp_graph);
+    traverse_comp_graph_forward(ComputationGraph const &comp_graph);
 std::vector<operator_guid_t>
-    traverse_comp_graph_backwards(ComputationGraph const &comp_graph);
+    traverse_comp_graph_backward(ComputationGraph const &comp_graph);
 std::vector<tensor_guid_t>
     get_outgoing_tensors(ComputationGraph const &comp_graph, operator_guid_t n);
 std::vector<tensor_guid_t>
     get_incoming_tensors(ComputationGraph const &comp_graph, operator_guid_t n);
-operator_guid_t add_node(ComputationGraph &comp_graph, Layer const &layer);
-tensor_guid_t create_outgoing_edge_with_label(ComputationGraph &comp_graph,
-                                              operator_guid_t node,
-                                              int idx,
-                                              Tensor tensor);
+operator_guid_t create_node(ComputationGraph &comp_graph, Layer const &layer);
+tensor_guid_t create_outgoing_edge(ComputationGraph &comp_graph,
+                                   operator_guid_t node,
+                                   int idx,
+                                   Tensor tensor);
 
-void add_incoming_edges(ComputationGraph &comp_graph,
-                        std::vector<tensor_guid_t> const &incoming_edges,
-                        operator_guid_t node);
+void connect_incoming_edges(ComputationGraph &comp_graph,
+                            std::vector<tensor_guid_t> const &incoming_edges,
+                            operator_guid_t node);
 CompGraphOperatorAttrs get_layer_attrs(ComputationGraph const &comp_graph,
                                        operator_guid_t const &n);
 
