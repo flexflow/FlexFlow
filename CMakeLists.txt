@@ -86,6 +86,8 @@ endif()
 include(cuda)
 include(cudnn)
 include(nccl)
+include(CodeCoverage)
+append_coverage_compiler_flags()
 # set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 include(json)
