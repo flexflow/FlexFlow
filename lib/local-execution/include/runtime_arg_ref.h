@@ -18,17 +18,9 @@ using RuntimeArgRef = ArgRef<RuntimeArgRefType, T>;
 
 using RuntimeArgRefSpec = ArgRefSpec<RuntimeArgRefType>;
 
-RuntimeArgRef<ProfilingSettings> profiling_settings() {
-  return {RuntimeArgRefType::PROFILING_SETTINGS};
-}
-
-RuntimeArgRef<DeviceSpecific<PerDeviceFFHandle>> ff_handle() {
-  return {RuntimeArgRefType::FF_HANDLE};
-}
-
-RuntimeArgRef<DeviceSpecific<PerDeviceFFHandle>> ff_iteration_config() {
-  return {RuntimeArgRefType::FF_ITERATION_CONFIG};
-}
+RuntimeArgRef<ProfilingSettings> profiling_settings();
+RuntimeArgRef<DeviceSpecific<PerDeviceFFHandle>> ff_handle();
+RuntimeArgRef<DeviceSpecific<PerDeviceFFHandle>> iteration_config();
 
 } // namespace FlexFlow
 

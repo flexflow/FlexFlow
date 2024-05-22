@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_RUNTIME_OP_TASK_SPEC_H
-#define _FLEXFLOW_RUNTIME_OP_TASK_SPEC_H
+#ifndef _FLEXFLOW_LOCAL_EXECUTION_OP_TASK_INVOCATION_H
+#define _FLEXFLOW_LOCAL_EXECUTION_OP_TASK_INVOCATION_H
 
 #include "concrete_arg.h"
 #include "kernels/accessor.h"
@@ -108,34 +108,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskInvocation,
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
 
-bool validate_invocation(OpTaskSignature sig, OpTaskInvocation inv) {
-  // tensors
-  auto tensor_bindings = inv.binding.get_tensor_bindings();
-  for (OpTensorSlotSpec const &op_tensor_slot_spec : sig.get_tensor_slots()) {
-    slot_id name = op_tensor_slot_spec.name;
-    IsGrad is_grad = op_tensor_slot_spec.is_grad;
-    std::pair<slot_id, IsGrad> tensor_key = std::make_pair(name, is_grad);
-    OpTensorSpec const &op_tensor_spec = tensor_bindings.at(tensor_key);
-    if (op_tensor_spec.role != op_tensor_slot_spec.tensor_role ||
-        op_tensor_spec.slot_option != op_tensor_slot_spec.slot_option) {
-      return false;
-    }
-  }
-
-  // args
-  auto sig_arg_types = sig.get_arg_types();
-  OpArgSpecTypeAccessor type_accessor;
-  for (auto arg_binding : inv.binding.get_arg_bindings()) {
-    slot_id name = arg_binding.first;
-    OpArgSpec op_arg_spec = arg_binding.second;
-    std::type_index arg_type = sig_arg_types.at(name);
-    if (type_accessor(op_arg_spec) != arg_type) {
-      return false;
-    }
-  }
-
-  return true;
-}
+bool validate_invocation(OpTaskSignature sig, OpTaskInvocation inv);
 
 } // namespace FlexFlow
 

@@ -15,13 +15,9 @@ using OpArgRef = ArgRef<OpArgRefType, T>;
 using OpArgRefSpec = ArgRefSpec<OpArgRefType>;
 
 template <typename T>
-OpArgRef<DeviceSpecific<T>> per_device_op_state() {
-  return {OpArgRefType::PER_DEVICE_OP_STATE};
-}
+OpArgRef<DeviceSpecific<T>> per_device_op_state();
 
-OpArgRef<ParallelTensorShape> input_parallel_tensor_shape(int idx) {
-  return {OpArgRefType::PARALLEL_TENSOR_SHAPE};
-}
+OpArgRef<ParallelTensorShape> input_parallel_tensor_shape(int idx);
 
 } // namespace FlexFlow
 

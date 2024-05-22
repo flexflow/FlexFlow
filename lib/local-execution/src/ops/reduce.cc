@@ -20,7 +20,7 @@ enum Slots {
   HANDLE
 };
 
-OpTaskInvocation init(TransposeAttrs const &attrs) {
+OpTaskInvocation init(ReduceAttrs const &attrs) {
   OpTaskBinding binding;
 
   binding.bind_arg(HANDLE, ff_handle());
