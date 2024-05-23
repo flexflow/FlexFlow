@@ -266,24 +266,6 @@ void OPT::create_opt_model(FFModel &ff,
       use_full_precision);
   InferenceManager *im = InferenceManager::get_inference_manager();
   im->register_model_weights_loader(&ff, fileloader);
-
-#ifdef DEADCODE
-  //------------------- compile the model --------------------------------
-  std::cout << "------start compile ----------" << std::endl;
-  InferenceManager *im = InferenceManager::get_inference_manager();
-  im->compile_model_and_allocate_buffer(&ff);
-  FileDataLoader fileloader("",
-                            weight_file_path,
-                            opt_config.num_attention_heads,
-                            opt_config.num_attention_heads,
-                            opt_config.hidden_size,
-                            opt_config.hidden_size /
-                                opt_config.num_attention_heads,
-                            ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, use_full_precision);
-  std::cout << "------finished loading weights----------" << std::endl;
-  im->init_operators_inference(&ff);
-#endif
 }
 
 }; // namespace FlexFlow
