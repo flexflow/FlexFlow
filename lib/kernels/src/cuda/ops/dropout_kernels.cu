@@ -14,7 +14,6 @@
  */
 
 #include "device.h"
-#include "kernels/device.h"
 #include "kernels/dropout_kernels.h"
 #include "kernels/ff_handle.h"
 
@@ -52,7 +51,6 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(cudnnSetDropoutDescriptor(
       dropoutDesc, handle.dnn, rate, dropoutStates, dropoutStateSize, seed));
   DropoutPerDeviceState per_device_state = {handle,
-                                            allocator,
                                             inputTensor,
                                             outputTensor,
                                             dropoutDesc,
@@ -64,7 +62,7 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
 }
 
 void forward_kernel(cudaStream_t stream,
-                    DropoutPerDeviceState &m,
+                    DropoutPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr) {
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
@@ -80,7 +78,7 @@ void forward_kernel(cudaStream_t stream,
 }
 
 void backward_kernel(cudaStream_t stream,
-                     DropoutPerDeviceState &m,
+                     DropoutPerDeviceState const &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr) {
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));

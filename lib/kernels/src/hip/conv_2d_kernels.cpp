@@ -131,7 +131,7 @@ miopenConvBwdDataAlgorithm_t selectConvolutionBackwardDataAlgorithm(
 }
 
 Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
-                                 optional<Activation> activation,
+                                 std::optional<Activation> activation,
                                  int kernel_h,
                                  int kernel_w,
                                  int groups,
@@ -279,7 +279,7 @@ void forward_kernel(hipStream_t stream,
                     float *output_ptr,
                     float const *filter_ptr,
                     float const *bias_ptr,
-                    optional<Activation> activation) {
+                    std::optional<Activation> activation) {
 
   checkCUDNN(miopenSetStream(m.handle.dnn, stream));
 
@@ -329,7 +329,7 @@ void backward_kernel(hipStream_t stream,
                      float const *filter_ptr,
                      float *filter_grad_ptr,
                      float *bias_grad_ptr,
-                     optional<Activation> activation) {
+                     std::optional<Activation> activation) {
 
   checkCUDNN(miopenSetStream(m.handle.dnn, stream));
 

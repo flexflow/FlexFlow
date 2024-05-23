@@ -1,7 +1,10 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_LINEAR_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_LINEAR_KERNELS_H
 
-#include "kernels/device.h"
+#include "device.h"
+#include "ff_handle.h"
+#include "op-attrs/datatype.h"
+#include "op-attrs/ops/linear.h"
 
 namespace FlexFlow {
 
@@ -10,8 +13,9 @@ struct LinearPerDeviceState {
   ffTensorDescriptor_t outputTensor;
   ffActivationDescriptor_t actiDesc;
   float const *one_ptr; // how to handle this?
-  cudnnActivationMode_t activation;
-  optional<Regularizer> regularizer;
+  cudnnActivationMode_t activation_mode;
+  std::optional<Activation> activation;
+  std::optional<RegularizerAttrs> regularizer;
   bool use_bias;
   DataType input_type, weight_type, output_type;
 };
@@ -21,6 +25,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(LinearPerDeviceState,
                                              outputTensor,
                                              actiDesc,
                                              one_ptr,
+                                             activation_mode,
                                              activation,
                                              regularizer,
                                              use_bias,
@@ -31,17 +36,17 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(LinearPerDeviceState,
 namespace Kernels {
 namespace Linear {
 
-LinearPerDeviceState
-    init_kernel(PerDeviceFFHandle handle, Allocator allocator, float *one_ptr;
-                optional<Regularizer> regularizer,
-                bool use_bias,
-                DataType input_type,
-                DataType weight_type,
-                DataType output_type,
-                int batch_size,
-                int channel);
+LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
+                                 float *one_ptr,
+                                 std::optional<RegularizerAttrs> regularizer,
+                                 bool use_bias,
+                                 DataType input_type,
+                                 DataType weight_type,
+                                 DataType output_type,
+                                 int batch_size,
+                                 int channel);
 
-bool use_activation(ActiMode mode);
+bool use_activation(Activation activation);
 
 void forward_kernel(ffStream_t stream,
                     LinearPerDeviceState const &m,

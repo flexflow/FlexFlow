@@ -16,7 +16,6 @@
 #include "device.h"
 #include "kernels/allocation.h"
 #include "kernels/batch_norm_kernels.h"
-#include "kernels/device.h"
 #include "kernels/ff_handle.h"
 
 namespace FlexFlow {
@@ -24,35 +23,35 @@ namespace Kernels {
 namespace BatchNorm {
 
 void forward_kernel(cudaStream_t stream,
-                    BatchNormPerDeviceState const *m,
+                    BatchNormPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
                     float const *scale_ptr,
                     float const *bias_ptr) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(cudnnBatchNormalizationForwardTraining(m->handle.dnn,
-                                                    m->mode,
+  checkCUDNN(cudnnBatchNormalizationForwardTraining(m.handle.dnn,
+                                                    m.mode,
                                                     &alpha,
                                                     &beta,
-                                                    m->inputTensor,
+                                                    m.inputTensor,
                                                     input_ptr,
-                                                    m->outputTensor,
+                                                    m.outputTensor,
                                                     output_ptr,
-                                                    m->biasTensor,
+                                                    m.biasTensor,
                                                     scale_ptr,
                                                     bias_ptr,
                                                     1.0,
-                                                    m->runningMean,
-                                                    m->runningVar,
+                                                    m.runningMean,
+                                                    m.runningVar,
                                                     CUDNN_BN_MIN_EPSILON,
-                                                    m->saveMean,
-                                                    m->saveVar));
+                                                    m.saveMean,
+                                                    m.saveVar));
 }
 
 void backward_kernel(cudaStream_t stream,
-                     BatchNormPerDeviceState *m,
+                     BatchNormPerDeviceState const &m,
                      float const *input_ptr,
                      float *output_grad_ptr,
                      float const *output_ptr,
@@ -61,32 +60,32 @@ void backward_kernel(cudaStream_t stream,
                      float *scale_grad_ptr,
                      float *bias_grad_ptr,
                      size_t numElements) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f;
-  if (m->relu) {
+  if (m.relu) {
     reluBackward<<<GET_BLOCKS(numElements), CUDA_NUM_THREADS, 0, stream>>>(
         output_grad_ptr, output_ptr, numElements);
   }
-  checkCUDNN(cudnnBatchNormalizationBackward(m->handle.dnn,
-                                             m->mode,
+  checkCUDNN(cudnnBatchNormalizationBackward(m.handle.dnn,
+                                             m.mode,
                                              &alpha,
                                              &alpha,
                                              &alpha,
                                              &alpha,
-                                             m->inputTensor,
+                                             m.inputTensor,
                                              input_ptr,
-                                             m->outputTensor,
+                                             m.outputTensor,
                                              output_grad_ptr,
-                                             m->inputTensor,
+                                             m.inputTensor,
                                              input_grad_ptr,
-                                             m->biasTensor,
+                                             m.biasTensor,
                                              scale_ptr,
                                              scale_grad_ptr,
                                              bias_grad_ptr,
                                              CUDNN_BN_MIN_EPSILON,
-                                             m->saveMean,
-                                             m->saveVar));
+                                             m.saveMean,
+                                             m.saveVar));
 }
 
 BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
@@ -147,7 +146,6 @@ BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
   }
 
   BatchNormPerDeviceState per_device_state = {handle,
-                                              allocator,
                                               inputTensor,
                                               outputTensor,
                                               biasTensor,

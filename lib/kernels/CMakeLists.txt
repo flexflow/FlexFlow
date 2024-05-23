@@ -7,7 +7,7 @@ file(GLOB_RECURSE SRC
      CONFIGURE_DEPENDS
      LIST_DIRECTORIES False
      src/*.cc
-     # src/*.cu
+     src/cuda/ops/*.cu
      )
 
 add_library(
