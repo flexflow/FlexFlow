@@ -630,10 +630,10 @@ __host__ void
     // }
   }
 
-  if (!captured) {
-    cudaGraph_t graph;
-    {    
-      cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
+  // if (!captured) {
+  //   cudaGraph_t graph;
+  //   {    
+  //     cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
       int ioff = 0, woff = 0, ooff = 0;
       for (int op = 0; op < fused->numOperators; op++) {
         // Domain my_id[MAX_NUM_INPUTS];
@@ -1158,22 +1158,22 @@ __host__ void
       // for (int i = 0; i < fused->numOutputs; i++)
       //   print_tensor<float>(output_ptr[i], output_domain[i].get_volume(),
       //   "[Fused:forward:output]");
-      cudaStreamEndCapture(stream, &graph);
-    }
-    cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
-    metas->graph_collections[graph_params] = instance;
-    // if(shard_id == 0) {
-    //   printf("*************start cudaGraphInstantiate**********\n");
-    //   graph_params.Print();
-    //   // bc->print();
-    //   printf("*************end cudaGraphInstantiate**********\n");
-    // }
-    cudaGraphDestroy(graph);
-  }
+  //     cudaStreamEndCapture(stream, &graph);
+  //   }
+  //   cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+  //   metas->graph_collections[graph_params] = instance;
+  //   // if(shard_id == 0) {
+  //   //   printf("*************start cudaGraphInstantiate**********\n");
+  //   //   graph_params.Print();
+  //   //   // bc->print();
+  //   //   printf("*************end cudaGraphInstantiate**********\n");
+  //   // }
+  //   cudaGraphDestroy(graph);
+  // }
 
-  assert(metas->graph_collections.find(graph_params) !=
-        metas->graph_collections.end());
-  cudaGraphLaunch(instance, stream);
+  // assert(metas->graph_collections.find(graph_params) !=
+  //       metas->graph_collections.end());
+  // cudaGraphLaunch(instance, stream);
 }
 
 /*
