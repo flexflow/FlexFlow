@@ -1766,6 +1766,8 @@ class LoraLinearConfig(object):
 class PEFTModelID(object):
     __slots__ = ["handle", "_handle"]
 
+    __no_id_h = None
+
     def __init__(self, id=None):
         if id is None:
             self.handle = ffc().flexflow_peft_model_id_create()
@@ -1773,6 +1775,11 @@ class PEFTModelID(object):
             self.handle = ffc().flexflow_peft_model_id_create_id(id)
         self._handle = ffi.gc(self.handle, ffc().flexflow_peft_model_id_destroy)
 
+    @staticmethod
+    def no_id_handle():
+        if PEFTModelID.__no_id_h is None:
+            PEFTModelID.__no_id_h = ffc().flexflow_peft_model_id_no_id()
+        return PEFTModelID.__no_id_h
 
 # -----------------------------------------------------------------------
 # Request
@@ -4406,7 +4413,7 @@ class FFModel(object):
             for prompt in prompt_list
         ]
         max_sequence_lengths = [max_sequence_length for prompt in prompt_list]
-        peft_model_ids = [PEFTModelID().handle for prompt in prompt_list] # Assign Dummy model ids
+        peft_model_ids = [PEFTModelID.no_id_handle() for prompt in prompt_list]
         dataset_filepaths = [ffi.NULL for prompt in prompt_list]
         training_steps = [0 for prompt in prompt_list]
         ffc().flexflow_model_generate(
@@ -4451,7 +4458,10 @@ class FFModel(object):
         max_sequence_lengths = [
             request.max_sequence_length for request in requests_list
         ]
-        peft_model_ids = [request.peft_model_id for request in requests_list]
+        peft_model_ids = [
+            (request.peft_model_id 
+             if request.peft_model_id is not None else PEFTModelID.no_id_handle()) 
+             for request in requests_list]
         dataset_filepaths = [
             get_c_name(request.dataset_filepath) for request in requests_list
         ]
