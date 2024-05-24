@@ -82,10 +82,8 @@ void ArgTopK::forward_kernel(
     bool sorted,
     /* Reserved: BatchConfig Updated */ BatchConfig const *bc,
     cudaStream_t stream) {
-  printf("ArgTopK::forward_kernel\n");
   if (m->speculative_decoding) {
     assert(bc->num_active_requests() >= 0);
-    printf("ArgTopK::forward_kernel: speculative_decoding\n");
     raft_radix_11bits_extra_pass_kernel<DT, int>(
         input_ptr,
         batch_size,
