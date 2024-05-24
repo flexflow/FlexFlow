@@ -2,20 +2,22 @@ project_name = "flexflow"
 testsuite_macro = "FF_TEST_SUITE"
 namespace_name = "FlexFlow"
 header_extension = ".h"
+fix_compile_commands = false
 
 build_targets = [
-  "utils",
-  "op-attrs",
   "kernels",
-  "substitutions",
-  "compiler",
 ]
 test_targets = [
-  "utils-tests",
-  "substitutions-tests",
-  "compiler-tests",
+  # "utils-tests",
+  # "substitutions-tests",
+  # "compiler-tests",
 ]
 
 [cmake_flags_extra]
-FF_CUDA_ARCH = "60"
+FF_USE_HIP_ROCM = "ON"
+FF_GPU_BACKEND = "hip_rocm"
 CMAKE_CUDA_ARCHITECTURES = "60"
+CMAKE_HIP_ARCHITECTURES = "gfx900"
+CMAKE_CXX_COMPILER = "hipcc"
+CMAKE_C_COMPILER = "hipcc"
+# FF_CUDA_ARCH = "60"

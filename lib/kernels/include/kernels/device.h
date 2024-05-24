@@ -7,7 +7,7 @@
 #include <cudnn.h>
 #elif defined(FF_USE_HIP_ROCM)
 #include <hip/hip_runtime.h>
-#include <hipblas.h>
+#include <hipblas/hipblas.h>
 #include <miopen/miopen.h>
 #else
 #error "Unknown device"
@@ -57,21 +57,21 @@ typedef miopenTensorDescriptor_t ffTensorDescriptor_t;
 typedef miopenActivationDescriptor_t ffActivationDescriptor_t;
 typedef miopenPoolingDescriptor_t ffPoolingDescriptor_t;
 typedef miopenBatchNormMode_t ffBatchNormMode_t;
-typedef miopenFilterDescriptor_t ffFilterDescriptor_t;
+typedef miopenTensorDescriptor_t ffFilterDescriptor_t;
 typedef miopenConvolutionDescriptor_t ffConvolutionDescriptor_t;
-typedef miopenConvolutionFwdAlgo_t ffConvolutionFwdAlgo_t;
-typedef miopenConvolutionBwdFilterAlgo_t ffConvolutionBwdFilterAlgo_t;
-typedef miopenConvolutionBwdDataAlgo_t ffConvolutionBwdDataAlgo_t;
+// typedef miopenConvolutionFwdAlgo_t ffConvolutionFwdAlgo_t;  //we don't have this one in miopen
+// typedef miopenConvolutionBwdFilterAlgo_t ffConvolutionBwdFilterAlgo_t; // don't have this either
+// typedef miopenConvolutionBwdDataAlgo_t ffConvolutionBwdDataAlgo_t;
 typedef miopenDropoutDescriptor_t ffDropoutDescriptor_t;
-typedef miopenOpTensorDescriptor_t ffOpTensorDescriptor_t;
+typedef miopenTensorDescriptor_t ffOpTensorDescriptor_t;    //don't have this either but will use miopenTensorDescriptor_t as a placeholder
 typedef miopenReduceTensorDescriptor_t ffReduceTensorDescriptor_t;
-typedef miopenAttnDescriptor_t ffAttnDescriptor_t;
-typedef miopenSeqDataDescriptor_t ffSeqDataDescriptor_t;
+// typedef miopenAttnDescriptor_t ffAttnDescriptor_t;
+// typedef miopenSeqDataDescriptor_t ffSeqDataDescriptor_t;
 typedef miopenHandle_t ffHandle_t;
 typedef hipEvent_t ffEvent_t;
 typedef hipblasHandle_t ffblasHandle_t;
 typedef miopenStatus_t ffStatus_t;
-typedef hipblasDataType_t ffDataType_t;
+typedef hipblasDatatype_t ffDataType_t;
 typedef miopenDataType_t ffCudnnDataType_t;
 typedef hipError_t ffError_t;
 #else

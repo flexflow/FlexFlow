@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(FlexFlow)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(
   CMAKE_MODULE_PATH 
   ${CMAKE_MODULE_PATH} 
@@ -83,9 +86,9 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(LIBEXT ".so")
 endif()
 
-include(cuda)
-include(cudnn)
-include(nccl)
+# include(cuda)
+# include(cudnn)
+# include(nccl)
 include(CodeCoverage)
 append_coverage_compiler_flags()
 # set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
@@ -97,7 +100,7 @@ include(doctestlib) # named doctestlib to avoid a name collision with doctest.cm
 include(visit_struct)
 include(CTest)
 include(fmt)
-include(legion)
+# include(legion)
 include(rapidcheck)
 #include(gtest)
 

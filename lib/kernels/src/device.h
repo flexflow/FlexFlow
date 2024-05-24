@@ -84,13 +84,13 @@ __host__ void relu_backward_kernel(DataType data_type,
                                    void *output_grad_ptr,
                                    void const *output_ptr,
                                    size_t output_size,
-                                   cudaStream_t stream);
+                                   hipStream_t stream);
 
 __host__ void sigmoid_backward_kernel(DataType data_type,
                                       void *output_grad_ptr,
                                       void const *output_ptr,
                                       size_t output_size,
-                                      cudaStream_t stream);
+                                      hipStream_t stream);
 
 template <typename DT>
 __global__ void apply_add_with_scale(DT *data_ptr,
