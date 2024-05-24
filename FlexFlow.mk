@@ -95,9 +95,11 @@ ifneq ($(strip $(FF_USE_PYTHON)), 1)
 endif
 
 
-INC_FLAGS	+= -I${FF_HOME}/include -I${FF_HOME}/inference -I${FF_HOME}/deps/optional/include -I${FF_HOME}/deps/variant/include -I${FF_HOME}/deps/json/include -I${FF_HOME}/deps/tokenizers-cpp/include -I${FF_HOME}/deps/tokenizers-cpp/sentencepiece/src
+INC_FLAGS	+= -I${FF_HOME}/include -I${FF_HOME}/inference -I${FF_HOME}/deps/optional/include -I${FF_HOME}/deps/variant/include -I${FF_HOME}/deps/json/include -I${FF_HOME}/deps/tokenizers-cpp/include -I${FF_HOME}/deps/tokenizers-cpp/sentencepiece/src \
+				-I${FF_HOME}/deps/raft/cpp/include -I${FF_HOME}/deps/rmm/include -I${FF_HOME}/deps/spdlog/include
 CC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
-NVCC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
+NVCC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768 \
+			    --expt-relaxed-constexpr --extended-lambda
 HIPCC_FLAGS     += -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 GASNET_FLAGS	+=
 # For Point and Rect typedefs

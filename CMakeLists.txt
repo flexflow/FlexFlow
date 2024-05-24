@@ -128,6 +128,9 @@ list(APPEND CC_FLAGS
 list(APPEND NVCC_FLAGS
   -std=c++17)
 
+list(APPEND NVCC_FLAGS
+  --expt-relaxed-constexpr
+  --extended-lambda)
 
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
@@ -200,6 +203,12 @@ if(NOT BUILD_LEGION_ONLY)
 
   # optional
   include(optional)
+
+  list(APPEND FLEXFLOW_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/deps/raft/cpp/include)
+
+  list(APPEND FLEXFLOW_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/deps/rmm/include)
+
+  list(APPEND FLEXFLOW_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog/include)
 
   if (FF_GPU_BACKEND STREQUAL "cuda")
     list(APPEND FF_CC_FLAGS
