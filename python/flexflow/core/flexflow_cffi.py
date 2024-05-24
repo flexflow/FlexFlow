@@ -4406,8 +4406,8 @@ class FFModel(object):
             for prompt in prompt_list
         ]
         max_sequence_lengths = [max_sequence_length for prompt in prompt_list]
-        peft_model_ids = [None for prompt in prompt_list]
-        dataset_filepaths = [None for prompt in prompt_list]
+        peft_model_ids = [PEFTModelID().handle for prompt in prompt_list] # Assign Dummy model ids
+        dataset_filepaths = [ffi.NULL for prompt in prompt_list]
         training_steps = [0 for prompt in prompt_list]
         ffc().flexflow_model_generate(
             self.handle,
