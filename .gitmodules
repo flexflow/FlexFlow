@@ -32,4 +32,4 @@
 [submodule "deps/raft"]
 	path = deps/raft
 	url = git@github.com:rapidsai/raft.git
-	ignore = untracked
+	ignore = dirty
