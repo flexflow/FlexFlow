@@ -465,18 +465,18 @@ void RequestManager::request_complete_clean_up(int batch_index) {
     if (outputFile.is_open()) {
       outputFile << "Request " << guid << " profiling: " << std::endl;
       outputFile << "Decoding time: "
-                  << (profile_info.finish_time -
-                  profile_info.start_decoding_time) * 1e-3
-                  << "ms" << std::endl;
+                 << (profile_info.finish_time -
+                     profile_info.start_decoding_time) *
+                        1e-3
+                 << "ms" << std::endl;
       outputFile << "Total time: "
-                  << (profile_info.finish_time -
-                      profile_info.start_time) * 1e-3
-                  << "ms" << std::endl;
-      outputFile << "LLM decoding steps: "
-                   << profile_info.llm_decoding_steps << std::endl;
+                 << (profile_info.finish_time - profile_info.start_time) * 1e-3
+                 << "ms" << std::endl;
+      outputFile << "LLM decoding steps: " << profile_info.llm_decoding_steps
+                 << std::endl;
       if (decoding_mode == SPECULATIVE_DECODING) {
-        outputFile << "SSM decoding steps: "
-                    << profile_info.ssm_decoding_steps << std::endl;
+        outputFile << "SSM decoding steps: " << profile_info.ssm_decoding_steps
+                   << std::endl;
       }
       outputFile << output << std::endl << std::endl;
       outputFile.close();
@@ -1747,7 +1747,6 @@ void RequestManager::serve_decoding(FFModel *llm) {
     assert(fm.get_future_map_domain().get_volume() == 1);
     InferenceResultFuture irf = fm.get_future(0);
     batch_pipeline.push(irf);
-    last_irf = irf;
     runtime->end_trace(ctx, 12346 /*trace_id*/);
   }
 }
