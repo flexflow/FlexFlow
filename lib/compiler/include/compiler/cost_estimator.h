@@ -16,7 +16,7 @@ float parallel_estimate_cost(
     std::unordered_map<OpenMultiDiEdge, MachineView> const
         &frontier_machine_views);
 
-} //FlexFlow
+} // namespace FlexFlow
 
 namespace std {
 

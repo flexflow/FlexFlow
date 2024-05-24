@@ -1,5 +1,4 @@
 #include "compiler/machine_mapping.h"
-#include "compiler/cost_estimate.h"
 #include "graph_utils.h"
 #include "pcg/parallel_computation_graph.h"
 #include "utils/exception.h"
@@ -7,7 +6,6 @@
 
 #include "utils/deduplicated_priority_queue.h"
 #include <algorithm>
-
 
 namespace FlexFlow {
 
@@ -18,10 +16,11 @@ float node_estimate_cost(Node node,
                          MachineMapping const &device_mapping) {
   std::unordered_set<UpwardOpenMultiDiEdge> incoming_edges =
       get_incoming_edges(g, node);
-  std::vector<ParallelTensorShape> inputs = transform(
-      as_vector(incoming_edges), [&](UpwardOpenMultiDiEdge const &input_edge) {
-        return g.at(input_edge).get_shape();
-      });
+  std::vector<ParallelTensorShape> inputs =
+      transform(as_vector(get_incoming_edges(g, node)),
+                [&](UpwardOpenMultiDiEdge const &input_edge) {
+                  return g.at(input_edge).get_shape();
+                });
   float cost = estimator.estimate_cost(
       g.at(node).attrs, inputs, device_mapping.machine_views.at(node));
   return cost;
@@ -29,8 +28,9 @@ float node_estimate_cost(Node node,
 
 struct TimedNode { // Node and associated finishing time
   Node node;
-  float endtime;
+  req<float> endtime;
 };
+FF_VISITABLE_STRUCT(TimedNode, node, endtime);
 
 struct TimeComparison {
   bool operator()(TimedNode const &lhs, TimedNode const &rhs) const {
@@ -44,7 +44,7 @@ float parallel_estimate_cost(
     MachineMapping const &device_mapping,
     std::unordered_map<OpenMultiDiEdge, MachineView> const
         &frontier_machine_views) {
-
+  float current_time = 0;
   std::unordered_set<Node>
       frontier; // nodes whose dependencies (previous nodes) have been met, and
                 // are waiting to be processed.
@@ -57,20 +57,20 @@ float parallel_estimate_cost(
 
   // Filling the frontier
   for (auto const &[edge, _] : frontier_machine_views) {
-    Node node = get_dst_node(edge);
-    frontier.insert(node);
+    for (Node node : get_nodes(edge)) {
+      frontier.insert(node);
+    }
   }
 
-  float current_time = 0;
   while (!frontier.empty() || !processing.empty()) {
 
     // Processing new nodes
     std::unordered_set<Node> copy(frontier);
     for (Node const &node : copy) {
       std::vector<int> devices =
-          device_mapping.machine_views.at(node).machine_ids();
+          device_mapping.machine_views.at(node).device_ids();
       if (std::all_of(devices.begin(), devices.end(), [&occupied](int d) {
-            return occupied[d] == false
+            return occupied[d] == false;
           })) {
         float cost = node_estimate_cost(node, g, estimator, device_mapping);
         processing.push({node, current_time + cost});
@@ -80,11 +80,11 @@ float parallel_estimate_cost(
         frontier.erase(node);
       }
     }
-
     // Finish processing one node
-    TimedNode finished = processing.pop();
+    TimedNode finished = processing.top();
+    processing.pop();
     std::vector<int> devices =
-        device_mapping.machine_views.at(finished.node).machine_ids();
+        device_mapping.machine_views.at(finished.node).device_ids();
     for (int d : devices) { // free devices
       occupied[d] = false;
     }
@@ -95,13 +95,14 @@ float parallel_estimate_cost(
     for (Node const &successor :
          get_successors(g, finished.node)) { // All nodes depending on finished
       std::unordered_set<Node> predecessors = get_predecessors(g, successor);
-      if (std::all_of(predecessors.begin(),
-                      predecessors.end(),
-                      [&processed](int p) { return processed.contains(p) })) {
+      if (std::all_of(
+              predecessors.begin(), predecessors.end(), [&processed](Node p) {
+                return processed.find(p) != processed.end();
+              })) {
         frontier.insert(successor);
       }
     }
   }
   return current_time;
 }
-} //namespace FlexFlow
+} // namespace FlexFlow
