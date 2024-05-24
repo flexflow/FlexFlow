@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_KERNELS_BATCH_NORM_KERNELS_H
 #define _FLEXFLOW_KERNELS_BATCH_NORM_KERNELS_H
 
+#include "device.h"
 #include "kernels/allocation.h"
-#include "kernels/device.h"
 #include "kernels/ff_handle.h"
 #include <memory>
 
@@ -10,7 +10,6 @@ namespace FlexFlow {
 
 struct BatchNormPerDeviceState {
   PerDeviceFFHandle handle;
-  Allocator allocator;
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
   ffTensorDescriptor_t biasTensor;
@@ -29,7 +28,6 @@ struct BatchNormPerDeviceState {
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(BatchNormPerDeviceState,
                                              handle,
-                                             allocator,
                                              inputTensor,
                                              outputTensor,
                                              biasTensor,
@@ -58,14 +56,14 @@ BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                     bool relu);
 
 void forward_kernel(ffStream_t stream,
-                    BatchNormPerDeviceState &m,
+                    BatchNormPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
                     float const *scale_ptr,
                     float const *bias_ptr);
 
 void backward_kernel(ffStream_t stream,
-                     BatchNormPerDeviceState &m,
+                     BatchNormPerDeviceState const &m,
                      float const *input_ptr,
                      float *output_grad_ptr,
                      float const *output_ptr,

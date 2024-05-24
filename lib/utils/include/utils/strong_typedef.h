@@ -226,6 +226,7 @@ struct numerical_typedef : strong_typedef<StrongTypedef, T> {
   }                                                                            \
   MAKE_TYPEDEF_PRINTABLE(::FlexFlow::TYPEDEF_NAME, TYPEDEF_SHORTNAME);         \
   namespace FlexFlow {                                                         \
+  DELEGATE_OSTREAM(TYPEDEF_NAME);                                              \
   static_assert(true, "");
 
 #endif

@@ -80,6 +80,8 @@ typedef hipError_t ffError_t;
 
 namespace FlexFlow {
 
+using coord_t = long long;
+
 #define FatalError(s)                                                          \
   do {                                                                         \
     std::stringstream _where, _message;                                        \

@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_KERNELS_HIP_CONV_2D_KERNELS_H
 #define _FLEXFLOW_KERNELS_HIP_CONV_2D_KERNELS_H
 
-#include "kernels/device.h"
+#include "device.h"
 
 namespace FlexFlow {
 namespace Kernels {

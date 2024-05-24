@@ -96,6 +96,8 @@
               cudaPackages.libcublas
               cudaPackages.cuda_cudart
               tl-expected
+              lcov # for code coverage
+              xdg_utils # for xdg-open to open html files
             ])
             (with self.packages.${system}; [
               legion
@@ -120,6 +122,7 @@
               compdb
               jq
               gh
+              lcov # for code coverage
             ])
             (with proj-repo.packages.${system}; [
               proj
