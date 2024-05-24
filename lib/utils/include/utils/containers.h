@@ -7,6 +7,7 @@
 #include "type_traits_core.h"
 #include "utils/exception.h"
 #include "utils/type_traits.h"
+#include "utils/optional.h"
 #include <algorithm>
 #include <cassert>
 #include <functional>

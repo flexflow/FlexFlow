@@ -19,7 +19,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     message(STATUS "Linux Version: ${LINUX_VERSION}")
   endif()
 endif()
-
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 set(FF_MAX_DIM "5" CACHE STRING "Maximum tensor order")
 set(FF_MAX_OPNAME "128" CACHE STRING "Maximum op name length")
 set(FF_MAX_NUM_OUTPUTS "256" CACHE STRING "Maximum number of outputs (per operator)")
