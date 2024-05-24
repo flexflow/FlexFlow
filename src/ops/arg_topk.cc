@@ -366,6 +366,7 @@ FutureMap ArgTopK::inference(
   }
 }
 
+// just output the indices
 InferenceResult
     ArgTopK::inference_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
