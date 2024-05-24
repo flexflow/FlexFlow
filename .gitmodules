@@ -29,3 +29,6 @@
 [submodule "deps/rmm"]
 	path = deps/rmm
 	url = git@github.com:rapidsai/rmm.git
+[submodule "deps/raft"]
+	path = deps/raft
+	url = git@github.com:rapidsai/raft.git
