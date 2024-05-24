@@ -1,9 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 
+#include "device.h"
 #include "ff_handle.h"
-#include "kernels/device.h"
-#include "kernels/ff_handler.h"
 
 namespace FlexFlow {
 
@@ -11,7 +10,7 @@ namespace FlexFlow {
 struct SoftmaxPerDeviceState {
   PerDeviceFFHandle handle;
   ffTensorDescriptor_t inputTensor;
-  int dim;
+  req<int> dim;
 };
 
 FF_VISITABLE_STRUCT(SoftmaxPerDeviceState, handle, inputTensor, dim);
