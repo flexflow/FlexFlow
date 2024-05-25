@@ -2846,9 +2846,9 @@ flexflow_peft_model_id_t flexflow_peft_model_id_create_id(size_t id) {
 }
 
 flexflow_peft_model_id_t flexflow_peft_model_id_no_id() {
-  PEFTModelID handle = PEFTModelID::NO_ID;
-  DEBUG_PRINT("[PEFTModelID] new %p", &handle);
-  return FFCObjectWrapper::wrap(&handle);
+  PEFTModelID *handle = const_cast<PEFTModelID*>(&PEFTModelID::NO_ID);
+  DEBUG_PRINT("[PEFTModelID] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
 }
 
 void flexflow_peft_model_id_destroy(flexflow_peft_model_id_t handle_) {
