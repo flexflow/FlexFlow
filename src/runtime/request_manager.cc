@@ -460,31 +460,35 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   std::cout << "Request " << guid << " completed: " << std::endl
             << output << std::endl;
   ProfileInfo profile_info = profiling_requests[guid];
+
+  std::ostream *os = &std::cout;
+  std::ofstream output_file;
   if (!output_filepath.empty()) {
-    std::ofstream outputFile(output_filepath, std::ios::app);
-    if (outputFile.is_open()) {
-      outputFile << "Request " << guid << " profiling: " << std::endl;
-      outputFile << "Decoding time: "
-                 << (profile_info.finish_time -
-                     profile_info.start_decoding_time) *
-                        1e-3
-                 << "ms" << std::endl;
-      outputFile << "Total time: "
-                 << (profile_info.finish_time - profile_info.start_time) * 1e-3
-                 << "ms" << std::endl;
-      outputFile << "LLM decoding steps: " << profile_info.llm_decoding_steps
-                 << std::endl;
-      if (decoding_mode == SPECULATIVE_DECODING) {
-        outputFile << "SSM decoding steps: " << profile_info.ssm_decoding_steps
-                   << std::endl;
-      }
-      outputFile << output << std::endl << std::endl;
-      outputFile.close();
+    output_file.open(output_filepath, std::ios::app);
+    if (output_file.is_open()) {
+      os = &output_file;
     } else {
       std::cout << "Unable to open the output file: " << output_filepath
                 << std::endl;
       assert(false);
     }
+  }
+  *os << "Request " << guid << " profiling: " << std::endl;
+  *os << "Decoding time: "
+      << (profile_info.finish_time - profile_info.start_decoding_time) * 1e-3
+      << "ms" << std::endl;
+  *os << "Total time: "
+      << (profile_info.finish_time - profile_info.start_time) * 1e-3 << "ms"
+      << std::endl;
+  *os << "LLM decoding steps: " << profile_info.llm_decoding_steps << std::endl;
+  if (decoding_mode == SPECULATIVE_DECODING) {
+    *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
+        << std::endl;
+  }
+  *os << output << std::endl << std::endl;
+
+  if (!output_filepath.empty()) {
+    output_file.close();
   }
 
   trigger_request_completion_future(guid);
@@ -1820,6 +1824,37 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
       assert(false && "Invalid request manager status");
     }
   }
+
+  //   while (!is_background_server_terminated()) {
+  //     // last_irf.get_void_result();
+  //     BatchConfigFuture bcf = get_next_batch_config(last_irf, ctx, runtime);
+  //     bcf.get_void_result();
+  //     // time_2 = Realm::Clock::current_time_in_microseconds();
+  //     // std::cout << "Iteration time: " << (time_2 - time_1) * 1e-3 << "ms"
+  //     //           << std::endl;
+
+  //     // time_1 = Realm::Clock::current_time_in_microseconds();
+  //     if ((request_manager_status == PREFILLING and prefill_model == LLM) or
+  //         request_manager_status == LLM_VERIFY) {
+  //       //   std::cout << "Branch 1" << std::endl;
+  //       runtime->begin_trace(ctx, 12345 /*trace_id*/);
+  //       FutureMap fm = im->inference(llm, 0, bcf);
+  //       //   assert(fm.get_future_map_domain().get_volume() == 1);
+  //       last_irf = fm.get_future(0);
+  //       runtime->end_trace(ctx, 12345 /*trace_id*/);
+  //     } else if ((request_manager_status == PREFILLING and
+  //                 prefill_model == SSM) or
+  //                request_manager_status == SSM_SPEC) {
+  //       //   std::cout << "Branch 2" << std::endl;
+  //       runtime->begin_trace(ctx, 23456 /*trace_id*/);
+  //       FutureMap fm = im->inference(get_ssm_model(0), 0, bcf);
+  //       //   assert(fm.get_future_map_domain().get_volume() == 1);
+  //       last_irf = fm.get_future(0);
+  //       runtime->end_trace(ctx, 23456 /*trace_id*/);
+  //     } else {
+  //       assert(false && "Invalid request manager status");
+  //     }
+  //   }
 }
 
 void RequestManager::trigger_request_completion_future(
