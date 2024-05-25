@@ -65,6 +65,10 @@ public:
     return value_;
   }
 
+  T &value() noexcept {
+    return value_;
+  }
+
   template <typename F>
   strong_typedef fmap(F const &f) {
     static_assert(
@@ -226,6 +230,7 @@ struct numerical_typedef : strong_typedef<StrongTypedef, T> {
   }                                                                            \
   MAKE_TYPEDEF_PRINTABLE(::FlexFlow::TYPEDEF_NAME, TYPEDEF_SHORTNAME);         \
   namespace FlexFlow {                                                         \
+  DELEGATE_OSTREAM(TYPEDEF_NAME);                                              \
   static_assert(true, "");
 
 #endif
