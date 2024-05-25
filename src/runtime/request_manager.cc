@@ -1928,16 +1928,38 @@ bool RequestManager::add_tokens_to_spec_token_tree(
     int parent_pos = 0;
     for (auto const &parent_ptr : last_layer) {
       if (!parent_ptr->pruned) {
+        // TODO: parameterize MAX_SPECULATIVE_TREE_BRANCHES
+        float parent_log_prob = parent_ptr->log_accumulated_prob;
+        int child_start_idx =
+            result_offset +
+            parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+        std::vector<std::pair<float, int>> child_probs(
+            BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
         for (int child_pos = 0;
              child_pos < BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
              child_pos++) {
-          int result_idx =
-              result_offset +
-              parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES +
-              child_pos;
-          float log_prob = log(ssm_inference_result.probs[result_idx]);
-          float log_accumulated_prob =
-              log_prob + parent_ptr->log_accumulated_prob;
+          int result_idx = child_start_idx + child_pos;
+          child_probs[child_pos] = std::make_pair(
+              log(ssm_inference_result.probs[result_idx]), result_idx);
+        }
+        // Sort in descending order
+        std::sort(child_probs.begin(),
+                  child_probs.end(),
+                  std::greater<std::pair<float, int>>());
+
+        // for (int child_pos = 0;
+        //      child_pos < BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+        //      child_pos++) {
+        for (auto const &child_prob : child_probs) {
+
+          //   int result_idx =
+          //       result_offset +
+          //       parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES +
+          //       child_pos;
+
+          float log_prob = child_prob.first;
+          float log_accumulated_prob = log_prob + parent_log_prob;
+          int result_idx = child_prob.second;
 
           //   std::cout << "Probability at result index " << result_idx << ": "
           //             << ssm_inference_result.probs[result_idx] << "\t";
@@ -2058,8 +2080,9 @@ std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {
     int token_pos = 0;
     for (auto const &node : layer) {
       if (!node->pruned) {
-        os << "token pos: " << token_pos << "token id: " << node->id << "\t"
-           << "parent pos: " << node->parent_pos << "\t" << std::endl;
+        os << "token pos: " << token_pos << "\ttoken id: " << node->id
+           << "\tparent pos: " << node->parent_pos
+           << "\tlog prob: " << node->log_accumulated_prob << std::endl;
       }
       token_pos++;
     }
