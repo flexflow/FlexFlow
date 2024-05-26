@@ -2,11 +2,11 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_FMT_DECL_H
 
 #include "fmt/format.h"
-#include <unordered_set>
-#include <vector>
-#include <variant>
 #include "utils/check_fmtable.h"
+#include <unordered_set>
 #include <utility>
+#include <variant>
+#include <vector>
 
 #define DELEGATE_OSTREAM(...)                                                  \
   template <>                                                                  \
@@ -28,10 +28,10 @@ namespace fmt {
 
 template <typename T, typename Char>
 struct formatter<
-  ::std::unordered_set<T>, 
-  Char,
-  std::enable_if_t<!detail::has_format_as<std::unordered_set<T>>::value>
-> : formatter<::std::string, Char> {
+    ::std::unordered_set<T>,
+    Char,
+    std::enable_if_t<!detail::has_format_as<std::unordered_set<T>>::value>>
+    : formatter<::std::string, Char> {
   template <typename FormatContext>
   auto format(::std::unordered_set<T> const &m, FormatContext &ctx)
       -> decltype(ctx.out());
@@ -42,10 +42,10 @@ struct formatter<
 
 template <typename T, typename Char>
 struct formatter<
-  ::std::vector<T>,
-  Char,
-  std::enable_if_t<!detail::has_format_as<std::vector<T>>::value>
-> : formatter<::std::string> {
+    ::std::vector<T>,
+    Char,
+    std::enable_if_t<!detail::has_format_as<std::vector<T>>::value>>
+    : formatter<::std::string> {
   template <typename FormatContext>
   auto format(::std::vector<T> const &m, FormatContext &ctx)
       -> decltype(ctx.out());

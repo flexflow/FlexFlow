@@ -23,9 +23,7 @@
 
 #include "pcg/parallel_tensor_attrs.h"
 
-namespace FlexFlow {
-
-} // namespace FlexFlow
+namespace FlexFlow {} // namespace FlexFlow
 
 namespace FlexFlow {
 static_assert(is_well_behaved_value_type<ParallelTensorAttrs>::value, "");

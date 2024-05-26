@@ -2,7 +2,8 @@
 
 namespace FlexFlow {
 
-ParallelTensorShape get_output_shape(BatchNormAttrs const &, ParallelTensorShape const &) {
+ParallelTensorShape get_output_shape(BatchNormAttrs const &,
+                                     ParallelTensorShape const &) {
   NOT_IMPLEMENTED();
 }
 

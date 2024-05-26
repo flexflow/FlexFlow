@@ -4,16 +4,16 @@
 namespace FlexFlow {
 
 ComputationGraph make_empty_computation_graph() {
-  return ComputationGraph{
-    DataflowGraph<LayerAttrs, TensorAttrs>{}
-  };
+  return ComputationGraph{DataflowGraph<LayerAttrs, TensorAttrs>{}};
 }
 
 std::unordered_set<layer_guid_t> get_layers(ComputationGraph const &cg) {
-  return transform(get_nodes(cg.raw_graph), [&](Node const &n) { return layer_guid_t{n}; });
+  return transform(get_nodes(cg.raw_graph),
+                   [&](Node const &n) { return layer_guid_t{n}; });
 }
 
-TensorAttrs get_tensor_attrs(ComputationGraph const &cg, tensor_guid_t const &t) {
+TensorAttrs get_tensor_attrs(ComputationGraph const &cg,
+                             tensor_guid_t const &t) {
   return cg.raw_graph.at(t.raw_graph_output);
 }
 

@@ -9,7 +9,8 @@ namespace FlexFlow {
 
 CHECK_VALID_OP_ATTR(RepartitionAttrs);
 
-ParallelTensorShape get_output_shape(RepartitionAttrs const &, ParallelTensorShape const &input_shape);
+ParallelTensorShape get_output_shape(RepartitionAttrs const &,
+                                     ParallelTensorShape const &input_shape);
 
 } // namespace FlexFlow
 

@@ -5,26 +5,26 @@
 #include "utils/fmt.decl.h"
 #include "utils/test_types.h"
 #include "utils/type_traits_core.h"
-#include <variant>
 #include <iomanip>
-#include <vector>
 #include <unordered_set>
+#include <variant>
+#include <vector>
 
 namespace fmt {
 
 template <typename T, typename Char>
 template <typename FormatContext>
 auto formatter<
-  ::std::unordered_set<T>,
-  Char,
-  std::enable_if_t<!detail::has_format_as<std::unordered_set<T>>::value>
->::format(
-    ::std::unordered_set<T> const &m, FormatContext &ctx)
-    -> decltype(ctx.out()) {
+    ::std::unordered_set<T>,
+    Char,
+    std::enable_if_t<!detail::has_format_as<std::unordered_set<T>>::value>>::
+    format(::std::unordered_set<T> const &m, FormatContext &ctx)
+        -> decltype(ctx.out()) {
   /* CHECK_FMTABLE(T); */
 
   /* std::string result = ::FlexFlow::join_strings( */
-  /*     m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); }); */
+  /*     m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t);
+   * }); */
   std::string result = "";
   return formatter<std::string>::format(result, ctx);
 }
@@ -32,17 +32,18 @@ auto formatter<
 /* template <typename T> */
 /* std::string format_as(::std::unordered_set<T> const &m) { */
 /*   return::string result = ::FlexFlow::join_strings( */
-/*       m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); }); */
+/*       m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t);
+ * }); */
 /* } */
 
 template <typename T, typename Char>
 template <typename FormatContext>
 auto formatter<
-  ::std::vector<T>,
-  Char,
-  std::enable_if_t<!detail::has_format_as<std::vector<T>>::value>
->::format(::std::vector<T> const &m, FormatContext &ctx)
-    -> decltype(ctx.out()) {
+    ::std::vector<T>,
+    Char,
+    std::enable_if_t<!detail::has_format_as<std::vector<T>>::value>>::
+    format(::std::vector<T> const &m, FormatContext &ctx)
+        -> decltype(ctx.out()) {
   CHECK_FMTABLE(T);
 
   std::string result = ::FlexFlow::join_strings(
@@ -56,7 +57,8 @@ auto formatter<::std::variant<Ts...>>::format(::std::variant<Ts...> const &m,
                                               FormatContext &ctx)
     -> decltype(ctx.out()) {
 
-  std::string result = std::visit([](auto &&x) { return fmt::to_string(x); }, m);
+  std::string result =
+      std::visit([](auto &&x) { return fmt::to_string(x); }, m);
   return formatter<std::string>::format(result, ctx);
 }
 
@@ -71,12 +73,12 @@ auto formatter<::std::variant<Ts...>>::format(::std::variant<Ts...> const &m,
 /*   /1* CHECK_FMTABLE(T); *1/ */
 
 /*   /1* std::string result = ::FlexFlow::join_strings( *1/ */
-/*   /1*     m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); }); *1/ */
+/*   /1*     m.cbegin(), m.cend(), ", ", [](T const &t) { return
+ * fmt::to_string(t); }); *1/ */
 /*   NOT_IMPLEMENTED(); */
 /*   std::string result = ""; */
 /*   return formatter<std::string>::format(result, ctx); */
 /* } */
-
 
 } // namespace fmt
 

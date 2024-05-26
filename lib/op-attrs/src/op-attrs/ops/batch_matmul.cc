@@ -23,8 +23,9 @@ namespace FlexFlow {
 /*   return true; */
 /* } */
 
-
-bool is_valid(BatchMatmulAttrs const &, ParallelTensorShape const &, ParallelTensorShape const &) {
+bool is_valid(BatchMatmulAttrs const &,
+              ParallelTensorShape const &,
+              ParallelTensorShape const &) {
   NOT_IMPLEMENTED();
 }
 

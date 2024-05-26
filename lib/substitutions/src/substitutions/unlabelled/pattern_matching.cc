@@ -1,23 +1,23 @@
 #include "substitutions/unlabelled/pattern_matching.h"
-#include "substitutions/unlabelled/match_split.h"
-#include "substitutions/unlabelled/unlabelled_graph_pattern.h"
-#include "substitutions/unlabelled/pattern_edge.h"
-#include <memory>
 #include "substitutions/unlabelled/input_pattern_edge.h"
+#include "substitutions/unlabelled/match_split.h"
 #include "substitutions/unlabelled/output_pattern_edge.h"
+#include "substitutions/unlabelled/pattern_edge.h"
 #include "substitutions/unlabelled/pattern_split.h"
+#include "substitutions/unlabelled/unlabelled_graph_pattern.h"
+#include <memory>
 
 namespace FlexFlow {
 
-bool unlabelled_pattern_does_match(UnlabelledGraphPattern const &pattern,
-                     OpenMultiDiGraphView const &graph,
-                     MultiDiGraphPatternMatch const &match,
-                     MatchAdditionalCriterion const &additional_criterion) {
+bool unlabelled_pattern_does_match(
+    UnlabelledGraphPattern const &pattern,
+    OpenMultiDiGraphView const &graph,
+    MultiDiGraphPatternMatch const &match,
+    MatchAdditionalCriterion const &additional_criterion) {
   if (is_singleton_pattern(pattern)) {
     PatternNode pattern_node = get_only(get_nodes(pattern));
     Node matched_node = match.node_assignment.at_l(pattern_node);
-    if (!additional_criterion.node_criterion(pattern_node,
-                                             matched_node)) {
+    if (!additional_criterion.node_criterion(pattern_node, matched_node)) {
       return false;
     }
     for (PatternEdge const &e : get_edges(pattern)) {
@@ -57,18 +57,18 @@ bool unlabelled_pattern_does_match(UnlabelledGraphPattern const &pattern,
   }
 
   PatternSplit split = find_even_split(pattern);
-  std::pair<UnlabelledGraphPattern, UnlabelledGraphPattern> subpatterns = apply_split(pattern, split);
+  std::pair<UnlabelledGraphPattern, UnlabelledGraphPattern> subpatterns =
+      apply_split(pattern, split);
   auto submatches = apply_split(pattern, match, split);
 
   return unlabelled_pattern_does_match(subpatterns.first,
-                         graph,
-                         submatches.prefix_submatch,
-                         additional_criterion) &&
+                                       graph,
+                                       submatches.prefix_submatch,
+                                       additional_criterion) &&
          unlabelled_pattern_does_match(subpatterns.second,
-                         graph,
-                         submatches.postfix_submatch,
-                         additional_criterion);
+                                       graph,
+                                       submatches.postfix_submatch,
+                                       additional_criterion);
 }
-
 
 } // namespace FlexFlow

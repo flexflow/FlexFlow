@@ -4,10 +4,10 @@
 #include "fmt/core.h"
 #include "stack_vector.h"
 #include "utils/fmt.h"
+#include "utils/json.h"
 #include "utils/type_traits.h"
 #include <cstring>
 #include <string>
-#include "utils/json.h"
 
 namespace FlexFlow {
 
@@ -77,7 +77,6 @@ void from_json(json const &j, stack_string<MAXSIZE> &v) {
   j.get_to(as_string);
   v = stack_string<MAXSIZE>{as_string};
 }
-
 
 } // namespace FlexFlow
 

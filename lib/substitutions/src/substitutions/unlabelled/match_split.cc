@@ -1,16 +1,14 @@
 #include "substitutions/unlabelled/match_split.h"
-#include "substitutions/unlabelled/multidigraph_pattern_match.h"
-#include "substitutions/unlabelled/pattern_split.h"
-#include "substitutions/unlabelled/pattern_edge.h"
 #include "substitutions/unlabelled/edge_splits.h"
+#include "substitutions/unlabelled/multidigraph_pattern_match.h"
+#include "substitutions/unlabelled/pattern_edge.h"
+#include "substitutions/unlabelled/pattern_split.h"
 
 namespace FlexFlow {
 
 MatchSplit empty_match_split() {
-  return MatchSplit{
-    empty_multidigraph_pattern_match(),
-    empty_multidigraph_pattern_match()
-  };
+  return MatchSplit{empty_multidigraph_pattern_match(),
+                    empty_multidigraph_pattern_match()};
 }
 
 MatchSplit apply_split(UnlabelledGraphPattern const &pattern,
@@ -54,8 +52,10 @@ MatchSplit apply_split(UnlabelledGraphPattern const &pattern,
       OutputMultiDiEdge output_graph_edge = split_graph_edge.first;
       InputMultiDiEdge input_graph_edge = split_graph_edge.second;
 
-      handle_edge(pattern_edge_from_input_edge(input_edge), OpenMultiDiEdge{input_graph_edge});
-      handle_edge(pattern_edge_from_output_edge(output_edge), OpenMultiDiEdge{output_graph_edge});
+      handle_edge(pattern_edge_from_input_edge(input_edge),
+                  OpenMultiDiEdge{input_graph_edge});
+      handle_edge(pattern_edge_from_output_edge(output_edge),
+                  OpenMultiDiEdge{output_graph_edge});
     }
   };
 
@@ -65,6 +65,5 @@ MatchSplit apply_split(UnlabelledGraphPattern const &pattern,
 
   return result;
 }
-
 
 } // namespace FlexFlow

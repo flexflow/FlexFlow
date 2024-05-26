@@ -3,9 +3,9 @@
 
 #include "core.h"
 #include "op-attrs/ops/attention_attrs.dtg.h"
-#include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/ops/attention_inputs.dtg.h"
 #include "op-attrs/ops/parallel_attention_inputs.dtg.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
 
 namespace FlexFlow {
 

@@ -38,7 +38,6 @@ std::string join_strings(Container const &c, std::string const &delimiter) {
   return join_strings(c.cbegin(), c.cend(), delimiter);
 }
 
-
 } // namespace FlexFlow
 
 #endif

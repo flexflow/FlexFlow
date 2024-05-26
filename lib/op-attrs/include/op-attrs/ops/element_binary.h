@@ -7,8 +7,12 @@
 
 namespace FlexFlow {
 
-ParallelTensorShape get_output_shape(ElementBinaryAttrs const &, ParallelTensorShape const &, ParallelTensorShape const &);
-TensorShape get_output_shape(ElementBinaryAttrs const &, TensorShape const &, TensorShape const &);
+ParallelTensorShape get_output_shape(ElementBinaryAttrs const &,
+                                     ParallelTensorShape const &,
+                                     ParallelTensorShape const &);
+TensorShape get_output_shape(ElementBinaryAttrs const &,
+                             TensorShape const &,
+                             TensorShape const &);
 
 CHECK_VALID_OP_ATTR(ElementBinaryAttrs);
 

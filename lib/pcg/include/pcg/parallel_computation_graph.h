@@ -3,6 +3,6 @@
 
 #include "pcg/parallel_computation_graph_t.h"
 
-namespace FlexFlow { } 
+namespace FlexFlow {}
 
 #endif

@@ -3,8 +3,11 @@
 
 namespace FlexFlow {
 
-bool operator_satisfies_constraint(PCGOperatorAttrs const &attrs, OperatorAttributeConstraint const &constraint) {
-  std::optional<OperatorAttributeValue> expr_val = evaluate_attribute_expr(attrs, constraint.attribute_expr);
+bool operator_satisfies_constraint(
+    PCGOperatorAttrs const &attrs,
+    OperatorAttributeConstraint const &constraint) {
+  std::optional<OperatorAttributeValue> expr_val =
+      evaluate_attribute_expr(attrs, constraint.attribute_expr);
 
   if (!expr_val.has_value()) {
     return false;
@@ -14,7 +17,9 @@ bool operator_satisfies_constraint(PCGOperatorAttrs const &attrs, OperatorAttrib
     case ConstraintType::EQUAL:
       return expr_val.value() == constraint.attribute_value;
     default:
-      throw mk_runtime_error(fmt::format("Unknown constraint type {}", static_cast<int>(constraint.constraint_type)));
+      throw mk_runtime_error(
+          fmt::format("Unknown constraint type {}",
+                      static_cast<int>(constraint.constraint_type)));
   }
 }
 

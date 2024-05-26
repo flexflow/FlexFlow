@@ -2,7 +2,8 @@
 
 namespace FlexFlow {
 
-ParallelTensorShape get_output_shape(Pool2DAttrs const &, ParallelTensorShape const &) {
+ParallelTensorShape get_output_shape(Pool2DAttrs const &,
+                                     ParallelTensorShape const &) {
   NOT_IMPLEMENTED();
 }
 
@@ -49,8 +50,8 @@ static ParallelDimMappingSolution
   return solve_parallel_dim_mappings(construct_mappings(input), {input}, 0, 1);
 }
 
-ParallelTensorShape Pool2DAttrs::calculate_output_shape(ParallelTensorShape const &input) const {
-  return solve_mappings(input).output_shapes.at(0);
+ParallelTensorShape Pool2DAttrs::calculate_output_shape(ParallelTensorShape
+const &input) const { return solve_mappings(input).output_shapes.at(0);
 }
 
 } // namespace FlexFlow

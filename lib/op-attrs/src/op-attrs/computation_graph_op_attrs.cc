@@ -4,7 +4,8 @@
 namespace FlexFlow {
 
 OperatorType get_op_type(ComputationGraphOpAttrs const &attrs) {
-  return attrs.visit<OperatorType>([](auto const &x) { return get_op_type(x); });
+  return attrs.visit<OperatorType>(
+      [](auto const &x) { return get_op_type(x); });
 }
 
 } // namespace FlexFlow

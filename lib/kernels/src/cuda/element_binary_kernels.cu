@@ -394,7 +394,8 @@ void backward_kernel(cudaStream_t stream,
                                  rhs_grad_ptr));
       }
     }
-  } else if (op_type == OperatorType::EW_MIN || op_type == OperatorType::EW_MAX) {
+  } else if (op_type == OperatorType::EW_MIN ||
+             op_type == OperatorType::EW_MAX) {
     float alpha = 1.0f, beta = 1.0f;
     cudnnDataType_t dataType;
     int n;

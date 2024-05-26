@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_MACHINE_VIEW_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_MACHINE_VIEW_H
 
-#include "pcg/machine_view.dtg.h"
+#include "pcg/cpu_id_t.dtg.h"
 #include "pcg/device_id_t.dtg.h"
 #include "pcg/device_type.dtg.h"
-#include "pcg/num_points_t.dtg.h"
-#include "pcg/cpu_id_t.dtg.h"
 #include "pcg/gpu_id_t.dtg.h"
+#include "pcg/machine_view.dtg.h"
+#include "pcg/num_points_t.dtg.h"
 #include "pcg/side_size_t.dtg.h"
 #include <cstddef>
 #include <vector>

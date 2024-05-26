@@ -1,6 +1,6 @@
 #include "pcg/machine_view.h"
-#include "pcg/strided_rectangle_side.h"
 #include "pcg/strided_rectangle.dtg.h"
+#include "pcg/strided_rectangle_side.h"
 
 namespace FlexFlow {
 
@@ -12,7 +12,7 @@ std::size_t num_dims(MachineView const &) {
   NOT_IMPLEMENTED();
 }
 
-std::size_t num_devices(MachineView const &) { 
+std::size_t num_devices(MachineView const &) {
   NOT_IMPLEMENTED();
 }
 
@@ -23,7 +23,8 @@ DeviceType get_device_type(MachineView const &) {
 static StridedRectangle make_1d_rect(int start, int stop, int stride) {
   assert(stop > start);
   assert(stride > 0);
-  StridedRectangleSide side = strided_side_from_size_and_stride(side_size_t{stop - start}, stride);
+  StridedRectangleSide side =
+      strided_side_from_size_and_stride(side_size_t{stop - start}, stride);
   StridedRectangle rect = {{side}};
   return rect;
 }
@@ -58,6 +59,5 @@ MachineView make_1d_machine_view(device_id_t start, size_t interval_size) {
 /*   size_t offset = this->rect.at(coord); */
 /*   return this->start + offset; */
 /* } */
-
 
 } // namespace FlexFlow

@@ -1,26 +1,42 @@
 #include "substitutions/unlabelled/find_pattern_matches.h"
-#include "substitutions/unlabelled/unlabelled_graph_pattern.h"
-#include "utils/containers.h"
-#include "substitutions/unlabelled/upward_open_pattern_edge.h"
 #include "substitutions/unlabelled/downward_open_pattern_edge.h"
 #include "substitutions/unlabelled/multidigraph_pattern_match.h"
+#include "substitutions/unlabelled/unlabelled_graph_pattern.h"
+#include "substitutions/unlabelled/upward_open_pattern_edge.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 
-static std::vector<UpwardOpenPatternEdge> sorted_by_dst_idx(std::unordered_set<UpwardOpenPatternEdge> const &in) {
-  return sorted_by(in, compare_by<UpwardOpenPatternEdge>([](UpwardOpenPatternEdge const &e) { return get_dst_idx(e); }));
+static std::vector<UpwardOpenPatternEdge>
+    sorted_by_dst_idx(std::unordered_set<UpwardOpenPatternEdge> const &in) {
+  return sorted_by(
+      in, compare_by<UpwardOpenPatternEdge>([](UpwardOpenPatternEdge const &e) {
+        return get_dst_idx(e);
+      }));
 }
 
-static std::vector<DownwardOpenPatternEdge> sorted_by_src_idx(std::unordered_set<DownwardOpenPatternEdge> const &in) {
-  return sorted_by(in, compare_by<DownwardOpenPatternEdge>([](DownwardOpenPatternEdge const &e) { return get_src_idx(e); }));
+static std::vector<DownwardOpenPatternEdge>
+    sorted_by_src_idx(std::unordered_set<DownwardOpenPatternEdge> const &in) {
+  return sorted_by(
+      in,
+      compare_by<DownwardOpenPatternEdge>(
+          [](DownwardOpenPatternEdge const &e) { return get_src_idx(e); }));
 }
 
-static std::vector<UpwardOpenMultiDiEdge> sorted_by_dst_idx(std::unordered_set<UpwardOpenMultiDiEdge> const &in) {
-  return sorted_by(in, compare_by<UpwardOpenPatternEdge>([](UpwardOpenPatternEdge const &e) { return get_dst_idx(e); }));
+static std::vector<UpwardOpenMultiDiEdge>
+    sorted_by_dst_idx(std::unordered_set<UpwardOpenMultiDiEdge> const &in) {
+  return sorted_by(
+      in, compare_by<UpwardOpenPatternEdge>([](UpwardOpenPatternEdge const &e) {
+        return get_dst_idx(e);
+      }));
 }
 
-static std::vector<DownwardOpenMultiDiEdge> sorted_by_src_idx(std::unordered_set<DownwardOpenMultiDiEdge> const &in) {
-  return sorted_by(in, compare_by<DownwardOpenMultiDiEdge>([](DownwardOpenMultiDiEdge const &e) { return get_src_idx(e); }));
+static std::vector<DownwardOpenMultiDiEdge>
+    sorted_by_src_idx(std::unordered_set<DownwardOpenMultiDiEdge> const &in) {
+  return sorted_by(
+      in,
+      compare_by<DownwardOpenMultiDiEdge>(
+          [](DownwardOpenMultiDiEdge const &e) { return get_src_idx(e); }));
 }
 
 static std::optional<MultiDiGraphPatternMatch>
@@ -52,11 +68,15 @@ static std::optional<MultiDiGraphPatternMatch>
     return std::nullopt;
   }
 
-  std::vector<UpwardOpenMultiDiEdge> incoming_ordered = sorted_by_dst_idx(incoming);
-  std::vector<DownwardOpenMultiDiEdge> outgoing_ordered = sorted_by_src_idx(outgoing);
+  std::vector<UpwardOpenMultiDiEdge> incoming_ordered =
+      sorted_by_dst_idx(incoming);
+  std::vector<DownwardOpenMultiDiEdge> outgoing_ordered =
+      sorted_by_src_idx(outgoing);
 
-  std::vector<UpwardOpenPatternEdge> pattern_incoming_ordered = sorted_by_dst_idx(pattern_incoming);
-  std::vector<DownwardOpenPatternEdge> pattern_outgoing_ordered = sorted_by_src_idx(pattern_outgoing);
+  std::vector<UpwardOpenPatternEdge> pattern_incoming_ordered =
+      sorted_by_dst_idx(pattern_incoming);
+  std::vector<DownwardOpenPatternEdge> pattern_outgoing_ordered =
+      sorted_by_src_idx(pattern_outgoing);
 
   if (pattern_incoming.size() > 0) {
     std::unordered_map<NodePort, NodePort> node_port_mapping;
@@ -73,7 +93,7 @@ static std::optional<MultiDiGraphPatternMatch>
         }
       }
       match.edge_assignment.equate(widen<OpenMultiDiEdge>(pattern_edge),
-                                              widen<OpenMultiDiEdge>(graph_edge));
+                                   widen<OpenMultiDiEdge>(graph_edge));
     }
   }
 
@@ -81,7 +101,8 @@ static std::optional<MultiDiGraphPatternMatch>
     std::unordered_map<NodePort, NodePort> node_port_mapping;
     for (int i = 0; i < outgoing_ordered.size(); ++i) {
       DownwardOpenMultiDiEdge graph_edge = outgoing_ordered[i],
-      DownwardOpenPatternEdge pattern_edge = pattern_outgoing_ordered[i];
+                              DownwardOpenPatternEdge pattern_edge =
+                                  pattern_outgoing_ordered[i];
 
       NodePort graph_port = get_src_idx(graph_edge),
                pattern_port = get_src_idx(pattern_edge);
@@ -99,7 +120,6 @@ static std::optional<MultiDiGraphPatternMatch>
 
   return match;
 }
-
 
 std::vector<MultiDiGraphPatternMatch>
     find_pattern_matches(UnlabelledGraphPattern const &pattern,

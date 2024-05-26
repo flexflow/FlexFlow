@@ -5,19 +5,20 @@
 
 namespace FlexFlow {
 
-TensorAttributeValue eval_list_access(ParallelTensorAttrs const &attrs, TensorAttributeListIndexAccess const &acc) {
+TensorAttributeValue
+    eval_list_access(ParallelTensorAttrs const &attrs,
+                     TensorAttributeListIndexAccess const &acc) {
   TensorAttributeValue from_attr = get_attribute(attrs, acc.attribute_key);
 
-  return from_attr.visit<TensorAttributeValue>(
-    overload {
-      [&](std::vector<int> const &v) -> TensorAttributeValue { 
+  return from_attr.visit<TensorAttributeValue>(overload{
+      [&](std::vector<int> const &v) -> TensorAttributeValue {
         return TensorAttributeValue{
-          static_cast<size_t>(at_idx(v, acc.index).value())
-        }; 
+            static_cast<size_t>(at_idx(v, acc.index).value())};
       },
-      [](auto &&) -> TensorAttributeValue { throw mk_runtime_error("Invalid operand"); },
-    }
-  );
+      [](auto &&) -> TensorAttributeValue {
+        throw mk_runtime_error("Invalid operand");
+      },
+  });
 }
 
 } // namespace FlexFlow

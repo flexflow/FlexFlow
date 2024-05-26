@@ -149,7 +149,7 @@ struct VariantToJsonFunctor {
 
 template <typename... Args>
 void variant_to_json(json &j, std::variant<Args...> const &v) {
-  json jval;  
+  json jval;
   visit(::FlexFlow::VariantToJsonFunctor{jval}, v);
   j["value"] = jval;
   j["index"] = v.index();
@@ -167,7 +167,7 @@ std::optional<Variant> variant_from_json_impl(json const &j) {
 
 template <typename Variant, size_t... Is>
 std::optional<Variant> variant_from_json_impl(json const &j,
-                                         std::index_sequence<Is...>) {
+                                              std::index_sequence<Is...>) {
   // If there were no errors when parsing, all but one element of the array
   // will be nullopt. This is because each call to variant_from_json_impl will
   // have a unique index and exactly one of them will match the index in the

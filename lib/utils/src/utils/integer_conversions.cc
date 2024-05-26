@@ -4,7 +4,7 @@
 namespace FlexFlow {
 
 size_t size_t_from_int(int x) {
-  assert (x >= 0);
+  assert(x >= 0);
   return static_cast<size_t>(x);
 }
 

@@ -12,13 +12,12 @@ Conv2DInputShape parse_input_shape(TensorShape const &input) {
   size_t in_width = dim_at_idx(input, ff_dim_t{3});
 
   return Conv2DInputShape{
-    num_samples,
-    in_channels,
-    in_height,
-    in_width,
-    input.data_type,
+      num_samples,
+      in_channels,
+      in_height,
+      in_width,
+      input.data_type,
   };
 }
-
 
 } // namespace FlexFlow

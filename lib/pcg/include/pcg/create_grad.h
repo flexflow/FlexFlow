@@ -3,8 +3,6 @@
 
 #include "pcg/create_grad_t.h"
 
-namespace FlexFlow {
-
-}
+namespace FlexFlow {}
 
 #endif

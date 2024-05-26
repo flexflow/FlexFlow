@@ -1,7 +1,7 @@
 #include "op-attrs/parallel_tensor_shape.h"
+#include "op-attrs/tensor_dims.h"
 #include "utils/containers.h"
 #include "utils/hash-utils.h"
-#include "op-attrs/tensor_dims.h"
 
 namespace FlexFlow {
 
@@ -9,7 +9,8 @@ int num_shard_dims(ParallelTensorShape const &s) {
   return num_shard_dims(s.dims);
 }
 
-std::unordered_set<ReplicaParallelDim> replica_dims(ParallelTensorShape const &s) {
+std::unordered_set<ReplicaParallelDim>
+    replica_dims(ParallelTensorShape const &s) {
   return replica_dims(s.dims);
 }
 
@@ -41,8 +42,8 @@ TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &) {
 
 TensorShape get_reduced_shape(ParallelTensorShape const &s) {
   return TensorShape{
-    get_reduced_dims(s.dims),
-    s.data_type,
+      get_reduced_dims(s.dims),
+      s.data_type,
   };
 }
 

@@ -4,22 +4,26 @@
 namespace FlexFlow {
 
 /* struct OperatorGraphView::Impl { */
-/*   MultiDiGraphView raw_graph; */ 
+/*   MultiDiGraphView raw_graph; */
 /* }; */
 
 /* struct OperatorGraph::Impl { */
 /*   MultiDiGraph raw_graph; */
 /* }; */
 
-/* std::unordered_set<OperatorGraphOutput> get_outputs(OperatorGraphView const &g) { */
-/*   return transform(get_outputs(g.impl->raw_graph), [](MultiDiOutput const &o) {}); */
+/* std::unordered_set<OperatorGraphOutput> get_outputs(OperatorGraphView const
+ * &g) { */
+/*   return transform(get_outputs(g.impl->raw_graph), [](MultiDiOutput const &o)
+ * {}); */
 /* } */
 
-/* std::vector<OperatorGraphOutput> get_outputs(OperatorGraphView const &, Node const &) { */
+/* std::vector<OperatorGraphOutput> get_outputs(OperatorGraphView const &, Node
+ * const &) { */
 /*   NOT_IMPLEMENTED(); */
 /* } */
 
-/* std::unordered_set<OperatorGraphInput> get_uses(OperatorGraphView const &, OperatorGraphOutput const &) { */
+/* std::unordered_set<OperatorGraphInput> get_uses(OperatorGraphView const &,
+ * OperatorGraphOutput const &) { */
 /*   NOT_IMPLEMENTED(); */
 /* } */
 

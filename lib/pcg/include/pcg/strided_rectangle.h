@@ -8,7 +8,8 @@
 namespace FlexFlow {
 
 size_t get_num_dims(StridedRectangle const &);
-StridedRectangleSide get_side_at_idx(StridedRectangle const &, ff_dim_t const &);
+StridedRectangleSide get_side_at_idx(StridedRectangle const &,
+                                     ff_dim_t const &);
 
 } // namespace FlexFlow
 

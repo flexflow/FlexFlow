@@ -6,7 +6,9 @@
 
 namespace FlexFlow {
 
-bool is_valid(BatchMatmulAttrs const &, ParallelTensorShape const &, ParallelTensorShape const &);
+bool is_valid(BatchMatmulAttrs const &,
+              ParallelTensorShape const &,
+              ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

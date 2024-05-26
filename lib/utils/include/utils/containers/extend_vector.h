@@ -11,7 +11,6 @@ void extend_vector(std::vector<T> &lhs, C const &rhs) {
   lhs.insert(lhs.end(), rhs.begin(), rhs.end());
 }
 
-
 } // namespace FlexFlow
 
 #endif

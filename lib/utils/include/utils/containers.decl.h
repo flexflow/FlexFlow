@@ -199,8 +199,7 @@ template <typename C, typename F>
 bool all_of(C const &c, F const &f);
 
 template <typename Container, typename Function>
-std::optional<bool> optional_all_of(Container const &,
-                                    Function const &);
+std::optional<bool> optional_all_of(Container const &, Function const &);
 
 template <typename C, typename F>
 int count(C const &c, F const &f);

@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_PCG_INCLUDE_PCG_STRIDED_RECTANGLE_SIDE_H
 #define _FLEXFLOW_LIB_PCG_INCLUDE_PCG_STRIDED_RECTANGLE_SIDE_H
 
-#include "pcg/strided_rectangle_side.dtg.h"
 #include "pcg/side_size_t.dtg.h"
+#include "pcg/strided_rectangle_side.dtg.h"
 
 namespace FlexFlow {
 

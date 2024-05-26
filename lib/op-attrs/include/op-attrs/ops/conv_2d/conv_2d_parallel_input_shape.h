@@ -6,7 +6,8 @@
 
 namespace FlexFlow {
 
-Conv2DParallelInputShape parse_parallel_input_shape(ParallelTensorShape const &input);
+Conv2DParallelInputShape
+    parse_parallel_input_shape(ParallelTensorShape const &input);
 
 } // namespace FlexFlow
 

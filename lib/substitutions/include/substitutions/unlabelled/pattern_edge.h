@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_PATTERN_EDGE_H
 #define _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_PATTERN_EDGE_H
 
-#include "substitutions/unlabelled/pattern_node.dtg.h"
-#include "substitutions/unlabelled/pattern_edge.dtg.h"
+#include "substitutions/unlabelled/closed_pattern_edge.dtg.h"
 #include "substitutions/unlabelled/input_pattern_edge.dtg.h"
 #include "substitutions/unlabelled/output_pattern_edge.dtg.h"
-#include "substitutions/unlabelled/closed_pattern_edge.dtg.h"
+#include "substitutions/unlabelled/pattern_edge.dtg.h"
+#include "substitutions/unlabelled/pattern_node.dtg.h"
 
 namespace FlexFlow {
 

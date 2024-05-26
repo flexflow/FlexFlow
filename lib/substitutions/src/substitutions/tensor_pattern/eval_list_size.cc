@@ -4,14 +4,17 @@
 
 namespace FlexFlow {
 
-TensorAttributeValue eval_list_size(ParallelTensorAttrs const &attrs, TensorAttributeListSize const &acc) {
+TensorAttributeValue eval_list_size(ParallelTensorAttrs const &attrs,
+                                    TensorAttributeListSize const &acc) {
   TensorAttributeValue from_attr = get_attribute(attrs, acc.attribute_key);
 
-  return from_attr.visit<TensorAttributeValue>(overload {
-    [](std::vector<int> const &v) -> TensorAttributeValue { 
-      return TensorAttributeValue{v.size()}; 
-    },
-    [](auto &&) -> TensorAttributeValue { throw mk_runtime_error("Invalid operand"); },
+  return from_attr.visit<TensorAttributeValue>(overload{
+      [](std::vector<int> const &v) -> TensorAttributeValue {
+        return TensorAttributeValue{v.size()};
+      },
+      [](auto &&) -> TensorAttributeValue {
+        throw mk_runtime_error("Invalid operand");
+      },
   });
 }
 

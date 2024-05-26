@@ -6,7 +6,8 @@
 namespace FlexFlow {
 
 template <typename T>
-std::vector<T> concat_vectors(std::vector<T> const &prefix, std::vector<T> const &postfix) {
+std::vector<T> concat_vectors(std::vector<T> const &prefix,
+                              std::vector<T> const &postfix) {
   std::vector<T> result = prefix;
   extend_vector(result, postfix);
   return result;

@@ -10,7 +10,8 @@ namespace FlexFlow {
 /*   } */
 
 /*   std::unordered_set<AttributeExpr<OperatorAttributeKey>> */
-/*       derive_valid_operator_attribute_expr(OperatorAttributeKey const &key) { */
+/*       derive_valid_operator_attribute_expr(OperatorAttributeKey const &key) {
+ */
 /*     return {key}; */
 /*   } */
 
@@ -30,8 +31,10 @@ namespace FlexFlow {
 /* std::unordered_set<AttributeExpr<OperatorAttributeKey>> */
 /*     get_valid_operator_attribute_exprs(OperatorPattern const &pattern) { */
 /*   return set_union(transform( */
-/*       pattern.attribute_constraints, [](OperatorAttributeConstraint const &t) { */
-/*         return visit(DeriveValidOperatorAttributeExpr{}, t.attribute_expr); */
+/*       pattern.attribute_constraints, [](OperatorAttributeConstraint const &t)
+ * { */
+/*         return visit(DeriveValidOperatorAttributeExpr{}, t.attribute_expr);
+ */
 /*       })); */
 /* } */
 
@@ -50,7 +53,8 @@ namespace FlexFlow {
 /*   } */
 
 /*   bool is_valid(OperatorAttrAccess const &t) const { */
-/*     return is_valid_operator_attribute_expr(graph_pattern.value().at(t.node), */
+/*     return is_valid_operator_attribute_expr(graph_pattern.value().at(t.node),
+ */
 /*                                             t.attr_expr); */
 /*   } */
 
@@ -88,7 +92,8 @@ namespace FlexFlow {
 /*   OperatorAttributeValue evaluate(OperatorAttrAccess const &t) { */
 /*     Node node_in_pattern = t.node; */
 /*     Node node_in_pcg = match.node_assignment.at_l(node_in_pattern); */
-/*     return evaluate_attribute_expr(graph.at(node_in_pcg), t.attr_expr).value(); */
+/*     return evaluate_attribute_expr(graph.at(node_in_pcg),
+ * t.attr_expr).value(); */
 /*   } */
 
 /*   OperatorAttributeValue evaluate(AttrConstant const &t) { */
@@ -106,7 +111,8 @@ namespace FlexFlow {
 /* Operator get_operator_attrs(SubParallelComputationGraph const &graph, */
 /*                             MultiDiGraphPatternMatch const &match, */
 /*                             OperatorAttrAssignment const &assignment) { */
-/*   std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> assignments; */
+/*   std::unordered_map<OperatorAttributeKey, OperatorAttributeValue>
+ * assignments; */
 /*   for (auto const &[key, expr] : assignment.assignments) { */
 /*     OperatorAttributeValue value = */
 /*         evaluate_graph_attribute_expr(graph, match, expr); */
@@ -116,7 +122,8 @@ namespace FlexFlow {
 /*   assert(std::holds_alternative<OperatorType>( */
 /*       assignments.at(OperatorAttributeKey::OP_TYPE))); */
 /*   OperatorType op_type = */
-/*       std::get<OperatorType>(assignments.at(OperatorAttributeKey::OP_TYPE)); */
+/*       std::get<OperatorType>(assignments.at(OperatorAttributeKey::OP_TYPE));
+ */
 /*   switch (op_type) { */
 /*     case OperatorType::BATCHMATMUL: */
 /*       return Operator{ */
@@ -131,33 +138,45 @@ namespace FlexFlow {
 /*                       std::nullopt}; */
 /*     case OperatorType::CAST: */
 /*       return Operator{CastAttrs{std::get<DataType>( */
-/*                           assignments.at(OperatorAttributeKey::DATA_TYPE))}, */
+/*                           assignments.at(OperatorAttributeKey::DATA_TYPE))},
+ */
 /*                       std::nullopt}; */
 /*     case OperatorType::CONCAT: */
 /*       return Operator{ */
 /*           ConcatAttrs{ */
-/*               std::get<ff_dim_t>(assignments.at(OperatorAttributeKey::AXIS)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::NUM_INPUTS))}, */
+/*               std::get<ff_dim_t>(assignments.at(OperatorAttributeKey::AXIS)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::NUM_INPUTS))},
+ */
 /*           std::nullopt}; */
 /*     case OperatorType::CONV2D: */
 /*       return Operator{ */
 /*           Conv2DAttrs{ */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_H)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_W)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_H)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_W)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::PADDING_H)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::PADDING_W)), */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_H)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_W)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_H)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_W)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::PADDING_H)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::PADDING_W)),
+ */
 /*               std::get<int>(assignments.at(OperatorAttributeKey::GROUPS)), */
 /*               std::get<Activation>( */
 /*                   assignments.at(OperatorAttributeKey::ACTIVATION)), */
-/*               std::get<bool>(assignments.at(OperatorAttributeKey::USE_BIAS))}, */
+/*               std::get<bool>(assignments.at(OperatorAttributeKey::USE_BIAS))},
+ */
 /*           std::nullopt}; */
 /*     case OperatorType::DROPOUT: */
 /*       return Operator{DropoutAttrs{std::get<float>(assignments.at( */
 /*                                        OperatorAttributeKey::RATE)), */
-/*                                    std::get<unsigned long long>(assignments.at( */
+/*                                    std::get<unsigned long
+ * long>(assignments.at( */
 /*                                        OperatorAttributeKey::SEED))}, */
 /*                       std::nullopt}; */
 /*     case OperatorType::EW_ADD: */
@@ -174,9 +193,11 @@ namespace FlexFlow {
 /*                              std::get<DataType>(assignments.at( */
 /*                                  OperatorAttributeKey::DATA_TYPE)), */
 /*                              std::get<bool>(assignments.at( */
-/*                                  OperatorAttributeKey::SHOULD_BROADCAST_LHS)), */
+/*                                  OperatorAttributeKey::SHOULD_BROADCAST_LHS)),
+ */
 /*                              std::get<bool>(assignments.at( */
-/*                                  OperatorAttributeKey::SHOULD_BROADCAST_RHS))}, */
+/*                                  OperatorAttributeKey::SHOULD_BROADCAST_RHS))},
+ */
 /*           std::nullopt}; */
 /*     case OperatorType::SCALAR_ADD: */
 /*     case OperatorType::SCALAR_FLOOR_DIV: */
@@ -186,7 +207,8 @@ namespace FlexFlow {
 /*       return Operator{ */
 /*           ElementScalarUnaryAttrs{ */
 /*               op_type, */
-/*               std::get<float>(assignments.at(OperatorAttributeKey::SCALAR))}, */
+/*               std::get<float>(assignments.at(OperatorAttributeKey::SCALAR))},
+ */
 /*           std::nullopt}; */
 /*     case OperatorType::EXP: */
 /*     case OperatorType::IDENTITY: */
@@ -199,9 +221,12 @@ namespace FlexFlow {
 /*     case OperatorType::EMBEDDING: */
 /*       return Operator{ */
 /*           EmbeddingAttrs{ */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::NUM_ENTRIES)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)), */
-/*               std::get<AggregateOp>(assignments.at(OperatorAttributeKey::AGGR)), */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::NUM_ENTRIES)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)),
+ */
+/*               std::get<AggregateOp>(assignments.at(OperatorAttributeKey::AGGR)),
+ */
 /*               std::get<DataType>( */
 /*                   assignments.at(OperatorAttributeKey::OP_TYPE))}, */
 /*           std::nullopt}; */
@@ -219,14 +244,18 @@ namespace FlexFlow {
 /*               std::get<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>( */
 /*                   assignments.at(OperatorAttributeKey::AXES)), */
 /*               std::get<bool>( */
-/*                   assignments.at(OperatorAttributeKey::ELEMENTWISE_AFFINE)), */
-/*               std::get<float>(assignments.at(OperatorAttributeKey::EPSILON))}, */
+/*                   assignments.at(OperatorAttributeKey::ELEMENTWISE_AFFINE)),
+ */
+/*               std::get<float>(assignments.at(OperatorAttributeKey::EPSILON))},
+ */
 /*           std::nullopt}; */
 /*     case OperatorType::LINEAR: */
 /*       return Operator{ */
 /*           LinearAttrs{ */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)), */
-/*               std::get<bool>(assignments.at(OperatorAttributeKey::USE_BIAS)), */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::OUT_CHANNELS)),
+ */
+/*               std::get<bool>(assignments.at(OperatorAttributeKey::USE_BIAS)),
+ */
 /*               std::get<DataType>( */
 /*                   assignments.at(OperatorAttributeKey::DATA_TYPE)), */
 /*               std::get<Activation>( */
@@ -237,13 +266,18 @@ namespace FlexFlow {
 /*     case OperatorType::MULTIHEAD_ATTENTION: */
 /*       return Operator{ */
 /*           MultiHeadAttentionAttrs{ */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::EMBED_DIM)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::NUM_HEADS)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::NUM_HEADS)), */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::EMBED_DIM)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::NUM_HEADS)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::NUM_HEADS)),
+ */
 /*               std::get<int>(assignments.at(OperatorAttributeKey::VDIM)), */
-/*               std::get<float>(assignments.at(OperatorAttributeKey::DROPOUT)), */
+/*               std::get<float>(assignments.at(OperatorAttributeKey::DROPOUT)),
+ */
 /*               std::get<bool>(assignments.at(OperatorAttributeKey::BIAS)), */
-/*               std::get<bool>(assignments.at(OperatorAttributeKey::ADD_BIAS_KV)), */
+/*               std::get<bool>(assignments.at(OperatorAttributeKey::ADD_BIAS_KV)),
+ */
 /*               std::get<bool>( */
 /*                   assignments.at(OperatorAttributeKey::ADD_ZERO_ATTN))}, */
 /*           std::nullopt}; */
@@ -252,13 +286,20 @@ namespace FlexFlow {
 /*     case OperatorType::POOL2D: */
 /*       return Operator{ */
 /*           Pool2DAttrs{ */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_H)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_W)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_H)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_W)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::PADDING_H)), */
-/*               std::get<int>(assignments.at(OperatorAttributeKey::PADDING_W)), */
-/*               std::get<PoolOp>(assignments.at(OperatorAttributeKey::POOL_TYPE)), */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_H)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::KERNEL_W)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_H)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::STRIDE_W)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::PADDING_H)),
+ */
+/*               std::get<int>(assignments.at(OperatorAttributeKey::PADDING_W)),
+ */
+/*               std::get<PoolOp>(assignments.at(OperatorAttributeKey::POOL_TYPE)),
+ */
 /*               std::get<Activation>( */
 /*                   assignments.at(OperatorAttributeKey::ACTIVATION))}, */
 /*           std::nullopt}; */
@@ -274,7 +315,8 @@ namespace FlexFlow {
 /*               std::get<stack_vector<ff_dim_t, MAX_TENSOR_DIM>>( */
 /*                   assignments.at(OperatorAttributeKey::AXES)), */
 /*               op_type, */
-/*               std::get<bool>(assignments.at(OperatorAttributeKey::KEEP_DIMS))}, */
+/*               std::get<bool>(assignments.at(OperatorAttributeKey::KEEP_DIMS))},
+ */
 /*           std::nullopt}; */
 /*     case OperatorType::REVERSE: */
 /*       return Operator{ReverseAttrs{std::get<ff_dim_t>( */
@@ -289,7 +331,8 @@ namespace FlexFlow {
 /*           SplitAttrs{ */
 /*               std::get<stack_vector<int, MAX_NUM_OUTPUTS>>( */
 /*                   assignments.at(OperatorAttributeKey::SPLITS)), */
-/*               std::get<ff_dim_t>(assignments.at(OperatorAttributeKey::AXIS))}, */
+/*               std::get<ff_dim_t>(assignments.at(OperatorAttributeKey::AXIS))},
+ */
 /*           std::nullopt}; */
 /*     case OperatorType::SOFTMAX: */
 /*       return Operator{SoftmaxAttrs{std::get<ff_dim_t>( */
@@ -299,7 +342,8 @@ namespace FlexFlow {
 /*       return Operator{ */
 /*           TopKAttrs{ */
 /*               std::get<int>(assignments.at(OperatorAttributeKey::K)), */
-/*               std::get<bool>(assignments.at(OperatorAttributeKey::SORTED))}, */
+/*               std::get<bool>(assignments.at(OperatorAttributeKey::SORTED))},
+ */
 /*           std::nullopt}; */
 /*     case OperatorType::TRANSPOSE: */
 /*       return Operator{ */
@@ -308,9 +352,11 @@ namespace FlexFlow {
 /*           std::nullopt}; */
 /*     case OperatorType::COMBINE: */
 /*       return Operator{CombineAttrs{std::get<ff_dim_t>(assignments.at( */
-/*                                        OperatorAttributeKey::PARALLEL_DIM)), */
+/*                                        OperatorAttributeKey::PARALLEL_DIM)),
+ */
 /*                                    std::get<int>(assignments.at( */
-/*                                        OperatorAttributeKey::PARALLEL_DEGREE))}, */
+/*                                        OperatorAttributeKey::PARALLEL_DEGREE))},
+ */
 /*                       std::nullopt}; */
 /*     case OperatorType::REDUCTION: */
 /*       return Operator{ */

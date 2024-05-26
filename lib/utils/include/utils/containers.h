@@ -5,6 +5,7 @@
 #include "containers.decl.h"
 #include "required_core.h"
 #include "type_traits_core.h"
+#include "utils/containers/extend_vector.h"
 #include "utils/exception.h"
 #include "utils/type_traits.h"
 #include <algorithm>
@@ -18,7 +19,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "utils/containers/extend_vector.h"
 
 namespace FlexFlow {
 

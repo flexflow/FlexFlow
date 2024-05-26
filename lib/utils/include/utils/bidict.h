@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_BIDICT_H
 #define _FLEXFLOW_UTILS_BIDICT_H
 
+#include "utils/fmt/unordered_map.h"
 #include <cassert>
 #include <unordered_map>
-#include "utils/fmt/unordered_map.h"
 
 namespace FlexFlow {
 
@@ -58,13 +58,13 @@ struct bidict {
 
   bool operator==(bidict<L, R> const &other) const {
     bool result = this->fwd_map == other.fwd_map;
-    assert (result == (this->bwd_map == other.bwd_map));
+    assert(result == (this->bwd_map == other.bwd_map));
     return result;
   }
 
   bool operator!=(bidict<L, R> const &other) const {
     bool result = this->fwd_map != other.fwd_map;
-    assert (result == (this->bwd_map != other.bwd_map));
+    assert(result == (this->bwd_map != other.bwd_map));
     return result;
   }
 
@@ -193,6 +193,6 @@ struct hash<::FlexFlow::bidict<L, R>> {
   }
 };
 
-}
+} // namespace std
 
 #endif

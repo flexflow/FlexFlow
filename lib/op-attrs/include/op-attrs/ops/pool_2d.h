@@ -9,7 +9,8 @@ namespace FlexFlow {
 
 CHECK_VALID_OP_ATTR(Pool2DAttrs);
 
-ParallelTensorShape get_output_shape(Pool2DAttrs const &, ParallelTensorShape const &);
+ParallelTensorShape get_output_shape(Pool2DAttrs const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

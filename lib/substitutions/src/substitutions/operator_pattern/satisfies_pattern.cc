@@ -3,9 +3,12 @@
 
 namespace FlexFlow {
 
-bool operator_satisfies_pattern(PCGOperatorAttrs const &attrs, OperatorAttributePattern const &pattern) {
-  return all_of(pattern.attribute_constraints, 
-                [&](OperatorAttributeConstraint const &c) { return operator_satisfies_constraint(attrs, c); });
+bool operator_satisfies_pattern(PCGOperatorAttrs const &attrs,
+                                OperatorAttributePattern const &pattern) {
+  return all_of(pattern.attribute_constraints,
+                [&](OperatorAttributeConstraint const &c) {
+                  return operator_satisfies_constraint(attrs, c);
+                });
 }
 
 } // namespace FlexFlow

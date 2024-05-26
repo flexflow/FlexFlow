@@ -14,7 +14,8 @@ std::optional<OperatorAttributeValue> get_attribute(BatchMatmulAttrs const &p,
   }
 }
 
-std::optional<OperatorAttributeValue> get_attribute(BatchNormAttrs const &p, OperatorAttributeKey key) {
+std::optional<OperatorAttributeValue> get_attribute(BatchNormAttrs const &p,
+                                                    OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::OP_TYPE:
       return get_op_type(p);
@@ -227,8 +228,8 @@ std::optional<OperatorAttributeValue>
   }
 }
 
-std::optional<OperatorAttributeValue>
-    get_attribute(NoopAttrs const &p, OperatorAttributeKey key) {
+std::optional<OperatorAttributeValue> get_attribute(NoopAttrs const &p,
+                                                    OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::OP_TYPE:
       return get_op_type(p);
@@ -236,7 +237,6 @@ std::optional<OperatorAttributeValue>
       return std::nullopt;
   }
 }
-
 
 std::optional<OperatorAttributeValue> get_attribute(Pool2DAttrs const &p,
                                                     OperatorAttributeKey key) {
@@ -338,7 +338,6 @@ std::optional<OperatorAttributeValue> get_attribute(ReverseAttrs const &p,
   }
 }
 
-
 std::optional<OperatorAttributeValue> get_attribute(SplitAttrs const &p,
                                                     OperatorAttributeKey key) {
   switch (key) {
@@ -387,11 +386,8 @@ std::optional<OperatorAttributeValue> get_attribute(TransposeAttrs const &p,
 
 std::optional<OperatorAttributeValue> get_attribute(PCGOperatorAttrs const &p,
                                                     OperatorAttributeKey key) {
-  return p.visit<
-    std::optional<OperatorAttributeValue>
-  >([&](auto const &attrs) { 
-    return get_attribute(attrs, key); 
-  });
+  return p.visit<std::optional<OperatorAttributeValue>>(
+      [&](auto const &attrs) { return get_attribute(attrs, key); });
 }
 
 } // namespace FlexFlow

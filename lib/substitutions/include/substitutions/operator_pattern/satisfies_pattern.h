@@ -6,7 +6,8 @@
 
 namespace FlexFlow {
 
-bool operator_satisfies_pattern(PCGOperatorAttrs const &attrs, OperatorAttributePattern const &pattern);
+bool operator_satisfies_pattern(PCGOperatorAttrs const &attrs,
+                                OperatorAttributePattern const &pattern);
 
 } // namespace FlexFlow
 

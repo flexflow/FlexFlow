@@ -9,11 +9,14 @@
 
 namespace FlexFlow {
 
-ParallelTensorShape get_output_shape(ElementUnaryAttrs const &, ParallelTensorShape const &);
+ParallelTensorShape get_output_shape(ElementUnaryAttrs const &,
+                                     ParallelTensorShape const &);
 TensorShape get_output_shape(ElementUnaryAttrs const &, TensorShape const &);
 
-ParallelTensorShape get_output_shape(ElementScalarUnaryAttrs const &, ParallelTensorShape const &);
-TensorShape get_output_shape(ElementScalarUnaryAttrs const &, TensorShape const &);
+ParallelTensorShape get_output_shape(ElementScalarUnaryAttrs const &,
+                                     ParallelTensorShape const &);
+TensorShape get_output_shape(ElementScalarUnaryAttrs const &,
+                             TensorShape const &);
 
 CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
 CHECK_VALID_OP_ATTR(ElementScalarUnaryAttrs);

@@ -29,8 +29,6 @@ namespace FlexFlow {
 /*   } */
 /* }; */
 
-
-
 /* struct AddNewEdgeFunctor { */
 /*   SubParallelComputationGraph const &old_pcg; */
 /*   SubParallelComputationGraph &new_pcg; */
@@ -90,8 +88,10 @@ namespace FlexFlow {
 /*                        Substitution const &substitution, */
 /*                        MultiDiGraphPatternMatch const &match) { */
 /*   SubParallelComputationGraph new_pcg = */
-/*       OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>::template create< */
-/*           UnorderedOutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>>(); */
+/*       OutputLabelledOpenMultiDiGraph<Operator, ParallelTensor>::template
+ * create< */
+/*           UnorderedOutputLabelledOpenMultiDiGraph<Operator,
+ * ParallelTensor>>(); */
 /*   bidict<Node, Node> node_mapping; // Refactor it with global nodes */
 /*   for (Node const &node : get_nodes(pcg)) { */
 /*     if (!contains_r(match.node_assignment, node)) { */
@@ -106,7 +106,8 @@ namespace FlexFlow {
 /*   for (Node const &output_node : */
 /*        get_nodes(substitution.output_graph_expr.value())) { */
 /*     Operator new_op = get_operator_attrs( */
-/*         pcg, match, substitution.output_graph_expr.value().at(output_node)); */
+/*         pcg, match, substitution.output_graph_expr.value().at(output_node));
+ */
 /*     Node new_node = new_pcg.add_node(new_op); */
 /*     node_mapping.equate(output_node, new_node); */
 /*   } */

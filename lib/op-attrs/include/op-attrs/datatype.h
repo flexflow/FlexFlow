@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_OPATTRS_INCLUDE_OPATTRS_DATATYPE_H
 #define _FLEXFLOW_OPATTRS_INCLUDE_OPATTRS_DATATYPE_H
 
+#include "op-attrs/datatype.dtg.h"
 #include "utils/fmt.h"
 #include "utils/fp16.h"
 #include <variant>
-#include "op-attrs/datatype.dtg.h"
 
 namespace FlexFlow {
 

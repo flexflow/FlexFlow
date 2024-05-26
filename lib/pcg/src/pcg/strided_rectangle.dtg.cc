@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/strided_rectangle.struct.toml
 /* proj-data
 {
-  "generated_from": "87af84e6a16d5363049cb9a9a75e4f5f"
+  "generated_from": "817bbe017d179aa469822a4032d08836"
 }
 */
 
@@ -62,6 +62,15 @@ void adl_serializer<FlexFlow::StridedRectangle>::to_json(
   j["sides"] = v.sides;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::StridedRectangle>
+    Arbitrary<FlexFlow::StridedRectangle>::arbitrary() {
+  return gen::construct<FlexFlow::StridedRectangle>(
+      gen::arbitrary<
+          ::FlexFlow::FFOrdered<::FlexFlow::StridedRectangleSide>>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(StridedRectangle const &x) {

@@ -3,8 +3,8 @@
 
 #include "substitutions/unlabelled/match_split.dtg.h"
 #include "substitutions/unlabelled/multidigraph_pattern_match.dtg.h"
-#include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
 #include "substitutions/unlabelled/pattern_split.dtg.h"
+#include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
 
 namespace FlexFlow {
 

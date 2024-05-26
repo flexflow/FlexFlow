@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/strided_rectangle.struct.toml
 /* proj-data
 {
-  "generated_from": "87af84e6a16d5363049cb9a9a75e4f5f"
+  "generated_from": "817bbe017d179aa469822a4032d08836"
 }
 */
 
@@ -14,6 +14,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/dim_ordered.h"
 #include "pcg/strided_rectangle_side.dtg.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -48,6 +49,13 @@ struct adl_serializer<FlexFlow::StridedRectangle> {
   static void to_json(json &, FlexFlow::StridedRectangle const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::StridedRectangle> {
+  static Gen<FlexFlow::StridedRectangle> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(StridedRectangle const &);

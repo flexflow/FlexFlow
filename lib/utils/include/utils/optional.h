@@ -25,7 +25,8 @@ T const &assert_unwrap(std::optional<T> const &o) {
 }
 
 template <typename F, typename T>
-std::optional<std::invoke_result_t<F, T>> transform(std::optional<T> const &o, F &&f) {
+std::optional<std::invoke_result_t<F, T>> transform(std::optional<T> const &o,
+                                                    F &&f) {
   using Return = std::invoke_result_t<F, T>;
   if (o.has_value()) {
     Return r = f(o.value());
@@ -41,10 +42,10 @@ namespace fmt {
 
 template <typename T, typename Char>
 struct formatter<
-  ::std::optional<T>,
-  Char,
-  std::enable_if_t<!detail::has_format_as<std::optional<T>>::value>
-> : formatter<std::string> {
+    ::std::optional<T>,
+    Char,
+    std::enable_if_t<!detail::has_format_as<std::optional<T>>::value>>
+    : formatter<std::string> {
   template <typename FormatContext>
   auto format(::std::optional<T> const &q, FormatContext &ctx)
       -> decltype(ctx.out()) {
