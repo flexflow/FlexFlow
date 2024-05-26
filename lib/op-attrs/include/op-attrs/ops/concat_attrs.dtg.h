@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/concat_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "b72ef29f9f79a917176c63a5c3683ab5"
+  "generated_from": "68e0520b143e0579140a2f2cdd390759"
 }
 */
 
@@ -13,6 +13,8 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -47,6 +49,13 @@ struct adl_serializer<FlexFlow::ConcatAttrs> {
   static void to_json(json &, FlexFlow::ConcatAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ConcatAttrs> {
+  static Gen<FlexFlow::ConcatAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ConcatAttrs const &);

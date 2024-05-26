@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/cast_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "62da4845a8aa0ae4ca3bce432a3aa9a3"
+  "generated_from": "c171c87db89b9ec9ea7d52a50c153054"
 }
 */
 
@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/datatype.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -46,6 +47,13 @@ struct adl_serializer<FlexFlow::CastAttrs> {
   static void to_json(json &, FlexFlow::CastAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::CastAttrs> {
+  static Gen<FlexFlow::CastAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(CastAttrs const &);

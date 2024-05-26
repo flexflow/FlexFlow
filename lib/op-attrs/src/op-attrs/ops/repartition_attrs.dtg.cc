@@ -3,13 +3,14 @@
 // lib/op-attrs/include/op-attrs/ops/repartition_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "366cb1a14093762f75508260ac6494ca"
+  "generated_from": "0a4d8b435768ce3ee37013fc550c9ebb"
 }
 */
 
 #include "op-attrs/ops/repartition_attrs.dtg.h"
 
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
 #include <sstream>
 
 namespace FlexFlow {
@@ -68,6 +69,14 @@ void adl_serializer<FlexFlow::RepartitionAttrs>::to_json(
   j["repartition_degree"] = v.repartition_degree;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::RepartitionAttrs>
+    Arbitrary<FlexFlow::RepartitionAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::RepartitionAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(RepartitionAttrs const &x) {

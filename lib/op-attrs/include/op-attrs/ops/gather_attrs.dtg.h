@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/gather_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "ee735644d3c5f53f790e0a1fa8b8beaf"
+  "generated_from": "4ba46b6b494a7a52edda437d2a05fcf1"
 }
 */
 
@@ -13,6 +13,8 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -46,6 +48,13 @@ struct adl_serializer<FlexFlow::GatherAttrs> {
   static void to_json(json &, FlexFlow::GatherAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::GatherAttrs> {
+  static Gen<FlexFlow::GatherAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(GatherAttrs const &);

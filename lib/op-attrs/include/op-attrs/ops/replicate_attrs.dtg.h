@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/replicate_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "4224406d468444433d69e4abf61b7cd1"
+  "generated_from": "68c1bba349a54c0db219a67d4cc502b3"
 }
 */
 
@@ -13,6 +13,8 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -48,6 +50,13 @@ struct adl_serializer<FlexFlow::ReplicateAttrs> {
   static void to_json(json &, FlexFlow::ReplicateAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ReplicateAttrs> {
+  static Gen<FlexFlow::ReplicateAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ReplicateAttrs const &);

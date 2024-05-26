@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/softmax_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "9be043678a4ce7666fc372cded600290"
+  "generated_from": "2ddf5a8b7daa32a43387f5fd5866bb3b"
 }
 */
 
@@ -13,6 +13,8 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -46,6 +48,13 @@ struct adl_serializer<FlexFlow::SoftmaxAttrs> {
   static void to_json(json &, FlexFlow::SoftmaxAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::SoftmaxAttrs> {
+  static Gen<FlexFlow::SoftmaxAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(SoftmaxAttrs const &);

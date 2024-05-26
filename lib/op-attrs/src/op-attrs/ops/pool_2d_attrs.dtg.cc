@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/pool_2d_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "607be08f56d910bfa340fb180646c126"
+  "generated_from": "03aeafe335f68ff831e3e73a77f45caf"
 }
 */
 
@@ -178,6 +178,20 @@ void adl_serializer<FlexFlow::Pool2DAttrs>::to_json(
   j["activation"] = v.activation;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::Pool2DAttrs> Arbitrary<FlexFlow::Pool2DAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::Pool2DAttrs>(
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<::FlexFlow::PoolOp>(),
+      gen::arbitrary<::FlexFlow::Activation>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(Pool2DAttrs const &x) {

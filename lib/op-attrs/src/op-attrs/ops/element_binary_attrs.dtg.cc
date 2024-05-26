@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/element_binary_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "1aae4139632791a4b7638e59fa6b5dc8"
+  "generated_from": "2bb947c9cc92e3833ee88c908c539629"
 }
 */
 
@@ -116,6 +116,17 @@ void adl_serializer<FlexFlow::ElementBinaryAttrs>::to_json(
   j["should_broadcast_rhs"] = v.should_broadcast_rhs;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::ElementBinaryAttrs>
+    Arbitrary<FlexFlow::ElementBinaryAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ElementBinaryAttrs>(
+      gen::arbitrary<::FlexFlow::OperatorType>(),
+      gen::arbitrary<::FlexFlow::DataType>(),
+      gen::arbitrary<bool>(),
+      gen::arbitrary<bool>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ElementBinaryAttrs const &x) {

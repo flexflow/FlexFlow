@@ -3,13 +3,14 @@
 // lib/op-attrs/include/op-attrs/ops/concat_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "b72ef29f9f79a917176c63a5c3683ab5"
+  "generated_from": "68e0520b143e0579140a2f2cdd390759"
 }
 */
 
 #include "op-attrs/ops/concat_attrs.dtg.h"
 
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
 #include <sstream>
 
 namespace FlexFlow {
@@ -67,6 +68,13 @@ void adl_serializer<FlexFlow::ConcatAttrs>::to_json(
   j["num_inputs"] = v.num_inputs;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::ConcatAttrs> Arbitrary<FlexFlow::ConcatAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ConcatAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ConcatAttrs const &x) {

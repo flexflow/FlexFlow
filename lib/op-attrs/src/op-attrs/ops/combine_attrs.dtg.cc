@@ -3,13 +3,14 @@
 // lib/op-attrs/include/op-attrs/ops/combine_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "7caa0f9668b1894f5e446556f1a424c8"
+  "generated_from": "58fc5a388fd1a325ef4142094607e39a"
 }
 */
 
 #include "op-attrs/ops/combine_attrs.dtg.h"
 
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
 #include <sstream>
 
 namespace FlexFlow {
@@ -67,6 +68,13 @@ void adl_serializer<FlexFlow::CombineAttrs>::to_json(
   j["combine_degree"] = v.combine_degree;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::CombineAttrs> Arbitrary<FlexFlow::CombineAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::CombineAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(CombineAttrs const &x) {

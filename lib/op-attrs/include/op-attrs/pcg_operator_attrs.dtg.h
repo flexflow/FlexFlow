@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/pcg_operator_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "cf0da4385b7554748a06ec25ccf17f2f"
+  "generated_from": "e1d10b0c7c98524c27886bdae0972321"
 }
 */
 
@@ -41,6 +41,7 @@
 #include "op-attrs/ops/split_attrs.dtg.h"
 #include "op-attrs/ops/topk_attrs.dtg.h"
 #include "op-attrs/ops/transpose_attrs.dtg.h"
+#include "rapidcheck.h"
 #include <cstddef>
 #include <functional>
 #include <ostream>
@@ -480,6 +481,12 @@ struct adl_serializer<::FlexFlow::PCGOperatorAttrs> {
   static void to_json(json &, ::FlexFlow::PCGOperatorAttrs const &);
 };
 } // namespace nlohmann
+namespace rc {
+template <>
+struct Arbitrary<::FlexFlow::PCGOperatorAttrs> {
+  static Gen<::FlexFlow::PCGOperatorAttrs> arbitrary();
+};
+} // namespace rc
 namespace FlexFlow {
 std::string format_as(::FlexFlow::PCGOperatorAttrs const &);
 std::ostream &operator<<(std::ostream &, ::FlexFlow::PCGOperatorAttrs const &);

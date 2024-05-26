@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/tensor_dims.struct.toml
 /* proj-data
 {
-  "generated_from": "f925a4c2343d2404116dc598c301beaf"
+  "generated_from": "5beb89eeae9eba303f90e726c794375d"
 }
 */
 
@@ -56,6 +56,13 @@ void adl_serializer<FlexFlow::TensorDims>::to_json(
   j["ff_ordered"] = v.ff_ordered;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::TensorDims> Arbitrary<FlexFlow::TensorDims>::arbitrary() {
+  return gen::construct<FlexFlow::TensorDims>(
+      gen::arbitrary<::FlexFlow::FFOrdered<size_t>>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(TensorDims const &x) {

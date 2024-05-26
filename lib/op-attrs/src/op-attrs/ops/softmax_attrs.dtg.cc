@@ -3,13 +3,14 @@
 // lib/op-attrs/include/op-attrs/ops/softmax_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "9be043678a4ce7666fc372cded600290"
+  "generated_from": "2ddf5a8b7daa32a43387f5fd5866bb3b"
 }
 */
 
 #include "op-attrs/ops/softmax_attrs.dtg.h"
 
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
 #include <sstream>
 
 namespace FlexFlow {
@@ -55,6 +56,13 @@ void adl_serializer<FlexFlow::SoftmaxAttrs>::to_json(
   j["dim"] = v.dim;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::SoftmaxAttrs> Arbitrary<FlexFlow::SoftmaxAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::SoftmaxAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(SoftmaxAttrs const &x) {

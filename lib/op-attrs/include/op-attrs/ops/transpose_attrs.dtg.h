@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/transpose_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "edff0b414040204e895666d81b49db07"
+  "generated_from": "87f6e4db4b66d564530994773c0ecef4"
 }
 */
 
@@ -13,6 +13,8 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
+#include "rapidcheck.h"
 #include "utils/stack_vector.h"
 #include <functional>
 #include <ostream>
@@ -48,6 +50,13 @@ struct adl_serializer<FlexFlow::TransposeAttrs> {
   static void to_json(json &, FlexFlow::TransposeAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::TransposeAttrs> {
+  static Gen<FlexFlow::TransposeAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(TransposeAttrs const &);

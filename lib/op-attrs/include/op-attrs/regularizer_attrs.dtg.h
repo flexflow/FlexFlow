@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/regularizer_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "b0cb2d264215faf9759925c631f3d55f"
+  "generated_from": "ea060a8ab344c9772102f084903883ea"
 }
 */
 
@@ -14,6 +14,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/l1_regularizer_attrs.dtg.h"
 #include "op-attrs/l2_regularizer_attrs.dtg.h"
+#include "rapidcheck.h"
 #include <cstddef>
 #include <functional>
 #include <ostream>
@@ -113,6 +114,12 @@ struct adl_serializer<::FlexFlow::RegularizerAttrs> {
   static void to_json(json &, ::FlexFlow::RegularizerAttrs const &);
 };
 } // namespace nlohmann
+namespace rc {
+template <>
+struct Arbitrary<::FlexFlow::RegularizerAttrs> {
+  static Gen<::FlexFlow::RegularizerAttrs> arbitrary();
+};
+} // namespace rc
 namespace FlexFlow {
 std::string format_as(::FlexFlow::RegularizerAttrs const &);
 std::ostream &operator<<(std::ostream &, ::FlexFlow::RegularizerAttrs const &);

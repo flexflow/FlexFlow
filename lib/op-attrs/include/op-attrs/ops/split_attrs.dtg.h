@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/split_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "4112baa96de544b865618e0a999e0807"
+  "generated_from": "cde6b5caf6739d3b02fe8fce0d8ae8c5"
 }
 */
 
@@ -13,6 +13,8 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
+#include "rapidcheck.h"
 #include "utils/stack_vector.h"
 #include <functional>
 #include <ostream>
@@ -49,6 +51,13 @@ struct adl_serializer<FlexFlow::SplitAttrs> {
   static void to_json(json &, FlexFlow::SplitAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::SplitAttrs> {
+  static Gen<FlexFlow::SplitAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(SplitAttrs const &);

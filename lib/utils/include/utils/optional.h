@@ -2,6 +2,7 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_OPTIONAL_H
 
 #include "fmt.h"
+#include "rapidcheck.h"
 #include "utils/exception.h"
 #include "utils/optional.decl"
 
@@ -58,5 +59,19 @@ struct formatter<
 };
 
 } // namespace fmt
+
+namespace rc {
+
+template <typename T>
+struct Arbitrary<std::optional<T>> {
+  static Gen<std::optional<T>> arbitrary() {
+    return gen::map(
+        gen::maybe(std::move(gen::arbitrary<T>())), [](Maybe<T> &&m) {
+          return m ? std::optional<T>(std::move(*m)) : std::optional<T>();
+        });
+  }
+};
+
+} // namespace rc
 
 #endif

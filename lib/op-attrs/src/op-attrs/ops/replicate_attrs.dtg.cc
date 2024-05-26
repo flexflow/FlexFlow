@@ -3,13 +3,14 @@
 // lib/op-attrs/include/op-attrs/ops/replicate_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "4224406d468444433d69e4abf61b7cd1"
+  "generated_from": "68c1bba349a54c0db219a67d4cc502b3"
 }
 */
 
 #include "op-attrs/ops/replicate_attrs.dtg.h"
 
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
 #include <sstream>
 
 namespace FlexFlow {
@@ -67,6 +68,13 @@ void adl_serializer<FlexFlow::ReplicateAttrs>::to_json(
   j["replicate_degree"] = v.replicate_degree;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::ReplicateAttrs> Arbitrary<FlexFlow::ReplicateAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ReplicateAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ReplicateAttrs const &x) {

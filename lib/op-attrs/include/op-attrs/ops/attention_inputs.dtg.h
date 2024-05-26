@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/attention_inputs.struct.toml
 /* proj-data
 {
-  "generated_from": "700f5fb734284b7feabbdd4cb61f3183"
+  "generated_from": "846dd6d3f4ca1c8135e4b3c8913fb872"
 }
 */
 
@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/tensor_shape.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -50,6 +51,13 @@ struct adl_serializer<FlexFlow::MultiHeadAttentionInputs> {
   static void to_json(json &, FlexFlow::MultiHeadAttentionInputs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::MultiHeadAttentionInputs> {
+  static Gen<FlexFlow::MultiHeadAttentionInputs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(MultiHeadAttentionInputs const &);

@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/element_binary_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "1aae4139632791a4b7638e59fa6b5dc8"
+  "generated_from": "2bb947c9cc92e3833ee88c908c539629"
 }
 */
 
@@ -14,6 +14,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/datatype.h"
 #include "op-attrs/operator_type.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -53,6 +54,13 @@ struct adl_serializer<FlexFlow::ElementBinaryAttrs> {
   static void to_json(json &, FlexFlow::ElementBinaryAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ElementBinaryAttrs> {
+  static Gen<FlexFlow::ElementBinaryAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ElementBinaryAttrs const &);

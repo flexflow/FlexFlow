@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/layer_norm_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "c03d823a6e889e1254b73a0730a71046"
+  "generated_from": "349deae8d9356d3eeacd7e7d069c3155"
 }
 */
 
@@ -13,6 +13,8 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
+#include "rapidcheck.h"
 #include "utils/stack_vector.h"
 #include <functional>
 #include <ostream>
@@ -52,6 +54,13 @@ struct adl_serializer<FlexFlow::LayerNormAttrs> {
   static void to_json(json &, FlexFlow::LayerNormAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::LayerNormAttrs> {
+  static Gen<FlexFlow::LayerNormAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(LayerNormAttrs const &);

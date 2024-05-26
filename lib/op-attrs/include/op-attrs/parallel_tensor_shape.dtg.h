@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/parallel_tensor_shape.struct.toml
 /* proj-data
 {
-  "generated_from": "b2d36c9212916e66569af4e958c893f4"
+  "generated_from": "06d657d1e95f34aebf4b721c768cbee8"
 }
 */
 
@@ -14,6 +14,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/datatype.h"
 #include "op-attrs/parallel_tensor_dims.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -49,6 +50,13 @@ struct adl_serializer<FlexFlow::ParallelTensorShape> {
   static void to_json(json &, FlexFlow::ParallelTensorShape const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ParallelTensorShape> {
+  static Gen<FlexFlow::ParallelTensorShape> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ParallelTensorShape const &);

@@ -62,9 +62,8 @@ int get_vSize(MultiHeadAttentionInputs const &) {
   NOT_IMPLEMENTED();
 }
 
-TensorShape
-    get_weights_shape(MultiHeadAttentionAttrs const &attrs,
-                      MultiHeadAttentionInputs const &inputs) {
+TensorShape get_weights_shape(MultiHeadAttentionAttrs const &attrs,
+                              MultiHeadAttentionInputs const &inputs) {
   size_t qParas = get_qProjSize(attrs) * get_qSize(inputs);
   size_t kParas = get_kProjSize(attrs) * get_kSize(inputs);
   size_t vParas = get_vProjSize(attrs) * get_vSize(inputs);
@@ -72,7 +71,7 @@ TensorShape
   size_t oParas = get_oProjSize(attrs) * get_oSize(output_shape);
 
   TensorDims dims = {{qParas + kParas + vParas + oParas,
-                     static_cast<size_t>(attrs.embed_dim)}};
+                      static_cast<size_t>(attrs.embed_dim)}};
 
   return {dims, DataType::FLOAT};
 }

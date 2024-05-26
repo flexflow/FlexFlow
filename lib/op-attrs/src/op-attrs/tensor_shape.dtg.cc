@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/tensor_shape.struct.toml
 /* proj-data
 {
-  "generated_from": "52968754cf94f415c366d228c87042db"
+  "generated_from": "ef6fa5088b89d6da4dc8bddf0a6d3294"
 }
 */
 
@@ -68,6 +68,14 @@ void adl_serializer<FlexFlow::TensorShape>::to_json(
   j["data_type"] = v.data_type;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::TensorShape> Arbitrary<FlexFlow::TensorShape>::arbitrary() {
+  return gen::construct<FlexFlow::TensorShape>(
+      gen::arbitrary<::FlexFlow::TensorDims>(),
+      gen::arbitrary<::FlexFlow::DataType>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(TensorShape const &x) {

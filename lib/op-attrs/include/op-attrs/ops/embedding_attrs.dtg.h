@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/embedding_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "65af6a38dfabebbc05c8ad3f75397b07"
+  "generated_from": "a0ac41fc0f56bc06bcb1a8d42fc6191c"
 }
 */
 
@@ -14,6 +14,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/aggregate_op.dtg.h"
 #include "op-attrs/datatype.dtg.h"
+#include "rapidcheck.h"
 #include "utils/stack_vector.h"
 #include <functional>
 #include <ostream>
@@ -54,6 +55,13 @@ struct adl_serializer<FlexFlow::EmbeddingAttrs> {
   static void to_json(json &, FlexFlow::EmbeddingAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::EmbeddingAttrs> {
+  static Gen<FlexFlow::EmbeddingAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(EmbeddingAttrs const &);

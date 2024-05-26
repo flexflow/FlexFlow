@@ -3,13 +3,14 @@
 // lib/op-attrs/include/op-attrs/ops/reduce_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "bc6279031650335f4a0b7b6cfe116c85"
+  "generated_from": "097463446e254f662c7bdf5df4e12d17"
 }
 */
 
 #include "op-attrs/ops/reduce_attrs.dtg.h"
 
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
 #include "op-attrs/operator_type.dtg.h"
 #include "utils/stack_vector.h"
 #include <sstream>
@@ -81,6 +82,16 @@ void adl_serializer<FlexFlow::ReduceAttrs>::to_json(
   j["keepdims"] = v.keepdims;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::ReduceAttrs> Arbitrary<FlexFlow::ReduceAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ReduceAttrs>(
+      gen::arbitrary<
+          ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>(),
+      gen::arbitrary<::FlexFlow::OperatorType>(),
+      gen::arbitrary<bool>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ReduceAttrs const &x) {

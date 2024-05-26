@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/element_scalar_unary_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "09554c353caed6075e362da5008c4bd2"
+  "generated_from": "aa6f98b992d46bdf7ad59158bc143a3f"
 }
 */
 
@@ -74,6 +74,14 @@ void adl_serializer<FlexFlow::ElementScalarUnaryAttrs>::to_json(
   j["scalar"] = v.scalar;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::ElementScalarUnaryAttrs>
+    Arbitrary<FlexFlow::ElementScalarUnaryAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ElementScalarUnaryAttrs>(
+      gen::arbitrary<::FlexFlow::OperatorType>(), gen::arbitrary<float>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ElementScalarUnaryAttrs const &x) {

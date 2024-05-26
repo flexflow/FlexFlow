@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/linear_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "dae07c937f6c52d4dc89ec322520e29f"
+  "generated_from": "1369f126a4a6d6eee91642043ab481f6"
 }
 */
 
@@ -131,6 +131,17 @@ void adl_serializer<FlexFlow::LinearAttrs>::to_json(
   j["regularizer"] = v.regularizer;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::LinearAttrs> Arbitrary<FlexFlow::LinearAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::LinearAttrs>(
+      gen::arbitrary<int>(),
+      gen::arbitrary<bool>(),
+      gen::arbitrary<::FlexFlow::DataType>(),
+      gen::arbitrary<::FlexFlow::Activation>(),
+      gen::arbitrary<std::optional<::FlexFlow::RegularizerAttrs>>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(LinearAttrs const &x) {

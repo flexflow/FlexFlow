@@ -37,15 +37,13 @@ int get_num_samples(MultiHeadAttentionInputs const &);
 
 TensorShape get_weights_shape(MultiHeadAttentionAttrs const &,
                               MultiHeadAttentionInputs const &);
-ParallelTensorShape
-    get_weights_shape(MultiHeadAttentionAttrs const &,
-                      ParallelMultiHeadAttentionInputs const &);
+ParallelTensorShape get_weights_shape(MultiHeadAttentionAttrs const &,
+                                      ParallelMultiHeadAttentionInputs const &);
 
 TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
                              MultiHeadAttentionInputs const &);
-ParallelTensorShape
-    get_output_shape(MultiHeadAttentionAttrs const &,
-                     ParallelMultiHeadAttentionInputs const &);
+ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &,
+                                     ParallelMultiHeadAttentionInputs const &);
 
 CHECK_VALID_OP_ATTR(MultiHeadAttentionAttrs);
 } // namespace FlexFlow

@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/linear_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "dae07c937f6c52d4dc89ec322520e29f"
+  "generated_from": "1369f126a4a6d6eee91642043ab481f6"
 }
 */
 
@@ -15,6 +15,7 @@
 #include "op-attrs/activation.dtg.h"
 #include "op-attrs/datatype.dtg.h"
 #include "op-attrs/regularizer_attrs.dtg.h"
+#include "rapidcheck.h"
 #include "utils/json.h"
 #include <functional>
 #include <ostream>
@@ -57,6 +58,13 @@ struct adl_serializer<FlexFlow::LinearAttrs> {
   static void to_json(json &, FlexFlow::LinearAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::LinearAttrs> {
+  static Gen<FlexFlow::LinearAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(LinearAttrs const &);

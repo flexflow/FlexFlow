@@ -3,6 +3,7 @@
 
 #include "containers.h"
 #include "hash-utils.h"
+#include "rapidcheck.h"
 #include "utils/fmt.h"
 #include "utils/json.h"
 #include "utils/test_types.h"
@@ -39,9 +40,10 @@ public:
 
   template <typename Iterator>
   stack_vector(Iterator start, Iterator end) {
-    assert(end - start >= 0);
-    assert(end - start <= MAXSIZE);
-    for (; start < end; start++) {
+    size_t elements_added = 0;
+    for (; start != end; start++) {
+      elements_added++;
+      assert(elements_added <= MAXSIZE);
       this->push_back(static_cast<T>(*start));
     }
   }
@@ -345,5 +347,19 @@ struct hash<::FlexFlow::stack_vector<T, MAXSIZE>> {
 };
 
 } // namespace std
+
+namespace rc {
+
+template <typename T, std::size_t MAXSIZE>
+struct Arbitrary<::FlexFlow::stack_vector<T, MAXSIZE>> {
+  static Gen<::FlexFlow::stack_vector<T, MAXSIZE>> arbitrary() {
+    return gen::mapcat(gen::inRange<size_t>(0, MAXSIZE), [](size_t size) {
+      return gen::container<::FlexFlow::stack_vector<T, MAXSIZE>>(
+          size, gen::arbitrary<T>());
+    });
+  }
+};
+
+} // namespace rc
 
 #endif

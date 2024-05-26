@@ -3,13 +3,14 @@
 // lib/op-attrs/include/op-attrs/ops/reduction_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "57b8ccb5bc2e1a1a3bcf1bce2d8cad9e"
+  "generated_from": "28492e45a5c4f44987e17fe9ea876e11"
 }
 */
 
 #include "op-attrs/ops/reduction_attrs.dtg.h"
 
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
 #include <sstream>
 
 namespace FlexFlow {
@@ -67,6 +68,13 @@ void adl_serializer<FlexFlow::ReductionAttrs>::to_json(
   j["reduction_degree"] = v.reduction_degree;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::ReductionAttrs> Arbitrary<FlexFlow::ReductionAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ReductionAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ReductionAttrs const &x) {

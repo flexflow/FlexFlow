@@ -3,13 +3,14 @@
 // lib/op-attrs/include/op-attrs/ops/layer_norm_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "c03d823a6e889e1254b73a0730a71046"
+  "generated_from": "349deae8d9356d3eeacd7e7d069c3155"
 }
 */
 
 #include "op-attrs/ops/layer_norm_attrs.dtg.h"
 
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
 #include "utils/stack_vector.h"
 #include <sstream>
 
@@ -80,6 +81,16 @@ void adl_serializer<FlexFlow::LayerNormAttrs>::to_json(
   j["eps"] = v.eps;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::LayerNormAttrs> Arbitrary<FlexFlow::LayerNormAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::LayerNormAttrs>(
+      gen::arbitrary<
+          ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>(),
+      gen::arbitrary<bool>(),
+      gen::arbitrary<float>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(LayerNormAttrs const &x) {

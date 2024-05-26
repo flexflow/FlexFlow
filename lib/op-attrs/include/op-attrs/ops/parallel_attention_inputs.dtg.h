@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/parallel_attention_inputs.struct.toml
 /* proj-data
 {
-  "generated_from": "8d1e2a2d3852bfb59d8668d14d52c958"
+  "generated_from": "b76a39763275090d8376e1c27668d2cb"
 }
 */
 
@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/parallel_tensor_shape.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -48,6 +49,13 @@ struct adl_serializer<FlexFlow::ParallelMultiHeadAttentionInputs> {
                       FlexFlow::ParallelMultiHeadAttentionInputs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ParallelMultiHeadAttentionInputs> {
+  static Gen<FlexFlow::ParallelMultiHeadAttentionInputs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ParallelMultiHeadAttentionInputs const &);

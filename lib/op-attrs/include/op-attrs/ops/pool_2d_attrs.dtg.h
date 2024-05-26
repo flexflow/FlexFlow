@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/pool_2d_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "607be08f56d910bfa340fb180646c126"
+  "generated_from": "03aeafe335f68ff831e3e73a77f45caf"
 }
 */
 
@@ -14,6 +14,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/activation.dtg.h"
 #include "op-attrs/pool_op.dtg.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -61,6 +62,13 @@ struct adl_serializer<FlexFlow::Pool2DAttrs> {
   static void to_json(json &, FlexFlow::Pool2DAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::Pool2DAttrs> {
+  static Gen<FlexFlow::Pool2DAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(Pool2DAttrs const &);

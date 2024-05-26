@@ -59,4 +59,4 @@ TensorDims get_reduced_dims(ParallelTensorDims const &) {
   NOT_IMPLEMENTED();
 }
 
-}
+} // namespace FlexFlow

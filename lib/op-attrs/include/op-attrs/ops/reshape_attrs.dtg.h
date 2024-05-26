@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/reshape_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "5a6a9e646a457a6cf959c542fb631512"
+  "generated_from": "015d04de0ccb982e7eaa013a842880ca"
 }
 */
 
@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/tensor_shape.dtg.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -46,6 +47,13 @@ struct adl_serializer<FlexFlow::ReshapeAttrs> {
   static void to_json(json &, FlexFlow::ReshapeAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ReshapeAttrs> {
+  static Gen<FlexFlow::ReshapeAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ReshapeAttrs const &);

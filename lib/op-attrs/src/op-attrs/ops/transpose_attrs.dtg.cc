@@ -3,13 +3,14 @@
 // lib/op-attrs/include/op-attrs/ops/transpose_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "edff0b414040204e895666d81b49db07"
+  "generated_from": "87f6e4db4b66d564530994773c0ecef4"
 }
 */
 
 #include "op-attrs/ops/transpose_attrs.dtg.h"
 
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
 #include "utils/stack_vector.h"
 #include <sstream>
 
@@ -63,6 +64,14 @@ void adl_serializer<FlexFlow::TransposeAttrs>::to_json(
   j["perm"] = v.perm;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::TransposeAttrs> Arbitrary<FlexFlow::TransposeAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::TransposeAttrs>(
+      gen::arbitrary<
+          ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(TransposeAttrs const &x) {

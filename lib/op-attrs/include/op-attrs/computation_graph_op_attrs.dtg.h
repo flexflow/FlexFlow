@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/computation_graph_op_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "dc1445fed47c2acaed22038975eec627"
+  "generated_from": "cc0ab49405423594ffa1d8f541235a48"
 }
 */
 
@@ -39,6 +39,7 @@
 #include "op-attrs/ops/topk_attrs.dtg.h"
 #include "op-attrs/ops/transpose_attrs.dtg.h"
 #include "op-attrs/ops/weight_attrs.dtg.h"
+#include "rapidcheck.h"
 #include <cstddef>
 #include <functional>
 #include <ostream>
@@ -455,6 +456,12 @@ struct adl_serializer<::FlexFlow::ComputationGraphOpAttrs> {
   static void to_json(json &, ::FlexFlow::ComputationGraphOpAttrs const &);
 };
 } // namespace nlohmann
+namespace rc {
+template <>
+struct Arbitrary<::FlexFlow::ComputationGraphOpAttrs> {
+  static Gen<::FlexFlow::ComputationGraphOpAttrs> arbitrary();
+};
+} // namespace rc
 namespace FlexFlow {
 std::string format_as(::FlexFlow::ComputationGraphOpAttrs const &);
 std::ostream &operator<<(std::ostream &,

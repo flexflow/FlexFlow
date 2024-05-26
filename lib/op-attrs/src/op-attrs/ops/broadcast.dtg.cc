@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/broadcast.struct.toml
 /* proj-data
 {
-  "generated_from": "890d0e63a08a30d925aa170aea6992ba"
+  "generated_from": "12715c970e8416eacbd0750f338478e5"
 }
 */
 
@@ -59,6 +59,13 @@ void adl_serializer<FlexFlow::BroadcastAttrs>::to_json(
   j["target_dims"] = v.target_dims;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::BroadcastAttrs> Arbitrary<FlexFlow::BroadcastAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::BroadcastAttrs>(
+      gen::arbitrary<::FlexFlow::stack_vector<int, MAX_TENSOR_DIM>>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(BroadcastAttrs const &x) {

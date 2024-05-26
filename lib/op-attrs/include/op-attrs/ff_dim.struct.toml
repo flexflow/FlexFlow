@@ -6,7 +6,6 @@ features = [
   "ord",
   "hash",
   "json",
-  # "rapidcheck",
   "fmt",
 ]
 

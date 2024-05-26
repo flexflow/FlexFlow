@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/conv_2d_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "85f65c1b0e0340ea8e8622c2bf9ca38d"
+  "generated_from": "74f98e1aacb57d847bb450e1d28d3e67"
 }
 */
 
@@ -216,6 +216,22 @@ void adl_serializer<FlexFlow::Conv2DAttrs>::to_json(
   j["use_bias"] = v.use_bias;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::Conv2DAttrs> Arbitrary<FlexFlow::Conv2DAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::Conv2DAttrs>(
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<std::optional<::FlexFlow::Activation>>(),
+      gen::arbitrary<bool>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(Conv2DAttrs const &x) {

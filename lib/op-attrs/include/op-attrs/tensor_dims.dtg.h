@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/tensor_dims.struct.toml
 /* proj-data
 {
-  "generated_from": "f925a4c2343d2404116dc598c301beaf"
+  "generated_from": "5beb89eeae9eba303f90e726c794375d"
 }
 */
 
@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/dim_ordered.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -46,6 +47,13 @@ struct adl_serializer<FlexFlow::TensorDims> {
   static void to_json(json &, FlexFlow::TensorDims const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::TensorDims> {
+  static Gen<FlexFlow::TensorDims> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(TensorDims const &);

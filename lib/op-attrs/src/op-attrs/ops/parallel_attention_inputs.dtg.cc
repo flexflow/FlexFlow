@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/parallel_attention_inputs.struct.toml
 /* proj-data
 {
-  "generated_from": "8d1e2a2d3852bfb59d8668d14d52c958"
+  "generated_from": "b76a39763275090d8376e1c27668d2cb"
 }
 */
 
@@ -60,6 +60,16 @@ void adl_serializer<FlexFlow::ParallelMultiHeadAttentionInputs>::to_json(
   j["value"] = v.value;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::ParallelMultiHeadAttentionInputs>
+    Arbitrary<FlexFlow::ParallelMultiHeadAttentionInputs>::arbitrary() {
+  return gen::construct<FlexFlow::ParallelMultiHeadAttentionInputs>(
+      gen::arbitrary<::FlexFlow::ParallelTensorShape>(),
+      gen::arbitrary<::FlexFlow::ParallelTensorShape>(),
+      gen::arbitrary<::FlexFlow::ParallelTensorShape>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ParallelMultiHeadAttentionInputs const &x) {

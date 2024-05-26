@@ -29,4 +29,4 @@ ParallelTensorDims lift_to_parallel(TensorDims const &dims) {
   };
 }
 
-}
+} // namespace FlexFlow

@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/reverse_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "7c21c4192854f5981018abf4fbdd9ead"
+  "generated_from": "c5a82c8a15ac3ce6f47dc054236ab69b"
 }
 */
 
@@ -13,6 +13,8 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -46,6 +48,13 @@ struct adl_serializer<FlexFlow::ReverseAttrs> {
   static void to_json(json &, FlexFlow::ReverseAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ReverseAttrs> {
+  static Gen<FlexFlow::ReverseAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ReverseAttrs const &);

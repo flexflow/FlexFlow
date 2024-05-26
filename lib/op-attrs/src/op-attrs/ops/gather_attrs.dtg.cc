@@ -3,13 +3,14 @@
 // lib/op-attrs/include/op-attrs/ops/gather_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "ee735644d3c5f53f790e0a1fa8b8beaf"
+  "generated_from": "4ba46b6b494a7a52edda437d2a05fcf1"
 }
 */
 
 #include "op-attrs/ops/gather_attrs.dtg.h"
 
 #include "op-attrs/ff_dim.dtg.h"
+#include "op-attrs/ff_dim.h"
 #include <sstream>
 
 namespace FlexFlow {
@@ -55,6 +56,13 @@ void adl_serializer<FlexFlow::GatherAttrs>::to_json(
   j["dim"] = v.dim;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::GatherAttrs> Arbitrary<FlexFlow::GatherAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::GatherAttrs>(
+      gen::arbitrary<::FlexFlow::ff_dim_t>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(GatherAttrs const &x) {

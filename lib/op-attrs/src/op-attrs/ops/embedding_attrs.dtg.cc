@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/embedding_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "65af6a38dfabebbc05c8ad3f75397b07"
+  "generated_from": "a0ac41fc0f56bc06bcb1a8d42fc6191c"
 }
 */
 
@@ -110,6 +110,16 @@ void adl_serializer<FlexFlow::EmbeddingAttrs>::to_json(
   j["data_type"] = v.data_type;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::EmbeddingAttrs> Arbitrary<FlexFlow::EmbeddingAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::EmbeddingAttrs>(
+      gen::arbitrary<int>(),
+      gen::arbitrary<int>(),
+      gen::arbitrary<::FlexFlow::AggregateOp>(),
+      gen::arbitrary<::FlexFlow::DataType>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(EmbeddingAttrs const &x) {

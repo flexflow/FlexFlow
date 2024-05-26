@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/parallel_dim.variant.toml
 /* proj-data
 {
-  "generated_from": "5550fc7ad51892b3411ef274c76e7d85"
+  "generated_from": "f382ff547aae62777e5091f00d034d84"
 }
 */
 
@@ -80,6 +80,14 @@ void adl_serializer<::FlexFlow::ParallelDim>::to_json(
   }
 }
 } // namespace nlohmann
+namespace rc {
+Gen<::FlexFlow::ParallelDim> Arbitrary<::FlexFlow::ParallelDim>::arbitrary() {
+  return gen::oneOf(gen::construct<::FlexFlow::ParallelDim>(
+                        gen::arbitrary<::FlexFlow::ShardParallelDim>()),
+                    gen::construct<::FlexFlow::ParallelDim>(
+                        gen::arbitrary<::FlexFlow::ReplicaParallelDim>()));
+}
+} // namespace rc
 namespace FlexFlow {
 std::string format_as(::FlexFlow::ParallelDim const &x) {
   std::ostringstream oss;

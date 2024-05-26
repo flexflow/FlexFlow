@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/parallel_tensor_dims.struct.toml
 /* proj-data
 {
-  "generated_from": "31a9e757f42ec3e468b299cda2cbcd4e"
+  "generated_from": "aec3b6b66e34be0d5ce3055822479430"
 }
 */
 
@@ -76,6 +76,15 @@ void adl_serializer<FlexFlow::ParallelTensorDims>::to_json(
   j["replica_dims"] = v.replica_dims;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::ParallelTensorDims>
+    Arbitrary<FlexFlow::ParallelTensorDims>::arbitrary() {
+  return gen::construct<FlexFlow::ParallelTensorDims>(
+      gen::arbitrary<::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim>>(),
+      gen::arbitrary<::FlexFlow::ReplicaParallelDimSet>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ParallelTensorDims const &x) {

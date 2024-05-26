@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ff_dim.struct.toml
 /* proj-data
 {
-  "generated_from": "ffd119eb46e048b0f5a2d8fbef253de3"
+  "generated_from": "a5fa89a024e95c4f2d52681a74cab30f"
 }
 */
 

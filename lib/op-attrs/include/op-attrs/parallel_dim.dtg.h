@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/parallel_dim.variant.toml
 /* proj-data
 {
-  "generated_from": "5550fc7ad51892b3411ef274c76e7d85"
+  "generated_from": "f382ff547aae62777e5091f00d034d84"
 }
 */
 
@@ -14,6 +14,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/replica_parallel_dim.dtg.h"
 #include "op-attrs/shard_parallel_dim.dtg.h"
+#include "rapidcheck.h"
 #include <cstddef>
 #include <functional>
 #include <ostream>
@@ -113,6 +114,12 @@ struct adl_serializer<::FlexFlow::ParallelDim> {
   static void to_json(json &, ::FlexFlow::ParallelDim const &);
 };
 } // namespace nlohmann
+namespace rc {
+template <>
+struct Arbitrary<::FlexFlow::ParallelDim> {
+  static Gen<::FlexFlow::ParallelDim> arbitrary();
+};
+} // namespace rc
 namespace FlexFlow {
 std::string format_as(::FlexFlow::ParallelDim const &);
 std::ostream &operator<<(std::ostream &, ::FlexFlow::ParallelDim const &);

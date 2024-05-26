@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/broadcast.struct.toml
 /* proj-data
 {
-  "generated_from": "890d0e63a08a30d925aa170aea6992ba"
+  "generated_from": "12715c970e8416eacbd0750f338478e5"
 }
 */
 
@@ -12,6 +12,7 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
+#include "rapidcheck.h"
 #include "utils/stack_vector.h"
 #include <functional>
 #include <ostream>
@@ -47,6 +48,13 @@ struct adl_serializer<FlexFlow::BroadcastAttrs> {
   static void to_json(json &, FlexFlow::BroadcastAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::BroadcastAttrs> {
+  static Gen<FlexFlow::BroadcastAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(BroadcastAttrs const &);

@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/regularizer_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "b0cb2d264215faf9759925c631f3d55f"
+  "generated_from": "ea060a8ab344c9772102f084903883ea"
 }
 */
 
@@ -80,6 +80,15 @@ void adl_serializer<::FlexFlow::RegularizerAttrs>::to_json(
   }
 }
 } // namespace nlohmann
+namespace rc {
+Gen<::FlexFlow::RegularizerAttrs>
+    Arbitrary<::FlexFlow::RegularizerAttrs>::arbitrary() {
+  return gen::oneOf(gen::construct<::FlexFlow::RegularizerAttrs>(
+                        gen::arbitrary<::FlexFlow::L1RegularizerAttrs>()),
+                    gen::construct<::FlexFlow::RegularizerAttrs>(
+                        gen::arbitrary<::FlexFlow::L2RegularizerAttrs>()));
+}
+} // namespace rc
 namespace FlexFlow {
 std::string format_as(::FlexFlow::RegularizerAttrs const &x) {
   std::ostringstream oss;

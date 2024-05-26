@@ -5,11 +5,12 @@ features = [
   "ord",
   "hash",
   "json",
-  # "rapidcheck",
+  "rapidcheck",
   "fmt",
 ]
 
 includes = [
+  "op-attrs/ff_dim.h",
   "op-attrs/ff_dim.dtg.h"
 ]
 

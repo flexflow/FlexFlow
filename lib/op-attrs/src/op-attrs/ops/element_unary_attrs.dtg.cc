@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/element_unary_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "fdb867c04cdd7de320f573f360bcab90"
+  "generated_from": "75272cff78d3db866122dbb1001aedbe"
 }
 */
 
@@ -56,6 +56,14 @@ void adl_serializer<FlexFlow::ElementUnaryAttrs>::to_json(
   j["op_type"] = v.op_type;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<FlexFlow::ElementUnaryAttrs>
+    Arbitrary<FlexFlow::ElementUnaryAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ElementUnaryAttrs>(
+      gen::arbitrary<::FlexFlow::OperatorType>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ElementUnaryAttrs const &x) {

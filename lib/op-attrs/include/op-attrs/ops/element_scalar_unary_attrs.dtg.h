@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/element_scalar_unary_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "09554c353caed6075e362da5008c4bd2"
+  "generated_from": "aa6f98b992d46bdf7ad59158bc143a3f"
 }
 */
 
@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/operator_type.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -48,6 +49,13 @@ struct adl_serializer<FlexFlow::ElementScalarUnaryAttrs> {
   static void to_json(json &, FlexFlow::ElementScalarUnaryAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ElementScalarUnaryAttrs> {
+  static Gen<FlexFlow::ElementScalarUnaryAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ElementScalarUnaryAttrs const &);

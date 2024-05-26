@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/parallel_tensor_dims.struct.toml
 /* proj-data
 {
-  "generated_from": "31a9e757f42ec3e468b299cda2cbcd4e"
+  "generated_from": "aec3b6b66e34be0d5ce3055822479430"
 }
 */
 
@@ -15,6 +15,7 @@
 #include "op-attrs/dim_ordered.h"
 #include "op-attrs/replica_parallel_dim_set.dtg.h"
 #include "op-attrs/shard_parallel_dim.dtg.h"
+#include "rapidcheck.h"
 #include "utils/fmt/pair.h"
 #include "utils/fmt/unordered_map.h"
 #include <functional>
@@ -54,6 +55,13 @@ struct adl_serializer<FlexFlow::ParallelTensorDims> {
   static void to_json(json &, FlexFlow::ParallelTensorDims const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<FlexFlow::ParallelTensorDims> {
+  static Gen<FlexFlow::ParallelTensorDims> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ParallelTensorDims const &);
