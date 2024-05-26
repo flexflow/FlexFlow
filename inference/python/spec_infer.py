@@ -79,7 +79,7 @@ def get_configs():
                     "full_precision": False,
                 }
             ],
-            # "prompt": "",
+            "prompt": "",
             "output_file": "",
         }
         # Merge dictionaries
