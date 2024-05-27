@@ -20,9 +20,7 @@ size_t num_shard_dims(ParallelTensorDims const &dims) {
 }
 
 int total_replica_degree(ParallelTensorDims const &dims) {
-  return product(transform(replica_dims(dims), [](ReplicaParallelDim const &d) {
-    return d.degree;
-  }));
+  return dims.replica_dims.discard_copy_degree * dims.replica_dims.sum_degree;
 }
 
 int total_shard_degree(ParallelTensorDims const &dims) {

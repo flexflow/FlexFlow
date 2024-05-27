@@ -112,9 +112,6 @@ std::vector<TensorShape> get_output_shapes(Attrs const &attrs,
 
 ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &,
                                      std::vector<ParallelTensorShape> const &);
-ParallelTensorShape get_output_shape(BatchMatmulAttrs const &,
-                                     ParallelTensorShape const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(CastAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(CombineAttrs const &,

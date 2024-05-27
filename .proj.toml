@@ -8,7 +8,7 @@ build_targets = [
   "op-attrs",
   "kernels",
   "pcg",
-  # "substitutions",
+  "substitutions",
   # "compiler",
 ]
 test_targets = [

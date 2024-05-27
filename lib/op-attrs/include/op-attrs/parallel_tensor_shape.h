@@ -19,6 +19,11 @@ TensorShape get_piece_shape(ParallelTensorShape const &);
 int get_num_replica_dims(ParallelTensorShape const &);
 int get_num_replicas(ParallelTensorShape const &);
 
+int get_sum_degree(ParallelTensorShape const &);
+int get_discard_copy_degree(ParallelTensorShape const &);
+
+int get_total_parallel_degree(ParallelTensorShape const &);
+
 bool is_valid(ParallelTensorShape const &);
 
 TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &);

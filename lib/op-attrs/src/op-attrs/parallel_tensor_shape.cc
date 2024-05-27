@@ -20,6 +20,18 @@ int get_num_replicas(ParallelTensorShape const &shape) {
                 [](ReplicaParallelDim const &d) -> int { return d.degree; }));
 }
 
+int get_sum_degree(ParallelTensorShape const &shape) {
+  return shape.dims.replica_dims.sum_degree;
+}
+
+int get_discard_copy_degree(ParallelTensorShape const &shape) {
+  return shape.dims.replica_dims.discard_copy_degree;
+}
+
+int get_total_parallel_degree(ParallelTensorShape const &s) {
+  return  total_parallel_degree(s.dims);
+}
+
 bool is_valid(ParallelTensorShape const &shape) {
   return is_valid(shape.dims);
 }

@@ -5,6 +5,9 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <tl/expected.hpp>
+#include "utils/fmt/expected.h"
+#include <fmt/format.h>
 
 using namespace FlexFlow;
 
@@ -64,10 +67,11 @@ namespace doctest {
 //   }
 // };
 
-// template <typename T>
-// struct StringMaker<std::vector<T>> {
-//   static String convert(std::vector<T> const &vec) {
-//     return doctest_print_container(vec, "[ ", ", ", " ]").c_str();
-//   }
-// };
+template <typename T, typename E>
+struct StringMaker<tl::expected<T, E>> {
+  static String convert(tl::expected<T, E> const &m) {
+    return toString(fmt::to_string(m));
+  }
+};
+
 } // namespace doctest
