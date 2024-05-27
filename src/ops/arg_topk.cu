@@ -86,7 +86,7 @@ template <typename DT>
 void ArgTopK::forward_kernel(
     ArgTopKMeta const *m,
     DT const *input_ptr,
-    float *output_ptr,
+    DT *output_ptr,
     int *indices_ptr,
     size_t batch_size,
     int length,
@@ -169,16 +169,10 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
   }
 
   if (input.data_type == DT_HALF) {
-    // transfer data from half to float (input to full_precision_input)
     // printf("ArgTopK: length = %d, batch_size = %d\n", length, batch_size);
-    int size = length * batch_size;
-    half2float_kernel<<<GET_BLOCKS(size),
-                        min((int)CUDA_NUM_THREADS, size),
-                        0,
-                        stream>>>(input.get_half_ptr(), m->full_precision_input, size);
     ArgTopK::forward_kernel(m,
-                            m->full_precision_input,
-                            m->speculative_decoding ? probs.get_float_ptr()
+                            input.get_half_ptr(),
+                            m->speculative_decoding ? (half *)m->half_precision_output
                                                     : nullptr,
                             indices.get_int32_ptr(),
                             batch_size,
@@ -187,6 +181,14 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
                             m->sorted,
                             m->speculative_decoding ? bc : nullptr,
                             stream);
+    if (m->speculative_decoding) {
+      // transfer data from half to float (half_precision_output to output)
+      int size = length * batch_size;
+      half2float_kernel<<<GET_BLOCKS(size),
+                          min((int)CUDA_NUM_THREADS, size),
+                          0,
+                          stream>>>((const half *)m->half_precision_output, probs.get_float_ptr(), size);
+    }
   } else if (input.data_type == DT_FLOAT) {
     ArgTopK::forward_kernel(m,
                             input.get_float_ptr(),
@@ -219,8 +221,8 @@ ArgTopKMeta::ArgTopKMeta(FFHandler handler,
                           MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, op) {
   max_input_size = BatchConfig::MAX_NUM_TOKENS * 32000; // TODO: use vocab_size
-  gpu_mem_allocator.create_legion_instance(reserveInst, sizeof(float) * max_input_size);
-  full_precision_input = gpu_mem_allocator.allocate_instance<float>(max_input_size);
+  gpu_mem_allocator.create_legion_instance(reserveInst, sizeof(half) * max_input_size);
+  half_precision_output = gpu_mem_allocator.allocate_instance_untyped(sizeof(half) * max_input_size);
 }
 
 ArgTopKMeta::~ArgTopKMeta() {

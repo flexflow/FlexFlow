@@ -15,7 +15,7 @@ public:
   int k;
   bool speculative_decoding;
   Realm::RegionInstance reserveInst;
-  float *full_precision_input;
+  void *half_precision_output;
   int max_input_size;
   ArgTopKMeta(FFHandler handle,
               Op const *op,
@@ -90,7 +90,7 @@ public:
   template <typename DT>
   static void forward_kernel(ArgTopKMeta const *m,
                              DT const *input_ptr,
-                             float *output_ptr,
+                             DT *output_ptr,
                              int *indices_ptr,
                              size_t batch_size,
                              int length,
