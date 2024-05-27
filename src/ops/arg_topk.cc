@@ -275,7 +275,12 @@ OpMeta *ArgTopK::init_task(Task const *task,
                            Runtime *runtime) {
   ArgTopK *topk = (ArgTopK *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  ArgTopKMeta *m = new ArgTopKMeta(handle, topk);
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  ArgTopKMeta *m = new ArgTopKMeta(handle, topk, gpu_mem_allocator);
   m->profiling = topk->profiling;
   m->inference_debugging = topk->inference_debugging;
   m->sorted = topk->sorted;
