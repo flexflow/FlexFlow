@@ -456,9 +456,26 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   num_available_requests--;
   request.status = Request::COMPLETED;
 
-  std::string output = this->tokenizer_->Decode(request.tokens);
+  // Find the sos and eos in the sequence
+  auto bos_it = std::find(
+      request.tokens.begin(), request.tokens.end(), this->bos_token_id);
+  auto eos_rit = std::find(
+      request.tokens.rbegin(), request.tokens.rend(), this->eos_token_id);
+  std::vector<int>::iterator eos_it;
+  if (eos_rit != request.tokens.rend()) {
+    eos_it = eos_rit.base();
+  } else {
+    eos_it = request.tokens.end();
+  }
+  std::string output =
+      this->tokenizer_->Decode(std::vector<int>(bos_it, eos_it));
+
   std::cout << "Request " << guid << " completed: " << std::endl
-            << output << std::endl;
+            << "<bos>" << output;
+  if (eos_rit != request.tokens.rend()) {
+    std::cout << "<eos>";
+  }
+  std::cout << std::endl;
   ProfileInfo profile_info = profiling_requests[guid];
 
   std::ostream *os = &std::cout;
@@ -516,8 +533,8 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
     case PREFILLING:
       if (decoding_mode == INCREMENTAL_DECODING) {
         if (update_llm_prefill_results(result)) {
-          // This indicates that the prefilling of the current request finishes
-          // Reset the prefill_request
+          // This indicates that the prefilling of the current request
+          // finishes Reset the prefill_request
           prefill_request = nullptr;
 
           // Check if there are more empty slots
@@ -694,7 +711,8 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
         result.token_ids[request.first_token_offset_in_batch]);
 
     profiling_requests[guid].llm_decoding_steps++;
-    if (request.tokens.size() >= get_max_sequence_length()) {
+    if (request.tokens.back() == eos_token_id or
+        request.tokens.size() >= get_max_sequence_length()) {
       request_completed = true;
       request_complete_clean_up(request_index);
     }
@@ -1044,8 +1062,8 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
 /***** Speculative Decoding Phase *****/
 BatchConfig RequestManager::prepare_next_spec_batch_config() {
   if (verbose) {
-    std::cout
-        << "\n############### prepare_next_spec_batch_config ###############\n";
+    std::cout << "\n############### prepare_next_spec_batch_config "
+                 "###############\n";
     std::cout << "Current tree depth: " << current_speculation_step + 1 << "\n";
   }
 
@@ -1309,7 +1327,14 @@ bool RequestManager::update_llm_verify_results(
 
     // Check if the request is completed. If its completed, clean up the
     // metainfo stored in the RequestManager. Otherwise, update its bitmask.
-    if (request.tokens.size() >= get_max_sequence_length()) {
+    bool eos_token_found = false;
+    for (auto const &committed_token : request.committed_tokens) {
+      if (committed_token.token_id == eos_token_id) {
+        eos_token_found = true;
+        break;
+      }
+    }
+    if (eos_token_found or request.tokens.size() >= get_max_sequence_length()) {
       // Request is completed
       request_completed = true;
       request_complete_clean_up(request_index);
@@ -1825,35 +1850,40 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
     }
   }
 
-  //   while (!is_background_server_terminated()) {
-  //     // last_irf.get_void_result();
-  //     BatchConfigFuture bcf = get_next_batch_config(last_irf, ctx, runtime);
-  //     bcf.get_void_result();
-  //     // time_2 = Realm::Clock::current_time_in_microseconds();
-  //     // std::cout << "Iteration time: " << (time_2 - time_1) * 1e-3 << "ms"
-  //     //           << std::endl;
+  //   BatchConfigFuture bcf;
 
-  //     // time_1 = Realm::Clock::current_time_in_microseconds();
-  //     if ((request_manager_status == PREFILLING and prefill_model == LLM) or
-  //         request_manager_status == LLM_VERIFY) {
-  //       //   std::cout << "Branch 1" << std::endl;
-  //       runtime->begin_trace(ctx, 12345 /*trace_id*/);
-  //       FutureMap fm = im->inference(llm, 0, bcf);
-  //       //   assert(fm.get_future_map_domain().get_volume() == 1);
-  //       last_irf = fm.get_future(0);
-  //       runtime->end_trace(ctx, 12345 /*trace_id*/);
-  //     } else if ((request_manager_status == PREFILLING and
-  //                 prefill_model == SSM) or
-  //                request_manager_status == SSM_SPEC) {
-  //       //   std::cout << "Branch 2" << std::endl;
-  //       runtime->begin_trace(ctx, 23456 /*trace_id*/);
-  //       FutureMap fm = im->inference(get_ssm_model(0), 0, bcf);
-  //       //   assert(fm.get_future_map_domain().get_volume() == 1);
-  //       last_irf = fm.get_future(0);
-  //       runtime->end_trace(ctx, 23456 /*trace_id*/);
-  //     } else {
-  //       assert(false && "Invalid request manager status");
+  //   std::queue<InferenceResultFuture> infer_result_future_pipeline;
+  //   { infer_result_future_pipeline.push(last_irf); }
+
+  //   while (!is_background_server_terminated()) {
+  //     if (infer_result_future_pipeline.size() >= 4) {
+  //       // Block here to avoid launching too many batches
+  //       auto const &ir = infer_result_future_pipeline.front();
+  //       ir.get_void_result();
   //     }
+  //     // deque finished batches
+  //     while (infer_result_future_pipeline.size() > 1) {
+  //       auto const &ir = infer_result_future_pipeline.front();
+  //       if (ir.is_ready()) {
+  //         infer_result_future_pipeline.pop();
+  //       } else {
+  //         break;
+  //       }
+  //     }
+
+  //     runtime->begin_trace(ctx, 12345 /*trace_id*/);
+  //     for (int ssm_step_i = 0; ssm_step_i < get_max_tree_depth();
+  //     ssm_step_i++) {
+  //       last_irf = infer_result_future_pipeline.back();
+  //       bcf = get_next_batch_config(last_irf, ctx, runtime);
+  //       FutureMap fm = im->inference(get_ssm_model(0), 0, bcf);
+  //       infer_result_future_pipeline.push(fm.get_future(0));
+  //     }
+  //     last_irf = infer_result_future_pipeline.back();
+  //     bcf = get_next_batch_config(last_irf, ctx, runtime);
+  //     FutureMap fm = im->inference(llm, 0, bcf);
+  //     infer_result_future_pipeline.push(fm.get_future(0));
+  //     runtime->end_trace(ctx, 12345 /*trace_id*/);
   //   }
 }
 
@@ -1936,8 +1966,8 @@ bool RequestManager::add_tokens_to_spec_token_tree(
 
     int parent_num = request.num_tokens_in_batch;
     if (parent_num == 0) {
-      // The request has no committed tokens, we don't need to add tokens to the
-      // token tree
+      // The request has no committed tokens, we don't need to add tokens to
+      // the token tree
       continue;
     }
     int result_offset = request.first_token_offset_in_batch *
@@ -1996,7 +2026,8 @@ bool RequestManager::add_tokens_to_spec_token_tree(
           float log_accumulated_prob = log_prob + parent_log_prob;
           int result_idx = child_prob.second;
 
-          //   std::cout << "Probability at result index " << result_idx << ": "
+          //   std::cout << "Probability at result index " << result_idx << ":
+          //   "
           //             << ssm_inference_result.probs[result_idx] << "\t";
           //   std::cout << "Token id: "
           //             << ssm_inference_result.token_ids[result_idx] <<
@@ -2016,10 +2047,10 @@ bool RequestManager::add_tokens_to_spec_token_tree(
                      log_accumulated_prob <= token_tree_node_pool.top()
                                                  .first->log_accumulated_prob) {
             // The token tree is not full, but the token pool is full, and the
-            // new token has a lower joint probability than the minimum node in
-            // the pool, we don't need to add the new token and the following
-            // tokens belong to the same parent to the tree, because the tokens
-            // are sorted by their probability
+            // new token has a lower joint probability than the minimum node
+            // in the pool, we don't need to add the new token and the
+            // following tokens belong to the same parent to the tree, because
+            // the tokens are sorted by their probability
             break;
           } else {
             std::shared_ptr<TokenTreeNode> node_ptr =
@@ -2032,8 +2063,8 @@ bool RequestManager::add_tokens_to_spec_token_tree(
                     (*tokens.begin())->log_accumulated_prob) {
               // The token tree is full, and the new token has a higher joint
               // probability than the minimum node in the pool, we need to
-              // remove the minimum node from the pool and add the new token to
-              // the tree
+              // remove the minimum node from the pool and add the new token
+              // to the tree
               tokens.erase(tokens.begin());
             }
             tokens.insert(node_ptr);
