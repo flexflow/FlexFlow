@@ -17,8 +17,8 @@ Conv2DParallelInputShape
       channel_dim,
       height_dim,
       width_dim,
-      input.dims.replica_dims.sum_degree,
-      input.dims.replica_dims.discard_copy_degree,
+      get_sum_degree(input),
+      get_discard_copy_degree(input),
       input.data_type,
   };
 }

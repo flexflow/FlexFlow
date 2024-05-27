@@ -21,11 +21,11 @@ int get_num_replicas(ParallelTensorShape const &shape) {
 }
 
 int get_sum_degree(ParallelTensorShape const &shape) {
-  return shape.dims.replica_dims.sum_degree;
+  return shape.dims.replica_dims.sum_degree.value;
 }
 
 int get_discard_copy_degree(ParallelTensorShape const &shape) {
-  return shape.dims.replica_dims.discard_copy_degree;
+  return shape.dims.replica_dims.discard_copy_degree.value;
 }
 
 int get_total_parallel_degree(ParallelTensorShape const &s) {
@@ -46,6 +46,13 @@ ShardParallelDim &shard_dim_at_idx(ParallelTensorShape &s, ff_dim_t d) {
 
 ParallelTensorShape lift_to_parallel(TensorShape const &s) {
   return {lift_to_parallel(s.dims), s.data_type};
+}
+
+ParallelTensorShape lift_to_parallel_with_degrees(TensorShape const &s, SumDegree sum_degree, DiscardCopyDegree discard_copy_degree, FFOrdered<int> const &shard_degrees) {
+  return ParallelTensorShape{
+    lift_to_parallel_with_degrees(s.dims, sum_degree, discard_copy_degree, shard_degrees),
+    s.data_type,
+  };
 }
 
 TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &) {

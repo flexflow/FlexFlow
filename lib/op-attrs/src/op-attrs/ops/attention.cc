@@ -1,4 +1,6 @@
 #include "op-attrs/ops/attention.h"
+#include "op-attrs/ops/attention/multihead_attention_inputs.h"
+#include "op-attrs/tensor_shape.h"
 
 namespace FlexFlow {
 
@@ -62,12 +64,52 @@ int get_vSize(MultiHeadAttentionInputs const &) {
   NOT_IMPLEMENTED();
 }
 
-TensorShape get_weights_shape(MultiHeadAttentionAttrs const &attrs,
-                              MultiHeadAttentionInputs const &inputs) {
+tl::expected<TensorShape, std::string>
+get_weights_shape(MultiHeadAttentionAttrs const &attrs,
+                                      TensorShape const &input_q,
+                                      TensorShape const &input_k,
+                                      TensorShape const &input_v) {
+  tl::expected<MultiHeadAttentionInputs, std::string> parse_result = parse_attention_input_shape(input_q, input_k, input_v);
+  if (!parse_result.has_value()) {
+    return tl::unexpected(parse_result.error());
+  }
+
+  MultiHeadAttentionInputs parsed = parse_result.value();
+
+  return TensorShape{
+    TensorDims{
+      ParallelTensorDims<size_t>{
+        parsed.batch_size,
+        parsed.sequence_length,
+        attrs.embed_dim,
+      }
+    },
+    parsed.datatype, 
+  }
+}
+
+tl::expected<ParallelTensorShape, std::string>
+get_weights_shape(MultiHeadAttentionAttrs const &,
+                                      ParallelTensorShape const &input_q,
+                                      ParallelTensorShape const &input_k,
+                                      ParallelTensorShape const &input_v) {
+  NOT_IMPLEMENTED();
+}
+
+tl::expected<TensorShape, std::string> get_weights_shape(MultiHeadAttentionAttrs const &attrs,
+                                                         TensorShape const &query_shape,
+                                                         TensorShape const &key_shape,
+                                                         TensorShape const &value_shape) {
+  MultiHeadAttentionInputs inputs = {
+    query_shape,
+    key_shape,
+    value_shape,
+  };
+
   size_t qParas = get_qProjSize(attrs) * get_qSize(inputs);
   size_t kParas = get_kProjSize(attrs) * get_kSize(inputs);
   size_t vParas = get_vProjSize(attrs) * get_vSize(inputs);
-  TensorShape output_shape = get_output_shape(attrs, inputs);
+  TensorShape output_shape = get_output_shape(attrs, query_shape, key_shape, value_shape);
   size_t oParas = get_oProjSize(attrs) * get_oSize(output_shape);
 
   TensorDims dims = {{qParas + kParas + vParas + oParas,
@@ -76,7 +118,10 @@ TensorShape get_weights_shape(MultiHeadAttentionAttrs const &attrs,
   return {dims, DataType::FLOAT};
 }
 
-ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
+
+
+tl::expected<ParallelTensorShape, std::string>
+get_output_shape(MultiHeadAttentionAttrs const &attrs,
                                      ParallelTensorShape const &query_shape,
                                      ParallelTensorShape const &key_shape,
                                      ParallelTensorShape const &value_shape) {
@@ -87,16 +132,13 @@ ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
   /* return output_shape; */
 }
 
-TensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
+tl::expected<TensorShape, std::string> get_output_shape(MultiHeadAttentionAttrs const &attrs,
                              TensorShape const &query_shape,
                              TensorShape const &key_shape,
                              TensorShape const &value_shape) {
-  ParallelTensorShape parallel_shape =
-      get_output_shape(attrs,
-                       lift_to_parallel(query_shape),
-                       lift_to_parallel(key_shape),
-                       lift_to_parallel(value_shape));
-  return get_tensor_shape_unsafe(parallel_shape);
+  
+
+  size_t q_batchsize = dim_at_idx(query_shape
 }
 TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
                              MultiHeadAttentionInputs const &) {

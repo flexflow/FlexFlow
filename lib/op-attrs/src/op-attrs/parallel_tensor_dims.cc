@@ -3,6 +3,7 @@
 #include "op-attrs/replica_parallel_dim_set.h"
 #include "op-attrs/shard_parallel_dim.h"
 #include "utils/containers.h"
+#include "utils/integer_conversions.h"
 
 namespace FlexFlow {
 
@@ -20,7 +21,7 @@ size_t num_shard_dims(ParallelTensorDims const &dims) {
 }
 
 int total_replica_degree(ParallelTensorDims const &dims) {
-  return dims.replica_dims.discard_copy_degree * dims.replica_dims.sum_degree;
+  return dims.replica_dims.discard_copy_degree.value * dims.replica_dims.sum_degree.value;
 }
 
 int total_shard_degree(ParallelTensorDims const &dims) {
@@ -41,7 +42,7 @@ bool is_valid(ParallelTensorDims const &dims) {
 
 ShardParallelDim shard_dim_at_idx(ParallelTensorDims const &d, ff_dim_t idx) {
   if (idx.value < 0) {
-    idx = ff_dim_t{d.shard_dims.size() + idx.value};
+    idx = ff_dim_t{int_from_size_t(d.shard_dims.size()) + idx.value};
   }
   return d.shard_dims.at(idx);
 }

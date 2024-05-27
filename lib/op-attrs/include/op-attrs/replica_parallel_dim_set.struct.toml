@@ -9,10 +9,15 @@ features = [
   "fmt",
 ]
 
+includes = [
+  "op-attrs/parallel_tensor_shape/sum_degree.dtg.h",
+  "op-attrs/parallel_tensor_shape/discard_copy_degree.dtg.h",
+]
+
 [[fields]]
 name = "sum_degree"
-type = "int"
+type = "::FlexFlow::SumDegree"
 
 [[fields]]
 name = "discard_copy_degree"
-type = "int"
+type = "::FlexFlow::DiscardCopyDegree"

@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/replica_parallel_dim_set.struct.toml
 /* proj-data
 {
-  "generated_from": "20d8004e6f1e710688fe692b92dc2816"
+  "generated_from": "74230e2d18db5c059d3e7be0f25e746e"
 }
 */
 
@@ -12,6 +12,8 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
+#include "op-attrs/parallel_tensor_shape/discard_copy_degree.dtg.h"
+#include "op-attrs/parallel_tensor_shape/sum_degree.dtg.h"
 #include "rapidcheck.h"
 #include <functional>
 #include <ostream>
@@ -20,7 +22,9 @@
 namespace FlexFlow {
 struct ReplicaParallelDimSet {
   ReplicaParallelDimSet() = delete;
-  ReplicaParallelDimSet(int const &sum_degree, int const &discard_copy_degree);
+  ReplicaParallelDimSet(
+      ::FlexFlow::SumDegree const &sum_degree,
+      ::FlexFlow::DiscardCopyDegree const &discard_copy_degree);
 
   bool operator==(ReplicaParallelDimSet const &) const;
   bool operator!=(ReplicaParallelDimSet const &) const;
@@ -28,8 +32,8 @@ struct ReplicaParallelDimSet {
   bool operator>(ReplicaParallelDimSet const &) const;
   bool operator<=(ReplicaParallelDimSet const &) const;
   bool operator>=(ReplicaParallelDimSet const &) const;
-  int sum_degree;
-  int discard_copy_degree;
+  ::FlexFlow::SumDegree sum_degree;
+  ::FlexFlow::DiscardCopyDegree discard_copy_degree;
 };
 } // namespace FlexFlow
 

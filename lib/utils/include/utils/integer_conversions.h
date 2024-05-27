@@ -6,6 +6,7 @@
 namespace FlexFlow {
 
 size_t size_t_from_int(int);
+int int_from_size_t(size_t);
 
 } // namespace FlexFlow
 

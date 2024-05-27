@@ -3,17 +3,20 @@
 // lib/op-attrs/include/op-attrs/replica_parallel_dim_set.struct.toml
 /* proj-data
 {
-  "generated_from": "20d8004e6f1e710688fe692b92dc2816"
+  "generated_from": "74230e2d18db5c059d3e7be0f25e746e"
 }
 */
 
 #include "op-attrs/replica_parallel_dim_set.dtg.h"
 
+#include "op-attrs/parallel_tensor_shape/discard_copy_degree.dtg.h"
+#include "op-attrs/parallel_tensor_shape/sum_degree.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {
-ReplicaParallelDimSet::ReplicaParallelDimSet(int const &sum_degree,
-                                             int const &discard_copy_degree)
+ReplicaParallelDimSet::ReplicaParallelDimSet(
+    ::FlexFlow::SumDegree const &sum_degree,
+    ::FlexFlow::DiscardCopyDegree const &discard_copy_degree)
     : sum_degree(sum_degree), discard_copy_degree(discard_copy_degree) {}
 bool ReplicaParallelDimSet::operator==(
     ReplicaParallelDimSet const &other) const {
@@ -51,10 +54,10 @@ namespace std {
 size_t hash<FlexFlow::ReplicaParallelDimSet>::operator()(
     FlexFlow::ReplicaParallelDimSet const &x) const {
   size_t result = 0;
-  result ^= std::hash<int>{}(x.sum_degree) + 0x9e3779b9 + (result << 6) +
-            (result >> 2);
-  result ^= std::hash<int>{}(x.discard_copy_degree) + 0x9e3779b9 +
+  result ^= std::hash<::FlexFlow::SumDegree>{}(x.sum_degree) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
+  result ^= std::hash<::FlexFlow::DiscardCopyDegree>{}(x.discard_copy_degree) +
+            0x9e3779b9 + (result << 6) + (result >> 2);
   return result;
 }
 } // namespace std
@@ -62,8 +65,9 @@ size_t hash<FlexFlow::ReplicaParallelDimSet>::operator()(
 namespace nlohmann {
 FlexFlow::ReplicaParallelDimSet
     adl_serializer<FlexFlow::ReplicaParallelDimSet>::from_json(json const &j) {
-  return {j.at("sum_degree").template get<int>(),
-          j.at("discard_copy_degree").template get<int>()};
+  return {j.at("sum_degree").template get<::FlexFlow::SumDegree>(),
+          j.at("discard_copy_degree")
+              .template get<::FlexFlow::DiscardCopyDegree>()};
 }
 void adl_serializer<FlexFlow::ReplicaParallelDimSet>::to_json(
     json &j, FlexFlow::ReplicaParallelDimSet const &v) {
@@ -76,8 +80,9 @@ void adl_serializer<FlexFlow::ReplicaParallelDimSet>::to_json(
 namespace rc {
 Gen<FlexFlow::ReplicaParallelDimSet>
     Arbitrary<FlexFlow::ReplicaParallelDimSet>::arbitrary() {
-  return gen::construct<FlexFlow::ReplicaParallelDimSet>(gen::arbitrary<int>(),
-                                                         gen::arbitrary<int>());
+  return gen::construct<FlexFlow::ReplicaParallelDimSet>(
+      gen::arbitrary<::FlexFlow::SumDegree>(),
+      gen::arbitrary<::FlexFlow::DiscardCopyDegree>());
 }
 } // namespace rc
 

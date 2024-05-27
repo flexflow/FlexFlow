@@ -55,10 +55,11 @@ ParallelTensorShape get_output_shape(LinearAttrs const &attrs,
   ShardParallelDim output_sample_dim = input_sample_dim;
   ShardParallelDim output_channels_dim = {
       size_t_from_int(attrs.out_channels),
-      input_shape.dims.replica_dims.discard_copy_degree};
+      get_discard_copy_degree(input_shape),
+  };
 
   int output_sum_degree =
-      input_shape.dims.replica_dims.sum_degree * in_channels_dim.degree;
+      get_sum_degree(input_shape) * in_channels_dim.degree;
   int output_discard_copy_degree = 1;
 
   ParallelTensorShape result = input_shape;
