@@ -88,6 +88,14 @@ jobs:
         run: |
           test_libs.sh utils
 
+      - name: Test op-attrs
+        run: |
+          test_libs.sh op-attrs
+
+      - name: Test pcg
+        run: |
+          test_libs.sh pcg
+
       - name: Test substitutions
         run: |
           test_libs.sh substitutions
