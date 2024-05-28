@@ -37,8 +37,8 @@ std::unordered_map<slot_id, OpArgSpec> const &
 
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd) {
   OpTaskBinding bwd;
-  bwd.bind_args_from_fwd(fwd);
-  bwd.bind_tensors_from_fwd(fwd);
+  bwd.arg_bindings = fwd.get_arg_bindings();
+  bwd.tensor_bindings = fwd.get_tensor_bindings();
   for (auto const &[key, spec] : fwd.get_tensor_bindings()) {
     OpSlotOptions slot_option = spec.slot_option;
     if (slot_option != OpSlotOptions::UNTRAINABLE ||
@@ -56,7 +56,8 @@ bool is_op_tensor_spec_invalid(OpTensorSlotSpec tensor_slot_spec,
          tensor_spec.slot_option != tensor_slot_spec.slot_option;
 }
 
-bool is_tensor_invocation_valid(OpTaskSignature sig, OpTaskInvocation inv) {
+bool is_tensor_invocation_valid(OpTaskSignature const &sig,
+                                OpTaskInvocation const &inv) {
   auto tensor_bindings = inv.binding.get_tensor_bindings();
   for (OpTensorSlotSpec const &op_tensor_slot_spec : sig.get_tensor_slots()) {
     std::pair<slot_id, IsGrad> tensor_key =
@@ -77,7 +78,8 @@ bool is_arg_type_invalid(std::type_index expected_arg_type,
   return arg_spec_type != expected_arg_type;
 }
 
-bool is_arg_invocation_valid(OpTaskSignature sig, OpTaskInvocation inv) {
+bool is_arg_invocation_valid(OpTaskSignature const &sig,
+                             OpTaskInvocation const &inv) {
   auto sig_arg_types = sig.get_arg_types();
   for (auto arg_binding : inv.binding.get_arg_bindings()) {
     std::type_index arg_type = sig_arg_types.at(arg_binding.first);
@@ -89,9 +91,14 @@ bool is_arg_invocation_valid(OpTaskSignature sig, OpTaskInvocation inv) {
   return true;
 }
 
-bool is_invocation_valid(OpTaskSignature sig, OpTaskInvocation inv) {
+bool is_invocation_valid(OpTaskSignature const &sig,
+                         OpTaskInvocation const &inv) {
   return is_tensor_invocation_valid(sig, inv) &&
          is_arg_invocation_valid(sig, inv);
+}
+
+bool are_sigs_eq(OpTaskSignature const &sig1, OpTaskSignature const &sig2) {
+  return sig1 == sig2;
 }
 
 } // namespace FlexFlow

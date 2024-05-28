@@ -29,13 +29,9 @@ using namespace FlexFlow::Kernels::LayerNorm;
 enum Slots {
   PROFILING,
   INPUT,
-  INPUT_GRAD,
   OUTPUT,
-  OUTPUT_GRAD,
   GAMMA,
-  GAMMA_GRAD,
   BETA,
-  BETA_GRAD,
   PER_DEVICE_STATE,
   ATTRS,
   HANDLE
@@ -95,10 +91,10 @@ static std::optional<float>
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto gamma = acc.get_tensor<Permissions::RO>(GAMMA);
 
-  auto input_grad = acc.get_tensor<Permissions::RW>(INPUT_GRAD);
-  auto gamma_grad = acc.get_tensor<Permissions::RW>(GAMMA_GRAD);
-  auto beta_grad = acc.get_tensor<Permissions::RW>(BETA_GRAD);
-  auto output_grad = acc.get_tensor<Permissions::RO>(OUTPUT_GRAD);
+  auto input_grad = acc.get_tensor_grad<Permissions::RW>(INPUT);
+  auto gamma_grad = acc.get_tensor_grad<Permissions::RW>(GAMMA);
+  auto beta_grad = acc.get_tensor_grad<Permissions::RW>(BETA);
+  auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   auto &state = acc.get_argument<LayerNormPerDeviceState>(PER_DEVICE_STATE);
@@ -170,7 +166,6 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   fwd_binding.bind_arg(PROFILING, settings);
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
 
-  // TODO how to handle gamma and beta, where are they from
   fwd_binding.bind(GAMMA, input.shape);
   fwd_binding.bind(BETA, input.shape);
   SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);

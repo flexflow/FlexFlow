@@ -8,7 +8,6 @@
 #include "op_tensor_spec.h"
 #include "profiling.h"
 #include "runtime_arg_ref.h"
-#include "serialization.h"
 #include "tasks.h"
 #include "utils/bidict.h"
 #include "utils/stack_map.h"
@@ -57,14 +56,6 @@ struct OpTaskBinding {
   template <typename T>
   void bind_arg(slot_id name, OpArgRef<T> const &ref) {
     this->insert_arg_spec(name, OpArgRefSpec::create(ref));
-  }
-
-  void bind_args_from_fwd(OpTaskBinding const &fwd) {
-    this->arg_bindings = fwd.get_arg_bindings();
-  }
-
-  void bind_tensors_from_fwd(OpTaskBinding const &fwd) {
-    this->tensor_bindings = fwd.get_tensor_bindings();
   }
 
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
