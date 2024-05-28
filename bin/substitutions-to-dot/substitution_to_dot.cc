@@ -1,12 +1,9 @@
-#include "ffc/substitution_loader.h"
-#include "op-meta/ffconst.h"
-#include "tl/optional.hpp"
+#include "substitution-generator/json.h"
 #include "utils/dot_file.h"
 #include <cassert>
 #include <iostream>
 
-using namespace FlexFlow::substitution_loader;
-using FlexFlow::opmeta::get_operator_type_name;
+using namespace FlexFlow;
 
 enum class NodeType {
   SRC,
@@ -29,7 +26,7 @@ int main(int argc, char **argv) {
 
   RuleCollection rule_collection = load_rule_collection_from_path(json_path);
 
-  tl::optional<Rule> found = tl::nullopt;
+  std::optional<Rule> found = std::nullopt;
   for (Rule const &r : rule_collection.rules) {
     if (r.name == rule_name) {
       found = r;
@@ -88,10 +85,7 @@ int main(int argc, char **argv) {
     Operator const &o = r.srcOp[i];
     Node srcOpNode = {NodeType::SRC, i, 0};
     {
-      dot.add_node(
-          srcOpNode,
-          label_map(FlexFlow::opmeta::get_operator_type_name(o.op_type),
-                    srcOpNode));
+      dot.add_node(srcOpNode, label_map(fmt::to_string(o.op_type), srcOpNode));
       dot.add_node_to_subgraph(srcOpNode, src_body_subgraph);
     }
 
@@ -115,10 +109,7 @@ int main(int argc, char **argv) {
     Operator const &o = r.dstOp[j];
     Node dstOpNode = {NodeType::DST, j, 0};
     {
-      dot.add_node(
-          dstOpNode,
-          label_map(FlexFlow::opmeta::get_operator_type_name(o.op_type),
-                    dstOpNode));
+      dot.add_node(dstOpNode, label_map(fmt::to_string(o.op_type), dstOpNode));
       dot.add_node_to_subgraph(dstOpNode, dst_body_subgraph);
     }
 

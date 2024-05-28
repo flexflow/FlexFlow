@@ -191,6 +191,9 @@ template <typename T>
 using req = required<T>;
 
 template <typename T>
+struct delegate_ostream_operator<req<T>> : std::true_type {};
+
+template <typename T>
 struct remove_req {
   using type = T;
 };

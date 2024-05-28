@@ -124,3 +124,35 @@ function(ff_add_test_executable)
   ff_set_cxx_properties(${FF_TEST_EXEC_NAME})
   doctest_discover_tests(${FF_TEST_EXEC_NAME} ADD_LABELS 1)
 endfunction()
+
+function(ff_add_executable)
+  ff_parse_args(
+    PREFIX 
+      FF_EXEC
+    ARGS
+      NAME
+    VARIADIC_ARGS
+      SRC_PATTERNS
+      PRIVATE_INCLUDE
+      DEPS
+    PARSE
+      ${ARGN}
+  )
+
+  project(${FF_EXEC_NAME})
+  file(GLOB_RECURSE SRC
+       CONFIGURE_DEPENDS
+       LIST_DIRECTORIES False
+       ${FF_EXEC_SRC_PATTERNS})
+
+  add_executable(
+    ${FF_EXEC_NAME}
+    ${SRC})
+
+  target_link_libraries(
+    ${FF_EXEC_NAME}
+    ${FF_EXEC_DEPS})
+
+  define_ff_vars(${FF_EXEC_NAME})
+  ff_set_cxx_properties(${FF_EXEC_NAME})
+endfunction()
