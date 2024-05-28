@@ -222,11 +222,6 @@ auto transform(req<C> const &c, F const &f)
 template <typename F,
           typename In,
           typename Out = decltype(std::declval<F>()(std::declval<In>()))>
-std::vector<Out> vector_transform(F const &f, std::vector<In> const &v);
-
-template <typename F,
-          typename In,
-          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
 std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f);
 
 template <typename F>

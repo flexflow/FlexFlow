@@ -3,12 +3,13 @@
 // lib/op-attrs/include/op-attrs/ops/attention/multihead_attention_inputs.struct.toml
 /* proj-data
 {
-  "generated_from": "655a3e56cf8a50fba6c1c9daf423720f"
+  "generated_from": "c57a9d1d2822a726ee9d9369d22e8e72"
 }
 */
 
 #include "op-attrs/ops/attention/multihead_attention_inputs.dtg.h"
 
+#include "op-attrs/datatype.dtg.h"
 #include <cstddef>
 #include <sstream>
 

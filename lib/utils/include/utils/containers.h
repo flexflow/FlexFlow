@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "utils/containers/vector_transform.h"
 
 namespace FlexFlow {
 
@@ -502,11 +503,6 @@ template <typename F, typename C>
 auto transform(req<C> const &c, F const &f)
     -> decltype(transform(std::declval<C>(), std::declval<F>())) {
   return transform(static_cast<C>(c), f);
-}
-
-template <typename F, typename In, typename Out>
-std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
-  return transform(v, f);
 }
 
 template <typename F, typename In, typename Out>

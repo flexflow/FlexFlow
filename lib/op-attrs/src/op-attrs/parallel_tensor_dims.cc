@@ -4,6 +4,7 @@
 #include "op-attrs/shard_parallel_dim.h"
 #include "utils/containers.h"
 #include "utils/integer_conversions.h"
+#include "op-attrs/dim_ordered/transform.h"
 
 namespace FlexFlow {
 
@@ -59,8 +60,9 @@ TensorDims get_tensor_dims_unsafe(ParallelTensorDims const &) {
   NOT_IMPLEMENTED();
 }
 
-TensorDims get_reduced_dims(ParallelTensorDims const &) {
-  NOT_IMPLEMENTED();
+TensorDims get_reduced_dims(ParallelTensorDims const &dims) {
+  FFOrdered<size_t> dim_sizes = transform(dims.shard_dims, [](ShardParallelDim const &d) { return d.size; });
+  return TensorDims{dim_sizes};
 }
 
 } // namespace FlexFlow
