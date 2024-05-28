@@ -2,11 +2,12 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_TRACKED_ALLOCATOR_H
 
 #include "kernels/allocation.h"
+#include "local_allocator.h"
 
 namespace FlexFlow {
 
 struct TrackedAllocator : public IAllocator {
-  TrackedAllocator() = default;
+  TrackedAllocator(Allocator);
   TrackedAllocator(TrackedAllocator const &) = delete;
   TrackedAllocator(TrackedAllocator &&) = delete;
   ~TrackedAllocator() = default;
@@ -16,11 +17,12 @@ struct TrackedAllocator : public IAllocator {
   size_t get_current_mem_usage();
 
 private:
-  size_t current_mem_usage;
+  size_t current_mem_usage = 0;
+  Allocator allocator;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(TrackedAllocator);
 
-Allocator get_tracked_memory_allocator();
+Allocator get_tracked_memory_allocator(Allocator base_allocator);
 
 } // namespace FlexFlow
 
