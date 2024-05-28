@@ -123,6 +123,7 @@
               jq
               gh
               lcov # for code coverage
+              xdg_utils # for xdg-open to open html files
             ])
             (with proj-repo.packages.${system}; [
               proj
