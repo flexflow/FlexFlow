@@ -22,7 +22,7 @@ private:
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(TrackedAllocator);
 
-Allocator get_tracked_memory_allocator(Allocator base_allocator);
+Allocator get_tracked_memory_allocator(Allocator const &base_allocator);
 
 } // namespace FlexFlow
 

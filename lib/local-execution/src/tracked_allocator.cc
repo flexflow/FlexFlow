@@ -22,7 +22,7 @@ size_t TrackedAllocator::get_current_mem_usage() {
   return this->current_mem_usage;
 }
 
-Allocator get_tracked_memory_allocator(Allocator base_allocator) {
+Allocator get_tracked_memory_allocator(Allocator const &base_allocator) {
   return Allocator::create<TrackedAllocator>(base_allocator);
 }
 
