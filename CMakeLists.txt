@@ -37,6 +37,7 @@ option(FF_USE_PREBUILT_LEGION "Enable use of Legion pre-compiled library, if ava
 option(FF_USE_ALL_PREBUILT_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
 option(FF_USE_PYTHON "Enable Python" ON)
 option(FF_BUILD_FROM_PYPI "Build from pypi" OFF)
+option(FF_USE_CODE_COVERAGE "Enable code coverage" OFF)
 
 set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
 set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
@@ -86,8 +87,11 @@ endif()
 include(cuda)
 include(cudnn)
 include(nccl)
-include(CodeCoverage)
-append_coverage_compiler_flags()
+
+if (FF_USE_CODE_COVERAGE)
+  include(CodeCoverage)
+  append_coverage_compiler_flags()
+endif()
 # set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 include(json)
