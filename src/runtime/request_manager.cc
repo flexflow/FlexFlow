@@ -502,7 +502,7 @@ void RequestManager::request_complete_clean_up(int batch_index) {
     *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
         << std::endl;
   }
-  *os << output << std::endl << std::endl;
+  *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
 
   if (!output_filepath.empty()) {
     output_file.close();
