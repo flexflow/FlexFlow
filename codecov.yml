@@ -1,0 +1,16 @@
+codecov:
+  notify:
+    require_ci_to_pass: yes
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto  # Automatically set target at 70% of the current project coverage
+        threshold: 0%  # Allows the coverage to drop by no more than 0% from the target
+        base: auto  # Picks the base of the pull request as a reference to compare against
+
+comment:
+  layout: "header, diff, flags, files"
+  behavior: default
+  require_changes: no
