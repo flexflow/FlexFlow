@@ -20,6 +20,8 @@ cd "$REPO/build-ci"
 #fi
 # append the cmake flag FF_USE_CODE_COVERAGE
 IFS=" " read -r -a FLAGS <<< "$CMAKE_FLAGS"
+echo "FLAGS: ${FLAGS[@]}"
+FLAGS+=("-DFF_USE_CODE_COVERAGE=ON")
 ../config/config.linux \
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
