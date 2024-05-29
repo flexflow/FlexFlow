@@ -26,30 +26,32 @@ std::unordered_set<ParallelComputationGraph>
   NOT_IMPLEMENTED();
 }
 
+template <typename T>
 Strategy
-    graph_optimize(ComputationGraph &cg,
-                   CostEstimator const &cost_estimator,
-                   MachineSpecification const &resources,
-                   std::function<std::unordered_set<MachineView>(
-                       Operator const &, MachineSpecification const &)> const
-                       &allowed_machine_views,
-                   OptimizerConfig const &opt_config) {
+    _graph_optimize(ComputationGraph &cg,
+                    CostEstimator const &cost_estimator,
+                    MachineSpecification const &resources,
+                    std::function<std::unordered_set<MachineView>(
+                        Operator const &, MachineSpecification const &)> const
+                        &allowed_machine_views,
+                    OptimizerConfig const &opt_config) {
 
   ParallelComputationGraph pcg = cg_to_pcg(cg);
 
   std::unordered_set<Substitution> subs = get_all_applicable_substitutions(pcg);
 
-  OptimalCostCache cached_subgraph_costs;
+  OptimalCostCache<T> cached_subgraph_costs;
   DeduplicatedPriorityQueue<Strategy, std::vector<Strategy>, StrategyRuntimeCmp>
       candidates;
 
-  OptimalCostResult initial_pcg_result = optimal_cost(pcg,
-                                                      allowed_machine_views,
-                                                      cost_estimator,
-                                                      resources,
-                                                      cached_subgraph_costs);
-  Strategy initial_result{
-      pcg, initial_pcg_result.machine_mapping, initial_pcg_result.runtime};
+  T initial_pcg_result = optimal_cost(pcg,
+                                      allowed_machine_views,
+                                      cost_estimator,
+                                      resources,
+                                      cached_subgraph_costs);
+  Strategy initial_result{pcg,
+                          initial_pcg_result.get_machine_mapping(),
+                          initial_pcg_result.get_runtime()};
 
   Strategy best_result = initial_result;
   candidates.push(initial_result);
@@ -68,12 +70,12 @@ Strategy
 
     for (auto const &sub : subs) {
       for (auto const &new_pcg : apply_substitution(current_result.pcg, sub)) {
-        OptimalCostResult c = optimal_cost(new_pcg,
-                                           allowed_machine_views,
-                                           cost_estimator,
-                                           resources,
-                                           cached_subgraph_costs);
-        Strategy new_result{new_pcg, c.machine_mapping, c.runtime};
+        T c = optimal_cost(new_pcg,
+                           allowed_machine_views,
+                           cost_estimator,
+                           resources,
+                           cached_subgraph_costs);
+        Strategy new_result{new_pcg, c.get_machine_mapping(), c.get_runtime()};
         if (new_result.runtime <= opt_config.threshold &&
             get_nodes(new_pcg.value()).size() <= opt_config.max_num_ops) {
           candidates.push(new_result);
@@ -83,6 +85,24 @@ Strategy
   }
 
   return best_result;
+}
+
+Strategy
+    graph_optimize(ComputationGraph &cg,
+                   CostEstimator const &cost_estimator,
+                   MachineSpecification const &resources,
+                   std::function<std::unordered_set<MachineView>(
+                       Operator const &, MachineSpecification const &)> const
+                       &allowed_machine_views,
+                   OptimizerConfig const &opt_config,
+                   bool memory_optimization) {
+  if (!memory_optimization) {
+    return _graph_optimize<OptimalCostResult>(
+        cg, cost_estimator, resources, allowed_machine_views, opt_config);
+  } else {
+    return _graph_optimize<OptimalCostResultWithMemory>(
+        cg, cost_estimator, resources, allowed_machine_views, opt_config);
+  }
 }
 
 } // namespace FlexFlow

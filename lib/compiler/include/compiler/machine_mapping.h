@@ -50,6 +50,9 @@ struct OptimalCostResult {
                                             OptimalCostResult const &s2);
   static OptimalCostResult infinity();
 
+  float get_runtime() const;
+  MachineMapping get_machine_mapping() const;
+
   float runtime;
   req<MachineMapping> machine_mapping;
 };
@@ -108,6 +111,9 @@ struct OptimalCostResultWithMemory {
       parallel_combine(OptimalCostResultWithMemory const &s1,
                        OptimalCostResultWithMemory const &s2);
   static OptimalCostResultWithMemory infinity();
+
+  float get_runtime() const;
+  MachineMapping get_machine_mapping() const;
 
   req<std::unordered_map<MemoryConfig, MemoryResult>> results;
 };
