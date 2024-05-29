@@ -81,6 +81,29 @@ __global__ void half2float_kernel(const half* __restrict__ in, float* __restrict
   }
 }
 
+template <typename DT>
+__global__ void insertion_sort_kernel(DT* topk_values, int* topk_indices, int batch_size, int k) {
+    int batch_index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (batch_index < batch_size) {
+        DT* values = topk_values + batch_index * k;
+        int* indices = topk_indices + batch_index * k;
+
+        for (int i = 1; i < k; i++) {
+            DT key_val = values[i];
+            int key_idx = indices[i];
+            int j = i - 1;
+            while (j >= 0 && values[j] < key_val) {
+                values[j + 1] = values[j];
+                indices[j + 1] = indices[j];
+                j = j - 1;
+            }
+            values[j + 1] = key_val;
+            indices[j + 1] = key_idx;
+        }
+    }
+}
+
+
 /*static*/
 template <typename DT>
 void ArgTopK::forward_kernel(
@@ -105,6 +128,13 @@ void ArgTopK::forward_kernel(
         indices_ptr,
         true,
         stream);
+    if (sorted) {
+      assert(output_ptr != nullptr);
+      insertion_sort_kernel<<<GET_BLOCKS(batch_size),
+                             min((size_t)CUDA_NUM_THREADS, batch_size),
+                             0,
+                             stream>>>(output_ptr, indices_ptr, batch_size, k);
+    }
   } else {
     // raft_radix_11bits_extra_pass_kernel<DT, int>(
     //     input_ptr,
