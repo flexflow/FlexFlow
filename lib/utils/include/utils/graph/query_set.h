@@ -60,6 +60,9 @@ std::string format_as(query_set<T> const &q) {
 }
 
 template <typename T>
+struct delegate_ostream_operator<query_set<T>> : std::true_type {};
+
+template <typename T>
 query_set<T> matchall() {
   return query_set<T>::matchall();
 }
