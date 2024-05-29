@@ -43,16 +43,17 @@
         ]
       },
       "locked": {
-        "dirtyRev": "b40e24c44c45f2243524e02ee7565fc1b8f45834-dirty",
-        "dirtyShortRev": "b40e24c-dirty",
-        "lastModified": 1716923548,
+        "lastModified": 1716925298,
         "narHash": "sha256-YKW0TwVdb5kEKBe/SeUxvpXusvPkk6c1HVza6XeeCaw=",
-        "type": "git",
-        "url": "file:///home/qinghanc/proj"
+        "owner": "Bob-Chen222",
+        "repo": "proj",
+        "rev": "61b3912fa2a4b3be34dbac4a22d63f52ace9290f",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///home/qinghanc/proj"
+        "owner": "Bob-Chen222",
+        "repo": "proj",
+        "type": "github"
       }
     },
     "root": {
