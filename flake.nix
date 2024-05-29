@@ -109,8 +109,6 @@
         default = mkShell {
           inputsFrom = [ ci ];
           inherit (ci) CMAKE_FLAGS;
-          # append a new flag to CMAKE_FLAGS
-          CMAKE_FLAGS = "${CMAKE_FLAGS} -DFF_USE_CODE_COVERAGE=ON";
 
           buildInputs = builtins.concatLists [
             (with pkgs; [
