@@ -15,16 +15,7 @@
 from typing import Optional
 from ..type import *
 from flexflow.core import *
-from .serve import (
-    LLM,
-    SSM,
-    GenerationConfig,
-    GenerationResult,
-    LoraLinearConfig,
-    PEFTModelID,
-    Request,
-    RequestType,
-)
+from .serve import LLM, SSM
 
 
 def __check_positive_int(configs_dict: dict, key: str):

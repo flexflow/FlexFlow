@@ -32,14 +32,11 @@ class FlexFlowModel:
     def build_model(self):
         assert False, "Not implemented yet"
 
-    def convert_hf_weight_name(name):
+    def convert_weight_name_hf2ff(name):
         assert False, "Not implemented yet"
 
     def convert_hf_model(model, dst_folder):
         assert False, "Not implemented yet"
-        
-    def convert_ff_weight_name(name):
-        assert False, "Not implemented yet"
-        
+
     def load_weights_into_hf_model(model, src_folder):
         assert False, "Not implemented yet"

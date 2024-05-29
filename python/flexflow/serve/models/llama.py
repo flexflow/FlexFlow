@@ -255,45 +255,21 @@ class FlexFlowLLAMA(FlexFlowModel):
 
         self.ffmodel = ffmodel
 
-    def convert_hf_weight_name(name):
+    def convert_weight_name_hf2ff(name):
         return name.replace("model.", "")
+
+    def convert_weight_name_ff2hf(name):
+        if name == "lm_head.weight":
+            return name
+        else:
+            return "model." + name
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
-            name = FlexFlowLLAMA.convert_hf_weight_name(name)
+            name = FlexFlowLLAMA.convert_weight_name_hf2ff(name)
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
 
-
-    def convert_ff_weight_name(name):
-        converted_name = (
-            name
-            .replace("w1", "gate_proj")
-            .replace("w2", "down_proj")
-            .replace("w3", "up_proj")
-            .replace("wq", "q_proj")
-            .replace("wk", "k_proj")
-            .replace("wv", "v_proj")
-            .replace("wo", "o_proj")
-            .replace("feed_forward_", "mlp.")
-            .replace("post_self_attn", "post_attention")
-            .replace("attention_norm", "input_layernorm")
-            .replace("tok_embeddings", "embed_tokens")
-            .replace("output", "lm_head")
-            
-        )
-        
-        converted_name = re.sub(r"layers_(\d+)_", r"layers.\1.", converted_name)
-        converted_name = re.sub(r"_(bias|weight)$", r".\1", converted_name)
-        # converted_name = re.sub(r"attention_(?!norm)", "self_attn.", converted_name)
-        
-        converted_name = converted_name.replace("ffn_norm", "post_attention_layernorm")
-            
-        if "lm_head" not in converted_name:
-            converted_name = "model." + converted_name   
-                 
-        return converted_name
-    
     def load_weights_into_hf_model(model, src_folder):
         """
         Load weights from a specified folder and apply them to a Hugging Face model.
@@ -307,30 +283,36 @@ class FlexFlowLLAMA(FlexFlowModel):
             if weight_path.endswith("rev_sha.txt"):
                 print("skipping rev_sha.txt")
                 continue
-            else:
-                original_name = FlexFlowLLAMA.convert_ff_weight_name(file_name.replace('.bin', ''))
-                print(f"Converting weight name: {file_name} to {original_name}")
-            
+            original_name = FlexFlowLLAMA.convert_weight_name_ff2hf(file_name)
+            print(f"Converting weight name: {file_name} to {original_name}")
+
             if not os.path.exists(weight_path):
                 raise FileNotFoundError(f"No weight file found for {file_name}")
-            
-            weight_data = np.fromfile(weight_path, dtype=np.float16).astype(np.float32)
+
+            ff_dtype = np.float32 if "full-precision" in weight_path else np.float16
+            weight_data = np.fromfile(
+                weight_path, dtype=ff_dtype
+            )  # .astype(np.float32)
             if original_name not in model.state_dict():
                 raise KeyError(f"Parameter {original_name} not found in model.")
-            
+
             param = model.state_dict()[original_name]
             expected_numel = param.numel()
             if weight_data.size != expected_numel:
-                print(f"Adjusting shape for {original_name} from {weight_data.size} to {expected_numel}.")
+                print(
+                    f"Adjusting shape for {original_name} from {weight_data.size} to {expected_numel}."
+                )
                 if weight_data.size % expected_numel == 0:
                     factor = weight_data.size // expected_numel
                     new_shape = (factor,) + tuple(param.shape)
-                    weight_data_reshaped = weight_data.reshape(new_shape)[0] 
+                    weight_data_reshaped = weight_data.reshape(new_shape)[0]
                     weight_tensor = torch.from_numpy(weight_data_reshaped)
                 else:
-                    raise ValueError(f"Cannot adjust shape for {original_name} due to incompatible size.")
+                    raise ValueError(
+                        f"Cannot adjust shape for {original_name} due to incompatible size."
+                    )
             else:
                 weight_tensor = torch.from_numpy(weight_data).reshape(param.shape)
-            
+
             with torch.no_grad():
                 param.copy_(weight_tensor)
