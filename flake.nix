@@ -6,10 +6,14 @@
     extra-substituters = [
       "https://ff.cachix.org"
       "https://cuda-maintainers.cachix.org/"
+      "https://llama-cpp.cachix.org"
+      "https://nixos-rocm.cachix.org/"
     ];
     extra-trusted-public-keys = [
       "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
       "ff.cachix.org-1:/kyZ0w35ToSJBjpiNfPLrL3zTjuPkUiqf2WH0GIShXM="
+      "nixos-rocm.cachix.org-1:VEpsf7pRIijjd8csKjFNBGzkBqOmw8H9PRmgAq14LnE="
+      "llama-cpp.cachix.org-1:H75X+w83wUKTIPSO1KWy9ADUrzThyGs8P5tmAbkWhQc="
     ];
   };
 
@@ -29,11 +33,30 @@
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
+        config.rocmSupport = true;
       };
       lib = pkgs.lib;
 
+      rocm = pkgs.symlinkJoin {
+        name = "rocm";
+        paths = with pkgs.rocmPackages; [ 
+          rocm-thunk 
+          rocm-runtime 
+          rocm-device-libs 
+          clr 
+          hipcc
+          rccl
+          miopen
+          miopengemm
+          miopen-hip
+          hipblas
+          rocm-cmake
+          clr
+        ];
+      };
+
       mkShell = pkgs.mkShell.override {
-        stdenv = pkgs.cudaPackages.backendStdenv;
+        stdenv = pkgs.rocmPackages.llvm.rocmClangStdenv;
       };
     in 
     {
@@ -61,6 +84,7 @@
         ci = mkShell {
           shellHook = ''
             export PATH="$HOME/ff/.scripts/:$PATH"
+            echo "ROCm path set to: $ROCM_PATH"
           '';
           
           CMAKE_FLAGS = lib.strings.concatStringsSep " " [
@@ -89,21 +113,29 @@
               ccache
               pkg-config
               python3
-              cudatoolkit
-              cudaPackages.cuda_nvcc
-              cudaPackages.cudnn
-              cudaPackages.nccl
-              cudaPackages.libcublas
-              cudaPackages.cuda_cudart
+              # cudatoolkit
+              # cudaPackages.cuda_nvcc
+              # cudaPackages.cudnn
+              # cudaPackages.nccl
+              # cudaPackages.libcublas
+              # cudaPackages.cuda_cudart
               tl-expected
-              lcov # for code coverage
-              xdg_utils # for xdg-open to open html files
             ])
             (with self.packages.${system}; [
               legion
               rapidcheckFull
               doctest
             ])
+            [ rocm ]
+            # (with pkgs.rocmPackages; [
+            #   hipcc
+            #   rccl
+            #   miopen
+            #   miopen-hip
+            #   hipblas
+            #   rocm-cmake
+            #   clr
+            # ])
           ];
         };
 
@@ -122,7 +154,6 @@
               compdb
               jq
               gh
-              lcov # for code coverage
             ])
             (with proj-repo.packages.${system}; [
               proj

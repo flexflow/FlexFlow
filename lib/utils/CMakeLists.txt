@@ -12,7 +12,6 @@ ff_add_library(
     visit_struct
     fmt
     json
-    miopen
     # cuda
 )      
 
