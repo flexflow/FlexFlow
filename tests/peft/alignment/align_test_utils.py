@@ -1,5 +1,6 @@
 import os, re, torch
 import numpy as np
+from typing import List
 abs_dirname = os.path.dirname(os.path.abspath(__file__))
 hf_path = os.path.join(os.path.dirname(abs_dirname), "hf_peft_tensors")
 ff_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(abs_dirname))), "build", "inference_tensors")
@@ -17,11 +18,22 @@ def print_unique_files_list(dirname):
                 if layer_num > 0 and layer_num != 100:
                     files_list.remove(f)
     return sorted(files_list)
-def compare_tensors(hf_tensor_filepath, ff_tensor_filepath, tolerance=1e-2):
-    if not (os.path.exists(hf_tensor_filepath) and os.path.exists(ff_tensor_filepath)):
-        print(hf_tensor_filepath, os.path.exists(hf_tensor_filepath))
-        print(ff_tensor_filepath, os.path.exists(ff_tensor_filepath))
-        assert False
+def compare_tensors(hf_tensor_filepath: str, ff_tensor_filepath: str, tolerance=1e-2):
+    """Check whether a HuggingFace tensor and a FlexFlow tensor are equal
+
+    Args:
+        hf_tensor_filepath (str): The file path of the HuggingFace tensor
+        ff_tensor_filepath (str): The file path of the FlexFlow tensor
+        tolerance (float, optional): Floating-point error tolerance for the checks. Defaults to 1e-2.
+
+    Raises:
+        FileNotFoundError: _description_
+        FileNotFoundError: _description_
+    """    
+    if not os.path.exists(hf_tensor_filepath):
+        raise FileNotFoundError(f"HF tensor file: {hf_tensor_filepath} not found")
+    if not os.path.exists(ff_tensor_filepath):
+        raise FileNotFoundError(f"FF tensor file {ff_tensor_filepath} not found")
     hf_tensor = torch.load(hf_tensor_filepath)
     if type(hf_tensor) == tuple or type(hf_tensor) == list:
         assert(len(hf_tensor) == 1)
@@ -46,7 +58,15 @@ def compare_tensors(hf_tensor_filepath, ff_tensor_filepath, tolerance=1e-2):
     #assert(np.allclose(ff_tensor, hf_tensor, atol=tolerance))
     assert(len(mismatches) <= .05*len_hf_tensor)
     print("Ok!")
-def compare_tensors_difference(hf_tensor_filepath, ff_tensor1_filepath, ff_tensor2_filepath, tolerance=1e-2):
+def compare_tensors_difference(hf_tensor_filepath: str, ff_tensor1_filepath: str, ff_tensor2_filepath: str, tolerance: float = 1e-2):
+    """Check whether a HuggingFace tensor is equal to the difference between two FlexFlow tensors
+
+    Args:
+        hf_tensor_filepath (str): The file path of the HuggingFace tensor
+        ff_tensor1_filepath (str): The file path of the first FlexFlow tensor
+        ff_tensor2_filepath (str): The file path of the second FlexFlow tensor
+        tolerance (float, optional): The floating-point error tolerance for the equality check. Defaults to 1e-2.
+    """    
     assert(os.path.exists(hf_tensor_filepath))
     assert(os.path.exists(ff_tensor1_filepath))
     assert(os.path.exists(ff_tensor2_filepath))
@@ -77,8 +97,17 @@ def compare_tensors_difference(hf_tensor_filepath, ff_tensor1_filepath, ff_tenso
     #assert(np.allclose(ff_tensor, hf_tensor, atol=tolerance))
     assert(len(mismatches) <= .05*len_hf_tensor)
     print("Ok!")
-def compare_hf_tensors(tensor1_fp, tensor2_fp):
-    assert(os.path.exists(tensor1_fp) and os.path.exists(tensor2_fp))
+def compare_hf_tensors(tensor1_fp: str, tensor2_fp: str):
+    """Checks whether two HuggingFace tensors are equal
+
+    Args:
+        tensor1_fp (str): The file path of the first tensor
+        tensor2_fp (str): The file path of the second tensor
+    """    
+    if not os.path.exists(tensor1_fp):
+        raise FileNotFoundError(f"HF tensor file: {tensor1_fp} not found")
+    if not os.path.exists(tensor2_fp):
+        raise FileNotFoundError(f"HF tensor file {tensor2_fp} not found")
     hf_tensor1 = torch.load(tensor1_fp)
     hf_tensor2 = torch.load(tensor2_fp)
     if type(hf_tensor1) == tuple or type(hf_tensor1) == list:
@@ -100,8 +129,20 @@ def compare_hf_tensors(tensor1_fp, tensor2_fp):
         assert(False)
     print("Ok!")
 
-def check_hf_sum_tensors(tensor_sum_fp, tensor1_fp, tensor2_fp):
-    assert(os.path.exists(tensor_sum_fp) and os.path.exists(tensor1_fp) and os.path.exists(tensor2_fp))
+def check_hf_sum_tensors(tensor_sum_fp: str, tensor1_fp: str, tensor2_fp: str):
+    """Checks whether a HuggingFace tensor is equal to the sum of two other HuggingFace tensors
+
+    Args:
+        tensor_sum_fp (str): The file path of the sum tensor
+        tensor1_fp (str): The file path of the first tensor
+        tensor2_fp (str): The file path of the second tensor
+    """
+    if not os.path.exists(tensor_sum_fp):
+        raise FileNotFoundError(f"HF tensor file: {tensor_sum_fp} not found")
+    if not os.path.exists(tensor1_fp):
+        raise FileNotFoundError(f"HF tensor file {tensor1_fp} not found")
+    if not os.path.exists(tensor2_fp):
+        raise FileNotFoundError(f"HF tensor file {tensor2_fp} not found")
     hf_tensor_sum = torch.load(tensor_sum_fp)
     hf_tensor1 = torch.load(tensor1_fp)
     hf_tensor2 = torch.load(tensor2_fp)
@@ -131,14 +172,27 @@ def check_hf_sum_tensors(tensor_sum_fp, tensor1_fp, tensor2_fp):
         print(mismatches)
         assert(False)
     print("Ok!")
-def check_hf_zero_tensor(hf_tensor_fp):
-    assert(os.path.exists(hf_tensor_fp))
+def check_hf_zero_tensor(hf_tensor_fp: str):
+    """Check whether a HuggingFace tensor is a zero tensor
+
+    Args:
+        hf_tensor_fp (str): The file path of the HuggingFace tensor
+    """    
+    if not os.path.exists(hf_tensor_fp):
+        raise FileNotFoundError(f"HF tensor file: {hf_tensor_fp} not found")
     hf_tensor1 = torch.load(hf_tensor_fp)
     if type(hf_tensor1) == tuple or type(hf_tensor1) == list:
         assert(len(hf_tensor1) == 1)
         hf_tensor1 = hf_tensor1[0]
     assert(torch.count_nonzero(torch.nan_to_num(hf_tensor1)).sum() == 0)
-def print_tensors(hf_tensor_filepath, ff_tensor_filepath, txt=""):
+def print_tensors(hf_tensor_filepath: str, ff_tensor_filepath: str, txt: str = ""):
+    """Print the contents of a HuggingFace tensor and a FlexFlow tensor
+
+    Args:
+        hf_tensor_filepath (str): The file path of the HuggingFace tensor
+        ff_tensor_filepath (str): The file path of the FlexFlow tensor
+        txt (str, optional): Additional text to prepend to the tensors. Defaults to "".
+    """    
     assert(os.path.exists(hf_tensor_filepath) and os.path.exists(ff_tensor_filepath))
     hf_tensor = torch.load(hf_tensor_filepath)
     if type(hf_tensor) == tuple or type(hf_tensor) == list:
@@ -155,7 +209,23 @@ def print_tensors(hf_tensor_filepath, ff_tensor_filepath, txt=""):
     print(hf_tensor)
     print(f"{txt} - FF tensor: ")
     print(ff_tensor)
-def compare_flexflow_tensors(ff_tensor1_fp, ff_tensor2_fp, tolerance=1e-5, max_len=-1):
+def compare_flexflow_tensors(ff_tensor1_fp: str, ff_tensor2_fp: str, tolerance: float = 1e-5, max_len: int = -1):
+    """Check whether two FlexFlow tensors are equal
+
+    Args:
+        ff_tensor1_fp (str): The file path of the first FlexFlow tensor
+        ff_tensor2_fp (str): The file path of the second FlexFlow tensor
+        tolerance (float, optional): Floating-point error tolernace for the check. Defaults to 1e-5.
+        max_len (int, optional): Maximum number of elements to check (if > 0). Defaults to -1.
+
+    Raises:
+        FileNotFoundError: _description_
+        FileNotFoundError: _description_
+    """    
+    if not os.path.exists(ff_tensor1_fp):
+        raise FileNotFoundError(f"FF tensor file: {ff_tensor1_fp} not found")
+    if not os.path.exists(ff_tensor2_fp):
+        raise FileNotFoundError(f"FF tensor file {ff_tensor2_fp} not found")
     assert(os.path.exists(ff_tensor1_fp) and os.path.exists(ff_tensor2_fp))
     ff_tensor1 = np.loadtxt(ff_tensor1_fp, delimiter=',')
     ff_tensor2 = np.loadtxt(ff_tensor2_fp, delimiter=',')
@@ -178,8 +248,22 @@ def compare_flexflow_tensors(ff_tensor1_fp, ff_tensor2_fp, tolerance=1e-5, max_l
     #assert(np.allclose(ff_tensor, hf_tensor, atol=tolerance))
     assert(len(mismatches) <= .05*len(ff_tensor1))
     print("Ok!")
-def compare_flexflow_tensors_shortest(ff_tensor1_fp, ff_tensor2_fp, tolerance=1e-5):
-    assert(os.path.exists(ff_tensor1_fp) and os.path.exists(ff_tensor2_fp))
+def compare_flexflow_tensors_shortest(ff_tensor1_fp: str, ff_tensor2_fp: str, tolerance: float = 1e-5):
+    """Compare two FlexFlow tensors up to the maximum length of the shortest tensor
+
+    Args:
+        ff_tensor1_fp (str): The file path of the first FlexFlow tensor
+        ff_tensor2_fp (str): The file path of the second FlexFlow tensor
+        tolerance (float, optional): Floating point error tolerance for the check. Defaults to 1e-5.
+
+    Raises:
+        FileNotFoundError: _description_
+        FileNotFoundError: _description_
+    """    
+    if not os.path.exists(ff_tensor1_fp):
+        raise FileNotFoundError(f"FF tensor file: {ff_tensor1_fp} not found")
+    if not os.path.exists(ff_tensor2_fp):
+        raise FileNotFoundError(f"FF tensor file {ff_tensor2_fp} not found")
     ff_tensor1 = np.loadtxt(ff_tensor1_fp, delimiter=',')
     ff_tensor2 = np.loadtxt(ff_tensor2_fp, delimiter=',')
     minlen = min(ff_tensor1.shape[0], ff_tensor2.shape[0])
@@ -195,8 +279,23 @@ def compare_flexflow_tensors_shortest(ff_tensor1_fp, ff_tensor2_fp, tolerance=1e
     #assert(np.allclose(ff_tensor, hf_tensor, atol=tolerance))
     assert(len(mismatches) <= .05*len(ff_tensor1))
     print("Ok!")
-def check_flexflow_tensors_sum(ff_tensor_sum_fp, ff_tensor1_fp, ff_tensor2_fp, tolerance=1e-5):
-    assert(os.path.exists(ff_tensor1_fp) and os.path.exists(ff_tensor2_fp))
+def check_flexflow_tensors_sum(ff_tensor_sum_fp: str, ff_tensor1_fp: str, ff_tensor2_fp: str, tolerance=1e-5):
+    """Check whether a FlexFlow tensor is equal to the sum of two other FlexFlow tensors
+
+    Args:
+        ff_tensor_sum_fp (str): The file path of the FlexFlow sum tensor
+        ff_tensor1_fp (str): The file path of the first FlexFlow tensor
+        ff_tensor2_fp (str): The file path of the second FlexFlow tensor
+        tolerance (_type_, optional): Floating-point error tolerance for the check. Defaults to 1e-5.
+
+    Raises:
+        FileNotFoundError: _description_
+        FileNotFoundError: _description_
+    """    
+    if not os.path.exists(ff_tensor1_fp):
+        raise FileNotFoundError(f"FF tensor file: {ff_tensor1_fp} not found")
+    if not os.path.exists(ff_tensor2_fp):
+        raise FileNotFoundError(f"FF tensor file {ff_tensor2_fp} not found")
     ff_tensor1 = np.loadtxt(ff_tensor1_fp, delimiter=',')
     ff_tensor2 = np.loadtxt(ff_tensor2_fp, delimiter=',')
     ff_tensor_sum = np.loadtxt(ff_tensor_sum_fp, delimiter=',')
@@ -215,18 +314,42 @@ def check_flexflow_tensors_sum(ff_tensor_sum_fp, ff_tensor1_fp, ff_tensor2_fp, t
     #assert(np.allclose(ff_tensor, hf_tensor, atol=tolerance))
     assert(len(mismatches) <= .05*len(ff_tensor1))
     print("Ok!")
-def load_ff_tensor(filename, shape):
+def load_ff_tensor(filename: str, shape: List[int]):
+    """Load a FlexFlow tensor from a file as a numpy array
+
+    Args:
+        filename (str): The file path of the FF tensor
+        shape (List[int]): The shape of the FF tensor
+
+    Returns:
+        _type_: The FF tensor as a numpy array
+    """    
     if ff_path not in filename:
         filename = os.path.join(ff_path, filename)
     ff_tensor = np.loadtxt(filename, delimiter=',').reshape(shape, order = 'F')
     return ff_tensor
-def load_hf_tensor(filename):
+def load_hf_tensor(filename: str):
+    """Load a HuggingFace tensor from a file as a numpy array
+
+    Args:
+        filename (str): The file path of the HF tensor
+
+    Returns:
+        _type_: The HF tensor as a numpy array
+    """    
     if hf_path not in filename:
         filename = os.path.join(hf_path, filename)
     hf_tensor = torch.load(filename)
     hf_tensor = hf_tensor.detach().cpu().numpy()
     return hf_tensor
 def compare_loaded_tensors(hf_tensor, ff_tensor, tolerance=1e-2):
+    """Check whether a Huggingface and a FlexFlow tensors, both loaded to memory in the form of a numpy array, are equal
+
+    Args:
+        hf_tensor (_type_): The HuggingFace tensor (in numpy array form)
+        ff_tensor (_type_): The FlexFlow tensor (in numpy array form)
+        tolerance (_type_, optional): The floating point error tolerance for the check. Defaults to 1e-2.
+    """    
     assert(hf_tensor.shape == ff_tensor.shape)
     mismatches = []
     if not np.allclose(hf_tensor, ff_tensor, atol=tolerance):

@@ -769,6 +769,10 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
       if (weight_filename != "embed_tokens_weight_lm_head") {
         weight_filename += weight_idx == 0 ? ".weight" : ".bias";
       }
+      std::cout << "Loading weight file " << weight_filename << std::endl;
+      std::string weight_filepath =
+          join_path({weights_folder, weight_filename});
+      load_from_file(data, volume, weight_filepath);
     }
   }
 

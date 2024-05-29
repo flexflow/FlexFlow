@@ -79,7 +79,7 @@ def get_configs():
             # required parameters
             "base_model": "JackFram/llama-160m",
             "peft_model_ids": [
-                "goliaro/llama-160m-lora-full",
+                "goliaro/llama-160m-lora",
             ],
             # optional parameters
             "cache_path": "~/.cache/flexflow",

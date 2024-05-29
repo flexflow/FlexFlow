@@ -106,6 +106,10 @@ PEFTModelID *FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
                                       1 /*outputs*/,
                                       input,
                                       output);
+        // fix LoRA layer's transformer layer ID and model ID
+        peft_layer->layer_guid.transformer_layer_id =
+            target_module->layer_guid.transformer_layer_id;
+        peft_layer->layer_guid.model_id = target_module->layer_guid.model_id;
         {
           int numdims = output->num_dims;
           int dims[MAX_TENSOR_DIM];

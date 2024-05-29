@@ -295,9 +295,11 @@ __global__ void sparse_categorical_crossentropy_loss_peft_backward(
     int num_tokens,
     int num_classes) {
   CUDA_KERNEL_LOOP(i, num_tokens * num_classes) {
+    int class_idx = i % num_classes;
+    int token_idx = i / num_classes;
     input_grad[i] = output_grad[i];
-    if (i % num_classes == token_ids[i / num_classes]) {
-      input_grad[i] -= 1.0f;
+    if (class_idx == token_ids[token_idx]) {
+      input_grad[i] = input_grad[i] - (DT)1.0f;
     }
   }
 }
@@ -320,9 +322,10 @@ void peft_bwd_kernel(SoftmaxMeta const *m,
       tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
       continue;
     }
-    int num_bwd_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    int num_bwd_tokens = bc->requestsInfo[i].num_tokens_in_batch - 1;
+    // shift labels by 1 position to the left (ignore first token label)
     for (int j = 0; j < num_bwd_tokens; j++) {
-      token_ids[j] = bc->labelsInfo[j + tokens_previous_requests].token_id;
+      token_ids[j] = bc->tokensInfo[j + tokens_previous_requests + 1].token_id;
     }
 
     DT scale_factor = 1.0 / (bc->requestsInfo[i].num_tokens_in_batch - 1);
@@ -359,7 +362,7 @@ void peft_bwd_kernel(SoftmaxMeta const *m,
                              DT(0.0),
                              scale_factor);
 
-    tokens_previous_requests += num_bwd_tokens;
+    tokens_previous_requests += num_bwd_tokens + 1;
   }
   assert(tokens_previous_requests == bc->num_active_tokens());
 }

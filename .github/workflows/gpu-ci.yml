@@ -177,6 +177,7 @@ jobs:
 
           # PEFT tests
           ./tests/peft_tests.sh
+          python ./tests/peft/peft_alignment_test.py
       
       - name: Save inference output as an artifact
         if: always()

@@ -1068,6 +1068,8 @@ flexflow_peft_model_id_t flexflow_peft_model_id_create();
 
 flexflow_peft_model_id_t flexflow_peft_model_id_create_id(unsigned long id);
 
+flexflow_peft_model_id_t flexflow_peft_model_id_no_id();
+
 void flexflow_peft_model_id_destroy(flexflow_peft_model_id_t handle_);
 
 #ifdef __cplusplus
