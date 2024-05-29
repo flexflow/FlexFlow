@@ -39,7 +39,7 @@ ffError_t
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   return cudaEventElapsedTime(elapsed, start, stop);
 #elif defined(FF_USE_HIP_ROCM)
-  return cudaEventElapsedTime(elapsed, start, stop);
+  return hipEventElapsedTime(elapsed, start, stop);
 #endif
 }
 

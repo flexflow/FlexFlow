@@ -1,7 +1,9 @@
 #ifndef _FLEXFLOW_KERNELS_FF_HANDLE_H
 #define _FLEXFLOW_KERNELS_FF_HANDLE_H
 
-#ifdef FF_USE_NCCL
+#ifdef FF_USE_HIP_ROCM
+#include <rccl/rccl.h>
+#elif FF_USE_NCCL
 #include <nccl.h>
 #endif
 
@@ -18,12 +20,12 @@ struct PerDeviceFFHandle {
   size_t workSpaceSize;
   bool allowTensorOpMathConversion;
 
-#ifdef FF_USE_NCCL
+#if defined(FF_USE_HIP_ROCM) || defined(FF_USE_NCCL)
   ncclComm_t ncclComm;
 #endif
 };
 
-#ifdef FF_USE_NCCL
+#if defined(FF_USE_HIP_ROCM) || defined(FF_USE_NCCL)
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(PerDeviceFFHandle,
                                              dnn,
                                              blas,
