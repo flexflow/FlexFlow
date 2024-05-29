@@ -1,4 +1,5 @@
 codecov:
+  branch: repo-refactor
   notify:
     require_ci_to_pass: false
 
