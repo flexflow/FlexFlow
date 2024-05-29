@@ -235,6 +235,7 @@ public:
   FFModel *get_ssm_model(int model_id);
 
   void serve_spec_infer(FFModel *model);
+  void serve_spec_infer_sync(FFModel *model);
   void serve_decoding(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
   RequestGuid register_new_request(std::string const &prompt);
@@ -317,11 +318,12 @@ private:
   // first small model inference results, the step equals to 1. That is, every
   // time a small model inference task is launched, the step is increased
   // by 1.
-  int current_speculation_step = 0;
+  int current_ssm_step = 0;
   // Maps the index of the request in the batch config to the request guid.
   int guid_of_requests[BatchConfig::MAX_NUM_REQUESTS];
   bool request_available[BatchConfig::MAX_NUM_REQUESTS];
   int num_available_requests = 0;
+  int ssm_completed = true;
 
   // This is a helper data structure to store help the pruning of the token
   // trees across different requests.
@@ -367,7 +369,7 @@ private:
   bool update_llm_verify_results(InferenceResult const &llm_verify_result);
   bool
       update_ssm_inference_results(InferenceResult const &ssm_inference_result);
-  bool update_ssm_prefill_results(InferenceResult const &ssm_prefill_result);
+  void update_ssm_prefill_results(InferenceResult const &ssm_prefill_result);
   // Prepare the next speculation batch config. This function is called before
   // the second step of the speculation.
   BatchConfig prepare_next_spec_batch_config();
