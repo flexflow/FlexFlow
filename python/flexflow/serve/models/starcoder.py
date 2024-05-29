@@ -225,7 +225,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
-            name = name.replace("transformer.h", "layers").replace("transformer", "")
+            name = name.replace("transformer.h", "layers").replace("transformer.", "")
             if "attn.c_attn.weight" in name:
                 name_q = name.replace("attn.c_attn", "attn.c_attn.q_proj")
                 name_k = name.replace("attn.c_attn", "attn.c_attn.k_proj")
