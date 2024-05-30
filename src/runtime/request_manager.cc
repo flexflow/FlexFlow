@@ -426,8 +426,17 @@ BatchConfig RequestManager::get_next_batch_config_task(
     Context ctx,
     Runtime *runtime) {
   RequestManager *rm = *((RequestManager **)task->args);
+  if (rm->request_manager_status == PREFILLING and rm->prefill_model == SSM and
+      rm->current_ssm_step != 0) {
+    // Return an empty batch config
+    return rm->get_next_batch_config(InferenceResult());
+  } else if (rm->request_manager_status == SSM_SPEC and rm->ssm_completed) {
+    return rm->get_next_batch_config(InferenceResult());
+  }
+
   InferenceResult const &result =
       Future(task->futures[0]).get_result<InferenceResult>();
+  int t_1 = Realm::Clock::current_time_in_microseconds();
   return rm->get_next_batch_config(result);
 }
 
@@ -471,35 +480,61 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   num_available_requests--;
   request.status = Request::COMPLETED;
 
-  std::string output = this->tokenizer_->Decode(request.tokens);
-  std::cout << "Request " << guid << " completed: " << std::endl
-            << output << std::endl;
+  // Find the sos and eos in the sequence
+  auto bos_it = std::find(
+      request.tokens.begin(), request.tokens.end(), this->bos_token_id);
+  auto eos_rit = std::find(
+      request.tokens.rbegin(), request.tokens.rend(), this->eos_token_id);
+  std::vector<int>::iterator eos_it;
+  if (eos_rit != request.tokens.rend()) {
+    eos_it = eos_rit.base();
+  } else {
+    eos_it = request.tokens.end();
+  }
+  std::string output =
+      this->tokenizer_->Decode(std::vector<int>(bos_it, eos_it));
+
+  std::cout << "Request " << guid << " completed: " << std::endl << std::endl;
+  std::cout << "<bos>" << output;
+  if (eos_rit != request.tokens.rend()) {
+    std::cout << "<eos>";
+  }
+  std::cout << std::endl << std::endl;
   ProfileInfo profile_info = profiling_requests[guid];
+
+  // TODO: merge write_to_output_file() with *os logic
+  std::ostream *os = &std::cout;
+  std::ofstream output_file;
   if (!output_filepath.empty()) {
-    std::ofstream outputFile(output_filepath, std::ios::app);
-    if (outputFile.is_open()) {
-      outputFile << "Request " << guid << " profiling: " << std::endl;
-      outputFile << "Decoding time: "
-                  << (profile_info.finish_time -
-                  profile_info.start_decoding_time) * 1e-3
-                  << "ms" << std::endl;
-      outputFile << "Total time: "
-                  << (profile_info.finish_time -
-                      profile_info.start_time) * 1e-3
-                  << "ms" << std::endl;
-      outputFile << "LLM decoding steps: "
-                   << profile_info.llm_decoding_steps << std::endl;
-      if (decoding_mode == SPECULATIVE_DECODING) {
-        outputFile << "SSM decoding steps: "
-                    << profile_info.ssm_decoding_steps << std::endl;
-      }
-      outputFile << output << std::endl << std::endl;
-      outputFile.close();
+    output_file.open(output_filepath, std::ios::app);
+    if (output_file.is_open()) {
+      os = &output_file;
     } else {
       std::cout << "Unable to open the output file: " << output_filepath
                 << std::endl;
       assert(false);
     }
+  }
+  *os << "Request " << guid << " profiling: " << std::endl;
+  if (profile_info.start_decoding_time != 0) {
+    *os << "Decoding time: "
+        << (profile_info.finish_time - profile_info.start_decoding_time) * 1e-3
+        << " ms" << std::endl;
+  } else {
+    *os << "Decoding time: 0 ms" << std::endl;
+  }
+  *os << "Total time: "
+      << (profile_info.finish_time - profile_info.start_time) * 1e-3 << " ms"
+      << std::endl;
+  *os << "LLM decoding steps: " << profile_info.llm_decoding_steps << std::endl;
+  if (decoding_mode == SPECULATIVE_DECODING) {
+    *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
+        << std::endl;
+  }
+  *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
+
+  if (!output_filepath.empty()) {
+    output_file.close();
   }
   std::string str = "[" + std::to_string(guid) + "] Request completed: " + 
                       "decoding_time_ms(" + std::to_string(
@@ -534,6 +569,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       request_manager_status = PREFILLING;
       if (decoding_mode == SPECULATIVE_DECODING) {
         prefill_model = SSM;
+        current_ssm_step = 0;
       }
     }
     return;
@@ -543,8 +579,8 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
     case PREFILLING:
       if (decoding_mode == INCREMENTAL_DECODING) {
         if (update_llm_prefill_results(result)) {
-          // This indicates that the prefilling of the current request finishes
-          // Reset the prefill_request
+          // This indicates that the prefilling of the current request
+          // finishes Reset the prefill_request
           prefill_request = nullptr;
 
           // Check if there are more empty slots
@@ -561,12 +597,18 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
         // Not completed, continue prefilling
       } else if (decoding_mode == SPECULATIVE_DECODING) {
         if (prefill_model == SSM) {
-          if (update_ssm_prefill_results(result)) {
-            // This indicates that the prefilling phase for SSM finishes
-            // We need to start the LLM prefilling
+          // A single iteration contains max_tree_depth SSM steps and a single
+          // LLM step. To align with this structure, we have to create
+          // max_tree_depth - 1 empty SSM steps during the prefilling phase.
+          if (current_ssm_step == 0) {
+            update_ssm_prefill_results(result);
+          }
+          // Except for the first step, we do nothing.
+          current_ssm_step++;
+
+          if (current_ssm_step == get_max_tree_depth()) {
             prefill_model = LLM;
           }
-          // Not completed, continue SSM prefilling
         } else if (prefill_model == LLM) {
           if (update_llm_prefill_results(result)) {
             // This indicates that the prefilling phase finishes
@@ -576,16 +618,20 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
                 !pending_request_queue.empty()) {
               // Load the pending request to the batch
               load_pending_request_to_batch();
-              request_manager_status = PREFILLING;
               prefill_model = SSM;
+              current_ssm_step = 0;
             } else {
               // No more empty slots, start the speculation
               request_manager_status = SSM_SPEC;
               // Reset the prefill_request
-              current_speculation_step = 0;
+              current_ssm_step = 0;
+              ssm_completed = false;
             }
+          } else {
+            // Not completed, start the next iteration of prefilling
+            prefill_model = SSM;
+            current_ssm_step = 0;
           }
-          // Not completed, continue LLM prefilling
         } else {
           assert(false && "Invalid prefill model.");
         }
@@ -611,23 +657,32 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
         if (pending_request_queue.empty()) {
           // No pending request to process, continue the speculation
           request_manager_status = SSM_SPEC;
-          current_speculation_step = 0;
+          current_ssm_step = 0;
+          ssm_completed = false;
         } else {
           request_manager_status = PREFILLING;
           load_pending_request_to_batch();
           prefill_model = SSM;
+          current_ssm_step = 0;
         }
       } else {
         request_manager_status = SSM_SPEC;
-        current_speculation_step = 0;
+        current_ssm_step = 0;
+        ssm_completed = false;
       }
       break;
     case SSM_SPEC:
-      if (update_ssm_inference_results(result)) {
-        // Stop condition for the speculation phase has been reached
+      // Update current_ssm_step first because when we first call
+      // update_ssm_inference_results, there's already a step of small model
+      // inference
+      current_ssm_step++;
+      if (!ssm_completed) {
+        ssm_completed = update_ssm_inference_results(result);
+      }
+
+      if (current_ssm_step == get_max_tree_depth()) {
         request_manager_status = LLM_VERIFY;
       }
-      // else, keep the current status
       break;
     default:
       assert(false && "Invalid request manager status.");
@@ -660,6 +715,10 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
     prefill_request->tokens.push_back(
         result.token_ids[prefill_request->num_tokens_in_batch - 1]);
     prefill_completed = true;
+
+    if (prefill_request->tokens.back() == eos_token_id) {
+      request_complete_clean_up(prefill_request->batch_index);
+    }
 
     if (decoding_mode == SPECULATIVE_DECODING) {
       // Add the last token to the token tree
@@ -723,7 +782,8 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
 
     profiling_requests[guid].llm_decoding_steps++;
     nb_requests_decoded++;
-    if (request.tokens.size() >= get_max_sequence_length()) {
+    if (request.tokens.back() == eos_token_id or
+        request.tokens.size() >= get_max_sequence_length()) {
       request_completed = true;
       request_complete_clean_up(request_index);
     }
@@ -742,7 +802,7 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
   return request_completed;
 }
 
-bool RequestManager::update_ssm_prefill_results(
+void RequestManager::update_ssm_prefill_results(
     InferenceResult const &ssm_prefill_result) {
   // This function is called by update_inference_results when the
   // request_manager_status is PREFILLING and the prefill_model is SSM.
@@ -750,11 +810,6 @@ bool RequestManager::update_ssm_prefill_results(
   prefill_request->ssm_cache_size += prefill_request->num_tokens_in_batch;
 
   profiling_requests[prefill_request->guid].ssm_prefilling_steps++;
-
-  if (prefill_request->ssm_cache_size == prefill_request->tokens.size()) {
-    return true;
-  }
-  return false;
 }
 
 BatchConfig RequestManager::prepare_next_batch() {
@@ -764,7 +819,12 @@ BatchConfig RequestManager::prepare_next_batch() {
         return prepare_llm_prefilling_batch();
       } else if (decoding_mode == SPECULATIVE_DECODING) {
         if (prefill_model == SSM) {
-          return prepare_ssm_prefilling_batch();
+          if (current_ssm_step == 0) {
+            return prepare_ssm_prefilling_batch();
+          } else {
+            // Return an empty batch config
+            return BatchConfig();
+          }
         } else if (prefill_model == LLM) {
           return prepare_llm_prefilling_batch();
         } else {
@@ -777,10 +837,13 @@ BatchConfig RequestManager::prepare_next_batch() {
     case DECODING:
       return prepare_decoding_batch();
     case SSM_SPEC:
-      if (current_speculation_step == 0) {
+      if (current_ssm_step == 0) {
         return prepare_first_spec_batch_config();
-      } else {
+      } else if (!ssm_completed) {
         return prepare_next_spec_batch_config();
+      } else {
+        // Return an empty batch config
+        return BatchConfig();
       }
     case LLM_VERIFY:
       return prepare_verify_batch_config();
@@ -1004,7 +1067,7 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
   // information of the committed tokens into BatchConfig.TokensInfo.
   // 2. Maintain BatchConfig::RequestsInfo and all other fields of
   // BatchConfig.
-  assert(current_speculation_step == 0);
+  assert(current_ssm_step == 0);
 
   BatchConfig new_bc;
   new_bc.inference_mode = InferenceMode::TREE_SEARCH_MODE;
@@ -1081,9 +1144,9 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
 /***** Speculative Decoding Phase *****/
 BatchConfig RequestManager::prepare_next_spec_batch_config() {
   if (verbose) {
-    std::cout
-        << "\n############### prepare_next_spec_batch_config ###############\n";
-    std::cout << "Current tree depth: " << current_speculation_step + 1 << "\n";
+    std::cout << "\n############### prepare_next_spec_batch_config "
+                 "###############\n";
+    std::cout << "Current tree depth: " << current_ssm_step + 1 << "\n";
   }
 
   // Prepare the next batch for existing requests
@@ -1109,7 +1172,7 @@ BatchConfig RequestManager::prepare_next_spec_batch_config() {
 
     // Fill in the tokens
     TokenTree &token_tree = request.speculative_token_trees.at(new_bc.model_id);
-    if (token_tree.tree_layers.size() <= current_speculation_step) {
+    if (token_tree.tree_layers.size() <= current_ssm_step) {
       // This request has no token to decode in this and the following small
       // model inference steps
       new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
@@ -1143,7 +1206,7 @@ BatchConfig RequestManager::prepare_next_spec_batch_config() {
             new_bc.requestsInfo[request_index].first_token_index_in_request +
             child_index;
         new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
-            request.tokens.size() - 1 + current_speculation_step;
+            request.tokens.size() - 1 + current_ssm_step;
         new_bc.tokensInfo[new_bc.num_tokens].token_id = node_ptr->id;
 
         new_bc.num_tokens++;
@@ -1354,7 +1417,14 @@ bool RequestManager::update_llm_verify_results(
 
     // Check if the request is completed. If its completed, clean up the
     // metainfo stored in the RequestManager. Otherwise, update its bitmask.
-    if (request.tokens.size() >= get_max_sequence_length()) {
+    bool eos_token_found = false;
+    for (auto const &committed_token : request.committed_tokens) {
+      if (committed_token.token_id == eos_token_id) {
+        eos_token_found = true;
+        break;
+      }
+    }
+    if (eos_token_found or request.tokens.size() >= get_max_sequence_length()) {
       // Request is completed
       request_completed = true;
       request_complete_clean_up(request_index);
@@ -1372,9 +1442,8 @@ bool RequestManager::update_ssm_inference_results(
     InferenceResult const &ssm_inference_result) {
   // This function returns true if no tokens are added to the token tree,
   // which indicates that the ssm inference phase is done.
-  assert(current_speculation_step >= 0 &&
-         "The current speculation step should be no less than 0");
-  current_speculation_step++;
+  assert(current_ssm_step >= 1 &&
+         "The current speculation step should be no less than 1");
 
   int num_branches = BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
   int result_index = 0;
@@ -1395,7 +1464,7 @@ bool RequestManager::update_ssm_inference_results(
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
 
-    if (current_speculation_step == 1) {
+    if (current_ssm_step == 1) {
       request.ssm_committed = true;
       // Check if both the KV cache of SSM and LLM are committed, because
       // sometimes the LLM KV cache is committed by a verifying batch config,
@@ -1409,7 +1478,7 @@ bool RequestManager::update_ssm_inference_results(
       request.ssm_cache_size = request.tokens.size();
     }
 
-    if (current_speculation_step == 1) {
+    if (current_ssm_step == 1) {
       init_bitmask_spec(guid);
     }
     append_bitmask(guid);
@@ -1418,8 +1487,7 @@ bool RequestManager::update_ssm_inference_results(
   }
 
   // Stop conditions
-  if (all_request_last_layer_empty || 
-        current_speculation_step > get_max_tree_depth()) {
+  if (all_request_last_layer_empty) {
     // Update profiling statistics before returning
     profiling.ssm_step_times.push_back((
         Realm::Clock::current_time_in_microseconds() -
@@ -1475,8 +1543,7 @@ void RequestManager::init_bitmask_spec(RequestGuid guid) {
   // 1. Clear the causal mask and add a root into it, because the tree is
   // currently empty but we have a root.
   // 2. Maintain all other fields.
-  assert(current_speculation_step == 1 &&
-         "The current speculation step should be 1");
+  assert(current_ssm_step == 1 && "The current speculation step should be 1");
   Request &request = all_requests[guid];
   request.causal_mask = BatchConfig::BitMask();
   // Set the mask for the root
@@ -1490,14 +1557,14 @@ void RequestManager::append_bitmask(RequestGuid guid) {
   // This method changes the bitmask in place
   // This method is called by update_ssm_inference_results(), after the new
   // tokens are added to the token tree
-  assert(current_speculation_step >= 1 &&
+  assert(current_ssm_step >= 1 &&
          "The current speculation step should be no less than 1");
 
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
   TokenTree &token_tree = request.speculative_token_trees[0];
 
-  if (token_tree.tree_layers.size() <= current_speculation_step) {
+  if (token_tree.tree_layers.size() <= current_ssm_step) {
     // This request has no token added in this and the following small model
     // inference steps, skip it
     return;
@@ -1807,7 +1874,6 @@ void RequestManager::serve_decoding(FFModel *llm) {
     assert(fm.get_future_map_domain().get_volume() == 1);
     InferenceResultFuture irf = fm.get_future(0);
     batch_pipeline.push(irf);
-    last_irf = irf;
     runtime->end_trace(ctx, 12346 /*trace_id*/);
   }
 }
@@ -1839,43 +1905,102 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
     im->init_operators_inference(ssm);
   }
 
-  InferenceResultFuture last_irf;
+  InferenceResultFuture irf_0;
   {
     // Initialize futures for incr decoding
-    InferenceResult ir;
-    last_irf = Future::from_value<InferenceResult>(ir);
+    InferenceResult ir_0;
+    irf_0 = Future::from_value<InferenceResult>(ir_0);
   }
 
   request_manager_status = PREFILLING;
   prefill_model = SSM;
 
-  // long long time_1 = Realm::Clock::current_time_in_microseconds(), time_2;
+  std::queue<InferenceResultFuture> infer_result_future_pipeline;
+  infer_result_future_pipeline.push(irf_0);
 
   while (!is_background_server_terminated()) {
-    // last_irf.get_void_result();
-    BatchConfigFuture bcf = get_next_batch_config(last_irf, ctx, runtime);
-    bcf.get_void_result();
-    // time_2 = Realm::Clock::current_time_in_microseconds();
-    // std::cout << "Iteration time: " << (time_2 - time_1) * 1e-3 << "ms"
-    //           << std::endl;
+    if (infer_result_future_pipeline.size() >= 4) {
+      // Block here to avoid launching too many batches
+      auto const &ir = infer_result_future_pipeline.front();
+      ir.get_void_result();
+    }
+    // deque finished batches
+    while (infer_result_future_pipeline.size() > 1) {
+      auto const &ir = infer_result_future_pipeline.front();
+      if (ir.is_ready()) {
+        infer_result_future_pipeline.pop();
+      } else {
+        break;
+      }
+    }
 
-    // time_1 = Realm::Clock::current_time_in_microseconds();
+    runtime->begin_trace(ctx, 12345 /*trace_id*/);
+    for (int ssm_step_i = 0; ssm_step_i < get_max_tree_depth(); ssm_step_i++) {
+      InferenceResultFuture irf = infer_result_future_pipeline.back();
+      BatchConfigFuture bcf = get_next_batch_config(irf, ctx, runtime);
+      FutureMap fm = im->inference(get_ssm_model(0), 0, bcf);
+      infer_result_future_pipeline.push(fm.get_future(0));
+    }
+    InferenceResultFuture irf = infer_result_future_pipeline.back();
+    BatchConfigFuture bcf = get_next_batch_config(irf, ctx, runtime);
+    FutureMap fm = im->inference(llm, 0, bcf);
+    infer_result_future_pipeline.push(fm.get_future(0));
+    runtime->end_trace(ctx, 12345 /*trace_id*/);
+  }
+}
+
+/*static*/
+void RequestManager::serve_spec_infer_sync(FFModel *llm) {
+  Context ctx = llm->config.lg_ctx;
+  Runtime *runtime = llm->config.lg_hlr;
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  {
+    // Compile the llm
+    im->compile_model_and_allocate_buffer(llm);
+    assert(im->model_weights_loaders.find(llm) !=
+           im->model_weights_loaders.end());
+    // Load model weights
+    im->model_weights_loaders[llm]->load_weights(llm);
+    // init operators
+    im->init_operators_inference(llm);
+  }
+  for (size_t i = 0; i < get_num_ssms(); i++) {
+    // Compile the i-th ssm
+    FFModel *ssm = get_ssm_model(i);
+    im->compile_model_and_allocate_buffer(ssm);
+    assert(im->model_weights_loaders.find(ssm) !=
+           im->model_weights_loaders.end());
+    // Load model weights
+    im->model_weights_loaders[ssm]->load_weights(ssm);
+    // init operators
+    im->init_operators_inference(ssm);
+  }
+
+  InferenceResultFuture irf_0;
+  {
+    // Initialize futures for incr decoding
+    InferenceResult ir_0;
+    irf_0 = Future::from_value<InferenceResult>(ir_0);
+  }
+
+  request_manager_status = PREFILLING;
+  prefill_model = SSM;
+
+  while (!is_background_server_terminated()) {
+    BatchConfigFuture bcf = get_next_batch_config(irf_0, ctx, runtime);
+    bcf.get_void_result();
     if ((request_manager_status == PREFILLING and prefill_model == LLM) or
         request_manager_status == LLM_VERIFY) {
-      //   std::cout << "Branch 1" << std::endl;
       runtime->begin_trace(ctx, 12345 /*trace_id*/);
       FutureMap fm = im->inference(llm, 0, bcf);
-      //   assert(fm.get_future_map_domain().get_volume() == 1);
-      last_irf = fm.get_future(0);
+      irf_0 = fm.get_future(0);
       runtime->end_trace(ctx, 12345 /*trace_id*/);
     } else if ((request_manager_status == PREFILLING and
                 prefill_model == SSM) or
                request_manager_status == SSM_SPEC) {
-      //   std::cout << "Branch 2" << std::endl;
       runtime->begin_trace(ctx, 23456 /*trace_id*/);
       FutureMap fm = im->inference(get_ssm_model(0), 0, bcf);
-      //   assert(fm.get_future_map_domain().get_volume() == 1);
-      last_irf = fm.get_future(0);
+      irf_0 = fm.get_future(0);
       runtime->end_trace(ctx, 23456 /*trace_id*/);
     } else {
       assert(false && "Invalid request manager status");
@@ -1996,8 +2121,8 @@ bool RequestManager::add_tokens_to_spec_token_tree(
 
     int parent_num = request.num_tokens_in_batch;
     if (parent_num == 0) {
-      // The request has no committed tokens, we don't need to add tokens to the
-      // token tree
+      // The request has no committed tokens, we don't need to add tokens to
+      // the token tree
       continue;
     }
     int result_offset = request.first_token_offset_in_batch *
@@ -2023,18 +2148,41 @@ bool RequestManager::add_tokens_to_spec_token_tree(
     int parent_pos = 0;
     for (auto const &parent_ptr : last_layer) {
       if (!parent_ptr->pruned) {
+        // TODO: parameterize MAX_SPECULATIVE_TREE_BRANCHES
+        float parent_log_prob = parent_ptr->log_accumulated_prob;
+        int child_start_idx =
+            result_offset +
+            parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+        std::vector<std::pair<float, int>> child_probs(
+            BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
         for (int child_pos = 0;
              child_pos < BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
              child_pos++) {
-          int result_idx =
-              result_offset +
-              parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES +
-              child_pos;
-          float log_prob = log(ssm_inference_result.probs[result_idx]);
-          float log_accumulated_prob =
-              log_prob + parent_ptr->log_accumulated_prob;
+          int result_idx = child_start_idx + child_pos;
+          child_probs[child_pos] = std::make_pair(
+              log(ssm_inference_result.probs[result_idx]), result_idx);
+        }
+        // Sort in descending order
+        std::sort(child_probs.begin(),
+                  child_probs.end(),
+                  std::greater<std::pair<float, int>>());
 
-          //   std::cout << "Probability at result index " << result_idx << ": "
+        // for (int child_pos = 0;
+        //      child_pos < BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+        //      child_pos++) {
+        for (auto const &child_prob : child_probs) {
+
+          //   int result_idx =
+          //       result_offset +
+          //       parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES +
+          //       child_pos;
+
+          float log_prob = child_prob.first;
+          float log_accumulated_prob = log_prob + parent_log_prob;
+          int result_idx = child_prob.second;
+
+          //   std::cout << "Probability at result index " << result_idx << ":
+          //   "
           //             << ssm_inference_result.probs[result_idx] << "\t";
           //   std::cout << "Token id: "
           //             << ssm_inference_result.token_ids[result_idx] <<
@@ -2054,10 +2202,10 @@ bool RequestManager::add_tokens_to_spec_token_tree(
                      log_accumulated_prob <= token_tree_node_pool.top()
                                                  .first->log_accumulated_prob) {
             // The token tree is not full, but the token pool is full, and the
-            // new token has a lower joint probability than the minimum node in
-            // the pool, we don't need to add the new token and the following
-            // tokens belong to the same parent to the tree, because the tokens
-            // are sorted by their probability
+            // new token has a lower joint probability than the minimum node
+            // in the pool, we don't need to add the new token and the
+            // following tokens belong to the same parent to the tree, because
+            // the tokens are sorted by their probability
             break;
           } else {
             std::shared_ptr<TokenTreeNode> node_ptr =
@@ -2070,8 +2218,8 @@ bool RequestManager::add_tokens_to_spec_token_tree(
                     (*tokens.begin())->log_accumulated_prob) {
               // The token tree is full, and the new token has a higher joint
               // probability than the minimum node in the pool, we need to
-              // remove the minimum node from the pool and add the new token to
-              // the tree
+              // remove the minimum node from the pool and add the new token
+              // to the tree
               tokens.erase(tokens.begin());
             }
             tokens.insert(node_ptr);
@@ -2119,7 +2267,7 @@ bool RequestManager::add_tokens_to_spec_token_tree(
     assert(request.status == Request::RUNNING);
     TokenTree &spec_token_tree = request.speculative_token_trees[0];
 
-    if (spec_token_tree.tree_layers.size() <= current_speculation_step) {
+    if (spec_token_tree.tree_layers.size() <= current_ssm_step) {
       // This request has no token added in this layer, skip it
       continue;
     }
@@ -2153,8 +2301,9 @@ std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {
     int token_pos = 0;
     for (auto const &node : layer) {
       if (!node->pruned) {
-        os << "token pos: " << token_pos << "token id: " << node->id << "\t"
-           << "parent pos: " << node->parent_pos << "\t" << std::endl;
+        os << "token pos: " << token_pos << "\ttoken id: " << node->id
+           << "\tparent pos: " << node->parent_pos
+           << "\tlog prob: " << node->log_accumulated_prob << std::endl;
       }
       token_pos++;
     }

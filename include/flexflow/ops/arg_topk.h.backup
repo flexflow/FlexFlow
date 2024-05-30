@@ -5,22 +5,15 @@
 #include "flexflow/model.h"
 #include "flexflow/node.h"
 #include "flexflow/ops/arg_topk_params.h"
-#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
 class ArgTopKMeta : public OpMeta {
 public:
+  ArgTopKMeta(FFHandler handle, Op const *op);
   bool sorted;
   int k;
   bool speculative_decoding;
-  Realm::RegionInstance reserveInst;
-  void *half_precision_output;
-  int max_input_size;
-  ArgTopKMeta(FFHandler handle,
-              Op const *op,
-              MemoryAllocator &gpu_mem_allocator);
-  ~ArgTopKMeta(void);
 };
 
 class ArgTopK : public Op {
@@ -90,7 +83,7 @@ public:
   template <typename DT>
   static void forward_kernel(ArgTopKMeta const *m,
                              DT const *input_ptr,
-                             DT *output_ptr,
+                             float *output_ptr,
                              int *indices_ptr,
                              size_t batch_size,
                              int length,

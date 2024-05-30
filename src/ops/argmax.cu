@@ -23,10 +23,11 @@ __global__ void init_offset(int batch_size,
                             int vocab_size,
                             int total_eles,
                             int *d_offsets) {
-  CUDA_KERNEL_LOOP(i, total_eles + 1) {
-    if (i % vocab_size == 0) {
-      d_offsets[i / vocab_size] = i;
-    }
+  CUDA_KERNEL_LOOP(i, (total_eles) / vocab_size + 1) {
+    // if (i % vocab_size == 0) {
+    //   d_offsets[i / vocab_size] = i;
+    // }
+    d_offsets[i] = i * vocab_size;
   }
 }
 

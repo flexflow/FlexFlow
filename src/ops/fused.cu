@@ -603,18 +603,37 @@ __host__ void
   checkCUDA(get_legion_stream(&stream));
 
   // create new cuda graph
-  cudaGraph_t graph;
   cudaGraphExec_t instance;
-  cudaGraphExecUpdateResult updateResult;
+  // cudaGraphExecUpdateResult updateResult;
 
   GraphParams graph_params = {bc->num_active_requests(),
                       bc->num_active_tokens(),
                       bc->prompt_phase};
   //graph_params.Print();
-  int shard_id = task->index_point.point_data[0];
+  // int shard_id = task->index_point.point_data[0];
 
-  {            
-      cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
+  bool captured = false;
+
+  if(metas->graph_collections.count(graph_params)  != 0) {
+    captured = true;
+    instance = metas->graph_collections[graph_params];
+    // if (cudaGraphExecUpdate(instance, graph, NULL, &updateResult) != cudaSuccess) {
+    //   cudaGraphExecDestroy(instance);
+    //   captured = false;
+    // } else {
+    //   // if(shard_id == 0) {
+    //   //   printf("---------start to reuse the graph-------\n");
+    //   //   graph_params.Print();
+    //   //   // bc->print();
+    //   //   printf("---------end to reuse the graph-------\n");
+    //   // }
+    // }
+  }
+
+  // if (!captured) {
+  //   cudaGraph_t graph;
+  //   {    
+  //     cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
       int ioff = 0, woff = 0, ooff = 0;
       for (int op = 0; op < fused->numOperators; op++) {
         // Domain my_id[MAX_NUM_INPUTS];
@@ -1139,42 +1158,22 @@ __host__ void
       // for (int i = 0; i < fused->numOutputs; i++)
       //   print_tensor<float>(output_ptr[i], output_domain[i].get_volume(),
       //   "[Fused:forward:output]");
-      cudaStreamEndCapture(stream, &graph);
-    }
+  //     cudaStreamEndCapture(stream, &graph);
+  //   }
+  //   cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+  //   metas->graph_collections[graph_params] = instance;
+  //   // if(shard_id == 0) {
+  //   //   printf("*************start cudaGraphInstantiate**********\n");
+  //   //   graph_params.Print();
+  //   //   // bc->print();
+  //   //   printf("*************end cudaGraphInstantiate**********\n");
+  //   // }
+  //   cudaGraphDestroy(graph);
+  // }
 
-  bool captured = false;
-
-  if(metas->graph_collections.count(graph_params)  != 0) {
-    captured = true;
-    instance = metas->graph_collections[graph_params];
-    if (cudaGraphExecUpdate(instance, graph, NULL, &updateResult) != cudaSuccess) {
-      cudaGraphExecDestroy(instance);
-      captured = false;
-    } else {
-      // if(shard_id == 0) {
-      //   printf("---------start to reuse the graph-------\n");
-      //   graph_params.Print();
-      //   // bc->print();
-      //   printf("---------end to reuse the graph-------\n");
-      // }
-    }
-  } 
-  
-  if (!captured) {
-    cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
-    metas->graph_collections[graph_params] = instance;
-    // if(shard_id == 0) {
-    //   printf("*************start cudaGraphInstantiate**********\n");
-    //   graph_params.Print();
-    //   // bc->print();
-    //   printf("*************end cudaGraphInstantiate**********\n");
-    // }
-  }
-
-  assert(metas->graph_collections.find(graph_params) !=
-        metas->graph_collections.end());
-  cudaGraphDestroy(graph);
-  cudaGraphLaunch(instance, stream);
+  // assert(metas->graph_collections.find(graph_params) !=
+  //       metas->graph_collections.end());
+  // cudaGraphLaunch(instance, stream);
 }
 
 /*
