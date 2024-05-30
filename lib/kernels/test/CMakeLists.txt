@@ -17,6 +17,7 @@ ff_add_test_executable(
     cudnn
     nccl
     cudart
+    cublas
 )
 
 

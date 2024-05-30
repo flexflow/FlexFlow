@@ -22,6 +22,7 @@ public:
           "Invalid access data type ({} != {})", this->data_type, DT);
     }
   }
+  
 
   int32_t *get_int32_ptr() const;
   int64_t *get_int64_ptr() const;

@@ -92,11 +92,11 @@ __host__ void sigmoid_backward_kernel(DataType data_type,
                                       size_t output_size,
                                       cudaStream_t stream);
 
-template <typename DT>
-__global__ void apply_add_with_scale(DT *data_ptr,
-                                     const DT *grad_ptr,
-                                     size_t size,
-                                     DT scale);
+// template <typename DT>
+// __global__ void apply_add_with_scale(DT *data_ptr,
+//                                      const DT *grad_ptr,
+//                                      size_t size,
+//                                      DT scale);
 
 __global__ void
     gelu_forward_kernel(size_t size, float B, float C, float *input);

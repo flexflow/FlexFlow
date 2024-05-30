@@ -1,5 +1,6 @@
-#include "flexflow/model.h"
-#include "flexflow/utils/cuda_helper.h"
+// #include "flexflow/model.h"
+#include "kernels/cuda_helper.h"
+#include "device.h"
 
 namespace FlexFlow {
 
@@ -70,11 +71,11 @@ __host__ void relu_backward_kernel(DataType data_type,
                                    void const *output_ptr,
                                    size_t output_size,
                                    cudaStream_t stream) {
-  if (data_type == DT_FLOAT) {
+  if (data_type == DataType::FLOAT) {
     reluBackward<float>
         <<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
             (float *)output_grad_ptr, (float const *)output_ptr, output_size);
-  } else if (data_type == DT_DOUBLE) {
+  } else if (data_type == DataType::DOUBLE) {
     reluBackward<double>
         <<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
             (double *)output_grad_ptr, (double const *)output_ptr, output_size);
@@ -97,11 +98,11 @@ __host__ void sigmoid_backward_kernel(DataType data_type,
                                       void const *output_ptr,
                                       size_t output_size,
                                       cudaStream_t stream) {
-  if (data_type == DT_FLOAT) {
+  if (data_type == DataType::FLOAT) {
     sigmoid_backward_function<float>
         <<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
             (float *)output_grad_ptr, (float const *)output_ptr, output_size);
-  } else if (data_type == DT_DOUBLE) {
+  } else if (data_type == DataType::DOUBLE) {
     sigmoid_backward_function<double>
         <<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
             (double *)output_grad_ptr, (double const *)output_ptr, output_size);
@@ -226,8 +227,8 @@ cudnnStatus_t
   ArrayShape flipped = shape.reversed_dim_order();
 
   if (flipped.get_dim() == 5) {
-    assert(flipped[0] == 1);
-    flipped = flipped.sub_shape(1, std::nullopt);
+    assert(flipped[legion_dim_t(0)] == 1);
+    flipped = flipped.sub_shape(legion_dim_t(1), std::nullopt);
   }
 
   assert(flipped.get_dim() > 0);
@@ -244,11 +245,11 @@ cudnnStatus_t
 
 cudnnDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
-    case DT_FLOAT:
+    case DataType::FLOAT:
       return CUDNN_DATA_FLOAT;
-    case DT_DOUBLE:
+    case DataType::DOUBLE:
       return CUDNN_DATA_DOUBLE;
-    case DT_INT32:
+    case DataType::INT32:
       return CUDNN_DATA_INT32;
     default:
       assert(false && "Unsupported cudnn data type");
@@ -258,11 +259,11 @@ cudnnDataType_t ff_to_cudnn_datatype(DataType type) {
 
 cudaDataType_t ff_to_cuda_datatype(DataType type) {
   switch (type) {
-    case DT_FLOAT:
+    case DataType::FLOAT:
       return CUDA_R_32F;
-    case DT_DOUBLE:
+    case DataType::DOUBLE:
       return CUDA_R_64F;
-    case DT_INT32:
+    case DataType::INT32:
       return CUDA_R_32I;
     default:
       assert(false && "Unspoorted cuda data type");
@@ -289,6 +290,8 @@ template __global__ void
     add_kernel<int32_t>(int32_t *dst, int32_t const *src, size_t size);
 template __global__ void
     add_kernel<int64_t>(int64_t *dst, int64_t const *src, size_t size);
+template __global__ void
+    add_kernel<bool>(bool *dst, bool const *src, unsigned long size);
 
 template __global__ void
     copy_kernel<float>(float *dst, float const *src, coord_t size);
@@ -313,6 +316,11 @@ template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
                                                        int64_t const *grad_ptr,
                                                        size_t size,
                                                        int64_t scale);
+                                
+template __global__ void apply_add_with_scale<bool>(bool *data_ptr,
+                                                    bool const *grad_ptr,
+                                                    unsigned long size,
+                                                    bool scale);
 
 template __host__ void
     print_tensor<float>(float const *ptr, size_t rect, char const *prefix);

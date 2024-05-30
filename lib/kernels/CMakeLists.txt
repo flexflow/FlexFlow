@@ -7,7 +7,16 @@ file(GLOB_RECURSE SRC
      CONFIGURE_DEPENDS
      LIST_DIRECTORIES False
      src/*.cc
-     src/cuda/cast_kernels.cu
+     src/cuda/cuda_helper.cu
+     src/cuda/ops/cast_kernels.cu
+     src/cuda/ops/attention_kernels.cu
+     src/cuda/ops/combine_kernels.cu
+     src/cuda/ops/concat_kernels.cu
+     src/cuda/ops/reshape_kernels.cu
+     src/cuda/ops/partition_kernels.cu
+     src/cuda/ops/replicate_kernels.cu
+     src/cuda/ops/softmax_kernels.cu 
+     
      )
 
 add_library(
@@ -28,6 +37,7 @@ target_link_libraries(
   cuda
   cudnn
   nccl
+  utils
 )
 
 define_ff_vars(${project_target})

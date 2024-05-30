@@ -39,8 +39,8 @@ template <DataType T>
 struct BackwardKernel {
   void operator()(cudaStream_t stream,
                   RepartitionPerDeviceState const &m,
-                  GenericTensorAccessorR const &output_grad,
-                  GenericTensorAccessorW const &input_grad) {
+                  GenericTensorAccessorW const &input_grad,
+                  GenericTensorAccessorR const &output_grad) {
     add_kernel<real_type<T>><<<GET_BLOCKS(input_grad.shape.num_elements()),
                                CUDA_NUM_THREADS,
                                0,
@@ -65,8 +65,8 @@ void forward_kernel(cudaStream_t stream,
 
 void backward_kernel(cudaStream_t stream,
                      RepartitionPerDeviceState const &m,
-                     GenericTensorAccessorR const &output_grad,
-                     GenericTensorAccessorW const &input_grad) {
+                     GenericTensorAccessorW const &output_grad,
+                     GenericTensorAccessorR const &input_grad) {
   DataTypeDispatch1<BackwardKernel>{}(
       m.data_type, stream, m, output_grad, input_grad);
 }

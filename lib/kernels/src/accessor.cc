@@ -2,6 +2,46 @@
 
 namespace FlexFlow {
 
+int32_t *GenericTensorAccessorW::get_int32_ptr() const {
+  return get<DataType::INT32>();
+}
+
+int64_t *GenericTensorAccessorW::get_int64_ptr() const {
+  return get<DataType::INT64>();
+}
+
+float *GenericTensorAccessorW::get_float_ptr() const {
+  return get<DataType::FLOAT>();
+}
+
+double *GenericTensorAccessorW::get_double_ptr() const {
+  return get<DataType::DOUBLE>();
+}
+
+half *GenericTensorAccessorW::get_half_ptr() const {
+  return get<DataType::HALF>();
+}
+
+int32_t const *GenericTensorAccessorR::get_int32_ptr() const {
+  return get<DataType::INT32>();
+}
+
+int64_t const *GenericTensorAccessorR::get_int64_ptr() const {
+  return get<DataType::INT64>();
+}
+
+float const *GenericTensorAccessorR::get_float_ptr() const {
+  return get<DataType::FLOAT>();
+}
+
+double const *GenericTensorAccessorR::get_double_ptr() const {
+  return get<DataType::DOUBLE>();
+}
+
+half const *GenericTensorAccessorR::get_half_ptr() const {
+  return get<DataType::HALF>();
+}
+
 int32_t *get_int32_ptr(GenericTensorAccessorW const &a) {
   return get<DataType::INT32>(a);
 }

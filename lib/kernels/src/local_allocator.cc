@@ -5,14 +5,12 @@ namespace FlexFlow {
 void *LocalAllocator::allocate(size_t requested_memory_size) {
   void *ptr;
   checkCUDA(cudaMalloc(&ptr, requested_memory_size));
-  // cudaMalloc(&ptr, requested_memory_size);
   this->ptrs.insert(ptr);
   return ptr;
 }
 
 void LocalAllocator::deallocate(void *ptr) {
   checkCUDA(cudaFree(ptr));
-  // cudaFree(ptr);
   this->ptrs.erase(ptr);
 }
 

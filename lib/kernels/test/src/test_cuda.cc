@@ -8,6 +8,7 @@ namespace FlexFlow {
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test CUDA") {
     int deviceCount = 0;
+
     cudaError_t device_error = cudaGetDeviceCount(&deviceCount);
     CHECK(device_error == cudaSuccess);
     CHECK(deviceCount > 0);
