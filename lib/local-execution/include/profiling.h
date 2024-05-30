@@ -14,7 +14,7 @@ std::optional<float>
   std::optional<float> elapsed =
       profiling_wrapper<F, Ts...>(f, profiling, std::forward<Ts>(ts)...);
   if (elapsed.has_value()) {
-    spdlog::debug(elapsed.value());
+    spdlog::debug("{} kernel execution time: {}", s, elapsed.value());
   }
   return elapsed;
 }
