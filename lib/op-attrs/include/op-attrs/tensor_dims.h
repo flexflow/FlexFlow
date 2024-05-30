@@ -10,6 +10,7 @@ FFOrdered<size_t> const &ff_ordered(TensorDims const &);
 
 size_t num_dims(TensorDims const &);
 size_t dim_at_idx(TensorDims const &, ff_dim_t);
+size_t &dim_at_idx(TensorDims &, ff_dim_t);
 
 ParallelTensorDims lift_to_parallel(TensorDims const &);
 ParallelTensorDims lift_to_parallel_with_degrees(TensorDims const &, SumDegree sum_degree, DiscardCopyDegree discard_copy_degree, FFOrdered<int> const &shard_degrees);

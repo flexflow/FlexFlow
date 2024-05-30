@@ -3,6 +3,7 @@
 
 #include "utils/fmt.decl.h"
 #include <stdexcept>
+#include <tl/expected.hpp>
 
 namespace FlexFlow {
 
@@ -22,6 +23,9 @@ public:
                   std::string const &file_name,
                   int line);
 };
+
+template <typename T, typename E>
+T throw_if_unexpected(tl::expected<T, E> const &r);
 
 template <typename... T>
 std::runtime_error mk_runtime_error(fmt::format_string<T...> fmt_str,

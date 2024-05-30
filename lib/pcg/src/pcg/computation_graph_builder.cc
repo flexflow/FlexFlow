@@ -144,7 +144,7 @@ tensor_guid_t ComputationGraphBuilder::element_unary(
 
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
+  TensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
   return this->add_layer(layer, {input}, {}, output_shape);
 }
@@ -161,7 +161,7 @@ tensor_guid_t ComputationGraphBuilder::element_scalar_unary(
 
   LayerAttrs layer = {ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
+  TensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
   return this->add_layer(layer, {input}, {}, output_shape);
 }
@@ -205,8 +205,9 @@ tensor_guid_t ComputationGraphBuilder::element_binary(
 
   LayerAttrs layer = {ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape = get_output_shape(
-      attrs, this->get_shape(lhs_input), this->get_shape(rhs_input));
+  TensorShape output_shape = throw_if_unexpected(get_output_shape(
+      attrs, this->get_shape(lhs_input), this->get_shape(rhs_input))
+  );
 
   return this->add_layer(layer, {lhs_input, rhs_input}, {}, output_shape);
 }

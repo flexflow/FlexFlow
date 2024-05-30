@@ -22,6 +22,13 @@ size_t dim_at_idx(TensorDims const &dims, ff_dim_t idx) {
   return dims.ff_ordered.at(idx);
 }
 
+size_t &dim_at_idx(TensorDims &dims, ff_dim_t idx) {
+  if (idx.value < 0) {
+    idx = ff_dim_t{int_from_size_t(num_dims(dims)) + idx.value};
+  }
+  return dims.ff_ordered.at(idx);
+}
+
 ParallelTensorDims lift_to_parallel(TensorDims const &dims) {
   std::vector<int> shard_degrees(num_dims(dims), 1); // 1 repeated num_dims(dims) times
   return lift_to_parallel_with_degrees(dims, 1, 1, shard_degrees);
