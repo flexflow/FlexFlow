@@ -411,8 +411,17 @@ BatchConfig RequestManager::get_next_batch_config_task(
     Context ctx,
     Runtime *runtime) {
   RequestManager *rm = *((RequestManager **)task->args);
+  if (rm->request_manager_status == PREFILLING and rm->prefill_model == SSM and
+      rm->current_ssm_step != 0) {
+    // Return an empty batch config
+    return rm->get_next_batch_config(InferenceResult());
+  } else if (rm->request_manager_status == SSM_SPEC and rm->ssm_completed) {
+    return rm->get_next_batch_config(InferenceResult());
+  }
+
   InferenceResult const &result =
       Future(task->futures[0]).get_result<InferenceResult>();
+  int t_1 = Realm::Clock::current_time_in_microseconds();
   return rm->get_next_batch_config(result);
 }
 
@@ -470,12 +479,12 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   std::string output =
       this->tokenizer_->Decode(std::vector<int>(bos_it, eos_it));
 
-  std::cout << "Request " << guid << " completed: " << std::endl
-            << "<bos>" << output;
+  std::cout << "Request " << guid << " completed: " << std::endl << std::endl;
+  std::cout << "<bos>" << output;
   if (eos_rit != request.tokens.rend()) {
     std::cout << "<eos>";
   }
-  std::cout << std::endl;
+  std::cout << std::endl << std::endl;
   ProfileInfo profile_info = profiling_requests[guid];
 
   std::ostream *os = &std::cout;
@@ -491,18 +500,21 @@ void RequestManager::request_complete_clean_up(int batch_index) {
     }
   }
   *os << "Request " << guid << " profiling: " << std::endl;
-  *os << "Decoding time: "
-      << (profile_info.finish_time - profile_info.start_decoding_time) * 1e-3
-      << "ms" << std::endl;
+  if (profile_info.start_decoding_time != 0) {
+    *os << "Decoding time: "
+        << (profile_info.finish_time - profile_info.start_decoding_time) * 1e-3
+        << " ms" << std::endl;
+  } else {
+    *os << "Decoding time: 0 ms" << std::endl;
+  }
   *os << "Total time: "
-      << (profile_info.finish_time - profile_info.start_time) * 1e-3 << "ms"
+      << (profile_info.finish_time - profile_info.start_time) * 1e-3 << " ms"
       << std::endl;
   *os << "LLM decoding steps: " << profile_info.llm_decoding_steps << std::endl;
   if (decoding_mode == SPECULATIVE_DECODING) {
     *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
         << std::endl;
   }
-  *os << output << std::endl << std::endl;
 
   if (!output_filepath.empty()) {
     output_file.close();
@@ -670,6 +682,10 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
     prefill_request->tokens.push_back(
         result.token_ids[prefill_request->num_tokens_in_batch - 1]);
     prefill_completed = true;
+
+    if (prefill_request->tokens.back() == eos_token_id) {
+      request_complete_clean_up(prefill_request->batch_index);
+    }
 
     if (decoding_mode == SPECULATIVE_DECODING) {
       // Add the last token to the token tree
