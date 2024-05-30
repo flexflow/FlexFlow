@@ -33,16 +33,21 @@ using tokenizers::Tokenizer;
 LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
 void write_to_output_file(std::string const &output_filepath, std::string const &str) {
+  std::ostream *os = &std::cout;
+  std::ofstream output_file;
   if (!output_filepath.empty()) {
-    std::ofstream outputFile(output_filepath, std::ios::app);
-    if (outputFile.is_open()) {
-      outputFile << str << std::endl;
-      outputFile.close();
+    output_file.open(output_filepath, std::ios::app);
+    if (output_file.is_open()) {
+      os = &output_file;
     } else {
       std::cout << "Unable to open the output file: " << output_filepath
                 << std::endl;
       assert(false);
     }
+  }
+  *os << str << std::endl;
+  if (!output_filepath.empty()) {
+    output_file.close();
   }
 }
 
@@ -500,57 +505,24 @@ void RequestManager::request_complete_clean_up(int batch_index) {
     std::cout << "<eos>";
   }
   std::cout << std::endl << std::endl;
-  ProfileInfo profile_info = profiling_requests[guid];
-
-  // TODO: merge write_to_output_file() with *os logic
-  std::ostream *os = &std::cout;
-  std::ofstream output_file;
-  if (!output_filepath.empty()) {
-    output_file.open(output_filepath, std::ios::app);
-    if (output_file.is_open()) {
-      os = &output_file;
-    } else {
-      std::cout << "Unable to open the output file: " << output_filepath
-                << std::endl;
-      assert(false);
-    }
-  }
-  *os << "Request " << guid << " profiling: " << std::endl;
-  if (profile_info.start_decoding_time != 0) {
-    *os << "Decoding time: "
-        << (profile_info.finish_time - profile_info.start_decoding_time) * 1e-3
-        << " ms" << std::endl;
-  } else {
-    *os << "Decoding time: 0 ms" << std::endl;
-  }
-  *os << "Total time: "
-      << (profile_info.finish_time - profile_info.start_time) * 1e-3 << " ms"
-      << std::endl;
-  *os << "LLM decoding steps: " << profile_info.llm_decoding_steps << std::endl;
-  if (decoding_mode == SPECULATIVE_DECODING) {
-    *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
-        << std::endl;
-  }
-  *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
-
-  if (!output_filepath.empty()) {
-    output_file.close();
-  }
-  std::string str = "[" + std::to_string(guid) + "] Request completed: " + 
-                      "decoding_time_ms(" + std::to_string(
-                        (profiling_requests[guid].finish_time-
-                          profiling_requests[guid].start_decoding_time)
-                          *1e-3) + ") " + 
-                      "total_time_ms(" + std::to_string(
-                        (profiling_requests[guid].finish_time-
-                          profiling_requests[guid].start_time)
-                          *1e-3) + ") " + 
-                      "LLM_decoding_steps(" + std::to_string(
-                        profiling_requests[guid].llm_decoding_steps) 
-                        + ") " + 
-                      "SSM_decoding_steps(" + std::to_string(
-                        profiling_requests[guid].ssm_decoding_steps) 
+  RequestProfileInfo profile_info = profiling_requests[guid];
+  std::string str = "[" + std::to_string(guid) + "] Request completed:" + 
+                      " decoding_time_ms(" + std::to_string(
+                        (profile_info.finish_time-
+                          profile_info.start_decoding_time)
+                          *1e-3) + ")" + 
+                      " total_time_ms(" + std::to_string(
+                        (profile_info.finish_time-
+                          profile_info.start_time)
+                          *1e-3) + ")" + 
+                      " LLM_decoding_steps(" + std::to_string(
+                        profile_info.llm_decoding_steps) 
                         + ")";
+  if (decoding_mode == SPECULATIVE_DECODING) {
+    str = str + " SSM_decoding_steps(" + std::to_string(
+      profile_info.ssm_decoding_steps) 
+      + ")";
+  }
   write_to_output_file(output_filepath, str);
 
   trigger_request_completion_future(guid);
