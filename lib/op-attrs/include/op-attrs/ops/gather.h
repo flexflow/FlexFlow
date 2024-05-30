@@ -9,9 +9,9 @@
 namespace FlexFlow {
 
 struct GatherAttrs {
-  ff_dim_t dim;
+  req<int> legion_dim;
 };
-FF_VISITABLE_STRUCT(GatherAttrs, dim);
+FF_VISITABLE_STRUCT(GatherAttrs, legion_dim);
 CHECK_VALID_OP_ATTR(GatherAttrs);
 
 } // namespace FlexFlow
