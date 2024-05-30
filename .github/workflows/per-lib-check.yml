@@ -80,6 +80,10 @@ jobs:
         run: |
           build_libs.sh compiler
 
+      - name: Build substitution-generator
+        run: |
+          build_libs.sh substitution-generator
+
       - name: Test utils
         run: |
           test_libs.sh utils
@@ -107,4 +111,7 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
           verbose: true
-
+          
+      - name: Test substitution-generator
+        run: |
+          test_libs.sh substitution-generator
