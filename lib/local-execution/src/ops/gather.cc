@@ -57,7 +57,8 @@ OpTaskInvocation backward(GatherAttrs const &attrs) {
   return {GATHER_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<GatherPerDeviceState> init_task_impl(TaskArgumentAccessor const &acc) {
+static DeviceSpecific<GatherPerDeviceState>
+    init_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto index = acc.get_tensor<Permissions::RO>(INDEX);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
@@ -66,8 +67,8 @@ static DeviceSpecific<GatherPerDeviceState> init_task_impl(TaskArgumentAccessor 
   auto const &attrs = acc.get_argument<GatherAttrs>(ATTRS);
   int legion_dim = attrs.legion_dim;
 
-  // Reference code for what's below -- not sure if I got the domain/array shape stuff right
-  // assert(input.domain.get_dim() == index.domain.get_dim());
+  // Reference code for what's below -- not sure if I got the domain/array shape
+  // stuff right assert(input.domain.get_dim() == index.domain.get_dim());
   // assert(output.domain.get_dim() == index.domain.get_dim());
   // for (int i = 0; i < input.domain.get_dim(); i++) {
   //   assert(index.domain.hi()[i] == output.domain.hi()[i]);
@@ -78,8 +79,8 @@ static DeviceSpecific<GatherPerDeviceState> init_task_impl(TaskArgumentAccessor 
   //   }
   // }
 
-  assert (input.shape.get_dim() == index.shape.get_dim());
-  assert (output.shape.get_dim() == index.shape.get_dim());
+  assert(input.shape.get_dim() == index.shape.get_dim());
+  assert(output.shape.get_dim() == index.shape.get_dim());
 
   for (int i = 0; i < input.shape.get_dim(); i++) {
     assert(index.shape[legion_dim_t(i)] == output.shape[legion_dim_t(i)]);
