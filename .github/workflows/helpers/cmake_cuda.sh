@@ -18,7 +18,6 @@ cd "$REPO/build-ci"
 #  export FF_BUILD_ALL_EXAMPLES=ON
 #  export FF_BUILD_UNIT_TESTS=ON
 #fi
-# append the cmake flag FF_USE_CODE_COVERAGE
 IFS=" " read -r -a FLAGS <<< "$CMAKE_FLAGS"
 ../config/config.linux \
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
