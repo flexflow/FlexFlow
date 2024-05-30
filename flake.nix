@@ -97,7 +97,6 @@
               cudaPackages.cuda_cudart
               tl-expected
               lcov # for code coverage
-              xdg_utils # for xdg-open to open html files
             ])
             (with self.packages.${system}; [
               legion
