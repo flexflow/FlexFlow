@@ -8,9 +8,15 @@ on:
       - "python/**"
       - "setup.py"
       - "include/**"
+      - "inference/**"
       - "src/**"
+      - "tests/inference/**"
+      - "conda/flexflow.yml"
       - ".github/workflows/gpu-ci.yml"
-      - "tests/multi_gpu_tests.sh"
+      - "tests/cpp_gpu_tests.sh"
+      - "tests/inference_tests.sh"
+      - "tests/training_tests.sh"
+      - "tests/python_interface_test.sh"
   workflow_dispatch:
 
 concurrency:
@@ -30,10 +36,18 @@ jobs:
     needs: gpu-ci-concierge
     steps:
       - run: 'echo "No gpu-ci required"'
-
-  gpu-ci-flexflow:
-    name: Single Machine, Multiple GPUs Tests
+  
+  inference-tests:
+    name: Inference Tests
     runs-on: ubuntu-20.04
     needs: gpu-ci-concierge
+    steps:
+      - run: 'echo "No gpu-ci required"'
+
+  training-tests:
+    name: Training Tests
+    runs-on: ubuntu-20.04
+    # if: ${{ github.event_name != 'pull_request' || github.base_ref != 'inference' }}
+    needs: inference-tests
     steps:
       - run: 'echo "No gpu-ci required"'

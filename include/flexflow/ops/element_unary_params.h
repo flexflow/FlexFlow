@@ -2,6 +2,7 @@
 #define _FLEXFLOW_ELEMENTARY_UNARY_PARAMS_H
 
 #include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {
@@ -11,6 +12,7 @@ struct ElementUnaryParams {
   bool inplace;
   float scalar = 0.0;
   LayerID layer_guid;
+  char name[MAX_OPNAME];
 
   bool is_valid(ParallelTensorShape const &) const;
 };

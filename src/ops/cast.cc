@@ -112,7 +112,7 @@ Cast::Cast(FFModel &model,
            CastParams const &params,
            ParallelTensor const &input,
            char const *name)
-    : Cast(model, input, params.dtype, name) {}
+    : Cast(model, input, params.dtype, params.name) {}
 
 void Cast::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -146,6 +146,44 @@ void Cast::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
+void Cast::init_inference(FFModel const &ff,
+                          std::vector<ParallelTensor> const &batch_inputs,
+                          std::vector<ParallelTensor> const &batch_outputs,
+                          MachineView const *mv) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
+
+  IndexLauncher launcher(CAST_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Cast)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
+}
+
 OpMeta *Cast::init_task(Task const *task,
                         std::vector<PhysicalRegion> const &regions,
                         Context ctx,
@@ -155,6 +193,8 @@ OpMeta *Cast::init_task(Task const *task,
   CastMeta *m = new CastMeta(handler);
   m->input_data_type = cast->inputs[0]->data_type;
   m->output_data_type = cast->outputs[0]->data_type;
+  std::strcpy(m->op_name, cast->name);
+  m->layer_guid = cast->layer_guid;
   return m;
 }
 
@@ -184,6 +224,42 @@ void Cast::forward(FFModel const &ff) {
                                                     outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+FutureMap Cast::inference(FFModel const &ff,
+                          BatchConfigFuture const &bc,
+                          std::vector<ParallelTensor> const &batch_inputs,
+                          std::vector<ParallelTensor> const &batch_outputs,
+                          MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+
+  IndexLauncher launcher(CAST_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, false),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 template <typename IDT>
@@ -333,6 +409,8 @@ bool Cast::measure_operator_cost(Simulator *sim,
 
 void Cast::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->outputs[0]->data_type);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -344,6 +422,10 @@ Node Cast::deserialize(FFModel &ff,
   assert(num_inputs == 1);
   DataType dtype;
   dez.deserialize(dtype);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   return ff.get_or_create_node<Cast>(inputs[0], {dtype});
 }
 

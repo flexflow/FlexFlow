@@ -11,3 +11,11 @@ python/flexflow/core/legion_cffi_header.py
 *.pb.h
 *.o
 *.a
+
+# Ignore inference assets
+/inference/weights/*
+/inference/tokenizer/*
+/inference/prompt/*
+/inference/output/*
+
+/tests/inference/python_test_configs/*.json

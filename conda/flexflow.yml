@@ -1,0 +1,27 @@
+name: flexflow
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python>=3.6,<3.12
+  - cffi>=1.11.0
+  - Pillow
+  - pybind11
+  - rust
+  - cmake-build-extension
+  - jq
+  - pytest
+  - pip
+  - pip:
+    - qualname>=0.1.0
+    - keras_preprocessing>=1.1.2
+    - numpy>=1.16.0
+    - torch>=1.13.1 --index-url https://download.pytorch.org/whl/cpu
+    - torchaudio>=0.13.1 --index-url https://download.pytorch.org/whl/cpu
+    - torchvision>=0.14.1 --index-url https://download.pytorch.org/whl/cpu
+    - regex
+    - onnx
+    - transformers>=4.31.0
+    - sentencepiece
+    - einops
+    - requests

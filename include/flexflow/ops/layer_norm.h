@@ -1,7 +1,8 @@
 #pragma once
 
+#include "flexflow/inference.h"
 #include "flexflow/model.h"
-
+#include "flexflow/utils/memory_allocator.h"
 namespace FlexFlow {
 
 class LayerNormMeta;
@@ -20,13 +21,23 @@ public:
             const ParallelTensor _input,
             std::vector<int> const &axes,
             bool _elementwise_affine,
+            bool _use_bias,
             float _eps,
             bool allocate_weights,
             char const *name);
-  void init(FFModel const &);
-  void forward(FFModel const &);
-  void backward(FFModel const &);
-  void print_layer(FFModel const &model) {
+  void init(FFModel const &) override;
+  void init_inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &,
+                      MachineView const *mv = nullptr) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfigFuture const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
+  void print_layer(FFModel const &model) override {
     assert(0);
   }
   static Op *
@@ -52,26 +63,29 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void inference_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static void backward_task(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
-                             CostMetrics &cost_metrics) const;
+                             CostMetrics &cost_metrics) const override;
   template <typename T>
   static void forward_kernel(LayerNormMeta const *m,
                              T const *input_ptr,
                              T *output_ptr,
-                             T *gamma_ptr,
-                             T *beta_ptr,
+                             T const *gamma_ptr,
+                             T const *beta_ptr,
                              ffStream_t stream);
-  template <typename T>
   static void forward_kernel_wrapper(LayerNormMeta const *m,
-                                     T const *input_ptr,
-                                     T *output_ptr,
-                                     T *gamma_ptr,
-                                     T *beta_ptr);
+                                     GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorW &output,
+                                     GenericTensorAccessorR const &gamma,
+                                     GenericTensorAccessorR const &beta);
   template <typename T>
   static void backward_kernel(LayerNormMeta const *m,
                               T const *output_grad_ptr,
@@ -91,7 +105,7 @@ public:
                                       T *beta_grad_ptr);
 
 public:
-  bool elementwise_affine;
+  bool elementwise_affine, use_bias;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
   std::vector<int> axes;
@@ -99,14 +113,17 @@ public:
 
 class LayerNormMeta : public OpMeta {
 public:
-  LayerNormMeta(FFHandler handle, LayerNorm const *ln);
+  LayerNormMeta(FFHandler handle,
+                LayerNorm const *ln,
+                MemoryAllocator &gpu_mem_allocator);
+  ~LayerNormMeta(void);
 
 public:
-  bool elementwise_affine;
+  bool elementwise_affine, use_bias;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
-  float *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
-  char op_name[MAX_OPNAME];
+  void *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
+  Realm::RegionInstance reserveInst;
 };
 
 }; // namespace FlexFlow

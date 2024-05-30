@@ -40,13 +40,13 @@ void forward_kernel_wrapper(ConcatMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   Internal::forward_kernel(output, inputs, num_inputs, axis, stream);
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     // print_tensor<4, float>(output - output_blk_size, output_rect,
     // "[Concat:forward:output]"); printf("output_blk_size=%zu\n",
@@ -56,8 +56,8 @@ void forward_kernel_wrapper(ConcatMeta const *m,
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
     printf("[%s] forward time = %.4f ms\n", m->op_name, elapsed);
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
   }
 }
 
@@ -71,19 +71,19 @@ void backward_kernel_wrapper(ConcatMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   Internal::backward_kernel(output_grad, input_grads, num_inputs, axis, stream);
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
     printf("[%s] forward time = %.4f ms\n", m->op_name, elapsed);
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
   }
 }
 

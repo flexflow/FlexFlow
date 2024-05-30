@@ -4,7 +4,7 @@ eval "$(conda shell.bash hook)"
 rm -rf align/out
 
 function generate_ff_tensor(){
-    ./build/flexflow_python tests/align/align_create_tensor_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16 -o "$1"
+    ./build/flexflow_python tests/align/align_create_tensor_ff.py -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16 -o "$1"
 }
 
 function generate_torch_tensor(){

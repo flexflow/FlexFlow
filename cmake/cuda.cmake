@@ -13,8 +13,19 @@ if(CUDA_FOUND)
   # set cuda runtime and driver lib
   # override cublas and curand because the FindCUDA module may not find the correct libs  
   set(CUDADRV_LIBRARIES ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/libcuda${LIBEXT})
-  set(CUDA_CUBLAS_LIBRARIES ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublas${LIBEXT})
-  set(CUDA_curand_LIBRARY ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcurand${LIBEXT})
+  if(CUBLAS_PATH)
+    set(CUBLAS_ROOT ${CUBLAS_PATH})
+  else()
+  set(CUBLAS_ROOT ${CUDA_TOOLKIT_ROOT_DIR})
+  endif()
+  set(CUDA_CUBLAS_LIBRARIES ${CUBLAS_ROOT}/lib64/libcublas${LIBEXT})
+  if(CURAND_PATH)
+    set(CURAND_ROOT ${CURAND_PATH})
+  else()
+  set(CURAND_ROOT ${CUDA_TOOLKIT_ROOT_DIR})
+  endif()
+  set(CUDA_curand_LIBRARY ${CURAND_ROOT}/lib64/libcurand${LIBEXT})
+  
   list(APPEND FLEXFLOW_EXT_LIBRARIES
     ${CUDADRV_LIBRARIES}
     ${CUDA_CUBLAS_LIBRARIES}
@@ -53,8 +64,12 @@ if(CUDA_FOUND)
     message( STATUS "CUDA Detected CUDA_ARCH : ${DETECTED_CUDA_ARCH}" )
     set(FF_CUDA_ARCH ${DETECTED_CUDA_ARCH})
   # Set FF_CUDA_ARCH to the list of all GPU architectures compatible with FlexFlow
-  elseif("${FF_CUDA_ARCH}" STREQUAL "all") 
-    set(FF_CUDA_ARCH 60,61,62,70,72,75,80,86)
+  elseif("${FF_CUDA_ARCH}" STREQUAL "all")
+    if(CUDA_VERSION VERSION_GREATER_EQUAL "11.8")
+      set(FF_CUDA_ARCH 60,61,62,70,72,75,80,86,90)
+    else()
+      set(FF_CUDA_ARCH 60,61,62,70,72,75,80,86)
+    endif()
   endif()
   
   # create CUDA_GENCODE list based on FF_CUDA_ARCH
@@ -66,6 +81,7 @@ if(CUDA_FOUND)
   endforeach()
   string(REGEX REPLACE "([0-9]+)" "-gencode arch=compute_\\1,code=sm_\\1" CUDA_GENCODE "${CUDA_GENCODE}")
 
+  set(CMAKE_CUDA_COMPILER "${CUDA_NVCC_EXECUTABLE}")
   #output
   message( STATUS "CUDA_VERSION: ${CUDA_VERSION}")
   message( STATUS "CUDA root path : ${CUDA_TOOLKIT_ROOT_DIR}" )
@@ -76,6 +92,7 @@ if(CUDA_FOUND)
   message( STATUS "CURAND libraries : ${CUDA_curand_LIBRARY}" )
   message( STATUS "CUDA Arch : ${FF_CUDA_ARCH}" )
   message( STATUS "CUDA_GENCODE: ${CUDA_GENCODE}")
+  message( STATUS "CMAKE_CUDA_COMPILER: ${CMAKE_CUDA_COMPILER}")
 
   list(APPEND FLEXFLOW_INCLUDE_DIRS
     ${CUDA_INCLUDE_DIRS})

@@ -41,6 +41,9 @@ ReduceParams Reduce::get_params() const {
   }
   params.keepdims = keepdims;
   params.layer_guid = this->layer_guid;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -110,9 +113,12 @@ Reduce::Reduce(FFModel &model,
                ReduceParams const &params,
                const ParallelTensor input,
                char const *name)
-    : Reduce(
-          model, params.layer_guid, input, params.axes, params.keepdims, name) {
-}
+    : Reduce(model,
+             params.layer_guid,
+             input,
+             params.axes,
+             params.keepdims,
+             params.name) {}
 
 Reduce::Reduce(FFModel &model,
                LayerID const &_layer_guid,
@@ -210,6 +216,8 @@ OpMeta *Reduce::init_task(Task const *task,
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       DT_FLOAT, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   ReduceMeta *m = new ReduceMeta(handle, rd, input.domain);
+  std::strcpy(m->op_name, rd->name);
+  m->layer_guid = rd->layer_guid;
   return m;
 }
 
@@ -374,6 +382,10 @@ void Reduce::serialize(Legion::Serializer &sez) const {
   }
   sez.serialize(params.keepdims);
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -392,9 +404,15 @@ Node Reduce::deserialize(FFModel &ff,
     axes.push_back(dim_idx);
   }
   dez.deserialize(keepdims);
-  size_t id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
-  LayerID layer_guid(id);
+  dez.deserialize(transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
   return ff.get_or_create_node<Reduce>(inputs[0], {axes, keepdims, layer_guid});
 }

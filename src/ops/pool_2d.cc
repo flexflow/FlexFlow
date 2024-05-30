@@ -269,7 +269,7 @@ Pool2D::Pool2D(FFModel &model,
              params.padding_w,
              params.pool_type,
              params.activation,
-             name) {}
+             params.name) {}
 
 void Pool2D::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -317,7 +317,9 @@ OpMeta *Pool2D::init_task(Task const *task,
   FFHandler handle = *((FFHandler const *)task->local_args);
   Pool2DMeta *m = new Pool2DMeta(handle);
   m->profiling = pool->profiling;
+  m->inference_debugging = pool->inference_debugging;
   std::strcpy(m->op_name, pool->name);
+  m->layer_guid = pool->layer_guid;
   TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, Pool2DOutput::NUMDIM> acc_output(regions[1],
@@ -519,6 +521,8 @@ void Pool2D::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->padding_w);
   sez.serialize(this->pool_type);
   sez.serialize(this->activation);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 bool Pool2D::measure_operator_cost(Simulator *sim,
@@ -655,6 +659,10 @@ Node Pool2D::deserialize(FFModel &ff,
   dez.deserialize(padding_w);
   dez.deserialize(pool_type);
   dez.deserialize(activation);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
 
   Pool2DParams params;
   params.kernel_h = kernel_h;
@@ -665,6 +673,7 @@ Node Pool2D::deserialize(FFModel &ff,
   params.padding_w = padding_w;
   params.pool_type = pool_type;
   params.activation = activation;
+  strcpy(params.name, name);
 
   return ff.get_or_create_node<Pool2D>(inputs[0], params);
 }

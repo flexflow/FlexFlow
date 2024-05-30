@@ -16,6 +16,7 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/kernels/flat_kernels.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 
@@ -317,6 +318,8 @@ Domain Flat::get_input_tensor_shape(ParallelConfig const &pc,
 }
 
 void Flat::serialize(Legion::Serializer &sez) const {
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
   return;
 }
 
@@ -391,6 +394,10 @@ Node Flat::deserialize(FFModel &ff,
                        ParallelTensor inputs[],
                        int num_inputs) {
   assert(num_inputs == 1);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   return ff.get_or_create_node<Flat>(inputs[0], {});
 }
 

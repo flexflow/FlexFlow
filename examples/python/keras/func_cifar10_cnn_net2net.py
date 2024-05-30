@@ -120,5 +120,7 @@ def top_level_task():
 
 if __name__ == "__main__":
   print("Functional API, cifarf10 cnn teach student")
+  configs = ff.get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()
   gc.collect()

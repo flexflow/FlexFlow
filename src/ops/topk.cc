@@ -87,6 +87,9 @@ TopKParams TopK::get_params() const {
   TopKParams params;
   params.k = this->k;
   params.sorted = this->sorted;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -134,7 +137,50 @@ TopK::TopK(FFModel &model,
            TopKParams const &params,
            const ParallelTensor input,
            char const *name)
-    : TopK(model, input, params.k, params.sorted, name) {}
+    : TopK(model, input, params.k, params.sorted, params.name) {}
+
+void TopK::init_inference(FFModel const &ff,
+                          std::vector<ParallelTensor> const &batch_inputs,
+                          std::vector<ParallelTensor> const &batch_outputs,
+                          MachineView const *mv) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(TOPK_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(TopK)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[1]->region));
+  launcher.add_field(2, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
+}
 
 void TopK::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -182,7 +228,10 @@ OpMeta *TopK::init_task(Task const *task,
   FFHandler handle = *((FFHandler *)task->local_args);
   TopKMeta *m = new TopKMeta(handle);
   m->profiling = topk->profiling;
+  m->inference_debugging = topk->inference_debugging;
   m->sorted = topk->sorted;
+  std::strcpy(m->op_name, topk->name);
+  m->layer_guid = topk->layer_guid;
   return m;
 }
 
@@ -218,6 +267,49 @@ void TopK::forward(FFModel const &ff) {
                                                     outputs[1]->region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+FutureMap TopK::inference(FFModel const &ff,
+                          BatchConfigFuture const &bc,
+                          std::vector<ParallelTensor> const &batch_inputs,
+                          std::vector<ParallelTensor> const &batch_outputs,
+                          MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "TopK op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
+  IndexLauncher launcher(TOPK_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[1]->region));
+  launcher.add_field(2, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void TopK::forward_task(Task const *task,
@@ -337,6 +429,8 @@ void TopK::backward_task(Task const *task,
 void TopK::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->k);
   sez.serialize(this->sorted);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 Node TopK::deserialize(FFModel &ff,
@@ -348,9 +442,14 @@ Node TopK::deserialize(FFModel &ff,
   bool sorted;
   dez.deserialize(k);
   dez.deserialize(sorted);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   TopKParams params;
   params.k = k;
   params.sorted = sorted;
+  strcpy(params.name, name);
   return ff.get_or_create_node<TopK>(inputs[0], params);
 }
 

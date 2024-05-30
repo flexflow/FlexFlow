@@ -54,7 +54,8 @@ void Op::inner_measure_operator_cost(Simulator *sim,
   checkCUDA(hipEventRecord(sim->end_event, stream));
   checkCUDA(hipEventSynchronize(sim->end_event));
   float milliseconds;
-  hipEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  checkCUDA(
+      hipEventElapsedTime(&milliseconds, sim->start_event, sim->end_event));
   cost_metrics.forward_time = milliseconds / sim->repeat_times;
 
   // measure backward time
@@ -68,7 +69,8 @@ void Op::inner_measure_operator_cost(Simulator *sim,
     }
     checkCUDA(hipEventRecord(sim->end_event, stream));
     checkCUDA(hipEventSynchronize(sim->end_event));
-    hipEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+    checkCUDA(
+        hipEventElapsedTime(&milliseconds, sim->start_event, sim->end_event));
     cost_metrics.backward_time = milliseconds / sim->repeat_times;
   } else {
     cost_metrics.backward_time = 0.0f;
@@ -128,6 +130,54 @@ FFHandler
                                            Realm::ProfilingRequestSet())
         .wait();
     handle.workSpace = workspaceInst.pointer_untyped(0, sizeof(char));
+  }
+  if (handle.offload_reserve_space_size > 0) {
+    // allocate memory for offload reserve space
+    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                         .only_kind(Memory::GPU_FB_MEM)
+                         .best_affinity_to(task->target_proc)
+                         .first();
+    Realm::Rect<1, coord_t> bounds(
+        Realm::Point<1, coord_t>(0),
+        Realm::Point<1, coord_t>(handle.offload_reserve_space_size - 1));
+    std::vector<size_t> field_sizes;
+    field_sizes.push_back(sizeof(char));
+    Realm::RegionInstance workspaceInst;
+    Realm::RegionInstance::create_instance(workspaceInst,
+                                           gpu_mem,
+                                           bounds,
+                                           field_sizes,
+                                           0,
+                                           Realm::ProfilingRequestSet())
+        .wait();
+    handle.offload_reserve_space =
+        workspaceInst.pointer_untyped(0, sizeof(char));
+  } else {
+    handle.offload_reserve_space = nullptr;
+  }
+  if (handle.batch_config_metadata_size > 0) {
+    // allocate memory for offload reserve space
+    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                         .only_kind(Memory::GPU_FB_MEM)
+                         .best_affinity_to(task->target_proc)
+                         .first();
+    Realm::Rect<1, coord_t> bounds(
+        Realm::Point<1, coord_t>(0),
+        Realm::Point<1, coord_t>(handle.batch_config_metadata_size - 1));
+    std::vector<size_t> field_sizes;
+    field_sizes.push_back(sizeof(char));
+    Realm::RegionInstance workspaceInst;
+    Realm::RegionInstance::create_instance(workspaceInst,
+                                           gpu_mem,
+                                           bounds,
+                                           field_sizes,
+                                           0,
+                                           Realm::ProfilingRequestSet())
+        .wait();
+    handle.batch_config_metadata =
+        workspaceInst.pointer_untyped(0, sizeof(char));
+  } else {
+    handle.batch_config_metadata = nullptr;
   }
   // checkCUDA(hipMalloc(&handle.workSpace, handle.workSpaceSize));
 #ifdef FF_USE_NCCL

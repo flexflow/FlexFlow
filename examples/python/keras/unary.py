@@ -62,4 +62,6 @@ def top_level_task():
 
 if __name__ == "__main__":
   print("alexnet keras")
+  configs = ff.get_configs()
+  ff.init_flexflow_runtime(configs)
   top_level_task()

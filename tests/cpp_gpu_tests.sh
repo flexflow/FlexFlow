@@ -13,6 +13,9 @@ BATCHSIZE=$((GPUS * 64))
 FSIZE=13800
 ZSIZE=12192
 
+GPU_AVAILABLE=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
+if [ $(( GPUS )) -gt $(( GPU_AVAILABLE )) ]; then echo "The test requires $GPUS GPUs, but only $GPU_AVAILABLE are available. Try reducing the number of nodes, or the number of gpus/node." ; exit; fi
+
 remove_mnist() {
 	rm -f train-images-idx3-ubyte.gz train-labels-idx1-ubyte.gz train-images-idx3-ubyte train-labels-idx1-ubyte
 }

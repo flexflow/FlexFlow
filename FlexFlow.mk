@@ -59,7 +59,8 @@ GEN_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/runtime/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/dataloader/ -name '*.cc')\
-		$(shell find $(FF_HOME)/src/c/ -name '*.cc')
+		$(shell find $(FF_HOME)/src/c/ -name '*.cc')\
+		$(shell find $(FF_HOME)/inference/ -name 'file_loader.cc')
 GEN_SRC := $(filter-out $(FF_HOME)/src/runtime/cpp_driver.cc, $(GEN_SRC))
 
 FF_CUDA_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cu')\
@@ -94,15 +95,17 @@ ifneq ($(strip $(FF_USE_PYTHON)), 1)
 endif
 
 
-INC_FLAGS	+= -I${FF_HOME}/include -I${FF_HOME}/deps/optional/include -I${FF_HOME}/deps/variant/include -I${FF_HOME}/deps/json/include
+INC_FLAGS	+= -I${FF_HOME}/include -I${FF_HOME}/inference -I${FF_HOME}/deps/optional/include -I${FF_HOME}/deps/variant/include -I${FF_HOME}/deps/json/include -I${FF_HOME}/deps/tokenizers-cpp/include -I${FF_HOME}/deps/tokenizers-cpp/sentencepiece/src
 CC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 NVCC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 HIPCC_FLAGS     += -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 GASNET_FLAGS	+=
 # For Point and Rect typedefs
-CC_FLAGS	+= -std=c++11
-NVCC_FLAGS	+= -std=c++11
-HIPCC_FLAGS     += -std=c++11
+CC_FLAGS	+= -std=c++17
+NVCC_FLAGS	+= -std=c++17
+HIPCC_FLAGS     += -std=c++17
+
+LD_FLAGS += -L$(FF_HOME)/deps/tokenizers-cpp/example/tokenizers -ltokenizers_cpp -ltokenizers_c -L$(FF_HOME)/deps/tokenizers-cpp/example/tokenizers/sentencepiece/src -lsentencepiece
 
 ifeq ($(strip $(FF_USE_NCCL)), 1)
 INC_FLAGS	+= -I$(MPI_HOME)/include -I$(NCCL_HOME)/include

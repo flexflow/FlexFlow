@@ -7,10 +7,11 @@ on:
       - ".github/workflows/docker-build.yml"
   push:
     branches:
+      - "inference"
       - "master"
-  schedule:
-    # Run every week on Sunday at midnight PT (3am ET / 8am UTC) to keep the docker images updated
-    - cron: "0 8 * * 0"
+  # schedule:
+  #   # Run every week on Sunday at midnight PT (3am ET / 8am UTC) to keep the docker images updated
+  #   - cron: "0 8 * * 0"
   workflow_dispatch:
 
 # Cancel outdated workflows if they are still running
@@ -19,32 +20,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docker-build:
-    name: Build and Install FlexFlow in a Docker Container
+  rocm-builder-start:
+    name: Start an AWS instance to build the ROCM Docker images
+    runs-on: ubuntu-latest
+    if: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
+    env: 
+      ROCM_BUILDER_INSTANCE_ID: ${{ secrets.ROCM_BUILDER_INSTANCE_ID }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Start EC2 instance
+        run: aws ec2 start-instances --instance-ids $ROCM_BUILDER_INSTANCE_ID
+
+  docker-build-rocm:
+    name: Build and Install FlexFlow in a Docker Container (ROCm backend)
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        gpu_backend: ["cuda", "hip_rocm"]
-        cuda_version: ["11.1", "11.2", "11.3", "11.5", "11.6", "11.7", "11.8"]
-        # The CUDA version doesn't matter when building for hip_rocm, so we just pick one arbitrarily (11.8) to avoid building for hip_rocm once per number of CUDA version supported
-        exclude:
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.1"
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.2"
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.3"
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.5"
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.6"
-          - gpu_backend: "hip_rocm"
-            cuda_version: "11.7"
-      fail-fast: false
+    if: ${{ ( github.event_name != 'push' && github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' ) || github.ref_name != 'inference' }}
     env:
-      FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
-      cuda_version: ${{ matrix.cuda_version }}
-      branch_name: ${{ github.head_ref || github.ref_name }}
+      FF_GPU_BACKEND: "hip_rocm"
+      hip_version: 5.6
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -52,20 +51,75 @@ jobs:
           submodules: recursive
 
       - name: Free additional space on runner
-        env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ matrix.gpu_backend == 'hip_rocm' || ( matrix.gpu_backend == 'cuda' && matrix.cuda_version == '11.8' ) }}
-        run: |
-          if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
-            .github/workflows/helpers/free_space_on_runner.sh
-          else
-            echo "Skipping this step to save time"
-          fi
+        run: .github/workflows/helpers/free_space_on_runner.sh
 
       - name: Build Docker container
+        run: FF_HIP_ARCH="gfx1100,gfx1036" ./docker/build.sh flexflow
+
+      - name: Check availability of flexflow modules in Python
+        run: docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${hip_version}:latest -c "python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
+  
+
+  docker-build-and-publish-rocm:
+    name: Build and Deploy FlexFlow Docker Containers (ROCm backend)
+    needs: rocm-builder-start
+    runs-on: [self-hosted, rocm_builder]
+    if: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
+    strategy:
+      matrix:
+        hip_version: ["5.3", "5.4", "5.5", "5.6"]
+      fail-fast: false
+    env:
+      FF_GPU_BACKEND: "hip_rocm"
+      hip_version: ${{ matrix.hip_version }}
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Build Docker container
+        # On push to inference, build for all compatible architectures, so that we can publish 
+        # a pre-built general-purpose image. On all other cases, only build for one architecture
+        # to save time.
+        run: FF_HIP_ARCH=all ./docker/build.sh flexflow
+
+      - name: Check availability of flexflow modules in Python
+        run: docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${hip_version}:latest -c "python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
+
+      - name: Publish Docker environment image (on push to inference)
         env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ matrix.gpu_backend == 'hip_rocm' || ( matrix.gpu_backend == 'cuda' && matrix.cuda_version == '11.8' ) }}
+          FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
+        run: |
+          ./docker/publish.sh flexflow-environment
+          ./docker/publish.sh flexflow
+  
+  docker-build-cuda:
+    name: Build and Install FlexFlow in a Docker Container (CUDA backend)
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        cuda_version: ["11.1", "11.6", "11.7", "11.8", "12.0", "12.1", "12.2"]
+      fail-fast: false
+    env:
+      FF_GPU_BACKEND: "cuda"
+      cuda_version: ${{ matrix.cuda_version }}
+    steps:
+      - name: Checkout Git Repository
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '12.0' }}
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Free additional space on runner
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '12.0' }}
+        run: .github/workflows/helpers/free_space_on_runner.sh
+
+      - name: Build Docker container
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '12.0' }}
+        env:
+          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
+          build_needed: ${{ matrix.cuda_version == '12.0' }}
         run: |
           # On push to inference, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
@@ -74,41 +128,44 @@ jobs:
             export FF_CUDA_ARCH=all
             ./docker/build.sh flexflow
           elif [[ $build_needed == "true" ]]; then
-            export FF_CUDA_ARCH=70
+            export FF_CUDA_ARCH=86
             ./docker/build.sh flexflow
-          else
-            echo "Skipping build to save time"
           fi
 
-      - name: Check availability of Python flexflow.core module
-        if: ${{ matrix.gpu_backend == 'cuda' }}
-        env:
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
-          build_needed: ${{ matrix.gpu_backend == 'hip_rocm' || ( matrix.gpu_backend == 'cuda' && matrix.cuda_version == '11.8' ) }}
-        run: |
-          if [[ $deploy_needed == "true" || $build_needed == "true" ]]; then
-            docker run --env CPU_ONLY_TEST=1 --entrypoint /bin/bash flexflow-cuda-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; exit()'"
-          else
-            echo "Skipping test to save time"
-          fi
+      - name: Check availability of flexflow modules in Python
+        if: ${{ ( ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' ) || matrix.cuda_version == '12.0' }}
+        run: docker run --entrypoint /bin/bash flexflow-${FF_GPU_BACKEND}-${cuda_version}:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; import flexflow.serve as ff; exit()'"
 
       - name: Publish Docker environment image (on push to inference)
-        if: github.repository_owner == 'flexflow'
+        if: ${{ github.repository_owner == 'flexflow' && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
         env:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
-          deploy_needed: ${{ ( github.event_name == 'push' || github.event_name == 'schedule' ) && env.branch_name == 'inference' }}
         run: |
-          if [[ $deploy_needed == "true" ]]; then
-            ./docker/publish.sh flexflow-environment
-            ./docker/publish.sh flexflow
-          else
-            echo "No need to update Docker containers in ghrc.io registry at this time."
-          fi
+          ./docker/publish.sh flexflow-environment
+          ./docker/publish.sh flexflow
+
+  rocm-builder-stop:
+    needs: docker-build-and-publish-rocm
+    if: ${{ always() && ( github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && github.ref_name == 'inference' }}
+    runs-on: ubuntu-latest
+    name: Stop the AWS instance we used to build the ROCM Docker images
+    env:
+      ROCM_BUILDER_INSTANCE_ID: ${{ secrets.ROCM_BUILDER_INSTANCE_ID }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Start EC2 instance
+        run: aws ec2 stop-instances --instance-ids $ROCM_BUILDER_INSTANCE_ID
 
   notify-slack:
     name: Notify Slack in case of failure
     runs-on: ubuntu-20.04
-    needs: docker-build
+    needs: [docker-build-cuda, docker-build-and-publish-rocm]
     if: ${{ failure() && github.event_name == 'schedule' && github.repository_owner == 'flexflow' }}
     steps:
       - name: Send Slack message

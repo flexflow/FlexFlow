@@ -1,72 +1,54 @@
-# FlexFlow
-![build](https://github.com/flexflow/flexflow/workflows/build/badge.svg?branch=master) ![gpu tests](https://github.com/flexflow/flexflow/workflows/gpu-ci/badge.svg?branch=master) ![multinode gpu tests](https://github.com/flexflow/flexflow/workflows/multinode-test/badge.svg?branch=master) ![docker](https://github.com/flexflow/flexflow/workflows/docker-build/badge.svg?branch=master) ![pip](https://github.com/flexflow/flexflow/workflows/pip-install/badge.svg?branch=master) ![shell-check](https://github.com/flexflow/flexflow/workflows/Shell%20Check/badge.svg?branch=master) ![clang-format](https://github.com/flexflow/flexflow/workflows/clang-format%20Check/badge.svg?branch=master) [![Documentation Status](https://readthedocs.org/projects/flexflow/badge/?version=latest)](https://flexflow.readthedocs.io/en/latest/?badge=latest)
+# FlexFlow: Low-Latency, High-Performance Training and Serving
+![build](https://github.com/flexflow/flexflow/workflows/build/badge.svg?branch=inference) ![gpu tests](https://github.com/flexflow/flexflow/workflows/gpu-ci/badge.svg?branch=inference) ![multinode gpu tests](https://github.com/flexflow/flexflow/workflows/multinode-test/badge.svg?branch=master) ![docker](https://github.com/flexflow/flexflow/workflows/docker-build/badge.svg?branch=inference) ![pip](https://github.com/flexflow/flexflow/workflows/pip-install/badge.svg?branch=inference) ![shell-check](https://github.com/flexflow/flexflow/workflows/Shell%20Check/badge.svg?branch=inference) ![clang-format](https://github.com/flexflow/flexflow/workflows/clang-format%20Check/badge.svg?branch=inference) [![Documentation Status](https://readthedocs.org/projects/flexflow/badge/?version=latest)](https://flexflow.readthedocs.io/en/latest/?badge=latest)
 
-FlexFlow is a deep learning framework that accelerates distributed DNN training by automatically searching for efficient parallelization strategies. FlexFlow provides a drop-in replacement for PyTorch and TensorFlow Keras. Running existing PyTorch and Keras programs in FlexFlow only requires [a few lines of changes to the program](https://flexflow.ai/keras).
+
+---
+
+## News 🔥:
+
+* [09/02/2023] Adding AMD GPU support, released Docker images for ROCM 5.3->5.6
+* [08/16/2023] Adding Starcoder model support
+* [08/14/2023] Released Docker image for different CUDA versions
 
 ## Install FlexFlow
-To install FlexFlow from source code, please read the [instructions](https://flexflow.readthedocs.io/en/latest/installation.html). If you would like to quickly try FlexFlow, we also provide pre-built Docker packages for several versions of CUDA and for the `hip_rocm` backend, together with [Dockerfiles](./docker) if you wish to build the containers manually. More info on the Docker images can be found [here](./docker/README.md). You can also use `conda` to install the FlexFlow Python package (coming soon).
 
-## PyTorch Support
-Users can also use FlexFlow to optimize the parallelization performance of existing PyTorch models in two steps. First, a PyTorch model can be exported to the FlexFlow model format using `flexflow.torch.fx.torch_to_flexflow`.
-```python
-import torch
-import flexflow.torch.fx as fx
 
-model = MyPyTorchModule()
-fx.torch_to_flexflow(model, "mymodel.ff")
+### Requirements
+* OS: Linux
+* GPU backend: Hip-ROCm or CUDA
+  * CUDA version: 10.2 – 12.0
+  * NVIDIA compute capability: 6.0 or higher
+* Python: 3.6 or higher
+* Package dependencies: [see here](https://github.com/flexflow/FlexFlow/blob/inference/requirements.txt)
+
+### Install with pip
+You can install FlexFlow using pip:
+
+```bash
+pip install flexflow
 ```
 
-Second, a FlexFlow program can directly import a previously saved PyTorch model and [autotune](https://www.usenix.org/conference/osdi22/presentation/unger) the parallelization performance for a given parallel machine.
+### Try it in Docker
+If you run into any issue during the install, or if you would like to use the C++ API without needing to install from source, you can also use our pre-built Docker package for different CUDA versions and the `hip_rocm` backend. To download and run our pre-built Docker container:
 
-```python
-from flexflow.pytorch.model import PyTorchModel
-
-def top_level_task():
-  torch_model = PyTorchModel("mymodel.ff")
-  output_tensor = torch_model.apply(ffmodel, input_tensor)
-  ## Model compilation
-  ffmodel.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-  ## Model training
-  (x_train, y_train) = cifar10.load_data()
-  ffmodel.fit(x_train, y_train, epochs=30)
+```bash
+docker run --gpus all -it --rm --shm-size=8g ghcr.io/flexflow/flexflow-cuda-12.0:latest
 ```
 
-**More FlexFlow PyTorch examples**: see the [pytorch examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/pytorch).
+To download a Docker container for a backend other than CUDA v12.0, you can replace the `cuda-12.0` suffix with any of the following backends: `cuda-11.1`, `cuda-11.6`, `cuda-11.7`, `cuda-11.8`, `cuda-12.0`, `cuda-12.1`, `cuda-12.1`, and `hip_rocm-5.3`, `hip_rocm-5.4`, `hip_rocm-5.5`, `hip_rocm-5.6`. More info on the Docker images, with instructions to build a new image from source, or run with additional configurations, can be found [here](./docker/README.md).
 
-## TensorFlow Keras and ONNX Support
-FlexFlow prioritizes PyTorch compatibility, but also includes frontends for [Tensorflow Keras](./docs/source/keras.rst) and [ONNX](./docs/source/onnx.rst) models.
+### Build from source
 
-## C++ Interface
-For users that prefer to program in C/C++. FlexFlow supports a C++ program inference that is equivalent to its Python APIs.
-
-**More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp).
+You can install FlexFlow Serve from source code by building the inference branch of FlexFlow. Please follow these [instructions](https://flexflow.readthedocs.io/en/latest/installation.html).
 
 
-## Command-Line Flags
-In addition to setting runtime configurations in a FlexFlow Python/C++ program, the FlexFlow runtime also accepts command-line arguments for various runtime parameters: 
+## Get Started!
 
-FlexFlow training flags:
-* `-e` or `--epochs`: number of total epochs to run (default: 1)
-* `-b` or `--batch-size`: global batch size in each iteration (default: 64)
-* `-p` or `--print-freq`: print frequency (default: 10)
-* `-d` or `--dataset`: path to the training dataset. If not set, synthetic data is used to conduct training.
+To get started, check out the quickstart guides below for the FlexFlow training and serving libraries.
 
-Legion runtime flags:
-* `-ll:gpu`: number of GPU processors to use on each node (default: 0)
-* `-ll:fsize`: size of device memory on each GPU (in MB)
-* `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) on each node (in MB). This is used for prefecthing training images from disk.
-* `-ll:cpu`: number of data loading workers (default: 4)
-* `-ll:util`: number of utility threads to create per process (default: 1)
-* `-ll:bgwork`: number of background worker threads to create per process (default: 1)
+* [FlexFlow Train](./TRAIN.md)
+* [FlexFlow Serve](./SERVE.md)
 
-Performance auto-tuning flags:
-* `--search-budget` or `--budget`: the number of iterations for the MCMC search (default: 0)
-* `--search-alpha` or `--alpha`: a hyper-parameter for the search procedure (default: 0.05)
-* `--export-strategy` or `--export`: path to export the best discovered strategy (default: None)
-* `--import-strategy` or `--import`: path to import a previous saved strategy (default: None)
-* `--enable-parameter-parallel`: allow FlexFlow to explore parameter parallelism for performance auto-tuning. (By default FlexFlow only considers data and model parallelism.)
-* `--enable-attribute-parallel`: allow FlexFlow to explore attribute parallelism for performance auto-tuning. (By default FlexFlow only considers data and model parallelism.)
-For performance tuning related flags: see [performance autotuning](https://flexflow.ai/search).
 
 ## Contributing
 
@@ -75,6 +57,14 @@ Please let us know if you encounter any bugs or have any suggestions by [submitt
 We welcome all contributions to FlexFlow from bug fixes to new features and extensions.
 
 ## Citations
+
+**FlexFlow Serve:**
+
+* Xupeng Miao, Gabriele Oliaro, Zhihao Zhang, Xinhao Cheng, Zeyu Wang, Rae Ying Yee Wong, Alan Zhu, Lijie Yang, Xiaoxiang Shi, Chunan Shi, Zhuoming Chen, Daiyaan Arfeen, Reyna Abhyankar, Zhihao Jia. [SpecInfer: Accelerating Generative Large Language Model Serving with Speculative Inference and Token Tree Verification](https://arxiv.org/abs/2305.09781). In ArXiV, May 2023.
+
+
+**FlexFlow Train:**
+
 * Colin Unger, Zhihao Jia, Wei Wu, Sina Lin, Mandeep Baines, Carlos Efrain Quintero Narvaez, Vinay Ramakrishnaiah, Nirmal Prajapati, Pat McCormick, Jamaludin Mohd-Yusof, Xi Luo, Dheevatsa Mudigere, Jongsoo Park, Misha Smelyanskiy, and Alex Aiken. [Unity: Accelerating DNN Training Through Joint Optimization of Algebraic Transformations and Parallelization](https://www.usenix.org/conference/osdi22/presentation/unger). In Proceedings of the Symposium on Operating Systems Design and Implementation (OSDI), July 2022. 
 
 * Zhihao Jia, Matei Zaharia, and Alex Aiken. [Beyond Data and Model Parallelism for Deep Neural Networks](https://cs.stanford.edu/~zhihao/papers/sysml19a.pdf). In Proceedings of the 2nd Conference on Machine Learning and Systems (MLSys), April 2019.
@@ -86,3 +76,4 @@ FlexFlow is developed and maintained by teams at CMU, Facebook, Los Alamos Natio
 
 ## License
 FlexFlow uses Apache License 2.0.
+

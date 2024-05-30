@@ -1,9 +1,13 @@
 #ifndef _FLEXFLOW_HIP_HELPER_H_
 #define _FLEXFLOW_HIP_HELPER_H_
+#include "flexflow/accessor.h"
 #include "flexflow/ffconst.h"
 #include "legion.h"
-#include <hipblas.h>
+#include <hipblas/hipblas.h>
 #include <miopen/miopen.h>
+#ifdef FF_USE_NCCL
+#include <rccl/rccl.h>
+#endif
 
 #define FatalError(s)                                                          \
   do {                                                                         \
@@ -133,13 +137,30 @@ __host__ void updateGAS(float *para_ptr,
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
+template <typename T>
+void save_tensor(T const *ptr, size_t num_elements, char const *file_name);
+
+template <typename T>
+T *download_tensor(T const *ptr, size_t num_elements);
+
+template <typename T>
+bool download_tensor(T const *ptr, T *dst, size_t num_elements);
+
 miopenStatus_t
     cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
-                                       Legion::Domain domain);
+                                       Legion::Domain domain,
+                                       DataType data_type = DT_FLOAT);
+
+miopenStatus_t
+    cudnnSetTensorDescriptorFromDomain4SoftMax(miopenTensorDescriptor_t tensor,
+                                               Legion::Domain domain);
 
 hipblasDatatype_t ff_to_cuda_datatype(DataType type);
 
 miopenDataType_t ff_to_cudnn_datatype(DataType type);
+#ifdef FF_USE_NCCL
+ncclDataType_t ff_to_nccl_datatype(DataType type);
+#endif
 
 void handle_unimplemented_hip_kernel(OperatorType op_type);
 #endif

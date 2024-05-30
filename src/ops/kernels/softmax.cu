@@ -26,21 +26,26 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
                          Domain const &input_domain)
     : OpMeta(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain4SoftMax(
+      inputTensor, input_domain, softmax->data_type));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain4SoftMax(
+      outputTensor, input_domain, softmax->data_type));
   dim = softmax->dim;
   profiling = softmax->profiling;
+  inference_debugging = softmax->inference_debugging;
   std::strcpy(op_name, softmax->name);
 }
 
 namespace Kernels {
 namespace Softmax {
 
+template <typename DT>
 void forward_kernel_wrapper(SoftmaxMeta const *m,
-                            float const *input_ptr,
-                            float *output_ptr) {
+                            DT const *input_ptr,
+                            DT *output_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
@@ -63,9 +68,10 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
   }
 }
 
+template <typename DT>
 void backward_kernel_wrapper(SoftmaxMeta const *m,
-                             float *input_grad_ptr,
-                             float const *output_grad_ptr,
+                             DT *input_grad_ptr,
+                             DT const *output_grad_ptr,
                              size_t num_elements) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -93,11 +99,26 @@ void backward_kernel_wrapper(SoftmaxMeta const *m,
   }
 }
 
-namespace Internal {
+template void forward_kernel_wrapper<float>(SoftmaxMeta const *m,
+                                            float const *input_ptr,
+                                            float *output_ptr);
+template void forward_kernel_wrapper<half>(SoftmaxMeta const *m,
+                                           half const *input_ptr,
+                                           half *output_ptr);
 
+template void backward_kernel_wrapper<float>(SoftmaxMeta const *m,
+                                             float *input_grad_ptr,
+                                             float const *output_grad_ptr,
+                                             size_t num_elements);
+template void backward_kernel_wrapper<half>(SoftmaxMeta const *m,
+                                            half *input_grad_ptr,
+                                            half const *output_grad_ptr,
+                                            size_t num_elements);
+namespace Internal {
+template <typename DT>
 void forward_kernel(SoftmaxMeta const *m,
-                    float const *input_ptr,
-                    float *output_ptr,
+                    DT const *input_ptr,
+                    DT *output_ptr,
                     cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
@@ -109,17 +130,18 @@ void forward_kernel(SoftmaxMeta const *m,
                                  m->inputTensor,
                                  input_ptr,
                                  &beta,
-                                 m->inputTensor,
+                                 m->outputTensor,
                                  output_ptr));
 }
 
-void backward_kernel(float *input_grad_ptr,
-                     float const *output_grad_ptr,
+template <typename DT>
+void backward_kernel(DT *input_grad_ptr,
+                     DT const *output_grad_ptr,
                      size_t num_elements,
                      cudaStream_t stream) {
   checkCUDA(cudaMemcpyAsync(input_grad_ptr,
                             output_grad_ptr,
-                            num_elements * sizeof(float),
+                            num_elements * sizeof(DT),
                             cudaMemcpyDeviceToDevice,
                             stream));
 }

@@ -6,6 +6,7 @@ namespace FlexFlow {
 
 struct TransposeParams {
   std::vector<int> perm;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 

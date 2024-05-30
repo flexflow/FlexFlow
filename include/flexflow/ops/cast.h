@@ -34,10 +34,19 @@ public:
        Params const &params,
        Input const &input,
        char const *name = nullptr);
-  void init(FFModel const &);
-  void forward(FFModel const &);
-  void backward(FFModel const &);
-  void print_layer(FFModel const &model) {
+  void init(FFModel const &) override;
+  void init_inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &,
+                      MachineView const *mv = nullptr) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfigFuture const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
+  void print_layer(FFModel const &model) override {
     assert(0);
   }
   static Op *
@@ -83,7 +92,7 @@ public:
 
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
-                             CostMetrics &cost_metrics) const;
+                             CostMetrics &cost_metrics) const override;
   void serialize(Legion::Serializer &s) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,

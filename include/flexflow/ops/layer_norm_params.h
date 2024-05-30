@@ -1,5 +1,7 @@
 #pragma once
 
+#include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {
@@ -9,6 +11,8 @@ struct LayerNormParams {
   std::vector<int> axes;
   bool elementwise_affine;
   float eps;
+  bool use_bias;
+  char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };
 

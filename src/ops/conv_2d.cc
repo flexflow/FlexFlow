@@ -389,7 +389,7 @@ Conv2D::Conv2D(FFModel &model,
              params.groups,
              params.use_bias,
              allocate_weights,
-             name) {}
+             params.name) {}
 
 bool Conv2DParams::is_valid(ParallelTensorShape const &input) const {
   ParallelTensorShape output_shape, kernel_shape, bias_shape;
@@ -592,8 +592,10 @@ OpMeta *Conv2D::init_task(Task const *task,
   m->relu = conv->activation == AC_MODE_RELU;
   m->use_bias = conv->use_bias;
   m->profiling = conv->profiling;
+  m->inference_debugging = conv->inference_debugging;
   m->trainableInputs[0] = conv->trainableInputs[0];
   std::strcpy(m->op_name, conv->name);
+  m->layer_guid = conv->layer_guid;
 
   int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
@@ -1012,6 +1014,8 @@ bool Conv2D::estimate_sync_cost(Simulator *sim,
 
 void Conv2D::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
+  sez.serialize(this->layer_guid.transformer_layer_id);
+  sez.serialize(this->layer_guid.model_id);
   sez.serialize(this->out_channels);
   sez.serialize(this->kernel_h);
   sez.serialize(this->kernel_w);
@@ -1022,6 +1026,8 @@ void Conv2D::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->groups);
   sez.serialize(this->use_bias);
   sez.serialize(this->activation);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 using PCG::Node;
@@ -1036,9 +1042,11 @@ Node Conv2D::deserialize(FFModel &ff,
       padding_w, groups;
   bool use_bias;
   ActiMode activation;
-  size_t id;
+  size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
-  LayerID layer_guid(id);
+  dez.deserialize(transformer_layer_id);
+  dez.deserialize(deserialized_model_id);
+  LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
   dez.deserialize(out_channels);
   dez.deserialize(kernel_h);
   dez.deserialize(kernel_w);
@@ -1049,6 +1057,10 @@ Node Conv2D::deserialize(FFModel &ff,
   dez.deserialize(groups);
   dez.deserialize(use_bias);
   dez.deserialize(activation);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
 
   Conv2DParams params;
   params.layer_guid = layer_guid;
@@ -1062,6 +1074,7 @@ Node Conv2D::deserialize(FFModel &ff,
   params.groups = groups;
   params.use_bias = use_bias;
   params.activation = activation;
+  strcpy(params.name, name);
 
   return ff.get_or_create_node<Conv2D>(inputs[0], params);
 }

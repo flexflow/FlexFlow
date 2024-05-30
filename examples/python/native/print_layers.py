@@ -119,6 +119,9 @@ def top_level_task():
 
   # ffmodel.print_layers(0)
 
+
 if __name__ == "__main__":
   print("alexnet")
+  configs = get_configs()
+  init_flexflow_runtime(configs)
   top_level_task()

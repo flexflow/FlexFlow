@@ -15,7 +15,7 @@
 
 from flexflow.keras.layers import Dense, Input, Reshape, Multiply
 import flexflow.keras.optimizers
-
+import flexflow.core as ff
 import numpy as np
 
 def test_identity_loss():
@@ -36,4 +36,6 @@ def test_identity_loss():
 
 
 if __name__ == "__main__":
+    configs = ff.get_configs()
+    ff.init_flexflow_runtime(configs)
     test_identity_loss()

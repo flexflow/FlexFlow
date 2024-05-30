@@ -21,7 +21,8 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Domain;
 
-ElementBinaryMeta::ElementBinaryMeta(FFHandler handler) : OpMeta(handler) {
+ElementBinaryMeta::ElementBinaryMeta(FFHandler handler, Op const *op)
+    : OpMeta(handler, op) {
   checkCUDNN(cudnnCreateTensorDescriptor(&input1Tensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&input2Tensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
@@ -29,6 +30,7 @@ ElementBinaryMeta::ElementBinaryMeta(FFHandler handler) : OpMeta(handler) {
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceAddDesc));
   op_type = OP_NOOP;
   profiling = false;
+  inference_debugging = false;
   inplace_a = false;
   has_same_operands = false;
   broadcast_input1 = false;
@@ -61,27 +63,28 @@ void init_kernel(ElementBinaryMeta *m,
     default:
       assert(false);
   }
+  cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   checkCUDNN(cudnnSetOpTensorDescriptor(
       m->opDesc, mode, CUDNN_DATA_FLOAT, CUDNN_PROPAGATE_NAN));
   checkCUDNN(cudnnSetReduceTensorDescriptor(m->reduceAddDesc,
                                             CUDNN_REDUCE_TENSOR_ADD,
-                                            CUDNN_DATA_FLOAT,
+                                            cudnn_data_type,
                                             CUDNN_PROPAGATE_NAN,
                                             CUDNN_REDUCE_TENSOR_NO_INDICES,
                                             CUDNN_32BIT_INDICES));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain(m->input1Tensor, input1_domain));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain(m->input2Tensor, input2_domain));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(
+      m->input1Tensor, input1_domain, m->input_type[0]));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(
+      m->input2Tensor, input2_domain, m->input_type[1]));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(
+      m->outputTensor, output_domain, m->output_type[0]));
 }
 
 /*static*/
 void forward_kernel_wrapper(ElementBinaryMeta const *m,
-                            float const *in1_ptr,
-                            float const *in2_ptr,
-                            float *out_ptr) {
+                            GenericTensorAccessorR const &in1,
+                            GenericTensorAccessorR const &in2,
+                            GenericTensorAccessorW const &out) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -91,7 +94,20 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  Internal::forward_kernel(m, in1_ptr, in2_ptr, out_ptr, stream);
+  assert(in1.data_type == in2.data_type);
+  assert(out.data_type == in1.data_type);
+  if (out.data_type == DT_HALF) {
+    Internal::forward_kernel(
+        m, in1.get_half_ptr(), in2.get_half_ptr(), out.get_half_ptr(), stream);
+  } else if (out.data_type == DT_FLOAT) {
+    Internal::forward_kernel(m,
+                             in1.get_float_ptr(),
+                             in2.get_float_ptr(),
+                             out.get_float_ptr(),
+                             stream);
+  } else {
+    assert(false && "Unsupported data type");
+  }
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -122,7 +138,7 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
       default:
         assert(false);
     }
-    printf("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
+    printf("[%s] forward time (CF) = %.9fms\n", opName, elapsed);
     // print_tensor<float>(in1_ptr, 32, "[EWB:forward:input1]");
     // print_tensor<float>(in2_ptr, 32, "[EWB:forward:input2]");
     // print_tensor<float>(out_ptr, 32, "[EWB:forward:output]");
@@ -292,10 +308,11 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
 }
 
 /*static*/
+template <typename DT>
 void forward_kernel(ElementBinaryMeta const *m,
-                    float const *in1_ptr,
-                    float const *in2_ptr,
-                    float *out_ptr,
+                    DT const *in1_ptr,
+                    DT const *in2_ptr,
+                    DT *out_ptr,
                     cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));

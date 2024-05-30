@@ -3,6 +3,14 @@
 #include "flexflow/simulator.h"
 #include <stdexcept>
 
+#include <sys/stat.h>
+#include <sys/types.h>
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+#include "flexflow/utils/cuda_helper.h"
+#else
+#include "flexflow/utils/hip_helper.h"
+#endif
+
 namespace FlexFlow {
 
 size_t Op::get_untyped_params_hash() const {

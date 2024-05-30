@@ -19,7 +19,12 @@
 
 namespace FlexFlow {
 
-LinearMeta::LinearMeta(FFHandler handler, int batch_size) : OpMeta(handler) {
+LinearMeta::LinearMeta(FFHandler handler,
+                       int batch_size,
+                       Linear const *li,
+                       MemoryAllocator gpu_mem_allocator,
+                       int weightSize)
+    : OpMeta(handler, li) {
   // Allocate an all-one's vector
   float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
   for (int i = 0; i < batch_size; i++) {
@@ -31,11 +36,12 @@ LinearMeta::LinearMeta(FFHandler handler, int batch_size) : OpMeta(handler) {
                       dram_one_ptr,
                       sizeof(float) * batch_size,
                       hipMemcpyHostToDevice));
-  one_ptr = (float const *)fb_one_ptr;
+  one_ptr = (void *)fb_one_ptr;
   // Allocate descriptors
   checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
 }
+LinearMeta::~LinearMeta(void) {}
 
 namespace Kernels {
 namespace Linear {
@@ -55,7 +61,7 @@ bool use_activation(ActiMode mode) {
   return false;
 }
 
-void Linear::init_kernel(LinearMeta *m, int batch_size, int channel) {
+void init_kernel(LinearMeta *m, int batch_size, int channel) {
   if (use_activation(m->activation)) {
     miopenActivationMode_t mode;
     switch (m->activation) {
@@ -70,12 +76,13 @@ void Linear::init_kernel(LinearMeta *m, int batch_size, int channel) {
         assert(false);
     }
     checkCUDNN(miopenSetActivationDescriptor(m->actiDesc, mode, 0.0, 0.0, 0.0));
-    checkCUDNN(miopenSet4dTensorDescriptor(m->outputTensor,
-                                           ff_to_cudnn_datatype(m->output_type),
-                                           batch_size,
-                                           channel,
-                                           1,
-                                           1));
+    checkCUDNN(
+        miopenSet4dTensorDescriptor(m->outputTensor,
+                                    ff_to_cudnn_datatype(m->output_type[0]),
+                                    batch_size,
+                                    channel,
+                                    1,
+                                    1));
   }
 }
 
@@ -92,27 +99,40 @@ void forward_kernel_wrapper(LinearMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
-  Internal::forward_kernel(m,
-                           input_ptr,
-                           output_ptr,
-                           weight_ptr,
-                           bias_ptr,
-                           in_dim,
-                           out_dim,
-                           batch_size,
-                           stream);
+
+  if (m->input_type[0] == DT_FLOAT) {
+    Internal::forward_kernel<float>(m,
+                                    input_ptr,
+                                    output_ptr,
+                                    weight_ptr,
+                                    bias_ptr,
+                                    in_dim,
+                                    out_dim,
+                                    batch_size,
+                                    stream);
+  } else if (m->input_type[0] == DT_HALF) {
+    Internal::forward_kernel<half>(m,
+                                   input_ptr,
+                                   output_ptr,
+                                   weight_ptr,
+                                   bias_ptr,
+                                   in_dim,
+                                   out_dim,
+                                   batch_size,
+                                   stream);
+  }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("%s [Linear] forward time = %.2lfms\n", m->op_name, elapsed);
     // print_tensor<float>(acc_input.ptr, acc_input.rect.volume(),
     // "[Linear:forward:input]"); print_tensor<float>(acc_kernel.ptr,
@@ -139,29 +159,45 @@ void backward_kernel_wrapper(LinearMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
-  Internal::backward_kernel(m,
-                            input_ptr,
-                            input_grad_ptr,
-                            output_ptr,
-                            output_grad_ptr,
-                            kernel_ptr,
-                            kernel_grad_ptr,
-                            bias_grad_ptr,
-                            in_dim,
-                            out_dim,
-                            batch_size,
-                            stream);
+  if (m->input_type[0] == DT_FLOAT) {
+    Internal::backward_kernel<float>(m,
+                                     input_ptr,
+                                     input_grad_ptr,
+                                     output_ptr,
+                                     output_grad_ptr,
+                                     kernel_ptr,
+                                     kernel_grad_ptr,
+                                     bias_grad_ptr,
+                                     in_dim,
+                                     out_dim,
+                                     batch_size,
+                                     stream);
+  } else if (m->input_type[0] == DT_HALF) {
+    Internal::backward_kernel<half>(m,
+                                    input_ptr,
+                                    input_grad_ptr,
+                                    output_ptr,
+                                    output_grad_ptr,
+                                    kernel_ptr,
+                                    kernel_grad_ptr,
+                                    bias_grad_ptr,
+                                    in_dim,
+                                    out_dim,
+                                    batch_size,
+                                    stream);
+  }
+
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("%s Linear backward time = %.2lfms\n", m->op_name, elapsed);
     // print_tensor<float>(acc_output_grad.ptr, acc_output_grad.rect.volume(),
     // "[Linear:backward:output_grad]");
@@ -189,7 +225,7 @@ Parameter* Linear::get_parameter(int index)
 */
 
 namespace Internal {
-
+template <typename DT>
 void forward_kernel(LinearMeta const *m,
                     void const *input_ptr,
                     void *output_ptr,
@@ -201,15 +237,16 @@ void forward_kernel(LinearMeta const *m,
                     hipStream_t stream) {
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
-  float alpha = 1.0f, beta = 0.0f;
-  hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type);
-  hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type);
-  hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type);
-#if CUDA_VERSION >= 11000
-  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  DT alpha = 1.0f, beta = 0.0f;
+  hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type[0]);
+  hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
+  hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type[0]);
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  hipblasDatatype_t compute_type = output_type;
 #else
-  hipblasDatatype_t compute_type = HIPBLAS_R_32F;
+  // TODO: currently use the output_type
+  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  hipblasDatatype_t compute_type = output_type;
 #endif
   checkCUDA(hipblasGemmEx(m->handle.blas,
                           HIPBLAS_OP_T,
@@ -242,8 +279,8 @@ void forward_kernel(LinearMeta const *m,
                             bias_ptr,
                             weight_type,
                             1,
-                            m->one_ptr,
-                            HIPBLAS_R_32F,
+                            static_cast<DT *>(m->one_ptr),
+                            weight_type,
                             1,
                             &alpha,
                             output_ptr,
@@ -281,6 +318,7 @@ void forward_kernel(LinearMeta const *m,
   }
 }
 
+template <typename DT>
 void backward_kernel(LinearMeta const *m,
                      void const *input_ptr,
                      void *input_grad_ptr,
@@ -296,23 +334,24 @@ void backward_kernel(LinearMeta const *m,
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-  float alpha = 1.0f;
-  hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type);
-  hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type);
-  hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type);
-#if CUDA_VERSION >= 11000
-  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  DT alpha = 1.0f;
+  hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type[0]);
+  hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
+  hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type[0]);
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  hipblasDatatype_t compute_type = output_type;
 #else
-  hipblasDatatype_t compute_type = HIPBLAS_R_32F;
+  // TODO: currently use output_type
+  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  hipblasDatatype_t compute_type = output_type;
 #endif
   int output_size = out_dim * batch_size;
   if (m->activation == AC_MODE_RELU) {
     relu_backward_kernel(
-        m->output_type, output_grad_ptr, output_ptr, output_size, stream);
+        m->output_type[0], output_grad_ptr, output_ptr, output_size, stream);
   } else if (m->activation == AC_MODE_SIGMOID) {
     sigmoid_backward_kernel(
-        m->output_type, output_grad_ptr, output_ptr, output_size, stream);
+        m->output_type[0], output_grad_ptr, output_ptr, output_size, stream);
   } else {
     // TODO: only support relu and sigmoid for now
     assert(m->activation == AC_MODE_NONE);

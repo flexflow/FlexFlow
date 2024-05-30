@@ -1,4 +1,4 @@
-# Installing FlexFlow
+# Building from source
 To build and install FlexFlow, follow the instructions below.
 
 ## 1. Download the source code
@@ -30,7 +30,7 @@ If you are planning to build the Python interface, you will need to install seve
 
 The `conda` environment can be created and activated as:
 ```
-conda env create -f conda/environment.yml
+conda env create -f conda/flexflow.yml
 conda activate flexflow
 ```
 
@@ -42,7 +42,7 @@ You can configure a FlexFlow build by running the `config/config.linux` file in 
 3. `FF_CUDA_ARCH` is used to set the architecture of targeted GPUs, for example, the value can be 60 if the GPU architecture is Pascal. To build for more than one architecture, pass a list of comma separated values (e.g. `FF_CUDA_ARCH=70,75`). To compile FlexFlow for all GPU architectures that are detected on the machine, pass `FF_CUDA_ARCH=autodetect` (this is the default value, so you can also leave `FF_CUDA_ARCH` unset. If you want to build for all GPU architectures compatible with FlexFlow, pass `FF_CUDA_ARCH=all`. **If your machine does not have any GPU, you have to set FF_CUDA_ARCH to at least one valid architecture code (or `all`)**, since the compiler won't be able to detect the architecture(s) automatically.
 4. `FF_USE_PYTHON` controls whether to build the FlexFlow Python interface.
 5. `FF_USE_NCCL` controls whether to build FlexFlow with NCCL support. By default, it is set to ON.
-6. `FF_LEGION_NETWORKS` is used to enable distributed run of FlexFlow. If you want to run FlexFlow on multiple nodes, follow instructions in [MULTI-NODE.md](MULTI-NODE.md) and set the corresponding parameters as follows:
+6. `FF_LEGION_NETWORKS` is used to enable distributed run of FlexFlow. If you want to run FlexFlow on multiple nodes, follow instructions in the [Multinode tutorial](https://flexflow.readthedocs.io/en/latest/multinode.html) and set the corresponding parameters as follows:
 * To build FlexFlow with GASNet, set `FF_LEGION_NETWORKS=gasnet` and `FF_GASNET_CONDUIT` as a specific conduit (e.g. `ibv`, `mpi`, `udp`, `ucx`) in `config/config.linux` when configuring the FlexFlow build. Set `FF_UCX_URL` when you want to customize the URL to download UCX.
 * To build FlexFlow with native UCX, set `FF_LEGION_NETWORKS=ucx` in `config/config.linux` when configuring the FlexFlow build. Set `FF_UCX_URL` when you want to customize the URL to download UCX.
 8. `FF_BUILD_EXAMPLES` controls whether to build all C++ example programs.
@@ -85,10 +85,11 @@ export FF_HOME=/path/to/FlexFlow
 ### Run FlexFlow Python examples
 The Python examples are in the [examples/python](https://github.com/flexflow/FlexFlow/tree/master/examples/python). The native, Keras integration and PyTorch integration examples are listed in `native`, `keras` and `pytorch` respectively.
 
-To run the Python examples, you have two options: you can use the `flexflow_python` interpreter, available in the `build` folder, or you can use the native Python interpreter. If you choose to use the native Python interpreter, you should either install FlexFlow, or, if you prefer to build without installing, export the following flags:
+To run the Python examples, you have two options: you can use the `flexflow_python` interpreter, available in the `build` folder, or you can use the native Python interpreter. If you choose to use the native Python interpreter, you should either install FlexFlow, or, if you prefer to build without installing, export the required environment flags by running the following command (edit the path if your build folder is not named `build`):
 
-* `export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/deps/legion/bindings/python:${PYTHONPATH}"`
-* `export LD_LIBRARY_PATH="${FF_HOME}/build:${FF_HOME}/build/deps/legion/lib:${LD_LIBRARY_PATH}"`
+```
+source ./build/set_python_envs.sh
+```
 
 **We recommend that you run the** `mnist_mlp` **test under** `native` **using the following cmd to check if FlexFlow has been installed correctly:**
 
@@ -96,7 +97,7 @@ To run the Python examples, you have two options: you can use the `flexflow_pyth
 cd "$FF_HOME"
 ./python/flexflow_python examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize <size of gpu buffer> -ll:zsize <size of zero buffer>
 ```
-A script to run all the Python examples is available at `tests/multi_gpu_tests.sh`
+A script to run all the Python examples is available at `tests/training_tests.sh`
 
 ### Run FlexFlow C++ examples
 

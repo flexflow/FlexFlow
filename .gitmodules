@@ -19,3 +19,7 @@
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/nlohmann/json.git
+[submodule "deps/tokenizers-cpp"]
+	path = deps/tokenizers-cpp
+	url = https://github.com/mlc-ai/tokenizers-cpp.git
+	fetchRecurseSubmodules = true
