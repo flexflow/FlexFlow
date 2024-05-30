@@ -89,7 +89,8 @@ FF_VISITABLE_STRUCT(OpTaskInvocation, task_id, binding);
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
 
-bool is_invocation_valid(OpTaskSignature sig, OpTaskInvocation inv);
+bool is_invocation_valid(OpTaskSignature const &sig,
+                         OpTaskInvocation const &inv);
 
 } // namespace FlexFlow
 

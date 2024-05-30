@@ -31,7 +31,7 @@ public:
   static ConcreteArgSpec create(T const &t) {
     static_assert(is_serializable<T>::value, "Type must be serializable");
 
-    std::type_index type_idx = init_type_index<T>();
+    std::type_index type_idx = get_type_index_for_type<T>();
     std::shared_ptr<void const> ptr =
         std::static_pointer_cast<void const>(std::make_shared<T>(t));
 

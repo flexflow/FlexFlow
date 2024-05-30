@@ -8,13 +8,13 @@
 namespace FlexFlow {
 
 template <typename T>
-std::type_index init_type_index() {
+std::type_index get_type_index_for_type() {
   return std::type_index(typeid(T));
 }
 
 template <typename T>
 bool matches(std::type_index idx) {
-  return idx == init_type_index<T>();
+  return idx == get_type_index_for_type<T>();
 }
 
 } // namespace FlexFlow

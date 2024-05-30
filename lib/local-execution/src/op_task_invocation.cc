@@ -97,8 +97,4 @@ bool is_invocation_valid(OpTaskSignature const &sig,
          is_arg_invocation_valid(sig, inv);
 }
 
-bool are_sigs_eq(OpTaskSignature const &sig1, OpTaskSignature const &sig2) {
-  return sig1 == sig2;
-}
-
 } // namespace FlexFlow

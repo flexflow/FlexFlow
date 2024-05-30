@@ -1,10 +1,5 @@
-<<<<<<< op-refactor
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_LOCAL_ALLOCATOR_H
 #define _FLEXFLOW_LOCAL_EXECUTION_LOCAL_ALLOCATOR_H
-=======
-#ifndef _FLEXFLOW_RUNTIME_SRC_LOCAL_ALLOCATOR_H
-#define _FLEXFLOW_RUNTIME_SRC_LOCAL_ALLOCATOR_H
->>>>>>> repo-refactor
 
 #include "kernels/allocation.h"
 #include <unordered_set>
