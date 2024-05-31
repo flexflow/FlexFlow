@@ -112,7 +112,7 @@ __global__ void compute_attention_kernel_fused_kernel(
   extern __shared__ char smem_[];
 
   float *qk_smem = reinterpret_cast<float *>(smem_);
-  float *out_smem = reinterpret_cast<float *>(smem_ + qk_smem_sz);
+  float *out_smem = reinterpret_cast<float *>(smem_);
 
   float qk_max = -FLT_MAX;
 
@@ -160,7 +160,7 @@ __global__ void compute_attention_kernel_fused_kernel(
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
       K_vec k[K_VECS_PER_THREAD];
       int const ti_circ = ti % max_seq_length;
-
+#pragma unroll
       for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
         int jj = ii * THREADS_PER_KEY * K_VEC_SIZE;
         if (ti < tlength) {
