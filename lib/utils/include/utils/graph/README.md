@@ -232,7 +232,7 @@ To create objects with polymorphic behaviour, we use the following syntax:
 Any call to `obj`'s member functions are resolved at runtime (dynamic binding), with C++ calling the most derived implementation of the function.
 
 While this pattern works nicely, the way instantiation is done leaves the burden of memory management on the user.
-To address this, graph classes store a cow_ptr as a member variable, which point to instances of type equal to their corresponding interface class.
+To address this, graph classes store a `cow_ptr` as a member variable, which point to instances of type equal to their corresponding interface class.
 
 All member functions present in `ClassName` and `ClassNameView` delegate their calls to their corresponding interface classes (which implement the actual logic), meaning that these classes essentially act as wrappers to their interface counterparts.
 
@@ -242,7 +242,6 @@ To create graphs within the library, we thus use the following syntax:
 Resulting in an object that, while of type `BaseGraph`, can access at runtime the member functions defined in `DerivedGraph`
 
 ### Virtual Inheritance
-Due to the complexity of the graph library, diamond-style inheritance patterns emerge.
+Due to the complexity of the graph library, diamond-style inheritance patterns emerge. (consider, for example, the `OutputLabelledOpenMultiDiGraphView` class, which inherits from both `NodeLabelledOpenMultiDiGraphView` and `OutputLabelledMultiDiGraphView`, which in turn inherit from both `NodeLabelledMultiDiGraphView`).
 In the case of a diamond inheritance pattern C++ will instantiate multiple copies of the base class whenever we instantiate a derived class.
 To address this issue, we employ [Virtual Inheritance](https://en.wikipedia.org/wiki/Virtual_inheritance), which removes the ambiguity associated with the multiple copies.
-Note that the graph library doesn't present diamond-style inheritance patterns in the traditional sense, since they are always composed of a combination of traditional inheritance and `cow_ptr` "inheritance". The presence of `cow_ptr`, still warrants the need for a single copy of the memory associated with the superclass, making virtual inheritance still needed.
