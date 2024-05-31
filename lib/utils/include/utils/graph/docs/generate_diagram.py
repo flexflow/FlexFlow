@@ -76,8 +76,11 @@ def filter_connections(connections, components):
     return filtered_connections
 
 if __name__=='__main__':
+
+    # Provide directory path and selected_groups to generate the corresponding puml file
     cmd = 'hpp2plantuml -i "../labelled/*.h"'
-    puml : bytes = subprocess.check_output(cmd, shell=True)
+    selected_groups = ('Labelled','Labelled.NodeLabelled','Labelled.OutputLabelled')
+    selected_groups = sorted(selected_groups, reverse=True) #to ensure that classification for subcategories is given precedence
 
     GROUPS = {
         'Graph' : lambda comp : 'Graph' in comp,
@@ -94,9 +97,7 @@ if __name__=='__main__':
         'Labelled.OutputLabelled' : lambda comp : 'OutputLabelled' in comp
     }
 
-    selected_groups = ('Labelled','Labelled.NodeLabelled','Labelled.OutputLabelled')
-    selected_groups = sorted(selected_groups, reverse=True) #to ensure that classification for subcategories is given precedence
-
+    puml : bytes = subprocess.check_output(cmd, shell=True)
     puml = clean_puml(puml)
     puml = remove_enum(puml)
     puml = remove_namespace(puml)

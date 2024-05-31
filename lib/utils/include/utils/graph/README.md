@@ -187,7 +187,7 @@ We can further specify the "openeness" of a **directed** graph by specifying whe
 
 ![Open graphs inheritance diagram](docs/open.svg)
 
-Arrows with pointed tips indicate inheritance, while arrows with square tips indicate that the pointing class has a 'cow_ptr' of the type of the pointed class. (for more info on `cow_ptr`, see below).
+Arrows with pointed tips indicate inheritance, while arrows with square tips indicate that the pointing class has a 'cow_ptr' of the type of the pointed class. (for more info, see [cow_ptr](#cow_ptr-and-interfaces))
 
 
 ### Labelled Graphs
@@ -225,7 +225,8 @@ Thus, the bulk of the inheritance that actually extends functionality is present
 The reason for the existence of the `View` variants has been explained in previous sections.
 The existence of the `I(nterface)` variants stems from C++'s approach to modeling polymorphism.
 
-C++ polymorphism is achieved through the use of [virtual functions](https://www.learncpp.com/cpp-tutorial/virtual-functions/).
+C++ polymorphism is achieved at runtime through the use of [virtual functions](https://www.learncpp.com/cpp-tutorial/virtual-functions/), which allow for a single function defined on some superclass to also work correctly on its subclasses.
+
 To create objects with polymorphic behaviour, we use the following syntax:
 `BaseClass* obj = new DerivedClass(); //or alternatives such as std::shared_ptr<BaseClass> obj = std::make_shared<DerivedClass>();`
 Any call to `obj`'s member functions are resolved at runtime (dynamic binding), with C++ calling the most derived implementation of the function.
@@ -240,13 +241,8 @@ To create graphs within the library, we thus use the following syntax:
 
 Resulting in an object that, while of type `BaseGraph`, can access at runtime the member functions defined in `DerivedGraph`
 
-
-### Virtual Inheritance (Possibly superflous)
+### Virtual Inheritance
 Due to the complexity of the graph library, diamond-style inheritance patterns emerge.
 In the case of a diamond inheritance pattern C++ will instantiate multiple copies of the base class whenever we instantiate a derived class.
 To address this issue, we employ [Virtual Inheritance](https://en.wikipedia.org/wiki/Virtual_inheritance), which removes the ambiguity associated with the multiple copies.
-Furthermore, the use of virtual functions allows for runtime polymorphism, allowing for a single function defined on some superclass to also work correctly on it's subclasses.
-
-### strong_typedef
-`Node` inherits from `strong_typedef`: this is in order to ensure that distinct types that alias the same type are still considered distinct (and thus using one in place of the other will result in a compiler error).  
-For more info, see https://www.foonathan.net/2016/10/strong-typedefs/.
+Note that the graph library doesn't present diamond-style inheritance patterns in the traditional sense, since they are always composed of a combination of traditional inheritance and `cow_ptr` "inheritance". The presence of `cow_ptr`, still warrants the need for a single copy of the memory associated with the superclass, making virtual inheritance still needed.
