@@ -23,6 +23,7 @@ IFS=" " read -r -a FLAGS <<< "$CMAKE_FLAGS"
         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
         -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache \
+        -DFF_USE_CODE_COVERAGE=ON \
         "${FLAGS[@]}"
 
 # vim: set tabstop=2 shiftwidth=2 expandtab:
