@@ -1,9 +1,13 @@
-'''Script to generate a PlantUML graph for the inheritance / dependency hierarchy between the graph classes'''
+'''
+Script to generate a PlantUML graph for the inheritance / dependency hierarchy between the graph classes
+Modify the `headers` and `selected_groups` variables to generated different diagrams
+'''
 
-import subprocess
 import re
 from dataclasses import dataclass
 from collections import defaultdict
+from hpp2plantuml import CreatePlantUMLFile
+import os
 
 @dataclass
 class Component:
@@ -77,11 +81,12 @@ def filter_connections(connections, components):
 
 if __name__=='__main__':
 
-    # Provide directory path and selected_groups to generate the corresponding puml file
-    cmd = 'hpp2plantuml -i "../labelled/*.h"'
+    # Provide directory path(s) and selected_groups to generate the corresponding puml file
+    headers = ["../labelled/*.h", "../*.h"]
     selected_groups = ('Labelled','Labelled.NodeLabelled','Labelled.OutputLabelled')
-    selected_groups = sorted(selected_groups, reverse=True) #to ensure that classification for subcategories is given precedence
+    output_filename = 'output.puml'
 
+    selected_groups = sorted(selected_groups, reverse=True) #to ensure that classification for subcategories is given precedence
     GROUPS = {
         'Graph' : lambda comp : 'Graph' in comp,
         'Edges' : lambda comp : any(comp.endswith(pattern) for pattern in ('Input', 'Output', 'Edge')),
@@ -96,8 +101,14 @@ if __name__=='__main__':
         'Labelled.NodeLabelled' : lambda comp : 'NodeLabelled' in comp,
         'Labelled.OutputLabelled' : lambda comp : 'OutputLabelled' in comp
     }
+    TEMP_FILENAME = 'generate_diagram_temp.puml'
 
-    puml : bytes = subprocess.check_output(cmd, shell=True)
+    CreatePlantUMLFile(headers, output_file = TEMP_FILENAME)
+    
+    with open(TEMP_FILENAME, 'rb') as tempfile:
+        puml : bytes = tempfile.read()
+    os.remove(TEMP_FILENAME)
+
     puml = clean_puml(puml)
     puml = remove_enum(puml)
     puml = remove_namespace(puml)
@@ -120,5 +131,5 @@ if __name__=='__main__':
     final_puml+='\n'.join(connections)
     final_puml+="\n\n@enduml"
     print(final_puml)
-    with open('output.puml', 'w') as file:
+    with open(output_filename, 'w') as file:
         file.write(final_puml)
