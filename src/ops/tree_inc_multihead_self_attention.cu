@@ -849,10 +849,16 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
           BatchConfig::max_spec_tree_token_num(),
       m->hidden_size);
 
+  // cudaEvent_t t_start, t_end;
+  // cudaEventCreate(&t_start);
+  // cudaEventCreate(&t_end);
+  // cudaEventRecord(t_start, stream);
+
   dim3 grid(m->num_q_heads, bc->num_active_requests());
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
   // 0->qk production size, 1->total shared size
+  // per_head_size: 128, thd_per_v:32, prompt_phase: 0
   int smem_sz[2];
   if (per_head_size == 64) {
     constexpr int THREADS_PER_VALUE_64 = threads_per_value_t<DT, 64>::value;
@@ -865,6 +871,15 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
   } else {
     assert(false && "a unsupported head size");
   }
+
+  // cudaEventRecord(t_end, stream);
+  // checkCUDA(cudaEventSynchronize(t_end));
+  // float elapsed = 0;
+  // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  // printf("TreeIncMultiHeadSelfAttention part 2 time: %.2f ms\n", elapsed);
+  // cudaEventDestroy(t_start);
+  // cudaEventDestroy(t_end);
+
 }
 
 template <typename DT>
