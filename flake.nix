@@ -113,6 +113,7 @@
               compdb
               jq
               gh
+              lcov # for code coverage
             ])
             (with proj-repo.packages.${system}; [
               proj
