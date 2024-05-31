@@ -1,6 +1,6 @@
+#include "doctest/doctest.h"
 #include "kernels/cast_kernels.h"
 #include "kernels/local_allocator.h"
-#include "doctest/doctest.h"
 
 #include <random>
 
@@ -24,9 +24,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(runtimeVersion > 0);
 
     if (device_error == cudaSuccess) {
-        void* ptr;
-        checkCUDA(cudaMalloc(&ptr, 1));
-        checkCUDA(cudaFree(ptr));
+      void *ptr;
+      checkCUDA(cudaMalloc(&ptr, 1));
+      checkCUDA(cudaFree(ptr));
     }
   }
 }
