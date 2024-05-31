@@ -18,7 +18,8 @@ FF_VISITABLE_STRUCT(SoftmaxPerDeviceState, handle, inputTensor, dim);
 namespace Kernels {
 namespace Softmax {
 
-SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &, int);
+SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &, int, 
+                                  int, int, int, int);
 
 void forward_kernel(ffStream_t stream,
                     SoftmaxPerDeviceState const &m,

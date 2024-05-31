@@ -16,7 +16,8 @@ file(GLOB_RECURSE SRC
      src/cuda/ops/partition_kernels.cu
      src/cuda/ops/replicate_kernels.cu
      src/cuda/ops/softmax_kernels.cu 
-     
+     src/cuda/ops/flat_kernels.cu
+     src/cuda/ops/transpose_kernels.cu
      )
 
 add_library(

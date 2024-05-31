@@ -32,7 +32,7 @@ using ::FlexFlow::OperatorType;
   do {                                                                         \
     std::stringstream _error;                                                  \
     if (status != FF_CUDNN_STATUS_SUCCESS) {                                   \
-      _error << "CUDNN failure: " << status;                                   \
+      _error << "CUDNN failure: " << status << " (" << cudnnGetErrorString(status) << ") in function " << __FUNCTION__; \
       FatalError(_error.str());                                                \
     }                                                                          \
   } while (0)
