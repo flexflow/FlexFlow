@@ -21,8 +21,6 @@ public:
 
   template <typename T>
   bool holds() const {
-    // return this->type_tag.template matches<T>();
-
     return matches<T>(this->type_idx);
   }
 
@@ -30,10 +28,6 @@ public:
     return this->ref_type;
   }
 
-  // TODO - how to extend this for legion runtime?
-  // ArgTypeRuntimeTag get_type_tag() const {
-  //   return this->type_tag;
-  // }
   std::type_index get_type_index() const {
     return this->type_idx;
   }
@@ -43,12 +37,6 @@ public:
     static_assert(is_serializable<T>::value, "Type must be serializeable");
 
     return ArgRefSpec(get_type_index_for_type<T>(), r.ref_type);
-  }
-
-  template <typename T>
-  static ArgRefSpec create_device_specific(ArgRef<LABEL_TYPE, T> const &r,
-                                           size_t device_idx) {
-    return ArgRefSpec(get_type_index_for_type<T>(), r.ref_type, device_idx);
   }
 
 private:

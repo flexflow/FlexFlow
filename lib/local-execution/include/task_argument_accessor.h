@@ -5,6 +5,7 @@
 #include "concrete_arg.h"
 #include "config.h"
 #include "device_specific.h"
+#include "device_states.h"
 #include "kernels/accessor.h"
 #include "kernels/allocation.h"
 #include "kernels/linear_kernels.h"
@@ -44,22 +45,11 @@ template <Permissions PRIV>
 using privilege_mode_to_accessor =
     typename privilege_mode_to_accessor_t<PRIV>::type;
 
-using PrivilegeType =
-    std::variant<GenericTensorAccessorR, GenericTensorAccessorW>;
-using PrivilegeVariadicType = std::variant<std::vector<GenericTensorAccessorR>,
-                                           std::vector<GenericTensorAccessorW>>;
-
-// TODO: define device state variant in another file
-using DeviceStates = std::variant<LinearPerDeviceState>;
-
-using OpArgRefTypeBacking =
-    std::variant<ParallelTensorShape, DeviceSpecific<DeviceStates>>;
-using RuntimeArgRefTypeBacking = std::variant<ProfilingSettings,
-                                              DeviceSpecific<PerDeviceFFHandle>,
-                                              FFIterationConfig>;
-
-using ArgRefBacking = std::
-    variant<OpArgRefTypeBacking, RuntimeArgRefTypeBacking, ConcreteArgSpec>;
+using PrivilegeTensorAccessor = std::variant<GenericTensorAccessorR,
+                                             GenericTensorAccessorW>;
+using PrivilegeVariadicTensorAccessor =
+    std::variant<std::vector<GenericTensorAccessorR>,
+                 std::vector<GenericTensorAccessorW>>;
 
 struct ITaskArgumentAccessor {
   ITaskArgumentAccessor &operator=(ITaskArgumentAccessor const &) = delete;
@@ -67,14 +57,11 @@ struct ITaskArgumentAccessor {
   virtual ~ITaskArgumentAccessor() = default;
 
   virtual ConcreteArgSpec const &get_concrete_arg(slot_id) const = 0;
-  virtual OpArgRefTypeBacking const &get_op_arg_ref(slot_id) const = 0;
-  virtual RuntimeArgRefTypeBacking const &get_runtime_arg(slot_id) const = 0;
 
-  virtual PrivilegeType
+  virtual PrivilegeTensorAccessor
       get_tensor(slot_id slot, Permissions priv, IsGrad is_grad) const = 0;
-  virtual PrivilegeVariadicType get_variadic_tensor(slot_id slot,
-                                                    Permissions priv,
-                                                    IsGrad is_grad) const = 0;
+  virtual PrivilegeVariadicTensorAccessor get_variadic_tensor(
+      slot_id slot, Permissions priv, IsGrad is_grad) const = 0;
 
   virtual Allocator get_allocator() const = 0;
   virtual size_t get_device_idx() const = 0;
@@ -84,13 +71,7 @@ CHECK_RC_COPY_VIRTUAL_COMPLIANT(ITaskArgumentAccessor);
 struct TaskArgumentAccessor {
   template <typename T>
   T const &get_argument(slot_id slot) const {
-    if constexpr (is_in_variant<T, OpArgRefTypeBacking>::value) {
-      return std::get<T>(this->ptr->get_op_arg_ref(slot));
-    } else if constexpr (is_in_variant<T, RuntimeArgRefTypeBacking>::value) {
-      return std::get<T>(this->ptr->get_runtime_arg(slot));
-    } else {
-      return this->ptr->get_concrete_arg(slot).get<T>();
-    }
+    return this->ptr->get_concrete_arg(slot).get<T>();
   }
 
   template <Permissions PRIV>
@@ -137,8 +118,6 @@ private:
       : ptr(ptr) {}
   std::shared_ptr<ITaskArgumentAccessor const> ptr;
 };
-
-using DeviceStates = std::variant<LinearPerDeviceState>;
 
 using TaskImplFunction = std::variant<
     std::function<DeviceStates(TaskArgumentAccessor const &)>,
