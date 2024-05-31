@@ -99,8 +99,16 @@ __global__ void compute_attention_kernel_fused_kernel(
       request_infos[requext_idx_in_batch].num_tokens_in_batch;
   int const qlength = request_infos[requext_idx_in_batch].num_tokens_in_batch;
 
-  // BatchConfig::BitMask bitmask = causalMask[requext_idx_in_batch];
-  BatchConfig::BitMask *bitmask = &causalMask[requext_idx_in_batch];
+  __shared__ uint64_t bit_mask[BatchConfig::MAX_SPEC_TREE_TOKEN_NUM]
+                              [BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 64];
+  for (int i = tidx; i < qlength; i += THREADS_PER_BLOCK) {
+    for (int j = 0; j < BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 64; j++) {
+      bit_mask[i][j] = causalMask[requext_idx_in_batch].bit_mask[i].bits[j];
+    }
+  }
+
+  int non_tree_cache_size =
+      causalMask[requext_idx_in_batch].non_tree_cache_size;
 
   int const first_token_idx =
       request_infos[requext_idx_in_batch].first_token_offset_in_batch;
@@ -173,13 +181,10 @@ __global__ void compute_attention_kernel_fused_kernel(
 
       if (ti < tlength && tidx % THREADS_PER_KEY == 0) {
         bool const mask =
-            prompt_phase ? (qi + q_start < ti)
-                         : (ti >= bitmask->non_tree_cache_size &&
-                            (!test_bit(bitmask->bit_mask,
-                                       qi,
-                                       ti - bitmask->non_tree_cache_size)));
-        // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
-        //    (1 << qi))));
+            prompt_phase
+                ? (qi + q_start < ti)
+                : (ti >= non_tree_cache_size &&
+                   (!test_bit(bit_mask, qi, ti - non_tree_cache_size)));
 
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
@@ -233,14 +238,10 @@ __global__ void compute_attention_kernel_fused_kernel(
 
     float exp_sum = 0.f;
     for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
-      bool const mask = prompt_phase
-                            ? (q_start + qi < ti)
-                            : (ti >= bitmask->non_tree_cache_size &&
-                               (!test_bit(bitmask->bit_mask,
-                                          qi,
-                                          ti - bitmask->non_tree_cache_size)));
-      // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
-      //    (1 << qi))));
+      bool const mask =
+          prompt_phase ? (q_start + qi < ti)
+                       : (ti >= non_tree_cache_size &&
+                          (!test_bit(bit_mask, qi, ti - non_tree_cache_size)));
       float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
       exp_sum += logit;
       qk_smem[ti - first_step] = mask ? 0.0f : logit;
@@ -803,24 +804,27 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                         Dh_MAX,                                \
                                         THDS_PER_KEY,                          \
                                         THDS_PER_VALUE>                        \
-      <<<grid, THDS_PER_BLOCK, smem_sz[1], stream>>>(                          \
-          static_cast<DT *>(m->devQKVProjArray),                               \
-          static_cast<DT *>(m->keyCache),                                      \
-          static_cast<DT *>(m->valueCache),                                    \
-          output_ptr,                                                          \
-          scale,                                                               \
-          BatchConfig::max_sequence_length() +                                 \
-              BatchConfig::max_spec_tree_token_num(),                          \
-          BatchConfig::max_tokens_per_batch(),                                 \
-          m->qProjSize,                                                        \
-          m->hidden_size,                                                      \
-          m->request_infos,                                                    \
-          m->num_q_heads,                                                      \
-          bc->num_active_requests(),                                           \
-          m->causalMask,                                                       \
-          m->request_available,                                                \
-          smem_sz[0],                                                          \
-          prompt_phase)
+      <<<grid,                                                                 \
+         THDS_PER_BLOCK,                                                       \
+         smem_sz[1] + BatchConfig::MAX_SPEC_TREE_TOKEN_NUM *                   \
+                          BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 8,            \
+         stream>>>(static_cast<DT *>(m->devQKVProjArray),                      \
+                   static_cast<DT *>(m->keyCache),                             \
+                   static_cast<DT *>(m->valueCache),                           \
+                   output_ptr,                                                 \
+                   scale,                                                      \
+                   BatchConfig::max_sequence_length() +                        \
+                       BatchConfig::max_spec_tree_token_num(),                 \
+                   BatchConfig::max_tokens_per_batch(),                        \
+                   m->qProjSize,                                               \
+                   m->hidden_size,                                             \
+                   m->request_infos,                                           \
+                   m->num_q_heads,                                             \
+                   bc->num_active_requests(),                                  \
+                   m->causalMask,                                              \
+                   m->request_available,                                       \
+                   smem_sz[0],                                                 \
+                   prompt_phase)
 
 template <typename DT>
 void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,

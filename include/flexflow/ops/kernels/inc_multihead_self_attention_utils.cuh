@@ -493,7 +493,7 @@ inline void smem_size_in_bytes_tree(int hidden_size_per_head,
   }
 
   // todo fix this
-  int max_qk_length = max_query_length;
+  int max_qk_length = max_total_length;
 
   // The amount of shared memory needed to store the Q*K^T values in float.
   size_t qk_sz = div_up(max_qk_length + 1, 4) * 16;
@@ -521,7 +521,7 @@ struct threads_per_value_t {
 };
 
 #define test_bit(bit_mask, idx, pos)                                           \
-  (((bit_mask)[idx].bits[(pos) / 64] & (1ULL << ((pos) % 64))) != 0)
+  (((bit_mask)[idx][(pos) / 64] & (1ULL << ((pos) % 64))) != 0)
 
 } // namespace FlexFlow
 #endif // _FLEXFLOW_OPS_KERNELS_INC_MULTIHEAD_SELF_UTILS_H

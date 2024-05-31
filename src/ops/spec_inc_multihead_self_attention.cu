@@ -83,25 +83,23 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
     }
   }
 
-  // threads converge
-  //   __syncthreads();
+  int non_tree_cache_size =
+      causalMask[requext_idx_in_batch].non_tree_cache_size;
+  int tree_or_prompt_size =
+      causalMask[requext_idx_in_batch].tree_or_prompt_size;
+  int current_layer_size = causalMask[requext_idx_in_batch].current_layer_size;
 
-  // request_idx = re
-
-  // BatchConfig::BitMask bitmask = causalMask[requext_idx_in_batch];
-  BatchConfig::BitMask *bitmask = &causalMask[requext_idx_in_batch];
+  __shared__ uint64_t bit_mask[BatchConfig::MAX_SPEC_TREE_TOKEN_NUM]
+                              [BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 64];
+  for (int i = tidx; i < tree_or_prompt_size; i += THREADS_PER_BLOCK) {
+    for (int j = 0; j < BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 64; j++) {
+      bit_mask[i][j] = causalMask[requext_idx_in_batch].bit_mask[i].bits[j];
+    }
+  }
 
   int const first_step = 0;
 
-  // int const tlength =
-  //     request_infos[requext_idx_in_batch].first_token_depth_in_request +
-  //     request_infos[requext_idx_in_batch].num_tokens_in_batch;
-
-  //   int const totalCacheSize = bitmask->non_tree_cache_size +
-  //                              bitmask->tree_or_prompt_size +
-  //                              bitmask->prompt_size - 1;
-  int const totalCacheSize =
-      bitmask->non_tree_cache_size + bitmask->tree_or_prompt_size;
+  int const totalCacheSize = non_tree_cache_size + tree_or_prompt_size;
 
   int const first_token_idx =
       request_infos[requext_idx_in_batch].first_token_offset_in_batch;
@@ -151,11 +149,7 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
           ii * THREADS_PER_KEY * K_VEC_SIZE);
     }
 
-    // int const query_token = bitmask->prompt_size +
-    // bitmask->tree_or_prompt_size
-    // -
-    //                         1 - tree_branch_num + qi;
-    int const query_token = bitmask->tree_or_prompt_size - tree_branch_num + qi;
+    int const query_token = tree_or_prompt_size - tree_branch_num + qi;
 
     __syncthreads();
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
@@ -176,12 +170,9 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
       if (ti < totalCacheSize && tidx % THREADS_PER_KEY == 0) {
         // todo add alobi here
         // bool const mask = ti_circ >= totalCacheSize;
-        bool const mask = (ti >= bitmask->non_tree_cache_size &&
-                           (!test_bit(bitmask->bit_mask,
-                                      query_token,
-                                      ti - bitmask->non_tree_cache_size)));
-        // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
-        //   (1 << query_token))));
+        bool const mask =
+            (ti >= non_tree_cache_size &&
+             (!test_bit(bit_mask, query_token, ti - non_tree_cache_size)));
 
         // if (head_idx == 0 && ti == 0 && request_idx == 15 && !mask) {
         //   printf("spec inc attn qkqkqk  request id %d,  %.10f, %d\n",
@@ -231,12 +222,9 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
     float exp_sum = 0.f;
     for (int ti = first_step + tidx; ti < totalCacheSize;
          ti += THREADS_PER_BLOCK) {
-      bool const mask = (ti >= bitmask->non_tree_cache_size &&
-                         (!test_bit(bitmask->bit_mask,
-                                    query_token,
-                                    ti - bitmask->non_tree_cache_size)));
-      // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
-      //   (1 << query_token))));
+      bool const mask =
+          (ti >= non_tree_cache_size &&
+           (!test_bit(bit_mask, query_token, ti - non_tree_cache_size)));
       float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
       exp_sum += logit;
       qk_smem[ti - first_step] = mask ? 0.0f : logit;
@@ -397,19 +385,22 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                                                       Dh_MAX,                  \
                                                       THDS_PER_KEY,            \
                                                       THREADS_PER_VALUE>       \
-      <<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                             \
-          static_cast<DT *>(m->devQKVProjArray),                               \
-          static_cast<DT *>(m->keyCache),                                      \
-          static_cast<DT *>(m->valueCache),                                    \
-          output_ptr,                                                          \
-          scale,                                                               \
-          BatchConfig::max_sequence_length() +                                 \
-              BatchConfig::max_spec_tree_token_num(),                          \
-          m->qProjSize,                                                        \
-          m->hidden_size,                                                      \
-          m->request_infos,                                                    \
-          m->causalMask,                                                       \
-          m->request_available)
+      <<<grid,                                                                 \
+         THDS_PER_BLOCK,                                                       \
+         smem_sz + BatchConfig::MAX_SPEC_TREE_TOKEN_NUM *                      \
+                       BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 8,               \
+         stream>>>(static_cast<DT *>(m->devQKVProjArray),                      \
+                   static_cast<DT *>(m->keyCache),                             \
+                   static_cast<DT *>(m->valueCache),                           \
+                   output_ptr,                                                 \
+                   scale,                                                      \
+                   BatchConfig::max_sequence_length() +                        \
+                       BatchConfig::max_spec_tree_token_num(),                 \
+                   m->qProjSize,                                               \
+                   m->hidden_size,                                             \
+                   m->request_infos,                                           \
+                   m->causalMask,                                              \
+                   m->request_available)
 
 template <typename DT>
 void compute_spec_inc_attention_kernel_generation(
