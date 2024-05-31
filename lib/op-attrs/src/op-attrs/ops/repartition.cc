@@ -2,15 +2,12 @@
 
 namespace FlexFlow {
 
-ParallelTensorShape get_output_shape(RepartitionAttrs const &,
-                                     ParallelTensorShape const &input_shape) {
-  NOT_IMPLEMENTED();
+tl::expected<ParallelTensorShape, std::string>
+  get_output_shape(RepartitionAttrs const &attrs,
+                   ParallelTensorShape const &input_shape) {
+  ParallelTensorShape output_shape = input_shape;
+  output_shape.dims.shard_dims.at(attrs.repartition_dim).degree *= attrs.repartition_degree;
+  return output_shape;
 }
-
-/* bool RepartitionAttrs::is_valid(ParallelTensorShape const &input_shape) const
- * { */
-/*   ParallelDim dim = input_shape.at(this->repartition_legion_dim); */
-/*   return (dim.size % this->repartition_degree * dim.degree == 0); */
-/* } */
 
 } // namespace FlexFlow

@@ -52,6 +52,14 @@ struct DimOrdered {
     return this->at(idx);
   }
 
+  bool idx_is_valid(Idx const &idx) const {
+    int raw = idx.value;
+    if (raw < 0) {
+      raw = this->contents.size() + raw;
+    }
+    return (raw >= 0 && raw < this->contents.size());
+  }
+
   bool operator==(DimOrdered const &other) const {
     return this->contents == other.contents;
   }

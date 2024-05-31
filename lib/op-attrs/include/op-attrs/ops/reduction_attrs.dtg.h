@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/reduction_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "28492e45a5c4f44987e17fe9ea876e11"
+  "generated_from": "1d2b5b7cf11ed04a27a6fd8215e4e2a5"
 }
 */
 
@@ -12,8 +12,6 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
-#include "op-attrs/ff_dim.dtg.h"
-#include "op-attrs/ff_dim.h"
 #include "rapidcheck.h"
 #include <functional>
 #include <ostream>
@@ -22,8 +20,7 @@
 namespace FlexFlow {
 struct ReductionAttrs {
   ReductionAttrs() = delete;
-  ReductionAttrs(::FlexFlow::ff_dim_t const &reduction_dim,
-                 int const &reduction_degree);
+  ReductionAttrs(int const &reduction_degree);
 
   bool operator==(ReductionAttrs const &) const;
   bool operator!=(ReductionAttrs const &) const;
@@ -31,7 +28,6 @@ struct ReductionAttrs {
   bool operator>(ReductionAttrs const &) const;
   bool operator<=(ReductionAttrs const &) const;
   bool operator>=(ReductionAttrs const &) const;
-  ::FlexFlow::ff_dim_t reduction_dim;
   int reduction_degree;
 };
 } // namespace FlexFlow

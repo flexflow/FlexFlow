@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/replicate_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "68c1bba349a54c0db219a67d4cc502b3"
+  "generated_from": "6d3ad4d10c24dae819ffee4592a72499"
 }
 */
 
@@ -12,8 +12,6 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
-#include "op-attrs/ff_dim.dtg.h"
-#include "op-attrs/ff_dim.h"
 #include "rapidcheck.h"
 #include <functional>
 #include <ostream>
@@ -22,8 +20,7 @@
 namespace FlexFlow {
 struct ReplicateAttrs {
   ReplicateAttrs() = delete;
-  ReplicateAttrs(::FlexFlow::ff_dim_t const &replicate_dim,
-                 int const &replicate_degree);
+  ReplicateAttrs(int const &replicate_degree);
 
   bool operator==(ReplicateAttrs const &) const;
   bool operator!=(ReplicateAttrs const &) const;
@@ -31,7 +28,6 @@ struct ReplicateAttrs {
   bool operator>(ReplicateAttrs const &) const;
   bool operator<=(ReplicateAttrs const &) const;
   bool operator>=(ReplicateAttrs const &) const;
-  ::FlexFlow::ff_dim_t replicate_dim;
   int replicate_degree;
 };
 } // namespace FlexFlow

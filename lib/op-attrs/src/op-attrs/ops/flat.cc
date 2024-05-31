@@ -1,6 +1,4 @@
 #include "op-attrs/ops/flat.h"
-#include "parallel_dim_mapping_record.h"
-#include "parallel_dim_mapping_record_solver.h"
 #include <cassert>
 
 namespace FlexFlow {

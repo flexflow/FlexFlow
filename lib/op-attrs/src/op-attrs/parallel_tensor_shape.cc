@@ -44,6 +44,14 @@ ShardParallelDim &shard_dim_at_idx(ParallelTensorShape &s, ff_dim_t d) {
   return shard_dim_at_idx(s.dims, d);
 }
 
+std::optional<ShardParallelDim> try_get_shard_dim_at_idx(ParallelTensorShape const &s, ff_dim_t d) {
+  if (s.dims.shard_dims.idx_is_valid(d)) {
+    return s.dims.shard_dims.at(d);
+  } else {
+    return std::nullopt;
+  }
+}
+
 ParallelTensorShape lift_to_parallel(TensorShape const &s) {
   return {lift_to_parallel(s.dims), s.data_type};
 }

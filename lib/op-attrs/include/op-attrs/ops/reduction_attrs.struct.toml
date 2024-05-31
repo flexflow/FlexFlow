@@ -9,15 +9,6 @@ features = [
   "fmt",
 ]
 
-includes = [
-  "op-attrs/ff_dim.h",
-  "op-attrs/ff_dim.dtg.h",
-]
-
-[[fields]]
-name = "reduction_dim"
-type = "::FlexFlow::ff_dim_t"
-
 [[fields]]
 name = "reduction_degree"
 type = "int"

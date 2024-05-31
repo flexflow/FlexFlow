@@ -9,14 +9,7 @@ features = [
   "fmt",
 ]
 
-includes = [
-  "op-attrs/ff_dim.h",
-  "op-attrs/ff_dim.dtg.h",
-]
-
-[[fields]]
-name = "replicate_dim"
-type = "::FlexFlow::ff_dim_t"
+includes = [ ]
 
 [[fields]]
 name = "replicate_degree"
