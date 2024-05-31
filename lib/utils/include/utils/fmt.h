@@ -13,11 +13,9 @@ namespace FlexFlow {
 template <typename T, typename Enable>
 struct already_has_ostream_operator : std::false_type {};
 
-template <>
-struct already_has_ostream_operator<int> : std::true_type {};
+template <> struct already_has_ostream_operator<int> : std::true_type {};
 
-template <>
-struct already_has_ostream_operator<char> : std::true_type {};
+template <> struct already_has_ostream_operator<char> : std::true_type {};
 
 template <>
 struct already_has_ostream_operator<std::string> : std::true_type {};
@@ -31,8 +29,7 @@ struct already_has_ostream_operator<char const *> : std::true_type {};
 template <>
 struct already_has_ostream_operator<std::_Setfill<char>> : std::true_type {};
 
-template <>
-struct already_has_ostream_operator<std::_Setw> : std::true_type {};
+template <> struct already_has_ostream_operator<std::_Setw> : std::true_type {};
 
 // This will create an error
 /*
@@ -48,15 +45,15 @@ operator<<(std::ostream &s, T const &t) {
                 #__VA_ARGS__ " must be fmtable");
 
 // This will not
-template <typename T> 
-typename std::enable_if<!already_has_ostream_operator<T>::value, 
-                        std::ostream &>::type 
-    operator<<(std::ostream &s, T const &t) { 
-  // CHECK_FMTABLE(T); 
-  // std::string result = fmt::to_string(t); 
-  std::string result = "debugging"; 
-  return s << result; 
-} 
+template <typename T>
+typename std::enable_if<!already_has_ostream_operator<T>::value,
+                        std::ostream &>::type
+operator<<(std::ostream &s, T const &t) {
+  // CHECK_FMTABLE(T);
+  // std::string result = fmt::to_string(t);
+  std::string result = "debugging";
+  return s << result;
+}
 
 // template <typename T>
 // typename std::enable_if<is_fmtable<T>::value, std::ostream &>::type

@@ -28,6 +28,10 @@
 using ::FlexFlow::DataType;
 using ::FlexFlow::OperatorType;
 
+namespace FlexFlow {
+cudaError_t get_legion_stream(cudaStream_t *stream);
+} // namespace FlexFlow
+
 #define checkCUDNN(status)                                                     \
   do {                                                                         \
     std::stringstream _error;                                                  \
@@ -92,11 +96,11 @@ __host__ void sigmoid_backward_kernel(DataType data_type,
                                       size_t output_size,
                                       cudaStream_t stream);
 
-// template <typename DT>
-// __global__ void apply_add_with_scale(DT *data_ptr,
-//                                      const DT *grad_ptr,
-//                                      size_t size,
-//                                      DT scale);
+template <typename DT>
+__global__ void apply_add_with_scale(DT *data_ptr,
+                                     const DT *grad_ptr,
+                                     size_t size,
+                                     DT scale);
 
 __global__ void
     gelu_forward_kernel(size_t size, float B, float C, float *input);
@@ -122,7 +126,7 @@ __host__ void updateGAS(float *para_ptr,
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
-ffStatus_t
+cudnnStatus_t
     cudnnSetTensorDescriptorFromArrayShape(ffTensorDescriptor_t tensor,
                                            FlexFlow::ArrayShape const &shape);
 

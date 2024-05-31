@@ -15,7 +15,6 @@
 
 #include "device.h"
 #include "kernels/device.h"
-#include "kernels/cuda_helper.h"
 #include "kernels/attention_kernels.h"
 #include <iostream>
 

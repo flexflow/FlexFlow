@@ -18,6 +18,9 @@ file(GLOB_RECURSE SRC
      src/cuda/ops/softmax_kernels.cu 
      src/cuda/ops/flat_kernels.cu
      src/cuda/ops/transpose_kernels.cu
+     src/cuda/ops/dropout_kernels.cu
+     src/cuda/ops/split_kernels.cu
+     src/cuda/ops/reverse_kernels.cu
      )
 
 add_library(

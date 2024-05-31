@@ -16,7 +16,6 @@
 #include "device.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/reshape_kernels.h"
-#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 

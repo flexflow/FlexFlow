@@ -1,5 +1,5 @@
 // #include "flexflow/model.h"
-#include "kernels/cuda_helper.h"
+// #include "kernels/cuda_helper.h"
 #include "device.h"
 
 namespace FlexFlow {

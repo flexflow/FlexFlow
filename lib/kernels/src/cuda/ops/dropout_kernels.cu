@@ -16,6 +16,7 @@
 #include "device.h"
 #include "kernels/dropout_kernels.h"
 #include "kernels/ff_handle.h"
+#include <iostream> 
 
 namespace FlexFlow {
 namespace Kernels {
@@ -24,7 +25,7 @@ namespace Dropout {
 DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                   float rate,
                                   unsigned long long seed,
-                                  ArrayShape output_shape,
+                                  ArrayShape const &output_shape,
                                   Allocator allocator) {
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
