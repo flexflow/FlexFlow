@@ -242,6 +242,6 @@ To create graphs within the library, we thus use the following syntax:
 Resulting in an object that, while of type `BaseGraph`, can access at runtime the member functions defined in `DerivedGraph`
 
 ### Virtual Inheritance
-Due to the complexity of the graph library, diamond-style inheritance patterns emerge. (consider, for example, the `OutputLabelledOpenMultiDiGraphView` class, which inherits from both `NodeLabelledOpenMultiDiGraphView` and `OutputLabelledMultiDiGraphView`, which in turn inherit from both `NodeLabelledMultiDiGraphView`).
+Due to the complexity of the graph library, diamond-style inheritance patterns emerge (consider, for example, the `OutputLabelledOpenMultiDiGraphView` class, which inherits from both `NodeLabelledOpenMultiDiGraphView` and `OutputLabelledMultiDiGraphView`, which in turn inherit from both `NodeLabelledMultiDiGraphView`).
 In the case of a diamond inheritance pattern C++ will instantiate multiple copies of the base class whenever we instantiate a derived class.
 To address this issue, we employ [Virtual Inheritance](https://en.wikipedia.org/wiki/Virtual_inheritance), which removes the ambiguity associated with the multiple copies.
