@@ -512,7 +512,7 @@ inline void smem_size_in_bytes_tree(int hidden_size_per_head,
   size_t red_sz = rows_per_red * hidden_size_per_head * sizeof(float) / 2;
   // The max.
   shared_mem[0] = qk_sz;
-  shared_mem[1] = softmax_sz + red_sz + q_size;
+  shared_mem[1] = max(softmax_sz, red_sz) + q_size;
 }
 
 template <typename T, int Dh>

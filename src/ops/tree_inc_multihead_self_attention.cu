@@ -806,8 +806,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                         THDS_PER_VALUE>                        \
       <<<grid,                                                                 \
          THDS_PER_BLOCK,                                                       \
-         smem_sz[1] + BatchConfig::MAX_SPEC_TREE_TOKEN_NUM *                   \
-                          BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 8,            \
+         smem_sz[1],                                                           \
          stream>>>(static_cast<DT *>(m->devQKVProjArray),                      \
                    static_cast<DT *>(m->keyCache),                             \
                    static_cast<DT *>(m->valueCache),                           \
