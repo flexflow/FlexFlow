@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/embedding_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "a0ac41fc0f56bc06bcb1a8d42fc6191c"
+  "generated_from": "f2bdea52e23dee6f674f598f8691d994"
 }
 */
 
@@ -25,7 +25,7 @@ struct EmbeddingAttrs {
   EmbeddingAttrs() = delete;
   EmbeddingAttrs(int const &num_entries,
                  int const &out_channels,
-                 ::FlexFlow::AggregateOp const &aggr,
+                 std::optional<::FlexFlow::AggregateOp> const &aggr,
                  ::FlexFlow::DataType const &data_type);
 
   bool operator==(EmbeddingAttrs const &) const;
@@ -36,7 +36,7 @@ struct EmbeddingAttrs {
   bool operator>=(EmbeddingAttrs const &) const;
   int num_entries;
   int out_channels;
-  ::FlexFlow::AggregateOp aggr;
+  std::optional<::FlexFlow::AggregateOp> aggr;
   ::FlexFlow::DataType data_type;
 };
 } // namespace FlexFlow

@@ -42,9 +42,6 @@ bool is_valid(ParallelTensorDims const &dims) {
 }
 
 ShardParallelDim shard_dim_at_idx(ParallelTensorDims const &d, ff_dim_t idx) {
-  if (idx.value < 0) {
-    idx = ff_dim_t{int_from_size_t(d.shard_dims.size()) + idx.value};
-  }
   return d.shard_dims.at(idx);
 }
 

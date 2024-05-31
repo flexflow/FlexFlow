@@ -16,16 +16,10 @@ size_t num_dims(TensorDims const &dims) {
 }
 
 size_t dim_at_idx(TensorDims const &dims, ff_dim_t idx) {
-  if (idx.value < 0) {
-    idx = ff_dim_t{int_from_size_t(num_dims(dims)) + idx.value};
-  }
   return dims.ff_ordered.at(idx);
 }
 
 size_t &dim_at_idx(TensorDims &dims, ff_dim_t idx) {
-  if (idx.value < 0) {
-    idx = ff_dim_t{int_from_size_t(num_dims(dims)) + idx.value};
-  }
   return dims.ff_ordered.at(idx);
 }
 

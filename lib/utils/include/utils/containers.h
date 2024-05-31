@@ -684,7 +684,7 @@ std::vector<T> subvec(std::vector<T> const &v,
   auto resolve_loc = [&](int idx) ->
       typename std::vector<T>::iterator::difference_type {
         if (idx < 0) {
-          return v.size() - idx;
+          return v.size() + idx;
         } else {
           return idx;
         }

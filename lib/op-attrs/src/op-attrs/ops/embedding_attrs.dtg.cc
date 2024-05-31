@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/embedding_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "a0ac41fc0f56bc06bcb1a8d42fc6191c"
+  "generated_from": "f2bdea52e23dee6f674f598f8691d994"
 }
 */
 
@@ -15,10 +15,11 @@
 #include <sstream>
 
 namespace FlexFlow {
-EmbeddingAttrs::EmbeddingAttrs(int const &num_entries,
-                               int const &out_channels,
-                               ::FlexFlow::AggregateOp const &aggr,
-                               ::FlexFlow::DataType const &data_type)
+EmbeddingAttrs::EmbeddingAttrs(
+    int const &num_entries,
+    int const &out_channels,
+    std::optional<::FlexFlow::AggregateOp> const &aggr,
+    ::FlexFlow::DataType const &data_type)
     : num_entries(num_entries), out_channels(out_channels), aggr(aggr),
       data_type(data_type) {}
 bool EmbeddingAttrs::operator==(EmbeddingAttrs const &other) const {
@@ -85,8 +86,8 @@ size_t hash<FlexFlow::EmbeddingAttrs>::operator()(
             (result >> 2);
   result ^= std::hash<int>{}(x.out_channels) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
-  result ^= std::hash<::FlexFlow::AggregateOp>{}(x.aggr) + 0x9e3779b9 +
-            (result << 6) + (result >> 2);
+  result ^= std::hash<std::optional<::FlexFlow::AggregateOp>>{}(x.aggr) +
+            0x9e3779b9 + (result << 6) + (result >> 2);
   result ^= std::hash<::FlexFlow::DataType>{}(x.data_type) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
   return result;
@@ -98,7 +99,7 @@ FlexFlow::EmbeddingAttrs
     adl_serializer<FlexFlow::EmbeddingAttrs>::from_json(json const &j) {
   return {j.at("num_entries").template get<int>(),
           j.at("out_channels").template get<int>(),
-          j.at("aggr").template get<::FlexFlow::AggregateOp>(),
+          j.at("aggr").template get<std::optional<::FlexFlow::AggregateOp>>(),
           j.at("data_type").template get<::FlexFlow::DataType>()};
 }
 void adl_serializer<FlexFlow::EmbeddingAttrs>::to_json(
@@ -116,7 +117,7 @@ Gen<FlexFlow::EmbeddingAttrs> Arbitrary<FlexFlow::EmbeddingAttrs>::arbitrary() {
   return gen::construct<FlexFlow::EmbeddingAttrs>(
       gen::arbitrary<int>(),
       gen::arbitrary<int>(),
-      gen::arbitrary<::FlexFlow::AggregateOp>(),
+      gen::arbitrary<std::optional<::FlexFlow::AggregateOp>>(),
       gen::arbitrary<::FlexFlow::DataType>());
 }
 } // namespace rc

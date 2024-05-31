@@ -29,11 +29,19 @@ struct DimOrdered {
       : contents(contents.begin(), contents.end()) {}
 
   T const &at(Idx idx) const {
-    return this->contents.at(idx.value);
+    int raw = idx.value;
+    if (raw < 0) {
+      raw = this->contents.size() + raw;
+    }
+    return this->contents.at(raw);
   }
 
   T &at(Idx idx) {
-    return this->contents.at(idx.value);
+    int raw = idx.value;
+    if (raw < 0) {
+      raw = this->contents.size() + raw;
+    }
+    return this->contents.at(raw);
   }
 
   T const &operator[](Idx idx) const {

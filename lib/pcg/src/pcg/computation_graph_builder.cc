@@ -446,9 +446,9 @@ tensor_guid_t ComputationGraphBuilder::embedding(
   TensorShape input_shape = this->get_shape(input);
 
   TensorAttrs weight_attrs = make_weight_attrs(
-      get_weights_shape(attrs, input_shape), kernel_initializer);
+      throw_if_unexpected(get_weights_shape(attrs, input_shape)), kernel_initializer);
 
-  TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
+  TensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
   return this->add_layer(layer, {input}, {weight_attrs}, output_shape);
 }

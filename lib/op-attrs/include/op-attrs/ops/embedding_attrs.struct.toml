@@ -25,7 +25,7 @@ type = "int"
 
 [[fields]]
 name = "aggr"
-type = "::FlexFlow::AggregateOp"
+type = "std::optional<::FlexFlow::AggregateOp>"
 
 [[fields]]
 name = "data_type"

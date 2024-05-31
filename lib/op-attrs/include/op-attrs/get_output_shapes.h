@@ -122,8 +122,6 @@ ParallelTensorShape get_output_shape(Conv2DAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(DropoutAttrs const &,
                                      ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(EmbeddingAttrs const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(FlatAttrs const &,
                                      ParallelTensorShape const &);
 std::vector<ParallelTensorShape> get_output_shapes(GatherAttrs const &,
