@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_SIM_ENVIRONMENT_H
 #define _FLEXFLOW_LOCAL_EXECUTION_SIM_ENVIRONMENT_H
 
-#include "local-execution/cost_metrics.h"
 #include "kernels/accessor.h"
 #include "kernels/allocation.h"
-#include "op-attrs/parallel_tensor_shape.h"
+#include "local-execution/cost_metrics.h"
 #include "local-execution/op_task_invocation.h"
-#include "pcg/machine_view.h"
 #include "local-execution/task_argument_accessor.h"
+#include "op-attrs/parallel_tensor_shape.h"
+#include "pcg/machine_view.h"
 #include <vector>
 
 namespace FlexFlow {

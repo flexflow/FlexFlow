@@ -53,7 +53,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[Embedding] backward_time = {:.2lf}ms\n",
+                 "[Embedding] forward_time = {:.2lf}ms\n",
                  input,
                  output,
                  weight,
@@ -76,7 +76,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[Embedding] forward_time = {:.2lf}ms\n",
+                 "[Embedding] backward_time = {:.2lf}ms\n",
                  input,
                  output,
                  weight_grad,
