@@ -111,7 +111,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[Gather] forward_time = {:.2lf}ms\n",
+                 "[Gather] backward_time = {:.2lf}ms\n",
                  per_device_state,
                  output_grad,
                  index,
