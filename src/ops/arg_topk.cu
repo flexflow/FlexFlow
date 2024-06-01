@@ -23,53 +23,55 @@ using Legion::coord_t;
 
 // Adopted from Raft's select_k
 // https://github.com/rapidsai/raft/blob/branch-23.04/cpp/include/raft/matrix/detail/select_radix.cuh#L1113
-template<typename T, typename idxT>
-void raft_radix_11bits_kernel(const T* in,
-                       int batch_size,
-                       idxT len,
-                       idxT k,
-                       T* out,
-                       idxT* out_idx = nullptr,
-                       bool greater = true,
-                       cudaStream_t stream = 0) {
-    raft::matrix::detail::select::radix::select_k<T, idxT, 11, 512>(
-        in,
-        static_cast<idxT*>(nullptr),
-        batch_size,
-        len,
-        k,
-        out,
-        out_idx,
-        !greater,
-        true,  // fused_last_filter
-        stream);
+template <typename T, typename idxT>
+void raft_radix_11bits_kernel(T const *in,
+                              int batch_size,
+                              idxT len,
+                              idxT k,
+                              T *out,
+                              idxT *out_idx = nullptr,
+                              bool greater = true,
+                              cudaStream_t stream = 0) {
+  raft::matrix::detail::select::radix::select_k<T, idxT, 11, 512>(
+      in,
+      static_cast<idxT *>(nullptr),
+      batch_size,
+      len,
+      k,
+      out,
+      out_idx,
+      !greater,
+      true, // fused_last_filter
+      stream);
 }
 
 // Adopted from Raft's select_k
 // https://github.com/rapidsai/raft/blob/branch-23.04/cpp/include/raft/matrix/detail/select_radix.cuh#L1113
-template<typename T, typename idxT>
-void raft_radix_11bits_extra_pass_kernel(const T* in,
-                                  int batch_size,
-                                  idxT len,
-                                  idxT k,
-                                  T* out,
-                                  idxT* out_idx = nullptr,
-                                  bool greater = true,
-                                  cudaStream_t stream = 0) {
-    raft::matrix::detail::select::radix::select_k<T, idxT, 11, 512>(
-        in,
-        static_cast<idxT*>(nullptr),
-        batch_size,
-        len,
-        k,
-        out,
-        out_idx,
-        !greater,
-        false,  // fused_last_filter
-        stream);
+template <typename T, typename idxT>
+void raft_radix_11bits_extra_pass_kernel(T const *in,
+                                         int batch_size,
+                                         idxT len,
+                                         idxT k,
+                                         T *out,
+                                         idxT *out_idx = nullptr,
+                                         bool greater = true,
+                                         cudaStream_t stream = 0) {
+  raft::matrix::detail::select::radix::select_k<T, idxT, 11, 512>(
+      in,
+      static_cast<idxT *>(nullptr),
+      batch_size,
+      len,
+      k,
+      out,
+      out_idx,
+      !greater,
+      false, // fused_last_filter
+      stream);
 }
 
-__global__ void half2float_kernel(const half* __restrict__ in, float* __restrict__ out, int size) {
+__global__ void half2float_kernel(half const *__restrict__ in,
+                                  float *__restrict__ out,
+                                  int size) {
   // int stride = blockDim.x * gridDim.x,
   //     tid = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -82,27 +84,29 @@ __global__ void half2float_kernel(const half* __restrict__ in, float* __restrict
 }
 
 template <typename DT>
-__global__ void insertion_sort_kernel(DT* topk_values, int* topk_indices, int batch_size, int k) {
-    int batch_index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (batch_index < batch_size) {
-        DT* values = topk_values + batch_index * k;
-        int* indices = topk_indices + batch_index * k;
+__global__ void insertion_sort_kernel(DT *topk_values,
+                                      int *topk_indices,
+                                      int batch_size,
+                                      int k) {
+  int batch_index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (batch_index < batch_size) {
+    DT *values = topk_values + batch_index * k;
+    int *indices = topk_indices + batch_index * k;
 
-        for (int i = 1; i < k; i++) {
-            DT key_val = values[i];
-            int key_idx = indices[i];
-            int j = i - 1;
-            while (j >= 0 && values[j] < key_val) {
-                values[j + 1] = values[j];
-                indices[j + 1] = indices[j];
-                j = j - 1;
-            }
-            values[j + 1] = key_val;
-            indices[j + 1] = key_idx;
-        }
+    for (int i = 1; i < k; i++) {
+      DT key_val = values[i];
+      int key_idx = indices[i];
+      int j = i - 1;
+      while (j >= 0 && values[j] < key_val) {
+        values[j + 1] = values[j];
+        indices[j + 1] = indices[j];
+        j = j - 1;
+      }
+      values[j + 1] = key_val;
+      indices[j + 1] = key_idx;
     }
+  }
 }
-
 
 /*static*/
 template <typename DT>
@@ -117,35 +121,15 @@ void ArgTopK::forward_kernel(
     bool sorted,
     /* Reserved: BatchConfig Updated */ BatchConfig const *bc,
     cudaStream_t stream) {
-  if (m->speculative_decoding) {
-    assert(bc->num_active_requests() >= 0);
-    raft_radix_11bits_extra_pass_kernel<DT, int>(
-        input_ptr,
-        batch_size,
-        length,
-        BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES,
-        output_ptr,
-        indices_ptr,
-        true,
-        stream);
-    if (sorted) {
-      assert(output_ptr != nullptr);
-      insertion_sort_kernel<<<GET_BLOCKS(batch_size),
-                             min((size_t)CUDA_NUM_THREADS, batch_size),
-                             0,
-                             stream>>>(output_ptr, indices_ptr, batch_size, k);
-    }
-  } else {
-    // raft_radix_11bits_extra_pass_kernel<DT, int>(
-    //     input_ptr,
-    //     batch_size,
-    //     length,
-    //     k,
-    //     static_cast<float*>(nullptr),
-    //     indices_ptr,
-    //     true,
-    //     stream);
-    assert(false && "Not in speculative decoding mode");
+  assert(bc->num_active_requests() >= 0);
+  raft_radix_11bits_extra_pass_kernel<DT, int>(
+      input_ptr, batch_size, length, k, output_ptr, indices_ptr, true, stream);
+  if (sorted) {
+    assert(output_ptr != nullptr);
+    insertion_sort_kernel<<<GET_BLOCKS(batch_size),
+                            min((size_t)CUDA_NUM_THREADS, batch_size),
+                            0,
+                            stream>>>(output_ptr, indices_ptr, batch_size, k);
   }
 }
 
@@ -202,34 +186,31 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
     // printf("ArgTopK: length = %d, batch_size = %d\n", length, batch_size);
     ArgTopK::forward_kernel(m,
                             input.get_half_ptr(),
-                            m->speculative_decoding ? (half *)m->half_precision_output
-                                                    : nullptr,
+                            (half *)m->half_precision_output,
                             indices.get_int32_ptr(),
                             batch_size,
                             length,
                             k,
                             m->sorted,
-                            m->speculative_decoding ? bc : nullptr,
+                            bc,
                             stream);
-    if (m->speculative_decoding) {
-      // transfer data from half to float (half_precision_output to output)
-      int size = length * batch_size;
-      half2float_kernel<<<GET_BLOCKS(size),
-                          min((int)CUDA_NUM_THREADS, size),
-                          0,
-                          stream>>>((const half *)m->half_precision_output, probs.get_float_ptr(), size);
-    }
+    // transfer data from half to float (half_precision_output to output)
+    int size = length * batch_size;
+    half2float_kernel<<<GET_BLOCKS(size),
+                        min((int)CUDA_NUM_THREADS, size),
+                        0,
+                        stream>>>(
+        (half const *)m->half_precision_output, probs.get_float_ptr(), size);
   } else if (input.data_type == DT_FLOAT) {
     ArgTopK::forward_kernel(m,
                             input.get_float_ptr(),
-                            m->speculative_decoding ? probs.get_float_ptr()
-                                                    : nullptr,
+                            probs.get_float_ptr(),
                             indices.get_int32_ptr(),
                             batch_size,
                             length,
                             k,
                             m->sorted,
-                            m->speculative_decoding ? bc : nullptr,
+                            bc,
                             stream);
   } else {
     assert(false && "Unsupported data type");
@@ -247,12 +228,14 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
 }
 
 ArgTopKMeta::ArgTopKMeta(FFHandler handler,
-                          Op const *op,
-                          MemoryAllocator &gpu_mem_allocator)
+                         Op const *op,
+                         MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handler, op) {
   max_input_size = BatchConfig::MAX_NUM_TOKENS * 32000; // TODO: use vocab_size
-  gpu_mem_allocator.create_legion_instance(reserveInst, sizeof(half) * max_input_size);
-  half_precision_output = gpu_mem_allocator.allocate_instance_untyped(sizeof(half) * max_input_size);
+  gpu_mem_allocator.create_legion_instance(reserveInst,
+                                           sizeof(half) * max_input_size);
+  half_precision_output = gpu_mem_allocator.allocate_instance_untyped(
+      sizeof(half) * max_input_size);
 }
 
 ArgTopKMeta::~ArgTopKMeta() {
