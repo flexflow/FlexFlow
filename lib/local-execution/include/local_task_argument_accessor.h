@@ -8,18 +8,19 @@
 namespace FlexFlow {
 
 using SlotGradId = std::pair<slot_id, IsGrad>;
-using TensorBackingMap = std::unordered_map<SlotGradId, 
-                                            std::variant<GenericTensorAccessorW, 
-                                                         std::vector<GenericTensorAccessorW>>>;
-using ArgBackingMap = std::unordered_map<slot_id, ConcreteArgSpec>;
+using SlotTensorBackingMapping = std::unordered_map<
+    SlotGradId,
+    std::variant<GenericTensorAccessorW, std::vector<GenericTensorAccessorW>>>;
+using SlotArgBackingMap = std::unordered_map<slot_id, ConcreteArgSpec>;
 
 struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
   LocalTaskArgumentAccessor(
       Allocator allocator,
-      TensorBackingMap tensor_backing_map,
-      ArgBackingMap argument_map)
-      : allocator(allocator), tensor_backing_map(tensor_backing_map),
-        argument_map(argument_map){};
+      SlotTensorBackingMapping slot_tensor_backing_mapping,
+      SlotArgBackingMap slot_argument_map)
+      : allocator(allocator),
+        slot_tensor_backing_mapping(slot_tensor_backing_mapping),
+        slot_argument_map(slot_argument_map){};
   LocalTaskArgumentAccessor(LocalTaskArgumentAccessor const &) = delete;
   LocalTaskArgumentAccessor(LocalTaskArgumentAccessor &&) = delete;
 
@@ -27,9 +28,8 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
   PrivilegeTensorAccessor
       get_tensor(slot_id slot, Permissions priv, IsGrad is_grad) const override;
-  PrivilegeVariadicTensorAccessor get_variadic_tensor(slot_id slot,
-                                            Permissions priv,
-                                            IsGrad is_grad) const override;
+  PrivilegeVariadicTensorAccessor get_variadic_tensor(
+      slot_id slot, Permissions priv, IsGrad is_grad) const override;
 
   Allocator get_allocator() const override;
 
@@ -39,8 +39,8 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
 private:
   Allocator allocator;
-  TensorBackingMap tensor_backing_map;
-  ArgBackingMap argument_map;
+  SlotTensorBackingMapping slot_tensor_backing_mapping;
+  SlotArgBackingMap slot_argument_map;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalTaskArgumentAccessor);
 
