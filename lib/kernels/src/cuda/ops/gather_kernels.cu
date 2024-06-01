@@ -32,18 +32,18 @@ __global__ void gather_forward(float const *input,
   CUDA_KERNEL_LOOP(o, output_size) {
     // output tensor shape: [*, output_dim_size, stride]
     // output tensor stride: [output_dim_size * stride, stride, 1]
-    // output tensor index: [outter_index, index_2, left_over]
+    // output tensor index: [outer_index, index_2, left_over]
     // input tensor shape: [*, input_dim_size, stride]
     // input tensor stride: [input_dim_size * stride, stride, 1]
     // the index of the corresponding input tensor should be:
-    // [outter_index, index[0], left_over]
-    // Therefore, input_index = outter_index * (stride * input_dim_size)
+    // [outer_index, index[0], left_over]
+    // Therefore, input_index = outer_index * (stride * input_dim_size)
     //                        + index[0] * stride + left_over;
-    coord_t outter_index = o / (stride * output_dim_size);
+    coord_t outer_index = o / (stride * output_dim_size);
     // coord_t index_2 = (o / stride) % dim_size
     coord_t left_over = o % stride;
-    coord_t input_idx = outter_index * (stride * input_dim_size) +
-                        index[o] * stride + left_over;
+    coord_t input_idx =
+        outer_index * (stride * input_dim_size) + index[o] * stride + left_over;
     output[o] = input[input_idx];
   }
 }
@@ -59,12 +59,12 @@ __global__ void gather_backward(float const *output_grad,
   CUDA_KERNEL_LOOP(o, output_size) {
     // output tensor shape: [*, output_dim_size, stride]
     // output tensor stride: [output_dim_size * stride, stride, 1]
-    // output tensor index: [outter_index, index_2, left_over]
+    // output tensor index: [outer_index, index_2, left_over]
     // input tensor shape: [*, input_dim_size, stride]
     // input tensor stride: [input_dim_size * stride, stride, 1]
     // the index of the corresponding input tensor should be:
-    // [outter_index, index[0], left_over]
-    // Therefore, input_index = outter_index * (stride * input_dim_size)
+    // [outer_index, index[0], left_over]
+    // Therefore, input_index = outer_index * (stride * input_dim_size)
     //                        + index[0] * stride + left_over;
     coord_t outer_index = o / (stride * output_dim_size);
     // coord_t index_2 = (o / stride) % dim_size
@@ -125,24 +125,12 @@ void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorW const &output) {
   checkCUDA(get_legion_stream(&stream));
 
-  // Reference code for what's below -- not sure if I got the domain/array shape
-  // stuff right coord_t stride = 1; for (int i = 0; i < m->legion_dim; i++) {
-  //   stride *= (output.domain.hi()[i] - output.domain.lo()[i] + 1);
-  // }
-  // coord_t output_dim_size =
-  //     output.domain.hi()[m->legion_dim] - output.domain.lo()[m->legion_dim] +
-  //     1;
-  // coord_t input_dim_size =
-  //     input.domain.hi()[m->legion_dim] - input.domain.lo()[m->legion_dim] +
-  //     1;
-
-  coord_t stride = 1;
-  for (int i = 0; i < m.legion_dim; i++) {
-    stride *= output.shape[legion_dim_t(i)] + 1;
-  }
-
-  coord_t output_dim_size = output.shape[legion_dim_t(m.legion_dim)] + 1;
-  coord_t input_dim_size = input.shape[legion_dim_t(m.legion_dim)] + 1;
+  coord_t stride =
+      output.shape
+          .sub_shape(std::nullopt, legion_dim_t{m.legion_dim.value() + 1})
+          .get_volume();
+  coord_t output_dim_size = output.shape[m.legion_dim];
+  coord_t input_dim_size = input.shape[m.legion_dim];
 
   assert(index.data_type == DataType::INT32 ||
          index.data_type == DataType::INT64);
@@ -165,22 +153,12 @@ void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorW const &input_grad) {
   checkCUDA(get_legion_stream(&stream));
 
-  // Reference code for what's below -- not sure if I got the domain/array shape
-  // stuff right coord_t stride = 1; for (int i = 0; i < m->legion_dim; i++) {
-  //   stride *= (output_grad.domain.hi()[i] - output_grad.domain.lo()[i] + 1);
-  // }
-  // coord_t output_dim_size = output_grad.domain.hi()[m->legion_dim] -
-  //                           output_grad.domain.lo()[m->legion_dim] + 1;
-  // coord_t input_dim_size = input_grad.domain.hi()[m->legion_dim] -
-  //                          input_grad.domain.lo()[m->legion_dim] + 1;
-
-  coord_t stride = 1;
-  for (int i = 0; i < m.legion_dim; i++) {
-    stride *= output_grad.shape[legion_dim_t(i)] + 1;
-  }
-
-  coord_t output_dim_size = output_grad.shape[legion_dim_t(m.legion_dim)] + 1;
-  coord_t input_dim_size = input_grad.shape[legion_dim_t(m.legion_dim)] + 1;
+  coord_t stride =
+      output_grad.shape
+          .sub_shape(std::nullopt, legion_dim_t{m.legion_dim.value() + 1})
+          .get_volume();
+  coord_t output_dim_size = output_grad.shape[m.legion_dim];
+  coord_t input_dim_size = input_grad.shape[m.legion_dim];
 
   assert(index.data_type == DataType::INT32 ||
          index.data_type == DataType::INT64);

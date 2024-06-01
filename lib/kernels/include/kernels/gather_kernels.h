@@ -8,7 +8,7 @@ namespace FlexFlow {
 
 struct GatherPerDeviceState {
   PerDeviceFFHandle handle;
-  int legion_dim;
+  legion_dim_t legion_dim;
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GatherPerDeviceState,

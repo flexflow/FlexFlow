@@ -15,6 +15,7 @@
 
 #include "gather.h"
 #include "kernels/gather_kernels.h"
+#include "legion_tensor_shape.h"
 #include "op-attrs/get_output_shapes.h"
 #include <optional>
 
@@ -65,26 +66,14 @@ static DeviceSpecific<GatherPerDeviceState>
 
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto const &attrs = acc.get_argument<GatherAttrs>(ATTRS);
-  int legion_dim = attrs.legion_dim;
-
-  // Reference code for what's below -- not sure if I got the domain/array shape
-  // stuff right assert(input.domain.get_dim() == index.domain.get_dim());
-  // assert(output.domain.get_dim() == index.domain.get_dim());
-  // for (int i = 0; i < input.domain.get_dim(); i++) {
-  //   assert(index.domain.hi()[i] == output.domain.hi()[i]);
-  //   assert(index.domain.lo()[i] == output.domain.lo()[i]);
-  //   if (i != m->legion_dim) {
-  //     assert(input.domain.hi()[i] == index.domain.hi()[i]);
-  //     assert(input.domain.lo()[i] == index.domain.lo()[i]);
-  //   }
-  // }
+  legion_dim_t legion_dim = to_legion(attrs.ff_dim, input.shape.num_dims());
 
   assert(input.shape.get_dim() == index.shape.get_dim());
   assert(output.shape.get_dim() == index.shape.get_dim());
 
   for (int i = 0; i < input.shape.get_dim(); i++) {
     assert(index.shape[legion_dim_t(i)] == output.shape[legion_dim_t(i)]);
-    if (i != legion_dim) {
+    if (i != legion_dim.value()) {
       assert(input.shape[legion_dim_t(i)] == index.shape[legion_dim_t(i)]);
     }
   }
