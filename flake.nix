@@ -29,13 +29,11 @@
       lib = pkgs.lib;
       stdenv = pkgs.cudaPackages.backendStdenv;
       mkShell = pkgs.mkShell.override {
-        # stdenv = pkgs.cudaPackages.backendStdenv;
-        stdenv = stdenv;
+        inherit stdenv; 
       };
     in
     {
       packages = {
-        # legion = pkgs.callPackage ./.flake/pkgs/legion.nix { };
         legion = pkgs.callPackage ./.flake/pkgs/legion.nix { inherit stdenv; };
         rapidcheckFull = pkgs.symlinkJoin {
           name = "rapidcheckFull";
@@ -91,6 +89,7 @@
               cudaPackages.libcublas
               cudaPackages.cuda_cudart
               tl-expected
+              lcov # for code coverage
             ])
             (with self.packages.${system}; [
               legion
@@ -113,7 +112,6 @@
               compdb
               jq
               gh
-              lcov # for code coverage
             ])
             (with proj-repo.packages.${system}; [
               proj
