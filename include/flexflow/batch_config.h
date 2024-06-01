@@ -33,6 +33,7 @@ public:
   using TokenId = int;
   BatchConfig(InferenceMode inference_mode = INC_DECODING_MODE,
               int model_id = 0);
+  BatchConfig(BatchConfig const &other);
   int num_active_requests() const;
   int num_active_tokens() const;
   static int max_requests_per_batch();
