@@ -77,8 +77,8 @@ void sparse_categorical_crossentropy_loss_backward_kernel(
 
   // launch kernel in hip
   hipLaunchKernelGGL(sparse_categorical_crossentropy_loss_backward,
-                     dim3(GET_BLOCKS(num_samples * k), 1, 1),
-                     dim3(CUDA_NUM_THREADS, 1, 1),
+                     GET_BLOCKS(num_samples * k),
+                     dCUDA_NUM_THREADS,
                      0,
                      stream,
                      logit_grad_ptr,
@@ -88,8 +88,8 @@ void sparse_categorical_crossentropy_loss_backward_kernel(
                      k);
   // Scale logit gradients by op->scale_factor
   hipLaunchKernelGGL(scale_kernel,
-                     dim3(GET_BLOCKS(logit_grad_volume), 1, 1),
-                     dim3(CUDA_NUM_THREADS, 1, 1),
+                     GET_BLOCKS(logit_grad_volume),
+                     CUDA_NUM_THREADS,
                      0,
                      stream,
                      logit_grad_ptr,
@@ -108,8 +108,8 @@ void categorical_crossentropy_loss_backward_kernel(hipStream_t stream,
   // hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   hipLaunchKernelGGL(categorical_crossentropy_loss_backward,
-                     dim3(GET_BLOCKS(logit_volume), 1, 1),
-                     dim3(CUDA_NUM_THREADS, 1, 1),
+                     GET_BLOCKS(logit_volume),
+                     CUDA_NUM_THREADS,
                      0,
                      stream,
                      logit_grad_ptr,
@@ -119,8 +119,8 @@ void categorical_crossentropy_loss_backward_kernel(hipStream_t stream,
 
   // Scale logit gradients by loss->scale_factor
   hipLaunchKernelGGL(scale_kernel,
-                     dim3(GET_BLOCKS(logit_grad_volume), 1, 1),
-                     dim3(CUDA_NUM_THREADS, 1, 1),
+                     GET_BLOCKS(logit_grad_volume),
+                     CUDA_NUM_THREADS,
                      0,
                      stream,
                      logit_grad_ptr,
@@ -139,8 +139,8 @@ void mean_squared_error_avg_loss_backward_kernel(hipStream_t stream,
   // hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   hipLaunchKernelGGL(mean_squared_error_avg_loss_backward,
-                     dim3(GET_BLOCKS(logit_volume), 1, 1),
-                     dim3(CUDA_NUM_THREADS, 1, 1),
+                     GET_BLOCKS(logit_volume),
+                     CUDA_NUM_THREADS,
                      0,
                      stream,
                      logit_grad_ptr,
@@ -149,8 +149,8 @@ void mean_squared_error_avg_loss_backward_kernel(hipStream_t stream,
                      logit_volume);
   // Scale logit gradients by loss->scale_factor
   hipLaunchKernelGGL(scale_kernel,
-                     dim3(GET_BLOCKS(logit_grad_volume), 1, 1),
-                     dim3(CUDA_NUM_THREADS, 1, 1),
+                     GET_BLOCKS(logit_grad_volume),
+                     CUDA_NUM_THREADS,
                      0,
                      stream,
                      logit_grad_ptr,
@@ -168,8 +168,8 @@ void identity_loss_backward_kernel(hipStream_t stream,
   // hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   hipLaunchKernelGGL(identity_loss_backward,
-                     dim3(GET_BLOCKS(loss_volume), 1, 1),
-                     dim3(CUDA_NUM_THREADS, 1, 1),
+                     GET_BLOCKS(loss_volume),
+                     CUDA_NUM_THREADS,
                      0,
                      stream,
                      loss_grad_ptr,
@@ -177,8 +177,8 @@ void identity_loss_backward_kernel(hipStream_t stream,
                      loss_volume);
   // Scale logit gradients by loss->scale_factor
   hipLaunchKernelGGL(scale_kernel,
-                     dim3(GET_BLOCKS(loss_grad_volume), 1, 1),
-                     dim3(CUDA_NUM_THREADS, 1, 1),
+                     GET_BLOCKS(loss_grad_volume),
+                     CUDA_NUM_THREADS,
                      0,
                      stream,
                      loss_grad_ptr,
