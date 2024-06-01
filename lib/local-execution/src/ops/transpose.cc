@@ -84,7 +84,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[Transpose] Forward_time = %.2lf [ms]",
+                 "[Transpose] Forward_time = {:.2lf} [ms]",
                  per_device_state,
                  input,
                  output);
@@ -101,7 +101,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[Transpose] Backward_time = %.2lf [ms]",
+                 "[Transpose] Backward_time = {:.2lf} [ms]",
                  per_device_state,
                  input_grad,
                  output_grad);

@@ -73,7 +73,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[Reparition/Partition] forward_time = %.2lfms\n",
+                 "[Reparition/Partition] forward_time = {:.2lf}ms\n",
                  per_device_state,
                  input,
                  output);
@@ -89,7 +89,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[Reparition/Partition] backward_time = %.2lfms\n",
+                 "[Reparition/Partition] backward_time = {:.2lf}ms\n",
                  per_device_state,
                  output_grad,
                  input_grad);

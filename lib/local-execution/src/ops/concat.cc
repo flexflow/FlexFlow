@@ -54,7 +54,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[Concat] forward_time = %.2lfms\n",
+                 "[Concat] forward_time = {:.2lf}ms\n",
                  output,
                  inputs,
                  attrs.axis);
@@ -72,7 +72,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[Concat] backward_time = %.2lfms\n",
+                 "[Concat] backward_time = {:.2lf}ms\n",
                  output_grad,
                  input_grads,
                  attrs.axis);

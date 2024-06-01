@@ -66,7 +66,7 @@ static DeviceSpecific<GatherPerDeviceState>
 
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto const &attrs = acc.get_argument<GatherAttrs>(ATTRS);
-  legion_dim_t legion_dim = to_legion(attrs.ff_dim, input.shape.num_dims());
+  legion_dim_t legion_dim = to_legion(attrs.dim, input.shape.num_dims());
 
   assert(input.shape.get_dim() == index.shape.get_dim());
   assert(output.shape.get_dim() == index.shape.get_dim());
@@ -92,7 +92,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[Gather] forward_time = %.2lfms\n",
+                 "[Gather] forward_time = {:.2lf}ms\n",
                  per_device_state,
                  input,
                  index,
@@ -111,7 +111,7 @@ static std::optional<float>
 
   return profile(forward_kernel,
                  profiling,
-                 "[Gather] forward_time = %.2lfms\n",
+                 "[Gather] forward_time = {:.2lf}ms\n",
                  per_device_state,
                  output_grad,
                  index,

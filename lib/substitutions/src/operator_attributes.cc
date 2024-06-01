@@ -129,7 +129,7 @@ std::optional<OperatorAttributeValue> get_attribute(GatherAttrs const &p,
                                                     OperatorAttributeKey key) {
   switch (key) {
     case OperatorAttributeKey::AXIS:
-      return p.ff_dim;
+      return p.dim;
     default:
       return std::nullopt;
   }

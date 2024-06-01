@@ -55,7 +55,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling_settings,
-                 "[Reduction] forward_time = %.2lfms\n",
+                 "[Reduction] forward_time = {:.2lf}ms\n",
                  input,
                  output,
                  num_replicas);
@@ -69,7 +69,7 @@ static std::optional<float>
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
   return profile(backward_kernel,
                  profiling,
-                 "[Reduction] backward_time = %.2lfms\n",
+                 "[Reduction] backward_time = {:.2lf}ms\n",
                  input_grad,
                  output_grad);
 }
