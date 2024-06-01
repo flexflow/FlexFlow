@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_OP_TENSOR_SPEC_REF_H
 #define _FLEXFLOW_LOCAL_EXECUTION_OP_TENSOR_SPEC_REF_H
 
-#include "op_task_signature.h"
+#include "local-execution/op_task_signature.h"
 
 namespace FlexFlow {
 

@@ -48,7 +48,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[Flat] forward_time = {:.2lf}ms\n",
+                 "[Flat] backward_time = {:.2lf}ms\n",
                  input,
                  input_grad.get_float_ptr(),
                  output_grad.get_float_ptr());

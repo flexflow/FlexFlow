@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_OP_TASK_SIGNATURE_H
 #define _FLEXFLOW_LOCAL_EXECUTION_OP_TASK_SIGNATURE_H
 
-#include "serialization.h"
-#include "slot_id.h"
-#include "slot_type.h"
-#include "tasks.h"
+#include "local-execution/serialization.h"
+#include "local-execution/slot_id.h"
+#include "local-execution/slot_type.h"
+#include "local-execution/tasks.h"
 #include "utils/type_index.h"
 #include "utils/visitable.h"
 

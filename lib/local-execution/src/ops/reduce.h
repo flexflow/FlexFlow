@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_OPS_REDUCE_H
 #define _FLEXFLOW_RUNTIME_SRC_OPS_REDUCE_H
 
+#include "local-execution/op_task_invocation.h"
+#include "local-execution/sim_environment.h"
 #include "op-attrs/ops/reduce.h"
-#include "op_task_invocation.h"
-#include "sim_environment.h"
 
 namespace FlexFlow {
 

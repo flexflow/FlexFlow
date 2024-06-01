@@ -16,10 +16,10 @@
 #include "concat.h"
 #include "kernels/concat_kernels.h"
 
+#include "local-execution/op_task_signature.h"
+#include "local-execution/variadic_tensor_ref.h"
 #include "op-attrs/get_output_shapes.h"
-#include "op_task_signature.h"
 #include "utils/hash-utils.h"
-#include "variadic_tensor_ref.h"
 
 namespace FlexFlow {
 

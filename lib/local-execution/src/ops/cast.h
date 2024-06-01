@@ -15,9 +15,9 @@
 #ifndef _FLEXFLOW_CAST_H
 #define _FLEXFLOW_CAST_H
 
+#include "local-execution/op_task_invocation.h"
+#include "local-execution/sim_environment.h"
 #include "op-attrs/ops/cast.h"
-#include "op_task_invocation.h"
-#include "sim_environment.h"
 
 namespace FlexFlow {
 

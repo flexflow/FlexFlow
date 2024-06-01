@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_NOOP_H
 #define _FLEXFLOW_NOOP_H
 
+#include "local-execution/op_task_invocation.h"
 #include "op-attrs/ops/input.h"
 #include "op-attrs/ops/noop.h"
-#include "op_task_invocation.h"
 
 namespace FlexFlow {
 

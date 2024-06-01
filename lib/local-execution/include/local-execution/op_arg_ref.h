@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_OP_ARG_REF_H
 #define _FLEXFLOW_LOCAL_EXECUTION_OP_ARG_REF_H
 
-#include "arg_ref.h"
-#include "device_specific.h"
+#include "local-execution/arg_ref.h"
+#include "local-execution/device_specific.h"
 #include "op-attrs/parallel_tensor_shape.h"
 
 namespace FlexFlow {

@@ -1,5 +1,5 @@
-#include "runtime_arg_ref.h"
-#include "device_specific.h"
+#include "local-execution/runtime_arg_ref.h"
+#include "local-execution/device_specific.h"
 
 namespace FlexFlow {
 

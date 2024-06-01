@@ -15,7 +15,7 @@
 
 #include "gather.h"
 #include "kernels/gather_kernels.h"
-#include "legion_tensor_shape.h"
+#include "local-execution/legion_tensor_shape.h"
 #include "op-attrs/get_output_shapes.h"
 #include <optional>
 
@@ -109,7 +109,7 @@ static std::optional<float>
   auto index = acc.get_tensor<Permissions::RO>(INDEX);
   auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
 
-  return profile(forward_kernel,
+  return profile(backward_kernel,
                  profiling,
                  "[Gather] forward_time = {:.2lf}ms\n",
                  per_device_state,

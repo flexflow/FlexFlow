@@ -15,7 +15,7 @@
 
 #include "combine.h"
 #include "kernels/combine_kernels.h"
-#include "op_task_invocation.h"
+#include "local-execution/op_task_invocation.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -64,7 +64,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[Combine] forward_time = {:.2lf}ms\n",
+                 "[Combine] backward_time = {:.2lf}ms\n",
                  input_grad,
                  output_grad);
 }

@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_ELEMENT_BINARY_H
 #define _FLEXFLOW_ELEMENT_BINARY_H
 
+#include "local-execution/sim_environment.h"
 #include "op-attrs/ops/element_binary.h"
-#include "sim_environment.h"
 
 namespace FlexFlow {
 

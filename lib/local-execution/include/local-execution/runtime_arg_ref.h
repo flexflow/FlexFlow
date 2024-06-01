@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_RUNTIME_ARG_REF_H
 #define _FLEXFLOW_RUNTIME_SRC_TASK_SPEC_RUNTIME_ARG_REF_H
 
-#include "arg_ref.h"
-#include "config.h"
-#include "device_specific.h"
+#include "local-execution/arg_ref.h"
+#include "local-execution/config.h"
+#include "local-execution/device_specific.h"
 
 namespace FlexFlow {
 

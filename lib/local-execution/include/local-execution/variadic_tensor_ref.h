@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_VARIADIC_TENSOR_ARG_REF_H
 #define _FLEXFLOW_LOCAL_EXECUTION_VARIADIC_TENSOR_ARG_REF_H
 
-#include "arg_ref.h"
-#include "op_tensor_spec.h"
+#include "local-execution/arg_ref.h"
+#include "local-execution/op_tensor_spec.h"
 
 namespace FlexFlow {
 
