@@ -35,6 +35,7 @@
     {
       packages = {
         legion = pkgs.callPackage ./.flake/pkgs/legion.nix { inherit stdenv; };
+        hpp2plantuml = pkgs.python3Packages.callPackage ./.flake/pkgs/hpp2plantuml.nix { };
         rapidcheckFull = pkgs.symlinkJoin {
           name = "rapidcheckFull";
           paths = (with pkgs; [ rapidcheck.out rapidcheck.dev ]);
@@ -93,6 +94,7 @@
             ])
             (with self.packages.${system}; [
               legion
+              hpp2plantuml
               rapidcheckFull
               doctest
             ])
