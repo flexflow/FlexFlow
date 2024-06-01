@@ -182,15 +182,14 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(miopenSet4dTensorDescriptor(
       filterDesc, miopenFloat, output_c, input_c / groups, kernel_h, kernel_w));
 
-  checkCUDNN(miopenSetConvolution2dDescriptor(convDesc,
-                                              padding_h,
-                                              padding_w,
-                                              stride_h,
-                                              stride_w,
-                                              1,
-                                              1,
-                                              miopenConvolution,
-                                              miopenFloat));
+  checkCUDNN(miopenInitConvolutionDescriptor(convDesc,
+                                             miopenConvolution,
+                                             pad_h,
+                                             pad_w,
+                                             stride_h,
+                                             stride_w,
+                                             1,
+                                             1));
 
   if (groups != 1) {
     checkCUDNN(miopenSetConvolutionGroupCount(convDesc, groups));
@@ -205,7 +204,7 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   }
 
   int n, c, h, w;
-  checkCUDNN(miopenGetConvolution2dForwardOutputDim(
+  checkCUDNN(miopenGetConvolutionForwardOutputDim(
       convDesc, inputTensor, filterDesc, &n, &c, &h, &w));
   assert(n == output_n);
   assert(c == output_c);
@@ -334,7 +333,7 @@ void backward_kernel(hipStream_t stream,
   checkCUDNN(miopenSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f;
-  // float beta = 0.0f;
+  float beta = 0.0f;
   if (activation.has_value()) {
     miopenDataType_t dataType;
     int n, c, h, w, nStride, cStride, hStride, wStride;
@@ -359,19 +358,19 @@ void backward_kernel(hipStream_t stream,
   }
   // Compute filter gradiant
   // NOTE: we use alpha for kernel_grad to accumulate gradients
-  checkCUDNN(miopenConvolutionBackwardFilter(m.handle.dnn,
-                                             &alpha,
-                                             m.inputTensor,
-                                             input_ptr,
-                                             m.outputTensor,
-                                             output_grad_ptr,
-                                             m.convDesc,
-                                             m.bwdFilterAlgo,
-                                             &alpha,
-                                             m.filterDesc,
-                                             filter_grad_ptr,
-                                             m.handle.workSpace,
-                                             m.handle.workSpaceSize));
+  checkCUDNN(miopenConvolutionBackwardWeights(m.handle.dnn,
+                                              &alpha,
+                                              m.outputTensor,
+                                              output_grad_ptr,
+                                              m.inputTensor,
+                                              input_ptr,
+                                              m.convDesc,
+                                              m.bwdFilterAlgo,
+                                              &beta,
+                                              m.filterDesc,
+                                              filter_grad_ptr,
+                                              m.handle.workSpace,
+                                              m.handle.workSpaceSize));
   // Compute bias gradiant
   // NOTE: we use alpha for bias_grad to accumulate gradients
   if (bias_grad_ptr != NULL) {

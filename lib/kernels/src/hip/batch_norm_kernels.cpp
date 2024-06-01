@@ -115,7 +115,7 @@ BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&biasTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
-  mode = HIPDNN_BATCHNORM_SPATIAL;
+  mode = miopenBNSpatial;
 #if HIPDNN_VERSION >= 7000
   mode = HIPDNN_BATCHNORM_SPATIAL_PERSISTENT;
 #endif
