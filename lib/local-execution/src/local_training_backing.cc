@@ -35,7 +35,7 @@ LocalTrainingBacking::LocalTrainingBacking(
       if (!this->task_registry.is_tensor_allocated(edge)) {
         Tensor tensor = computation_graph.at(edge);
         GenericTensorAccessorW tensor_backing =
-            this->allocator.allocate(tensor.get_shape());
+            this->allocator.allocate_tensor(tensor.get_shape());
         this->task_registry.tensor_mapping.insert({edge, tensor_backing});
       }
     }
@@ -55,7 +55,7 @@ void LocalTrainingBacking::execute_init() {
         this->get_task_arg_accessor(invocation, operator_node);
     DeviceSpecific<DeviceStates> device_state =
         this->call_init_task_impl(invocation.task_id, accessor);
-    this->task_registry.insert_per_device_op_state(operator_node, device_state);
+    this->task_registry.add_per_device_op_state(operator_node, device_state);
   }
 }
 

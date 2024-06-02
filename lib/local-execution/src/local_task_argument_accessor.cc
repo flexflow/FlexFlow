@@ -7,7 +7,7 @@ ConcreteArgSpec const &
   return this->slot_argument_mapping.at(name);
 }
 
-PrivilegeTensorAccessor LocalTaskArgumentAccessor::get_tensor(
+GenericTensorAccessor LocalTaskArgumentAccessor::get_tensor(
     slot_id slot, Permissions priv, IsGrad is_grad) const {
   SlotGradId slot_grad_pair = std::make_pair(slot, is_grad);
   auto tensor_backing = std::get<GenericTensorAccessorW>(
@@ -22,7 +22,7 @@ PrivilegeTensorAccessor LocalTaskArgumentAccessor::get_tensor(
     throw mk_runtime_error("Unhandled privilege mode {}", priv);
   }
 }
-PrivilegeVariadicTensorAccessor LocalTaskArgumentAccessor::get_variadic_tensor(
+VariadicGenericTensorAccessor LocalTaskArgumentAccessor::get_variadic_tensor(
     slot_id slot, Permissions priv, IsGrad is_grad) const {
   SlotGradId slot_grad_pair = std::make_pair(slot, is_grad);
   auto variadic_tensor_backing = std::get<std::vector<GenericTensorAccessorW>>(

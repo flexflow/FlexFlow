@@ -2,8 +2,8 @@
 
 namespace FlexFlow {
 
-size_t Tensor::get_volume() const {
-  return this->get_shape().get_volume();
+size_t Tensor::get_num_elements() const {
+  return this->get_shape().get_num_elements();
 }
 
 Tensor::operator TensorShape() const {

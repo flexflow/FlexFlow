@@ -30,10 +30,15 @@ std::unordered_map<slot_id, OpArgSpec> const &
   return this->arg_bindings;
 }
 
+void OpTaskBinding::bind_from_forward(OpTaskBinding const &fwd) {
+  this->arg_bindings = fwd.get_arg_bindings();
+  this->tensor_bindings = fwd.get_tensor_bindings();
+}
+
+
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd) {
   OpTaskBinding bwd;
-  bwd.arg_bindings = fwd.get_arg_bindings();
-  bwd.tensor_bindings = fwd.get_tensor_bindings();
+  bwd.bind_from_forward(fwd);
   for (auto const &[key, spec] : fwd.get_tensor_bindings()) {
     OpSlotOptions slot_option = spec.slot_option;
     if (slot_option != OpSlotOptions::UNTRAINABLE ||

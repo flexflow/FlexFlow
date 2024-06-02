@@ -15,9 +15,9 @@ struct ITaskArgumentAccessor {
 
   virtual ConcreteArgSpec const &get_concrete_arg(slot_id) const = 0;
 
-  virtual PrivilegeTensorAccessor
+  virtual GenericTensorAccessor
       get_tensor(slot_id slot, Permissions priv, IsGrad is_grad) const = 0;
-  virtual PrivilegeVariadicTensorAccessor get_variadic_tensor(
+  virtual VariadicGenericTensorAccessor get_variadic_tensor(
       slot_id slot, Permissions priv, IsGrad is_grad) const = 0;
 
   virtual Allocator get_allocator() const = 0;

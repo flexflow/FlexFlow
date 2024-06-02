@@ -28,9 +28,9 @@ template <Permissions PRIV>
 using privilege_mode_to_accessor =
     typename privilege_mode_to_accessor_t<PRIV>::type;
 
-using PrivilegeTensorAccessor =
+using GenericTensorAccessor =
     std::variant<GenericTensorAccessorR, GenericTensorAccessorW>;
-using PrivilegeVariadicTensorAccessor =
+using VariadicGenericTensorAccessor =
     std::variant<std::vector<GenericTensorAccessorR>,
                  std::vector<GenericTensorAccessorW>>;
 

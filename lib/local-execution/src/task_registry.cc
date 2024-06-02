@@ -7,6 +7,21 @@ TaskRegistry::TaskRegistry(TensorBackingMapping const & allocated_tensors,
     : tensor_mapping(allocated_tensors),
       runtime_arg_config(runtime_arg_config){};
 
+OpTaskSignature TaskRegistry::get_init_signature(operator_guid_t const & op_id) {
+  task_id_t init_task_id = this->init_task_ids.at(op_id);
+  return init_signature<init_task_id>();
+}
+
+OpTaskSignature TaskRegistry::get_fwd_signature(operator_guid_t const & op_id) {
+  task_id_t fwd_task_id = this->forward_task_ids.at(op_id);
+  return fwd_signature<fwd_task_id>();
+}
+
+OpTaskSignature TaskRegistry::get_bwd_signature(operator_guid_t const & op_id) {
+  task_id_t bwd_task_id = this->backward_task_ids.at(op_id);
+  return bwd_signature<bwd_task_id>();
+}
+
 void TaskRegistry::register_task(task_id_t const & task_id, operator_guid_t const & op_id) {
   // -- err: not a compile-time constant so I can't call the function template
   TaskSignatureImpl task_signature_impl = {get_task_impl<task_id>(),
@@ -27,14 +42,14 @@ void TaskRegistry::register_task(task_id_t const & task_id, operator_guid_t cons
   this->task_mapping.insert({task_id, task_signature_impl});
 }
 
-void TaskRegistry::insert_per_device_op_state(
+void TaskRegistry::add_per_device_op_state(
     operator_guid_t const &op_guid,
     DeviceSpecific<DeviceStates> const &device_state) {
   this->per_device_op_states.insert({op_guid, device_state});
 }
 
 bool TaskRegistry::is_tensor_allocated(tensor_guid_t const &tensor_id) const {
-  return this->tensor_mapping.find(tensor_id) != this->tensor_mapping.end();
+  return contains_key(this->tensor_mapping, tensor_id);
 }
 
 GenericTensorAccessorW const &
@@ -45,7 +60,7 @@ GenericTensorAccessorW const &
 SlotTensorBackingMapping TaskRegistry::construct_slot_tensor_backing_map(
     OpTaskBinding const &binding, operator_guid_t const &op_guid) const {
   SlotTensorBackingMapping mapping;
-  for (auto tensor_binding : binding.get_tensor_bindings()) {
+  for (auto const & tensor_binding : binding.get_tensor_bindings()) {
     SlotGradId slot_grad_id = tensor_binding.first;
     OpTensorSpec tensor_spec = tensor_binding.second;
     std::vector<tensor_guid_t> tensor_guids;
@@ -60,10 +75,10 @@ SlotTensorBackingMapping TaskRegistry::construct_slot_tensor_backing_map(
         tensor_guids = this->output_tensor_slots.at(op_guid);
         break;
       default:
-        throw mk_runtime_error("Invalid TensorRole");
+        throw mk_runtime_error(fmt::format("Invalid TensorRole {}", tensor_spec.role));
     }
     GenericTensorAccessorW tensor_backing =
-        this->get_tensor_backing(tensor_guids[tensor_spec.idx]);
+        this->get_tensor_backing(tensor_guids.at(tensor_spec.idx));
     mapping.insert({slot_grad_id, tensor_backing});
   }
   return mapping;
@@ -72,7 +87,7 @@ SlotTensorBackingMapping TaskRegistry::construct_slot_tensor_backing_map(
 SlotArgBackingMapping TaskRegistry::construct_slot_argument_mapping(
     OpTaskBinding const &binding, operator_guid_t const &op_guid) const {
   SlotArgBackingMapping mapping;
-  for (auto arg_binding : binding.get_arg_bindings()) {
+  for (auto const & arg_binding : binding.get_arg_bindings()) {
     slot_id arg_slot = arg_binding.first;
     OpArgSpec op_arg_spec = arg_binding.second;
     if (std::holds_alternative<OpArgRefSpec>(op_arg_spec)) {

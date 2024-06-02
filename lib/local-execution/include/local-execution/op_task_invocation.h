@@ -60,15 +60,14 @@ struct OpTaskBinding {
       get_tensor_bindings() const;
   std::unordered_map<slot_id, OpArgSpec> const &get_arg_bindings() const;
 
-  std::unordered_map<slot_id, OpArgSpec> arg_bindings;
-  std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> tensor_bindings;
+  void bind_from_forward(OpTaskBinding const & fwd);
+
 
 private:
   void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec);
+  std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> tensor_bindings;
+  std::unordered_map<slot_id, OpArgSpec> arg_bindings;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskBinding,
-                                             arg_bindings,
-                                             tensor_bindings);
 
 struct OpTaskInvocation {
 public:
@@ -80,7 +79,6 @@ public:
   task_id_t task_id;
   OpTaskBinding binding;
 };
-FF_VISITABLE_STRUCT(OpTaskInvocation, task_id, binding);
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);

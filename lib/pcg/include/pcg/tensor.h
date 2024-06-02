@@ -15,7 +15,7 @@ struct Tensor {
   /*        optional<Initializer const &> initializer = nullopt, */
   /*        optional<ParamSync> sync_type = nullopt); */
 
-  size_t get_volume() const;
+  size_t get_num_elements() const;
   TensorShape get_shape() const;
   int num_dims() const;
 
