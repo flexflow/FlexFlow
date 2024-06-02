@@ -108,6 +108,24 @@ __global__ void insertion_sort_kernel(DT *topk_values,
   }
 }
 
+template <typename DT>
+__global__ void renormalize_kernel(DT *topk_values,
+                                   int batch_size,
+                                   int k,
+                                   float epsilon = 1e-6) {
+  int batch_index = blockIdx.x * blockDim.x + threadIdx.x;
+  assert(batch_index < batch_size);
+  DT *values = topk_values + batch_index * k;
+  DT sum = 0;
+  for (int i = 0; i < k; i++) {
+    sum += values[i];
+  }
+  sum += epsilon;
+  for (int i = 0; i < k; i++) {
+    values[i] /= sum;
+  }
+}
+
 /*static*/
 template <typename DT>
 void ArgTopK::forward_kernel(
@@ -119,6 +137,7 @@ void ArgTopK::forward_kernel(
     int length,
     int k,
     bool sorted,
+    bool renormalize,
     /* Reserved: BatchConfig Updated */ BatchConfig const *bc,
     cudaStream_t stream) {
   assert(bc->num_active_requests() >= 0);
@@ -130,6 +149,13 @@ void ArgTopK::forward_kernel(
                             min((size_t)CUDA_NUM_THREADS, batch_size),
                             0,
                             stream>>>(output_ptr, indices_ptr, batch_size, k);
+  }
+  if (renormalize) {
+    assert(output_ptr != nullptr);
+    renormalize_kernel<<<GET_BLOCKS(batch_size),
+                         min((size_t)CUDA_NUM_THREADS, batch_size),
+                         0,
+                         stream>>>(output_ptr, batch_size, k);
   }
 }
 
@@ -190,8 +216,9 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
                             indices.get_int32_ptr(),
                             batch_size,
                             length,
-                            k,
+                            m->k,
                             m->sorted,
+                            m->renormalize,
                             bc,
                             stream);
     // transfer data from half to float (half_precision_output to output)
@@ -208,8 +235,9 @@ void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
                             indices.get_int32_ptr(),
                             batch_size,
                             length,
-                            k,
+                            m->k,
                             m->sorted,
+                            m->renormalize,
                             bc,
                             stream);
   } else {

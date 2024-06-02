@@ -96,6 +96,7 @@ public:
                              int length,
                              int k,
                              bool sorted,
+                             bool renormalize,
                              BatchConfig const *bc,
                              ffStream_t stream);
   static void forward_kernel_wrapper(ArgTopKMeta const *m,
