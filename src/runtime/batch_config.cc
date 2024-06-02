@@ -222,4 +222,14 @@ void BatchConfig::save_to_file(std::string const &filename) const {
   }
 }
 
+InferenceResult::InferenceResult(InferenceResult const &other) {
+  num_token_ids = other.num_token_ids;
+  num_gumbel_logits = other.num_gumbel_logits;
+  std::copy(other.token_ids, other.token_ids + num_token_ids, token_ids);
+  std::copy(other.probs, other.probs + num_token_ids, probs);
+  std::copy(other.gumbel_logits,
+            other.gumbel_logits + num_gumbel_logits,
+            gumbel_logits);
+}
+
 }; // namespace FlexFlow

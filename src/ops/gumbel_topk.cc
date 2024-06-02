@@ -46,13 +46,14 @@ using Legion::TaskLauncher;
 using PCG::Node;
 
 // For an input tensor, computes the top k entries in each row
-// (resp. vector along the last dimension) using Gumbel trick (https://arxiv.org/abs/1903.06059). 
-// Thus, values.shape = indices.shape = input.shape[:-1] + [k]
+// (resp. vector along the last dimension) using Gumbel trick
+// (https://arxiv.org/abs/1903.06059). Thus, values.shape = indices.shape =
+// input.shape[:-1] + [k]
 Tensor FFModel::gumbel_top_k(Tensor const input,
-                          int k,
-                          bool sorted,
-                          bool speculative_decoding,
-                          char const *name) {
+                             int k,
+                             bool sorted,
+                             bool speculative_decoding,
+                             char const *name) {
   Layer *li = new Layer(this,
                         OP_GUMBEL_TOPK,
                         input->data_type,
@@ -100,12 +101,12 @@ Op *GumbelTopK::create_operator_from_layer(
   bool speculative_decoding = (bool)value;
 
   return new GumbelTopK(model,
-                     layer->layer_guid,
-                     inputs[0],
-                     k,
-                     sorted,
-                     speculative_decoding,
-                     layer->name);
+                        layer->layer_guid,
+                        inputs[0],
+                        k,
+                        sorted,
+                        speculative_decoding,
+                        layer->name);
 }
 
 GumbelTopKParams GumbelTopK::get_params() const {
@@ -130,12 +131,12 @@ bool operator==(GumbelTopKParams const &lhs, GumbelTopKParams const &rhs) {
 }
 
 GumbelTopK::GumbelTopK(FFModel &model,
-                 LayerID const &_layer_guid,
-                 ParallelTensor const _input,
-                 int _k,
-                 bool _sorted,
-                 bool _speculative_decoding,
-                 char const *name)
+                       LayerID const &_layer_guid,
+                       ParallelTensor const _input,
+                       int _k,
+                       bool _sorted,
+                       bool _speculative_decoding,
+                       char const *name)
     : Op(model,
          OP_GUMBEL_TOPK,
          _input->data_type,
@@ -168,33 +169,34 @@ GumbelTopK::GumbelTopK(FFModel &model,
 }
 
 GumbelTopK::GumbelTopK(FFModel &model,
-                 LayerID const &layer_guid,
-                 GumbelTopK const &other,
-                 ParallelTensor const input)
+                       LayerID const &layer_guid,
+                       GumbelTopK const &other,
+                       ParallelTensor const input)
     : GumbelTopK(model,
-              layer_guid,
-              input,
-              other.k,
-              other.sorted,
-              other.speculative_decoding,
-              other.name) {}
+                 layer_guid,
+                 input,
+                 other.k,
+                 other.sorted,
+                 other.speculative_decoding,
+                 other.name) {}
 
 GumbelTopK::GumbelTopK(FFModel &model,
-                 GumbelTopKParams const &params,
-                 ParallelTensor const input,
-                 char const *name)
+                       GumbelTopKParams const &params,
+                       ParallelTensor const input,
+                       char const *name)
     : GumbelTopK(model,
-              params.layer_guid,
-              input,
-              params.k,
-              params.sorted,
-              params.speculative_decoding,
-              params.name) {}
+                 params.layer_guid,
+                 input,
+                 params.k,
+                 params.sorted,
+                 params.speculative_decoding,
+                 params.name) {}
 
-void GumbelTopK::init_inference(FFModel const &ff,
-                             std::vector<ParallelTensor> const &batch_inputs,
-                             std::vector<ParallelTensor> const &batch_outputs,
-                             MachineView const *mv) {
+void GumbelTopK::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -267,9 +269,9 @@ void GumbelTopK::init(FFModel const &ff) {
 }
 
 OpMeta *GumbelTopK::init_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   GumbelTopK *gumbel_topk = (GumbelTopK *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
@@ -277,7 +279,8 @@ OpMeta *GumbelTopK::init_task(Task const *task,
                        .best_affinity_to(task->target_proc)
                        .first();
   MemoryAllocator gpu_mem_allocator(gpu_mem);
-  GumbelTopKMeta *m = new GumbelTopKMeta(handle, gumbel_topk, gpu_mem_allocator);
+  GumbelTopKMeta *m =
+      new GumbelTopKMeta(handle, gumbel_topk, gpu_mem_allocator);
   m->profiling = gumbel_topk->profiling;
   m->inference_debugging = gumbel_topk->inference_debugging;
   m->sorted = gumbel_topk->sorted;
@@ -380,9 +383,9 @@ FutureMap GumbelTopK::inference(
 
 InferenceResult
     GumbelTopK::inference_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const GumbelTopK* topk = (const GumbelTopK*) task->args;
@@ -413,6 +416,8 @@ InferenceResult
   }
 
   InferenceResult ir;
+  ir.num_token_ids = batch_size * m->k;
+  ir.num_gumbel_logits = batch_size * m->k;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   return ir;
@@ -443,13 +448,18 @@ InferenceResult GumbelTopK::inference_speculative_task(
       DT_FLOAT, regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   int batch_size = bc.num_active_tokens();
-  GumbelTopK::forward_kernel_wrapper(m, input, log_probs, perturbed_log_probs, indices, batch_size, &bc);
+  GumbelTopK::forward_kernel_wrapper(
+      m, input, log_probs, perturbed_log_probs, indices, batch_size, &bc);
 
   InferenceResult ir;
+  ir.num_token_ids = batch_size * m->k;
+  ir.num_gumbel_logits = batch_size * m->k;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size * m->k);
-  download_tensor<float>(log_probs.get_float_ptr(), ir.probs, batch_size * m->k);
-  download_tensor<float>(perturbed_log_probs.get_float_ptr(), ir.topk_logits, batch_size * m->k);
+  download_tensor<float>(
+      log_probs.get_float_ptr(), ir.probs, batch_size * m->k);
+  download_tensor<float>(
+      perturbed_log_probs.get_float_ptr(), ir.gumbel_logits, batch_size * m->k);
   return ir;
 }
 
@@ -470,9 +480,9 @@ void GumbelTopK::serialize(Legion::Serializer &sez) const {
 }
 
 Node GumbelTopK::deserialize(FFModel &ff,
-                          Legion::Deserializer &dez,
-                          ParallelTensor inputs[],
-                          int num_inputs) {
+                             Legion::Deserializer &dez,
+                             ParallelTensor inputs[],
+                             int num_inputs) {
   assert(num_inputs == 1);
   size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
@@ -499,15 +509,15 @@ Node GumbelTopK::deserialize(FFModel &ff,
 }
 
 Op *GumbelTopK::materialize(FFModel &ff,
-                         ParallelTensor inputs[],
-                         int num_inputs) const {
+                            ParallelTensor inputs[],
+                            int num_inputs) const {
   GumbelTopKParams params = get_params();
   return new GumbelTopK(ff, params, inputs[0], this->name);
 }
 
 bool GumbelTopK::measure_operator_cost(Simulator *sim,
-                                    MachineView const &mv,
-                                    CostMetrics &cost_metrics) const {
+                                       MachineView const &mv,
+                                       CostMetrics &cost_metrics) const {
   return false;
 }
 

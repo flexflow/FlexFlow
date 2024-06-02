@@ -156,11 +156,15 @@ public:
 };
 
 struct InferenceResult {
-  BatchConfig::TokenId token_ids[BatchConfig::MAX_NUM_TOKENS *
-                                 BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-  float probs[BatchConfig::MAX_NUM_TOKENS *
-              BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
-  float topk_logits[BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_K_LOGITS];
+  int num_token_ids;
+  int num_gumbel_logits;
+  BatchConfig::TokenId
+      token_ids[BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_K_LOGITS];
+  float probs[BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_K_LOGITS];
+  float gumbel_logits[BatchConfig::MAX_NUM_TOKENS *
+                      BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+  InferenceResult() : num_token_ids(0), num_gumbel_logits(0) {}
+  InferenceResult(InferenceResult const &other);
 };
 
 }; // namespace FlexFlow

@@ -368,6 +368,7 @@ InferenceResult
   }
 
   InferenceResult ir;
+  ir.num_token_ids = batch_size * m->k;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   return ir;
@@ -399,6 +400,7 @@ InferenceResult ArgTopK::inference_speculative_task(
   ArgTopK::forward_kernel_wrapper(m, input, probs, indices, batch_size, &bc);
 
   InferenceResult ir;
+  ir.num_token_ids = batch_size * m->k;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size * m->k);
   download_tensor<float>(probs.get_float_ptr(), ir.probs, batch_size * m->k);

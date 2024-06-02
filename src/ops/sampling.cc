@@ -47,7 +47,7 @@ using PCG::Node;
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
-Tensor FFModel::sampling(const Tensor input, float top_p, char const *name) {
+Tensor FFModel::sampling(Tensor const input, float top_p, char const *name) {
   Layer *li = new Layer(this,
                         OP_SAMPLING,
                         input->data_type,
@@ -103,7 +103,7 @@ bool operator==(SamplingParams const &lhs, SamplingParams const &rhs) {
 }
 
 Sampling::Sampling(FFModel &model,
-                   const ParallelTensor _input,
+                   ParallelTensor const _input,
                    float _top_p,
                    char const *name)
     : Op(model,
@@ -132,12 +132,12 @@ Sampling::Sampling(FFModel &model,
 
 Sampling::Sampling(FFModel &model,
                    Sampling const &other,
-                   const ParallelTensor input)
+                   ParallelTensor const input)
     : Sampling(model, input, other.top_p, other.name) {}
 
 Sampling::Sampling(FFModel &model,
                    SamplingParams const &params,
-                   const ParallelTensor input,
+                   ParallelTensor const input,
                    char const *name)
     : Sampling(model, input, params.top_p, params.name) {}
 
@@ -246,11 +246,12 @@ void Sampling::forward(FFModel const &ff) {
   assert(false);
 }
 
-FutureMap Sampling::inference(FFModel const &ff,
-                              /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
-                              std::vector<ParallelTensor> const &batch_inputs,
-                              std::vector<ParallelTensor> const &batch_outputs,
-                              MachineView const *mv) {
+FutureMap Sampling::inference(
+    FFModel const &ff,
+    /* Reserved: BatchConfig Updated */ BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -316,6 +317,7 @@ InferenceResult
   }
 
   InferenceResult ir;
+  ir.num_token_ids = batch_size;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   return ir;

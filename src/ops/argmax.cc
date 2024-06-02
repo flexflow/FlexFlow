@@ -357,6 +357,7 @@ InferenceResult
       DT_INT32, regions[2], task->regions[2], FID_DATA, ctx, runtime);
   ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
   InferenceResult ir;
+  ir.num_token_ids = batch_size;
   download_tensor<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   download_tensor(m->probs, ir.probs, batch_size);
@@ -394,6 +395,7 @@ InferenceResult
   int batch_size = bc->num_active_tokens();
   ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
   InferenceResult ir;
+  ir.num_token_ids = batch_size;
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
