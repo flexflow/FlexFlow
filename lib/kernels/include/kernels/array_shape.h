@@ -42,7 +42,7 @@ public:
 
   ArrayShape reversed_dim_order() const;
   ArrayShape sub_shape(std::optional<legion_dim_t> start,
-                       std::optional<legion_dim_t> end);
+                       std::optional<legion_dim_t> end) const;
 
 public:
   LegionTensorDims dims;

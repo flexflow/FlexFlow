@@ -1,4 +1,4 @@
-#include "local_allocator.h"
+#include "local-execution/local_allocator.h"
 #include "kernels/device.h"
 
 namespace FlexFlow {

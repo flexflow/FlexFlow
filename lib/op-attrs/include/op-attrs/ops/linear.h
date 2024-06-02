@@ -36,7 +36,11 @@ CHECK_VALID_OP_ATTR(LinearAttrs);
 
 TensorShape get_weights_shape(LinearAttrs const &attrs,
                               TensorShape const &input);
+ParallelTensorShape get_weights_shape(LinearAttrs const &attrs,
+                                      ParallelTensorShape const &input);
 TensorShape get_bias_shape(LinearAttrs const &attrs, TensorShape const &input);
+ParallelTensorShape get_bias_shape(LinearAttrs const &attrs,
+                                   ParallelTensorShape const &input);
 
 } // namespace FlexFlow
 

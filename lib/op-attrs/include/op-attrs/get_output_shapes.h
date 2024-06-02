@@ -128,9 +128,7 @@ ParallelTensorShape get_output_shape(DropoutAttrs const &,
 ParallelTensorShape get_output_shape(ElementBinaryAttrs const &,
                                      ParallelTensorShape const &,
                                      ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(ElementUnaryAttrs const &,
-                                     ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(ElementScalarUnaryAttrs const &,
+ParallelTensorShape get_output_shape(ElementUnaryUnifiedAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(EmbeddingAttrs const &,
                                      ParallelTensorShape const &);
@@ -152,6 +150,8 @@ ParallelTensorShape get_output_shape(ReductionAttrs const &,
 ParallelTensorShape get_output_shape(RepartitionAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ReplicateAttrs const &,
+                                     ParallelTensorShape const &);
+ParallelTensorShape get_output_shape(ReshapeAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ReverseAttrs const &,
                                      ParallelTensorShape const &);
