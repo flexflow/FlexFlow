@@ -9,11 +9,13 @@ build_targets = [
   "kernels",
   "substitutions",
   "compiler",
-  "kernel-tests",
 ]
 
 test_targets = [
-  "kernel-tests",
+  "kernels-tests",
+  "utils-tests",
+  "substitutions-tests",
+  "compiler-tests",
 ]
 
 [cmake_flags_extra]
