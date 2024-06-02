@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_LOCAL_TASK_ARGUMENT_ACCESSOR_H
 #define _FLEXFLOW_LOCAL_EXECUTION_LOCAL_TASK_ARGUMENT_ACCESSOR_H
 
-#include "task_argument_accessor.h"
+#include "local-execution/task_argument_accessor.h"
 #include <unordered_map>
 #include <variant>
 
@@ -11,16 +11,16 @@ using SlotGradId = std::pair<slot_id, IsGrad>;
 using SlotTensorBackingMapping = std::unordered_map<
     SlotGradId,
     std::variant<GenericTensorAccessorW, std::vector<GenericTensorAccessorW>>>;
-using SlotArgBackingMap = std::unordered_map<slot_id, ConcreteArgSpec>;
+using SlotArgBackingMapping = std::unordered_map<slot_id, ConcreteArgSpec>;
 
 struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
   LocalTaskArgumentAccessor(
       Allocator allocator,
       SlotTensorBackingMapping slot_tensor_backing_mapping,
-      SlotArgBackingMap slot_argument_map)
+      SlotArgBackingMapping slot_argument_mapping)
       : allocator(allocator),
         slot_tensor_backing_mapping(slot_tensor_backing_mapping),
-        slot_argument_map(slot_argument_map){};
+        slot_argument_mapping(slot_argument_mapping){};
   LocalTaskArgumentAccessor(LocalTaskArgumentAccessor const &) = delete;
   LocalTaskArgumentAccessor(LocalTaskArgumentAccessor &&) = delete;
 
@@ -40,7 +40,7 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 private:
   Allocator allocator;
   SlotTensorBackingMapping slot_tensor_backing_mapping;
-  SlotArgBackingMap slot_argument_map;
+  SlotArgBackingMapping slot_argument_mapping;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalTaskArgumentAccessor);
 

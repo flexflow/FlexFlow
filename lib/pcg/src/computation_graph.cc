@@ -3,7 +3,7 @@
 namespace FlexFlow {
 
 std::vector<operator_guid_t>
-    traverse_comp_graph_forward(ComputationGraph const &comp_graph) {
+    topological_ordering(ComputationGraph const &comp_graph) {
   std::vector<Node> layers = get_topological_ordering(comp_graph.value());
   return transform(layers, [&](Node const &e) -> operator_guid_t {
     return operator_guid_t{e};
@@ -11,7 +11,7 @@ std::vector<operator_guid_t>
 }
 
 std::vector<operator_guid_t>
-    traverse_comp_graph_backward(ComputationGraph const &comp_graph) {
+    reverse_topological_ordering(ComputationGraph const &comp_graph) {
   std::vector<Node> layers =
       reversed<std::vector<Node>>(get_topological_ordering(comp_graph.value()));
   return transform(layers, [&](Node const &e) -> operator_guid_t {

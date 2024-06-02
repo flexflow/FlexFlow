@@ -2,19 +2,9 @@
 
 namespace FlexFlow {
 
-OpTensorSpec input_tensor(int idx,
-                          OpSlotOptions option = OpSlotOptions::NECESSARY) {
-  return {TensorRole::INPUT, option, idx};
-}
-
-OpTensorSpec output_tensor(int idx,
-                           OpSlotOptions option = OpSlotOptions::NECESSARY) {
-  return {TensorRole::OUTPUT, option, idx};
-}
-
-OpTensorSpec weight_tensor(int idx,
-                           OpSlotOptions option = OpSlotOptions::NECESSARY) {
-  return {TensorRole::WEIGHT, option, idx};
+void OpTaskBinding::bind(
+    slot_id slot, VariadicTensorRef<OpTensorSpec> const &variadic_tensor_ref) {
+  NOT_IMPLEMENTED();
 }
 
 void OpTaskBinding::bind(slot_id slot, OpTensorSpec const &tensor_spec) {
@@ -23,6 +13,11 @@ void OpTaskBinding::bind(slot_id slot, OpTensorSpec const &tensor_spec) {
 
 void OpTaskBinding::bind_grad(slot_id slot, OpTensorSpec const &tensor_spec) {
   this->tensor_bindings.insert({{slot, IsGrad::YES}, tensor_spec});
+}
+
+void OpTaskBinding::insert_arg_spec(slot_id name, OpArgSpec const &arg_spec) {
+  assert(!contains_key(this->arg_bindings, name));
+  this->arg_bindings.insert({name, arg_spec});
 }
 
 std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
@@ -50,8 +45,8 @@ OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd) {
   return bwd;
 }
 
-bool is_op_tensor_spec_invalid(OpTensorSlotSpec tensor_slot_spec,
-                               OpTensorSpec tensor_spec) {
+bool is_op_tensor_spec_invalid(OpTensorSlotSpec const &tensor_slot_spec,
+                               OpTensorSpec const &tensor_spec) {
   return tensor_spec.role != tensor_slot_spec.tensor_role ||
          tensor_spec.slot_option != tensor_slot_spec.slot_option;
 }
@@ -62,7 +57,7 @@ bool is_tensor_invocation_valid(OpTaskSignature const &sig,
   for (OpTensorSlotSpec const &op_tensor_slot_spec : sig.get_tensor_slots()) {
     std::pair<slot_id, IsGrad> tensor_key =
         std::make_pair(op_tensor_slot_spec.name, op_tensor_slot_spec.is_grad);
-    OpTensorSpec const &op_tensor_spec = tensor_bindings.at(tensor_key);
+    OpTensorSpec op_tensor_spec = tensor_bindings.at(tensor_key);
     if (is_op_tensor_spec_invalid(op_tensor_slot_spec, op_tensor_spec)) {
       return false;
     }

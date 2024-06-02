@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_GET_TASK_IDS_H
 #define _FLEXFLOW_LOCAL_EXECUTION_GET_TASK_IDS_H
 
+#include "local-execution/tasks.h"
 #include "op-attrs/operator_attrs.h"
-#include "tasks.h"
 #include "utils/variant.h"
 #include <variant>
 

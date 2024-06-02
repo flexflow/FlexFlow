@@ -1,71 +1,13 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_TASK_ARGUMENT_ACCESSOR_H
 #define _FLEXFLOW_LOCAL_EXECUTION_TASK_ARGUMENT_ACCESSOR_H
 
-#include "kernels/accessor.h"
-#include "kernels/allocation.h"
-#include "kernels/linear_kernels.h"
-#include "local-execution/arg_ref.h"
-#include "local-execution/concrete_arg.h"
-#include "local-execution/config.h"
+#include "itask_argument_accessor.h"
 #include "local-execution/device_specific.h"
-#include "local-execution/op_task_signature.h"
-#include "local-execution/permissions.h"
+#include "local-execution/device_states.h"
 #include "local-execution/tasks.h"
-#include "op-attrs/parallel_tensor_shape.h"
 #include "utils/variant.h"
-#include <cstddef>
-#include <memory>
-#include <optional>
-#include <type_traits>
-#include <variant>
-#include <vector>
 
 namespace FlexFlow {
-
-template <Permissions>
-struct privilege_mode_to_accessor_t {};
-
-template <>
-struct privilege_mode_to_accessor_t<Permissions::RW> {
-  using type = GenericTensorAccessorW;
-};
-
-template <>
-struct privilege_mode_to_accessor_t<Permissions::RO> {
-  using type = GenericTensorAccessorR;
-};
-
-template <>
-struct privilege_mode_to_accessor_t<Permissions::WO> {
-  using type = GenericTensorAccessorW;
-};
-
-template <Permissions PRIV>
-using privilege_mode_to_accessor =
-    typename privilege_mode_to_accessor_t<PRIV>::type;
-
-using PrivilegeTensorAccessor =
-    std::variant<GenericTensorAccessorR, GenericTensorAccessorW>;
-using PrivilegeVariadicTensorAccessor =
-    std::variant<std::vector<GenericTensorAccessorR>,
-                 std::vector<GenericTensorAccessorW>>;
-
-struct ITaskArgumentAccessor {
-  ITaskArgumentAccessor &operator=(ITaskArgumentAccessor const &) = delete;
-
-  virtual ~ITaskArgumentAccessor() = default;
-
-  virtual ConcreteArgSpec const &get_concrete_arg(slot_id) const = 0;
-
-  virtual PrivilegeTensorAccessor
-      get_tensor(slot_id slot, Permissions priv, IsGrad is_grad) const = 0;
-  virtual PrivilegeVariadicTensorAccessor get_variadic_tensor(
-      slot_id slot, Permissions priv, IsGrad is_grad) const = 0;
-
-  virtual Allocator get_allocator() const = 0;
-  virtual size_t get_device_idx() const = 0;
-};
-CHECK_RC_COPY_VIRTUAL_COMPLIANT(ITaskArgumentAccessor);
 
 struct TaskArgumentAccessor {
   template <typename T>
@@ -119,7 +61,7 @@ private:
 };
 
 using TaskImplFunction = std::variant<
-    std::function<DeviceStates(TaskArgumentAccessor const &)>,
+    std::function<DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>,
     std::function<std::optional<float>(TaskArgumentAccessor const &)>>;
 
 template <task_id_t>

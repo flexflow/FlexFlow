@@ -59,9 +59,13 @@ static DeviceSpecific<RepartitionPerDeviceState>
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   // Note: use the input data type
-  DeviceSpecific<RepartitionPerDeviceState> per_device_state =
+
+  // TODO: refactor ops as follows
+  // DeviceSpecific<RepartitionPerDeviceState> per_device_state = init_kernel(handle, input.data_type);
+
+  RepartitionPerDeviceState per_device_state =
       init_kernel(handle, input.data_type);
-  return per_device_state;
+  return DeviceSpecific<RepartitionPerDeviceState>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

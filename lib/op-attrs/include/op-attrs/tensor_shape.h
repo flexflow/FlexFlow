@@ -20,6 +20,7 @@ struct TensorShape : public use_visitable_cmp<TensorShape> {
 
   size_t at(ff_dim_t) const;
   size_t operator[](ff_dim_t) const;
+  size_t get_volume() const;
 
 public:
   TensorDims dims;

@@ -36,9 +36,9 @@ struct ComputationGraph
 CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(ComputationGraph);
 
 std::vector<operator_guid_t>
-    traverse_comp_graph_forward(ComputationGraph const &comp_graph);
+    topological_ordering(ComputationGraph const &comp_graph);
 std::vector<operator_guid_t>
-    traverse_comp_graph_backward(ComputationGraph const &comp_graph);
+    reverse_topological_ordering(ComputationGraph const &comp_graph);
 std::vector<tensor_guid_t>
     get_outgoing_tensors(ComputationGraph const &comp_graph, operator_guid_t n);
 std::vector<tensor_guid_t>

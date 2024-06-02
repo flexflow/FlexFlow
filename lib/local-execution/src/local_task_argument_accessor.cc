@@ -1,10 +1,10 @@
-#include "local_task_argument_accessor.h"
+#include "local-execution/local_task_argument_accessor.h"
 
 namespace FlexFlow {
 
 ConcreteArgSpec const &
     LocalTaskArgumentAccessor::get_concrete_arg(slot_id name) const {
-  return this->slot_argument_map.at(name);
+  return this->slot_argument_mapping.at(name);
 }
 
 PrivilegeTensorAccessor LocalTaskArgumentAccessor::get_tensor(
@@ -29,7 +29,8 @@ PrivilegeVariadicTensorAccessor LocalTaskArgumentAccessor::get_variadic_tensor(
       this->slot_tensor_backing_mapping.at(slot_grad_pair));
   if (priv == Permissions::RO) {
     std::vector<GenericTensorAccessorR> readonly_variadic_tensor_backing = {};
-    for (auto tensor_backing : variadic_tensor_backing) {
+    for (GenericTensorAccessorW const &tensor_backing :
+         variadic_tensor_backing) {
       readonly_variadic_tensor_backing.push_back(
           {tensor_backing.data_type, tensor_backing.shape, tensor_backing.ptr});
     }

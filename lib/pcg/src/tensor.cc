@@ -2,6 +2,10 @@
 
 namespace FlexFlow {
 
+size_t Tensor::get_volume() const {
+  return this->get_shape().get_volume();
+}
+
 Tensor::operator TensorShape() const {
   return TensorShape{dims, data_type};
 }
