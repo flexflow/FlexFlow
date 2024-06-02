@@ -76,7 +76,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
 
     std::vector<float> host_input_data(num_elements);
-    for (auto &val : host_input_data) {
+    for (float &val : host_input_data) {
       val = dist(gen);
     }
 

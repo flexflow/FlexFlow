@@ -30,7 +30,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       input_accessors.push_back(accessor);
 
       std::vector<float> host_input_data(size_per_input);
-      for (auto &val : host_input_data) {
+      for (float &val : host_input_data) {
         val = dist(gen);
       }
       checkCUDA(cudaMemcpy(input_data_ptr, host_input_data.data(),

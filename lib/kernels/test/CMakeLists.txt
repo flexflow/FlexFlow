@@ -1,6 +1,6 @@
 ff_add_test_executable(
   NAME
-    kernel-tests
+    kernels-tests
   SRC_PATTERNS
     src/*.cc
   PRIVATE_INCLUDE 

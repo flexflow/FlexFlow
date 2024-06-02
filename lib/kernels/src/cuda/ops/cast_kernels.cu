@@ -67,7 +67,6 @@ void forward_kernel(ffStream_t stream,
       input_type, output_type, stream, input, output);
 }
 
-// void backward_kernel(PerDeviceFFHandle handle,
 void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &output,

@@ -200,10 +200,8 @@ void backward_kernel(cudaStream_t stream,
                      int in_dim,
                      int out_dim,
                      int batch_size) {
-  std::cout << "Entering backward kernel\n" ;
   checkCUBLAS(cublasSetStream(m.handle.blas, stream));
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
-  std::cout << "Setting stream\n" ;
   float alpha = 1.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m.input_type);
   cudaDataType_t weight_type = ff_to_cuda_datatype(m.weight_type);
@@ -229,7 +227,6 @@ void backward_kernel(cudaStream_t stream,
   }
   // Compute weight gradiant
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
-  std::cout << "Computing weight gradient\n" ;
   checkCUBLAS(cublasGemmEx(m.handle.blas,
                          CUBLAS_OP_N,
                          CUBLAS_OP_T,
@@ -253,7 +250,6 @@ void backward_kernel(cudaStream_t stream,
   if (m.regularizer == std::nullopt) {
     // do nothing
   } else {
-    std::cout << "Applying regularizer\n" ;
     RegularizerAttrs regularizer_attrs = m.regularizer.value();
     if (std::holds_alternative<L2RegularizerAttrs>(regularizer_attrs)) {
       L2RegularizerAttrs l2_attrs =
@@ -281,7 +277,6 @@ void backward_kernel(cudaStream_t stream,
   // NOTE: we use alpha=1 for bias_grad to accumulate gradients
   // use_bias = True
   if (bias_grad_ptr != NULL) {
-    std::cout << "Computing bias gradient\n" ;
     checkCUBLAS(cublasGemmEx(m.handle.blas,
                            CUBLAS_OP_N,
                            CUBLAS_OP_T,
@@ -305,7 +300,6 @@ void backward_kernel(cudaStream_t stream,
   // Compute data gradiant
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
-    std::cout << "Computing input gradient\n" ;
     checkCUBLAS(cublasGemmEx(m.handle.blas,
                            CUBLAS_OP_N,
                            CUBLAS_OP_N,

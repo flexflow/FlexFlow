@@ -92,10 +92,6 @@ TEST_SUITE(FF_TEST_SUITE) {
                          host_float_data.size() * sizeof(float),
                          cudaMemcpyDeviceToHost));
 
-    for (size_t i = 0; i < host_int_data.size(); ++i) {
-      REQUIRE(typeid(host_float_data[i]) == typeid(float));
-    }
-
     checkCUDA(cudaStreamDestroy(stream));
   }
 }
