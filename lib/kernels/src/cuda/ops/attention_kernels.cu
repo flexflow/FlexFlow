@@ -303,10 +303,6 @@ void backward_kernel(cudaStream_t stream,
 
 void cleanup_kernel(Allocator &allocator,
                     MHAPerDeviceState const &device_state) {
-  /* Noticed that loWinIdx and hiWinIdx are not allocated on GPU? Should 
-     I be changing how we deallocate or how we allocate? */  
-  // allocator.deallocate(device_state.loWinIdx);
-  // allocator.deallocate(device_state.hiWinIdx);
   free(device_state.loWinIdx);
   free(device_state.hiWinIdx);
   checkCUDNN(cudnnDestroyAttnDescriptor(device_state.attnDesc));

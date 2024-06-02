@@ -1,14 +1,23 @@
 #include "doctest/doctest.h"
 #include "kernels/local_allocator.h"
 #include "kernels/split_kernels.h"
+#include "test_utils.h"
 #include <algorithm>
-#include <iostream>
 #include <numeric>
 #include <vector>
 
-namespace FlexFlow {
+template <typename T>
+void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
+                   const std::vector<size_t> &num_elements,
+                   Allocator &allocator) {
+  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
+    *gpu_data_ptrs[i] =
+        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(float)));
+  }
+}
 
-TEST_SUITE("FF_TEST_SUITE") {
+using namespace ::FlexFlow;
+TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Split Forward and Backward Kernel") {
     int num_elements = 100;
     int num_outputs = 2;
@@ -23,10 +32,8 @@ TEST_SUITE("FF_TEST_SUITE") {
 
     float *input_data =
         static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
-    std::vector<float> host_input_data(num_elements);
-    std::iota(host_input_data.begin(), host_input_data.end(), 0);
-    cudaMemcpy(input_data, host_input_data.data(), num_elements * sizeof(float),
-               cudaMemcpyHostToDevice);
+    std::vector<float> host_input_data =
+        returnRandomFillDeviceData(&input_data, num_elements);
 
     std::vector<float *> output_ptrs(num_outputs);
     std::vector<std::vector<float>> host_output_data(num_outputs,
@@ -56,7 +63,7 @@ TEST_SUITE("FF_TEST_SUITE") {
     for (int i = 0; i < num_outputs; i++) {
       grad_output_ptrs[i] = output_ptrs[i];
     }
-    
+
     float *grad_input_data =
         static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
     cudaMemset(grad_input_data, 0, num_elements * sizeof(float));
@@ -77,5 +84,3 @@ TEST_SUITE("FF_TEST_SUITE") {
     cudaStreamDestroy(stream);
   }
 }
-
-} // namespace FlexFlow

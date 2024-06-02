@@ -16,7 +16,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GatherPerDeviceState,
 
 namespace Kernels {
 namespace Gather {
-void forward_kernel(ffStream_t stream,
+void forward_kernel(cudaStream_t stream,
                     GatherPerDeviceState const &m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorR const &index,
@@ -24,7 +24,7 @@ void forward_kernel(ffStream_t stream,
                     size_t stride,
                     size_t input_dim_size,
                     size_t output_dim_size);
-void backward_kernel(ffStream_t stream,
+void backward_kernel(cudaStream_t stream,
                      GatherPerDeviceState const &m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorR const &index,

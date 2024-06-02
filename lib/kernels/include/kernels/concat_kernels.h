@@ -3,7 +3,6 @@
 
 #include "device.h"
 #include "kernels/accessor.h"
-#include "kernels/concat_kernels.h"
 
 namespace FlexFlow {
 namespace Kernels {

@@ -1,36 +1,39 @@
 #include "doctest/doctest.h"
 #include "kernels/combine_kernels.h"
 #include "kernels/local_allocator.h"
+#include "test_utils.h"
 
-#include <random>
+template <typename T>
+void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
+                   const std::vector<size_t> &num_elements,
+                   Allocator &allocator) {
+  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
+    *gpu_data_ptrs[i] =
+        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(float)));
+  }
+}
 
-namespace FlexFlow {
+using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test combine kernel forward") {
     std::size_t dims[] = {100, 100};
     std::size_t num_dims = 2;
     FlexFlow::ArrayShape shape(dims, num_dims);
+    std::size_t num_elements = 100 * 100;
 
     Allocator allocator = get_local_memory_allocator();
-    void *input_data_ptr = allocator.allocate(100 * 100 * sizeof(float));
-    void *output_data_ptr = allocator.allocate(100 * 100 * sizeof(float));
+
+    void *input_data_ptr, *output_data_ptr;
+    std::vector<void **> ptrs = {&input_data_ptr, &output_data_ptr};
+    std::vector<size_t> sizes = {num_elements, num_elements};
+    allocate_ptrs(ptrs, sizes, allocator);
+    std::vector<float> host_input_data =
+        returnRandomFillDeviceData(&input_data_ptr, num_elements);
 
     const GenericTensorAccessorR accessorR{DataType::FLOAT, shape,
                                            input_data_ptr};
     const GenericTensorAccessorW accessorW{DataType::FLOAT, shape,
                                            output_data_ptr};
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-    std::vector<float> host_input_data(100 * 100);
-    for (auto &val : host_input_data) {
-      val = dist(gen);
-    }
-
-    checkCUDA(cudaMemcpy(input_data_ptr, host_input_data.data(),
-                         host_input_data.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
@@ -42,7 +45,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                          host_output_data.size() * sizeof(float),
                          cudaMemcpyDeviceToHost));
 
-    for (size_t i = 0; i < host_input_data.size(); ++i) {
+    for (size_t i = 0; i < num_elements; ++i) {
       REQUIRE(host_output_data[i] == host_input_data[i]);
     }
 
@@ -55,29 +58,25 @@ TEST_SUITE(FF_TEST_SUITE) {
     FlexFlow::ArrayShape shape(dims, num_dims);
 
     Allocator allocator = get_local_memory_allocator();
-    void *grad_output_data_ptr = allocator.allocate(100 * 100 * sizeof(float));
-    void *grad_input_data_ptr = allocator.allocate(100 * 100 * sizeof(float));
 
-    std::vector<float> host_output_grad(100 * 100, 1.0f);
-    std::vector<float> host_input_grad(100 * 100, 0.0f);
+    cudaStream_t stream;
+    checkCUDA(cudaStreamCreate(&stream));
 
-    checkCUDA(cudaMemcpy(grad_output_data_ptr, host_output_grad.data(),
-                         host_output_grad.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(grad_input_data_ptr, host_input_grad.data(),
-                         host_input_grad.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
+    void *grad_output_data_ptr, *grad_input_data_ptr;
+    std::vector<void **> ptrs = {&grad_output_data_ptr, &grad_input_data_ptr};
+    std::vector<size_t> sizes = {100 * 100, 100 * 100};
+    allocate_ptrs(ptrs, sizes, allocator);
+    fillDeviceDataOnes(&grad_output_data_ptr, 100 * 100);
+    fillDeviceDataZeros(&grad_input_data_ptr, 100 * 100);
 
     const GenericTensorAccessorR accessorRGrad{DataType::FLOAT, shape,
                                                grad_output_data_ptr};
     const GenericTensorAccessorW accessorWGrad{DataType::FLOAT, shape,
                                                grad_input_data_ptr};
 
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
-
     Kernels::Combine::backward_kernel(stream, accessorRGrad, accessorWGrad);
 
+    std::vector<float> host_input_grad(100 * 100);
     checkCUDA(cudaMemcpy(host_input_grad.data(), grad_input_data_ptr,
                          host_input_grad.size() * sizeof(float),
                          cudaMemcpyDeviceToHost));
@@ -89,4 +88,3 @@ TEST_SUITE(FF_TEST_SUITE) {
     checkCUDA(cudaStreamDestroy(stream));
   }
 }
-} // namespace FlexFlow

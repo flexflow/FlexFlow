@@ -34,12 +34,12 @@ namespace Kernels {
 namespace LayerNorm {
 
 // todo: this may have some problem.
-LayerNormPerDeviceState init_kernel(PerDeviceFFHandle const &,
-                                    Allocator const &,
-                                    bool elementwise_affine,
-                                    int64_t effective_batch_size,
-                                    int64_t effective_num_elements,
-                                    float eps);
+LayerNormPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
+                                    Allocator &allocator,
+                                    bool elementwise_affine_,
+                                    int64_t effective_batch_size_,
+                                    int64_t effective_num_elements_,
+                                    float eps_);
 
 void forward_kernel(ffStream_t stream,
                     LayerNormPerDeviceState const &m,

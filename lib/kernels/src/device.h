@@ -17,7 +17,8 @@
 
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #define FF_CUDNN_STATUS_SUCCESS CUDNN_STATUS_SUCCESS
-#define FF_CURAND_STATUS_SUCESS CURAND_STATUS_SUCCESS
+#define FF_CURAND_STATUS_SUCCESS CURAND_STATUS_SUCCESS
+#define FF_CUBLAS_STATUS_SUCCESS CUBLAS_STATUS_SUCCESS
 #elif defined(FF_USE_HIP_ROCM)
 #define FF_CUDNN_STATUS_SUCCESS miopenStatusSuccess
 #define FF_CURAND_STATUS_SUCESS HIPRAND_STATUS_SUCCESS
@@ -44,8 +45,17 @@ cudaError_t get_legion_stream(cudaStream_t *stream);
 #define checkCURAND(status)                                                    \
   do {                                                                         \
     std::stringstream _error;                                                  \
-    if (status != FF_CURAND_STATUS_SUCESS) {                                   \
+    if (status != FF_CURAND_STATUS_SUCCESS) {                                   \
       _error << "CURAND failure: " << status;                                  \
+      FatalError(_error.str());                                                \
+    }                                                                          \
+  } while (0)
+
+#define checkCUBLAS(status)                                                    \
+  do {                                                                         \
+    std::stringstream _error;                                                  \
+    if (status != FF_CUBLAS_STATUS_SUCCESS) {                                   \
+      _error << "CUBLAS failure: " << status;                                  \
       FatalError(_error.str());                                                \
     }                                                                          \
   } while (0)

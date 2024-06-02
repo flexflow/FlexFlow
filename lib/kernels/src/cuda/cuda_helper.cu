@@ -46,7 +46,7 @@ __global__ void ones_kernel(float *ptr, coord_t size) {
 }
 
 template <typename DT>
-__global__ void assign_kernel(DT *ptr, coord_t size, DT value) {
+__global__ void assign_kernel(DT *ptr, size_t size, DT value) {
   CUDA_KERNEL_LOOP(i, size) {
     ptr[i] = value;
   }
@@ -272,15 +272,15 @@ cudaDataType_t ff_to_cuda_datatype(DataType type) {
 }
 
 template __global__ void
-    assign_kernel<half>(half *ptr, coord_t size, half value);
+    assign_kernel<half>(half *ptr, size_t size, half value);
 template __global__ void
-    assign_kernel<float>(float *ptr, coord_t size, float value);
+    assign_kernel<float>(float *ptr, size_t size, float value);
 template __global__ void
-    assign_kernel<double>(double *ptr, coord_t size, double value);
+    assign_kernel<double>(double *ptr, size_t size, double value);
 template __global__ void
-    assign_kernel<int32_t>(int32_t *ptr, coord_t size, int32_t value);
+    assign_kernel<int32_t>(int32_t *ptr, size_t size, int32_t value);
 template __global__ void
-    assign_kernel<int64_t>(int64_t *ptr, coord_t size, int64_t value);
+    assign_kernel<int64_t>(int64_t *ptr, size_t size, int64_t value);
 
 template __global__ void
     add_kernel<float>(float *dst, float const *src, size_t size);

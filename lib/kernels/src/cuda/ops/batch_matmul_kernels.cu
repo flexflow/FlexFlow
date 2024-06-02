@@ -32,7 +32,7 @@ void forward_kernel(cudaStream_t stream,
                     int a_seq_length_dim,
                     int b_seq_length_dim,
                     int seq_length) {
-  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUBLAS(cublasSetStream(handle.blas, stream));
   checkCUDNN(cudnnSetStream(handle.dnn, stream));
   int lda = k;
   int ldb = m;
@@ -63,7 +63,7 @@ void forward_kernel(cudaStream_t stream,
   }
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDA(cublasSgemmStridedBatched(handle.blas,
+  checkCUBLAS(cublasSgemmStridedBatched(handle.blas,
                                       CUBLAS_OP_N,
                                       CUBLAS_OP_N,
                                       m,
@@ -95,14 +95,14 @@ void backward_kernel(cudaStream_t stream,
                      int n,
                      int k,
                      int batch) {
-  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUBLAS(cublasSetStream(handle.blas, stream));
   checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
   int a_stride = n * k;
   int b_stride = m * k;
   int o_stride = n * m;
   float alpha = 1.0f;
-  checkCUDA(cublasSgemmStridedBatched(handle.blas,
+  checkCUBLAS(cublasSgemmStridedBatched(handle.blas,
                                       CUBLAS_OP_T,
                                       CUBLAS_OP_N,
                                       k,
@@ -120,7 +120,7 @@ void backward_kernel(cudaStream_t stream,
                                       k,
                                       a_stride,
                                       batch));
-  checkCUDA(cublasSgemmStridedBatched(handle.blas,
+  checkCUBLAS(cublasSgemmStridedBatched(handle.blas,
                                       CUBLAS_OP_N,
                                       CUBLAS_OP_T,
                                       m,

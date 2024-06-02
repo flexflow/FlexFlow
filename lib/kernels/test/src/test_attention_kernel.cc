@@ -1,11 +1,18 @@
 #include "doctest/doctest.h"
 #include "kernels/attention_kernels.h"
 #include "kernels/local_allocator.h"
-#include <iostream>
+#include "test_utils.h"
 
-#include <random>
+void allocate_ptrs(std::vector<void **> &gpu_data_ptrs,
+                   const std::vector<size_t> &num_elements,
+                   Allocator &allocator) {
+  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
+    *gpu_data_ptrs[i] = allocator.allocate(num_elements[i] * sizeof(float));
+  }
+}
 
-namespace FlexFlow {
+using namespace ::FlexFlow;
+
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test multi-head attention forward kernel") {
     int num_samples = 10;
@@ -14,63 +21,33 @@ TEST_SUITE(FF_TEST_SUITE) {
     int qProjSize = 64, kProjSize = 64, vProjSize = 64, oProjSize = 64;
     int qoSeqLength = 20, kvSeqLength = 20;
 
+    size_t query_size = num_samples * qoSeqLength * qSize;
+    size_t key_size = num_samples * kvSeqLength * kSize;
+    size_t value_size = num_samples * kvSeqLength * vSize;
+    size_t output_size = num_samples * qoSeqLength * oProjSize;
+
     Allocator allocator = get_local_memory_allocator();
 
     PerDeviceFFHandle handle;
-    cudnnCreate(&handle.dnn);
-    cublasCreate(&handle.blas);
-    handle.workSpaceSize = 1024 * 1024;
-    cudaMalloc(&handle.workSpace, handle.workSpaceSize);
-    handle.allowTensorOpMathConversion = true;
+    setPerDeviceFFHandle(&handle);
+
+    cudaStream_t stream;
+    checkCUDA(cudaStreamCreate(&stream));
 
     MHAPerDeviceState state = Kernels::MultiHeadAttention::init_kernel(
         handle, allocator, num_samples, num_heads, qSize, kSize, vSize,
         qProjSize, kProjSize, vProjSize, oProjSize, qoSeqLength, kvSeqLength,
         false);
 
-    void *query_ptr =
-        allocator.allocate(num_samples * qoSeqLength * qSize * sizeof(float));
-    void *key_ptr =
-        allocator.allocate(num_samples * kvSeqLength * kSize * sizeof(float));
-    void *value_ptr =
-        allocator.allocate(num_samples * kvSeqLength * vSize * sizeof(float));
-    void *weight_ptr = allocator.allocate(state.weightSize);
-    void *output_ptr = allocator.allocate(num_samples * qoSeqLength *
-                                          oProjSize * sizeof(float));
+    void *query_ptr, *key_ptr, *value_ptr, *weight_ptr, *output_ptr;
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+    std::vector<void**> ptrs = {&query_ptr, &key_ptr, &value_ptr, &weight_ptr,
+                                 &output_ptr};
+    std::vector<size_t> sizes = {query_size, key_size, value_size,
+                                 state.weightSize, output_size};
 
-    std::vector<float> host_query(num_samples * qoSeqLength * qSize);
-    std::vector<float> host_key(num_samples * kvSeqLength * kSize);
-    std::vector<float> host_value(num_samples * kvSeqLength * vSize);
-    std::vector<float> host_weight(state.weightSize / sizeof(float));
-
-    for (auto &val : host_query)
-      val = dist(gen);
-    for (auto &val : host_key)
-      val = dist(gen);
-    for (auto &val : host_value)
-      val = dist(gen);
-    for (auto &val : host_weight)
-      val = dist(gen);
-
-    checkCUDA(cudaMemcpy(query_ptr, host_query.data(),
-                         host_query.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(key_ptr, host_key.data(),
-                         host_key.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(value_ptr, host_value.data(),
-                         host_value.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(weight_ptr, host_weight.data(),
-                         host_weight.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
+    allocate_ptrs(ptrs, sizes, allocator);
+    randomFillDevicePtrs(ptrs, sizes);
 
     Kernels::MultiHeadAttention::forward_kernel(
         stream, state, static_cast<float *>(query_ptr),
@@ -82,9 +59,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                          host_output.size() * sizeof(float),
                          cudaMemcpyDeviceToHost));
 
-    // TODO: PROBABLY NEED DIFFERENT CHECK?!!??!
-    REQUIRE(std::any_of(host_output.begin(), host_output.end(),
-                        [](float v) { return v != 0; }));
+    REQUIRE(contains_non_zero(host_output));
 
     checkCUDA(cudaStreamDestroy(stream));
     Kernels::MultiHeadAttention::cleanup_kernel(allocator, state);
@@ -97,95 +72,40 @@ TEST_SUITE(FF_TEST_SUITE) {
     int qProjSize = 64, kProjSize = 64, vProjSize = 64, oProjSize = 64;
     int qoSeqLength = 20, kvSeqLength = 20;
 
+    size_t query_size = num_samples * qoSeqLength * qSize;
+    size_t key_size = num_samples * kvSeqLength * kSize;
+    size_t value_size = num_samples * kvSeqLength * vSize;
+    size_t output_size = num_samples * qoSeqLength * oProjSize;
+
     Allocator allocator = get_local_memory_allocator();
 
     PerDeviceFFHandle handle;
-    cudnnCreate(&handle.dnn);
-    cublasCreate(&handle.blas);
-    handle.workSpaceSize = 1024 * 1024;
-    cudaMalloc(&handle.workSpace, handle.workSpaceSize);
-    handle.allowTensorOpMathConversion = true;
+    setPerDeviceFFHandle(&handle);
+    cudaStream_t stream;
+    checkCUDA(cudaStreamCreate(&stream));
 
     MHAPerDeviceState state = Kernels::MultiHeadAttention::init_kernel(
         handle, allocator, num_samples, num_heads, qSize, kSize, vSize,
         qProjSize, kProjSize, vProjSize, oProjSize, qoSeqLength, kvSeqLength,
         false);
 
-    void *query_ptr =
-        allocator.allocate(num_samples * qoSeqLength * qSize * sizeof(float));
-    void *key_ptr =
-        allocator.allocate(num_samples * kvSeqLength * kSize * sizeof(float));
-    void *value_ptr =
-        allocator.allocate(num_samples * kvSeqLength * vSize * sizeof(float));
-    void *weight_ptr = allocator.allocate(state.weightSize);
-    void *output_ptr = allocator.allocate(num_samples * qoSeqLength *
-                                          oProjSize * sizeof(float));
+    void *query_ptr, *key_ptr, *value_ptr, *weight_ptr, *output_ptr;
+    void *query_grad_ptr, *key_grad_ptr, *value_grad_ptr, *weight_grad_ptr,
+        *output_grad_ptr;
 
-    void *query_grad_ptr =
-        allocator.allocate(num_samples * qoSeqLength * qSize * sizeof(float));
-    void *key_grad_ptr =
-        allocator.allocate(num_samples * kvSeqLength * kSize * sizeof(float));
-    void *value_grad_ptr =
-        allocator.allocate(num_samples * kvSeqLength * vSize * sizeof(float));
-    void *weight_grad_ptr = allocator.allocate(state.weightSize);
-    void *output_grad_ptr = allocator.allocate(num_samples * qoSeqLength *
-                                               oProjSize * sizeof(float));
+    std::vector<void**> ptrs = {&query_ptr, &key_ptr, &value_ptr, &weight_ptr,
+                                 &output_ptr};
+    std::vector<void**> grad_ptrs = {&query_grad_ptr, &key_grad_ptr,
+                                      &value_grad_ptr, &weight_grad_ptr,
+                                      &output_grad_ptr};
 
-    cudaMemset(query_grad_ptr, 0,
-               num_samples * qoSeqLength * qSize * sizeof(float));
-    cudaMemset(key_grad_ptr, 0,
-               num_samples * kvSeqLength * kSize * sizeof(float));
-    cudaMemset(value_grad_ptr, 0,
-               num_samples * kvSeqLength * vSize * sizeof(float));
-    cudaMemset(weight_grad_ptr, 0, state.weightSize);
-    cudaMemset(output_grad_ptr, 0,
-               num_samples * qoSeqLength * oProjSize * sizeof(float));
+    std::vector<size_t> sizes = {query_size,       key_size,    value_size,
+                                 state.weightSize, output_size, output_size};
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-
-    std::vector<float> host_query(num_samples * qoSeqLength * qSize);
-    std::vector<float> host_key(num_samples * kvSeqLength * kSize);
-    std::vector<float> host_value(num_samples * kvSeqLength * vSize);
-    std::vector<float> host_weight(state.weightSize / sizeof(float));
-    std::vector<float> host_output(num_samples * qoSeqLength * oProjSize);
-    std::vector<float> host_output_grad(num_samples * qoSeqLength * oProjSize);
-
-    for (auto &val : host_query)
-      val = dist(gen);
-    for (auto &val : host_key)
-      val = dist(gen);
-    for (auto &val : host_value)
-      val = dist(gen);
-    for (auto &val : host_weight)
-      val = dist(gen);
-    for (auto &val : host_output)
-      val = dist(gen);
-    for (auto &val : host_output_grad)
-      val = dist(gen);
-
-    checkCUDA(cudaMemcpy(query_ptr, host_query.data(),
-                         host_query.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(key_ptr, host_key.data(),
-                         host_key.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(value_ptr, host_value.data(),
-                         host_value.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(weight_ptr, host_weight.data(),
-                         host_weight.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(output_ptr, host_output.data(),
-                         host_output.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(output_grad_ptr, host_output_grad.data(),
-                         host_output_grad.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
-
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
+    allocate_ptrs(ptrs, sizes, allocator);
+    allocate_ptrs(grad_ptrs, sizes, allocator);
+    randomFillDevicePtrs(ptrs, sizes);
+    randomFillDevicePtrs(grad_ptrs, sizes);
 
     Kernels::MultiHeadAttention::backward_kernel(
         stream, state, static_cast<float *>(query_ptr),
@@ -201,12 +121,10 @@ TEST_SUITE(FF_TEST_SUITE) {
                          output_grad.size() * sizeof(float),
                          cudaMemcpyDeviceToHost));
 
-    REQUIRE(std::any_of(output_grad.begin(), output_grad.end(),
-                        [](float v) { return v != 0; }));
+    REQUIRE(contains_non_zero(output_grad));
 
     checkCUDA(cudaStreamDestroy(stream));
 
     Kernels::MultiHeadAttention::cleanup_kernel(allocator, state);
   }
 }
-} // namespace FlexFlow

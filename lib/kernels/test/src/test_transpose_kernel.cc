@@ -1,18 +1,22 @@
 #include "doctest/doctest.h"
 #include "kernels/local_allocator.h"
 #include "kernels/transpose_kernels.h"
+#include "test_utils.h"
 #include <algorithm>
 #include <iostream>
 #include <vector>
 
-namespace FlexFlow {
+template <typename T>
+void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
+                   const std::vector<size_t> &num_elements,
+                   Allocator &allocator) {
+  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
+    *gpu_data_ptrs[i] =
+        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(float)));
+  }
+}
 
-struct TransposeStrides {
-  int num_dim;
-  int in_strides[MAX_TENSOR_DIM], out_strides[MAX_TENSOR_DIM],
-      perm[MAX_TENSOR_DIM];
-};
-
+using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Transpose Forward Kernel") {
     std::size_t num_elements = 100;
@@ -23,38 +27,28 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::vector<ff_dim_t> perm = {ff_dim_t(0), ff_dim_t(1)};
 
     PerDeviceFFHandle handle;
-    cudnnCreate(&handle.dnn);
-    cublasCreate(&handle.blas);
-    handle.workSpaceSize = 1024 * 1024;
-    cudaMalloc(&handle.workSpace, handle.workSpaceSize);
-    handle.allowTensorOpMathConversion = true;
-
-    TransposePerDeviceState state =
-        Kernels::Transpose::init_kernel(num_dims, perm);
-
-    Allocator allocator = get_local_memory_allocator();
-    float *input_data =
-        static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
-    float *output_data =
-        static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
-
-    std::vector<float> host_input_data(num_elements);
-    std::generate(host_input_data.begin(), host_input_data.end(),
-                  []() { return static_cast<float>(rand()) / RAND_MAX; });
-    checkCUDA(cudaMemcpy(input_data, host_input_data.data(),
-                         num_elements * sizeof(float), cudaMemcpyHostToDevice));
-
-    std::vector<float> host_output_data(num_elements, 0.0f);
-    checkCUDA(cudaMemcpy(output_data, host_output_data.data(),
-                         num_elements * sizeof(float), cudaMemcpyHostToDevice));
-
+    setPerDeviceFFHandle(&handle);
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
+
+    Allocator allocator = get_local_memory_allocator();
+
+    float *input_data, *output_data;
+    std::vector<float **> ptrs = {&input_data, &output_data};
+    std::vector<size_t> sizes = {num_elements, num_elements};
+    allocate_ptrs(ptrs, sizes, allocator);
+
+    std::vector<float> host_input_data =
+        returnRandomFillDeviceData(&input_data, num_elements);
+    fillDeviceDataNum(&output_data, num_elements, 0.0f);
 
     const GenericTensorAccessorR input_accessor{DataType::FLOAT, shape,
                                                 input_data};
     const GenericTensorAccessorW output_accessor{DataType::FLOAT, shape,
                                                  output_data};
+
+    TransposePerDeviceState state =
+        Kernels::Transpose::init_kernel(num_dims, perm);
 
     Kernels::Transpose::forward_kernel(stream, state, input_accessor,
                                        output_accessor);
@@ -101,38 +95,28 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::vector<ff_dim_t> perm = {ff_dim_t(0), ff_dim_t(1)};
 
     PerDeviceFFHandle handle;
-    cudnnCreate(&handle.dnn);
-    cublasCreate(&handle.blas);
-    handle.workSpaceSize = 1024 * 1024;
-    cudaMalloc(&handle.workSpace, handle.workSpaceSize);
-    handle.allowTensorOpMathConversion = true;
-
-    TransposePerDeviceState state =
-        Kernels::Transpose::init_kernel(num_dims, perm);
-
-    Allocator allocator = get_local_memory_allocator();
-    float *out_grad_data =
-        static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
-    float *in_grad_data =
-        static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
-
-    std::vector<float> host_out_grad_data(num_elements);
-    std::generate(host_out_grad_data.begin(), host_out_grad_data.end(),
-                  []() { return static_cast<float>(rand()) / RAND_MAX; });
-    checkCUDA(cudaMemcpy(out_grad_data, host_out_grad_data.data(),
-                         num_elements * sizeof(float), cudaMemcpyHostToDevice));
-
-    std::vector<float> host_in_grad_data(num_elements, 0.0f);
-    checkCUDA(cudaMemcpy(in_grad_data, host_in_grad_data.data(),
-                         num_elements * sizeof(float), cudaMemcpyHostToDevice));
-
+    setPerDeviceFFHandle(&handle);
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
+
+    Allocator allocator = get_local_memory_allocator();
+
+    float *out_grad_data, *in_grad_data;
+    std::vector<float **> ptrs = {&out_grad_data, &in_grad_data};
+    std::vector<size_t> sizes = {num_elements, num_elements};
+    allocate_ptrs(ptrs, sizes, allocator);
+
+    std::vector<float> host_out_grad_data =
+        returnRandomFillDeviceData(&out_grad_data, num_elements);
+    fillDeviceDataNum(&in_grad_data, num_elements, 0.0f);
 
     const GenericTensorAccessorR out_grad_accessor{DataType::FLOAT, shape,
                                                    out_grad_data};
     const GenericTensorAccessorW in_grad_accessor{DataType::FLOAT, shape,
                                                   in_grad_data};
+
+    TransposePerDeviceState state =
+        Kernels::Transpose::init_kernel(num_dims, perm);
 
     Kernels::Transpose::backward_kernel(stream, state, in_grad_accessor,
                                         out_grad_accessor);
@@ -170,4 +154,3 @@ TEST_SUITE(FF_TEST_SUITE) {
     checkCUDA(cudaStreamDestroy(stream));
   }
 }
-} // namespace FlexFlow

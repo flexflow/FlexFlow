@@ -51,7 +51,7 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  float const *filter_ptr,
                                  float *filter_grad_ptr);
 
-void forward_kernel(ffStream_t stream,
+void forward_kernel(cudaStream_t stream,
                     Conv2DPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
@@ -59,7 +59,7 @@ void forward_kernel(ffStream_t stream,
                     float const *bias_ptr,
                     std::optional<Activation> activation);
 
-void backward_kernel(ffStream_t stream,
+void backward_kernel(cudaStream_t stream,
                      Conv2DPerDeviceState const &m,
                      float const *input_ptr,
                      float *input_grad_ptr,

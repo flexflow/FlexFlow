@@ -1,46 +1,47 @@
 #include "doctest/doctest.h"
 #include "kernels/local_allocator.h"
 #include "kernels/softmax_kernels.h"
+#include "test_utils.h"
 #include <cmath>
 #include <numeric>
 #include <vector>
 
-namespace FlexFlow {
+template <typename T>
+void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
+                   const std::vector<size_t> &num_elements,
+                   Allocator &allocator) {
+  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
+    *gpu_data_ptrs[i] =
+        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(float)));
+  }
+}
+
+using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Softmax Forward") {
     std::size_t num_elements = 100;
-
-    std::vector<float> host_input_data(num_elements);
-    for (auto &val : host_input_data) {
-      val = static_cast<float>(rand()) / RAND_MAX;
-    }
-
     int input_n = 1;
     int input_c = num_elements;
     int input_h = 1;
     int input_w = 1;
 
     PerDeviceFFHandle handle;
-    cudnnCreate(&handle.dnn);
-    cublasCreate(&handle.blas);
-    handle.workSpaceSize = 1024 * 1024;
-    cudaMalloc(&handle.workSpace, handle.workSpaceSize);
-    handle.allowTensorOpMathConversion = true;
+    setPerDeviceFFHandle(&handle);
+    cudaStream_t stream;
+    checkCUDA(cudaStreamCreate(&stream));
+
+    Allocator allocator = get_local_memory_allocator();
+
+    float *input_data, *output_data;
+    std::vector<float **> ptrs = {&input_data, &output_data};
+    std::vector<size_t> sizes = {num_elements, num_elements};
+    allocate_ptrs(ptrs, sizes, allocator);
+
+    std::vector<float> host_input_data =
+        returnRandomFillDeviceData(&input_data, num_elements);
 
     SoftmaxPerDeviceState state = Kernels::Softmax::init_kernel(
         handle, 0, input_n, input_c, input_h, input_w);
-
-    Allocator allocator = get_local_memory_allocator();
-    float *input_data =
-        static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
-    float *output_data =
-        static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
-
-    checkCUDA(cudaMemcpy(input_data, host_input_data.data(),
-                         num_elements * sizeof(float), cudaMemcpyHostToDevice));
-
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
 
     Kernels::Softmax::forward_kernel(stream, state, input_data, output_data);
 
@@ -67,35 +68,26 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("Test Softmax Backward") {
     std::size_t num_elements = 100;
-
     int input_n = 1;
     int input_c = 1;
     int input_h = 1;
     int input_w = num_elements;
 
     PerDeviceFFHandle handle;
-    cudnnCreate(&handle.dnn);
-    cublasCreate(&handle.blas);
-    handle.workSpaceSize = 1024 * 1024;
-    cudaMalloc(&handle.workSpace, handle.workSpaceSize);
-    handle.allowTensorOpMathConversion = true;
+    setPerDeviceFFHandle(&handle);
+    cudaStream_t stream;
+    checkCUDA(cudaStreamCreate(&stream));
 
     SoftmaxPerDeviceState state = Kernels::Softmax::init_kernel(
         handle, 0, input_n, input_c, input_h, input_w);
 
     Allocator allocator = get_local_memory_allocator();
-    float *input_data =
-        static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
-    float *output_data =
-        static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
+    float *input_data, *output_data;
+    std::vector<float **> ptrs = {&input_data, &output_data};
+    std::vector<size_t> sizes = {num_elements, num_elements};
+    allocate_ptrs(ptrs, sizes, allocator);
 
-    std::vector<float> host_input_data(num_elements);
-    std::vector<float> host_output_data(num_elements, 1.0f);
-    checkCUDA(cudaMemcpy(output_data, host_output_data.data(),
-                         num_elements * sizeof(float), cudaMemcpyHostToDevice));
-
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
+    fillDeviceDataNum(&output_data, num_elements, 1.0f);
 
     Kernels::Softmax::backward_kernel(stream, input_data, output_data,
                                       num_elements);
@@ -105,10 +97,9 @@ TEST_SUITE(FF_TEST_SUITE) {
                          num_elements * sizeof(float), cudaMemcpyDeviceToHost));
 
     for (std::size_t i = 0; i < num_elements; ++i) {
-      REQUIRE(host_output_data[i] == check_output_data[i]);
+      REQUIRE(1.0f == check_output_data[i]);
     }
 
     checkCUDA(cudaStreamDestroy(stream));
   }
 }
-} // namespace FlexFlow

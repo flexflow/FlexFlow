@@ -3,39 +3,39 @@
 namespace FlexFlow {
 
 int32_t *GenericTensorAccessorW::get_int32_ptr() const {
-  return get<DataType::INT32>();
+  return this->get<DataType::INT32>();
 }
 
 int64_t *GenericTensorAccessorW::get_int64_ptr() const {
-  return get<DataType::INT64>();
+  return this->get<DataType::INT64>();
 }
 
 float *GenericTensorAccessorW::get_float_ptr() const {
-  return get<DataType::FLOAT>();
+  return this->get<DataType::FLOAT>();
 }
 
 double *GenericTensorAccessorW::get_double_ptr() const {
-  return get<DataType::DOUBLE>();
+  return this->get<DataType::DOUBLE>();
 }
 
 half *GenericTensorAccessorW::get_half_ptr() const {
-  return get<DataType::HALF>();
+  return this->get<DataType::HALF>();
 }
 
 int32_t const *GenericTensorAccessorR::get_int32_ptr() const {
-  return get<DataType::INT32>();
+  return this->get<DataType::INT32>();
 }
 
 int64_t const *GenericTensorAccessorR::get_int64_ptr() const {
-  return get<DataType::INT64>();
+  return this->get<DataType::INT64>();
 }
 
 float const *GenericTensorAccessorR::get_float_ptr() const {
-  return get<DataType::FLOAT>();
+  return this->get<DataType::FLOAT>();
 }
 
 double const *GenericTensorAccessorR::get_double_ptr() const {
-  return get<DataType::DOUBLE>();
+  return this->get<DataType::DOUBLE>();
 }
 
 half const *GenericTensorAccessorR::get_half_ptr() const {
@@ -63,27 +63,27 @@ half *get_half_ptr(GenericTensorAccessorW const &a) {
 }
 
 std::vector<int32_t *>
-    get_int32_ptrs(std::vector<GenericTensorAccessorW> const &a) {
+get_int32_ptrs(std::vector<GenericTensorAccessorW> const &a) {
   return get<DataType::INT32>(a);
 }
 
 std::vector<int64_t *>
-    get_int64_ptrs(std::vector<GenericTensorAccessorW> const &a) {
+get_int64_ptrs(std::vector<GenericTensorAccessorW> const &a) {
   return get<DataType::INT64>(a);
 }
 
 std::vector<float *>
-    get_float_ptrs(std::vector<GenericTensorAccessorW> const &a) {
+get_float_ptrs(std::vector<GenericTensorAccessorW> const &a) {
   return get<DataType::FLOAT>(a);
 }
 
 std::vector<double *>
-    get_double_ptrs(std::vector<GenericTensorAccessorW> const &a) {
+get_double_ptrs(std::vector<GenericTensorAccessorW> const &a) {
   return get<DataType::DOUBLE>(a);
 }
 
 std::vector<half *>
-    get_half_ptrs(std::vector<GenericTensorAccessorW> const &a) {
+get_half_ptrs(std::vector<GenericTensorAccessorW> const &a) {
   return get<DataType::HALF>(a);
 }
 
@@ -108,27 +108,27 @@ half const *get_half_ptr(GenericTensorAccessorR const &a) {
 }
 
 std::vector<int32_t const *>
-    get_int32_ptrs(std::vector<GenericTensorAccessorR> const &a) {
+get_int32_ptrs(std::vector<GenericTensorAccessorR> const &a) {
   return get<DataType::INT32>(a);
 }
 
 std::vector<int64_t const *>
-    get_int64_ptrs(std::vector<GenericTensorAccessorR> const &a) {
+get_int64_ptrs(std::vector<GenericTensorAccessorR> const &a) {
   return get<DataType::INT64>(a);
 }
 
 std::vector<float const *>
-    get_float_ptrs(std::vector<GenericTensorAccessorR> const &a) {
+get_float_ptrs(std::vector<GenericTensorAccessorR> const &a) {
   return get<DataType::FLOAT>(a);
 }
 
 std::vector<double const *>
-    get_double_ptrs(std::vector<GenericTensorAccessorR> const &a) {
+get_double_ptrs(std::vector<GenericTensorAccessorR> const &a) {
   return get<DataType::DOUBLE>(a);
 }
 
 std::vector<half const *>
-    get_half_ptrs(std::vector<GenericTensorAccessorR> const &a) {
+get_half_ptrs(std::vector<GenericTensorAccessorR> const &a) {
   return get<DataType::HALF>(a);
 }
 

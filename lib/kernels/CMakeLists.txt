@@ -8,19 +8,7 @@ file(GLOB_RECURSE SRC
      LIST_DIRECTORIES False
      src/*.cc
      src/cuda/cuda_helper.cu
-     src/cuda/ops/cast_kernels.cu
-     src/cuda/ops/attention_kernels.cu
-     src/cuda/ops/combine_kernels.cu
-     src/cuda/ops/concat_kernels.cu
-     src/cuda/ops/reshape_kernels.cu
-     src/cuda/ops/partition_kernels.cu
-     src/cuda/ops/replicate_kernels.cu
-     src/cuda/ops/softmax_kernels.cu 
-     src/cuda/ops/flat_kernels.cu
-     src/cuda/ops/transpose_kernels.cu
-     src/cuda/ops/dropout_kernels.cu
-     src/cuda/ops/split_kernels.cu
-     src/cuda/ops/reverse_kernels.cu
+     src/cuda/ops/*.cu
      )
 
 add_library(

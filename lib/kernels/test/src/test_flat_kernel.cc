@@ -1,12 +1,22 @@
 #include "doctest/doctest.h"
 #include "kernels/flat_kernels.h"
 #include "kernels/local_allocator.h"
+#include "test_utils.h"
 #include <algorithm>
-#include <iostream>
 #include <random>
 #include <vector>
 
-namespace FlexFlow {
+template <typename T>
+void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
+                   const std::vector<size_t> &num_elements,
+                   Allocator &allocator) {
+  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
+    *gpu_data_ptrs[i] =
+        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(float)));
+  }
+}
+
+using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Flat Kernel Forward and Backward") {
     std::size_t num_elements = 100;
@@ -16,19 +26,17 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = get_local_memory_allocator();
 
-    float *input_data =
-        static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
-    const GenericTensorAccessorR input_accessor{DataType::FLOAT, shape,
-                                                input_data};
-    std::vector<float> host_input_data(num_elements, 2.0f);
-    checkCUDA(cudaMemcpy(input_data, host_input_data.data(),
-                         num_elements * sizeof(float), cudaMemcpyHostToDevice));
-
-    float *output_data =
-        static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
-
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
+
+    float *input_data, *output_data;
+    std::vector<float **> ptrs = {&input_data, &output_data};
+    std::vector<size_t> sizes = {num_elements, num_elements};
+    allocate_ptrs(ptrs, sizes, allocator);
+    fillDeviceDataNum(&input_data, num_elements, 2.0f);
+
+    const GenericTensorAccessorR input_accessor{DataType::FLOAT, shape,
+                                                input_data};
 
     Kernels::Flat::forward_kernel(stream, input_accessor, output_data);
 
@@ -37,14 +45,12 @@ TEST_SUITE(FF_TEST_SUITE) {
                          num_elements * sizeof(float), cudaMemcpyDeviceToHost));
 
     for (std::size_t i = 0; i < num_elements; ++i) {
-      REQUIRE(host_input_data[i] == check_output_data[i]);
+      REQUIRE(2.0f == check_output_data[i]);
     }
 
-    std::vector<float> host_output_data(num_elements, 1.0f);
     float *add_data =
         static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
-    checkCUDA(cudaMemcpy(add_data, host_output_data.data(),
-                         num_elements * sizeof(float), cudaMemcpyHostToDevice));
+    fillDeviceDataNum(&add_data, num_elements, 1.0f);
     const GenericTensorAccessorR data_accessor{DataType::FLOAT, shape,
                                                add_data};
 
@@ -61,4 +67,3 @@ TEST_SUITE(FF_TEST_SUITE) {
     checkCUDA(cudaStreamDestroy(stream));
   }
 }
-} // namespace FlexFlow

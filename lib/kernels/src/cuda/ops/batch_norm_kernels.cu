@@ -108,8 +108,6 @@ BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
 #if CUDNN_VERSION >= 7000
   mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 #endif
-  fprintf(
-      stderr, "output(%d,%d,%d,%d)\n", output_n, output_c, output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
@@ -133,11 +131,12 @@ BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
   float *saveMean = (float *)runningVar + output_c;
   float *saveVar = (float *)saveMean + output_c;
   cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
 
   assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
-      runningMean, output_c, 0.0f);
+      runningMean, (size_t)output_c, 0.0f);
   assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
-      runningVar, output_c, 0.0f);
+      runningVar, (size_t)output_c, 0.0f);
 
   if (relu) {
     checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));

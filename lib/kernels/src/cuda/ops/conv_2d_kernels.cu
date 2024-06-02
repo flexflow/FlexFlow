@@ -122,7 +122,7 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  int pad_w,
                                  int stride_h,
                                  int stride_w,
-                                 GenericTensorAccessorW const &input,
+                                 GenericTensorAccessorR const &input,
                                  GenericTensorAccessorW const &output,
                                  float const *filter_ptr,
                                  float *filter_grad_ptr) {
@@ -207,11 +207,10 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(cudnnSetTensor4dDescriptor(
       outputTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, n, c, h, w));
 
-  float time;
   // select forward algorithm
   fwdAlgo = selectConvolutionForwardAlgorithm(handle.dnn,
                                               inputTensor,
-                                              input.get_float_ptr(),
+                                              static_cast<const void*>(input.get_float_ptr()),
                                               filterDesc,
                                               filter_ptr,
                                               convDesc,
@@ -225,7 +224,7 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   bwdFilterAlgo =
       selectConvolutionBackwardFilterAlgorithm(handle.dnn,
                                                inputTensor,
-                                               input.get_float_ptr(),
+                                               static_cast<const void*>(input.get_float_ptr()),
                                                outputTensor,
                                                output.get_float_ptr(),
                                                convDesc,
@@ -245,7 +244,7 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                                        handle.workSpace,
                                                        handle.workSpaceSize,
                                                        inputTensor,
-                                                       input.get_float_ptr(),
+                                                       static_cast<void*>(const_cast<float*>(input.get_float_ptr())),
                                                        nullptr);
   if (activation.has_value()) {
     checkCUDNN(cudnnSetActivationDescriptor(

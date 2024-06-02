@@ -1,44 +1,42 @@
 #include "doctest/doctest.h"
 #include "kernels/cast_kernels.h"
 #include "kernels/local_allocator.h"
-#include <random>
+#include "test_utils.h"
 #include <type_traits>
 
-namespace FlexFlow {
+template <typename T>
+void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
+                   const std::vector<size_t> &num_elements,
+                   Allocator &allocator) {
+  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
+    *gpu_data_ptrs[i] =
+        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(float)));
+  }
+}
+
+using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test cast kernel float to double") {
     std::size_t dims[] = {100, 100};
     std::size_t num_dims = 2;
     FlexFlow::ArrayShape shape(dims, num_dims);
 
-    Allocator float_allocator = get_local_memory_allocator();
-    void *float_data_ptr =
-        float_allocator.allocate((100 * 100) * sizeof(float));
-    const GenericTensorAccessorR accessorR{DataType::FLOAT, shape,
-                                           float_data_ptr};
-
-    Allocator double_allocator = get_local_memory_allocator();
-    void *double_data_ptr =
-        double_allocator.allocate((100 * 100) * sizeof(double));
-    const GenericTensorAccessorW accessorW{DataType::DOUBLE, shape,
-                                           double_data_ptr};
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-
-    std::vector<float> host_data(100 * 100);
-
-    for (auto &val : host_data) {
-      val = dist(gen);
-    }
-
-    checkCUDA(cudaMemcpy(float_data_ptr, host_data.data(),
-                         host_data.size() * sizeof(float),
-                         cudaMemcpyHostToDevice));
+    Allocator allocator = get_local_memory_allocator();
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
+
+    void *float_data_ptr, *double_data_ptr;
+    std::vector<void**> ptrs = {&float_data_ptr, &double_data_ptr};
+    std::vector<size_t> sizes = {(100 * 100), (100 * 100)};
+    allocate_ptrs(ptrs, sizes, allocator);
+    randomFillDeviceData(&float_data_ptr, 100 * 100);
+
+    const GenericTensorAccessorR accessorR{DataType::FLOAT, shape,
+                                           float_data_ptr};
+    const GenericTensorAccessorW accessorW{DataType::DOUBLE, shape,
+                                           double_data_ptr};
+
     Kernels::Cast::forward_kernel(nullptr, accessorR, accessorW,
                                   DataType::FLOAT, DataType::DOUBLE);
 
@@ -49,7 +47,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                          host_float_data.size() * sizeof(float),
                          cudaMemcpyDeviceToHost));
     checkCUDA(cudaMemcpy(host_double_data.data(), double_data_ptr,
-                         host_double_data.size() * sizeof(double),
+                         host_double_data.size() * sizeof(float),
                          cudaMemcpyDeviceToHost));
 
     for (size_t i = 0; i < host_float_data.size(); ++i) {
@@ -64,32 +62,22 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::size_t num_dims = 2;
     FlexFlow::ArrayShape shape(dims, num_dims);
 
-    Allocator int_allocator = get_local_memory_allocator();
-    void *int_data_ptr = int_allocator.allocate((100 * 100) * sizeof(int));
-    const GenericTensorAccessorR accessorR{DataType::INT32, shape,
-                                           int_data_ptr};
-
-    Allocator float_allocator = get_local_memory_allocator();
-    void *float_data_ptr =
-        float_allocator.allocate((100 * 100) * sizeof(float));
-    const GenericTensorAccessorW accessorW{DataType::FLOAT, shape,
-                                           float_data_ptr};
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dist(0, 1);
-
-    std::vector<int> host_data(100 * 100);
-    for (auto &val : host_data) {
-      val = dist(gen);
-    }
-
-    checkCUDA(cudaMemcpy(int_data_ptr, host_data.data(),
-                         host_data.size() * sizeof(int),
-                         cudaMemcpyHostToDevice));
+    Allocator allocator = get_local_memory_allocator();
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
+
+    void *int_data_ptr, *float_data_ptr;
+    std::vector<void**> ptrs = {&int_data_ptr, &float_data_ptr};
+    std::vector<size_t> sizes = {(100 * 100), (100 * 100)};
+    allocate_ptrs(ptrs, sizes, allocator);
+    randomFillDeviceData(&int_data_ptr, 100 * 100);
+    
+    const GenericTensorAccessorR accessorR{DataType::INT32, shape,
+                                           int_data_ptr};
+    const GenericTensorAccessorW accessorW{DataType::FLOAT, shape,
+                                           float_data_ptr};
+
     Kernels::Cast::forward_kernel(nullptr, accessorR, accessorW,
                                   DataType::INT32, DataType::FLOAT);
 
@@ -111,4 +99,3 @@ TEST_SUITE(FF_TEST_SUITE) {
     checkCUDA(cudaStreamDestroy(stream));
   }
 }
-} // namespace FlexFlow

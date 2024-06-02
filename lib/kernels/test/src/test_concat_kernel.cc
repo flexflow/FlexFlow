@@ -84,10 +84,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     const GenericTensorAccessorR grad_output_accessor{DataType::FLOAT, shape,
                                                       grad_output_data_ptr};
 
-    // std::cout << "Before Backward Concat Kernel\n" << std::endl;
     Kernels::Concat::backward_kernel(stream, grad_output_accessor,
                                      grad_input_accessors, concat_axis);
-    // std::cout << "After Backward Concat Kernel\n" << std::endl;
 
     for (int i = 0; i < num_inputs; i++) {
       std::vector<float> host_grad_input(size_per_input);

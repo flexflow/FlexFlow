@@ -40,7 +40,7 @@ T get_scalar(ElementUnaryUnifiedAttrs const &attrs) {
   if (std::holds_alternative<ElementScalarUnaryAttrs>(attrs)) {
     return (T)std::get<ElementScalarUnaryAttrs>(attrs).scalar;
   } else {
-    T dummy_scalar;
+    T dummy_scalar = T{};
     return dummy_scalar;
   }
 }
