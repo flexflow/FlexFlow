@@ -441,7 +441,6 @@ BatchConfig RequestManager::get_next_batch_config_task(
 
   InferenceResult const &result =
       Future(task->futures[0]).get_result<InferenceResult>();
-  int t_1 = Realm::Clock::current_time_in_microseconds();
   return rm->get_next_batch_config(result);
 }
 

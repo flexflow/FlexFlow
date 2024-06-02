@@ -249,7 +249,7 @@ void LLAMA::create_llama_model(FFModel &ff,
   Tensor output;
   if (mode == TREE_SEARCH_MODE) {
     Tensor softmax = ff.softmax(dense, -1);
-    output = ff.arg_top_k(softmax, llama_config.k_of_arg_topk, false, true);
+    output = ff.arg_top_k(softmax, llama_config.k_of_arg_topk, false, false);
     // output = ff.top_k(softmax, )
   } else {
     // Tensor softmax = ff.softmax(dense, -1);
