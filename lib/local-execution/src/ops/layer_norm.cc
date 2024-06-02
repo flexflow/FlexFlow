@@ -78,7 +78,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[LayerNorm] forward time = %.2lfms\n",
+                 "[LayerNorm] forward time = {:.2lf}ms\n",
                  state,
                  input,
                  output,
@@ -101,7 +101,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[LayerNorm] backward time = %.2lfms\n",
+                 "[LayerNorm] backward time = {:.2lf}ms\n",
                  state,
                  output_grad,
                  input,

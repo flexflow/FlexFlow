@@ -16,10 +16,10 @@
 #include "concat.h"
 #include "kernels/concat_kernels.h"
 
+#include "local-execution/op_task_signature.h"
+#include "local-execution/variadic_tensor_ref.h"
 #include "op-attrs/get_output_shapes.h"
-#include "op_task_signature.h"
 #include "utils/hash-utils.h"
-#include "variadic_tensor_ref.h"
 
 namespace FlexFlow {
 
@@ -54,7 +54,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[Concat] forward_time = %.2lfms\n",
+                 "[Concat] forward_time = {:.2lf}ms\n",
                  output,
                  inputs,
                  attrs.axis);
@@ -72,7 +72,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[Concat] backward_time = %.2lfms\n",
+                 "[Concat] backward_time = {:.2lf}ms\n",
                  output_grad,
                  input_grads,
                  attrs.axis);

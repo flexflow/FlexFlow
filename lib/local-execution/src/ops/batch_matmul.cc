@@ -15,9 +15,9 @@
 
 #include "batch_matmul.h"
 #include "kernels/batch_matmul_kernels.h"
+#include "local-execution/op_task_signature.h"
 #include "op-attrs/get_output_shapes.h"
 #include "op-attrs/ops/batch_matmul.h"
-#include "op_task_signature.h"
 
 namespace FlexFlow {
 
@@ -85,7 +85,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[BatchMatmul] forward_time = %.2lfms\n",
+                 "[BatchMatmul] forward_time = {:.2lf}ms\n",
                  handle,
                  output.get_float_ptr(),
                  a_input.get_float_ptr(),
@@ -138,7 +138,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[BatchMatmul] backward_time = %.2lfms\n",
+                 "[BatchMatmul] backward_time = {:.2lf}ms\n",
                  handle,
                  output.get_float_ptr(),
                  output_grad.get_float_ptr(),

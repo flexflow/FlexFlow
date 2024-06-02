@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_EMBEDDING_H
 #define _FLEXFLOW_EMBEDDING_H
 
+#include "local-execution/op_task_invocation.h"
+#include "local-execution/sim_environment.h"
 #include "op-attrs/ops/embedding.h"
-#include "op_task_invocation.h"
-#include "sim_environment.h"
 
 namespace FlexFlow {
 

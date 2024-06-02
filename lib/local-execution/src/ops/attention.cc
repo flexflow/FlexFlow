@@ -15,7 +15,7 @@
 
 #include "attention.h"
 #include "kernels/attention_kernels.h"
-#include "op_task_signature.h"
+#include "local-execution/op_task_signature.h"
 
 namespace FlexFlow {
 
@@ -168,7 +168,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[MultiHeadAttention] forward_time = %.2lfms\n",
+                 "[MultiHeadAttention] forward_time = {:.2lf}ms\n",
                  per_device_state,
                  query.get_float_ptr(),
                  key.get_float_ptr(),
@@ -207,7 +207,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[MultiHeadAttention] backward_time = %.2lfms\n",
+                 "[MultiHeadAttention] backward_time = {:.2lf}ms\n",
                  per_device_state,
                  query.get_float_ptr(),
                  query_grad.get_float_ptr(),

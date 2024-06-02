@@ -63,7 +63,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[reverse] forward_time = %.2lfms\n",
+                 "[reverse] forward_time = {:.2lf}ms\n",
                  input.get_float_ptr(),
                  output.get_float_ptr(),
                  num_out_blks,
@@ -93,7 +93,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[reverse] backward_time = %.2lfms\n",
+                 "[reverse] backward_time = {:.2lf}ms\n",
                  output_grad.get_float_ptr(),
                  input_grad.get_float_ptr(),
                  num_out_blks,

@@ -1,8 +1,8 @@
 #include "dropout.h"
 #include "kernels/dropout_kernels.h"
+#include "local-execution/op_task_invocation.h"
+#include "local-execution/op_task_signature.h"
 #include "op-attrs/get_output_shapes.h"
-#include "op_task_invocation.h"
-#include "op_task_signature.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -61,7 +61,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[Dropout] forward_time = %.2lfms\n",
+                 "[Dropout] forward_time = {:.2lf}ms\n",
                  per_device_state,
                  input.get_float_ptr(),
                  output.get_float_ptr());
@@ -79,7 +79,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[Dropout] backward_time = %.2lfms\n",
+                 "[Dropout] backward_time = {:.2lf}ms\n",
                  per_device_state,
                  output_grad.get_float_ptr(),
                  input_grad.get_float_ptr());

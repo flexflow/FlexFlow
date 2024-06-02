@@ -76,7 +76,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   float *output_float_ptr = output.get_float_ptr();
   return profile(forward_kernel,
                  profiling,
-                 "Split forward_time = %.2lfms\n",
+                 "Split forward_time = {:.2lf}ms\n",
                  &output_float_ptr,
                  input.get_float_ptr(),
                  out_block_size,
@@ -106,7 +106,7 @@ static std::optional<float>
   float const *output_grad_ptr = output_grad.get_float_ptr();
   return profile(backward_kernel,
                  profiling,
-                 "Split backward_time = %.2lfms\n",
+                 "Split backward_time = {:.2lf}ms\n",
                  input_grad.get_float_ptr(),
                  &output_grad_ptr,
                  out_block_size,

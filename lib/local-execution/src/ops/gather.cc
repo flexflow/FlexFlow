@@ -15,7 +15,7 @@
 
 #include "gather.h"
 #include "kernels/gather_kernels.h"
-#include "legion_tensor_shape.h"
+#include "local-execution/legion_tensor_shape.h"
 #include "op-attrs/get_output_shapes.h"
 #include <optional>
 
@@ -66,7 +66,7 @@ static DeviceSpecific<GatherPerDeviceState>
 
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto const &attrs = acc.get_argument<GatherAttrs>(ATTRS);
-  legion_dim_t legion_dim = to_legion(attrs.ff_dim, input.shape.num_dims());
+  legion_dim_t legion_dim = to_legion(attrs.dim, input.shape.num_dims());
 
   assert(input.shape.get_dim() == index.shape.get_dim());
   assert(output.shape.get_dim() == index.shape.get_dim());
@@ -92,7 +92,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[Gather] forward_time = %.2lfms\n",
+                 "[Gather] forward_time = {:.2lf}ms\n",
                  per_device_state,
                  input,
                  index,
@@ -109,9 +109,9 @@ static std::optional<float>
   auto index = acc.get_tensor<Permissions::RO>(INDEX);
   auto input_grad = acc.get_tensor_grad<Permissions::WO>(INPUT);
 
-  return profile(forward_kernel,
+  return profile(backward_kernel,
                  profiling,
-                 "[Gather] forward_time = %.2lfms\n",
+                 "[Gather] backward_time = {:.2lf}ms\n",
                  per_device_state,
                  output_grad,
                  index,

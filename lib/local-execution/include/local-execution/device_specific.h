@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_DEVICE_SPECIFIC_H
 #define _FLEXFLOW_LOCAL_EXECUTION_DEVICE_SPECIFIC_H
 
-#include "serialization.h"
+#include "local-execution/serialization.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {

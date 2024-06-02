@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_CONCRETE_ARG_H
 #define _FLEXFLOW_LOCAL_EXECUTION_CONCRETE_ARG_H
 
-#include "serialization.h"
+#include "local-execution/serialization.h"
 #include "utils/type_index.h"
 #include <memory>
 

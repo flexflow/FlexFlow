@@ -16,7 +16,7 @@
 #include "cast.h"
 #include "kernels/cast_kernels.h"
 
-#include "op_task_signature.h"
+#include "local-execution/op_task_signature.h"
 #include "utils/hash-utils.h"
 
 using namespace FlexFlow::Kernels::Cast;
@@ -52,7 +52,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[Cast] forward_time = %.2lfms\n",
+                 "[Cast] forward_time = {:.2lf}ms\n",
                  input,
                  output,
                  input.data_type,
@@ -71,7 +71,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[Cast] forward_time = %.2lfms\n",
+                 "[Cast] forward_time = {:.2lf}ms\n",
                  input_grad,
                  output_grad,
                  input.data_type,

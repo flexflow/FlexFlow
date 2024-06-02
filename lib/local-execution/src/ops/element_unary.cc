@@ -75,7 +75,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 
   return profile(forward_kernel,
                  profiling,
-                 "[ElementUnary] forward_time = %.2lfms\n",
+                 "[ElementUnary] forward_time = {:.2lf}ms\n",
                  per_device_state,
                  attrs,
                  handle,
@@ -99,7 +99,7 @@ static std::optional<float>
 
   return profile(backward_kernel,
                  profiling,
-                 "[ElementUnary] backward_time = %.2lfms\n",
+                 "[ElementUnary] backward_time = {:.2lf}ms\n",
                  per_device_state,
                  attrs,
                  handle,

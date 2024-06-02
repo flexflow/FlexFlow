@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_FLAT_H
 #define _FLEXFLOW_FLAT_H
 
+#include "local-execution/sim_environment.h"
 #include "op-attrs/ops/flat.h"
-#include "sim_environment.h"
 
 namespace FlexFlow {
 
