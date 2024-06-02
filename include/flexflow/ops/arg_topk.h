@@ -13,7 +13,7 @@ class ArgTopKMeta : public OpMeta {
 public:
   bool sorted;
   int k;
-  bool speculative_decoding;
+  bool renormalize;
   Realm::RegionInstance reserveInst;
   void *half_precision_output;
   int max_input_size;
@@ -32,7 +32,7 @@ public:
           ParallelTensor const input,
           int k,
           bool sorted,
-          bool speculative_decoding,
+          bool renormalize,
           char const *name);
   ArgTopK(FFModel &model,
           LayerID const &layer_guid,
@@ -96,6 +96,7 @@ public:
                              int length,
                              int k,
                              bool sorted,
+                             bool renormalize,
                              BatchConfig const *bc,
                              ffStream_t stream);
   static void forward_kernel_wrapper(ArgTopKMeta const *m,
@@ -109,7 +110,7 @@ public:
 public:
   int k;
   bool sorted;
-  bool speculative_decoding;
+  bool renormalize;
 };
 
 }; // namespace FlexFlow

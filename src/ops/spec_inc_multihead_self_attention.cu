@@ -87,10 +87,13 @@ __global__ void compute_spec_inc_attention_kernel_generation_kernel(
       causalMask[requext_idx_in_batch].non_tree_cache_size;
   int tree_or_prompt_size =
       causalMask[requext_idx_in_batch].tree_or_prompt_size;
+  int current_layer_size = causalMask[requext_idx_in_batch].current_layer_size;
+  int start_offset = tree_or_prompt_size - current_layer_size;
 
   __shared__ uint64_t bit_mask[BatchConfig::MAX_SPEC_TREE_TOKEN_NUM]
                               [BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 64];
-  for (int i = tidx; i < tree_or_prompt_size; i += THREADS_PER_BLOCK) {
+  for (int i = start_offset + tidx; i < tree_or_prompt_size;
+       i += THREADS_PER_BLOCK) {
     for (int j = 0; j < BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 64; j++) {
       bit_mask[i][j] = causalMask[requext_idx_in_batch].bit_mask[i].bits[j];
     }

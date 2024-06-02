@@ -248,7 +248,7 @@ void OPT::create_opt_model(FFModel &ff,
   Tensor output;
   if (mode == TREE_SEARCH_MODE) {
     Tensor softmax = ff.softmax(lm_head, -1);
-    output = ff.arg_top_k(softmax, opt_config.k_of_arg_topk, false, true);
+    output = ff.arg_top_k(softmax, opt_config.k_of_arg_topk, false, false);
   } else {
     // output = ff.arg_top_k(lm_head, /*k=*/1, false);
     output = ff.argmax(lm_head, /*beam_Search*/ false);

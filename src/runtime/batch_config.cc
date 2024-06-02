@@ -33,6 +33,31 @@ BatchConfig::BatchConfig(InferenceMode inference_mode_, int model_id_)
   // Other fields are already initialized to proper value.
 }
 
+BatchConfig::BatchConfig(BatchConfig const &rhs) {
+  model_id = rhs.model_id;
+  inference_mode = rhs.inference_mode;
+  num_available_requests = rhs.num_available_requests;
+  num_tokens = rhs.num_tokens;
+  prompt_phase = rhs.prompt_phase;
+  num_tokens_to_commit = rhs.num_tokens_to_commit;
+  for (int token_idx = 0; token_idx < num_tokens; token_idx++) {
+    tokensInfo[token_idx] = rhs.tokensInfo[token_idx];
+  }
+  for (int request_idx = 0; request_idx < max_requests_per_batch();
+       request_idx++) {
+    if (rhs.request_available[request_idx]) {
+      request_available[request_idx] = true;
+      requestsInfo[request_idx] = rhs.requestsInfo[request_idx];
+      causalMask[request_idx] = rhs.causalMask[request_idx];
+    }
+  }
+  for (int committed_token_idx = 0; committed_token_idx < num_tokens_to_commit;
+       committed_token_idx++) {
+    committed_tokens[committed_token_idx] =
+        rhs.committed_tokens[committed_token_idx];
+  }
+}
+
 /*static*/
 BatchConfig const *BatchConfig::from_future(BatchConfigFuture const &future) {
   return static_cast<BatchConfig const *>(
