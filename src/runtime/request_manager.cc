@@ -352,7 +352,8 @@ RequestManager::RequestGuid
       output = output + " " + std::to_string(request.tokens[i]);
     }
     log_req_mgr.print("%s", output.c_str());
-    write_to_output_file(output_filepath, output);
+    std::cout << output << std::endl;
+    // write_to_output_file(output_filepath, output);
   }
 
   GenerationResult gr;
@@ -504,6 +505,43 @@ void RequestManager::request_complete_clean_up(int batch_index) {
     std::cout << "<eos>";
   }
   std::cout << std::endl << std::endl;
+  {
+    RequestProfileInfo profile_info = profiling_requests[guid];
+
+    std::ostream *os = &std::cout;
+    std::ofstream output_file;
+    if (!output_filepath.empty()) {
+      output_file.open(output_filepath, std::ios::app);
+      if (output_file.is_open()) {
+        os = &output_file;
+      } else {
+        std::cout << "Unable to open the output file: " << output_filepath
+                  << std::endl;
+        assert(false);
+      }
+    }
+    *os << "Request " << guid << " profiling: " << std::endl;
+    if (profile_info.start_decoding_time != 0) {
+      *os << "Decoding time: "
+          << (profile_info.finish_time - profile_info.start_decoding_time) * 1e-3
+          << " ms" << std::endl;
+    } else {
+      *os << "Decoding time: 0 ms" << std::endl;
+    }
+    *os << "Total time: "
+        << (profile_info.finish_time - profile_info.start_time) * 1e-3 << " ms"
+        << std::endl;
+    *os << "LLM decoding steps: " << profile_info.llm_decoding_steps << std::endl;
+      if (decoding_mode == SPECULATIVE_DECODING) {
+        *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
+            << std::endl;
+      }
+      *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
+
+      if (!output_filepath.empty()) {
+        output_file.close();
+      }
+  }
   RequestProfileInfo profile_info = profiling_requests[guid];
   std::string str = "[" + std::to_string(guid) + "] Request completed:" + 
                       " decoding_time_ms(" + std::to_string(
@@ -522,7 +560,8 @@ void RequestManager::request_complete_clean_up(int batch_index) {
       profile_info.ssm_decoding_steps) 
       + ")";
   }
-  write_to_output_file(output_filepath, str);
+  std::cout << str << std::endl;
+  // write_to_output_file(output_filepath, str);
 
   trigger_request_completion_future(guid);
 }
@@ -2028,7 +2067,8 @@ void RequestManager::terminate_background_server() {
     }
     generated_tokens_per_step += ")";
     str += generated_tokens_per_step;
-    write_to_output_file(output_filepath, str);
+    std::cout << str << std::endl;
+    // write_to_output_file(output_filepath, str);
     background_server_status = TERMINATED;
     // Wait for the background server to terminate
     Runtime *runtime = Runtime::get_runtime();
