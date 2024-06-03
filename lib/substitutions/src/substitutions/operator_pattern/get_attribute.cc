@@ -279,8 +279,6 @@ std::optional<OperatorAttributeValue> get_attribute(ReductionAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::OP_TYPE:
       return get_op_type(p);
-    case OperatorAttributeKey::PARALLEL_OP_DIM:
-      return p.reduction_dim;
     case OperatorAttributeKey::PARALLEL_OP_DEGREE:
       return p.reduction_degree;
     default:
@@ -307,8 +305,6 @@ std::optional<OperatorAttributeValue> get_attribute(ReplicateAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::OP_TYPE:
       return get_op_type(p);
-    case OperatorAttributeKey::PARALLEL_OP_DIM:
-      return p.replicate_dim;
     case OperatorAttributeKey::PARALLEL_OP_DEGREE:
       return p.replicate_degree;
     default:

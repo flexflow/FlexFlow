@@ -12,9 +12,9 @@ features = [
 includes = [
   "op-attrs/ff_dim.h",
   "op-attrs/ff_dim.dtg.h",
-  "utils/stack_vector.h",
+  "op-attrs/dim_ordered.h",
 ]
 
 [[fields]]
 name = "perm"
-type = "::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>"
+type = "::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t>"

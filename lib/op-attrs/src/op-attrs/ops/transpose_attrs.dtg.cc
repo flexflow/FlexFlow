@@ -3,20 +3,20 @@
 // lib/op-attrs/include/op-attrs/ops/transpose_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "87f6e4db4b66d564530994773c0ecef4"
+  "generated_from": "de62a505821a59c4b77197c100e204f7"
 }
 */
 
 #include "op-attrs/ops/transpose_attrs.dtg.h"
 
+#include "op-attrs/dim_ordered.h"
 #include "op-attrs/ff_dim.dtg.h"
 #include "op-attrs/ff_dim.h"
-#include "utils/stack_vector.h"
 #include <sstream>
 
 namespace FlexFlow {
 TransposeAttrs::TransposeAttrs(
-    ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM> const &perm)
+    ::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t> const &perm)
     : perm(perm) {}
 bool TransposeAttrs::operator==(TransposeAttrs const &other) const {
   return std::tie(this->perm) == std::tie(other.perm);
@@ -42,11 +42,8 @@ namespace std {
 size_t hash<FlexFlow::TransposeAttrs>::operator()(
     FlexFlow::TransposeAttrs const &x) const {
   size_t result = 0;
-  result ^=
-      std::hash<
-          ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>{}(
-          x.perm) +
-      0x9e3779b9 + (result << 6) + (result >> 2);
+  result ^= std::hash<::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t>>{}(x.perm) +
+            0x9e3779b9 + (result << 6) + (result >> 2);
   return result;
 }
 } // namespace std
@@ -54,9 +51,8 @@ size_t hash<FlexFlow::TransposeAttrs>::operator()(
 namespace nlohmann {
 FlexFlow::TransposeAttrs
     adl_serializer<FlexFlow::TransposeAttrs>::from_json(json const &j) {
-  return {j.at("perm")
-              .template get<::FlexFlow::stack_vector<::FlexFlow::ff_dim_t,
-                                                     MAX_TENSOR_DIM>>()};
+  return {
+      j.at("perm").template get<::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t>>()};
 }
 void adl_serializer<FlexFlow::TransposeAttrs>::to_json(
     json &j, FlexFlow::TransposeAttrs const &v) {
@@ -68,8 +64,7 @@ void adl_serializer<FlexFlow::TransposeAttrs>::to_json(
 namespace rc {
 Gen<FlexFlow::TransposeAttrs> Arbitrary<FlexFlow::TransposeAttrs>::arbitrary() {
   return gen::construct<FlexFlow::TransposeAttrs>(
-      gen::arbitrary<
-          ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>());
+      gen::arbitrary<::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t>>());
 }
 } // namespace rc
 

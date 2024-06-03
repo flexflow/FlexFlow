@@ -23,8 +23,6 @@ namespace FlexFlow {
 namespace Kernels {
 namespace ElementBinary {
 
-using OperatorType = Op;
-
 __global__ void elewise_binary_backward_kernel(size_t volume,
                                                float const alpha,
                                                float const beta,

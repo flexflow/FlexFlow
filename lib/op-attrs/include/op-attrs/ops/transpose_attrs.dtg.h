@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/transpose_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "87f6e4db4b66d564530994773c0ecef4"
+  "generated_from": "de62a505821a59c4b77197c100e204f7"
 }
 */
 
@@ -12,10 +12,10 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
+#include "op-attrs/dim_ordered.h"
 #include "op-attrs/ff_dim.dtg.h"
 #include "op-attrs/ff_dim.h"
 #include "rapidcheck.h"
-#include "utils/stack_vector.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -23,8 +23,7 @@
 namespace FlexFlow {
 struct TransposeAttrs {
   TransposeAttrs() = delete;
-  TransposeAttrs(::FlexFlow::stack_vector<::FlexFlow::ff_dim_t,
-                                          MAX_TENSOR_DIM> const &perm);
+  TransposeAttrs(::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t> const &perm);
 
   bool operator==(TransposeAttrs const &) const;
   bool operator!=(TransposeAttrs const &) const;
@@ -32,7 +31,7 @@ struct TransposeAttrs {
   bool operator>(TransposeAttrs const &) const;
   bool operator<=(TransposeAttrs const &) const;
   bool operator>=(TransposeAttrs const &) const;
-  ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM> perm;
+  ::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t> perm;
 };
 } // namespace FlexFlow
 

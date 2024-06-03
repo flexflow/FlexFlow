@@ -7,6 +7,7 @@
 #include "utils/visitable.h"
 #include <cstddef>
 #include <vector>
+#include <optional>
 
 namespace FlexFlow {
 
@@ -41,9 +42,9 @@ public:
   std::optional<std::size_t> at_maybe(std::size_t) const;
 
   ArrayShape reversed_dim_order() const;
-  ArrayShape sub_shape(std::optional<legion_dim_t> start,
-                       std::optional<legion_dim_t> end) const;
 
+  ArrayShape sub_shape(std::optional<std::variant<ff_dim_t, legion_dim_t>> start,
+                       std::optional<std::variant<ff_dim_t, legion_dim_t>> end) const;
 public:
   LegionTensorDims dims;
 };

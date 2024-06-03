@@ -127,8 +127,8 @@ void forward_kernel(ffStream_t stream,
 
   coord_t stride =
       output.shape
-          .sub_shape(std::nullopt, legion_dim_t{m.legion_dim.value() + 1})
-          .get_volume();
+          .sub_shape(std::nullopt, add_to_legion_dim(m.legion_dim, 1))
+          .num_elements();
   coord_t output_dim_size = output.shape[m.legion_dim];
   coord_t input_dim_size = input.shape[m.legion_dim];
 
@@ -155,7 +155,7 @@ void backward_kernel(ffStream_t stream,
 
   coord_t stride =
       output_grad.shape
-          .sub_shape(std::nullopt, legion_dim_t{m.legion_dim.value() + 1})
+          .sub_shape(std::nullopt, add_to_legion_dim(m.legion_dim, 1))
           .get_volume();
   coord_t output_dim_size = output_grad.shape[m.legion_dim];
   coord_t input_dim_size = input_grad.shape[m.legion_dim];
