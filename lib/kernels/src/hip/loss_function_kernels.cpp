@@ -77,8 +77,8 @@ void sparse_categorical_crossentropy_loss_backward_kernel(
 
   // launch kernel in hip
   hipLaunchKernelGGL(sparse_categorical_crossentropy_loss_backward,
-                     GET_BLOCKS(num_samples * k),
-                     dCUDA_NUM_THREADS,
+                     GET_BLOCKS(num_samples),
+                     CUDA_NUM_THREADS,
                      0,
                      stream,
                      logit_grad_ptr,
