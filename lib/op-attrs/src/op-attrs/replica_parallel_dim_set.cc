@@ -24,7 +24,8 @@ std::unordered_set<ReplicaParallelDim>
     get_replica_dims(ReplicaParallelDimSet const &s) {
   return std::unordered_set<ReplicaParallelDim>{
       ReplicaParallelDim{s.sum_degree.value, ReplicaType::SUM},
-      ReplicaParallelDim{s.discard_copy_degree.value, ReplicaType::DISCARD_COPY},
+      ReplicaParallelDim{s.discard_copy_degree.value,
+                         ReplicaType::DISCARD_COPY},
   };
 }
 

@@ -10,7 +10,7 @@ size_t size_t_from_int(int x) {
 }
 
 int int_from_size_t(size_t x) {
-  assert (x < std::numeric_limits<int>::max());
+  assert(x < std::numeric_limits<int>::max());
   return static_cast<int>(x);
 }
 

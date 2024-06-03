@@ -11,18 +11,15 @@
 namespace FlexFlow {
 
 tl::expected<TensorShape, std::string>
-  get_output_shape(ElementUnaryAttrs const &, 
-                   TensorShape const &);
+    get_output_shape(ElementUnaryAttrs const &, TensorShape const &);
 tl::expected<ParallelTensorShape, std::string>
-  get_output_shape(ElementUnaryAttrs const &,
-                   ParallelTensorShape const &);
+    get_output_shape(ElementUnaryAttrs const &, ParallelTensorShape const &);
 
-tl::expected<TensorShape, std::string> 
-  get_output_shape(ElementScalarUnaryAttrs const &,
-                   TensorShape const &);
-tl::expected<ParallelTensorShape, std::string> 
-  get_output_shape(ElementScalarUnaryAttrs const &,
-                   ParallelTensorShape const &);
+tl::expected<TensorShape, std::string>
+    get_output_shape(ElementScalarUnaryAttrs const &, TensorShape const &);
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(ElementScalarUnaryAttrs const &,
+                     ParallelTensorShape const &);
 
 CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
 CHECK_VALID_OP_ATTR(ElementScalarUnaryAttrs);

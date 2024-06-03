@@ -13,10 +13,15 @@ ShardParallelDim &shard_dim_at_idx(ParallelTensorShape &, ff_dim_t);
 
 FFOrdered<int> ff_ordered_shard_degrees(ParallelTensorShape const &);
 
-std::optional<ShardParallelDim> try_get_shard_dim_at_idx(ParallelTensorShape const &, ff_dim_t);
+std::optional<ShardParallelDim>
+    try_get_shard_dim_at_idx(ParallelTensorShape const &, ff_dim_t);
 
 ParallelTensorShape lift_to_parallel(TensorShape const &);
-ParallelTensorShape lift_to_parallel_with_degrees(TensorShape const &, SumDegree sum_degree, DiscardCopyDegree discard_copy_degree, FFOrdered<int> const &shard_degrees);
+ParallelTensorShape
+    lift_to_parallel_with_degrees(TensorShape const &,
+                                  SumDegree sum_degree,
+                                  DiscardCopyDegree discard_copy_degree,
+                                  FFOrdered<int> const &shard_degrees);
 
 std::unordered_set<ReplicaParallelDim>
     replica_dims(ParallelTensorShape const &);

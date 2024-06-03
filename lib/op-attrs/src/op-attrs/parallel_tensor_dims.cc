@@ -1,10 +1,10 @@
 #include "op-attrs/parallel_tensor_dims.h"
+#include "op-attrs/dim_ordered/transform.h"
 #include "op-attrs/replica_parallel_dim.h"
 #include "op-attrs/replica_parallel_dim_set.h"
 #include "op-attrs/shard_parallel_dim.h"
 #include "utils/containers.h"
 #include "utils/integer_conversions.h"
-#include "op-attrs/dim_ordered/transform.h"
 
 namespace FlexFlow {
 
@@ -13,7 +13,8 @@ FFOrdered<ShardParallelDim> ff_ordered_shard_dims(ParallelTensorDims const &d) {
 }
 
 FFOrdered<int> ff_ordered_shard_degrees(ParallelTensorDims const &d) {
-  return transform(d.shard_dims, [](ShardParallelDim const &d) { return d.degree; });
+  return transform(d.shard_dims,
+                   [](ShardParallelDim const &d) { return d.degree; });
 }
 
 std::unordered_set<ReplicaParallelDim>
@@ -26,7 +27,8 @@ size_t num_shard_dims(ParallelTensorDims const &dims) {
 }
 
 int total_replica_degree(ParallelTensorDims const &dims) {
-  return dims.replica_dims.discard_copy_degree.value * dims.replica_dims.sum_degree.value;
+  return dims.replica_dims.discard_copy_degree.value *
+         dims.replica_dims.sum_degree.value;
 }
 
 int total_shard_degree(ParallelTensorDims const &dims) {
@@ -62,7 +64,8 @@ TensorDims get_tensor_dims_unsafe(ParallelTensorDims const &) {
 }
 
 TensorDims get_reduced_dims(ParallelTensorDims const &dims) {
-  FFOrdered<size_t> dim_sizes = transform(dims.shard_dims, [](ShardParallelDim const &d) { return d.size; });
+  FFOrdered<size_t> dim_sizes = transform(
+      dims.shard_dims, [](ShardParallelDim const &d) { return d.size; });
   return TensorDims{dim_sizes};
 }
 

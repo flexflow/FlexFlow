@@ -29,7 +29,7 @@ int get_discard_copy_degree(ParallelTensorShape const &shape) {
 }
 
 int get_total_parallel_degree(ParallelTensorShape const &s) {
-  return  total_parallel_degree(s.dims);
+  return total_parallel_degree(s.dims);
 }
 
 bool is_valid(ParallelTensorShape const &shape) {
@@ -48,7 +48,8 @@ FFOrdered<int> ff_ordered_shard_degrees(ParallelTensorShape const &s) {
   return ff_ordered_shard_degrees(s.dims);
 }
 
-std::optional<ShardParallelDim> try_get_shard_dim_at_idx(ParallelTensorShape const &s, ff_dim_t d) {
+std::optional<ShardParallelDim>
+    try_get_shard_dim_at_idx(ParallelTensorShape const &s, ff_dim_t d) {
   if (s.dims.shard_dims.idx_is_valid(d)) {
     return s.dims.shard_dims.at(d);
   } else {
@@ -60,10 +61,15 @@ ParallelTensorShape lift_to_parallel(TensorShape const &s) {
   return {lift_to_parallel(s.dims), s.data_type};
 }
 
-ParallelTensorShape lift_to_parallel_with_degrees(TensorShape const &s, SumDegree sum_degree, DiscardCopyDegree discard_copy_degree, FFOrdered<int> const &shard_degrees) {
+ParallelTensorShape
+    lift_to_parallel_with_degrees(TensorShape const &s,
+                                  SumDegree sum_degree,
+                                  DiscardCopyDegree discard_copy_degree,
+                                  FFOrdered<int> const &shard_degrees) {
   return ParallelTensorShape{
-    lift_to_parallel_with_degrees(s.dims, sum_degree, discard_copy_degree, shard_degrees),
-    s.data_type,
+      lift_to_parallel_with_degrees(
+          s.dims, sum_degree, discard_copy_degree, shard_degrees),
+      s.data_type,
   };
 }
 

@@ -7,9 +7,10 @@
 
 namespace FlexFlow {
 
-tl::expected<MultiHeadAttentionInputs, std::string> parse_attention_input_shape(TensorShape const &input_q,
-                                                     TensorShape const &input_k,
-                                                     TensorShape const &input_v);
+tl::expected<MultiHeadAttentionInputs, std::string>
+    parse_attention_input_shape(TensorShape const &input_q,
+                                TensorShape const &input_k,
+                                TensorShape const &input_v);
 
 } // namespace FlexFlow
 

@@ -1,12 +1,12 @@
 #include "doctest/doctest.h"
 #include "utils/containers.decl.h"
+#include "utils/fmt/expected.h"
+#include <fmt/format.h>
 #include <sstream>
+#include <tl/expected.hpp>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <tl/expected.hpp>
-#include "utils/fmt/expected.h"
-#include <fmt/format.h>
 
 using namespace FlexFlow;
 

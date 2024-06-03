@@ -1,34 +1,35 @@
-#include "test/utils/doctest.h"
 #include "op-attrs/ops/combine.h"
+#include "test/utils/doctest.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Combine shape inference") {
 
     ParallelTensorShape input = {
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          ShardParallelDim{12, 2},
-          ShardParallelDim{14, 1},
-          ShardParallelDim{16, 3},
-          ShardParallelDim{18, 2},
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                ShardParallelDim{12, 2},
+                ShardParallelDim{14, 1},
+                ShardParallelDim{16, 3},
+                ShardParallelDim{18, 2},
+            },
+            ReplicaParallelDimSet{
+                SumDegree{3},
+                DiscardCopyDegree{2},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{3},
-          DiscardCopyDegree{2},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     SUBCASE("valid") {
       ff_dim_t dim = 2;
       int degree = 3;
       CombineAttrs attrs = CombineAttrs{
-        /*repartition_dim=*/dim,
-        /*repartition_degree=*/degree,
+          /*repartition_dim=*/dim,
+          /*repartition_degree=*/degree,
       };
 
-      tl::expected<ParallelTensorShape, std::string> result = get_output_shape(attrs, input); 
+      tl::expected<ParallelTensorShape, std::string> result =
+          get_output_shape(attrs, input);
 
       tl::expected<ParallelTensorShape, std::string> correct = [&] {
         ParallelTensorShape output = input;
@@ -43,13 +44,16 @@ TEST_SUITE(FF_TEST_SUITE) {
       ff_dim_t dim = 2;
       int degree = 4;
       CombineAttrs attrs = CombineAttrs{
-        /*repartition_dim=*/dim,
-        /*repartition_degree=*/degree,
+          /*repartition_dim=*/dim,
+          /*repartition_degree=*/degree,
       };
 
-      tl::expected<ParallelTensorShape, std::string> result = get_output_shape(attrs, input); 
+      tl::expected<ParallelTensorShape, std::string> result =
+          get_output_shape(attrs, input);
 
-      CHECK_MESSAGE(!result.has_value(), "Unexpected successful result: ", result.error());
+      CHECK_MESSAGE(!result.has_value(),
+                    "Unexpected successful result: ",
+                    result.error());
     }
   }
 }

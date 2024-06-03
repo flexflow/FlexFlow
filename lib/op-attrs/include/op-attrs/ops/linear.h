@@ -12,23 +12,20 @@ namespace FlexFlow {
 CHECK_VALID_OP_ATTR(LinearAttrs);
 
 tl::expected<TensorShape, std::string>
-  get_kernel_shape(LinearAttrs const &attrs,
-                             TensorShape const &input);
+    get_kernel_shape(LinearAttrs const &attrs, TensorShape const &input);
+tl::expected<TensorShape, std::string> get_bias_shape(LinearAttrs const &attrs,
+                                                      TensorShape const &input);
 tl::expected<TensorShape, std::string>
-  get_bias_shape(LinearAttrs const &attrs, TensorShape const &input);
-tl::expected<TensorShape, std::string>
-  get_output_shape(LinearAttrs const &attrs,
-                             TensorShape const &input);
+    get_output_shape(LinearAttrs const &attrs, TensorShape const &input);
 
 tl::expected<ParallelTensorShape, std::string>
-  get_kernel_shape(LinearAttrs const &attrs,
-                                     ParallelTensorShape const &input);
+    get_kernel_shape(LinearAttrs const &attrs,
+                     ParallelTensorShape const &input);
 tl::expected<ParallelTensorShape, std::string>
-  get_bias_shape(LinearAttrs const &attrs,
-                                   ParallelTensorShape const &input);
+    get_bias_shape(LinearAttrs const &attrs, ParallelTensorShape const &input);
 tl::expected<ParallelTensorShape, std::string>
-  get_output_shape(LinearAttrs const &attrs,
-                                     ParallelTensorShape const &input);
+    get_output_shape(LinearAttrs const &attrs,
+                     ParallelTensorShape const &input);
 
 } // namespace FlexFlow
 

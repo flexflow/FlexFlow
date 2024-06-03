@@ -10,8 +10,9 @@ namespace FlexFlow {
 
 CHECK_VALID_OP_ATTR(ReductionAttrs);
 
-tl::expected<ParallelTensorShape, std::string> get_output_shape(ReductionAttrs const &attrs,
-                                                                ParallelTensorShape const &input_shape);
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(ReductionAttrs const &attrs,
+                     ParallelTensorShape const &input_shape);
 
 } // namespace FlexFlow
 

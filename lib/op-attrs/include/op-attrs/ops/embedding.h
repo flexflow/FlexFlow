@@ -11,13 +11,15 @@ namespace FlexFlow {
 
 CHECK_VALID_OP_ATTR(EmbeddingAttrs);
 
-tl::expected<TensorShape, std::string> get_output_shape(EmbeddingAttrs const &, TensorShape const &);
-tl::expected<TensorShape, std::string> get_weights_shape(EmbeddingAttrs const &, TensorShape const &);
+tl::expected<TensorShape, std::string> get_output_shape(EmbeddingAttrs const &,
+                                                        TensorShape const &);
+tl::expected<TensorShape, std::string> get_weights_shape(EmbeddingAttrs const &,
+                                                         TensorShape const &);
 
-tl::expected<ParallelTensorShape, std::string> get_output_shape(EmbeddingAttrs const &,
-                                     ParallelTensorShape const &);
-tl::expected<ParallelTensorShape, std::string> get_weights_shape(EmbeddingAttrs const &,
-                                      ParallelTensorShape const &);
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(EmbeddingAttrs const &, ParallelTensorShape const &);
+tl::expected<ParallelTensorShape, std::string>
+    get_weights_shape(EmbeddingAttrs const &, ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

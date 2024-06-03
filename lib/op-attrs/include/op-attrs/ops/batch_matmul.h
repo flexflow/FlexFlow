@@ -12,14 +12,15 @@ bool is_valid(BatchMatmulAttrs const &,
               ParallelTensorShape const &,
               ParallelTensorShape const &);
 
+tl::expected<TensorShape, std::string>
+    get_output_shape(BatchMatmulAttrs const &attrs,
+                     TensorShape const &input_lhs,
+                     TensorShape const &input_rhs);
 
-tl::expected<TensorShape, std::string> get_output_shape(BatchMatmulAttrs const &attrs,
-                             TensorShape const &input_lhs,
-                             TensorShape const &input_rhs);
-
-tl::expected<ParallelTensorShape, std::string> get_output_shape(BatchMatmulAttrs const &attrs,
-                                     ParallelTensorShape const &input_lhs,
-                                     ParallelTensorShape const &input_rhs);
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(BatchMatmulAttrs const &attrs,
+                     ParallelTensorShape const &input_lhs,
+                     ParallelTensorShape const &input_rhs);
 } // namespace FlexFlow
 
 #endif

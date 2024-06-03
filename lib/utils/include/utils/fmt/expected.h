@@ -3,15 +3,13 @@
 
 #include "fmt/format.h"
 #include "utils/check_fmtable.h"
-#include <utility>
 #include <tl/expected.hpp>
+#include <utility>
 
 namespace fmt {
 
 template <typename T, typename E, typename Char>
-struct formatter<
-    ::tl::expected<T, E>,
-    Char>
+struct formatter<::tl::expected<T, E>, Char>
     /* std::enable_if_t<!detail::has_format_as<::tl::expected<T, E>>::value>> */
     : formatter<::std::string> {
   template <typename FormatContext>
@@ -22,13 +20,13 @@ struct formatter<
     if (m.has_value()) {
       result = fmt::format("expected({})", m.value());
     } else {
-      result = fmt::format("unexpected({})", m.error());   
+      result = fmt::format("unexpected({})", m.error());
     }
 
     return formatter<std::string>::format(result, ctx);
   }
 };
 
-} // namespace FlexFlow
+} // namespace fmt
 
 #endif

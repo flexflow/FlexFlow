@@ -1,25 +1,30 @@
 #include "op-attrs/ops/embedding.h"
-#include "utils/integer_conversions.h"
-#include "op-attrs/dim_ordered/transform.h"
 #include "op-attrs/dim_ordered/slice.h"
+#include "op-attrs/dim_ordered/transform.h"
 #include "utils/containers.h"
+#include "utils/integer_conversions.h"
 
 namespace FlexFlow {
 
-static std::optional<std::string> basic_check(EmbeddingAttrs const &attrs, TensorShape const &input) {
-  if (input.data_type != DataType::INT32 && input.data_type != DataType::INT64) {
-    return fmt::format("Embedding expected input tensor to have integer datatype, but receieved tensor of datatype {}", input.data_type);
+static std::optional<std::string> basic_check(EmbeddingAttrs const &attrs,
+                                              TensorShape const &input) {
+  if (input.data_type != DataType::INT32 &&
+      input.data_type != DataType::INT64) {
+    return fmt::format("Embedding expected input tensor to have integer "
+                       "datatype, but receieved tensor of datatype {}",
+                       input.data_type);
   }
 
   if (attrs.aggr != AggregateOp::SUM) {
-    return fmt::format(fmt::format("Currently unsupported aggregation op for embedding: {}", attrs.aggr));
+    return fmt::format(fmt::format(
+        "Currently unsupported aggregation op for embedding: {}", attrs.aggr));
   }
 
   return std::nullopt;
 }
 
-tl::expected<TensorShape, std::string> 
-get_output_shape(EmbeddingAttrs const &attrs, TensorShape const &input) {
+tl::expected<TensorShape, std::string>
+    get_output_shape(EmbeddingAttrs const &attrs, TensorShape const &input) {
   {
     std::optional<std::string> err_msg = basic_check(attrs, input);
     if (err_msg.has_value()) {
@@ -33,8 +38,8 @@ get_output_shape(EmbeddingAttrs const &attrs, TensorShape const &input) {
   return output;
 }
 
-tl::expected<TensorShape, std::string> 
-get_weights_shape(EmbeddingAttrs const &attrs, TensorShape const &input) {
+tl::expected<TensorShape, std::string>
+    get_weights_shape(EmbeddingAttrs const &attrs, TensorShape const &input) {
   {
     std::optional<std::string> err_msg = basic_check(attrs, input);
     if (err_msg.has_value()) {
@@ -43,21 +48,23 @@ get_weights_shape(EmbeddingAttrs const &attrs, TensorShape const &input) {
   }
 
   return TensorShape{
-    TensorDims{
-      FFOrdered<size_t>{
-        size_t_from_int(attrs.num_entries),
-        size_t_from_int(attrs.out_channels),
+      TensorDims{
+          FFOrdered<size_t>{
+              size_t_from_int(attrs.num_entries),
+              size_t_from_int(attrs.out_channels),
+          },
       },
-    },
-    attrs.data_type,
+      attrs.data_type,
   };
 }
 
 tl::expected<ParallelTensorShape, std::string>
-get_output_shape(EmbeddingAttrs const &attrs, ParallelTensorShape const &input) {
+    get_output_shape(EmbeddingAttrs const &attrs,
+                     ParallelTensorShape const &input) {
 
   TensorShape unpar = ({
-    tl::expected<TensorShape, std::string> result_unpar = get_output_shape(attrs, get_reduced_shape(input));
+    tl::expected<TensorShape, std::string> result_unpar =
+        get_output_shape(attrs, get_reduced_shape(input));
     if (!result_unpar.has_value()) {
       return tl::unexpected(result_unpar.error());
     }
@@ -66,16 +73,21 @@ get_output_shape(EmbeddingAttrs const &attrs, ParallelTensorShape const &input) 
 
   SumDegree sum_degree = shard_dim_at_idx(input, ff_dim_t{-1}).degree;
   DiscardCopyDegree discard_copy_degree = 1;
-  FFOrdered<int> shard_degrees = transform(input.dims.shard_dims, [](ShardParallelDim const &d) { return d.degree; });
+  FFOrdered<int> shard_degrees =
+      transform(input.dims.shard_dims,
+                [](ShardParallelDim const &d) { return d.degree; });
   shard_degrees.at(ff_dim_t{-1}) = get_discard_copy_degree(input);
 
-  return lift_to_parallel_with_degrees(unpar, sum_degree, discard_copy_degree, shard_degrees);
+  return lift_to_parallel_with_degrees(
+      unpar, sum_degree, discard_copy_degree, shard_degrees);
 }
 
-tl::expected<ParallelTensorShape, std::string> 
-get_weights_shape(EmbeddingAttrs const &attrs, ParallelTensorShape const &input) {
+tl::expected<ParallelTensorShape, std::string>
+    get_weights_shape(EmbeddingAttrs const &attrs,
+                      ParallelTensorShape const &input) {
   TensorShape unpar = ({
-    tl::expected<TensorShape, std::string> result_unpar = get_weights_shape(attrs, get_reduced_shape(input));
+    tl::expected<TensorShape, std::string> result_unpar =
+        get_weights_shape(attrs, get_reduced_shape(input));
     if (!result_unpar.has_value()) {
       return tl::unexpected(result_unpar.error());
     }
@@ -83,18 +95,18 @@ get_weights_shape(EmbeddingAttrs const &attrs, ParallelTensorShape const &input)
   });
 
   SumDegree sum_degree = 1;
-  DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{
-    product(transform(ff_ordered_shard_dims(input.dims),
-            [](ShardParallelDim const &d) -> int { return d.degree; }))
-  };
+  DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{product(
+      transform(ff_ordered_shard_dims(input.dims),
+                [](ShardParallelDim const &d) -> int { return d.degree; }))};
   int entry_dim_degree = 1;
   int out_channel_degree = get_discard_copy_degree(input);
   FFOrdered<int> shard_degrees = {
-    entry_dim_degree,
-    out_channel_degree,
+      entry_dim_degree,
+      out_channel_degree,
   };
 
-  return lift_to_parallel_with_degrees(unpar, sum_degree, discard_copy_degree, shard_degrees);
+  return lift_to_parallel_with_degrees(
+      unpar, sum_degree, discard_copy_degree, shard_degrees);
 }
 
 } // namespace FlexFlow

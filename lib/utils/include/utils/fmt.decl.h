@@ -58,7 +58,6 @@ struct formatter<::std::variant<Ts...>> : formatter<::std::string> {
       -> decltype(ctx.out());
 };
 
-
 } // namespace fmt
 
 #endif
