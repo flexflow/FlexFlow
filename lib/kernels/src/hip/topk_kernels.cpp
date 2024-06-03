@@ -31,6 +31,11 @@ struct Entry {
   T value;
 };
 
+TopKPerDeviceState init_kernel(bool sorted) {
+  TopKPerDeviceState per_device_state = {sorted};
+  return per_device_state;
+}
+
 template <typename T>
 struct LinearData {
   typedef Entry<T> Entry;
