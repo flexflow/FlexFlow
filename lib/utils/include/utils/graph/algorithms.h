@@ -160,6 +160,10 @@ std::unordered_set<Node> get_predecessors(DiGraphView const &, Node const &);
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
+std::unordered_set<Node> get_successors(DiGraphView const &, Node const &);
+std::unordered_map<Node, std::unordered_set<Node>>
+    get_successors(DiGraphView const &, std::unordered_set<Node> const &);
+
 Node get_src_node(MultiDiEdge const &);
 Node get_dst_node(MultiDiEdge const &);
 Node get_dst_node(InputMultiDiEdge const &);

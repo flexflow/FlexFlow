@@ -5,6 +5,9 @@
 #include "utils/exception.h"
 #include "utils/graph/serialparallel.h"
 
+#include "utils/deduplicated_priority_queue.h"
+#include <algorithm>
+
 namespace FlexFlow {
 
 MachineMapping MachineMapping::combine(MachineMapping const &s1,
@@ -109,6 +112,7 @@ float estimate_cost(SubParallelComputationGraphView const &g,
   }
   return cost;
 }
+
 
 void minimize_runtime(OptimalCostResult &m1, OptimalCostResult const &m2) {
   minimize(m1, m2, OptimalCostRuntimeCmp{});

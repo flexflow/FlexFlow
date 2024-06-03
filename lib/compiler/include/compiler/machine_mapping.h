@@ -69,6 +69,7 @@ OptimalCostResult
                  MachineSpecification const &resources,
                  OptimalCostCache &cached_subgraph_costs);
 
+
 } // namespace FlexFlow
 
 namespace std {
