@@ -39,6 +39,7 @@
     {
       packages = {
         legion = pkgs.callPackage ./.flake/pkgs/legion.nix { };
+        hpp2plantuml = pkgs.python3Packages.callPackage ./.flake/pkgs/hpp2plantuml.nix { };
         rapidcheckFull = pkgs.symlinkJoin {
           name = "rapidcheckFull";
           paths = (with pkgs; [ rapidcheck.out rapidcheck.dev ]);
@@ -97,10 +98,10 @@
               cudaPackages.cuda_cudart
               tl-expected
               lcov # for code coverage
-              xdg_utils # for xdg-open to open html files
             ])
             (with self.packages.${system}; [
               legion
+              hpp2plantuml
               rapidcheckFull
               doctest
             ])
