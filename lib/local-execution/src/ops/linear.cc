@@ -247,21 +247,6 @@ OpTaskSignature bwd_signature<LINEAR_BWD_TASK_ID>() {
 }
 
 template <>
-TaskImplFunction get_task_impl<LINEAR_INIT_TASK_ID>() {
-  return init_task_impl;
-}
-
-template <>
-TaskImplFunction get_task_impl<LINEAR_FWD_TASK_ID>() {
-  return forward_task_impl;
-}
-
-template <>
-TaskImplFunction get_task_impl<LINEAR_BWD_TASK_ID>() {
-  return backward_task_impl;
-}
-
-template <>
 void register_task<LINEAR_INIT_TASK_ID>() {
 
   register_task(LINEAR_INIT_TASK_ID,

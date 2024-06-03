@@ -67,6 +67,7 @@ private:
   void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec);
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> tensor_bindings;
   std::unordered_map<slot_id, OpArgSpec> arg_bindings;
+  std::unordered_map<slot_id, std::pair<slot_id, IsGrad>> shape_bindings;
 };
 
 struct OpTaskInvocation {

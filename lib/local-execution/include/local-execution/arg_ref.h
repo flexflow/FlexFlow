@@ -45,7 +45,6 @@ private:
 
   std::type_index type_idx;
   LABEL_TYPE ref_type;
-  std::optional<size_t> device_idx = std::nullopt;
 };
 
 } // namespace FlexFlow

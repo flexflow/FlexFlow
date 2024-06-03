@@ -51,6 +51,18 @@ OpTaskInvocation backward(ElementBinaryAttrs const &attrs) {
   return {ELEMENTBINARY_BWD_TASK_ID, b};
 }
 
+std::function<DeviceSpecific<ElementBinaryPerDeviceState>(TaskArgumentAccessor const &)> get_element_binary_init_task_impl() {
+  return init_task_impl;
+}
+
+std::function<std::optional<float>(TaskArgumentAccessor const &)> get_element_binary_fwd_task_impl() {
+  return forward_task_impl;
+}
+
+std::function<std::optional<float>(TaskArgumentAccessor const &)> get_element_binary_bwd_task_impl() {
+  return backward_task_impl;
+}
+
 static DeviceSpecific<ElementBinaryPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto input_lhs = acc.get_tensor<Permissions::RO>(LHS_INPUT);
@@ -183,7 +195,7 @@ OpTaskSignature init_signature<ELEMENTBINARY_INIT_TASK_ID>() {
 
   init.add_return_value<ElementBinaryPerDeviceState>();
 
-  return init; // todo:this may be wrong, because the headfile retrun void
+  return init;
 }
 
 template <>

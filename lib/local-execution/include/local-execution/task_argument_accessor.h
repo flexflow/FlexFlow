@@ -2,10 +2,6 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_TASK_ARGUMENT_ACCESSOR_H
 
 #include "itask_argument_accessor.h"
-#include "local-execution/device_specific.h"
-#include "local-execution/device_states.h"
-#include "local-execution/tasks.h"
-#include "utils/variant.h"
 
 namespace FlexFlow {
 
@@ -59,16 +55,6 @@ private:
       : ptr(ptr) {}
   std::shared_ptr<ITaskArgumentAccessor const> ptr;
 };
-
-using TaskImplFunction = std::variant<
-    std::function<DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>,
-    std::function<std::optional<float>(TaskArgumentAccessor const &)>>;
-
-template <task_id_t>
-TaskImplFunction get_task_impl();
-
-template <task_id_t>
-OpTaskSignature get_signature();
 
 } // namespace FlexFlow
 

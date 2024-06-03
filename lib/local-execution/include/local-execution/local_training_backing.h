@@ -2,6 +2,7 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_LOCAL_TRAINING_BACKING_H
 
 #include "local-execution/task_registry.h"
+#include "local-execution/slot_registry.h"
 
 namespace FlexFlow {
 
@@ -29,12 +30,8 @@ private:
   ComputationGraph computation_graph;
 
   TaskRegistry task_registry;
+  SlotRegistry slot_registry;
 };
-
-// -- err (maybe): will this resolve correctly?
-OpTaskInvocation init(CompGraphOperatorAttrs const &);
-OpTaskInvocation forward(CompGraphOperatorAttrs const &);
-OpTaskInvocation backward(CompGraphOperatorAttrs const &);
 
 } // namespace FlexFlow
 

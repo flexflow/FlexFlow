@@ -79,11 +79,6 @@ OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
   return {ATTENTION_BWD_TASK_ID, b};
 }
 
-// OpArgBacking
-// generate_op_arg_backing<ATTENTION_INIT_TASK_ID>(std::vector<ParallelTensorShape>
-// tensor_shape_args) {
-
-// }
 
 static DeviceSpecific<MHAPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
@@ -121,24 +116,7 @@ static DeviceSpecific<MHAPerDeviceState>
   int num_samples = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(2)];
   int num_heads = get_piece_shape(weight_parallel_tensor_shape)[ff_dim_t(1)];
 
-  // MHAPerDeviceState per_device_state =
-  //         init_kernel(handle,
-  //                     allocator,
-  //                     num_samples,
-  //                     num_heads,
-  //                     qSize,
-  //                     kSize,
-  //                     vSize,
-  //                     qProjSize,
-  //                     kProjSize,
-  //                     vProjSize,
-  //                     oProjSize,
-  //                     qoSeqLength,
-  //                     kvSeqLength,
-  //                     attrs.add_bias_kv);
-  // return acc.create_device_specific<MHAPerDeviceState>(per_device_state);
-
-  DeviceSpecific<MHAPerDeviceState> per_device_state =
+  MHAPerDeviceState per_device_state =
       init_kernel(handle,
                   allocator,
                   num_samples,
@@ -153,7 +131,7 @@ static DeviceSpecific<MHAPerDeviceState>
                   qoSeqLength,
                   kvSeqLength,
                   attrs.add_bias_kv);
-  return per_device_state;
+  return DeviceSpecific<MHAPerDeviceState>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -299,11 +277,6 @@ void register_task<ATTENTION_INIT_TASK_ID>() {
                 "Attention Init",
                 init_signature<ATTENTION_INIT_TASK_ID>(),
                 init_task_impl);
-}
-
-template <>
-OpTaskSignature get_signature<ATTENTION_INIT_TASK_ID>() {
-  return init_signature<ATTENTION_INIT_TASK_ID>();
 }
 
 template <>
