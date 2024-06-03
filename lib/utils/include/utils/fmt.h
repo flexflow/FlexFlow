@@ -29,13 +29,6 @@ auto formatter<
   return formatter<std::string>::format(result, ctx);
 }
 
-/* template <typename T> */
-/* std::string format_as(::std::unordered_set<T> const &m) { */
-/*   return::string result = ::FlexFlow::join_strings( */
-/*       m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t);
- * }); */
-/* } */
-
 template <typename T, typename Char>
 template <typename FormatContext>
 auto formatter<
@@ -61,25 +54,6 @@ auto formatter<::std::variant<Ts...>>::format(::std::variant<Ts...> const &m,
       std::visit([](auto &&x) { return fmt::to_string(x); }, m);
   return formatter<std::string>::format(result, ctx);
 }
-
-/* template <typename L, typename R, typename Char> */
-/* template <typename FormatContext> */
-/* auto formatter< */
-/*   ::std::pair<L, R>, */
-/*   Char, */
-/*   std::enable_if_t<!detail::has_format_as<::std::pair<L, R>>::value> */
-/* >::format(::std::pair<L, R> const &m, FormatContext &ctx) */
-/*     -> decltype(ctx.out()) { */
-/*   /1* CHECK_FMTABLE(T); *1/ */
-
-/*   /1* std::string result = ::FlexFlow::join_strings( *1/ */
-/*   /1*     m.cbegin(), m.cend(), ", ", [](T const &t) { return
- * fmt::to_string(t); }); *1/ */
-/*   NOT_IMPLEMENTED(); */
-/*   std::string result = ""; */
-/*   return formatter<std::string>::format(result, ctx); */
-/* } */
-
 } // namespace fmt
 
 namespace FlexFlow {

@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_CAST_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_CAST_KERNELS_H
 
+#include "device.h"
 #include "kernels/accessor.h"
-#include "kernels/device.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/activation.h"
 

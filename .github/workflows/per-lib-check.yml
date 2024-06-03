@@ -107,3 +107,19 @@ jobs:
       - name: Test substitution-generator
         run: |
           test_libs.sh substitution-generator
+
+      - name: Generate code coverage
+        run: |
+          lcov --capture --directory . --output-file main_coverage.info
+          lcov --remove main_coverage.info '/nix/store/' --output-file main_coverage.info
+          lcov --list main_coverage.info
+      
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: main_coverage.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          verbose: true

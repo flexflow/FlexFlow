@@ -235,8 +235,6 @@ public:
   std::vector<tensor_guid_t> get_outputs(LayerAttrs const &) const;
   tensor_guid_t get_output(LayerAttrs const &, int idx) const;
 
-  /*   tensor_guid_t at(MultiDiEdge const &) const; */
-  /*   LayerAttrs at(Node const &) const; */
 private:
   TensorShape get_shape(tensor_guid_t const &) const;
 

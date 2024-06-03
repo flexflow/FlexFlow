@@ -58,15 +58,6 @@ struct formatter<::std::variant<Ts...>> : formatter<::std::string> {
       -> decltype(ctx.out());
 };
 
-/* template <typename L, typename R, typename Char> */
-/* struct formatter< */
-/*   ::std::pair<L, R> */
-/*   Char, */
-/*   std::enable_if_t<!detail::has_format_as<::std::pair<L, R>>::value> */
-/* > : formatter<::std::string> { */
-/*   template <typename FormatContext> */
-/*   auto format(::std::pair<L, R> const &m, FormatContext &ctx) */
-/*       -> decltype(ctx.out()); */
 
 } // namespace fmt
 

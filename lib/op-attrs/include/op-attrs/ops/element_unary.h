@@ -27,6 +27,9 @@ tl::expected<ParallelTensorShape, std::string>
 CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
 CHECK_VALID_OP_ATTR(ElementScalarUnaryAttrs);
 
+using ElementUnaryUnifiedAttrs =
+    std::variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
+
 } // namespace FlexFlow
 
 #endif
