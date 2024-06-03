@@ -36,8 +36,8 @@ static bool use_cudnn(OperatorType op_type) {
 }
 
 static ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
-                                       ArrayShape const &output_shape,
-                                       OperatorType op_type) {
+                                              ArrayShape const &output_shape,
+                                              OperatorType op_type) {
 
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
@@ -87,7 +87,6 @@ ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
                                        ElementScalarUnaryAttrs const &attrs) {
   return init_kernel(input_shape, output_shape, get_op_type(attrs));
 }
-
 
 template <typename T>
 __global__ void elewise_unary_forward_kernel(
@@ -291,8 +290,14 @@ void forward_kernel(ffStream_t stream,
                     PerDeviceFFHandle const &handle,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
-  DataTypeDispatch1<ForwardKernel>{}(
-      input.data_type, stream, device_state, get_op_type(attrs), std::nullopt, handle, input, output);
+  DataTypeDispatch1<ForwardKernel>{}(input.data_type,
+                                     stream,
+                                     device_state,
+                                     get_op_type(attrs),
+                                     std::nullopt,
+                                     handle,
+                                     input,
+                                     output);
 }
 
 void forward_kernel(ffStream_t stream,
@@ -301,8 +306,14 @@ void forward_kernel(ffStream_t stream,
                     PerDeviceFFHandle const &handle,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
-  DataTypeDispatch1<ForwardKernel>{}(
-      input.data_type, stream, device_state, get_op_type(attrs), attrs.scalar, handle, input, output);
+  DataTypeDispatch1<ForwardKernel>{}(input.data_type,
+                                     stream,
+                                     device_state,
+                                     get_op_type(attrs),
+                                     attrs.scalar,
+                                     handle,
+                                     input,
+                                     output);
 }
 
 void backward_kernel(ffStream_t stream,

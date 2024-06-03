@@ -126,8 +126,7 @@ void forward_kernel(ffStream_t stream,
   checkCUDA(get_legion_stream(&stream));
 
   coord_t stride =
-      output.shape
-          .sub_shape(std::nullopt, add_to_legion_dim(m.legion_dim, 1))
+      output.shape.sub_shape(std::nullopt, add_to_legion_dim(m.legion_dim, 1))
           .num_elements();
   coord_t output_dim_size = output.shape[m.legion_dim];
   coord_t input_dim_size = input.shape[m.legion_dim];
