@@ -2,19 +2,24 @@
 
 namespace FlexFlow {
 
-void TaskRegistry::register_task(task_id_t const & task_id, operator_guid_t const & op_id, CompGraphOperatorAttrs const & attrs) {
+void TaskRegistry::register_task(task_id_t const &task_id,
+                                 operator_guid_t const &op_id,
+                                 CompGraphOperatorAttrs const &attrs) {
   TaskSignatureImpl task_signature_impl = get_task_sig_impl(task_id);
   switch (task_signature_impl.task_signature.type) {
     case OpTaskType::INIT:
-      assert(is_invocation_valid(task_signature_impl.task_signature, init(attrs)));
+      assert(
+          is_invocation_valid(task_signature_impl.task_signature, init(attrs)));
       this->init_task_ids.insert({op_id, task_id});
       break;
     case OpTaskType::FWD:
-      assert(is_invocation_valid(task_signature_impl.task_signature, forward(attrs)));
+      assert(is_invocation_valid(task_signature_impl.task_signature,
+                                 forward(attrs)));
       this->forward_task_ids.insert({op_id, task_id});
       break;
     case OpTaskType::BWD:
-      assert(is_invocation_valid(task_signature_impl.task_signature, backward(attrs)));
+      assert(is_invocation_valid(task_signature_impl.task_signature,
+                                 backward(attrs)));
       this->backward_task_ids.insert({op_id, task_id});
       break;
     default:

@@ -60,8 +60,7 @@ struct OpTaskBinding {
       get_tensor_bindings() const;
   std::unordered_map<slot_id, OpArgSpec> const &get_arg_bindings() const;
 
-  void bind_from_forward(OpTaskBinding const & fwd);
-
+  void bind_from_forward(OpTaskBinding const &fwd);
 
 private:
   void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec);

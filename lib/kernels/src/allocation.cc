@@ -10,7 +10,8 @@ void Allocator::deallocate(void *ptr) {
   this->i_allocator->deallocate(ptr);
 }
 
-GenericTensorAccessorW Allocator::allocate_tensor(TensorShape const &tensor_shape) {
+GenericTensorAccessorW
+    Allocator::allocate_tensor(TensorShape const &tensor_shape) {
   void *ptr = this->allocate(tensor_shape.get_size_in_bytes());
   return {tensor_shape.data_type, tensor_shape, ptr};
 }

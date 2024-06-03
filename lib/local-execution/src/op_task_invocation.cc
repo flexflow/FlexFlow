@@ -35,7 +35,6 @@ void OpTaskBinding::bind_from_forward(OpTaskBinding const &fwd) {
   this->tensor_bindings = fwd.get_tensor_bindings();
 }
 
-
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd) {
   OpTaskBinding bwd;
   bwd.bind_from_forward(fwd);

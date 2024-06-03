@@ -45,8 +45,8 @@ DeviceSpecific<DeviceStates>
                                               TaskArgumentAccessor const &acc) {
   TaskSignatureImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
-  auto fn = std::get<std::function<DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>>(
-      task_sig_impl.impl_function);
+  auto fn = std::get<std::function<DeviceSpecific<DeviceStates>(
+      TaskArgumentAccessor const &)>>(task_sig_impl.impl_function);
   return fn(acc);
 }
 
@@ -59,7 +59,6 @@ void LocalTrainingBacking::call_task_impl(task_id_t task_id,
       task_sig_impl.impl_function);
   fn(acc);
 }
-
 
 void LocalTrainingBacking::execute_init() {
   for (operator_guid_t const &operator_node :
@@ -103,10 +102,12 @@ void LocalTrainingBacking::execute_update() {
 
 TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(
     OpTaskInvocation const &invocation, operator_guid_t const &op_guid) const {
-  SlotTensorBackingMapping slot_tensor_backing_map = this->slot_registry.construct_slot_tensor_backing_map(
-      invocation.binding, op_guid);
-  SlotArgBackingMapping slot_argument_mapping = this->slot_registry.construct_slot_argument_mapping(
-      invocation.binding, op_guid);
+  SlotTensorBackingMapping slot_tensor_backing_map =
+      this->slot_registry.construct_slot_tensor_backing_map(invocation.binding,
+                                                            op_guid);
+  SlotArgBackingMapping slot_argument_mapping =
+      this->slot_registry.construct_slot_argument_mapping(invocation.binding,
+                                                          op_guid);
 
   return TaskArgumentAccessor::create<LocalTaskArgumentAccessor>(
       this->allocator, slot_tensor_backing_map, slot_argument_mapping);

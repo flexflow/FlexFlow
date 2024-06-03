@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_LOCAL_TRAINING_BACKING_H
 #define _FLEXFLOW_LOCAL_EXECUTION_LOCAL_TRAINING_BACKING_H
 
-#include "local-execution/task_registry.h"
 #include "local-execution/slot_registry.h"
+#include "local-execution/task_registry.h"
 
 namespace FlexFlow {
 

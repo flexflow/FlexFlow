@@ -51,15 +51,19 @@ OpTaskInvocation backward(ElementBinaryAttrs const &attrs) {
   return {ELEMENTBINARY_BWD_TASK_ID, b};
 }
 
-std::function<DeviceSpecific<ElementBinaryPerDeviceState>(TaskArgumentAccessor const &)> get_element_binary_init_task_impl() {
+std::function<
+    DeviceSpecific<ElementBinaryPerDeviceState>(TaskArgumentAccessor const &)>
+    get_element_binary_init_task_impl() {
   return init_task_impl;
 }
 
-std::function<std::optional<float>(TaskArgumentAccessor const &)> get_element_binary_fwd_task_impl() {
+std::function<std::optional<float>(TaskArgumentAccessor const &)>
+    get_element_binary_fwd_task_impl() {
   return forward_task_impl;
 }
 
-std::function<std::optional<float>(TaskArgumentAccessor const &)> get_element_binary_bwd_task_impl() {
+std::function<std::optional<float>(TaskArgumentAccessor const &)>
+    get_element_binary_bwd_task_impl() {
   return backward_task_impl;
 }
 

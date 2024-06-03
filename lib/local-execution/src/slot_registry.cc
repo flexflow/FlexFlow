@@ -2,10 +2,10 @@
 
 namespace FlexFlow {
 
-SlotRegistry::SlotRegistry(TensorBackingMapping const & allocated_tensors,
-                           RuntimeArgConfig const & runtime_arg_config)
+SlotRegistry::SlotRegistry(TensorBackingMapping const &allocated_tensors,
+                           RuntimeArgConfig const &runtime_arg_config)
     : tensor_mapping(allocated_tensors),
-      runtime_arg_config(runtime_arg_config) {};
+      runtime_arg_config(runtime_arg_config){};
 
 void SlotRegistry::add_per_device_op_state(
     operator_guid_t const &op_guid,
@@ -25,7 +25,7 @@ GenericTensorAccessorW const &
 SlotTensorBackingMapping SlotRegistry::construct_slot_tensor_backing_map(
     OpTaskBinding const &binding, operator_guid_t const &op_guid) const {
   SlotTensorBackingMapping mapping;
-  for (auto const & tensor_binding : binding.get_tensor_bindings()) {
+  for (auto const &tensor_binding : binding.get_tensor_bindings()) {
     SlotGradId slot_grad_id = tensor_binding.first;
     OpTensorSpec tensor_spec = tensor_binding.second;
     std::vector<tensor_guid_t> tensor_guids;
@@ -40,7 +40,8 @@ SlotTensorBackingMapping SlotRegistry::construct_slot_tensor_backing_map(
         tensor_guids = this->output_tensor_slots.at(op_guid);
         break;
       default:
-        throw mk_runtime_error(fmt::format("Invalid TensorRole {}", tensor_spec.role));
+        throw mk_runtime_error(
+            fmt::format("Invalid TensorRole {}", tensor_spec.role));
     }
     GenericTensorAccessorW tensor_backing =
         this->get_tensor_backing(tensor_guids.at(tensor_spec.idx));
@@ -52,7 +53,7 @@ SlotTensorBackingMapping SlotRegistry::construct_slot_tensor_backing_map(
 SlotArgBackingMapping SlotRegistry::construct_slot_argument_mapping(
     OpTaskBinding const &binding, operator_guid_t const &op_guid) const {
   SlotArgBackingMapping mapping;
-  for (auto const & arg_binding : binding.get_arg_bindings()) {
+  for (auto const &arg_binding : binding.get_arg_bindings()) {
     slot_id arg_slot = arg_binding.first;
     OpArgSpec op_arg_spec = arg_binding.second;
     if (std::holds_alternative<OpArgRefSpec>(op_arg_spec)) {
@@ -73,16 +74,18 @@ SlotArgBackingMapping SlotRegistry::construct_slot_argument_mapping(
   return mapping;
 }
 
-ConcreteArgSpec
-    SlotRegistry::compile_op_arg_ref_spec(OpArgRefSpec const &op_arg_ref_spec,
-                                          operator_guid_t const &op_guid) const {
+ConcreteArgSpec SlotRegistry::compile_op_arg_ref_spec(
+    OpArgRefSpec const &op_arg_ref_spec, operator_guid_t const &op_guid) const {
   if (op_arg_ref_spec.holds<DeviceSpecific<DeviceStates>>()) {
     return ConcreteArgSpec::create(per_device_op_states.at(op_guid));
   } else if (op_arg_ref_spec.holds<ParallelTensorShape>()) {
     IndexOpArgRefType index_op_arg_ref = op_arg_ref_spec.get_ref_type();
-    std::vector<tensor_guid_t> input_tensor_guids = this->input_tensor_slots.at(op_guid);
-    GenericTensorAccessorW tensor_backing = this->get_tensor_backing(input_tensor_guids.at(index_op_arg_ref.idx));
-    ParallelTensorShape shape = {tensor_backing.shape, tensor_backing.data_type};
+    std::vector<tensor_guid_t> input_tensor_guids =
+        this->input_tensor_slots.at(op_guid);
+    GenericTensorAccessorW tensor_backing =
+        this->get_tensor_backing(input_tensor_guids.at(index_op_arg_ref.idx));
+    ParallelTensorShape shape = {tensor_backing.shape,
+                                 tensor_backing.data_type};
     return ConcreteArgSpec::create(shape);
   } else {
     throw mk_runtime_error("Unhandled op arg ref type");

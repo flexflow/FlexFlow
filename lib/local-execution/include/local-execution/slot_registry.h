@@ -3,8 +3,8 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_SLOT_REGISTRY_H
 
 #include "kernels/accessor.h"
-#include "local-execution/local_task_argument_accessor.h"
 #include "local-execution/device_states.h"
+#include "local-execution/local_task_argument_accessor.h"
 #include "local-execution/op_task_invocation.h"
 #include "local-execution/runtime_arg_config.h"
 #include "pcg/computation_graph.h"
@@ -19,7 +19,7 @@ struct SlotRegistry {
 
 public:
   void add_per_device_op_state(operator_guid_t const &,
-                                  DeviceSpecific<DeviceStates> const &);
+                               DeviceSpecific<DeviceStates> const &);
   bool is_tensor_allocated(tensor_guid_t const &) const;
   GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &) const;
   SlotTensorBackingMapping
