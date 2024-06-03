@@ -124,7 +124,8 @@ static std::optional<float>
                  handle);
 }
 
-// std::function<DeviceSpecific<ElementBinaryPerDeviceState>(TaskArgumentAccessor const &)>
+// std::function<DeviceSpecific<ElementBinaryPerDeviceState>(TaskArgumentAccessor
+// const &)>
 //     get_elementbinary_init_task_impl() {
 //   return init_task_impl;
 // }
