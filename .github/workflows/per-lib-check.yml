@@ -111,8 +111,8 @@ jobs:
       - name: Generate code coverage
         run: |
           lcov --capture --directory . --output-file main_coverage.info
-          lcov --extract main_coverage.info 'lib/*' --output-file main_coverage.info
-          lcov --remove main_coverage.info 'lib/*.dtg.h' 'lib/*.dtg.cc'  --output-file main_coverage.info
+          lcov --extract main_coverage.info "$GITHUB_WORKSPACE/lib/*" --output-file main_coverage.info
+          lcov --remove main_coverage.info "$GITHUB_WORKSPACE/lib/*.dtg.h" "$GITHUB_WORKSPACE/lib/*.dtg.cc"  --output-file main_coverage.info
           lcov --list main_coverage.info
       
       - name: Upload code coverage
