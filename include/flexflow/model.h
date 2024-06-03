@@ -681,16 +681,16 @@ public:
              bool sorted,
              char const *name = NULL);
   Tensor gumbel_top_k(Tensor const input,
-                   // Tensor *outputs,
-                   int k,
-                   bool sorted,
-                   bool speculative_decoding,
-                   char const *name = NULL);
+                      // Tensor *outputs,
+                      int k,
+                      bool sorted,
+                      bool speculative_decoding,
+                      char const *name = NULL);
   Tensor arg_top_k(Tensor const input,
                    // Tensor *outputs,
                    int k,
                    bool sorted,
-                   bool speculative_decoding,
+                   bool renormalize,
                    char const *name = NULL);
   Tensor argmax(Tensor const input, bool beam_search, char const *name = NULL);
   Tensor sampling(Tensor const input, float top_p, char const *name = NULL);

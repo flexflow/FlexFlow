@@ -99,8 +99,16 @@ __global__ void compute_attention_kernel_fused_kernel(
       request_infos[requext_idx_in_batch].num_tokens_in_batch;
   int const qlength = request_infos[requext_idx_in_batch].num_tokens_in_batch;
 
-  // BatchConfig::BitMask bitmask = causalMask[requext_idx_in_batch];
-  BatchConfig::BitMask *bitmask = &causalMask[requext_idx_in_batch];
+  __shared__ uint64_t bit_mask[BatchConfig::MAX_SPEC_TREE_TOKEN_NUM]
+                              [BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 64];
+  for (int i = tidx; i < qlength; i += THREADS_PER_BLOCK) {
+    for (int j = 0; j < BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 64; j++) {
+      bit_mask[i][j] = causalMask[requext_idx_in_batch].bit_mask[i].bits[j];
+    }
+  }
+
+  int non_tree_cache_size =
+      causalMask[requext_idx_in_batch].non_tree_cache_size;
 
   int const first_token_idx =
       request_infos[requext_idx_in_batch].first_token_offset_in_batch;
@@ -112,7 +120,7 @@ __global__ void compute_attention_kernel_fused_kernel(
   extern __shared__ char smem_[];
 
   float *qk_smem = reinterpret_cast<float *>(smem_);
-  float *out_smem = reinterpret_cast<float *>(smem_ + qk_smem_sz);
+  float *out_smem = reinterpret_cast<float *>(smem_);
 
   float qk_max = -FLT_MAX;
 
@@ -160,7 +168,7 @@ __global__ void compute_attention_kernel_fused_kernel(
     for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
       K_vec k[K_VECS_PER_THREAD];
       int const ti_circ = ti % max_seq_length;
-
+#pragma unroll
       for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
         int jj = ii * THREADS_PER_KEY * K_VEC_SIZE;
         if (ti < tlength) {
@@ -173,13 +181,10 @@ __global__ void compute_attention_kernel_fused_kernel(
 
       if (ti < tlength && tidx % THREADS_PER_KEY == 0) {
         bool const mask =
-            prompt_phase ? (qi + q_start < ti)
-                         : (ti >= bitmask->non_tree_cache_size &&
-                            (!test_bit(bitmask->bit_mask,
-                                       qi,
-                                       ti - bitmask->non_tree_cache_size)));
-        // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
-        //    (1 << qi))));
+            prompt_phase
+                ? (qi + q_start < ti)
+                : (ti >= non_tree_cache_size &&
+                   (!test_bit(bit_mask, qi, ti - non_tree_cache_size)));
 
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
@@ -233,14 +238,10 @@ __global__ void compute_attention_kernel_fused_kernel(
 
     float exp_sum = 0.f;
     for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
-      bool const mask = prompt_phase
-                            ? (q_start + qi < ti)
-                            : (ti >= bitmask->non_tree_cache_size &&
-                               (!test_bit(bitmask->bit_mask,
-                                          qi,
-                                          ti - bitmask->non_tree_cache_size)));
-      // (!(bitmask->mask[ti - bitmask->non_tree_cache_size] &
-      //    (1 << qi))));
+      bool const mask =
+          prompt_phase ? (q_start + qi < ti)
+                       : (ti >= non_tree_cache_size &&
+                          (!test_bit(bit_mask, qi, ti - non_tree_cache_size)));
       float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
       exp_sum += logit;
       qk_smem[ti - first_step] = mask ? 0.0f : logit;
@@ -803,24 +804,26 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                         Dh_MAX,                                \
                                         THDS_PER_KEY,                          \
                                         THDS_PER_VALUE>                        \
-      <<<grid, THDS_PER_BLOCK, smem_sz[1], stream>>>(                          \
-          static_cast<DT *>(m->devQKVProjArray),                               \
-          static_cast<DT *>(m->keyCache),                                      \
-          static_cast<DT *>(m->valueCache),                                    \
-          output_ptr,                                                          \
-          scale,                                                               \
-          BatchConfig::max_sequence_length() +                                 \
-              BatchConfig::max_spec_tree_token_num(),                          \
-          BatchConfig::max_tokens_per_batch(),                                 \
-          m->qProjSize,                                                        \
-          m->hidden_size,                                                      \
-          m->request_infos,                                                    \
-          m->num_q_heads,                                                      \
-          bc->num_active_requests(),                                           \
-          m->causalMask,                                                       \
-          m->request_available,                                                \
-          smem_sz[0],                                                          \
-          prompt_phase)
+      <<<grid,                                                                 \
+         THDS_PER_BLOCK,                                                       \
+         smem_sz[1],                                                           \
+         stream>>>(static_cast<DT *>(m->devQKVProjArray),                      \
+                   static_cast<DT *>(m->keyCache),                             \
+                   static_cast<DT *>(m->valueCache),                           \
+                   output_ptr,                                                 \
+                   scale,                                                      \
+                   BatchConfig::max_sequence_length() +                        \
+                       BatchConfig::max_spec_tree_token_num(),                 \
+                   BatchConfig::max_tokens_per_batch(),                        \
+                   m->qProjSize,                                               \
+                   m->hidden_size,                                             \
+                   m->request_infos,                                           \
+                   m->num_q_heads,                                             \
+                   bc->num_active_requests(),                                  \
+                   m->causalMask,                                              \
+                   m->request_available,                                       \
+                   smem_sz[0],                                                 \
+                   prompt_phase)
 
 template <typename DT>
 void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
@@ -849,10 +852,16 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
           BatchConfig::max_spec_tree_token_num(),
       m->hidden_size);
 
+  // cudaEvent_t t_start, t_end;
+  // cudaEventCreate(&t_start);
+  // cudaEventCreate(&t_end);
+  // cudaEventRecord(t_start, stream);
+
   dim3 grid(m->num_q_heads, bc->num_active_requests());
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
   // 0->qk production size, 1->total shared size
+  // per_head_size: 128, thd_per_v:32, prompt_phase: 0
   int smem_sz[2];
   if (per_head_size == 64) {
     constexpr int THREADS_PER_VALUE_64 = threads_per_value_t<DT, 64>::value;
@@ -865,6 +874,15 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
   } else {
     assert(false && "a unsupported head size");
   }
+
+  // cudaEventRecord(t_end, stream);
+  // checkCUDA(cudaEventSynchronize(t_end));
+  // float elapsed = 0;
+  // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  // printf("TreeIncMultiHeadSelfAttention part 2 time: %.2f ms\n", elapsed);
+  // cudaEventDestroy(t_start);
+  // cudaEventDestroy(t_end);
+
 }
 
 template <typename DT>
