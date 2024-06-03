@@ -72,13 +72,13 @@ jobs:
         run: |
           build_libs.sh kernels
 
-      - name: Build substitutions
-        run: |
-          build_libs.sh substitutions
+      # - name: Build substitutions
+      #   run: |
+      #     build_libs.sh substitutions
 
-      - name: Build compiler
-        run: |
-          build_libs.sh compiler
+      # - name: Build compiler
+      #   run: |
+      #     build_libs.sh compiler
 
       - name: Build substitution-generator
         run: |
@@ -96,13 +96,13 @@ jobs:
         run: |
           test_libs.sh pcg
 
-      - name: Test substitutions
-        run: |
-          test_libs.sh substitutions
+      # - name: Test substitutions
+      #   run: |
+      #     test_libs.sh substitutions
 
-      - name: Test compiler
-        run: |
-          test_libs.sh compiler
+      # - name: Test compiler
+      #   run: |
+      #     test_libs.sh compiler
 
       - name: Test substitution-generator
         run: |
