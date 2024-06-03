@@ -712,7 +712,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
 
     for (int i = 0; i < prefill_request->num_tokens_in_batch; i++) {
       prefill_request->committed_tokens.push_back(Request::CommittedToken{
-          i,
+          -1,
           committed_token_offset + i,
           prefill_request->tokens[i + committed_token_offset]});
     }

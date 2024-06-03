@@ -356,6 +356,9 @@ __global__ void commit_tokens_kernel(
 
     int token_pos = i / (hidden_size);
     int token_idx_in_last_batch = committedTokenInfos[token_pos].token_index;
+    if (token_idx_in_last_batch == -1) {
+      return;
+    }
     int offset = i % hidden_size;
     assert(token_idx_in_last_batch < num_active_tokens_in_last_batch);
 
