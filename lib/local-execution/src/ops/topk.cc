@@ -61,9 +61,8 @@ static DeviceSpecific<TopKPerDeviceState>
 
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
 
-  DeviceSpecific<TopKPerDeviceState> per_device_state =
-      init_kernel(attrs.sorted);
-  return per_device_state;
+  TopKPerDeviceState per_device_state = init_kernel(attrs.sorted);
+  return DeviceSpecific<TopKPerDeviceState>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

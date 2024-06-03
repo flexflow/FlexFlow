@@ -57,9 +57,9 @@ static DeviceSpecific<ElementUnaryPerDeviceState>
       acc.get_argument<ParallelTensorShape>(INPUT_SHAPE);
   ParallelTensorShape output_shape = get_output_shape(attrs, input_shape);
 
-  DeviceSpecific<ElementUnaryPerDeviceState> per_device_state = init_kernel(
+  ElementUnaryPerDeviceState per_device_state = init_kernel(
       get_piece_shape(input_shape), get_piece_shape(output_shape), attrs);
-  return per_device_state;
+  return DeviceSpecific<ElementUnaryPerDeviceState>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

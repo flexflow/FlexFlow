@@ -131,14 +131,14 @@ static DeviceSpecific<LayerNormPerDeviceState>
     effective_batch_size = input.shape.get_volume() / M;
   }
 
-  DeviceSpecific<LayerNormPerDeviceState> per_device_state =
+  LayerNormPerDeviceState per_device_state =
       init_kernel(handle,
                   allocator,
                   attrs.elementwise_affine,
                   effective_batch_size,
                   effective_num_elements,
                   attrs.eps);
-  return per_device_state;
+  return DeviceSpecific<LayerNormPerDeviceState>::create(per_device_state);
 }
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,

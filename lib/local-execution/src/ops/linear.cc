@@ -59,7 +59,8 @@ OpTaskInvocation backward(LinearAttrs const &attrs) {
   return {LINEAR_BWD_TASK_ID, b};
 }
 
-static LinearPerDeviceState init_task_impl(TaskArgumentAccessor const &acc) {
+static DeviceSpecific<LinearPerDeviceState>
+    init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<LinearAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
@@ -80,7 +81,7 @@ static LinearPerDeviceState init_task_impl(TaskArgumentAccessor const &acc) {
                                            output.data_type,
                                            batch_size,
                                            attrs.out_channels);
-  return state;
+  return DeviceSpecific<LinearPerDeviceState>::create(state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -181,7 +182,8 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   auto init_accessor = env.get_init_accessor(LINEAR_INIT_TASK_ID, init_binding);
 
-  LinearPerDeviceState per_device_state = init_task_impl(init_accessor);
+  DeviceSpecific<LinearPerDeviceState> per_device_state =
+      init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
 

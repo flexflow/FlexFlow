@@ -47,9 +47,9 @@ static DeviceSpecific<DropoutPerDeviceState>
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(FF_HANDLE);
   auto const &attrs = acc.get_argument<DropoutAttrs>(ATTRS);
 
-  DeviceSpecific<DropoutPerDeviceState> per_device_state =
+  DropoutPerDeviceState per_device_state =
       init_kernel(handle, attrs.rate, attrs.seed, output.shape, allocator);
-  return per_device_state;
+  return DeviceSpecific<DropoutPerDeviceState>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

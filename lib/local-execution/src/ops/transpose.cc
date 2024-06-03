@@ -41,10 +41,9 @@ static DeviceSpecific<TransposePerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<TransposeAttrs>(ATTRS);
   std::vector<ff_dim_t> perm = static_cast<std::vector<ff_dim_t>>(attrs.perm);
-  DeviceSpecific<TransposePerDeviceState> per_device_state =
-      init_kernel(perm.size(), perm);
+  TransposePerDeviceState per_device_state = init_kernel(perm.size(), perm);
 
-  return per_device_state;
+  return DeviceSpecific<TransposePerDeviceState>::create(per_device_state);
 }
 
 // TODO: OpTaskSignature

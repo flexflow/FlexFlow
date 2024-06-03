@@ -81,17 +81,16 @@ static DeviceSpecific<BatchNormPerDeviceState>
 
   float *runningMean;
 
-  DeviceSpecific<BatchNormPerDeviceState> per_device_state =
-      init_kernel(handle,
-                  allocator,
-                  runningMean,
-                  output_n,
-                  output_c,
-                  output_h,
-                  output_w,
-                  attrs.relu);
+  BatchNormPerDeviceState per_device_state = init_kernel(handle,
+                                                         allocator,
+                                                         runningMean,
+                                                         output_n,
+                                                         output_c,
+                                                         output_h,
+                                                         output_w,
+                                                         attrs.relu);
 
-  return per_device_state;
+  return DeviceSpecific<BatchNormPerDeviceState>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

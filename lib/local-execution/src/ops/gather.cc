@@ -78,7 +78,8 @@ static DeviceSpecific<GatherPerDeviceState>
     }
   }
 
-  return DeviceSpecific<GatherPerDeviceState>({handle, legion_dim});
+  GatherPerDeviceState per_device_state = {handle, legion_dim};
+  return DeviceSpecific<GatherPerDeviceState>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

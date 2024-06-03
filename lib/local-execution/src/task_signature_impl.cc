@@ -176,7 +176,9 @@ TaskSignatureImpl get_task_sig_impl(task_id_t const &task_id) {
       return {get_attention_bwd_task_impl(),
               bwd_signature<ATTENTION_BWD_TASK_ID>()};
     default:
-      throw mk_runtime_error(fmt::format("Invalid task ID {}", task_id));
+      throw mk_runtime_error(
+          fmt::format("Invalid task ID")); // inserting task_id yields
+                                           // "type_is_unformattable" error
   }
 }
 } // namespace FlexFlow

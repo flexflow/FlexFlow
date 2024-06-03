@@ -1,6 +1,6 @@
 #include "element_binary.h"
 #include "kernels/element_binary_kernels.h"
-
+#include "local-execution/task_signature_impl.h"
 #include "op-attrs/get_output_shapes.h"
 #include "utils/hash-utils.h"
 
@@ -51,22 +51,6 @@ OpTaskInvocation backward(ElementBinaryAttrs const &attrs) {
   return {ELEMENTBINARY_BWD_TASK_ID, b};
 }
 
-std::function<
-    DeviceSpecific<ElementBinaryPerDeviceState>(TaskArgumentAccessor const &)>
-    get_element_binary_init_task_impl() {
-  return init_task_impl;
-}
-
-std::function<std::optional<float>(TaskArgumentAccessor const &)>
-    get_element_binary_fwd_task_impl() {
-  return forward_task_impl;
-}
-
-std::function<std::optional<float>(TaskArgumentAccessor const &)>
-    get_element_binary_bwd_task_impl() {
-  return backward_task_impl;
-}
-
 static DeviceSpecific<ElementBinaryPerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto input_lhs = acc.get_tensor<Permissions::RO>(LHS_INPUT);
@@ -76,7 +60,7 @@ static DeviceSpecific<ElementBinaryPerDeviceState>
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto const &attrs = acc.get_argument<ElementBinaryAttrs>(ATTRS);
 
-  DeviceSpecific<ElementBinaryPerDeviceState> per_device_state =
+  ElementBinaryPerDeviceState per_device_state =
       init_kernel(handle,
                   attrs.type,
                   attrs.should_broadcast_lhs,
@@ -84,7 +68,7 @@ static DeviceSpecific<ElementBinaryPerDeviceState>
                   input_lhs.shape,
                   input_rhs.shape,
                   output.shape);
-  return per_device_state;
+  return DeviceSpecific<ElementBinaryPerDeviceState>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -138,6 +122,19 @@ static std::optional<float>
                  attrs.should_broadcast_lhs,
                  attrs.should_broadcast_rhs,
                  handle);
+}
+
+// std::function<DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>
+//     get_elementbinary_init_task_impl() {
+//   return std::function(init_task_impl);
+// }
+
+TaskImplFunction get_elementbinary_fwd_task_impl() {
+  return forward_task_impl;
+}
+
+TaskImplFunction get_elementbinary_bwd_task_impl() {
+  return backward_task_impl;
 }
 
 CostMetrics

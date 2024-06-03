@@ -58,9 +58,9 @@ static DeviceSpecific<SoftmaxPerDeviceState>
 
   auto const &attrs = acc.get_argument<SoftmaxAttrs>(ATTRS);
 
-  DeviceSpecific<SoftmaxPerDeviceState> per_device_state =
+  SoftmaxPerDeviceState per_device_state =
       init_kernel(handle, attrs.dim.value());
-  return per_device_state;
+  return DeviceSpecific<SoftmaxPerDeviceState>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

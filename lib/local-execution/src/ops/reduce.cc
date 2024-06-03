@@ -40,11 +40,11 @@ static DeviceSpecific<ReducePerDeviceState>
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
   OperatorType op_type = attrs.op_type;
-  // Note: How to set the reduction size?
+
   size_t reduction_size = input.shape.get_volume() / output.shape.get_volume();
-  DeviceSpecific<ReducePerDeviceState> per_device_state =
+  ReducePerDeviceState per_device_state =
       init_kernel(handle, op_type, reduction_size, input.shape, output.shape);
-  return per_device_state;
+  return DeviceSpecific<ReducePerDeviceState>::create(per_device_state);
 }
 
 template <>

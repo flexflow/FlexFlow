@@ -60,10 +60,6 @@ static DeviceSpecific<RepartitionPerDeviceState>
 
   // Note: use the input data type
 
-  // TODO: refactor ops as follows
-  // DeviceSpecific<RepartitionPerDeviceState> per_device_state =
-  // init_kernel(handle, input.data_type);
-
   RepartitionPerDeviceState per_device_state =
       init_kernel(handle, input.data_type);
   return DeviceSpecific<RepartitionPerDeviceState>::create(per_device_state);

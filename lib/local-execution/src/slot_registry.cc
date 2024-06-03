@@ -41,7 +41,8 @@ SlotTensorBackingMapping SlotRegistry::construct_slot_tensor_backing_map(
         break;
       default:
         throw mk_runtime_error(
-            fmt::format("Invalid TensorRole {}", tensor_spec.role));
+            fmt::format("Invalid TensorRole")); // inserting role yields
+                                                // "type_is_unformattable" error
     }
     GenericTensorAccessorW tensor_backing =
         this->get_tensor_backing(tensor_guids.at(tensor_spec.idx));

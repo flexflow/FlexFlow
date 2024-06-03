@@ -54,9 +54,8 @@ static DeviceSpecific<ReshapePerDeviceState>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<ReshapeAttrs>(ATTRS);
 
-  DeviceSpecific<ReshapePerDeviceState> per_device_state =
-      init_kernel(attrs.shape.data_type);
-  return per_device_state;
+  ReshapePerDeviceState per_device_state = init_kernel(attrs.shape.data_type);
+  return DeviceSpecific<ReshapePerDeviceState>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

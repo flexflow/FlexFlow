@@ -62,7 +62,7 @@ static DeviceSpecific<Conv2DPerDeviceState>
   auto filter = acc.get_tensor<Permissions::RO>(FILTER);
   auto filter_grad = acc.get_tensor_grad<Permissions::RW>(FILTER);
 
-  DeviceSpecific<Conv2DPerDeviceState> per_device_state =
+  Conv2DPerDeviceState per_device_state =
       init_kernel(handle,
                   attrs.activation,
                   attrs.kernel_h,
@@ -76,7 +76,7 @@ static DeviceSpecific<Conv2DPerDeviceState>
                   output,
                   filter.get_float_ptr(),
                   filter_grad.get_float_ptr());
-  return per_device_state;
+  return DeviceSpecific<Conv2DPerDeviceState>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
