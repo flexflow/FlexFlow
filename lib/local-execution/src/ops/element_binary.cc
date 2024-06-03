@@ -51,7 +51,7 @@ OpTaskInvocation backward(ElementBinaryAttrs const &attrs) {
   return {ELEMENTBINARY_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<ElementBinaryPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto input_lhs = acc.get_tensor<Permissions::RO>(LHS_INPUT);
   auto input_rhs = acc.get_tensor<Permissions::RO>(RHS_INPUT);
@@ -68,7 +68,7 @@ static DeviceSpecific<ElementBinaryPerDeviceState>
                   input_lhs.shape,
                   input_rhs.shape,
                   output.shape);
-  return DeviceSpecific<ElementBinaryPerDeviceState>::create(per_device_state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -124,15 +124,15 @@ static std::optional<float>
                  handle);
 }
 
-// TaskImplFunction get_elementbinary_init_task_impl() {
-//   return std::function(init_task_impl);
-// }
+TaskImplFunction get_element_binary_init_task_impl() {
+  return init_task_impl;
+}
 
-TaskImplFunction get_elementbinary_fwd_task_impl() {
+TaskImplFunction get_element_binary_fwd_task_impl() {
   return forward_task_impl;
 }
 
-TaskImplFunction get_elementbinary_bwd_task_impl() {
+TaskImplFunction get_element_binary_bwd_task_impl() {
   return backward_task_impl;
 }
 
@@ -157,8 +157,7 @@ CostMetrics
 
   auto init_accessor =
       env.get_init_accessor(ELEMENTBINARY_INIT_TASK_ID, init_binding);
-  DeviceSpecific<ElementBinaryPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind(LHS_INPUT, input_shape_lhs);
@@ -183,8 +182,7 @@ CostMetrics
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-OpTaskSignature init_signature<ELEMENTBINARY_INIT_TASK_ID>() {
+OpTaskSignature get_element_binary_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(LHS_INPUT);
@@ -202,12 +200,11 @@ template <>
 void register_task<ELEMENTBINARY_INIT_TASK_ID>() {
   register_task(ELEMENTBINARY_INIT_TASK_ID,
                 "ElementBinary Init",
-                init_signature<ELEMENTBINARY_INIT_TASK_ID>(),
+                get_element_binary_init_signature(),
                 init_task_impl);
 }
 
-template <>
-OpTaskSignature fwd_signature<ELEMENTBINARY_FWD_TASK_ID>() {
+OpTaskSignature get_element_binary_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -226,14 +223,12 @@ template <>
 void register_task<ELEMENTBINARY_FWD_TASK_ID>() {
   register_task(ELEMENTBINARY_FWD_TASK_ID,
                 "ElementBinary Fwd",
-                fwd_signature<ELEMENTBINARY_FWD_TASK_ID>(),
+                get_element_binary_fwd_signature(),
                 forward_task_impl);
 }
 
-template <>
-OpTaskSignature bwd_signature<ELEMENTBINARY_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<ELEMENTBINARY_FWD_TASK_ID>());
+OpTaskSignature get_element_binary_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_element_binary_fwd_signature());
 
   return bwd;
 }
@@ -242,7 +237,7 @@ template <>
 void register_task<ELEMENTBINARY_BWD_TASK_ID>() {
   register_task(ELEMENTBINARY_BWD_TASK_ID,
                 "ElementBinary Bwd",
-                bwd_signature<ELEMENTBINARY_BWD_TASK_ID>(),
+                get_element_binary_bwd_signature(),
                 backward_task_impl);
 }
 

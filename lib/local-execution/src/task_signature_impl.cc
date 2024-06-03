@@ -1,18 +1,19 @@
 #include "local-execution/task_signature_impl.h"
+#include "ops/element_binary.h"
 
 namespace FlexFlow {
 
 TaskSignatureAndImpl get_task_sig_impl(task_id_t const &task_id) {
   switch (task_id) {
     case ELEMENTBINARY_INIT_TASK_ID:
-      return {get_elementbinary_init_task_impl(),
-              init_signature<ELEMENTBINARY_INIT_TASK_ID>()};
+      return {get_element_binary_init_task_impl(),
+              get_element_binary_init_signature()};
     case ELEMENTBINARY_FWD_TASK_ID:
-      return {get_elementbinary_fwd_task_impl(),
-              fwd_signature<ELEMENTBINARY_FWD_TASK_ID>()};
+      return {get_element_binary_fwd_task_impl(),
+              get_element_binary_fwd_signature()};
     case ELEMENTBINARY_BWD_TASK_ID:
-      return {get_elementbinary_bwd_task_impl(),
-              bwd_signature<ELEMENTBINARY_BWD_TASK_ID>()};
+      return {get_element_binary_bwd_task_impl(),
+              get_element_binary_bwd_signature()};
     case ELEMENTUNARY_INIT_TASK_ID:
       return {get_elementunary_init_task_impl(),
               init_signature<ELEMENTUNARY_INIT_TASK_ID>()};

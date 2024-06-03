@@ -20,9 +20,6 @@ struct TaskSignatureAndImpl {
 
 TaskSignatureAndImpl get_task_sig_impl(task_id_t const &);
 
-TaskImplFunction get_elementbinary_init_task_impl();
-TaskImplFunction get_elementbinary_fwd_task_impl();
-TaskImplFunction get_elementbinary_bwd_task_impl();
 TaskImplFunction get_elementunary_init_task_impl();
 TaskImplFunction get_elementunary_fwd_task_impl();
 TaskImplFunction get_elementunary_bwd_task_impl();
