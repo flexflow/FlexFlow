@@ -352,8 +352,7 @@ RequestManager::RequestGuid
       output = output + " " + std::to_string(request.tokens[i]);
     }
     log_req_mgr.print("%s", output.c_str());
-    std::cout << output << std::endl;
-    // write_to_output_file(output_filepath, output);
+    write_to_output_file("", output);
   }
 
   GenerationResult gr;
@@ -560,8 +559,7 @@ void RequestManager::request_complete_clean_up(int batch_index) {
       profile_info.ssm_decoding_steps) 
       + ")";
   }
-  std::cout << str << std::endl;
-  // write_to_output_file(output_filepath, str);
+  write_to_output_file("", str);
 
   trigger_request_completion_future(guid);
 }
@@ -2067,8 +2065,7 @@ void RequestManager::terminate_background_server() {
     }
     generated_tokens_per_step += ")";
     str += generated_tokens_per_step;
-    std::cout << str << std::endl;
-    // write_to_output_file(output_filepath, str);
+    write_to_output_file("", str);
     background_server_status = TERMINATED;
     // Wait for the background server to terminate
     Runtime *runtime = Runtime::get_runtime();
