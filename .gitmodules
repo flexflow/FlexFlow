@@ -33,3 +33,6 @@
 	path = deps/raft
 	url = git@github.com:rapidsai/raft.git
 	ignore = dirty
+[submodule "deps/flashinfer"]
+	path = deps/flashinfer
+	url = https://github.com/flashinfer-ai/flashinfer.git
