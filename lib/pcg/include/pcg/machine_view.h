@@ -13,7 +13,7 @@
 namespace FlexFlow {
 
 struct MachineView {
-  std::vector<int> device_ids() const;
+  std::vector<device_id_t> device_ids() const;
 
   device_id_t at(FFOrdered<num_points_t> const &coord) const;
   StridedRectangleSide at(size_t) const;

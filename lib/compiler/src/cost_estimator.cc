@@ -1,9 +1,8 @@
+
 #include "compiler/machine_mapping.h"
-#include "graph_utils.h"
 #include "pcg/parallel_computation_graph.h"
 #include "utils/exception.h"
 #include "utils/graph/serialparallel.h"
-
 #include "utils/deduplicated_priority_queue.h"
 #include <algorithm>
 
@@ -42,39 +41,35 @@ float parallel_estimate_cost(
     SubParallelComputationGraphView const &g,
     CostEstimator const &estimator,
     MachineMapping const &device_mapping,
-    std::unordered_map<OpenMultiDiEdge, MachineView> const
+    std::unordered_map<InputMultiDiEdge, MachineView> const
         &frontier_machine_views) {
   float current_time = 0;
-  std::unordered_set<Node>
-      frontier; // nodes whose dependencies (previous nodes) have been met, and
+  std::unordered_set<Node> frontier; // nodes whose dependencies (previous nodes) have been met, and
                 // are waiting to be processed.
   DeduplicatedPriorityQueue<TimedNode, std::vector<TimedNode>, TimeComparison>
       processing; // nodes currently being processed.
   std::unordered_set<Node>
       processed; // set of nodes that have already been processed
-  std::unordered_map<int, bool>
+  std::unordered_map<device_id_t, bool>
       occupied; // keeps track of the devices that are currently occupied
-
   // Filling the frontier
   for (auto const &[edge, _] : frontier_machine_views) {
-    for (Node node : get_nodes(edge)) {
+      auto node = get_dst_node(edge);
       frontier.insert(node);
     }
-  }
 
   while (!frontier.empty() || !processing.empty()) {
-
     // Processing new nodes
     std::unordered_set<Node> copy(frontier);
     for (Node const &node : copy) {
-      std::vector<int> devices =
+      std::vector<device_id_t> devices =
           device_mapping.machine_views.at(node).device_ids();
-      if (std::all_of(devices.begin(), devices.end(), [&occupied](int d) {
+      if (std::all_of(devices.begin(), devices.end(), [&occupied](device_id_t d) {
             return occupied[d] == false;
           })) {
         float cost = node_estimate_cost(node, g, estimator, device_mapping);
         processing.push({node, current_time + cost});
-        for (int d : devices) {
+        for (device_id_t d : devices) {
           occupied[d] = true;
         }
         frontier.erase(node);
@@ -83,9 +78,9 @@ float parallel_estimate_cost(
     // Finish processing one node
     TimedNode finished = processing.top();
     processing.pop();
-    std::vector<int> devices =
+    std::vector<device_id_t> devices =
         device_mapping.machine_views.at(finished.node).device_ids();
-    for (int d : devices) { // free devices
+    for (device_id_t d : devices) { // free devices
       occupied[d] = false;
     }
     processed.insert(finished.node);

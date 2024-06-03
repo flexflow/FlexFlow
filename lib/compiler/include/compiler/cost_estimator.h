@@ -13,7 +13,7 @@ float parallel_estimate_cost(
     SubParallelComputationGraphView const &g,
     CostEstimator const &estimator,
     MachineMapping const &device_mapping,
-    std::unordered_map<OpenMultiDiEdge, MachineView> const
+    std::unordered_map<InputMultiDiEdge, MachineView> const
         &frontier_machine_views);
 
 } // namespace FlexFlow

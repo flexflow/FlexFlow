@@ -18,7 +18,7 @@ struct cpu_id_t : strong_typedef<cpu_id_t, int> {
 using device_id_t = std::variant<gpu_id_t, cpu_id_t>;
 device_id_t operator+(device_id_t, size_t);
 
-DeviceType get_device_type(device_id_t);
+DeviceType get_device_type(device_id_t const &id);
 gpu_id_t unwrap_gpu(device_id_t);
 cpu_id_t unwrap_cpu(device_id_t);
 
