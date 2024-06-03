@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "device.h"
 #include "kernels/reduce_kernels.h"
+#include "device.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -24,10 +24,9 @@ namespace Reduce {
 ReducePerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                  OperatorType const &op_type,
                                  size_t const &reduction_size,
-                                 ArrayShape input_shape,
-                                 ArrayShape output_shape) {
-  ffTensorDescriptor_t inputTensor
-  ffTensorDescriptor_t outputTensor;
+                                 ArrayShape const &input_shape,
+                                 ArrayShape const &output_shape) {
+  ffTensorDescriptor_t inputTensor ffTensorDescriptor_t outputTensor;
   ffReduceTensorDescriptor_t reduceDesc;
 
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
@@ -46,13 +45,7 @@ ReducePerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                        output_shape.strides.data()));
 
   ReducePerDeviceState per_device = {
-    handle,
-    inputTensor,
-    outputTensor,
-    reduceDesc,
-    op_type,
-    reduction_size
-  };
+      handle, inputTensor, outputTensor, reduceDesc, op_type, reduction_size};
   return per_device;
 }
 
@@ -89,22 +82,18 @@ void backward_kernel(hipStream_t stream,
     case OP_REDUCE_MEAN:
       // When the output is the average of multiple input elements
       // we need to scale the gradients by 1.0 / reduction_size
-      alpha = 1.0f / m->reduction_size;
+      alpha = 1.0f / m.reduction_size;
       break;
     default:
       assert(false);
   }
-  checkCUDNN(miopenOpTensor(m.handle.dnn,
-                            miopenTensorOpAdd,
-                            &alpha,
-                            m.inputTensor,
-                            input_grad_ptr,
-                            &alpha,
-                            m.outputTensor,
-                            output_grad_ptr,
-                            &beta,
-                            m.inputTensor,
-                            input_grad_ptr));
+  checkCUDNN(hipdnnAddTensor(m.handle.dnn,
+                             &alpha,
+                             m.outputTensor,
+                             output_grad_ptr,
+                             &beta,
+                             m.inputTensor,
+                             input_grad_ptr));
 }
 
 } // namespace Reduce

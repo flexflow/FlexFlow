@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "kernels/replicate_kernels.h"
 #include "device.h"
 #include "kernels/datatype_dispatch.h"
-#include "kernels/replicate_kernels.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -42,7 +42,7 @@ struct ForwardKernel {
 
     checkCUDA(hipMemcpyAsync(input.get<T>(),
                              output.get<T>(),
-                             input.shape.num_elements() * sizeof(T),
+                             input.shape.num_elements() * size_of_datatype(T),
                              hipMemcpyDeviceToDevice,
                              stream));
   }
@@ -55,7 +55,7 @@ struct BackwardKernel {
                   GenericTensorAccessorR const &output,
                   size_t num_replicas) {
     size_t total_elements = input.shape.num_elements() * num_replicas;
-    hipLaunchKernelGGL(HIP_KERNEL_NAME(replicate_backward_kernel<T>),
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(replicate_backward_kernel<real_type<T>>),
                        GET_BLOCKS(total_elements),
                        CUDA_NUM_THREADS,
                        0,
