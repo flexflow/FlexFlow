@@ -28,6 +28,7 @@ FF_USE_NCCL     ?= 0
 USE_PYTHON      := 1
 FF_USE_PYTHON   := 1
 SHARED_OBJECTS  := 1     # we build the shared lib for legion
+FF_USE_TENSORRT := 1
 # FF_PYTHON_USE_INDEX_LOADER = 1
 
 INSTALL_TOKENIZERS := $(shell $(FF_HOME)/scripts/install_tokenizer.sh)

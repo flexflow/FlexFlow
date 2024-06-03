@@ -34,7 +34,10 @@ void inference_kernel_wrapper(AllReduceMeta const *m,
   assert(input.domain == output.domain);
   size_t hidden_dim_size = input.domain.hi()[0] - input.domain.lo()[0] + 1;
   size_t num_elements = bc->num_tokens * hidden_dim_size;
-#ifdef FF_USE_NCCL
+#ifdef FF_USE_TENSORRT
+  printf("use tensor rt allreduce");
+  customAllReduce();
+#elif defined(FF_USE_NCCL)
   ncclDataType_t nccl_data_type = ff_to_nccl_datatype(input.data_type);
   checkNCCL(ncclAllReduce(input.ptr,
                           output.ptr,
@@ -65,7 +68,7 @@ void forward_kernel_wrapper(AllReduceMeta const *m,
                           m->handle.ncclComm,
                           stream));
 #else
-  assert(false && "Must enable FF_USE_NCCL to use AllReduce operators");
+  assert(false && "Must enable FF_USE_NCCL or FF_USE_TENSORRT to use AllReduce operators");
 #endif
 }
 
