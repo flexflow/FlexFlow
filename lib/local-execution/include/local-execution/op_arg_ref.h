@@ -10,11 +10,11 @@ namespace FlexFlow {
 enum class OpArgRefLabel { PER_DEVICE_OP_STATE, PARALLEL_TENSOR_SHAPE };
 
 struct IndexlessOpArgRefType {
-  OpArgRefLabel op_arg_ref_type;
+  OpArgRefLabel op_arg_ref_label;
 };
 
 struct IndexOpArgRefType {
-  OpArgRefLabel op_arg_ref_type;
+  OpArgRefLabel op_arg_ref_label;
   int idx;
 };
 
