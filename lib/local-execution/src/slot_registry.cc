@@ -84,7 +84,8 @@ ConcreteArgSpec SlotRegistry::compile_op_arg_ref_spec(
         this->input_tensor_slots.at(op_guid);
     GenericTensorAccessorW tensor_backing =
         this->get_tensor_backing(input_tensor_guids.at(index_op_arg_ref.idx));
-    ParallelTensorShape shape = {get_tensor_shape(tensor_backing.shape, tensor_backing.data_type)};
+    ParallelTensorShape shape = {
+        get_tensor_shape(tensor_backing.shape, tensor_backing.data_type)};
     return ConcreteArgSpec::create(shape);
   } else {
     throw mk_runtime_error("Unhandled op arg ref type");
