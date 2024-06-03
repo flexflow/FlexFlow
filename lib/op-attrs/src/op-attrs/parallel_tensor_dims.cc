@@ -12,6 +12,10 @@ FFOrdered<ShardParallelDim> ff_ordered_shard_dims(ParallelTensorDims const &d) {
   return d.shard_dims;
 }
 
+FFOrdered<int> ff_ordered_shard_degrees(ParallelTensorDims const &d) {
+  return transform(d.shard_dims, [](ShardParallelDim const &d) { return d.degree; });
+}
+
 std::unordered_set<ReplicaParallelDim>
     replica_dims(ParallelTensorDims const &d) {
   return get_replica_dims(d.replica_dims);

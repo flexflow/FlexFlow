@@ -2,11 +2,14 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/tensor_shape.h"
 #include "utils/integer_conversions.h"
+#include "op-attrs/dim_ordered/transform.h"
+#include "op-attrs/dim_ordered/slice.h"
 
 namespace FlexFlow {
 
-TensorShape get_kernel_shape(LinearAttrs const &attrs,
-                             TensorShape const &input_shape) {
+tl::expected<TensorShape, std::string>
+  get_kernel_shape(LinearAttrs const &attrs,
+                   TensorShape const &input_shape) {
   size_t in_channels = dim_at_idx(input_shape, ff_dim_t{-1});
 
   return TensorShape{
@@ -17,8 +20,9 @@ TensorShape get_kernel_shape(LinearAttrs const &attrs,
   };
 }
 
-TensorShape get_bias_shape(LinearAttrs const &attrs,
-                           TensorShape const &input_shape) {
+tl::expected<TensorShape, std::string>
+get_bias_shape(LinearAttrs const &attrs,
+               TensorShape const &input_shape) {
   return TensorShape{
       TensorDims{
           FFOrdered<size_t>{size_t_from_int(attrs.out_channels)},
@@ -27,7 +31,7 @@ TensorShape get_bias_shape(LinearAttrs const &attrs,
   };
 }
 
-TensorShape get_output_shape(LinearAttrs const &attrs,
+tl::expected<TensorShape, std::string> get_output_shape(LinearAttrs const &attrs,
                              TensorShape const &input_shape) {
   TensorShape output_shape = input_shape;
   output_shape.dims.ff_ordered.at(ff_dim_t{-1}) =
@@ -36,42 +40,62 @@ TensorShape get_output_shape(LinearAttrs const &attrs,
   return output_shape;
 }
 
-ParallelTensorShape get_kernel_shape(LinearAttrs const &attrs,
-                                     ParallelTensorShape const &input_shape) {
-  NOT_IMPLEMENTED();
-  /* ShardParallelDim input_sample_dim = shard_dim_at_idx(input_shape,
-   * ff_dim_t{-2}); */
-  /* ShardParallelDim in_channels_dim = shard_dim_at_idx(input_shape,
-   * ff_dim_t{-1}); */
-}
+tl::expected<ParallelTensorShape, std::string> get_kernel_shape(LinearAttrs const &attrs,
+                                     ParallelTensorShape const &input) {
+  TensorShape unpar = ({
+    tl::expected<TensorShape, std::string> result_unpar = get_kernel_shape(attrs, get_reduced_shape(input));
+    if (!result_unpar.has_value()) {
+      return tl::unexpected(result_unpar.error());
+    }
+    result_unpar.value();
+  });
 
-ParallelTensorShape get_output_shape(LinearAttrs const &attrs,
-                                     ParallelTensorShape const &input_shape) {
-  ShardParallelDim input_sample_dim =
-      shard_dim_at_idx(input_shape, ff_dim_t{-2});
-  ShardParallelDim in_channels_dim =
-      shard_dim_at_idx(input_shape, ff_dim_t{-1});
-
-  ShardParallelDim output_sample_dim = input_sample_dim;
-  ShardParallelDim output_channels_dim = {
-      size_t_from_int(attrs.out_channels),
-      get_discard_copy_degree(input_shape),
+  SumDegree sum_degree = 1;
+  DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{
+    get_sum_degree(input) * product(slice(ff_ordered_shard_degrees(input), std::nullopt, ff_dim_t{-1}))
+  };
+  FFOrdered<int> shard_degrees = FFOrdered<int>{
+    shard_dim_at_idx(input, ff_dim_t{-1}).degree,
+    get_discard_copy_degree(input),
   };
 
-  int output_sum_degree =
-      get_sum_degree(input_shape) * in_channels_dim.degree;
-  int output_discard_copy_degree = 1;
+  return lift_to_parallel_with_degrees(unpar, sum_degree, discard_copy_degree, shard_degrees);
+}
 
-  ParallelTensorShape result = input_shape;
-  shard_dim_at_idx(result, ff_dim_t{-2}) = output_sample_dim;
-  shard_dim_at_idx(result, ff_dim_t{-1}) = output_channels_dim;
-  result.dims.replica_dims.sum_degree = output_sum_degree;
-  result.dims.replica_dims.discard_copy_degree = output_discard_copy_degree;
+tl::expected<ParallelTensorShape, std::string>
+  get_bias_shape(LinearAttrs const &attrs,
+                                   ParallelTensorShape const &input) {
+  TensorShape unpar = ({
+    tl::expected<TensorShape, std::string> result_unpar = get_bias_shape(attrs, get_reduced_shape(input));
+    if (!result_unpar.has_value()) {
+      return tl::unexpected(result_unpar.error());
+    }
+    result_unpar.value();
+  });
 
-  assert(total_parallel_degree(result.dims) ==
-         total_parallel_degree(input_shape.dims));
+  SumDegree sum_degree = get_sum_degree(input) * shard_dim_at_idx(input, ff_dim_t{-1}).degree;
+  DiscardCopyDegree discard_copy_degree = product(slice(ff_ordered_shard_degrees(input), std::nullopt, ff_dim_t{-1}));
+  FFOrdered<int> shard_degrees = FFOrdered<int>{get_discard_copy_degree(input)};
 
-  return result;
+  return lift_to_parallel_with_degrees(unpar, sum_degree, discard_copy_degree, shard_degrees);
+}
+
+tl::expected<ParallelTensorShape, std::string> get_output_shape(LinearAttrs const &attrs,
+                                     ParallelTensorShape const &input) {
+  TensorShape unpar = ({
+    tl::expected<TensorShape, std::string> result_unpar = get_output_shape(attrs, get_reduced_shape(input));
+    if (!result_unpar.has_value()) {
+      return tl::unexpected(result_unpar.error());
+    }
+    result_unpar.value();
+  });
+
+  SumDegree sum_degree = get_sum_degree(input) * shard_dim_at_idx(input, ff_dim_t{-1}).degree;
+  DiscardCopyDegree discard_copy_degree = 1;
+  FFOrdered<int> shard_degrees = ff_ordered_shard_degrees(input);
+  shard_degrees.at(ff_dim_t{-1}) = get_discard_copy_degree(input);
+
+  return lift_to_parallel_with_degrees(unpar, sum_degree, discard_copy_degree, shard_degrees);
 }
 
 } // namespace FlexFlow

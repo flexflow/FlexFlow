@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/linear_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "1369f126a4a6d6eee91642043ab481f6"
+  "generated_from": "7e82d282f90e08f1e0db7d5c4ce528b7"
 }
 */
 
@@ -27,7 +27,7 @@ struct LinearAttrs {
   LinearAttrs(int const &out_channels,
               bool const &use_bias,
               ::FlexFlow::DataType const &data_type,
-              ::FlexFlow::Activation const &activation,
+              std::optional<::FlexFlow::Activation> const &activation,
               std::optional<::FlexFlow::RegularizerAttrs> const &regularizer);
 
   bool operator==(LinearAttrs const &) const;
@@ -39,7 +39,7 @@ struct LinearAttrs {
   int out_channels;
   bool use_bias;
   ::FlexFlow::DataType data_type;
-  ::FlexFlow::Activation activation;
+  std::optional<::FlexFlow::Activation> activation;
   std::optional<::FlexFlow::RegularizerAttrs> regularizer;
 };
 } // namespace FlexFlow

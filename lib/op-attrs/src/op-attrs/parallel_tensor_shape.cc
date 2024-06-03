@@ -44,6 +44,10 @@ ShardParallelDim &shard_dim_at_idx(ParallelTensorShape &s, ff_dim_t d) {
   return shard_dim_at_idx(s.dims, d);
 }
 
+FFOrdered<int> ff_ordered_shard_degrees(ParallelTensorShape const &s) {
+  return ff_ordered_shard_degrees(s.dims);
+}
+
 std::optional<ShardParallelDim> try_get_shard_dim_at_idx(ParallelTensorShape const &s, ff_dim_t d) {
   if (s.dims.shard_dims.idx_is_valid(d)) {
     return s.dims.shard_dims.at(d);

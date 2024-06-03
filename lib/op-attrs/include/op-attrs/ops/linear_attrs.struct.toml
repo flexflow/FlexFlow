@@ -30,7 +30,7 @@ type = "::FlexFlow::DataType"
 
 [[fields]]
 name = "activation"
-type = "::FlexFlow::Activation"
+type = "std::optional<::FlexFlow::Activation>"
 
 [[fields]]
 name = "regularizer"

@@ -127,8 +127,6 @@ std::vector<ParallelTensorShape> get_output_shapes(GatherAttrs const &,
                                                    ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(LayerNormAttrs const &,
                                      ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(LinearAttrs const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(Pool2DAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ReduceAttrs const &,

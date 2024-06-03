@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/linear_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "1369f126a4a6d6eee91642043ab481f6"
+  "generated_from": "7e82d282f90e08f1e0db7d5c4ce528b7"
 }
 */
 
@@ -20,7 +20,7 @@ LinearAttrs::LinearAttrs(
     int const &out_channels,
     bool const &use_bias,
     ::FlexFlow::DataType const &data_type,
-    ::FlexFlow::Activation const &activation,
+    std::optional<::FlexFlow::Activation> const &activation,
     std::optional<::FlexFlow::RegularizerAttrs> const &regularizer)
     : out_channels(out_channels), use_bias(use_bias), data_type(data_type),
       activation(activation), regularizer(regularizer) {}
@@ -102,8 +102,8 @@ size_t hash<FlexFlow::LinearAttrs>::operator()(
             (result >> 2);
   result ^= std::hash<::FlexFlow::DataType>{}(x.data_type) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
-  result ^= std::hash<::FlexFlow::Activation>{}(x.activation) + 0x9e3779b9 +
-            (result << 6) + (result >> 2);
+  result ^= std::hash<std::optional<::FlexFlow::Activation>>{}(x.activation) +
+            0x9e3779b9 + (result << 6) + (result >> 2);
   result ^=
       std::hash<std::optional<::FlexFlow::RegularizerAttrs>>{}(x.regularizer) +
       0x9e3779b9 + (result << 6) + (result >> 2);
@@ -114,12 +114,13 @@ size_t hash<FlexFlow::LinearAttrs>::operator()(
 namespace nlohmann {
 FlexFlow::LinearAttrs
     adl_serializer<FlexFlow::LinearAttrs>::from_json(json const &j) {
-  return {j.at("out_channels").template get<int>(),
-          j.at("use_bias").template get<bool>(),
-          j.at("data_type").template get<::FlexFlow::DataType>(),
-          j.at("activation").template get<::FlexFlow::Activation>(),
-          j.at("regularizer")
-              .template get<std::optional<::FlexFlow::RegularizerAttrs>>()};
+  return {
+      j.at("out_channels").template get<int>(),
+      j.at("use_bias").template get<bool>(),
+      j.at("data_type").template get<::FlexFlow::DataType>(),
+      j.at("activation").template get<std::optional<::FlexFlow::Activation>>(),
+      j.at("regularizer")
+          .template get<std::optional<::FlexFlow::RegularizerAttrs>>()};
 }
 void adl_serializer<FlexFlow::LinearAttrs>::to_json(
     json &j, FlexFlow::LinearAttrs const &v) {
@@ -138,7 +139,7 @@ Gen<FlexFlow::LinearAttrs> Arbitrary<FlexFlow::LinearAttrs>::arbitrary() {
       gen::arbitrary<int>(),
       gen::arbitrary<bool>(),
       gen::arbitrary<::FlexFlow::DataType>(),
-      gen::arbitrary<::FlexFlow::Activation>(),
+      gen::arbitrary<std::optional<::FlexFlow::Activation>>(),
       gen::arbitrary<std::optional<::FlexFlow::RegularizerAttrs>>());
 }
 } // namespace rc
