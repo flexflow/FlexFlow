@@ -6,8 +6,8 @@
 #include "utils/stack_vector.h"
 #include "utils/visitable.h"
 #include <cstddef>
-#include <vector>
 #include <optional>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -43,8 +43,10 @@ public:
 
   ArrayShape reversed_dim_order() const;
 
-  ArrayShape sub_shape(std::optional<std::variant<ff_dim_t, legion_dim_t>> start,
-                       std::optional<std::variant<ff_dim_t, legion_dim_t>> end) const;
+  ArrayShape
+      sub_shape(std::optional<std::variant<ff_dim_t, legion_dim_t>> start,
+                std::optional<std::variant<ff_dim_t, legion_dim_t>> end) const;
+
 public:
   LegionTensorDims dims;
 };

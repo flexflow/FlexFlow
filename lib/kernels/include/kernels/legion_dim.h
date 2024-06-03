@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_KERNELS_INCLUDE_KERNELS_LEGION_DIM_H
 #define _FLEXFLOW_KERNELS_INCLUDE_KERNELS_LEGION_DIM_H
 
-#include "op-attrs/dim_ordered.h"
 #include "kernels/legion_dim_t.dtg.h"
+#include "op-attrs/dim_ordered.h"
 
 namespace FlexFlow {
 
