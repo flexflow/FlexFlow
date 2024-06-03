@@ -24,7 +24,6 @@ struct ParallelTensorShape : public use_visitable_cmp<ParallelTensorShape> {
       : dims(dims), data_type(data_type) {}
 
   ParallelTensorShape(TensorShape const &);
-  ParallelTensorShape(ArrayShape const &, DataType const &);
 
   int num_dims() const;
 
