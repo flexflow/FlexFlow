@@ -7,30 +7,28 @@
 #include "local-execution/local_task_argument_accessor.h"
 #include "local-execution/op_task_invocation.h"
 #include "local-execution/runtime_arg_config.h"
-#include "pcg/computation_graph.h"
 
 namespace FlexFlow {
 
 using TensorBackingMapping =
     std::unordered_map<tensor_guid_t, GenericTensorAccessorW>;
 
-struct SlotRegistry {
-  SlotRegistry(TensorBackingMapping const &, RuntimeArgConfig const &);
+struct LocalSlotsBacking {
+  LocalSlotsBacking(TensorBackingMapping const &, RuntimeArgConfig const &);
 
 public:
   void add_per_device_op_state(operator_guid_t const &,
                                DeviceSpecific<DeviceStates> const &);
   bool is_tensor_allocated(tensor_guid_t const &) const;
   GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &) const;
-  SlotTensorBackingMapping
-      construct_slot_tensor_backing_map(OpTaskBinding const &,
-                                        operator_guid_t const &) const;
-  SlotArgBackingMapping
-      construct_slot_argument_mapping(OpTaskBinding const &,
-                                      operator_guid_t const &) const;
-  ConcreteArgSpec compile_op_arg_ref_spec(OpArgRefSpec const &,
+  TensorSlotsBacking
+      construct_tensor_slots_backing(OpTaskBinding const &,
+                                     operator_guid_t const &) const;
+  ArgSlotsBacking construct_arg_slots_backing(OpTaskBinding const &,
+                                              operator_guid_t const &) const;
+  ConcreteArgSpec resolve_op_arg_ref_spec(OpArgRefSpec const &,
                                           operator_guid_t const &) const;
-  ConcreteArgSpec compile_runtime_arg_ref_spec(RuntimeArgRefSpec const &) const;
+  ConcreteArgSpec resolve_runtime_arg_ref_spec(RuntimeArgRefSpec const &) const;
 
 public:
   // tensors

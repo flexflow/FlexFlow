@@ -1,4 +1,5 @@
 #include "pcg/computation_graph.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 

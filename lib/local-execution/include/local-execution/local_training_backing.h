@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_LOCAL_TRAINING_BACKING_H
 #define _FLEXFLOW_LOCAL_EXECUTION_LOCAL_TRAINING_BACKING_H
 
-#include "local-execution/slot_registry.h"
+#include "local-execution/local_slots_backing.h"
 #include "local-execution/task_registry.h"
 
 namespace FlexFlow {
@@ -30,7 +30,7 @@ private:
   ComputationGraph computation_graph;
 
   TaskRegistry task_registry;
-  SlotRegistry slot_registry;
+  LocalSlotsBacking local_slots_backing;
 };
 
 } // namespace FlexFlow

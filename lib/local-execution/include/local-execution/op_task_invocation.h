@@ -10,6 +10,7 @@
 #include "local-execution/runtime_arg_ref.h"
 #include "local-execution/tasks.h"
 #include "local-execution/variadic_tensor_ref.h"
+#include "pcg/computation_graph.h"
 #include "utils/bidict.h"
 #include "utils/stack_map.h"
 #include <typeindex>
@@ -66,7 +67,6 @@ private:
   void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec);
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> tensor_bindings;
   std::unordered_map<slot_id, OpArgSpec> arg_bindings;
-  std::unordered_map<slot_id, std::pair<slot_id, IsGrad>> shape_bindings;
 };
 
 struct OpTaskInvocation {
@@ -79,6 +79,10 @@ public:
   task_id_t task_id;
   OpTaskBinding binding;
 };
+
+OpTaskInvocation init(CompGraphOperatorAttrs const &);
+OpTaskInvocation forward(CompGraphOperatorAttrs const &);
+OpTaskInvocation backward(CompGraphOperatorAttrs const &);
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);

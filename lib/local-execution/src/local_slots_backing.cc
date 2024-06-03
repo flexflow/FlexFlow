@@ -1,30 +1,32 @@
-#include "local-execution/slot_registry.h"
+#include "local-execution/local_slots_backing.h"
 
 namespace FlexFlow {
 
-SlotRegistry::SlotRegistry(TensorBackingMapping const &allocated_tensors,
-                           RuntimeArgConfig const &runtime_arg_config)
+LocalSlotsBacking::LocalSlotsBacking(
+    TensorBackingMapping const &allocated_tensors,
+    RuntimeArgConfig const &runtime_arg_config)
     : tensor_mapping(allocated_tensors),
       runtime_arg_config(runtime_arg_config){};
 
-void SlotRegistry::add_per_device_op_state(
+void LocalSlotsBacking::add_per_device_op_state(
     operator_guid_t const &op_guid,
     DeviceSpecific<DeviceStates> const &device_state) {
   this->per_device_op_states.insert({op_guid, device_state});
 }
 
-bool SlotRegistry::is_tensor_allocated(tensor_guid_t const &tensor_id) const {
+bool LocalSlotsBacking::is_tensor_allocated(
+    tensor_guid_t const &tensor_id) const {
   return contains_key(this->tensor_mapping, tensor_id);
 }
 
-GenericTensorAccessorW const &
-    SlotRegistry::get_tensor_backing(tensor_guid_t const &tensor_id) const {
+GenericTensorAccessorW const &LocalSlotsBacking::get_tensor_backing(
+    tensor_guid_t const &tensor_id) const {
   return this->tensor_mapping.at(tensor_id);
 }
 
-SlotTensorBackingMapping SlotRegistry::construct_slot_tensor_backing_map(
+TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     OpTaskBinding const &binding, operator_guid_t const &op_guid) const {
-  SlotTensorBackingMapping mapping;
+  TensorSlotsBacking mapping;
   for (auto const &tensor_binding : binding.get_tensor_bindings()) {
     SlotGradId slot_grad_id = tensor_binding.first;
     OpTensorSpec tensor_spec = tensor_binding.second;
@@ -51,20 +53,20 @@ SlotTensorBackingMapping SlotRegistry::construct_slot_tensor_backing_map(
   return mapping;
 }
 
-SlotArgBackingMapping SlotRegistry::construct_slot_argument_mapping(
+ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
     OpTaskBinding const &binding, operator_guid_t const &op_guid) const {
-  SlotArgBackingMapping mapping;
+  ArgSlotsBacking mapping;
   for (auto const &arg_binding : binding.get_arg_bindings()) {
     slot_id arg_slot = arg_binding.first;
     OpArgSpec op_arg_spec = arg_binding.second;
     if (std::holds_alternative<OpArgRefSpec>(op_arg_spec)) {
       mapping.insert({arg_slot,
-                      compile_op_arg_ref_spec(
+                      resolve_op_arg_ref_spec(
                           std::get<OpArgRefSpec>(op_arg_spec), op_guid)});
     } else if (std::holds_alternative<RuntimeArgRefSpec>(op_arg_spec),
                op_guid) {
       mapping.insert({arg_slot,
-                      compile_runtime_arg_ref_spec(
+                      resolve_runtime_arg_ref_spec(
                           std::get<RuntimeArgRefSpec>(op_arg_spec))});
     } else if (std::holds_alternative<ConcreteArgSpec>(op_arg_spec)) {
       mapping.insert({arg_slot, std::get<ConcreteArgSpec>(op_arg_spec)});
@@ -75,12 +77,13 @@ SlotArgBackingMapping SlotRegistry::construct_slot_argument_mapping(
   return mapping;
 }
 
-ConcreteArgSpec SlotRegistry::compile_op_arg_ref_spec(
+ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(
     OpArgRefSpec const &op_arg_ref_spec, operator_guid_t const &op_guid) const {
   if (op_arg_ref_spec.holds<DeviceSpecific<DeviceStates>>()) {
     return ConcreteArgSpec::create(per_device_op_states.at(op_guid));
   } else if (op_arg_ref_spec.holds<ParallelTensorShape>()) {
-    IndexOpArgRefType index_op_arg_ref = op_arg_ref_spec.get_ref_type();
+    IndexOpArgRefType index_op_arg_ref =
+        std::get<IndexOpArgRefType>(op_arg_ref_spec.get_ref_type());
     std::vector<tensor_guid_t> input_tensor_guids =
         this->input_tensor_slots.at(op_guid);
     GenericTensorAccessorW tensor_backing =
@@ -93,7 +96,7 @@ ConcreteArgSpec SlotRegistry::compile_op_arg_ref_spec(
   }
 }
 
-ConcreteArgSpec SlotRegistry::compile_runtime_arg_ref_spec(
+ConcreteArgSpec LocalSlotsBacking::resolve_runtime_arg_ref_spec(
     RuntimeArgRefSpec const &runtime_arg_ref_spec) const {
   if (runtime_arg_ref_spec.holds<DeviceSpecific<PerDeviceFFHandle>>()) {
     return ConcreteArgSpec::create(this->runtime_arg_config.ff_handle);

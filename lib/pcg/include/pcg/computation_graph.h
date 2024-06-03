@@ -5,7 +5,6 @@
 #include "operator_guid_t.h"
 #include "tensor.h"
 #include "tensor_guid_t.h"
-#include "utils/containers.h"
 #include "utils/graph.h"
 #include "utils/strong_typedef.h"
 #include "visit_struct/visit_struct.hpp"

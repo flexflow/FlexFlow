@@ -9,19 +9,28 @@ namespace FlexFlow {
 
 enum class OpArgRefLabel { PER_DEVICE_OP_STATE, PARALLEL_TENSOR_SHAPE };
 
-struct IndexOpArgRefType {
+struct IndexlessOpArgRefType {
   OpArgRefLabel op_arg_ref_type;
-  int idx = 0;
 };
 
-template <typename T>
-using OpArgRef = ArgRef<IndexOpArgRefType, T>;
+struct IndexOpArgRefType {
+  OpArgRefLabel op_arg_ref_type;
+  int idx;
+};
 
-using OpArgRefSpec = ArgRefSpec<IndexOpArgRefType>;
+using OpArgRefType = std::variant<IndexlessOpArgRefType, IndexOpArgRefType>;
+
+template <typename T>
+using OpArgRef = ArgRef<OpArgRefType, T>;
+
+using OpArgRefSpec = ArgRefSpec<OpArgRefType>;
 
 template <typename T>
 OpArgRef<DeviceSpecific<T>> per_device_op_state() {
-  return {OpArgRefLabel::PER_DEVICE_OP_STATE};
+  OpArgRefType op_arg_ref_type =
+      IndexlessOpArgRefType{OpArgRefLabel::PER_DEVICE_OP_STATE};
+  ArgRef<OpArgRefType, DeviceSpecific<T>> arg_ref = {op_arg_ref_type};
+  return arg_ref;
 }
 
 OpArgRef<ParallelTensorShape> input_parallel_tensor_shape(int idx);

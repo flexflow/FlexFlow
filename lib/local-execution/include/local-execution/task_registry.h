@@ -19,12 +19,8 @@ struct TaskRegistry {
   std::unordered_map<operator_guid_t, task_id_t> init_task_ids;
   std::unordered_map<operator_guid_t, task_id_t> forward_task_ids;
   std::unordered_map<operator_guid_t, task_id_t> backward_task_ids;
-  std::unordered_map<task_id_t, TaskSignatureImpl> task_mapping;
+  std::unordered_map<task_id_t, TaskSignatureAndImpl> task_mapping;
 };
-
-OpTaskInvocation init(CompGraphOperatorAttrs const &);
-OpTaskInvocation forward(CompGraphOperatorAttrs const &);
-OpTaskInvocation backward(CompGraphOperatorAttrs const &);
 
 } // namespace FlexFlow
 

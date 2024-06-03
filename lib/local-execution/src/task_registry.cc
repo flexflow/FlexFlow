@@ -5,7 +5,7 @@ namespace FlexFlow {
 void TaskRegistry::register_task(task_id_t const &task_id,
                                  operator_guid_t const &op_id,
                                  CompGraphOperatorAttrs const &attrs) {
-  TaskSignatureImpl task_signature_impl = get_task_sig_impl(task_id);
+  TaskSignatureAndImpl task_signature_impl = get_task_sig_impl(task_id);
   switch (task_signature_impl.task_signature.type) {
     case OpTaskType::INIT:
       assert(

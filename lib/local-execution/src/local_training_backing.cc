@@ -10,7 +10,7 @@ LocalTrainingBacking::LocalTrainingBacking(
     TensorBackingMapping const &tensor_backing_mapping,
     RuntimeArgConfig const &runtime_arg_config)
     : allocator(allocator), computation_graph(computation_graph),
-      slot_registry(tensor_backing_mapping, runtime_arg_config) {
+      local_slots_backing(tensor_backing_mapping, runtime_arg_config) {
   std::vector<operator_guid_t> layers = topological_ordering(computation_graph);
   for (operator_guid_t const &node : layers) {
     CompGraphOperatorAttrs attrs = get_layer_attrs(computation_graph, node);
@@ -22,19 +22,19 @@ LocalTrainingBacking::LocalTrainingBacking(
     }
 
     // insert pre-allocated tensors
-    this->slot_registry.input_tensor_slots.insert(
+    this->local_slots_backing.input_tensor_slots.insert(
         {node, get_incoming_tensors(computation_graph, node)});
-    this->slot_registry.output_tensor_slots.insert(
+    this->local_slots_backing.output_tensor_slots.insert(
         {node, get_outgoing_tensors(computation_graph, node)});
 
     // allocate new tensors
     for (tensor_guid_t const &edge :
          get_outgoing_tensors(computation_graph, node)) {
-      if (!this->slot_registry.is_tensor_allocated(edge)) {
+      if (!this->local_slots_backing.is_tensor_allocated(edge)) {
         Tensor tensor = computation_graph.at(edge);
         GenericTensorAccessorW tensor_backing =
             this->allocator.allocate_tensor(tensor.get_shape());
-        this->slot_registry.tensor_mapping.insert({edge, tensor_backing});
+        this->local_slots_backing.tensor_mapping.insert({edge, tensor_backing});
       }
     }
   }
@@ -43,7 +43,7 @@ LocalTrainingBacking::LocalTrainingBacking(
 DeviceSpecific<DeviceStates>
     LocalTrainingBacking::call_init_task_impl(task_id_t task_id,
                                               TaskArgumentAccessor const &acc) {
-  TaskSignatureImpl task_sig_impl =
+  TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
   auto fn = std::get<std::function<DeviceSpecific<DeviceStates>(
       TaskArgumentAccessor const &)>>(task_sig_impl.impl_function);
@@ -52,7 +52,7 @@ DeviceSpecific<DeviceStates>
 
 void LocalTrainingBacking::call_task_impl(task_id_t task_id,
                                           TaskArgumentAccessor acc) {
-  TaskSignatureImpl task_sig_impl =
+  TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
   auto fn = std::get<
       std::function<std::optional<float>(TaskArgumentAccessor const &)>>(
@@ -70,7 +70,8 @@ void LocalTrainingBacking::execute_init() {
         this->get_task_arg_accessor(invocation, operator_node);
     DeviceSpecific<DeviceStates> device_state =
         this->call_init_task_impl(invocation.task_id, accessor);
-    this->slot_registry.add_per_device_op_state(operator_node, device_state);
+    this->local_slots_backing.add_per_device_op_state(operator_node,
+                                                      device_state);
   }
 }
 
@@ -102,15 +103,15 @@ void LocalTrainingBacking::execute_update() {
 
 TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(
     OpTaskInvocation const &invocation, operator_guid_t const &op_guid) const {
-  SlotTensorBackingMapping slot_tensor_backing_map =
-      this->slot_registry.construct_slot_tensor_backing_map(invocation.binding,
+  TensorSlotsBacking tensor_slots_backing =
+      this->local_slots_backing.construct_tensor_slots_backing(
+          invocation.binding, op_guid);
+  ArgSlotsBacking arg_slots_backing =
+      this->local_slots_backing.construct_arg_slots_backing(invocation.binding,
                                                             op_guid);
-  SlotArgBackingMapping slot_argument_mapping =
-      this->slot_registry.construct_slot_argument_mapping(invocation.binding,
-                                                          op_guid);
 
   return TaskArgumentAccessor::create<LocalTaskArgumentAccessor>(
-      this->allocator, slot_tensor_backing_map, slot_argument_mapping);
+      this->allocator, tensor_slots_backing, arg_slots_backing);
 }
 
 } // namespace FlexFlow

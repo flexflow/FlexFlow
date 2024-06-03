@@ -8,19 +8,18 @@
 namespace FlexFlow {
 
 using SlotGradId = std::pair<slot_id, IsGrad>;
-using SlotTensorBackingMapping = std::unordered_map<
+using TensorSlotsBacking = std::unordered_map<
     SlotGradId,
     std::variant<GenericTensorAccessorW, std::vector<GenericTensorAccessorW>>>;
-using SlotArgBackingMapping = std::unordered_map<slot_id, ConcreteArgSpec>;
+using ArgSlotsBacking = std::unordered_map<slot_id, ConcreteArgSpec>;
 
 struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
-  LocalTaskArgumentAccessor(
-      Allocator allocator,
-      SlotTensorBackingMapping slot_tensor_backing_mapping,
-      SlotArgBackingMapping slot_argument_mapping)
+  LocalTaskArgumentAccessor(Allocator allocator,
+                            TensorSlotsBacking tensor_slots_backingping,
+                            ArgSlotsBacking arg_slots_backing)
       : allocator(allocator),
-        slot_tensor_backing_mapping(slot_tensor_backing_mapping),
-        slot_argument_mapping(slot_argument_mapping){};
+        tensor_slots_backingping(tensor_slots_backingping),
+        arg_slots_backing(arg_slots_backing){};
   LocalTaskArgumentAccessor(LocalTaskArgumentAccessor const &) = delete;
   LocalTaskArgumentAccessor(LocalTaskArgumentAccessor &&) = delete;
 
@@ -39,8 +38,8 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
 private:
   Allocator allocator;
-  SlotTensorBackingMapping slot_tensor_backing_mapping;
-  SlotArgBackingMapping slot_argument_mapping;
+  TensorSlotsBacking tensor_slots_backingping;
+  ArgSlotsBacking arg_slots_backing;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalTaskArgumentAccessor);
 

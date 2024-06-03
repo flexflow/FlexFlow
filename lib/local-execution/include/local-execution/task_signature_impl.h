@@ -13,12 +13,12 @@ using TaskImplFunction = std::variant<
     std::function<DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>,
     std::function<std::optional<float>(TaskArgumentAccessor const &)>>;
 
-struct TaskSignatureImpl {
+struct TaskSignatureAndImpl {
   TaskImplFunction impl_function;
   OpTaskSignature task_signature;
 };
 
-TaskSignatureImpl get_task_sig_impl(task_id_t const &);
+TaskSignatureAndImpl get_task_sig_impl(task_id_t const &);
 
 TaskImplFunction get_elementbinary_init_task_impl();
 TaskImplFunction get_elementbinary_fwd_task_impl();

@@ -3,7 +3,10 @@
 namespace FlexFlow {
 
 OpArgRef<ParallelTensorShape> input_parallel_tensor_shape(int idx) {
-  return {OpArgRefLabel::PARALLEL_TENSOR_SHAPE, idx};
+  OpArgRefType arg_ref_type =
+      IndexOpArgRefType{OpArgRefLabel::PER_DEVICE_OP_STATE, idx};
+  ArgRef<OpArgRefType, ParallelTensorShape> arg_ref = {arg_ref_type};
+  return arg_ref;
 }
 
 } // namespace FlexFlow
