@@ -1,0 +1,44 @@
+namespace = "FlexFlow"
+name = "LegacyPMParameter"
+
+features = [
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+values = [
+  { name = "OP_TYPE", json_key = "PM_OP_TYPE" },
+  { name = "NUM_INPUTS", json_key = "PM_NUM_INPUTS" },
+  { name = "NUM_OUTPUTS", json_key = "PM_NUM_OUTPUTS" },
+  { name = "GROUP", json_key = "PM_GROUP" },
+  { name = "KERNEL_H", json_key = "PM_KERNEL_H" },
+  { name = "KERNEL_W", json_key = "PM_KERNEL_W" },
+  { name = "STRIDE_H", json_key = "PM_STRIDE_H" },
+  { name = "STRIDE_W", json_key = "PM_STRIDE_W" },
+  { name = "PADDING_H", json_key = "PM_PADDING_H" },
+  { name = "PADDING_W", json_key = "PM_PADDING_W" },
+  { name = "ACTI", json_key = "PM_ACTI" },
+  { name = "NUMDIM", json_key = "PM_NUMDIM" },
+  { name = "AXIS", json_key = "PM_AXIS" },
+  { name = "PERM", json_key = "PM_PERM" },
+  { name = "OUTSHUFFLE", json_key = "PM_OUTSHUFFLE" },
+  { name = "MERGE_GCONV_COUNT", json_key = "PM_MERGE_GCONV_COUNT" },
+  { name = "AXES", json_key = "PM_AXES" },
+  { name = "KEEP_DIMS", json_key = "PM_KEEP_DIMS" },
+  { name = "EPSILON", json_key = "PM_EPSILON" },
+  { name = "REPARTITION_DIM", json_key = "PM_REPARTITION_DIM" },
+  { name = "REPARTITION_DEGREE", json_key = "PM_REPARTITION_DEGREE" },
+  { name = "REPLICATE_DIM", json_key = "PM_REPLICATE_DIM" },
+  { name = "REPLICATE_DEGREE", json_key = "PM_REPLICATE_DEGREE" },
+  { name = "COMBINE_DIM", json_key = "PM_COMBINE_DIM" },
+  { name = "COMBINE_DEGREE", json_key = "PM_COMBINE_DEGREE" },
+  { name = "REDUCTION_DIM", json_key = "PM_REDUCTION_DIM" },
+  { name = "REDUCTION_DEGREE", json_key = "PM_REDUCTION_DEGREE" },
+  { name = "SOFTMAX_DIM", json_key = "PM_SOFTMAX_DIM" },
+  { name = "NUM_HEADS", json_key = "PM_NUM_HEADS" },
+  { name = "PARALLEL_DIM", json_key = "PM_PARALLEL_DIM" },
+  { name = "PARALLEL_DEGREE", json_key = "PM_PARALLEL_DEGREE" },
+  { name = "PAD", json_key = "PM_PAD" },
+]
