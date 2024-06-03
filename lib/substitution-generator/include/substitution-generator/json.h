@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_SUBSTITUTION_LOADER_H
 #define _FLEXFLOW_SUBSTITUTION_LOADER_H
 
-#include <fstream>
-#include <nlohmann/json.hpp>
 #include "substitution-generator/legacy_operator_type.dtg.h"
 #include "substitution-generator/legacy_pm_parameter.dtg.h"
+#include <fstream>
+#include <nlohmann/json.hpp>
 #include <optional>
 
 namespace FlexFlow {
