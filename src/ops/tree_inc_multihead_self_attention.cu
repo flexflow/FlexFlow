@@ -340,7 +340,6 @@ __global__ void compute_attention_kernel_fused_kernel(
 
 template <typename DT>
 __global__ void commit_tokens_kernel(
-    DT const *devQKVProjArray,
     DT *kCache_ptr,
     DT *vCache_ptr,
     BatchConfig::CommittedTokensInfo const *committedTokenInfos,
@@ -363,7 +362,7 @@ __global__ void commit_tokens_kernel(
                     index_in_kv_cache * hidden_size;
   size_t to_idx = req_id * (hidden_size * max_seq_len) +
                   tok_id * hidden_size;
-  assert(to_idx < from_idx);
+  assert(to_idx <= from_idx);
 
   CUDA_KERNEL_LOOP(offset, hidden_size) {
     kCache_ptr[to_idx + offset] = kCache_ptr[from_idx + offset];
@@ -382,7 +381,6 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                            min(CUDA_NUM_THREADS, parallelism),
                            0,
                            stream>>>(
-        static_cast<DT *>(m->devQKVProjArray),
         static_cast<DT *>(m->keyCache),
         static_cast<DT *>(m->valueCache),
         m->committed_token_infos,
