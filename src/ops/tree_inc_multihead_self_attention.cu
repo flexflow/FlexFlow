@@ -465,7 +465,7 @@ void update_custom_mask(TreeIncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
-__global__ void update_tree_branch_kv_cache_kernel(
+__global__ void update_qkv_cache_kernel(
     DT *devQKVProjArray,
     DT *kCache_ptr,
     DT *vCache_ptr,
@@ -492,6 +492,34 @@ __global__ void update_tree_branch_kv_cache_kernel(
                devQKVProjArray[from_idx + hidden_size * 2 + offset];
     devQKVProjArray[token_idx * hidden_size + offset] = 
                devQKVProjArray[from_idx + offset];
+  }
+}
+
+template <typename DT>
+void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
+                                 BatchConfig const *bc,
+                                 cudaStream_t stream) {
+  // update the kv cache, compact the q array
+  int num_new_tokens = bc->num_active_tokens();
+  int parallelism = m->hidden_size;
+  // TODO: parallel across queries
+  for (int i = 0; i < num_new_tokens; i++) {
+    update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
+                              min(CUDA_NUM_THREADS, parallelism),
+                              0,
+                              stream>>>(
+        static_cast<DT *>(m->devQKVProjArray),
+        static_cast<DT *>(m->keyCache),
+        static_cast<DT *>(m->valueCache),
+        m->token_infos,
+        m->request_infos,
+        m->qProjSize,
+        m->kProjSize,
+        m->vProjSize,
+        i,
+        BatchConfig::max_sequence_length() +
+            BatchConfig::max_spec_tree_token_num(),
+        m->hidden_size);
   }
 }
 
@@ -542,31 +570,6 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
                                     BatchConfig const *bc,
                                     DT *output_ptr,
                                     cudaStream_t stream) {
-
-  // update the kv cache
-  //  update K-V cache
-  int num_new_tokens = bc->num_active_tokens();
-  int parallelism = m->hidden_size;
-  // TODO: parallel across queries
-  for (int i = 0; i < num_new_tokens; i++) {
-    update_tree_branch_kv_cache_kernel<<<GET_BLOCKS(parallelism),
-                                        min(CUDA_NUM_THREADS, parallelism),
-                                        0,
-                                        stream>>>(
-        static_cast<DT *>(m->devQKVProjArray),
-        static_cast<DT *>(m->keyCache),
-        static_cast<DT *>(m->valueCache),
-        m->token_infos,
-        m->request_infos,
-        m->qProjSize,
-        m->kProjSize,
-        m->vProjSize,
-        i,
-        BatchConfig::max_sequence_length() +
-            BatchConfig::max_spec_tree_token_num(),
-        m->hidden_size);
-  }
-
   // cudaEvent_t t_start, t_end;
   // cudaEventCreate(&t_start);
   // cudaEventCreate(&t_end);
@@ -657,6 +660,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   // update gpu-side custom mask referring from CaualMask
   update_custom_mask(m, bc, stream);
+
+  // update key-val cache, compact q array
+  update_qkv_cache<DT>(m, bc, stream);
 
   // phase 2: No need to update key/val cache
   // IncMultiHeadSelfAttention::update_kv_cache_kernel(
