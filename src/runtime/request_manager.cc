@@ -1662,13 +1662,13 @@ void RequestManager::get_verify_results_greedy(
     assert(request.status == Request::RUNNING);
 
     int llm_result_offset = request.first_token_offset_in_batch;
-    int llm_cache_size = request.llm_cache_size;
+    int llm_cache_size = request.tokens.size() - 1;
     int committed_token_index = request.tokens.size() - 1;
 
     TokenTree &token_tree = request.speculative_token_trees[0];
     // First add the root to the committed tokens
     request.committed_tokens.push_back(Request::CommittedToken(
-        llm_result_offset, committed_token_index, request.tokens.back()));
+        llm_cache_size, committed_token_index, request.tokens.back()));
     committed_token_index++;
     // Don't add it to request.tokens because it has already been added.
 
@@ -1714,7 +1714,7 @@ void RequestManager::get_verify_results_greedy(
             // pruned tokens)
             // to_index: the committed token index in the request
             request.committed_tokens.push_back(
-                Request::CommittedToken(llm_result_offset + current_token_index,
+                Request::CommittedToken(llm_cache_size + current_token_index,
                                         committed_token_index,
                                         node_ptr->id));
             request.tokens.push_back(node_ptr->id);
