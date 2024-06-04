@@ -122,7 +122,6 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: main_coverage.info
           flags: unittests
-          plugin: pycoverage #hope this will disable gcov
           name: codecov-umbrella
           fail_ci_if_error: false
           verbose: true
