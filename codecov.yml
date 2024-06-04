@@ -2,12 +2,10 @@ codecov:
   branch: repo-refactor
   notify:
     require_ci_to_pass: false
-
-
-ignore:
-  - "/home/runner/work/FlexFlow/FlexFlow/deps"
-  - "**/*.dtg.h" 
-  - "**/*.dtg.cc"
+  ignore:
+    - "/home/runner/work/FlexFlow/FlexFlow/deps"
+    - "**/*.dtg.h" 
+    - "**/*.dtg.cc"
 
 
 coverage:
