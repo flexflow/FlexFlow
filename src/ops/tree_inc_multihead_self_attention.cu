@@ -375,6 +375,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                    BatchConfig const *bc,
                    cudaStream_t stream) {
   int num_tokens_to_commit = bc->num_tokens_to_commit;
+  // TODO: parallel across queries
   for (int i = 0; i < num_tokens_to_commit; i++) {
     int parallelism = m->hidden_size;
     commit_tokens_kernel<<<GET_BLOCKS(parallelism),
@@ -478,6 +479,7 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
   //  update K-V cache
   int num_new_tokens = bc->num_active_tokens();
   int parallelism = m->hidden_size;
+  // TODO: parallel across queries
   for (int i = 0; i < num_new_tokens; i++) {
     update_tree_branch_kv_cache_kernel<<<GET_BLOCKS(parallelism),
                                         min(CUDA_NUM_THREADS, parallelism),
