@@ -122,6 +122,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: main_coverage.info
           flags: unittests
+          disable_default_path_finding: true
           plugin: pycoverage #hope this will disable gcov
           name: codecov-umbrella
           fail_ci_if_error: false
