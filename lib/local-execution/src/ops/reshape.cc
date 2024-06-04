@@ -18,7 +18,6 @@
 #include "op-attrs/get_output_shapes.h"
 
 namespace FlexFlow {
-// declare Legion names
 
 using namespace FlexFlow::Kernels::Reshape;
 
@@ -50,12 +49,12 @@ OpTaskInvocation backward(ReshapeAttrs const &attrs) {
   return {RESHAPE_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<ReshapePerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<ReshapeAttrs>(ATTRS);
 
   ReshapePerDeviceState per_device_state = init_kernel(attrs.shape.data_type);
-  return DeviceSpecific<ReshapePerDeviceState>::create(per_device_state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -123,19 +122,25 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-void register_task<RESHAPE_INIT_TASK_ID>() {
+TaskImplFunction get_reshape_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_reshape_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_reshape_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_reshape_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<ReshapeAttrs>(ATTRS);
 
   init.add_return_value<ReshapePerDeviceState>();
-
-  register_task(RESHAPE_INIT_TASK_ID, "Reshape Init", init, init_task_impl);
+  return init;
 }
-
-template <>
-void register_task<RESHAPE_FWD_TASK_ID>() {
+OpTaskSignature get_reshape_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -143,11 +148,36 @@ void register_task<RESHAPE_FWD_TASK_ID>() {
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
-
-  register_task(RESHAPE_FWD_TASK_ID, "Reshape Fwd", fwd, forward_task_impl);
+  return fwd;
+}
+OpTaskSignature get_reshape_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_reshape_fwd_signature());
+  return bwd;
 }
 
-// TODO: OpTaskSignature
+// template <>
+// void register_task<RESHAPE_INIT_TASK_ID>() {
+//   OpTaskSignature init(OpTaskType::INIT);
+
+//   init.add_arg_slot<ReshapeAttrs>(ATTRS);
+
+//   init.add_return_value<ReshapePerDeviceState>();
+
+//   register_task(RESHAPE_INIT_TASK_ID, "Reshape Init", init, init_task_impl);
+// }
+
+// template <>
+// void register_task<RESHAPE_FWD_TASK_ID>() {
+//   OpTaskSignature fwd(OpTaskType::FWD);
+
+//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+//   fwd.add_unchecked_arg_slot<ReshapePerDeviceState>(PER_DEVICE_STATE);
+
+//   fwd.add_input_slot(INPUT);
+//   fwd.add_output_slot(OUTPUT);
+
+//   register_task(RESHAPE_FWD_TASK_ID, "Reshape Fwd", fwd, forward_task_impl);
+// }
 
 // template <>
 // void register_task<RESHAPE_BWD_TASK_ID>() {

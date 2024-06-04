@@ -14,6 +14,14 @@ void register_task<ELEMENTUNARY_FWD_TASK_ID>();
 template <>
 void register_task<ELEMENTUNARY_BWD_TASK_ID>();
 
+TaskImplFunction get_element_unary_init_task_impl();
+TaskImplFunction get_element_unary_fwd_task_impl();
+TaskImplFunction get_element_unary_bwd_task_impl();
+
+OpTaskSignature get_element_unary_init_signature();
+OpTaskSignature get_element_unary_fwd_signature();
+OpTaskSignature get_element_unary_bwd_signature();
+
 OpTaskInvocation init(ElementUnaryUnifiedAttrs const &);
 OpTaskInvocation forward(ElementUnaryUnifiedAttrs const &);
 OpTaskInvocation backward(ElementUnaryUnifiedAttrs const &);

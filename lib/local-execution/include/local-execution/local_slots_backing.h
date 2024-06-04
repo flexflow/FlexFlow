@@ -10,11 +10,11 @@
 
 namespace FlexFlow {
 
-using TensorBackingMapping =
+using TensorBackingMap =
     std::unordered_map<tensor_guid_t, GenericTensorAccessorW>;
 
 struct LocalSlotsBacking {
-  LocalSlotsBacking(TensorBackingMapping const &, RuntimeArgConfig const &);
+  LocalSlotsBacking(TensorBackingMap const &, RuntimeArgConfig const &);
 
 public:
   void add_per_device_op_state(operator_guid_t const &,
@@ -32,7 +32,7 @@ public:
 
 public:
   // tensors
-  TensorBackingMapping tensor_mapping;
+  TensorBackingMap tensor_mapping;
   std::unordered_map<operator_guid_t, std::vector<tensor_guid_t>>
       input_tensor_slots;
   std::unordered_map<operator_guid_t, std::vector<tensor_guid_t>>

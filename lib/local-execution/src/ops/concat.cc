@@ -109,8 +109,14 @@ CostMetrics
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-OpTaskSignature fwd_signature<CONCAT_FWD_TASK_ID>() {
+TaskImplFunction get_concat_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_concat_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_concat_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ConcatAttrs>(ATTRS);
@@ -129,8 +135,7 @@ void register_task<CONCAT_FWD_TASK_ID>() {
                 forward_task_impl);
 }
 
-template <>
-OpTaskSignature bwd_signature<CONCAT_BWD_TASK_ID>() {
+OpTaskSignature get_concat_bwd_signature() {
   OpTaskSignature bwd =
       infer_bwd_signature(fwd_signature<CONCAT_FWD_TASK_ID>());
 

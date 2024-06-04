@@ -14,6 +14,14 @@ void register_task<CONV2D_FWD_TASK_ID>();
 template <>
 void register_task<CONV2D_BWD_TASK_ID>();
 
+TaskImplFunction get_conv_2d_init_task_impl();
+TaskImplFunction get_conv_2d_fwd_task_impl();
+TaskImplFunction get_conv_2d_bwd_task_impl();
+
+OpTaskSignature get_conv_2d_init_signature();
+OpTaskSignature get_conv_2d_fwd_signature();
+OpTaskSignature get_conv_2d_bwd_signature();
+
 OpTaskInvocation init(Conv2DAttrs const &);
 OpTaskInvocation forward(Conv2DAttrs const &);
 OpTaskInvocation backward(Conv2DAttrs const &);

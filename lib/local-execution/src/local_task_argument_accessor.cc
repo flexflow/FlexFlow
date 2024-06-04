@@ -11,7 +11,7 @@ GenericTensorAccessor LocalTaskArgumentAccessor::get_tensor(
     slot_id slot, Permissions priv, IsGrad is_grad) const {
   SlotGradId slot_grad_pair = std::make_pair(slot, is_grad);
   auto tensor_backing = std::get<GenericTensorAccessorW>(
-      this->tensor_slots_backingping.at(slot_grad_pair));
+      this->tensor_slots_backing.at(slot_grad_pair));
   if (priv == Permissions::RO) {
     GenericTensorAccessorR readonly_tensor_backing = {
         tensor_backing.data_type, tensor_backing.shape, tensor_backing.ptr};
@@ -26,7 +26,7 @@ VariadicGenericTensorAccessor LocalTaskArgumentAccessor::get_variadic_tensor(
     slot_id slot, Permissions priv, IsGrad is_grad) const {
   SlotGradId slot_grad_pair = std::make_pair(slot, is_grad);
   auto variadic_tensor_backing = std::get<std::vector<GenericTensorAccessorW>>(
-      this->tensor_slots_backingping.at(slot_grad_pair));
+      this->tensor_slots_backing.at(slot_grad_pair));
   if (priv == Permissions::RO) {
     std::vector<GenericTensorAccessorR> readonly_variadic_tensor_backing = {};
     for (GenericTensorAccessorW const &tensor_backing :

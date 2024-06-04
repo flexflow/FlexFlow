@@ -142,18 +142,37 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-// TODO: OpTaskSignature
+TaskImplFunction get_split_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_split_bwd_task_impl() {
+  return backward_task_impl;
+}
 
-template <>
-void register_task<SPLIT_FWD_TASK_ID>() {
+OpTaskSignature get_split_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
-  register_task(SPLIT_FWD_TASK_ID, "Split Fwd", fwd, forward_task_impl);
+  return fwd;
 }
+OpTaskSignature get_split_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_split_fwd_signature());
+  return bwd;
+}
+
+// template <>
+// void register_task<SPLIT_FWD_TASK_ID>() {
+//   OpTaskSignature fwd(OpTaskType::FWD);
+
+//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+
+//   fwd.add_input_slot(INPUT);
+//   fwd.add_output_slot(OUTPUT);
+//   register_task(SPLIT_FWD_TASK_ID, "Split Fwd", fwd, forward_task_impl);
+// }
 
 // template <>
 // void register_task<SPLIT_BWD_TASK_ID>() {

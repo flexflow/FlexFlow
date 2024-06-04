@@ -82,8 +82,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-OpTaskSignature fwd_signature<COMBINE_FWD_TASK_ID>() {
+OpTaskSignature get_combine_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
@@ -101,10 +100,8 @@ void register_task<COMBINE_FWD_TASK_ID>() {
                 forward_task_impl);
 }
 
-template <>
-OpTaskSignature bwd_signature<COMBINE_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<COMBINE_FWD_TASK_ID>());
+OpTaskSignature get_cast_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_combine_fwd_signature());
 
   return bwd;
 }

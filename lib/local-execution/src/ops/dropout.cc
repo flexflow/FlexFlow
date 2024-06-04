@@ -40,7 +40,7 @@ OpTaskInvocation backward(DropoutAttrs const &attrs) {
   return {DROPOUT_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<DropoutPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   Allocator allocator = acc.get_allocator();
@@ -49,7 +49,7 @@ static DeviceSpecific<DropoutPerDeviceState>
 
   DropoutPerDeviceState per_device_state =
       init_kernel(handle, attrs.rate, attrs.seed, output.shape, allocator);
-  return DeviceSpecific<DropoutPerDeviceState>::create(per_device_state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -101,8 +101,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   auto init_accessor =
       env.get_init_accessor(DROPOUT_INIT_TASK_ID, init_binding);
-  DeviceSpecific<DropoutPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind(INPUT, input_shape);
@@ -122,8 +121,17 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-OpTaskSignature init_signature<DROPOUT_INIT_TASK_ID>() {
+TaskImplFunction get_dropout_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_dropout_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_dropout_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_dropout_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<DropoutAttrs>(ATTRS);
@@ -143,8 +151,7 @@ void register_task<DROPOUT_INIT_TASK_ID>() {
                 init_task_impl);
 }
 
-template <>
-OpTaskSignature fwd_signature<DROPOUT_FWD_TASK_ID>() {
+OpTaskSignature get_dropout_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_unchecked_arg_slot<DropoutPerDeviceState>(PER_DEVICE_STATE);
@@ -164,10 +171,8 @@ void register_task<DROPOUT_FWD_TASK_ID>() {
                 forward_task_impl);
 }
 
-template <>
-OpTaskSignature bwd_signature<DROPOUT_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<DROPOUT_FWD_TASK_ID>());
+OpTaskSignature get_dropout_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_dropout_fwd_signature());
 
   return bwd;
 }

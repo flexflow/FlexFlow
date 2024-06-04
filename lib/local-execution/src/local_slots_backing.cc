@@ -2,9 +2,8 @@
 
 namespace FlexFlow {
 
-LocalSlotsBacking::LocalSlotsBacking(
-    TensorBackingMapping const &allocated_tensors,
-    RuntimeArgConfig const &runtime_arg_config)
+LocalSlotsBacking::LocalSlotsBacking(TensorBackingMap const &allocated_tensors,
+                                     RuntimeArgConfig const &runtime_arg_config)
     : tensor_mapping(allocated_tensors),
       runtime_arg_config(runtime_arg_config){};
 

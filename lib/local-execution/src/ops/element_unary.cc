@@ -48,7 +48,7 @@ OpTaskInvocation backward(ElementUnaryUnifiedAttrs const &attrs) {
   return {ELEMENTUNARY_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<ElementUnaryPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
 
   auto const &attrs = acc.get_argument<ElementUnaryUnifiedAttrs>(ATTRS);
@@ -59,7 +59,7 @@ static DeviceSpecific<ElementUnaryPerDeviceState>
 
   ElementUnaryPerDeviceState per_device_state = init_kernel(
       get_piece_shape(input_shape), get_piece_shape(output_shape), attrs);
-  return DeviceSpecific<ElementUnaryPerDeviceState>::create(per_device_state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -125,8 +125,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   auto init_accessor =
       env.get_init_accessor(ELEMENTUNARY_INIT_TASK_ID, init_binding);
-  DeviceSpecific<ElementUnaryPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind(INPUT, input_shape);
@@ -148,8 +147,17 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-OpTaskSignature init_signature<ELEMENTUNARY_INIT_TASK_ID>() {
+TaskImplFunction get_element_unary_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_element_unary_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_element_unary_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_element_unary_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<ParallelTensorShape>(INPUT_SHAPE);
@@ -169,8 +177,7 @@ void register_task<ELEMENTUNARY_INIT_TASK_ID>() {
                 init_task_impl);
 }
 
-template <>
-OpTaskSignature fwd_signature<ELEMENTUNARY_FWD_TASK_ID>() {
+OpTaskSignature get_element_unary_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -190,10 +197,8 @@ void register_task<ELEMENTUNARY_FWD_TASK_ID>() {
                 forward_task_impl);
 }
 
-template <>
-OpTaskSignature bwd_signature<ELEMENTUNARY_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<ELEMENTUNARY_FWD_TASK_ID>());
+OpTaskSignature get_element_unary_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_element_unary_fwd_signature());
 
   return bwd;
 }

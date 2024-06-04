@@ -185,8 +185,14 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-OpTaskSignature fwd_signature<BATCHMATMUL_FWD_TASK_ID>() {
+TaskImplFunction get_batch_matmul_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_batch_matmul_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_batch_matmul_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(A_INPUT);
@@ -207,8 +213,7 @@ void register_task<BATCHMATMUL_FWD_TASK_ID>() {
                 forward_task_impl);
 }
 
-template <>
-OpTaskSignature bwd_signature<BATCHMATMUL_BWD_TASK_ID>() {
+OpTaskSignature get_batch_matmul_bwd_signature() {
   OpTaskSignature bwd =
       infer_bwd_signature(fwd_signature<BATCHMATMUL_FWD_TASK_ID>());
 

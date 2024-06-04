@@ -59,7 +59,7 @@ OpTaskInvocation backward(LinearAttrs const &attrs) {
   return {LINEAR_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<LinearPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<LinearAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -81,7 +81,7 @@ static DeviceSpecific<LinearPerDeviceState>
                                            output.data_type,
                                            batch_size,
                                            attrs.out_channels);
-  return DeviceSpecific<LinearPerDeviceState>::create(state);
+  return DeviceSpecific<DeviceStates>::create(state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -182,8 +182,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   auto init_accessor = env.get_init_accessor(LINEAR_INIT_TASK_ID, init_binding);
 
-  DeviceSpecific<LinearPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
 
@@ -211,8 +210,17 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-OpTaskSignature init_signature<LINEAR_INIT_TASK_ID>() {
+TaskImplFunction get_linear_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_linear_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_linear_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_linear_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -226,8 +234,7 @@ OpTaskSignature init_signature<LINEAR_INIT_TASK_ID>() {
   return init;
 }
 
-template <>
-OpTaskSignature fwd_signature<LINEAR_FWD_TASK_ID>() {
+OpTaskSignature get_linear_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -241,10 +248,8 @@ OpTaskSignature fwd_signature<LINEAR_FWD_TASK_ID>() {
   return fwd;
 }
 
-template <>
-OpTaskSignature bwd_signature<LINEAR_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<LINEAR_BWD_TASK_ID>());
+OpTaskSignature get_linear_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_linear_fwd_signature());
   return bwd;
 }
 

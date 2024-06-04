@@ -15,6 +15,14 @@ void register_task<DROPOUT_FWD_TASK_ID>();
 template <>
 void register_task<DROPOUT_BWD_TASK_ID>();
 
+TaskImplFunction get_dropout_init_task_impl();
+TaskImplFunction get_dropout_fwd_task_impl();
+TaskImplFunction get_dropout_bwd_task_impl();
+
+OpTaskSignature get_dropout_init_signature();
+OpTaskSignature get_dropout_fwd_signature();
+OpTaskSignature get_dropout_bwd_signature();
+
 OpTaskInvocation init(DropoutAttrs const &);
 OpTaskInvocation forward(DropoutAttrs const &);
 OpTaskInvocation backward(DropoutAttrs const &);

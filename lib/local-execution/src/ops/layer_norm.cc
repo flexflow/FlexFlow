@@ -111,7 +111,7 @@ static std::optional<float>
                  beta_grad);
 }
 
-static DeviceSpecific<LayerNormPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<LayerNormAttrs>(ATTRS);
   Allocator allocator = acc.get_allocator();
@@ -138,7 +138,7 @@ static DeviceSpecific<LayerNormPerDeviceState>
                   effective_batch_size,
                   effective_num_elements,
                   attrs.eps);
-  return DeviceSpecific<LayerNormPerDeviceState>::create(per_device_state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
@@ -157,8 +157,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   auto init_accessor =
       env.get_init_accessor(LAYERNORM_INIT_TASK_ID, init_binding);
 
-  DeviceSpecific<LayerNormPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind(INPUT, input.shape);
@@ -180,8 +179,17 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-OpTaskSignature fwd_signature<LAYERNORM_FWD_TASK_ID>() {
+TaskImplFunction get_layer_norm_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_layer_norm_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_layer_norm_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_layer_norm_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -194,15 +202,12 @@ OpTaskSignature fwd_signature<LAYERNORM_FWD_TASK_ID>() {
   return fwd;
 }
 
-template <>
-OpTaskSignature bwd_signature<LAYERNORM_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<LAYERNORM_FWD_TASK_ID>());
+OpTaskSignature get_layer_norm_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_layer_norm_fwd_signature());
   return bwd;
 }
 
-template <>
-OpTaskSignature init_signature<LAYERNORM_INIT_TASK_ID>() {
+OpTaskSignature get_layer_norm_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);

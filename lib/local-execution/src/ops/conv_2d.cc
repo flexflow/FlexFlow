@@ -52,7 +52,7 @@ OpTaskInvocation backward(Conv2DAttrs const &attrs) {
   return {CONV2D_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<Conv2DPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
 
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -76,7 +76,7 @@ static DeviceSpecific<Conv2DPerDeviceState>
                   output,
                   filter.get_float_ptr(),
                   filter_grad.get_float_ptr());
-  return DeviceSpecific<Conv2DPerDeviceState>::create(per_device_state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -151,8 +151,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   init_binding.bind_arg(HANDLE, ff_handle());
 
   auto init_accessor = env.get_init_accessor(CONV2D_INIT_TASK_ID, init_binding);
-  DeviceSpecific<Conv2DPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PROFILING, settings);
@@ -176,8 +175,17 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-OpTaskSignature init_signature<CONV2D_INIT_TASK_ID>() {
+TaskImplFunction get_conv_2d_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_conv_2d_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_conv_2d_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_conv_2d_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -199,8 +207,7 @@ void register_task<CONV2D_INIT_TASK_ID>() {
                 init_task_impl);
 }
 
-template <>
-OpTaskSignature fwd_signature<CONV2D_FWD_TASK_ID>() {
+OpTaskSignature get_conv_2d_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
@@ -223,10 +230,8 @@ void register_task<CONV2D_FWD_TASK_ID>() {
                 forward_task_impl);
 }
 
-template <>
-OpTaskSignature bwd_signature<CONV2D_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<CONV2D_FWD_TASK_ID>());
+OpTaskSignature get_conv_2d_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_conv_2d_fwd_signature());
 
   return bwd;
 }

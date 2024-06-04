@@ -8,13 +8,16 @@
 namespace FlexFlow {
 
 template <>
-void register_task<REPLICATE_INIT_TASK_ID>();
-template <>
 void register_task<REPLICATE_FWD_TASK_ID>();
 template <>
 void register_task<REPLICATE_BWD_TASK_ID>();
 
-OpTaskInvocation init(ReplicateAttrs const &);
+TaskImplFunction get_replicate_fwd_task_impl();
+TaskImplFunction get_replicate_bwd_task_impl();
+
+OpTaskSignature get_replicate_fwd_signature();
+OpTaskSignature get_replicate_bwd_signature();
+
 OpTaskInvocation forward(ReplicateAttrs const &);
 OpTaskInvocation backward(ReplicateAttrs const &);
 

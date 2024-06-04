@@ -23,7 +23,6 @@
 #include <sys/types.h>
 
 namespace FlexFlow {
-// declare Legion names
 
 using namespace FlexFlow::Kernels::Replicate;
 
@@ -98,18 +97,36 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-void register_task<REPLICATE_FWD_TASK_ID>() {
+TaskImplFunction get_replicate_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_replicate_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_replicate_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
-
-  register_task(REPLICATE_FWD_TASK_ID, "Replicate fwd", fwd, forward_task_impl);
+}
+OpTaskSignature get_replicate_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_replicate_fwd_signature());
+  return bwd;
 }
 
-// TODO: OpTaskSignature
+// template <>
+// void register_task<REPLICATE_FWD_TASK_ID>() {
+//  OpTaskSignature fwd(OpTaskType::FWD);
+
+//   fwd.add_arg_slot<bool>(PROFILING);
+//   fwd.add_input_slot(INPUT);
+//   fwd.add_output_slot(OUTPUT);
+
+//   register_task(REPLICATE_FWD_TASK_ID, "Replicate fwd", fwd,
+//   forward_task_impl);
+// }
 
 // template <>
 // void register_task<REPLICATE_BWD_TASK_ID>() {

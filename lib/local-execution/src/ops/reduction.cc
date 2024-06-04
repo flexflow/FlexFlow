@@ -20,7 +20,6 @@
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-// declare Legion names
 
 using namespace FlexFlow::Kernels::Reduction;
 
@@ -102,8 +101,14 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-void register_task<REDUCTION_FWD_TASK_ID>() {
+TaskImplFunction get_reduction_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_reduction_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_reduction_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -111,9 +116,26 @@ void register_task<REDUCTION_FWD_TASK_ID>() {
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
-
-  register_task(REDUCTION_FWD_TASK_ID, "Reduction Fwd", fwd, forward_task_impl);
+  return fwd;
 }
+OpTaskSignature get_reduction_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_reduction_fwd_signature());
+  return bwd;
+}
+
+// template <>
+// void register_task<REDUCTION_FWD_TASK_ID>() {
+//   OpTaskSignature fwd(OpTaskType::FWD);
+
+//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+//   fwd.add_arg_slot<ReductionAttrs>(ATTRS);
+
+//   fwd.add_input_slot(INPUT);
+//   fwd.add_output_slot(OUTPUT);
+
+//   register_task(REDUCTION_FWD_TASK_ID, "Reduction Fwd", fwd,
+//   forward_task_impl);
+// }
 
 // TODO: OpTaskSignature
 

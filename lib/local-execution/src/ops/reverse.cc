@@ -131,6 +131,26 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
+TaskImplFunction get_reverse_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_reverse_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_reverse_fwd_signature() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+  return fwd;
+}
+OpTaskSignature get_reverse_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_reverse_fwd_signature());
+  return bwd;
+}
+
 template <>
 void register_task<REVERSE_FWD_TASK_ID>() {
   OpTaskSignature fwd(OpTaskType::FWD);
@@ -142,7 +162,6 @@ void register_task<REVERSE_FWD_TASK_ID>() {
   register_task(REVERSE_FWD_TASK_ID, "Reverse forward", fwd, forward_task_impl);
 }
 
-// TODO: OpTaskSignature
 // template <>
 // void register_task<REVERSE_BWD_TASK_ID>() {
 //   OpTaskSignature bwd =

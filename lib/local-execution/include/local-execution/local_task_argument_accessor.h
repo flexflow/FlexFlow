@@ -14,11 +14,10 @@ using TensorSlotsBacking = std::unordered_map<
 using ArgSlotsBacking = std::unordered_map<slot_id, ConcreteArgSpec>;
 
 struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
-  LocalTaskArgumentAccessor(Allocator allocator,
-                            TensorSlotsBacking tensor_slots_backingping,
-                            ArgSlotsBacking arg_slots_backing)
-      : allocator(allocator),
-        tensor_slots_backingping(tensor_slots_backingping),
+  LocalTaskArgumentAccessor(Allocator const &allocator,
+                            TensorSlotsBacking const &tensor_slots_backing,
+                            ArgSlotsBacking const &arg_slots_backing)
+      : allocator(allocator), tensor_slots_backing(tensor_slots_backing),
         arg_slots_backing(arg_slots_backing){};
   LocalTaskArgumentAccessor(LocalTaskArgumentAccessor const &) = delete;
   LocalTaskArgumentAccessor(LocalTaskArgumentAccessor &&) = delete;
@@ -38,7 +37,7 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
 private:
   Allocator allocator;
-  TensorSlotsBacking tensor_slots_backingping;
+  TensorSlotsBacking tensor_slots_backing;
   ArgSlotsBacking arg_slots_backing;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalTaskArgumentAccessor);

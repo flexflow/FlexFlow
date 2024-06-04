@@ -66,7 +66,7 @@ OpTaskInvocation backward(BatchNormAttrs const &attrs) {
   return {BATCHNORM_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<BatchNormPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   Allocator allocator = acc.get_allocator();
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -90,7 +90,7 @@ static DeviceSpecific<BatchNormPerDeviceState>
                                                          output_w,
                                                          attrs.relu);
 
-  return DeviceSpecific<BatchNormPerDeviceState>::create(per_device_state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -163,8 +163,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
 
   auto init_accessor =
       env.get_init_accessor(ATTENTION_INIT_TASK_ID, init_binding);
-  DeviceSpecific<BatchNormPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind(INPUT, input_shape);
@@ -186,8 +185,17 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-OpTaskSignature init_signature<BATCHNORM_INIT_TASK_ID>() {
+TaskImplFunction get_batch_norm_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_batch_norm_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_batch_norm_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_batch_norm_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -208,8 +216,7 @@ void register_task<BATCHNORM_INIT_TASK_ID>() {
                 init_task_impl);
 }
 
-template <>
-OpTaskSignature fwd_signature<BATCHNORM_FWD_TASK_ID>() {
+OpTaskSignature get_batch_norm_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -230,10 +237,8 @@ void register_task<BATCHNORM_FWD_TASK_ID>() {
                 forward_task_impl);
 }
 
-template <>
-OpTaskSignature bwd_signature<BATCHNORM_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<BATCHNORM_FWD_TASK_ID>());
+OpTaskSignature get_batch_norm_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_batch_norm_fwd_signature());
 
   return bwd;
 }

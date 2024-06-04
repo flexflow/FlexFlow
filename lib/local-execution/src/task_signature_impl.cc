@@ -1,5 +1,30 @@
 #include "local-execution/task_signature_impl.h"
+#include "ops/attention.h"
+#include "ops/batch_matmul.h"
+#include "ops/batch_norm.h"
+#include "ops/cast.h"
+#include "ops/combine.h"
+#include "ops/concat.h"
+#include "ops/conv_2d.h"
+#include "ops/dropout.h"
 #include "ops/element_binary.h"
+#include "ops/element_unary.h"
+#include "ops/embedding.h"
+#include "ops/flat.h"
+#include "ops/gather.h"
+#include "ops/layer_norm.h"
+#include "ops/linear.h"
+#include "ops/pool_2d.h"
+#include "ops/reduce.h"
+#include "ops/reduction.h"
+#include "ops/repartition.h"
+#include "ops/replicate.h"
+#include "ops/reshape.h"
+#include "ops/reverse.h"
+#include "ops/softmax.h"
+#include "ops/split.h"
+#include "ops/topk.h"
+#include "ops/transpose.h"
 
 namespace FlexFlow {
 
@@ -15,167 +40,143 @@ TaskSignatureAndImpl get_task_sig_impl(task_id_t const &task_id) {
       return {get_element_binary_bwd_task_impl(),
               get_element_binary_bwd_signature()};
     case ELEMENTUNARY_INIT_TASK_ID:
-      return {get_elementunary_init_task_impl(),
-              init_signature<ELEMENTUNARY_INIT_TASK_ID>()};
+      return {get_element_unary_init_task_impl(),
+              get_element_unary_init_signature()};
     case ELEMENTUNARY_FWD_TASK_ID:
-      return {get_elementunary_fwd_task_impl(),
-              fwd_signature<ELEMENTUNARY_FWD_TASK_ID>()};
+      return {get_element_unary_fwd_task_impl(),
+              get_element_unary_fwd_signature()};
     case ELEMENTUNARY_BWD_TASK_ID:
-      return {get_elementunary_bwd_task_impl(),
-              bwd_signature<ELEMENTUNARY_BWD_TASK_ID>()};
+      return {get_element_binary_bwd_task_impl(),
+              get_element_binary_bwd_signature()};
     case CONV2D_INIT_TASK_ID:
-      return {get_conv2d_init_task_impl(),
-              init_signature<CONV2D_INIT_TASK_ID>()};
+      return {get_conv_2d_init_task_impl(), get_conv_2d_init_signature()};
     case CONV2D_FWD_TASK_ID:
-      return {get_conv2d_fwd_task_impl(), fwd_signature<CONV2D_FWD_TASK_ID>()};
+      return {get_conv_2d_fwd_task_impl(), get_conv_2d_fwd_signature()};
     case CONV2D_BWD_TASK_ID:
-      return {get_conv2d_bwd_task_impl(), bwd_signature<CONV2D_BWD_TASK_ID>()};
+      return {get_conv_2d_bwd_task_impl(), get_conv_2d_bwd_signature()};
     case DROPOUT_INIT_TASK_ID:
-      return {get_dropout_init_task_impl(),
-              init_signature<DROPOUT_INIT_TASK_ID>()};
+      return {get_dropout_init_task_impl(), get_dropout_init_signature()};
     case DROPOUT_FWD_TASK_ID:
-      return {get_dropout_fwd_task_impl(),
-              fwd_signature<DROPOUT_FWD_TASK_ID>()};
+      return {get_dropout_fwd_task_impl(), get_dropout_fwd_signature()};
     case DROPOUT_BWD_TASK_ID:
-      return {get_dropout_bwd_task_impl(),
-              bwd_signature<DROPOUT_BWD_TASK_ID>()};
-    case EMBED_INIT_TASK_ID:
-      return {get_embed_init_task_impl(), init_signature<EMBED_INIT_TASK_ID>()};
+      return {get_dropout_bwd_task_impl(), get_dropout_bwd_signature()};
     case EMBED_FWD_TASK_ID:
-      return {get_embed_fwd_task_impl(), fwd_signature<EMBED_FWD_TASK_ID>()};
+      return {get_embedding_fwd_task_impl(), get_embedding_fwd_signature()};
     case EMBED_BWD_TASK_ID:
-      return {get_embed_bwd_task_impl(), bwd_signature<EMBED_BWD_TASK_ID>()};
+      return {get_embedding_bwd_task_impl(), get_embedding_bwd_signature()};
     case GATHER_INIT_TASK_ID:
-      return {get_gather_init_task_impl(),
-              init_signature<GATHER_INIT_TASK_ID>()};
+      return {get_gather_init_task_impl(), get_gather_init_signature()};
     case GATHER_FWD_TASK_ID:
-      return {get_gather_fwd_task_impl(), fwd_signature<GATHER_FWD_TASK_ID>()};
+      return {get_gather_fwd_task_impl(), get_embedding_fwd_signature()};
     case GATHER_BWD_TASK_ID:
-      return {get_gather_bwd_task_impl(), bwd_signature<GATHER_BWD_TASK_ID>()};
-    case CAST_INIT_TASK_ID:
-      return {get_cast_init_task_impl(), init_signature<CAST_INIT_TASK_ID>()};
+      return {get_gather_bwd_task_impl(), get_embedding_bwd_signature()};
     case CAST_FWD_TASK_ID:
-      return {get_cast_fwd_task_impl(), fwd_signature<CAST_FWD_TASK_ID>()};
+      return {get_cast_fwd_task_impl(), get_cast_fwd_signature()};
     case CAST_BWD_TASK_ID:
-      return {get_cast_bwd_task_impl(), bwd_signature<CAST_BWD_TASK_ID>()};
+      return {get_cast_bwd_task_impl(), get_cast_bwd_signature()};
     case POOL2D_INIT_TASK_ID:
-      return {get_pool2d_init_task_impl(),
-              init_signature<POOL2D_INIT_TASK_ID>()};
+      return {get_pool_2d_init_task_impl(), get_pool_2d_init_signature()};
     case POOL2D_FWD_TASK_ID:
-      return {get_pool2d_fwd_task_impl(), fwd_signature<POOL2D_FWD_TASK_ID>()};
+      return {get_pool_2d_fwd_task_impl(), get_pool_2d_fwd_signature()};
     case POOL2D_BWD_TASK_ID:
-      return {get_pool2d_bwd_task_impl(), bwd_signature<POOL2D_BWD_TASK_ID>()};
+      return {get_pool_2d_bwd_task_impl(), get_pool_2d_bwd_signature()};
     case BATCHNORM_INIT_TASK_ID:
-      return {get_batchnorm_init_task_impl(),
-              init_signature<BATCHNORM_INIT_TASK_ID>()};
+      return {get_batch_norm_init_task_impl(), get_batch_norm_init_signature()};
     case BATCHNORM_FWD_TASK_ID:
-      return {get_batchnorm_fwd_task_impl(),
-              fwd_signature<BATCHNORM_FWD_TASK_ID>()};
+      return {get_batch_norm_fwd_task_impl(), get_batch_norm_fwd_signature()};
     case BATCHNORM_BWD_TASK_ID:
-      return {get_batchnorm_bwd_task_impl(),
-              bwd_signature<BATCHNORM_BWD_TASK_ID>()};
-    case BATCHMATMUL_INIT_TASK_ID:
-      return {get_batchmatmul_init_task_impl(),
-              init_signature<BATCHMATMUL_INIT_TASK_ID>()};
+      return {get_batch_norm_bwd_task_impl(), get_batch_norm_bwd_signature()};
     case BATCHMATMUL_FWD_TASK_ID:
-      return {get_batchmatmul_fwd_task_impl(),
-              fwd_signature<BATCHMATMUL_FWD_TASK_ID>()};
+      return {get_batch_matmul_fwd_task_impl(),
+              get_batch_matmul_fwd_signature()};
     case BATCHMATMUL_BWD_TASK_ID:
-      return {get_batchmatmul_bwd_task_impl(),
-              bwd_signature<BATCHMATMUL_BWD_TASK_ID>()};
+      return {get_batch_matmul_bwd_task_impl(),
+              get_batch_matmul_bwd_signature()};
     case LAYERNORM_INIT_TASK_ID:
-      return {get_layernorm_init_task_impl(),
-              init_signature<LAYERNORM_INIT_TASK_ID>()};
+      return {get_layer_norm_init_task_impl(), get_layer_norm_init_signature()};
     case LAYERNORM_FWD_TASK_ID:
-      return {get_layernorm_fwd_task_impl(),
-              fwd_signature<LAYERNORM_FWD_TASK_ID>()};
+      return {get_layer_norm_fwd_task_impl(), get_layer_norm_init_signature()};
     case LAYERNORM_BWD_TASK_ID:
-      return {get_layernorm_bwd_task_impl(),
-              bwd_signature<LAYERNORM_BWD_TASK_ID>()};
+      return {get_layer_norm_bwd_task_impl(), get_layer_norm_bwd_signature()};
     case LINEAR_INIT_TASK_ID:
-      return {get_linear_init_task_impl(),
-              init_signature<LINEAR_INIT_TASK_ID>()};
+      return {get_linear_init_task_impl(), get_linear_init_signature()};
     case LINEAR_FWD_TASK_ID:
-      return {get_linear_fwd_task_impl(), fwd_signature<LINEAR_FWD_TASK_ID>()};
+      return {get_linear_fwd_task_impl(), get_linear_fwd_signature()};
     case LINEAR_BWD_TASK_ID:
-      return {get_linear_bwd_task_impl(), bwd_signature<LINEAR_BWD_TASK_ID>()};
-    case FLAT_INIT_TASK_ID:
-      return {get_flat_init_task_impl(), init_signature<FLAT_INIT_TASK_ID>()};
+      return {get_linear_bwd_task_impl(), get_linear_bwd_signature()};
     case FLAT_FWD_TASK_ID:
-      return {get_flat_fwd_task_impl(), fwd_signature<FLAT_FWD_TASK_ID>()};
+      return {get_flat_fwd_task_impl(), get_flat_fwd_signature()};
     case FLAT_BWD_TASK_ID:
-      return {get_flat_bwd_task_impl(), bwd_signature<FLAT_BWD_TASK_ID>()};
+      return {get_flat_bwd_task_impl(), get_flat_bwd_signature()};
     case SOFTMAX_INIT_TASK_ID:
-      return {get_softmax_init_task_impl(),
-              init_signature<SOFTMAX_INIT_TASK_ID>()};
+      return {get_softmax_init_task_impl(), get_softmax_init_signature()};
     case SOFTMAX_FWD_TASK_ID:
-      return {get_softmax_fwd_task_impl(),
-              fwd_signature<SOFTMAX_FWD_TASK_ID>()};
+      return {get_softmax_fwd_task_impl(), get_softmax_fwd_signature()};
     case SOFTMAX_BWD_TASK_ID:
-      return {get_softmax_bwd_task_impl(),
-              bwd_signature<SOFTMAX_BWD_TASK_ID>()};
-    case CONCAT_INIT_TASK_ID:
-      return {get_concat_init_task_impl(),
-              init_signature<CONCAT_INIT_TASK_ID>()};
+      return {get_softmax_bwd_task_impl(), get_softmax_bwd_signature()};
     case CONCAT_FWD_TASK_ID:
-      return {get_concat_fwd_task_impl(), fwd_signature<CONCAT_FWD_TASK_ID>()};
+      return {get_concat_fwd_task_impl(), get_concat_fwd_signature()};
     case CONCAT_BWD_TASK_ID:
-      return {get_concat_bwd_task_impl(), bwd_signature<CONCAT_BWD_TASK_ID>()};
-    case SPLIT_INIT_TASK_ID:
-      return {get_split_init_task_impl(), init_signature<SPLIT_INIT_TASK_ID>()};
+      return {get_concat_bwd_task_impl(), get_concat_bwd_signature()};
     case SPLIT_FWD_TASK_ID:
-      return {get_split_fwd_task_impl(), fwd_signature<SPLIT_FWD_TASK_ID>()};
+      return {get_split_fwd_task_impl(), get_split_fwd_signature()};
     case SPLIT_BWD_TASK_ID:
-      return {get_split_bwd_task_impl(), bwd_signature<SPLIT_BWD_TASK_ID>()};
+      return {get_split_bwd_task_impl(), get_split_bwd_signature()};
     case REDUCE_INIT_TASK_ID:
-      return {get_reduce_init_task_impl(),
-              init_signature<REDUCE_INIT_TASK_ID>()};
+      return {get_reduce_init_task_impl(), get_reduce_init_signature()};
     case REDUCE_FWD_TASK_ID:
-      return {get_reduce_fwd_task_impl(), fwd_signature<REDUCE_FWD_TASK_ID>()};
+      return {get_reduce_fwd_task_impl(), get_reduce_fwd_signature()};
     case REDUCE_BWD_TASK_ID:
-      return {get_reduce_bwd_task_impl(), bwd_signature<REDUCE_BWD_TASK_ID>()};
+      return {get_reduce_bwd_task_impl(), get_reduce_bwd_signature()};
     case RESHAPE_INIT_TASK_ID:
-      return {get_reshape_init_task_impl(),
-              init_signature<RESHAPE_INIT_TASK_ID>()};
+      return {get_reshape_init_task_impl(), get_reshape_init_signature()};
     case RESHAPE_FWD_TASK_ID:
-      return {get_reshape_fwd_task_impl(),
-              fwd_signature<RESHAPE_FWD_TASK_ID>()};
+      return {get_reshape_fwd_task_impl(), get_reshape_fwd_signature()};
     case RESHAPE_BWD_TASK_ID:
-      return {get_reshape_bwd_task_impl(),
-              bwd_signature<RESHAPE_BWD_TASK_ID>()};
-    case REVERSE_INIT_TASK_ID:
-      return {get_reverse_init_task_impl(),
-              init_signature<REVERSE_INIT_TASK_ID>()};
+      return {get_reshape_bwd_task_impl(), get_reshape_bwd_signature()};
     case REVERSE_FWD_TASK_ID:
-      return {get_reverse_fwd_task_impl(),
-              fwd_signature<REVERSE_FWD_TASK_ID>()};
+      return {get_reverse_fwd_task_impl(), get_reverse_fwd_signature()};
     case REVERSE_BWD_TASK_ID:
-      return {get_reverse_bwd_task_impl(),
-              bwd_signature<REVERSE_BWD_TASK_ID>()};
+      return {get_reverse_bwd_task_impl(), get_reverse_bwd_signature()};
     case TOPK_INIT_TASK_ID:
-      return {get_topk_init_task_impl(), init_signature<TOPK_INIT_TASK_ID>()};
+      return {get_topk_init_task_impl(), get_topk_init_signature()};
     case TOPK_FWD_TASK_ID:
-      return {get_topk_fwd_task_impl(), fwd_signature<TOPK_FWD_TASK_ID>()};
+      return {get_topk_fwd_task_impl(), get_topk_fwd_signature()};
     case TOPK_BWD_TASK_ID:
-      return {get_topk_bwd_task_impl(), bwd_signature<TOPK_BWD_TASK_ID>()};
+      return {get_topk_bwd_task_impl(), get_topk_bwd_signature()};
     case TRANSPOSE_INIT_TASK_ID:
-      return {get_transpose_init_task_impl(),
-              init_signature<TRANSPOSE_INIT_TASK_ID>()};
+      return {get_transpose_init_task_impl(), get_transpose_init_signature()};
     case TRANSPOSE_FWD_TASK_ID:
-      return {get_transpose_fwd_task_impl(),
-              fwd_signature<TRANSPOSE_FWD_TASK_ID>()};
+      return {get_transpose_fwd_task_impl(), get_transpose_fwd_signature()};
     case TRANSPOSE_BWD_TASK_ID:
-      return {get_transpose_bwd_task_impl(),
-              bwd_signature<TRANSPOSE_BWD_TASK_ID>()};
+      return {get_transpose_bwd_task_impl(), get_transpose_bwd_signature()};
     case ATTENTION_INIT_TASK_ID:
-      return {get_attention_init_task_impl(),
-              init_signature<ATTENTION_INIT_TASK_ID>()};
+      return {get_attention_init_task_impl(), get_attention_init_signature()};
     case ATTENTION_FWD_TASK_ID:
-      return {get_attention_fwd_task_impl(),
-              fwd_signature<ATTENTION_FWD_TASK_ID>()};
+      return {get_attention_fwd_task_impl(), get_attention_fwd_signature()};
     case ATTENTION_BWD_TASK_ID:
-      return {get_attention_bwd_task_impl(),
-              bwd_signature<ATTENTION_BWD_TASK_ID>()};
+      return {get_attention_bwd_task_impl(), get_attention_bwd_signature()};
+    case COMBINE_INIT_TASK_ID:
+      return {get_combine_init_task_impl(), get_combine_init_signature()};
+    case COMBINE_FWD_TASK_ID:
+      return {get_combine_fwd_task_impl(), get_combine_fwd_signature()};
+    case COMBINE_BWD_TASK_ID:
+      return {get_combine_bwd_task_impl(), get_combine_bwd_signature()};
+    case REDUCTION_FWD_TASK_ID:
+      return {get_reduction_fwd_task_impl(), get_reduction_fwd_signature()};
+    case REDUCTION_BWD_TASK_ID:
+      return {get_reduction_bwd_task_impl(), get_reduction_bwd_signature()};
+    case REPARTITION_INIT_TASK_ID:
+      return {get_repartition_init_task_impl(),
+              get_repartition_init_signature()};
+    case REPARTITION_FWD_TASK_ID:
+      return {get_repartition_fwd_task_impl(), get_repartition_fwd_signature()};
+    case REPARTITION_BWD_TASK_ID:
+      return {get_repartition_bwd_task_impl(), get_repartition_bwd_signature()};
+    case REPLICATE_FWD_TASK_ID:
+      return {get_replicate_fwd_task_impl(), get_replicate_fwd_signature()};
+    case REPLICATE_BWD_TASK_ID:
+      return {get_replicate_bwd_task_impl(), get_replicate_bwd_signature()};
     default:
       throw mk_runtime_error(
           fmt::format("Invalid task ID")); // inserting task_id yields

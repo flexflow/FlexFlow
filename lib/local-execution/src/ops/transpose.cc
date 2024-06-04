@@ -37,16 +37,14 @@ OpTaskInvocation init(TransposeAttrs const &attrs) {
   return {TRANSPOSE_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<TransposePerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<TransposeAttrs>(ATTRS);
   std::vector<ff_dim_t> perm = static_cast<std::vector<ff_dim_t>>(attrs.perm);
   TransposePerDeviceState per_device_state = init_kernel(perm.size(), perm);
 
-  return DeviceSpecific<TransposePerDeviceState>::create(per_device_state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
-
-// TODO: OpTaskSignature
 
 // template <>
 // void register_task<TRANSPOSE_INIT_TASK_ID>() {
@@ -126,8 +124,7 @@ CostMetrics
 
   auto init_accessor =
       env.get_init_accessor(TRANSPOSE_INIT_TASK_ID, init_binding);
-  DeviceSpecific<TransposePerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
 
   ParallelTensorShape output_shape =
       get_output_shape(attrs, input_descs.shapes);
@@ -148,6 +145,38 @@ CostMetrics
 
   float sync_time = default_estimate_sync_time(env);
   return make_metrics(forward_time, backward_time, sync_time, env);
+}
+
+TaskImplFunction get_transpose_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_transpose_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_transpose_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_transpose_init_signature() {
+  OpTaskSignature init(OpTaskType::INIT);
+
+  init.add_arg_slot<TransposeAttrs>(ATTRS);
+  init.add_return_value<TransposePerDeviceState>();
+  return init;
+}
+OpTaskSignature get_transpose_fwd_signature() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+  fwd.add_unchecked_arg_slot<TransposePerDeviceState>(PER_DEVICE_STATE);
+
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+  return fwd;
+}
+OpTaskSignature get_transpose_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_transpose_fwd_signature());
+  return bwd;
 }
 
 } // namespace FlexFlow

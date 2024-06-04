@@ -7,7 +7,7 @@ namespace FlexFlow {
 LocalTrainingBacking::LocalTrainingBacking(
     Allocator const &allocator,
     ComputationGraph const &computation_graph,
-    TensorBackingMapping const &tensor_backing_mapping,
+    TensorBackingMap const &tensor_backing_mapping,
     RuntimeArgConfig const &runtime_arg_config)
     : allocator(allocator), computation_graph(computation_graph),
       local_slots_backing(tensor_backing_mapping, runtime_arg_config) {

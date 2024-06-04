@@ -23,7 +23,7 @@ OpTaskInvocation init(Pool2DAttrs const &attrs) {
   return {POOL2D_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<Pool2DPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<Pool2DAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -82,7 +82,7 @@ static DeviceSpecific<Pool2DPerDeviceState>
                                            attrs.stride_w,
                                            attrs.pool_type);
 
-  return DeviceSpecific<Pool2DPerDeviceState>::create(state);
+  return DeviceSpecific<DeviceStates>::create(state);
 }
 
 OpTaskInvocation forward(Pool2DAttrs const &attrs) {
@@ -156,8 +156,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   auto init_accessor = env.get_init_accessor(POOL2D_INIT_TASK_ID, init_binding);
 
-  DeviceSpecific<Pool2DPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
 
@@ -180,8 +179,17 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-void register_task<POOL2D_INIT_TASK_ID>() {
+TaskImplFunction get_pool_2d_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_pool_2d_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_pool_2d_bwd_task_impl() {
+  return backward_task_impl;
+}
+
+OpTaskSignature get_pool_2d_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -191,12 +199,9 @@ void register_task<POOL2D_INIT_TASK_ID>() {
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   init.add_return_value<FlexFlow::Pool2DPerDeviceState>();
-
-  register_task(POOL2D_INIT_TASK_ID, "Pool2D::init", init, init_task_impl);
+  return init;
 }
-
-template <>
-void register_task<POOL2D_FWD_TASK_ID>() {
+OpTaskSignature get_pool_2d_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -204,11 +209,41 @@ void register_task<POOL2D_FWD_TASK_ID>() {
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 
   fwd.add_unchecked_arg_slot<Pool2DPerDeviceState>(PER_DEVICE_STATE);
-
-  register_task(POOL2D_FWD_TASK_ID, "Pool2D::forward", fwd, forward_task_impl);
+  return fwd;
+}
+OpTaskSignature get_pool_2d_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_pool_2d_fwd_signature());
+  return bwd;
 }
 
-// TODO: OpTaskSignature
+// template <>
+// void register_task<POOL2D_INIT_TASK_ID>() {
+//   OpTaskSignature init(OpTaskType::INIT);
+
+//   init.add_input_slot(INPUT);
+//   init.add_output_slot(OUTPUT);
+
+//   init.add_arg_slot<Pool2DAttrs>(ATTRS);
+//   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+
+//   init.add_return_value<FlexFlow::Pool2DPerDeviceState>();
+
+//   register_task(POOL2D_INIT_TASK_ID, "Pool2D::init", init, init_task_impl);
+// }
+
+// template <>
+// void register_task<POOL2D_FWD_TASK_ID>() {
+//   OpTaskSignature fwd(OpTaskType::FWD);
+
+//   fwd.add_input_slot(INPUT);
+//   fwd.add_output_slot(OUTPUT);
+//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+
+//   fwd.add_unchecked_arg_slot<Pool2DPerDeviceState>(PER_DEVICE_STATE);
+
+//   register_task(POOL2D_FWD_TASK_ID, "Pool2D::forward", fwd,
+//   forward_task_impl);
+// }
 
 // template <>
 // void register_task<POOL2D_BWD_TASK_ID>() {

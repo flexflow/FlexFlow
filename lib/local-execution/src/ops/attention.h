@@ -14,6 +14,14 @@ void register_task<ATTENTION_FWD_TASK_ID>();
 template <>
 void register_task<ATTENTION_BWD_TASK_ID>();
 
+TaskImplFunction get_attention_init_task_impl();
+TaskImplFunction get_attention_fwd_task_impl();
+TaskImplFunction get_attention_bwd_task_impl();
+
+OpTaskSignature get_attention_init_signature();
+OpTaskSignature get_attention_fwd_signature();
+OpTaskSignature get_attention_bwd_signature();
+
 OpTaskInvocation init(MultiHeadAttentionAttrs const &);
 OpTaskInvocation forward(MultiHeadAttentionAttrs const &);
 OpTaskInvocation backward(MultiHeadAttentionAttrs const &);

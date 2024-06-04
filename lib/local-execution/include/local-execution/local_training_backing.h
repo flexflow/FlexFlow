@@ -9,7 +9,7 @@ namespace FlexFlow {
 struct LocalTrainingBacking {
   LocalTrainingBacking(Allocator const &,
                        ComputationGraph const &,
-                       TensorBackingMapping const &,
+                       TensorBackingMap const &,
                        RuntimeArgConfig const &);
   ~LocalTrainingBacking() = default;
 

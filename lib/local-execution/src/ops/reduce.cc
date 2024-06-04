@@ -32,7 +32,7 @@ OpTaskInvocation init(ReduceAttrs const &attrs) {
   return {REDUCE_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<ReducePerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto attrs = acc.get_argument<ReduceAttrs>(ATTRS);
@@ -44,20 +44,20 @@ static DeviceSpecific<ReducePerDeviceState>
   size_t reduction_size = input.shape.get_volume() / output.shape.get_volume();
   ReducePerDeviceState per_device_state =
       init_kernel(handle, op_type, reduction_size, input.shape, output.shape);
-  return DeviceSpecific<ReducePerDeviceState>::create(per_device_state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
-template <>
-void register_task<TRANSPOSE_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
+// template <>
+// void register_task<TRANSPOSE_INIT_TASK_ID>() {
+//   OpTaskSignature init(OpTaskType::INIT);
 
-  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-  init.add_arg_slot<ReduceAttrs>(ATTRS);
+//   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+//   init.add_arg_slot<ReduceAttrs>(ATTRS);
 
-  init.add_return_value<ReducePerDeviceState>();
+//   init.add_return_value<ReducePerDeviceState>();
 
-  register_task(REDUCE_INIT_TASK_ID, "Reduce::init", init, init_task_impl);
-}
+//   register_task(REDUCE_INIT_TASK_ID, "Reduce::init", init, init_task_impl);
+// }
 
 // Note: forward_kernel only needs ReducePerDeviceState, input, output
 OpTaskInvocation forward(ReduceAttrs const &attrs) {
@@ -89,18 +89,19 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr());
 }
 
-template <>
-void register_task<REDUCE_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
+// template <>
+// void register_task<REDUCE_FWD_TASK_ID>() {
+//   OpTaskSignature fwd(OpTaskType::FWD);
 
-  fwd.add_unchecked_arg_slot<ReducePerDeviceState>(PER_DEVICE_STATE);
-  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+//   fwd.add_unchecked_arg_slot<ReducePerDeviceState>(PER_DEVICE_STATE);
+//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 
-  fwd.add_input_slot(INPUT);
-  fwd.add_output_slot(OUTPUT);
+//   fwd.add_input_slot(INPUT);
+//   fwd.add_output_slot(OUTPUT);
 
-  register_task(REDUCE_FWD_TASK_ID, "Reduce::forward", fwd, forward_task_impl);
-}
+//   register_task(REDUCE_FWD_TASK_ID, "Reduce::forward", fwd,
+//   forward_task_impl);
+// }
 
 OpTaskInvocation backward(ReduceAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
@@ -125,16 +126,39 @@ static std::optional<float>
                  input_grad.get_float_ptr());
 }
 
-// TODO: OpTaskSignature
+TaskImplFunction get_reduce_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_reduce_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_reduce_bwd_task_impl() {
+  return backward_task_impl;
+}
 
-// template <>
-// void register_task<REDUCE_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(REDUCE_FWD_TASK_ID));
+OpTaskSignature get_reduce_init_signature() {
+  OpTaskSignature init(OpTaskType::INIT);
 
-//   register_task(REDUCE_BWD_TASK_ID, "Reduce::backward", bwd,
-//   backward_task_impl);
-// }
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+  init.add_arg_slot<ReduceAttrs>(ATTRS);
+
+  init.add_return_value<ReducePerDeviceState>();
+  return init;
+}
+OpTaskSignature get_reduce_fwd_signature() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+  fwd.add_unchecked_arg_slot<ReducePerDeviceState>(PER_DEVICE_STATE);
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+  return fwd;
+}
+OpTaskSignature get_reduce_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_reduce_fwd_signature());
+  return bwd;
+}
 
 CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
                                   ReduceAttrs const &attrs,
@@ -148,8 +172,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   init_binding.bind_arg(HANDLE, ff_handle());
 
   auto init_accessor = env.get_init_accessor(REDUCE_INIT_TASK_ID, init_binding);
-  DeviceSpecific<ReducePerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);

@@ -56,13 +56,13 @@ OpTaskInvocation backward(TopKAttrs const &attrs) {
   return {TOPK_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<TopKPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
 
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
 
   TopKPerDeviceState per_device_state = init_kernel(attrs.sorted);
-  return DeviceSpecific<TopKPerDeviceState>::create(per_device_state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -131,8 +131,7 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   init_binding.bind_arg(ATTRS, attrs);
 
   auto init_accessor = env.get_init_accessor(TOPK_INIT_TASK_ID, init_binding);
-  DeviceSpecific<TopKPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
 
   SimTaskBinding fwd_binding;
   fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
@@ -154,17 +153,25 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
   return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
-template <>
-void register_task<TOPK_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_arg_slot<TopKAttrs>(ATTRS); // Note: this may have some question
-  init.add_return_value<TopKPerDeviceState>();
-  register_task(TOPK_INIT_TASK_ID, "Topk Init", init, init_task_impl);
+TaskImplFunction get_topk_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_topk_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_topk_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-void register_task<TOPK_FWD_TASK_ID>() {
+OpTaskSignature get_topk_init_signature() {
+  OpTaskSignature init(OpTaskType::INIT);
+
+  init.add_arg_slot<TopKAttrs>(ATTRS);
+  init.add_return_value<TopKPerDeviceState>();
+
+  return init;
+}
+OpTaskSignature get_topk_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -174,11 +181,36 @@ void register_task<TOPK_FWD_TASK_ID>() {
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
   fwd.add_output_slot(INDICES);
-
-  register_task(TOPK_FWD_TASK_ID, "TopK Forward", fwd, forward_task_impl);
+  return fwd;
+}
+OpTaskSignature get_topk_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_topk_fwd_signature());
+  return bwd;
 }
 
-// TODO: OpTaskSignature
+// template <>
+// void register_task<TOPK_INIT_TASK_ID>() {
+//   OpTaskSignature init(OpTaskType::INIT);
+
+//   init.add_arg_slot<TopKAttrs>(ATTRS); // Note: this may have some question
+//   init.add_return_value<TopKPerDeviceState>();
+//   register_task(TOPK_INIT_TASK_ID, "Topk Init", init, init_task_impl);
+// }
+
+// template <>
+// void register_task<TOPK_FWD_TASK_ID>() {
+//   OpTaskSignature fwd(OpTaskType::FWD);
+
+//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+//   fwd.add_arg_slot<TopKAttrs>(ATTRS);
+//   fwd.add_unchecked_arg_slot<TopKPerDeviceState>(PER_DEVICE_STATE);
+
+//   fwd.add_input_slot(INPUT);
+//   fwd.add_output_slot(OUTPUT);
+//   fwd.add_output_slot(INDICES);
+
+//   register_task(TOPK_FWD_TASK_ID, "TopK Forward", fwd, forward_task_impl);
+// }
 
 // template <>
 // void register_task<TOPK_BWD_TASK_ID>() {
