@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/pcg_operator_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "e1d10b0c7c98524c27886bdae0972321"
+  "generated_from": "befa524c61393938b5b02f2e0401a122"
 }
 */
 
@@ -41,6 +41,7 @@
 #include "op-attrs/ops/split_attrs.dtg.h"
 #include "op-attrs/ops/topk_attrs.dtg.h"
 #include "op-attrs/ops/transpose_attrs.dtg.h"
+#include "op-attrs/ops/weight_attrs.dtg.h"
 #include "rapidcheck.h"
 #include <cstddef>
 #include <functional>
@@ -80,6 +81,7 @@ struct PCGOperatorAttrs {
   explicit PCGOperatorAttrs(::FlexFlow::SoftmaxAttrs const &);
   explicit PCGOperatorAttrs(::FlexFlow::TopKAttrs const &);
   explicit PCGOperatorAttrs(::FlexFlow::TransposeAttrs const &);
+  explicit PCGOperatorAttrs(::FlexFlow::WeightAttrs const &);
   template <typename T>
   static constexpr bool IsPartOfPCGOperatorAttrs_v =
       std::is_same_v<T, ::FlexFlow::BatchMatmulAttrs> ||
@@ -110,7 +112,8 @@ struct PCGOperatorAttrs {
       std::is_same_v<T, ::FlexFlow::SplitAttrs> ||
       std::is_same_v<T, ::FlexFlow::SoftmaxAttrs> ||
       std::is_same_v<T, ::FlexFlow::TopKAttrs> ||
-      std::is_same_v<T, ::FlexFlow::TransposeAttrs>;
+      std::is_same_v<T, ::FlexFlow::TransposeAttrs> ||
+      std::is_same_v<T, ::FlexFlow::WeightAttrs>;
   template <typename ReturnType, typename Visitor>
   ReturnType visit(Visitor &&v) const {
     switch (this->index()) {
@@ -228,6 +231,10 @@ struct PCGOperatorAttrs {
       }
       case 28: {
         ReturnType result = v(this->get<::FlexFlow::TransposeAttrs>());
+        return result;
+      }
+      case 29: {
+        ReturnType result = v(this->get<::FlexFlow::WeightAttrs>());
         return result;
       }
       default: {
@@ -355,6 +362,10 @@ struct PCGOperatorAttrs {
         ReturnType result = v(this->get<::FlexFlow::TransposeAttrs>());
         return result;
       }
+      case 29: {
+        ReturnType result = v(this->get<::FlexFlow::WeightAttrs>());
+        return result;
+      }
       default: {
         throw std::runtime_error(fmt::format(
             "Unknown index {} for type PCGOperatorAttrs", this->index()));
@@ -380,7 +391,7 @@ struct PCGOperatorAttrs {
         "::FlexFlow::ReplicateAttrs, ::FlexFlow::ReverseAttrs, "
         "::FlexFlow::ReshapeAttrs, ::FlexFlow::SplitAttrs, "
         "::FlexFlow::SoftmaxAttrs, ::FlexFlow::TopKAttrs, "
-        "::FlexFlow::TransposeAttrs], received T");
+        "::FlexFlow::TransposeAttrs, ::FlexFlow::WeightAttrs], received T");
     return std::holds_alternative<T>(this->raw_variant);
   }
   template <typename T>
@@ -402,7 +413,7 @@ struct PCGOperatorAttrs {
         "::FlexFlow::ReplicateAttrs, ::FlexFlow::ReverseAttrs, "
         "::FlexFlow::ReshapeAttrs, ::FlexFlow::SplitAttrs, "
         "::FlexFlow::SoftmaxAttrs, ::FlexFlow::TopKAttrs, "
-        "::FlexFlow::TransposeAttrs], received T");
+        "::FlexFlow::TransposeAttrs, ::FlexFlow::WeightAttrs], received T");
     return std::get<T>(this->raw_variant);
   }
   template <typename T>
@@ -424,7 +435,7 @@ struct PCGOperatorAttrs {
         "::FlexFlow::ReplicateAttrs, ::FlexFlow::ReverseAttrs, "
         "::FlexFlow::ReshapeAttrs, ::FlexFlow::SplitAttrs, "
         "::FlexFlow::SoftmaxAttrs, ::FlexFlow::TopKAttrs, "
-        "::FlexFlow::TransposeAttrs], received T");
+        "::FlexFlow::TransposeAttrs, ::FlexFlow::WeightAttrs], received T");
     return std::get<T>(this->raw_variant);
   }
   size_t index() const {
@@ -464,7 +475,8 @@ struct PCGOperatorAttrs {
                ::FlexFlow::SplitAttrs,
                ::FlexFlow::SoftmaxAttrs,
                ::FlexFlow::TopKAttrs,
-               ::FlexFlow::TransposeAttrs>
+               ::FlexFlow::TransposeAttrs,
+               ::FlexFlow::WeightAttrs>
       raw_variant;
 };
 } // namespace FlexFlow

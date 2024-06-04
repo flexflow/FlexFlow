@@ -90,9 +90,6 @@ ParallelTensorShape
       input.datatype,
   };
 
-  assert(total_parallel_degree(result.dims) ==
-         total_parallel_degree(raw_input_shape.dims));
-
   return result;
 }
 
@@ -121,9 +118,6 @@ ParallelTensorShape get_bias_shape(Conv2DAttrs const &attrs,
       },
       input.datatype,
   };
-
-  assert(total_parallel_degree(result.dims) ==
-         total_parallel_degree(raw_input_shape.dims));
 
   return result;
 }
@@ -166,9 +160,6 @@ ParallelTensorShape
       },
       input.datatype,
   };
-
-  assert(total_parallel_degree(result.dims) ==
-         total_parallel_degree(raw_input_shape.dims));
 
   return result;
 }

@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "operator_guid_t"
+name = "parallel_layer_guid_t"
 features = [
   "eq",
   "ord",

@@ -39,6 +39,7 @@ includes = [
   "op-attrs/ops/split_attrs.dtg.h",
   "op-attrs/ops/topk_attrs.dtg.h",
   "op-attrs/ops/transpose_attrs.dtg.h",
+  "op-attrs/ops/weight_attrs.dtg.h",
 ]
 
 [[values]]
@@ -156,3 +157,7 @@ key = "topk"
 [[values]]
 type = "::FlexFlow::TransposeAttrs"
 key = "transpose"
+
+[[values]]
+type = "::FlexFlow::WeightAttrs"
+key = "weight"
