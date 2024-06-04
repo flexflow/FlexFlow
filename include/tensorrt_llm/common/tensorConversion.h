@@ -17,7 +17,7 @@
 
 #include "tensorrt_llm/common/tensor.h"
 #include "tensorrt_llm/runtime/iTensor.h"
-#include <NvInferRuntime.h>
+#include "tensorrt/NvInferRuntime.h"
 
 #include <algorithm>
 

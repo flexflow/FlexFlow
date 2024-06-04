@@ -17,7 +17,7 @@
 #pragma once
 
 #include "tensorrt_llm/common/logger.h"
-#include <NvInferRuntime.h>
+#include "tensorrt/NvInferRuntime.h"
 
 namespace tensorrt_llm::common
 {
