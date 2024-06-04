@@ -396,7 +396,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
-__global__ void update_tree_branch_kv_cache_fused(
+__global__ void update_tree_branch_kv_cache_kernel(
     DT const *devQKVProjArray,
     DT *kCache_ptr,
     DT *vCache_ptr,
@@ -481,7 +481,7 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
   //  update K-V cache
   int num_new_tokens = bc->num_active_tokens();
   int parallelism = m->hidden_size * num_new_tokens;
-  update_tree_branch_kv_cache_fused<<<GET_BLOCKS(parallelism),
+  update_tree_branch_kv_cache_kernel<<<GET_BLOCKS(parallelism),
                                       min(CUDA_NUM_THREADS, parallelism),
                                       0,
                                       stream>>>(
