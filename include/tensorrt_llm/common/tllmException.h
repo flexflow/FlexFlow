@@ -14,44 +14,37 @@
  * limitations under the License.
  */
 
-#include "tensorrt_llm/common/stringUtils.h"
-#include "tensorrt_llm/common/assert.h"
+#pragma once
 
-#include <cerrno>
-#include <cstdarg>
-#include <cstring>
+#include "tensorrt_llm/common/stringUtils.h"
+
+#include <array>
+#include <cstddef>
+#include <stdexcept>
 #include <string>
+
+#define NEW_TLLM_EXCEPTION(...)                                                                                        \
+    tensorrt_llm::common::TllmException(__FILE__, __LINE__, tensorrt_llm::common::fmtstr(__VA_ARGS__))
 
 namespace tensorrt_llm::common
 {
 
-namespace
+class TllmException : public std::runtime_error
 {
-std::string vformat(char const* fmt, va_list args)
-{
-    va_list args0;
-    va_copy(args0, args);
-    auto const size = vsnprintf(nullptr, 0, fmt, args0);
-    if (size <= 0)
-        return "";
+public:
+    static auto constexpr MAX_FRAMES = 128;
 
-    std::string stringBuf(size, char{});
-    auto const size2 = std::vsnprintf(&stringBuf[0], size + 1, fmt, args);
+    explicit TllmException(char const* file, std::size_t line, std::string const& msg);
 
-    TLLM_CHECK_WITH_INFO(size2 == size, std::string(std::strerror(errno)));
+    ~TllmException() noexcept override;
 
-    return stringBuf;
-}
+    [[nodiscard]] std::string getTrace() const;
 
-} // namespace
+    static std::string demangle(char const* name);
 
-std::string fmtstr(char const* format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    std::string result = vformat(format, args);
-    va_end(args);
-    return result;
+private:
+    std::array<void*, MAX_FRAMES> mCallstack{};
+    int mNbFrames;
 };
 
 } // namespace tensorrt_llm::common
