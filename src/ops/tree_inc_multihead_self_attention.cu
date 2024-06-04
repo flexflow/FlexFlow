@@ -396,6 +396,74 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
+__global__ void update_custom_mask_kernel(
+    float *custom_mask,
+    BatchConfig::BitMask *causalMask,
+    BatchConfig::PerRequestInfo *request_infos,
+    bool *request_available,
+    int const num_requests,
+    int const max_q_length,
+    int const max_kv_length,
+    float mask_value) {
+  // get thread idx in [0, num_requests * max_q_length)
+  int const idx = blockIdx.x * blockDim.x + threadIdx.x;
+  // get (request_idx, q_idx) from thread idx
+  int const request_idx = idx / max_q_length;
+  int const q_idx = idx % max_q_length;
+  
+  // request id in batch config
+  int requext_idx_in_batch = -1;
+  int cnt_1 = 0;
+  while (cnt_1 < request_idx + 1) {
+    requext_idx_in_batch++;
+    if (request_available[requext_idx_in_batch]) {
+      cnt_1++;
+    }
+  }
+
+  int const q_length = request_infos[requext_idx_in_batch].num_tokens_in_batch;
+  int const q_start =
+      request_infos[requext_idx_in_batch].first_token_index_in_request;
+  if (q_idx >= q_length) {
+    return;
+  }
+  assert(q_start + q_length <= max_kv_length);
+
+  float *mask = custom_mask + request_idx * max_q_length * max_kv_length +
+                q_idx * (q_start + q_length);
+  // update custom mask
+  for (int i = 0; i < q_start; i++) {
+    mask[i] = 0.0f;
+  }
+  BatchConfig::BitMask *bitmask = &causalMask[requext_idx_in_batch];
+  for (int i = 0; i < q_length; i++) {
+    mask[q_start + i] = test_bit_orig(bitmask->bit_mask, q_idx, i)
+                  ? 0.0f : mask_value;
+  }
+}
+
+void update_custom_mask(TreeIncMultiHeadSelfAttentionMeta const *m,
+                        BatchConfig const *bc,
+                        cudaStream_t stream) {
+  int const num_requests = bc->num_active_requests();
+  int const max_q_length = BatchConfig::max_spec_tree_token_num();
+  int const max_kv_length = BatchConfig::max_spec_tree_token_num() + 
+                            BatchConfig::max_sequence_length();
+  int parallelism = num_requests * max_q_length;
+  update_custom_mask_kernel<<<GET_BLOCKS(parallelism),
+                              min(CUDA_NUM_THREADS, parallelism),
+                              0,
+                              stream>>>(
+      m->custom_mask,
+      m->causalMask,
+      m->request_infos,
+      m->request_available,
+      num_requests,
+      max_q_length,
+      max_kv_length,
+      -std::numeric_limits<float>::infinity());
+}
+
 template <typename DT>
 __global__ void update_tree_branch_kv_cache_kernel(
     DT *devQKVProjArray,
@@ -586,6 +654,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
                      stream);
+
+  // update gpu-side custom mask referring from CaualMask
+  update_custom_mask(m, bc, stream);
 
   // phase 2: No need to update key/val cache
   // IncMultiHeadSelfAttention::update_kv_cache_kernel(
