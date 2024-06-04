@@ -4,7 +4,6 @@ codecov:
     require_ci_to_pass: false
 
 ignore:
-  # - "/home/runner/work/FlexFlow/FlexFlow/deps"
   - "**/*.dtg.h" 
   - "**/*.dtg.cc"
 
