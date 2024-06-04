@@ -815,8 +815,11 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                               BatchConfig::max_spec_tree_token_num() *
                               (BatchConfig::max_spec_tree_token_num() +
                                 BatchConfig::max_sequence_length());
-    gpu_mem_allocator.create_legion_instance(custom_mask_reserve_inst, sizeof(float) * custom_mask_size);
+    size_t scratch_space_size = 8 * 1024 * 1024; // 32 MB float
+    gpu_mem_allocator.create_legion_instance(flashinfer_reserve_inst, 
+                sizeof(float) * (custom_mask_size + scratch_space_size));
     custom_mask = gpu_mem_allocator.allocate_instance<float>(custom_mask_size);
+    scratch_space = gpu_mem_allocator.allocate_instance<float>(scratch_space_size);
   }
 
   // allocate memory for the seqArray and reserve space
@@ -838,8 +841,8 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
 }
 
 TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {
-  if (custom_mask_reserve_inst != Realm::RegionInstance::NO_INST) {
-    custom_mask_reserve_inst.destroy();
+  if (flashinfer_reserve_inst != Realm::RegionInstance::NO_INST) {
+    flashinfer_reserve_inst.destroy();
   }
 }
 
