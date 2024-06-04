@@ -7,6 +7,8 @@
 
 namespace FlexFlow {
 
+std::vector<task_id_t> get_task_ids(GatherAttrs const &);
+
 TaskImplFunction get_gather_init_task_impl();
 TaskImplFunction get_gather_fwd_task_impl();
 TaskImplFunction get_gather_bwd_task_impl();

@@ -91,7 +91,7 @@ OpTaskSignature get_combine_fwd_signature() {
   return fwd;
 }
 
-OpTaskSignature get_cast_bwd_signature() {
+OpTaskSignature get_combine_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_combine_fwd_signature());
 
   return bwd;

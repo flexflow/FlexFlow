@@ -7,6 +7,8 @@
 
 namespace FlexFlow {
 
+std::vector<task_id_t> get_task_ids(TopKAttrs const &);
+
 TaskImplFunction get_topk_init_task_impl();
 TaskImplFunction get_topk_fwd_task_impl();
 TaskImplFunction get_topk_bwd_task_impl();

@@ -7,6 +7,8 @@
 
 namespace FlexFlow {
 
+std::vector<task_id_t> get_task_ids(EmbeddingAttrs const &);
+
 TaskImplFunction get_embedding_fwd_task_impl();
 TaskImplFunction get_embedding_bwd_task_impl();
 

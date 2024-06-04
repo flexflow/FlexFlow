@@ -7,6 +7,8 @@
 
 namespace FlexFlow {
 
+std::vector<task_id_t> get_task_ids(BatchNormAttrs const &);
+
 TaskImplFunction get_batch_norm_init_task_impl();
 TaskImplFunction get_batch_norm_fwd_task_impl();
 TaskImplFunction get_batch_norm_bwd_task_impl();

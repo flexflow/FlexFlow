@@ -149,6 +149,7 @@ OpTaskSignature get_repartition_init_signature() {
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_input_slot(INPUT);
   init.add_return_value<RepartitionPerDeviceState>();
+  return init;
 }
 OpTaskSignature get_repartition_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
@@ -157,6 +158,7 @@ OpTaskSignature get_repartition_fwd_signature() {
   fwd.add_output_slot(OUTPUT);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<RepartitionPerDeviceState>(PER_DEVICE_STATE);
+  return fwd;
 }
 OpTaskSignature get_repartition_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_repartition_fwd_signature());

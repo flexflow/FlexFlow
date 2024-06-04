@@ -7,6 +7,8 @@
 
 namespace FlexFlow {
 
+std::vector<task_id_t> get_task_ids(ReductionAttrs const &);
+
 TaskImplFunction get_reduction_fwd_task_impl();
 TaskImplFunction get_reduction_bwd_task_impl();
 

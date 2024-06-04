@@ -7,6 +7,8 @@
 
 namespace FlexFlow {
 
+std::vector<task_id_t> get_task_ids(SoftmaxAttrs const &);
+
 TaskImplFunction get_softmax_init_task_impl();
 TaskImplFunction get_softmax_fwd_task_impl();
 TaskImplFunction get_softmax_bwd_task_impl();
