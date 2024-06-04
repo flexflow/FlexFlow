@@ -111,9 +111,9 @@ jobs:
       - name: Generate code coverage
         run: |
           lcov --capture --directory . --output-file main_coverage.info
-          lcov --extract main_coverage.info "$GITHUB_WORKSPACE/lib/*" --output-file main_coverage.info
-          lcov --remove main_coverage.info "$GITHUB_WORKSPACE/lib/*.dtg.h" "$GITHUB_WORKSPACE/lib/*.dtg.cc"  --output-file main_coverage.info
-          lcov --list main_coverage.info
+          lcov --extract main_coverage.info "$GITHUB_WORKSPACE/lib/*" --output-file main_coverage_e.info
+          lcov --remove main_coverage_e.info "$GITHUB_WORKSPACE/lib/*.dtg.h" "$GITHUB_WORKSPACE/lib/*.dtg.cc"  --output-file main_coverage_e_f.info
+          lcov --list main_coverage_e_f.info
       
       - name: Upload code coverage
         uses: codecov/codecov-action@v4
