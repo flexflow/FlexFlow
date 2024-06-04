@@ -239,7 +239,6 @@ void forward_kernel(hipStream_t stream,
                                         device_state.weightSize,
                                         device_state.reserveSpaceSize,
                                         device_state.reserveSpace));
-#endif
 }
 
 void backward_kernel(hipStream_t stream,

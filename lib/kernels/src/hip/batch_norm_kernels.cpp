@@ -116,9 +116,6 @@ BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(miopenCreateTensorDescriptor(&biasTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   mode = miopenBNSpatial;
-#if HIPDNN_VERSION >= 7000
-  mode = HIPDNN_BATCHNORM_SPATIAL_PERSISTENT;
-#endif
   fprintf(
       stderr, "output(%d,%d,%d,%d)\n", output_n, output_c, output_h, output_w);
   checkCUDNN(miopenSet4dTensorDescriptor(
