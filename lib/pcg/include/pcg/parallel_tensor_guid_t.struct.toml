@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "tensor_guid_t"
+name = "parallel_tensor_guid_t"
 features = [
   "eq",
   "ord",
@@ -8,7 +8,7 @@ features = [
 ]
 
 includes = [
-  "utils/graph.h"
+  "utils/graph/multidiedge.h"
 ]
 
 [[fields]]
