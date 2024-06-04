@@ -1,0 +1,15 @@
+namespace = "FlexFlow"
+name = "BatchNormAttrs"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "relu"
+type = "bool"

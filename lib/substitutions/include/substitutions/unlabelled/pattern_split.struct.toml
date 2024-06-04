@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "PatternSplit"
+features = [
+  "eq",
+  # "ord",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "utils/graph.h",
+  "<unordered_set>",
+  "substitutions/unlabelled/pattern_node.dtg.h",
+]
+
+[[fields]]
+name = "first"
+type = "std::unordered_set<::FlexFlow::PatternNode>"
+
+[[fields]]
+name = "second"
+type = "std::unordered_set<::FlexFlow::PatternNode>"

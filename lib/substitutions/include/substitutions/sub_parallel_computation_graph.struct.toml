@@ -1,0 +1,13 @@
+namespace = "FlexFlow"
+name = "SubParallelComputationGraph"
+features = [ ]
+
+includes = [
+  "pcg/parallel_layer_attrs.dtg.h",
+  "pcg/parallel_tensor_attrs.dtg.h",
+  "utils/graph.h",
+]
+
+[[fields]]
+name = "raw_graph"
+type = "::FlexFlow::OutputLabelledOpenMultiDiGraph<::FlexFlow::ParallelLayerAttrs, ::FlexFlow::ParallelTensorAttrs>"

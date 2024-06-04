@@ -2,73 +2,62 @@
 #define _FLEXFLOW_ATTENTION_ATTRS_H
 
 #include "core.h"
-#include "op-attrs/parallel_tensor_shape.h"
-#include "utils/visitable.h"
+#include "op-attrs/ops/attention/multihead_attention_inputs.dtg.h"
+#include "op-attrs/ops/attention/multihead_attention_parallel_inputs.dtg.h"
+#include "op-attrs/ops/attention_attrs.dtg.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
+#include "op-attrs/tensor_shape.dtg.h"
+#include <tl/expected.hpp>
 
 namespace FlexFlow {
-
-struct MultiHeadAttentionAttrs {
-  req<int> embed_dim, num_heads, kdim, vdim;
-  req<float> dropout;
-  req<bool> bias, add_bias_kv, add_zero_attn;
-};
-FF_VISITABLE_STRUCT(MultiHeadAttentionAttrs,
-                    embed_dim,
-                    num_heads,
-                    kdim,
-                    vdim,
-                    dropout,
-                    bias,
-                    add_bias_kv,
-                    add_zero_attn);
-
-template <typename TensorType>
-struct MultiHeadAttentionInputs
-    : public use_visitable_cmp<MultiHeadAttentionInputs<TensorType>> {
-public:
-  MultiHeadAttentionInputs() = delete;
-
-  MultiHeadAttentionInputs(TensorType const &query,
-                           TensorType const &key,
-                           TensorType const &value)
-      : query(query), key(key), value(value) {}
-
-  template <typename SubTensorType>
-  MultiHeadAttentionInputs(MultiHeadAttentionInputs<SubTensorType> const &sub)
-      : query(sub.query), key(sub.key), value(sub.value) {}
-
-public:
-  TensorType query;
-  TensorType key;
-  TensorType value;
-};
 
 int get_qProjSize(MultiHeadAttentionAttrs const &);
 int get_vProjSize(MultiHeadAttentionAttrs const &);
 int get_kProjSize(MultiHeadAttentionAttrs const &);
 int get_oProjSize(MultiHeadAttentionAttrs const &);
 
-int get_qSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
-int get_kSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
-int get_vSize(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+int get_qSize(MultiHeadAttentionParallelInputs const &);
+int get_qSize(MultiHeadAttentionInputs const &);
+
+int get_kSize(MultiHeadAttentionParallelInputs const &);
+int get_kSize(MultiHeadAttentionInputs const &);
+
+int get_vSize(MultiHeadAttentionParallelInputs const &);
+int get_vSize(MultiHeadAttentionInputs const &);
+
 int get_oSize(ParallelTensorShape const &);
+int get_oSize(TensorShape const &);
 
-int get_qoSeqLength(MultiHeadAttentionInputs<ParallelTensorShape> const &);
-int get_kvSeqLength(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+int get_qoSeqLength(MultiHeadAttentionParallelInputs const &);
+int get_qoSeqLength(MultiHeadAttentionInputs const &);
 
-int get_num_samples(MultiHeadAttentionInputs<ParallelTensorShape> const &);
+int get_kvSeqLength(MultiHeadAttentionParallelInputs const &);
+int get_kvSeqLength(MultiHeadAttentionInputs const &);
 
-TensorShape get_weights_shape(MultiHeadAttentionAttrs const &,
-                              MultiHeadAttentionInputs<TensorShape> const &);
-ParallelTensorShape
+int get_num_samples(MultiHeadAttentionParallelInputs const &);
+int get_num_samples(MultiHeadAttentionInputs const &);
+
+tl::expected<TensorShape, std::string>
     get_weights_shape(MultiHeadAttentionAttrs const &,
-                      MultiHeadAttentionInputs<ParallelTensorShape> const &);
+                      TensorShape const &input_q,
+                      TensorShape const &input_k,
+                      TensorShape const &input_v);
+tl::expected<ParallelTensorShape, std::string>
+    get_weights_shape(MultiHeadAttentionAttrs const &,
+                      ParallelTensorShape const &input_q,
+                      ParallelTensorShape const &input_k,
+                      ParallelTensorShape const &input_v);
 
-ParallelTensorShape
+tl::expected<TensorShape, std::string>
     get_output_shape(MultiHeadAttentionAttrs const &,
-                     MultiHeadAttentionInputs<ParallelTensorShape> const &);
-TensorShape get_output_shape(MultiHeadAttentionAttrs const &,
-                             MultiHeadAttentionInputs<TensorShape> const &);
+                     TensorShape const &input_q,
+                     TensorShape const &input_k,
+                     TensorShape const &input_v);
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(MultiHeadAttentionAttrs const &,
+                     ParallelTensorShape const &input_q,
+                     ParallelTensorShape const &input_k,
+                     ParallelTensorShape const &input_v);
 
 CHECK_VALID_OP_ATTR(MultiHeadAttentionAttrs);
 } // namespace FlexFlow

@@ -10,11 +10,6 @@ namespace FlexFlow {
 void from_json(json const &j, Parameter &p) {
   j.at("key").get_to(p.key);
   j.at("value").get_to(p.value);
-  if (p.key == PM_INVALID) {
-    std::ostringstream oss;
-    oss << "Attempted to load invalid PMParameter: " << j.at("key");
-    throw std::runtime_error(oss.str());
-  }
 }
 
 void from_json(json const &j, Tensor &t) {
@@ -22,17 +17,17 @@ void from_json(json const &j, Tensor &t) {
   j.at("tsId").get_to(t.tsId);
 }
 
-std::optional<int> Operator::at(PMParameter key) const {
-  std::optional<int> value = std::nullopt;
-  for (Parameter const &p : this->para) {
-    if (p.key == key) {
-      assert(!value.has_value());
-      value = p.key;
-    }
-  }
+/* std::optional<int> Operator::at(LegacyPMParameter key) const { */
+/*   std::optional<int> value = std::nullopt; */
+/*   for (Parameter const &p : this->para) { */
+/*     if (p.key == key) { */
+/*       assert(!value.has_value()); */
+/*       value = p.key; */
+/*     } */
+/*   } */
 
-  return value;
-}
+/*   return value; */
+/* } */
 
 void from_json(json const &j, Operator &o) {
   j.at("type").get_to(o.op_type);

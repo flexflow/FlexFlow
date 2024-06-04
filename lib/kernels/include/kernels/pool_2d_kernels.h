@@ -3,7 +3,7 @@
 
 #include "device.h"
 #include "kernels/ff_handle.h"
-#include "op-attrs/activation.h"
+#include "op-attrs/activation.dtg.h"
 #include "op-attrs/ops/pool_2d.h"
 #include "utils/visitable.h"
 

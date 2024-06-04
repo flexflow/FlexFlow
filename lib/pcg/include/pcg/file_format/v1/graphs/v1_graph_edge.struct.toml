@@ -1,0 +1,26 @@
+namespace = "FlexFlow"
+name = "V1GraphEdge"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "srcNode"
+type = "size_t"
+
+[[fields]]
+name = "srcIdx"
+type = "size_t"
+
+[[fields]]
+name = "dstNode"
+type = "size_t"
+
+[[fields]]
+name = "dstIdx"
+type = "size_t"

@@ -1,5 +1,6 @@
 #include "test/utils/doctest.h"
 #include "utils/variant.h"
+#include <rapidcheck.h>
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("widen and narrow functions") {
@@ -68,5 +69,11 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     // Check the result
     CHECK(get<int>(wider_variant) == 42);
+  }
+
+  TEST_CASE("RC arbitrary") {
+    CHECK(rc::check("valid type", [](std::variant<int, float> v) {
+      return std::holds_alternative<int>(v) || std::holds_alternative<float>(v);
+    }));
   }
 }
