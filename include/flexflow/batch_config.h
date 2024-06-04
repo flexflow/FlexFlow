@@ -148,6 +148,29 @@ public:
     }
   };
 
+  class CustomMask {
+  public:
+    CustomMask() {
+      float neg_inf = -std::numeric_limits<float>::infinity();
+      for (int i = 0; i < MAX_SPEC_TREE_TOKEN_NUM; i++) {
+        for (int j = 0; j < MAX_SPEC_TREE_TOKEN_NUM + MAX_NUM_TOKENS; j++) {
+          mask[i][j] = neg_inf;
+        }
+      }
+    }
+
+    CustomMask(CustomMask const &other) {
+      for (int i = 0; i < MAX_SPEC_TREE_TOKEN_NUM; i++) {
+        for (int j = 0; j < MAX_SPEC_TREE_TOKEN_NUM + MAX_NUM_TOKENS; j++) {
+          mask[i][j] = other.mask[i][j];
+        }
+      }
+    }
+
+    float mask[MAX_SPEC_TREE_TOKEN_NUM][MAX_SPEC_TREE_TOKEN_NUM + MAX_NUM_TOKENS];
+  };
+
+  // CustomMask custom_mask[MAX_NUM_REQUESTS];
   BitMask causalMask[MAX_NUM_REQUESTS];
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
