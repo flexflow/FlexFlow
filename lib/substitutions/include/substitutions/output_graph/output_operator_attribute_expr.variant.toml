@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "OutputOperatorAttributeExpr"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "substitutions/output_graph/attr_constant.dtg.h",
+  "substitutions/output_graph/output_operator_attr_access.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::OutputOperatorAttrAccess"
+key = "attr_ref"
+
+[[values]]
+type = "::FlexFlow::AttrConstant"
+key = "constant"

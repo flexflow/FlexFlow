@@ -1,0 +1,38 @@
+namespace = "FlexFlow"
+name = "AdamOptimizerAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "alpha"
+type = "double"
+
+[[fields]]
+name = "beta1"
+type = "double"
+
+[[fields]]
+name = "beta2"
+type = "double"
+
+[[fields]]
+name = "weight_decay"
+type = "double"
+
+[[fields]]
+name = "alpha_t"
+type = "double"
+
+[[fields]]
+name = "beta_t"
+type = "double"
+
+[[fields]]
+name = "beta2_t"
+type = "double"

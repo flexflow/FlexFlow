@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "BatchMatmulAttrs"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "a_seq_length_dim"
+type = "int"
+
+[[fields]]
+name = "b_seq_length_dim"
+type = "int"

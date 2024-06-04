@@ -1,0 +1,26 @@
+namespace = "FlexFlow"
+name = "DataType"
+features = [
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[values]]
+name = "BOOL"
+
+[[values]]
+name = "INT32"
+
+[[values]]
+name = "INT64"
+
+[[values]]
+name = "HALF"
+
+[[values]]
+name = "FLOAT"
+
+[[values]]
+name = "DOUBLE"

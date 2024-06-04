@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_BIDICT_H
 #define _FLEXFLOW_UTILS_BIDICT_H
 
+#include "utils/fmt/unordered_map.h"
 #include <cassert>
 #include <unordered_map>
 
@@ -55,9 +56,22 @@ struct bidict {
     bwd_map.insert({lr.second, lr.first});
   }
 
+  bool operator==(bidict<L, R> const &other) const {
+    bool result = this->fwd_map == other.fwd_map;
+    assert(result == (this->bwd_map == other.bwd_map));
+    return result;
+  }
+
+  bool operator!=(bidict<L, R> const &other) const {
+    bool result = this->fwd_map != other.fwd_map;
+    assert(result == (this->bwd_map != other.bwd_map));
+    return result;
+  }
+
   R const &at_l(L const &l) const {
     return fwd_map.at(l);
   }
+
   L const &at_r(R const &r) const {
     return bwd_map.at(r);
   }
@@ -163,6 +177,22 @@ private:
   std::unordered_map<R, L> bwd_map;
 };
 
+template <typename L, typename R>
+std::unordered_map<L, R> format_as(bidict<L, R> const &b) {
+  return b;
+}
+
 } // namespace FlexFlow
+
+namespace std {
+
+template <typename L, typename R>
+struct hash<::FlexFlow::bidict<L, R>> {
+  size_t operator()(::FlexFlow::bidict<L, R> const &b) const {
+    return hash<unordered_map<L, R>>{}(b);
+  }
+};
+
+} // namespace std
 
 #endif

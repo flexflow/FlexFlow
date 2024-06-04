@@ -1,0 +1,28 @@
+namespace = "FlexFlow"
+name = "LayerNormAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/ff_dim.h",
+  "op-attrs/ff_dim.dtg.h",
+  "utils/stack_vector.h",
+]
+
+[[fields]]
+name = "axes"
+type = "::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>"
+
+[[fields]]
+name = "elementwise_affine"
+type = "bool"
+
+[[fields]]
+name = "eps"
+type = "float"

@@ -1,0 +1,15 @@
+namespace = "FlexFlow"
+name = "PatternNode"
+features = [
+  "eq",
+  "ord",
+  "hash",
+]
+
+includes = [
+  "utils/graph.h",
+]
+
+[[fields]]
+name = "raw_node"
+type = "::FlexFlow::Node"

@@ -3,7 +3,9 @@
 
 #include "containers.h"
 #include "hash-utils.h"
+#include "rapidcheck.h"
 #include "utils/fmt.h"
+#include "utils/json.h"
 #include "utils/test_types.h"
 #include "utils/type_traits.h"
 #include <array>
@@ -38,9 +40,10 @@ public:
 
   template <typename Iterator>
   stack_vector(Iterator start, Iterator end) {
-    assert(end - start >= 0);
-    assert(end - start <= MAXSIZE);
-    for (; start < end; start++) {
+    size_t elements_added = 0;
+    for (; start != end; start++) {
+      elements_added++;
+      assert(elements_added <= MAXSIZE);
       this->push_back(static_cast<T>(*start));
     }
   }
@@ -310,7 +313,23 @@ private:
       implies<is_lt_comparable<T>, is_lt_comparable<stack_vector>>::value, "");
 };
 
+template <typename T, std::size_t MAXSIZE>
+struct delegate_ostream_operator<stack_vector<T, MAXSIZE>> : std::true_type {};
+
 // CHECK_FMTABLE(stack_vector<test_types::fmtable, 5>);
+
+template <typename T, std::size_t MAXSIZE>
+void to_json(json &j, stack_vector<T, MAXSIZE> const &v) {
+  std::vector<T> as_vec(v.begin(), v.end());
+  j = as_vec;
+}
+
+template <typename T, std::size_t MAXSIZE>
+void from_json(json const &j, stack_vector<T, MAXSIZE> &v) {
+  std::vector<T> as_vec;
+  j.get_to(as_vec);
+  v = stack_vector<T, MAXSIZE>{as_vec.begin(), as_vec.end()};
+}
 
 } // namespace FlexFlow
 
@@ -328,5 +347,19 @@ struct hash<::FlexFlow::stack_vector<T, MAXSIZE>> {
 };
 
 } // namespace std
+
+namespace rc {
+
+template <typename T, std::size_t MAXSIZE>
+struct Arbitrary<::FlexFlow::stack_vector<T, MAXSIZE>> {
+  static Gen<::FlexFlow::stack_vector<T, MAXSIZE>> arbitrary() {
+    return gen::mapcat(gen::inRange<size_t>(0, MAXSIZE), [](size_t size) {
+      return gen::container<::FlexFlow::stack_vector<T, MAXSIZE>>(
+          size, gen::arbitrary<T>());
+    });
+  }
+};
+
+} // namespace rc
 
 #endif

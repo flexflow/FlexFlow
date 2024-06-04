@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "ReductionAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "reduction_degree"
+type = "int"
