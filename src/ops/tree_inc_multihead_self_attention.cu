@@ -15,6 +15,7 @@
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "cuComplex.h"
 #endif
+#include "flashinfer/prefill_attention_decl.cuh"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_utils.cuh"
@@ -33,6 +34,12 @@ using namespace Kernels::IncMultiHeadAttention;
 
 namespace Kernels {
 namespace TreeIncMultiHeadAttention {
+
+using namespace flashinfer;
+// using flashinfer::QKVLayout;
+// using flashinfer::PosEncodingMode;
+// using flashinfer::MaskMode;
+// using flashinfer::SinglePrefillWithKVCacheDispatched;
 
 template <typename DT,
           int THREADS_PER_BLOCK,
@@ -603,6 +610,111 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
 
 }
 
+#define DISPATCH_GROUP_SIZE(group_size, GROUP_SIZE, ...) \
+  if (group_size == 1) {                                     \
+    constexpr size_t GROUP_SIZE = 1;                         \
+    __VA_ARGS__                                              \
+  } else if (group_size == 4) {                              \
+    constexpr size_t GROUP_SIZE = 4;                         \
+    __VA_ARGS__                                              \
+  } else if (group_size == 8) {                              \
+    constexpr size_t GROUP_SIZE = 8;                         \
+    __VA_ARGS__                                              \
+  } else {                                                   \
+    std::ostringstream err_msg;                              \
+    err_msg << "Unsupported group_size: " << group_size;     \
+    throw std::invalid_argument(err_msg.str());              \
+  }
+
+#define DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, ...)     \
+  switch (head_dim) {                                  \
+    case 64: {                                         \
+      constexpr size_t HEAD_DIM = 64;                  \
+      __VA_ARGS__                                      \
+      break;                                           \
+    }                                                  \
+    case 128: {                                        \
+      constexpr size_t HEAD_DIM = 128;                 \
+      __VA_ARGS__                                      \
+      break;                                           \
+    }                                                  \
+    case 256: {                                        \
+      constexpr size_t HEAD_DIM = 256;                 \
+      __VA_ARGS__                                      \
+      break;                                           \
+    }                                                  \
+    default: {                                         \
+      std::ostringstream err_msg;                      \
+      err_msg << "Unsupported head_dim: " << head_dim; \
+      throw std::invalid_argument(err_msg.str());      \
+    }                                                  \
+  }
+
+template <typename DT>
+void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
+                          BatchConfig const *bc,
+                          DT *output_ptr,
+                          cudaStream_t stream) {
+  // cudaEvent_t t_start, t_end;
+  // cudaEventCreate(&t_start);
+  // cudaEventCreate(&t_end);
+  // cudaEventRecord(t_start, stream);
+
+  // global constant parameters
+  uint32_t const num_q_heads = m->num_q_heads;
+  uint32_t const num_kv_heads = m->num_kv_heads;
+  uint32_t const group_size = num_q_heads / num_kv_heads;
+  uint32_t const head_dim = m->qProjSize;
+  float const sm_scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
+
+  // for finding q, k, v, custom_mask pointers
+  uint32_t const hidden_size = m->hidden_size;
+  uint32_t const max_seq_len = BatchConfig::max_sequence_length() +
+                          BatchConfig::max_spec_tree_token_num();
+  uint32_t const max_q_length = BatchConfig::max_spec_tree_token_num();
+  uint32_t const max_kv_length = BatchConfig::max_spec_tree_token_num() + 
+                            BatchConfig::max_sequence_length();
+  
+  // flashinfer parameters
+
+  for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
+    if (!bc->request_available[req_idx]) {
+      continue;
+    }
+    BatchConfig::PerRequestInfo const *req = bc->requestsInfo + req_idx;
+    uint32_t q_len = req->num_tokens_in_batch,
+             q_start = req->first_token_index_in_request,
+             kv_len = q_len + q_start;
+
+    DT* q = static_cast<DT *>(m->devQKVProjArray) + req->first_token_offset_in_batch * hidden_size,
+      * k = static_cast<DT *>(m->keyCache) + req_idx * max_seq_len * hidden_size,
+      * v = static_cast<DT *>(m->valueCache) + req_idx * max_seq_len * hidden_size,
+      * o = output_ptr + req->first_token_offset_in_batch * hidden_size;
+    float* tmp = m->scratch_space;
+    float* custom_mask = m->custom_mask + req_idx * max_q_length * max_kv_length;
+
+    // DISPATCH_GROUP_SIZE(
+    //   group_size, GROUP_SIZE,
+    //     {DISPATCH_HEAD_DIM(
+    //       head_dim, HEAD_DIM, {
+    SinglePrefillWithKVCacheDispatched<
+        1, 128, QKVLayout::kNHD, PosEncodingMode::kNone,
+        false, MaskMode::kNone, DT, DT>(
+          q, k, v, custom_mask, o, tmp, /*lse=*/static_cast<float *>(nullptr),
+          num_kv_heads, q_len, kv_len, sm_scale,
+          /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
+    // })});
+  }
+
+  // cudaEventRecord(t_end, stream);
+  // checkCUDA(cudaEventSynchronize(t_end));
+  // float elapsed = 0;
+  // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  // printf("TreeIncMultiHeadSelfAttention part 2 time: %.2f ms\n", elapsed);
+  // cudaEventDestroy(t_start);
+  // cudaEventDestroy(t_end);
+}
+
 template <typename DT>
 void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       BatchConfig const *bc,
@@ -648,7 +760,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
         m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
-  // phase 1: Implement kernel to compute KQV for input tokens
+  // Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
@@ -658,18 +770,14 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                      bias_ptr,
                      stream);
 
-  // update gpu-side custom mask referring from CaualMask
+  // Update gpu-side custom mask referring from CaualMask
   update_custom_mask(m, bc, stream);
 
-  // update key-val cache, compact q array
+  // Update key-val cache, compact q array
   update_qkv_cache<DT>(m, bc, stream);
 
-  // phase 2: No need to update key/val cache
-  // IncMultiHeadSelfAttention::update_kv_cache_kernel(
-  //    m, bc, stream);
-  // use the new kernel
-  compute_attention_kernel_fused<DT>(
-      m, bc, static_cast<DT *>(m->attn_heads), stream);
+  // Compute attention
+  tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
   //   int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
@@ -738,7 +846,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
 
     half const *bias_ptr =
         use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
-    Kernels::TreeIncMultiHeadAttention::inference_kernel(
+    Kernels::TreeIncMultiHeadAttention::inference_kernel<half>(
         m,
         bc,
         shard_id,
@@ -753,7 +861,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     }
     float const *bias_ptr =
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
-    Kernels::TreeIncMultiHeadAttention::inference_kernel(
+    Kernels::TreeIncMultiHeadAttention::inference_kernel<float>(
         m,
         bc,
         shard_id,
