@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/kernels/customAllReduceKernels.h"
+#include "flexflow/parallel_ops/kernels/allreduce_custom_kernels.h"
 #include "tensorrt_llm/common/cudaBf16Fallbacks.cuh"
 #include "tensorrt_llm/common/cudaTypeUtils.cuh"
 #include "tensorrt_llm/common/dataType.h"
