@@ -145,7 +145,8 @@ public:
 
 public:
   int num_active_tokens;
-  Realm::RegionInstance committed_token_reserve_inst;
+  Realm::RegionInstance custom_mask_reserve_inst;
+  float *custom_mask;
   BatchConfig::CommittedTokensInfo *committed_token_infos;
   BatchConfig::BitMask *causalMask;
 };

@@ -739,6 +739,15 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
+  {
+    size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
+                              BatchConfig::max_spec_tree_token_num() *
+                              (BatchConfig::max_spec_tree_token_num() +
+                                BatchConfig::max_sequence_length());
+    gpu_mem_allocator.create_legion_instance(custom_mask_reserve_inst, sizeof(float) * custom_mask_size);
+    custom_mask = gpu_mem_allocator.allocate_instance<float>(custom_mask_size);
+  }
+
   // allocate memory for the seqArray and reserve space
   {
     causalMask = reinterpret_cast<BatchConfig::BitMask *>(
@@ -758,8 +767,8 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
 }
 
 TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {
-  if (committed_token_reserve_inst != Realm::RegionInstance::NO_INST) {
-    committed_token_reserve_inst.destroy();
+  if (custom_mask_reserve_inst != Realm::RegionInstance::NO_INST) {
+    custom_mask_reserve_inst.destroy();
   }
 }
 
