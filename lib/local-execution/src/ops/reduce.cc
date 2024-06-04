@@ -47,18 +47,6 @@ static DeviceSpecific<DeviceStates>
   return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
-// template <>
-// void register_task<TRANSPOSE_INIT_TASK_ID>() {
-//   OpTaskSignature init(OpTaskType::INIT);
-
-//   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-//   init.add_arg_slot<ReduceAttrs>(ATTRS);
-
-//   init.add_return_value<ReducePerDeviceState>();
-
-//   register_task(REDUCE_INIT_TASK_ID, "Reduce::init", init, init_task_impl);
-// }
-
 // Note: forward_kernel only needs ReducePerDeviceState, input, output
 OpTaskInvocation forward(ReduceAttrs const &attrs) {
   OpTaskBinding binding;
@@ -88,20 +76,6 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  input.get_float_ptr(),
                  output.get_float_ptr());
 }
-
-// template <>
-// void register_task<REDUCE_FWD_TASK_ID>() {
-//   OpTaskSignature fwd(OpTaskType::FWD);
-
-//   fwd.add_unchecked_arg_slot<ReducePerDeviceState>(PER_DEVICE_STATE);
-//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-
-//   fwd.add_input_slot(INPUT);
-//   fwd.add_output_slot(OUTPUT);
-
-//   register_task(REDUCE_FWD_TASK_ID, "Reduce::forward", fwd,
-//   forward_task_impl);
-// }
 
 OpTaskInvocation backward(ReduceAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
@@ -191,6 +165,10 @@ CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
 
   float sync_time = default_estimate_sync_time(env);
   return make_metrics(forward_time, backward_time, sync_time, env);
+}
+
+std::vector<task_id_t> get_task_ids(ReduceAttrs const &) {
+  return {REDUCE_INIT_TASK_ID, REDUCE_FWD_TASK_ID, REDUCE_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

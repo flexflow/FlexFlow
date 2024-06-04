@@ -4,8 +4,6 @@
 
 namespace FlexFlow {
 
-// declare Legion names
-
 using namespace FlexFlow::Kernels::Flat;
 
 enum SLOTS { INPUT, OUTPUT, HANDLE, PROFILING };
@@ -97,26 +95,14 @@ OpTaskSignature get_flat_fwd_signature() {
   return fwd;
 }
 
-template <>
-void register_task<FLAT_FWD_TASK_ID>() {
-  register_task(FLAT_FWD_TASK_ID,
-                "Flat Fwd",
-                fwd_signature<FLAT_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
 OpTaskSignature get_flat_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_flat_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<FLAT_BWD_TASK_ID>() {
-  register_task(FLAT_BWD_TASK_ID,
-                "Flat Bwd",
-                bwd_signature<FLAT_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(FlatAttrs const &) {
+  return {FLAT_FWD_TASK_ID, FLAT_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

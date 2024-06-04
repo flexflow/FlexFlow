@@ -7,13 +7,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<BATCHNORM_INIT_TASK_ID>();
-template <>
-void register_task<BATCHNORM_FWD_TASK_ID>();
-template <>
-void register_task<BATCHNORM_BWD_TASK_ID>();
-
 TaskImplFunction get_batch_norm_init_task_impl();
 TaskImplFunction get_batch_norm_fwd_task_impl();
 TaskImplFunction get_batch_norm_bwd_task_impl();

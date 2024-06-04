@@ -7,13 +7,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<RESHAPE_INIT_TASK_ID>();
-template <>
-void register_task<RESHAPE_FWD_TASK_ID>();
-template <>
-void register_task<RESHAPE_BWD_TASK_ID>();
-
 TaskImplFunction get_reshape_init_task_impl();
 TaskImplFunction get_reshape_fwd_task_impl();
 TaskImplFunction get_reshape_bwd_task_impl();

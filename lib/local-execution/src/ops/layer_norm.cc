@@ -218,29 +218,8 @@ OpTaskSignature get_layer_norm_init_signature() {
   return init;
 }
 
-template <>
-void register_task<LAYERNORM_INIT_TASK_ID>() {
-
-  register_task(LAYERNORM_INIT_TASK_ID,
-                "LayerNorm init",
-                init_signature<LAYERNORM_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
-template <>
-void register_task<LAYERNORM_FWD_TASK_ID>() {
-  register_task(LAYERNORM_FWD_TASK_ID,
-                "LayerNorm forward",
-                fwd_signature<LAYERNORM_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
-template <>
-void register_task<LAYERNORM_BWD_TASK_ID>() {
-  register_task(LAYERNORM_BWD_TASK_ID,
-                "LayerNorm backward",
-                bwd_signature<LAYERNORM_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(LayerNormAttrs const &) {
+  return {LAYERNORM_INIT_TASK_ID, LAYERNORM_FWD_TASK_ID, LAYERNORM_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow

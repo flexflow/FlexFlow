@@ -188,36 +188,8 @@ OpTaskSignature get_topk_bwd_signature() {
   return bwd;
 }
 
-// template <>
-// void register_task<TOPK_INIT_TASK_ID>() {
-//   OpTaskSignature init(OpTaskType::INIT);
-
-//   init.add_arg_slot<TopKAttrs>(ATTRS); // Note: this may have some question
-//   init.add_return_value<TopKPerDeviceState>();
-//   register_task(TOPK_INIT_TASK_ID, "Topk Init", init, init_task_impl);
-// }
-
-// template <>
-// void register_task<TOPK_FWD_TASK_ID>() {
-//   OpTaskSignature fwd(OpTaskType::FWD);
-
-//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-//   fwd.add_arg_slot<TopKAttrs>(ATTRS);
-//   fwd.add_unchecked_arg_slot<TopKPerDeviceState>(PER_DEVICE_STATE);
-
-//   fwd.add_input_slot(INPUT);
-//   fwd.add_output_slot(OUTPUT);
-//   fwd.add_output_slot(INDICES);
-
-//   register_task(TOPK_FWD_TASK_ID, "TopK Forward", fwd, forward_task_impl);
-// }
-
-// template <>
-// void register_task<TOPK_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//   infer_bwd_signature(get_op_signature(TOPK_FWD_TASK_ID));
-
-//   register_task(TOPK_BWD_TASK_ID, "TopK Backward", bwd, backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(TopKAttrs const &) {
+  return {TOPK_INIT_TASK_ID, TOPK_FWD_TASK_ID, TOPK_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

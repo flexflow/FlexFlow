@@ -7,13 +7,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<GATHER_INIT_TASK_ID>();
-template <>
-void register_task<GATHER_FWD_TASK_ID>();
-template <>
-void register_task<GATHER_BWD_TASK_ID>();
-
 TaskImplFunction get_gather_init_task_impl();
 TaskImplFunction get_gather_fwd_task_impl();
 TaskImplFunction get_gather_bwd_task_impl();

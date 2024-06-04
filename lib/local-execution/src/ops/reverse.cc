@@ -146,28 +146,14 @@ OpTaskSignature get_reverse_fwd_signature() {
   fwd.add_output_slot(OUTPUT);
   return fwd;
 }
+
 OpTaskSignature get_reverse_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_reverse_fwd_signature());
   return bwd;
 }
 
-template <>
-void register_task<REVERSE_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
-
-  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-  fwd.add_input_slot(INPUT);
-  fwd.add_output_slot(OUTPUT);
-
-  register_task(REVERSE_FWD_TASK_ID, "Reverse forward", fwd, forward_task_impl);
+std::vector<task_id_t> get_task_ids(ReverseAttrs const &) {
+  return {REVERSE_FWD_TASK_ID, REVERSE_BWD_TASK_ID};
 }
-
-// template <>
-// void register_task<REVERSE_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(REVERSE_BWD_TASK_ID));
-//   register_task(REVERSE_BWD_TASK_ID, "Reverse backward", bwd,
-//   backward_task_impl);
-// }
 
 }; // namespace FlexFlow

@@ -46,18 +46,6 @@ static DeviceSpecific<DeviceStates>
   return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
-// template <>
-// void register_task<TRANSPOSE_INIT_TASK_ID>() {
-// OpTaskSignature init(OpTaskType::INIT);
-
-//     init.add_arg_slot<TransposeAttrs>(ATTRS);
-
-// init.add_return_value<TransposePerDeviceState>();
-
-// register_task(TRANSPOSE_INIT_TASK_ID, "Transpose::init", init,
-// init_task_impl);
-// }
-
 OpTaskInvocation forward(TransposeAttrs const &attrs) {
   OpTaskBinding binding;
 
@@ -177,6 +165,10 @@ OpTaskSignature get_transpose_fwd_signature() {
 OpTaskSignature get_transpose_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_transpose_fwd_signature());
   return bwd;
+}
+
+std::vector<task_id_t> get_task_ids(TransposeAttrs const &) {
+  return {TRANSPOSE_INIT_TASK_ID, TRANSPOSE_FWD_TASK_ID, TRANSPOSE_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow

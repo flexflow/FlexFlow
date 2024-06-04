@@ -163,23 +163,8 @@ OpTaskSignature get_split_bwd_signature() {
   return bwd;
 }
 
-// template <>
-// void register_task<SPLIT_FWD_TASK_ID>() {
-//   OpTaskSignature fwd(OpTaskType::FWD);
-
-//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-
-//   fwd.add_input_slot(INPUT);
-//   fwd.add_output_slot(OUTPUT);
-//   register_task(SPLIT_FWD_TASK_ID, "Split Fwd", fwd, forward_task_impl);
-// }
-
-// template <>
-// void register_task<SPLIT_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(SPLIT_FWD_TASK_ID));
-
-//   register_task(SPLIT_BWD_TASK_ID, "Split Bwd", bwd, backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(SplitAttrs const &) {
+  return {SPLIT_FWD_TASK_ID, SPLIT_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

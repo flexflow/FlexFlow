@@ -7,13 +7,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<TRANSPOSE_INIT_TASK_ID>();
-template <>
-void register_task<TRANSPOSE_FWD_TASK_ID>();
-template <>
-void register_task<TRANSPOSE_BWD_TASK_ID>();
-
 TaskImplFunction get_transpose_init_task_impl();
 TaskImplFunction get_transpose_fwd_task_impl();
 TaskImplFunction get_transpose_bwd_task_impl();

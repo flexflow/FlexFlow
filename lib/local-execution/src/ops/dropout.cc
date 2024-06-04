@@ -143,14 +143,6 @@ OpTaskSignature get_dropout_init_signature() {
   return init;
 }
 
-template <>
-void register_task<DROPOUT_INIT_TASK_ID>() {
-  register_task(DROPOUT_INIT_TASK_ID,
-                "Dropout Init",
-                init_signature<DROPOUT_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
 OpTaskSignature get_dropout_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
@@ -163,26 +155,14 @@ OpTaskSignature get_dropout_fwd_signature() {
   return fwd;
 }
 
-template <>
-void register_task<DROPOUT_FWD_TASK_ID>() {
-  register_task(DROPOUT_FWD_TASK_ID,
-                "Dropout Fwd",
-                fwd_signature<DROPOUT_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
 OpTaskSignature get_dropout_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_dropout_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<DROPOUT_BWD_TASK_ID>() {
-  register_task(DROPOUT_BWD_TASK_ID,
-                "Dropout Bwd",
-                bwd_signature<DROPOUT_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(DropoutAttrs const &) {
+  return {DROPOUT_INIT_TASK_ID, DROPOUT_FWD_TASK_ID, DROPOUT_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

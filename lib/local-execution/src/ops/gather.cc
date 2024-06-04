@@ -176,14 +176,6 @@ OpTaskSignature get_gather_init_signature() {
   return init;
 }
 
-template <>
-void register_task<GATHER_INIT_TASK_ID>() {
-  register_task(GATHER_INIT_TASK_ID,
-                "Gather Init",
-                init_signature<GATHER_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
 OpTaskSignature get_gather_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
@@ -197,26 +189,14 @@ OpTaskSignature get_gather_fwd_signature() {
   return fwd;
 }
 
-template <>
-void register_task<GATHER_FWD_TASK_ID>() {
-  register_task(GATHER_FWD_TASK_ID,
-                "Gather Fwd",
-                fwd_signature<GATHER_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
 OpTaskSignature get_gather_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_gather_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<GATHER_BWD_TASK_ID>() {
-  register_task(GATHER_BWD_TASK_ID,
-                "Gather Bwd",
-                bwd_signature<GATHER_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(GatherAttrs const &) {
+  return {GATHER_INIT_TASK_ID, GATHER_FWD_TASK_ID, GATHER_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

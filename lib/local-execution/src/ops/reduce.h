@@ -7,13 +7,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<REDUCE_INIT_TASK_ID>();
-template <>
-void register_task<REDUCE_FWD_TASK_ID>();
-template <>
-void register_task<REDUCE_BWD_TASK_ID>();
-
 TaskImplFunction get_reduce_init_task_impl();
 TaskImplFunction get_reduce_fwd_task_impl();
 TaskImplFunction get_reduce_bwd_task_impl();

@@ -123,29 +123,8 @@ OpTaskSignature get_reduction_bwd_signature() {
   return bwd;
 }
 
-// template <>
-// void register_task<REDUCTION_FWD_TASK_ID>() {
-//   OpTaskSignature fwd(OpTaskType::FWD);
-
-//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-//   fwd.add_arg_slot<ReductionAttrs>(ATTRS);
-
-//   fwd.add_input_slot(INPUT);
-//   fwd.add_output_slot(OUTPUT);
-
-//   register_task(REDUCTION_FWD_TASK_ID, "Reduction Fwd", fwd,
-//   forward_task_impl);
-// }
-
-// TODO: OpTaskSignature
-
-// template <>
-// void register_task<REDUCTION_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(REDUCTION_FWD_TASK_ID));
-
-//   register_task(REDUCTION_BWD_TASK_ID, "Reduction Bwd", bwd,
-//   backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(ReductionAttrs const &) {
+  return {REDUCTION_FWD_TASK_ID, REDUCTION_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

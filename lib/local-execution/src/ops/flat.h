@@ -6,11 +6,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<FLAT_FWD_TASK_ID>();
-template <>
-void register_task<FLAT_BWD_TASK_ID>();
-
 TaskImplFunction get_flat_fwd_task_impl();
 TaskImplFunction get_flat_bwd_task_impl();
 

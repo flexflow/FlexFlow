@@ -168,36 +168,8 @@ OpTaskSignature get_softmax_bwd_signature() {
   return bwd;
 }
 
-// template <>
-// void register_task<SOFTMAX_INIT_TASK_ID>() {
-//   OpTaskSignature init(OpTaskType::INIT);
-
-//   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-//   init.add_arg_slot<SoftmaxAttrs>(ATTRS);
-//   init.add_return_value<SoftmaxPerDeviceState>();
-
-//   register_task(SOFTMAX_INIT_TASK_ID, "SoftMax Init", init, init_task_impl);
-// }
-
-// template <>
-// void register_task<SOFTMAX_FWD_TASK_ID>() {
-//   OpTaskSignature fwd(OpTaskType::FWD);
-
-//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-//   fwd.add_unchecked_arg_slot<SoftmaxPerDeviceState>(PER_DEVICE_STATE);
-
-//   fwd.add_input_slot(INPUT);
-//   fwd.add_output_slot(OUTPUT);
-
-//   register_task(SOFTMAX_FWD_TASK_ID, "SoftMax Fwd", fwd, forward_task_impl);
-// }
-
-// template <>
-// void register_task<SOFTMAX_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(SOFTMAX_FWD_TASK_ID));
-
-//   register_task(SOFTMAX_BWD_TASK_ID, "SoftMax Bwd", bwd, backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(SoftmaxAttrs const &) {
+  return {SOFTMAX_INIT_TASK_ID, SOFTMAX_FWD_TASK_ID, SOFTMAX_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

@@ -199,14 +199,6 @@ OpTaskSignature get_conv_2d_init_signature() {
   return init;
 }
 
-template <>
-void register_task<CONV2D_INIT_TASK_ID>() {
-  register_task(CONV2D_INIT_TASK_ID,
-                "Conv2d Init",
-                init_signature<CONV2D_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
 OpTaskSignature get_conv_2d_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
@@ -222,26 +214,14 @@ OpTaskSignature get_conv_2d_fwd_signature() {
   return fwd;
 }
 
-template <>
-void register_task<CONV2D_FWD_TASK_ID>() {
-  register_task(CONV2D_FWD_TASK_ID,
-                "Conv2d Fwd",
-                fwd_signature<CONV2D_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
 OpTaskSignature get_conv_2d_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_conv_2d_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<CONV2D_BWD_TASK_ID>() {
-  register_task(CONV2D_BWD_TASK_ID,
-                "Conv2d Bwd",
-                bwd_signature<CONV2D_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(Conv2DAttrs const &) {
+  return {CONV2D_INIT_TASK_ID, CONV2D_FWD_TASK_ID, CONV2D_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow

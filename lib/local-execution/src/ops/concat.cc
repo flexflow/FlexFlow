@@ -127,14 +127,6 @@ OpTaskSignature get_concat_fwd_signature() {
   return fwd;
 }
 
-template <>
-void register_task<CONCAT_FWD_TASK_ID>() {
-  register_task(CONCAT_FWD_TASK_ID,
-                "Concat Fwd",
-                fwd_signature<CONCAT_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
 OpTaskSignature get_concat_bwd_signature() {
   OpTaskSignature bwd =
       infer_bwd_signature(fwd_signature<CONCAT_FWD_TASK_ID>());
@@ -142,12 +134,8 @@ OpTaskSignature get_concat_bwd_signature() {
   return bwd;
 }
 
-template <>
-void register_task<CONCAT_BWD_TASK_ID>() {
-  register_task(CONCAT_BWD_TASK_ID,
-                "Concat Bwd",
-                bwd_signature<CONCAT_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(ConcatAttrs const &) {
+  return {CONCAT_FWD_TASK_ID, CONCAT_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

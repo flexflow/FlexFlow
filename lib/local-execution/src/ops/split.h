@@ -7,11 +7,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<SPLIT_FWD_TASK_ID>();
-template <>
-void register_task<SPLIT_BWD_TASK_ID>();
-
 TaskImplFunction get_split_fwd_task_impl();
 TaskImplFunction get_split_bwd_task_impl();
 

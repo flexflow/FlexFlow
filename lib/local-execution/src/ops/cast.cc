@@ -124,26 +124,14 @@ OpTaskSignature get_cast_fwd_signature() {
   return fwd;
 }
 
-template <>
-void register_task<CAST_FWD_TASK_ID>() {
-  register_task(CAST_FWD_TASK_ID,
-                "Cast Fwd",
-                fwd_signature<CAST_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
-OpTaskSignature get_cast_Bwd_signature() {
-  OpTaskSignature bwd = infer_bwd_signature(fwd_signature<CAST_FWD_TASK_ID>());
+OpTaskSignature get_cast_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_cast_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<CAST_BWD_TASK_ID>() {
-  register_task(CAST_BWD_TASK_ID,
-                "Cast Bwd",
-                bwd_signature<CAST_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(CastAttrs const &) {
+  return {CAST_FWD_TASK_ID, CAST_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

@@ -163,31 +163,10 @@ OpTaskSignature get_repartition_bwd_signature() {
   return bwd;
 }
 
-// template <>
-// void register_task<REPARTITION_INIT_TASK_ID>() {
-//   OpTaskSignature init(OpTaskType::INIT);
-
-//   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-
-//   init.add_input_slot(INPUT);
-
-//   init.add_return_value<RepartitionPerDeviceState>();
-
-//   register_task(
-//       REPARTITION_INIT_TASK_ID, "Repartition Init", init, init_task_impl);
-// }
-
-// template <>
-// void register_task<REPARTITION_FWD_TASK_ID>() {
-//   OpTaskSignature fwd(OpTaskType::FWD);
-
-//   fwd.add_input_slot(INPUT);
-//   fwd.add_output_slot(OUTPUT);
-//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-//   fwd.add_unchecked_arg_slot<RepartitionPerDeviceState>(PER_DEVICE_STATE);
-
-//   register_task(
-//       REPARTITION_FWD_TASK_ID, "Repartition Fwd", fwd, forward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(RepartitionAttrs const &) {
+  return {REPARTITION_INIT_TASK_ID,
+          REPARTITION_FWD_TASK_ID,
+          REPARTITION_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

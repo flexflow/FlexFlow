@@ -7,11 +7,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<EMBED_FWD_TASK_ID>();
-template <>
-void register_task<EMBED_BWD_TASK_ID>();
-
 TaskImplFunction get_embedding_fwd_task_impl();
 TaskImplFunction get_embedding_bwd_task_impl();
 

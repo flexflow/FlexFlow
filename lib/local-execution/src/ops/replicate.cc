@@ -116,25 +116,8 @@ OpTaskSignature get_replicate_bwd_signature() {
   return bwd;
 }
 
-// template <>
-// void register_task<REPLICATE_FWD_TASK_ID>() {
-//  OpTaskSignature fwd(OpTaskType::FWD);
-
-//   fwd.add_arg_slot<bool>(PROFILING);
-//   fwd.add_input_slot(INPUT);
-//   fwd.add_output_slot(OUTPUT);
-
-//   register_task(REPLICATE_FWD_TASK_ID, "Replicate fwd", fwd,
-//   forward_task_impl);
-// }
-
-// template <>
-// void register_task<REPLICATE_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//   infer_bwd_signature(get_op_signature(CAST_FWD_TASK_ID));
-
-//   register_task(REPLICATE_BWD_TASK_ID, "Replicate bwd", bwd,
-//   backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(ReplicateAttrs const &) {
+  return {REPLICATE_FWD_TASK_ID, REPLICATE_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

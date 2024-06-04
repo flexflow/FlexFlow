@@ -7,11 +7,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<CONCAT_FWD_TASK_ID>();
-template <>
-void register_task<CONCAT_BWD_TASK_ID>();
-
 TaskImplFunction get_concat_fwd_task_impl();
 TaskImplFunction get_concat_bwd_task_impl();
 

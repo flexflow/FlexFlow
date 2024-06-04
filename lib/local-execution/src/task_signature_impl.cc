@@ -156,8 +156,6 @@ TaskSignatureAndImpl get_task_sig_impl(task_id_t const &task_id) {
       return {get_attention_fwd_task_impl(), get_attention_fwd_signature()};
     case ATTENTION_BWD_TASK_ID:
       return {get_attention_bwd_task_impl(), get_attention_bwd_signature()};
-    case COMBINE_INIT_TASK_ID:
-      return {get_combine_init_task_impl(), get_combine_init_signature()};
     case COMBINE_FWD_TASK_ID:
       return {get_combine_fwd_task_impl(), get_combine_fwd_signature()};
     case COMBINE_BWD_TASK_ID:

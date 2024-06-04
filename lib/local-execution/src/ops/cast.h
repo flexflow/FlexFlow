@@ -21,13 +21,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<CAST_INIT_TASK_ID>();
-template <>
-void register_task<CAST_FWD_TASK_ID>();
-template <>
-void register_task<CAST_BWD_TASK_ID>();
-
 TaskImplFunction get_cast_fwd_task_impl();
 TaskImplFunction get_cast_bwd_task_impl();
 

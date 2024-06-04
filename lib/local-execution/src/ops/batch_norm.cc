@@ -208,14 +208,6 @@ OpTaskSignature get_batch_norm_init_signature() {
   return init;
 }
 
-template <>
-void register_task<BATCHNORM_INIT_TASK_ID>() {
-  register_task(BATCHNORM_INIT_TASK_ID,
-                "BatchNorm Init",
-                init_signature<BATCHNORM_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
 OpTaskSignature get_batch_norm_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
@@ -228,27 +220,18 @@ OpTaskSignature get_batch_norm_fwd_signature() {
 
   return fwd;
 }
-
-template <>
-void register_task<BATCHNORM_FWD_TASK_ID>() {
-  register_task(BATCHNORM_FWD_TASK_ID,
-                "BatchNorm Fwd",
-                fwd_signature<BATCHNORM_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
 OpTaskSignature get_batch_norm_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_batch_norm_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<BATCHNORM_BWD_TASK_ID>() {
-  register_task(BATCHNORM_BWD_TASK_ID,
-                "BatchNorm Bwd",
-                bwd_signature<BATCHNORM_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(BatchNormAttrs const &) {
+  return {
+      BATCHNORM_INIT_TASK_ID,
+      BATCHNORM_FWD_TASK_ID,
+      BATCHNORM_BWD_TASK_ID,
+  };
 }
 
 }; // namespace FlexFlow

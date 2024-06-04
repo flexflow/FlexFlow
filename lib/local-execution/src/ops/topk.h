@@ -7,13 +7,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<TOPK_INIT_TASK_ID>();
-template <>
-void register_task<TOPK_FWD_TASK_ID>();
-template <>
-void register_task<TOPK_BWD_TASK_ID>();
-
 TaskImplFunction get_topk_init_task_impl();
 TaskImplFunction get_topk_fwd_task_impl();
 TaskImplFunction get_topk_bwd_task_impl();

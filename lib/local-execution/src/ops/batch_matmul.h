@@ -8,11 +8,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<BATCHMATMUL_FWD_TASK_ID>();
-template <>
-void register_task<BATCHMATMUL_BWD_TASK_ID>();
-
 TaskImplFunction get_batch_matmul_fwd_task_impl();
 TaskImplFunction get_batch_matmul_bwd_task_impl();
 

@@ -196,14 +196,6 @@ OpTaskSignature get_element_binary_init_signature() {
   return init;
 }
 
-template <>
-void register_task<ELEMENTBINARY_INIT_TASK_ID>() {
-  register_task(ELEMENTBINARY_INIT_TASK_ID,
-                "ElementBinary Init",
-                get_element_binary_init_signature(),
-                init_task_impl);
-}
-
 OpTaskSignature get_element_binary_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
@@ -219,26 +211,16 @@ OpTaskSignature get_element_binary_fwd_signature() {
   return fwd;
 }
 
-template <>
-void register_task<ELEMENTBINARY_FWD_TASK_ID>() {
-  register_task(ELEMENTBINARY_FWD_TASK_ID,
-                "ElementBinary Fwd",
-                get_element_binary_fwd_signature(),
-                forward_task_impl);
-}
-
 OpTaskSignature get_element_binary_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_element_binary_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<ELEMENTBINARY_BWD_TASK_ID>() {
-  register_task(ELEMENTBINARY_BWD_TASK_ID,
-                "ElementBinary Bwd",
-                get_element_binary_bwd_signature(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(ElementBinaryAttrs const &) {
+  return {ELEMENTBINARY_INIT_TASK_ID,
+          ELEMENTBINARY_FWD_TASK_ID,
+          ELEMENTBINARY_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

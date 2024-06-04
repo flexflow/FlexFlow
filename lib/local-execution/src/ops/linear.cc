@@ -253,31 +253,6 @@ OpTaskSignature get_linear_bwd_signature() {
   return bwd;
 }
 
-template <>
-void register_task<LINEAR_INIT_TASK_ID>() {
-
-  register_task(LINEAR_INIT_TASK_ID,
-                "Linear::init_task",
-                init_signature<LINEAR_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
-template <>
-void register_task<LINEAR_FWD_TASK_ID>() {
-  register_task(LINEAR_FWD_TASK_ID,
-                "Linear::fwd_task",
-                fwd_signature<LINEAR_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
-template <>
-void register_task<LINEAR_BWD_TASK_ID>() {
-  register_task(LINEAR_BWD_TASK_ID,
-                "Linear::bwd_task",
-                bwd_signature<LINEAR_BWD_TASK_ID>(),
-                backward_task_impl);
-}
-
 std::vector<task_id_t> get_task_ids(LinearAttrs const &) {
   return {LINEAR_INIT_TASK_ID, LINEAR_FWD_TASK_ID, LINEAR_BWD_TASK_ID};
 }

@@ -7,16 +7,9 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<COMBINE_FWD_TASK_ID>();
-template <>
-void register_task<COMBINE_BWD_TASK_ID>();
-
-TaskImplFunction get_combine_init_task_impl();
 TaskImplFunction get_combine_fwd_task_impl();
 TaskImplFunction get_combine_bwd_task_impl();
 
-OpTaskSignature get_combine_init_signature();
 OpTaskSignature get_combine_fwd_signature();
 OpTaskSignature get_combine_bwd_signature();
 

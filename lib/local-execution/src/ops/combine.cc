@@ -19,7 +19,6 @@
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-// declare Legion names
 
 using namespace FlexFlow::Kernels::Combine;
 
@@ -92,26 +91,10 @@ OpTaskSignature get_combine_fwd_signature() {
   return fwd;
 }
 
-template <>
-void register_task<COMBINE_FWD_TASK_ID>() {
-  register_task(COMBINE_FWD_TASK_ID,
-                "Combine Fwd",
-                fwd_signature<COMBINE_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
 OpTaskSignature get_cast_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_combine_fwd_signature());
 
   return bwd;
-}
-
-template <>
-void register_task<COMBINE_BWD_TASK_ID>() {
-  register_task(COMBINE_BWD_TASK_ID,
-                "Combine Bwd",
-                bwd_signature<COMBINE_BWD_TASK_ID>(),
-                backward_task_impl);
 }
 
 }; // namespace FlexFlow

@@ -8,13 +8,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<DROPOUT_INIT_TASK_ID>();
-template <>
-void register_task<DROPOUT_FWD_TASK_ID>();
-template <>
-void register_task<DROPOUT_BWD_TASK_ID>();
-
 TaskImplFunction get_dropout_init_task_impl();
 TaskImplFunction get_dropout_fwd_task_impl();
 TaskImplFunction get_dropout_bwd_task_impl();

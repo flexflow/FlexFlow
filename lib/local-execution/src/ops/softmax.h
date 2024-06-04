@@ -7,13 +7,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<SOFTMAX_INIT_TASK_ID>();
-template <>
-void register_task<SOFTMAX_FWD_TASK_ID>();
-template <>
-void register_task<SOFTMAX_BWD_TASK_ID>();
-
 TaskImplFunction get_softmax_init_task_impl();
 TaskImplFunction get_softmax_fwd_task_impl();
 TaskImplFunction get_softmax_bwd_task_impl();

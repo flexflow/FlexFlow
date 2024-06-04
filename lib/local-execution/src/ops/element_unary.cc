@@ -169,14 +169,6 @@ OpTaskSignature get_element_unary_init_signature() {
   return init;
 }
 
-template <>
-void register_task<ELEMENTUNARY_INIT_TASK_ID>() {
-  register_task(ELEMENTUNARY_INIT_TASK_ID,
-                "ElementUnary Init",
-                init_signature<ELEMENTUNARY_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
 OpTaskSignature get_element_unary_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
@@ -189,26 +181,16 @@ OpTaskSignature get_element_unary_fwd_signature() {
   return fwd;
 }
 
-template <>
-void register_task<ELEMENTUNARY_FWD_TASK_ID>() {
-  register_task(ELEMENTUNARY_FWD_TASK_ID,
-                "ElementUnary Fwd",
-                fwd_signature<ELEMENTUNARY_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
 OpTaskSignature get_element_unary_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_element_unary_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<ELEMENTUNARY_BWD_TASK_ID>() {
-  register_task(ELEMENTUNARY_BWD_TASK_ID,
-                "ElementUnary Bwd",
-                bwd_signature<ELEMENTUNARY_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(ElementUnaryUnifiedAttrs const &) {
+  return {ELEMENTUNARY_INIT_TASK_ID,
+          ELEMENTUNARY_FWD_TASK_ID,
+          ELEMENTUNARY_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow

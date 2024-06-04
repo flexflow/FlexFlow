@@ -138,25 +138,13 @@ OpTaskSignature get_embedding_fwd_signature() {
   return fwd;
 }
 
-template <>
-void register_task<EMBED_FWD_TASK_ID>() {
-  register_task(EMBED_FWD_TASK_ID,
-                "Embed Fwd",
-                fwd_signature<EMBED_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
 OpTaskSignature get_embedding_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_embedding_fwd_signature());
   return bwd;
 }
 
-template <>
-void register_task<EMBED_BWD_TASK_ID>() {
-  register_task(EMBED_BWD_TASK_ID,
-                "Embed Bwd",
-                bwd_signature<EMBED_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(EmbeddingAttrs const &) {
+  return {EMBED_FWD_TASK_ID, EMBED_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow

@@ -7,13 +7,6 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<CONV2D_INIT_TASK_ID>();
-template <>
-void register_task<CONV2D_FWD_TASK_ID>();
-template <>
-void register_task<CONV2D_BWD_TASK_ID>();
-
 TaskImplFunction get_conv_2d_init_task_impl();
 TaskImplFunction get_conv_2d_fwd_task_impl();
 TaskImplFunction get_conv_2d_bwd_task_impl();

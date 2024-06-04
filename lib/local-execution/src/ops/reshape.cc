@@ -155,36 +155,8 @@ OpTaskSignature get_reshape_bwd_signature() {
   return bwd;
 }
 
-// template <>
-// void register_task<RESHAPE_INIT_TASK_ID>() {
-//   OpTaskSignature init(OpTaskType::INIT);
-
-//   init.add_arg_slot<ReshapeAttrs>(ATTRS);
-
-//   init.add_return_value<ReshapePerDeviceState>();
-
-//   register_task(RESHAPE_INIT_TASK_ID, "Reshape Init", init, init_task_impl);
-// }
-
-// template <>
-// void register_task<RESHAPE_FWD_TASK_ID>() {
-//   OpTaskSignature fwd(OpTaskType::FWD);
-
-//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-//   fwd.add_unchecked_arg_slot<ReshapePerDeviceState>(PER_DEVICE_STATE);
-
-//   fwd.add_input_slot(INPUT);
-//   fwd.add_output_slot(OUTPUT);
-
-//   register_task(RESHAPE_FWD_TASK_ID, "Reshape Fwd", fwd, forward_task_impl);
-// }
-
-// template <>
-// void register_task<RESHAPE_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_binding(get_op_signature(RESHAPE_FWD_TASK_ID));
-
-//   register_task(RESHAPE_BWD_TASK_ID, "Reshape Bwd", bwd, backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(ReshapeAttrs const &) {
+  return {RESHAPE_INIT_TASK_ID, RESHAPE_FWD_TASK_ID, RESHAPE_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

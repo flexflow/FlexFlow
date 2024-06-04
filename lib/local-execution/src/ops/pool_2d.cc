@@ -216,42 +216,8 @@ OpTaskSignature get_pool_2d_bwd_signature() {
   return bwd;
 }
 
-// template <>
-// void register_task<POOL2D_INIT_TASK_ID>() {
-//   OpTaskSignature init(OpTaskType::INIT);
-
-//   init.add_input_slot(INPUT);
-//   init.add_output_slot(OUTPUT);
-
-//   init.add_arg_slot<Pool2DAttrs>(ATTRS);
-//   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-
-//   init.add_return_value<FlexFlow::Pool2DPerDeviceState>();
-
-//   register_task(POOL2D_INIT_TASK_ID, "Pool2D::init", init, init_task_impl);
-// }
-
-// template <>
-// void register_task<POOL2D_FWD_TASK_ID>() {
-//   OpTaskSignature fwd(OpTaskType::FWD);
-
-//   fwd.add_input_slot(INPUT);
-//   fwd.add_output_slot(OUTPUT);
-//   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-
-//   fwd.add_unchecked_arg_slot<Pool2DPerDeviceState>(PER_DEVICE_STATE);
-
-//   register_task(POOL2D_FWD_TASK_ID, "Pool2D::forward", fwd,
-//   forward_task_impl);
-// }
-
-// template <>
-// void register_task<POOL2D_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(POOL2D_FWD_TASK_ID));
-
-//   register_task(POOL2D_BWD_TASK_ID, "Pool2D::backward", bwd,
-//   backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(Pool2DAttrs const &) {
+  return {POOL2D_INIT_TASK_ID, POOL2D_FWD_TASK_ID, POOL2D_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

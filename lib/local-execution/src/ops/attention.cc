@@ -277,14 +277,6 @@ OpTaskSignature get_attention_init_signature() {
   return init;
 }
 
-template <>
-void register_task<ATTENTION_INIT_TASK_ID>() {
-  register_task(ATTENTION_INIT_TASK_ID,
-                "Attention Init",
-                init_signature<ATTENTION_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
 OpTaskSignature get_attention_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
@@ -300,26 +292,14 @@ OpTaskSignature get_attention_fwd_signature() {
   return fwd;
 }
 
-template <>
-void register_task<ATTENTION_FWD_TASK_ID>() {
-  register_task(ATTENTION_FWD_TASK_ID,
-                "Attention Fwd",
-                fwd_signature<ATTENTION_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
 OpTaskSignature get_attention_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_attention_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<ATTENTION_BWD_TASK_ID>() {
-  register_task(ATTENTION_BWD_TASK_ID,
-                "Attention Bwd",
-                bwd_signature<ATTENTION_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(MultiHeadAttentionAttrs const &) {
+  return {ATTENTION_INIT_TASK_ID, ATTENTION_FWD_TASK_ID, ATTENTION_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow
