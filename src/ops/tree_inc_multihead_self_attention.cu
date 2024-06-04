@@ -355,7 +355,7 @@ __global__ void commit_tokens_kernel(
   CUDA_KERNEL_LOOP(i, num_tokens_to_commit * hidden_size) {
 
     int token_pos = i / (hidden_size);
-    int token_idx_in_last_batch = committedTokenInfos[token_pos].token_index;
+    int token_idx_in_last_batch = committedTokenInfos[token_pos].index_in_kv_cache;
     if (token_idx_in_last_batch == -1) {
       return;
     }

@@ -83,9 +83,9 @@ public:
   };
 
   struct CommittedTokensInfo {
-    int token_index = -1;   // the index of the token in the previous batch
-    int request_index = -1; // request index in the batch
-    int token_depth = -1;   // position of the token in the request's sequence
+    int index_in_kv_cache = -1; // the index in the temporary key-value cache
+    int request_index = -1;     // request index in the batch
+    int token_depth = -1; // position of the token in the request's sequence
   };
 
   class BitMask {

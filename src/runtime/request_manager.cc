@@ -933,7 +933,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
       if (!request.llm_committed) {
         // Committed tokens
         for (int i = 0; i < request.committed_tokens.size() - 1; i++) {
-          bc.committed_tokens[bc.num_tokens_to_commit].token_index =
+          bc.committed_tokens[bc.num_tokens_to_commit].index_in_kv_cache =
               request.committed_tokens[i].from_index;
           bc.committed_tokens[bc.num_tokens_to_commit].request_index =
               request_index;
@@ -1292,7 +1292,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
             committed_tokens.at(committed_token_index);
         new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
             request_index;
-        new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
+        new_bc.committed_tokens[new_bc.num_tokens_to_commit].index_in_kv_cache =
             committed_token.from_index;
         new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
             committed_token.to_index;
@@ -1662,6 +1662,7 @@ void RequestManager::get_verify_results_greedy(
     assert(request.status == Request::RUNNING);
 
     int llm_result_offset = request.first_token_offset_in_batch;
+    int llm_cache_size = request.llm_cache_size;
     int committed_token_index = request.tokens.size() - 1;
 
     TokenTree &token_tree = request.speculative_token_trees[0];

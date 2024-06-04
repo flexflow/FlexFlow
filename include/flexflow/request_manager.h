@@ -100,7 +100,7 @@ struct Request {
   // cache: prompt_length + generated_sequence_length +
   // index_in_committed_tokens.
   //
-  // from_index -> TreeVerifyBatchConfig::CommittedTokensInfo.token_index
+  // from_index -> TreeVerifyBatchConfig::CommittedTokensInfo.index_in_kv_cache
   // to_index -> TreeVerifyBatchConfig::CommittedTokensInfo.token_depth
   //
   // Actually, for a committed token, the `to_index` for the LLM KV cache and
