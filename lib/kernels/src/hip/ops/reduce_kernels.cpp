@@ -14,108 +14,89 @@
  */
 
 #include "kernels/reduce_kernels.h"
-#include "kernels/hip_helper.h"
+#include "device.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::coord_t;
-using Legion::Domain;
-
-ReducePerDeviceState::ReducePerDeviceState(FFHandler handler,
-                                           Reduce const *rd,
-                                           Domain const &input_domain)
-    : op_type(rd->op_type), PerDeviceOpState(handler) {
-  checkCUDNN(miopenCreateReduceTensorDescriptor(&reduceDesc));
-  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
-  cudnnReduceTensorOp_t reduce_op;
-  switch (rd->op_type) {
-    case OP_REDUCE_SUM:
-      reduce_op = CUDNN_REDUCE_TENSOR_ADD;
-      break;
-    case OP_REDUCE_MEAN:
-      reduce_op = CUDNN_REDUCE_TENSOR_AVG;
-      break;
-    default:
-      assert(false);
-  }
-  checkCUDNN(miopenSetReduceTensorDescriptor(reduceDesc,
-                                             MIOPEN_REDUCE_TENSOR_ADD,
-                                             miopenFloat,
-                                             MIOPEN_PROPAGATE_NAN,
-                                             MIOPEN_REDUCE_TENSOR_NO_INDICES,
-                                             MIOPEN_32BIT_INDICES));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
-  Domain output_domain = input_domain;
-  for (size_t i = 0; i < rd->num_axes; i++) {
-    assert(input_domain.dim > rd->axes[i]);
-    output_domain.rect_data[rd->axes[i] + output_domain.dim] =
-        output_domain.rect_data[rd->axes[i]];
-  }
-  assert(output_domain.get_volume() % input_domain.get_volume() == 0);
-  reduction_size = input_domain.get_volume() / output_domain.get_volume();
-  assert(reduction_size > 0);
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
-}
-
-ReducePerDeviceState::~ReducePerDeviceState(void) {
-  checkCUDNN(miopenDestroyReduceTensorDescriptor(reduceDesc));
-  checkCUDNN(miopenDestroyTensorDescriptor(inputTensor));
-  checkCUDNN(miopenDestroyTensorDescriptor(outputTensor));
-}
-
 namespace Kernels {
 namespace Reduce {
 
+ReducePerDeviceState init_kernel(PerDeviceFFHandle const &handle,
+                                 OperatorType const &op_type,
+                                 size_t const &reduction_size,
+                                 ArrayShape const &input_shape,
+                                 ArrayShape const &output_shape) {
+  ffTensorDescriptor_t inputTensor ffTensorDescriptor_t outputTensor;
+  ffReduceTensorDescriptor_t reduceDesc;
+
+  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(miopenCreateReduceTensorDescriptor(&reduceDesc));
+
+  checkCUDNN(miopenSetTensorDescriptor(inputTensor,
+                                       miopenFloat,
+                                       input_shape.dims.size(),
+                                       input_shape.dims.data(),
+                                       input_shape.strides.data()));
+  checkCUDNN(miopenSetTensorDescriptor(outputTensor,
+                                       miopenFloat,
+                                       output_shape.dims.size(),
+                                       output_shape.dims.data(),
+                                       output_shape.strides.data()));
+
+  ReducePerDeviceState per_device = {
+      handle, inputTensor, outputTensor, reduceDesc, op_type, reduction_size};
+  return per_device;
+}
+
 void forward_kernel(hipStream_t stream,
-                    ReducePerDeviceState const *m,
+                    ReducePerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr) {
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+  checkCUDNN(miopenSetStream(m.handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(miopenReduceTensor(m->handle.dnn,
-                                m->reduceDesc,
+  checkCUDNN(miopenReduceTensor(m.handle.dnn,
+                                m.reduceDesc,
                                 nullptr /*indices*/,
                                 0 /*indicesSizeInBytes*/,
-                                m->handle.workSpace,
-                                m->handle.workSpaceSize,
+                                m.handle.workSpace,
+                                m.handle.workSpaceSize,
                                 &alpha,
-                                m->inputTensor,
+                                m.inputTensor,
                                 input_ptr,
                                 &beta,
-                                m->outputTensor,
+                                m.outputTensor,
                                 output_ptr));
 };
 
 void backward_kernel(hipStream_t stream,
-                     ReducePerDeviceState const *m,
+                     ReducePerDeviceState const &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr) {
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+  checkCUDNN(miopenSetStream(m.handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
-  switch (m->op_type) {
+  switch (m.op_type) {
     case OP_REDUCE_SUM:
       alpha = 1.0f;
       break;
     case OP_REDUCE_MEAN:
       // When the output is the average of multiple input elements
       // we need to scale the gradients by 1.0 / reduction_size
-      alpha = 1.0f / m->reduction_size;
+      alpha = 1.0f / m.reduction_size;
       break;
     default:
       assert(false);
   }
-  checkCUDNN(miopenOpTensor(m->handle.dnn,
+  checkCUDNN(miopenOpTensor(m.handle.dnn,
                             miopenTensorOpAdd,
                             &alpha,
-                            m->inputTensor,
+                            m.inputTensor,
                             input_grad_ptr,
                             &alpha,
-                            m->outputTensor,
+                            m.outputTensor,
                             output_grad_ptr,
                             &beta,
-                            m->inputTensor,
+                            m.inputTensor,
                             input_grad_ptr));
 }
 
