@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "operator_guid_t"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  # "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "utils/graph.h"
+]
+
+[[fields]]
+name = "raw_graph_node"
+type = "::FlexFlow::Node"

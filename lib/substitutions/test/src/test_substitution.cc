@@ -8,8 +8,10 @@ using namespace FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("apply_substitution") {
     OperatorPattern operator_pattern_n0{
-        std::vector<OperatorAttributeConstraint>{OperatorAttributeConstraint{
-            ConstraintType::EQUAL, OperatorAttributeKey::OP_TYPE, Op::LINEAR}}};
+        std::vector<OperatorAttributeConstraint>{
+            OperatorAttributeConstraint{ConstraintType::EQUAL,
+                                        OperatorAttributeKey::OP_TYPE,
+                                        OperatorType::LINEAR}}};
 
     ParallelTensorPattern tensor_pattern_e0{
         std::vector<TensorAttributeConstraint>{
@@ -38,12 +40,13 @@ TEST_SUITE(FF_TEST_SUITE) {
     GraphPattern input_graph{ig};
 
     OperatorAttrAssignment op_ass_n1{
-        {{OperatorAttributeKey::OP_TYPE, AttrConstant{Op::REPARTITION}},
+        {{OperatorAttributeKey::OP_TYPE,
+          AttrConstant{OperatorType::REPARTITION}},
          {OperatorAttributeKey::PARALLEL_DIM, AttrConstant{ff_dim_t{0}}},
          {OperatorAttributeKey::PARALLEL_DEGREE, AttrConstant{2}}}};
 
     OperatorAttrAssignment op_ass_n2{
-        {{OperatorAttributeKey::OP_TYPE, AttrConstant{Op::LINEAR}},
+        {{OperatorAttributeKey::OP_TYPE, AttrConstant{OperatorType::LINEAR}},
          {OperatorAttributeKey::OUT_CHANNELS,
           OperatorAttrAccess{n0, OperatorAttributeKey::OUT_CHANNELS}},
          {OperatorAttributeKey::USE_BIAS,
@@ -56,7 +59,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           OperatorAttrAccess{n0, OperatorAttributeKey::REGULARIZER}}}};
 
     OperatorAttrAssignment op_ass_n3{
-        {{OperatorAttributeKey::OP_TYPE, AttrConstant{Op::REDUCTION}},
+        {{OperatorAttributeKey::OP_TYPE, AttrConstant{OperatorType::REDUCTION}},
          {OperatorAttributeKey::PARALLEL_DIM, AttrConstant{ff_dim_t{0}}},
          {OperatorAttributeKey::PARALLEL_DEGREE, AttrConstant{2}}}};
 
@@ -100,10 +103,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     MultiDiEdge e4{n5, p5, n4, p4};
     pcg.add_edge(e4);
-    pcg.add_label(e4,
-                  ParallelTensor(ParallelTensorDims({2, 1}),
-                                 DataType::FLOAT,
-                                 CreateGrad::YES));
+    ParallelDim dim = {2, 1, false};
+    ParallelTensorDims dims = {FFOrdered<ParallelDim>{dim}};
+    pcg.add_label(e4, ParallelTensor(dims, DataType::FLOAT, CreateGrad::YES));
 
     MatchAdditionalCriterion criterion{
         [&](Node const &pattern_node, Node const &graph_node) {

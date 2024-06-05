@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "LayerAddedResult"
+features = [
+  "eq",
+  "fmt",
+]
+
+includes = [
+  "pcg/layer_guid_t.dtg.h",
+  "pcg/tensor_guid_t.dtg.h",
+]
+
+[[fields]]
+name = "layer"
+type = "::FlexFlow::layer_guid_t"
+
+[[fields]]
+name = "outputs"
+type = "std::vector<::FlexFlow::tensor_guid_t>"

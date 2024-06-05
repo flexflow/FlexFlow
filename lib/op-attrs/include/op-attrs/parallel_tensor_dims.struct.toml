@@ -1,0 +1,27 @@
+namespace = "FlexFlow"
+name = "ParallelTensorDims"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/dim_ordered.h",
+  "op-attrs/shard_parallel_dim.dtg.h",
+  "op-attrs/replica_parallel_dim_set.dtg.h",
+  "<unordered_map>",
+  "utils/fmt/unordered_map.h",
+  "utils/fmt/pair.h",
+]
+
+[[fields]]
+name = "shard_dims"
+type = "::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim>"
+
+[[fields]]
+name = "replica_dims"
+type = "::FlexFlow::ReplicaParallelDimSet"

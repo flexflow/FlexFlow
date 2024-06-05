@@ -1,0 +1,43 @@
+namespace = "FlexFlow"
+name = "MultiHeadAttentionAttrs"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "embed_dim"
+type = "int"
+
+[[fields]]
+name = "num_heads"
+type = "int"
+
+[[fields]]
+name = "kdim"
+type = "int"
+
+[[fields]]
+name = "vdim"
+type = "int"
+
+[[fields]]
+name = "dropout"
+type = "float"
+
+[[fields]]
+name = "bias"
+type = "bool"
+
+[[fields]]
+name = "add_bias_kv"
+type = "bool"
+
+[[fields]]
+name = "add_zero_attn"
+type = "bool"

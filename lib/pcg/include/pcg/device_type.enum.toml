@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "DeviceType"
+features = [
+  "hash",
+  "json",
+  "fmt",
+  "rapidcheck",
+]
+
+[[values]]
+name = "GPU"
+
+[[values]]
+name = "CPU"

@@ -71,10 +71,10 @@ void backward_kernel(cudaStream_t stream,
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
   float alpha = 1.0, beta = 1.0f;
   switch (m.op_type) {
-    case Op::REDUCE_SUM:
+    case OperatorType::REDUCE_SUM:
       alpha = 1.0f;
       break;
-    case Op::REDUCE_MEAN:
+    case OperatorType::REDUCE_MEAN:
       // When the output is the average of multiple input elements
       // we need to scale the gradients by 1.0 / reduction_size
       alpha = 1.0f / m.reduction_size;

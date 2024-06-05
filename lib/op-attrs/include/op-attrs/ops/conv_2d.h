@@ -2,35 +2,26 @@
 #define _FLEXFLOW_CONV_2D_ATTRS_H
 
 #include "core.h"
-#include "op-attrs/activation.h"
+#include "op-attrs/ops/conv_2d_attrs.dtg.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/tensor_shape.h"
-#include "utils/visitable.h"
 
 namespace FlexFlow {
 
-struct Conv2DAttrs {
-  int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h,
-      padding_w, groups;
-  std::optional<Activation> activation;
-  req<bool> use_bias;
-};
-
-FF_VISITABLE_STRUCT(Conv2DAttrs,
-                    out_channels,
-                    kernel_h,
-                    kernel_w,
-                    stride_h,
-                    stride_w,
-                    padding_h,
-                    padding_w,
-                    groups,
-                    activation,
-                    use_bias);
 CHECK_VALID_OP_ATTR(Conv2DAttrs);
 
-TensorShape get_kernel_shape(Conv2DAttrs const &, TensorShape const &);
-TensorShape get_bias_shape(Conv2DAttrs const &, TensorShape const &);
+TensorShape get_kernel_shape(Conv2DAttrs const &attrs,
+                             TensorShape const &input);
+TensorShape get_bias_shape(Conv2DAttrs const &attrs, TensorShape const &input);
+TensorShape get_output_shape(Conv2DAttrs const &attrs,
+                             TensorShape const &input);
+
+ParallelTensorShape get_kernel_shape(Conv2DAttrs const &attrs,
+                                     ParallelTensorShape const &input_shape);
+ParallelTensorShape get_bias_shape(Conv2DAttrs const &attrs,
+                                   ParallelTensorShape const &input_shape);
+ParallelTensorShape get_output_shape(Conv2DAttrs const &attrs,
+                                     ParallelTensorShape const &input_shape);
 
 } // namespace FlexFlow
 

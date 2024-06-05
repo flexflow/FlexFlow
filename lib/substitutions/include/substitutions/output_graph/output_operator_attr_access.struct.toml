@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "OutputOperatorAttrAccess"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph.h",
+  "substitutions/operator_pattern/operator_attribute_expr.dtg.h",
+]
+
+[[fields]]
+name = "node"
+type = "::FlexFlow::Node"
+
+# NOTE(@wmdi) I am not sure whether these should be part of attribute expr.
+[[fields]]
+name = "attr_expr"
+type = "::FlexFlow::OperatorAttributeExpr"
+

@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "L2RegularizerAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "lambda"
+type = "float"

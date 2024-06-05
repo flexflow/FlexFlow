@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "ReverseAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/ff_dim.h",
+  "op-attrs/ff_dim.dtg.h",
+]
+
+[[fields]]
+name = "axis"
+type = "::FlexFlow::ff_dim_t"

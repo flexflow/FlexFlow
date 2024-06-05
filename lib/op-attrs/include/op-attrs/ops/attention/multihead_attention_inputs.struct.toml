@@ -1,0 +1,39 @@
+namespace = "FlexFlow"
+name = "MultiHeadAttentionInputs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "<cstddef>",
+  "op-attrs/datatype.dtg.h",
+]
+
+[[fields]]
+name = "batch_size"
+type = "size_t"
+
+[[fields]]
+name = "sequence_length"
+type = "size_t"
+
+[[fields]]
+name = "query_size"
+type = "size_t"
+
+[[fields]]
+name = "key_size"
+type = "size_t"
+
+[[fields]]
+name = "value_size"
+type = "size_t"
+
+[[fields]]
+name = "datatype"
+type = "::FlexFlow::DataType"

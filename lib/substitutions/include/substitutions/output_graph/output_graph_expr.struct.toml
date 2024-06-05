@@ -1,0 +1,12 @@
+namespace = "FlexFlow"
+name = "OutputGraphExpr"
+features = []
+
+includes = [
+  "utils/graph.h",
+  "substitutions/output_graph/output_operator_attrs_assignment.dtg.h",
+]
+
+[[fields]]
+name = "raw_graph"
+type = "::FlexFlow::NodeLabelledOpenMultiDiGraph<::FlexFlow::OutputOperatorAttrsAssignment>"
