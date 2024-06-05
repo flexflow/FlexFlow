@@ -32,8 +32,8 @@ std::vector<layer_guid_t>
       layers, [&](Node const &e) -> layer_guid_t { return layer_guid_t{e}; });
 }
 
-std::vector<tensor_guid_t>
-    sort_edge_set(std::unordered_set<MultiDiEdge> edges) {
+static std::vector<tensor_guid_t>
+    sort_edge_set(std::unordered_set<MultiDiEdge> const &edges) {
   return transform(
       sorted_by(edges, compare_by<MultiDiEdge>([](MultiDiEdge const &e) {
                   return e.src_idx;
@@ -53,9 +53,8 @@ std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,
       get_incoming_edges(cg.raw_graph.get_raw_graph(), n.raw_node));
 }
 
-ComputationGraphOpAttrs get_layer_attrs(ComputationGraph const &cg,
-                                        layer_guid_t const &n) {
-  return cg.raw_graph.at(n.raw_node).attrs;
+LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n) {
+  return cg.raw_graph.at(n.raw_node);
 }
 
 } // namespace FlexFlow

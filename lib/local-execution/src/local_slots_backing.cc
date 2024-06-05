@@ -80,8 +80,8 @@ ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(
   if (op_arg_ref_spec.holds<DeviceSpecific<DeviceStates>>()) {
     return ConcreteArgSpec::create(per_device_op_states.at(op_guid));
   } else if (op_arg_ref_spec.holds<ParallelTensorShape>()) {
-    IndexOpArgRefType index_op_arg_ref =
-        std::get<IndexOpArgRefType>(op_arg_ref_spec.get_ref_type());
+    ParallelTensorShapeRefType index_op_arg_ref =
+        std::get<ParallelTensorShapeRefType>(op_arg_ref_spec.get_ref_type());
     std::vector<tensor_guid_t> input_tensor_guids =
         this->input_tensor_slots.at(op_guid);
     GenericTensorAccessorW tensor_backing =

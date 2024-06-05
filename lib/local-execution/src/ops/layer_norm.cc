@@ -123,7 +123,7 @@ static DeviceSpecific<DeviceStates>
   int64_t effective_batch_size, effective_num_elements;
   int M = 1;
   for (int i = 0; i < attrs.axes.size(); i++) {
-    legion_dim_t legion_dim = to_legion(
+    legion_dim_t legion_dim = legion_dim_from_ff_dim(
         attrs.axes[i], get_tensor_shape(input.shape, input.data_type));
     M *= input.shape.at(legion_dim);
   }

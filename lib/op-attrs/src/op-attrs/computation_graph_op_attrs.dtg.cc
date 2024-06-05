@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/computation_graph_op_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "cc0ab49405423594ffa1d8f541235a48"
+  "generated_from": "09646dcc83b124fea29f81c48331edf0"
 }
 */
 
@@ -39,9 +39,6 @@ ComputationGraphOpAttrs::ComputationGraphOpAttrs(
     : raw_variant(v) {}
 ComputationGraphOpAttrs::ComputationGraphOpAttrs(
     ::FlexFlow::ElementUnaryAttrs const &v)
-    : raw_variant(v) {}
-ComputationGraphOpAttrs::ComputationGraphOpAttrs(
-    ::FlexFlow::ElementScalarUnaryAttrs const &v)
     : raw_variant(v) {}
 ComputationGraphOpAttrs::ComputationGraphOpAttrs(
     ::FlexFlow::EmbeddingAttrs const &v)
@@ -128,7 +125,6 @@ size_t hash<::FlexFlow::ComputationGraphOpAttrs>::operator()(
                                 ::FlexFlow::DropoutAttrs,
                                 ::FlexFlow::ElementBinaryAttrs,
                                 ::FlexFlow::ElementUnaryAttrs,
-                                ::FlexFlow::ElementScalarUnaryAttrs,
                                 ::FlexFlow::EmbeddingAttrs,
                                 ::FlexFlow::FlatAttrs,
                                 ::FlexFlow::GatherAttrs,
@@ -180,9 +176,6 @@ namespace nlohmann {
   } else if (key == "element_unary") {
     return ::FlexFlow::ComputationGraphOpAttrs{
         j.at("value").template get<::FlexFlow::ElementUnaryAttrs>()};
-  } else if (key == "element_scalar_unary") {
-    return ::FlexFlow::ComputationGraphOpAttrs{
-        j.at("value").template get<::FlexFlow::ElementScalarUnaryAttrs>()};
   } else if (key == "embedding") {
     return ::FlexFlow::ComputationGraphOpAttrs{
         j.at("value").template get<::FlexFlow::EmbeddingAttrs>()};
@@ -288,91 +281,86 @@ void adl_serializer<::FlexFlow::ComputationGraphOpAttrs>::to_json(
       break;
     }
     case 9: {
-      j["type"] = "element_scalar_unary";
-      j["value"] = x.get<::FlexFlow::ElementScalarUnaryAttrs>();
-      break;
-    }
-    case 10: {
       j["type"] = "embedding";
       j["value"] = x.get<::FlexFlow::EmbeddingAttrs>();
       break;
     }
-    case 11: {
+    case 10: {
       j["type"] = "flat";
       j["value"] = x.get<::FlexFlow::FlatAttrs>();
       break;
     }
-    case 12: {
+    case 11: {
       j["type"] = "gather";
       j["value"] = x.get<::FlexFlow::GatherAttrs>();
       break;
     }
-    case 13: {
+    case 12: {
       j["type"] = "input";
       j["value"] = x.get<::FlexFlow::InputAttrs>();
       break;
     }
-    case 14: {
+    case 13: {
       j["type"] = "layer_norm";
       j["value"] = x.get<::FlexFlow::LayerNormAttrs>();
       break;
     }
-    case 15: {
+    case 14: {
       j["type"] = "linear";
       j["value"] = x.get<::FlexFlow::LinearAttrs>();
       break;
     }
-    case 16: {
+    case 15: {
       j["type"] = "multi_head_attention";
       j["value"] = x.get<::FlexFlow::MultiHeadAttentionAttrs>();
       break;
     }
-    case 17: {
+    case 16: {
       j["type"] = "noop";
       j["value"] = x.get<::FlexFlow::NoopAttrs>();
       break;
     }
-    case 18: {
+    case 17: {
       j["type"] = "pool2d";
       j["value"] = x.get<::FlexFlow::Pool2DAttrs>();
       break;
     }
-    case 19: {
+    case 18: {
       j["type"] = "reduce";
       j["value"] = x.get<::FlexFlow::ReduceAttrs>();
       break;
     }
-    case 20: {
+    case 19: {
       j["type"] = "reverse";
       j["value"] = x.get<::FlexFlow::ReverseAttrs>();
       break;
     }
-    case 21: {
+    case 20: {
       j["type"] = "reshape";
       j["value"] = x.get<::FlexFlow::ReshapeAttrs>();
       break;
     }
-    case 22: {
+    case 21: {
       j["type"] = "split";
       j["value"] = x.get<::FlexFlow::SplitAttrs>();
       break;
     }
-    case 23: {
+    case 22: {
       j["type"] = "softmax";
       j["value"] = x.get<::FlexFlow::SoftmaxAttrs>();
       break;
     }
-    case 24: {
+    case 23: {
       j["type"] = "topk";
       j["value"] = x.get<::FlexFlow::TopKAttrs>();
       break;
     }
-    case 25: {
+    case 24: {
       j["type"] = "transpose";
       j["value"] = x.get<::FlexFlow::TransposeAttrs>();
       break;
     }
-    case 26: {
+    case 25: {
       j["type"] = "weight";
       j["value"] = x.get<::FlexFlow::WeightAttrs>();
       break;
@@ -405,8 +393,6 @@ Gen<::FlexFlow::ComputationGraphOpAttrs>
                         gen::arbitrary<::FlexFlow::ElementBinaryAttrs>()),
                     gen::construct<::FlexFlow::ComputationGraphOpAttrs>(
                         gen::arbitrary<::FlexFlow::ElementUnaryAttrs>()),
-                    gen::construct<::FlexFlow::ComputationGraphOpAttrs>(
-                        gen::arbitrary<::FlexFlow::ElementScalarUnaryAttrs>()),
                     gen::construct<::FlexFlow::ComputationGraphOpAttrs>(
                         gen::arbitrary<::FlexFlow::EmbeddingAttrs>()),
                     gen::construct<::FlexFlow::ComputationGraphOpAttrs>(
@@ -493,91 +479,86 @@ std::string format_as(::FlexFlow::ComputationGraphOpAttrs const &x) {
       break;
     }
     case 9: {
-      oss << "<ComputationGraphOpAttrs element_scalar_unary="
-          << x.get<::FlexFlow::ElementScalarUnaryAttrs>() << ">";
-      break;
-    }
-    case 10: {
       oss << "<ComputationGraphOpAttrs embedding="
           << x.get<::FlexFlow::EmbeddingAttrs>() << ">";
       break;
     }
-    case 11: {
+    case 10: {
       oss << "<ComputationGraphOpAttrs flat=" << x.get<::FlexFlow::FlatAttrs>()
           << ">";
       break;
     }
-    case 12: {
+    case 11: {
       oss << "<ComputationGraphOpAttrs gather="
           << x.get<::FlexFlow::GatherAttrs>() << ">";
       break;
     }
-    case 13: {
+    case 12: {
       oss << "<ComputationGraphOpAttrs input="
           << x.get<::FlexFlow::InputAttrs>() << ">";
       break;
     }
-    case 14: {
+    case 13: {
       oss << "<ComputationGraphOpAttrs layer_norm="
           << x.get<::FlexFlow::LayerNormAttrs>() << ">";
       break;
     }
-    case 15: {
+    case 14: {
       oss << "<ComputationGraphOpAttrs linear="
           << x.get<::FlexFlow::LinearAttrs>() << ">";
       break;
     }
-    case 16: {
+    case 15: {
       oss << "<ComputationGraphOpAttrs multi_head_attention="
           << x.get<::FlexFlow::MultiHeadAttentionAttrs>() << ">";
       break;
     }
-    case 17: {
+    case 16: {
       oss << "<ComputationGraphOpAttrs noop=" << x.get<::FlexFlow::NoopAttrs>()
           << ">";
       break;
     }
-    case 18: {
+    case 17: {
       oss << "<ComputationGraphOpAttrs pool2d="
           << x.get<::FlexFlow::Pool2DAttrs>() << ">";
       break;
     }
-    case 19: {
+    case 18: {
       oss << "<ComputationGraphOpAttrs reduce="
           << x.get<::FlexFlow::ReduceAttrs>() << ">";
       break;
     }
-    case 20: {
+    case 19: {
       oss << "<ComputationGraphOpAttrs reverse="
           << x.get<::FlexFlow::ReverseAttrs>() << ">";
       break;
     }
-    case 21: {
+    case 20: {
       oss << "<ComputationGraphOpAttrs reshape="
           << x.get<::FlexFlow::ReshapeAttrs>() << ">";
       break;
     }
-    case 22: {
+    case 21: {
       oss << "<ComputationGraphOpAttrs split="
           << x.get<::FlexFlow::SplitAttrs>() << ">";
       break;
     }
-    case 23: {
+    case 22: {
       oss << "<ComputationGraphOpAttrs softmax="
           << x.get<::FlexFlow::SoftmaxAttrs>() << ">";
       break;
     }
-    case 24: {
+    case 23: {
       oss << "<ComputationGraphOpAttrs topk=" << x.get<::FlexFlow::TopKAttrs>()
           << ">";
       break;
     }
-    case 25: {
+    case 24: {
       oss << "<ComputationGraphOpAttrs transpose="
           << x.get<::FlexFlow::TransposeAttrs>() << ">";
       break;
     }
-    case 26: {
+    case 25: {
       oss << "<ComputationGraphOpAttrs weight="
           << x.get<::FlexFlow::WeightAttrs>() << ">";
       break;

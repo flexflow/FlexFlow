@@ -11,7 +11,6 @@
 #include "op-attrs/ops/conv_2d_attrs.dtg.h"
 #include "op-attrs/ops/dropout_attrs.dtg.h"
 #include "op-attrs/ops/element_binary_attrs.dtg.h"
-#include "op-attrs/ops/element_scalar_unary_attrs.dtg.h"
 #include "op-attrs/ops/element_unary_attrs.dtg.h"
 #include "op-attrs/ops/embedding_attrs.dtg.h"
 #include "op-attrs/ops/flat_attrs.dtg.h"
@@ -44,7 +43,6 @@ OperatorType get_op_type(Conv2DAttrs const &);
 OperatorType get_op_type(DropoutAttrs const &);
 OperatorType get_op_type(ElementBinaryAttrs const &);
 OperatorType get_op_type(ElementUnaryAttrs const &);
-OperatorType get_op_type(ElementScalarUnaryAttrs const &);
 OperatorType get_op_type(EmbeddingAttrs const &);
 OperatorType get_op_type(FlatAttrs const &);
 OperatorType get_op_type(GatherAttrs const &);

@@ -19,7 +19,6 @@ includes = [
   "op-attrs/ops/conv_2d_attrs.dtg.h",
   "op-attrs/ops/dropout_attrs.dtg.h",
   "op-attrs/ops/element_binary_attrs.dtg.h",
-  "op-attrs/ops/element_scalar_unary_attrs.dtg.h",
   "op-attrs/ops/element_unary_attrs.dtg.h",
   "op-attrs/ops/embedding_attrs.dtg.h",
   "op-attrs/ops/flat_attrs.dtg.h",
@@ -74,10 +73,6 @@ key = "element_binary"
 [[values]]
 type = "::FlexFlow::ElementUnaryAttrs"
 key = "element_unary"
-
-[[values]]
-type = "::FlexFlow::ElementScalarUnaryAttrs"
-key = "element_scalar_unary"
 
 [[values]]
 type = "::FlexFlow::EmbeddingAttrs"

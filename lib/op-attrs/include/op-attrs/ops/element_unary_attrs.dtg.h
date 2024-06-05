@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/element_unary_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "75272cff78d3db866122dbb1001aedbe"
+  "generated_from": "a6b9370f3eab59f59e7110483357f88d"
 }
 */
 
@@ -14,6 +14,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/operator_type.h"
 #include "rapidcheck.h"
+#include "utils/json.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -21,7 +22,8 @@
 namespace FlexFlow {
 struct ElementUnaryAttrs {
   ElementUnaryAttrs() = delete;
-  ElementUnaryAttrs(::FlexFlow::OperatorType const &op_type);
+  ElementUnaryAttrs(::FlexFlow::OperatorType const &op_type,
+                    std::optional<float> const &scalar);
 
   bool operator==(ElementUnaryAttrs const &) const;
   bool operator!=(ElementUnaryAttrs const &) const;
@@ -30,6 +32,7 @@ struct ElementUnaryAttrs {
   bool operator<=(ElementUnaryAttrs const &) const;
   bool operator>=(ElementUnaryAttrs const &) const;
   ::FlexFlow::OperatorType op_type;
+  std::optional<float> scalar;
 };
 } // namespace FlexFlow
 

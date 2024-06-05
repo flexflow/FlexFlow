@@ -66,7 +66,8 @@ static DeviceSpecific<DeviceStates>
 
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto const &attrs = acc.get_argument<GatherAttrs>(ATTRS);
-  legion_dim_t legion_dim = to_legion(attrs.dim, input.shape.num_dims());
+  legion_dim_t legion_dim =
+      legion_dim_from_ff_dim(attrs.dim, input.shape.num_dims());
 
   assert(input.shape.get_dim() == index.shape.get_dim());
   assert(output.shape.get_dim() == index.shape.get_dim());
