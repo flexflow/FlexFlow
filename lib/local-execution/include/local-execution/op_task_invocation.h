@@ -10,6 +10,7 @@
 #include "local-execution/runtime_arg_ref.h"
 #include "local-execution/tasks.h"
 #include "local-execution/variadic_tensor_ref.h"
+#include "op-attrs/computation_graph_op_attrs.h"
 #include "pcg/computation_graph.h"
 #include "utils/bidict.h"
 #include "utils/stack_map.h"
@@ -80,9 +81,9 @@ public:
   OpTaskBinding binding;
 };
 
-OpTaskInvocation init(CompGraphOperatorAttrs const &);
-OpTaskInvocation forward(CompGraphOperatorAttrs const &);
-OpTaskInvocation backward(CompGraphOperatorAttrs const &);
+OpTaskInvocation init(ComputationGraphOpAttrs const &);
+OpTaskInvocation forward(ComputationGraphOpAttrs const &);
+OpTaskInvocation backward(ComputationGraphOpAttrs const &);
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);

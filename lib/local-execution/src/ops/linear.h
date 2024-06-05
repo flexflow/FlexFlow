@@ -21,12 +21,6 @@ OpTaskSignature get_linear_init_signature();
 OpTaskSignature get_linear_fwd_signature();
 OpTaskSignature get_linear_bwd_signature();
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  LinearAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
 } // namespace FlexFlow
 
 #endif

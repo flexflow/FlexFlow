@@ -73,7 +73,7 @@ static DeviceSpecific<DeviceStates>
 
   for (int i = 0; i < input.shape.get_dim(); i++) {
     assert(index.shape[legion_dim_t(i)] == output.shape[legion_dim_t(i)]);
-    if (i != legion_dim.value()) {
+    if (i != legion_dim.value) {
       assert(input.shape[legion_dim_t(i)] == index.shape[legion_dim_t(i)]);
     }
   }
@@ -117,38 +117,6 @@ static std::optional<float>
                  output_grad,
                  index,
                  input_grad);
-}
-
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  GatherAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  InputParallelTensorDesc const &index_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-
-  auto env = sim.new_environment();
-
-  std::vector<ParallelTensorShape> output_shape =
-      get_output_shapes(attrs, input_shape.shape, index_shape.shape);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(ATTRS, attrs);
-
-  fwd_binding.bind(INPUT, input_shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind(INDEX, index_shape);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(GATHER_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(GATHER_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
 TaskImplFunction get_gather_init_task_impl() {

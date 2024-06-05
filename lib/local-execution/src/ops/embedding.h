@@ -18,12 +18,6 @@ OpTaskSignature get_embedding_bwd_signature();
 OpTaskInvocation forward(EmbeddingAttrs const &);
 OpTaskInvocation backward(EmbeddingAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  EmbeddingAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
 } // namespace FlexFlow
 
 #endif

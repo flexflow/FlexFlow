@@ -144,8 +144,9 @@ tensor_guid_t ComputationGraphBuilder::element_unary(
 
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape =
-      throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
+  ElementUnaryUnifiedAttrs unified_attrs = attrs;
+  TensorShape output_shape = throw_if_unexpected(
+      get_output_shape(unified_attrs, this->get_shape(input)));
 
   return this->add_layer(layer, {input}, {}, output_shape);
 }
@@ -162,8 +163,9 @@ tensor_guid_t ComputationGraphBuilder::element_scalar_unary(
 
   LayerAttrs layer = {ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape =
-      throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
+  ElementUnaryUnifiedAttrs unified_attrs = attrs;
+  TensorShape output_shape = throw_if_unexpected(
+      get_output_shape(unified_attrs, this->get_shape(input)));
 
   return this->add_layer(layer, {input}, {}, output_shape);
 }

@@ -136,52 +136,6 @@ TaskImplFunction get_element_binary_bwd_task_impl() {
   return backward_task_impl;
 }
 
-CostMetrics
-    measure_operator_cost(SimEnvFactory const &sim,
-                          ElementBinaryAttrs const &attrs,
-                          InputParallelTensorDesc const &input_shape_lhs,
-                          InputParallelTensorDesc const &input_shape_rhs,
-                          ProfilingSettings const &settings,
-                          MachineView const &mv) {
-  auto env = sim.new_environment();
-
-  ParallelTensorShape output_shape =
-      get_output_shape(attrs, input_shape_lhs.shape, input_shape_rhs.shape);
-
-  SimTaskBinding init_binding;
-  init_binding.bind(LHS_INPUT, input_shape_lhs);
-  init_binding.bind(RHS_INPUT, input_shape_rhs);
-  init_binding.bind(OUTPUT, output_shape);
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(HANDLE, ff_handle());
-
-  auto init_accessor =
-      env.get_init_accessor(ELEMENTBINARY_INIT_TASK_ID, init_binding);
-  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind(LHS_INPUT, input_shape_lhs);
-  fwd_binding.bind(RHS_INPUT, input_shape_rhs);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(HANDLE, ff_handle());
-
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor =
-      env.get_fwd_accessor(ELEMENTBINARY_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor =
-      env.get_bwd_accessor(ELEMENTBINARY_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
-}
-
 OpTaskSignature get_element_binary_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 

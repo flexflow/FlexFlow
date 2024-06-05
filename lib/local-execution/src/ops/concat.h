@@ -18,12 +18,6 @@ OpTaskSignature get_concat_bwd_signature();
 OpTaskInvocation forward(ConcatAttrs const &);
 OpTaskInvocation backward(ConcatAttrs const &);
 
-CostMetrics
-    measure_operator_cost(SimEnvFactory const &sim_factory,
-                          ConcatAttrs const &attrs,
-                          std::vector<ParallelTensorShape> const &input_shapes,
-                          ProfilingSettings const &settings,
-                          MachineView const &machine_view);
 } // namespace FlexFlow
 
 #endif

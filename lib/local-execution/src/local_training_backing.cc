@@ -10,9 +10,9 @@ LocalTrainingBacking::LocalTrainingBacking(
     RuntimeArgConfig const &runtime_arg_config)
     : allocator(allocator), computation_graph(computation_graph),
       local_slots_backing(tensor_backing_mapping, runtime_arg_config) {
-  std::vector<operator_guid_t> layers = topological_ordering(computation_graph);
-  for (operator_guid_t const &node : layers) {
-    CompGraphOperatorAttrs attrs = get_layer_attrs(computation_graph, node);
+  std::vector<layer_guid_t> layers = topological_ordering(computation_graph);
+  for (layer_guid_t const &node : layers) {
+    ComputationGraphOpAttrs attrs = get_layer_attrs(computation_graph, node);
 
     // register tasks
     std::vector<task_id_t> task_ids = get_task_ids(attrs);
@@ -30,9 +30,9 @@ LocalTrainingBacking::LocalTrainingBacking(
     for (tensor_guid_t const &edge :
          get_outgoing_tensors(computation_graph, node)) {
       if (!this->local_slots_backing.is_tensor_allocated(edge)) {
-        Tensor tensor = computation_graph.at(edge);
+        TensorAttrs tensor_attrs = get_tensor_attrs(computation_graph, edge);
         GenericTensorAccessorW tensor_backing =
-            this->allocator.allocate_tensor(tensor.get_shape());
+            this->allocator.allocate_tensor(tensor_attrs.shape);
         this->local_slots_backing.tensor_mapping.insert({edge, tensor_backing});
       }
     }
@@ -60,9 +60,9 @@ void LocalTrainingBacking::call_task_impl(task_id_t task_id,
 }
 
 void LocalTrainingBacking::execute_init() {
-  for (operator_guid_t const &operator_node :
+  for (layer_guid_t const &operator_node :
        topological_ordering(this->computation_graph)) {
-    CompGraphOperatorAttrs attrs =
+    ComputationGraphOpAttrs attrs =
         get_layer_attrs(this->computation_graph, operator_node);
     OpTaskInvocation invocation = init(attrs);
     TaskArgumentAccessor accessor =
@@ -75,7 +75,7 @@ void LocalTrainingBacking::execute_init() {
 }
 
 void LocalTrainingBacking::execute_forward() {
-  for (operator_guid_t operator_node :
+  for (layer_guid_t operator_node :
        topological_ordering(this->computation_graph)) {
     auto attrs = get_layer_attrs(this->computation_graph, operator_node);
     OpTaskInvocation invocation = forward(attrs);
@@ -86,7 +86,7 @@ void LocalTrainingBacking::execute_forward() {
 }
 
 void LocalTrainingBacking::execute_backward() {
-  for (operator_guid_t operator_node :
+  for (layer_guid_t operator_node :
        reverse_topological_ordering(computation_graph)) {
     auto attrs = get_layer_attrs(this->computation_graph, operator_node);
     OpTaskInvocation invocation = backward(attrs);
@@ -101,7 +101,7 @@ void LocalTrainingBacking::execute_update() {
 }
 
 TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(
-    OpTaskInvocation const &invocation, operator_guid_t const &op_guid) const {
+    OpTaskInvocation const &invocation, layer_guid_t const &op_guid) const {
   TensorSlotsBacking tensor_slots_backing =
       this->local_slots_backing.construct_tensor_slots_backing(
           invocation.binding, op_guid);

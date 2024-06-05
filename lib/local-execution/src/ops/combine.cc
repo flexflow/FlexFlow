@@ -68,19 +68,6 @@ static std::optional<float>
                  output_grad);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  CombineAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-  auto env = sim.new_environment();
-  // TODO: to be implemented
-  float forward_time = 0.5;
-  float backward_time = 0.5;
-  float sync_time = 0.0;
-  return make_metrics(forward_time, backward_time, sync_time, env);
-}
-
 OpTaskSignature get_combine_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 

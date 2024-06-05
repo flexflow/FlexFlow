@@ -23,7 +23,7 @@ struct LocalTrainingBacking {
   void call_task_impl(task_id_t, TaskArgumentAccessor);
 
   TaskArgumentAccessor get_task_arg_accessor(OpTaskInvocation const &,
-                                             operator_guid_t const &) const;
+                                             layer_guid_t const &) const;
 
 private:
   Allocator allocator;
@@ -33,7 +33,7 @@ private:
   LocalSlotsBacking local_slots_backing;
 };
 
-std::vector<task_id_t> get_task_ids(CompGraphOperatorAttrs const &);
+std::vector<task_id_t> get_task_ids(ComputationGraphOpAttrs const &);
 
 } // namespace FlexFlow
 

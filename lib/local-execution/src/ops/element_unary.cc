@@ -55,10 +55,12 @@ static DeviceSpecific<DeviceStates>
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   ParallelTensorShape input_shape =
       acc.get_argument<ParallelTensorShape>(INPUT_SHAPE);
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shape);
 
+  ParallelTensorShape output_shape =
+      throw_if_unexpected(get_output_shape(attrs, input_shape));
   ElementUnaryPerDeviceState per_device_state = init_kernel(
       get_piece_shape(input_shape), get_piece_shape(output_shape), attrs);
+
   return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
@@ -107,44 +109,6 @@ static std::optional<float>
                  input_grad,
                  output,
                  output_grad);
-}
-
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  ElementUnaryUnifiedAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-  auto env = sim.new_environment();
-
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shape.shape);
-
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(HANDLE, ff_handle());
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(INPUT_SHAPE, input_parallel_tensor_shape(0));
-
-  auto init_accessor =
-      env.get_init_accessor(ELEMENTUNARY_INIT_TASK_ID, init_binding);
-  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input_shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor =
-      env.get_fwd_accessor(ELEMENTUNARY_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor =
-      env.get_bwd_accessor(ELEMENTUNARY_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
 TaskImplFunction get_element_unary_init_task_impl() {

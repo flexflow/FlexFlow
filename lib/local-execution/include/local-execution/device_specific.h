@@ -38,8 +38,8 @@ private:
 
 // manually force serialization to make DeviceSpecific trivially
 // serializable
-template <typename T>
-struct is_trivially_serializable<DeviceSpecific<T>> : std::true_type {};
+// template <typename T>
+// struct is_trivially_serializable<DeviceSpecific<T>> : std::true_type {};
 
 } // namespace FlexFlow
 

@@ -21,12 +21,6 @@ OpTaskInvocation init(ReduceAttrs const &);
 OpTaskInvocation forward(ReduceAttrs const &);
 OpTaskInvocation backward(ReduceAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ReduceAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
 } // namespace FlexFlow
 
 #endif

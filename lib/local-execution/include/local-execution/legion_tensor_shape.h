@@ -36,7 +36,4 @@ legion_dim_t to_legion(ff_dim_t, TensorShape const &);
 
 } // namespace FlexFlow
 
-MAKE_TYPEDEF_HASHABLE(::FlexFlow::legion_dim_t);
-MAKE_TYPEDEF_PRINTABLE(::FlexFlow::legion_dim_t, "legion_dim");
-
 #endif

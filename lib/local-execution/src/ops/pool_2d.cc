@@ -140,45 +140,6 @@ static std::optional<float>
                  output_grad.get_float_ptr());
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  Pool2DAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-
-  SimTaskBinding init_binding;
-  init_binding.bind(INPUT, input.shape);
-  init_binding.bind(OUTPUT, output_shape);
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(HANDLE, ff_handle());
-
-  auto init_accessor = env.get_init_accessor(POOL2D_INIT_TASK_ID, init_binding);
-
-  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-
-  fwd_binding.bind(INPUT, input.shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  auto fwd_accessor = env.get_fwd_accessor(POOL2D_FWD_TASK_ID, fwd_binding);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto bwd_accessor = env.get_bwd_accessor(POOL2D_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-
-  return make_metrics(forward_time, backward_time, sync_time, env);
-}
-
 TaskImplFunction get_pool_2d_init_task_impl() {
   return init_task_impl;
 }

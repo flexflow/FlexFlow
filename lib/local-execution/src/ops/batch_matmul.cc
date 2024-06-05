@@ -152,39 +152,6 @@ static std::optional<float>
                  batch);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  BatchMatmulAttrs const &attrs,
-                                  InputParallelTensorDesc const &a_input,
-                                  InputParallelTensorDesc const &b_input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &pc) {
-  auto env = sim.new_environment();
-
-  ParallelTensorShape output_shape =
-      get_output_shape(attrs, a_input.shape, b_input.shape);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind(A_INPUT, a_input);
-  fwd_binding.bind(B_INPUT, b_input);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(ATTRS, attrs);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(HANDLE, ff_handle());
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor =
-      env.get_fwd_accessor(BATCHMATMUL_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor =
-      env.get_bwd_accessor(BATCHMATMUL_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
-}
-
 TaskImplFunction get_batch_matmul_fwd_task_impl() {
   return forward_task_impl;
 }

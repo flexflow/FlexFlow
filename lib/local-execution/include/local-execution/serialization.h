@@ -5,6 +5,7 @@
 #include "kernels/nccl.h"
 #include "op-attrs/dim_ordered.h"
 #include "utils/required.h"
+#include "utils/strong_typedef.h"
 #include "utils/type_traits.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"

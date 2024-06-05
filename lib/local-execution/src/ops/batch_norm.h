@@ -21,12 +21,6 @@ OpTaskInvocation init(BatchNormAttrs const &);
 OpTaskInvocation forward(BatchNormAttrs const &);
 OpTaskInvocation backward(BatchNormAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  BatchNormAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
 } // namespace FlexFlow
 
 #endif

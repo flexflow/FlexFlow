@@ -9,12 +9,9 @@ namespace FlexFlow {
 
 enum class OpArgRefLabel { PER_DEVICE_OP_STATE, PARALLEL_TENSOR_SHAPE };
 
-struct IndexlessOpArgRefType {
-  OpArgRefLabel op_arg_ref_label;
-};
+struct IndexlessOpArgRefType {};
 
 struct IndexOpArgRefType {
-  OpArgRefLabel op_arg_ref_label;
   int idx;
 };
 
@@ -27,8 +24,7 @@ using OpArgRefSpec = ArgRefSpec<OpArgRefType>;
 
 template <typename T>
 OpArgRef<DeviceSpecific<T>> per_device_op_state() {
-  OpArgRefType op_arg_ref_type =
-      IndexlessOpArgRefType{OpArgRefLabel::PER_DEVICE_OP_STATE};
+  OpArgRefType op_arg_ref_type = IndexlessOpArgRefType{};
   ArgRef<OpArgRefType, DeviceSpecific<T>> arg_ref = {op_arg_ref_type};
   return arg_ref;
 }

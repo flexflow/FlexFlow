@@ -78,33 +78,6 @@ static std::optional<float>
                  attrs.dtype);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  CastAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-  auto env = sim.new_environment();
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(ATTRS, attrs);
-
-  fwd_binding.bind(INPUT, input_shape);
-  fwd_binding.bind(OUTPUT, input_shape); // cast does not change shape
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(CAST_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(CAST_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-
-  return make_metrics(forward_time, backward_time, sync_time, env);
-}
-
 TaskImplFunction get_cast_fwd_task_impl() {
   return forward_task_impl;
 }

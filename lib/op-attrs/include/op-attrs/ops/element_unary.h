@@ -10,22 +10,29 @@
 
 namespace FlexFlow {
 
-tl::expected<TensorShape, std::string>
-    get_output_shape(ElementUnaryAttrs const &, TensorShape const &);
-tl::expected<ParallelTensorShape, std::string>
-    get_output_shape(ElementUnaryAttrs const &, ParallelTensorShape const &);
+// tl::expected<TensorShape, std::string>
+//     get_output_shape(ElementUnaryAttrs const &, TensorShape const &);
+// tl::expected<ParallelTensorShape, std::string>
+//     get_output_shape(ElementUnaryAttrs const &, ParallelTensorShape const &);
 
-tl::expected<TensorShape, std::string>
-    get_output_shape(ElementScalarUnaryAttrs const &, TensorShape const &);
-tl::expected<ParallelTensorShape, std::string>
-    get_output_shape(ElementScalarUnaryAttrs const &,
-                     ParallelTensorShape const &);
+// tl::expected<TensorShape, std::string>
+//     get_output_shape(ElementScalarUnaryAttrs const &, TensorShape const &);
+// tl::expected<ParallelTensorShape, std::string>
+//     get_output_shape(ElementScalarUnaryAttrs const &,
+//                      ParallelTensorShape const &);
 
 CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
 CHECK_VALID_OP_ATTR(ElementScalarUnaryAttrs);
 
 using ElementUnaryUnifiedAttrs =
     std::variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
+
+tl::expected<TensorShape, std::string>
+    get_output_shape(ElementUnaryUnifiedAttrs const &attrs,
+                     TensorShape const &input_shape);
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(ElementUnaryUnifiedAttrs const &attrs,
+                     ParallelTensorShape const &input_shape);
 
 } // namespace FlexFlow
 

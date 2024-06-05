@@ -21,12 +21,6 @@ OpTaskSignature get_element_binary_init_signature();
 OpTaskSignature get_element_binary_fwd_signature();
 OpTaskSignature get_element_binary_bwd_signature();
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ElementBinaryAttrs const &attrs,
-                                  ParallelTensorShape const &lhs_shape,
-                                  ParallelTensorShape const &rhs_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
 } // namespace FlexFlow
 
 #endif

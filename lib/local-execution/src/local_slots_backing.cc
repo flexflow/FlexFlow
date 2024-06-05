@@ -8,7 +8,7 @@ LocalSlotsBacking::LocalSlotsBacking(TensorBackingMap const &allocated_tensors,
       runtime_arg_config(runtime_arg_config){};
 
 void LocalSlotsBacking::add_per_device_op_state(
-    operator_guid_t const &op_guid,
+    layer_guid_t const &op_guid,
     DeviceSpecific<DeviceStates> const &device_state) {
   this->per_device_op_states.insert({op_guid, device_state});
 }
@@ -24,7 +24,7 @@ GenericTensorAccessorW const &LocalSlotsBacking::get_tensor_backing(
 }
 
 TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
-    OpTaskBinding const &binding, operator_guid_t const &op_guid) const {
+    OpTaskBinding const &binding, layer_guid_t const &op_guid) const {
   TensorSlotsBacking mapping;
   for (auto const &tensor_binding : binding.get_tensor_bindings()) {
     SlotGradId slot_grad_id = tensor_binding.first;
@@ -53,7 +53,7 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
 }
 
 ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
-    OpTaskBinding const &binding, operator_guid_t const &op_guid) const {
+    OpTaskBinding const &binding, layer_guid_t const &op_guid) const {
   ArgSlotsBacking mapping;
   for (auto const &arg_binding : binding.get_arg_bindings()) {
     slot_id arg_slot = arg_binding.first;
@@ -62,8 +62,7 @@ ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
       mapping.insert({arg_slot,
                       resolve_op_arg_ref_spec(
                           std::get<OpArgRefSpec>(op_arg_spec), op_guid)});
-    } else if (std::holds_alternative<RuntimeArgRefSpec>(op_arg_spec),
-               op_guid) {
+    } else if (std::holds_alternative<RuntimeArgRefSpec>(op_arg_spec)) {
       mapping.insert({arg_slot,
                       resolve_runtime_arg_ref_spec(
                           std::get<RuntimeArgRefSpec>(op_arg_spec))});
@@ -77,7 +76,7 @@ ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
 }
 
 ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(
-    OpArgRefSpec const &op_arg_ref_spec, operator_guid_t const &op_guid) const {
+    OpArgRefSpec const &op_arg_ref_spec, layer_guid_t const &op_guid) const {
   if (op_arg_ref_spec.holds<DeviceSpecific<DeviceStates>>()) {
     return ConcreteArgSpec::create(per_device_op_states.at(op_guid));
   } else if (op_arg_ref_spec.holds<ParallelTensorShape>()) {
@@ -87,8 +86,8 @@ ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(
         this->input_tensor_slots.at(op_guid);
     GenericTensorAccessorW tensor_backing =
         this->get_tensor_backing(input_tensor_guids.at(index_op_arg_ref.idx));
-    ParallelTensorShape shape = {
-        get_tensor_shape(tensor_backing.shape, tensor_backing.data_type)};
+    ParallelTensorShape shape = lift_to_parallel(
+        get_tensor_shape(tensor_backing.shape, tensor_backing.data_type));
     return ConcreteArgSpec::create(shape);
   } else {
     throw mk_runtime_error("Unhandled op arg ref type");

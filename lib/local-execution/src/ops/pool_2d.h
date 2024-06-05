@@ -21,12 +21,6 @@ OpTaskInvocation init(Pool2DAttrs const &);
 OpTaskInvocation forward(Pool2DAttrs const &);
 OpTaskInvocation backward(Pool2DAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  Pool2DAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
 } // namespace FlexFlow
 
 #endif

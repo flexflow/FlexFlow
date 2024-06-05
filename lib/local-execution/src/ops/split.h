@@ -18,12 +18,6 @@ OpTaskSignature get_split_bwd_signature();
 OpTaskInvocation forward(SplitAttrs const &);
 OpTaskInvocation backward(SplitAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  SplitAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
 } // namespace FlexFlow
 
 #endif

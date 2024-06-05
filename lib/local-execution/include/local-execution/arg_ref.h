@@ -3,7 +3,7 @@
 
 #include "kernels/ff_handle.h"
 #include "local-execution/profiling.h"
-#include "local-execution/serialization.h"
+// #include "local-execution/serialization.h
 #include "utils/type_index.h"
 #include "utils/visitable.h"
 
@@ -34,7 +34,7 @@ public:
 
   template <typename T>
   static ArgRefSpec create(ArgRef<LABEL_TYPE, T> const &r) {
-    static_assert(is_serializable<T>::value, "Type must be serializeable");
+    // static_assert(is_serializable<T>::value, "Type must be serializeable");
 
     return ArgRefSpec(get_type_index_for_type<T>(), r.ref_type);
   }

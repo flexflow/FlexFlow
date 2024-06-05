@@ -95,25 +95,31 @@ static DeviceSpecific<DeviceStates>
   ParallelTensorShape value_parallel_tensor_shape =
       acc.get_argument<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
 
-  MultiHeadAttentionInputs<ParallelTensorShape> inputs =
-      MultiHeadAttentionInputs<ParallelTensorShape>(
-          query_parallel_tensor_shape,
-          key_parallel_tensor_shape,
-          value_parallel_tensor_shape);
-
-  ParallelTensorShape output_parallel_tensor_shape =
-      get_output_shape(attrs, inputs);
+  MultiHeadAttentionInputs inputs = {
+      shard_dim_at_idx(query_parallel_tensor_shape, ff_dim_t{0}).size,
+      shard_dim_at_idx(query_parallel_tensor_shape, ff_dim_t{1}).size,
+      qProjSize,
+      kProjSize,
+      vProjSize,
+      query_parallel_tensor_shape.data_type};
+  ;
   ParallelTensorShape weight_parallel_tensor_shape =
-      get_weights_shape(attrs, inputs);
+      throw_if_unexpected(get_weights_shape(attrs,
+                                            query_parallel_tensor_shape,
+                                            key_parallel_tensor_shape,
+                                            value_parallel_tensor_shape));
 
   int kvSeqLength = get_kvSeqLength(inputs);
   int qSize = get_qSize(inputs);
   int kSize = get_kSize(inputs);
   int vSize = get_vSize(inputs);
 
-  int qoSeqLength = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(1)];
-  int num_samples = get_piece_shape(query_parallel_tensor_shape)[ff_dim_t(2)];
-  int num_heads = get_piece_shape(weight_parallel_tensor_shape)[ff_dim_t(1)];
+  int qoSeqLength =
+      dim_at_idx(get_piece_shape(query_parallel_tensor_shape), ff_dim_t(1));
+  int num_samples =
+      dim_at_idx(get_piece_shape(query_parallel_tensor_shape), ff_dim_t(2));
+  int num_heads =
+      dim_at_idx(get_piece_shape(weight_parallel_tensor_shape), ff_dim_t(1));
 
   MHAPerDeviceState per_device_state = init_kernel(handle,
                                                    allocator,
@@ -194,60 +200,6 @@ static std::optional<float>
                  weight.get_float_ptr(),
                  weight_grad.get_float_ptr(),
                  output_grad.get_float_ptr());
-}
-
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  MultiHeadAttentionAttrs const &attrs,
-                                  InputParallelTensorDesc const &query_shape,
-                                  InputParallelTensorDesc const &key_shape,
-                                  InputParallelTensorDesc const &value_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-  auto env = sim.new_environment();
-
-  MultiHeadAttentionInputs<ParallelTensorShape> inputs =
-      MultiHeadAttentionInputs<ParallelTensorShape>(
-          query_shape.shape, key_shape.shape, value_shape.shape);
-  ParallelTensorShape output_shape = get_output_shape(attrs, inputs);
-  ParallelTensorShape weight_shape = get_weights_shape(attrs, inputs);
-
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(HANDLE, ff_handle());
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(QUERY_PARALLEL_TENSOR_SHAPE,
-                        input_parallel_tensor_shape(0));
-  init_binding.bind_arg(KEY_PARALLEL_TENSOR_SHAPE,
-                        input_parallel_tensor_shape(1));
-  init_binding.bind_arg(VALUE_PARALLEL_TENSOR_SHAPE,
-                        input_parallel_tensor_shape(2));
-  init_binding.bind_arg(QPROJSIZE, get_qProjSize(attrs));
-  init_binding.bind_arg(KPROJSIZE, get_kProjSize(attrs));
-  init_binding.bind_arg(VPROJSIZE, get_vProjSize(attrs));
-  init_binding.bind_arg(OPROJSIZE, get_oProjSize(attrs));
-
-  auto init_accessor =
-      env.get_init_accessor(ATTENTION_INIT_TASK_ID, init_binding);
-  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind(QUERY, query_shape);
-  fwd_binding.bind(KEY, key_shape);
-  fwd_binding.bind(VALUE, value_shape);
-  fwd_binding.bind(WEIGHTS, weight_shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(ATTENTION_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(ATTENTION_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
 TaskImplFunction get_attention_init_task_impl() {

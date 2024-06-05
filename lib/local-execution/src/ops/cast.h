@@ -32,12 +32,6 @@ OpTaskSignature get_cast_bwd_signature();
 OpTaskInvocation forward(CastAttrs const &);
 OpTaskInvocation backward(CastAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  CastAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv);
-
 } // namespace FlexFlow
 
 #endif

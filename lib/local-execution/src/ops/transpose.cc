@@ -40,7 +40,7 @@ OpTaskInvocation init(TransposeAttrs const &attrs) {
 static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<TransposeAttrs>(ATTRS);
-  std::vector<ff_dim_t> perm = static_cast<std::vector<ff_dim_t>>(attrs.perm);
+  std::vector<ff_dim_t> perm = inner_to_outer_idxs(attrs.perm);
   TransposePerDeviceState per_device_state = init_kernel(perm.size(), perm);
 
   return DeviceSpecific<DeviceStates>::create(per_device_state);
@@ -96,43 +96,6 @@ OpTaskInvocation backward(TransposeAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
   return {TRANSPOSE_BWD_TASK_ID, binding};
-}
-
-CostMetrics
-    measure_operator_cost(SimEnvFactory const &sim_factory,
-                          TransposeAttrs const &attrs,
-                          InputVariadicParallelTensorDesc const
-                              &input_descs, // Note:this may have some problem
-                          ProfilingSettings const &settings,
-                          MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
-
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(ATTRS, attrs);
-
-  auto init_accessor =
-      env.get_init_accessor(TRANSPOSE_INIT_TASK_ID, init_binding);
-  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
-
-  ParallelTensorShape output_shape =
-      get_output_shape(attrs, input_descs.shapes);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind(INPUT, input_descs.shapes);
-  fwd_binding.bind(OUTPUT, output_shape);
-
-  auto fwd_accessor = env.get_fwd_accessor(TRANSPOSE_FWD_TASK_ID, fwd_binding);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(TRANSPOSE_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
 TaskImplFunction get_transpose_init_task_impl() {

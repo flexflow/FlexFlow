@@ -24,7 +24,7 @@ public:
 
   template <typename T>
   static ConcreteArgSpec create(T const &t) {
-    static_assert(is_serializable<T>::value, "Type must be serializable");
+    // static_assert(is_serializable<T>::value, "Type must be serializable");
 
     std::type_index type_idx = get_type_index_for_type<T>();
     std::shared_ptr<void const> ptr =

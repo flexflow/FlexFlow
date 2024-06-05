@@ -21,12 +21,6 @@ OpTaskInvocation init(ElementUnaryUnifiedAttrs const &);
 OpTaskInvocation forward(ElementUnaryUnifiedAttrs const &);
 OpTaskInvocation backward(ElementUnaryUnifiedAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ElementUnaryUnifiedAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
 } // namespace FlexFlow
 
 #endif

@@ -76,16 +76,25 @@ static ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
   return {inputTensor, outputTensor, actiDesc};
 }
 
-ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
-                                       ArrayShape const &output_shape,
-                                       ElementUnaryAttrs const &attrs) {
-  return init_kernel(input_shape, output_shape, get_op_type(attrs));
+OperatorType get_variant_op_type(ElementUnaryUnifiedAttrs const &attrs) {
+  return std::visit([](auto &&arg) -> OperatorType { return get_op_type(arg); },
+                    attrs);
+}
+
+std::optional<float> get_variant_scalar(ElementUnaryUnifiedAttrs const &attrs) {
+  if (std::holds_alternative<ElementUnaryAttrs>(attrs)) {
+    return std::nullopt;
+  } else if (std::holds_alternative<ElementScalarUnaryAttrs>(attrs)) {
+    return std::get<ElementScalarUnaryAttrs>(attrs).scalar;
+  } else {
+    throw mk_runtime_error("Unexpected type in ElementUnaryUnifiedAttrs");
+  }
 }
 
 ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
                                        ArrayShape const &output_shape,
-                                       ElementScalarUnaryAttrs const &attrs) {
-  return init_kernel(input_shape, output_shape, get_op_type(attrs));
+                                       ElementUnaryUnifiedAttrs const &attrs) {
+  return init_kernel(input_shape, output_shape, get_variant_op_type(attrs));
 }
 
 template <typename T>
@@ -286,31 +295,15 @@ struct BackwardKernel {
 
 void forward_kernel(ffStream_t stream,
                     ElementUnaryPerDeviceState const &device_state,
-                    ElementUnaryAttrs const &attrs,
+                    ElementUnaryUnifiedAttrs const &attrs,
                     PerDeviceFFHandle const &handle,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
   DataTypeDispatch1<ForwardKernel>{}(input.data_type,
                                      stream,
                                      device_state,
-                                     get_op_type(attrs),
-                                     std::nullopt,
-                                     handle,
-                                     input,
-                                     output);
-}
-
-void forward_kernel(ffStream_t stream,
-                    ElementUnaryPerDeviceState const &device_state,
-                    ElementScalarUnaryAttrs const &attrs,
-                    PerDeviceFFHandle const &handle,
-                    GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output) {
-  DataTypeDispatch1<ForwardKernel>{}(input.data_type,
-                                     stream,
-                                     device_state,
-                                     get_op_type(attrs),
-                                     attrs.scalar,
+                                     get_variant_op_type(attrs),
+                                     get_variant_scalar(attrs),
                                      handle,
                                      input,
                                      output);
@@ -318,7 +311,7 @@ void forward_kernel(ffStream_t stream,
 
 void backward_kernel(ffStream_t stream,
                      ElementUnaryPerDeviceState const &device_state,
-                     ElementUnaryAttrs const &attrs,
+                     ElementUnaryUnifiedAttrs const &attrs,
                      PerDeviceFFHandle const &handle,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &input_grad,
@@ -327,28 +320,8 @@ void backward_kernel(ffStream_t stream,
   DataTypeDispatch1<BackwardKernel>{}(input.data_type,
                                       stream,
                                       device_state,
-                                      get_op_type(attrs),
-                                      std::nullopt,
-                                      handle,
-                                      input,
-                                      input_grad,
-                                      output,
-                                      output_grad);
-}
-
-void backward_kernel(ffStream_t stream,
-                     ElementUnaryPerDeviceState const &device_state,
-                     ElementScalarUnaryAttrs const &attrs,
-                     PerDeviceFFHandle const &handle,
-                     GenericTensorAccessorR const &input,
-                     GenericTensorAccessorW const &input_grad,
-                     GenericTensorAccessorR const &output,
-                     GenericTensorAccessorR const &output_grad) {
-  DataTypeDispatch1<BackwardKernel>{}(input.data_type,
-                                      stream,
-                                      device_state,
-                                      get_op_type(attrs),
-                                      attrs.scalar,
+                                      get_variant_op_type(attrs),
+                                      get_variant_scalar(attrs),
                                       handle,
                                       input,
                                       input_grad,

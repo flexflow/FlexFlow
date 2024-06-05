@@ -18,11 +18,6 @@ OpTaskSignature get_replicate_bwd_signature();
 OpTaskInvocation forward(ReplicateAttrs const &);
 OpTaskInvocation backward(ReplicateAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ReplicateAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
 } // namespace FlexFlow
 
 #endif

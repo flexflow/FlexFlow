@@ -15,6 +15,7 @@
 
 #include "layer_norm.h"
 #include "kernels/layer_norm_kernels.h"
+#include "local-execution/legion_tensor_shape.h"
 #include "op-attrs/get_output_shapes.h"
 #include "op-attrs/ops/layer_norm.h"
 #include "op-attrs/parallel_tensor_shape.h"
@@ -122,7 +123,9 @@ static DeviceSpecific<DeviceStates>
   int64_t effective_batch_size, effective_num_elements;
   int M = 1;
   for (int i = 0; i < attrs.axes.size(); i++) {
-    M *= input.shape.at(legion_dim_t(attrs.axes[i]));
+    legion_dim_t legion_dim = to_legion(
+        attrs.axes[i], get_tensor_shape(input.shape, input.data_type));
+    M *= input.shape.at(legion_dim);
   }
   int num_replicas = 1;
   for (int i = 0; i < input.shape.num_dims(); i++) {
@@ -139,44 +142,6 @@ static DeviceSpecific<DeviceStates>
                   effective_num_elements,
                   attrs.eps);
   return DeviceSpecific<DeviceStates>::create(per_device_state);
-}
-
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  LayerNormAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(HANDLE, ff_handle());
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind(INPUT, input.shape);
-
-  auto init_accessor =
-      env.get_init_accessor(LAYERNORM_INIT_TASK_ID, init_binding);
-
-  DeviceSpecific<DeviceStates> per_device_state = init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input.shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  fwd_binding.bind(GAMMA, input.shape);
-  fwd_binding.bind(BETA, input.shape);
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(LAYERNORM_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(LAYERNORM_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
 }
 
 TaskImplFunction get_layer_norm_init_task_impl() {

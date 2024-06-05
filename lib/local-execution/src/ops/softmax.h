@@ -21,12 +21,6 @@ OpTaskInvocation init(SoftmaxAttrs const &);
 OpTaskInvocation forward(SoftmaxAttrs const &);
 OpTaskInvocation backward(SoftmaxAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  SoftmaxAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
 } // namespace FlexFlow
 
 #endif
