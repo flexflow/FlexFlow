@@ -63,7 +63,9 @@ void parse_input_args(char **argv,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
                       int &max_sequence_length,
-                      int &expansion_degree) {
+                      int &expansion_degree,
+                      bool &spec_sampling,
+                      bool &do_sample) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -120,6 +122,15 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--expansion-degree")) {
       expansion_degree = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--spec_sampling")) {
+      spec_sampling = true;
+      do_sample = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--do_sample")) {
+      do_sample = true;
       continue;
     }
   }
@@ -274,15 +285,17 @@ void FlexFlow::top_level_task(Task const *task,
   ModelMeta model_metadata;
   bool use_full_precision = false;
   bool verbose = false;
-  int max_requests_per_batch = 8;
-  int max_tokens_per_batch = 256;
-  int max_sequence_length = 512;
+  int max_requests_per_batch = 1;
+  int max_tokens_per_batch = 40;
+  int max_sequence_length = 256;
   int max_spec_tree_token_num = 64;
   int expansion_degree = 3;
-  int max_tree_depth = 16;
+  int max_tree_depth = 8;
   int max_tree_width = 16;
   RequestManager::DecodingMode decoding_mode =
       RequestManager::SPECULATIVE_DECODING;
+  bool spec_sampling = false;
+  bool do_sample = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -296,7 +309,9 @@ void FlexFlow::top_level_task(Task const *task,
                    max_requests_per_batch,
                    max_tokens_per_batch,
                    max_sequence_length,
-                   expansion_degree);
+                   expansion_degree,
+                   spec_sampling,
+                   do_sample);
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
 
@@ -305,7 +320,7 @@ void FlexFlow::top_level_task(Task const *task,
          ffconfig.numNodes * ffconfig.workersPerNode);
 
   // Create SentencePiece tokenizer or OPT tokenizer
-  GenerationConfig generationConfig;
+  GenerationConfig generationConfig(do_sample, 0.8, 0.6, spec_sampling, 16);
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestManager *rm = RequestManager::get_request_manager();
   rm->set_max_requests_per_batch(max_requests_per_batch);

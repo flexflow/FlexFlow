@@ -131,9 +131,9 @@ void FlexFlow::top_level_task(Task const *task,
   bool use_full_precision = false;
   bool verbose = false;
   bool do_sample = false;
-  float temperature = 0.0f;
-  float topp = 0.0f;
-  int max_requests_per_batch = 8;
+  float temperature = 0.8f;
+  float topp = 0.6f;
+  int max_requests_per_batch = 1;
   int max_tokens_per_batch = 128;
   int max_sequence_length = 256;
   RequestManager::DecodingMode decoding_mode =

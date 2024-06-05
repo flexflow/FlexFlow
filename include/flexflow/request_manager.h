@@ -383,6 +383,7 @@ private:
 
   // LLM result verification
   void get_verify_results_greedy(InferenceResult const &llm_verify_result);
+  void get_verify_results_sample(InferenceResult const &llm_verify_result);
 
   // Bitmask related
   void init_bitmask_prompt(RequestGuid guid, int prompt_length);
@@ -398,6 +399,13 @@ private:
   bool add_tokens_to_spec_token_tree(
       InferenceResult const &ssm_inference_result);
   /* ---------- Spec Decoding Helper Functions ---------- */
+  void renormalize(std::vector<std::pair<TokenId, float>> &D,
+                   std::unordered_map<TokenId, float> &R,
+                   TokenId token_id);
+  std::tuple<int, BatchConfig::TokenId, bool>
+      reject_sampling(std::vector<std::pair<TokenId, float>> &D,
+                      std::unordered_map<TokenId, float> &R,
+                      int k);
 };
 
 }; // namespace FlexFlow

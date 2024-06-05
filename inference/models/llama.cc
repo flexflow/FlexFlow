@@ -250,15 +250,23 @@ void LLAMA::create_llama_model(FFModel &ff,
   if (mode == TREE_SEARCH_MODE) {
     Tensor softmax = ff.softmax(dense, -1);
     output = ff.arg_top_k(softmax, llama_config.k_of_arg_topk, false, false);
-    // output = ff.top_k(softmax, )
-  } else {
-    // Tensor softmax = ff.softmax(dense, -1);
+  } else if (mode == INC_DECODING_MODE) {
     if (generation_config.do_sample) {
-      dense = ff.scalar_truediv(dense, generation_config.temperature, false);
       Tensor softmax = ff.softmax(dense, -1);
       output = ff.sampling(softmax, generation_config.topp);
     } else {
-      // output = ff.arg_top_k(dense, /*k=*/1, false);
+      output = ff.argmax(dense, /*beam_Search*/ false);
+    }
+  } else {
+    if (generation_config.do_sample) {
+      dense = ff.scalar_truediv(dense, generation_config.temperature, false);
+      Tensor softmax = ff.softmax(dense, -1);
+      if (generation_config.spec_sample) {
+        output = ff.arg_top_k(softmax, generation_config.topk, false, true);
+      } else {
+        output = ff.sampling(softmax, generation_config.topp);
+      }
+    } else {
       output = ff.argmax(dense, /*beam_Search*/ false);
     }
   }

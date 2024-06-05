@@ -22,14 +22,22 @@ namespace FlexFlow {
 
 struct GenerationConfig {
   bool do_sample = false;
+  bool spec_sample = false;
   float temperature = 0.8;
+  // top-p renormalization
   float topp = 0.6;
-  GenerationConfig(bool _do_sample, float _temperature, float _topp) {
-    temperature = _temperature > 0 ? _temperature : temperature;
-    topp = _topp > 0 ? _topp : topp;
-    do_sample = _do_sample;
+  // top-k renormalization
+  int topk = 16;
+  GenerationConfig(bool _do_sample = false,
+                   float _temperature = 0.8,
+                   float _topp = 0.6,
+                   bool _spec_sample = false,
+                   int topk = 16)
+      : do_sample(_do_sample), temperature(_temperature), topp(_topp),
+        spec_sample(_spec_sample), topk(topk) {
+    assert(temperature > 0.0);
+    assert(topk <= BatchConfig::MAX_K_LOGITS);
   }
-  GenerationConfig() {}
 };
 
 struct GenerationResult {

@@ -22,6 +22,7 @@
 #include <future>
 #include <iomanip>
 #include <new>
+#include <random>
 #include <stack>
 #include <stdexcept>
 
@@ -658,11 +659,11 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 
 bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   bool prefill_completed = false;
-  int committed_token_offset = prefill_request->llm_cache_size;
   prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
-  prefill_request->committed_tokens.clear();
 
   if (decoding_mode == SPECULATIVE_DECODING) {
+    int committed_token_offset = prefill_request->llm_cache_size;
+    prefill_request->committed_tokens.clear();
     // Modified the state because the last commitment completes
     prefill_request->llm_committed = true;
     assert(prefill_request->ssm_committed and prefill_request->llm_committed);
@@ -1579,6 +1580,215 @@ BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
   return llm_bitmask;
 }
 /* --------- Bitmask Related Functions --------- */
+
+void RequestManager::renormalize(std::vector<std::pair<TokenId, float>> &D,
+                                 std::unordered_map<TokenId, float> &R,
+                                 TokenId token_id) {
+  float token_prob;
+  for (auto &kv : D) {
+    TokenId d_token_id = kv.first;
+    float d_prob = kv.second;
+    if (R.find(d_token_id) != R.end()) {
+      float r_prob = R[d_token_id];
+      R[d_token_id] = max(0.0f, r_prob - d_prob);
+    }
+    if (d_token_id == token_id) {
+      token_prob = d_prob;
+      kv.second = 0.0f;
+    }
+  }
+  // Normalize R
+  float sum_r = 0.0f;
+  for (auto &kv : R) {
+    sum_r += kv.second;
+  }
+  for (auto &kv : R) {
+    kv.second /= (sum_r + 1e-6);
+  }
+  // Normalize D
+  for (auto &kv : D) {
+    kv.second /= (1.0f - token_prob - 1e-6);
+  }
+}
+
+std::tuple<int, BatchConfig::TokenId, bool>
+    RequestManager::reject_sampling(std::vector<std::pair<TokenId, float>> &D,
+                                    std::unordered_map<TokenId, float> &R,
+                                    int k) {
+  assert(D.size() == k);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<> dis(0.0, 1.0);
+  double r;
+  for (int i = 0; i < k; ++i) {
+    // Generate a random number in the range [0, 1)
+    r = dis(gen);
+    double d_prob = (double)D[i].second;
+    if (R.find(D[i].first) != R.end()) {
+      double r_prob = (double)R[D[i].first];
+      if (r < d_prob / d_prob + 1e-6) {
+        return {i, D[i].first, true};
+      }
+    }
+    // else, r_prob = 0.0, reject the token
+    renormalize(D, R, D[i].first);
+  }
+  std::vector<double> r_probs;
+  std::vector<BatchConfig::TokenId> r_tokens;
+  for (auto &kv : R) {
+    r_probs.push_back(kv.second);
+    r_tokens.push_back(kv.first);
+  }
+  std::discrete_distribution<> r_dist(r_probs.begin(), r_probs.end());
+  int sampled_index = r_dist(gen);
+  return {-1, r_tokens[sampled_index], false};
+}
+
+void RequestManager::get_verify_results_sample(
+    InferenceResult const &llm_verify_result) {
+  // This function maintain the generated token list of the request and the
+  // committed tokens.
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+
+    int llm_result_offset =
+        request.first_token_offset_in_batch * BatchConfig::MAX_K_LOGITS;
+    int llm_input_offset = request.first_token_offset_in_batch;
+    int committed_token_index = request.tokens.size() - 1;
+
+    TokenTree &token_tree = request.speculative_token_trees[0];
+    // First add the root to the committed tokens
+    request.committed_tokens.push_back(Request::CommittedToken(
+        llm_input_offset, committed_token_index, request.tokens.back()));
+    committed_token_index++;
+    // Don't add it to request.tokens because it has already been added.
+
+    // The position of the last accepted token in its tree layer (includeing
+    // the pruned tokens)
+    int last_accepted_token_index_in_layer = 0;
+    // The index of the last accepted token in the entire tree (excluding the
+    // pruned tokens)
+    int last_accepted_token_index = 0;
+    float last_accepted_token_accumulated_log_prob = 0.0f;
+    int current_token_index = 1; // Because we skip the root
+    bool rejected = false;
+
+    auto layer_it = token_tree.tree_layers.begin();
+    ++layer_it;
+    for (; layer_it != token_tree.tree_layers.end(); ++layer_it) {
+      // We skip the first layer
+      std::list<std::shared_ptr<TokenTreeNode>> const &tree_layer = *layer_it;
+      std::vector<std::pair<TokenId, float>> D;
+      std::unordered_map<TokenId, float> R;
+      // Data format: <current_token_index, current_token_index_in_layer,
+      // acc_log_prob>
+      std::unordered_map<TokenId, std::tuple<int, int, float>> d_token_info;
+
+      int current_token_index_in_layer = 0;
+
+      // Iterate through the tokens in the current layer to find the candidate
+      // tokens whose parent is the last accepted token
+      for (auto const &node_ptr : tree_layer) {
+        if (node_ptr->pruned) {
+          // Don't increase current_token_index here
+          current_token_index_in_layer++;
+          continue;
+        }
+        if (node_ptr->parent_pos != last_accepted_token_index_in_layer) {
+          // The token's parent is not accepted
+          current_token_index++;
+          current_token_index_in_layer++;
+          continue;
+        } else {
+          // The token's parent is accepted
+          float prob = std::exp(node_ptr->log_accumulated_prob -
+                                last_accepted_token_accumulated_log_prob);
+          D.push_back({node_ptr->id, prob});
+          d_token_info[node_ptr->id] = {current_token_index,
+                                        current_token_index_in_layer,
+                                        node_ptr->log_accumulated_prob};
+          current_token_index++;
+          current_token_index_in_layer++;
+        }
+      }
+
+      int result_offset = llm_result_offset +
+                          last_accepted_token_index * BatchConfig::MAX_K_LOGITS;
+      for (int i = 0; i < BatchConfig::MAX_K_LOGITS; ++i) {
+        TokenId token_id = llm_verify_result.token_ids[result_offset + i];
+        R[token_id] = llm_verify_result.probs[result_offset + i];
+      }
+
+      auto [sampled_index, token_id, accepted] =
+          reject_sampling(D, R, D.size());
+      if (accepted) {
+        // The token's parent is accepted, and this token's id equals the
+        // llm's sample at its parent's position. We accept this token.
+        // from_index: the index of the token in the tree (excluding the
+        // pruned tokens)
+        // to_index: the committed token index in the request
+        request.committed_tokens.push_back(Request::CommittedToken(
+            llm_input_offset + std::get<0>(d_token_info[token_id]),
+            committed_token_index,
+            token_id));
+        request.tokens.push_back(token_id);
+
+        last_accepted_token_index = std::get<0>(d_token_info[token_id]);
+        last_accepted_token_index_in_layer =
+            std::get<1>(d_token_info[token_id]);
+        last_accepted_token_accumulated_log_prob =
+            std::get<2>(d_token_info[token_id]);
+        committed_token_index++;
+      } else {
+        request.committed_tokens.push_back(
+            Request::CommittedToken(-1, committed_token_index, token_id));
+        rejected = true;
+        break;
+      }
+    }
+
+    // Add the last token (that is not in the cache of the LLM) if the sampling
+    // procedure succeed in the last layer
+    // from_index: since this token is not in the token tree, the llm doesn't
+    // have its KV cache, so the from_index should be a place holder, which is
+    // -1
+    if (!rejected) {
+      std::unordered_map<TokenId, float> R;
+      std::vector<std::pair<TokenId, float>> D;
+      int result_offset = llm_result_offset +
+                          last_accepted_token_index * BatchConfig::MAX_K_LOGITS;
+      for (int i = 0; i < BatchConfig::MAX_K_LOGITS; ++i) {
+        TokenId token_id = llm_verify_result.token_ids[result_offset + i];
+        R[token_id] = llm_verify_result.probs[result_offset + i];
+      }
+      auto [sampled_index, token_id, accepted] =
+          reject_sampling(D, R, D.size());
+      request.committed_tokens.push_back(
+          Request::CommittedToken(-1, committed_token_index, token_id));
+      request.tokens.push_back(token_id);
+    }
+
+    request.llm_committed = false;
+    request.ssm_committed = false;
+
+    if (verbose) {
+      std::cout << "Request " << request.guid << " committed tokens: ";
+      for (auto const &committed_token : request.committed_tokens) {
+        std::cout << committed_token.token_id << " ("
+                  << tokenizer_->Decode({committed_token.token_id}) << ") ";
+      }
+      std::cout << std::endl;
+      std::string output = this->tokenizer_->Decode(request.tokens);
+      std::cout << "Output sequence: " << output << std::endl;
+    }
+  }
+}
 
 void RequestManager::get_verify_results_greedy(
     InferenceResult const &llm_verify_result) {
