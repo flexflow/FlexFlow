@@ -105,6 +105,9 @@ __global__ void compute_attention_kernel_fused_kernel(
     int num_heads,
     int num_requests,
     BatchConfig::BitMask *causalMask,
+    float* custom_mask,
+    int max_q_length,
+    int max_kv_length,
     bool *request_available,
     int qk_smem_sz,
     bool prompt_phase) {
@@ -149,13 +152,7 @@ __global__ void compute_attention_kernel_fused_kernel(
       request_infos[requext_idx_in_batch].num_tokens_in_batch;
   int const qlength = request_infos[requext_idx_in_batch].num_tokens_in_batch;
 
-  __shared__ uint64_t bit_mask[BatchConfig::MAX_SPEC_TREE_TOKEN_NUM]
-                              [BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 64];
-  for (int i = tidx; i < qlength; i += THREADS_PER_BLOCK) {
-    for (int j = 0; j < BatchConfig::MAX_SPEC_TREE_TOKEN_NUM / 64; j++) {
-      bit_mask[i][j] = causalMask[requext_idx_in_batch].bit_mask[i].bits[j];
-    }
-  }
+  custom_mask = custom_mask + request_idx * max_q_length * max_kv_length;
 
   int non_tree_cache_size =
       causalMask[requext_idx_in_batch].non_tree_cache_size;
@@ -234,7 +231,7 @@ __global__ void compute_attention_kernel_fused_kernel(
             prompt_phase
                 ? (qi + q_start < ti)
                 : (ti >= non_tree_cache_size &&
-                   (!test_bit(bit_mask, qi, ti - non_tree_cache_size)));
+                   (custom_mask[qi * tlength + ti - non_tree_cache_size] < -1.0f));
 
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
@@ -291,7 +288,7 @@ __global__ void compute_attention_kernel_fused_kernel(
       bool const mask =
           prompt_phase ? (q_start + qi < ti)
                        : (ti >= non_tree_cache_size &&
-                          (!test_bit(bit_mask, qi, ti - non_tree_cache_size)));
+                          (custom_mask[qi * tlength + ti - non_tree_cache_size] < -1.0f));
       float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
       exp_sum += logit;
       qk_smem[ti - first_step] = mask ? 0.0f : logit;
@@ -611,6 +608,9 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
                    m->num_q_heads,                                             \
                    bc->num_active_requests(),                                  \
                    m->causalMask,                                              \
+                   m->custom_mask,                                             \
+                   max_q_length,                                               \
+                   max_kv_length,                                              \
                    m->request_available,                                       \
                    smem_sz[0],                                                 \
                    prompt_phase)
@@ -628,6 +628,9 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
   dim3 grid(m->num_q_heads, bc->num_active_requests());
   int const per_head_size = m->qProjSize;
   float scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
+  int max_q_length = BatchConfig::max_spec_tree_token_num();
+  int max_kv_length = BatchConfig::max_spec_tree_token_num() + 
+                      BatchConfig::max_sequence_length();
   // 0->qk production size, 1->total shared size
   // per_head_size: 128, thd_per_v:32, prompt_phase: 0
   int smem_sz[2];
@@ -783,23 +786,23 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
-  //   int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
-  //   float *temp_output = new float[size];
-  //   cudaDeviceSynchronize();
-  //   cudaMemcpy(
-  //       temp_output, m->attn_heads, size * sizeof(float),
-  //       cudaMemcpyDeviceToHost);
-  //   printf("Output: ");
-  //   for (int i = 0; i < 1; ++i) {
-  //     float temp = 0;
-  //     for (int j = 0; j < m->hidden_size; ++j) {
-  //       temp += temp_output[i * m->hidden_size + j];
-  //     }
-  //     printf("%.6f ", temp);
+  // int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
+  // float *temp_output = new float[size];
+  // cudaDeviceSynchronize();
+  // cudaMemcpy(
+  //     temp_output, m->attn_heads, size * sizeof(float),
+  //     cudaMemcpyDeviceToHost);
+  // printf("Output: ");
+  // for (int i = 0; i < 1; ++i) {
+  //   float temp = 0;
+  //   for (int j = 0; j < m->hidden_size; ++j) {
+  //     temp += temp_output[i * m->hidden_size + j];
   //   }
-  //   printf("\n");
+  //   printf("%.6f ", temp);
+  // }
+  // printf("\n");
 
-  //   delete[] temp_output;
+  // delete[] temp_output;
 
   int processed_tokens_in_batch = bc->num_active_tokens();
 
