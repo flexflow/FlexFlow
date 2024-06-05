@@ -14,11 +14,11 @@
  */
 
 #include "kernels/flat_kernels.h"
-#include "kernels/hip_helper.h"
+#include "device.h"
+#include "kernels/accessor.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-
 namespace Kernels {
 namespace Flat {
 
@@ -31,7 +31,6 @@ void forward_kernel(hipStream_t stream,
                            (input.shape.num_elements()) * sizeof(float),
                            hipMemcpyDeviceToDevice,
                            stream));
-  // checkCUDA(hipDeviceSynchronize());
 }
 
 void backward_kernel(hipStream_t stream,
@@ -49,10 +48,6 @@ void backward_kernel(hipStream_t stream,
                      output_grad_ptr,
                      input.shape.num_elements(),
                      alpha);
-  // checkCUDA(hipMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
-  //                           acc_input_grad.rect.volume() * sizeof(float),
-  //                           hipMemcpyDeviceToDevice));
-  // checkCUDA(hipDeviceSynchronize());
 }
 
 } // namespace Flat
