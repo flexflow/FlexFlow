@@ -22,6 +22,50 @@
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/utils/cuda_helper.h"
 
+#include <sstream>
+#include <stdexcept>
+
+#define DISPATCH_GROUP_SIZE(group_size, GROUP_SIZE, ...) \
+  if (group_size == 1) {                                     \
+    constexpr size_t GROUP_SIZE = 1;                         \
+    __VA_ARGS__                                              \
+  } else if (group_size == 4) {                              \
+    constexpr size_t GROUP_SIZE = 4;                         \
+    __VA_ARGS__                                              \
+  } else if (group_size == 8) {                              \
+    constexpr size_t GROUP_SIZE = 8;                         \
+    __VA_ARGS__                                              \
+  } else {                                                   \
+    std::ostringstream err_msg;                              \
+    err_msg << "Unsupported group_size: " << group_size;     \
+    throw std::invalid_argument(err_msg.str());              \
+  }
+
+#define DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, ...)     \
+  switch (head_dim) {                                  \
+    case 64: {                                         \
+      constexpr size_t HEAD_DIM = 64;                  \
+      __VA_ARGS__                                      \
+      break;                                           \
+    }                                                  \
+    case 128: {                                        \
+      constexpr size_t HEAD_DIM = 128;                 \
+      __VA_ARGS__                                      \
+      break;                                           \
+    }                                                  \
+    case 256: {                                        \
+      constexpr size_t HEAD_DIM = 256;                 \
+      __VA_ARGS__                                      \
+      break;                                           \
+    }                                                  \
+    default: {                                         \
+      std::ostringstream err_msg;                      \
+      err_msg << "Unsupported head_dim: " << head_dim; \
+      throw std::invalid_argument(err_msg.str());      \
+    }                                                  \
+  }
+
+
 namespace FlexFlow {
 
 // declare Legion names
@@ -35,11 +79,10 @@ using namespace Kernels::IncMultiHeadAttention;
 namespace Kernels {
 namespace TreeIncMultiHeadAttention {
 
-using namespace flashinfer;
-// using flashinfer::QKVLayout;
-// using flashinfer::PosEncodingMode;
-// using flashinfer::MaskMode;
-// using flashinfer::SinglePrefillWithKVCacheDispatched;
+using flashinfer::QKVLayout;
+using flashinfer::PosEncodingMode;
+using flashinfer::MaskMode;
+using flashinfer::SinglePrefillWithKVCacheDispatched;
 
 template <typename DT,
           int THREADS_PER_BLOCK,
@@ -610,46 +653,6 @@ void compute_attention_kernel_fused(TreeIncMultiHeadSelfAttentionMeta const *m,
 
 }
 
-#define DISPATCH_GROUP_SIZE(group_size, GROUP_SIZE, ...) \
-  if (group_size == 1) {                                     \
-    constexpr size_t GROUP_SIZE = 1;                         \
-    __VA_ARGS__                                              \
-  } else if (group_size == 4) {                              \
-    constexpr size_t GROUP_SIZE = 4;                         \
-    __VA_ARGS__                                              \
-  } else if (group_size == 8) {                              \
-    constexpr size_t GROUP_SIZE = 8;                         \
-    __VA_ARGS__                                              \
-  } else {                                                   \
-    std::ostringstream err_msg;                              \
-    err_msg << "Unsupported group_size: " << group_size;     \
-    throw std::invalid_argument(err_msg.str());              \
-  }
-
-#define DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, ...)     \
-  switch (head_dim) {                                  \
-    case 64: {                                         \
-      constexpr size_t HEAD_DIM = 64;                  \
-      __VA_ARGS__                                      \
-      break;                                           \
-    }                                                  \
-    case 128: {                                        \
-      constexpr size_t HEAD_DIM = 128;                 \
-      __VA_ARGS__                                      \
-      break;                                           \
-    }                                                  \
-    case 256: {                                        \
-      constexpr size_t HEAD_DIM = 256;                 \
-      __VA_ARGS__                                      \
-      break;                                           \
-    }                                                  \
-    default: {                                         \
-      std::ostringstream err_msg;                      \
-      err_msg << "Unsupported head_dim: " << head_dim; \
-      throw std::invalid_argument(err_msg.str());      \
-    }                                                  \
-  }
-
 template <typename DT>
 void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
                           BatchConfig const *bc,
@@ -693,17 +696,17 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
     float* tmp = m->scratch_space;
     float* custom_mask = m->custom_mask + req_idx * max_q_length * max_kv_length;
 
-    // DISPATCH_GROUP_SIZE(
-    //   group_size, GROUP_SIZE,
-    //     {DISPATCH_HEAD_DIM(
-    //       head_dim, HEAD_DIM, {
-    SinglePrefillWithKVCacheDispatched<
-        1, 128, QKVLayout::kNHD, PosEncodingMode::kNone,
+    DISPATCH_GROUP_SIZE(
+      group_size, GROUP_SIZE,
+        {DISPATCH_HEAD_DIM(
+          head_dim, HEAD_DIM, {
+    flashinfer::SinglePrefillWithKVCacheDispatched<
+        GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
         false, MaskMode::kNone, DT, DT>(
           q, k, v, custom_mask, o, tmp, /*lse=*/static_cast<float *>(nullptr),
           num_kv_heads, q_len, kv_len, sm_scale,
           /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
-    // })});
+    })});
   }
 
   // cudaEventRecord(t_end, stream);
@@ -855,22 +858,22 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
         output.get_half_ptr(),
         bias_ptr,
         stream);
-  } else if (input.data_type == DT_FLOAT) {
-    if (m->offload) {
-      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
-    }
-    float const *bias_ptr =
-        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
-    Kernels::TreeIncMultiHeadAttention::inference_kernel<float>(
-        m,
-        bc,
-        shard_id,
-        input.get_float_ptr(),
-        m->offload ? static_cast<float *>(m->weight_ptr)
-                   : weight.get_float_ptr(),
-        output.get_float_ptr(),
-        bias_ptr,
-        stream);
+  // } else if (input.data_type == DT_FLOAT) {
+  //   if (m->offload) {
+  //     pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
+  //   }
+  //   float const *bias_ptr =
+  //       use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
+  //   Kernels::TreeIncMultiHeadAttention::inference_kernel<float>(
+  //       m,
+  //       bc,
+  //       shard_id,
+  //       input.get_float_ptr(),
+  //       m->offload ? static_cast<float *>(m->weight_ptr)
+  //                  : weight.get_float_ptr(),
+  //       output.get_float_ptr(),
+  //       bias_ptr,
+  //       stream);
   } else {
     assert(false && "Unspported data type");
   }
