@@ -116,17 +116,16 @@ jobs:
         run: |
           echo "gitwork: $GITHUB_WORKSPACE"
           lcov --capture --directory . --output-file main_coverage.info
-          lcov --extract main_coverage.info "$GITHUB_WORKSPACE/lib/*" --output-file main_coverage_e.info
-          lcov --remove main_coverage_e.info "$GITHUB_WORKSPACE/lib/*.dtg.h" "$GITHUB_WORKSPACE/lib/*.dtg.cc"  --output-file main_coverage_e_f.info
-          lcov --list main_coverage_e_f.info
+          lcov --extract main_coverage.info "$GITHUB_WORKSPACE/lib/*" --output-file main_coverage.info
+          lcov --remove main_coverage.info "$GITHUB_WORKSPACE/lib/*.dtg.h" "$GITHUB_WORKSPACE/lib/*.dtg.cc"  --output-file main_coverage.info
+          lcov --list main_coverage.info
       
       - name: Upload code coverage
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: main_coverage_e_f.info
+          file: main_coverage.info
           flags: unittests
-          plugin: pycoverage #hope this will disable gcov
           name: codecov-umbrella
           fail_ci_if_error: false
           verbose: true
