@@ -100,6 +100,12 @@ class LLM:
         self.data_type = data_type
         assert self.data_type == DataType.DT_HALF or self.data_type == DataType.DT_FLOAT
         self.cache_path = cache_path if len(cache_path) > 0 else "~/.cache/flexflow"
+        self.weights_path = self.__get_weights_path(self.model_name)
+        self.tokenizer_path = os.path.join(
+            os.path.expanduser(self.cache_path),
+            "tokenizers",
+            self.model_name.lower(),
+        )
         self.refresh_cache = refresh_cache
         self.output_file = output_file
         self.rm = None
@@ -194,6 +200,18 @@ class LLM:
             latest_revision = hf_api.model_info(self.model_name).sha
         return ff_revision, ff_revision_file, latest_revision
 
+    def __get_weights_path(self, model_name):
+        return os.path.join(
+            os.path.expanduser(self.cache_path),
+            "weights",
+            model_name.lower(),
+            (
+                "full-precision"
+                if self.data_type == DataType.DT_FLOAT
+                else "half-precision"
+            ),
+        )
+    
     def download_hf_weights_if_needed(self):
         """Check in the folder specified by the cache_path whether the LLM's model weights are available and up to date.
         If not, or if the refresh_cache parameter is set to True, download new weights.
@@ -201,20 +219,8 @@ class LLM:
         If any PEFT adapter is registered, perform the same operation for PEFT.
         """
 
-        def get_weights_path(model_name):
-            return os.path.join(
-                os.path.expanduser(self.cache_path),
-                "weights",
-                model_name.lower(),
-                (
-                    "full-precision"
-                    if self.data_type == DataType.DT_FLOAT
-                    else "half-precision"
-                ),
-            )
-
         def refresh_cache_if_needed(model_name):
-            weights_path = get_weights_path(model_name)
+            weights_path = self.__get_weights_path(model_name)
             if self.refresh_cache:
                 print(
                     f"Refreshing weights in cache for model {model_name} at path {weights_path} ..."
@@ -269,7 +275,7 @@ class LLM:
                 peft_config = peft_dict["peft_config"]
                 peft_type = peft_dict["peft_type"]
 
-                weights_path = get_weights_path(peft_model_id)
+                weights_path = self.__get_weights_path(peft_model_id)
                 refresh_cache_if_needed(peft_model_id)
                 ff_revision, ff_revision_file, latest_revision = (
                     self.__get_revision_hashes(peft_model_id, weights_path)
@@ -295,7 +301,6 @@ class LLM:
                     gc.collect()
                     torch.cuda.empty_cache()
 
-        self.weights_path = get_weights_path(self.model_name)
         download_llm_weights()
         download_peft_weights()
 
@@ -306,11 +311,6 @@ class LLM:
         print("Loading tokenizer...")
 
         # Use local cache, or download new version
-        self.tokenizer_path = os.path.join(
-            os.path.expanduser(self.cache_path),
-            "tokenizers",
-            self.model_name.lower(),
-        )
         if self.refresh_cache:
             print(
                 f"Refreshing cached tokenizer for model {self.model_name} at path {self.tokenizer_path} ..."
@@ -353,17 +353,20 @@ class LLM:
         :param new_model_id: The new model ID for the Hugging Face Hub.
         :param private: Whether to upload the model as a private model.
         """
+        # Ensure Hugging Face CLI is logged in
+        if not HfFolder.get_token():
+            raise RuntimeError("Hugging Face token not found. Please login using `huggingface-cli login`.")
+        
         print(f"Preparing model for upload to Hugging Face Hub: {new_model_id}")
         print("Tokenizer path is: ", self.tokenizer_path)
 
         # Initialize a new Hugging Face model instance
         hf_model = AutoModelForCausalLM.from_config(self.hf_config)
-        weights_path = self.weights_path
         print(f"Model class is: {self.model_class}")
 
         # Load FlexFlow weights into the Hugging Face model instance
         try:
-            self.model_class.load_weights_into_hf_model(hf_model, weights_path)
+            self.model_class.load_weights_into_hf_model(hf_model, self.weights_path)
         except Exception as e:
             print(f"Error loading weights into model: {e}")
             return
@@ -381,13 +384,6 @@ class LLM:
         rev_sha_path = os.path.join(temp_dir, "rev_sha.txt")
         if os.path.exists(rev_sha_path):
             os.remove(rev_sha_path)
-
-        # Ensure Hugging Face CLI is logged in
-        if not HfFolder.get_token():
-            print(
-                "Hugging Face token not found. Please login using `huggingface-cli login`."
-            )
-            return
 
         # Upload the model
         api = HfApi()
