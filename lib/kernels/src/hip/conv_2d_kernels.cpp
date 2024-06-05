@@ -182,14 +182,8 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(miopenSet4dTensorDescriptor(
       filterDesc, miopenFloat, output_c, input_c / groups, kernel_h, kernel_w));
 
-  checkCUDNN(miopenInitConvolutionDescriptor(convDesc,
-                                             miopenConvolution,
-                                             pad_h,
-                                             pad_w,
-                                             stride_h,
-                                             stride_w,
-                                             1,
-                                             1));
+  checkCUDNN(miopenInitConvolutionDescriptor(
+      convDesc, miopenConvolution, pad_h, pad_w, stride_h, stride_w, 1, 1));
 
   if (groups != 1) {
     checkCUDNN(miopenSetConvolutionGroupCount(convDesc, groups));
