@@ -14,14 +14,15 @@
  */
 
 #include "kernels/dropout_kernels.h"
-#include "kernels/hip_helper.h"
+#include "device.h"
+#include "kernels/ff_handle.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 namespace Kernels {
 namespace Dropout {
 
-DropoutPerDeviceState init_kernel(PerDeviceFFHandle handler,
+DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                   float rate,
                                   unsigned long long seed,
                                   ArrayShape output_shape,
@@ -47,8 +48,6 @@ DropoutPerDeviceState init_kernel(PerDeviceFFHandle handler,
     dropoutStates = allocator.allocate(totalSize);
     reserveSpace = ((char *)dropoutStates) + dropoutStateSize;
   }
-  // checkCUDA(hipMalloc(&dropoutStates, dropoutStateSize));
-  // checkCUDA(hipMalloc(&reserveSpace, reserveSpaceSize));
   checkCUDNN(miopenSetDropoutDescriptor(dropoutDesc,
                                         handle.dnn,
                                         rate,
@@ -74,7 +73,7 @@ void forward_kernel(hipStream_t stream,
                     DropoutPerDeviceState &m,
                     float const *input_ptr,
                     float *output_ptr) {
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+  checkCUDNN(miopenSetStream(m.handle.dnn, stream));
 
   checkCUDNN(miopenDropoutForward(m.handle.dnn,
                                   m.dropoutDesc,
@@ -91,7 +90,7 @@ void backward_kernel(hipStream_t stream,
                      DropoutPerDeviceState &m,
                      float const *output_grad_ptr,
                      float *input_grad_ptr) {
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+  checkCUDNN(miopenSetStream(m.handle.dnn, stream));
 
   checkCUDNN(miopenDropoutBackward(m.handle.dnn,
                                    m.dropoutDesc,
