@@ -23,3 +23,6 @@
 	path = deps/tokenizers-cpp
 	url = https://github.com/mlc-ai/tokenizers-cpp.git
 	fetchRecurseSubmodules = true
+[submodule "deps/tensorrt-llm"]
+	path = deps/tensorrt-llm
+	url = https://github.com/NVIDIA/TensorRT-LLM.git
