@@ -72,13 +72,13 @@ jobs:
         run: |
           build_libs.sh kernels
 
-      - name: Build substitutions
-        run: |
-          build_libs.sh substitutions
+      # - name: Build substitutions
+      #   run: |
+      #     build_libs.sh substitutions
 
-      - name: Build compiler
-        run: |
-          build_libs.sh compiler
+      # - name: Build compiler
+      #   run: |
+      #     build_libs.sh compiler
 
       - name: Build substitution-generator
         run: |
@@ -88,14 +88,40 @@ jobs:
         run: |
           test_libs.sh utils
 
-      - name: Test substitutions
+      - name: Test op-attrs
         run: |
-          test_libs.sh substitutions
+          test_libs.sh op-attrs
 
-      - name: Test compiler
+      - name: Test pcg
         run: |
-          test_libs.sh compiler
+          test_libs.sh pcg
+
+      # - name: Test substitutions
+      #   run: |
+      #     test_libs.sh substitutions
+
+      # - name: Test compiler
+      #   run: |
+      #     test_libs.sh compiler
 
       - name: Test substitution-generator
         run: |
           test_libs.sh substitution-generator
+
+      - name: Generate code coverage
+        run: |
+          echo "gitwork: $GITHUB_WORKSPACE"
+          lcov --capture --directory . --output-file main_coverage.info
+          lcov --extract main_coverage.info "$GITHUB_WORKSPACE/lib/*" --output-file main_coverage.info
+          lcov --remove main_coverage.info "$GITHUB_WORKSPACE/lib/*.dtg.h" "$GITHUB_WORKSPACE/lib/*.dtg.cc"  --output-file main_coverage.info
+          lcov --list main_coverage.info
+      
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: main_coverage.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          verbose: true

@@ -1,0 +1,20 @@
+namespace = "FlexFlow"
+name = "TensorAttributePattern"
+features = [
+  "eq",
+  # "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "<unordered_set>",
+  "substitutions/tensor_pattern/tensor_attribute_constraint.dtg.h",
+  "utils/hash-utils.h",
+]
+
+[[fields]]
+name = "attribute_constraints"
+type = "std::unordered_set<::FlexFlow::TensorAttributeConstraint>"

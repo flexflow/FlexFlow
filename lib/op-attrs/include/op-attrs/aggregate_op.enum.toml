@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "AggregateOp"
+features = [
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[values]]
+name = "SUM"
+
+[[value]]
+name = "AVG"

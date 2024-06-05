@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "OutputOperatorAttrsAssignment"
+features = [
+  "eq",
+  # "ord",
+  "hash",
+  # "json",
+  "fmt",
+]
+
+includes = [
+  "substitutions/operator_pattern/operator_attribute_key.dtg.h",
+  "substitutions/output_graph/output_operator_attribute_expr.dtg.h",
+  "<unordered_map>",
+]
+
+# NOTE(@wmdi): Not sure if it aligns with other design. Or alternatively we can
+# define the assignment for each operator type.
+[[fields]]
+name = "assignments"
+type = "std::unordered_map<::FlexFlow::OperatorAttributeKey, ::FlexFlow::OutputOperatorAttributeExpr>"

@@ -14,13 +14,12 @@
  */
 
 #include "kernels/transpose_kernels.h"
-#include "kernels/hip_helper.h"
+#include "device.h"
+#include "kernels/accessor.h"
+#include "utils/exception.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::coord_t;
-using Legion::Domain;
 
 struct TransposeStrides {
   int num_dim;
@@ -31,65 +30,20 @@ struct TransposeStrides {
 namespace Kernels {
 namespace Transpose {
 
-void forward_kernel(hipStream_t stream,
-                    TransposePerDeviceState const *m,
-                    float const *input_ptr,
-                    float *output_ptr,
-                    Domain in_domain,
-                    Domain out_domain) {
+TransposePerDeviceState init_kernel(int num_dim,
+                                    std::vector<ff_dim_t> const &perm) {
+  int const length = perm.size();
 
-  TransposeStrides info;
-  info.num_dim = out_domain.get_dim();
-  assert(info.num_dim == m->num_dim);
-  for (int i = 0; i < info.num_dim; i++) {
-    int in_dim_size = (in_domain.hi()[i] - in_domain.lo()[i] + 1);
-    int out_dim_size = (out_domain.hi()[i] - out_domain.lo()[i] + 1);
-    info.in_strides[i] = (i == 0) ? 1 : info.in_strides[i - 1] * in_dim_size;
-    info.out_strides[i] = (i == 0) ? 1 : info.out_strides[i - 1] * out_dim_size;
-    info.perm[i] = m->perm[i];
+  std::vector<int> perm_vector;
+  assert(length <= MAX_TENSOR_DIM);
+  for (int i = 0; i < length; ++i) {
+    perm_vector.push_back(perm[i].value());
   }
-  hipLaunchKernelGGL(transpose_simple_kernel,
-                     GET_BLOCKS(out_domain.get_volume()),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     out_domain.get_volume(),
-                     input_ptr,
-                     output_ptr,
-                     info,
-                     0.0f /*beta*/);
+
+  return {num_dim, perm_vector};
 }
 
-void backward_kernel(hipStream_t stream,
-                     TransposePerDeviceState const *m,
-                     float *input_grad_ptr,
-                     float const *output_grad_ptr,
-                     Domain in_grad_domain,
-                     Domain out_grad_domain) {
-
-  TransposeStrides info;
-  info.num_dim = in_grad_domain.get_dim();
-  assert(info.num_dim == m->num_dim);
-  for (int i = 0; i < info.num_dim; i++) {
-    int in_dim_size = (out_grad_domain.hi()[i] - out_grad_domain.lo()[i] + 1);
-    int out_dim_size = (in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1);
-    info.in_strides[i] = (i == 0) ? 1 : info.in_strides[i - 1] * in_dim_size;
-    info.out_strides[i] = (i == 0) ? 1 : info.out_strides[i - 1] * out_dim_size;
-    info.perm[m->perm[i]] = i;
-  }
-  hipLaunchKernelGGL(transpose_simple_kernel,
-                     GET_BLOCKS(in_grad_domain.get_volume()),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     in_grad_domain.get_volume(),
-                     output_grad_ptr,
-                     input_grad_ptr,
-                     info,
-                     1.0f /*beta*/);
-}
-
-__global__ void transpose_simple_kernel(coord_t volume,
+__global__ void transpose_simple_kernel(std::size_t volume,
                                         float const *in_ptr,
                                         float *out_ptr,
                                         const TransposeStrides info,
@@ -104,6 +58,73 @@ __global__ void transpose_simple_kernel(coord_t volume,
     }
     out_ptr[o_idx] += out_ptr[o_idx] * beta + in_ptr[i_idx];
   }
+}
+
+void forward_kernel(hipStream_t stream,
+                    TransposePerDeviceState const &m,
+                    GenericTensorAccessorW const &in_grad,
+                    GenericTensorAccessorR const &out_grad) {
+
+  TransposeStrides info;
+  info.num_dim = in_grad.shape.num_dims();
+  assert(info.num_dim == m.num_dim);
+  for (int i = 0; i < info.num_dim; i++) {
+    if (i == 0) {
+      info.in_strides[i] = 1;
+      info.out_strides[i] = 1;
+    } else {
+      int in_dim_size = input.shape[legion_dim_t(i)] + 1;
+      int out_dim_size = output.shape[legion_dim_t(i)] + 1;
+      info.in_strides[i] = info.in_strides[i - 1] * in_dim_size;
+      info.out_strides[i] = info.out_strides[i - 1] * out_dim_size;
+    }
+    info.perm[i] = m.perm[i];
+  }
+
+  hipLaunchKernelGGL(transpose_simple_kernel,
+                     GET_BLOCKS(output.shape.get_volume()),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream,
+                     output.shape.get_volume(),
+                     input.get_float_ptr(),
+                     output.get_float_ptr(),
+                     info,
+                     0.0f /*beta*/);
+}
+
+void backward_kernel(hipStream_t stream,
+                     TransposePerDeviceState const &m,
+                     float *input_grad_ptr,
+                     float const *output_grad_ptr,
+                     Domain in_grad_domain,
+                     Domain out_grad_domain) {
+
+  TransposeStrides info;
+  info.num_dim = in_grad.shape.num_dims();
+  assert(info.num_dim == m.num_dim);
+  for (int i = 0; i < info.num_dim; i++) {
+    if (i == 0) {
+      info.in_strides[i] = 1;
+      info.out_strides[i] = 1;
+    } else {
+      int in_dim_size = out_grad.shape[legion_dim_t(i)] + 1;
+      int out_dim_size = in_grad.shape[legion_dim_t(i)] + 1;
+      info.in_strides[i] = info.in_strides[i - 1] * in_dim_size;
+      info.out_strides[i] = info.out_strides[i - 1] * out_dim_size;
+    }
+    info.perm[m.perm[i]] = i;
+  }
+  hipLaunchKernelGGL(transpose_simple_kernel,
+                     GET_BLOCKS(in_grad.shape.get_volume()),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream,
+                     in_grad.shape.get_volume(),
+                     out_grad.get_float_ptr(),
+                     in_grad.get_float_ptr(),
+                     info,
+                     1.0f /*beta*/);
 }
 
 } // namespace Transpose

@@ -1,0 +1,33 @@
+namespace = "FlexFlow"
+name = "TensorAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/tensor_shape.dtg.h",
+  "pcg/initializer_attrs.dtg.h",
+  "op-attrs/param_sync.dtg.h",
+  "<optional>",
+]
+
+[[fields]]
+name = "shape"
+type = "::FlexFlow::TensorShape"
+
+[[fields]]
+name = "initializer"
+type = "std::optional<::FlexFlow::InitializerAttrs>"
+
+[[fields]]
+name = "create_gradients"
+type = "bool"
+
+[[fields]]
+name = "sync_type"
+type = "std::optional<::FlexFlow::ParamSync>"

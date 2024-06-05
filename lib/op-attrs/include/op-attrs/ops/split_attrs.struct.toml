@@ -1,0 +1,24 @@
+namespace = "FlexFlow"
+name = "SplitAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "utils/stack_vector.h",
+  "op-attrs/ff_dim.h",
+  "op-attrs/ff_dim.dtg.h",
+]
+
+[[fields]]
+name = "splits"
+type = "::FlexFlow::stack_vector<int, MAX_NUM_OUTPUTS>"
+
+[[fields]]
+name = "axis"
+type = "::FlexFlow::ff_dim_t"

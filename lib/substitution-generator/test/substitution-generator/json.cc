@@ -18,7 +18,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     Operator o;
     from_json(j, o);
 
-    CHECK(o.op_type == Op::EW_ADD);
+    CHECK(o.op_type == LegacyOperatorType::EW_ADD);
     CHECK(o.input.size() == 2);
     CHECK(o.input[0].opId == -2);
     CHECK(o.input[0].tsId == 0);

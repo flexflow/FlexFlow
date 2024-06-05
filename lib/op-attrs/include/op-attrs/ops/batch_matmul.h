@@ -1,18 +1,26 @@
-#ifndef _FF_OP_META_BATCH_MATMUL_ATTRS_H
-#define _FF_OP_META_BATCH_MATMUL_ATTRS_H
+#ifndef _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_BATCH_MATMUL_H
+#define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_BATCH_MATMUL_H
 
-#include "core.h"
-#include "op-attrs/parallel_tensor_shape.h"
-#include "utils/visitable.h"
+#include "op-attrs/ops/batch_matmul.dtg.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
+#include "op-attrs/tensor_shape.dtg.h"
+#include <tl/expected.hpp>
 
 namespace FlexFlow {
 
-struct BatchMatmulAttrs {
-  req<int> a_seq_length_dim, b_seq_length_dim;
-};
-FF_VISITABLE_STRUCT(BatchMatmulAttrs, a_seq_length_dim, b_seq_length_dim);
+bool is_valid(BatchMatmulAttrs const &,
+              ParallelTensorShape const &,
+              ParallelTensorShape const &);
 
-CHECK_VALID_OP_ATTR(BatchMatmulAttrs);
+tl::expected<TensorShape, std::string>
+    get_output_shape(BatchMatmulAttrs const &attrs,
+                     TensorShape const &input_lhs,
+                     TensorShape const &input_rhs);
+
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(BatchMatmulAttrs const &attrs,
+                     ParallelTensorShape const &input_lhs,
+                     ParallelTensorShape const &input_rhs);
 } // namespace FlexFlow
 
 #endif

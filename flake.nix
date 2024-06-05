@@ -62,6 +62,7 @@
     {
       packages = {
         legion = pkgs.callPackage ./.flake/pkgs/legion.nix { };
+        hpp2plantuml = pkgs.python3Packages.callPackage ./.flake/pkgs/hpp2plantuml.nix { };
         rapidcheckFull = pkgs.symlinkJoin {
           name = "rapidcheckFull";
           paths = (with pkgs; [ rapidcheck.out rapidcheck.dev ]);
@@ -123,6 +124,7 @@
             ])
             (with self.packages.${system}; [
               legion
+              hpp2plantuml
               rapidcheckFull
               doctest
             ])
@@ -142,6 +144,10 @@
         default = mkShell {
           inputsFrom = [ ci ];
           inherit (ci) CMAKE_FLAGS;
+
+          VIMPLUGINS = lib.strings.concatStringsSep "," [
+            "${proj-repo.packages.${system}.proj-nvim}"
+          ];
 
           buildInputs = builtins.concatLists [
             (with pkgs; [

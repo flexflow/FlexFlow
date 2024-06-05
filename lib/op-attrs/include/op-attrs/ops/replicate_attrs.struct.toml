@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "ReplicateAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [ ]
+
+[[fields]]
+name = "replicate_degree"
+type = "int"

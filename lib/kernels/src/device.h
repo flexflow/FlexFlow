@@ -4,7 +4,7 @@
 #include "kernels/array_shape.h"
 #include "kernels/device.h"
 #include "op-attrs/datatype.h"
-#include "op-attrs/op.h"
+#include "op-attrs/operator_type.h"
 #include <cstddef>
 
 #if defined(FF_USE_CUDA)

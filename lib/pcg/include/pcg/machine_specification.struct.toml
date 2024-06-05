@@ -1,0 +1,30 @@
+namespace = "FlexFlow"
+name = "MachineSpecification"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "num_nodes"
+type = "int"
+
+[[fields]]
+name = "num_cpus_per_node"
+type = "int"
+
+[[fields]]
+name = "num_gpus_per_node"
+type = "int"
+
+[[fields]]
+name = "inter_node_bandwidth"
+type = "float"
+
+[[fields]]
+name = "intra_node_bandwidth"
+type = "float"

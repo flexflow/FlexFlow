@@ -1,0 +1,24 @@
+namespace = "FlexFlow"
+name = "ParallelLayerAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/operator_attrs.h",
+  "utils/stack_string.h",
+  "<optional>",
+]
+
+[[fields]]
+name = "attrs"
+type = "::FlexFlow::PCGOperatorAttrs"
+
+[[fields]]
+name = "name"
+type = "std::optional<::FlexFlow::stack_string<MAX_OPNAME>>"

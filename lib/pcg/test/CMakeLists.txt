@@ -1,0 +1,13 @@
+ff_add_test_executable(
+  NAME
+    pcg-tests
+  SRC_PATTERNS
+    src/*.cc
+  PRIVATE_INCLUDE
+    src/
+  DEPS
+    utils
+    pcg
+    doctest
+    utils-test-common
+)

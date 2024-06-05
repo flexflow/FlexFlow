@@ -1,0 +1,34 @@
+namespace = "FlexFlow"
+name = "ParallelTensorAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/parallel_tensor_shape.dtg.h",
+  "op-attrs/param_sync.dtg.h",
+  "pcg/initializer_attrs.dtg.h",
+  "pcg/create_grad.dtg.h",
+  "<optional>",
+]
+
+[[fields]]
+name = "shape"
+type = "::FlexFlow::ParallelTensorShape"
+
+[[fields]]
+name = "sync_type"
+type = "std::optional<::FlexFlow::ParamSync>"
+
+[[fields]]
+name = "initializer"
+type = "std::optional<::FlexFlow::InitializerAttrs>"
+
+[[fields]]
+name = "create_gradients"
+type = "::FlexFlow::CreateGrad"

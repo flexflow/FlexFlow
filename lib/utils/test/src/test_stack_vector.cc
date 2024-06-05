@@ -1,6 +1,7 @@
 #include "test/utils/doctest.h"
 #include "utils/stack_vector.h"
 #include <iterator>
+#include <rapidcheck.h>
 
 using namespace FlexFlow;
 
@@ -75,5 +76,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     vector.push_back(20);
     CHECK(vector.back() == 20);
+  }
+
+  TEST_CASE_TEMPLATE("RC arbitrary", T, int, double, char) {
+    constexpr std::size_t MAXSIZE = 10;
+    CHECK(rc::check("within bound", [](stack_vector<T, MAXSIZE> v) {
+      return v.size() <= MAXSIZE;
+    }));
   }
 }

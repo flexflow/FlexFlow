@@ -2,16 +2,15 @@
 #define _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_REVERSE_H
 
 #include "core.h"
-#include "op-attrs/ff_dim.h"
-#include "utils/visitable.h"
+#include "op-attrs/ops/reverse_attrs.dtg.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
 
 namespace FlexFlow {
 
-struct ReverseAttrs {
-  ff_dim_t axis;
-};
-FF_VISITABLE_STRUCT(ReverseAttrs, axis);
 CHECK_VALID_OP_ATTR(ReverseAttrs);
+
+ParallelTensorShape get_output_shape(ReverseAttrs const &attrs,
+                                     ParallelTensorShape const &input_shape);
 
 } // namespace FlexFlow
 

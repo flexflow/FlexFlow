@@ -2,18 +2,15 @@
 #define _FLEXFLOW_REPLICATE_ATTRS_H
 
 #include "core.h"
-#include "op-attrs/ff_dim.h"
-#include "op-attrs/parallel_tensor_shape.h"
-#include "utils/visitable.h"
+#include "op-attrs/ops/replicate_attrs.dtg.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
 
 namespace FlexFlow {
 
-struct ReplicateAttrs {
-  ff_dim_t replicate_dim;
-  req<int> replicate_degree;
-};
-FF_VISITABLE_STRUCT(ReplicateAttrs, replicate_dim, replicate_degree);
 CHECK_VALID_OP_ATTR(ReplicateAttrs);
+
+ParallelTensorShape get_output_shape(ReplicateAttrs const &attrs,
+                                     ParallelTensorShape const &input_shape);
 
 } // namespace FlexFlow
 
