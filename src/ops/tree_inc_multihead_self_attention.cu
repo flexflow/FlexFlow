@@ -104,7 +104,6 @@ __global__ void compute_attention_kernel_fused_kernel(
     BatchConfig::PerRequestInfo *request_infos,
     int num_heads,
     int num_requests,
-    BatchConfig::BitMask *causalMask,
     float* custom_mask,
     int max_q_length,
     int max_kv_length,
@@ -153,9 +152,6 @@ __global__ void compute_attention_kernel_fused_kernel(
   int const qlength = request_infos[requext_idx_in_batch].num_tokens_in_batch;
 
   custom_mask = custom_mask + request_idx * max_q_length * max_kv_length;
-
-  int non_tree_cache_size =
-      causalMask[requext_idx_in_batch].non_tree_cache_size;
 
   int const first_token_idx =
       request_infos[requext_idx_in_batch].first_token_offset_in_batch;
@@ -230,8 +226,7 @@ __global__ void compute_attention_kernel_fused_kernel(
         bool const mask =
             prompt_phase
                 ? (qi + q_start < ti)
-                : (ti >= non_tree_cache_size &&
-                   (custom_mask[qi * tlength + ti] < -1.0f));
+                : (custom_mask[qi * tlength + ti] < -1.0f);
 
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
@@ -287,8 +282,7 @@ __global__ void compute_attention_kernel_fused_kernel(
     for (int ti = first_step + tidx; ti < tlength; ti += THREADS_PER_BLOCK) {
       bool const mask =
           prompt_phase ? (q_start + qi < ti)
-                       : (ti >= non_tree_cache_size &&
-                          (custom_mask[qi * tlength + ti] < -1.0f));
+                       : (custom_mask[qi * tlength + ti] < -1.0f);
       float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
       exp_sum += logit;
       qk_smem[ti - first_step] = mask ? 0.0f : logit;
@@ -607,7 +601,6 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
                    m->request_infos,                                           \
                    m->num_q_heads,                                             \
                    bc->num_active_requests(),                                  \
-                   m->causalMask,                                              \
                    m->custom_mask,                                             \
                    max_q_length,                                               \
                    max_kv_length,                                              \
@@ -783,9 +776,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   update_qkv_cache<DT>(m, bc, stream);
 
   // Compute attention
-  tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+  // tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
-  // compute_attention_kernel_fused<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+  compute_attention_kernel_fused<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
   // int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
