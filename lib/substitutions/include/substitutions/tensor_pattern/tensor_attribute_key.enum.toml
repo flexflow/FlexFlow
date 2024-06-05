@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "TensorAttributeKey"
+features = [
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[values]]
+name = "DIM_SIZES"
+
+[[values]]
+name = "DIM_DEGREES"

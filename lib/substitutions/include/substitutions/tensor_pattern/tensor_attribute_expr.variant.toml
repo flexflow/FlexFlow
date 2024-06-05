@@ -1,0 +1,27 @@
+namespace = "FlexFlow"
+name = "TensorAttributeExpr"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "substitutions/tensor_pattern/tensor_attribute_key.dtg.h",
+  "substitutions/tensor_pattern/tensor_attribute_list_access.dtg.h",
+  "substitutions/tensor_pattern/tensor_attribute_list_size.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::TensorAttributeKey"
+key = "key"
+
+[[values]]
+type = "::FlexFlow::TensorAttributeListSize"
+key = "list_size"
+
+[[values]]
+type = "::FlexFlow::TensorAttributeListIndexAccess"
+key = "list_idx"

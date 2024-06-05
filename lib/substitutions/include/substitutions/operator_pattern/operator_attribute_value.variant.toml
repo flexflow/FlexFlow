@@ -1,0 +1,63 @@
+namespace = "FlexFlow"
+name = "OperatorAttributeValue"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+  "json",
+]
+explicit_constructors = false
+
+includes = [
+  "<vector>",
+  "<optional>",
+  "op-attrs/operator_type.dtg.h",
+  "op-attrs/ff_dim.dtg.h",
+  "op-attrs/activation.dtg.h",
+  "op-attrs/aggregate_op.dtg.h",
+  "op-attrs/regularizer_attrs.dtg.h",
+  "op-attrs/pool_op.dtg.h",
+  "op-attrs/tensor_shape.dtg.h",
+  "op-attrs/datatype.dtg.h",
+  "<cstddef>",
+]
+
+[[values]]
+type = "int"
+
+[[values]]
+type = "bool"
+
+[[values]]
+type = "std::vector<int>"
+
+[[values]]
+type = "std::vector<::FlexFlow::ff_dim_t>"
+
+[[values]]
+type = "::FlexFlow::OperatorType"
+
+[[values]]
+type = "::FlexFlow::Activation"
+
+[[values]]
+type = "::FlexFlow::ff_dim_t"
+
+[[values]]
+type = "size_t"
+
+[[values]]
+type = "::FlexFlow::AggregateOp"
+
+[[values]]
+type = "std::optional<::FlexFlow::RegularizerAttrs>"
+
+[[values]]
+type = "::FlexFlow::PoolOp"
+
+[[values]]
+type = "::FlexFlow::TensorShape"
+
+[[values]]
+type = "::FlexFlow::DataType"

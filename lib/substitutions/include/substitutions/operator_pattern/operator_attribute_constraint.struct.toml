@@ -1,0 +1,28 @@
+namespace = "FlexFlow"
+name = "OperatorAttributeConstraint"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "substitutions/constraint_type.dtg.h",
+  "substitutions/operator_pattern/operator_attribute_expr.dtg.h",
+  "substitutions/operator_pattern/operator_attribute_value.dtg.h",
+]
+
+[[fields]]
+name = "constraint_type"
+type = "::FlexFlow::ConstraintType"
+
+[[fields]]
+name = "attribute_expr"
+type = "::FlexFlow::OperatorAttributeExpr"
+
+[[fields]]
+name = "attribute_value"
+type = "::FlexFlow::OperatorAttributeValue"

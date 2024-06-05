@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "PoolOp"
+features = [
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[values]]
+name = "MAX"
+
+[[values]]
+name = "AVG"

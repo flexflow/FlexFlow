@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "TensorAttributeListSize"
+features = [
+  "eq", 
+  "ord",
+  "hash",
+  "rapidcheck",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "substitutions/tensor_pattern/tensor_attribute_key.dtg.h",
+]
+
+
+[[fields]]
+name = "attribute_key"
+type = "::FlexFlow::TensorAttributeKey"

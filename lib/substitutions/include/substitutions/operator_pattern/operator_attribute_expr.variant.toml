@@ -1,0 +1,27 @@
+namespace = "FlexFlow"
+name = "OperatorAttributeExpr"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "substitutions/operator_pattern/operator_attribute_key.dtg.h",
+  "substitutions/operator_pattern/operator_attribute_list_access.dtg.h",
+  "substitutions/operator_pattern/operator_attribute_list_size.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::OperatorAttributeKey"
+key = "key"
+
+[[values]]
+type = "::FlexFlow::OperatorAttributeListSize"
+key = "list_size"
+
+[[values]]
+type = "::FlexFlow::OperatorAttributeListIndexAccess"
+key = "list_idx"

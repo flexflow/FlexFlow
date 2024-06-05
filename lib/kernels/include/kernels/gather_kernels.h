@@ -2,36 +2,34 @@
 #define _FLEXFLOW_OPS_KERNELS_GATHER_KERNELS_H
 
 #include "accessor.h"
-#include "device.h"
+#include "kernels/device.h"
 
 namespace FlexFlow {
 
 struct GatherPerDeviceState {
-  int legion_dim;
-  req<DataType> index_data_type;
+  PerDeviceFFHandle handle;
+  legion_dim_t legion_dim;
 };
+
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GatherPerDeviceState,
-                                             legion_dim,
-                                             index_data_type);
+                                             handle,
+                                             legion_dim);
 
 namespace Kernels {
 namespace Gather {
+
 void forward_kernel(ffStream_t stream,
                     GatherPerDeviceState const &m,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorR const &index,
-                    GenericTensorAccessorW const &output,
-                    size_t stride,
-                    size_t input_dim_size,
-                    size_t output_dim_size);
+                    GenericTensorAccessorW const &output);
+
 void backward_kernel(ffStream_t stream,
                      GatherPerDeviceState const &m,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorR const &index,
-                     GenericTensorAccessorW const &input_grad,
-                     size_t stride,
-                     size_t input_dim_size,
-                     size_t output_dim_size);
+                     GenericTensorAccessorW const &input_grad);
+
 } // namespace Gather
 } // namespace Kernels
 } // namespace FlexFlow

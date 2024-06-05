@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "ff_dim_t"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+[[fields]]
+name = "value"
+type = "int"

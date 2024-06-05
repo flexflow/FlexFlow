@@ -41,10 +41,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     MultiDiEdge e{n1, pcg.add_node_port(), n0, pcg.add_node_port()};
     pcg.add_edge(e);
-    pcg.add_output(e,
-                   ParallelTensor(ParallelTensorDims({2, 1}),
-                                  DataType::FLOAT,
-                                  CreateGrad::YES));
+    ParallelDim dim = {2, 1, false};
+    ParallelTensorDims dims = {FFOrdered<ParallelDim>{dim}};
+    pcg.add_output(e, ParallelTensor(dims, DataType::FLOAT, CreateGrad::YES));
 
     auto test_allowed_machine_views = [](Operator const &,
                                          MachineSpecification const &) {

@@ -1,0 +1,25 @@
+namespace = "FlexFlow"
+name = "V1OperatorGraph"
+features = [
+  # "eq",
+  # "ord",
+  # "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "<vector>",
+  "<unordered_set>",
+  "pcg/file_format/v1/graphs/v1_graph_edge.dtg.h",
+  "utils/fmt.h",
+]
+
+[[fields]]
+name = "nodes"
+type = "std::vector<size_t>"
+
+[[fields]]
+name = "edges"
+type = "std::unordered_set<::FlexFlow::V1GraphEdge>"

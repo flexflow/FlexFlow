@@ -1,0 +1,15 @@
+namespace = "FlexFlow"
+name = "InputPatternEdge"
+features = [
+  "eq",
+  "ord",
+  "hash",
+]
+
+includes = [
+  "utils/graph.h"
+]
+
+[[fields]]
+name = "raw_edge"
+type = "::FlexFlow::InputMultiDiEdge"

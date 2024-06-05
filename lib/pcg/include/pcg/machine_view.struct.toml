@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "MachineView"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [ 
+  "pcg/device_id_t.dtg.h",
+  "pcg/strided_rectangle.dtg.h",
+]
+
+[[fields]]
+name = "start"
+type = "::FlexFlow::device_id_t"
+
+[[fields]]
+name = "rect"
+type = "::FlexFlow::StridedRectangle"

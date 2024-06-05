@@ -1,0 +1,20 @@
+namespace = "FlexFlow"
+name = "OperatorGraphInput"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph.h"
+]
+
+[[fields]]
+name = "node"
+type = "::FlexFlow::Node"
+
+[[fields]]
+name = "idx"
+type = "int"
