@@ -231,7 +231,7 @@ __global__ void compute_attention_kernel_fused_kernel(
             prompt_phase
                 ? (qi + q_start < ti)
                 : (ti >= non_tree_cache_size &&
-                   (custom_mask[qi * tlength + ti - non_tree_cache_size] < -1.0f));
+                   (custom_mask[qi * tlength + ti] < -1.0f));
 
         qk_max = mask ? qk_max : fmaxf(qk_max, qk);
 
@@ -288,7 +288,7 @@ __global__ void compute_attention_kernel_fused_kernel(
       bool const mask =
           prompt_phase ? (q_start + qi < ti)
                        : (ti >= non_tree_cache_size &&
-                          (custom_mask[qi * tlength + ti - non_tree_cache_size] < -1.0f));
+                          (custom_mask[qi * tlength + ti] < -1.0f));
       float logit = mask ? 0.0f : __expf(qk_smem[ti - first_step] - qk_max);
       exp_sum += logit;
       qk_smem[ti - first_step] = mask ? 0.0f : logit;
@@ -784,6 +784,8 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   // Compute attention
   tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+
+  // compute_attention_kernel_fused<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
   // int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
