@@ -14,40 +14,36 @@
  */
 
 #include "kernels/softmax_kernels.h"
-#include "kernels/hip_helper.h"
+#include "device.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::Domain;
-
-SoftmaxPerDeviceState::SoftmaxPerDeviceState(FFHandler handler,
-                                             Softmax const *softmax,
-                                             Domain const &input_domain)
-    : PerDeviceOpState(handler) {
-  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
-  dim = softmax->dim;
-  profiling = softmax->profiling;
-  std::strcpy(op_name, softmax->name);
-}
 
 namespace Kernels {
 namespace Softmax {
 
+SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &handle, int dim) {
+  ffTensorDescriptor_t inputTensor;
+
+  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
+
+  SoftmaxPerDeviceState per_device_state = {handle, inputTensor, dim};
+  return per_device_state;
+}
+
 void forward_kernel(hipStream_t stream,
-                    SoftmaxPerDeviceState const *m,
+                    SoftmaxPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr) {
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+  checkCUDNN(miopenSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(miopenSoftmaxForward_V2(m->handle.dnn,
+  checkCUDNN(miopenSoftmaxForward_V2(m.handle.dnn,
                                      &alpha,
-                                     m->inputTensor,
+                                     m.inputTensor,
                                      input_ptr,
                                      &beta,
-                                     m->inputTensor,
+                                     m.inputTensor,
                                      output_ptr,
                                      MIOPEN_SOFTMAX_ACCURATE,
                                      MIOPEN_SOFTMAX_MODE_CHANNEL));
