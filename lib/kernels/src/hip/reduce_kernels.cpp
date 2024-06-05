@@ -87,13 +87,17 @@ void backward_kernel(hipStream_t stream,
     default:
       assert(false);
   }
-  checkCUDNN(hipdnnAddTensor(m.handle.dnn,
-                             &alpha,
-                             m.outputTensor,
-                             output_grad_ptr,
-                             &beta,
-                             m.inputTensor,
-                             input_grad_ptr));
+  checkCUDNN(miopenOpTensor(m.handle.dnn,
+                            miopenTensorOpAdd,
+                            &alpha,
+                            m.inputTensor,
+                            input_grad_ptr,
+                            &alpha,
+                            m.outputTensor,
+                            output_grad_ptr,
+                            &beta,
+                            m.inputTensor,
+                            input_grad_ptr));
 }
 
 } // namespace Reduce
