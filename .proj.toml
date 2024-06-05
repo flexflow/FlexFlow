@@ -6,7 +6,6 @@ fix_compile_commands = false
 
 build_targets = [
   "kernels",
-<<<<<<< HEAD
 ]
 test_targets = [
   # "utils-tests",
