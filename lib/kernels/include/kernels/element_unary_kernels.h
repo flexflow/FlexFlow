@@ -9,9 +9,6 @@
 
 namespace FlexFlow {
 
-using ElementUnaryUnifiedAttrs =
-    std::variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
-
 struct ElementUnaryPerDeviceState {
   ffTensorDescriptor_t inputTensor, outputTensor;
   req<ffActivationDescriptor_t> actiDesc;
@@ -27,18 +24,34 @@ namespace ElementUnary {
 
 ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
                                        ArrayShape const &output_shape,
-                                       ElementUnaryUnifiedAttrs const &attrs);
+                                       ElementUnaryAttrs const &attrs);
 
 void forward_kernel(ffStream_t stream,
                     ElementUnaryPerDeviceState const &device_state,
-                    ElementUnaryUnifiedAttrs const &attrs,
+                    ElementUnaryAttrs const &attrs,
+                    PerDeviceFFHandle &handle,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output);
+
+void forward_kernel(ffStream_t stream,
+                    ElementUnaryPerDeviceState const &device_state,
+                    ElementScalarUnaryAttrs const &attrs,
                     PerDeviceFFHandle &handle,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
 void backward_kernel(ffStream_t stream,
                      ElementUnaryPerDeviceState const &device_state,
-                     ElementUnaryUnifiedAttrs const &attrs,
+                     ElementUnaryAttrs const &attrs,
+                     PerDeviceFFHandle &handle,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorW const &input_grad,
+                     GenericTensorAccessorR const &output,
+                     GenericTensorAccessorR const &output_grad);
+
+void backward_kernel(ffStream_t stream,
+                     ElementUnaryPerDeviceState const &device_state,
+                     ElementScalarUnaryAttrs const &attrs,
                      PerDeviceFFHandle &handle,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &input_grad,

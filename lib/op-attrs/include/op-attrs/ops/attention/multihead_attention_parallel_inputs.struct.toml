@@ -1,0 +1,46 @@
+namespace = "FlexFlow"
+name = "MultiHeadAttentionParallelInputs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "<cstddef>",
+  "op-attrs/datatype.dtg.h",
+  "op-attrs/shard_parallel_dim.dtg.h",
+  "op-attrs/parallel_tensor_shape/discard_copy_degree.dtg.h",
+  "op-attrs/parallel_tensor_shape/sum_degree.dtg.h",
+]
+
+[[fields]]
+name = "batch_dim"
+type = "::FlexFlow::ShardParallelDim"
+
+[[fields]]
+name = "sequence_dim"
+type = "::FlexFlow::ShardParallelDim"
+
+[[fields]]
+name = "query_dim"
+type = "::FlexFlow::ShardParallelDim"
+
+[[fields]]
+name = "key_dim"
+type = "::FlexFlow::ShardParallelDim"
+
+[[fields]]
+name = "value_dim"
+type = "::FlexFlow::ShardParallelDim"
+
+[[fields]]
+name = "discard_copy_degree"
+type = "::FlexFlow::DiscardCopyDegree"
+
+[[fields]]
+name = "datatype"
+type = "::FlexFlow::DataType"

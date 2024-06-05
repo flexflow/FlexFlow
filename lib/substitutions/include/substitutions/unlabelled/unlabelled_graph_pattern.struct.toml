@@ -1,0 +1,10 @@
+namespace = "FlexFlow"
+name = "UnlabelledGraphPattern"
+features = []
+includes = [
+  "utils/graph.h"
+]
+
+[[fields]]
+name = "raw_graph"
+type = "::FlexFlow::OpenMultiDiGraphView"

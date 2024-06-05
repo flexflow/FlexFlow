@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "TensorAttributeValue"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "<vector>",
+  "utils/hash-utils-core.h",
+  "utils/fmt.h",
+]
+
+[[values]]
+type = "size_t"
+
+[[values]]
+type = "std::vector<size_t>"

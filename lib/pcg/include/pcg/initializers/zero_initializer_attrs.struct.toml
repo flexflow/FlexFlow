@@ -1,0 +1,11 @@
+namespace = "FlexFlow"
+name = "ZeroInitializerAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+fields = []

@@ -1,7 +1,8 @@
 #ifndef _FLEXFLOW_OPATTRS_INCLUDE_OPATTRS_FF_STACK_VECTOR_H
 #define _FLEXFLOW_OPATTRS_INCLUDE_OPATTRS_FF_STACK_VECTOR_H
 
-#include "op-attrs/ff_dim.h"
+#include "op-attrs/ff_dim.dtg.h"
+#include "utils/json.h"
 #include "utils/stack_vector.h"
 
 namespace FlexFlow {
@@ -28,11 +29,19 @@ struct DimOrdered {
       : contents(contents.begin(), contents.end()) {}
 
   T const &at(Idx idx) const {
-    return this->contents.at(idx.value());
+    int raw = idx.value;
+    if (raw < 0) {
+      raw = this->contents.size() + raw;
+    }
+    return this->contents.at(raw);
   }
 
   T &at(Idx idx) {
-    return this->contents.at(idx.value());
+    int raw = idx.value;
+    if (raw < 0) {
+      raw = this->contents.size() + raw;
+    }
+    return this->contents.at(raw);
   }
 
   T const &operator[](Idx idx) const {
@@ -41,6 +50,14 @@ struct DimOrdered {
 
   T &operator[](Idx idx) {
     return this->at(idx);
+  }
+
+  bool idx_is_valid(Idx const &idx) const {
+    int raw = idx.value;
+    if (raw < 0) {
+      raw = this->contents.size() + raw;
+    }
+    return (raw >= 0 && raw < this->contents.size());
   }
 
   bool operator==(DimOrdered const &other) const {
@@ -134,6 +151,17 @@ template <typename T>
 using FFOrdered = DimOrdered<ff_dim_t, T>;
 
 template <typename T>
+std::string format_as(FFOrdered<T> const &v) {
+  std::vector<T> as_vec(v.cbegin(), v.cend());
+  return fmt::format("<ff_ordered {}>", as_vec);
+}
+
+template <typename T>
+std::ostream &operator<<(std::ostream &s, FFOrdered<T> const &v) {
+  return (s << fmt::to_string(v));
+}
+
+template <typename T>
 auto inner_to_outer(FFOrdered<T> const &ff_ordered)
     -> decltype(reversed_container(ff_ordered)) {
   return reversed_container(ff_ordered);
@@ -160,6 +188,29 @@ FFOrdered<T> const &outer_to_inner(FFOrdered<T> const &ff_ordered) {
 
 } // namespace FlexFlow
 
+/* template <typename Idx, typename T> */
+/* void to_json(json &j, DimOrdered<Idx, T> const &x) { */
+/*   /1* j = std::vector<T>{x.cbegin(), x.cend()}; *1/ */
+/* } */
+
+/* template <typename Idx, typename T> */
+/* void from_json(json const &j, DimOrdered<Idx, T> &x) { */
+/*   /1* x = DimOrdered<Idx, T>{j.template get<std::vector<T>>()}; *1/ */
+/* } */
+
+namespace nlohmann {
+template <typename Idx, typename T>
+struct adl_serializer<::FlexFlow::DimOrdered<Idx, T>> {
+  static ::FlexFlow::DimOrdered<Idx, T> from_json(json const &j) {
+    return {j.template get<std::vector<T>>()};
+  }
+
+  static void to_json(json &j, ::FlexFlow::DimOrdered<Idx, T> const &x) {
+    j = std::vector<T>{x.cbegin(), x.cend()};
+  }
+};
+} // namespace nlohmann
+
 namespace std {
 
 template <typename Idx, typename T>
@@ -173,5 +224,17 @@ struct hash<::FlexFlow::DimOrdered<Idx, T>> {
 };
 
 } // namespace std
+
+namespace rc {
+
+template <typename Idx, typename T>
+struct Arbitrary<::FlexFlow::DimOrdered<Idx, T>> {
+  static Gen<::FlexFlow::DimOrdered<Idx, T>> arbitrary() {
+    return gen::construct<::FlexFlow::DimOrdered<Idx, T>>(
+        gen::arbitrary<::FlexFlow::stack_vector<T, MAX_TENSOR_DIM>>());
+  }
+};
+
+} // namespace rc
 
 #endif

@@ -7,7 +7,7 @@ if(FF_BUILD_SUBSTITUTION_TOOL)
 endif()
 
 if(FF_BUILD_VISUALIZATION_TOOL)
-  add_subdirectory(substitutions_to_dot)
+  add_subdirectory(substitutions-to-dot)
 endif()
 
 if(FF_BUILD_ARG_PARSER)

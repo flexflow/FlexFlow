@@ -1,0 +1,11 @@
+namespace = "FlexFlow"
+name = "WeightAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+fields = []

@@ -143,40 +143,53 @@ struct VariantToJsonFunctor {
   void operator()(T const &t) {
     static_assert(is_jsonable<T>::value, "");
 
-    j["type"] = get_name(t);
-    j["value"] = t;
+    j = t;
   }
 };
 
 template <typename... Args>
 void variant_to_json(json &j, std::variant<Args...> const &v) {
-  visit(::FlexFlow::VariantToJsonFunctor{j}, v.value);
+  json jval;
+  visit(::FlexFlow::VariantToJsonFunctor{jval}, v);
+  j["value"] = jval;
+  j["index"] = v.index();
 }
 
-template <typename Variant>
-struct VariantFromJsonFunctor {
-  VariantFromJsonFunctor(json const &j) : j(j) {}
+template <typename Variant, size_t Idx>
+std::optional<Variant> variant_from_json_impl(json const &j) {
+  using Type = typename std::variant_alternative<Idx, Variant>::type;
 
-  json const &j;
+  if (j.at("index").get<size_t>() == Idx) {
+    return j.at("value").get<Type>();
+  }
+  return std::nullopt;
+}
 
-  template <int Idx>
-  std::optional<Variant>
-      operator()(std::integral_constant<int, Idx> const &) const {
-    using Type = typename std::variant_alternative<Idx, Variant>::type;
-
-    if (visit_struct::get_name<Type>()) {
-      return j.at("value").get<Type>();
+template <typename Variant, size_t... Is>
+std::optional<Variant> variant_from_json_impl(json const &j,
+                                              std::index_sequence<Is...>) {
+  // If there were no errors when parsing, all but one element of the array
+  // will be nullopt. This is because each call to variant_from_json_impl will
+  // have a unique index and exactly one of them will match the index in the
+  // json object.
+  std::array<std::optional<Variant>, sizeof...(Is)> results{
+      variant_from_json_impl<Variant, Is>(j)...};
+  for (std::optional<Variant> &maybe : results) {
+    if (maybe) {
+      return maybe.value();
     }
   }
-};
+  return std::nullopt;
+}
 
 template <typename... Args>
 std::variant<Args...> variant_from_json(json const &j) {
-  ::FlexFlow::VariantFromJsonFunctor<std::variant<Args...>> func(j);
-  auto result = seq_map(func, seq_enumerate_args_t<Args...>{});
+  using Variant = std::variant<Args...>;
+  std::optional<Variant> result = variant_from_json_impl<Variant>(
+      j, std::make_index_sequence<sizeof...(Args)>());
   if (!result.has_value()) {
     throw ::FlexFlow::mk_runtime_error("Invalid type {} found in json",
-                                       j.at("type").get<std::string>());
+                                       j.at("index").get<size_t>());
   }
   return result.value();
 }

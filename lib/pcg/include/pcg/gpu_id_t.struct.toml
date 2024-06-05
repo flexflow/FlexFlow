@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "gpu_id_t"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "gpu_index"
+type = "int"
