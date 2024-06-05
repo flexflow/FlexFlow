@@ -79,7 +79,7 @@ struct Request {
   std::vector<TokenTree> speculative_token_trees;
   // To make request manager stateful, we need to store the causal mask here
   BatchConfig::BitMask causal_mask;
-  // Here we maintain a struct CommitTokens which has a field `from_index` and
+  // Here we maintain a struct CommittedToken which has a field `from_index` and
   // `to_index`. The `from_index` is used by the LLM KV cache commitment and the
   // `to_index` is used both by the the SSM KV cache recomputation and the LLM
   // KV cache commitment. Details are as follows:
@@ -346,16 +346,31 @@ private:
   // TODO: maintain this field
   size_t num_processed_requests;
 
-  struct ProfileInfo {
+  struct RequestProfileInfo {
     int llm_prefilling_steps = 0;
     int ssm_prefilling_steps = 0;
     int llm_decoding_steps = 0;
     int ssm_decoding_steps = 0;
     long long start_time = 0, start_decoding_time = 0, finish_time = 0;
   };
-  std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
+  struct ProfileInfo {
+    // For SpecInfer: One step is comprised of one ssm speculation phase + a single llm verification phase (forward pass + verification)
+    // For Incr Decoding: One step is one LLM decoding phase
+    long long llm_step_start = 0, ssm_step_start = 0;
+    // Times for each LLM verification phase (in ms)
+    std::vector<double> llm_step_times;
+    // Times for each SSM speculation phase (in ms)
+    std::vector<double> ssm_step_times;
+    // Number of requests getting decoded at each step
+    std::vector<int> requests_per_step;
+    // Number of generated tokens at each step
+    std::vector<int> generated_tokens_per_step;
+  };
+
+  ProfileInfo profiling;
+  std::unordered_map<RequestGuid, RequestProfileInfo> profiling_requests;
   double total_request_run_time;
-  void load_pending_reqeust_to_batch();
+  void load_pending_request_to_batch();
   void request_complete_clean_up(int batch_index);
   /* ---------- Incremental Decoding Helper Functions ---------- */
   bool update_llm_prefill_results(InferenceResult const &result);

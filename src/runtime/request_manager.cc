@@ -33,6 +33,25 @@ using tokenizers::Tokenizer;
 
 LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
+void write_to_output_file(std::string const &output_filepath, std::string const &str) {
+  std::ostream *os = &std::cout;
+  std::ofstream output_file;
+  if (!output_filepath.empty()) {
+    output_file.open(output_filepath, std::ios::app);
+    if (output_file.is_open()) {
+      os = &output_file;
+    } else {
+      std::cout << "Unable to open the output file: " << output_filepath
+                << std::endl;
+      assert(false);
+    }
+  }
+  *os << str << std::endl;
+  if (!output_filepath.empty()) {
+    output_file.close();
+  }
+}
+
 std::string LoadBytesFromFile(std::string const &path) {
   std::ifstream fs(path, std::ios::in | std::ios::binary);
   assert(fs.is_open() && "Failed to open file for reading.");
@@ -329,11 +348,12 @@ RequestManager::RequestGuid
 
   {
     std::string output = "New request tokens:";
-    output = "[" + std::to_string(request.guid) + "]" + output;
+    output = "[" + std::to_string(request.guid) + "] " + output;
     for (int i = 0; i < request.tokens.size(); i++) {
       output = output + " " + std::to_string(request.tokens[i]);
     }
     log_req_mgr.print("%s", output.c_str());
+    write_to_output_file("", output);
   }
 
   GenerationResult gr;
@@ -431,7 +451,7 @@ BatchConfig
   return prepare_next_batch();
 }
 
-void RequestManager::load_pending_reqeust_to_batch() {
+void RequestManager::load_pending_request_to_batch() {
   assert(!pending_request_queue.empty() && "No pending request to process.");
   RequestGuid guid = pending_request_queue.front().guid;
   pending_request_queue.pop();
@@ -450,7 +470,7 @@ void RequestManager::load_pending_reqeust_to_batch() {
   // Initialize the bitmask for the new request with its prompt length
   init_bitmask_prompt(guid, prefill_request->tokens.size());
 
-  profiling_requests[guid] = ProfileInfo();
+  profiling_requests[guid] = RequestProfileInfo();
   profiling_requests[guid].start_time =
       Realm::Clock::current_time_in_microseconds();
 }
@@ -485,41 +505,62 @@ void RequestManager::request_complete_clean_up(int batch_index) {
     std::cout << "<eos>";
   }
   std::cout << std::endl << std::endl;
-  ProfileInfo profile_info = profiling_requests[guid];
+  {
+    RequestProfileInfo profile_info = profiling_requests[guid];
 
-  std::ostream *os = &std::cout;
-  std::ofstream output_file;
-  if (!output_filepath.empty()) {
-    output_file.open(output_filepath, std::ios::app);
-    if (output_file.is_open()) {
-      os = &output_file;
-    } else {
-      std::cout << "Unable to open the output file: " << output_filepath
-                << std::endl;
-      assert(false);
+    std::ostream *os = &std::cout;
+    std::ofstream output_file;
+    if (!output_filepath.empty()) {
+      output_file.open(output_filepath, std::ios::app);
+      if (output_file.is_open()) {
+        os = &output_file;
+      } else {
+        std::cout << "Unable to open the output file: " << output_filepath
+                  << std::endl;
+        assert(false);
+      }
     }
-  }
-  *os << "Request " << guid << " profiling: " << std::endl;
-  if (profile_info.start_decoding_time != 0) {
-    *os << "Decoding time: "
-        << (profile_info.finish_time - profile_info.start_decoding_time) * 1e-3
-        << " ms" << std::endl;
-  } else {
-    *os << "Decoding time: 0 ms" << std::endl;
-  }
-  *os << "Total time: "
-      << (profile_info.finish_time - profile_info.start_time) * 1e-3 << " ms"
-      << std::endl;
-  *os << "LLM decoding steps: " << profile_info.llm_decoding_steps << std::endl;
-  if (decoding_mode == SPECULATIVE_DECODING) {
-    *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
+    *os << "Request " << guid << " profiling: " << std::endl;
+    if (profile_info.start_decoding_time != 0) {
+      *os << "Decoding time: "
+          << (profile_info.finish_time - profile_info.start_decoding_time) * 1e-3
+          << " ms" << std::endl;
+    } else {
+      *os << "Decoding time: 0 ms" << std::endl;
+    }
+    *os << "Total time: "
+        << (profile_info.finish_time - profile_info.start_time) * 1e-3 << " ms"
         << std::endl;
-  }
-  *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
+    *os << "LLM decoding steps: " << profile_info.llm_decoding_steps << std::endl;
+      if (decoding_mode == SPECULATIVE_DECODING) {
+        *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
+            << std::endl;
+      }
+      *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
 
-  if (!output_filepath.empty()) {
-    output_file.close();
+      if (!output_filepath.empty()) {
+        output_file.close();
+      }
   }
+  RequestProfileInfo profile_info = profiling_requests[guid];
+  std::string str = "[" + std::to_string(guid) + "] Request completed:" + 
+                      " decoding_time_ms(" + std::to_string(
+                        (profile_info.finish_time-
+                          profile_info.start_decoding_time)
+                          *1e-3) + ")" + 
+                      " total_time_ms(" + std::to_string(
+                        (profile_info.finish_time-
+                          profile_info.start_time)
+                          *1e-3) + ")" + 
+                      " LLM_decoding_steps(" + std::to_string(
+                        profile_info.llm_decoding_steps) 
+                        + ")";
+  if (decoding_mode == SPECULATIVE_DECODING) {
+    str = str + " SSM_decoding_steps(" + std::to_string(
+      profile_info.ssm_decoding_steps) 
+      + ")";
+  }
+  write_to_output_file("", str);
 
   trigger_request_completion_future(guid);
 }
@@ -533,7 +574,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
     // Update nothing
     if (!pending_request_queue.empty()) {
       // Load the pending request to the batch
-      load_pending_reqeust_to_batch();
+      load_pending_request_to_batch();
       request_manager_status = PREFILLING;
       if (decoding_mode == SPECULATIVE_DECODING) {
         prefill_model = SSM;
@@ -555,7 +596,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           if (num_available_requests < get_max_requests_per_batch() &&
               !pending_request_queue.empty()) {
             // Load the pending request to the batch
-            load_pending_reqeust_to_batch();
+            load_pending_request_to_batch();
             request_manager_status = PREFILLING;
           } else {
             // No more empty slots, start the decoding
@@ -585,7 +626,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
             if (num_available_requests < get_max_requests_per_batch() &&
                 !pending_request_queue.empty()) {
               // Load the pending request to the batch
-              load_pending_reqeust_to_batch();
+              load_pending_request_to_batch();
               prefill_model = SSM;
               current_ssm_step = 0;
             } else {
@@ -615,7 +656,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           request_manager_status = DECODING;
         } else {
           request_manager_status = PREFILLING;
-          load_pending_reqeust_to_batch();
+          load_pending_request_to_batch();
         }
       }
       break;
@@ -628,8 +669,8 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           current_ssm_step = 0;
           ssm_completed = false;
         } else {
-          load_pending_reqeust_to_batch();
           request_manager_status = PREFILLING;
+          load_pending_request_to_batch();
           prefill_model = SSM;
           current_ssm_step = 0;
         }
@@ -670,7 +711,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
 
     for (int i = 0; i < prefill_request->num_tokens_in_batch; i++) {
       prefill_request->committed_tokens.push_back(Request::CommittedToken{
-          i,
+          -1,
           committed_token_offset + i,
           prefill_request->tokens[i + committed_token_offset]});
     }
@@ -734,6 +775,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
 
 bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
   bool request_completed = false;
+  int nb_requests_decoded = 0;
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
@@ -748,6 +790,7 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
         result.token_ids[request.first_token_offset_in_batch]);
 
     profiling_requests[guid].llm_decoding_steps++;
+    nb_requests_decoded++;
     if (request.tokens.back() == eos_token_id or
         request.tokens.size() >= get_max_sequence_length()) {
       request_completed = true;
@@ -760,6 +803,11 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
                 << output << std::endl;
     }
   }
+  profiling.llm_step_times.push_back((
+        Realm::Clock::current_time_in_microseconds() - 
+        profiling.llm_step_start) * 1e-3);
+  profiling.requests_per_step.push_back(nb_requests_decoded);
+  profiling.generated_tokens_per_step.push_back(nb_requests_decoded);
   return request_completed;
 }
 
@@ -1011,6 +1059,7 @@ BatchConfig RequestManager::prepare_decoding_batch() {
     std::cout << "prepare_decoding_batch NEW batchconfig:" << std::endl;
     bc.print();
   }
+  profiling.llm_step_start = Realm::Clock::current_time_in_microseconds();
   return bc;
 }
 /* ----- Speculative Inference Specific functions ----- */
@@ -1090,6 +1139,8 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
       profiling_requests[guid].start_decoding_time =
           Realm::Clock::current_time_in_microseconds();
     }
+    profiling.ssm_step_start = 
+      Realm::Clock::current_time_in_microseconds();
   }
   if (verbose) {
     std::cout << "prepare_first_spec_batch_config NEW batchconfig:"
@@ -1285,6 +1336,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     std::cout << "prepare_verify_batch_config NEW batchconfig:" << std::endl;
     new_bc.print();
   }
+  profiling.llm_step_start = Realm::Clock::current_time_in_microseconds();
   return new_bc;
 }
 
@@ -1305,6 +1357,7 @@ bool RequestManager::update_llm_verify_results(
 
   // Update llm_cache_size with the last committed_tokens, and clear
   // committed_tokens
+  int nb_requests_decoded = 0;
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
@@ -1330,10 +1383,16 @@ bool RequestManager::update_llm_verify_results(
     }
 
     profiling_requests[guid].llm_decoding_steps++;
+    nb_requests_decoded++;
   }
 
   // Process the LLM results greedily
   get_verify_results_greedy(llm_verify_result);
+
+  profiling.llm_step_times.push_back((
+        Realm::Clock::current_time_in_microseconds() - 
+        profiling.llm_step_start) * 1e-3);
+  profiling.requests_per_step.push_back(nb_requests_decoded);
 
   // Clear the token tree node pool
   token_tree_node_pool = std::priority_queue<
@@ -1390,7 +1449,7 @@ bool RequestManager::update_llm_verify_results(
 
 bool RequestManager::update_ssm_inference_results(
     InferenceResult const &ssm_inference_result) {
-  // This function returns false if no tokens are added to the token tree,
+  // This function returns true if no tokens are added to the token tree,
   // which indicates that the ssm inference phase is done.
   assert(current_ssm_step >= 1 &&
          "The current speculation step should be no less than 1");
@@ -1437,13 +1496,21 @@ bool RequestManager::update_ssm_inference_results(
   }
 
   // Stop conditions
-  return all_request_last_layer_empty;
+  if (all_request_last_layer_empty) {
+    // Update profiling statistics before returning
+    profiling.ssm_step_times.push_back((
+        Realm::Clock::current_time_in_microseconds() -
+        profiling.ssm_step_start) * 1e-3
+      );
+    return true;
+  }
+  return false;
 }
 
 /* --------- Bitmask Related Functions --------- */
 
 void RequestManager::init_bitmask_prompt(RequestGuid guid, int prompt_length) {
-  // This method is called by load_pending_reqeust_to_batch when there is a
+  // This method is called by load_pending_request_to_batch when there is a
   // new request to load into the batch
   Request &request = all_requests[guid];
   BatchConfig::BitMask &bitmask = request.causal_mask;
@@ -1794,6 +1861,7 @@ void RequestManager::get_verify_results_greedy(
     InferenceResult const &llm_verify_result) {
   // This function maintain the generated token list of the request and the
   // committed tokens.
+  int total_nb_generated_tokens = 0;
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
@@ -1891,6 +1959,7 @@ void RequestManager::get_verify_results_greedy(
     request.llm_committed = false;
     request.ssm_committed = false;
 
+    total_nb_generated_tokens += request.committed_tokens.size();
     if (verbose) {
       std::cout << "Request " << request.guid << " committed tokens: ";
       for (auto const &committed_token : request.committed_tokens) {
@@ -1902,6 +1971,7 @@ void RequestManager::get_verify_results_greedy(
       std::cout << "Output sequence: " << output << std::endl;
     }
   }
+  profiling.generated_tokens_per_step.push_back(total_nb_generated_tokens);
 }
 
 // TODO: the max_seq_length is not used in the current implementation
@@ -2172,6 +2242,40 @@ void RequestManager::terminate_background_server_at_exit() {
 
 void RequestManager::terminate_background_server() {
   if (background_server_status == SERVING) {
+    assert(profiling.llm_step_times.size() == profiling.requests_per_step.size());
+    // Write the last profiling statistics to output file
+    std::string str = "[Profiling Statistics]\n llm_step_times_ms(";
+    std::string llm_step_times_ms = " ";
+    for (double time : profiling.llm_step_times) {
+      llm_step_times_ms += std::to_string(time) + " ";
+    }
+    llm_step_times_ms += ")";
+    str += llm_step_times_ms;
+    str += "\n requests_per_step(";
+    std::string req_per_step = " ";
+    for (int nb : profiling.requests_per_step) {
+      req_per_step += std::to_string(nb) + " ";
+    }
+    req_per_step += ")";
+    str += req_per_step;
+    if (profiling.ssm_step_times.size() > 0) {
+      assert(profiling.ssm_step_times.size() == profiling.llm_step_times.size());
+      str += "\n ssm_step_times_ms(";
+      std::string ssm_step_times_ms = " ";
+      for (double time : profiling.ssm_step_times) {
+        ssm_step_times_ms += std::to_string(time) + " ";
+      }
+      ssm_step_times_ms += ")";
+      str += ssm_step_times_ms;
+    }
+    str += "\n generated_tokens_per_step(";
+    std::string generated_tokens_per_step = " ";
+    for (int nb : profiling.generated_tokens_per_step) {
+      generated_tokens_per_step += std::to_string(nb) + " ";
+    }
+    generated_tokens_per_step += ")";
+    str += generated_tokens_per_step;
+    write_to_output_file("", str);
     background_server_status = TERMINATED;
     // Wait for the background server to terminate
     Runtime *runtime = Runtime::get_runtime();
