@@ -1,19 +1,17 @@
-#ifndef _FLEXFLOW_COMBINE_ATTRS_H
-#define _FLEXFLOW_COMBINE_ATTRS_H
+#ifndef _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_COMBINE_H
+#define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_COMBINE_H
 
-#include "core.h"
-#include "op-attrs/ff_dim.h"
-#include "op-attrs/parallel_tensor_shape.h"
-#include "utils/visitable.h"
+#include "op-attrs/ops/combine_attrs.dtg.h"
+#include "op-attrs/ops/core.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
+#include <tl/expected.hpp>
 
 namespace FlexFlow {
 
-struct CombineAttrs {
-  ff_dim_t combine_dim;
-  req<int> combine_degree;
-};
-FF_VISITABLE_STRUCT(CombineAttrs, combine_dim, combine_degree);
 CHECK_VALID_OP_ATTR(CombineAttrs);
+
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(CombineAttrs const &, ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

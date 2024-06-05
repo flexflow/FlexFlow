@@ -1,0 +1,28 @@
+namespace = "FlexFlow"
+name = "TensorAttributeConstraint"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "substitutions/constraint_type.dtg.h",
+  "substitutions/tensor_pattern/tensor_attribute_expr.dtg.h",
+  "substitutions/tensor_pattern/tensor_attribute_value.dtg.h",
+]
+
+[[fields]]
+name = "constraint_type"
+type = "::FlexFlow::ConstraintType"
+
+[[fields]]
+name = "attribute_expr"
+type = "::FlexFlow::TensorAttributeExpr"
+
+[[fields]]
+name = "attribute_value"
+type = "::FlexFlow::TensorAttributeValue"

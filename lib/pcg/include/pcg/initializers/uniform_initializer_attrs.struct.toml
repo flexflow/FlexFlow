@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "UniformInitializerAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "seed"
+type = "int"
+
+[[fields]]
+name = "min_val"
+type = "float"
+
+[[fields]]
+name = "max_val"
+type = "float"

@@ -193,7 +193,7 @@ struct IsValidFunctor {
 
 bool is_valid(PCGOperatorAttrs const &attrs,
               std::vector<ParallelTensorShape> const &input_shapes) {
-  return visit(IsValidFunctor{input_shapes}, attrs);
+  NOT_IMPLEMENTED();
 }
 
 /* int num_outputs(OperatorParameters const &o) { */

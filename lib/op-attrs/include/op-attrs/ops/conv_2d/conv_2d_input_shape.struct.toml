@@ -1,0 +1,35 @@
+namespace = "FlexFlow"
+name = "Conv2DInputShape"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+  "rapidcheck",
+  "json",
+]
+
+includes = [
+  "<cstddef>",
+  "op-attrs/datatype.dtg.h",
+]
+
+[[fields]]
+name = "num_samples"
+type = "size_t"
+
+[[fields]]
+name = "num_channels"
+type = "size_t"
+
+[[fields]]
+name = "height"
+type = "size_t"
+
+[[fields]]
+name = "width"
+type = "size_t"
+
+[[fields]]
+name = "datatype"
+type = "::FlexFlow::DataType"

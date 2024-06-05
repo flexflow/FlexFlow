@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "DiscardCopyDegree"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "value"
+type = "int"

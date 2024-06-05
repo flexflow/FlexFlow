@@ -33,10 +33,10 @@ TransposePerDeviceState init_kernel(int num_dim,
                                     std::vector<ff_dim_t> const &perm) {
   int const length = perm.size();
 
-  std::vector<int> perm_vector;
+  std::vector<legion_dim_t> perm_vector;
   assert(length <= MAX_TENSOR_DIM);
   for (int i = 0; i < length; ++i) {
-    perm_vector.push_back(perm[i].value());
+    perm_vector.push_back(legion_dim_from_ff_dim(perm[i], num_dim));
   }
 
   return {num_dim, perm_vector};
@@ -77,7 +77,7 @@ void forward_kernel(cudaStream_t stream,
       info.in_strides[i] = info.in_strides[i - 1] * in_dim_size;
       info.out_strides[i] = info.out_strides[i - 1] * out_dim_size;
     }
-    info.perm[i] = m.perm[i];
+    info.perm[i] = m.perm[i].value;
   }
   transpose_simple_kernel<<<GET_BLOCKS(output.shape.get_volume()),
                             CUDA_NUM_THREADS,
@@ -107,7 +107,7 @@ void backward_kernel(cudaStream_t stream,
       info.in_strides[i] = info.in_strides[i - 1] * in_dim_size;
       info.out_strides[i] = info.out_strides[i - 1] * out_dim_size;
     }
-    info.perm[m.perm[i]] = i;
+    info.perm[m.perm[i].value] = i;
   }
   transpose_simple_kernel<<<GET_BLOCKS(in_grad.shape.get_volume()),
                             CUDA_NUM_THREADS,

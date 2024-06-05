@@ -1,0 +1,20 @@
+namespace = "FlexFlow"
+name = "OperatorAttributePattern"
+features = [
+  "eq",
+  # "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "<unordered_set>",
+  "utils/fmt.h",
+  "substitutions/operator_pattern/operator_attribute_constraint.dtg.h",
+]
+
+[[fields]]
+name = "attribute_constraints"
+type = "std::unordered_set<::FlexFlow::OperatorAttributeConstraint>"

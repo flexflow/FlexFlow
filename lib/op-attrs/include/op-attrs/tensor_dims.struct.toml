@@ -1,0 +1,17 @@
+namespace = "FlexFlow"
+name = "TensorDims"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+includes = [
+  "op-attrs/dim_ordered.h",
+]
+
+[[fields]]
+name = "ff_ordered"
+type = "::FlexFlow::FFOrdered<size_t>"

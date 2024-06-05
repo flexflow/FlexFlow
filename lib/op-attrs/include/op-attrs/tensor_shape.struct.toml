@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "TensorShape"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/tensor_dims.dtg.h",
+  "op-attrs/datatype.dtg.h",
+]
+
+[[fields]]
+name = "dims"
+type = "::FlexFlow::TensorDims"
+
+[[fields]]
+name = "data_type"
+type = "::FlexFlow::DataType"
