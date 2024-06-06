@@ -2,9 +2,12 @@
 , stdenv
 , fetchFromGitLab
 , cmake
+, clang
 , python3
-, cudaPackages ? { }
-, cudaCapabilities ? [ "60" "70" "80" "86" ]
+# , cudaPackages ? { }
+# , cudaCapabilities ? [ "60" "70" "80" "86" ]
+, rocm
+, rocmPackages
 , maxDim ? 5
 }:
 
@@ -13,7 +16,7 @@
 let 
   cmakeFlag = x: if x then "1" else "0";
 
-  inherit (cudaPackages) cudatoolkit;
+  # inherit (cudaPackages) cudatoolkit;
 in
 
 stdenv.mkDerivation rec {
@@ -35,14 +38,33 @@ stdenv.mkDerivation rec {
   cmakeFlags = [
     "-DLegion_USE_Python=1"
     "-DLegion_BUILD_BINDINGS=1"
-    "-DLegion_USE_CUDA=1"
-    "-DLegion_CUDA_ARCH=${lib.concatStringsSep "," cudaCapabilities}"
+    "-DLegion_USE_HIP=1"
+    "-DHIP_THRUST_ROOT_DIR=${rocm}/hip-thrust"
+
+    "-DLegion_USE_CUDA=0"
+    # "-DLegion_CUDA_ARCH=${lib.concatStringsSep "," cudaCapabilities}"
     "-DLegion_MAX_DIM=${toString maxDim}"
+
   ];
+
+  preConfigure = ''
+  echo "configuring Legion"
+  echo "including rocm path"
+  export ROCM_PATH=${rocm}
+  export HIP_PATH=${rocm}/hip
+  export HIP_THRUST_ROOT_DIR=${rocm}/hip-thrust
+  echo "rocm path is $ROCM_PATH"
+  echo "hip path is $HIP_PATH"
+  echo "hip thrust path is $HIP_THRUST_ROOT_DIR"
+  '';
+
+  preUnpack = ''
+  echo "Running pre-unpack steps..."
+'';
 
   buildInputs = [ 
     python3
-    cudatoolkit
+    rocm
   ];
 
   meta = with lib; {
