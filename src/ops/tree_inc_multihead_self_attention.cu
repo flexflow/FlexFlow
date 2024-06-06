@@ -502,7 +502,7 @@ void update_custom_mask(TreeIncMultiHeadSelfAttentionMeta const *m,
       num_requests,
       max_q_length,
       max_kv_length,
-      -std::numeric_limits<float>::infinity());
+      -5e4);
 }
 
 template <typename DT>
