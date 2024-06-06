@@ -23,6 +23,83 @@ namespace flashinfer {
 // group_size[] = {1, 4, 8};
 // head_dim[] = {64, 128, 256};
 
+/********** prefill instantiations for half precision **********/
+
+template cudaError_t SinglePrefillWithKVCacheDispatched<
+  1, 64, QKVLayout::kNHD, PosEncodingMode::kNone,
+  false, MaskMode::kCausal, half, half>(
+    half* q, half* k, half* v, float* custom_mask, half* o,
+    float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
+    float sm_scale, float rope_scale,
+    float rope_theta, cudaStream_t stream);
+
+template cudaError_t SinglePrefillWithKVCacheDispatched<
+  1, 128, QKVLayout::kNHD, PosEncodingMode::kNone,
+  false, MaskMode::kCausal, half, half>(
+    half* q, half* k, half* v, float* custom_mask, half* o,
+    float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
+    float sm_scale, float rope_scale,
+    float rope_theta, cudaStream_t stream);
+
+template cudaError_t SinglePrefillWithKVCacheDispatched<
+  1, 256, QKVLayout::kNHD, PosEncodingMode::kNone,
+  false, MaskMode::kCausal, half, half>(
+    half* q, half* k, half* v, float* custom_mask, half* o,
+    float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
+    float sm_scale, float rope_scale,
+    float rope_theta, cudaStream_t stream);
+
+template cudaError_t SinglePrefillWithKVCacheDispatched<
+  4, 64, QKVLayout::kNHD, PosEncodingMode::kNone,
+  false, MaskMode::kCausal, half, half>(
+    half* q, half* k, half* v, float* custom_mask, half* o,
+    float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
+    float sm_scale, float rope_scale,
+    float rope_theta, cudaStream_t stream);
+
+template cudaError_t SinglePrefillWithKVCacheDispatched<
+  4, 128, QKVLayout::kNHD, PosEncodingMode::kNone,
+  false, MaskMode::kCausal, half, half>(
+    half* q, half* k, half* v, float* custom_mask, half* o,
+    float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
+    float sm_scale, float rope_scale,
+    float rope_theta, cudaStream_t stream);
+
+template cudaError_t SinglePrefillWithKVCacheDispatched<
+  4, 256, QKVLayout::kNHD, PosEncodingMode::kNone,
+  false, MaskMode::kCausal, half, half>(
+    half* q, half* k, half* v, float* custom_mask, half* o,
+    float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
+    float sm_scale, float rope_scale,
+    float rope_theta, cudaStream_t stream);
+
+template cudaError_t SinglePrefillWithKVCacheDispatched<
+  8, 64, QKVLayout::kNHD, PosEncodingMode::kNone,
+  false, MaskMode::kCausal, half, half>(
+    half* q, half* k, half* v, float* custom_mask, half* o,
+    float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
+    float sm_scale, float rope_scale,
+    float rope_theta, cudaStream_t stream);
+
+template cudaError_t SinglePrefillWithKVCacheDispatched<
+  8, 128, QKVLayout::kNHD, PosEncodingMode::kNone,
+  false, MaskMode::kCausal, half, half>(
+    half* q, half* k, half* v, float* custom_mask, half* o,
+    float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
+    float sm_scale, float rope_scale,
+    float rope_theta, cudaStream_t stream);
+
+template cudaError_t SinglePrefillWithKVCacheDispatched<
+  8, 256, QKVLayout::kNHD, PosEncodingMode::kNone,
+  false, MaskMode::kCausal, half, half>(
+    half* q, half* k, half* v, float* custom_mask, half* o,
+    float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
+    float sm_scale, float rope_scale,
+    float rope_theta, cudaStream_t stream);
+
+
+/********** append instantiations for half precision **********/
+
 template cudaError_t SinglePrefillWithKVCacheDispatched<
   1, 64, QKVLayout::kNHD, PosEncodingMode::kNone,
   false, MaskMode::kCustom, half, half>(

@@ -696,12 +696,21 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
       group_size, GROUP_SIZE,
         {DISPATCH_HEAD_DIM(
           head_dim, HEAD_DIM, {
-    flashinfer::SinglePrefillWithKVCacheDispatched<
+    if (bc->prompt_phase) {
+      flashinfer::SinglePrefillWithKVCacheDispatched<
         GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
-        false, MaskMode::kCustom, DT, DT>(
-          q, k, v, custom_mask, o, tmp, /*lse=*/static_cast<float *>(nullptr),
-          num_kv_heads, q_len, kv_len, sm_scale,
+        false, MaskMode::kCausal, DT, DT>(
+          q, k, v, /*custom_mask=*/static_cast<float *>(nullptr), o, tmp,
+          /*lse=*/static_cast<float *>(nullptr), num_kv_heads, q_len, kv_len, sm_scale,
           /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
+    } else {
+      flashinfer::SinglePrefillWithKVCacheDispatched<
+          GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
+          false, MaskMode::kCustom, DT, DT>(
+            q, k, v, custom_mask, o, tmp, /*lse=*/static_cast<float *>(nullptr),
+            num_kv_heads, q_len, kv_len, sm_scale,
+            /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
+    }
     })});
   }
 
@@ -770,14 +779,15 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                      stream);
 
   // Update gpu-side custom mask referring from CaualMask
-  update_custom_mask(m, bc, stream);
+  if (!bc->prompt_phase) {
+    update_custom_mask(m, bc, stream);
+  }
 
   // Update key-val cache, compact q array
   update_qkv_cache<DT>(m, bc, stream);
 
   // Compute attention
-  if (!bc->prompt_phase) {
-    tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+  tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
   // {
@@ -788,31 +798,6 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //       temp_output, m->attn_heads, size * sizeof(float),
   //       cudaMemcpyDeviceToHost);
   //   printf("Output (flashinfer attention) :");
-  //   for (int i = 0; i < 1; ++i) {
-  //     float temp = 0;
-  //     for (int j = 0; j < m->hidden_size; ++j) {
-  //       temp += temp_output[i * m->hidden_size + j];
-  //     }
-  //     printf("%.6f ", temp);
-  //   }
-  //   printf("\n");
-
-  //   delete[] temp_output;
-  // }
-
-  } else {
-    compute_attention_kernel_fused<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
-  }
-
-  // Debug output:
-  // {
-  //   int size = m->hidden_size * bc->num_active_tokens();
-  //   float *temp_output = new float[size];
-  //   cudaDeviceSynchronize();
-  //   cudaMemcpy(
-  //       temp_output, m->attn_heads, size * sizeof(float),
-  //       cudaMemcpyDeviceToHost);
-  //   printf("Output (original attention) :");
   //   for (int i = 0; i < 1; ++i) {
   //     float temp = 0;
   //     for (int j = 0; j < m->hidden_size; ++j) {
