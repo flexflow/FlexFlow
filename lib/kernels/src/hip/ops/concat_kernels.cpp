@@ -14,7 +14,8 @@
  */
 
 #include "kernels/concat_kernels.h"
-#include "kernels/hip_helper.h"
+#include "device.h"
+#include <cassert>
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
