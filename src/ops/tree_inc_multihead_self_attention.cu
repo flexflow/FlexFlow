@@ -776,7 +776,8 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   update_qkv_cache<DT>(m, bc, stream);
 
   // Compute attention
-  // tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+  if (!bc->prompt_phase) {
+    tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
   // {
@@ -799,7 +800,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   delete[] temp_output;
   // }
 
-  compute_attention_kernel_fused<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+  } else {
+    compute_attention_kernel_fused<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+  }
 
   // Debug output:
   // {
