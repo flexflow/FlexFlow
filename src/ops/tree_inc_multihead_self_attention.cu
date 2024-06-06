@@ -778,26 +778,49 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // Compute attention
   // tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
+  // Debug output:
+  // {
+  //   int size = m->hidden_size * bc->num_active_tokens();
+  //   float *temp_output = new float[size];
+  //   cudaDeviceSynchronize();
+  //   cudaMemcpy(
+  //       temp_output, m->attn_heads, size * sizeof(float),
+  //       cudaMemcpyDeviceToHost);
+  //   printf("Output (flashinfer attention) :");
+  //   for (int i = 0; i < 1; ++i) {
+  //     float temp = 0;
+  //     for (int j = 0; j < m->hidden_size; ++j) {
+  //       temp += temp_output[i * m->hidden_size + j];
+  //     }
+  //     printf("%.6f ", temp);
+  //   }
+  //   printf("\n");
+
+  //   delete[] temp_output;
+  // }
+
   compute_attention_kernel_fused<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
-  // int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
-  // float *temp_output = new float[size];
-  // cudaDeviceSynchronize();
-  // cudaMemcpy(
-  //     temp_output, m->attn_heads, size * sizeof(float),
-  //     cudaMemcpyDeviceToHost);
-  // printf("Output: ");
-  // for (int i = 0; i < 1; ++i) {
-  //   float temp = 0;
-  //   for (int j = 0; j < m->hidden_size; ++j) {
-  //     temp += temp_output[i * m->hidden_size + j];
+  // {
+  //   int size = m->hidden_size * bc->num_active_tokens();
+  //   float *temp_output = new float[size];
+  //   cudaDeviceSynchronize();
+  //   cudaMemcpy(
+  //       temp_output, m->attn_heads, size * sizeof(float),
+  //       cudaMemcpyDeviceToHost);
+  //   printf("Output (original attention) :");
+  //   for (int i = 0; i < 1; ++i) {
+  //     float temp = 0;
+  //     for (int j = 0; j < m->hidden_size; ++j) {
+  //       temp += temp_output[i * m->hidden_size + j];
+  //     }
+  //     printf("%.6f ", temp);
   //   }
-  //   printf("%.6f ", temp);
-  // }
-  // printf("\n");
+  //   printf("\n");
 
-  // delete[] temp_output;
+  //   delete[] temp_output;
+  // }
 
   int processed_tokens_in_batch = bc->num_active_tokens();
 
