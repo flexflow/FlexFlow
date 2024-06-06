@@ -279,7 +279,7 @@ void FlexFlow::top_level_task(Task const *task,
   int max_sequence_length = 512;
   int max_spec_tree_token_num = 64;
   int expansion_degree = 3;
-  int max_tree_depth = 16;
+  int max_tree_depth = 8;
   int max_tree_width = 16;
   RequestManager::DecodingMode decoding_mode =
       RequestManager::SPECULATIVE_DECODING;
