@@ -32,7 +32,7 @@ OpTaskInvocation init(ReduceAttrs const &attrs) {
   return {REDUCE_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<ReducePerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto attrs = acc.get_argument<ReduceAttrs>(ATTRS);
@@ -40,23 +40,11 @@ static DeviceSpecific<ReducePerDeviceState>
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
   OperatorType op_type = attrs.op_type;
-  // Note: How to set the reduction size?
+
   size_t reduction_size = input.shape.get_volume() / output.shape.get_volume();
-  DeviceSpecific<ReducePerDeviceState> per_device_state =
+  ReducePerDeviceState per_device_state =
       init_kernel(handle, op_type, reduction_size, input.shape, output.shape);
-  return per_device_state;
-}
-
-template <>
-void register_task<TRANSPOSE_INIT_TASK_ID>() {
-  OpTaskSignature init(OpTaskType::INIT);
-
-  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-  init.add_arg_slot<ReduceAttrs>(ATTRS);
-
-  init.add_return_value<ReducePerDeviceState>();
-
-  register_task(REDUCE_INIT_TASK_ID, "Reduce::init", init, init_task_impl);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 // Note: forward_kernel only needs ReducePerDeviceState, input, output
@@ -89,19 +77,6 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
                  output.get_float_ptr());
 }
 
-template <>
-void register_task<REDUCE_FWD_TASK_ID>() {
-  OpTaskSignature fwd(OpTaskType::FWD);
-
-  fwd.add_unchecked_arg_slot<ReducePerDeviceState>(PER_DEVICE_STATE);
-  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
-
-  fwd.add_input_slot(INPUT);
-  fwd.add_output_slot(OUTPUT);
-
-  register_task(REDUCE_FWD_TASK_ID, "Reduce::forward", fwd, forward_task_impl);
-}
-
 OpTaskInvocation backward(ReduceAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
@@ -125,49 +100,42 @@ static std::optional<float>
                  input_grad.get_float_ptr());
 }
 
-// TODO: OpTaskSignature
+TaskImplFunction get_reduce_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_reduce_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_reduce_bwd_task_impl() {
+  return backward_task_impl;
+}
 
-// template <>
-// void register_task<REDUCE_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(REDUCE_FWD_TASK_ID));
+OpTaskSignature get_reduce_init_signature() {
+  OpTaskSignature init(OpTaskType::INIT);
 
-//   register_task(REDUCE_BWD_TASK_ID, "Reduce::backward", bwd,
-//   backward_task_impl);
-// }
+  init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
+  init.add_arg_slot<ReduceAttrs>(ATTRS);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ReduceAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
+  init.add_return_value<ReducePerDeviceState>();
+  return init;
+}
+OpTaskSignature get_reduce_fwd_signature() {
+  OpTaskSignature fwd(OpTaskType::FWD);
 
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(HANDLE, ff_handle());
+  fwd.add_unchecked_arg_slot<ReducePerDeviceState>(PER_DEVICE_STATE);
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 
-  auto init_accessor = env.get_init_accessor(REDUCE_INIT_TASK_ID, init_binding);
-  DeviceSpecific<ReducePerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+  return fwd;
+}
+OpTaskSignature get_reduce_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_reduce_fwd_signature());
+  return bwd;
+}
 
-  SimTaskBinding fwd_binding;
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-  fwd_binding.bind(INPUT, input.shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(REDUCE_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(REDUCE_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+std::vector<task_id_t> get_task_ids(ReduceAttrs const &) {
+  return {REDUCE_INIT_TASK_ID, REDUCE_FWD_TASK_ID, REDUCE_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

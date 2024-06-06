@@ -10,6 +10,8 @@
 #include "local-execution/runtime_arg_ref.h"
 #include "local-execution/tasks.h"
 #include "local-execution/variadic_tensor_ref.h"
+#include "op-attrs/computation_graph_op_attrs.h"
+#include "pcg/computation_graph.h"
 #include "utils/bidict.h"
 #include "utils/stack_map.h"
 #include <typeindex>
@@ -27,9 +29,7 @@ using OpArgSpec =
 struct OpTaskBinding {
   OpTaskBinding() = default;
 
-  void bind(slot_id, VariadicTensorRef<OpTensorSpec> const &) {
-    NOT_IMPLEMENTED();
-  }
+  void bind(slot_id, VariadicTensorRef<OpTensorSpec> const &);
   void bind(slot_id, OpTensorSpec const &);
   void bind_grad(slot_id, OpTensorSpec const &);
 
@@ -62,17 +62,13 @@ struct OpTaskBinding {
       get_tensor_bindings() const;
   std::unordered_map<slot_id, OpArgSpec> const &get_arg_bindings() const;
 
-  void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec) {
-    assert(!contains_key(this->arg_bindings, name));
-    this->arg_bindings.insert({name, arg_spec});
-  }
+  void bind_from_forward(OpTaskBinding const &fwd);
 
-  std::unordered_map<slot_id, OpArgSpec> arg_bindings;
+private:
+  void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec);
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> tensor_bindings;
+  std::unordered_map<slot_id, OpArgSpec> arg_bindings;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(OpTaskBinding,
-                                             arg_bindings,
-                                             tensor_bindings);
 
 struct OpTaskInvocation {
 public:
@@ -84,7 +80,10 @@ public:
   task_id_t task_id;
   OpTaskBinding binding;
 };
-FF_VISITABLE_STRUCT(OpTaskInvocation, task_id, binding);
+
+OpTaskInvocation init(ComputationGraphOpAttrs const &);
+OpTaskInvocation forward(ComputationGraphOpAttrs const &);
+OpTaskInvocation backward(ComputationGraphOpAttrs const &);
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);

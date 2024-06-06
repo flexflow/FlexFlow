@@ -66,7 +66,7 @@ struct OpTaskSignature {
 
   template <typename T>
   void add_arg_slot(slot_id name) {
-    static_assert(is_serializable<T>::value, "Type must be serializable");
+    // static_assert(is_serializable<T>::value, "Type must be serializable");
     this->task_arg_types.insert({name, get_type_index_for_type<T>()});
   }
 

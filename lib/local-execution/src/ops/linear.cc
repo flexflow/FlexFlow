@@ -59,7 +59,8 @@ OpTaskInvocation backward(LinearAttrs const &attrs) {
   return {LINEAR_BWD_TASK_ID, b};
 }
 
-static LinearPerDeviceState init_task_impl(TaskArgumentAccessor const &acc) {
+static DeviceSpecific<DeviceStates>
+    init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<LinearAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
@@ -80,7 +81,7 @@ static LinearPerDeviceState init_task_impl(TaskArgumentAccessor const &acc) {
                                            output.data_type,
                                            batch_size,
                                            attrs.out_channels);
-  return state;
+  return DeviceSpecific<DeviceStates>::create(state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -158,59 +159,17 @@ static std::optional<float>
                  batch_size);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  LinearAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
-
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-  ParallelTensorShape weight_shape = get_weights_shape(attrs, input.shape);
-  ParallelTensorShape bias_shape = get_bias_shape(attrs, input.shape);
-
-  SimTaskBinding init_binding;
-  init_binding.bind(INPUT, input.shape);
-  init_binding.bind(WEIGHT, weight_shape);
-  if (attrs.use_bias) {
-    init_binding.bind(BIAS, bias_shape);
-  }
-  init_binding.bind(OUTPUT, output_shape);
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(HANDLE, ff_handle());
-
-  auto init_accessor = env.get_init_accessor(LINEAR_INIT_TASK_ID, init_binding);
-
-  LinearPerDeviceState per_device_state = init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-
-  fwd_binding.bind(INPUT, input.shape);   // input
-  fwd_binding.bind(WEIGHT, weight_shape); // weight
-  fwd_binding.bind(OUTPUT, output_shape); // output
-  if (attrs.use_bias) {
-    fwd_binding.bind(BIAS, bias_shape); // bias
-  }
-
-  fwd_binding.bind_arg(PROFILING, profiling_settings());
-  fwd_binding.bind_arg(PER_DEVICE_STATE,
-                       per_device_op_state<LinearPerDeviceState>());
-  fwd_binding.bind_arg(ATTRS, attrs);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(LINEAR_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(LINEAR_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_linear_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_linear_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_linear_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-OpTaskSignature init_signature<LINEAR_INIT_TASK_ID>() {
+OpTaskSignature get_linear_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -224,8 +183,7 @@ OpTaskSignature init_signature<LINEAR_INIT_TASK_ID>() {
   return init;
 }
 
-template <>
-OpTaskSignature fwd_signature<LINEAR_FWD_TASK_ID>() {
+OpTaskSignature get_linear_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -239,51 +197,9 @@ OpTaskSignature fwd_signature<LINEAR_FWD_TASK_ID>() {
   return fwd;
 }
 
-template <>
-OpTaskSignature bwd_signature<LINEAR_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<LINEAR_BWD_TASK_ID>());
+OpTaskSignature get_linear_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_linear_fwd_signature());
   return bwd;
-}
-
-template <>
-TaskImplFunction get_task_impl<LINEAR_INIT_TASK_ID>() {
-  return init_task_impl;
-}
-
-template <>
-TaskImplFunction get_task_impl<LINEAR_FWD_TASK_ID>() {
-  return forward_task_impl;
-}
-
-template <>
-TaskImplFunction get_task_impl<LINEAR_BWD_TASK_ID>() {
-  return backward_task_impl;
-}
-
-template <>
-void register_task<LINEAR_INIT_TASK_ID>() {
-
-  register_task(LINEAR_INIT_TASK_ID,
-                "Linear::init_task",
-                init_signature<LINEAR_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
-template <>
-void register_task<LINEAR_FWD_TASK_ID>() {
-  register_task(LINEAR_FWD_TASK_ID,
-                "Linear::fwd_task",
-                fwd_signature<LINEAR_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
-template <>
-void register_task<LINEAR_BWD_TASK_ID>() {
-  register_task(LINEAR_BWD_TASK_ID,
-                "Linear::bwd_task",
-                bwd_signature<LINEAR_BWD_TASK_ID>(),
-                backward_task_impl);
 }
 
 std::vector<task_id_t> get_task_ids(LinearAttrs const &) {

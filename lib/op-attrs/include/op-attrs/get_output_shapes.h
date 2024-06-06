@@ -220,8 +220,6 @@ bool is_valid_internal(ElementBinaryAttrs const &,
                        ParallelTensorShape const &,
                        ParallelTensorShape const &);
 bool is_valid_internal(ElementUnaryAttrs const &, ParallelTensorShape const &);
-bool is_valid_internal(ElementScalarUnaryAttrs const &,
-                       ParallelTensorShape const &);
 bool is_valid_internal(EmbeddingAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(FlatAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(GatherAttrs const &,

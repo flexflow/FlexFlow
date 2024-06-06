@@ -23,7 +23,7 @@ OpTaskInvocation init(Pool2DAttrs const &attrs) {
   return {POOL2D_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<Pool2DPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<Pool2DAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -64,25 +64,25 @@ static DeviceSpecific<Pool2DPerDeviceState>
     printf("Warning: changing pool_padding_w to satisfy output_w size\n");
   }
 
-  DeviceSpecific<Pool2DPerDeviceState> state = init_kernel(handle,
-                                                           attrs.activation,
-                                                           input_w,
-                                                           input_h,
-                                                           input_c,
-                                                           input_n,
-                                                           output_w,
-                                                           output_h,
-                                                           output_c,
-                                                           output_n,
-                                                           pad_h,
-                                                           pad_w,
-                                                           attrs.kernel_h,
-                                                           attrs.kernel_w,
-                                                           attrs.stride_h,
-                                                           attrs.stride_w,
-                                                           attrs.pool_type);
+  Pool2DPerDeviceState state = init_kernel(handle,
+                                           attrs.activation,
+                                           input_w,
+                                           input_h,
+                                           input_c,
+                                           input_n,
+                                           output_w,
+                                           output_h,
+                                           output_c,
+                                           output_n,
+                                           pad_h,
+                                           pad_w,
+                                           attrs.kernel_h,
+                                           attrs.kernel_w,
+                                           attrs.stride_h,
+                                           attrs.stride_w,
+                                           attrs.pool_type);
 
-  return state;
+  return DeviceSpecific<DeviceStates>::create(state);
 }
 
 OpTaskInvocation forward(Pool2DAttrs const &attrs) {
@@ -140,48 +140,17 @@ static std::optional<float>
                  output_grad.get_float_ptr());
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  Pool2DAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-
-  SimTaskBinding init_binding;
-  init_binding.bind(INPUT, input.shape);
-  init_binding.bind(OUTPUT, output_shape);
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(HANDLE, ff_handle());
-
-  auto init_accessor = env.get_init_accessor(POOL2D_INIT_TASK_ID, init_binding);
-
-  DeviceSpecific<Pool2DPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-
-  fwd_binding.bind(INPUT, input.shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  auto fwd_accessor = env.get_fwd_accessor(POOL2D_FWD_TASK_ID, fwd_binding);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto bwd_accessor = env.get_bwd_accessor(POOL2D_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_pool_2d_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_pool_2d_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_pool_2d_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-void register_task<POOL2D_INIT_TASK_ID>() {
+OpTaskSignature get_pool_2d_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -191,12 +160,9 @@ void register_task<POOL2D_INIT_TASK_ID>() {
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   init.add_return_value<FlexFlow::Pool2DPerDeviceState>();
-
-  register_task(POOL2D_INIT_TASK_ID, "Pool2D::init", init, init_task_impl);
+  return init;
 }
-
-template <>
-void register_task<POOL2D_FWD_TASK_ID>() {
+OpTaskSignature get_pool_2d_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -204,19 +170,15 @@ void register_task<POOL2D_FWD_TASK_ID>() {
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 
   fwd.add_unchecked_arg_slot<Pool2DPerDeviceState>(PER_DEVICE_STATE);
-
-  register_task(POOL2D_FWD_TASK_ID, "Pool2D::forward", fwd, forward_task_impl);
+  return fwd;
+}
+OpTaskSignature get_pool_2d_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_pool_2d_fwd_signature());
+  return bwd;
 }
 
-// TODO: OpTaskSignature
-
-// template <>
-// void register_task<POOL2D_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(POOL2D_FWD_TASK_ID));
-
-//   register_task(POOL2D_BWD_TASK_ID, "Pool2D::backward", bwd,
-//   backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(Pool2DAttrs const &) {
+  return {POOL2D_INIT_TASK_ID, POOL2D_FWD_TASK_ID, POOL2D_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

@@ -3,35 +3,43 @@
 // lib/op-attrs/include/op-attrs/ops/element_unary_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "75272cff78d3db866122dbb1001aedbe"
+  "generated_from": "a6b9370f3eab59f59e7110483357f88d"
 }
 */
 
 #include "op-attrs/ops/element_unary_attrs.dtg.h"
 
 #include "op-attrs/operator_type.h"
+#include "utils/json.h"
 #include <sstream>
 
 namespace FlexFlow {
-ElementUnaryAttrs::ElementUnaryAttrs(::FlexFlow::OperatorType const &op_type)
-    : op_type(op_type) {}
+ElementUnaryAttrs::ElementUnaryAttrs(::FlexFlow::OperatorType const &op_type,
+                                     std::optional<float> const &scalar)
+    : op_type(op_type), scalar(scalar) {}
 bool ElementUnaryAttrs::operator==(ElementUnaryAttrs const &other) const {
-  return std::tie(this->op_type) == std::tie(other.op_type);
+  return std::tie(this->op_type, this->scalar) ==
+         std::tie(other.op_type, other.scalar);
 }
 bool ElementUnaryAttrs::operator!=(ElementUnaryAttrs const &other) const {
-  return std::tie(this->op_type) != std::tie(other.op_type);
+  return std::tie(this->op_type, this->scalar) !=
+         std::tie(other.op_type, other.scalar);
 }
 bool ElementUnaryAttrs::operator<(ElementUnaryAttrs const &other) const {
-  return std::tie(this->op_type) < std::tie(other.op_type);
+  return std::tie(this->op_type, this->scalar) <
+         std::tie(other.op_type, other.scalar);
 }
 bool ElementUnaryAttrs::operator>(ElementUnaryAttrs const &other) const {
-  return std::tie(this->op_type) > std::tie(other.op_type);
+  return std::tie(this->op_type, this->scalar) >
+         std::tie(other.op_type, other.scalar);
 }
 bool ElementUnaryAttrs::operator<=(ElementUnaryAttrs const &other) const {
-  return std::tie(this->op_type) <= std::tie(other.op_type);
+  return std::tie(this->op_type, this->scalar) <=
+         std::tie(other.op_type, other.scalar);
 }
 bool ElementUnaryAttrs::operator>=(ElementUnaryAttrs const &other) const {
-  return std::tie(this->op_type) >= std::tie(other.op_type);
+  return std::tie(this->op_type, this->scalar) >=
+         std::tie(other.op_type, other.scalar);
 }
 } // namespace FlexFlow
 
@@ -41,6 +49,8 @@ size_t hash<FlexFlow::ElementUnaryAttrs>::operator()(
   size_t result = 0;
   result ^= std::hash<::FlexFlow::OperatorType>{}(x.op_type) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
+  result ^= std::hash<std::optional<float>>{}(x.scalar) + 0x9e3779b9 +
+            (result << 6) + (result >> 2);
   return result;
 }
 } // namespace std
@@ -48,12 +58,14 @@ size_t hash<FlexFlow::ElementUnaryAttrs>::operator()(
 namespace nlohmann {
 FlexFlow::ElementUnaryAttrs
     adl_serializer<FlexFlow::ElementUnaryAttrs>::from_json(json const &j) {
-  return {j.at("op_type").template get<::FlexFlow::OperatorType>()};
+  return {j.at("op_type").template get<::FlexFlow::OperatorType>(),
+          j.at("scalar").template get<std::optional<float>>()};
 }
 void adl_serializer<FlexFlow::ElementUnaryAttrs>::to_json(
     json &j, FlexFlow::ElementUnaryAttrs const &v) {
   j["__type"] = "ElementUnaryAttrs";
   j["op_type"] = v.op_type;
+  j["scalar"] = v.scalar;
 }
 } // namespace nlohmann
 
@@ -61,7 +73,8 @@ namespace rc {
 Gen<FlexFlow::ElementUnaryAttrs>
     Arbitrary<FlexFlow::ElementUnaryAttrs>::arbitrary() {
   return gen::construct<FlexFlow::ElementUnaryAttrs>(
-      gen::arbitrary<::FlexFlow::OperatorType>());
+      gen::arbitrary<::FlexFlow::OperatorType>(),
+      gen::arbitrary<std::optional<float>>());
 }
 } // namespace rc
 
@@ -70,6 +83,7 @@ std::string format_as(ElementUnaryAttrs const &x) {
   std::ostringstream oss;
   oss << "<ElementUnaryAttrs";
   oss << " op_type=" << x.op_type;
+  oss << " scalar=" << x.scalar;
   oss << ">";
   return oss.str();
 }

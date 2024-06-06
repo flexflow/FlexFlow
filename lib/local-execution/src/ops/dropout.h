@@ -8,22 +8,20 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<DROPOUT_INIT_TASK_ID>();
-template <>
-void register_task<DROPOUT_FWD_TASK_ID>();
-template <>
-void register_task<DROPOUT_BWD_TASK_ID>();
+std::vector<task_id_t> get_task_ids(DropoutAttrs const &);
+
+TaskImplFunction get_dropout_init_task_impl();
+TaskImplFunction get_dropout_fwd_task_impl();
+TaskImplFunction get_dropout_bwd_task_impl();
+
+OpTaskSignature get_dropout_init_signature();
+OpTaskSignature get_dropout_fwd_signature();
+OpTaskSignature get_dropout_bwd_signature();
 
 OpTaskInvocation init(DropoutAttrs const &);
 OpTaskInvocation forward(DropoutAttrs const &);
 OpTaskInvocation backward(DropoutAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  DropoutAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv);
 } // namespace FlexFlow
 
 #endif

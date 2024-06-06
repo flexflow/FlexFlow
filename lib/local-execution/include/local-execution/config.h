@@ -16,7 +16,7 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_CONFIG_H_
 #define _FLEXFLOW_LOCAL_EXECUTION_CONFIG_H_
 
-#include "op-attrs/param_sync.h"
+#include "op-attrs/param_sync.dtg.h"
 #include "utils/fmt.h"
 #include "utils/visitable.h"
 #include <cstring>

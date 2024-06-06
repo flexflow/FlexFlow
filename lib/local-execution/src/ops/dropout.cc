@@ -40,16 +40,16 @@ OpTaskInvocation backward(DropoutAttrs const &attrs) {
   return {DROPOUT_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<DropoutPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   Allocator allocator = acc.get_allocator();
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(FF_HANDLE);
   auto const &attrs = acc.get_argument<DropoutAttrs>(ATTRS);
 
-  DeviceSpecific<DropoutPerDeviceState> per_device_state =
+  DropoutPerDeviceState per_device_state =
       init_kernel(handle, attrs.rate, attrs.seed, output.shape, allocator);
-  return per_device_state;
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -85,45 +85,17 @@ static std::optional<float>
                  input_grad.get_float_ptr());
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  DropoutAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-  auto env = sim.new_environment();
-
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shape.shape);
-
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(FF_HANDLE, ff_handle());
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind(OUTPUT, output_shape);
-
-  auto init_accessor =
-      env.get_init_accessor(DROPOUT_INIT_TASK_ID, init_binding);
-  DeviceSpecific<DropoutPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input_shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(DROPOUT_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(DROPOUT_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_dropout_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_dropout_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_dropout_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-OpTaskSignature init_signature<DROPOUT_INIT_TASK_ID>() {
+OpTaskSignature get_dropout_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<DropoutAttrs>(ATTRS);
@@ -135,16 +107,7 @@ OpTaskSignature init_signature<DROPOUT_INIT_TASK_ID>() {
   return init;
 }
 
-template <>
-void register_task<DROPOUT_INIT_TASK_ID>() {
-  register_task(DROPOUT_INIT_TASK_ID,
-                "Dropout Init",
-                init_signature<DROPOUT_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
-template <>
-OpTaskSignature fwd_signature<DROPOUT_FWD_TASK_ID>() {
+OpTaskSignature get_dropout_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_unchecked_arg_slot<DropoutPerDeviceState>(PER_DEVICE_STATE);
@@ -156,28 +119,14 @@ OpTaskSignature fwd_signature<DROPOUT_FWD_TASK_ID>() {
   return fwd;
 }
 
-template <>
-void register_task<DROPOUT_FWD_TASK_ID>() {
-  register_task(DROPOUT_FWD_TASK_ID,
-                "Dropout Fwd",
-                fwd_signature<DROPOUT_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
-template <>
-OpTaskSignature bwd_signature<DROPOUT_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<DROPOUT_FWD_TASK_ID>());
+OpTaskSignature get_dropout_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_dropout_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<DROPOUT_BWD_TASK_ID>() {
-  register_task(DROPOUT_BWD_TASK_ID,
-                "Dropout Bwd",
-                bwd_signature<DROPOUT_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(DropoutAttrs const &) {
+  return {DROPOUT_INIT_TASK_ID, DROPOUT_FWD_TASK_ID, DROPOUT_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

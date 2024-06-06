@@ -150,39 +150,13 @@ tensor_guid_t ComputationGraphBuilder::element_unary(
   return this->add_layer(layer, {input}, {}, output_shape);
 }
 
-tensor_guid_t ComputationGraphBuilder::element_scalar_unary(
-    ElementScalarUnaryAttrs const &attrs,
-    tensor_guid_t const &x,
-    std::optional<std::string> const &maybe_name) {
-  std::string name =
-      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
-
-  tensor_guid_t input =
-      this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
-
-  LayerAttrs layer = {ComputationGraphOpAttrs{attrs}, name};
-
-  TensorShape output_shape =
-      throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
-
-  return this->add_layer(layer, {input}, {}, output_shape);
-}
-
 tensor_guid_t ComputationGraphBuilder::element_unary(
     OperatorType op_type,
     tensor_guid_t const &input,
+    std::optional<float> scalar,
     std::optional<std::string> const &name) {
-  ElementUnaryAttrs attrs = {op_type};
+  ElementUnaryAttrs attrs = {op_type, scalar};
   return this->element_unary(attrs, input, name);
-}
-
-tensor_guid_t ComputationGraphBuilder::element_scalar_unary(
-    OperatorType op_type,
-    tensor_guid_t const &input,
-    float scalar,
-    std::optional<std::string> const &name) {
-  ElementScalarUnaryAttrs attrs = {op_type, scalar};
-  return this->element_scalar_unary(attrs, input, name);
 }
 
 tensor_guid_t ComputationGraphBuilder::element_binary(
@@ -216,7 +190,7 @@ tensor_guid_t ComputationGraphBuilder::element_binary(
 tensor_guid_t
     ComputationGraphBuilder::exp(tensor_guid_t const &input,
                                  std::optional<std::string> const &name) {
-  return this->element_unary(OperatorType::EXP, input, name);
+  return this->element_unary(OperatorType::EXP, input, std::nullopt, name);
 }
 
 tensor_guid_t
@@ -264,21 +238,21 @@ tensor_guid_t
 tensor_guid_t
     ComputationGraphBuilder::rsqrt(tensor_guid_t const &input,
                                    std::optional<std::string> const &name) {
-  return this->element_unary(OperatorType::RSQRT, input, name);
+  return this->element_unary(OperatorType::RSQRT, input, std::nullopt, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::pow(tensor_guid_t const &input,
                                  float exponent,
                                  std::optional<std::string> const &name) {
-  return this->element_scalar_unary(OperatorType::POW, input, exponent, name);
+  return this->element_unary(OperatorType::POW, input, exponent, name);
 }
 
 tensor_guid_t ComputationGraphBuilder::scalar_multiply(
     tensor_guid_t const &input,
     float scalar,
     std::optional<std::string> const &name) {
-  return this->element_scalar_unary(
+  return this->element_unary(
       OperatorType::SCALAR_MULTIPLY, input, scalar, name);
 }
 
@@ -286,71 +260,70 @@ tensor_guid_t ComputationGraphBuilder::scalar_add(
     tensor_guid_t const &input,
     float scalar,
     std::optional<std::string> const &name) {
-  return this->element_scalar_unary(
-      OperatorType::SCALAR_ADD, input, scalar, name);
+  return this->element_unary(OperatorType::SCALAR_ADD, input, scalar, name);
 }
 
 tensor_guid_t ComputationGraphBuilder::scalar_sub(
     tensor_guid_t const &lhs,
     float rhs,
     std::optional<std::string> const &name) {
-  return this->element_scalar_unary(OperatorType::SCALAR_SUB, lhs, rhs, name);
+  return this->element_unary(OperatorType::SCALAR_SUB, lhs, rhs, name);
 }
 
 tensor_guid_t ComputationGraphBuilder::scalar_truediv(
     tensor_guid_t const &numerator,
     float denominator,
     std::optional<std::string> const &name) {
-  return this->element_scalar_unary(
+  return this->element_unary(
       OperatorType::SCALAR_TRUE_DIV, numerator, denominator, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::sin(tensor_guid_t const &input,
                                  std::optional<std::string> const &name) {
-  return this->element_unary(OperatorType::SIN, input, name);
+  return this->element_unary(OperatorType::SIN, input, std::nullopt, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::cos(tensor_guid_t const &input,
                                  std::optional<std::string> const &name) {
-  return this->element_unary(OperatorType::COS, input, name);
+  return this->element_unary(OperatorType::COS, input, std::nullopt, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::relu(tensor_guid_t const &input,
                                   std::optional<std::string> const &name) {
-  return this->element_unary(OperatorType::RELU, input, name);
+  return this->element_unary(OperatorType::RELU, input, std::nullopt, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::identity(tensor_guid_t const &input,
                                       std::optional<std::string> const &name) {
-  return this->element_unary(OperatorType::IDENTITY, input, name);
+  return this->element_unary(OperatorType::IDENTITY, input, std::nullopt, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::gelu(tensor_guid_t const &input,
                                   std::optional<std::string> const &name) {
-  return this->element_unary(OperatorType::GELU, input, name);
+  return this->element_unary(OperatorType::GELU, input, std::nullopt, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::sigmoid(tensor_guid_t const &input,
                                      std::optional<std::string> const &name) {
-  return this->element_unary(OperatorType::SIGMOID, input, name);
+  return this->element_unary(OperatorType::SIGMOID, input, std::nullopt, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::tanh(tensor_guid_t const &input,
                                   std::optional<std::string> const &name) {
-  return this->element_unary(OperatorType::TANH, input, name);
+  return this->element_unary(OperatorType::TANH, input, std::nullopt, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::elu(tensor_guid_t const &input,
                                  std::optional<std::string> const &name) {
-  return this->element_unary(OperatorType::ELU, input, name);
+  return this->element_unary(OperatorType::ELU, input, std::nullopt, name);
 }
 
 static TensorAttrs make_weight_attrs(

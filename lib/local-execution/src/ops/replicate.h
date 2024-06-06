@@ -7,22 +7,17 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<REPLICATE_INIT_TASK_ID>();
-template <>
-void register_task<REPLICATE_FWD_TASK_ID>();
-template <>
-void register_task<REPLICATE_BWD_TASK_ID>();
+std::vector<task_id_t> get_task_ids(ReplicateAttrs const &);
 
-OpTaskInvocation init(ReplicateAttrs const &);
+TaskImplFunction get_replicate_fwd_task_impl();
+TaskImplFunction get_replicate_bwd_task_impl();
+
+OpTaskSignature get_replicate_fwd_signature();
+OpTaskSignature get_replicate_bwd_signature();
+
 OpTaskInvocation forward(ReplicateAttrs const &);
 OpTaskInvocation backward(ReplicateAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ReplicateAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
 } // namespace FlexFlow
 
 #endif

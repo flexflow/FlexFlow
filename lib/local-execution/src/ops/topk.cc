@@ -56,14 +56,13 @@ OpTaskInvocation backward(TopKAttrs const &attrs) {
   return {TOPK_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<TopKPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
 
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
 
-  DeviceSpecific<TopKPerDeviceState> per_device_state =
-      init_kernel(attrs.sorted);
-  return per_device_state;
+  TopKPerDeviceState per_device_state = init_kernel(attrs.sorted);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -119,53 +118,25 @@ static std::optional<float>
                  attrs.k);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  TopKAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
-
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(ATTRS, attrs);
-
-  auto init_accessor = env.get_init_accessor(TOPK_INIT_TASK_ID, init_binding);
-  DeviceSpecific<TopKPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-  fwd_binding.bind_arg(PROFILING, profiling_settings());
-  fwd_binding.bind(INPUT, input.shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind(INDICES, output_shape);
-  fwd_binding.bind_arg(ATTRS, attrs);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(TOPK_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(TOPK_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_topk_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_topk_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_topk_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-void register_task<TOPK_INIT_TASK_ID>() {
+OpTaskSignature get_topk_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
-  init.add_arg_slot<TopKAttrs>(ATTRS); // Note: this may have some question
+  init.add_arg_slot<TopKAttrs>(ATTRS);
   init.add_return_value<TopKPerDeviceState>();
-  register_task(TOPK_INIT_TASK_ID, "Topk Init", init, init_task_impl);
-}
 
-template <>
-void register_task<TOPK_FWD_TASK_ID>() {
+  return init;
+}
+OpTaskSignature get_topk_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -175,18 +146,15 @@ void register_task<TOPK_FWD_TASK_ID>() {
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
   fwd.add_output_slot(INDICES);
-
-  register_task(TOPK_FWD_TASK_ID, "TopK Forward", fwd, forward_task_impl);
+  return fwd;
+}
+OpTaskSignature get_topk_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_topk_fwd_signature());
+  return bwd;
 }
 
-// TODO: OpTaskSignature
-
-// template <>
-// void register_task<TOPK_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//   infer_bwd_signature(get_op_signature(TOPK_FWD_TASK_ID));
-
-//   register_task(TOPK_BWD_TASK_ID, "TopK Backward", bwd, backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(TopKAttrs const &) {
+  return {TOPK_INIT_TASK_ID, TOPK_FWD_TASK_ID, TOPK_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

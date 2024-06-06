@@ -7,19 +7,17 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<COMBINE_FWD_TASK_ID>();
-template <>
-void register_task<COMBINE_BWD_TASK_ID>();
+std::vector<task_id_t> get_task_ids(CombineAttrs const &);
+
+TaskImplFunction get_combine_fwd_task_impl();
+TaskImplFunction get_combine_bwd_task_impl();
+
+OpTaskSignature get_combine_fwd_signature();
+OpTaskSignature get_combine_bwd_signature();
 
 OpTaskInvocation forward(CombineAttrs const &);
 OpTaskInvocation backward(CombineAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  CombineAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv);
 } // namespace FlexFlow
 
 #endif

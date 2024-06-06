@@ -20,7 +20,7 @@ using RuntimeArgRefSpec = ArgRefSpec<RuntimeArgRefType>;
 
 RuntimeArgRef<ProfilingSettings> profiling_settings();
 RuntimeArgRef<DeviceSpecific<PerDeviceFFHandle>> ff_handle();
-RuntimeArgRef<DeviceSpecific<PerDeviceFFHandle>> iteration_config();
+RuntimeArgRef<FFIterationConfig> iteration_config();
 
 } // namespace FlexFlow
 

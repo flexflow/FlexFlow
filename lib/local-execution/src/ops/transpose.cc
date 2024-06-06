@@ -37,29 +37,14 @@ OpTaskInvocation init(TransposeAttrs const &attrs) {
   return {TRANSPOSE_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<TransposePerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<TransposeAttrs>(ATTRS);
-  std::vector<ff_dim_t> perm = static_cast<std::vector<ff_dim_t>>(attrs.perm);
-  DeviceSpecific<TransposePerDeviceState> per_device_state =
-      init_kernel(perm.size(), perm);
+  std::vector<ff_dim_t> perm = inner_to_outer_idxs(attrs.perm);
+  TransposePerDeviceState per_device_state = init_kernel(perm.size(), perm);
 
-  return per_device_state;
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
-
-// TODO: OpTaskSignature
-
-// template <>
-// void register_task<TRANSPOSE_INIT_TASK_ID>() {
-// OpTaskSignature init(OpTaskType::INIT);
-
-//     init.add_arg_slot<TransposeAttrs>(ATTRS);
-
-// init.add_return_value<TransposePerDeviceState>();
-
-// register_task(TRANSPOSE_INIT_TASK_ID, "Transpose::init", init,
-// init_task_impl);
-// }
 
 OpTaskInvocation forward(TransposeAttrs const &attrs) {
   OpTaskBinding binding;
@@ -113,42 +98,40 @@ OpTaskInvocation backward(TransposeAttrs const &attrs) {
   return {TRANSPOSE_BWD_TASK_ID, binding};
 }
 
-CostMetrics
-    measure_operator_cost(SimEnvFactory const &sim_factory,
-                          TransposeAttrs const &attrs,
-                          InputVariadicParallelTensorDesc const
-                              &input_descs, // Note:this may have some problem
-                          ProfilingSettings const &settings,
-                          MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
+TaskImplFunction get_transpose_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_transpose_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_transpose_bwd_task_impl() {
+  return backward_task_impl;
+}
 
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(ATTRS, attrs);
+OpTaskSignature get_transpose_init_signature() {
+  OpTaskSignature init(OpTaskType::INIT);
 
-  auto init_accessor =
-      env.get_init_accessor(TRANSPOSE_INIT_TASK_ID, init_binding);
-  DeviceSpecific<TransposePerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
+  init.add_arg_slot<TransposeAttrs>(ATTRS);
+  init.add_return_value<TransposePerDeviceState>();
+  return init;
+}
+OpTaskSignature get_transpose_fwd_signature() {
+  OpTaskSignature fwd(OpTaskType::FWD);
 
-  ParallelTensorShape output_shape =
-      get_output_shape(attrs, input_descs.shapes);
+  fwd.add_arg_slot<ProfilingSettings>(PROFILING);
+  fwd.add_unchecked_arg_slot<TransposePerDeviceState>(PER_DEVICE_STATE);
 
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind(INPUT, input_descs.shapes);
-  fwd_binding.bind(OUTPUT, output_shape);
+  fwd.add_input_slot(INPUT);
+  fwd.add_output_slot(OUTPUT);
+  return fwd;
+}
+OpTaskSignature get_transpose_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_transpose_fwd_signature());
+  return bwd;
+}
 
-  auto fwd_accessor = env.get_fwd_accessor(TRANSPOSE_FWD_TASK_ID, fwd_binding);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(TRANSPOSE_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+std::vector<task_id_t> get_task_ids(TransposeAttrs const &) {
+  return {TRANSPOSE_INIT_TASK_ID, TRANSPOSE_FWD_TASK_ID, TRANSPOSE_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow
