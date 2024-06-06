@@ -25,7 +25,7 @@ namespace flashinfer {
 
 template cudaError_t SinglePrefillWithKVCacheDispatched<
   1, 64, QKVLayout::kNHD, PosEncodingMode::kNone,
-  false, MaskMode::kNone, half, half>(
+  false, MaskMode::kCustom, half, half>(
     half* q, half* k, half* v, float* custom_mask, half* o,
     float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
     float sm_scale, float rope_scale,
@@ -33,7 +33,7 @@ template cudaError_t SinglePrefillWithKVCacheDispatched<
 
 template cudaError_t SinglePrefillWithKVCacheDispatched<
   1, 128, QKVLayout::kNHD, PosEncodingMode::kNone,
-  false, MaskMode::kNone, half, half>(
+  false, MaskMode::kCustom, half, half>(
     half* q, half* k, half* v, float* custom_mask, half* o,
     float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
     float sm_scale, float rope_scale,
@@ -41,7 +41,7 @@ template cudaError_t SinglePrefillWithKVCacheDispatched<
 
 template cudaError_t SinglePrefillWithKVCacheDispatched<
   1, 256, QKVLayout::kNHD, PosEncodingMode::kNone,
-  false, MaskMode::kNone, half, half>(
+  false, MaskMode::kCustom, half, half>(
     half* q, half* k, half* v, float* custom_mask, half* o,
     float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
     float sm_scale, float rope_scale,
@@ -49,7 +49,7 @@ template cudaError_t SinglePrefillWithKVCacheDispatched<
 
 template cudaError_t SinglePrefillWithKVCacheDispatched<
   4, 64, QKVLayout::kNHD, PosEncodingMode::kNone,
-  false, MaskMode::kNone, half, half>(
+  false, MaskMode::kCustom, half, half>(
     half* q, half* k, half* v, float* custom_mask, half* o,
     float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
     float sm_scale, float rope_scale,
@@ -57,7 +57,7 @@ template cudaError_t SinglePrefillWithKVCacheDispatched<
 
 template cudaError_t SinglePrefillWithKVCacheDispatched<
   4, 128, QKVLayout::kNHD, PosEncodingMode::kNone,
-  false, MaskMode::kNone, half, half>(
+  false, MaskMode::kCustom, half, half>(
     half* q, half* k, half* v, float* custom_mask, half* o,
     float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
     float sm_scale, float rope_scale,
@@ -65,7 +65,7 @@ template cudaError_t SinglePrefillWithKVCacheDispatched<
 
 template cudaError_t SinglePrefillWithKVCacheDispatched<
   4, 256, QKVLayout::kNHD, PosEncodingMode::kNone,
-  false, MaskMode::kNone, half, half>(
+  false, MaskMode::kCustom, half, half>(
     half* q, half* k, half* v, float* custom_mask, half* o,
     float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
     float sm_scale, float rope_scale,
@@ -73,7 +73,7 @@ template cudaError_t SinglePrefillWithKVCacheDispatched<
 
 template cudaError_t SinglePrefillWithKVCacheDispatched<
   8, 64, QKVLayout::kNHD, PosEncodingMode::kNone,
-  false, MaskMode::kNone, half, half>(
+  false, MaskMode::kCustom, half, half>(
     half* q, half* k, half* v, float* custom_mask, half* o,
     float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
     float sm_scale, float rope_scale,
@@ -81,7 +81,7 @@ template cudaError_t SinglePrefillWithKVCacheDispatched<
 
 template cudaError_t SinglePrefillWithKVCacheDispatched<
   8, 128, QKVLayout::kNHD, PosEncodingMode::kNone,
-  false, MaskMode::kNone, half, half>(
+  false, MaskMode::kCustom, half, half>(
     half* q, half* k, half* v, float* custom_mask, half* o,
     float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
     float sm_scale, float rope_scale,
@@ -89,7 +89,7 @@ template cudaError_t SinglePrefillWithKVCacheDispatched<
 
 template cudaError_t SinglePrefillWithKVCacheDispatched<
   8, 256, QKVLayout::kNHD, PosEncodingMode::kNone,
-  false, MaskMode::kNone, half, half>(
+  false, MaskMode::kCustom, half, half>(
     half* q, half* k, half* v, float* custom_mask, half* o,
     float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
     float sm_scale, float rope_scale,
@@ -97,7 +97,7 @@ template cudaError_t SinglePrefillWithKVCacheDispatched<
 
   // template cudaError_t SinglePrefillWithKVCacheDispatched<
   //     1, 256, QKVLayout::kNHD, PosEncodingMode::kNone,
-  //     false, MaskMode::kNone, float, float>(
+  //     false, MaskMode::kCustom, float, float>(
   //       float* q, float* k, float* v, float* custom_mask, float* o,
   //       float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
   //       float sm_scale, float rope_scale,

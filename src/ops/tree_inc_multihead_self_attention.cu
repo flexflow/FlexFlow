@@ -698,7 +698,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
           head_dim, HEAD_DIM, {
     flashinfer::SinglePrefillWithKVCacheDispatched<
         GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
-        false, MaskMode::kNone, DT, DT>(
+        false, MaskMode::kCustom, DT, DT>(
           q, k, v, custom_mask, o, tmp, /*lse=*/static_cast<float *>(nullptr),
           num_kv_heads, q_len, kv_len, sm_scale,
           /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
