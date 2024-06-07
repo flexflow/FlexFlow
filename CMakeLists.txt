@@ -441,6 +441,11 @@ if(NOT BUILD_LEGION_ONLY)
       install(PROGRAMS ${CMAKE_BINARY_DIR}/flexflow_python DESTINATION "bin")
     endif()
   endif()
+
+  # Build TensorRT
+  add_subdirectory(deps/tensorrt_llm)
+  target_include_directories(flexflow PUBLIC deps/tensorrt_llm/cpp/include)
+  target_link_libraries(flexflow tensorrt_llm)
   
   if (INFERENCE_TESTS)
     target_link_libraries(flexflow "${TORCH_LIBRARIES}")
