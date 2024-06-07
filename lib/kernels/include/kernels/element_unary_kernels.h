@@ -5,6 +5,7 @@
 #include "kernels/accessor.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/ops/element_unary.h"
+#include "op-attrs/operator_type.h"
 #include <cstddef>
 
 namespace FlexFlow {
@@ -28,19 +29,20 @@ ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
 
 void forward_kernel(ffStream_t stream,
                     ElementUnaryPerDeviceState const &device_state,
-                    ElementUnaryUnifiedAttrs const &attrs,
+                    ElementUnaryAttrs const &attrs,
                     PerDeviceFFHandle const &handle,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output);
 
 void backward_kernel(ffStream_t stream,
                      ElementUnaryPerDeviceState const &device_state,
-                     ElementUnaryUnifiedAttrs const &attrs,
+                     ElementUnaryAttrs const &attrs,
                      PerDeviceFFHandle const &handle,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &input_grad,
                      GenericTensorAccessorR const &output,
                      GenericTensorAccessorR const &output_grad);
+
 
 } // namespace ElementUnary
 } // namespace Kernels

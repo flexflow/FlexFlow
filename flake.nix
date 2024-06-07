@@ -35,7 +35,7 @@
     in
     {
       packages = {
-        legion = pkgs.callPackage ./.flake/pkgs/legion.nix { };
+        legion = pkgs.callPackage ./.flake/pkgs/legion.nix { inherit stdenv; };
         hpp2plantuml = pkgs.python3Packages.callPackage ./.flake/pkgs/hpp2plantuml.nix { };
         rapidcheckFull = pkgs.symlinkJoin {
           name = "rapidcheckFull";
