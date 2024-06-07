@@ -33,6 +33,24 @@ using tokenizers::Tokenizer;
 
 LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
+bool operator<(std::shared_ptr<TokenTreeNode> const &lhs,
+               std::shared_ptr<TokenTreeNode> const &rhs) {
+  if (lhs->gumbel) {
+    assert(rhs->gumbel);
+    return lhs->gumbel_logit < rhs->gumbel_logit;
+  }
+  return lhs->log_accumulated_prob < rhs->log_accumulated_prob;
+}
+
+bool operator<=(std::shared_ptr<TokenTreeNode> const &lhs,
+                std::shared_ptr<TokenTreeNode> const &rhs) {
+  if (lhs->gumbel) {
+    assert(rhs->gumbel);
+    return lhs->gumbel_logit <= rhs->gumbel_logit;
+  }
+  return lhs->log_accumulated_prob <= rhs->log_accumulated_prob;
+}
+
 void write_to_output_file(std::string const &output_filepath,
                           std::string const &str) {
   std::ostream *os = &std::cout;
@@ -182,6 +200,10 @@ void RequestManager::set_max_tree_width(int max_tree_width) {
          max_tree_width <= BatchConfig::MAX_TREE_WIDTH and
          "Invalid max_tree_width");
   this->max_tree_width = max_tree_width;
+}
+
+void RequestManager::set_speculative_sampling(bool speculative_sampling_) {
+  speculative_sampling = speculative_sampling_;
 }
 
 void RequestManager::register_tokenizer(ModelType type,
@@ -1388,7 +1410,11 @@ bool RequestManager::update_llm_verify_results(
   }
 
   // Process the LLM results greedily
-  get_verify_results_greedy(llm_verify_result);
+  if (speculative_sampling) {
+    get_verify_results_sample(llm_verify_result);
+  } else {
+    get_verify_results_greedy(llm_verify_result);
+  }
 
   profiling.llm_step_times.push_back(
       (Realm::Clock::current_time_in_microseconds() -
@@ -1649,6 +1675,18 @@ BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
   return llm_bitmask;
 }
 /* --------- Bitmask Related Functions --------- */
+void RequestManager::gumbel_conditioned_on_max(
+    float target_max, std::vector<std::pair<float, int>> &logits) {
+  // Assume the logits are sorted in descending order
+  if (logits.size() == 0) {
+    return;
+  }
+  float max_logit = logits[0].first;
+  for (auto &logit_n_idx : logits) {
+    logit_n_idx.first =
+        -log(exp(-target_max) - exp(-max_logit) + exp(-logit_n_idx.first));
+  }
+}
 
 void RequestManager::renormalize(std::vector<std::pair<TokenId, float>> &D,
                                  std::unordered_map<TokenId, float> &R,
@@ -2323,6 +2361,9 @@ void RequestManager::add_root_to_spec_token_tree(
   TokenTree &speculative_token_tree = request.speculative_token_trees[0];
   speculative_token_tree.add_layer();
   auto node_ptr = std::make_shared<TokenTreeNode>(token_id, 0.0, -1);
+  if (speculative_sampling) {
+    node_ptr->gumbel = true;
+  }
   token_tree_node_pool.push(std::make_pair(node_ptr, guid));
   speculative_token_tree.tree_layers.front().push_back(node_ptr);
   speculative_token_tree.tree_size++;
@@ -2375,19 +2416,32 @@ bool RequestManager::add_tokens_to_spec_token_tree(
         int child_start_idx =
             result_offset +
             parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+        // TODO: rename child_probs to child_logits after change the output of
+        // argmax from prob to logprob
         std::vector<std::pair<float, int>> child_probs(
             BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
         for (int child_pos = 0;
              child_pos < BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
              child_pos++) {
           int result_idx = child_start_idx + child_pos;
-          child_probs[child_pos] = std::make_pair(
-              log(ssm_inference_result.probs[result_idx]), result_idx);
+          if (!speculative_sampling) {
+            // TODO: the argmax will return log prob instead of prob
+            child_probs[child_pos] = std::make_pair(
+                log(ssm_inference_result.probs[result_idx]), result_idx);
+          } else {
+            // Use gumbel perturbed logits here
+            child_probs[child_pos] = std::make_pair(
+                ssm_inference_result.gumbel_logits[result_idx], result_idx);
+          }
         }
         // Sort in descending order
         std::sort(child_probs.begin(),
                   child_probs.end(),
                   std::greater<std::pair<float, int>>());
+        if (speculative_sampling) {
+          // Condition the gumbel perturbed logits on the maximum
+          gumbel_conditioned_on_max(parent_ptr->gumbel_logit, child_probs);
+        }
 
         // for (int child_pos = 0;
         //      child_pos < BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
@@ -2399,8 +2453,16 @@ bool RequestManager::add_tokens_to_spec_token_tree(
           //       parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES +
           //       child_pos;
 
-          float log_prob = child_prob.first;
-          float log_accumulated_prob = log_prob + parent_log_prob;
+          float logit = child_prob.first;
+          // The value used to compare between tokens
+          float accumulated_log_prob = logit + parent_log_prob;
+          float gumbel_logit = 0.0f;
+          float cmp_value;
+          if (speculative_sampling) {
+            cmp_value = gumbel_logit = logit;
+          } else {
+            cmp_value = accumulated_log_prob;
+          }
           int result_idx = child_prob.second;
 
           //   std::cout << "Probability at result index " << result_idx << ":
@@ -2409,39 +2471,55 @@ bool RequestManager::add_tokens_to_spec_token_tree(
           //   std::cout << "Token id: "
           //             << ssm_inference_result.token_ids[result_idx] <<
           //             std::endl;
-          assert(log_prob != -std::numeric_limits<float>::infinity() &&
+          assert(logit != -std::numeric_limits<float>::infinity() &&
                  "Child log probability should not be -inf.");
 
           if (tokens.size() == empty_slots_in_layer and
-              log_accumulated_prob <= (*tokens.begin())->log_accumulated_prob) {
-            // The token tree is full, and the new token has a lower joint
-            // probability than the minimum node in the pool, we don't need to
-            // add the new token and the following tokens belong to the same
-            // parent to the tree, because the tokens are sorted by their
-            // probability
+              cmp_value <= (speculative_sampling
+                                ? (*tokens.begin())->gumbel_logit
+                                : (*tokens.begin())->log_accumulated_prob)) {
+            // The token tree is full, and the new token has a lower compare
+            // value than the minimum node in the pool, we don't need to add the
+            // new token and the following tokens belong to the same parent to
+            // the tree, because the tokens are sorted by their compare value
             break;
           } else if (token_pool_full and
-                     log_accumulated_prob <= token_tree_node_pool.top()
-                                                 .first->log_accumulated_prob) {
+                     cmp_value <=
+                         (speculative_sampling
+                              ? token_tree_node_pool.top().first->gumbel_logit
+                              : token_tree_node_pool.top()
+                                    .first->log_accumulated_prob)) {
             // The token tree is not full, but the token pool is full, and the
-            // new token has a lower joint probability than the minimum node
+            // new token has a lower compare value than the minimum node
             // in the pool, we don't need to add the new token and the
             // following tokens belong to the same parent to the tree, because
-            // the tokens are sorted by their probability
+            // the tokens are sorted by their compare value
             break;
           } else {
-            std::shared_ptr<TokenTreeNode> node_ptr =
-                std::make_shared<TokenTreeNode>(
-                    ssm_inference_result.token_ids[result_idx],
-                    log_accumulated_prob,
-                    parent_pos);
+            std::shared_ptr<TokenTreeNode> node_ptr(nullptr);
+            if (speculative_sampling) {
+              node_ptr = std::make_shared<TokenTreeNode>(
+                  ssm_inference_result.token_ids[result_idx],
+                  accumulated_log_prob,
+                  parent_pos,
+                  true,
+                  gumbel_logit);
+            } else {
+              node_ptr = std::make_shared<TokenTreeNode>(
+                  ssm_inference_result.token_ids[result_idx],
+                  accumulated_log_prob,
+                  parent_pos);
+            }
+            // if (tokens.size() == empty_slots_in_layer and
+            //     cmp_value > (speculative_sampling
+            //                      ? (*tokens.begin())->gumbel_logit
+            //                      : (*tokens.begin())->log_accumulated_prob))
+            //                      {
             if (tokens.size() == empty_slots_in_layer and
-                log_accumulated_prob >
-                    (*tokens.begin())->log_accumulated_prob) {
-              // The token tree is full, and the new token has a higher joint
-              // probability than the minimum node in the pool, we need to
-              // remove the minimum node from the pool and add the new token
-              // to the tree
+                *tokens.begin() < node_ptr) {
+              // The token tree is full, and the new token has a higher compare
+              // value than the minimum node in the pool, we need to remove the
+              // minimum node from the pool and add the new token to the tree
               tokens.erase(tokens.begin());
             }
             tokens.insert(node_ptr);
@@ -2452,15 +2530,16 @@ bool RequestManager::add_tokens_to_spec_token_tree(
     }
 
     // Now add all tokens in the set to the token tree, in descending order of
-    // their joint probability
+    // their compare value
     spec_token_tree.add_layer();
     for (auto token_it = tokens.crbegin(); token_it != tokens.crend();
          token_it++) {
       token_pool_full =
           token_tree_node_pool.size() == get_max_tokens_per_batch();
-      if (token_pool_full and
-          token_tree_node_pool.top().first->log_accumulated_prob >=
-              (*token_it)->log_accumulated_prob) {
+      if (token_pool_full and (*token_it) <= token_tree_node_pool.top().first) {
+        //   if (token_pool_full and
+        //       token_tree_node_pool.top().first->log_accumulated_prob >=
+        //           (*token_it)->log_accumulated_prob) {
         break;
       } else if (token_pool_full) {
         token_tree_node_pool.top().first->pruned = true;

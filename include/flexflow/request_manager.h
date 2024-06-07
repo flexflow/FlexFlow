@@ -130,28 +130,48 @@ public:
   float log_accumulated_prob;
   int parent_pos;
   bool pruned = false;
+  bool gumbel = false;
+  float gumbel_logit = 0.0f;
 
   TokenTreeNode(BatchConfig::TokenId id,
                 float log_accumulated_prob,
-                int parent_pos)
+                int parent_pos,
+                bool gumbel = false,
+                float gumbel_logit = 0.0f)
       : id(id), log_accumulated_prob(log_accumulated_prob),
-        parent_pos(parent_pos) {}
+        parent_pos(parent_pos), gumbel(gumbel), gumbel_logit(gumbel_logit) {}
 };
 
+bool operator<(std::shared_ptr<TokenTreeNode> const &lhs,
+               std::shared_ptr<TokenTreeNode> const &rhs);
+
+bool operator<=(std::shared_ptr<TokenTreeNode> const &lhs,
+                std::shared_ptr<TokenTreeNode> const &rhs);
+
 // A comparator for std::shared_ptr<TokenTreeNode>
+// This is used in to sort the token tree nodes in descending order
 struct CompareSharedTokenTreeNodePtr {
   bool operator()(std::shared_ptr<TokenTreeNode> const &lhs,
                   std::shared_ptr<TokenTreeNode> const &rhs) const {
+    if (lhs->gumbel) {
+      assert(rhs->gumbel);
+      return lhs->gumbel_logit < rhs->gumbel_logit;
+    }
     return lhs->log_accumulated_prob < rhs->log_accumulated_prob;
   }
 };
 
 // A comparator for std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>
+// This is used to sort the token tree nodes in ascending order
 struct CompareSharedTokenTreeNodePtrRequestGuidPair {
   bool operator()(std::pair<std::shared_ptr<TokenTreeNode>,
                             BatchConfig::RequestGuid> const &lhs,
                   std::pair<std::shared_ptr<TokenTreeNode>,
                             BatchConfig::RequestGuid> const &rhs) const {
+    if (lhs.first->gumbel) {
+      assert(rhs.first->gumbel);
+      return lhs.first->gumbel_logit > rhs.first->gumbel_logit;
+    }
     return lhs.first->log_accumulated_prob > rhs.first->log_accumulated_prob;
   }
 };
@@ -225,6 +245,7 @@ public:
   void set_max_tree_depth(int max_tree_depth);
   int get_max_tree_width();
   void set_max_tree_width(int max_tree_width);
+  void set_speculative_sampling(bool speculative_sampling);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -298,6 +319,7 @@ private:
   BackgroundServerStatus background_server_status;
   DecodingMode decoding_mode;
   PrefillModel prefill_model;
+  bool speculative_sampling = false;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -354,8 +376,9 @@ private:
     long long start_time = 0, start_decoding_time = 0, finish_time = 0;
   };
   struct ProfileInfo {
-    // For SpecInfer: One step is comprised of one ssm speculation phase + a single llm verification phase (forward pass + verification)
-    // For Incr Decoding: One step is one LLM decoding phase
+    // For SpecInfer: One step is comprised of one ssm speculation phase + a
+    // single llm verification phase (forward pass + verification) For Incr
+    // Decoding: One step is one LLM decoding phase
     long long llm_step_start = 0, ssm_step_start = 0;
     // Times for each LLM verification phase (in ms)
     std::vector<double> llm_step_times;
@@ -421,6 +444,8 @@ private:
       reject_sampling(std::vector<std::pair<TokenId, float>> &D,
                       std::unordered_map<TokenId, float> &R,
                       int k);
+  void gumbel_conditioned_on_max(float target_max,
+                                 std::vector<std::pair<float, int>> &logits);
 };
 
 }; // namespace FlexFlow

@@ -262,7 +262,7 @@ void LLAMA::create_llama_model(FFModel &ff,
       dense = ff.scalar_truediv(dense, generation_config.temperature, false);
       Tensor softmax = ff.softmax(dense, -1);
       if (generation_config.spec_sample) {
-        output = ff.arg_top_k(softmax, generation_config.topk, false, true);
+        output = ff.gumbel_top_k(softmax, generation_config.topk, false, true);
       } else {
         output = ff.sampling(softmax, generation_config.topp);
       }
