@@ -114,6 +114,9 @@ set(FF_MAX_DIM "4" CACHE STRING "Maximum dimention of tensors")
 option(FF_USE_EXTERNAL_LEGION "Use pre-installed Legion" OFF)
 set(LEGION_MAX_RETURN_SIZE "32768" CACHE STRING "Maximum Legion return size")
 
+# option for tensorrt
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --expt-relaxed-constexpr")
+
 set(FLEXFLOW_EXT_LIBRARIES "")
 set(FLEXFLOW_INCLUDE_DIRS "")
 
