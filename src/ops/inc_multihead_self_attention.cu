@@ -1423,13 +1423,14 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         assert(false && "Unkown inference mode");
     }
     size_t attn_heads_size = max_tokens_per_batch * num_q_heads * vProjSize;
+    size_t output_tmp_size = max_tokens_per_batch * num_q_heads * vProjSize;
     size_t complex_size = (max_tokens_per_batch * (qProjSize * num_q_heads +
                                                    kProjSize * num_q_heads)) /
                           2;
     size_t totalSize =
         (qkv_max_proj_size + query_tmp_size + key_cache_size + value_cache_size +
-         2 * qk_prod_size + attn_heads_size) *
-            size_of_dt +
+         2 * qk_prod_size + attn_heads_size) * size_of_dt +
+        output_tmp_size * data_type_size(DT_HALF) +
         complex_size * sizeof(cuFloatComplex); // more components will
                                                // be added here later
     if (offload) {
@@ -1476,6 +1477,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                            size_of_dt);
     valueCache = gpu_mem_allocator.allocate_instance_untyped(value_cache_size *
                                                              size_of_dt);
+    outputTmp = gpu_mem_allocator.allocate_instance<half>(output_tmp_size);
 
     token_infos =
         static_cast<BatchConfig::PerTokenInfo *>(handler.batch_config_metadata);

@@ -84,10 +84,9 @@ using flashinfer::PosEncodingMode;
 using flashinfer::MaskMode;
 using flashinfer::SinglePrefillWithKVCacheDispatched;
 
-template <typename DT>
 __global__ void commit_tokens_kernel(
-    DT *kCache_ptr,
-    DT *vCache_ptr,
+    half *kCache_ptr,
+    half *vCache_ptr,
     BatchConfig::CommittedTokensInfo const *committedTokenInfos,
     int qProjSize,
     int kProjSize,
@@ -116,7 +115,6 @@ __global__ void commit_tokens_kernel(
   }
 }
 
-template <typename DT>
 void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                    BatchConfig const *bc,
                    cudaStream_t stream) {
@@ -128,8 +126,8 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                            min(CUDA_NUM_THREADS, parallelism),
                            0,
                            stream>>>(
-        static_cast<DT *>(m->keyCache),
-        static_cast<DT *>(m->valueCache),
+        static_cast<half *>(m->keyCache),
+        static_cast<half *>(m->valueCache),
         m->committed_token_infos,
         m->qProjSize,
         m->kProjSize,
@@ -213,9 +211,9 @@ void update_custom_mask(TreeIncMultiHeadSelfAttentionMeta const *m,
 template <typename DT>
 __global__ void update_qkv_cache_kernel(
     DT *devQKVProjArray,
-    DT *qTmp_ptr,
-    DT *kCache_ptr,
-    DT *vCache_ptr,
+    half *qTmp_ptr,
+    half *kCache_ptr,
+    half *vCache_ptr,
     BatchConfig::PerTokenInfo const *tokenInfos,
     BatchConfig::PerRequestInfo *request_infos,
     int qProjSize,
@@ -240,11 +238,11 @@ __global__ void update_qkv_cache_kernel(
                   token_abs_idx * hidden_size;
 
   kCache_ptr[to_idx + offset] = 
-              devQKVProjArray[from_idx + hidden_size + offset];
+      static_cast<half>(devQKVProjArray[from_idx + hidden_size + offset]);
   vCache_ptr[to_idx + offset] = 
-              devQKVProjArray[from_idx + hidden_size * 2 + offset];
+      static_cast<half>(devQKVProjArray[from_idx + hidden_size * 2 + offset]);
   qTmp_ptr[token_idx * hidden_size + offset] = 
-              devQKVProjArray[from_idx + offset];
+      static_cast<half>(devQKVProjArray[from_idx + offset]);
 }
 
 template <typename DT>
@@ -259,9 +257,9 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
                             0,
                             stream>>>(
       static_cast<DT *>(m->devQKVProjArray),
-      static_cast<DT *>(m->queryTmp),
-      static_cast<DT *>(m->keyCache),
-      static_cast<DT *>(m->valueCache),
+      static_cast<half *>(m->queryTmp),
+      static_cast<half *>(m->keyCache),
+      static_cast<half *>(m->valueCache),
       m->token_infos,
       m->request_infos,
       m->qProjSize,
@@ -271,6 +269,15 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
           BatchConfig::max_spec_tree_token_num(),
       m->hidden_size,
       num_new_tokens);
+}
+
+template <typename DT>
+__global__ void produce_output_kernel(half const *input_ptr,
+                           DT *output_ptr,
+                           int parallelism) {
+  CUDA_KERNEL_LOOP(idx, parallelism) {
+    output_ptr[idx] = static_cast<DT>(input_ptr[idx]);
+  }
 }
 
 template <typename DT>
@@ -309,10 +316,10 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
              q_start = req->first_token_index_in_request,
              kv_len = q_len + q_start;
 
-    DT* q = static_cast<DT *>(m->queryTmp) + req->first_token_offset_in_batch * hidden_size,
-      * k = static_cast<DT *>(m->keyCache) + req_idx * max_seq_len * hidden_size,
-      * v = static_cast<DT *>(m->valueCache) + req_idx * max_seq_len * hidden_size,
-      * o = output_ptr + req->first_token_offset_in_batch * hidden_size;
+    half* q = static_cast<half *>(m->queryTmp) + req->first_token_offset_in_batch * hidden_size,
+        * k = static_cast<half *>(m->keyCache) + req_idx * max_seq_len * hidden_size,
+        * v = static_cast<half *>(m->valueCache) + req_idx * max_seq_len * hidden_size,
+        * o = m->outputTmp + req->first_token_offset_in_batch * hidden_size;
     float* tmp = m->scratch_space;
     float* custom_mask = m->custom_mask + req_idx * max_q_length * max_kv_length;
 
@@ -323,20 +330,27 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
     if (bc->prompt_phase) {
       flashinfer::SinglePrefillWithKVCacheDispatched<
         GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
-        false, MaskMode::kCausal, DT, DT>(
+        false, MaskMode::kCausal, half, half>(
           q, k, v, /*custom_mask=*/static_cast<float *>(nullptr), o, tmp,
           /*lse=*/static_cast<float *>(nullptr), num_kv_heads, q_len, kv_len, sm_scale,
           /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
     } else {
       flashinfer::SinglePrefillWithKVCacheDispatched<
           GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
-          false, MaskMode::kCustom, DT, DT>(
+          false, MaskMode::kCustom, half, half>(
             q, k, v, custom_mask, o, tmp, /*lse=*/static_cast<float *>(nullptr),
             num_kv_heads, q_len, kv_len, sm_scale,
             /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
     }
     })});
   }
+
+  int parallelism = m->vProjSize * m->num_q_heads * bc->num_active_tokens();
+  produce_output_kernel<<<GET_BLOCKS(parallelism),
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(
+      m->outputTmp, output_ptr, parallelism);
 
   // cudaEventRecord(t_end, stream);
   // checkCUDA(cudaEventSynchronize(t_end));
@@ -380,7 +394,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // std::cout << "tokens to be committed: " << bc->num_tokens_to_commit <<
   // "\n";
 
-  commit_tokens<DT>(m, bc, stream);
+  commit_tokens(m, bc, stream);
 
   // After commit we update m->num_active_tokens to be the number of active
   // tokens for the current batch
@@ -491,22 +505,22 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
         output.get_half_ptr(),
         bias_ptr,
         stream);
-  // } else if (input.data_type == DT_FLOAT) {
-  //   if (m->offload) {
-  //     pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
-  //   }
-  //   float const *bias_ptr =
-  //       use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
-  //   Kernels::TreeIncMultiHeadAttention::inference_kernel<float>(
-  //       m,
-  //       bc,
-  //       shard_id,
-  //       input.get_float_ptr(),
-  //       m->offload ? static_cast<float *>(m->weight_ptr)
-  //                  : weight.get_float_ptr(),
-  //       output.get_float_ptr(),
-  //       bias_ptr,
-  //       stream);
+  } else if (input.data_type == DT_FLOAT) {
+    if (m->offload) {
+      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
+    }
+    float const *bias_ptr =
+        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
+    Kernels::TreeIncMultiHeadAttention::inference_kernel<float>(
+        m,
+        bc,
+        shard_id,
+        input.get_float_ptr(),
+        m->offload ? static_cast<float *>(m->weight_ptr)
+                   : weight.get_float_ptr(),
+        output.get_float_ptr(),
+        bias_ptr,
+        stream);
   } else {
     assert(false && "Unspported data type");
   }
