@@ -6,6 +6,7 @@
 #include "utils/stack_vector.h"
 #include "utils/visitable.h"
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace FlexFlow {
@@ -41,8 +42,10 @@ public:
   std::optional<std::size_t> at_maybe(std::size_t) const;
 
   ArrayShape reversed_dim_order() const;
-  ArrayShape sub_shape(std::optional<legion_dim_t> start,
-                       std::optional<legion_dim_t> end);
+
+  ArrayShape
+      sub_shape(std::optional<std::variant<ff_dim_t, legion_dim_t>> start,
+                std::optional<std::variant<ff_dim_t, legion_dim_t>> end) const;
 
 public:
   LegionTensorDims dims;
@@ -50,6 +53,8 @@ public:
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ArrayShape, dims);
 
 size_t get_volume(ArrayShape const &);
+
+TensorShape get_tensor_shape(ArrayShape const &, DataType);
 
 } // namespace FlexFlow
 

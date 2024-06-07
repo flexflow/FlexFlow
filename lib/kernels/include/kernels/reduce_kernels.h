@@ -4,7 +4,7 @@
 #include "array_shape.h"
 #include "device.h"
 #include "ff_handle.h"
-#include "op-attrs/op.h"
+#include "op-attrs/operator_type.dtg.h"
 
 namespace FlexFlow {
 

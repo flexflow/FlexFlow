@@ -7,15 +7,20 @@ build_targets = [
   "utils",
   "op-attrs",
   "kernels",
-  "substitutions",
-  "compiler",
+  "pcg",
+  # "substitutions",
+  # "compiler",
+  "substitution-generator",
 ]
 
 test_targets = [
   "kernels-tests",
   "utils-tests",
-  "substitutions-tests",
-  "compiler-tests",
+  "op-attrs-tests",
+  "pcg-tests",
+  # "substitutions-tests",
+  # "compiler-tests",
+  "substitution-generator-tests",
 ]
 
 [cmake_flags_extra]

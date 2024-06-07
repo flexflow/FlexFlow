@@ -1,0 +1,43 @@
+namespace = "FlexFlow"
+name = "Conv2DParallelInputShape"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/shard_parallel_dim.dtg.h",
+  "op-attrs/datatype.dtg.h",
+]
+
+[[fields]]
+name = "sample_dim"
+type = "::FlexFlow::ShardParallelDim"
+
+[[fields]]
+name = "channel_dim"
+type = "::FlexFlow::ShardParallelDim"
+
+[[fields]]
+name = "height_dim"
+type = "::FlexFlow::ShardParallelDim"
+
+[[fields]]
+name = "width_dim"
+type = "::FlexFlow::ShardParallelDim"
+
+[[fields]]
+name = "sum_reduction_degree"
+type = "int"
+
+[[fields]]
+name = "discard_copy_reduction_degree"
+type = "int"
+
+[[fields]]
+name = "datatype"
+type = "::FlexFlow::DataType"

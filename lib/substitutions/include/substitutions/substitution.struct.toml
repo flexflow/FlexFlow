@@ -1,0 +1,24 @@
+namespace = "FlexFlow"
+name = "Substitution"
+features = []
+
+includes = [
+  "substitutions/pcg_pattern.dtg.h",
+  "substitutions/output_graph/output_graph_expr.dtg.h",
+]
+
+[[fields]]
+name = "pcg_pattern"
+type = "::FlexFlow::PCGPattern"
+
+[[fields]]
+name = "output_graph_expr"
+type = "::FlexFlow::OutputGraphExpr"
+
+[[fields]]
+name = "input_edge_match_to_output"
+type = "::FlexFlow::bidict<::FlexFlow::InputMultiDiEdge, ::FlexFlow::InputMultiDiEdge>"
+
+[[fields]]
+name = "output_edge_match_to_output"
+type = "::FlexFlow::bidict<::FlexFlow::OutputMultiDiEdge, ::FlexFlow::OutputMultiDiEdge>"

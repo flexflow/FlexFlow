@@ -251,9 +251,8 @@ void backward_kernel(cudaStream_t stream,
     // do nothing
   } else {
     RegularizerAttrs regularizer_attrs = m.regularizer.value();
-    if (std::holds_alternative<L2RegularizerAttrs>(regularizer_attrs)) {
-      L2RegularizerAttrs l2_attrs =
-          std::get<L2RegularizerAttrs>(regularizer_attrs);
+    if (regularizer_attrs.has<L2RegularizerAttrs>()) {
+      L2RegularizerAttrs l2_attrs = regularizer_attrs.get<L2RegularizerAttrs>();
       float lambda = l2_attrs.lambda;
       checkCUBLAS(cublasSgeam(m.handle.blas,
                             CUBLAS_OP_N,

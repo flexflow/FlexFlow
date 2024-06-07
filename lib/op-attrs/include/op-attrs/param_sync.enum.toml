@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "ParamSync"
+features = [
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[values]]
+name = "PS"
+
+[[values]]
+name = "NCCL"

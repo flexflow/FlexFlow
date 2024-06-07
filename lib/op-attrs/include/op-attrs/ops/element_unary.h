@@ -1,25 +1,20 @@
 #ifndef _FLEXFLOW_ELEMENTARY_UNARY_ATTRS_H
 #define _FLEXFLOW_ELEMENTARY_UNARY_ATTRS_H
 
-#include "core.h"
-#include "op-attrs/op.h"
-#include "op-attrs/parallel_tensor_shape.h"
-#include "utils/visitable.h"
+#include "op-attrs/ops/core.h"
+#include "op-attrs/ops/element_unary_attrs.dtg.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
+#include "op-attrs/tensor_shape.dtg.h"
+#include <tl/expected.hpp>
 
 namespace FlexFlow {
 
-struct ElementUnaryAttrs {
-  req<Op> op_type;
-};
-FF_VISITABLE_STRUCT(ElementUnaryAttrs, op_type);
-CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
+tl::expected<TensorShape, std::string>
+    get_output_shape(ElementUnaryAttrs const &, TensorShape const &);
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(ElementUnaryAttrs const &, ParallelTensorShape const &);
 
-struct ElementScalarUnaryAttrs {
-  Op op_type;
-  req<float> scalar;
-};
-FF_VISITABLE_STRUCT(ElementScalarUnaryAttrs, op_type, scalar);
-CHECK_VALID_OP_ATTR(ElementScalarUnaryAttrs);
+CHECK_VALID_OP_ATTR(ElementUnaryAttrs);
 
 } // namespace FlexFlow
 

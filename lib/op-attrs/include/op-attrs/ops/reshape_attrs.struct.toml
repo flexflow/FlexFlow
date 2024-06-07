@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "ReshapeAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/tensor_shape.dtg.h",
+]
+
+[[fields]]
+name = "shape"
+type = "::FlexFlow::TensorShape"

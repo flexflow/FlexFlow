@@ -9,9 +9,6 @@
 
 namespace FlexFlow {
 
-using ElementUnaryUnifiedAttrs =
-    std::variant<ElementUnaryAttrs, ElementScalarUnaryAttrs>;
-
 struct ElementUnaryPerDeviceState {
   ffTensorDescriptor_t inputTensor, outputTensor;
   req<ffActivationDescriptor_t> actiDesc;
@@ -27,7 +24,7 @@ namespace ElementUnary {
 
 ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
                                        ArrayShape const &output_shape,
-                                       ElementUnaryUnifiedAttrs const &attrs);
+                                       ElementUnaryAttrs const &attrs);
 
 void forward_kernel(ffStream_t stream,
                     ElementUnaryPerDeviceState const &device_state,

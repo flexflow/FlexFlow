@@ -112,27 +112,13 @@ std::vector<TensorShape> get_output_shapes(Attrs const &attrs,
 
 ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &,
                                      std::vector<ParallelTensorShape> const &);
-ParallelTensorShape get_output_shape(BatchMatmulAttrs const &,
-                                     ParallelTensorShape const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(CastAttrs const &,
-                                     ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(CombineAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ConcatAttrs const &,
                                      std::vector<ParallelTensorShape> const &);
 ParallelTensorShape get_output_shape(Conv2DAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(DropoutAttrs const &,
-                                     ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(ElementBinaryAttrs const &,
-                                     ParallelTensorShape const &,
-                                     ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(ElementUnaryAttrs const &,
-                                     ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(ElementScalarUnaryAttrs const &,
-                                     ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(EmbeddingAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(FlatAttrs const &,
                                      ParallelTensorShape const &);
@@ -141,15 +127,9 @@ std::vector<ParallelTensorShape> get_output_shapes(GatherAttrs const &,
                                                    ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(LayerNormAttrs const &,
                                      ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(LinearAttrs const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(Pool2DAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ReduceAttrs const &,
-                                     ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(ReductionAttrs const &,
-                                     ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(RepartitionAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ReplicateAttrs const &,
                                      ParallelTensorShape const &);
@@ -240,8 +220,6 @@ bool is_valid_internal(ElementBinaryAttrs const &,
                        ParallelTensorShape const &,
                        ParallelTensorShape const &);
 bool is_valid_internal(ElementUnaryAttrs const &, ParallelTensorShape const &);
-bool is_valid_internal(ElementScalarUnaryAttrs const &,
-                       ParallelTensorShape const &);
 bool is_valid_internal(EmbeddingAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(FlatAttrs const &, ParallelTensorShape const &);
 bool is_valid_internal(GatherAttrs const &,

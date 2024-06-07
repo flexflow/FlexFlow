@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "DataflowInput"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  # "json",
+  # "fmt",
+]
+
+includes = [
+  "utils/graph/multidiedge.h" ,
+]
+
+[[values]]
+type = "::FlexFlow::MultiDiOutput"
+key = "internal"
+
+[[values]]
+type = "int"
+key = "external"

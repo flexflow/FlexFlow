@@ -4,7 +4,7 @@
 #include "device.h"
 #include "kernels/accessor.h"
 #include "kernels/ff_handle.h"
-#include "op-attrs/activation.h"
+#include "op-attrs/activation.dtg.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {

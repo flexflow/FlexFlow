@@ -35,8 +35,8 @@
     in
     {
       packages = {
-        # legion = pkgs.callPackage ./.flake/pkgs/legion.nix { };
-        legion = pkgs.callPackage ./.flake/pkgs/legion.nix { inherit stdenv; };
+        legion = pkgs.callPackage ./.flake/pkgs/legion.nix { };
+        hpp2plantuml = pkgs.python3Packages.callPackage ./.flake/pkgs/hpp2plantuml.nix { };
         rapidcheckFull = pkgs.symlinkJoin {
           name = "rapidcheckFull";
           paths = (with pkgs; [ rapidcheck.out rapidcheck.dev ]);
@@ -91,9 +91,11 @@
               cudaPackages.libcublas
               cudaPackages.cuda_cudart
               tl-expected
+              lcov # for code coverage
             ])
             (with self.packages.${system}; [
               legion
+              hpp2plantuml
               rapidcheckFull
               doctest
             ])
@@ -102,6 +104,14 @@
         default = mkShell {
           inputsFrom = [ ci ];
           inherit (ci) CMAKE_FLAGS;
+<<<<<<< HEAD
+=======
+
+          VIMPLUGINS = lib.strings.concatStringsSep "," [
+            "${proj-repo.packages.${system}.proj-nvim}"
+          ];
+
+>>>>>>> repo-refactor
           buildInputs = builtins.concatLists [
             (with pkgs; [
               clang-tools
@@ -113,6 +123,7 @@
               compdb
               jq
               gh
+              lcov # for code coverage
             ])
             (with proj-repo.packages.${system}; [
               proj

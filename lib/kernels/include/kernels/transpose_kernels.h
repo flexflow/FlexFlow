@@ -8,7 +8,7 @@ namespace FlexFlow {
 
 struct TransposePerDeviceState {
   int num_dim;
-  req<std::vector<int>> perm;
+  req<std::vector<legion_dim_t>> perm;
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(TransposePerDeviceState,

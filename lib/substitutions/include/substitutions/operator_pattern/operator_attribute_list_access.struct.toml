@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "OperatorAttributeListIndexAccess"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "rapidcheck",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "substitutions/operator_pattern/operator_attribute_key.dtg.h"
+]
+
+[[fields]]
+name = "attribute_key"
+type = "::FlexFlow::OperatorAttributeKey"
+
+[[fields]]
+name = "index"
+type = "int"
