@@ -213,6 +213,7 @@ void update_custom_mask(TreeIncMultiHeadSelfAttentionMeta const *m,
 template <typename DT>
 __global__ void update_qkv_cache_kernel(
     DT *devQKVProjArray,
+    DT *qTmp_ptr,
     DT *kCache_ptr,
     DT *vCache_ptr,
     BatchConfig::PerTokenInfo const *tokenInfos,
@@ -220,9 +221,16 @@ __global__ void update_qkv_cache_kernel(
     int qProjSize,
     int kProjSize,
     int vProjSize,
-    int token_idx,
     int max_seq_len,
-    int hidden_size) {
+    int hidden_size,
+    int num_new_tokens) {
+  int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int const token_idx = thread_idx / hidden_size;
+  int const offset = thread_idx % hidden_size;
+  if (token_idx >= num_new_tokens) {
+    return;
+  }
+
   int const req_idx = tokenInfos[token_idx].request_index;
   int const token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
 
@@ -231,14 +239,12 @@ __global__ void update_qkv_cache_kernel(
   size_t to_idx = req_idx * (hidden_size * max_seq_len) +
                   token_abs_idx * hidden_size;
 
-  CUDA_KERNEL_LOOP(offset, hidden_size) {
-    kCache_ptr[to_idx + offset] = 
-               devQKVProjArray[from_idx + hidden_size + offset];
-    vCache_ptr[to_idx + offset] = 
-               devQKVProjArray[from_idx + hidden_size * 2 + offset];
-    devQKVProjArray[token_idx * hidden_size + offset] = 
-               devQKVProjArray[from_idx + offset];
-  }
+  kCache_ptr[to_idx + offset] = 
+              devQKVProjArray[from_idx + hidden_size + offset];
+  vCache_ptr[to_idx + offset] = 
+              devQKVProjArray[from_idx + hidden_size * 2 + offset];
+  qTmp_ptr[token_idx * hidden_size + offset] = 
+              devQKVProjArray[from_idx + offset];
 }
 
 template <typename DT>
@@ -247,26 +253,24 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
                                  cudaStream_t stream) {
   // update the kv cache, compact the q array
   int num_new_tokens = bc->num_active_tokens();
-  int parallelism = m->hidden_size;
-  // TODO: parallel across queries
-  for (int i = 0; i < num_new_tokens; i++) {
-    update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
-                              min(CUDA_NUM_THREADS, parallelism),
-                              0,
-                              stream>>>(
-        static_cast<DT *>(m->devQKVProjArray),
-        static_cast<DT *>(m->keyCache),
-        static_cast<DT *>(m->valueCache),
-        m->token_infos,
-        m->request_infos,
-        m->qProjSize,
-        m->kProjSize,
-        m->vProjSize,
-        i,
-        BatchConfig::max_sequence_length() +
-            BatchConfig::max_spec_tree_token_num(),
-        m->hidden_size);
-  }
+  int parallelism = m->hidden_size * num_new_tokens;
+  update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
+                            min(CUDA_NUM_THREADS, parallelism),
+                            0,
+                            stream>>>(
+      static_cast<DT *>(m->devQKVProjArray),
+      static_cast<DT *>(m->queryTmp),
+      static_cast<DT *>(m->keyCache),
+      static_cast<DT *>(m->valueCache),
+      m->token_infos,
+      m->request_infos,
+      m->qProjSize,
+      m->kProjSize,
+      m->vProjSize,
+      BatchConfig::max_sequence_length() +
+          BatchConfig::max_spec_tree_token_num(),
+      m->hidden_size,
+      num_new_tokens);
 }
 
 template <typename DT>
@@ -305,7 +309,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
              q_start = req->first_token_index_in_request,
              kv_len = q_len + q_start;
 
-    DT* q = static_cast<DT *>(m->devQKVProjArray) + req->first_token_offset_in_batch * hidden_size,
+    DT* q = static_cast<DT *>(m->queryTmp) + req->first_token_offset_in_batch * hidden_size,
       * k = static_cast<DT *>(m->keyCache) + req_idx * max_seq_len * hidden_size,
       * v = static_cast<DT *>(m->valueCache) + req_idx * max_seq_len * hidden_size,
       * o = output_ptr + req->first_token_offset_in_batch * hidden_size;
