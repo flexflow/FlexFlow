@@ -1373,7 +1373,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t qkv_max_proj_size = max_tokens_per_batch * (qProjSize * num_q_heads +
                                                        kProjSize * num_q_heads +
                                                        vProjSize * num_q_heads);
-    size_t key_cache_size = 0, value_cache_size = 0, qk_prod_size = 0;
+    size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0, qk_prod_size = 0;
     switch (infer_mode) {
       case INC_DECODING_MODE: {
         key_cache_size = num_q_heads * kProjSize *
@@ -1386,8 +1386,24 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                        BatchConfig::max_sequence_length() * num_q_heads;
         break;
       }
-      case TREE_SEARCH_MODE:
+      case TREE_SEARCH_MODE: {
+        key_cache_size = num_q_heads * kProjSize *
+                         BatchConfig::max_requests_per_batch() *
+                         (BatchConfig::max_sequence_length() +
+                          BatchConfig::max_spec_tree_token_num());
+        value_cache_size = num_q_heads * vProjSize *
+                           BatchConfig::max_requests_per_batch() *
+                           (BatchConfig::max_sequence_length() +
+                            BatchConfig::max_spec_tree_token_num());
+        qk_prod_size = BatchConfig::max_sequence_length() *
+                       (BatchConfig::max_sequence_length() +
+                        BatchConfig::max_spec_tree_token_num()) *
+                       num_q_heads;
+        break;
+      }
       case TREE_VERIFY_MODE: {
+        query_tmp_size = num_q_heads * qProjSize *
+                         BatchConfig::max_tokens_per_batch();
         // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_q_heads * kProjSize *
                          BatchConfig::max_requests_per_batch() *
@@ -1411,7 +1427,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                    kProjSize * num_q_heads)) /
                           2;
     size_t totalSize =
-        (qkv_max_proj_size + key_cache_size + value_cache_size +
+        (qkv_max_proj_size + query_tmp_size + key_cache_size + value_cache_size +
          2 * qk_prod_size + attn_heads_size) *
             size_of_dt +
         complex_size * sizeof(cuFloatComplex); // more components will
@@ -1421,15 +1437,15 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       size_t totalSharedSize =
           infer_mode == TREE_VERIFY_MODE
               ? totalSize -
-                    (key_cache_size + value_cache_size + qkv_max_proj_size) *
+                    (query_tmp_size + key_cache_size + value_cache_size + qkv_max_proj_size) *
                         size_of_dt
-              : totalSize - (key_cache_size + value_cache_size) * size_of_dt;
+              : totalSize - (query_tmp_size + key_cache_size + value_cache_size) * size_of_dt;
 
       size_t instance_size =
           size_of_dt *
           (infer_mode == TREE_VERIFY_MODE
-               ? key_cache_size + value_cache_size + qkv_max_proj_size
-               : key_cache_size + value_cache_size);
+               ? query_tmp_size + key_cache_size + value_cache_size + qkv_max_proj_size
+               : query_tmp_size + key_cache_size + value_cache_size);
 
       if (quantization_type != DT_NONE) {
         totalSharedSize += quantized_weightSize;
@@ -1452,6 +1468,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     }
 
     // use key value cache in all mode.
+    if (query_tmp_size > 0) {
+      queryTmp = gpu_mem_allocator.allocate_instance_untyped(query_tmp_size *
+                                                             size_of_dt);
+    }
     keyCache = gpu_mem_allocator.allocate_instance_untyped(key_cache_size *
                                                            size_of_dt);
     valueCache = gpu_mem_allocator.allocate_instance_untyped(value_cache_size *
