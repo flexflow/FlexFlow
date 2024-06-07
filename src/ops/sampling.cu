@@ -45,8 +45,12 @@ __global__ void init_idxs(int batch_size,
                           int *idx,
                           int *begin_offset,
                           int *end_offset) {
-  CUDA_KERNEL_LOOP(i, total_eles) {
-    idx[i] = i % vocab_size;
+  // +1 to include the upper boundary
+  CUDA_KERNEL_LOOP(i, total_eles + 1) {
+    if (i < total_eles) {
+      // Exclude the last element
+      idx[i] = i % vocab_size;
+    }
     if (i % vocab_size == 0) {
       begin_offset[i / vocab_size] = i;
       end_offset[i / vocab_size] = i;
@@ -55,9 +59,9 @@ __global__ void init_idxs(int batch_size,
 }
 
 __global__ void
-    init_random_kernel(curandState *state, int batch_size, long rand) {
+    init_random_kernel(curandState *state, int batch_size, long seed) {
   CUDA_KERNEL_LOOP(i, batch_size) {
-    curand_init(rand, i, 0, &state[i]);
+    curand_init(seed, i, 0, &state[i]);
   }
 }
 
@@ -74,11 +78,14 @@ __global__ void sampling_topp_kernel(int batch_size,
   int const batch_idx = blockIdx.x;
   __shared__ float random_n;
   __shared__ long long result_idx;
+  __shared__ bool is_end;
 
   // random num
   if (threadIdx.x == 0) {
     // number must < topp
     random_n = curand_uniform(state + batch_idx) * topp;
+    is_end = false;
+    result_idx = vocab_size - 1;
     // printf("batch idx: %d, random num%f\n", batch_idx, random_n);
   }
 
@@ -91,14 +98,19 @@ __global__ void sampling_topp_kernel(int batch_size,
   int offset = batch_idx * vocab_size;
   float prefix_sum = 0.0f;
   BlockPrefixCallbackOp prefix_op(0);
-  result_idx = vocab_size - 1;
 
   for (long long j = threadIdx.x; j < vocab_size; j += blockDim.x) {
     float logit = (float)(sorted_logits[offset + j]);
     BlockScan(temp_storage).InclusiveSum(logit, prefix_sum, prefix_op);
-    prefix_sum /= topp;
+    __syncthreads();
     if (prefix_sum >= random_n) {
       atomicMin(&result_idx, j);
+      is_end = true;
+    }
+    // Synchronize to make sure all threads see the updated flag
+    __syncthreads();
+    if (is_end) {
+      break;
     }
   }
   indices_ptr[batch_idx] = sorted_idx[offset + result_idx];

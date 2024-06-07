@@ -47,7 +47,8 @@ void parse_input_args(char **argv,
                       float &topp,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
-                      int &max_sequence_length) {
+                      int &max_sequence_length,
+                      int &sampling_seed) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -105,6 +106,10 @@ void parse_input_args(char **argv,
       max_sequence_length = std::stoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--sampling-seed")) {
+      sampling_seed = std::stoi(argv[++i]);
+      continue;
+    }
   }
   if (paths.cache_folder_path.empty()) {
     char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
@@ -138,6 +143,7 @@ void FlexFlow::top_level_task(Task const *task,
   int max_sequence_length = 256;
   RequestManager::DecodingMode decoding_mode =
       RequestManager::INCREMENTAL_DECODING;
+  int sampling_seed = 0;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -153,7 +159,8 @@ void FlexFlow::top_level_task(Task const *task,
                    topp,
                    max_requests_per_batch,
                    max_tokens_per_batch,
-                   max_sequence_length);
+                   max_sequence_length,
+                   sampling_seed);
 
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
@@ -208,6 +215,7 @@ void FlexFlow::top_level_task(Task const *task,
   assert(model_type != ModelType::UNKNOWN &&
          "Invalid LLM model type passed (or no type was passed).");
 
+  srand(sampling_seed);
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
   rm->set_max_requests_per_batch(max_requests_per_batch);

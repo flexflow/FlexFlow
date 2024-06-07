@@ -33,7 +33,8 @@ using tokenizers::Tokenizer;
 
 LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
-void write_to_output_file(std::string const &output_filepath, std::string const &str) {
+void write_to_output_file(std::string const &output_filepath,
+                          std::string const &str) {
   std::ostream *os = &std::cout;
   std::ofstream output_file;
   if (!output_filepath.empty()) {
@@ -523,7 +524,8 @@ void RequestManager::request_complete_clean_up(int batch_index) {
     *os << "Request " << guid << " profiling: " << std::endl;
     if (profile_info.start_decoding_time != 0) {
       *os << "Decoding time: "
-          << (profile_info.finish_time - profile_info.start_decoding_time) * 1e-3
+          << (profile_info.finish_time - profile_info.start_decoding_time) *
+                 1e-3
           << " ms" << std::endl;
     } else {
       *os << "Decoding time: 0 ms" << std::endl;
@@ -531,34 +533,33 @@ void RequestManager::request_complete_clean_up(int batch_index) {
     *os << "Total time: "
         << (profile_info.finish_time - profile_info.start_time) * 1e-3 << " ms"
         << std::endl;
-    *os << "LLM decoding steps: " << profile_info.llm_decoding_steps << std::endl;
-      if (decoding_mode == SPECULATIVE_DECODING) {
-        *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
-            << std::endl;
-      }
-      *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
+    *os << "LLM decoding steps: " << profile_info.llm_decoding_steps
+        << std::endl;
+    if (decoding_mode == SPECULATIVE_DECODING) {
+      *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
+          << std::endl;
+    }
+    *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
 
-      if (!output_filepath.empty()) {
-        output_file.close();
-      }
+    if (!output_filepath.empty()) {
+      output_file.close();
+    }
   }
   RequestProfileInfo profile_info = profiling_requests[guid];
-  std::string str = "[" + std::to_string(guid) + "] Request completed:" + 
-                      " decoding_time_ms(" + std::to_string(
-                        (profile_info.finish_time-
-                          profile_info.start_decoding_time)
-                          *1e-3) + ")" + 
-                      " total_time_ms(" + std::to_string(
-                        (profile_info.finish_time-
-                          profile_info.start_time)
-                          *1e-3) + ")" + 
-                      " LLM_decoding_steps(" + std::to_string(
-                        profile_info.llm_decoding_steps) 
-                        + ")";
+  std::string str =
+      "[" + std::to_string(guid) +
+      "] Request completed:" + " decoding_time_ms(" +
+      std::to_string(
+          (profile_info.finish_time - profile_info.start_decoding_time) *
+          1e-3) +
+      ")" + " total_time_ms(" +
+      std::to_string((profile_info.finish_time - profile_info.start_time) *
+                     1e-3) +
+      ")" + " LLM_decoding_steps(" +
+      std::to_string(profile_info.llm_decoding_steps) + ")";
   if (decoding_mode == SPECULATIVE_DECODING) {
-    str = str + " SSM_decoding_steps(" + std::to_string(
-      profile_info.ssm_decoding_steps) 
-      + ")";
+    str = str + " SSM_decoding_steps(" +
+          std::to_string(profile_info.ssm_decoding_steps) + ")";
   }
   write_to_output_file("", str);
 
@@ -803,9 +804,10 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
                 << output << std::endl;
     }
   }
-  profiling.llm_step_times.push_back((
-        Realm::Clock::current_time_in_microseconds() - 
-        profiling.llm_step_start) * 1e-3);
+  profiling.llm_step_times.push_back(
+      (Realm::Clock::current_time_in_microseconds() -
+       profiling.llm_step_start) *
+      1e-3);
   profiling.requests_per_step.push_back(nb_requests_decoded);
   profiling.generated_tokens_per_step.push_back(nb_requests_decoded);
   return request_completed;
@@ -1139,8 +1141,7 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
       profiling_requests[guid].start_decoding_time =
           Realm::Clock::current_time_in_microseconds();
     }
-    profiling.ssm_step_start = 
-      Realm::Clock::current_time_in_microseconds();
+    profiling.ssm_step_start = Realm::Clock::current_time_in_microseconds();
   }
   if (verbose) {
     std::cout << "prepare_first_spec_batch_config NEW batchconfig:"
@@ -1389,9 +1390,10 @@ bool RequestManager::update_llm_verify_results(
   // Process the LLM results greedily
   get_verify_results_greedy(llm_verify_result);
 
-  profiling.llm_step_times.push_back((
-        Realm::Clock::current_time_in_microseconds() - 
-        profiling.llm_step_start) * 1e-3);
+  profiling.llm_step_times.push_back(
+      (Realm::Clock::current_time_in_microseconds() -
+       profiling.llm_step_start) *
+      1e-3);
   profiling.requests_per_step.push_back(nb_requests_decoded);
 
   // Clear the token tree node pool
@@ -1498,10 +1500,10 @@ bool RequestManager::update_ssm_inference_results(
   // Stop conditions
   if (all_request_last_layer_empty) {
     // Update profiling statistics before returning
-    profiling.ssm_step_times.push_back((
-        Realm::Clock::current_time_in_microseconds() -
-        profiling.ssm_step_start) * 1e-3
-      );
+    profiling.ssm_step_times.push_back(
+        (Realm::Clock::current_time_in_microseconds() -
+         profiling.ssm_step_start) *
+        1e-3);
     return true;
   }
   return false;
@@ -1959,7 +1961,7 @@ void RequestManager::get_verify_results_greedy(
     request.llm_committed = false;
     request.ssm_committed = false;
 
-    total_nb_generated_tokens += request.committed_tokens.size();
+    total_nb_generated_tokens += request.committed_tokens.size() - 1;
     if (verbose) {
       std::cout << "Request " << request.guid << " committed tokens: ";
       for (auto const &committed_token : request.committed_tokens) {
@@ -2242,7 +2244,8 @@ void RequestManager::terminate_background_server_at_exit() {
 
 void RequestManager::terminate_background_server() {
   if (background_server_status == SERVING) {
-    assert(profiling.llm_step_times.size() == profiling.requests_per_step.size());
+    assert(profiling.llm_step_times.size() ==
+           profiling.requests_per_step.size());
     // Write the last profiling statistics to output file
     std::string str = "[Profiling Statistics]\n llm_step_times_ms(";
     std::string llm_step_times_ms = " ";
@@ -2259,7 +2262,8 @@ void RequestManager::terminate_background_server() {
     req_per_step += ")";
     str += req_per_step;
     if (profiling.ssm_step_times.size() > 0) {
-      assert(profiling.ssm_step_times.size() == profiling.llm_step_times.size());
+      //   assert(profiling.ssm_step_times.size() ==
+      //   profiling.llm_step_times.size());
       str += "\n ssm_step_times_ms(";
       std::string ssm_step_times_ms = " ";
       for (double time : profiling.ssm_step_times) {

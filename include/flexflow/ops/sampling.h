@@ -46,10 +46,10 @@ public:
   using Params = SamplingParams;
   using Input = ParallelTensor;
   Sampling(FFModel &model,
-           const ParallelTensor input,
+           ParallelTensor const input,
            float top_p,
            char const *name);
-  Sampling(FFModel &model, Sampling const &other, const ParallelTensor input);
+  Sampling(FFModel &model, Sampling const &other, ParallelTensor const input);
   Sampling(FFModel &model,
            Params const &params,
            Input const input,

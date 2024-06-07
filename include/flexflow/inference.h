@@ -32,9 +32,9 @@ struct GenerationConfig {
                    float _temperature = 0.8,
                    float _topp = 0.6,
                    bool _spec_sample = false,
-                   int topk = 16)
+                   int _topk = 16)
       : do_sample(_do_sample), temperature(_temperature), topp(_topp),
-        spec_sample(_spec_sample), topk(topk) {
+        spec_sample(_spec_sample), topk(_topk) {
     assert(temperature > 0.0);
     assert(topk <= BatchConfig::MAX_K_LOGITS);
   }

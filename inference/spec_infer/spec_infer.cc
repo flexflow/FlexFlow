@@ -65,7 +65,8 @@ void parse_input_args(char **argv,
                       int &max_sequence_length,
                       int &expansion_degree,
                       bool &spec_sampling,
-                      bool &do_sample) {
+                      bool &do_sample,
+                      int &sampling_seed) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -124,12 +125,16 @@ void parse_input_args(char **argv,
       expansion_degree = std::stoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "--spec_sampling")) {
+    if (!strcmp(argv[i], "--sampling-seed")) {
+      sampling_seed = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--spec-sampling")) {
       spec_sampling = true;
       do_sample = true;
       continue;
     }
-    if (!strcmp(argv[i], "--do_sample")) {
+    if (!strcmp(argv[i], "--do-sample")) {
       do_sample = true;
       continue;
     }
@@ -296,6 +301,7 @@ void FlexFlow::top_level_task(Task const *task,
       RequestManager::SPECULATIVE_DECODING;
   bool spec_sampling = false;
   bool do_sample = false;
+  int sampling_seed = 0;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -311,7 +317,8 @@ void FlexFlow::top_level_task(Task const *task,
                    max_sequence_length,
                    expansion_degree,
                    spec_sampling,
-                   do_sample);
+                   do_sample,
+                   sampling_seed);
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
 
@@ -320,6 +327,7 @@ void FlexFlow::top_level_task(Task const *task,
          ffconfig.numNodes * ffconfig.workersPerNode);
 
   // Create SentencePiece tokenizer or OPT tokenizer
+  srand(sampling_seed);
   GenerationConfig generationConfig(do_sample, 0.8, 0.6, spec_sampling, 16);
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestManager *rm = RequestManager::get_request_manager();
