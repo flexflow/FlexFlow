@@ -443,6 +443,11 @@ if(NOT BUILD_LEGION_ONLY)
   endif()
 
   # Build TensorRT
+  add_subdirectory(deps/tensorrt)
+  target_include_directories(flexflow PUBLIC deps/tensorrt/include)
+  target_link_libraries(flexflow tensorrt)
+
+  # Build TensorRT-LLM
   add_subdirectory(deps/tensorrt-llm/cpp)
   target_include_directories(flexflow PUBLIC deps/tensorrt-llm/cpp/include)
   target_link_libraries(flexflow tensorrt_llm)
