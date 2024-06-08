@@ -1473,10 +1473,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       queryTmp = gpu_mem_allocator.allocate_instance_untyped(query_tmp_size *
                                                              size_of_dt);
     }
-    keyCache = gpu_mem_allocator.allocate_instance_untyped(key_cache_size *
+    keyCache = gpu_mem_allocator.allocate_instance_untyped((key_cache_size + value_cache_size) *
                                                            size_of_dt);
-    valueCache = gpu_mem_allocator.allocate_instance_untyped(value_cache_size *
-                                                             size_of_dt);
+    valueCache = static_cast<void *>(static_cast<char *>(keyCache) +
+                                     key_cache_size * size_of_dt);
     outputTmp = gpu_mem_allocator.allocate_instance<half>(output_tmp_size);
 
     token_infos =
