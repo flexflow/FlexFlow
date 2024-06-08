@@ -276,12 +276,13 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
-    std::vector<std::string> prompts;
+    double slo_ms = 10; // TODO: generalize SLO
+    std::vector<std::pair<std::string, double>> prompts;
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      prompts.push_back(text);
+      prompts.emplace_back(text, slo_ms);
     }
     std::vector<GenerationResult> result =
         model.generate(prompts, 128 /*max_sequence_length*/);
