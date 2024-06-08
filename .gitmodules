@@ -26,3 +26,6 @@
 [submodule "deps/tensorrt-llm"]
 	path = deps/tensorrt-llm
 	url = https://github.com/NVIDIA/TensorRT-LLM.git
+[submodule "deps/tensorrt"]
+	path = deps/tensorrt
+	url = https://github.com/NVIDIA/TensorRT.git
