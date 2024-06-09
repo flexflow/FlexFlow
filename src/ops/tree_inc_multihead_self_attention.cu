@@ -320,7 +320,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
         * k = static_cast<half *>(m->keyCache) + req_idx * max_seq_len * hidden_size,
         * v = static_cast<half *>(m->valueCache) + req_idx * max_seq_len * hidden_size,
         * o = m->outputTmp + req->first_token_offset_in_batch * hidden_size;
-    float* tmp = m->scratch_space;
+    float* tmp = static_cast<float *>(m->workspace);
     float* custom_mask = m->custom_mask + req_idx * max_q_length * max_kv_length;
 
     DISPATCH_GROUP_SIZE(
@@ -575,15 +575,25 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
   {
+    size_t batch_size = BatchConfig::max_requests_per_batch();
+    size_t indices_size = ((batch_size + 1) * 2 + batch_size * 2);
     size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
                               BatchConfig::max_spec_tree_token_num() *
                               (BatchConfig::max_spec_tree_token_num() +
                                 BatchConfig::max_sequence_length());
-    size_t scratch_space_size = 8 * 1024 * 1024; // 32 MB float
+    size_t workspace_size = 32 * 1024 * 1024; // 32MB
+    
     gpu_mem_allocator.create_legion_instance(flashinfer_reserve_inst, 
-                sizeof(float) * (custom_mask_size + scratch_space_size));
+                sizeof(int32_t) * indices_size +
+                sizeof(float) * custom_mask_size + workspace_size);
+
     custom_mask = gpu_mem_allocator.allocate_instance<float>(custom_mask_size);
-    scratch_space = gpu_mem_allocator.allocate_instance<float>(scratch_space_size);
+    workspace = static_cast<void *>(gpu_mem_allocator.allocate_instance<char>(workspace_size));
+    // Why we should allocate these after workspace?? (else we will get index out of bound)
+    q_indptr = gpu_mem_allocator.allocate_instance<int32_t>(indices_size);
+    kv_indptr = q_indptr + batch_size + 1;
+    kv_indices = kv_indptr + batch_size + 1;
+    kv_last_page_len = kv_indices + batch_size;
   }
 
   // allocate memory for the seqArray and reserve space

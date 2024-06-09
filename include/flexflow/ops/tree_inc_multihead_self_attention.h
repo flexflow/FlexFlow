@@ -145,11 +145,16 @@ public:
 
 public:
   int num_active_tokens;
-  Realm::RegionInstance flashinfer_reserve_inst;
-  float *custom_mask;
-  float *scratch_space;
   BatchConfig::CommittedTokensInfo *committed_token_infos;
   BatchConfig::BitMask *causalMask;
+  // For flashinfer attention
+  Realm::RegionInstance flashinfer_reserve_inst;
+  int32_t *q_indptr;
+  int32_t *kv_indptr;
+  int32_t *kv_indices;
+  int32_t *kv_last_page_len;
+  float *custom_mask;
+  void *workspace;
 };
 
 }; // namespace FlexFlow
